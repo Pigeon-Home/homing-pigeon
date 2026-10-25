@@ -82,6 +82,27 @@ has no Windows form. The real cages elsewhere are named in
 on FreeBSD, a job object and a restricted token on Windows); none
 is implemented, and adding one is a scope decision, not a test.
 
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
+## Proofs that need time, history, or a real box
+
+The suite proves a commit on one Python in minutes. These prove what
+it cannot:
+
+| Proof | What it proves | When |
+|---|---|---|
+| `python-range` | the whole suite on the 3.9 floor and on 3.14 | every push |
+| `upgrade-proof` | the last release installs, the owner's edits and the state are seeded, this commit upgrades over them, and nothing is lost (`runner/tools/upgrade_proof.py`) | every push; tree-to-itself in the suite |
+| `soak` | two hours of the real poll loop on the campaign rig's job mix; fails on growth in memory, the Python heap, file descriptors, threads, unreaped children, a missing result, or an oversized log (`runner/tools/soak.py`) | nightly, on dispatch |
+| `hardware` | the suite, the platform proof, the upgrade proof and a soak on the owner's own board | on dispatch |
+| `test_live_capture` | the runner's readers take three days of a real box's files (`docs/reports/live-2026-10-25/`), the scrub holds, and `docs/use/live-examples.md` quotes them exactly | every push |
+
+The live capture is the suite's one corpus from a real deployment:
+19,227 jobs, the learning ledger, the security events and the log of
+the campaign rig. A change that would not read those files fails
+`test_live_capture`; `runner/tools/live_capture.py` prints what the
+run came to.
+
 Running the same proofs locally:
 
 ```bash

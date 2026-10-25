@@ -23,10 +23,10 @@ handling jobs.
 
 ## What the learning ledger looks like
 
-A live `oracle-learning.jsonl` from the campaign rig (prediction
-and reconciliation shapes) is quoted in
-`docs/use/live-examples.md`. The full file is in
-`docs/reports/live-2026-10-25/oracle-learning.jsonl`.
+On the campaign rig (deterministic mode, 2,248 graded jobs) every
+prediction was `likely_success`: the ledger's accuracy is the success
+rate and no failure was foreseen. Its real lines and numbers are in
+[live-examples.md](../use/live-examples.md#what-the-oracle-recorded).
 
 ## Parity rule
 

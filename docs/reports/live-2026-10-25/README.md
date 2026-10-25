@@ -10,18 +10,21 @@ connector-carried campaign from 2026-10-22 to 2026-10-24.
 - Runner version: **3.12.51**, first start 2026-10-22 19:09,
   last start 2026-10-24; `runner.log` spans
   2026-10-22 19:09:02 to 2026-10-24 23:18:40.
-- The campaign records (`campaign-results/loop-*.json`,
-  19,227 files) span 2026-10-23 05:10 UTC to
-  2026-10-24 23:18 UTC.
+- The campaign records (`campaign-results.jsonl.gz`, one
+  record per line in loop order, 19,227 records) span
+  2026-10-23 05:10 UTC to 2026-10-24 23:18 UTC.
 - Modes the rig ran, per the log's startup lines: the Oracle
   in **deterministic** mode (Pi Light; set by the
   `--oracle-mode deterministic` launch flag over the config's
   `llm` value), opinion latitude `repair`, per-job
   encryption on (every envelope below is an `hp_enc` body),
-  max result view `attested`, judge `advisory`, confinement
-  off. Transports: email in the first era, then **file only**
-  after the mail-off order of 2026-10-23, which is the era
-  almost everything here comes from.
+  confinement off, running as root. The first two starts on
+  2026-10-22 show `judge=advisory ceiling=attested`; from the
+  third (20:21) on, and so for every campaign record, the rig
+  ran `judge=off ceiling=full`, and every result is at view
+  `full`. Transports: email in the first era, then **file
+  only** after the mail-off order of 2026-10-23, which is the
+  era almost everything here comes from.
 - The reports in `audit-report.txt`,
   `audit-report-since-7d.txt`, and `posture.txt` were run on
   2026-10-25 with the current tree (3.12.70) against a
@@ -42,8 +45,8 @@ Per the owner's rule for this capture:
   runner's mailbox) or `si@example.test` (any other role);
   24 replacements. Test addresses already in the corpus
   (`@example.com`) were left as they were.
-- Host names became `rig`, user names `runner`, and
-  `/home/hatch` became `/home/runner`.
+- Host names became `rig`, user names `runner`, and the
+  rig user's home directory became `/home/runner`.
 - The shared secret and every credential value in the rig's
   configs were scanned for by exact match across the whole
   capture: **none appears in any captured file**, so no
@@ -90,14 +93,31 @@ this rig, and are absent rather than empty:
 
 ## The rest
 
-- `transport-*.txt` are file-name listings of the transport
-  channel trees (38,538 names in the campaign inbox's
-  `done/`, 19,264 results in its outbox, and the smaller
-  extension trees), as asked: names only.
-- `campaign-results/` also holds the loop's records
+- `transport-*.txt.gz` are file-name listings of the
+  transport channel trees (38,538 names in the campaign
+  inbox's `done/`, 19,264 results in its outbox, and the
+  smaller extension trees), as asked: names only, gzipped.
+- `campaign-results.jsonl.gz` holds the loop's records
   themselves, all of them.
 - `mutation-survivors.txt` was regenerated from the D4
   mutation reproduction's own mutant records by
   `runner/tools/mutation_floor.py`: the five names are the
   provably equivalent survivors of `runner/guard/security.py`
   (561 of 566 mutants killed).
+
+## Packing, and reading it
+
+The capture was first posted as 19,227 record files and four
+plain listings, 84 MB on disk. Every release snapshot carries
+every tracked file onto every box, Pi Light included, so on
+2026-10-25 (stamp 40000e00) the records became one gzipped
+JSON line each and the listings were gzipped, with mtime 0 so
+the same content packs to the same bytes: 6.4 MB, nothing
+dropped. `runner/tests/test_live_capture.py` holds the folder
+to an 8 MB budget.
+
+- `python3 runner/tools/live_capture.py` prints the run's facts;
+  `docs/use/live-examples.md` quotes them and the files.
+- `zcat campaign-results.jsonl.gz | head -1` reads the first
+  record; in Python, `runner/tools/live_capture.py`'s
+  `records()`.

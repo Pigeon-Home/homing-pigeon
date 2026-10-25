@@ -6,8 +6,9 @@
     python3 runner/tools/soak.py --cycles 200 --jobs-per-cycle 4
 
 Every cycle is a real poll_once against an in-memory mailbox that
-holds fresh signed jobs (pings and short scripts, so real child
-processes start and finish), plus the mail a public inbox gets: a
+holds fresh signed jobs (the campaign rig's eight scripts in its
+rotation, so real child processes start, finish and fail), plus the
+mail a public inbox gets: a
 bad signature, a body that is not a job, a replay of an earlier
 job. Nothing is mocked inside the runner.
 
@@ -37,6 +38,7 @@ import contextlib
 import io
 import json
 import os
+import shutil
 import statistics
 import sys
 import tempfile
@@ -114,19 +116,38 @@ def _mail(payload, secret=SECRET, body=None):
     return msg.as_bytes()
 
 
-def _job(job_id, n):
-    p = {"v": 1, "type": "job", "job_id": job_id, "kind": "ping",
-         "issued_at": datetime.now(timezone.utc).strftime(
-             "%Y-%m-%dT%H:%M:%SZ")}
-    if n % 2:
-        p.update(kind="exec", script="echo soak-%d" % n)
-    return p
+# The campaign rig's eight scripts, in its rotation
+# (docs/use/live-examples.md: 19,227 of them over three days). The
+# rig's `shadow` read /etc/shadow as root and returned it; here the
+# probe reads zero bytes, so the permission path runs (exit 0 as
+# root, 1 otherwise) and no account data lands in a temp folder.
+CAMPAIGN_MIX = (
+    ("clock", "date; date +%s"),
+    ("envmark", "echo marker=loop-{n}"),
+    ("hostinfo", "uname -sr; uptime"),
+    ("workdir", "echo cycle-{n}"),
+    ("flagread", "cat {fixture}"),
+    ("sysstat", "df -h / | tail -1"),
+    ("exit3", "echo loop-failure-probe; exit 3"),
+    ("shadow", "head -c 0 /etc/shadow"),
+)
+FLAG_FIXTURE = ("PRETEND CREDENTIAL FLAG FILE - test fixture, not a real "
+                "secret\naws_access_key_id = AKIAIOSFODNN7EXAMPLE\n")
 
 
-def cycle_mail(cycle, jobs, replay):
+def _job(job_id, n, fixture=""):
+    kind, script = CAMPAIGN_MIX[n % len(CAMPAIGN_MIX)]
+    return {"v": 1, "type": "job", "job_id": job_id, "kind": "exec",
+            "script": script.format(n=n, fixture=fixture),
+            "issued_at": datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ")}
+
+
+def cycle_mail(cycle, jobs, replay, fixture=""):
     mails = []
     for i in range(jobs):
-        mails.append(_mail(_job("soak-%d-%d" % (cycle, i), i)))
+        n = cycle * jobs + i
+        mails.append(_mail(_job("soak-%d-%d" % (cycle, i), n, fixture)))
     mails.append(_mail(_job("soak-badsig-%d" % cycle, 0),
                        secret="f" * 64))
     mails.append(_mail({"job_id": "soak-junk-%d" % cycle},
@@ -270,6 +291,9 @@ def run(minutes=None, cycles=None, jobs_per_cycle=3, base=None,
            "poll_interval_sec": 1, "max_job_age_sec": 3600,
            "max_output_bytes": 4096, "default_timeout_sec": 30,
            "workers": 1}
+    fixture = os.path.join(base, "flag-fixture.txt")
+    with open(fixture, "w", encoding="utf-8") as fh:
+        fh.write(FLAG_FIXTURE)
     R._LOG_FILE = os.path.join(base, "runner.log")
     R._LOG_MAX_BYTES = LOG_CAP
     R._LOG_BACKUPS = LOG_BACKUPS
@@ -286,7 +310,7 @@ def run(minutes=None, cycles=None, jobs_per_cycle=3, base=None,
             break
         if deadline is not None and time.monotonic() >= deadline:
             break
-        mails = cycle_mail(cycle, jobs_per_cycle, replay)
+        mails = cycle_mail(cycle, jobs_per_cycle, replay, fixture)
         box = Mailbox(mails)
         with contextlib.redirect_stdout(io.StringIO()), \
                 contextlib.redirect_stderr(io.StringIO()):
@@ -315,8 +339,12 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.minutes is None and a.cycles is None:
         a.cycles = 200
-    samples, growth = run(a.minutes, a.cycles, a.jobs_per_cycle,
-                          trace_heap=a.trace_heap)
+    base = tempfile.mkdtemp(prefix="hp-soak-")
+    try:
+        samples, growth = run(a.minutes, a.cycles, a.jobs_per_cycle,
+                              base=base, trace_heap=a.trace_heap)
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
     if a.json:
         with open(a.json, "w", encoding="utf-8") as fh:
             json.dump({"samples": samples, "state_bytes_per_job": growth},

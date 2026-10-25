@@ -379,8 +379,10 @@ paged, and no model is called. There is no flag that deletes the Oracle.
 ### What a live run looks like
 
 Real log lines, envelopes, and posture output from a running
-system are in `docs/use/live-examples.md`. The full capture
-(scrubbed) is in `docs/reports/live-2026-10-25/`.
+system are in [live-examples.md](live-examples.md), with what
+19,227 jobs on the campaign rig came to. The capture itself
+(scrubbed) is `docs/reports/live-2026-10-25/`; read it with
+`python3 runner/tools/live_capture.py`.
 
 ### Where results go
 

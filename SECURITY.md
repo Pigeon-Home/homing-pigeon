@@ -141,13 +141,22 @@ directory, created `0600` on POSIX, bounded by `audit_max_lines`
 entries carry identifiers only — never secret values, script text,
 or file contents.
 
-### What a live posture looks like
+### What a wide-open box looks like
 
-`python3 runner/runner.py --posture` on a system with every
-security mode off and no bwrap prints the card in
-`docs/use/live-examples.md`. The matching `--audit-report` is
-empty until the first enforce or audit decision is written.
-The full capture is in `docs/reports/live-2026-10-25/`.
+The campaign rig ran as root with confinement and every security
+mode off, at `max_result_view: full`
+([live-examples.md](docs/use/live-examples.md)). Three things from
+its 19,227 jobs are worth knowing before loosening a real box:
+
+- At view `full` the SI receives what the script printed. The run's
+  `flagread` job printed a planted fake credential file;
+  `runner.log` redacted the key, the result carried it verbatim.
+  The default ceiling is `attested` for that reason.
+- A job running as root read `/etc/shadow` and returned it. Only
+  confinement and `job_user` stop that; a signature does not.
+- `--posture` names every one of those choices as a warning, and
+  `--audit-report` stays empty while every mode is off, because no
+  decision was ever made to record.
 
 ### Features
 

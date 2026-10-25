@@ -62,10 +62,10 @@ seconds at most; `docs/ietf/draft-homing-pigeon-v2-00.md`).
 
 ## What does a live run look like?
 
-Real log lines, encrypted envelopes, posture output, and Oracle
-learning records from a running system are in
-`docs/use/live-examples.md`. The full scrubbed capture is in
-`docs/reports/live-2026-10-25/`.
+Three days of a real box: 19,227 jobs, every result verified, a few
+milliseconds of work inside a four-second round trip on the file
+transport. The quoted lines, the envelopes, the posture card and
+the full numbers are in [live-examples.md](live-examples.md).
 
 ## Isn't this just remote code execution by email?
 
