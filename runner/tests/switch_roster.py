@@ -295,7 +295,7 @@ ROSTER = [
                    "confinement nor the job_user decision (Q26 review, "
                    "2026-10-25).",
         "tests": ["runner.tests.test_enforce_races_gaps.NoWideningCageTest"],
-        "needs": [],
+        "needs": ["bwrap", "root"],
     },
     {
         "id": "R4.config_write",

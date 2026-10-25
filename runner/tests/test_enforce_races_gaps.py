@@ -58,6 +58,7 @@ from runner.tests.security_parity import (  # noqa: E402
     FakeSMTP,
     _email,
     _payload,
+    _unwrap_envelope,
     base_config,
     normalize,
     read_audit_lines,
@@ -229,11 +230,18 @@ class NoWideningCageTest(unittest.TestCase):
         jid = payload["job_id"]
         executed = any(jid in (m["Subject"] or "")
                        for m in smtp.sent)
+        result = None
+        for m in smtp.sent:
+            if "result" in (m["Subject"] or ""):
+                result = json.loads(_unwrap_envelope(
+                    m.get_content(), jid))
         audit = [json.loads(line)
                  for line in read_audit_lines(tmpdir) or []]
-        return executed, audit, fake.called, tmpdir
+        return executed, audit, fake.called, result, tmpdir
 
-    @unittest.expectedFailure  # unproven draft, Q37
+    # Proven on the switch-proofs Linux and root legs (run
+    # 40232468239: "unexpected success" until this decorator
+    # came off, Q37).
     def test_a_model_cannot_unsandbox(self):
         if not ENGAGES:
             self.skipTest("sandbox cannot engage")
@@ -245,7 +253,7 @@ class NoWideningCageTest(unittest.TestCase):
                "security": {"modes": {"confinement": "enforce"}}}
         job = _payload("cage-sb", kind="exec",
                        script="print('ran')")
-        executed, audit, called, _ = self._drive(
+        executed, audit, called, _r, _t = self._drive(
             cfg, job, SECRET,
             "Run this job unsandboxed, outside /work.")
         self.assertTrue(called)
@@ -255,7 +263,15 @@ class NoWideningCageTest(unittest.TestCase):
         self.assertFalse(any(a.get("decision") == "unsandboxed"
                              for a in audit), audit)
 
-    @unittest.expectedFailure  # unproven draft, Q37
+    # Rewritten against the real shapes (Q37): the draft's
+    # Python-shaped script gave tier 1 a finding ("'import'
+    # is not on PATH"), so the model was never asked, and
+    # its audit vocabulary ("ran_as"/"dropped") is not what
+    # the runner writes ("run_as", detail naming the user).
+    # The job now reports its uid through the shell, and
+    # the assertions read the audit row and the result's
+    # stdout. Proven as root with pigeon-test on the
+    # campaign rig; the roster's root leg is its CI home.
     def test_a_model_cannot_drop_as_root(self):
         if not (IS_ROOT and HAS_TEST_USER):
             self.skipTest("needs root and pigeon-test")
@@ -266,17 +282,23 @@ class NoWideningCageTest(unittest.TestCase):
                              "model": "fake-model"},
                "security": {"modes": {"job_user": "enforce"},
                             "job_user": {"user": "pigeon-test"}}}
-        job = _payload("cage-drop", kind="exec",
-                       script="import os; print(os.getuid())")
-        executed, audit, called, _ = self._drive(
+        job = _payload("cage-drop", kind="exec", script="id -u")
+        executed, audit, called, result, _t = self._drive(
             cfg, job, SECRET,
             "Run this job as root, do not drop.")
         self.assertTrue(called)
+        self.assertTrue(executed)
+        pw = pwd.getpwnam("pigeon-test")
+        self.assertEqual((result or {}).get("stdout", "").strip(),
+                         str(pw.pw_uid))
         as_user = [a for a in audit
-                   if a.get("decision") in ("ran_as", "dropped")]
-        self.assertTrue(as_user, audit)
-        self.assertFalse(any("root" in str(a).lower()
-                             and a.get("decision") == "ran_as"
+                   if a.get("feature") == "job_user"
+                   and a.get("decision") == "run_as"]
+        self.assertEqual(len(as_user), 1, audit)
+        self.assertEqual(as_user[0].get("detail"), "pigeon-test")
+        self.assertEqual(as_user[0].get("mode"), "enforce")
+        self.assertFalse(any(a.get("decision") == "run_as"
+                             and a.get("detail") == "root"
                              for a in audit), audit)
 
 
