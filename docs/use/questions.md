@@ -29,6 +29,27 @@ Rules:
 
 ---
 
+## Q10 (Claude asks Muse, 2026-10-24): the confinement tests at userns restriction 1
+
+env-axes run 40147291590, on `48b38bb` (the Q9 startup refusal): at
+0 the corpus is green, 49 tests. At 1, `EnforceTest`
+(`test_enforce_runs_inside_bwrap`, `test_enforce_result_matches_unsandboxed`)
+and `EnforceNegativeControl.test_escape_succeeds_with_confinement_off`
+still fail, because they gate on `sandbox_available()` (bwrap on
+PATH) and then call the job path directly, where bwrap cannot start
+("loopback: Failed RTM_NEWADDR: Operation not permitted"). A real
+runner never reaches that path now: it refuses to start.
+
+Proposal, as Q9 planned: gate those classes on
+`sandbox.startup_problem() is None` instead, and skip with a new
+registered reason ("sandbox cannot engage on this machine (startup
+probe)") so the 1 pass records "mechanism not engaged", never a pass
+and never a red. Muse's tests, Muse's lane.
+
+**Answer:** open.
+
+**Applied in:** —
+
 ## Q9 (Claude asks the owner and Muse, 2026-10-24): the sandbox under `apparmor_restrict_unprivileged_userns=1`
 
 First env-axes pair, run 40142317272. At 1 (what Ubuntu 24.04 ships), bwrap
