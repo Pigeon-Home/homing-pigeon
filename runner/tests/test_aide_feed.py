@@ -20,7 +20,8 @@ import shutil
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -301,6 +302,146 @@ class MainTest(unittest.TestCase):
                               "--state", state_path])
             self.assertEqual(rc, 0)
             self.assertEqual(out.getvalue(), "")
+
+
+class MainBranchesTest(unittest.TestCase):
+    """Queue A: the branches of main() the two end-to-end
+    passes never reach -- on Windows that was most of the
+    function (coverage run 40180268696). The refusals and
+    the delivery discipline are the documented contract,
+    same as its sibling senses: an unreadable manifest,
+    readings or report is a named refusal (exit 2); a
+    delivery that does not land in full saves no state,
+    so the fingerprint does not advance and the next pass
+    re-reads the report; a state that cannot be written
+    is a named refusal, not a silent pass.
+    """
+
+    SECRET_ENV = "HP_AIDE_MAIN_SECRET"
+
+    def _run(self, argv):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = AF.main(argv)
+        return rc, out.getvalue(), err.getvalue()
+
+    def test_an_unreadable_manifest_is_a_named_refusal(self):
+        with tempfile.TemporaryDirectory() as d:
+            rc, out, err = self._run(
+                ["--manifest", os.path.join(d, "nope.json"),
+                 "--state", os.path.join(d, "state.json")])
+            self.assertEqual(rc, 2)
+            self.assertEqual(out, "")
+            self.assertIn("cannot read manifest", err)
+
+    def test_a_manifest_without_a_tunables_dict_still_runs(self):
+        with tempfile.TemporaryDirectory() as d:
+            manifest = os.path.join(d, "extension.json")
+            with open(manifest, "w", encoding="utf-8") as fh:
+                json.dump({"tunables": "not-a-dict"}, fh)
+            rc, _out, err = self._run(
+                ["--manifest", manifest,
+                 "--report-file",
+                 os.path.join(FIXTURES, "aide-check.txt"),
+                 "--state", os.path.join(d, "state.json")])
+            self.assertEqual(rc, 0, err)
+
+    def test_the_readings_file_drives_a_pass(self):
+        with tempfile.TemporaryDirectory() as d:
+            readings = os.path.join(d, "readings.json")
+            with open(readings, "w", encoding="utf-8") as fh:
+                json.dump(_readings(AF.parse_report(REPORT)), fh)
+            rc, out, err = self._run(
+                ["--readings", readings,
+                 "--state", os.path.join(d, "state.json")])
+            self.assertEqual(rc, 0, err)
+            printed = [json.loads(ln) for ln in
+                       out.splitlines() if ln.strip()]
+            self.assertEqual([p["signal"] for p in printed],
+                             ["aide_changed", "aide_removed",
+                              "aide_added"])
+
+    def test_an_unreadable_readings_file_is_a_named_refusal(self):
+        with tempfile.TemporaryDirectory() as d:
+            rc, _out, err = self._run(
+                ["--readings", os.path.join(d, "nope.json"),
+                 "--state", os.path.join(d, "state.json")])
+            self.assertEqual(rc, 2)
+            self.assertIn("cannot read readings", err)
+
+    def test_no_report_anywhere_is_a_quiet_pass(self):
+        with tempfile.TemporaryDirectory() as d:
+            manifest = os.path.join(d, "extension.json")
+            m = _manifest()
+            m["tunables"]["report_paths"] = []
+            with open(manifest, "w", encoding="utf-8") as fh:
+                json.dump(m, fh)
+            state = os.path.join(d, "state.json")
+            rc, out, err = self._run(
+                ["--manifest", manifest, "--state", state])
+            self.assertEqual(rc, 0, err)
+            self.assertEqual(out, "")
+            self.assertTrue(os.path.isfile(state))
+
+    def test_local_delivery_files_every_alert(self):
+        with tempfile.TemporaryDirectory() as d:
+            base = os.path.join(d, "runner-base")
+            env = {self.SECRET_ENV: "aide-main-secret"}
+            with mock.patch.dict(os.environ, env):
+                rc, _out, err = self._run(
+                    ["--report-file",
+                     os.path.join(FIXTURES, "aide-check.txt"),
+                     "--state", os.path.join(d, "state.json"),
+                     "--local-dir", base,
+                     "--secret-env", self.SECRET_ENV])
+            self.assertEqual(rc, 0, err)
+            inbox = os.path.join(base, "local-inbox")
+            self.assertEqual(len(os.listdir(inbox)), 2)
+            self.assertTrue(os.path.isfile(
+                os.path.join(d, "state.json")))
+
+    def test_local_delivery_without_a_secret_refuses(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop(self.SECRET_ENV, None)
+                rc, _out, _err = self._run(
+                    ["--report-file",
+                     os.path.join(FIXTURES, "aide-check.txt"),
+                     "--state", os.path.join(d, "state.json"),
+                     "--local-dir", os.path.join(d, "base"),
+                     "--secret-env", self.SECRET_ENV])
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(
+                os.path.join(d, "state.json")))
+
+    def test_a_failed_delivery_saves_no_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            base = os.path.join(d, "runner-base")
+            os.makedirs(base)
+            with open(os.path.join(base, "local-inbox"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("not a directory")
+            env = {self.SECRET_ENV: "aide-main-secret"}
+            with mock.patch.dict(os.environ, env):
+                rc, _out, err = self._run(
+                    ["--report-file",
+                     os.path.join(FIXTURES, "aide-check.txt"),
+                     "--state", os.path.join(d, "state.json"),
+                     "--local-dir", base,
+                     "--secret-env", self.SECRET_ENV])
+            self.assertEqual(rc, 2)
+            self.assertIn("not delivered", err)
+            self.assertFalse(os.path.exists(
+                os.path.join(d, "state.json")))
+
+    def test_an_unwritable_state_is_a_named_refusal(self):
+        with tempfile.TemporaryDirectory() as d:
+            rc, _out, err = self._run(
+                ["--report-file",
+                 os.path.join(FIXTURES, "aide-check.txt"),
+                 "--state", os.path.join(d, "no-dir", "state.json")])
+            self.assertEqual(rc, 2)
+            self.assertIn("cannot write state", err)
 
 
 if __name__ == "__main__":
