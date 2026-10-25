@@ -47,8 +47,16 @@ https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40192518684
 
 No later run has finished on all three legs. Runs after that one
 were cancelled or are still queued behind the concurrency group,
-even with cancel-in-progress false. The newest push at this writing
-is pending. There is not yet a green switch-proofs run.
+even with cancel-in-progress false. There is not yet a green
+switch-proofs run.
+
+Progress, 2026-10-25 05:29 PDT. The failure reproduced. Run
+40192873633 (snapshot_outside's realpath fallbacks) failed Windows
+the same way: 15 of 16, R2.audit_rollover, race-a absent from the
+written ids. Root on that run succeeded. Linux on that run is still
+queued, so the run itself is not finished. Same missing id as
+40192518684, so this is not a one-off of the release commit.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40192873633
 
 **Answer:** not a question. No action asked.
 
