@@ -158,6 +158,25 @@ class AuditWriterTest(unittest.TestCase):
             self.assertEqual(
                 len(open(os.path.join(d, S.AUDIT_FILE)).readlines()), 1)
 
+    def test_a_failed_roll_keeps_writing_on_the_same_file(self):
+        # Queue A (_enforce_bound's failed-replace arm): when
+        # the roll itself fails -- here the rolled name is a
+        # directory, so the rename cannot land -- the writer
+        # does not raise and does not lose the decision: the
+        # entry is appended to the un-rolled log and the
+        # bound is simply tried again on the next write.
+        with tempfile.TemporaryDirectory() as d:
+            cfg = {"security": {"audit_max_lines": 2}}
+            os.makedirs(os.path.join(d, S.AUDIT_ROLLED_FILE))
+            for i in range(3):
+                S.write_audit_entry(d, "policy_env", "would_deny",
+                                    "r", job_id="j%d" % i, cfg=cfg)
+            lines = open(os.path.join(d, S.AUDIT_FILE)).readlines()
+            self.assertEqual(len(lines), 3)
+            self.assertEqual(
+                [json.loads(line)["job_id"] for line in lines],
+                ["j0", "j1", "j2"])
+
     def test_posix_permissions(self):
         if os.name == "nt":
             self.skipTest("POSIX only")

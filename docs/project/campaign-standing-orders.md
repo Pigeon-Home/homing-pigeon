@@ -2700,6 +2700,11 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: security._enforce_bound's failed-
+  roll arm (2 missed): pinned in AuditWriterTest --
+  with the rolled name occupied by a directory, the
+  rename fails silently by design, no entry is lost,
+  and every decision lands on the un-rolled log.
 - Queue A taken: runner.save_sent_result (3 missed,
   Linux map) -- its best-effort failure arm is pinned
   in test_sent_results.py: a record that cannot be
