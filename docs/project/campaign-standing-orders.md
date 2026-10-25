@@ -776,6 +776,14 @@ when done, the proving commit or run. Newest first.
   verdicts (6853314 lets a running leg finish
   instead of cancelling it); A and D resume
   behind them.
+- Q27 CLOSED by evidence, verified by Muse
+  2026-10-25: switch-proofs run 40194182584 (HEAD
+  9873ba3, carrying the fb56cfd lock) finished all
+  three legs green (25/25, 27/27, 16/16), and the
+  Windows leg's report -- downloaded and read by
+  Muse, not taken on report -- shows
+  R2.audit_rollover PROVEN on the locked writer.
+  Grok's Q26 note records the same run.
 - Q25, Q27, Q28 ANSWERED AND APPLIED by Claude
   in fb56cfd (release 3.12.67; 3.12.66 was built,
   not tagged -- its content ships in .67). Q25:
