@@ -227,6 +227,29 @@ class EmailPipeMain(unittest.TestCase):
         self.assertEqual(proc.returncode, 2, proc.stderr)
 
 
+class XOAuth2RawTest(unittest.TestCase):
+    """Queue A refill: mailbox._xoauth2_raw
+    (coverage run 40189711740: lines 62-63). The
+    IMAP XOAUTH2 string is composed from the
+    mailbox user and a freshly refreshed access
+    token, by the oauth module's own composer.
+    """
+
+    def test_the_raw_string_is_composed(self):
+        import types as _types
+        from runner.wire import mailbox
+        fake = _types.SimpleNamespace(
+            refresh_access_token=lambda cfg: "tok-1",
+            xoauth2_raw=lambda user, tok: "user=%s tok=%s"
+                                         % (user, tok))
+        with mock.patch.object(mailbox, "_load_oauth",
+                               return_value=fake):
+            raw = mailbox._xoauth2_raw(
+                {"mailbox_user": "runner-box@example.com"})
+        self.assertEqual(
+            raw, "user=runner-box@example.com tok=tok-1")
+
+
 class SendMailUnbuildableTest(unittest.TestCase):
     """Queue A refill: send_mail's unbuildable-message
     leg (coverage run 40189711740: lines 353-355 of

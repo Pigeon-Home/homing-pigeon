@@ -71,6 +71,34 @@ def _conf(mode, **kw):
 
 @unittest.skipUnless(sys.platform.startswith("linux"),
                      "the startup probe's Linux branch")
+class UsernsRestrictedLegsTest(unittest.TestCase):
+    """Queue A refill: sandbox._userns_restricted's
+    read legs (coverage run 40189711740: lines
+    56-57). The probe answers from the sysctl when
+    it can be read -- "1" is restricted, anything
+    else is not -- and an unreadable sysctl reads as
+    not restricted, leaving the verdict to the
+    startup trial run.
+    """
+
+    def test_the_sysctl_read_and_its_absence(self):
+        import tempfile as _tempfile
+        from unittest import mock as _mock
+        with _mock.patch.object(
+                SB, "_USERNS_SYSCTL",
+                "/nonexistent/no-such-sysctl"):
+            self.assertFalse(SB._userns_restricted())
+        with _tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "sysctl")
+            for text, want in (("1\n", True), ("0\n", False)):
+                with open(path, "w") as fh:
+                    fh.write(text)
+                with _mock.patch.object(SB, "_USERNS_SYSCTL",
+                                        path):
+                    self.assertEqual(SB._userns_restricted(),
+                                     want)
+
+
 class StartupProblemScriptsTest(unittest.TestCase):
     """Queue A: the trial-run half of startup_problem --
     the half behind the platform guard, so the Windows
