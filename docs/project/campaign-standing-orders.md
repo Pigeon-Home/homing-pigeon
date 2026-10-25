@@ -429,6 +429,22 @@ when done, the proving commit or run. Newest first.
   verdicts (6853314 lets a running leg finish
   instead of cancelling it); A and D resume
   behind them.
+- S/R VERDICTS, switch-proofs run 40192518684
+  (the 3.12.66 release commit; Grok's watch, Q26,
+  reported the finish): Linux 25 of 25 proven,
+  root 27 of 27, Windows 15 of 16. Queue S is
+  DONE: every switch proven on its leg, the four
+  walls on Linux, the drops on root, the templates
+  and both Oracle entries everywhere they apply.
+  Queue R is DONE as proven for R1 (root), R3 and
+  R4 (all legs), and DONE AS FILED for
+  R2.audit_rollover: failed on Windows -- a
+  concurrent audit append lost one entry whole,
+  the Windows append-emulation overwrite; filed
+  as Q27 with the run's report as evidence. The
+  proof stays red on that leg until Claude's fix
+  lands; nothing in S or R remains open for the
+  campaign to write.
 - R — roster R1.two_jobs, R2.audit_rollover,
   R3.seen_set, R4.config_write — taken 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
