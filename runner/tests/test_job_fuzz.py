@@ -14,6 +14,7 @@ runner is a fixture script or a single --run-variant call.
 """
 import importlib.util
 import io
+import random
 import json
 import os
 import sys
@@ -1148,6 +1149,46 @@ class MainTest(unittest.TestCase):
             ["--samples", self.samples, "--state", state])
         self.assertEqual(rc, 2)
         self.assertIn("cannot write state", err)
+
+
+class QuoteBreakMutatorTest(unittest.TestCase):
+    """Queue A refill: the quote_break mutator had never
+    run in the suite (coverage run 40187685363: the whole
+    function, both platforms) -- no test's variant stream
+    ever selected it. Its contract, from the mutator
+    itself: a script with quotes gets exactly one quote
+    character flipped to the other kind, nothing else
+    touched; a script without quotes gets an unterminated
+    echo line appended, so the variant's quoting is broken
+    either way. Driven through the MUTATORS table with a
+    seeded rng, the way decide() reaches it.
+    """
+
+    def _mutate(self, script, seed=7):
+        return JF.MUTATORS["quote_break"](
+            {"script": script}, random.Random(seed), None)
+
+    def test_one_quote_flips_and_nothing_else_moves(self):
+        script = 'echo "hello" && echo \'bye\''
+        for seed in range(8):
+            out = self._mutate(script, seed)["script"]
+            self.assertEqual(len(out), len(script))
+            diffs = [i for i, (a, b) in enumerate(
+                zip(script, out)) if a != b]
+            self.assertEqual(len(diffs), 1)
+            i = diffs[0]
+            self.assertIn(script[i], "\"'")
+            self.assertEqual(out[i],
+                             "'" if script[i] == '"' else '"')
+
+    def test_no_quotes_appends_the_unterminated_line(self):
+        out = self._mutate("run it")["script"]
+        self.assertEqual(out, 'run it\necho "unterminated')
+
+    def test_no_script_still_breaks_quoting(self):
+        out = JF.MUTATORS["quote_break"](
+            {}, random.Random(3), None)["script"]
+        self.assertTrue(out.endswith('echo "unterminated'))
 
 
 if __name__ == "__main__":

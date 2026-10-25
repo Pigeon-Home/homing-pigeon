@@ -156,6 +156,16 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/extensions/job-fuzz/job_fuzz.py::`
+  `_mut_quote_break` (9 lines never run on either
+  platform, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  QuoteBreakMutatorTest in runner/tests/test_job_fuzz.py
+  drives the mutator through the MUTATORS table: one
+  quote flips and nothing else moves; a quoteless
+  script gains the unterminated echo line. The function
+  is fully run under that class locally. Done when a
+  coverage run shows it clean.
 - A (refill) — `runner/runner.py::execute_job` (9 lines
   never run on Windows, 8 on Linux, coverage run
   40187685363) — taken 2026-10-25,
