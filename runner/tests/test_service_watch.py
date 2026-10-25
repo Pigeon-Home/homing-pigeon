@@ -9,9 +9,11 @@ ingest files it, and the high-severity signal wakes the gate and
 files a deterministic brief.
 
 No live network and no live hardware anywhere: every process
-table is a fixture readings dict.
+table is a fixture readings dict, except one shape-only smoke
+read of the host's own /proc in ReadLiveTest.
 """
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -374,6 +376,87 @@ class EndToEndTest(SvcFixture):
         self.assertEqual(brief["signal"], "service_down")
         self.assertEqual(brief["sensor"], "service_watch")
         self.assertEqual(brief["status"], "no_inference")
+
+
+class ReadLiveTest(unittest.TestCase):
+    """Queue A: `read_live` never ran anywhere (coverage run
+    40180268696: 30 lines on both platforms) -- every other
+    test feeds decide() a fixture, so the one function that
+    touches the real process table was the gap. Its seam is
+    the /proc directory it scans; the tests below serve it a
+    scripted /proc through listdir/open (the same fake-the-
+    seam style as the install tests), plus one shape-only
+    read of the host's real /proc where one exists.
+
+    The docstring's promises under test: a process that
+    exits mid-scan is skipped quietly; an unreadable cmdline
+    reads as empty, never an error; a name that is not a pid
+    is not a process; and where there is no /proc the
+    snapshot is empty -- absent data, never an error.
+    """
+
+    def _scripted_proc(self):
+        files = {
+            "/proc/1/comm": "init\n",
+            "/proc/1/cmdline": b"/sbin/init\x00--flag\x00",
+            "/proc/7/comm": "worker",
+            # A name isdigit() accepts but int() refuses:
+            # read, then skipped at the pid conversion.
+            "/proc/²/comm": "weird",
+            "/proc/²/cmdline": b"",
+        }
+        real_open = open
+
+        def fake_listdir(path):
+            if path != "/proc":
+                raise OSError("no such directory")
+            return ["1", "42", "7", "self", "meminfo", "²"]
+
+        def fake_open(path, mode="r", **kw):
+            if not str(path).startswith("/proc/"):
+                return real_open(path, mode, **kw)
+            if path == "/proc/42/comm":
+                raise OSError("gone mid-scan")
+            if path == "/proc/7/cmdline":
+                raise OSError("not readable")
+            data = files[path]
+            if "b" in mode:
+                return io.BytesIO(data)
+            return io.StringIO(data)
+
+        return fake_listdir, fake_open
+
+    def test_a_scripted_proc_scans_like_the_real_one(self):
+        listdir, fake_open = self._scripted_proc()
+        with unittest.mock.patch.object(SW.os, "listdir", listdir), \
+                unittest.mock.patch("builtins.open", fake_open):
+            got = SW.read_live(_manifest())
+        self.assertIsInstance(got["now"], float)
+        self.assertEqual(got["processes"], [
+            {"name": "init", "pid": 1,
+             "cmdline": "/sbin/init --flag"},
+            {"name": "worker", "pid": 7, "cmdline": ""},
+        ])
+
+    def test_no_proc_is_an_empty_snapshot_not_an_error(self):
+        def no_proc(path):
+            raise OSError("no /proc on this platform")
+
+        with unittest.mock.patch.object(SW.os, "listdir", no_proc):
+            got = SW.read_live(_manifest())
+        self.assertIsInstance(got["now"], float)
+        self.assertEqual(got["processes"], [])
+
+    @unittest.skipUnless(os.path.isdir("/proc"),
+                         "needs a /proc to scan")
+    def test_the_real_proc_names_this_process(self):
+        got = SW.read_live(_manifest())
+        mine = [p for p in got["processes"]
+                if p["pid"] == os.getpid()]
+        self.assertEqual(len(mine), 1)
+        with open("/proc/self/comm", encoding="utf-8") as fh:
+            self.assertEqual(mine[0]["name"], fh.read().strip())
+        self.assertIsInstance(mine[0]["cmdline"], str)
 
 
 if __name__ == "__main__":

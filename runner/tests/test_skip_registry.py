@@ -33,6 +33,10 @@ REGISTERED = {
         "the test_linux_* modules; run in the ubuntu test job",
     "POSIX installer path": "run on ubuntu and macOS; Windows has its own",
     "POSIX only": "run on ubuntu and macOS",
+    "needs a /proc to scan":
+        "the service-watch live-read smoke test; runs in the Linux "
+        "CI job, and the function's branches run everywhere via a "
+        "scripted /proc",
     "needs bwrap on Linux":
         "test_confinement; the sandbox proofs run in the ubuntu test job, "
         "where bwrap is installed",
