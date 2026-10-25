@@ -151,6 +151,45 @@ class MutatorTest(unittest.TestCase):
         self.assertIsNone(JF.build_variant(
             {"job_id": "j", "script": ""}, "empty_script", 0))
 
+    def test_unicode_edge_appends_its_edge_line(self):
+        # Queue A refill: _mut_unicode_edge's body (coverage
+        # run 40189711740: 4 lines). The probe appends one
+        # comment line carrying the edge cases -- an
+        # accented letter, a zero-width space, an astral
+        # emoji -- and changes nothing else.
+        v = JF.build_variant(self.SEED, "unicode_edge", 0)
+        lines = v["script"].split("\n")
+        self.assertEqual(lines[:3],
+                         self.SEED["script"].split("\n"))
+        self.assertTrue(lines[3].startswith("# edge: "))
+        self.assertIn("é", lines[3])
+        self.assertIn("\U0001F600", lines[3])
+
+    def test_trailing_blank_is_inert_and_needs_a_script(self):
+        # Queue A refill: _mut_trailing_blank's body
+        # (coverage run 40189711740: 4 lines). Its own
+        # docstring: trailing blank lines are inert -- the
+        # variant is the seed plus one to three newlines,
+        # and an empty seed has nothing to trail.
+        v = JF.build_variant(self.SEED, "trailing_blank", 0)
+        self.assertTrue(v["script"].startswith(
+            self.SEED["script"] + "\n"))
+        self.assertLessEqual(
+            len(v["script"]) - len(self.SEED["script"]), 3)
+        self.assertIsNone(JF.build_variant(
+            {"job_id": "j", "script": ""}, "trailing_blank", 0))
+
+    def test_num_renders_ints_and_floats(self):
+        # Queue A refill: _num's body (coverage run
+        # 40189711740: 4 lines) -- the number renderer the
+        # boundary mutator writes with: an int renders as
+        # itself, a whole float renders as an int, a
+        # fractional float renders compactly.
+        self.assertEqual(JF._num(7), "7")
+        self.assertEqual(JF._num(7.0), "7")
+        self.assertEqual(JF._num(7.25), "7.25")
+        self.assertEqual(JF._num(-3), "-3")
+
 
 class DecideTest(unittest.TestCase):
     def test_divergence_fires_on_class_change(self):

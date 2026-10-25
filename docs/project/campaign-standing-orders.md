@@ -294,6 +294,19 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/extensions/job-fuzz/`
+  `job_fuzz.py::_num`, `_mut_unicode_edge`,
+  `_mut_trailing_blank` (4 lines each never run,
+  coverage run 40189711740) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — three
+  MutatorTest drives in runner/tests/test_job_fuzz.py:
+  the unicode-edge variant appends exactly its edge
+  line and nothing else; trailing blanks are the
+  seed plus one to three newlines and an empty seed
+  declines; the number renderer prints ints as
+  themselves, whole floats as ints, fractions
+  compactly. Done when a coverage run shows all
+  three clean.
 - A (refill) — `runner/ops/posture.py::`
   `_windows_file_restricted` deep branches (6 lines
   missing on Windows, none on Linux, coverage run
