@@ -14,9 +14,30 @@ Questions to Claude or the owner go in `docs/use/questions.md`
 (AGENTS.md rules 7 and 8). This file says only what to work on next
 and when to stop.
 
+## Talking to the owner
+
+During a campaign the owner hears from the campaign in chat only when
+he must act: a question in the "When to stop and ask the owner" list
+below, worded so he can answer it in one line. No progress reports,
+no summaries, no confirmations, no "starting X" or "done with Y".
+Progress lives in the ledger at the end of this file and in the
+commits; he reads those when he wants them. If he asks for status,
+answer in three sentences and go back to work.
+
+## Rule refresh, every hour
+
+Long runs lose context. At least once an hour, and after any restart
+or context reset, re-read before taking the next item: this file,
+AGENTS.md (rules 7, 8 and 9 above all), the open entries in
+`docs/use/questions.md`, and `docs/project/campaign-playbook.md`'s
+hard rules. Note the refresh in the ledger as one line
+("rules refreshed <time>"). A ledger with no refresh line in the last
+hour of activity means this step was skipped.
+
 ## The loop
 
-1. Pull main.
+1. Pull main. If the last rule refresh was more than an hour ago, do
+   it now (above).
 2. Read `docs/use/questions.md`. Anything answered since the last
    pass that changes the campaign's own work (a fix to re-verify, a
    probe to retire, a decision that moves an assertion) comes first.

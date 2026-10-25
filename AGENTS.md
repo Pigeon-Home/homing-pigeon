@@ -63,7 +63,9 @@ Those values live on the runner host. They do not travel through the SI chat.
    is `docs/project/campaign-standing-orders.md`, a queue that does
    not run out; the campaign never waits for a new batch from the
    owner, and stops only for a secret, a machine, an owner decision
-   or money.
+   or money. During a campaign it speaks to the owner in chat only to
+   ask him something he must decide, and it re-reads its rules at
+   least hourly (both in the standing orders).
 
 
 ## Where things live
