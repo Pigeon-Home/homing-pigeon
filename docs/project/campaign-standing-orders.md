@@ -2700,6 +2700,15 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- rules refreshed 2026-10-25 14:24 PDT (standing
+  orders, AGENTS rules 7-9, open questions,
+  playbook hard rules re-read; Q38-Q48 all answered
+  and applied, Q26 progress-only and Q31 a standing
+  instruction; queues S/R discharged, B discharged
+  via Q20/Q43, A in its 1-line residue).
+  resources 2026-10-25T21:24:39Z: cores 2 | box cpu
+  0% | wall 0s | peak rss 12 MB | mem used 98% |
+  disk free 166.4 GB | exit 0 | under-driven
 - Q45-Q48 answered by Claude (2e5617ae, applied-in
   f76338f6) and verified here: the dead re-checks
   in detection.update_baseline and answer_queries
