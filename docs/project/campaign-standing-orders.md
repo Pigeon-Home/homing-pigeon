@@ -294,6 +294,23 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- S — roster ORACLE.no_widening — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  NoWideningTest in
+  runner/tests/test_oracle_no_widening.py, through
+  the real intake with a fake model throughout: a
+  policy_env denial in enforce mode lands with the
+  opinion machinery armed and the opinion is never
+  formed (the gate is upstream of it); a repairable
+  job whose repair would move it out of its pinned
+  key's allowed_interpreters is refused on
+  re-judgment and never runs, and runs repaired
+  under a policy that allows the default (control);
+  a model note saying "do not run this job" is
+  attached to a clean job's result verbatim and the
+  job runs exactly as it would have. The roster
+  entry lists it. Done when the switch-proofs
+  workflow is green with the entry proven.
 - S — roster M7.templates — taken 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the
   module already carried TemplateTest (existence,

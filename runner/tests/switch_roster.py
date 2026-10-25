@@ -221,7 +221,7 @@ ROSTER = [
         "promise": "an Oracle answer cannot widen a security decision made "
                    "above it: a denied job stays denied whatever the model "
                    "says; a repair never changes a pinned key's policy.",
-        "tests": [],
+        "tests": ["runner.tests.test_oracle_no_widening.NoWideningTest"],
         "needs": [],
     },
     # --- R. Races on the enforce path ------------------------------------
