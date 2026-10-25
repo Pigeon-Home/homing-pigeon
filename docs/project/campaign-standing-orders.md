@@ -2700,6 +2700,14 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: answer_queries' senses glossary --
+  a declared signal's description is redacted with
+  the caller's patterns before it leaves in an
+  answer; pinned in test_senses.py with the real
+  pattern set (existing glossary tests pass {}
+  patterns, which redact nothing). The same
+  function's second missed line is a dead exec_result
+  re-check, the Q40/Q45 shape; filed as Q47.
 - Queue A dispositions from the 40229324722 map,
   verified against that head's tree (72c8645) before
   taking: handle_board_mail's missed pair is the
