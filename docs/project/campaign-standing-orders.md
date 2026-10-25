@@ -294,6 +294,23 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/wire/mailbox.py::send_mail`
+  unbuildable leg and `runner/oracle/resources.py`
+  `::check_resources` corrupt-state legs (3 lines
+  each never run, coverage run 40189711740) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  SendMailUnbuildableTest in
+  runner/tests/test_email_pipe_coverage.py (a
+  newline recipient is logged as not built and
+  never sent) and CorruptLastAlertTest in
+  runner/tests/test_resources.py (a non-numeric
+  last-alert stamp reads as never-alerted; a
+  disabled block with a valid threshold returns
+  before any state -- the older disabled case
+  pairs False with threshold 0.0, which the parser
+  refuses first). Done when a coverage run shows
+  both clean.
 - A (refill) — `runner/wire/platformcard.py::`
   `os_family` non-host legs and
   `runner/ops/extsources.py::load_declaration`

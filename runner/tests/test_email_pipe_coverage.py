@@ -227,5 +227,30 @@ class EmailPipeMain(unittest.TestCase):
         self.assertEqual(proc.returncode, 2, proc.stderr)
 
 
+class SendMailUnbuildableTest(unittest.TestCase):
+    """Queue A refill: send_mail's unbuildable-message
+    leg (coverage run 40189711740: lines 353-355 of
+    runner/wire/mailbox.py). A recipient carrying a
+    newline cannot become a header; the function
+    logs that the result message was not built and
+    sends nothing, rather than raising into the
+    job's retry path.
+    """
+
+    def test_a_newline_recipient_is_not_sent(self):
+        from runner.wire import mailbox
+        smtp = FakeSMTP()
+        lines = []
+        with mock.patch.object(
+                mailbox, "log",
+                lambda m, level="INFO": lines.append(m)):
+            out = mailbox.send_mail(
+                smtp, CFG, "result", "body",
+                to="victim@example.com\nBcc: evil@example.com")
+        self.assertIsNone(out)
+        self.assertEqual(smtp.sent, [])
+        self.assertTrue(any("not built" in m for m in lines))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

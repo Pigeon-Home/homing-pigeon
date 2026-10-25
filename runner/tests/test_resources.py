@@ -60,6 +60,48 @@ class SampleTest(unittest.TestCase):
         self.assertTrue(0 <= v <= 1)
 
 
+class CorruptLastAlertTest(unittest.TestCase):
+    """Queue A refill: check_resources' corrupt
+    last-alert leg (coverage run 40189711740: lines
+    246-247 of runner/oracle/resources.py). A state
+    file whose last-alert stamp is not a number
+    reads as never-alerted: the check does not
+    crash on its own state, and an over-threshold
+    resource alerts.
+    """
+
+    def test_a_non_numeric_last_alert_alerts(self):
+        import json as _json
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, RS.STATE_FILE),
+                      "w") as fh:
+                _json.dump({"last_alert": {"mem": "abc"}}, fh)
+            cfg = {"resources": {"threshold": 0.1,
+                                 "cooldown_sec": 3600}}
+            with mock.patch.object(RS, "_read_proc_stat",
+                                   return_value=None), \
+                 mock.patch.object(RS, "_mem_fraction",
+                                   return_value=0.5), \
+                 mock.patch.object(RS, "_disk_fraction",
+                                   return_value=None):
+                event = RS.check_resources(cfg, d)
+            self.assertIsNotNone(event)
+            self.assertIn("mem", event["resources"])
+
+    def test_disabled_with_a_valid_threshold_writes_nothing(self):
+        # The existing disabled case pairs enabled False
+        # with threshold 0.0, which the parser refuses
+        # first; with a valid threshold the disabled
+        # return itself is what answers, before any
+        # state is read or written (line 224).
+        with tempfile.TemporaryDirectory() as d:
+            cfg = {"resources": {"enabled": False,
+                                 "threshold": 0.5}}
+            self.assertIsNone(RS.check_resources(cfg, d))
+            self.assertFalse(
+                os.path.exists(os.path.join(d, RS.STATE_FILE)))
+
+
 class CheckTest(unittest.TestCase):
     def test_threshold_crossing(self):
         with tempfile.TemporaryDirectory() as d:
