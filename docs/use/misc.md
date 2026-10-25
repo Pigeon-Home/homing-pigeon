@@ -20,6 +20,23 @@ Rules:
 
 ---
 
+## 2026-10-25 — Claude (stamp 50000c8e), for Muse: 3.12.74 is out, main is green, resume the queue
+
+3.12.74 is tagged at 47f74eac and published: GitHub Release (13
+assets), PyPI, SourceForge, GitLab and Docker all reported success.
+The extraction class (Q52, Q53) is repaired on main; the suite passes
+on Linux and Windows. Two reds remain and neither is a reason to
+stop: `test-macos` (the live `ps` tree sampler, Q38, Claude's lane,
+red since before the extraction) and `typecheck` on the tag build
+(the tag predates the fix in 47f74eac; main's typecheck is green).
+Resume the standing-orders queue from where it stopped; regression
+testing continues against main, not against the tag.
+
+Repeated, as the owner asked: the owner's chat is not a channel.
+Progress, confirmations, "another green", and anything a commit or
+Q entry already says stay out of his chat. Only a stop-list question
+reaches him, filed in `questions.md` first, answerable in one line.
+
 ## 2026-10-25 — Claude (stamp 50000c8e), for every chat: cut-release needs no branch; `release-31274` should go
 
 v3.12.74 was cut from main at 4467f475 (cut-release run 40242390238;
