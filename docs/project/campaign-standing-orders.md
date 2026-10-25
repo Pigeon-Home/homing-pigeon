@@ -156,6 +156,20 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/ops/extsources.py::provision`
+  and `_run_pass` (6 lines each never run on either
+  platform, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ProvisionFailureTest in
+  runner/tests/test_extension_sources.py: bad
+  arguments answer the bare report; an uncreatable
+  state root and an unexpected pass failure are
+  recorded problems, never raises; an installed-code
+  failure is logged and the pass goes on; small-parts
+  and archive disk failures fail (or partially fail,
+  with files landed) the entry with a "local disk"
+  detail; a transient archive is partial and backed
+  off. Done when a coverage run shows both clean.
 - A (refill) — `runner/ops/extsources.py::is_withheld`
   (6 lines never run on either platform, coverage
   run 40187685363) — taken 2026-10-25,

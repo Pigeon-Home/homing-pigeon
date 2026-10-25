@@ -1786,6 +1786,97 @@ class ExtensionSourcesPassTest(_Base):
                 R._extension_sources_pass(self.cfg, self.base))
 
 
+class ProvisionFailureTest(_Base):
+    """Queue A refill: provision's and _run_pass's
+    failure legs (coverage run 40187685363: 6 lines
+    each on both platforms). The pass contract:
+    provisioning never takes the agent down -- bad
+    arguments answer the bare report, an uncreatable
+    state root is a recorded problem, an unexpected
+    failure inside the pass is a recorded problem, and
+    per-entry disk failures fail that entry with a
+    "local disk" detail and a backoff while the pass
+    goes on. An archive whose files landed but which
+    itself fails is partial, not failed.
+    """
+
+    def setUp(self):
+        super().setUp()
+        write_ext(self.ext, upstream_decl())
+
+    def test_bad_arguments_answer_the_bare_report(self):
+        rep = X.provision(None, [], {})
+        self.assertFalse(rep["ran"])
+        rep = X.provision(self.base, [], "not-a-policy")
+        self.assertFalse(rep["ran"])
+
+    def test_an_uncreatable_state_root_is_a_problem(self):
+        afile = os.path.join(self.tmp, "afile")
+        with open(afile, "w", encoding="utf-8") as fh:
+            fh.write("not a directory")
+        rep = X.provision(afile, [], self.policy())
+        self.assertFalse(rep["ran"])
+        self.assertTrue(any("cannot create" in p
+                            for p in rep["problems"]),
+                        rep["problems"])
+
+    def test_a_pass_failure_is_a_problem_never_a_raise(self):
+        with mock.patch.object(
+                X, "_run_pass",
+                side_effect=RuntimeError("inner boom")):
+            rep = X.provision(self.base, [target(self.ext)],
+                              self.policy(),
+                              fetcher=X.Fetcher(
+                                  opener=self.opener),
+                              now=self.now,
+                              log=lambda m, level="INFO":
+                              self.logs.append((level, m)))
+        self.assertTrue(any("pass failed: inner boom" in p
+                            for p in rep["problems"]),
+                        rep["problems"])
+
+    def test_an_installed_code_failure_is_logged_not_fatal(self):
+        with mock.patch.object(
+                X, "_installed_record",
+                side_effect=RuntimeError("cannot read code")):
+            self.run_pass()
+        self.assertTrue(any("installed code" in m
+                            for _lvl, m in self.logs),
+                        self.logs)
+        self.assertEqual(
+            self.state()["entries"]["up"]["status"], "fetched")
+
+    def test_a_small_parts_disk_failure_fails_the_entry(self):
+        with mock.patch.object(
+                X, "_small_parts",
+                side_effect=OSError("disk full")):
+            self.run_pass()
+        entry = self.state()["entries"]["up"]
+        self.assertEqual(entry["status"], "failed")
+        self.assertIn("local disk: disk full", entry["detail"])
+
+    def test_an_archive_disk_failure_is_partial_with_files(self):
+        with mock.patch.object(
+                X, "_fetch_archive",
+                side_effect=OSError("disk full")):
+            self.run_pass()
+        entry = self.state()["entries"]["up"]
+        self.assertEqual(entry["status"], "partial")
+        self.assertIn("archive: local disk: disk full",
+                      entry["detail"])
+
+    def test_a_transient_archive_is_partial_and_backed_off(self):
+        def transient(ctx, work, rec, budget):
+            rec["files"] = {"items": {"LICENSE": {}},
+                            "problems": [], "transient": True}
+
+        with mock.patch.object(X, "_fetch_archive", transient):
+            self.run_pass()
+        entry = self.state()["entries"]["up"]
+        self.assertEqual(entry["status"], "partial")
+        self.assertIn("next_retry_at", entry)
+
+
 class IsWithheldEdgesTest(unittest.TestCase):
     """Queue A refill: is_withheld's edge legs (coverage
     run 40187685363: 6 lines on both platforms). The
