@@ -195,6 +195,16 @@ when done, the proving commit or run. Newest first.
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 — first run
   40187426146 queued at 68c69bb. Done per axis when
   both values are green, or the difference is filed.
+  — done: run 40187426146 completed with all 18 jobs
+  green (2 userns legs; 16 sysctl legs: ptrace_scope
+  0-3, protected links off/on, hidepid 0/2, each with
+  job_user off and on), verified from the run's job
+  list; no axis moved the corpus, so no difference to
+  file (recorded in Q20, 66e4d0b). The one loose end
+  Q20 left in this lane is also closed with this
+  commit: the canary module now records the four axes
+  in its own AXIS lines beside the userns line, so any
+  run of it carries every axis value with its results.
 - D — documented-default hunt re-run against every key
   added since the defaults registry was last complete
   (8748b44, Release 3.12.62): no new config keys in

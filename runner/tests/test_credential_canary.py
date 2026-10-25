@@ -44,7 +44,11 @@ CANARY = "CANARY-CREDENTIAL-p2-9e41f7-DO-NOT-LEAK"
 
 
 def _axis_value():
-    path = "/proc/sys/kernel/apparmor_restrict_unprivileged_userns"
+    return _sysctl_value(
+        "/proc/sys/kernel/apparmor_restrict_unprivileged_userns")
+
+
+def _sysctl_value(path):
     try:
         with open(path, encoding="ascii") as fh:
             return fh.read().strip()
@@ -52,9 +56,42 @@ def _axis_value():
         return "absent"
 
 
+def _hidepid_value():
+    """The hidepid option on /proc, as the mount table spells it.
+
+    "0" when the proc entry carries no hidepid option (the
+    kernel default), "absent" when the mount table cannot be
+    read. Newer kernels spell 2 as "invisible"; the value is
+    recorded as read, never normalized.
+    """
+    try:
+        with open("/proc/mounts", encoding="ascii") as fh:
+            for line in fh:
+                fields = line.split()
+                if len(fields) >= 4 and fields[1] == "/proc":
+                    for opt in fields[3].split(","):
+                        if opt.startswith("hidepid="):
+                            return opt.split("=", 1)[1]
+                    return "0"
+    except OSError:
+        pass
+    return "absent"
+
+
 def setUpModule():
     print("AXIS apparmor_restrict_unprivileged_userns=%s"
           % _axis_value())
+    # The queue-B axes (Q20): recorded by the module itself, so
+    # any run of the canary -- the env-axes sysctl legs included
+    # -- carries every axis value beside its results, not only
+    # in the workflow's own log line.
+    print("AXIS kernel.yama.ptrace_scope=%s" % _sysctl_value(
+        "/proc/sys/kernel/yama/ptrace_scope"))
+    print("AXIS fs.protected_symlinks=%s" % _sysctl_value(
+        "/proc/sys/fs/protected_symlinks"))
+    print("AXIS fs.protected_regular=%s" % _sysctl_value(
+        "/proc/sys/fs/protected_regular"))
+    print("AXIS hidepid=%s" % _hidepid_value())
 
 
 def _job(jid, script, **kw):
@@ -243,6 +280,58 @@ class TestCanaryDesignFactsSameUid(_CanaryBase):
         result, _sinks = self._run_and_collect(job)
         self.assertEqual(result["exit_code"], 0)
         self.assertIn(CANARY, result["stdout"])
+
+
+class AxisRecorderTest(unittest.TestCase):
+    """The AXIS lines the module prints at setup: each reader
+    answers the value as read, or "absent" when the file is
+    not there -- a recorded axis is never a guessed one."""
+
+    def _open_for(self, files):
+        real_open = open
+
+        def fake(path, *a, **k):
+            if path in files:
+                return io.StringIO(files[path])
+            if str(path).startswith("/proc/"):
+                raise OSError("no such file")
+            return real_open(path, *a, **k)
+
+        return fake
+
+    def test_a_sysctl_value_is_read_and_stripped(self):
+        with mock.patch("builtins.open", self._open_for(
+                {"/proc/sys/kernel/yama/ptrace_scope": "2\n"})):
+            self.assertEqual(_sysctl_value(
+                "/proc/sys/kernel/yama/ptrace_scope"), "2")
+
+    def test_a_missing_sysctl_reads_absent(self):
+        with mock.patch("builtins.open", self._open_for({})):
+            self.assertEqual(_sysctl_value(
+                "/proc/sys/kernel/yama/ptrace_scope"), "absent")
+
+    def test_hidepid_is_read_from_the_mount_table(self):
+        mounts = ("proc /proc proc rw,nosuid,nodev,hidepid=2 0 0\n"
+                  "sysfs /sys sysfs rw 0 0\n")
+        with mock.patch("builtins.open",
+                        self._open_for({"/proc/mounts": mounts})):
+            self.assertEqual(_hidepid_value(), "2")
+
+    def test_hidepid_spelled_invisible_is_recorded_as_read(self):
+        mounts = "proc /proc proc rw,hidepid=invisible 0 0\n"
+        with mock.patch("builtins.open",
+                        self._open_for({"/proc/mounts": mounts})):
+            self.assertEqual(_hidepid_value(), "invisible")
+
+    def test_no_hidepid_option_reads_as_the_default_0(self):
+        mounts = "proc /proc proc rw,nosuid,nodev 0 0\n"
+        with mock.patch("builtins.open",
+                        self._open_for({"/proc/mounts": mounts})):
+            self.assertEqual(_hidepid_value(), "0")
+
+    def test_an_unreadable_mount_table_reads_absent(self):
+        with mock.patch("builtins.open", self._open_for({})):
+            self.assertEqual(_hidepid_value(), "absent")
 
 
 if __name__ == "__main__":
