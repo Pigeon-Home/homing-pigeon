@@ -6,6 +6,14 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## Unreleased
 
+## 3.12.74 - 2026-10-25
+
+Runner line reduction: runner.py from 11,205 to 5,362 lines.
+Extracted to runner/ops/: cli, oracle_page, oracle_tools, oracle_server,
+oracle_ops, context, policy, attest, paths, watch, sensors, handlers,
+startup, poll, misc, remediation_ops, queries, exec, mail, main,
+windows, firewall, av. Platform-specific code broken out. No behavior change.
+
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.12.72 - 2026-10-25
