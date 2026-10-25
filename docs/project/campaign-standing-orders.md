@@ -2700,6 +2700,17 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: log-sentinel read_live's
+  default-paths arm -- a log_paths tunable that is
+  absent, not a list, or empty reads the built-in
+  defaults (patched to a temp log for the pin); a
+  second pass over the returned reader state reads
+  nothing new. Pinned in ReadLiveDefaultPathsTest.
+  Sky-watcher's hour-angle wrap (ha < -180) is
+  arithmetic-dead: tst is taken mod 1440, so ha
+  cannot go below -180.0 (sweep-verified floor
+  -179.9996) -- dispositioned, the NOAA guard stays
+  as copied.
 - Queue A taken: job-fuzz's blank_line mutator --
   exactly one blank line inserted, the seed's lines
   preserved in order, an empty seed taking one too

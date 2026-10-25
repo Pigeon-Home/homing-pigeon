@@ -557,5 +557,34 @@ class MainPartialDeliveryLegTest(unittest.TestCase):
             self.assertFalse(os.path.exists(state_path))
 
 
+class ReadLiveDefaultPathsTest(unittest.TestCase):
+    """Queue A: read_live's default-paths arm -- a
+    log_paths tunable that is absent, not a list, or
+    empty reads the built-in defaults rather than
+    nothing (or everything). The defaults are patched
+    to a temp log so the pin holds on any machine."""
+
+    def test_unusable_log_paths_reads_the_defaults(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "kern.log")
+            with open(path, "w", encoding="utf-8",
+                      newline="\n") as fh:
+                fh.write(PANIC_LINE + "\n" + BENIGN_LINE + "\n")
+            absent = _manifest()
+            del absent["tunables"]["log_paths"]
+            for manifest in (absent,
+                             _manifest(log_paths="not-a-list"),
+                             _manifest(log_paths=[])):
+                with mock.patch.object(
+                        LS, "_DEFAULT_LOG_PATHS", [path]):
+                    readings = LS.read_live(manifest)
+                    again = LS.read_live(
+                        manifest, readings["_reader"])
+                self.assertEqual(readings["lines"],
+                                 [PANIC_LINE, BENIGN_LINE])
+                self.assertEqual(again["lines"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
