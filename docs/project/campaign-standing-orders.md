@@ -2628,3 +2628,61 @@ when done, the proving commit or run. Newest first.
   07:34 PDT); the refreshes happened, the labels
   were wrong. Refresh cadence is hourly from the
   07:02 PDT line.
+- Rules refreshed 11:05 PDT (18:05Z); standing
+  orders, AGENTS.md rules 7-9, the open questions
+  (Q33 answered, Q23/Q29 bookkeeping blanks rest
+  with their answerers) and the playbook's hard
+  rules re-read.
+  resources 2026-10-25T18:05:22Z: cores 2 | box cpu
+  n/a | wall 0s | cmd cpu 0s = 0.5 cores busy |
+  peak rss 12 MB | mem used 87% | disk free
+  166.4 GB | exit 0 | n/a
+  resources-top: hatch 354 MB, python 244 MB,
+  python 41 MB, systemd 12 MB, python 12 MB
+  (the 244 MB python is the D4 mutmut reproduction
+  below, in its stats pass.)
+- 3.12.68 FULL STAMP: tag at 1ff0385; GitHub
+  release published 2026-10-25T14:45:28Z with all
+  8 platform archives + pi-light + project tarball
+  + wheel + sdist + SHA384SUMS (12 entries) + SBOM
+  + BUILD-PROVENANCE; wheel and sdist SHA-384
+  verified against the sums file and SHA-256
+  against PyPI (latest is 3.12.68, both files);
+  GHCR carries v3.12.68 (with the 1ff0385 tag) and
+  latest, both created in the publish window;
+  SourceForge v3.12.68 folder holds every file;
+  GitLab release v3.12.68 carries 13 asset links;
+  tag build 40203163585 success, both Docker
+  publishes success. Downloads held in
+  ~/workspace/stamp-3.12.68/. The release carries
+  the Q32 fix (2b561bc); Q32 re-verified from this
+  seat: the four probes and the preamble property
+  pass (10 tests).
+- D4 — the Q33 run's artifact does NOT carry the
+  survivor identities: build.yml uploads only
+  mutmut.log and mutants/mutmut-stats.json, and
+  the per-mutant exit codes live in the *.meta
+  files mutation_floor.py reads, which are not
+  uploaded. Q34 filed (upload the .meta files).
+  Workaround in flight: a local reproduction at
+  HEAD in a scratch worktree (security.py and the
+  mutmut config are unchanged since 4c73eaf, so
+  the mutant space is the run's), mutmut 3.8.0,
+  --max-children 2, under rig_resources; the
+  triage takes its survivors from the local .meta
+  files when it lands.
+- Queue A — the fresh local full-suite coverage
+  run (cov-local-30be512) completed: 6442 tests
+  OK, 33 skipped. Re-rank derived from its data
+  file: the largest function gap is
+  pi_health._mem_avail_pct_windows (14 lines,
+  Windows-only, already dispositioned
+  platform-inapplicable); the next function gaps
+  stand at 5 lines; what is larger is module-level
+  residue in the cloud scripts and verify.py,
+  which is not a function take. Under queue A's
+  stop rule the local map ends A for the day; the
+  Windows CI map is still unrefreshed (runner
+  starvation), so the both-platforms form of the
+  rule rests on the local map plus the recorded
+  dispositions.
