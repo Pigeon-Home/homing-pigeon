@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) —
+  `runner/extensions/softflowd-feed/softflowd_feed.py`
+  `::collect_flows` window and close legs (3 lines
+  never run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  CollectFlowsClockTest in
+  runner/tests/test_softflowd_feed.py: the pass
+  ends when the window closes at the top of the
+  loop, and a socket that refuses to close is
+  still a quiet empty pass. Done when a coverage
+  run shows the function clean.
 - A (refill) — `runner/runner.py::`
   `make_oracle_server.Handler.do_POST`
   deterministic leg (3 lines never run, coverage

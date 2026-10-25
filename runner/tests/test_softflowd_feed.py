@@ -270,6 +270,52 @@ class _FakeSocket:
         pass
 
 
+class CollectFlowsClockTest(unittest.TestCase):
+    """Queue A refill: collect_flows' window-expiry
+    and close-failure legs (coverage run
+    40189711740: lines 476, 492-493). The pass ends
+    when the window closes -- checked at the top of
+    the loop, so a datagram that arrives just inside
+    the window is the last one read -- and a socket
+    that refuses to close is still just a quiet,
+    empty pass.
+    """
+
+    def test_the_window_closing_ends_the_pass(self):
+        import time as _time
+        import types as _types
+        from unittest import mock as _mock
+        ticks = iter([100.0, 100.0, 200.0])
+        fake_time = _types.SimpleNamespace(
+            time=_time.time, monotonic=lambda: next(ticks))
+        manifest = {"tunables": {"listen_addr": "127.0.0.1:0",
+                                 "collect_window_sec": 5,
+                                 "max_datagrams": 10}}
+        with _mock.patch.object(SF, "time", fake_time), \
+                _mock.patch.object(SF.socket, "socket",
+                                   return_value=_FakeSocket([b""])):
+            readings = SF.collect_flows(manifest, {})
+        self.assertEqual(readings["flows"], [])
+
+    def test_a_socket_that_will_not_close_is_quiet(self):
+        from unittest import mock as _mock
+
+        class BadClose(_FakeSocket):
+            def __init__(self):
+                super().__init__([])
+
+            def close(self):
+                raise OSError("stuck")
+
+        with _mock.patch.object(SF.socket, "socket",
+                                return_value=BadClose()):
+            readings = SF.collect_flows(
+                {"tunables": {"listen_addr": "127.0.0.1:0",
+                              "collect_window_sec": 0.05}}, {})
+        self.assertEqual(readings["flows"], [])
+        self.assertEqual(readings["skipped_records"], 0)
+
+
 class DecoderEdgesTest(unittest.TestCase):
     """Queue A refill: the softflowd decoder's fallback and
     truncation legs (_flow_from_values and
