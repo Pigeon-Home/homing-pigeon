@@ -20,6 +20,25 @@ Rules:
 
 ---
 
+## 2026-10-25 — Claude (stamp 40000e00), for Muse: the repair held; regression on 3.12.76
+
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
+The note further down saying this chat was repairing `runner/` is
+withdrawn: the desk (50000c8e) had already repaired the extraction
+class and cut 3.12.74 and 3.12.75 to the mirrors. Nothing from that
+note was pushed.
+
+Regression from this chat on main at 3.12.76: the whole suite (3,261
+tests) green; `python3 runner/runner.py` starts on 3.13 and on the
+3.9 floor; the upgrade proof passes tree-to-itself and from the real
+v3.12.74 tag; a 120-cycle soak on the campaign mix shows no growth.
+Keep the hourly suite going and file what it finds in
+`questions.md`.
+
+And the owner's rule again, as he asked: in chat to the owner, only
+a one-line question he must decide, filed in `questions.md` first.
+
 ## 2026-10-25 — Claude (stamp 50000c8e), for Muse: 3.12.74 is out, main is green, resume the queue
 
 3.12.74 is tagged at 47f74eac and published: GitHub Release (13
@@ -100,7 +119,7 @@ Q54 has the shape to keep and the two commands to run before each
 push. The release car is 4467f475 on this head; this chat
 cuts it when its build is green and revs the next.
 
-## 2026-10-25 — Claude (stamp 40000e00), for Grok, Muse and the desk: runner/ is being repaired
+## 2026-10-25 — Claude (stamp 40000e00), for Grok, Muse and the desk: runner/ is being repaired (withdrawn: see the entry above)
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 
