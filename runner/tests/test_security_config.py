@@ -17,6 +17,7 @@ protection off and enforcing would fail there directly.
 import json
 import os
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -243,6 +244,103 @@ class StartupHookTest(unittest.TestCase):
             with mock.patch.object(sys, "argv",
                                    ["runner", "--config", cfg_path]):
                 self.assertEqual(main(), 2)
+
+
+class ValidateBlocksTest(unittest.TestCase):
+    """Queue A: the two blocks validate_security_config
+    delegates or checks itself -- confinement (owned by
+    the sandbox module) and job_user -- never ran on
+    Windows, and the sandbox import's script-mode
+    fallback never ran anywhere (coverage run
+    40180268696). The startup contract is the docstring's:
+    a malformed block is a RuntimeError naming the key
+    and the bad value, before any job runs. The shape
+    checks are platform-agnostic (the bad-character set
+    names the backslash and the colon precisely because
+    Windows usernames are in scope); only the existence
+    check is POSIX, and it stays behind its os.name gate.
+    """
+
+    def test_a_bad_confinement_block_is_named(self):
+        with self.assertRaises(RuntimeError) as cm:
+            S.validate_security_config(
+                {"security": {"confinement": "not-an-object"}})
+        self.assertIn("security.confinement", str(cm.exception))
+        with self.assertRaises(RuntimeError):
+            S.validate_security_config(
+                {"security": {"confinement":
+                              {"work_mount": "relative/path"}}})
+        S.validate_security_config(
+            {"security": {"confinement": {}}})
+
+    def test_the_job_user_shape_is_checked(self):
+        bad = [
+            "not-an-object",
+            {},
+            {"user": ""},
+            {"user": 42},
+            {"user": "a/b"},
+            {"user": "a\\b"},
+            {"user": "a:b"},
+            {"user": "a b"},
+            {"user": "a\nb"},
+        ]
+        for ju in bad:
+            with self.subTest(job_user=ju):
+                with self.assertRaises(RuntimeError) as cm:
+                    S.validate_security_config(
+                        {"security": {"job_user": ju}})
+                self.assertIn("job_user", str(cm.exception))
+
+    def _script_mode(self, prelude):
+        code = (
+            "import sys\n"
+            + prelude
+            + "try:\n"
+            + "    import runner.guard\n"
+            + "    print('RUNNER-IMPORTABLE')\n"
+            + "except ImportError:\n"
+            + "    print('RUNNER-BLOCKED')\n"
+            + "from guard import security as S\n"
+            + "try:\n"
+            + "    S.validate_security_config({\"security\": "
+            + "{\"confinement\": {\"work_mount\": \"relative\"}}})\n"
+            + "except RuntimeError as e:\n"
+            + "    print(\"RAISED\", e)\n"
+            + "else:\n"
+            + "    print(\"NOT-RAISED\")\n")
+        env = dict(os.environ)
+        env["PYTHONPATH"] = os.path.join(REPO, "runner")
+        # A neutral cwd: with the repo root as cwd, the
+        # `runner` package would import from there and the
+        # primary import would succeed, testing nothing.
+        return subprocess.run(
+            [sys.executable, "-c", code], env=env,
+            cwd=tempfile.mkdtemp(prefix="hp-sc-mode-"),
+            capture_output=True, text=True, timeout=60)
+
+    def test_script_mode_still_validates_confinement(self):
+        # With only runner/ on the path, `runner.guard`
+        # does not import and the fallback `guard` import
+        # must find the sandbox module: the bad block is
+        # still refused.
+        proc = self._script_mode("")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("RUNNER-BLOCKED", proc.stdout)
+        self.assertIn("RAISED", proc.stdout)
+        self.assertIn("config error", proc.stdout)
+
+    def test_no_sandbox_module_means_confinement_unchecked(self):
+        # The fallback's own failure is deliberate: with
+        # no sandbox module at all, the confinement block
+        # cannot be validated and the call passes -- the
+        # pair with the test above pins both sides of the
+        # fallback.
+        proc = self._script_mode(
+            "import sys\nsys.modules['guard.sandbox'] = None\n")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("RUNNER-BLOCKED", proc.stdout)
+        self.assertIn("NOT-RAISED", proc.stdout)
 
 
 if __name__ == "__main__":
