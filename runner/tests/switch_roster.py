@@ -15,10 +15,11 @@ Each entry:
     tests    unittest ids (module, module.Class or module.Class.test)
              that fail if the promise were false, plus the negative
              control that passes for no other reason. Empty = unproven.
-    needs    what the leg must provide: "linux" (the control is
-             Linux-only), "bwrap" (a working sandbox), "root" (the
-             job_user drop needs a real second user). An entry whose
-             needs the leg does not meet is not judged on that leg.
+    needs    what the leg must provide: "posix" (a POSIX kernel:
+             Linux, macOS, FreeBSD), "linux" (Linux only), "bwrap"
+             (a working sandbox), "root" (the job_user drop needs a
+             real second user). An entry whose needs the leg does
+             not meet is not judged on that leg.
 
 Adding a test here is Muse's lane; the controls, promises and needs
 are the owner's and change only through the questions file. A test
@@ -104,7 +105,7 @@ ROSTER = [
         "promise": "confinement enforce with a sandbox that does not work at "
                    "startup refuses to start, naming the key (Q9).",
         "tests": ["runner.tests.test_confinement.StartupProblemScriptsTest"],
-        "needs": ["linux"],
+        "needs": ["posix"],
     },
     {
         "id": "M6.enforce",
@@ -151,7 +152,7 @@ ROSTER = [
                    "(owner decision, 2026-10-15); audit mode records "
                    "would_run_sandboxed and runs normally.",
         "tests": ["runner.tests.test_confinement.FallbackTest"],
-        "needs": ["linux"],
+        "needs": ["posix"],
     },
     {
         "id": "M7.templates",
@@ -168,7 +169,7 @@ ROSTER = [
                    "initgroups does not keep the runner's groups (Q18).",
         "tests": ["runner.tests.test_secret_files_job_user.JobUserTest",
                   "runner.tests.test_secret_files_job_user.JobUserGroupsProbe"],
-        "needs": ["linux", "root"],
+        "needs": ["posix", "root"],
     },
     {
         "id": "M8.drop.face",
@@ -187,7 +188,7 @@ ROSTER = [
                    "falls back the same way.",
         "tests": ["runner.tests.test_secret_files_job_user.JobUserTest.test_non_root_falls_back",
                   "runner.tests.test_runner_face.JobUserFaceTest.test_not_root_does_not_demote"],
-        "needs": ["linux"],
+        "needs": ["posix"],
     },
     {
         "id": "M8.secret_files",
@@ -285,7 +286,7 @@ ROSTER = [
                    "never drops; a drop that fails for one job falls back "
                    "for that job only (Q26 review, 2026-10-25).",
         "tests": [],
-        "needs": ["linux", "root"],
+        "needs": ["posix", "root"],
     },
     {
         "id": "ORACLE.no_widening.cage",
@@ -306,4 +307,4 @@ ROSTER = [
     },
 ]
 
-KNOWN_NEEDS = ("linux", "bwrap", "root")
+KNOWN_NEEDS = ("posix", "linux", "bwrap", "root")

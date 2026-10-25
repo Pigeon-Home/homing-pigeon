@@ -17,6 +17,17 @@ facts a reader may need to cite. Git history carries the rest.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
+## Unreleased
+
+- **The suite and the switch proofs run on macOS and FreeBSD.** The
+  release has shipped macOS binaries since the start, smoked but
+  never tested; now `test-macos` runs the suite on macos-14 on every
+  push, and switch-proofs gains `macos` and `macos-root` legs (a
+  real second user, so the privilege drop is proven on a second
+  kernel). FreeBSD 14 runs the suite and the roster weekly in a VM.
+  Where the suite runs and what each platform proves:
+  `docs/project/testing.md`.
+
 ## 3.12.68 - 2026-10-25
 
 - **A quoted preamble no longer rejects a valid signed job.** A

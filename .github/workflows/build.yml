@@ -203,6 +203,25 @@ jobs:
     # infra errors (broken baseline, collection failure). Survivors are
     # reported in the log for triage -- this job is a signal, not a block.
 
+  test-macos:
+    # The suite on Darwin (owner's order, 2026-10-25). The release
+    # has shipped macOS binaries since the start, smoked but never
+    # tested: the POSIX half of the product on Darwin rested on
+    # Linux's word. Sharded like the Windows suite; three cores on
+    # macos-14. A signal, not a gate: cut-release reads `test` and
+    # the build-* jobs, so a red here shows on the run and blocks
+    # nothing until it has held green for a while.
+    runs-on: macos-14
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - run: python runner/tools/run_tests_parallel.py --jobs 3 --durations 15 --wall-clock 20
+
   build-windows:
     # Does not wait for the Ubuntu suite. They run together.
     # The release waits for both, so a red suite still cannot

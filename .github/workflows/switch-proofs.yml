@@ -11,11 +11,15 @@ name: switch-proofs
 # every control: proven, unproven (no test listed yet), or FAILED /
 # MISSING / SKIPPED, which fail the run.
 #
-# Three legs, because the controls need different machines: a plain
+# Five legs, because the controls need different machines: a plain
 # Linux runner with a working bwrap (the sandbox walls, M6); the same
 # as root with a real second user (the privilege drop, M8, and the
-# two-job races, R1); and Windows for everything platform-neutral,
-# so a control that only "works" where it was written is caught.
+# two-job races, R1); macOS as a second POSIX kernel, plain and as
+# root with a second user (the drop and the audit lock away from
+# Linux, owner's order 2026-10-25); and Windows for everything
+# platform-neutral, so a control that only "works" where it was
+# written is caught. FreeBSD runs the same roster weekly in a VM
+# (.github/workflows/freebsd.yml); no native runner exists for it.
 #
 # An unproven control is a warning, not a failure: the campaign
 # fills the roster (standing orders, queues S and R), and the count
@@ -65,7 +69,7 @@ jobs:
           bwrap --version
       - name: the roster, as the runner user with a working sandbox
         run: |
-          python runner/tools/switch_proofs.py --have linux,bwrap \
+          python runner/tools/switch_proofs.py --have posix,linux,bwrap \
             --title Linux --out switch-proofs-linux.md --annotate
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -98,13 +102,62 @@ jobs:
         run: |
           PY="$(command -v python)"
           sudo env "PATH=$PATH" "GITHUB_STEP_SUMMARY=$GITHUB_STEP_SUMMARY" \
-            "$PY" runner/tools/switch_proofs.py --have linux,bwrap --root \
+            "$PY" runner/tools/switch_proofs.py --have posix,linux,bwrap --root \
             --title root --out switch-proofs-root.md --annotate
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: switch-proofs-root
           path: switch-proofs-root.md
+
+  macos:
+    runs-on: macos-14
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - name: the roster, as the runner user on Darwin
+        run: |
+          python runner/tools/switch_proofs.py --have posix \
+            --title macOS --out switch-proofs-macos.md --annotate
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: switch-proofs-macos
+          path: switch-proofs-macos.md
+
+  macos-root:
+    runs-on: macos-14
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      # A real second local user, as the Linux root leg has: the
+      # privilege drop (M8) then has a uid to drop to on Darwin.
+      - name: create the second user
+        run: |
+          sudo sysadminctl -addUser pigeon-test -fullName "pigeon test" \
+            -password "pigeon-test-pw" -home /Users/pigeon-test
+          id pigeon-test
+      - name: the roster, as root on Darwin
+        run: |
+          PY="$(command -v python)"
+          sudo env "PATH=$PATH" "GITHUB_STEP_SUMMARY=$GITHUB_STEP_SUMMARY" \
+            "$PY" runner/tools/switch_proofs.py --have posix --root \
+            --title macOS-root --out switch-proofs-macos-root.md --annotate
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: switch-proofs-macos-root
+          path: switch-proofs-macos-root.md
 
   windows:
     runs-on: windows-latest

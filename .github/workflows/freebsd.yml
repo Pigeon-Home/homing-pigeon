@@ -1,0 +1,67 @@
+# Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
+name: freebsd
+
+# The suite and the switch-proof roster on FreeBSD (owner's order,
+# 2026-10-25). GitHub has no FreeBSD runner, so a VM boots inside a
+# Linux runner (vmactions/freebsd-vm, pinned by SHA); the boot costs
+# minutes and the action is not as steady as a native runner, so
+# this runs weekly, on dispatch, and when this file changes, never
+# on the release path. A signal, not a gate.
+#
+# Inside the VM: the suite as an ordinary user (the runner is not
+# root in service), then the roster as root with a real second user
+# (the privilege drop, M8, on a third POSIX kernel). Confinement is
+# bwrap and falls open here by the 2026-10-15 rule; a jail would be
+# FreeBSD's cage (docs/security/security-gaps.md) and is not in
+# scope until the owner says so.
+on:
+  schedule:
+    - cron: "23 7 * * 2"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/freebsd.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: freebsd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  freebsd:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: the suite and the roster inside a FreeBSD VM
+        uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1.5.9
+        with:
+          release: "14.2"
+          usesh: true
+          mem: 4096
+          prepare: |
+            pkg install -y python311 py311-pip
+            python3.11 -m pip install --quiet hypothesis==6.170.5
+            pw useradd runner -m -s /bin/sh
+            pw useradd pigeon-test -m -s /bin/sh
+          run: |
+            set -e
+            cd "$GITHUB_WORKSPACE"
+            chown -R runner "$GITHUB_WORKSPACE"
+            echo "== the suite, as the runner user"
+            su -m runner -c "cd '$GITHUB_WORKSPACE' && python3.11 runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" 2>&1 | tee suite-freebsd.log
+            python3.11 runner/tools/skip_guard.py suite-freebsd.log --annotate
+            echo "== the roster, as root with a second user"
+            python3.11 runner/tools/switch_proofs.py --have posix --root \
+              --title FreeBSD-root --out switch-proofs-freebsd-root.md --annotate
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: freebsd
+          path: |
+            suite-freebsd.log
+            switch-proofs-freebsd-root.md
+          if-no-files-found: ignore

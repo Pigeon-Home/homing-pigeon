@@ -49,3 +49,60 @@ End-to-end without your SI:
    `reply_to` address, if you set one). It arrives as an encrypted
    envelope; decrypt it with `verify --job-id` (above) and the
    result inside says `stdout: "pong"`.
+
+## Where the suite runs, and what each platform proves
+
+The runner ships for Linux (x86_64, ARM64, the Pi light build),
+macOS (Apple Silicon and Intel) and Windows, and installs on
+FreeBSD from the sdist. Every platform that ships is tested on a
+real kernel of that platform; the table is what each one proves
+and how often.
+
+| Platform | Suite | Switch proofs (the roster) | Built binaries | When |
+|---|---|---|---|---|
+| Linux (ubuntu-latest) | `test` job, in-process under the wall clock | `linux` leg (bwrap) and `root` leg (a second user): every control | smoked | every push to main, every tag |
+| Windows (windows-latest) | `build-windows` job, sharded over 4 cores | `windows` leg: the platform-neutral controls | smoked | every push, every tag |
+| macOS (macos-14) | `test-macos` job, sharded over 3 cores | `macos` leg and `macos-root` leg (a second user): the POSIX controls, the drop included | smoked (both macOS builds) | every push, every tag |
+| FreeBSD 14 (a VM inside a Linux runner) | as an ordinary user, under the wall clock | as root with a second user: the POSIX controls | not built (sdist install) | weekly, on dispatch, and when `freebsd.yml` changes |
+
+The roster (`runner/tests/switch_roster.py`) says, per control, what
+a leg must provide: `posix` (any of the three kernels), `linux`,
+`bwrap` (a working sandbox), `root` (a real second user to drop
+to). A leg judges only the entries it can; `runner/tools/switch_proofs.py`
+reports every control as proven, unproven, or failed, and the
+workflow fails when a proof disappears.
+
+What the platforms cannot prove is what the runner does not do
+there, by the owner's 2026-10-15 decisions: confinement is bwrap,
+Linux only, and on every other kernel a `confinement: enforce` job
+runs unsandboxed with a WARN line and a `fallback` audit entry;
+`job_user` is a uid change and works on the three POSIX kernels but
+has no Windows form. The real cages elsewhere are named in
+`docs/security/security-gaps.md` (`sandbox-exec` on macOS, a jail
+on FreeBSD, a job object and a restricted token on Windows); none
+is implemented, and adding one is a scope decision, not a test.
+
+Running the same proofs locally:
+
+```bash
+# the suite, as CI runs it
+python3 -m unittest discover -s runner/tests -t .
+# sharded, as the Windows and macOS jobs run it
+python3 runner/tools/run_tests_parallel.py --jobs 4 --wall-clock 20
+# the roster on this box: name what the box provides
+python3 runner/tools/switch_proofs.py --have posix,linux,bwrap --out proofs.md
+sudo python3 runner/tools/switch_proofs.py --have posix,linux,bwrap --root --out proofs-root.md   # needs a user named pigeon-test
+# the fixture shapes that pass here and fail on Windows
+python3 -m unittest runner.tests.test_windows_portability
+```
+
+Adding a platform leg: copy the nearest job in
+`.github/workflows/switch-proofs.yml` (`macos` for a kernel with a
+native runner, `freebsd.yml` for one that needs a VM), give
+`--have` exactly what that box provides, create the second user
+for a root leg, and add the workflow's name to `WORKFLOWS` in
+`runner/tests/test_build_config.py` so the pin and permission
+guards cover it. A test that only works on one kernel skips the
+others with a registered reason (`runner/tests/test_skip_registry.py`);
+a control that only exists on one kernel says so in its roster
+`needs`.

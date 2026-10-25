@@ -320,10 +320,15 @@ as a finding.
    through the dedicated throwaway mailbox, the messages committed as
    fixtures. Needs the mailbox credentials from the owner, on the
    machine that runs it, never in the repository.
-2. Windows as a live target (the plan's open decision 3): the credential
-   canary and the job_user equivalents (restricted token, ACLs, job
-   objects) on a real Windows runner. Needs the owner's decision that
-   Windows is in scope; a GitHub Windows runner is enough to start.
+2. The cages the other kernels lack (the plan's open decision 3):
+   a job object and a restricted token on Windows, `sandbox-exec`
+   on macOS, a jail on FreeBSD. The platforms themselves are no
+   longer parked: as of 2026-10-25 the suite and the roster run on
+   Linux, Windows, macOS (plain and as root) on every push and on
+   FreeBSD weekly (`docs/project/testing.md`, "Where the suite
+   runs"). What stays parked is the product work: each cage is a
+   scope decision for the owner, and until he makes it the roster
+   judges those kernels on the controls they have.
 
 ### D. Refill
 
