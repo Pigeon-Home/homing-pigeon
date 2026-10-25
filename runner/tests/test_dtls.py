@@ -1704,3 +1704,58 @@ class DtlsMainRefusalsTest(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertIn("listening on udp", err.getvalue())
         self.assertIn("pass failed", err.getvalue())
+
+
+class DtlsOnJobDropsTest(unittest.TestCase):
+    """Queue A refill: DtlsPipe._on_job's three drop
+    guards (coverage run 40187685363: 7 lines on both
+    platforms). What arrives on an established DTLS
+    session is post-authentication but not yet a job:
+    the pipe drops, with a logged reason, a message that
+    is not UTF-8, a message that is not an envelope, and
+    an envelope whose subject carries no job id -- only
+    the fourth shape reaches the runner core's inbox.
+    """
+
+    def _pipe(self):
+        tmp = tempfile.mkdtemp(prefix="hp-dtls-drop-")
+        channel = os.path.join(tmp, "channel")
+        cfg = {"shared_secret": SECRET, "port": 0,
+               "bind": "127.0.0.1"}
+        pipe = dtls_ext.DtlsPipe(cfg, channel)
+        self.addCleanup(pipe.sock.close)
+        return pipe, channel
+
+    def _delivered(self, channel):
+        found = []
+        for root, _dirs, files in os.walk(channel):
+            found += [f for f in files if f.endswith(".job.txt")]
+        return found
+
+    def test_a_non_utf8_message_is_dropped(self):
+        pipe, channel = self._pipe()
+        pipe._on_job("s1", b"\xff\xfe\x00binary")
+        self.assertEqual(pipe.job_session, {})
+        self.assertEqual(self._delivered(channel), [])
+
+    def test_a_non_envelope_message_is_dropped(self):
+        pipe, channel = self._pipe()
+        pipe._on_job("s1", b"just some text, no envelope")
+        self.assertEqual(pipe.job_session, {})
+        self.assertEqual(self._delivered(channel), [])
+
+    def test_an_envelope_without_a_job_id_is_dropped(self):
+        pipe, channel = self._pipe()
+        pipe._on_job("s1", ch.envelope(
+            "a subject with no marker", "{}").encode("utf-8"))
+        self.assertEqual(pipe.job_session, {})
+        self.assertEqual(self._delivered(channel), [])
+
+    def test_a_real_envelope_is_delivered(self):
+        # Control: the shape the guards exist to protect.
+        pipe, channel = self._pipe()
+        pipe._on_job("s1", ch.envelope(
+            "[HOMING-PIGEON] job probe-1", "{}").encode("utf-8"))
+        self.assertEqual(pipe.job_session, {"probe-1": "s1"})
+        self.assertEqual(self._delivered(channel),
+                         ["probe-1.job.txt"])

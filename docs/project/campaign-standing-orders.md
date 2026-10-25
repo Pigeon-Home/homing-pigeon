@@ -156,6 +156,17 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/transport_extensions/dtls/`
+  `__main__.py::DtlsPipe._on_job` (7 lines never run
+  on either platform, coverage run 40187685363) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  DtlsOnJobDropsTest in runner/tests/test_dtls.py:
+  a message that is not UTF-8, not an envelope, or
+  an envelope with no job id in its subject is
+  dropped and delivers nothing; a real envelope is
+  delivered and its session recorded (control). Done
+  when a coverage run shows the function clean.
 - A (refill) — `runner/runner.py::_local_signal_server`
   (8 lines never run on Windows, 2 on Linux, coverage
   run 40187685363) — taken 2026-10-25,
