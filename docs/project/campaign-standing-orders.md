@@ -294,6 +294,18 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/ops/install.py::host_decision`
+  (4 lines never run, coverage run 40189711740) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — four
+  HostDecisionTests drives in
+  runner/tests/test_hostclass.py: non-dict facts
+  read as no facts; a Docker host with a USB
+  accelerator notes both facts; an ARM board with
+  one notes both; plain Linux with one is the
+  linux case whose note is the accelerator warning
+  alone. Done when a coverage run shows the
+  function clean.
 - A (refill) — `runner/ops/extsources.py::`
   `_local_files` and `_tree_bytes` (4 lines each
   never run, coverage run 40189711740) — taken

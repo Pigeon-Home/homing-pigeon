@@ -73,6 +73,48 @@ class HostDecisionTests(unittest.TestCase):
         self.assertIn("display-board", decision["note"])
         self.assertIn("not a television", decision["note"])
 
+    def test_facts_that_are_not_a_dict_read_as_no_facts(self):
+        # Queue A refill: host_decision's non-dict guard
+        # (coverage run 40189711740: line 1652). A caller
+        # handing back nothing usable gets the no-facts
+        # decision, not a crash.
+        decision = I.host_decision(None)
+        self.assertEqual(decision, {"case": "other",
+                                    "action": "run",
+                                    "profile": None, "note": ""})
+
+    def test_docker_with_an_accelerator_notes_both(self):
+        # Queue A refill: the docker case's accelerator
+        # suffix (line 1693): the note carries the Docker
+        # explanation and the accelerator warning.
+        decision = I.host_decision(facts(
+            in_container=True, accelerators=["coral"]))
+        self.assertEqual(decision["case"], "docker")
+        self.assertIn("published Linux image", decision["note"])
+        self.assertIn("coral", decision["note"])
+
+    def test_arm_board_with_an_accelerator_notes_both(self):
+        # Queue A refill: the display-candidate case's
+        # accelerator suffix (line 1703).
+        decision = I.host_decision(facts(
+            machine="armv7l", device_model="Some Board",
+            accelerators=["coral"]))
+        self.assertEqual(decision["case"], "display-candidate")
+        self.assertIn("display-board", decision["note"])
+        self.assertIn("coral", decision["note"])
+
+    def test_linux_with_an_accelerator_is_the_linux_case(self):
+        # Queue A refill: the plain-Linux-with-accelerator
+        # case (lines 1707-1708): the note is exactly the
+        # accelerator warning -- the stick is not the
+        # runner and will not be used.
+        decision = I.host_decision(facts(accelerators=["coral"]))
+        self.assertEqual(decision["case"], "linux")
+        self.assertEqual(decision["profile"], "password-only")
+        self.assertIn("A USB accelerator is attached (coral)",
+                      decision["note"])
+        self.assertIn("not the runner", decision["note"])
+
     def test_windows_and_mac_still_run(self):
         for plat in ("win32", "darwin", "freebsd14"):
             decision = I.host_decision(facts(platform=plat, machine="amd64"))
