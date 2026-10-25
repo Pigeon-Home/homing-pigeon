@@ -16,6 +16,14 @@ on:
 
 permissions: {}
 
+# One run at a time per ref, the newest push waiting behind it (as
+# build.yml). Without a group every push queued its own run: with
+# the campaign pushing a test a minute, 20 of these sat queued on
+# 2026-10-25 and held the runner slots cut-release needed.
+concurrency:
+  group: minimal-userland-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   repair-on-busybox:
     strategy:
