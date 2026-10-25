@@ -939,5 +939,85 @@ class ReleaseDoorTest(unittest.TestCase):
             self.assertEqual(code, 1)
 
 
+class FixMarkerDigestWriteTest(unittest.TestCase):
+    """Queue A: fix_marker_digest's write path never ran
+    on Windows (coverage run 40183585961: 10 lines) --
+    the one caller-side test patches open to raise, so
+    the rewrite that lands was asserted nowhere. The
+    contract (the ingest handler holds the job as
+    received; the marker must name the same digest as
+    the result): a differing digest is rewritten in
+    place, a matching one leaves the file alone, and a
+    write that fails is swallowed -- never raises. Two
+    lines stay uncovered by construction: the second
+    _safe_job_id gate cannot fire, because load_marker
+    only loads under an id that already passed it.
+    """
+
+    def _quarantine(self, base, digest="abc"):
+        work = os.path.join(base, "work")
+        os.makedirs(work)
+        with open(os.path.join(work, "out.txt"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("x")
+        dest = rem.quarantine_job(
+            base, "job-1", work, {"received_digest": digest})
+        self.assertTrue(dest)
+        return os.path.join(dest, "remediation.json")
+
+    def test_a_differing_digest_is_rewritten_in_place(self):
+        with tempfile.TemporaryDirectory() as base:
+            marker_path = self._quarantine(base)
+            rem.fix_marker_digest(base, "job-1", "def")
+            marker = rem.load_marker(base, "job-1")
+            self.assertEqual(marker["received_digest"], "def")
+            with open(marker_path, encoding="utf-8") as fh:
+                self.assertEqual(
+                    json.load(fh)["received_digest"], "def")
+
+    def test_a_matching_digest_leaves_the_file_alone(self):
+        with tempfile.TemporaryDirectory() as base:
+            marker_path = self._quarantine(base)
+            with open(marker_path, "rb") as fh:
+                before = fh.read()
+            rem.fix_marker_digest(base, "job-1", "abc")
+            with open(marker_path, "rb") as fh:
+                self.assertEqual(fh.read(), before)
+
+    def test_a_failed_write_is_swallowed(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._quarantine(base)
+            with mock.patch("builtins.open",
+                            side_effect=OSError("read-only")):
+                rem.fix_marker_digest(base, "job-1", "def")
+            marker = rem.load_marker(base, "job-1")
+            self.assertEqual(marker["received_digest"], "abc")
+
+
+class TotalMemoryWindowsBranchTest(unittest.TestCase):
+    """Queue A: total_memory_bytes' Windows branch --
+    its failure leg never ran anywhere (the branch only
+    runs on Windows, and there the read succeeds). A
+    Windows read that raises answers None: the box's RAM
+    is unknown, never a made-up number. Scripted through
+    the platform names the function itself consults.
+    """
+
+    def test_a_windows_read_answers_and_fails_to_none(self):
+        with mock.patch.object(rem.sys, "platform", "win32"), \
+                mock.patch.object(rem.os, "name", "nt"), \
+                mock.patch.object(
+                    rem, "_win_total_memory",
+                    return_value=17179869184):
+            self.assertEqual(rem.total_memory_bytes(),
+                             17179869184)
+        with mock.patch.object(rem.sys, "platform", "win32"), \
+                mock.patch.object(rem.os, "name", "nt"), \
+                mock.patch.object(
+                    rem, "_win_total_memory",
+                    side_effect=OSError("no route")):
+            self.assertIsNone(rem.total_memory_bytes())
+
+
 if __name__ == "__main__":
     unittest.main()
