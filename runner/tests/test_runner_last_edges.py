@@ -5,6 +5,7 @@ O_BINARY is set to 0 so the Windows flag line runs without
 changing the open flags on Linux. No mailbox and no model.
 """
 
+import io
 import json
 import os
 import socket
@@ -601,6 +602,96 @@ class RunnerFailSoftLegsTest(unittest.TestCase):
                 side_effect=RuntimeError("boom")))
         with mock.patch.object(rr, "_extsources", fake_src):
             self.assertEqual(rr._extension_sources_note("/b"), "")
+
+
+class RunnerFailSoftLegs2Test(unittest.TestCase):
+    """Queue A refill, second batch (coverage run
+    40189711740): _extension_source_targets when
+    transport discovery raises (4510-4511),
+    _extension_sources_tick's absent-module guard
+    and deepcopy fallback (4571, 4585-4586),
+    _oracle_host_ok when urlparse itself fails
+    (9963-9964), _take_body's negative length
+    (10025-10026), and update_llama_from_config's
+    failed pull (7445-7446).
+    """
+
+    def test_source_targets_survive_discovery_failure(self):
+        fake = types.SimpleNamespace(
+            enabled_transports=mock.Mock(
+                side_effect=RuntimeError("bad transport")),
+            discover_transport_extensions=mock.Mock())
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(rr, "_transports", fake):
+            self.assertEqual(
+                rr._extension_source_targets({}, d), [])
+
+    def test_sources_tick_guard_and_snapshot_fallback(self):
+        with mock.patch.object(rr, "_extsources", None):
+            self.assertFalse(
+                rr._extension_sources_tick({}, "/b", now=1.0))
+        saved = dict(rr._EXTSOURCES_PASS)
+        seen = []
+        try:
+            rr._EXTSOURCES_PASS.update(
+                {"since": 0.0, "thread": None, "next_due": 0.0})
+            with mock.patch.object(
+                    rr, "_extension_sources_pass",
+                    side_effect=lambda snap, base:
+                        seen.append(snap)), \
+                    mock.patch.object(
+                        rr.copy, "deepcopy",
+                        side_effect=RuntimeError("unpicklable")):
+                started = rr._extension_sources_tick(
+                    {"a": 1}, "/b", now=10 ** 9)
+            th = rr._EXTSOURCES_PASS.get("thread")
+            if th is not None:
+                th.join(5)
+        finally:
+            rr._EXTSOURCES_PASS.clear()
+            rr._EXTSOURCES_PASS.update(saved)
+        self.assertTrue(started)
+        self.assertEqual(seen, [{"a": 1}])
+
+    def test_oracle_host_ok_when_urlparse_fails(self):
+        handler = types.SimpleNamespace(
+            client_address=("127.0.0.1", 5000),
+            headers={"Host": "localhost:11436",
+                     "Origin": "http://localhost"})
+        with mock.patch.object(
+                rr, "urlparse",
+                side_effect=ValueError("bad origin")):
+            self.assertFalse(rr._oracle_host_ok(handler))
+
+    def test_take_body_negative_length(self):
+        httpd = rr.make_oracle_server({}, "127.0.0.1", 0)
+        try:
+            handler = object.__new__(httpd.RequestHandlerClass)
+            handler.headers = {"Content-Length": "-5"}
+            handler.rfile = io.BytesIO(b"")
+            self.assertIsNone(handler._take_body())
+            self.assertTrue(handler.close_connection)
+        finally:
+            httpd.server_close()
+
+    def test_llama_pull_failure_is_logged_not_raised(self):
+        import shutil
+        import subprocess
+
+        def inf(cfg):
+            return {"model": cfg.get("m")} if cfg else None
+
+        with mock.patch.object(rr, "inference_config",
+                               side_effect=inf), \
+                mock.patch.object(rr, "ensure_inference_ready",
+                                  lambda cfg: None), \
+                mock.patch.object(shutil, "which",
+                                  lambda name: "/usr/bin/ollama"), \
+                mock.patch.object(
+                    subprocess, "run",
+                    side_effect=OSError("no ollama")):
+            self.assertIsNone(rr.update_llama_from_config(
+                {"m": "new"}, previous={"m": "old"}))
 
 
 if __name__ == "__main__":

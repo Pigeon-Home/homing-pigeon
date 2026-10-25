@@ -294,6 +294,18 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — runner.py fail-soft legs, second
+  batch (coverage run 40189711740):
+  _extension_source_targets when transport
+  discovery raises, _extension_sources_tick's
+  guard and deepcopy fallback, _oracle_host_ok
+  when urlparse fails, _take_body's negative
+  length, update_llama_from_config's failed
+  pull — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RunnerFailSoftLegs2Test in
+  runner/tests/test_runner_last_edges.py. Done
+  when a coverage run shows them clean.
 - A (refill) — runner.py fail-soft legs (coverage
   run 40189711740): the withheld-path helpers
   when the sources module raises, _staged_dest
