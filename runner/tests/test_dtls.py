@@ -722,12 +722,16 @@ class PipeSocketTest(unittest.TestCase):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(0.05)
         sock.connect(("127.0.0.1", port))
-        # This sandbox blocks sends on UNCONNECTED UDP sockets
+        # One Linux sandbox blocks sends on UNCONNECTED UDP sockets
         # outright (EPERM), which no real host does; connecting
         # the pipe's socket to its one test peer is the
-        # accommodation that lets the real code run here. The
-        # production path is the unconnected listener.
-        pipe.sock.connect(sock.getsockname())
+        # accommodation that lets the real code run there. The
+        # production path is the unconnected listener, and on the
+        # BSD kernels (macOS, FreeBSD) sendto() with an address on
+        # a connected UDP socket is EISCONN, so the accommodation
+        # is Linux-only: everywhere else the pipe runs as shipped.
+        if sys.platform.startswith("linux"):
+            pipe.sock.connect(sock.getsockname())
         for dg in client.start(time.monotonic()):
             sock.send(dg)
         ok = self._drive(pipe, client, sock,

@@ -60,6 +60,7 @@ jobs:
             # on 15.0, 3.11 before); take whichever flavor has
             # hypothesis, and remember the interpreter for the run.
             PY=""
+            pkg install -y git node >> pkg.log 2>&1 || echo "::warning title=freebsd prepare::git/node did not install: $(tail -n 3 pkg.log | tr '\n' ' ' | cut -c1-300)"
             for v in 312 311; do
               if pkg install -y "python$v" "py$v-hypothesis" >> pkg.log 2>&1; then
                 PY="python3.${v#3}"; break
@@ -85,7 +86,7 @@ jobs:
             echo "== the roster, as root with a second user"
             rrc=0
             "$PY" runner/tools/switch_proofs.py --have posix --root \
-              --title FreeBSD-root --out switch-proofs-freebsd-root.md --annotate || rrc=$?
+              --title FreeBSD-root --out /tmp/switch-proofs-freebsd-root.md --annotate || rrc=$?
             # The suite as an ordinary user with a login environment
             # (su -m kept root's HOME and PATH, and the fake binaries
             # the suite writes under TMPDIR must be executable, so it
@@ -93,9 +94,13 @@ jobs:
             echo "== the suite, as the runner user"
             mkdir -p /home/runner/tmp && chown runner /home/runner/tmp
             rc=0
-            su -l runner -c "export TMPDIR=/home/runner/tmp; cd '$GITHUB_WORKSPACE' && $PY runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > suite-freebsd.log 2>&1 || rc=$?
-            tail -n 40 suite-freebsd.log
-            "$PY" runner/tools/skip_guard.py suite-freebsd.log --annotate || true
+            su -l runner -c "export TMPDIR=/home/runner/tmp; cd '$GITHUB_WORKSPACE' && $PY runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > /tmp/suite-freebsd.log 2>&1 || rc=$?
+            tail -n 40 /tmp/suite-freebsd.log
+            "$PY" runner/tools/skip_guard.py /tmp/suite-freebsd.log --annotate || true
+            # The reports join the tree only now, for the artifact: a
+            # root .md present while the suite runs reads as a live
+            # doc to the doc guards.
+            cp /tmp/suite-freebsd.log /tmp/switch-proofs-freebsd-root.md "$GITHUB_WORKSPACE"/ 2>/dev/null || true
             [ "$rc" -eq 0 ] || echo "::error title=freebsd suite::the suite exited $rc; the failing tests are annotated above and the log is in the artifact"
             [ "$rc" -eq 0 ] && [ "$rrc" -eq 0 ]
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
