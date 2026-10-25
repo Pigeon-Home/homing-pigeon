@@ -2700,6 +2700,19 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue D refill taken: four documented enum keys
+  that had no registry rows gain them --
+  oracle_opinion_mode (repair), oracle_opinion_
+  predict (requested), oracle_opinion_repair
+  (rejudge), oracle_mode (llm) -- each doc-verified
+  against docs/oracle/configuring-oracle.md and
+  pinned by a named class in
+  test_doc_default_divergences.py (invalid values
+  read as the documented default); the registry
+  count moves 100 -> 104 (49 -> 53 core). Their
+  readers use opinion.py's own _clean / an
+  exact-match read, never confval, which is why
+  the coverage guard never forced the rows.
 - Queue A dispositions: the Oracle chat handler's
   unserializable-payload fallback and dri
   send_telegram's second dumps guard are both dead

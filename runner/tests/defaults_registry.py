@@ -1749,7 +1749,80 @@ ROWS = [{'key': 'severity',
   'hi': None,
   'probe': 'handwritten',
   'test': 'TestHugeIntJobFuzzFloatTunablesCrashInsteadOfDefault',
-  'notes': ''}]
+  'notes': ''},
+ {'key': 'oracle_opinion_mode',
+  'scope': 'core',
+  'kind': 'enum',
+  'default': 'repair',
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 65,
+  'doc_token': 'repair',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/opinion.py:ceiling_mode',
+  'reader_sites': ['runner/oracle/opinion.py:ceiling_mode'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestOracleOpinionModeInvalidReadsAsRepair',
+  'notes': 'Queue D refill (2026-10-25): the opinion ceiling. '
+           'Read through opinion.py\'s own _clean, not confval, '
+           'so the confval guard never forced a row; the doc '
+           'line states the value set and the default.'},
+ {'key': 'oracle_opinion_predict',
+  'scope': 'core',
+  'kind': 'enum',
+  'default': 'requested',
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 66,
+  'doc_token': 'requested',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/opinion.py:predict_setting',
+  'reader_sites': ['runner/oracle/opinion.py:predict_setting'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestOracleOpinionPredictInvalidReadsAsRequested',
+  'notes': 'Queue D refill (2026-10-25): when tier-1 '
+           'predictions are computed. Same _clean reader '
+           'family as oracle_opinion_mode.'},
+ {'key': 'oracle_opinion_repair',
+  'scope': 'core',
+  'kind': 'enum',
+  'default': 'rejudge',
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 68,
+  'doc_token': 'rejudge',
+  'doc_status': 'verified',
+  'reader': 'runner/oracle/opinion.py:repair_setting',
+  'reader_sites': ['runner/oracle/opinion.py:repair_setting'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestOracleOpinionRepairInvalidReadsAsRejudge',
+  'notes': 'Queue D refill (2026-10-25): how a repair is '
+           'authorized. Same _clean reader family.'},
+ {'key': 'oracle_mode',
+  'scope': 'core',
+  'kind': 'enum',
+  'default': 'llm',
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 62,
+  'doc_token': 'llm',
+  'doc_status': 'verified',
+  'reader': 'runner/runner.py:_oracle_mode',
+  'reader_sites': ['runner/runner.py:_oracle_mode'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestOracleModeInvalidReadsAsLlm',
+  'notes': 'Queue D refill (2026-10-25): the Pi Light mode '
+           'switch. The reader\'s contract is exact-match: '
+           'anything but the string "deterministic" is the '
+           'default llm mode.'}]
 
 
 # The generic confval helpers: their defaults are caller-supplied,
@@ -1795,9 +1868,11 @@ class RegistryShapeTests(unittest.TestCase):
 
     def test_row_count_matches_the_documented_keys(self):
         # 49 core keys + 51 extension tunables, as extracted and
-        # doc-verified at the commit that added this registry.
-        self.assertEqual(100, len(ROWS))
-        self.assertEqual(49, sum(1 for r in ROWS if r["scope"] == "core"))
+        # doc-verified at the commit that added this registry;
+        # +4 core rows in the 2026-10-25 queue D refill
+        # (oracle_mode and the oracle_opinion_* enum family).
+        self.assertEqual(104, len(ROWS))
+        self.assertEqual(53, sum(1 for r in ROWS if r["scope"] == "core"))
         self.assertEqual(51, sum(1 for r in ROWS if r["scope"] == "extension"))
 
 

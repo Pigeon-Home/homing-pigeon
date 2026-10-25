@@ -46875,6 +46875,90 @@ class TestPiHealthMainModesFifteenShapes(unittest.TestCase):
                           err)
             self.assertEqual(after, before)
 
+class TestOracleOpinionModeInvalidReadsAsRepair(unittest.TestCase):
+    """Queue D refill: `oracle_opinion_mode` gains a
+    registry row. docs/oracle/configuring-oracle.md
+    states the ceiling is `repair` by default; a
+    present-but-invalid value reads as that default
+    (Decision 1, default class), never as a wider or
+    narrower latitude than the doc promises."""
+
+    def test_invalid_ceiling_reads_as_repair(self):
+        from runner.oracle import opinion as op
+        self.assertEqual(op.ceiling_mode({}), "repair")
+        for bad in ("max", "REPAIR", "", 3, None, ["repair"]):
+            with self.subTest(bad=bad):
+                self.assertEqual(
+                    op.ceiling_mode({"oracle_opinion_mode": bad}),
+                    "repair")
+        for good in ("off", "diagnose", "advise", "repair"):
+            with self.subTest(good=good):
+                self.assertEqual(
+                    op.ceiling_mode({"oracle_opinion_mode": good}),
+                    good)
+
+
+class TestOracleOpinionPredictInvalidReadsAsRequested(unittest.TestCase):
+    """Queue D refill: `oracle_opinion_predict` gains
+    a registry row. The doc states `requested` is
+    the default; an invalid value reads as it."""
+
+    def test_invalid_predict_reads_as_requested(self):
+        from runner.oracle import opinion as op
+        self.assertEqual(op.predict_setting({}), "requested")
+        for bad in ("sometimes", "ALWAYS", "", 3, None):
+            with self.subTest(bad=bad):
+                self.assertEqual(
+                    op.predict_setting(
+                        {"oracle_opinion_predict": bad}),
+                    "requested")
+        for good in ("requested", "always", "never"):
+            with self.subTest(good=good):
+                self.assertEqual(
+                    op.predict_setting(
+                        {"oracle_opinion_predict": good}), good)
+
+
+class TestOracleOpinionRepairInvalidReadsAsRejudge(unittest.TestCase):
+    """Queue D refill: `oracle_opinion_repair` gains
+    a registry row. The doc states `rejudge` is the
+    default; an invalid value reads as it."""
+
+    def test_invalid_repair_reads_as_rejudge(self):
+        from runner.oracle import opinion as op
+        self.assertEqual(op.repair_setting({}), "rejudge")
+        for bad in ("maybe", "REFUSE", "", 3, None):
+            with self.subTest(bad=bad):
+                self.assertEqual(
+                    op.repair_setting(
+                        {"oracle_opinion_repair": bad}), "rejudge")
+        for good in ("rejudge", "refuse"):
+            with self.subTest(good=good):
+                self.assertEqual(
+                    op.repair_setting(
+                        {"oracle_opinion_repair": good}), good)
+
+
+class TestOracleModeInvalidReadsAsLlm(unittest.TestCase):
+    """Queue D refill: `oracle_mode` gains a
+    registry row. The doc states `llm` is the
+    default and `deterministic` the Pi Light mode;
+    the reader's own contract is that anything but
+    the exact string "deterministic" is llm mode."""
+
+    def test_invalid_mode_reads_as_llm(self):
+        from runner import runner as R
+        self.assertEqual(R._oracle_mode({}), "llm")
+        self.assertEqual(
+            R._oracle_mode({"oracle_mode": "deterministic"}),
+            "deterministic")
+        for bad in ("Deterministic", "DETERMINISTIC", "off",
+                    "", 3, None, True):
+            with self.subTest(bad=bad):
+                self.assertEqual(
+                    R._oracle_mode({"oracle_mode": bad}), "llm")
+
+
 if __name__ == "__main__":
 
     unittest.main()
