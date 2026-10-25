@@ -8,6 +8,17 @@ facts a reader may need to cite. Git history carries the rest.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
+## 3.12.77 - 2026-10-25
+
+<!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
+
+Fix forward over 3.12.75 and 3.12.76, which were tagged but never
+reached PyPI, SourceForge or GitLab: an empty release was created on
+each tag before the pipeline's own, and the release job was refused
+(Q56). Carries the typecheck gate green again (three dead
+`global _LOG_FILE` lines from the extractions removed, Q55) and the
+guard that every `global` in runner/ops/ names a module binding.
+
 ## 3.12.75 - 2026-10-25
 
 Cut from 1a808829. The Darwin suite is green on this release (the
