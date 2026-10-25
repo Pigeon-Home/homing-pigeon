@@ -2514,3 +2514,16 @@ when done, the proving commit or run. Newest first.
   Windows map. Locally coverage-clean on the swallows. Done
   when a coverage run shows them clean and the build's
   Windows shards are green.
+- A (refill) — `runner/ops/extsources.py` reader legs:
+  `_read_json` over-cap and unreadable returns (215,
+  217-218), `_scan_local` vanished-file pass-over and cap
+  break (1204-1205, 1207), `_installed_record` unhashable
+  file left out and in-place stale copy removed (1260-1261,
+  1268) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ReadJsonRefusalLegsTest, ScanLocalLegsTest and
+  InstalledRecordLegsTest in
+  runner/tests/test_extension_sources.py. All three
+  functions are clean under the module's tests locally.
+  Done when a coverage run shows them clean and the
+  build's Windows shards are green.

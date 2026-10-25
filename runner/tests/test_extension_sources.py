@@ -2899,5 +2899,104 @@ class OracleNoteEdgesTest(unittest.TestCase):
         self.assertEqual(note.count("\n- sense"), 2)
 
 
+class ReadJsonRefusalLegsTest(unittest.TestCase):
+    # Queue A refill: _read_json's over-cap and unreadable
+    # returns (lines 215, 217-218). A file bigger than the
+    # cap, one whose JSON does not parse, and one that is
+    # not UTF-8 all read as None -- never a raise, never a
+    # partial value.
+    def test_over_cap_malformed_and_non_utf8_all_read_none(self):
+        with tempfile.TemporaryDirectory() as d:
+            big = os.path.join(d, "big.json")
+            with open(big, "w", encoding="utf-8") as fh:
+                fh.write('{"a": 1234567890}')
+            self.assertIsNone(X._read_json(big, 4))
+            bad = os.path.join(d, "bad.json")
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write("{nope")
+            self.assertIsNone(X._read_json(bad, 1024))
+            raw = os.path.join(d, "raw.json")
+            with open(raw, "wb") as fh:
+                fh.write(b"\xff\xfe{}")
+            self.assertIsNone(X._read_json(raw, 1024))
+            good = os.path.join(d, "good.json")
+            with open(good, "w", encoding="utf-8") as fh:
+                fh.write('{"a": 1}')
+            self.assertEqual(X._read_json(good, 1024), {"a": 1})
+
+
+class ScanLocalLegsTest(unittest.TestCase):
+    # Queue A refill: _scan_local's vanished-file pass-over
+    # and its total-cap break (lines 1204-1205, 1207).
+    def test_a_file_gone_before_its_stat_is_passed_over(self):
+        with tempfile.TemporaryDirectory() as d:
+            real = os.path.join(d, "real.txt")
+            with open(real, "w", encoding="utf-8") as fh:
+                fh.write("here")
+            gone = os.path.join(d, "gone.txt")
+            with mock.patch.object(
+                    X, "_local_files",
+                    return_value=[(gone, "gone.txt"),
+                                  (real, "real.txt")]):
+                out = X._scan_local(d)
+            self.assertEqual([rel for _f, rel, _s, _m in out],
+                             ["real.txt"])
+
+    def test_the_cap_breaks_the_scan(self):
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("a.txt", "b.txt"):
+                with open(os.path.join(d, name), "w",
+                          encoding="utf-8") as fh:
+                    fh.write("12345")
+            self.assertEqual(X._scan_local(d, cap=0), [])
+            self.assertEqual(len(X._scan_local(d, cap=5)), 1)
+
+
+class InstalledRecordLegsTest(unittest.TestCase):
+    # Queue A refill: _installed_record's unhashable-file
+    # pass-over (lines 1260-1261) and its in-place stale-copy
+    # removal (line 1268).
+    def _ext(self, d, files):
+        ext = os.path.join(d, "ext")
+        os.makedirs(ext)
+        for name, body in files.items():
+            with open(os.path.join(ext, name), "w",
+                      encoding="utf-8") as fh:
+                fh.write(body)
+        return ext
+
+    def test_a_file_that_cannot_be_hashed_is_left_out(self):
+        with tempfile.TemporaryDirectory() as d:
+            ext = self._ext(d, {"good.py": "x = 1\n",
+                                "bad.py": "y = 2\n"})
+            real_sha = X._sha384_file
+
+            def sha(path):
+                if path.endswith("bad.py"):
+                    raise OSError("gone mid-hash")
+                return real_sha(path)
+
+            with mock.patch.object(X, "_sha384_file", sha):
+                rec = X._installed_record(
+                    os.path.join(d, "base"), d,
+                    os.path.join(d, "root"), ext, None)
+            self.assertEqual(sorted(rec["files"]), ["good.py"])
+
+    def test_an_in_place_record_removes_the_stale_copy(self):
+        with tempfile.TemporaryDirectory() as d:
+            base = os.path.join(d, "base")
+            ext = self._ext(base, {"one.py": "x = 1\n"})
+            ext_root = os.path.join(d, "root")
+            copy_dir = os.path.join(ext_root, "installed")
+            os.makedirs(copy_dir)
+            with open(os.path.join(copy_dir, "stale.py"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("old")
+            rec = X._installed_record(base, d, ext_root, ext, None)
+            self.assertFalse(rec["copied"])
+            self.assertIn("path", rec)
+            self.assertFalse(os.path.exists(copy_dir))
+
+
 if __name__ == "__main__":
     unittest.main()
