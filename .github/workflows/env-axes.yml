@@ -74,15 +74,19 @@ jobs:
           set -euo pipefail
           grep -q "AXIS apparmor_restrict_unprivileged_userns=${{ matrix.restrict }}" axis-${{ matrix.restrict }}.log \
             || { echo "::error::the corpus did not record apparmor_restrict_unprivileged_userns=${{ matrix.restrict }}"; exit 1; }
+          grep -qE '^OK' axis-${{ matrix.restrict }}.log || { echo "::error::the corpus did not pass at restrict=${{ matrix.restrict }}"; fail=1; }
           echo "::notice title=env-axes restrict=${{ matrix.restrict }}::$(grep -E '^(Ran |OK|FAILED)' axis-${{ matrix.restrict }}.log | tr '\n' ' ')"
           # The log store is not readable from every seat; the failing
           # tests and their assertion lines ride as annotations.
-          grep -E '^(FAIL|ERROR): ' axis-${{ matrix.restrict }}.log | while read -r line; do
+          # grep finds nothing on a green run; under pipefail that
+          # exit 1 would fail the step, so a no-match is not an error.
+          { grep -E '^(FAIL|ERROR): ' axis-${{ matrix.restrict }}.log || true; } | while read -r line; do
             echo "::warning title=env-axes restrict=${{ matrix.restrict }}::$line"
           done
-          grep -E '^(AssertionError|[A-Za-z]+Error): ' axis-${{ matrix.restrict }}.log | head -10 | while read -r line; do
+          { grep -E '^(AssertionError|[A-Za-z]+Error): ' axis-${{ matrix.restrict }}.log || true; } | head -10 | while read -r line; do
             echo "::warning title=env-axes restrict=${{ matrix.restrict }} detail::${line:0:300}"
           done
+          exit "${fail:-0}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
