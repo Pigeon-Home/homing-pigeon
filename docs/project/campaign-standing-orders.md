@@ -161,6 +161,13 @@ when done, the proving commit or run. Newest first.
   coverage run 40180268696) — platform-inapplicable on Linux
   (a ctypes.windll reader behind its own os.name guard),
   covered on Windows; recorded 2026-10-25.
+- A — `runner/ops/posture.py::_check_privileges` (13 lines
+  never run on Windows, coverage run 40180268696) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  platform-inapplicable on Windows (the POSIX branch sits
+  behind the function's os.name guard and its driving test
+  is POSIX by construction), covered on Linux; the one
+  Linux residual, the root row, is taken with it.
 - A — `runner/runner.py::handle_mail` (13 lines never run on
   either platform, coverage run 40180268696) — taken
   2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90

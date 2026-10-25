@@ -57,6 +57,25 @@ class _Api:
     def EqualSid(self, cand, known): return self.st["i"] == 5
     def LocalFree(self, ptr): return 0
 
+class PrivilegesRootRowTest(unittest.TestCase):
+    """Queue A: the root row of _check_privileges -- the
+    one line the gaps test never produced (it scripts
+    euid 5, and CI users are not root). The check is
+    informational by design: this runner is built to run
+    privileged and drop per job, so uid 0 reads as a
+    statement of fact, never a warning.
+    """
+
+    def test_uid_zero_reports_root(self):
+        if os.name == "nt":
+            self.skipTest("geteuid is POSIX")
+        rows = []
+        with M(P.os, "geteuid", return_value=0):
+            P._check_privileges(rows)
+        self.assertEqual(
+            rows, [("OK", "privileges", "running as root (uid 0)")])
+
+
 class PostureGapTest(unittest.TestCase):
     def test_gaps(self):
         if os.name == "nt":
