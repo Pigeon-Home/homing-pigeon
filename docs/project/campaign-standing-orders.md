@@ -2700,6 +2700,19 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Full suite at ca210601: both shards OK --
+  shard 0: 3,318 tests, skipped=13, 290.4s;
+  shard 1: 3,323 tests, skipped=23, 376.7s.
+  This run carries Claude's guard-collapse
+  refactor (9faf606d) and the live-capture module.
+  resources 2026-10-25T21:51:32Z: cores 2 | box
+  cpu 64% | wall 6m19s | cmd cpu 5m51s = 0.9
+  cores busy | peak rss 233 MB | mem used 90% |
+  disk free 166.4 GB | exit 0 | under-driven.
+  resources-top: hatch 176 MB (from the log's
+  top line). (Later D-refill commits were each
+  verified standalone; a suite at the newest
+  head is taken in turn.)
 - Queue D refill taken: the remediation family
   gains its six rows -- remediation_mode
   (deterministic; an unrecognized value is the
