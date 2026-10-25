@@ -323,6 +323,17 @@ when done, the proving commit or run. Newest first.
   lines are still blank although the deletion
   landed in f4e2378 -- the answerer's
   bookkeeping, noted here.)
+- A (refill) — installer legs (coverage run
+  40189711740): _posix_uid's no-getuid answer,
+  _path_exists' raising check, a fresh config
+  with the setup module unimportable under
+  both spellings, and the host install gate's
+  refusal on the one-home and legacy layouts
+  — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  InstallSmallLegsTest (test_install_edges.py).
+  Done when a coverage run shows the taken
+  legs clean.
 - A (refill) — watcher, decoder, pipe and
   baseline legs (coverage run 40189711740):
   job-watcher's empty-history skip, softflowd's

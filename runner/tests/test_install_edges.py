@@ -1068,3 +1068,98 @@ class CleanupTest(unittest.TestCase):
 
 
 
+class InstallSmallLegsTest(unittest.TestCase):
+    """Queue A refill: the installer's guarded
+    legs (coverage run 40189711740: _posix_uid
+    1241, _path_exists 1800-1801,
+    _setup_fresh_config 1056-1057, main 3226
+    and 3270). A platform with no getuid reads
+    as uid 0 rather than raising; a path whose
+    check itself raises reads as absent; a
+    fresh config whose setup module cannot be
+    imported at all skips the wizard and still
+    finishes; and a host the install gate
+    refuses is refused on both layouts, before
+    any file is copied.
+    """
+
+    def test_no_getuid_reads_as_uid_zero(self):
+        with mock.patch.object(os, "getuid", None):
+            self.assertEqual(inst._posix_uid(), 0)
+        self.assertEqual(inst._posix_uid(), os.getuid())
+
+    def test_a_raising_path_check_reads_as_absent(self):
+        self.assertFalse(inst._path_exists(None))
+        with tempfile.TemporaryDirectory() as d:
+            self.assertTrue(inst._path_exists(d))
+            self.assertFalse(
+                inst._path_exists(os.path.join(d, "nope")))
+
+    def test_fresh_config_without_a_setup_module(self):
+        args = mock.Mock(
+            run_as=None, no_inference=True, faster=False,
+            no_profile=True, profile=None,
+            additional_secret=[], instructions=None,
+            instructions_add=None, collector=None,
+            no_collector=True, shared_secret=None,
+            inference_model=None)
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write("{}")
+            # Both import spellings of the setup module must
+            # fail: the sys.modules entries go to None AND the
+            # parent packages lose the attribute, or an earlier
+            # real import would serve the name from the package.
+            import ops as _ops_pkg
+            import runner.ops as _rops_pkg
+            saved = []
+            for pkg in (_rops_pkg, _ops_pkg):
+                if hasattr(pkg, "setup"):
+                    saved.append((pkg, pkg.setup))
+                    delattr(pkg, "setup")
+            try:
+                with mock.patch.dict(sys.modules, {
+                        "runner.ops.setup": None,
+                        "ops.setup": None}), \
+                        mock.patch.object(
+                            inst, "install_ollama_and_model",
+                            return_value=False):
+                    result = inst._setup_fresh_config(args, cfg)
+            finally:
+                for pkg, mod in saved:
+                    pkg.setup = mod
+            self.assertEqual(len(result), 3)
+            self.assertTrue(os.path.isfile(cfg))
+
+    def test_the_gate_refuses_the_one_home_layout(self):
+        with tempfile.TemporaryDirectory() as home:
+            info = (home, os.path.join(home, "bin"),
+                    os.path.join(home, "config.json"),
+                    os.path.join(home, "state"))
+            with mock.patch.object(
+                    inst, "_resolve_home", return_value=info), \
+                    mock.patch.object(
+                        inst, "host_install_gate",
+                        return_value=7), \
+                    mock.patch.object(
+                        inst, "do_install_home") as do_home, \
+                    mock.patch.object(
+                        sys, "argv", ["install.py"]):
+                self.assertEqual(inst.main(), 7)
+            do_home.assert_not_called()
+
+    def test_the_gate_refuses_the_legacy_layout(self):
+        with tempfile.TemporaryDirectory() as dst:
+            with mock.patch.object(
+                    inst, "_resolve_home", return_value=None), \
+                    mock.patch.object(
+                        inst, "host_install_gate",
+                        return_value=7), \
+                    mock.patch.object(
+                        inst, "install_files") as copy, \
+                    mock.patch.object(
+                        sys, "argv",
+                        ["install.py", "--dir", dst]):
+                self.assertEqual(inst.main(), 7)
+            copy.assert_not_called()
