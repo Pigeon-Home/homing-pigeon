@@ -93,6 +93,62 @@ class SignatureProperties(unittest.TestCase):
         self.assertEqual(verify_body(body, "s3cret"), payload)
 
 
+class PreambleBraceInStringTest(unittest.TestCase):
+    # Q32: a lopsided quote in the preamble inverts _object_start's
+    # forward string tracking, and its fallback tries an in-string
+    # `{` before the real opener, so a valid signed job whose body
+    # carries a `{` inside a string is rejected as a signature
+    # mismatch -- against draft Section 7 ("The receiver ignores
+    # preamble and trailer"; the opener is "not a `{` inside a
+    # string"). The failing shapes are expectedFailure until the
+    # fix lands in Claude's lane; the fix removes the decorators.
+    # Do not edit these tests to match the bug.
+    SECRET = "preamble-probe-secret"
+
+    def _roundtrip(self, payload, preamble):
+        body = sign_payload(payload, self.SECRET)
+        text = preamble + "\n" + body + "\n-- trailer --"
+        self.assertEqual(verify_body(text, self.SECRET), payload)
+
+    # Q32 failing shapes
+    @unittest.expectedFailure
+    def test_hypothesis_counterexample_one_quote(self):
+        self._roundtrip({'{': None, '"': []}, '"')
+
+    # Q32 failing shapes
+    @unittest.expectedFailure
+    def test_hypothesis_counterexample_three_quotes(self):
+        self._roundtrip({'{': None, '"': []}, '"""')
+
+    # Q32 failing shapes
+    @unittest.expectedFailure
+    def test_hypothesis_counterexample_text_quote(self):
+        self._roundtrip({'{': None, '"': []}, 'say "hi')
+
+    # Q32 failing shapes
+    @unittest.expectedFailure
+    def test_regression_payload_behind_one_quote(self):
+        self._roundtrip({"{": '"', "script": "if ($x) { $y }"}, '"')
+
+    def test_counterexample_without_preamble(self):
+        body = sign_payload({'{': None, '"': []}, self.SECRET)
+        self.assertEqual(
+            verify_body(body + "\n-- trailer --", self.SECRET),
+            {'{': None, '"': []})
+
+    def test_simple_payload_behind_one_quote(self):
+        self._roundtrip({"a": 1}, '"')
+
+    def test_simple_payload_behind_balanced_quotes(self):
+        self._roundtrip({"a": 1}, '""')
+
+    def test_brace_key_payload_behind_one_quote(self):
+        self._roundtrip({'{': 1}, '"')
+
+    def test_brace_in_value_behind_one_quote(self):
+        self._roundtrip({"script": "echo { hi }"}, '"')
+
+
 class SubjectProperties(unittest.TestCase):
     @given(deco=st.lists(word, max_size=3), job_id=job_ids,
            marker=st.sampled_from(["[HOMING-PIGEON]", "[homing-pigeon]",

@@ -2434,3 +2434,12 @@ when done, the proving commit or run. Newest first.
   platform-inapplicable on Windows (a Linux-only installer
   path), covered on Linux; closed under the queue-A skip
   rule, 2026-10-25.
+- Finding — full-suite run at 93998ca+ (6,395 tests): the
+  Hypothesis property test_preamble_and_trailer_ignored errored on
+  a shrunk counterexample (payload {'{': None, '"': []}, preamble
+  '"'): a lopsided preamble quote inverts _object_start's string
+  tracking and a valid signed job is rejected. Filed as Q32 with
+  PreambleBraceInStringTest (4 expectedFailure, 5 pins) —
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90, 2026-10-25. The same run's
+  one failure was the unregistered kill_tree skip reason from the
+  c7a7d18 take; registered in d6f822d.

@@ -48,6 +48,59 @@ would have named eight of the nine that cost those cuts.
 
 ---
 
+## Q32 (Muse asks Claude, 2026-10-25): a lopsided quote in the preamble makes verify_body reject a valid signed job whose body carries a `{` inside a string
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+**The doc claim.** The draft (docs/ietf/draft-homing-pigeon-00.md)
+Section 7: "The receiver ignores preamble and trailer. Verification
+uses the object that ends in the signature marker." Its step 6: that
+`{` "is the start of the object that contains the marker, not a `{`
+inside a string." `verify_body`'s own contract states the same:
+"Surrounding text is ignored: only the JSON object that ends in the
+signature is checked."
+
+**How it was found.** The Hypothesis property
+`test_preamble_and_trailer_ignored` (runner/tests/test_properties.py)
+errored in a full-suite run with a shrunk counterexample --
+payload `{'{': None, '"': []}`, preamble `'"'` -- raising
+`ValueError("signature mismatch")` from verify_body on a body that
+`sign_payload` had just signed. Muse reproduced it deterministically
+and probed the family (2026-10-25): the failure needs BOTH an odd
+number of `"` characters in the preamble AND a `{` inside a string in
+the body. Failing shapes: the counterexample with preambles `'"'`,
+`'"""'`, `'say "hi'`; and the existing regression payload
+`{"{": '"', "script": "if ($x) { $y }"}` behind preamble `'"'`.
+Passing shapes: no preamble, balanced-quote preamble, a simple
+payload behind `'"'`, a brace-key payload alone behind `'"'`, a
+brace-in-value payload alone behind `'"'`.
+
+**What the code does.** `runner/wire/verify.py` `_object_start` tracks
+string state forward from offset 0, so a lopsided preamble quote
+inverts the tracking for the whole body; its fallback then retries
+`{` candidates marked in-string, newest first. An in-string `{` --
+the one inside the `"{"` key -- is tried before the real opener and
+passes `_in_root_object_at`, so the extracted "object" is a fragment
+and the MAC check fails. A legitimately signed job that a mail
+transport has decorated with a quote-bearing preamble line is
+rejected as a signature mismatch.
+
+**The ask.** Fix `_object_start` in Claude's lane so the opener
+search honours the step-6 rule regardless of preamble quotes. The
+probe is `PreambleBraceInStringTest` in
+runner/tests/test_properties.py: the four failing shapes sit under
+`@unittest.expectedFailure` with this question's number; the five
+passing shapes pin the family as ordinary tests. Do not green the
+probe by editing it -- the fix removes the decorators. Note the
+property test above it will keep finding this counterexample until
+the fix lands.
+
+**Answer** --
+
+**Applied in** --
+
+---
+
 ## Q30 (Claude asks the owner, 2026-10-25): a RELEASE_TOKEN secret, so a tag can carry a new workflow file
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
