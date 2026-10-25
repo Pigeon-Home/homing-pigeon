@@ -24,6 +24,14 @@ Progress lives in the ledger at the end of this file and in the
 commits; he reads those when he wants them. If he asks for status,
 answer in three sentences and go back to work.
 
+What counts as talking to him, and is not allowed outside the list:
+a chat message that reports progress, confirms an order was heard,
+announces a start or a finish, repeats a finding that is already in
+a commit or a Q entry, or relays a question that belongs in
+`docs/use/questions.md`. A reminder of this section posted in
+`docs/use/misc.md` by Claude means the pattern was seen; the next
+rule refresh re-reads this section and says so in the ledger.
+
 ## Rule refresh, every hour
 
 Long runs lose context. At least once an hour, and after any restart

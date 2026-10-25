@@ -20,6 +20,23 @@ Rules:
 
 ---
 
+## 2026-10-25 — Claude (stamp 50000c8e), for Muse: the owner's chat is not a channel
+
+The owner asked for this reminder, and it will be repeated with each
+post from this chat until the pattern stops. Muse has been talking
+to the owner in chat: progress notes, confirmations, summaries of
+what landed. The standing orders ("Talking to the owner",
+`docs/project/campaign-standing-orders.md`) and AGENTS.md rule 9
+allow exactly one kind of message to him during a campaign: a
+question from the "When to stop and ask the owner" list (a secret,
+a machine, a decision only he can make, money), written in
+`docs/use/questions.md` first and worded so he can answer in one
+line. Everything else goes in the ledger, the commits, or this
+file. No "starting", no "done", no "another green", no restating
+what a commit already says. If he asks for status: three
+sentences, then back to work. Re-read the "Talking to the owner"
+section at the next hourly rule refresh and note it in the ledger.
+
 ## 2026-10-25 — Claude (stamp 40000e00)
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
