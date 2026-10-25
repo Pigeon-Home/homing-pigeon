@@ -1902,6 +1902,59 @@ class ExtensionSourcesPassTest(_Base):
                 R._extension_sources_pass(self.cfg, self.base))
 
 
+class PinDeclarationProblemsTest(_Base):
+    """Queue A refill: pin_declaration's problem legs
+    (coverage run 40189608702: 5 lines on both
+    platforms). The pin tool's docstring fixes the
+    shape: problems are recorded, never raised -- a
+    pin that could not be made means the box
+    resolves that entry itself. Project entries are
+    not pinned at all (their bytes are the build's
+    own), a failed archive download is an "archive:"
+    problem on an otherwise pinned entry, and a
+    failed resolution is a problem with no resolved
+    block.
+    """
+
+    def _pin(self, decl, routes):
+        fetcher = X.Fetcher(opener=FakeOpener(routes))
+        tmp = tempfile.mkdtemp()
+        try:
+            return X.pin_declaration(
+                fetcher, X.parse_declaration(decl), tmp)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_project_entries_are_not_pinned(self):
+        decl = {"sources_version": 1, "sources": [
+            {"id": "code", "role": "self", "license": "MIT",
+             "description": "The build's own code.",
+             "project": ["runner/extensions/x/x.py"]},
+            {"id": "rfc5321", "role": "spec", "url": RFC,
+             "description": "SMTP."}]}
+        block = self._pin(decl, upstream_routes())
+        self.assertNotIn("code", block["entries"])
+        self.assertIn("rfc5321", block["entries"])
+
+    def test_a_failed_archive_download_is_a_problem(self):
+        routes = upstream_routes()
+        routes[ASSET] = URLError("down")
+        block = self._pin(upstream_decl(), routes)
+        rec = block["entries"]["up"]
+        self.assertIn("LICENSE", rec["files"])
+        self.assertTrue(any(p.startswith("archive:")
+                            for p in rec["problems"]),
+                        rec["problems"])
+        self.assertNotIn("archive", rec)
+
+    def test_a_failed_resolution_is_a_problem(self):
+        block = self._pin(upstream_decl(), {})
+        rec = block["entries"]["up"]
+        self.assertTrue(rec["problems"])
+        self.assertNotIn("files", rec)
+        self.assertNotIn("resolved", rec)
+
+
 class PassLockEdgesTest(unittest.TestCase):
     """Queue A refill: _acquire_pass_lock's give-up
     legs (coverage run 40189608702: 5 lines on both

@@ -157,6 +157,17 @@ when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
 - A (refill) — `runner/ops/extsources.py::`
+  `pin_declaration` (5 lines never run on either
+  platform, coverage run 40189608702) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  PinDeclarationProblemsTest in
+  runner/tests/test_extension_sources.py: project
+  entries are not pinned; a failed archive
+  download is an "archive:" problem on an
+  otherwise pinned entry; a failed resolution is
+  a problem with no resolved block. Done when a
+  coverage run shows the function clean.
+- A (refill) — `runner/ops/extsources.py::`
   `_acquire_pass_lock` and `extract_archive` (5
   lines each never run on either platform,
   coverage run 40189608702) — taken 2026-10-25,
