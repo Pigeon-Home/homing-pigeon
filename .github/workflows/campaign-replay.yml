@@ -1,0 +1,43 @@
+# Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab
+name: campaign-replay
+
+# The owner's expectation for the campaigns: a unit test for every
+# test run. Each recorded campaign cycle is one test that replays the
+# exact script the cycle sent through the executor and asserts what
+# the live cycle recorded (runner/tests/archive/campaign-*/). The core
+# cut moved them out of default discovery so the suite stays fast;
+# this runs every one of them, 13,321 at the time of writing, on every
+# push, in about a minute. Linux: the campaigns ran there.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: campaign-replay-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        campaign: [campaign-1, campaign-2]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+      - name: replay every recorded cycle
+        run: |
+          set -o pipefail
+          python runner/tests/archive/${{ matrix.campaign }}/test_campaign_loop_cycles.py 2>&1 | tee replay.log
+      - name: every cycle ran and passed
+        if: always()
+        run: python runner/tools/skip_guard.py replay.log --no-skips --require-ok --annotate

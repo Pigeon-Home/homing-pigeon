@@ -404,7 +404,7 @@ class PipelineLiftsTest(unittest.TestCase):
     WORKFLOWS = ("build.yml", "docker.yml", "security.yml",
                  "minimal-userland.yml", "platform-matrix.yml",
                  "env-axes.yml", "coverage.yml", "switch-proofs.yml",
-                 "freebsd.yml", "python-range.yml", "upgrade-proof.yml", "soak.yml",
+                 "freebsd.yml", "python-range.yml", "upgrade-proof.yml", "soak.yml", "campaign-replay.yml",
                  "hardware.yml")
 
     def _wf(self, name):
@@ -686,7 +686,8 @@ class PipelineLessonsTest(unittest.TestCase):
 
     ALL = ("build.yml", "docker.yml", "security.yml",
            "minimal-userland.yml", "platform-matrix.yml",
-           "mutation-seeded.yml", "python-range.yml", "upgrade-proof.yml", "soak.yml")
+           "mutation-seeded.yml", "python-range.yml", "upgrade-proof.yml",
+           "campaign-replay.yml", "soak.yml")
 
     def test_unittest_output_piped_to_tee_captures_stderr(self):
         # unittest writes its report to stderr. 8dc7ac7 piped
