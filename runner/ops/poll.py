@@ -2,6 +2,9 @@
 
 Extracted from runner.py.
 """
+import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
               imap=None, smtp=None, opts=None):
@@ -15,35 +18,35 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     # separate from the mailbox password. Both sides use its UTF-8 bytes
     # as the HMAC-SHA-384 key. No hashing or derivation — the SI uses it
     # as-is.
-    secrets = build_secrets(cfg)
-    key_policies = build_key_policies(cfg)
-    retain_days = _retention_days(cfg)
-    prune_retained(base_dir, retain_days)
-    prune_sent(base_dir, retain_days)
+    secrets = R.build_secrets(cfg)
+    key_policies = R.build_key_policies(cfg)
+    retain_days = R._retention_days(cfg)
+    R.prune_retained(base_dir, retain_days)
+    R.prune_sent(base_dir, retain_days)
     # Built-in resource monitor: on by default. Threshold crossings
     # become security events for the DRI trigger evaluation.
-    if _resources is not None:
+    if R._resources is not None:
         try:
-            event = _resources.check_resources(cfg, base_dir)
-            _note_resource_event(base_dir, event)
+            event = R._resources.checkR._resources(cfg, base_dir)
+            R._note_resource_event(base_dir, event)
         except Exception as e:
             R.log(f"resource monitor failed: {e}", "WARN")
     # Local watches file alerts before the page check, so a trip that
     # happened since the last poll can page on this cycle.
-    _local_watch(cfg, base_dir)
+    R._local_watch(cfg, base_dir)
     # DRI playbook: evaluate page triggers once per cycle. Disabled
     # by default; needs a configured channel to actually send.
-    if _dri is not None:
+    if R._dri is not None:
         try:
-            _dri.maybe_page(cfg, base_dir)
+            R._dri.maybe_page(cfg, base_dir)
         except Exception as e:
             R.log(f"DRI evaluation failed: {e}", "WARN")
-    board = Board(os.path.join(base_dir, "board.json"))
+    board = R.Board(os.path.join(base_dir, "board.json"))
     cfg["board"] = board
-    if not getattr(log, "identity_logged", False):
+    if not getattr(R.log, "identity_logged", False):
         R.log(f"runner identity: {cfg.get('mailbox_user') or '(unset)'} -- accepting signed jobs from any sender")
-        log.identity_logged = True  # pyrefly: ignore[missing-attribute]  # intentional monkey-patch: one log line per process
-    transport_names = _enabled_transports(cfg)
+        R.log.identity_logged = True  # pyrefly: ignore[missing-attribute]  # intentional monkey-patch: one log line per process
+    transport_names = R._enabled_transports(cfg)
     if imap is not None or smtp is not None:
         # Injected-client compatibility path: the diagnostic
         # harness and the local SI test hand poll_once a mailbox
@@ -55,22 +58,22 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
         own_smtp = smtp is None
         try:
             if own_imap:
-                imap = connect_imap(cfg)
+                imap = R.connect_imap(cfg)
             if own_smtp:
-                smtp = connect_smtp(cfg)
+                smtp = R.connect_smtp(cfg)
             try:
-                mails = fetch_job_mails(imap)
+                mails = R.fetch_job_mails(imap)
                 if mails:
                     R.log(f"poll: {len(mails)} message(s)")
-                    workers = _worker_count(cfg, opts)
+                    workers = R._worker_count(cfg, opts)
                     if workers > 1:
                         R.log(f"poll: {workers} workers")
                 else:
-                    workers = _worker_count(cfg, opts)
-                    vlog(f"poll: no new messages "
+                    workers = R._worker_count(cfg, opts)
+                    vR.log(f"poll: no new messages "
                          f"(seen holds {len(seen)})")
                 with ThreadPoolExecutor(max_workers=workers) as ex:
-                    futs = [ex.submit(handle_mail, cfg, imap, smtp, seq, raw,
+                    futs = [ex.submit(R.handle_mail, cfg, imap, smtp, seq, raw,
                                       base_dir, seen, secrets, opts,
                                       key_policies)
                             for seq, raw in mails]
@@ -84,8 +87,8 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                     # save_seen caps the disk copy; keep memory in step.
                     for k in list(seen.keys())[:-SEEN_CAP]:
                         del seen[k]
-                save_seen(seen_path, seen)
-                vlog(f"poll: {len(mails)} message(s) handled by "
+                R.save_seen(seen_path, seen)
+                vR.log(f"poll: {len(mails)} message(s) handled by "
                      f"{workers} worker(s) in "
                      f"{time.monotonic() - t0:.1f}s; "
                      f"seen holds {len(seen)} job id(s)")
@@ -108,8 +111,8 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
         # the envelopes are the contract, the processes are the
         # supervisor's concern -- but nothing new will arrive
         # until the extensions run.
-        if _transports is not None:
-            sup = _transports.active_supervisor(cfg, base_dir)
+        if R._transports is not None:
+            sup = R._transports.active_supervisor(cfg, base_dir)
             if sup is not None:
                 try:
                     sup.check()
@@ -118,11 +121,11 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                     R.log(f"transport supervisor check failed: {e}",
                         "WARN")
             else:
-                vlog("transports: no supervisor in this process; "
+                vR.log("transports: no supervisor in this process; "
                      "servicing channels only")
     # Every enabled transport, email included, is serviced
     # through its channel. The core never opens a pipe itself.
-    if transport_names and _transports is not None:
-        _service_transports(cfg, base_dir, seen, seen_path,
+    if transport_names and R._transports is not None:
+        R._service_transports(cfg, base_dir, seen, seen_path,
                             transport_names, secrets, key_policies,
                             opts)
