@@ -242,24 +242,21 @@ class ProbeTest(unittest.TestCase):
     """Queue A: `_probe` never ran anywhere (coverage run
     40180268696: 19 lines on both platforms) -- every other
     test fixtures the readings it returns. Its seam is one
-    timed TCP connect, and loopback produces three of its
-    four documented outcomes for real: a listening port
-    connects (ok, with a latency), a closed port refuses --
-    which for the gateway still proves reachability (ok,
-    with a latency) and for a configured target does not
-    (not ok, "refused", no sample). The fourth outcome, a
-    connect that never answers, cannot be produced on
-    loopback, so the socket seam is scripted for the
-    timeout and the generic socket error, including an
-    error with no message answering its type name.
+    timed TCP connect. Loopback produces the success
+    outcome for real (a listening port connects, ok, with
+    a latency). The failure outcomes are scripted at the
+    seam: what a real closed port does is the host's
+    choice, not the probe's -- the Windows CI runner's
+    firewall drops the SYN and the connect times out
+    instead of refusing (coverage run 40183585961, where
+    the loopback refusal test failed 'timeout' !=
+    'refused'). Scripted: a refusal, which for the gateway
+    still proves reachability (ok, with a latency) and for
+    a configured target does not (not ok, "refused", no
+    sample); a timeout; and the generic socket error,
+    including an error with no message answering its type
+    name.
     """
-
-    def _closed_port(self):
-        sock = socket.socket()
-        sock.bind(("127.0.0.1", 0))
-        port = sock.getsockname()[1]
-        sock.close()
-        return port
 
     def test_a_listening_port_connects_with_a_latency(self):
         with socket.socket() as listener:
@@ -275,15 +272,21 @@ class ProbeTest(unittest.TestCase):
         self.assertIsNone(got["error"])
 
     def test_a_refusal_is_a_failure_for_a_target(self):
-        got = LP._probe("127.0.0.1", self._closed_port(), 2.0,
-                        is_gateway=False)
+        with mock.patch.object(
+                LP.socket, "create_connection",
+                side_effect=ConnectionRefusedError("refused")):
+            got = LP._probe("192.0.2.10", 443, 0.1,
+                            is_gateway=False)
         self.assertFalse(got["ok"])
         self.assertIsNone(got["latency_ms"])
         self.assertEqual(got["error"], "refused")
 
     def test_a_refusal_still_proves_the_gateway_answered(self):
-        got = LP._probe("127.0.0.1", self._closed_port(), 2.0,
-                        is_gateway=True)
+        with mock.patch.object(
+                LP.socket, "create_connection",
+                side_effect=ConnectionRefusedError("refused")):
+            got = LP._probe("192.0.2.10", 443, 0.1,
+                            is_gateway=True)
         self.assertTrue(got["ok"])
         self.assertIsInstance(got["latency_ms"], float)
         self.assertIsNone(got["error"])

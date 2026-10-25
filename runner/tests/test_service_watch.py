@@ -413,7 +413,11 @@ class ReadLiveTest(unittest.TestCase):
             return ["1", "42", "7", "self", "meminfo", "²"]
 
         def fake_open(path, mode="r", **kw):
-            if not str(path).startswith("/proc/"):
+            # os.path.join speaks the host's separators:
+            # on Windows the scan builds /proc\1\comm, and
+            # the scripted /proc is keyed in slashes.
+            path = str(path).replace("\\", "/")
+            if not path.startswith("/proc/"):
                 return real_open(path, mode, **kw)
             if path == "/proc/42/comm":
                 raise OSError("gone mid-scan")
