@@ -2700,6 +2700,12 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: runner._extension_review_now (4
+  missed). Its two failure arms are pinned in
+  RunnerGateTest: a raising loader and a raising
+  transport discovery each become a problem line in
+  the --inspect review report, with the section left
+  empty and no crash.
 - Queue A: the extreview family is swept.
   FaultLegsTest covers _walk (walk failure, truncation,
   the symlinked-directory remove), fingerprint (None

@@ -605,6 +605,32 @@ class RunnerGateTest(unittest.TestCase):
                          ["dtls", "email", "file", "nats"])
         self.assertTrue(any("probe" in p for p in out["problems"]))
 
+    def test_inspect_review_survives_a_loader_failure(self):
+        # Queue A: the loader raising is a problem line in
+        # the report, not a crash of --inspect review.
+        with mock.patch.object(
+                R._extensions, "load_extensions",
+                side_effect=RuntimeError("loader blew up")):
+            out = R._extension_review_now(
+                {"extensions_dir": self.ext}, self.tmp)
+        self.assertEqual(out["senses"], {})
+        self.assertTrue(any("loader failed" in p
+                            and "loader blew up" in p
+                            for p in out["problems"]),
+                        out["problems"])
+
+    def test_inspect_review_survives_a_discovery_failure(self):
+        with mock.patch.object(
+                R._transports, "discover_transport_extensions",
+                side_effect=RuntimeError("discovery blew up")):
+            out = R._extension_review_now(
+                {"extensions_dir": self.ext}, self.tmp)
+        self.assertEqual(out["transports"], {})
+        self.assertTrue(any("transport discovery failed" in p
+                            and "discovery blew up" in p
+                            for p in out["problems"]),
+                        out["problems"])
+
     def test_the_inspect_choice_exists(self):
         with open(os.path.join(ROOT, "runner", "runner.py"),
                   encoding="utf-8") as fh:
