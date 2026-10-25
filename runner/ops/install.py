@@ -1299,8 +1299,47 @@ def install_macos(dst_dir: str, cfg_path: str, extra=()):
     with open(path, "w") as fh:
         fh.write(plist)
     uid = _posix_uid()
-    run(["launchctl", "bootstrap", f"gui/{uid}", path])
-    print(f"installed: launchd agent at {path}")
+    loaded = _launchd_load(uid, path)
+    print(f"installed: launchd agent at {path}"
+          + ("" if loaded else " (not loaded yet)"))
+
+
+LAUNCHD_LABEL = "com.homing-pigeon.runner"
+
+
+def _launchd_load(uid: int, path: str) -> bool:
+    """Load the agent now, if this session can. True when it is
+    running after this call.
+
+    `launchctl bootstrap gui/<uid>` needs a logged-in GUI session:
+    over SSH, in CI, on a headless Mac it exits 5 (Input/output
+    error), and over a loaded agent (an upgrade) it refuses too. The
+    install is complete either way, since the agent file is in
+    place and launchd loads it at the user's next login (Q39,
+    2026-10-25). An upgrade over a loaded agent is restarted with
+    kickstart so the new code runs; anything else gets the command
+    to run from a logged-in session.
+    """
+    try:
+        run(["launchctl", "bootstrap", f"gui/{uid}", path])
+        return True
+    except (subprocess.CalledProcessError, OSError) as e:
+        problem = str(e)
+    try:
+        kick = subprocess.run(
+            ["launchctl", "kickstart", "-k", f"gui/{uid}/{LAUNCHD_LABEL}"],
+            check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if kick.returncode == 0:
+            print("launchd agent was already loaded; restarted it on the "
+                  "new install")
+            return True
+    except (OSError, ValueError):
+        pass
+    print(f"warning: launchctl bootstrap did not load the agent now "
+          f"({problem}); the agent file is installed and loads at this "
+          f"user's next login. To load it now, from a logged-in session: "
+          f"launchctl bootstrap gui/{uid} {path}")
+    return False
 
 
 def uninstall_macos():

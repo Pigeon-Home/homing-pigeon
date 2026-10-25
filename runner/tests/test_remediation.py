@@ -800,19 +800,6 @@ class ExecuteJobTest(unittest.TestCase):
         self.assertNotIn("remediation", r)
 
 
-# Q38: on Darwin the remediation tree sampler has no
-# implementation -- sample_tree returns the root alone when
-# /proc is absent and the platform is not Windows -- so a
-# process storm is invisible there and the storm test's kill
-# cannot fire. The test is the failing-by-design probe on
-# Darwin until the sampler exists; it runs for real on
-# Linux, on FreeBSD (procfs), and on Windows.
-if sys.platform == "darwin":
-    ExecuteJobTest.test_process_storm_kills_the_whole_tree = (
-        unittest.expectedFailure(
-            ExecuteJobTest.test_process_storm_kills_the_whole_tree))
-
-
 @unittest.skipIf(not POSIX, "execute_job fixtures are POSIX shell")
 class ExecuteJobOracleTest(unittest.TestCase):
     """The Oracle layer end to end, inference faked at ask_model."""

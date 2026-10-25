@@ -141,6 +141,9 @@ _SUBPROCESS_CALLS = re.compile(
     r"\bos\s*\.\s*(?:system|popen|exec[lv]p?e?|spawn[lv]p?e?|fork|"
     r"forkpty|posix_spawnp?|startfile)\s*\(")
 _NATIVE_CALLS = re.compile(r"\bctypes\s*\.")
+# exec(, eval(, __import__( as free calls. The lookbehind is what
+# keeps ast.literal_eval( and any attribute call (obj.eval() out:
+# a word character or a dot before the name is not this pattern.
 _DYNAMIC_CALLS = re.compile(
     r"(?<![\w.])(?:exec|eval|__import__)\s*\(|\bimportlib\.import_module\s*\(")
 _SHELL_NETWORK = re.compile(
@@ -321,7 +324,11 @@ def _scan_python(rel, text, observed, findings, signals_in_code):
             "syntax", "high",
             f"does not compile: {e.msg}", rel, e.lineno or 0))
         tree = None
-    except (ValueError, RecursionError) as e:
+    except (ValueError, RecursionError, MemoryError) as e:
+        # Python 3.9 to 3.11 raise ValueError for a NUL byte in the
+        # source and RecursionError (or MemoryError) for nesting past
+        # the parser's depth; 3.12 turned those into SyntaxError.
+        # The floor is 3.9, so this arm is live there (Q42).
         findings.append(_finding(
             "syntax", "high", f"does not parse: {e}", rel))
         tree = None
@@ -341,16 +348,12 @@ def _scan_python(rel, text, observed, findings, signals_in_code):
         if m:
             observed.setdefault(cap, []).append(
                 f"{rel}:{_line_of(text, m)}: {m.group(0).strip()}")
-    for m in _DYNAMIC_CALLS.finditer(text):
-        # ast.literal_eval is not eval.
-        start = m.start()
-        if text[max(0, start - 8):start].endswith("literal_"):
-            continue
+    m = _DYNAMIC_CALLS.search(text)
+    if m:
         findings.append(_finding(
             "dynamic", "warn",
             f"evaluates code at run time: {m.group(0).strip()}",
             rel, _line_of(text, m)))
-        break
     for m in _SIGNAL_IN_CODE.finditer(text):
         signals_in_code.setdefault(m.group(1), (rel, _line_of(text, m)))
 
@@ -681,9 +684,7 @@ def _record(base_dir, kind, full):
         if _LAST_REPORT.get((path, kind)) == full:
             return
         _LAST_REPORT[(path, kind)] = full
-        data = load_report(base_dir) or {}
-        if not isinstance(data, dict):
-            data = {}
+        data = load_report(base_dir) or {}   # a dict or None, never else
         data["mode"] = full.get("mode")
         data["reviewed_at"] = _now_iso()
         data[f"{kind}s"] = full.get("extensions", {})

@@ -38,11 +38,11 @@ source-install proof (stamp 40000e00), seen while clearing main:
   intent really is a bare OK, the leg needs root, z3 and the proof
   variable. Not changed from here: the semantics are the author's.
 - `test_upgrade_proof.test_this_tree_installs_and_upgrades_over_itself`
-  fails on `test-macos` since b32d423. The proof shims `systemctl`
-  on PATH and reads `HP_SYSTEMCTL_LOG`; on Darwin the installer's
-  service step is not systemd's, so the shim is never called and
-  the checks that read the log cannot pass. A guess from the code,
-  not the log (the log host is not reachable from this seat).
+  failed on `test-macos` since b32d423. Muse read the log and
+  filed it as Q39 (`launchctl bootstrap` aborting a GUI-less
+  install); answered and fixed there, so the proof should go green
+  on the next macOS run. (An earlier version of this note guessed
+  at the systemctl shim; the proof already carves Darwin out.)
 
 ## 2026-10-25 — Grok
 

@@ -479,12 +479,92 @@ def sample_tree_windows(root_pid):
     return sample
 
 
+# --- Darwin and the BSDs, via ps. No /proc with Linux's per-pid
+# files there (FreeBSD's procfs, where mounted, has another shape),
+# and the stdlib has no process-table call, so one `ps` per sample
+# gives the table: pid, parent, resident set in KiB, and the
+# accumulated CPU time, which ps prints as [[DD-]HH:]MM:SS[.ss].
+# One fork per sample is the price; the storm this exists to catch
+# makes the fork slower, not impossible (Q38, 2026-10-25).
+
+_PS_ARGS = ("ps", "-axo", "pid=,ppid=,rss=,time=")
+
+
+def _ps_available():
+    return shutil.which("ps") is not None
+
+
+def _cpu_seconds(text):
+    """Seconds from ps's time column: '0:00.05', '1:02:03',
+    '2-01:00:00'. None when the text is not that."""
+    try:
+        days = 0
+        if "-" in text:
+            d, text = text.split("-", 1)
+            days = int(d)
+        secs = 0.0
+        for part in text.split(":"):
+            secs = secs * 60 + float(part)
+        return days * 86400 + secs
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
+def _ps_table(run=None):
+    """{pid: (ppid, rss_bytes|None, cpu_seconds)} from one ps call;
+    empty when ps is absent or says nothing usable."""
+    run = run or subprocess.run
+    try:
+        out = run(list(_PS_ARGS), stdout=subprocess.PIPE,
+                  stderr=subprocess.DEVNULL, timeout=10,
+                  universal_newlines=True).stdout
+    except (OSError, subprocess.SubprocessError, ValueError,
+            AttributeError):
+        return {}
+    table = {}
+    for line in (out or "").splitlines():
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+        try:
+            pid, ppid = int(parts[0]), int(parts[1])
+        except ValueError:
+            continue
+        try:
+            rss = int(parts[2]) * 1024
+        except ValueError:
+            rss = None
+        cpu = _cpu_seconds(parts[3])
+        table[pid] = (ppid, rss, cpu if cpu is not None else 0.0)
+    return table
+
+
+def sample_tree_ps(root_pid, run=None):
+    table = _ps_table(run)
+    parents = {pid: row[0] for pid, row in table.items()}
+    sample = {}
+    for pid in tree_pids(root_pid, parents):
+        row = table.get(pid)
+        sample[pid] = (row[2], row[1]) if row else (0.0, None)
+    if root_pid not in sample:
+        sample[root_pid] = (0.0, None)
+    return sample
+
+
 def sample_tree(root_pid):
-    """This platform's sampler. {pid: (cpu_seconds, rss|None)}."""
+    """This platform's sampler. {pid: (cpu_seconds, rss|None)}.
+
+    Windows reads the toolhelp snapshot, Linux reads /proc, and
+    every other POSIX (Darwin, the BSDs) asks ps. A box with none of
+    those sees the root alone, which is what the watch can honestly
+    say about the tree there.
+    """
     if os.name == "nt":
         return sample_tree_windows(root_pid)
-    if os.path.isdir("/proc"):
+    if sys.platform.startswith("linux") and os.path.isdir("/proc"):
         return sample_tree_posix(root_pid)
+    if _ps_available():
+        return sample_tree_ps(root_pid)
     return {root_pid: (0.0, None)}
 
 

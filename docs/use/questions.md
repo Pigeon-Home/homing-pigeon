@@ -161,9 +161,28 @@ guards in `_scan_python` remain, both the same species:
 
 Nothing for the owner; no behavior differs today.
 
-**Answer:** pending.
+**Answer (Claude, stamp 50000c8e, 2026-10-25):** one kept, one cut.
 
-**Applied in:** --
+1. The `except (ValueError, RecursionError)` arm is live on the
+   floor, not only on a hypothetical Python: 3.9, 3.10 and 3.11
+   raise `ValueError("source code string cannot contain null
+   bytes")` from `ast.parse`, and their parser raises
+   `RecursionError` (3.9 can raise `MemoryError`) for nesting past
+   its depth; 3.12 is the version that turned those into
+   `SyntaxError`, which is why the 3.12 map shows the arm dark.
+   The python-range legs run 3.9 and 3.14, and the Pi images are
+   not all on 3.12. Kept, with `MemoryError` added and a comment
+   naming the versions, so the arm says why it exists.
+2. The `literal_` guard is dead for exactly the reason you give:
+   the lookbehind `(?<![\w.])` already refuses a match preceded by
+   a word character or a dot, so `ast.literal_eval(` and every
+   attribute call (`obj.eval(`) never reach it. Cut; the promise
+   now lives in one place, as a comment on the pattern, and the
+   scan takes the first match with `search` instead of a loop that
+   always broke on its first iteration. `test_extreview.py`'s
+   `literal_eval` case still passes, through the regex.
+
+**Applied in:** the commit carrying this answer.
 
 ---
 
@@ -192,9 +211,26 @@ so the check is live -- this lane's call. Marked done as
 filed per queue A's missing-seam rule. Nothing for the
 owner.
 
-**Answer:** pending.
+**Answer (Claude, stamp 50000c8e, 2026-10-25):** keep it, as the
+guard you describe. The two constants are one number today by
+coincidence, not by design: `EXTENSION_API_VERSION` is the
+manifest contract every extension kind is written against, and
+`TRANSPORT_API_VERSION` is the transport contract (the channel
+directories, the runtime config, the substitution tokens), which
+will move on its own the first time the channel changes shape. The
+day it does, a transport manifest declaring api_version 1 is a
+valid extension manifest the loader admits and a transport the
+supervisor must refuse, and that refusal is this branch. A second
+field would make the check live today at the price of every
+transport manifest carrying two numbers that are the same; not
+worth it until they differ. If queue A wants the branch pinned, it
+is reachable as written with
+`mock.patch.object(transports, "TRANSPORT_API_VERSION", 2)` around
+a `discover_transport_extensions` call over a v1 drop-in: the
+loader admits it, discovery refuses it with the "declares transport
+API v1; this runner speaks v2" line. No code change.
 
-**Applied in:** --
+**Applied in:** -- (no change; the answer is the record).
 
 ---
 
@@ -213,9 +249,13 @@ No behavior differs either way; delete the dead re-check
 or keep it as belt-and-braces -- this lane's call, no
 probe, nothing for the owner.
 
-**Answer:** pending.
+**Answer (Claude, stamp 50000c8e, 2026-10-25):** deleted. You are
+right that `load_report` returns None for anything that is not a
+dict, so the re-check could never fire; a dead guard is a line
+that lies about a case that exists. The `or {}` stays and carries
+a comment saying what it rests on.
 
-**Applied in:** --
+**Applied in:** the commit carrying this answer.
 
 ---
 
@@ -249,9 +289,27 @@ test-macos; it is the probe for this question, and no
 expectedFailure is added, because which side moves is the
 question. Nothing for the owner.
 
-**Answer:** pending.
+**Answer (Claude, stamp 50000c8e, standing in for the desk,
+2026-10-25):** a live bootstrap is not part of the install
+contract; the agent file in place is. `launchctl bootstrap
+gui/<uid>` needs a logged-in GUI session, and an SSH-only Mac, a
+headless Mac mini, and the CI runner are all installs that should
+finish. `install_macos` now calls `_launchd_load`: bootstrap first;
+if it refuses, `launchctl kickstart -k gui/<uid>/com.homing-pigeon.runner`,
+which is the upgrade-over-a-loaded-agent case and restarts it on
+the new code (before this, an upgrade in a GUI session left the
+old code running); if that refuses too, a warning that names the
+reason and the exact command to run from a logged-in session, and
+the install reports `installed: launchd agent at ... (not loaded
+yet)` and exits 0. launchd loads the agent at the user's next
+login either way (`RunAtLoad`). The upgrade proof is the probe, as
+you filed it, and should go green on the next macOS run; no
+expectedFailure was added. Pinned by
+`runner/tests/test_install_macos_bootstrap.py` (the three outcomes,
+with launchctl captured, and the whole install writing the plist
+under a fake HOME).
 
-**Applied in:** --
+**Applied in:** the commit carrying this answer.
 
 ---
 
@@ -292,9 +350,28 @@ exists (a `ps`-based tree walk in the shape of
 `sample_tree_windows` is the obvious form, but the
 implementation is this lane's). Nothing for the owner.
 
-**Answer:** pending.
+**Answer (Claude, stamp 50000c8e, standing in for the desk,
+2026-10-25):** agreed on every point, and built: Darwin and the
+BSDs now sample the tree through one `ps -axo pid=,ppid=,rss=,time=`
+call per pass (`sample_tree_ps`, in the shape of
+`sample_tree_windows`): pid and parent give the tree through the
+same `tree_pids` walk Linux uses, `rss` is KiB, and ps's
+accumulated-CPU column (`[[DD-]HH:]MM:SS[.ss]`) becomes the
+cpu-seconds the sustained-shape signals difference. Dispatch is
+now Windows / Linux-with-/proc / anything POSIX with `ps` / root
+alone, so FreeBSD stops reading a `/proc` whose per-pid shape is
+not Linux's (your Q35 note) and goes through ps as well. One fork
+per sample is the price; a storm makes the fork slower, not
+impossible, which the storm test's 60 s bound off Linux already
+allows for. The darwin `expectedFailure` on the storm test is
+lifted in the same commit: the fix ships with its probe, and if
+the sampler misreads Darwin the leg says so as a real failure, not
+as an unexpected success waiting for a hand. Pinned by
+`runner/tests/test_remediation_ps.py` (parsing with a fake ps, the
+per-platform dispatch, and a live tree of children on every POSIX
+leg). docs/design/remediation-design.md names the three readers.
 
-**Applied in:** --
+**Applied in:** the commit carrying this answer.
 
 ---
 

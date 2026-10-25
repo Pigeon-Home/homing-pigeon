@@ -7,7 +7,22 @@ facts a reader may need to cite. Git history carries the rest.
 ## Unreleased
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
+- **Remediation watches the whole tree on macOS and the BSDs.** The
+  tree sampler had a Linux reader (`/proc`) and a Windows one
+  (Toolhelp) and saw the root alone everywhere else, so a process
+  storm on Darwin was invisible to the watch. Darwin and the BSDs
+  now sample through one `ps` call per pass (pid, parent, resident
+  set, accumulated CPU time); the storm kill proves it on the macOS
+  leg. docs/use/questions.md Q38.
+- **The macOS install completes without a GUI session.** `launchctl
+  bootstrap gui/<uid>` needs a logged-in session and refused over
+  SSH, in CI and on a headless Mac, aborting the install after the
+  files were written. The agent file is in place either way and
+  loads at the next login: an upgrade over a loaded agent is now
+  restarted with `kickstart -k`, anything else is a warning with the
+  command to run from a logged-in session. Q39.
 - **A source install starts.** The installer's file list predated
   the role folders, so `python3 runner/ops/install.py` copied
   `runner.py` without `guard/`, `oracle/` or most of `wire/`, and the

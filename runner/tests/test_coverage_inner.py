@@ -257,7 +257,9 @@ class RemediationProbeEdges(unittest.TestCase):
                 self.assertEqual(rem.sample_tree(4), windows_tree)
             sampler.assert_called_once_with(4)
             return
-        with mock.patch.object(os.path, "isdir", return_value=False):
+        with mock.patch.object(os.path, "isdir", return_value=False), \
+                mock.patch.object(rem, "_ps_available",
+                                  return_value=False):
             self.assertEqual(rem.sample_tree(4), {4: (0.0, None)})
 
     def test_sample_tree_dispatch_keys_off_os_name(self):
@@ -270,9 +272,22 @@ class RemediationProbeEdges(unittest.TestCase):
                     return_value=windows_tree) as sampler:
             self.assertEqual(rem.sample_tree(4), windows_tree)
         sampler.assert_called_once_with(4)
+        # A POSIX box with no /proc of Linux's shape asks ps (Q38);
+        # with no ps either, the root alone is all it can say.
         with mock.patch.object(os, "name", "posix"), \
                 mock.patch.object(os.path, "isdir",
-                                   return_value=False):
+                                   return_value=False), \
+                mock.patch.object(rem, "_ps_available",
+                                  return_value=True), \
+                mock.patch.object(rem, "sample_tree_ps",
+                                  return_value={4: (0.5, 10)}) as ps:
+            self.assertEqual(rem.sample_tree(4), {4: (0.5, 10)})
+        ps.assert_called_once_with(4)
+        with mock.patch.object(os, "name", "posix"), \
+                mock.patch.object(os.path, "isdir",
+                                   return_value=False), \
+                mock.patch.object(rem, "_ps_available",
+                                  return_value=False):
             self.assertEqual(rem.sample_tree(4), {4: (0.0, None)})
 
 

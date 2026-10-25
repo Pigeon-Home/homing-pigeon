@@ -280,8 +280,11 @@ The open items above, as the build closed them:
   `poll_interval_sec`, because most jobs are shorter than one
   mailbox poll cycle and a monitor that samples once per poll
   would watch nothing. Per-sample cost is one walk of the
-  job's process subtree (via `/proc`, or a Toolhelp32 snapshot
-  on Windows) plus a stat of its workdir. Correlation rule,
+  job's process subtree (via `/proc` on Linux, a Toolhelp32
+  snapshot on Windows, and one `ps -axo pid,ppid,rss,time`
+  call on Darwin and the BSDs, which have no `/proc` of Linux's
+  shape and no stdlib route to the process table -- Q38) plus
+  a stat of its workdir. Correlation rule,
   as built: the box's own clock is the only clock; an event
   belongs to a job's window when its timestamp falls inside
   the run and it names the job — by job id, by workdir path,
