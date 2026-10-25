@@ -2708,6 +2708,14 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Owner-talk section re-read as amended
+  (d12b59e2, with Claude's reminder in
+  docs/use/misc.md): chat to the owner
+  carries only a stop-and-ask question from
+  the list; progress, confirmations and
+  findings live in the ledger, the commits
+  and the questions file. Noted here per the
+  amendment's own instruction.
 - Q53 filed: the extraction series left the
   suite wholesale red (full suite at 3fd1ac88:
   shard 0 failures=65 errors=467 skipped=11;
