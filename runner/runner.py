@@ -9051,7 +9051,16 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
         return ""
     return blob[:cap] if len(blob) > cap else blob
 
-from runner.ops.oracle_page import oracle_page  # noqa: E402
+# The Oracle's HTML page lives in runner/ops/oracle_page.py; loaded
+# the way every sibling is, so `python3 runner.py` from an install
+# (where `runner` is this file, not the package) and the one-file
+# binaries find it too.
+_oracle_page_mod = _load_mod("runner.ops.oracle_page", "ops.oracle_page")
+oracle_page = _oracle_page_mod.oracle_page if _oracle_page_mod else None
+# The argument parser (runner/ops/cli.py), loaded here with the other
+# siblings rather than inside main(), so a test that stands in for
+# _load_mod during main() does not hand main a parser it did not ask for.
+_cli = _load_mod("runner.ops.cli", "ops.cli")
 
 
 _ORACLE_REJECTS = {
@@ -9583,8 +9592,9 @@ def main() -> int:
     # stays in "running", away from --quiet and the other
     # off-switches, so the page never reads as a
     # turn-everything-off menu.
-    from runner.ops.cli import build_parser
-    ap = build_parser()
+    if _cli is None:
+        raise ImportError("runner/ops/cli.py is missing")
+    ap = _cli.build_parser()
     args = ap.parse_args()
 
     if args.workers is not None and args.workers < 1:

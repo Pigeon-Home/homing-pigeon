@@ -401,10 +401,15 @@ class SensesSectionTest(unittest.TestCase):
 
 class WiringTest(unittest.TestCase):
     def test_diagnose_flag_is_wired(self):
+        # The parser lives in runner/ops/cli.py since its extraction;
+        # the dispatch stays in runner.py.
+        with open(os.path.join(REPO, "runner", "ops", "cli.py"),
+                  encoding="utf-8") as fh:
+            parser_src = fh.read()
         with open(os.path.join(REPO, "runner", "runner.py"),
                   encoding="utf-8") as fh:
             src = fh.read()
-        self.assertIn('"--diagnose"', src)
+        self.assertIn('"--diagnose"', parser_src)
         self.assertIn("args.diagnose", src)
         self.assertIn("_harness.main", src)
 

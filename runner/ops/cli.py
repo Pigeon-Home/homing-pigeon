@@ -3,11 +3,21 @@
 Extracted from runner.py to keep that file under the line budget.
 """
 import argparse
-from runner._version import __version__
+
+try:
+    from runner._version import __version__
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        from _version import __version__
+    except ImportError:
+        __version__ = "unknown"
 try:
     from runner.wire import transports as _transports
 except ImportError:
-    _transports = None
+    try:
+        from wire import transports as _transports  # type: ignore
+    except ImportError:
+        _transports = None
 
 
 def _transports_arg(text):

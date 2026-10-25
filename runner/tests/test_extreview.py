@@ -632,7 +632,7 @@ class RunnerGateTest(unittest.TestCase):
                         out["problems"])
 
     def test_the_inspect_choice_exists(self):
-        with open(os.path.join(ROOT, "runner", "runner.py"),
+        with open(os.path.join(ROOT, "runner", "ops", "cli.py"),
                   encoding="utf-8") as fh:
             parser_src = fh.read()
         self.assertIn('"review", "sources"]', parser_src)
