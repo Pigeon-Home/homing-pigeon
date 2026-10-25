@@ -492,7 +492,7 @@ when done, the proving commit or run. Newest first.
   successful run returns its stdout; a nonzero exit,
   a timeout, and an OSError from the run are each
   None. Done when a coverage run shows the function
-  clean.
+  clean. — done: coverage run 40189711740 (main at 8765f81) shows no never-executed lines on either platform.
 - A (refill) — `runner/extensions/wazuh-feed/`
   `wazuh_feed.py::main` (7 lines never run on either
   platform, coverage run 40187685363) — taken
@@ -503,7 +503,7 @@ when done, the proving commit or run. Newest first.
   short delivery is exit 2 with the state unwritten;
   a manifest with non-object tunables reads as the
   defaults. Done when a coverage run shows the
-  function clean.
+  function clean. — done: coverage run 40189711740 (main at 8765f81) shows no never-executed lines on either platform.
 - A (refill) — `runner/extensions/softflowd-feed/`
   `softflowd_feed.py::main` (7 lines never run on
   either platform, coverage run 40187685363) — taken
@@ -514,7 +514,7 @@ when done, the proving commit or run. Newest first.
   given; local delivery success writes the state;
   not set up is exit 2; a short delivery is exit 2
   with the state unwritten. Done when a coverage run
-  shows the function clean.
+  shows the function clean. — done: coverage run 40189711740 (main at 8765f81) shows no never-executed lines on either platform.
 - A (refill) — `runner/extensions/latency-post/`
   `latency_post.py::main` (7 lines never run on either
   platform, coverage run 40187685363) — taken
