@@ -2700,6 +2700,14 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: runner.save_sent_result (3 missed,
+  Linux map) -- its best-effort failure arm is pinned
+  in test_sent_results.py: a record that cannot be
+  written (a file where the sent directory belongs)
+  returns False, logs the WARN naming the job, and
+  never raises into the send path.
+- Switch proofs at b317475 (the cage fixes) completed
+  SUCCESS on all legs; Q37's CI confirmation is in.
 - Queue B filed as Q43: the axes (ptrace_scope,
   protected_symlinks/regular, hidepid, the job_user
   cross) need env-axes.yml legs -- this rig's

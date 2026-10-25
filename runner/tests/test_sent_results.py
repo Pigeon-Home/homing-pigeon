@@ -19,6 +19,7 @@ import tempfile
 import time
 import unittest
 import uuid
+from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -186,6 +187,28 @@ class SentResultTest(unittest.TestCase):
         # A record is for one base dir; none means no claim.
         self.assertFalse(R.save_sent_result("", skey, job, "s", "b"))
         self.assertIsNone(R.load_sent_result("", skey, job))
+
+    def test_a_failed_record_is_logged_and_never_raises(self):
+        # Queue A: the best-effort promise in save_sent_result's
+        # docstring -- a failure to record is logged at WARN
+        # and the send proceeds (the caller sees False), it
+        # never raises into the send path.
+        job = TR.job_payload("j1")
+        skey = R._seen_key(self.cfg, "j1")
+        blocker = os.path.join(self.tmp, R.SENT_DIRNAME)
+        with open(blocker, "w") as f:
+            f.write("a file where the sent directory belongs")
+        lines = []
+        with mock.patch.object(
+                R, "log",
+                lambda msg, level="INFO": lines.append((level, msg))):
+            self.assertFalse(
+                R.save_sent_result(self.tmp, skey, job, "s", "b"))
+        self.assertTrue(any(level == "WARN"
+                            and "sent-result record failed" in msg
+                            and "j1" in msg
+                            for level, msg in lines), lines)
+        self.assertIsNone(R.load_sent_result(self.tmp, skey, job))
 
 
 if __name__ == "__main__":
