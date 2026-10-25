@@ -156,6 +156,24 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/transport_extensions/nats/`
+  `__main__.py::NatsClient.connect` (9 lines never run
+  on either platform, coverage run 40187685363) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  NatsConnectFailuresTest in
+  runner/tests/test_transports.py drives a scripted
+  loopback broker: a refused connection, silence
+  before INFO, a non-INFO greeting, silence after
+  INFO, a server -ERR, and a wrong PONG are each a
+  TransportError naming the stage. Done when a
+  coverage run shows the function clean but the
+  success return the happy path already covers.
+  With it, `runner/ops/install.py::`
+  `_install_osquery_linux` (11 lines, Windows only in
+  the same run) is platform-inapplicable on Windows
+  (a Linux-only installer path), covered on Linux;
+  closed under the queue-A skip rule.
 - A (refill) — `runner/transport_extensions/dtls/`
   `__main__.py::main` (9 lines never run on either
   platform, coverage run 40187685363) — taken

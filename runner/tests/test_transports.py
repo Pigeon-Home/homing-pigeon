@@ -2128,5 +2128,120 @@ class SupervisorFailureTest(unittest.TestCase):
             sup._pump_extension_log("file", more(), log_path)
 
 
+class _ScriptedNats(threading.Thread):
+    """One connection, one scripted behavior: the behavior
+    callable gets the connected socket. It should hold the
+    connection (a recv that ends when the client gives up
+    and closes) when the script is silence."""
+
+    def __init__(self, behavior):
+        super().__init__(daemon=True)
+        self.behavior = behavior
+        self.sock = socket.socket(socket.AF_INET,
+                                  socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET,
+                             socket.SO_REUSEADDR, 1)
+        self.sock.bind(("127.0.0.1", 0))
+        self.sock.listen(1)
+        self.port = self.sock.getsockname()[1]
+
+    def run(self):
+        try:
+            conn, _ = self.sock.accept()
+            conn.settimeout(10)
+            try:
+                self.behavior(conn)
+            finally:
+                conn.close()
+        except Exception:
+            pass
+        finally:
+            self.sock.close()
+
+
+def _hold(conn):
+    try:
+        while conn.recv(4096):
+            pass
+    except OSError:
+        pass
+
+
+def _after_info(reply):
+    def behave(conn):
+        conn.sendall(b'INFO {"server_id":"fake"}\r\n')
+        conn.recv(4096)          # the CONNECT + PING
+        if reply is not None:
+            conn.sendall(reply)
+        _hold(conn)
+    return behave
+
+
+class NatsConnectFailuresTest(unittest.TestCase):
+    """Queue A refill: NatsClient.connect's failure legs
+    (coverage run 40187685363: 9 lines on both platforms).
+    The client's contract, from its own error strings:
+    every refusal and every silence from the broker is a
+    TransportError that says which stage failed -- the
+    transport fails the cycle and the next poll reconnects,
+    so connect must never hang past its timeout and never
+    mistake a wrong answer for a handshake.
+    """
+
+    def _connect(self, port, timeout=5.0):
+        client = nats_ext.NatsClient(
+            f"nats://127.0.0.1:{port}", timeout=timeout)
+        try:
+            with self.assertRaises(
+                    nats_ext.TransportError) as cm:
+                client.connect()
+            return str(cm.exception)
+        finally:
+            if client.sock is not None:
+                client.sock.close()
+
+    def _serve(self, behavior):
+        server = _ScriptedNats(behavior)
+        server.start()
+        return server.port
+
+    def test_a_refused_connection_is_named(self):
+        probe = socket.socket()
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+        probe.close()
+        msg = self._connect(port, timeout=2.0)
+        self.assertIn("cannot connect to", msg)
+
+    def test_silence_before_info_times_out(self):
+        msg = self._connect(self._serve(_hold), timeout=0.5)
+        self.assertIn("timed out waiting for the server INFO",
+                      msg)
+
+    def test_a_non_info_greeting_is_refused(self):
+        def behave(conn):
+            conn.sendall(b"HELLO\r\n")
+            _hold(conn)
+
+        msg = self._connect(self._serve(behave))
+        self.assertIn("expected INFO, got", msg)
+
+    def test_silence_after_info_times_out(self):
+        msg = self._connect(self._serve(_after_info(None)),
+                            timeout=0.5)
+        self.assertIn("timed out waiting for PONG", msg)
+
+    def test_a_server_error_is_carried(self):
+        msg = self._connect(self._serve(
+            _after_info(b"-ERR 'Authorization Violation'\r\n")))
+        self.assertIn("server error:", msg)
+        self.assertIn("Authorization Violation", msg)
+
+    def test_a_wrong_pong_is_refused(self):
+        msg = self._connect(self._serve(
+            _after_info(b"PANG\r\n")))
+        self.assertIn("expected PONG, got", msg)
+
+
 if __name__ == "__main__":
     unittest.main()
