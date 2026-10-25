@@ -259,5 +259,81 @@ class FlagIntegrationTest(unittest.TestCase):
             self.assertIn("Security audit report", buf.getvalue())
 
 
+class ImportSeamTest(unittest.TestCase):
+    """Queue A refill: auditreport's import seam (coverage
+    run 40189711740: the fallback block, 5 lines, never ran
+    on either platform -- the suite always imports the
+    package, so the package branch answers first). The
+    module's shape, shared with the other role-folder
+    tools: imported as a package it takes runner.guard's
+    security; run from inside runner/ it takes the sibling
+    guard package; with neither importable it still loads,
+    with _security None, and its readers degrade to empty
+    rather than fail -- the report tool must answer on a
+    box whose install is damaged, because that is when it
+    gets run.
+    """
+
+    def _fresh(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "auditreport_seam", AR.__file__)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _blocked_package(self):
+        """A runner.guard stand-in with no security under it, so
+        the package import fails the way it does on a damaged
+        install (the already-imported real package would
+        otherwise answer from its attribute cache)."""
+        import types
+        stub = types.ModuleType("runner.guard")
+        stub.__path__ = []
+        return stub
+
+    def test_the_script_mode_sibling_answers(self):
+        import types
+        sentinel = types.SimpleNamespace(
+            AUDIT_FILE="security-audit.jsonl",
+            AUDIT_ROLLED_FILE="security-audit.jsonl.1")
+        guard_pkg = types.ModuleType("guard")
+        guard_pkg.security = sentinel
+        keys = ("runner.guard", "runner.guard.security",
+                "guard", "guard.security")
+        saved = {k: sys.modules.get(k) for k in keys}
+        sys.modules["runner.guard"] = self._blocked_package()
+        sys.modules["runner.guard.security"] = None
+        sys.modules["guard"] = guard_pkg
+        sys.modules["guard.security"] = sentinel
+        try:
+            mod = self._fresh()
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    sys.modules.pop(k, None)
+                else:
+                    sys.modules[k] = v
+        self.assertIs(mod._security, sentinel)
+
+    def test_with_no_security_module_the_readers_are_empty(self):
+        keys = ("runner.guard", "runner.guard.security", "guard")
+        saved = {k: sys.modules.get(k) for k in keys}
+        sys.modules["runner.guard"] = self._blocked_package()
+        sys.modules["runner.guard.security"] = None
+        sys.modules["guard"] = None
+        try:
+            mod = self._fresh()
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    sys.modules.pop(k, None)
+                else:
+                    sys.modules[k] = v
+        self.assertIsNone(mod._security)
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(mod._read_entries(d), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

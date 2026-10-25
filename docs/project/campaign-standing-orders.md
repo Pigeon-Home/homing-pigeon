@@ -294,6 +294,25 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/ops/auditreport.py` import
+  seam (the fallback block, 5 lines never run on
+  either platform, coverage run 40189711740) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ImportSeamTest in runner/tests/test_audit_report.py:
+  with the package import blocked, the script-mode
+  sibling answers; with neither importable the
+  module still loads and its readers answer empty.
+  Done when a coverage run shows the block clean.
+  With it, two dispositions under the queue-A skip
+  rule, from the same map: `resources._mem_fraction`
+  (8 lines, Windows) is the /proc/meminfo body --
+  platform-inapplicable on Windows (no /proc there;
+  the None return runs), covered on Linux;
+  `posture._check_file_perms` (8 lines, Windows) is
+  the POSIX stat body behind the function's own
+  os.name return -- platform-inapplicable on
+  Windows, covered on Linux.
 - A (refill) — `runner/extensions/softflowd-feed/`
   `softflowd_feed.py::_flow_from_values` and
   `_parse_ipfix_templates` (5 lines each never run,
