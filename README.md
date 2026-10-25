@@ -1,7 +1,7 @@
 # Homing Pigeon
 
-**Let the AI you already use run jobs on your own machine, by email, from anywhere.**
-Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
+**Let AI run jobs on your own machine, by email, from anywhere.**
+Works with Muse, Grok, ChatGPT, Claude, Gem…, Copilot, or any assistant that can send a message.
 
 > ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative
 > control** of the machine to whoever holds the shared secret. The
