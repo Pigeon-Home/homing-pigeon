@@ -838,6 +838,50 @@ class PidAliveWindowsBranchTest(unittest.TestCase):
 
 
 
+class ReleaseSavedClaimsEdgesTest(unittest.TestCase):
+    """Queue A refill: _release_saved_claims' failure
+    legs (coverage run 40189711740: lines 6847-6848
+    and 6853-6854). At startup the runner releases
+    the claims a previous life saved as seen: a claim
+    file it cannot read is passed over, and a claim
+    file it cannot remove is left -- neither may stop
+    the release of the rest.
+    """
+
+    def test_unreadable_and_unremovable_claims_are_passed_over(self):
+        from runner import runner as RR
+        with tempfile.TemporaryDirectory() as d:
+            folder = os.path.join(d, "inflight")
+            os.makedirs(folder)
+            seen_path = os.path.join(d, "seen.json")
+
+            def claim(name, key):
+                p = os.path.join(folder, name)
+                with open(p, "w", encoding="utf-8") as fh:
+                    fh.write("1\n0\n%s\n" % key)
+                return p
+
+            gone = claim("a.claim", "k-gone")
+            stuck = claim("c.claim", "k-stuck")
+            kept = claim("d.claim", "k-not-seen")
+            unreadable = os.path.join(folder, "b.claim")
+            os.makedirs(unreadable)
+            seen = {"k-gone": True, "k-stuck": True}
+            real_unlink = os.unlink
+
+            def flaky_unlink(path, *a, **kw):
+                if path == stuck:
+                    raise OSError("cannot remove")
+                return real_unlink(path, *a, **kw)
+
+            with mock.patch.object(RR.os, "unlink", flaky_unlink):
+                RR._release_saved_claims(seen_path, seen)
+            self.assertFalse(os.path.exists(gone))
+            self.assertTrue(os.path.isfile(stuck))
+            self.assertTrue(os.path.isfile(kept))
+            self.assertTrue(os.path.isdir(unreadable))
+
+
 class PublishAnswerRaceTest(unittest.TestCase):
     """Queue A refill: _publish_answer's race legs
     (coverage run 40189711740: lines 345, 349-350,

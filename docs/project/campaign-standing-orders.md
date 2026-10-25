@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/runner.py::`
+  `_release_saved_claims` failure legs (4 lines
+  never run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ReleaseSavedClaimsEdgesTest in
+  runner/tests/test_protocol_v2_messages.py: an
+  unreadable claim file (a directory) and a claim
+  whose removal fails are both passed over while
+  the releasable claim is released and the unseen
+  claim is left alone. Done when a coverage run
+  shows the function clean.
 - A (refill) — `runner/wire/protocol_v2.py::`
   `_publish_answer` race legs (4 lines never run,
   coverage run 40189711740) — taken 2026-10-25,
