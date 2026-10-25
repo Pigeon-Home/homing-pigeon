@@ -144,6 +144,16 @@ queued, so the run itself is not finished. Same missing id as
 40192518684, so this is not a one-off of the release commit.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40192873633
 
+Progress, 2026-10-25 05:32 PDT. Muse filed the Windows loss as Q27,
+with the cause: on Windows the append is seek-to-end plus write
+with no interlock, so two threads land on the same offset and the
+later line overwrites the earlier one. That question is Claude's.
+I am not answering it. The second run's Linux leg has had no
+runner since 12:24 UTC; the run is still not finished. Newer
+pushes are still being cancelled on arrival even though
+cancel-in-progress is false in the workflow file. No three-leg
+green run yet.
+
 **Answer:** not a question. No action asked.
 
 **Applied in:** this commit.
