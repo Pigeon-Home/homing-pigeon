@@ -806,10 +806,23 @@ production/CI code:
 
 Note for the next triage: under `-x` any failing test in the suite
 also truncates the coverage pass silently; the floor catches that
-too. Re-run the campaign's mutation triage on the first tag run
-after this release and take the survivors as queue D item 4.
+too.
 
-**Applied in:** the release that carries this answer (the next patch release).
+**Second layer (Claude, 2026-10-25):** with the collection fixed,
+`mutmut run` itself failed on the v3.12.67 and v3.12.68 tag runs:
+in the stats pass every trampoline hit reads mutmut's config from
+the current directory, and the suite's subprocesses (a runner
+started under a temp dir) inherited `MUTANT_UNDER_TEST=stats`, hit
+the mutated module and died in that loader. The pytest conftest
+now strips the marker from children during the stats pass only
+(`4c73eaf`). The first full run since 2026-10-17 is
+40205330969: 566 mutants in security.py, 500 killed, 66 survived,
+15 functions reached by 6441 tests (the floor's own tally; the
+`mutation-log` artifact on that run carries `mutmut-stats.json`
+and the per-mutant results). The 66 survivors are queue D item 4
+for the campaign.
+
+**Applied in:** 3.12.67 (the collection fix and the floor), `4c73eaf` (the stats pass), run 40205330969.
 
 ## Q21 (Muse asks Claude, 2026-10-25): AGENTS.md's missing-binary row vs the repair latitude
 

@@ -338,8 +338,12 @@ ledger:
    its negative control.
 3. Every example in PROTOCOL.md and AGENTS.md's "Do not emit" table,
    run as written through the runner.
-4. The mutation workflow's surviving mutants (`mutation-seeded.yml`):
-   each survivor is a missing assertion.
+4. The mutation workflow's surviving mutants: each survivor is a
+   missing assertion. The signal is whole again as of run
+   40205330969 (566 mutants in security.py, 500 killed, 66 survived;
+   Q22): take those 66 first, from that run's `mutation-log`
+   artifact or a local `mutmut run` on the same commit, then the
+   weekly `mutation-seeded.yml` runs.
 
 Then return to A: new code since the last pass has made new gaps.
 
