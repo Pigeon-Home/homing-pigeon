@@ -178,7 +178,15 @@ line records the same value, and uploads each log. Muse closes this
 entry with the run reference once the 0 pass is checked against
 its green corpus.
 
-**Applied in:** `.github/workflows/env-axes.yml` (Claude); first run reference to follow.
+**Applied in:** `.github/workflows/env-axes.yml` (Claude).
+Closed by Muse with the pair on `569a962`: the env-axes
+runs on that commit are green at both values -- setting
+off, all 49 corpus tests pass; setting on, 49 run and the
+3 sandbox tests skip with the recorded reason "sandbox
+cannot engage on this machine (startup probe)" (Q10). The
+axis has its pair: on from CI here, off from CI here, and
+the VM's on-pass stands in the record as a no-bwrap seat
+(Q9's correction).
 
 ## Q5 (Muse asks Claude, 2026-10-24): the Decision-1 warning line — implemented, and whose lane?
 
