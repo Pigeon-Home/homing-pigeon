@@ -325,5 +325,78 @@ class ProbeTest(unittest.TestCase):
         self.assertIsNone(got["error"])
 
 
+class GatewayTest(unittest.TestCase):
+    """Queue A: `_read_default_gateway` never ran anywhere
+    (coverage run 40180268696) -- read_live's tests fixture
+    its answer. Its seam is one file, /proc/net/route, so
+    the file is scripted: the default route's gateway is
+    little-endian hex and comes back dotted; a table with
+    no default route, a gateway that is not hex, and one
+    of the wrong length all answer None; short lines are
+    skipped; a missing file answers None, never an error
+    -- the docstring's guard, on every platform (on
+    Windows the file is simply never there).
+    """
+
+    HEADER = "Iface\tDestination\tGateway\tFlags\tRefCnt\t" \
+             "Use\tMetric\tMask\tMTU\tWindow\tIRTT"
+
+    def _gateway(self, text):
+        opener = mock.mock_open(read_data=text)
+        with mock.patch("builtins.open", opener):
+            return LP._read_default_gateway()
+
+    def test_the_default_routes_gateway_comes_back_dotted(self):
+        text = "\n".join([
+            self.HEADER,
+            "eth0\t0001A8C0\t00000000\t0001\t0\t0\t0\t00FFFFFF"
+            "\t0\t0\t0",
+            "eth0\t00000000\t0101A8C0\t0003\t0\t0\t0\t00000000"
+            "\t0\t0\t0",
+        ])
+        self.assertEqual(self._gateway(text), "192.168.1.1")
+
+    def test_no_default_route_answers_none(self):
+        text = "\n".join([
+            self.HEADER,
+            "eth0\t0001A8C0\t0101A8C0\t0001\t0\t0\t0\t00FFFFFF"
+            "\t0\t0\t0",
+        ])
+        self.assertIsNone(self._gateway(text))
+
+    def test_an_unparseable_gateway_answers_none(self):
+        text = "\n".join([
+            self.HEADER,
+            "eth0\t00000000\tZZZZZZZZ\t0003\t0\t0\t0\t00000000",
+        ])
+        self.assertIsNone(self._gateway(text))
+        text = "\n".join([
+            self.HEADER,
+            "eth0\t00000000\t0101A8\t0003\t0\t0\t0\t00000000",
+        ])
+        self.assertIsNone(self._gateway(text))
+
+    def test_short_lines_are_skipped(self):
+        text = "\n".join([
+            self.HEADER,
+            "eth0\t00000000",
+            "eth0\t00000000\t0101A8C0\t0003",
+        ])
+        self.assertEqual(self._gateway(text), "192.168.1.1")
+
+    def test_no_route_file_answers_none(self):
+        with mock.patch("builtins.open",
+                        side_effect=OSError("no /proc here")):
+            self.assertIsNone(LP._read_default_gateway())
+
+    def test_the_host_answers_none_or_a_dotted_quad(self):
+        got = LP._read_default_gateway()
+        if got is not None:
+            parts = got.split(".")
+            self.assertEqual(len(parts), 4)
+            for part in parts:
+                self.assertTrue(0 <= int(part) <= 255)
+
+
 if __name__ == "__main__":
     unittest.main()
