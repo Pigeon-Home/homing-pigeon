@@ -223,6 +223,38 @@ class QueryAudienceTest(unittest.TestCase):
             audit.append(json.loads(line))
         return answered, audit
 
+    def test_query_with_a_broken_envelope_is_handled(self):
+        # Queue A refill: handle_query_mail's bad-envelope
+        # leg (coverage run 40189711740: lines
+        # 4193-4195). A query whose envelope verifies but
+        # cannot be decrypted (here the ciphertext is not
+        # even base64) is logged, marked seen, and handled
+        # -- never answered, never retried forever, never
+        # a crash in the poll.
+        from runner.tests.security_parity import sign_payload
+        raw = self._query_mail("q-bad")
+        import email as _email
+        msg = _email.message_from_bytes(raw)
+        wire = json.loads(msg.get_payload(decode=True).decode())
+        wire["hp_enc"]["ct"] = "!!!not-base64!!!"
+        body = sign_payload(wire, SECRET)
+        from email.message import EmailMessage
+        from runner.tests.security_parity import SENDER
+        msg = EmailMessage()
+        msg["From"] = SENDER
+        msg["To"] = SENDER
+        msg["Subject"] = "[HOMING-PIGEON] query q-bad"
+        msg.set_content(body)
+        tmpdir = tempfile.mkdtemp(prefix="hp-m5q-")
+        cfg = base_config(tmpdir)
+        imap = FakeIMAP([msg.as_bytes()])
+        smtp = FakeSMTP()
+        poll_once(cfg, tmpdir, {}, os.path.join(tmpdir, "seen.json"),
+                  imap=imap, smtp=smtp)
+        self.assertEqual(len(imap.flagged), 1)
+        self.assertFalse(any("qresult" in (m["Subject"] or "")
+                             for m in smtp.sent))
+
     def test_query_wrong_audience_enforce_rejected(self):
         answered, audit = self._run_query(
             aud_cfg("enforce"), self._query_mail("q-01", runner_id="other"))

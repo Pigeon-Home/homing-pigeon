@@ -295,6 +295,18 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - A (refill) — `runner/runner.py::`
+  `handle_query_mail` bad-envelope leg (3 lines
+  never run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  QueryAudienceTest's broken-envelope case in
+  runner/tests/test_audience.py: a query whose
+  envelope verifies but cannot be decrypted is
+  marked seen, never answered, and does not break
+  the poll. Rules refreshed 2026-10-25 05:41 PDT
+  (compaction reset; repo AGENTS.md rules 7-9,
+  standing orders, open questions re-read). Done
+  when a coverage run shows the branch clean.
+- A (refill) — `runner/runner.py::`
   `_extension_sources_policy` (4 lines never run,
   coverage run 40189711740) — taken 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
