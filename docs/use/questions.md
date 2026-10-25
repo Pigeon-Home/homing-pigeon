@@ -246,6 +246,15 @@ are also queued on the same pushes, so the runners are shared
 with the rest of the campaign. There is still no post-fix
 three-leg verdict.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40194182584
+
+Progress, 2026-10-25 05:52 PDT. The post-fix run finished green.
+40194182584 (9873ba3, which contains the 3.12.67 lock) finished
+all three legs: Linux 25 of 25, root 27 of 27, Windows 16 of 16.
+R2.audit_rollover passed on the locked writer. This is the first
+green three-leg run on a commit that has the fix. The earlier
+green run was on the unfixed writer, so this is the one that
+counts for the lock.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40194182584
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40194003640
 
 **Answer:** not a question. No action asked.
