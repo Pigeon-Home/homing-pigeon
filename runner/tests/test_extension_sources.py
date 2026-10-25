@@ -731,6 +731,45 @@ class FetcherTest(unittest.TestCase):
                                     100))
 
 
+class FetcherOpenEdgesTest(unittest.TestCase):
+    """Queue A refill: Fetcher._open's error legs (coverage
+    run 40187685363: 6 lines on both platforms). The one
+    network door classifies every failure as a
+    SourceError: a SourceError raised by the opener
+    itself passes through unchanged; an HTTP error is
+    closed even when closing fails, and 403/429 are
+    named as rate limiting; a transport-level OSError
+    becomes "cannot fetch".
+    """
+
+    def test_a_source_error_from_the_opener_passes_through(self):
+        err = X.SourceError("direct failure", kind="budget")
+        f = X.Fetcher(opener=FakeOpener({"https://e.org/x": err}))
+        with self.assertRaises(X.SourceError) as cm:
+            f._open("https://e.org/x", "*/*")
+        self.assertIs(cm.exception, err)
+
+    def test_rate_limited_http_errors_close_even_if_close_fails(self):
+        class BadClose(HTTPError):
+            def close(self):
+                raise RuntimeError("close failed")
+
+        for code in (403, 429):
+            url = "https://e.org/limited"
+            err = BadClose(url, code, "Limited", {}, io.BytesIO(b""))
+            f = X.Fetcher(opener=FakeOpener({url: err}))
+            with self.assertRaises(X.SourceError) as cm:
+                f._open(url, "*/*")
+            self.assertIn("HTTP %d" % code, str(cm.exception))
+            self.assertIn("rate limited", str(cm.exception))
+
+    def test_a_transport_oserror_becomes_cannot_fetch(self):
+        f = X.Fetcher(opener=FakeOpener(
+            {"https://e.org/x": OSError("socket gone")}))
+        with self.assertRaisesRegex(X.SourceError, "cannot fetch"):
+            f._open("https://e.org/x", "*/*")
+
+
 class ExtractTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()

@@ -155,6 +155,19 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/ops/extsources.py::Fetcher._open`
+  (6 lines never run on either platform, coverage
+  run 40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  FetcherOpenEdgesTest in
+  runner/tests/test_extension_sources.py: a
+  SourceError from the opener passes through
+  unchanged; an HTTP error is closed even when
+  closing fails, and 403/429 are named as rate
+  limiting; a transport OSError becomes "cannot
+  fetch". Done when a coverage run shows the
+  function clean.
 - rules refreshed 2026-10-25 04:24 PDT
 - A (refill) — `runner/ops/extsources.py::provision`
   and `_run_pass` (6 lines each never run on either
