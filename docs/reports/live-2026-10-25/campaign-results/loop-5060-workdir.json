@@ -1,0 +1,21 @@
+{
+  "name": "loop-5060-workdir",
+  "started_at": 1792825890.042637,
+  "job_id": "99e17b79-aa05-4cb7-a47a-5553e79e9ad2",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-5060\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T07:11:32Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-567-exit3",
+  "started_at": 1792786509.2460024,
+  "job_id": "552fb289-9a55-4579-b0e6-a5b7f57a2a21",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:15:11Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

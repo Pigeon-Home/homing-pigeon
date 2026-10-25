@@ -1,0 +1,21 @@
+{
+  "name": "loop-788-workdir",
+  "started_at": 1792787535.6975493,
+  "job_id": "777ee6ab-ad55-4991-8fa1-690a4f17d5a6",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.023,
+    "stdout": "cycle-788\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:32:17Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

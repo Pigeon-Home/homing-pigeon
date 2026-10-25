@@ -1,0 +1,21 @@
+{
+  "name": "loop-13508-workdir",
+  "started_at": 1792860090.08092,
+  "job_id": "11025749-b192-425f-8977-34bbdf42b959",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-13508\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T16:41:31Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

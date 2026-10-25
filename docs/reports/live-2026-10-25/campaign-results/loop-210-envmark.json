@@ -1,0 +1,20 @@
+{
+  "name": "loop-210-envmark",
+  "started_at": 1792741335.175452,
+  "job_id": "c75e508d-bd17-40f6-9c53-3c6310c5ba4a",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "marker=loop-210\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:42:25Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 13.7
+}

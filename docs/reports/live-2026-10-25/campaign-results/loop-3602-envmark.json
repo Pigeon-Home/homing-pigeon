@@ -1,0 +1,21 @@
+{
+  "name": "loop-3602-envmark",
+  "started_at": 1792799351.6623168,
+  "job_id": "b2e44eea-613e-4db4-beef-33e3a831b7ac",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "marker=loop-3602\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T23:49:14Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

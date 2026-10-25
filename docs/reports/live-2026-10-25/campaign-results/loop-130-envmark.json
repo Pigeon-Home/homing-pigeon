@@ -1,0 +1,20 @@
+{
+  "name": "loop-130-envmark",
+  "started_at": 1792739735.156953,
+  "job_id": "3f1658ec-fdeb-4f12-b635-953e6d5816c6",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "marker=loop-130\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:15:41Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 12.0
+}

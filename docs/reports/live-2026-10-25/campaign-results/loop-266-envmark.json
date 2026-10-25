@@ -1,0 +1,20 @@
+{
+  "name": "loop-266-envmark",
+  "started_at": 1792745814.4134216,
+  "job_id": "0a476317-e624-4fe5-a274-c14afc4f409d",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "marker=loop-266\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T08:57:04Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 11.0
+}

@@ -1,0 +1,20 @@
+{
+  "name": "loop-370-envmark",
+  "started_at": 1792780682.7060852,
+  "job_id": "e5a829f3-8a45-4b1b-96b9-c073cf23fdf9",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.01,
+    "stdout": "marker=loop-370\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T18:38:05Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 6.7
+}

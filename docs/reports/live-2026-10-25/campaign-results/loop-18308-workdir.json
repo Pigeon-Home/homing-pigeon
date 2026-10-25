@@ -1,0 +1,21 @@
+{
+  "name": "loop-18308-workdir",
+  "started_at": 1792880204.1377175,
+  "job_id": "aad7c072-0691-4920-9623-4d21338ed044",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.01,
+    "stdout": "cycle-18308\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T22:16:46Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

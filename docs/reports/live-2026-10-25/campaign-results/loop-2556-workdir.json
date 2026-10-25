@@ -1,0 +1,21 @@
+{
+  "name": "loop-2556-workdir",
+  "started_at": 1792794767.7975676,
+  "job_id": "529fcb39-4288-4200-8dbe-bbb1d17e14f4",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.015,
+    "stdout": "cycle-2556\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T22:32:49Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-4823-exit3",
+  "started_at": 1792824936.6212306,
+  "job_id": "b24d863c-0133-4bff-8981-e23340b8ac06",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T06:55:39Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

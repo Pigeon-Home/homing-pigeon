@@ -1,0 +1,21 @@
+{
+  "name": "loop-8346-envmark",
+  "started_at": 1792839114.6827908,
+  "job_id": "d8874cac-ca7e-493c-be20-89b14e8c971f",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.011,
+    "stdout": "marker=loop-8346\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:51:57Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

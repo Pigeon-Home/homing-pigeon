@@ -1,0 +1,21 @@
+{
+  "name": "loop-1039-exit3",
+  "started_at": 1792788544.7991943,
+  "job_id": "565d9195-3f36-45b8-a2cf-7ffe458054cf",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:49:07Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

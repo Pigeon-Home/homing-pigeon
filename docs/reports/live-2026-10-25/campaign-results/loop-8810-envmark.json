@@ -1,0 +1,21 @@
+{
+  "name": "loop-8810-envmark",
+  "started_at": 1792841038.1150315,
+  "job_id": "7e4fa822-0901-467b-9f02-e0698bdc92bb",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "marker=loop-8810\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:24:00Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

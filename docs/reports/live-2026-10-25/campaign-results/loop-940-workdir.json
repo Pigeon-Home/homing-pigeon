@@ -1,0 +1,21 @@
+{
+  "name": "loop-940-workdir",
+  "started_at": 1792788146.4362097,
+  "job_id": "d46a7e1b-53f7-4728-896f-288e1dac9ddd",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "cycle-940\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:42:28Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

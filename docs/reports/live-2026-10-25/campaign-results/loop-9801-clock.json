@@ -1,0 +1,21 @@
+{
+  "name": "loop-9801-clock",
+  "started_at": 1792845074.2278454,
+  "job_id": "8ae890fb-c5b5-40d4-864f-7ae57d88f8b8",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.015,
+    "stdout": "Sat Oct 24 12:31:17 UTC 2026\n1792845077\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:31:17Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

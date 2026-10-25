@@ -1,0 +1,20 @@
+{
+  "name": "loop-332-workdir",
+  "started_at": 1792769539.147254,
+  "job_id": "bf1b8afe-5e33-4739-bd54-de84e3bc0eb1",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "cycle-332\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T15:32:29Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 11.9
+}

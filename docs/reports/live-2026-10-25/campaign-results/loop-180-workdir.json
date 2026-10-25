@@ -1,0 +1,20 @@
+{
+  "name": "loop-180-workdir",
+  "started_at": 1792740735.1692052,
+  "job_id": "9bf9aeb5-cdac-414c-8c2d-59f524afc07d",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "cycle-180\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:32:24Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 13.8
+}

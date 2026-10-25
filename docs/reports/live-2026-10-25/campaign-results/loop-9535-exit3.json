@@ -1,0 +1,21 @@
+{
+  "name": "loop-9535-exit3",
+  "started_at": 1792844004.5822887,
+  "job_id": "746166c4-3954-468e-b0e6-b64a8cd1ed9e",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:13:26Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

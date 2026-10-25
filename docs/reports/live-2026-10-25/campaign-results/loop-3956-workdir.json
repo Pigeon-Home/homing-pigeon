@@ -1,0 +1,21 @@
+{
+  "name": "loop-3956-workdir",
+  "started_at": 1792821449.699182,
+  "job_id": "4e1def8a-2048-4ed6-ba1d-fd3ba8db27d9",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "cycle-3956\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T05:57:32Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-834-envmark",
+  "started_at": 1792787719.9762964,
+  "job_id": "a60f59de-5bce-48fa-aa70-3a596624ba8a",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "marker=loop-834\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:35:22Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-4703-exit3",
+  "started_at": 1792824453.3730252,
+  "job_id": "fc2671dd-90bb-479e-89b7-1d7946584429",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T06:47:35Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

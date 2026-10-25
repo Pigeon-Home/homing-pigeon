@@ -1,0 +1,20 @@
+{
+  "name": "loop-273-clock",
+  "started_at": 1792747914.469909,
+  "job_id": "d83827bb-566d-4676-b380-af58d7a2b8b5",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.011,
+    "stdout": "Fri Oct 23 09:32:07 UTC 2026\n1792747927\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T09:32:07Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 14.2
+}

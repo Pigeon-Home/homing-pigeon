@@ -1,0 +1,21 @@
+{
+  "name": "loop-1095-exit3",
+  "started_at": 1792788769.1210213,
+  "job_id": "72f3d673-83c6-4851-a835-e43f8c791bfa",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:52:51Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

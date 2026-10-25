@@ -1,0 +1,21 @@
+{
+  "name": "loop-722-envmark",
+  "started_at": 1792787134.2754934,
+  "job_id": "354d5b2f-ad3c-4780-a5a8-bcb737439c54",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "marker=loop-722\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:25:36Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

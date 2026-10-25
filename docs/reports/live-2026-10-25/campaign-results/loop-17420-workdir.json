@@ -1,0 +1,21 @@
+{
+  "name": "loop-17420-workdir",
+  "started_at": 1792876632.9973803,
+  "job_id": "e8628ef4-26a6-4c10-9346-ae2b27c783d4",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-17420\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T21:17:15Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

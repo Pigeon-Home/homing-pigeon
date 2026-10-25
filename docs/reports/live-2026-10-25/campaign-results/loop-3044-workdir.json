@@ -1,0 +1,21 @@
+{
+  "name": "loop-3044-workdir",
+  "started_at": 1792796742.3464642,
+  "job_id": "11308f61-e67d-40d0-84af-0074d5e583c2",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "cycle-3044\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T23:05:44Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

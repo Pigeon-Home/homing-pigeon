@@ -1,0 +1,21 @@
+{
+  "name": "loop-9439-exit3",
+  "started_at": 1792843619.1886284,
+  "job_id": "73cbb22c-bc77-4a07-ae10-ddc07e5d611f",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:07:01Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

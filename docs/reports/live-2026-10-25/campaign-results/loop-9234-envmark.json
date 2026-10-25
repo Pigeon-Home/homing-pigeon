@@ -1,0 +1,21 @@
+{
+  "name": "loop-9234-envmark",
+  "started_at": 1792842740.1944025,
+  "job_id": "0ed3a69b-5857-4429-bbc8-d68b960c87e6",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.011,
+    "stdout": "marker=loop-9234\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:52:22Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

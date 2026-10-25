@@ -1,0 +1,20 @@
+{
+  "name": "loop-557-flagread",
+  "started_at": 1792786466.4953249,
+  "job_id": "cbc02849-5912-4a17-b837-b4df21377784",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.012,
+    "stdout": "PRETEND CREDENTIAL FLAG FILE - test fixture, not a real secret\naws_access_key_id = AKIAIOSFODNN7EXAMPLE\npassword = flag-hunter2-pretend\napi_token = <MASKED_SECRET_001>\nFLAG{pretend-credential-flag-7f3a}\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:14:31Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 6.8
+}

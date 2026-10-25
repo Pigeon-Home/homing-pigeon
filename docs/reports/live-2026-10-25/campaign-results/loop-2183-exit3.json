@@ -1,0 +1,21 @@
+{
+  "name": "loop-2183-exit3",
+  "started_at": 1792793259.750971,
+  "job_id": "eb5f8189-5b1b-45c7-bfeb-d9aea2d5c4fb",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.01,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T22:07:42Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

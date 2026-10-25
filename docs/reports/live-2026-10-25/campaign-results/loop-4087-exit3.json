@@ -1,0 +1,21 @@
+{
+  "name": "loop-4087-exit3",
+  "started_at": 1792821976.3156288,
+  "job_id": "ad737c32-1d39-446b-a3f4-5495c38dcc2c",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T06:06:18Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

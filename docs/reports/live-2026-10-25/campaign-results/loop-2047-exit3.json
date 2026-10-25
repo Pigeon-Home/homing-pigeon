@@ -1,0 +1,21 @@
+{
+  "name": "loop-2047-exit3",
+  "started_at": 1792792708.9509635,
+  "job_id": "e977b687-df4a-4854-8cfd-2bc5c254648b",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.025,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:58:31Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

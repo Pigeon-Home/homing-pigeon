@@ -1,0 +1,21 @@
+{
+  "name": "loop-7570-envmark",
+  "started_at": 1792835993.2770638,
+  "job_id": "323ce197-d19f-4872-8cd9-61c3a9f35f65",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "marker=loop-7570\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T09:59:55Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

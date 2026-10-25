@@ -1,0 +1,21 @@
+{
+  "name": "loop-6055-exit3",
+  "started_at": 1792829892.8854356,
+  "job_id": "e96aef70-6d33-48f4-80a9-652c144e7663",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.016,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T08:18:15Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

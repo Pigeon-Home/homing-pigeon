@@ -1,0 +1,20 @@
+{
+  "name": "loop-319-exit3",
+  "started_at": 1792766244.728818,
+  "job_id": "34cf5d73-5781-4d9a-84be-2aa701d4b60d",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T14:37:34Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 10.6
+}

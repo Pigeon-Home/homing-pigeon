@@ -1,0 +1,21 @@
+{
+  "name": "loop-2295-exit3",
+  "started_at": 1792793713.6850653,
+  "job_id": "0338542d-7f13-42bc-b806-7684bdd3b260",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T22:15:16Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

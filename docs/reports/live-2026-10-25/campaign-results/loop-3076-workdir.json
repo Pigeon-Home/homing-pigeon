@@ -1,0 +1,21 @@
+{
+  "name": "loop-3076-workdir",
+  "started_at": 1792797215.5367672,
+  "job_id": "132792b3-28ce-4853-a306-dd48df6169c8",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-3076\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T23:13:38Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

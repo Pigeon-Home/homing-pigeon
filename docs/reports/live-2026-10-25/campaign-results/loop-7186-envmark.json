@@ -1,0 +1,21 @@
+{
+  "name": "loop-7186-envmark",
+  "started_at": 1792834442.6865559,
+  "job_id": "7db2db24-bc83-4750-8777-08b66861317e",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "marker=loop-7186\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T09:34:05Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

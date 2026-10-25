@@ -1,0 +1,21 @@
+{
+  "name": "loop-9076-workdir",
+  "started_at": 1792842104.681307,
+  "job_id": "f247df68-b776-43b6-bddb-c9e99ba936e5",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.018,
+    "stdout": "cycle-9076\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:41:47Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

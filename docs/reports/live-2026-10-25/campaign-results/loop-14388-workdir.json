@@ -1,0 +1,21 @@
+{
+  "name": "loop-14388-workdir",
+  "started_at": 1792864143.4082627,
+  "job_id": "4c5e60c3-4ec2-498e-875a-b8bb307fa4fe",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-14388\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T17:49:05Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

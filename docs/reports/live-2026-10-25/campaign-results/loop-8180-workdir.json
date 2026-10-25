@@ -1,0 +1,21 @@
+{
+  "name": "loop-8180-workdir",
+  "started_at": 1792838446.958437,
+  "job_id": "fa9411e9-5e1b-4ae4-babf-eff68956a094",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.026,
+    "stdout": "cycle-8180\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:40:49Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

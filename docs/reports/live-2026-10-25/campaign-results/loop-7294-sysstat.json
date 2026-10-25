@@ -1,0 +1,21 @@
+{
+  "name": "loop-7294-sysstat",
+  "started_at": 1792834877.7550704,
+  "job_id": "5cc175a4-9259-4475-a674-7102a0b73f15",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.018,
+    "stdout": "overlay         7.5G  391M  7.2G   6% /\n               total        used        free      shared  buff/cache   available\nMem:            7935        7471         198         597        1132         463\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T09:41:19Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

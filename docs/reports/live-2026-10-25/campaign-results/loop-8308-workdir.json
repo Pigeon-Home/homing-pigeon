@@ -1,0 +1,21 @@
+{
+  "name": "loop-8308-workdir",
+  "started_at": 1792838961.860377,
+  "job_id": "ffc5b4b4-1f1e-4afe-963f-04a683a0c24b",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.017,
+    "stdout": "cycle-8308\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:49:24Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

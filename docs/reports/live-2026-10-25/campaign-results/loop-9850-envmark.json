@@ -1,0 +1,21 @@
+{
+  "name": "loop-9850-envmark",
+  "started_at": 1792845271.3141267,
+  "job_id": "8f149026-4c80-4ce1-90dc-0a74187e2bed",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "marker=loop-9850\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:34:33Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

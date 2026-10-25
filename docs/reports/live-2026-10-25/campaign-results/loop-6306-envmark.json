@@ -1,0 +1,21 @@
+{
+  "name": "loop-6306-envmark",
+  "started_at": 1792830902.3003323,
+  "job_id": "9063959a-f4c4-4f14-88a9-d60fd87b01ed",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "marker=loop-6306\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T08:35:05Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

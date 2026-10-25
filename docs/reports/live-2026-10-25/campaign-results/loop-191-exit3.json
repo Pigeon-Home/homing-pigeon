@@ -1,0 +1,20 @@
+{
+  "name": "loop-191-exit3",
+  "started_at": 1792740955.1716003,
+  "job_id": "1360bc8f-e04d-4fe6-bddd-3e29d8118117",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.002,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:36:04Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 13.8
+}

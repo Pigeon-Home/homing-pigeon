@@ -1,0 +1,21 @@
+{
+  "name": "loop-9220-workdir",
+  "started_at": 1792842683.8108556,
+  "job_id": "29cb6354-7faa-42d7-973f-c3baf10baa62",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-9220\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:51:25Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

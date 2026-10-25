@@ -1,0 +1,21 @@
+{
+  "name": "loop-12516-workdir",
+  "started_at": 1792856102.2045019,
+  "job_id": "8b186cb0-d9a1-4394-b910-da6ba8a665fe",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-12516\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T15:35:04Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

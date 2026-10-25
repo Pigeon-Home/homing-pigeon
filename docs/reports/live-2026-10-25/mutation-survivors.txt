@@ -1,0 +1,5 @@
+survived	runner.guard.security.x__estimate_secret_entropy__mutmut_6
+survived	runner.guard.security.x__secret_pattern_reason__mutmut_34
+survived	runner.guard.security.x_sec_mode__mutmut_19
+survived	runner.guard.security.x_sec_mode__mutmut_21
+not checked	runner.guard.security.x_sec_mode__mutmut_23

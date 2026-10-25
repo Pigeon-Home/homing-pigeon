@@ -1,0 +1,21 @@
+{
+  "name": "loop-10300-workdir",
+  "started_at": 1792847082.8702533,
+  "job_id": "c7c49d16-83ab-4df8-89aa-11e93622426e",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "cycle-10300\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T13:04:45Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

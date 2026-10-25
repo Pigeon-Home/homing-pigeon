@@ -1,0 +1,21 @@
+{
+  "name": "loop-8268-workdir",
+  "started_at": 1792838800.8903925,
+  "job_id": "a354fe4d-de93-434e-9e90-37300addb188",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.026,
+    "stdout": "cycle-8268\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:46:43Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

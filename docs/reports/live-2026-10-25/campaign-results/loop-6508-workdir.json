@@ -1,0 +1,21 @@
+{
+  "name": "loop-6508-workdir",
+  "started_at": 1792831715.244568,
+  "job_id": "d6e61439-6436-49ed-8402-f44ec7c5a3c4",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.01,
+    "stdout": "cycle-6508\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T08:48:37Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

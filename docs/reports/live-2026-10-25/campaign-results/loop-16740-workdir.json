@@ -1,0 +1,21 @@
+{
+  "name": "loop-16740-workdir",
+  "started_at": 1792873901.1591625,
+  "job_id": "045fccda-9f33-4222-a737-a16491c263d0",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-16740\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T20:31:43Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

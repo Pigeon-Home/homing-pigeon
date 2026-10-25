@@ -1,0 +1,20 @@
+{
+  "name": "loop-244-workdir",
+  "started_at": 1792742015.1928895,
+  "job_id": "fb34b5bb-1974-4e6f-8c43-ec848c69e547",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-244\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:53:46Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 15.8
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-2628-workdir",
+  "started_at": 1792795059.347374,
+  "job_id": "df3aa304-c5b9-43c7-b9b4-82890d6c7645",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "cycle-2628\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T22:37:41Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

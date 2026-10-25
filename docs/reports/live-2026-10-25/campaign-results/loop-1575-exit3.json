@@ -1,0 +1,21 @@
+{
+  "name": "loop-1575-exit3",
+  "started_at": 1792790803.007336,
+  "job_id": "db60dd5b-7123-4c71-9b64-d176ef9c42be",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:26:45Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

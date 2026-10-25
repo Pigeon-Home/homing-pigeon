@@ -1,0 +1,21 @@
+{
+  "name": "loop-4540-workdir",
+  "started_at": 1792823797.6465015,
+  "job_id": "f7d989f2-b0f2-4fcb-829e-543281b44f81",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "cycle-4540\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T06:36:40Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

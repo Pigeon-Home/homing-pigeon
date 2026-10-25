@@ -1,0 +1,20 @@
+{
+  "name": "loop-129-clock",
+  "started_at": 1792739715.1567564,
+  "job_id": "9501fd63-4ce4-44bb-b8f0-ece03139fb2c",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "Fri Oct 23 07:15:21 UTC 2026\n1792739721\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:15:21Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 12.1
+}

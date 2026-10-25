@@ -1,0 +1,21 @@
+{
+  "name": "loop-8852-workdir",
+  "started_at": 1792841206.715704,
+  "job_id": "a0864d04-33c2-4222-8461-d56fe24fb4dc",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-8852\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:26:48Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

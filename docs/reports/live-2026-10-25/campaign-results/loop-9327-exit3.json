@@ -1,0 +1,21 @@
+{
+  "name": "loop-9327-exit3",
+  "started_at": 1792843169.7948148,
+  "job_id": "a4234eb0-f8c4-4eb5-a8dd-3d01875b877d",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:59:32Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

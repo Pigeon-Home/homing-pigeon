@@ -1,0 +1,20 @@
+{
+  "name": "loop-265-clock",
+  "started_at": 1792745514.403858,
+  "job_id": "1c31ed37-5ac5-4a35-9b9b-534fee3811a6",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.018,
+    "stdout": "Fri Oct 23 08:52:04 UTC 2026\n1792745524\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T08:52:04Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 12.6
+}

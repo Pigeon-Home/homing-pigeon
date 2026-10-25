@@ -1,0 +1,21 @@
+{
+  "name": "loop-5332-workdir",
+  "started_at": 1792826984.4391522,
+  "job_id": "ba7d3908-bc3f-4dc8-b854-33840ebddb14",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-5332\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T07:29:46Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

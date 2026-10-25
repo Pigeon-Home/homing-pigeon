@@ -1,0 +1,20 @@
+{
+  "name": "loop-316-workdir",
+  "started_at": 1792765904.722138,
+  "job_id": "1a85e4f5-2a52-4cd9-933f-7c9085968562",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "cycle-316\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T14:31:53Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 12.1
+}

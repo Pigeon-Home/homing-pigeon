@@ -1,0 +1,21 @@
+{
+  "name": "loop-8074-envmark",
+  "started_at": 1792838020.5406904,
+  "job_id": "d3da848d-36b7-4ebb-9d49-9570fbb5c849",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "marker=loop-8074\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:33:42Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

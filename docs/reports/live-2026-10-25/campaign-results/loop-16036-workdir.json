@@ -1,0 +1,21 @@
+{
+  "name": "loop-16036-workdir",
+  "started_at": 1792871011.3424895,
+  "job_id": "68429469-273b-4fff-9d14-c99d58426090",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-16036\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T19:43:33Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

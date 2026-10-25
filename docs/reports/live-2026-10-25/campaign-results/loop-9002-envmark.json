@@ -1,0 +1,21 @@
+{
+  "name": "loop-9002-envmark",
+  "started_at": 1792841807.532842,
+  "job_id": "40c7b255-6e9a-4648-8479-948cbbb8be5d",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "marker=loop-9002\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:36:50Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

@@ -1,0 +1,20 @@
+{
+  "name": "loop-164-workdir",
+  "started_at": 1792740415.1659424,
+  "job_id": "f3863e63-3b88-4725-a085-f2a71b4d9e72",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "cycle-164\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:27:03Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 11.8
+}

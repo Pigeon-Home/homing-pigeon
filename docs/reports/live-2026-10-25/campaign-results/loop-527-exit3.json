@@ -1,0 +1,21 @@
+{
+  "name": "loop-527-exit3",
+  "started_at": 1792785869.8470023,
+  "job_id": "0bbdcc31-0458-42c6-9052-7c410891ab2c",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:04:32Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.3
+}

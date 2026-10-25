@@ -1,0 +1,21 @@
+{
+  "name": "loop-8506-envmark",
+  "started_at": 1792839758.4494672,
+  "job_id": "e4ec7e1c-e0ad-46f7-b16c-e41769355729",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "marker=loop-8506\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:02:40Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

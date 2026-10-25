@@ -1,0 +1,20 @@
+{
+  "name": "loop-140-workdir",
+  "started_at": 1792739935.1600487,
+  "job_id": "dcb12491-ad2c-42cf-8382-870b2331572b",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-140\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:19:02Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 11.8
+}

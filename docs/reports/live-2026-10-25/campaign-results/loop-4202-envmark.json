@@ -1,0 +1,21 @@
+{
+  "name": "loop-4202-envmark",
+  "started_at": 1792822438.7764597,
+  "job_id": "f2db342b-33f5-4b0b-96d9-b85a86fce71f",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.011,
+    "stdout": "marker=loop-4202\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T06:14:01Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

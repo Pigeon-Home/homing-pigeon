@@ -1,0 +1,21 @@
+{
+  "name": "loop-7690-envmark",
+  "started_at": 1792836475.9516373,
+  "job_id": "8911b3c6-f610-415f-b95f-8ae5a4f9384d",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "marker=loop-7690\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:07:58Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

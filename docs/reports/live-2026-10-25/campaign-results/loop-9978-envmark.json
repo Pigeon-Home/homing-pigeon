@@ -1,0 +1,21 @@
+{
+  "name": "loop-9978-envmark",
+  "started_at": 1792845786.8887649,
+  "job_id": "b34bcc06-7bc1-4312-8535-0bf3138d447c",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "marker=loop-9978\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:43:08Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

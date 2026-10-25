@@ -1,0 +1,21 @@
+{
+  "name": "loop-12812-workdir",
+  "started_at": 1792857291.399212,
+  "job_id": "1c8f0fad-b2c3-49c0-bd72-973559d541e3",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "cycle-12812\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T15:54:53Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

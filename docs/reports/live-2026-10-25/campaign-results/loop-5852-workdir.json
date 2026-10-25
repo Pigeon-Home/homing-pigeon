@@ -1,0 +1,21 @@
+{
+  "name": "loop-5852-workdir",
+  "started_at": 1792829075.9244397,
+  "job_id": "1675e9e0-0a82-423a-850c-8eb79cb4a8f9",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "cycle-5852\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T08:04:38Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

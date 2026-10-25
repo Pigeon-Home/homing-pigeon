@@ -1,0 +1,21 @@
+{
+  "name": "loop-9519-exit3",
+  "started_at": 1792843940.4003851,
+  "job_id": "9aa01f60-0bcb-442d-b1fa-b728c17a208d",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:12:23Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

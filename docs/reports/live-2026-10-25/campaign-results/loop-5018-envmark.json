@@ -1,0 +1,21 @@
+{
+  "name": "loop-5018-envmark",
+  "started_at": 1792825721.227471,
+  "job_id": "8a5d2ced-1508-455d-807b-06c9cc795eae",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.01,
+    "stdout": "marker=loop-5018\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T07:08:43Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

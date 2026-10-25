@@ -1,0 +1,20 @@
+{
+  "name": "loop-092-workdir",
+  "started_at": 1792737675.956986,
+  "job_id": "f9ae5b51-0111-4eb2-8248-ae5913e91e4b",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-92\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T06:41:29Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 16.2
+}

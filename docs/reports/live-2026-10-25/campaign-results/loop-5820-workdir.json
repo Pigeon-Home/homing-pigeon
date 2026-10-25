@@ -1,0 +1,21 @@
+{
+  "name": "loop-5820-workdir",
+  "started_at": 1792828947.5992286,
+  "job_id": "203b10ed-764e-429a-ad55-ab0acfbc1a24",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-5820\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T08:02:29Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

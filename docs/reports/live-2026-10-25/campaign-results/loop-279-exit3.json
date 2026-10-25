@@ -1,0 +1,20 @@
+{
+  "name": "loop-279-exit3",
+  "started_at": 1792752495.2900941,
+  "job_id": "fd6a4d84-3ad8-43af-a7c3-ce0b71f1565d",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T10:48:28Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 14.3
+}

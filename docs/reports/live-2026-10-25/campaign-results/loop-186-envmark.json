@@ -1,0 +1,20 @@
+{
+  "name": "loop-186-envmark",
+  "started_at": 1792740855.1704462,
+  "job_id": "a87c2890-c960-4275-9f95-9b5cdf3a7ea9",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "marker=loop-186\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:34:24Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 14.0
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-1460-workdir",
+  "started_at": 1792790340.1179411,
+  "job_id": "3750ef64-9331-48fb-937c-d24e254e8ee7",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-1460\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:19:02Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

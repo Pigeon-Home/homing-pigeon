@@ -1,0 +1,21 @@
+{
+  "name": "loop-892-workdir",
+  "started_at": 1792787954.154497,
+  "job_id": "382d70ec-79a0-4d58-be0b-c7f37b9e579f",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "cycle-892\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:39:16Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

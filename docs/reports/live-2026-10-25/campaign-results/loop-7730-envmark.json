@@ -1,0 +1,21 @@
+{
+  "name": "loop-7730-envmark",
+  "started_at": 1792836636.6157043,
+  "job_id": "9d3184c4-ab94-4aef-a35e-4a8921f6c876",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "marker=loop-7730\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:10:38Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

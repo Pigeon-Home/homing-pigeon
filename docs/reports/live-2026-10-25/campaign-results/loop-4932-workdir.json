@@ -1,0 +1,21 @@
+{
+  "name": "loop-4932-workdir",
+  "started_at": 1792825375.1021583,
+  "job_id": "c131accc-696d-43fa-b62a-c16b16c129d7",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "cycle-4932\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T07:02:57Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

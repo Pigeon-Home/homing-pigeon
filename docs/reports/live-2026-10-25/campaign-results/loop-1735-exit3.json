@@ -1,0 +1,21 @@
+{
+  "name": "loop-1735-exit3",
+  "started_at": 1792791448.4074967,
+  "job_id": "1b7ae69a-42a6-4ac0-9b91-7f13b4ead0c2",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:37:31Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

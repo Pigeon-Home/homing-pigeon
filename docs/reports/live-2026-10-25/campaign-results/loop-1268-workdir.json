@@ -1,0 +1,21 @@
+{
+  "name": "loop-1268-workdir",
+  "started_at": 1792789469.2850084,
+  "job_id": "b9c33e46-e14a-418c-9956-337074243144",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "cycle-1268\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:04:31Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

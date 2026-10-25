@@ -1,0 +1,21 @@
+{
+  "name": "loop-404-workdir",
+  "started_at": 1792782896.950991,
+  "job_id": "4e4db7f0-dbc5-458c-bbbf-e1ba6f5de6df",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.012,
+    "stdout": "cycle-404\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T19:14:59Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

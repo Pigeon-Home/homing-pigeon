@@ -1,0 +1,21 @@
+{
+  "name": "loop-5228-workdir",
+  "started_at": 1792826565.6428106,
+  "job_id": "57eb94a3-29d6-4bdd-9fc8-432feb832a48",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "cycle-5228\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T07:22:48Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

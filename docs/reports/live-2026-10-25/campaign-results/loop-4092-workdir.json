@@ -1,0 +1,21 @@
+{
+  "name": "loop-4092-workdir",
+  "started_at": 1792821996.4594195,
+  "job_id": "25d2a031-d899-4888-a6cf-6b20757006b8",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "cycle-4092\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T06:06:38Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

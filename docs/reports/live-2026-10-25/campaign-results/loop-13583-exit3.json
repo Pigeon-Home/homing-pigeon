@@ -1,0 +1,21 @@
+{
+  "name": "loop-13583-exit3",
+  "started_at": 1792860391.659584,
+  "job_id": "76be56d6-eac9-4bc4-b6e1-91107be8dee1",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T16:46:34Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

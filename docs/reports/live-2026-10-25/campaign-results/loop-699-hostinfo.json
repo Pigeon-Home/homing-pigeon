@@ -1,0 +1,21 @@
+{
+  "name": "loop-699-hostinfo",
+  "started_at": 1792787040.2600534,
+  "job_id": "b0276e6b-8758-4a62-9b56-3d454b1bc48e",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.02,
+    "stdout": "rig\nLinux 7.0.0-39-generic\n 13:24:02 up  1:05,  0 user,  load average: 0.30, 0.77, 0.84\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:24:02Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

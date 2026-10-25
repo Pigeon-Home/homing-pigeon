@@ -1,0 +1,21 @@
+{
+  "name": "loop-7844-workdir",
+  "started_at": 1792837095.4428282,
+  "job_id": "5406c2d2-84fc-4d53-ab2c-0709b57cfc27",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "cycle-7844\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:18:17Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

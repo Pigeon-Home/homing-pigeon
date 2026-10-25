@@ -1,0 +1,21 @@
+{
+  "name": "loop-10972-workdir",
+  "started_at": 1792849787.8605747,
+  "job_id": "3508f824-e96a-4624-9ec1-df2fe1107244",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "cycle-10972\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T13:49:50Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

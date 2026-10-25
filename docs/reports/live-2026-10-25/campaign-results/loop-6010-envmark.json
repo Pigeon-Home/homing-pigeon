@@ -1,0 +1,21 @@
+{
+  "name": "loop-6010-envmark",
+  "started_at": 1792829711.814977,
+  "job_id": "c88458bf-3b8a-4545-8b52-8d1405fc9d54",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "marker=loop-6010\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T08:15:14Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

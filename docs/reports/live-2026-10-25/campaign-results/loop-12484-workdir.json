@@ -1,0 +1,21 @@
+{
+  "name": "loop-12484-workdir",
+  "started_at": 1792855973.5584612,
+  "job_id": "1ce6459c-bd0f-48ef-99dd-9d46b8b3e28c",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-12484\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T15:32:56Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

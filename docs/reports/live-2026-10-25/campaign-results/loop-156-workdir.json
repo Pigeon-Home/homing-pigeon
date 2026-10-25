@@ -1,0 +1,20 @@
+{
+  "name": "loop-156-workdir",
+  "started_at": 1792740255.1633892,
+  "job_id": "c1875a5d-c695-4020-b48d-c8a154e8a89c",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-156\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:24:22Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 12.1
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-4124-workdir",
+  "started_at": 1792822125.234287,
+  "job_id": "7bb22cd5-5725-4797-b3fd-33b7e71daf4a",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "cycle-4124\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T06:08:47Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

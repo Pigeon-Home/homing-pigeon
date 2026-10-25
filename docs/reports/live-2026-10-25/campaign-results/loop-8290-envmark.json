@@ -1,0 +1,21 @@
+{
+  "name": "loop-8290-envmark",
+  "started_at": 1792838889.2265522,
+  "job_id": "9e972f3f-d4d4-4ba4-a848-23c91fad8959",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "marker=loop-8290\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:48:11Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

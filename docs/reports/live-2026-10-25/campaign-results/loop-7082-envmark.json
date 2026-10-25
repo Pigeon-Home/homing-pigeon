@@ -1,0 +1,21 @@
+{
+  "name": "loop-7082-envmark",
+  "started_at": 1792834024.2618604,
+  "job_id": "5ee60f51-150c-4c9c-ae31-3b24aa543e1a",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "marker=loop-7082\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T09:27:06Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

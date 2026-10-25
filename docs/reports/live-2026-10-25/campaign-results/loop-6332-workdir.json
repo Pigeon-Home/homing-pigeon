@@ -1,0 +1,21 @@
+{
+  "name": "loop-6332-workdir",
+  "started_at": 1792831006.9992793,
+  "job_id": "edcf11fc-4ce5-47c9-a26b-40e43647dc45",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "cycle-6332\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T08:36:48Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

@@ -1,0 +1,20 @@
+{
+  "name": "loop-228-workdir",
+  "started_at": 1792741695.1896951,
+  "job_id": "4ee8a240-adf4-4d31-aaeb-8a0f98b707ee",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "cycle-228\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:48:26Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 14.5
+}

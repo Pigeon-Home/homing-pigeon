@@ -1,0 +1,21 @@
+{
+  "name": "loop-8588-workdir",
+  "started_at": 1792840146.873474,
+  "job_id": "ddd9fd8f-6476-4c99-88f9-790e0a6160fb",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-8588\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:09:09Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-7090-envmark",
+  "started_at": 1792834056.4899101,
+  "job_id": "905c31f7-b317-4346-a51f-4121facf328c",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "marker=loop-7090\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T09:27:38Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

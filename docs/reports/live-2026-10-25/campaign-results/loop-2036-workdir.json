@@ -1,0 +1,21 @@
+{
+  "name": "loop-2036-workdir",
+  "started_at": 1792792662.5596921,
+  "job_id": "05e5b6eb-b266-46b3-82c4-bba290e4ffd8",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-2036\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:57:44Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

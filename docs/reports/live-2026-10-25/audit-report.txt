@@ -1,0 +1,16 @@
+Security audit report (last 30d)
+============================================================
+no audit entries in this window
+
+Per-key suggestions
+------------------------------------------------------------
+none
+
+Suggested key_policies fragments
+------------------------------------------------------------
+(paste into config.json under "key_policies"; nothing was written)
+none
+
+Refused to suggest
+------------------------------------------------------------
+none

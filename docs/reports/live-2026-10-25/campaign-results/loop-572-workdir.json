@@ -1,0 +1,21 @@
+{
+  "name": "loop-572-workdir",
+  "started_at": 1792786529.2866983,
+  "job_id": "5845df3a-721a-46c1-9918-4cd6481f14a9",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-572\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:15:31Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

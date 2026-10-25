@@ -1,0 +1,21 @@
+{
+  "name": "loop-546-envmark",
+  "started_at": 1792786249.8651862,
+  "job_id": "28580234-a14d-42b9-92e3-027efd9de4e2",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "marker=loop-546\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:10:51Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

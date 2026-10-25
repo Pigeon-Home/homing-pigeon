@@ -1,0 +1,21 @@
+{
+  "name": "loop-7500-workdir",
+  "started_at": 1792835707.1437914,
+  "job_id": "dd3d7a36-65b9-4d66-b748-adf39a3fb018",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.018,
+    "stdout": "cycle-7500\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T09:55:08Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-9610-envmark",
+  "started_at": 1792844306.3085876,
+  "job_id": "622158ae-88ad-4244-81ed-d9893cc94859",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "marker=loop-9610\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:18:28Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

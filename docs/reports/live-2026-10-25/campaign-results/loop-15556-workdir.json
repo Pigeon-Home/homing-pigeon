@@ -1,0 +1,21 @@
+{
+  "name": "loop-15556-workdir",
+  "started_at": 1792869080.8766558,
+  "job_id": "b54aee68-589a-43c0-a88b-2009bb51d76a",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-15556\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T19:11:22Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

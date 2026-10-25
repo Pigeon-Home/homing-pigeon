@@ -1,0 +1,21 @@
+{
+  "name": "loop-12860-workdir",
+  "started_at": 1792857484.458449,
+  "job_id": "015d9944-5145-40ea-8ecc-60bfff2fa527",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.011,
+    "stdout": "cycle-12860\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T15:58:06Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

@@ -1,0 +1,20 @@
+{
+  "name": "loop-236-workdir",
+  "started_at": 1792741855.1913192,
+  "job_id": "e783b609-ec38-4a66-86f7-0c6f17a81cd9",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "cycle-236\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:51:06Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 16.0
+}

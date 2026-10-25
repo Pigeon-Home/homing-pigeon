@@ -1,0 +1,21 @@
+{
+  "name": "loop-7271-exit3",
+  "started_at": 1792834785.0513039,
+  "job_id": "8b546d2f-4e89-4ce6-89f4-dab8b6b7f5d4",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T09:39:47Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

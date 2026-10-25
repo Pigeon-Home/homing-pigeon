@@ -1,0 +1,21 @@
+{
+  "name": "loop-1684-workdir",
+  "started_at": 1792791244.2007275,
+  "job_id": "0e27aa51-57fb-49cb-b7eb-18b642541c7a",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "cycle-1684\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:34:06Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

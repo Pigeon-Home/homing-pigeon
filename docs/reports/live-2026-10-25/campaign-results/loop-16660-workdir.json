@@ -1,0 +1,21 @@
+{
+  "name": "loop-16660-workdir",
+  "started_at": 1792873579.7045355,
+  "job_id": "74cbbcf9-9e07-4f04-a1a1-dc6989411183",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-16660\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T20:26:22Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-8090-envmark",
+  "started_at": 1792838084.9156678,
+  "job_id": "62a3f798-d09a-4f45-8b1e-f135236ce04d",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.01,
+    "stdout": "marker=loop-8090\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:34:47Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

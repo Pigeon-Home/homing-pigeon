@@ -1,0 +1,21 @@
+{
+  "name": "loop-2764-workdir",
+  "started_at": 1792795609.1785257,
+  "job_id": "f65ef8ee-3021-49ff-89b7-fcda565a993a",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-2764\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T22:46:51Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-4666-envmark",
+  "started_at": 1792824304.5587838,
+  "job_id": "9d67f8f3-27a4-4ed9-b7b2-afff55bedcc6",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "marker=loop-4666\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T06:45:06Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

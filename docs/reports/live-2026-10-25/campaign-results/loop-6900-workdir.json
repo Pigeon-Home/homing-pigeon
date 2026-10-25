@@ -1,0 +1,21 @@
+{
+  "name": "loop-6900-workdir",
+  "started_at": 1792833291.8509836,
+  "job_id": "365f9349-247e-42da-8882-12e115661c53",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.015,
+    "stdout": "cycle-6900\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T09:14:54Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

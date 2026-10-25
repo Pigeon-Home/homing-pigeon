@@ -1,0 +1,21 @@
+{
+  "name": "loop-3404-workdir",
+  "started_at": 1792798538.744896,
+  "job_id": "ca778b6d-2db4-45fa-99e4-5435fdad19b9",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-3404\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T23:35:41Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

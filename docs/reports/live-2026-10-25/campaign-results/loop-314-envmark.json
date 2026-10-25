@@ -1,0 +1,20 @@
+{
+  "name": "loop-314-envmark",
+  "started_at": 1792765019.5521014,
+  "job_id": "fc99050e-01e3-41b3-8f0e-ef7253022c66",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "marker=loop-314\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T14:17:04Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 9.0
+}

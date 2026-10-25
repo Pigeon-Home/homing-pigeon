@@ -1,0 +1,21 @@
+{
+  "name": "loop-6938-envmark",
+  "started_at": 1792833444.6642501,
+  "job_id": "12ca140a-8591-435c-b654-8798c9f60eff",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "marker=loop-6938\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T09:17:26Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

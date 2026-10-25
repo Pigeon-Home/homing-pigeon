@@ -1,0 +1,21 @@
+{
+  "name": "loop-684-workdir",
+  "started_at": 1792786979.9516597,
+  "job_id": "aac60844-e76d-4a24-8cd5-6c20709242cb",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "cycle-684\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:23:01Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

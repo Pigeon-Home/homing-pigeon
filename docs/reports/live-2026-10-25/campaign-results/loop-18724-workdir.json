@@ -1,0 +1,21 @@
+{
+  "name": "loop-18724-workdir",
+  "started_at": 1792881879.3878398,
+  "job_id": "78eb7185-5d7f-422a-b52a-091ddd737550",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.017,
+    "stdout": "cycle-18724\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T22:44:41Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

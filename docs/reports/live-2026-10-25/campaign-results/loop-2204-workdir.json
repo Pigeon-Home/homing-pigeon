@@ -1,0 +1,21 @@
+{
+  "name": "loop-2204-workdir",
+  "started_at": 1792793345.950782,
+  "job_id": "93395814-8a21-4219-b5cf-a1b5f46221d2",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-2204\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T22:09:08Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

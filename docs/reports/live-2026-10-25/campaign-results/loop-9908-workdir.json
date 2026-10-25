@@ -1,0 +1,21 @@
+{
+  "name": "loop-9908-workdir",
+  "started_at": 1792845504.8245292,
+  "job_id": "b3c8cefe-691e-4332-b58a-958c6e001f9e",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "cycle-9908\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:38:27Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

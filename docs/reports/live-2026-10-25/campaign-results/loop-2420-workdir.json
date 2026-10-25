@@ -1,0 +1,21 @@
+{
+  "name": "loop-2420-workdir",
+  "started_at": 1792794219.19754,
+  "job_id": "6281b1b2-6dd0-44dc-a3a4-257b0a7b6fd2",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "cycle-2420\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T22:23:42Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

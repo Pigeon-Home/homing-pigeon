@@ -1,0 +1,21 @@
+{
+  "name": "loop-3519-exit3",
+  "started_at": 1792799004.5369954,
+  "job_id": "f95ef5c9-9903-4824-8862-3ad12db62d6d",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T23:43:27Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

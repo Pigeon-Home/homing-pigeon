@@ -1,0 +1,21 @@
+{
+  "name": "loop-9252-workdir",
+  "started_at": 1792842869.2473912,
+  "job_id": "a24cabc2-a487-4626-86d7-1beafdebb102",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-9252\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:54:31Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

@@ -1,0 +1,5 @@
+Linux rig 7.0.0-39-generic #1 SMP PREEMPT_DYNAMIC Thu Sep 24 08:42:15 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+Python 3.12.3
+runner.py 3.12.70
+resources 2026-10-25T20:31:37Z: cores 2 | box cpu 56% | wall 3s | cmd cpu 3s = 1.0 cores busy | peak rss 78 MB | mem used 94% | disk free 166.4 GB | exit 0 | under-driven
+resources-top: runner 233 MB, python 12 MB, systemd 4 MB, runner-execd 4 MB, bash 3 MB

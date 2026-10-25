@@ -1,0 +1,20 @@
+{
+  "name": "loop-1258-envmark",
+  "started_at": 1792789427.2536573,
+  "job_id": "4386beef-992b-40a7-b81a-400cf92ab1fb",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "marker=loop-1258\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:03:51Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 6.3
+}

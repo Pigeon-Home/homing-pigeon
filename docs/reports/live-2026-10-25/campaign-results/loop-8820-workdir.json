@@ -1,0 +1,21 @@
+{
+  "name": "loop-8820-workdir",
+  "started_at": 1792841078.3941603,
+  "job_id": "e7f5745e-4007-4d8d-8bfa-f3a6849ba135",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-8820\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:24:40Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

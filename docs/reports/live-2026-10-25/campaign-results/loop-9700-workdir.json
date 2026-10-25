@@ -1,0 +1,21 @@
+{
+  "name": "loop-9700-workdir",
+  "started_at": 1792844667.749968,
+  "job_id": "2d7d4b30-7793-4eef-9420-92fb5d1a5984",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-9700\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:24:29Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

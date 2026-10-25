@@ -1,0 +1,21 @@
+{
+  "name": "loop-4554-envmark",
+  "started_at": 1792823854.219493,
+  "job_id": "bc3ca65d-1347-45c2-a254-44e77b2b4410",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "marker=loop-4554\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T06:37:36Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

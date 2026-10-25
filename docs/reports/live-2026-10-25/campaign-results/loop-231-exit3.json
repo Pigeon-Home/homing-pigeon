@@ -1,0 +1,20 @@
+{
+  "name": "loop-231-exit3",
+  "started_at": 1792741755.190325,
+  "job_id": "aad9383f-8176-4bed-9c80-2b8b3e98ef8c",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:49:26Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 15.6
+}

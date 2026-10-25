@@ -1,0 +1,20 @@
+{
+  "name": "loop-098-envmark",
+  "started_at": 1792738035.9642565,
+  "job_id": "5f76b2a4-2328-4b50-b92e-66d2440acb77",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "marker=loop-98\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T06:47:19Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 7.7
+}

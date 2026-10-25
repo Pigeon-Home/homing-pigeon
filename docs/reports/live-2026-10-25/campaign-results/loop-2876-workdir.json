@@ -1,0 +1,21 @@
+{
+  "name": "loop-2876-workdir",
+  "started_at": 1792796063.1770508,
+  "job_id": "39ae6dd8-0e76-458c-ad7d-d0c390a3ea21",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-2876\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T22:54:25Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

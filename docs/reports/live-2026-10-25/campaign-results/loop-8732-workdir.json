@@ -1,0 +1,21 @@
+{
+  "name": "loop-8732-workdir",
+  "started_at": 1792840725.0568137,
+  "job_id": "9b6499d2-cada-4264-b499-d2e94a2a9c1d",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-8732\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:18:47Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

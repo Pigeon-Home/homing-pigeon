@@ -1,0 +1,21 @@
+{
+  "name": "loop-5596-workdir",
+  "started_at": 1792828045.8658867,
+  "job_id": "77a5dd7d-ef6a-42b6-8fa6-806b7a4d6270",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "cycle-5596\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T07:47:27Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

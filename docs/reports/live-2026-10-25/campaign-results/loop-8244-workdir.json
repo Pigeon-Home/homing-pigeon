@@ -1,0 +1,21 @@
+{
+  "name": "loop-8244-workdir",
+  "started_at": 1792838704.4685268,
+  "job_id": "4b44f7e4-8a7e-4eac-ba28-5124eb07758b",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.015,
+    "stdout": "cycle-8244\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:45:07Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

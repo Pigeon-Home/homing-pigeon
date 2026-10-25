@@ -1,0 +1,20 @@
+{
+  "name": "loop-300-workdir",
+  "started_at": 1792758687.152208,
+  "job_id": "17950b02-8ab0-4e03-87a3-03e8a0aa0588",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-300\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T12:31:39Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 14.2
+}

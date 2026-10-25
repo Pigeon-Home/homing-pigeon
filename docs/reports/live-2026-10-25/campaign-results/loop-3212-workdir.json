@@ -1,0 +1,21 @@
+{
+  "name": "loop-3212-workdir",
+  "started_at": 1792797765.0144894,
+  "job_id": "1ceead44-00c9-4b9b-b5dd-f982c7e8f911",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-3212\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T23:22:47Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-2607-exit3",
+  "started_at": 1792794974.6843808,
+  "job_id": "360d3bdf-0979-40f2-9c5a-5c0ba42d4e52",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T22:36:16Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.3
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-1586-envmark",
+  "started_at": 1792790847.0609255,
+  "job_id": "b9203cad-f635-4d29-b476-53a545ce412b",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "marker=loop-1586\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:27:29Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

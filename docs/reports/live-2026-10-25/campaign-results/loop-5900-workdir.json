@@ -1,0 +1,21 @@
+{
+  "name": "loop-5900-workdir",
+  "started_at": 1792829268.8822415,
+  "job_id": "a1b48f38-e0e8-4e2f-ba7f-05c7d96eb078",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.01,
+    "stdout": "cycle-5900\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T08:07:51Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

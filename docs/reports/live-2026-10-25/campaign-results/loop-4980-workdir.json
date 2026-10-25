@@ -1,0 +1,21 @@
+{
+  "name": "loop-4980-workdir",
+  "started_at": 1792825568.2903733,
+  "job_id": "0309a735-f960-472d-8ba4-352424319f8f",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-4980\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T07:06:11Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

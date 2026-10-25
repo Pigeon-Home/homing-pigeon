@@ -1,0 +1,20 @@
+{
+  "name": "loop-342-sysstat",
+  "started_at": 1792772539.2624645,
+  "job_id": "fcada741-cd73-4e18-a42a-cfd5b8930939",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.019,
+    "stdout": "overlay         7.5G  215M  7.3G   3% /\n               total        used        free      shared  buff/cache   available\nMem:            7935        7634         183         124         490         301\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T16:22:33Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 15.4
+}

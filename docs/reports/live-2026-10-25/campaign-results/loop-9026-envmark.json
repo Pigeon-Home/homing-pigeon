@@ -1,0 +1,21 @@
+{
+  "name": "loop-9026-envmark",
+  "started_at": 1792841903.7561843,
+  "job_id": "f5ce1771-d608-4943-b63d-d6be701fe30d",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "marker=loop-9026\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:38:25Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

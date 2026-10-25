@@ -1,0 +1,20 @@
+{
+  "name": "loop-1108-workdir",
+  "started_at": 1792788821.249008,
+  "job_id": "8bf9618c-6235-4af6-8978-6b24b2a0f868",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "cycle-1108\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:53:45Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 6.3
+}

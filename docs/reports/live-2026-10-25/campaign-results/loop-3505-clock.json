@@ -1,0 +1,20 @@
+{
+  "name": "loop-3505-clock",
+  "started_at": 1792798946.2432065,
+  "job_id": "34a41a2f-bfde-4ac8-819d-00f6aaaba8f7",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.013,
+    "stdout": "Fri Oct 23 23:42:30 UTC 2026\n1792798950\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T23:42:30Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 6.4
+}

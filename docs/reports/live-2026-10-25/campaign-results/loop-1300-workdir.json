@@ -1,0 +1,21 @@
+{
+  "name": "loop-1300-workdir",
+  "started_at": 1792789597.9449105,
+  "job_id": "a630cd59-c098-4f11-86e0-7e9c3abdb8cb",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-1300\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:06:39Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

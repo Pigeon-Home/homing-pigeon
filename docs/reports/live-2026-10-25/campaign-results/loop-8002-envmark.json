@@ -1,0 +1,21 @@
+{
+  "name": "loop-8002-envmark",
+  "started_at": 1792837730.6915407,
+  "job_id": "a218575e-c07b-4250-9412-05217c0b4df0",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "marker=loop-8002\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:28:52Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

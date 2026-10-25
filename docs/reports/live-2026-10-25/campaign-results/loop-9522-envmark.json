@@ -1,0 +1,21 @@
+{
+  "name": "loop-9522-envmark",
+  "started_at": 1792843952.3605547,
+  "job_id": "544b304e-f26b-4012-912c-c67aef1eeb96",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "marker=loop-9522\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:12:34Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

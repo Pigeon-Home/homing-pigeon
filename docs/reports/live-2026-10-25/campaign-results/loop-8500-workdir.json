@@ -1,0 +1,21 @@
+{
+  "name": "loop-8500-workdir",
+  "started_at": 1792839734.3244092,
+  "job_id": "e921d311-570a-4542-a951-145d06929621",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.01,
+    "stdout": "cycle-8500\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:02:16Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

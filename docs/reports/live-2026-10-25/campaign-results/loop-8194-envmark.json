@@ -1,0 +1,21 @@
+{
+  "name": "loop-8194-envmark",
+  "started_at": 1792838503.2582958,
+  "job_id": "078b0c8f-968e-4ea4-9d12-af101132f36f",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.013,
+    "stdout": "marker=loop-8194\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:41:45Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

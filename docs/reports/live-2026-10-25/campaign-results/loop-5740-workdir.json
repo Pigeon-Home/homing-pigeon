@@ -1,0 +1,21 @@
+{
+  "name": "loop-5740-workdir",
+  "started_at": 1792828625.655794,
+  "job_id": "4ee4abdc-4435-45cf-ae3e-befea4696ccc",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.012,
+    "stdout": "cycle-5740\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T07:57:08Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

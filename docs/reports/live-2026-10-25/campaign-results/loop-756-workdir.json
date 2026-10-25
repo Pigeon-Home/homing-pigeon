@@ -1,0 +1,21 @@
+{
+  "name": "loop-756-workdir",
+  "started_at": 1792787407.5386064,
+  "job_id": "b0fbc446-2134-4dd9-8e04-8fd086f13c8a",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.008,
+    "stdout": "cycle-756\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:30:10Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

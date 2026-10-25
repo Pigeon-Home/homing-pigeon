@@ -1,0 +1,20 @@
+{
+  "name": "loop-010-envmark",
+  "started_at": 1792732755.6820495,
+  "job_id": "546d2d7e-5832-40a2-8cb0-58223bc9f8d4",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.002,
+    "stdout": "marker=loop-10\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T05:19:19Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 8.2
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-9468-workdir",
+  "started_at": 1792843735.6123178,
+  "job_id": "11e26436-4e50-4a12-ae8e-622aef85c13c",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "cycle-9468\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T12:08:58Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

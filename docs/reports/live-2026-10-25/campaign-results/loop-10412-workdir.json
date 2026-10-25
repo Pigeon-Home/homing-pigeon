@@ -1,0 +1,21 @@
+{
+  "name": "loop-10412-workdir",
+  "started_at": 1792847533.5614011,
+  "job_id": "61aa7bd5-4a3a-4d9b-a8a3-48a096393c38",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.022,
+    "stdout": "cycle-10412\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T13:12:15Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

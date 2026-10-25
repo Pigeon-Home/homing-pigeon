@@ -1,0 +1,20 @@
+{
+  "name": "loop-327-exit3",
+  "started_at": 1792768644.8698819,
+  "job_id": "a0624c6f-fa29-4e96-9f6c-03eb96f5d564",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.015,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T15:17:27Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 6.7
+}

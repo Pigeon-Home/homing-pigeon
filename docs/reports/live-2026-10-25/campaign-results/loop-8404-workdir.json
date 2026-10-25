@@ -1,0 +1,21 @@
+{
+  "name": "loop-8404-workdir",
+  "started_at": 1792839347.9482007,
+  "job_id": "5df7548b-1a0b-48e6-a181-5bdbaee0a388",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "cycle-8404\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:55:49Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

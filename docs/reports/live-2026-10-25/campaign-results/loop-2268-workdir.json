@@ -1,0 +1,20 @@
+{
+  "name": "loop-2268-workdir",
+  "started_at": 1792793603.034788,
+  "job_id": "bbe44fae-5ace-4f39-8467-356e5c4ee01c",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "cycle-2268\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T22:13:27Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 7.6
+}

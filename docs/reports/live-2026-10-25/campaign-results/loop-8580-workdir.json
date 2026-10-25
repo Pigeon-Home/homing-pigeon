@@ -1,0 +1,21 @@
+{
+  "name": "loop-8580-workdir",
+  "started_at": 1792840056.187678,
+  "job_id": "6b565026-4ac2-495e-b36b-1db0cb8d3f71",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.011,
+    "stdout": "cycle-8580\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:07:38Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

@@ -1,0 +1,21 @@
+{
+  "name": "loop-15650-envmark",
+  "started_at": 1792869458.6777399,
+  "job_id": "02fda3bc-5a16-4f08-9d98-6c2f4af23cb4",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "marker=loop-15650\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T19:17:41Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

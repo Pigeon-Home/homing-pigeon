@@ -1,0 +1,21 @@
+{
+  "name": "loop-9028-workdir",
+  "started_at": 1792841911.5481832,
+  "job_id": "88fef282-b52c-4d84-8734-bd3d332035b4",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-9028\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:38:34Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

@@ -1,0 +1,20 @@
+{
+  "name": "loop-268-workdir",
+  "started_at": 1792746414.4251132,
+  "job_id": "5aff9eb3-3f0b-4d9f-adfe-c902d0b09d02",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-268\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T09:07:05Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 14.5
+}

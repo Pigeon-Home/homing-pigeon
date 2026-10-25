@@ -1,0 +1,21 @@
+{
+  "name": "loop-17276-workdir",
+  "started_at": 1792876053.9484322,
+  "job_id": "1980acc1-705e-44d8-abd2-fea37f404256",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.009,
+    "stdout": "cycle-17276\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T21:07:36Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

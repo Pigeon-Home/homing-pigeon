@@ -1,0 +1,21 @@
+{
+  "name": "loop-8092-workdir",
+  "started_at": 1792838093.4924366,
+  "job_id": "c0a4d00b-a28f-4a34-9ef5-d5ff2b9731ac",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.016,
+    "stdout": "cycle-8092\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:34:55Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.5
+}

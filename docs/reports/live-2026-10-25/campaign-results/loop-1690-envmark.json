@@ -1,0 +1,21 @@
+{
+  "name": "loop-1690-envmark",
+  "started_at": 1792791268.0608268,
+  "job_id": "509f3ecd-8afa-402f-9903-67d08ba566d9",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "marker=loop-1690\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:34:30Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

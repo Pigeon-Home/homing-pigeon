@@ -1,0 +1,20 @@
+{
+  "name": "loop-3055-exit3",
+  "started_at": 1792797129.4307342,
+  "job_id": "2c634e34-b2b7-40ac-a0d6-24cb3ef9f228",
+  "job_email_sent": false,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.012,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T23:12:13Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 5.8
+}

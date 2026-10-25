@@ -1,0 +1,21 @@
+{
+  "name": "loop-9324-workdir",
+  "started_at": 1792843158.0488036,
+  "job_id": "cc7cfdfb-b044-4fda-a0dc-04cefe617edf",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "cycle-9324\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:59:19Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

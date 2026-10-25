@@ -1,0 +1,21 @@
+{
+  "name": "loop-8196-workdir",
+  "started_at": 1792838511.060765,
+  "job_id": "5360bb04-8cba-4cf1-9620-233b1e10833b",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.01,
+    "stdout": "cycle-8196\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:41:53Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

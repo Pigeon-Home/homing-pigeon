@@ -1,0 +1,20 @@
+{
+  "name": "loop-242-envmark",
+  "started_at": 1792741975.192496,
+  "job_id": "222774d8-b2b9-4a54-a811-91f34b8a605f",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.003,
+    "stdout": "marker=loop-242\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T07:53:06Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 16.1
+}

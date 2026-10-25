@@ -2691,6 +2691,12 @@ when done, the proving commit or run. Newest first.
   starvation), so the both-platforms form of the
   rule rests on the local map plus the recorded
   dispositions.
+- Q36 done: the rig's live capture is posted under
+  docs/reports/live-2026-10-25/ (19,247 files,
+  scrub-verified by exact-match scan for the rig's
+  secret values: none present; the rotation ask is
+  recorded in its README and in Q36's answer -- the
+  rotation itself is the owner's).
 - Q35 answered in the questions file (four fixed in
   1cfa5bb; the wrong-case shape probed; the
   test_gamma item answered by evidence -- an inner

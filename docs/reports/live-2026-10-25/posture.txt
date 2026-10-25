@@ -1,0 +1,17 @@
+Security posture
+============================================================
+[OK  ] config         config file readable
+[OK  ] files          config-staging.json: permissions 0600
+[OK  ] privileges     running as root (uid 0)
+[WARN] workspace      workspace_root unset (confinement attestations off)
+[WARN] security modes audience is off (recommended: audit or enforce)
+[WARN] security modes policy_env is off (recommended: audit or enforce)
+[WARN] security modes policy_files is off (recommended: audit or enforce)
+[WARN] security modes policy_args is off (recommended: audit or enforce)
+[WARN] confinement    bwrap not installed (confinement in enforce mode would run unsandboxed)
+[OK  ] service        no homing-pigeon systemd unit found
+[OK  ] secrets        shared_secret: strong
+[OK  ] audit log      no audit entries yet (nothing to protect)
+[OK  ] base dir       exists: /home/runner/workspace/live-capture-stage/state
+[OK  ] security modes all features off (default)
+[OK  ] key policies   2 key(s) have policy entries

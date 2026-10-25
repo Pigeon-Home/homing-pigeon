@@ -1,0 +1,21 @@
+{
+  "name": "loop-18172-workdir",
+  "started_at": 1792879657.050721,
+  "job_id": "3ec93805-0164-4f64-bcf4-47b2ac2c92c1",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.011,
+    "stdout": "cycle-18172\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T22:07:39Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

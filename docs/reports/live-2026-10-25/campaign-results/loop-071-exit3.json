@@ -1,0 +1,20 @@
+{
+  "name": "loop-071-exit3",
+  "started_at": 1792736415.882705,
+  "job_id": "897dff68-54c4-42f2-8fbb-ec3d1a95d1e6",
+  "job_email_sent": true,
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T06:20:25Z",
+    "runner": "rig"
+  },
+  "result_email_sent": true,
+  "elapsed_sec": 14.4
+}

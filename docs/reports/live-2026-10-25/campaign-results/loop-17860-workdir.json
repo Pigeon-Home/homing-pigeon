@@ -1,0 +1,21 @@
+{
+  "name": "loop-17860-workdir",
+  "started_at": 1792878402.0282562,
+  "job_id": "927366e6-642b-48db-9de6-2a1621ec64c1",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "cycle-17860\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T21:46:44Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

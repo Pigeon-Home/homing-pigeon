@@ -1,0 +1,21 @@
+{
+  "name": "loop-1444-workdir",
+  "started_at": 1792790275.8819282,
+  "job_id": "9ff009b7-97c0-4fa8-9de0-3bd3d7e48a28",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "cycle-1444\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T21:17:58Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

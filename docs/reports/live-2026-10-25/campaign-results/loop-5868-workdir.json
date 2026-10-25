@@ -1,0 +1,21 @@
+{
+  "name": "loop-5868-workdir",
+  "started_at": 1792829140.3156457,
+  "job_id": "20ab6602-f1ec-4ef2-b348-dd11a5d676c3",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-5868\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T08:05:42Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

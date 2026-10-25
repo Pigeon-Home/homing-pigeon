@@ -1,0 +1,21 @@
+{
+  "name": "loop-14874-envmark",
+  "started_at": 1792866096.5780935,
+  "job_id": "8dd1ba34-b43d-4451-aa5c-4ee79db8f93b",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.006,
+    "stdout": "marker=loop-14874\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T18:21:38Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

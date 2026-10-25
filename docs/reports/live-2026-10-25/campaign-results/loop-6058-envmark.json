@@ -1,0 +1,21 @@
+{
+  "name": "loop-6058-envmark",
+  "started_at": 1792829905.0731552,
+  "job_id": "212b354e-baf4-4810-9fa6-f6788e37a680",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.016,
+    "stdout": "marker=loop-6058\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T08:18:27Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

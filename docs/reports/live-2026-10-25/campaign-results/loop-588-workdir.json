@@ -1,0 +1,21 @@
+{
+  "name": "loop-588-workdir",
+  "started_at": 1792786593.356593,
+  "job_id": "91d31c73-763e-46bc-8563-1ac16bb873ab",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.007,
+    "stdout": "cycle-588\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T20:16:36Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.0
+}

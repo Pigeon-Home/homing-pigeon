@@ -1,0 +1,21 @@
+{
+  "name": "loop-443-hostinfo",
+  "started_at": 1792784189.7813594,
+  "job_id": "04d08663-da70-4fa1-b39b-01724035bf0e",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.01,
+    "stdout": "rig\nLinux 7.0.0-39-generic\n 19:36:31 up 18 min,  0 user,  load average: 1.97, 1.66, 1.00\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T19:36:31Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.2
+}

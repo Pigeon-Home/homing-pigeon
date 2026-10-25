@@ -1,0 +1,21 @@
+{
+  "name": "loop-8799-exit3",
+  "started_at": 1792840994.0819542,
+  "job_id": "b37f0ca6-31e4-47f0-a7ac-82855b9cbbfc",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 3,
+    "timed_out": false,
+    "duration_sec": 0.004,
+    "stdout": "loop-failure-probe\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T11:23:16Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.9
+}

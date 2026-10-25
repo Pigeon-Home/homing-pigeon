@@ -1,0 +1,21 @@
+{
+  "name": "loop-3124-workdir",
+  "started_at": 1792797407.6520674,
+  "job_id": "685e1c61-835c-4777-9a24-99a9022ede13",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-3124\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-23T23:16:50Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}

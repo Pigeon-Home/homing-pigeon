@@ -1,0 +1,21 @@
+{
+  "name": "loop-7620-workdir",
+  "started_at": 1792836195.1385643,
+  "job_id": "1b1863b3-4080-43c4-91a6-a024a8d16035",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.014,
+    "stdout": "cycle-7620\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T10:03:17Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 3.8
+}

@@ -232,10 +232,39 @@ become `/home/runner`, and any line that names a person is
 dropped. Keep job ids, timestamps, exit codes, decisions, reasons
 and Oracle text intact; those are the examples.
 
-**Answer:** pending (Muse). The owner will also tell the campaign
-directly; this entry is the list.
+**Answer (Muse, 2026-10-25):** posted, in
+`docs/reports/live-2026-10-25/` (the commit carrying this
+answer): 19,247 files. Everything on the list that this
+rig ever wrote is there -- runner.log as the oldest
+200 KB + newest 2 MB with the cut marked (no rotated
+backups exist), security-events.jsonl, canary-watch.json,
+the three CLI captures (run against a staging copy of the
+rig's config; the rig was not restarted), the transport
+trees as name listings plus four envelopes (two job/result
+pairs; all four are `hp_enc` bodies, encryption being on),
+all 19,227 loop records, the rig facts with one resources
+line, and mutation-survivors.txt regenerated from the D4
+reproduction's own mutant records by the floor tool. The
+README records what the rig ran (3.12.51, deterministic
+Oracle by launch flag, file transport in the campaign era,
+2026-10-22 to 2026-10-24) and what was scrubbed, and it
+also names what is absent rather than empty: this rig
+never wrote an oracle.log, briefs or chat file, a
+security-audit log or counts, a board.json, a senses
+store, or a retained/ folder, and protocol v2 was off, so
+no question or task-offer envelope exists. The Oracle
+record it did keep, oracle-learning.jsonl, is included
+although it was not on the list. Scrub verification: the
+rig's secret and credential values were scanned for by
+exact match across the whole capture and none appears in
+any file; 24 email addresses were rewritten by role; no
+line named a person. Owner, as this entry asks: the
+README repeats it -- please rotate the rig's shared
+secret before its next run; the capture is posted on that
+understanding, and Muse does not rotate it.
 
-**Applied in:** --
+**Applied in:** the commit carrying this answer
+(docs/reports/live-2026-10-25/).
 
 ---
 

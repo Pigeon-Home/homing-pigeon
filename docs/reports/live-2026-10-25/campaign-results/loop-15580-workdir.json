@@ -1,0 +1,21 @@
+{
+  "name": "loop-15580-workdir",
+  "started_at": 1792869177.2418783,
+  "job_id": "e2ca394b-9efe-4327-b55d-3da5cb219ff5",
+  "job_email_sent": false,
+  "mail_skipped": "probe-throttle",
+  "outcome": "result",
+  "verify_rc": 0,
+  "result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "duration_sec": 0.005,
+    "stdout": "cycle-15580\n",
+    "stderr": "",
+    "view": "full",
+    "completed_at": "2026-10-24T19:12:59Z",
+    "runner": "rig"
+  },
+  "result_email_sent": false,
+  "elapsed_sec": 4.1
+}
