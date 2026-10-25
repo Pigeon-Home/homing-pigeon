@@ -166,7 +166,27 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -c .github/requirements-ci.txt mutmut pytest hypothesis
-      - run: mutmut run --max-children 4
+      # The job log is not readable from every seat: mutmut's own
+      # output is kept, its tail rides as annotations when it fails,
+      # and the stats file is uploaded for the triage.
+      - name: mutmut
+        run: |
+          set -o pipefail
+          mutmut run --max-children 4 2>&1 | tee mutmut.log
+      - name: why mutmut stopped
+        if: failure()
+        run: |
+          tail -n 40 mutmut.log | grep -v '^\s*$' | tail -n 12 | while IFS= read -r line; do
+            echo "::error title=mutmut::${line:0:600}"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: mutation-log
+          path: |
+            mutmut.log
+            mutants/mutmut-stats.json
+          if-no-files-found: ignore
       # mutmut also exits 0 when it measured almost nothing: on
       # 2026-10-25 a collection failure inside the mutants tree ended
       # its coverage pass before any test ran, three mutants were
