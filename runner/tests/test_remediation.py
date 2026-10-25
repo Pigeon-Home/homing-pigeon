@@ -904,6 +904,29 @@ class ConfinementFollowupTest(unittest.TestCase):
             self.assertFalse(os.path.exists(work))
             self.assertIsNotNone(rem.load_marker(base, "esc-1"))
 
+    def test_escape_with_an_unmeasurable_file_still_quarantines(self):
+        # Queue A refill: the followup's sample
+        # loop (coverage run 40189711740: lines
+        # 3375-3376). A quarantined file whose
+        # size cannot be read -- here a symlink
+        # whose target is gone -- is skipped for
+        # the referral list, not fatal to the
+        # quarantine.
+        with tempfile.TemporaryDirectory() as base:
+            work = os.path.join(base, "work", "esc-3")
+            os.makedirs(work)
+            with open(os.path.join(work, "loot.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("x")
+            os.symlink(os.path.join(base, "gone-target"),
+                       os.path.join(work, "ghost.txt"))
+            job = {"job_id": "esc-3", "kind": "exec",
+                   "script": "echo x"}
+            member = runner._remediation_confinement_followup(
+                {}, job, "esc-3", base)
+            self.assertEqual(member["act"], "quarantined")
+            self.assertFalse(os.path.exists(work))
+
     def test_escape_in_off_mode_only_records(self):
         with tempfile.TemporaryDirectory() as base:
             work = os.path.join(base, "work", "esc-2")

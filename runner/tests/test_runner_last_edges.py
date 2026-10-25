@@ -9,6 +9,8 @@ import contextlib
 import io
 import json
 import os
+import signal
+import subprocess
 import threading
 import socket
 import sys
@@ -1043,6 +1045,338 @@ class RunnerFailSoftLegs6Test(unittest.TestCase):
             self.assertIsNone(rr.poll_once(
                 {"shared_secret": KEY_A}, d, {},
                 os.path.join(d, "seen.json")))
+
+
+class RunnerResidualLegsTest(unittest.TestCase):
+    """Queue A refill: runner.py's residual
+    guarded legs (coverage run 40189711740).
+    Each test names the leg it closes in its
+    docstring line; the contracts are the
+    documented ones -- a guard that cannot
+    prove its fact refuses, degrades, or stays
+    silent, and never raises into the caller.
+    """
+
+    def test_load_mod_missing_local_returns_none(self):
+        # _load_mod's local-import failure return:
+        # neither spelling of a missing module
+        # exists, broad or not.
+        self.assertIsNone(
+            rr._load_mod("runner.nope_xyz", "nope_xyz_local"))
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "brokenmod.py"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("raise RuntimeError('broken')\n")
+            sys.path.insert(0, d)
+            try:
+                self.assertIsNone(rr._load_mod(
+                    "runner.nope_xyz", "brokenmod", broad=True))
+            finally:
+                sys.path.remove(d)
+                sys.modules.pop("brokenmod", None)
+
+    def test_load_mod_broken_package(self):
+        # _load_mod's package-side guard: a
+        # package import that raises something
+        # other than ImportError is swallowed
+        # only under broad; otherwise it raises.
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "brokenpkg.py"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("raise RuntimeError('broken')\n")
+            sys.path.insert(0, d)
+            try:
+                self.assertIsNone(rr._load_mod(
+                    "brokenpkg", "nope_xyz_local",
+                    broad=True))
+                with self.assertRaises(RuntimeError):
+                    rr._load_mod("brokenpkg",
+                                 "nope_xyz_local")
+            finally:
+                sys.path.remove(d)
+                sys.modules.pop("brokenpkg", None)
+
+    def test_job_user_face_setgroups_delegates(self):
+        # _JobUserFace.setgroups: the real face
+        # passes the call to the OS unchanged.
+        face = rr._JobUserFace()
+        with mock.patch.object(os, "setgroups") as sg:
+            face.setgroups([1000, 1001])
+        sg.assert_called_once_with([1000, 1001])
+
+    def test_write_json_with_the_binary_flag_present(self):
+        # _write_json's O_BINARY flag line, run
+        # under the _Binary trick (flag value 0).
+        had = hasattr(os, "O_BINARY")
+        os.O_BINARY = 0
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                path = os.path.join(d, "out.json")
+                rr._write_json(path, {"a": 1})
+                with open(path, encoding="utf-8") as fh:
+                    self.assertEqual(json.load(fh), {"a": 1})
+        finally:
+            if not had:
+                del os.O_BINARY
+
+    def test_get_text_body_with_no_payload(self):
+        # get_text_body's last return: a message
+        # carrying no payload at all reads as "".
+        import email.message
+        msg = email.message.Message()
+        self.assertEqual(rr.get_text_body(msg), "")
+
+    def test_remediation_audit_silent_without_modules(self):
+        # _remediation_audit's absent-module
+        # return: no security module, no entry,
+        # no error.
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(rr, "_security", None):
+                self.assertIsNone(rr._remediation_audit(
+                    d, {}, {}, "j1", "dec", "div"))
+
+    def test_sensor_alert_core_without_senses(self):
+        # _sensor_alert_core's unavailable
+        # return: no senses module, a rejection
+        # that names why.
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(rr, "_senses", None):
+                out = rr._sensor_alert_core({}, {}, None, d)
+        self.assertEqual(
+            out, ("rejected",
+                  "rejected: senses module unavailable",
+                  None))
+
+    def test_sensor_alert_core_config_error(self):
+        # _sensor_alert_core's RuntimeError leg:
+        # an unparseable sensor config answers
+        # ("config", the reason, None).
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    rr._senses, "parse_sensors",
+                    side_effect=RuntimeError("bad sensors")):
+                out = rr._sensor_alert_core({}, {}, None, d)
+        self.assertEqual(out, ("config", "bad sensors", None))
+
+    def test_remediation_ask_fn_blank_answers(self):
+        # _remediation_ask_fn's ask: a non-dict
+        # reply, a non-string answer, and a
+        # blank answer are all None; a real
+        # answer passes through unstripped.
+        cfg = {"inference": {
+            "endpoint": "http://127.0.0.1:11434",
+            "model": "m"}}
+        st = rr._remediation.settings(cfg)
+        ask = rr._remediation_ask_fn(cfg, st)
+        self.assertIsNotNone(ask)
+        for reply in ("nope", {"answer": 42},
+                      {"answer": "   "}):
+            with mock.patch.object(
+                    rr, "ask_model", return_value=reply):
+                self.assertIsNone(ask("q", {}))
+        with mock.patch.object(
+                rr, "ask_model",
+                return_value={"answer": " yes "}):
+            self.assertEqual(ask("q", {}), " yes ")
+
+    def test_opinion_model_note_truncates(self):
+        # _opinion_model_note's success tail:
+        # the note is the model's stripped
+        # answer, cut to 240 characters.
+        cfg = {"oracle_opinion_model": True,
+               "inference": {
+                   "endpoint": "http://127.0.0.1:11434",
+                   "model": "m"}}
+        with mock.patch.object(
+                rr, "ask_model",
+                return_value={"answer": "  " + "x" * 300}):
+            note = rr._opinion_model_note(
+                cfg, {"kind": "exec", "script": "true"})
+        self.assertEqual(note, "x" * 240)
+        job = {"kind": "exec", "script": "true"}
+        with mock.patch.object(
+                rr, "ask_model",
+                side_effect=RuntimeError("down")):
+            self.assertIsNone(
+                rr._opinion_model_note(cfg, job))
+        for reply in ("nope", {"answer": "   "},
+                      {"answer": 42}):
+            with mock.patch.object(
+                    rr, "ask_model", return_value=reply):
+                self.assertIsNone(
+                    rr._opinion_model_note(cfg, job))
+
+    def test_describe_job_names_the_timeout(self):
+        # _describe_job's timeout member.
+        text = rr._describe_job(
+            {"kind": "exec", "script": "x",
+             "timeout_sec": 30})
+        self.assertIn("timeout_sec=30", text)
+
+    def test_query_mail_unexpected_error_is_handled(self):
+        # handle_query_mail's generic-except
+        # leg: an admission failure that is not
+        # a crypto error is still handled --
+        # logged, marked, True -- never raised
+        # into the poll.
+        raw = (b"From: a@b.c\r\nSubject: hi\r\n\r\n"
+               b"body\r\n")
+        opts = types.SimpleNamespace(dry_run=True)
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    rr, "_admit_object",
+                    side_effect=RuntimeError("boom")):
+                handled = rr.handle_query_mail(
+                    {}, mock.Mock(), mock.Mock(), "1", raw,
+                    "[HOMING-PIGEON] query q-z", {}, opts, d)
+        self.assertTrue(handled)
+
+    def test_kill_tree_takes_the_extra_pids(self):
+        # kill_tree's extra-pids leg: a detached
+        # process the monitor sampled still
+        # dies, though it escaped the group.
+        sleeper = subprocess.Popen(["sleep", "30"])
+        try:
+            proc = mock.Mock()
+            proc.pid = 99999999
+            rr.kill_tree(proc, extra_pids=[sleeper.pid])
+            self.assertEqual(
+                sleeper.wait(timeout=5), -signal.SIGKILL)
+        finally:
+            if sleeper.poll() is None:
+                sleeper.kill()
+
+    def test_kill_tree_swallows_a_failed_kill(self):
+        # kill_tree's inner swallows: the
+        # fallback kill raising, and an extra
+        # pid that cannot be killed, are both
+        # best effort -- neither escapes.
+        proc = mock.Mock()
+        proc.pid = 99999999
+        proc.kill.side_effect = RuntimeError("gone")
+        rr.kill_tree(proc, extra_pids=[2 ** 22 + 12345,
+                                       "not-a-pid"])
+        proc.kill.assert_called_once()
+
+    def test_disk_claim_guards(self):
+        # _disk_owns' bad-base return is True
+        # (no disk, no claim -- the in-memory
+        # cache decides), _disk_release's is a
+        # silent None, and a claim folder that
+        # cannot be created loses the claim.
+        self.assertTrue(rr._disk_owns(None, "k", {}))
+        self.assertTrue(rr._disk_owns("", "k", {}))
+        self.assertIsNone(rr._disk_release(None, "k"))
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "inflight"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("not a directory")
+            self.assertFalse(rr._disk_owns(d, "k", {}))
+
+    def test_save_seen_merges_with_the_disk_keys(self):
+        # save_seen's merge, over the on-disk
+        # form (a list of keys): keys another
+        # runner saved survive, the new keys
+        # land, and the caller's dict learns
+        # the disk's keys. (merge's own
+        # not-a-dict reset cannot fire --
+        # _with_seen_file coerces before the
+        # mutator runs; probed 2026-10-25.)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "seen.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('["1", "2"]')
+            seen = {"job1": True}
+            rr.save_seen(path, seen)
+            with open(path, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh),
+                                 ["1", "2", "job1"])
+            self.assertEqual(
+                seen, {"job1": True, "1": True, "2": True})
+
+    def test_load_retained_unprovable_containment(self):
+        # load_retained's ValueError leg: where
+        # containment cannot be proven (the
+        # Windows cross-drive case raises it),
+        # the retained record is refused.
+        with tempfile.TemporaryDirectory() as d:
+            kept = os.path.join(d, "retained")
+            os.makedirs(kept)
+            with open(os.path.join(kept, "jobx.json"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("{}")
+            with mock.patch.object(
+                    os.path, "commonpath",
+                    side_effect=ValueError("drives")):
+                self.assertIsNone(
+                    rr.load_retained(d, "jobx"))
+
+    def test_inference_ready_when_already_listening(self):
+        # ensure_inference_ready's dial-success
+        # return: a daemon already listening is
+        # left alone.
+        sock = socket.socket()
+        sock.bind(("127.0.0.1", 0))
+        sock.listen(1)
+        port = sock.getsockname()[1]
+        try:
+            cfg = {"inference": {
+                "endpoint": f"http://127.0.0.1:{port}",
+                "model": "m"}}
+            self.assertIsNone(
+                rr.ensure_inference_ready(cfg))
+        finally:
+            sock.close()
+
+    def test_monitor_alerts_fn_guards(self):
+        # _start_job_monitor's alerts_fn: no
+        # senses module, and a senses module
+        # that raises, both answer [].
+        with tempfile.TemporaryDirectory() as d:
+            work = os.path.join(d, "work")
+            os.makedirs(work)
+            script = os.path.join(d, "job.sh")
+            with open(script, "w", encoding="utf-8") as fh:
+                fh.write("echo hi\n")
+            proc = subprocess.Popen(["sleep", "5"])
+            st = rr._remediation.settings({})
+            monitor = rr._start_job_monitor(
+                {}, st, "job-m1", proc, work, d, script, {})
+            try:
+                fn = monitor._alerts_fn
+                with mock.patch.object(rr, "_senses", None):
+                    self.assertEqual(fn("2026-01-01"), [])
+                broken = types.SimpleNamespace(
+                    load_alerts=mock.Mock(
+                        side_effect=RuntimeError("no")))
+                with mock.patch.object(rr, "_senses", broken):
+                    self.assertEqual(fn("2026-01-01"), [])
+            finally:
+                monitor.stop()
+                proc.kill()
+                proc.wait()
+
+    def test_registry_watch_snapshot_write_swallowed(self):
+        # _registry_watch's snapshot-write
+        # swallow: an unwritable snapshot path
+        # costs the diff memory, never the
+        # report. Driven as on Windows (the
+        # platform gate is the only thing
+        # standing between Linux and this
+        # code); the snapshot seam is a fake.
+        snap = {"keys": {}, "services": {"count": 2,
+                                         "hash": "h"}}
+        with tempfile.TemporaryDirectory() as d:
+            base = os.path.join(d, "afile")
+            with open(base, "w", encoding="utf-8") as fh:
+                fh.write("not a directory")
+            with mock.patch.object(sys, "platform",
+                                   "win32"), \
+                    mock.patch.object(
+                        rr, "_registry_snapshot",
+                        return_value=snap):
+                blob = rr._registry_watch(base)
+        self.assertIn("baseline", blob)
 
 
 if __name__ == "__main__":

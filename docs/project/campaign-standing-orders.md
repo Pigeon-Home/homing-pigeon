@@ -333,6 +333,44 @@ when done, the proving commit or run. Newest first.
   lines are still blank although the deletion
   landed in f4e2378 -- the answerer's
   bookkeeping, noted here.)
+- A (refill) — runner.py residual legs
+  (coverage run 40189711740): _load_mod both
+  failure shapes, the job-user face's
+  setgroups, _write_json under the binary
+  flag, a payload-less message body, the
+  remediation audit's silent return, the
+  sensor core's unavailable and config-error
+  answers, the ask function's blank answers,
+  the opinion note's truncation and refusals,
+  the job description's timeout member, the
+  query handler's unexpected-error branch,
+  kill_tree's extra pids and failed-kill
+  swallows, the disk claim guards, save_seen's
+  merge over the on-disk key list,
+  load_retained's unprovable containment, an
+  already-listening inference daemon, the
+  monitor's alerts guards, the registry
+  watch's snapshot-write swallow, and the
+  confinement followup's unmeasurable
+  quarantined file — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RunnerResidualLegsTest
+  (test_runner_last_edges.py) and
+  ConfinementFollowupTest
+  (test_remediation.py). Recorded without a
+  take: save_seen.merge's not-a-dict reset
+  cannot fire (_with_seen_file coerces the
+  disk value to a dict before the mutator
+  runs); load_retained's containment-mismatch
+  return cannot fire through the seam (the
+  stored path is built flat under the
+  realpath'd retained dir and a symlinked
+  file is refused one check earlier);
+  ensure_inference_ready's hostless-endpoint
+  return cannot fire (inference_config
+  already refused every endpoint without a
+  hostname). Done when a coverage run shows
+  the taken legs clean.
 - A (refill) — DTLS record legs (coverage run
   40189711740): the record opener's sequence
   wrap-back, the server core's by-address
