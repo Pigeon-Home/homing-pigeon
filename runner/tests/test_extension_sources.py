@@ -1786,6 +1786,46 @@ class ExtensionSourcesPassTest(_Base):
                 R._extension_sources_pass(self.cfg, self.base))
 
 
+class IsWithheldEdgesTest(unittest.TestCase):
+    """Queue A refill: is_withheld's edge legs (coverage
+    run 40187685363: 6 lines on both platforms). The
+    withholding check fails closed, by its own
+    comments: a path that cannot be resolved is
+    withheld; a withheld entry that cannot be resolved
+    is compared as given, never read as "not withheld".
+    Empty inputs are the one open answer: nothing is
+    withheld from nothing.
+    """
+
+    def test_empty_inputs_are_not_withheld(self):
+        self.assertFalse(X.is_withheld("", ["/x"]))
+        self.assertFalse(X.is_withheld("/x", []))
+        self.assertFalse(X.is_withheld(None, ["/x"]))
+
+    def test_an_unresolvable_path_is_withheld(self):
+        with mock.patch.object(
+                X, "_real", side_effect=OSError("cannot resolve")):
+            self.assertTrue(X.is_withheld("/some/path", ["/w"]))
+
+    def test_non_string_withheld_entries_are_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "f.txt")
+            self.assertFalse(X.is_withheld(path, [42, None]))
+            self.assertTrue(X.is_withheld(path, [42, d]))
+
+    def test_an_unresolvable_entry_compares_as_given(self):
+        real = X._real
+
+        def picky(p):
+            if p == "/withheld-root":
+                raise OSError("cannot resolve")
+            return real(p)
+
+        with mock.patch.object(X, "_real", picky):
+            self.assertTrue(X.is_withheld(
+                "/withheld-root/child.txt", ["/withheld-root"]))
+
+
 class FetchSourcesRefusalsTest(_Base):
     """Queue A refill: run_fetch_sources' refusal exits
     (coverage run 40187685363: 6 lines on both
