@@ -2700,6 +2700,11 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: airwaves' two singles -- a scan
+  row with a blank BSSID is skipped while its good
+  neighbour parses, and a stored link without a
+  usable BSSID cleans to None (a good link
+  normalizes); pinned in test_airwaves.py.
 - Queue A taken: log-sentinel read_live's
   default-paths arm -- a log_paths tunable that is
   absent, not a list, or empty reads the built-in

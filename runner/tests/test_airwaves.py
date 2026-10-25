@@ -147,6 +147,16 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(AW.parse_nmcli("not enough fields\n\n"), [])
         self.assertEqual(AW.parse_nmcli(None), [])
 
+    def test_parse_nmcli_a_blank_bssid_row_is_skipped(self):
+        # Queue A: a row with every field present but no
+        # BSSID names no access point; it is skipped and
+        # the good row beside it still parses.
+        text = (":NoBssid:6:90:WPA2\n"
+                r"AA\:BB\:CC\:DD\:EE\:01:HomeNet:6:90:WPA2" + "\n")
+        scan = AW.parse_nmcli(text)
+        self.assertEqual(len(scan), 1)
+        self.assertEqual(scan[0]["bssid"], "AA:BB:CC:DD:EE:01")
+
     def test_parse_iw_link_connected(self):
         text = ("Connected to aa:bb:cc:dd:ee:01 (on wlan0)\n"
                 "\tSSID: HomeNet\n"
@@ -727,6 +737,23 @@ class MainPartialDeliveryLegTest(unittest.TestCase):
         self.assertIsNone(
             AW._clean_readings_link({"link": "not-a-dict"}))
         self.assertIsNone(AW._clean_readings_link("nope"))
+
+    def test_a_link_without_a_bssid_cleans_to_none(self):
+        # Queue A: the link half of a readings dict is
+        # identified by its BSSID; a link dict without a
+        # usable one (absent, blank, or not a string) has
+        # nothing to clean, while a good link normalizes.
+        for link in ({"ssid": "HomeNet"}, {"bssid": ""},
+                     {"bssid": 42}):
+            with self.subTest(link=link):
+                self.assertIsNone(
+                    AW._clean_readings_link({"link": link}))
+        cleaned = AW._clean_readings_link(
+            {"link": {"bssid": "aa:bb:cc:dd:ee:01",
+                      "ssid": "HomeNet", "signal_dbm": -55}})
+        self.assertEqual(cleaned, {"bssid": "AA:BB:CC:DD:EE:01",
+                                   "ssid": "HomeNet",
+                                   "signal_dbm": -55.0})
 
 
 if __name__ == "__main__":
