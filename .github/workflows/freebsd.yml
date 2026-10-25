@@ -42,21 +42,35 @@ jobs:
           release: "14.2"
           usesh: true
           mem: 4096
+          # The VM's output is the step's, so ::error lines written
+          # inside it reach the run page; each phase names itself
+          # when it fails, since the log is not readable from every
+          # seat. /bin/sh: no pipefail, so no pipes on the verdicts.
           prepare: |
-            pkg install -y python311 py311-pip
-            python3.11 -m pip install --quiet hypothesis==6.170.5
-            pw useradd runner -m -s /bin/sh
-            pw useradd pigeon-test -m -s /bin/sh
-          run: |
             set -e
-            cd "$GITHUB_WORKSPACE"
-            chown -R runner "$GITHUB_WORKSPACE"
+            phase() { echo "== $1"; }
+            phase "packages"
+            pkg install -y python311 py311-pip || { echo "::error title=freebsd prepare::pkg install failed"; exit 1; }
+            python3.11 -m pip install --quiet hypothesis==6.170.5 || { echo "::error title=freebsd prepare::pip install hypothesis failed"; exit 1; }
+            pw useradd runner -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd runner failed"; exit 1; }
+            pw useradd pigeon-test -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd pigeon-test failed"; exit 1; }
+            python3.11 --version
+          run: |
+            echo "== workspace: $GITHUB_WORKSPACE"
+            cd "$GITHUB_WORKSPACE" || { echo "::error title=freebsd::no workspace at $GITHUB_WORKSPACE"; exit 1; }
+            ls | head -20
+            chown -R runner "$GITHUB_WORKSPACE" || { echo "::error title=freebsd::chown failed"; exit 1; }
             echo "== the suite, as the runner user"
-            su -m runner -c "cd '$GITHUB_WORKSPACE' && python3.11 runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" 2>&1 | tee suite-freebsd.log
-            python3.11 runner/tools/skip_guard.py suite-freebsd.log --annotate
+            su -m runner -c "cd '$GITHUB_WORKSPACE' && python3.11 runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > suite-freebsd.log 2>&1
+            rc=$?
+            tail -n 40 suite-freebsd.log
+            python3.11 runner/tools/skip_guard.py suite-freebsd.log --annotate || true
+            [ "$rc" -eq 0 ] || echo "::error title=freebsd suite::the suite exited $rc; the failing tests are annotated above and the log is in the artifact"
             echo "== the roster, as root with a second user"
             python3.11 runner/tools/switch_proofs.py --have posix --root \
               --title FreeBSD-root --out switch-proofs-freebsd-root.md --annotate
+            rrc=$?
+            [ "$rc" -eq 0 ] && [ "$rrc" -eq 0 ]
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

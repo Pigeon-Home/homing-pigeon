@@ -236,11 +236,19 @@ class JobUserTest(unittest.TestCase):
         self.assertEqual(ident["euid"], pw.pw_uid)
         self.assertEqual(ident["rgid"], pw.pw_gid)
         self.assertEqual(ident["egid"], pw.pw_gid)
-        expected = {pw.pw_gid}
-        if grp is not None:
-            expected |= {g.gr_gid for g in grp.getgrall()
-                         if "pigeon-test" in g.gr_mem}
-        self.assertEqual(set(ident["groups"]), expected)
+        # The user's groups as the OS resolves them (getgrouplist
+        # reads Open Directory on Darwin, where grp.getgrall()'s
+        # member lists do not). Linux's credential is exactly what
+        # the drop set; Darwin's kernel may add the user's own
+        # memberships after setuid, never the runner's, so there
+        # the proof is "a subset of the user's, and never root's".
+        expected = set(os.getgrouplist("pigeon-test", pw.pw_gid)) | {pw.pw_gid}
+        got = set(ident["groups"])
+        self.assertNotIn(0, got)
+        if sys.platform.startswith("linux"):
+            self.assertEqual(got, expected)
+        else:
+            self.assertLessEqual(got, expected)
 
     @unittest.skipUnless(IS_ROOT and HAS_TEST_USER,
                          "needs root and the pigeon-test user")
@@ -363,7 +371,15 @@ class JobUserGroupsProbe(unittest.TestCase):
         pw = pwd.getpwnam("pigeon-test")
         self.assertEqual(ident["uid"], pw.pw_uid)
         self.assertNotIn(0, ident["groups"])
-        self.assertEqual(set(ident["groups"]), {pw.pw_gid})
+        if sys.platform.startswith("linux"):
+            self.assertEqual(set(ident["groups"]), {pw.pw_gid})
+        else:
+            # Darwin may add the user's own memberships after
+            # setuid; the invariant is that none of the runner's
+            # (root's) groups survive.
+            self.assertLessEqual(
+                set(ident["groups"]),
+                set(os.getgrouplist("pigeon-test", pw.pw_gid)) | {pw.pw_gid})
 
 
 if __name__ == "__main__":

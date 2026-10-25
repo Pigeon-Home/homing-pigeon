@@ -99,7 +99,8 @@ class UsernsRestrictedLegsTest(unittest.TestCase):
                                      want)
 
 
-@unittest.skipUnless(os.name != "nt", "POSIX only")
+@unittest.skipUnless(sys.platform.startswith("linux"),
+                     "the sandbox probe is Linux-only")
 class StartupProblemScriptsTest(unittest.TestCase):
     """Queue A: the trial-run half of startup_problem --
     the half behind the platform guard, so the Windows

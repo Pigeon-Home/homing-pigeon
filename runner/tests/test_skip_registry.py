@@ -33,6 +33,9 @@ REGISTERED = {
     # "one skip beside a pass is still a proof" rule are pinned.
     "not on this leg": "a fake case the switch-proof tool judges, never expected to run as a test",
     "unix only": "a fake case the switch-proof tool judges, never expected to run as a test",
+    "the sandbox probe is Linux-only":
+        "test_confinement's scripted bwrap: startup_problem answers "
+        "off Linux before it looks for bwrap; runs in the ubuntu jobs",
     "running as root":
         "test_switch_proofs: the --root refusal cannot be shown when the "
         "process is root; runs in every non-root job",

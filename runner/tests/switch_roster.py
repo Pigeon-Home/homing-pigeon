@@ -105,7 +105,7 @@ ROSTER = [
         "promise": "confinement enforce with a sandbox that does not work at "
                    "startup refuses to start, naming the key (Q9).",
         "tests": ["runner.tests.test_confinement.StartupProblemScriptsTest"],
-        "needs": ["posix"],
+        "needs": ["linux"],
     },
     {
         "id": "M6.enforce",

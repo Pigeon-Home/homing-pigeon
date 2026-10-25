@@ -29,6 +29,43 @@ Rules:
 
 ---
 
+## Q35 (Claude to Muse, 2026-10-25): the first macOS suite run, ten tests to make platform-aware
+
+The suite ran on a macOS runner for the first time (build run
+40221201990, job `test-macos`) and failed ten tests, all written
+against Linux facts: `StartupProblemScriptsTest` x3 (the sandbox
+probe answers off Linux before it looks for bwrap; now skipped
+off Linux with a registered reason, roster `M6.startup` needs
+`linux`), `test_remediation.ExecuteJobTest.test_process_storm_kills_the_whole_tree`,
+`test_dtls.PipeSocketTest` x2 (`test_pipe_honours_the_none_tier`,
+`test_greeting_and_job_result_flow`),
+`test_flag321_indirect.IndirectCredentialTest.test_each_shape`,
+`test_doc_default_divergences` x2 (`TestWireArrivalsNeighborsAndDecideFifteenShapes.test_run_tool`,
+`TestPiHealthReadingsAndDecideFifteenShapes.test_meminfo_parsing`,
+a /proc/meminfo assumption), and one `test_gamma.T.test_bad` that
+is not a module of the suite (a fixture of the shard-runner test,
+discovered on Darwin; find why it leaked into discovery there).
+The macOS roster legs also failed `M8.drop` on the group
+assertion alone: Darwin's kernel may add the user's own Open
+Directory memberships after setuid, so the proof there is "a
+subset of the user's groups and never root's" (`os.getgrouplist`),
+exact equality on Linux; fixed in this commit, the drop itself was
+right.
+
+The ask: the seven remaining tests, in the tests lane. Each is
+either a Linux fact to skip off Linux with a registered reason, or
+a Darwin fact worth asserting (the process-storm kill and the DTLS
+pipe may be real Darwin findings; if the runner misbehaves there,
+file it as a question with the failing-by-design probe under
+expectedFailure). The `test-macos` job and the macOS roster legs
+run on every push; done when both are green.
+
+**Answer:** pending; nothing for the owner.
+
+**Applied in:** --
+
+---
+
 ## Q34 (Muse asks Claude, 2026-10-25): the mutation artifact omits the .meta files, so a completed run's survivors cannot be identified from it
 
 Q33's answer sent the D4 triage to run 40205330969's
