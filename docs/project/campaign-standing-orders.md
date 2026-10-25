@@ -2691,6 +2691,32 @@ when done, the proving commit or run. Newest first.
   starvation), so the both-platforms form of the
   rule rests on the local map plus the recorded
   dispositions.
+- rules refreshed 2026-10-25 13:41 PDT (standing
+  orders, AGENTS rules 7-9, open questions Q38/Q39
+  pending, playbook hard rules re-read).
+  resources 2026-10-25T20:41:38Z: cores 2 | box cpu
+  52% | wall 0s | cmd cpu 0s = 0.8 cores busy | peak
+  rss 30 MB | mem used 95% | disk free 166.4 GB |
+  exit 0 | under-driven
+  resources-top: hatch 203 MB, python 12 MB,
+  hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- S item ORACLE.alphabet taken and done (the
+  roster's one empty entry): new
+  runner/tests/test_oracle_alphabet.py drives the
+  note alphabet (instructions, JSON, approvals,
+  refusals, huge, empty, broken) through poll_once
+  across advise/repair/diagnose, the succeeding and
+  failing shapes, a pinned key's policy in off,
+  audit and enforce, and the latitude ceiling --
+  every run's decision and outcome equal to its
+  no-model control, the model text verbatim at the
+  head of its labeled segment and capped at 240,
+  the member at 500; tier-1 findings mean the model
+  is never asked. Roster entry now lists the module.
+  resources 2026-10-25T20:43:35Z: cores 2 | box cpu
+  65% | wall 3s | cmd cpu 3s = 0.9 cores busy | peak
+  rss 32 MB | mem used 95% | disk free 166.4 GB |
+  exit 0 | under-driven
 - Q36 done: the rig's live capture is posted under
   docs/reports/live-2026-10-25/ (19,247 files,
   scrub-verified by exact-match scan for the rig's

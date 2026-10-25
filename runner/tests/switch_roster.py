@@ -227,7 +227,7 @@ ROSTER = [
                    "the job outcome equal the no-model run, and a fuzzed "
                    "model note (instructions, JSON, approvals, huge, empty) "
                    "lands capped at 240 and labeled, changing nothing.",
-        "tests": [],
+        "tests": ["runner.tests.test_oracle_alphabet"],
         "needs": [],
     },
     {
