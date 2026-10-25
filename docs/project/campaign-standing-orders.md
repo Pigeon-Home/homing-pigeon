@@ -587,6 +587,22 @@ when done, the proving commit or run. Newest first.
   verdicts (6853314 lets a running leg finish
   instead of cancelling it); A and D resume
   behind them.
+- Q25, Q27, Q28 ANSWERED AND APPLIED by Claude
+  in fb56cfd (release 3.12.67; 3.12.66 was built,
+  not tagged -- its content ships in .67). Q25:
+  IncomingMessage.ack() returns the result; the
+  probe is green (Muse verified locally; Claude
+  corrected the probe's outbox count, which had
+  counted the outbox's done/ folder -- a test bug,
+  owned). Q27: one re-entrant lock per process
+  around the audit bound check, append and counts
+  bump; Muse's R2 passes locally, and the Windows
+  leg of the next finished switch-proofs run is
+  the verdict. Q28: the airwaves signal guard now
+  catches (OverflowError, ValueError) as proposed;
+  the probe is green (Muse verified locally). The
+  .67 stamp and the D4 mutation triage both wait
+  on the .67 tag.
 - S/R VERDICTS, switch-proofs run 40192518684
   (the 3.12.66 release commit; Grok's watch, Q26,
   reported the finish): Linux 25 of 25 proven,
