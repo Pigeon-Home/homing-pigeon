@@ -156,6 +156,21 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/ops/posture.py::`
+  `_looks_like_placeholder` (7 fallback lines never
+  run on Windows, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  PlaceholderFallbackTest in
+  runner/tests/test_posture_gaps.py: the shared
+  check answers through the lazy import; with the
+  import unavailable the answer is False, and a
+  raising shared check is likewise False. With it,
+  queue A's runner.py module-level residue (the
+  three missing-sibling ImportError raises and the
+  frozen-exe extension re-entry lines, 7 on both
+  platforms) is unreachable by construction while
+  the package is intact and the build is not frozen;
+  recorded here, not chased.
 - A (refill) — `runner/extensions/log-sentinel/`
   `log_sentinel.py::read_new_lines` (7 lines never
   run on Windows, coverage run 40187685363; the code

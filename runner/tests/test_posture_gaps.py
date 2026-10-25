@@ -76,6 +76,41 @@ class PrivilegesRootRowTest(unittest.TestCase):
             rows, [("OK", "privileges", "running as root (uid 0)")])
 
 
+class PlaceholderFallbackTest(unittest.TestCase):
+    """Queue A refill: posture's placeholder check and
+    its lazy-import fallbacks (coverage run
+    40187685363: the fallback lines on Windows). The
+    check is shared, never copied (the function's own
+    docstring): posture imports install's implementation
+    on first use. When that import is unavailable the
+    answer is False -- a placeholder must not be
+    reported on a guess -- and when the shared check
+    itself raises, the answer is likewise False.
+    """
+
+    def test_the_shared_check_answers(self):
+        self.assertTrue(P._looks_like_placeholder("changeme"))
+        self.assertFalse(P._looks_like_placeholder("kX9$vQ2!mZ8#"))
+
+    def test_an_unavailable_import_answers_false(self):
+        real = builtins.__import__
+
+        def guarded(name, g=None, loc=None, fromlist=(), level=0):
+            if name in ("runner.ops.install", "ops.install"):
+                raise ImportError("no install module here")
+            return real(name, g, loc, fromlist, level)
+
+        with mock.patch("builtins.__import__", guarded):
+            self.assertFalse(P._looks_like_placeholder("changeme"))
+
+    def test_a_raising_shared_check_answers_false(self):
+        from runner.ops import install as I
+        with mock.patch.object(
+                I, "_looks_like_placeholder",
+                side_effect=RuntimeError("check broke")):
+            self.assertFalse(P._looks_like_placeholder("changeme"))
+
+
 class PostureGapTest(unittest.TestCase):
     def test_gaps(self):
         if os.name == "nt":
