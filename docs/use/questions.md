@@ -76,8 +76,7 @@ included. No change to the runner is asked for or expected: the
 controls these probe are the ones `test_enforce_races.py` and
 `test_oracle_no_widening.py` already prove on the other shapes.
 
-**Applied in** — the commit after 4f99cab. Owner decision: none
-needed.
+**Applied in** — d412d44. Owner decision: none needed.
 
 ---
 
