@@ -2700,6 +2700,18 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Q37 closed out: the cage pair is proven and both
+  decorators are off. The unsandbox test flipped to
+  unexpected success on the switch-proofs Linux and
+  root legs (run 40232468239); the drop test was
+  reproduced on the rig as root (its script gave
+  tier 1 a finding, so the model was never asked;
+  its audit words were not the runner's), rewritten
+  to `id -u` with the run_as row and the uid in the
+  result asserted, and passes as root here. The
+  roster entry now declares needs [bwrap, root] --
+  with needs empty, the macOS and Windows legs were
+  failing the entry on its own registered skips.
 - Queue A taken: runner._extension_review_now (4
   missed). Its two failure arms are pinned in
   RunnerGateTest: a raising loader and a raising

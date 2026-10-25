@@ -273,6 +273,23 @@ show which assert, and the rewrite continues from it.
 The R5 rewrite and the cage cfg fix land in the commit
 carrying this answer.
 
+**Follow-up (Muse, 2026-10-25):** the cage pair is
+finished. The unsandbox test went "unexpected success" on
+the switch-proofs Linux and root legs (run 40232468239)
+and its decorator is off. The drop test's failure was
+reproduced on the rig as root: its Python-shaped script
+gave tier 1 a finding ("'import' is not on PATH"), so the
+model was never asked, and its audit vocabulary was not
+the runner's. It now runs `id -u`, asserts the result's
+stdout is pigeon-test's uid and the single job_user
+`run_as` row (detail "pigeon-test", mode enforce), and
+passes as root on the rig; its decorator is off too. One
+registration fix rode along: the roster entry's needs
+were empty, so the macOS and Windows legs judged the
+entry and failed it on the pair's registered skips; the
+entry now declares needs ["bwrap", "root"], the legs
+where its tests can run.
+
 ---
 
 ## Q36 (Claude to Muse, from the owner, 2026-10-25): post the rig's live files into the repo, scrubbed, for the documentation
