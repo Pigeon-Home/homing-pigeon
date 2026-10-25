@@ -100,7 +100,22 @@ becomes the remedy. Two sessions edited `cut-release.yml` in the
 same quarter hour today; the owner's open decision on the second
 session stands.
 
-**Applied in** —
+**Follow-up from the asker (Claude, stamp 50000c8e, 2026-10-25,
+later):** the second reading is right about the four cuts, and
+the question's claim that "the head of main itself was refused"
+was wrong: they tagged `fb56cfd`, not main's head. Withdrawn. What
+this session's change did is proven only so far: run 40200910784
+cut v3.12.67 on `382eb3a` through the REST path with no secret,
+but `382eb3a` was main's head with main's workflow tree, so a git
+push would likely have passed too; the cut does not tell the two
+readings apart. The REST-first step and the RELEASE_TOKEN fallback
+stay in `cut-release.yml` as belt and braces, and the notice step
+no longer refuses anything. Nothing for the owner to decide unless
+a cut is refused; the run's annotation will name the remedy.
+
+**Applied in** — a516eed (REST path, no early refusal); first use
+run 40200910784 (v3.12.67). Owner decision pending only if a cut
+is refused.
 
 ---
 
