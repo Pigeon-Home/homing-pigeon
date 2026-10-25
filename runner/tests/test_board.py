@@ -59,6 +59,55 @@ class BoardUnitTest(unittest.TestCase):
         b2 = Board(self.path)
         self.assertIn("t1", b2.tasks)
 
+    def test_a_failed_save_closes_its_fd_and_removes_the_tmp(self):
+        # Queue A refill: Board.save's cleanup legs
+        # (coverage run 40189608702: lines 139-142 on
+        # both platforms; the two flag lines beside them
+        # are the platform pair). The save's own comment
+        # fixes the shape: unique tmp, never written
+        # through a symlink. A failure after the tmp is
+        # open must not leak the descriptor or leave the
+        # tmp behind, and a failing close is swallowed
+        # the same way.
+        from unittest import mock
+        self.b.submit({"task_id": "t1"})
+        opened, closed = [], []
+        real_open, real_close = os.open, os.close
+
+        def tracking_open(path, flags, mode=0o777, **kw):
+            fd = real_open(path, flags, mode, **kw)
+            opened.append(fd)
+            return fd
+
+        def tracking_close(fd):
+            closed.append(fd)
+            return real_close(fd)
+
+        def broken_close(fd):
+            closed.append(fd)
+            raise OSError("close failed")
+
+        with mock.patch.object(os, "open", tracking_open), \
+                mock.patch.object(os, "close", tracking_close), \
+                mock.patch.object(
+                    os, "fdopen",
+                    side_effect=OSError("cannot wrap")):
+            self.b.save()
+        self.assertEqual(opened, closed)
+        # Only the board submit() already saved; no tmp
+        # is left, and the failed save did not replace it.
+        self.assertEqual(os.listdir(self.tmp), ["board.json"])
+        self.assertIn("t1", Board(self.path).tasks)
+
+        with mock.patch.object(os, "open", tracking_open), \
+                mock.patch.object(os, "close", broken_close), \
+                mock.patch.object(
+                    os, "fdopen",
+                    side_effect=OSError("cannot wrap")):
+            self.b.save()
+        self.assertEqual(os.listdir(self.tmp), ["board.json"])
+        self.assertIn("t1", Board(self.path).tasks)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

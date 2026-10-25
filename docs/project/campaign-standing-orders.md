@@ -156,6 +156,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/wire/board.py::Board.save`
+  (5 lines never run on Linux, coverage run
+  40189608702) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the two
+  flag lines are the platform pair (O_BINARY on
+  Linux, O_NOFOLLOW on Windows, each covered where
+  it applies); the taken lines are the descriptor
+  cleanup, pinned in runner/tests/test_board.py: a
+  save failing after its tmp opens closes the
+  descriptor, removes the tmp, and leaves the
+  previous board untouched, and a failing close is
+  swallowed the same way. Done when a coverage run
+  shows only the platform line left.
 - A (refill) — `runner/wire/mailbox.py::_load_oauth`
   (5 of its 6 lines never run on either platform,
   coverage run 40189608702) — taken 2026-10-25,
