@@ -66,6 +66,14 @@ platform that is not marked taken in the ledger at the end of this
 file, and that is not test or tool code. Prefer, at equal size, code
 that decides what runs, what leaves the box, or who can reach it.
 
+Skip a gap that exists only because the code cannot apply on that
+platform (a Linux-only installer path on the Windows map, a Windows
+registry read on the Linux map) when the other platform's map shows
+it running. Moving a faked test into an ungated class to color those
+lines on the wrong platform adds no protection. Record it in the
+ledger as "platform-inapplicable, covered on <the other platform>"
+and take the next gap.
+
 Done when the lines run in the full suite on the platform where they
 were missing (cite the coverage run) and a test asserts what the docs
 say those lines do. A gap that cannot be reached without mocking the
