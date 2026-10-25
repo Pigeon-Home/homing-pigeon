@@ -75,6 +75,9 @@ REGISTERED = {
     "field scenarios use sh": "run on POSIX (and confined on ubuntu, with bwrap)",
     "frozen tree layout differs on Windows": "run on POSIX",
     "geteuid is POSIX": "run on POSIX",
+    "cannot create a symlink here":
+        "the host refuses symlink creation (a Windows "
+        "privilege); run where symlinks can be created",
     "job_user audit is POSIX": "run on POSIX",
     "job_user face is POSIX syscalls": "run on POSIX",
     "job_user fallback is POSIX": "run on POSIX",

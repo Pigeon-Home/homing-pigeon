@@ -155,6 +155,13 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A — `runner/wire/oauth.py::store_refresh_token` (12
+  lines never run on Windows, 9 on Linux, coverage run
+  40183585961) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the O_NOFOLLOW
+  flag line is platform-inapplicable on Windows and the
+  O_BINARY line on Linux (each behind its hasattr guard),
+  covered on the other platform.
 - A — `runner/extensions/job-fuzz/job_fuzz.py::decide` (12
   lines never run on either platform, coverage run
   40183585961) — taken 2026-10-25,
