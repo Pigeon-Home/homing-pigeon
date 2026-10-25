@@ -10181,6 +10181,7 @@ def main() -> int:
     # turn-everything-off menu.
     from runner.ops.cli import build_parser
     ap = build_parser()
+    args = ap.parse_args()
 
     if args.workers is not None and args.workers < 1:
         print("error: --workers must be >= 1", file=sys.stderr)
