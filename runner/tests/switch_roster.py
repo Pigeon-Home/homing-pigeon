@@ -197,7 +197,9 @@ ROSTER = [
         "tests": ["runner.tests.test_secret_files_job_user.SecretFilesTest",
                   "runner.tests.test_credential_canary.TestCredentialCanarySameUid",
                   "runner.tests.test_credential_canary.TestCanaryNegativeControls"],
-        "needs": ["linux"],
+        # Secret files and the canary are platform-neutral (no uid
+        # involved); the Windows leg judges them too.
+        "needs": [],
     },
     {
         "id": "SEC.no_hot_reload",
