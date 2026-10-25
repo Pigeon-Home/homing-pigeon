@@ -176,6 +176,20 @@ _SECURITY_EVENTS_LOCK = threading.Lock()
 _SECURITY_EVENTS_MAX = 5000
 
 
+def _valid_base(base_dir) -> bool:
+    """True when base_dir is a non-empty string."""
+    return isinstance(base_dir, str) and bool(base_dir)
+
+
+def _safe_open(path, flags, mode=0o600):
+    """Open with O_NOFOLLOW and O_BINARY when the platform has them."""
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
+    return os.open(path, flags, mode)
+
+
 def _append_security_event(base_dir: str, event: dict) -> None:
     """Append one event to security-events.jsonl (capped). Best effort.
 
@@ -186,7 +200,7 @@ def _append_security_event(base_dir: str, event: dict) -> None:
     replaces the file instead of truncating it in place, so a
     reader sees the old file or the new one, never a hole.
     """
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return
     path = os.path.join(base_dir, "security-events.jsonl")
     try:
@@ -197,11 +211,7 @@ def _append_security_event(base_dir: str, event: dict) -> None:
     with _SECURITY_EVENTS_LOCK:
         try:
             flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            if hasattr(os, "O_BINARY"):
-                flags |= os.O_BINARY
-            fd = os.open(path, flags, 0o600)
+            fd = _safe_open(path, flags, 0o600)
             try:
                 os.write(fd, line)
             finally:
@@ -220,11 +230,7 @@ def _append_security_event(base_dir: str, event: dict) -> None:
             tmp = path + ".tmp." + str(os.getpid()) + "." + str(
                 threading.get_ident())
             flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            if hasattr(os, "O_BINARY"):
-                flags |= os.O_BINARY
-            fd = os.open(tmp, flags, 0o600)
+            fd = _safe_open(tmp, flags, 0o600)
             try:
                 os.write(fd, kept)
             finally:
@@ -1581,7 +1587,7 @@ def _project_snapshot_note(base_dir):
     names the paths so the model can read them with its tools. Returns
     "" when no snapshot is installed. Never raises.
     """
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return ""
     root = os.path.join(base_dir, "project")
     index = os.path.join(root, "PROJECT-SNAPSHOT.md")
@@ -1765,11 +1771,7 @@ def _run_oracle_tool(name, args, base_dir=None, withheld=None) -> str:
             if parent:
                 os.makedirs(parent, exist_ok=True)
             flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            if hasattr(os, "O_BINARY"):
-                flags |= os.O_BINARY
-            fd = os.open(path, flags, 0o600)
+            fd = _safe_open(path, flags, 0o600)
             try:
                 os.write(fd, content.encode("utf-8"))
             finally:
@@ -2568,11 +2570,7 @@ def _write_json(path, obj):
         except FileNotFoundError:
             pass
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        if hasattr(os, "O_BINARY"):
-            flags |= os.O_BINARY
-        fd = os.open(tmp, flags, 0o600)
+        fd = _safe_open(tmp, flags, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             fd = None
             json.dump(_json_safe(obj), f, allow_nan=False)
@@ -2740,7 +2738,7 @@ def save_sent_result(base_dir, skey, job, subject, body, to=None):
     """Record the outgoing result before it is sent. Best effort:
     a failure to record is logged and the send proceeds, which is
     the at-least-once behavior of before."""
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return False
     digest = _opinion.received_digest(job) if _opinion is not None \
         else hashlib.sha384(json.dumps(
@@ -2770,7 +2768,7 @@ def load_sent_result(base_dir, skey, job):
     None when there is no record, when the record is for a job of
     another shape under the same id (the digest differs), or when the
     record cannot be read. Never raises."""
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return None
     path = _sent_path(base_dir, skey)
     if not os.path.isfile(path):
@@ -2792,7 +2790,7 @@ def load_sent_result(base_dir, skey, job):
 
 def prune_sent(base_dir, days):
     """Delete recorded results older than output_retention_days."""
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return 0
     try:
         days = int(days)
@@ -2818,7 +2816,7 @@ def prune_sent(base_dir, days):
 
 def prune_retained(base_dir, days):
     """Delete retained outputs older than output_retention_days."""
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return 0
     try:
         days = int(days)
@@ -2850,7 +2848,7 @@ def save_retained(base_dir, job_id, payload):
     The temp name is created with O_EXCL | O_NOFOLLOW, so a symlink
     planted there is not written through. The file is mode 0600.
     """
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return
     if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id) or job_id in (".", ".."):
         return
@@ -2869,11 +2867,7 @@ def save_retained(base_dir, job_id, payload):
             except FileNotFoundError:
                 pass
             flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            if hasattr(os, "O_BINARY"):
-                flags |= os.O_BINARY
-            fd = os.open(tmp, flags, 0o600)
+            fd = _safe_open(tmp, flags, 0o600)
             safe = _json_safe(payload) if isinstance(payload, dict) else {}
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 fd = None
@@ -2898,7 +2892,7 @@ def save_retained(base_dir, job_id, payload):
 
 def load_retained(base_dir, job_id):
     """Load retained/<job_id>.json. Unsafe or missing ids return None."""
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return None
     if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id) \
             or job_id in (".", ".."):
@@ -3847,11 +3841,7 @@ def append_bounded_log(path, text, max_bytes=2_097_152, backups=1):
                 except OSError:
                     pass
             flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            if hasattr(os, "O_BINARY"):
-                flags |= os.O_BINARY
-            fd = os.open(path, flags, 0o600)
+            fd = _safe_open(path, flags, 0o600)
             try:
                 os.write(fd, raw)
             finally:
@@ -5220,7 +5210,7 @@ _BRIEF_LOCK = threading.Lock()
 
 def _append_brief(base_dir, brief) -> None:
     """Append one brief record to oracle-briefs.jsonl. Best effort."""
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return
     path = os.path.join(base_dir, LOCAL_BRIEFS_FILE)
     try:
@@ -5231,11 +5221,7 @@ def _append_brief(base_dir, brief) -> None:
     with _BRIEF_LOCK:
         try:
             flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            if hasattr(os, "O_BINARY"):
-                flags |= os.O_BINARY
-            fd = os.open(path, flags, 0o600)
+            fd = _safe_open(path, flags, 0o600)
             try:
                 os.write(fd, line.encode("utf-8"))
             finally:
@@ -5368,7 +5354,7 @@ _LOCAL_INBOX_LOCK = threading.Lock()
 
 
 def _local_inbox_dir(base_dir):
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return ""
     return os.path.join(base_dir, LOCAL_INBOX_DIRNAME)
 
@@ -6894,11 +6880,7 @@ def _write_seen_unlocked(path, seen):
     fd = None
     try:
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        if hasattr(os, "O_BINARY"):
-            flags |= os.O_BINARY
-        fd = os.open(tmp, flags, 0o600)
+        fd = _safe_open(tmp, flags, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fd = None
             json.dump(keys, fh)
@@ -6926,7 +6908,7 @@ def _disk_owns(base_dir, skey, seen):
     already has the key, or a live claim file, returns False and
     records the key in the in-memory cache when it is already done.
     """
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return True
     seen_path = os.path.join(base_dir, "seen.json")
     folder, claim = _claim_path(base_dir, skey)
@@ -6992,7 +6974,7 @@ def _disk_release(base_dir, skey):
     the same file lock as the claim. An unlocked unlink can
     delete a claim a second process just stole.
     """
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return
     seen_path = os.path.join(base_dir, "seen.json")
     _folder, claim = _claim_path(base_dir, skey)
@@ -8072,7 +8054,7 @@ def _runner_log_tail(base_dir, max_chars=2000) -> str:
     scrubbed first (see _scrub_log_tail_lines); the log file
     itself is never altered.
     """
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return ""
     path = os.path.join(base_dir, "runner.log")
     if os.path.islink(path):
@@ -8627,7 +8609,7 @@ def _local_watch(cfg, base_dir):
     """
     if not _oracle_watch_enabled(cfg):
         return
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return
     for fn in (
             lambda: _canary_watch(base_dir),
@@ -8657,7 +8639,7 @@ def _canary_watch(base_dir, max_chars=2000):
     Untouched canaries collapse to one quiet line. Bounded. Returns ""
     when there is no usable base_dir; never raises.
     """
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return ""
     canary_dir = os.path.join(base_dir, "canaries")
     snap_path = os.path.join(base_dir, "canary-watch.json")
@@ -9037,7 +9019,7 @@ def _firewall_watch(base_dir):
     line = _firewall_posture()
     if not isinstance(line, str) or not line:
         return None
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return line
     path = os.path.join(base_dir, "oracle-firewall.json")
     prev = _read_posture_line(path)
@@ -9128,7 +9110,7 @@ def _av_watch(base_dir):
     line = _av_posture()
     if not isinstance(line, str) or not line:
         return None
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return line
     path = os.path.join(base_dir, "oracle-av.json")
     prev = _read_posture_line(path)
@@ -10052,7 +10034,7 @@ def recent_chat(base_dir, turns=_CHAT_WINDOW_TURNS, max_chars=_CHAT_WINDOW_CHARS
     A long chat is not sent whole. The model gets the last few ask
     events, cut to max_chars. Older turns stay in oracle-chat.jsonl.
     """
-    if not isinstance(base_dir, str) or not base_dir:
+    if not _valid_base(base_dir):
         return ""
     try:
         n = int(turns)
