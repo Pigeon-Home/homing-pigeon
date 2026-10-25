@@ -2700,6 +2700,21 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Q38-Q42 answered by Claude (b3847f33, applied-in
+  d6277602) and verified here: Q38's ps tree sampler
+  for Darwin and the BSDs landed and the storm
+  probe's darwin expectedFailure was lifted in the
+  fix; Q39's install completes without a GUI session;
+  Q40's dead re-check is deleted; Q41 answered
+  keep-as-guard; Q42's arm kept with its comment, the
+  dead literal_ guard cut. Scoped re-verification
+  (test_remediation, test_remediation_ps,
+  test_install_macos_bootstrap, test_extreview,
+  test_transports, test_extension_sources): green
+  twice over; the only expected failures are Q44's
+  two probes. One earlier scoped run under full-suite
+  contention showed a single unnamed failure that two
+  identical re-runs did not reproduce.
 - Queue A taken: runner.prune_sent's silent-skip
   arm (2 missed, Linux map) -- an entry that cannot
   be removed (an old directory among the records)
