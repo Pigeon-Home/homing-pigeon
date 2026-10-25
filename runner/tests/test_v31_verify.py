@@ -780,5 +780,29 @@ class BoardVerifyTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.tmp, "board.json")))
 
 
+class PolicyArgsSkipLegTest(unittest.TestCase):
+    """Queue A refill: check_policy_constraints'
+    non-string arg skip (coverage run
+    40189711740: verify.py line 612). An arg
+    that is not a string is not the pattern's
+    business -- it is skipped, not matched and
+    not a finding; the string args around it
+    are still judged.
+    """
+
+    def test_a_non_string_arg_is_skipped(self):
+        from runner.wire import verify as V
+        pol = {"args_pattern": "^ok$"}
+        job = {"kind": "ping", "args": [123, "ok"]}
+        self.assertEqual(
+            V.check_policy_constraints(pol, "", {}, job), [])
+        job2 = {"kind": "ping", "args": [123, "nope"]}
+        findings = V.check_policy_constraints(
+            pol, "", {}, job2)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0][1],
+                         "arg_pattern_mismatch")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

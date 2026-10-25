@@ -294,6 +294,27 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — wire guards (coverage run
+  40189711740): jobcrypto's non-string secret,
+  hkdf zero salt, is_envelope non-object and
+  encrypt_body non-string refusals, and
+  verify.check_policy_constraints' non-string
+  arg skip — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  CryptoGuardLegsTest in
+  runner/tests/test_jobcrypto.py and
+  PolicyArgsSkipLegTest in
+  runner/tests/test_v31_verify.py. Recorded
+  without takes: verify.audience_allows'
+  module-absent return (661-662) is subsumed
+  by check_audience's own absent-module guard
+  on the same global, and verify_body_keyed's
+  non-ValueError wrap (725-726) cannot be
+  produced through the signer seam (bodies the
+  signer can serialize parse, or fail as
+  ValueError, at every probed depth). Done
+  when a coverage run shows the taken legs
+  clean.
 - A (refill) — runner.py legs, sixth batch
   (coverage run 40189711740): oracle_window's
   non-dict config and deterministic banner,

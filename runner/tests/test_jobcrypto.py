@@ -290,5 +290,35 @@ class EnvelopeTest(unittest.TestCase):
         self.assertNotIsInstance(cm.exception, JobCryptoError)
 
 
+class CryptoGuardLegsTest(unittest.TestCase):
+    """Queue A refill: jobcrypto's guard legs
+    (coverage run 40189711740: _job_key 87,
+    hkdf 72, is_envelope 287, encrypt_body 301).
+    A non-string secret, a non-string signed
+    body and a non-object payload are refused
+    with the module's own error, and hkdf's
+    missing salt is the RFC's string of zeros.
+    """
+
+    def test_non_string_secret_is_refused(self):
+        with self.assertRaises(JobCryptoError):
+            jobcrypto._job_key(b"bytes-not-str", b"\x00" * 12)
+
+    def test_hkdf_none_salt_uses_zeros(self):
+        self.assertEqual(
+            jobcrypto.hkdf(b"ikm", None, b"info", 32),
+            jobcrypto.hkdf(b"ikm", b"\x00" * 48, b"info", 32))
+
+    def test_is_envelope_non_dict(self):
+        self.assertFalse(jobcrypto.is_envelope("nope"))
+        self.assertFalse(jobcrypto.is_envelope(None))
+
+    def test_encrypt_body_non_string_is_refused(self):
+        with self.assertRaises(JobCryptoError):
+            jobcrypto.encrypt_body(
+                {"not": "text"}, "s" * 40, "j", "",
+                sign=lambda p, s: "x")
+
+
 if __name__ == "__main__":
     unittest.main()
