@@ -75,6 +75,114 @@ queue below does not run out (queue D refills it).
 
 ## The queue, in order
 
+The owner reset the target on 2026-10-25 (Q24): the campaign exists
+to prove that each security control does what SECURITY.md promises
+when it is turned on, with the Oracle simulated, and to find the
+races on the enforce path. Queues S and R are that work and come
+first; A, B and D resume only when S and R have nothing open. A
+never-executed line is a refill, not the goal.
+
+### S. The switches, on
+
+The ledger for S and R is in code: `runner/tests/switch_roster.py`
+lists every control, its promise and the tests that prove it, and
+`.github/workflows/switch-proofs.yml` runs the roster on every push
+(a Linux leg with bwrap, a root leg with a second user, a Windows
+leg) and names each control proven, unproven, or failed. Take the
+first entry whose `tests` list is empty, in roster order; an item
+is done when its entry lists tests that run and pass on the leg
+where the control applies and the workflow is green. Adding tests
+to the roster is this campaign's lane; the controls, promises and
+needs change only through the questions file.
+
+One item per control. For each: read its SECURITY.md section and
+the config keys it names, list what the suite already pins (the
+files below), and write what is missing as end-to-end tests through
+the intake and `execute_job`, not through the helper alone. Every
+item carries the three modes where the control has them (`off`
+allows the case; `audit` runs it and writes the `would_deny` line;
+`enforce` denies it and writes `denied`) and a negative control:
+the same escape succeeds with the mode off, so a test that passes
+for a reason other than the control is caught.
+
+Two owner decisions (2026-10-15) are part of the promise, and a test
+that "hardens" past them is wrong: with `confinement: enforce`, a
+sandbox that does not work at startup refuses to start (Q9), but a
+sandbox that fails after a good start lets the job run unsandboxed
+with a WARN line and a `fallback` audit entry; `job_user` without
+root does the same (`job_user_needs_root`). Pin those as they are.
+
+1. M1, the size caps: `max_job_bytes`, `max_script_bytes`. Always
+   on; over the cap is rejected before anything runs; a non-number
+   refuses startup. Have: `test_size_caps.py`.
+2. M2, the key policies: `policy_env`, `policy_files`,
+   `policy_args`, per pinned key. Have: `test_policy_constraints.py`,
+   `test_security_config.py` (the mode trio), `test_flag321_scenarios.py`.
+   Missing until shown otherwise: each policy driven through a
+   signed job under each mode, with the audit line's `mode` member
+   asserted.
+3. M3 and M4, `--audit-report` and `--posture`: read-only. Neither
+   writes `config.json` or the audit log; the report's counts equal
+   the entries written by the M2 and M6 tests above. Have:
+   `test_audit_report.py`, `test_posture.py`.
+4. M5, `audience`: `enforce` rejects a job whose audience is not
+   this `runner_id`; `audit` runs it and records; `off` ignores it.
+   Have: `test_audience.py`.
+5. M6, `confinement`: `enforce` runs the job inside bwrap with no
+   network, no home, `/usr` read-only and the workdir only at
+   `/work`; the same escape succeeds with the mode off. Have:
+   `test_confinement.py` (`EnforceTest` and its negative control,
+   Linux CI only). Missing: each wall as its own case and control
+   (network, home, `/usr` write, a path outside `/work`), and the
+   after-a-good-start fallback above.
+6. M7, the AppArmor, SELinux and systemd templates under
+   `docs/security/hardening/`: files only; nothing installs them.
+   Prove that they parse and that the runner's paths in them match
+   the install layout; file a question if they drift.
+7. M8, `job_user` and the secret files: `enforce` drops uid and
+   groups (a failed `initgroups` does not keep the runner's groups,
+   Q18); the workdir is chowned to the job user; a missing or
+   world-readable secret file refuses startup. Have:
+   `test_secret_files_job_user.py` (as root, `.github/workflows/job-user.yml`),
+   `test_runner_face.py`, `test_credential_canary.py`.
+8. M9 and M10 are design documents (asymmetric signing, the approval
+   gate); nothing in the runner implements them. Nothing to enable;
+   skip, and do not write tests against the design.
+9. The Oracle, simulated: the deterministic opinion and the judge
+   are driven with fixtures; a model is a fake loopback response,
+   never a live model. Prove that `refuse` and `advise` latitude
+   refuse what `repair` repairs (AGENTS.md's table), and that an
+   Oracle answer can never widen a security decision made above.
+
+Done per item when each promise in the control's SECURITY.md
+section has a test that fails if the promise were false, plus its
+negative control, on the platform where the control applies, and
+the roster entry lists them (the ledger line names the entry). A
+promise the code does not keep is filed as a question for Claude
+with the failing-by-design test.
+
+### R. Races on the enforce path
+
+With `workers: 2` (the runner's thread pool), under `enforce`:
+
+1. Two jobs at once: each workdir is chowned to its own job and
+   never the other's; two bwrap sandboxes do not share `/work`; the
+   audit log receives both decisions, each entry whole.
+2. A rollover of `security-audit.jsonl` (`_enforce_bound`) while a
+   decision is being written: no entry lost, none split.
+3. A replayed job id and a fresh job hitting the seen set together:
+   the replay is rejected on both orderings.
+4. A `config.json` write during a job: the security block does not
+   hot-reload into the running job, and a bad value written live
+   leaves the current settings in force (Decision 1).
+
+Done when each race has a test that drives the two sides with a
+real second thread and a barrier (not a mock of time), passes
+repeatedly, and asserts the security outcome, not only that nothing
+crashed (`test_concurrency_poison.py` already covers the crash-free
+part and is the pattern for the rig), and the roster entry (R1 to
+R4) lists it.
+
 ### A. The coverage map, gap by gap
 
 Source: the latest `coverage` workflow run on main, its

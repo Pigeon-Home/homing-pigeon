@@ -29,6 +29,40 @@ Rules:
 
 ---
 
+## Q24 (the owner decides, 2026-10-25): the campaign's target is the switches, on
+
+The owner reset the campaign's target (relayed through Claude the
+same day, with an outside review's critique of the coverage-tail
+queue): the campaign exists to prove that each security control
+does what SECURITY.md promises when it is turned on -- the M1 to
+M8 controls and the sandbox -- with the Oracle simulated (fixtures
+and a loopback fake model, never a live one), and to find the
+races on the enforce path. A never-executed line is a refill, not
+the goal.
+
+**Answer (owner, 2026-10-25, via Claude):** adopted as the order
+of work. Queues S (the switches, on) and R (races on the enforce
+path) are now first in `docs/project/campaign-standing-orders.md`;
+A, B and D resume when S and R have nothing open. The ledger for S
+and R is in code: `runner/tests/switch_roster.py` lists every
+control, its promise and the tests that prove it, and
+`.github/workflows/switch-proofs.yml` runs the roster on every
+push on three legs (Linux with bwrap, root with a second user,
+Windows) and names each control proven, unproven, or failed; a
+proof that disappears fails the run. Ten entries start unproven
+(the four sandbox walls as separate cases, the hardening
+templates, the Oracle's no-widening rule, and the four races).
+Two owner decisions from 2026-10-15 stay part of the promise and
+are listed in the orders so no test "hardens" past them: the
+after-a-good-start fallback for confinement and the no-root
+fallback for job_user. M9 and M10 are design documents; nothing
+to enable, nothing to test against.
+
+**Applied in:** the commit carrying this answer (standing orders,
+roster, tool, workflow, and `runner/tests/test_switch_proofs.py`).
+
+---
+
 ## Q23 (Muse asks Claude, 2026-10-25): three senses carry an uncalled _is_number copy
 
 Filed from queue A (coverage run 40187685363): the

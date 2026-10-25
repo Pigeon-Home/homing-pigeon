@@ -1,0 +1,124 @@
+# Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
+name: switch-proofs
+
+# The owner's target for the campaign (docs/use/questions.md, Q24,
+# 2026-10-25): prove that every security control does what
+# SECURITY.md promises when it is turned on, with the Oracle
+# simulated, and find the races on the enforce path. This workflow is
+# the continuous half of that. runner/tests/switch_roster.py lists
+# each control, its promise and the tests that prove it;
+# runner/tools/switch_proofs.py runs them on three legs and judges
+# every control: proven, unproven (no test listed yet), or FAILED /
+# MISSING / SKIPPED, which fail the run.
+#
+# Three legs, because the controls need different machines: a plain
+# Linux runner with a working bwrap (the sandbox walls, M6); the same
+# as root with a real second user (the privilege drop, M8, and the
+# two-job races, R1); and Windows for everything platform-neutral,
+# so a control that only "works" where it was written is caught.
+#
+# An unproven control is a warning, not a failure: the campaign
+# fills the roster (standing orders, queues S and R), and the count
+# going to zero is the finish line. A proof that disappears -- a test
+# renamed, removed, or skipping where it must run -- is a failure,
+# because a promise does not lose its proof by accident.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "runner/**"
+      - "SECURITY.md"
+      - "docs/security/hardening/**"
+      - ".github/workflows/switch-proofs.yml"
+  schedule:
+    # Daily, off the hour and off the release path, so a quiet main
+    # still gets one full run a day on fresh runner images.
+    - cron: "41 9 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: switch-proofs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - name: install bubblewrap (the Linux sandbox)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --version
+      - name: the roster, as the runner user with a working sandbox
+        run: |
+          python runner/tools/switch_proofs.py --have linux,bwrap \
+            --title Linux --out switch-proofs-linux.md --annotate
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: switch-proofs-linux
+          path: switch-proofs-linux.md
+
+  root:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - name: install bubblewrap and create the second user
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --version
+          sudo useradd -m -s /bin/bash pigeon-test
+          id pigeon-test
+      # The same pattern as job-user.yml: the tool runs as root with
+      # the runner's Python, so the privilege drop has a real user to
+      # drop to and the two-job races have real ownership to check.
+      - name: the roster, as root
+        run: |
+          PY="$(command -v python)"
+          sudo env "PATH=$PATH" "GITHUB_STEP_SUMMARY=$GITHUB_STEP_SUMMARY" \
+            "$PY" runner/tools/switch_proofs.py --have linux,bwrap --root \
+            --title root --out switch-proofs-root.md --annotate
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: switch-proofs-root
+          path: switch-proofs-root.md
+
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - name: the roster, platform-neutral controls only
+        shell: bash
+        run: |
+          python runner/tools/switch_proofs.py --have "" \
+            --title Windows --out switch-proofs-windows.md --annotate
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: switch-proofs-windows
+          path: switch-proofs-windows.md
