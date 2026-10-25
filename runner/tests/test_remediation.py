@@ -392,6 +392,75 @@ class QuarantineTest(unittest.TestCase):
             archive = os.path.join(base, "quarantine-archive")
             self.assertEqual(len(os.listdir(archive)), 1)
 
+    def test_bounds_an_unmtimeable_entry_sorts_oldest(self):
+        # Queue A refill: enforce_quarantine_bounds' Windows
+        # residue (coverage run 40189711740) -- the branches
+        # the Windows leg cannot reach with its fixtures,
+        # driven here with stubs that run on both platforms.
+        # An entry whose mtime cannot be read sorts as
+        # epoch 0 -- oldest -- so it is archived first,
+        # never skipped or fatal.
+        st = _settings(quarantine_max_jobs=1,
+                       quarantine_max_bytes=10 ** 9)
+        with tempfile.TemporaryDirectory() as base:
+            dests = {}
+            for jid in ("job-a", "job-b"):
+                work = self._stage(base, jid)
+                dests[jid] = rem.quarantine_job(base, jid, work, {})
+                os.utime(dests[jid], (5000, 5000))
+            real = os.path.getmtime
+
+            def flaky(path, *a, **kw):
+                if path == dests["job-b"]:
+                    raise OSError("cannot stat")
+                return real(path, *a, **kw)
+
+            with mock.patch.object(os.path, "getmtime", flaky):
+                archived = rem.enforce_quarantine_bounds(base, st)
+            self.assertEqual(archived, ["job-b"])
+
+    def test_bounds_a_taken_archive_name_takes_a_suffix(self):
+        # The archive destination is name + timestamp; a
+        # name already taken (two seizures archived in the
+        # same second) suffixes -2, -3 rather than
+        # clobbering the earlier archive. (The byte ceiling
+        # does the forcing: _pos_int reads a zero job cap
+        # as unset.)
+        st = _settings(quarantine_max_jobs=100,
+                       quarantine_max_bytes=1)
+        with tempfile.TemporaryDirectory() as base:
+            work = self._stage(base, "job-a")
+            rem.quarantine_job(base, "job-a", work, {})
+            archive = os.path.join(base, "quarantine-archive")
+            os.makedirs(archive)
+            for taken in ("job-a-STAMP", "job-a-STAMP-2"):
+                with open(os.path.join(archive, taken), "w") as fh:
+                    fh.write("earlier")
+            with mock.patch.object(
+                    rem.time, "strftime", lambda fmt, t: "STAMP"):
+                archived = rem.enforce_quarantine_bounds(base, st)
+            self.assertEqual(archived, ["job-a"])
+            self.assertTrue(os.path.isdir(
+                os.path.join(archive, "job-a-STAMP-3")))
+
+    def test_bounds_a_failed_move_stops_and_keeps_the_entry(self):
+        # A move that fails ends the pass: the entry stays
+        # seized, nothing is reported archived, and the
+        # function still does not raise.
+        st = _settings(quarantine_max_jobs=100,
+                       quarantine_max_bytes=1)
+        with tempfile.TemporaryDirectory() as base:
+            work = self._stage(base, "job-a")
+            rem.quarantine_job(base, "job-a", work, {})
+            with mock.patch.object(
+                    rem.shutil, "move",
+                    side_effect=OSError("disk gone")):
+                archived = rem.enforce_quarantine_bounds(base, st)
+            self.assertEqual(archived, [])
+            self.assertEqual(
+                sorted(os.listdir(rem.quarantine_root(base))),
+                ["job-a"])
+
     def test_bad_job_ids_go_nowhere(self):
         with tempfile.TemporaryDirectory() as base:
             work = self._stage(base, "ok")

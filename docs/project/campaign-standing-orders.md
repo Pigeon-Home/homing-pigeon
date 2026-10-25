@@ -294,6 +294,25 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/oracle/remediation.py::`
+  `enforce_quarantine_bounds` Windows residue
+  (6 lines, coverage run 40189711740; the function
+  is fully run on Linux, and the Windows leg's own
+  fixtures cannot build these states) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  three QuarantineTest drives in
+  runner/tests/test_remediation.py with stubs that
+  run on both platforms: an unstatable entry sorts
+  as epoch 0 and is archived first; a taken archive
+  name suffixes -2, -3 rather than clobbering; a
+  failed move stops the pass, keeps the entry, and
+  does not raise. Done when a coverage run shows
+  the six lines run on Windows too. With it, a
+  disposition under the skip rule:
+  `sandbox.build_bwrap_command` (6 lines, Windows)
+  builds a Linux bubblewrap argv and cannot apply
+  on Windows — platform-inapplicable there, covered
+  on Linux.
 - A (refill) — `runner/runner.py::snapshot_outside`
   realpath fallbacks (4 lines never run, both
   platforms, coverage run 40189711740) — taken
