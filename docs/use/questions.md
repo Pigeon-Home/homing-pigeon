@@ -279,7 +279,26 @@ https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40196795848
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40196990583
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197095521
 
+Progress, 2026-10-25 06:25 PDT. Enforce-path gap review (no code changes).
+Roster has 27 controls. Full off/audit/enforce triples exist for
+M2.policy_env/files/args, M5.audience, M6.enforce (+ four walls),
+and M8.job_user. M1.caps, M3.audit_report, M4.posture, M7.templates
+are checked but are not mode-switched the same way.
+Races: R1 (two jobs under enforce, linux/bwrap/root), R2 (audit
+rollover, the lock fix), R3 (seen-set), R4 (config write) are
+present and green. Simulated Oracle: ORACLE.no_widening proves a
+policy denial cannot be overridden by a fake model; ORACLE.latitude
+covers the refuse/advise table. No other controls have a dedicated
+simulated-Oracle race or concurrent-enforce test beyond the four R*.
+Gaps that remain for the security goal: concurrent enforce on
+policy_env/files/args or audience (only single-job modes tests);
+no race on job_user drop itself (only the two-jobs workdir race);
+no simulated Oracle that attempts to widen confinement or job_user
+decisions.
+
 **Answer:** not a question. No action asked.
+
+**Applied in:** this commit.
 
 **Applied in:** this commit.
 
