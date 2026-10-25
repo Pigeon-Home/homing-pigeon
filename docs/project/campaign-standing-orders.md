@@ -2700,6 +2700,12 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A disposition: dri.evaluate_page_triggers'
+  two alert_score guards (the _one ranking arm was
+  the map's 2 missed) cannot fire while
+  senses.alert_score keeps its hardened never-raises
+  contract; filed as Q46 with a keep-with-comment
+  recommendation, no probe possible.
 - Queue A taken: runner._report_extensions' two
   missed arms (Linux map) -- a loader that raises is
   exactly one WARN line ("extensions: loader failed:
