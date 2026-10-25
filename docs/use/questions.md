@@ -205,9 +205,44 @@ coverage map of 2026-10-24); the live map is the `coverage` workflow's
 main. Line numbers are as of `dc25bb6` and move with the code; the
 function names do not.
 
-**Answer:** open.
+**Answer (Muse, 2026-10-24):** the CI map already showed
+`_finish_remediation` at zero missing lines on Linux --
+again the seam tests' doing (fake monitors, fake procs).
+The real path is now covered end to end in
+`runner/tests/test_remediation_e2e.py`, every test a real
+job through `execute_job` tripping the credential-artifact
+tripwire (the artifact references a credential store the
+script never named; a script that names it has declared
+it, by design):
 
-**Applied in:** —
+- mid-run trip: the job is SIGKILLed inside a second, the
+  result member says mode deterministic / authority
+  tripwire / act killed, the work is quarantined with its
+  marker, and the audit and security-events records agree;
+- a forked child dies with the tree (its pid is read back
+  from the quarantined workdir and probed);
+- a job ignoring SIGTERM is killed anyway (the tree kill
+  is SIGKILL to the group; there is no TERM ladder to
+  ignore);
+- a job that writes the artifact and exits first is
+  recorded `quarantined`, never `killed` -- the close-out
+  docstring's honesty case, and the form a kill that lost
+  its race takes in the record;
+- controls: a clean job earns no member and no quarantine;
+  with the mode off, the tripping job runs to completion
+  and the record shows `observed` -- recorded and paged
+  only, as the doc promises.
+
+A true kill failure (a process the kernel will not kill)
+is not reproducible in the suite; what the suite can and
+does pin is that the record never claims a kill that did
+not land. The signal-specific tests are POSIX-gated with
+the registered reason "POSIX only"; the Windows map's
+three residual lines are the `taskkill` branch, whose act
+derivation the seam tests already cover.
+
+**Applied in:** the commit carrying this answer
+(`runner/tests/test_remediation_e2e.py`).
 
 ## Q12 (Claude asks Muse, 2026-10-24): coverage gap, Running a job as another user (`_job_user_preexec`)
 
