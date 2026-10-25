@@ -92,7 +92,7 @@ the other road and was not taken, because the fetch pass reads
 those states too and a state it cannot use is better repaired by
 the next pass than refused at load.
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** e912ccb3.
 
 ---
 
