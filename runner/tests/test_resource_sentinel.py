@@ -152,5 +152,72 @@ class CpuCountersTest(unittest.TestCase):
             self.assertTrue(0 <= idle <= total)
 
 
+class MainDeliveryLegsTest(unittest.TestCase):
+    """Queue A refill: main's live-readings path and
+    its two local-delivery refusals (local full-suite
+    map at 93998ca: lines 485, 496, 500-503). With no
+    --readings the sense reads the live machine; a
+    delivery that cannot run, and one that delivers
+    fewer than it was handed, are rc 2 with the state
+    left unwritten."""
+
+    def _drive(self, d, delivered, argv_extra=()):
+        import io
+        import json
+        import os
+        from contextlib import redirect_stderr
+        from unittest import mock
+        manifest_path = os.path.join(d, "extension.json")
+        with open(manifest_path, "w", encoding="utf-8") as fh:
+            json.dump({"tunables": {}}, fh)
+        state_path = os.path.join(d, "state.json")
+        err = io.StringIO()
+        with mock.patch.object(
+                RS, "decide",
+                return_value=([{"signal": "disk_full"}], {})), \
+                mock.patch.object(
+                    RS, "_deliver_local", return_value=delivered), \
+                redirect_stderr(err):
+            rc = RS.main(["--manifest", manifest_path,
+                          "--state", state_path,
+                          "--local-dir", d, *argv_extra])
+        return rc, err.getvalue(), state_path
+
+    def test_undeliverable_is_rc2(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rc, _err, state_path = self._drive(d, None)
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(state_path))
+
+    def test_partial_delivery_is_rc2_and_names_it(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rc, err, state_path = self._drive(d, 0)
+            self.assertEqual(rc, 2)
+            self.assertIn("1 of 1 alert(s) not delivered", err)
+            self.assertFalse(os.path.exists(state_path))
+
+    def test_no_readings_argument_reads_live(self):
+        import json
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            manifest_path = os.path.join(d, "extension.json")
+            with open(manifest_path, "w",
+                      encoding="utf-8") as fh:
+                json.dump({"tunables": {}}, fh)
+            with mock.patch.object(
+                    RS, "read_live",
+                    return_value={"now": 1.0}) as live, \
+                    mock.patch.object(
+                        RS, "decide", return_value=([], {})):
+                rc = RS.main(["--manifest", manifest_path,
+                              "--state",
+                              os.path.join(d, "state.json")])
+            self.assertEqual(rc, 0)
+            live.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

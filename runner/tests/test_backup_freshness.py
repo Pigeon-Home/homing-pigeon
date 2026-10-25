@@ -294,5 +294,43 @@ class DecideTest(unittest.TestCase):
             self.assertEqual(alerts[0]["sensor"], "backup_freshness")
 
 
+class MainPartialDeliveryLegTest(unittest.TestCase):
+    """Queue A refill: main's partial local delivery
+    (local full-suite map at 93998ca: lines 359,
+    362-365). Fewer delivered than handed over is
+    rc 2, the shortfall is named, and the state is
+    left unwritten so the condition reports again."""
+
+    def test_partial_delivery_is_rc2_and_saves_nothing(self):
+        import io
+        from contextlib import redirect_stderr
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            manifest_path = os.path.join(d, "extension.json")
+            with open(manifest_path, "w", encoding="utf-8") as fh:
+                json.dump({"tunables": {}}, fh)
+            readings_path = os.path.join(d, "readings.json")
+            with open(readings_path, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1_700_000_000.0,
+                           "backups": []}, fh)
+            state_path = os.path.join(d, "state.json")
+            err = io.StringIO()
+            with mock.patch.object(
+                    BF, "decide",
+                    return_value=([{"signal": "backup_stale"}],
+                                  {})), \
+                    mock.patch.object(
+                        BF, "_deliver_local", return_value=0), \
+                    redirect_stderr(err):
+                rc = BF.main(["--manifest", manifest_path,
+                              "--readings", readings_path,
+                              "--state", state_path,
+                              "--local-dir", d])
+            self.assertEqual(rc, 2)
+            self.assertIn("1 of 1 alert(s) not delivered",
+                          err.getvalue())
+            self.assertFalse(os.path.exists(state_path))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2563,3 +2563,14 @@ when done, the proving commit or run. Newest first.
   lines never ran). Locally coverage-clean on the taken
   lines. Done when a coverage run shows them clean and
   the build's Windows shards are green.
+- A (refill) — delivery legs in two more extension mains
+  (local full-suite map at 93998ca):
+  resource-sentinel's live-readings path and its
+  undeliverable and partial returns (485, 496, 500-503),
+  backup-freshness's partial return (359, 362-365) —
+  taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  MainDeliveryLegsTest (test_resource_sentinel.py) and
+  MainPartialDeliveryLegTest (test_backup_freshness.py);
+  both name the shortfall on stderr and leave the state
+  unwritten. Done when a coverage run shows them clean
+  and the build's Windows shards are green.
