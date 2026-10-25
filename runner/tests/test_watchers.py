@@ -480,6 +480,87 @@ class JobWatcherReadLiveTest(unittest.TestCase):
         self.assertEqual(readings["records"], [])
         self.assertEqual(readings["truncated"], 0)
 
+    def test_an_unlistable_store_reads_empty(self):
+        # Queue A refill: read_live's listing leg
+        # (coverage run 40189711740: lines 321-322) -- a
+        # retained store that exists but cannot be
+        # listed reads as no records, never an error.
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as base:
+            retained = os.path.join(base, "retained")
+            os.makedirs(retained)
+            manifest = _manifest(JW_DIR)
+            manifest["tunables"] = dict(
+                manifest["tunables"], runner_base_dir=base)
+            with mock.patch.object(
+                    os, "listdir",
+                    side_effect=OSError("cannot list")):
+                readings = JW.read_live(manifest)
+        self.assertEqual(readings["records"], [])
+        self.assertEqual(readings["truncated"], 0)
+
+    def test_a_record_that_cannot_be_statted_is_skipped(self):
+        # Queue A refill: the per-record probe leg
+        # (lines 331-332) -- one record whose mtime
+        # cannot be read is passed over; its sibling
+        # still reads.
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as base:
+            retained = os.path.join(base, "retained")
+            os.makedirs(retained)
+            for name, jid in (("job-1.json", "job-1"),
+                              ("job-2.json", "job-2")):
+                self._write_record(retained, name, {
+                    "job_id": jid, "kind": "exec",
+                    "script": "x.sh", "exit_code": 0,
+                    "timed_out": False, "saved_at": T0})
+            manifest = _manifest(JW_DIR)
+            manifest["tunables"] = dict(
+                manifest["tunables"], runner_base_dir=base)
+            real = os.path.getmtime
+
+            def flaky(path, *a, **kw):
+                if str(path).endswith("job-2.json"):
+                    raise OSError("gone")
+                return real(path, *a, **kw)
+
+            with mock.patch.object(os.path, "getmtime", flaky):
+                readings = JW.read_live(manifest)
+        self.assertEqual(
+            [r["job_id"] for r in readings["records"]], ["job-1"])
+
+
+class JobWatcherCleanStateTest(unittest.TestCase):
+    """Queue A refill: _clean_state's trimming and
+    repair legs (coverage run 40189711740: lines 378-
+    379, 385, 388). A saved state is untrusted input:
+    the seen map is capped to its newest entries, a
+    job entry keyed or shaped wrong is dropped, and
+    a fired map that is not a map reads as empty.
+    """
+
+    def test_the_seen_cap_keeps_the_newest(self):
+        from unittest import mock
+        state = {"seen": {"k%d" % i: float(i)
+                          for i in range(1, 6)},
+                 "jobs": {}}
+        with mock.patch.object(JW, "_SEEN_CAP", 3):
+            cleaned = JW._clean_state(state, 10)
+        self.assertEqual(cleaned["seen"],
+                         {"k3": 3.0, "k4": 4.0, "k5": 5.0})
+
+    def test_misshapen_job_entries_drop_or_repair(self):
+        state = {"seen": {}, "jobs": {
+            "good": {"kind": "exec", "label": "x",
+                     "fired": "not-a-map"},
+            7: {"kind": "exec"},
+            "bad": "not-a-dict",
+        }}
+        cleaned = JW._clean_state(state, 10)
+        self.assertEqual(sorted(cleaned["jobs"]), ["good"])
+        self.assertEqual(cleaned["jobs"]["good"]["fired"], {})
+        self.assertEqual(cleaned["jobs"]["good"]["kind"], "exec")
+
 
 # ---------------------------------------------------------------------
 # End to ends

@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/extensions/job-watcher/`
+  `job_watcher.py::read_live` listing legs and
+  `_clean_state` (4 lines each never run, coverage
+  run 40189711740) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  JobWatcherReadLiveTest and JobWatcherCleanStateTest
+  drives in runner/tests/test_watchers.py: an
+  unlistable store reads empty, an unstattable
+  record is skipped, the seen cap keeps the newest
+  entries, and misshapen job entries drop or repair.
+  Done when a coverage run shows both clean.
 - A (refill) — `runner/runner.py::`
   `_serve_local_signals` isolation legs and
   `_report_extension_sources` outcomes (4 lines
