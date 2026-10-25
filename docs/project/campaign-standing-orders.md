@@ -156,6 +156,16 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/extensions/latency-post/`
+  `latency_post.py::main` (7 lines never run on either
+  platform, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  LatencyMainDeliveryTest in
+  runner/tests/test_latency_post.py: the live branch
+  runs when no readings file is given; local delivery
+  success writes the state; not set up is exit 2; a
+  short delivery is exit 2 with the state unwritten.
+  Done when a coverage run shows the function clean.
 - A (refill) — `runner/ops/install.py::`
   `install_project_snapshot` (7 lines never run on
   either platform, coverage run 40187685363) — taken

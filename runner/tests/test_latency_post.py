@@ -21,7 +21,7 @@ import socket
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -399,6 +399,87 @@ class GatewayTest(unittest.TestCase):
             self.assertEqual(len(parts), 4)
             for part in parts:
                 self.assertTrue(0 <= int(part) <= 255)
+
+
+class LatencyMainDeliveryTest(unittest.TestCase):
+    """Queue A refill: latency-post main's live branch and
+    local-delivery legs (coverage run 40187685363: 7
+    lines on both platforms). Same contract as every
+    sense main: the live snapshot is taken when no
+    readings file is given (read_live itself is covered
+    by ProbeTest/GatewayTest; here it is stubbed so the
+    branch main takes is what is under test); delivery
+    not set up is exit 2; a short delivery is exit 2
+    with the state unwritten, so the next pass reports
+    the conditions again.
+    """
+
+    ENV = "HP_LAT_SECRET"
+
+    def _drive(self, d, extra, readings=None):
+        state = os.path.join(d, "state.json")
+        argv = ["--state", state, "--secret-env", self.ENV]
+        if readings is not None:
+            path = os.path.join(d, "readings.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(readings, fh)
+            argv += ["--readings", path]
+        err = io.StringIO()
+        with redirect_stderr(err):
+            rc = LP.main(argv + extra)
+        return rc, state, err.getvalue()
+
+    def _alert_readings(self):
+        return _readings(_probe(ok=False, latency_ms=None,
+                                error="timeout"))
+
+    def test_the_live_branch_runs_without_a_readings_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    LP, "read_live",
+                    return_value=self._alert_readings()):
+                rc, state, _err = self._drive(d, [])
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.exists(state))
+
+    def test_local_delivery_success_writes_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ[self.ENV] = "ab" * 32
+            try:
+                rc, state, _err = self._drive(
+                    d, ["--local-dir", d],
+                    readings=self._alert_readings())
+            finally:
+                os.environ.pop(self.ENV, None)
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.exists(state))
+            inbox = os.path.join(d, "local-inbox")
+            self.assertEqual(len(os.listdir(inbox)), 1)
+
+    def test_local_delivery_not_set_up_is_exit_2(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ.pop(self.ENV, None)
+            rc, state, _err = self._drive(
+                d, ["--local-dir", d],
+                readings=self._alert_readings())
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(state))
+
+    def test_short_delivery_is_exit_2_and_saves_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            blocker = os.path.join(d, "blocker")
+            with open(blocker, "w", encoding="utf-8") as fh:
+                fh.write("not a directory")
+            os.environ[self.ENV] = "ab" * 32
+            try:
+                rc, state, err = self._drive(
+                    d, ["--local-dir", blocker],
+                    readings=self._alert_readings())
+            finally:
+                os.environ.pop(self.ENV, None)
+            self.assertEqual(rc, 2)
+            self.assertIn("state not saved", err)
+            self.assertFalse(os.path.exists(state))
 
 
 if __name__ == "__main__":
