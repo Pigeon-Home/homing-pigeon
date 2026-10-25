@@ -592,6 +592,32 @@ class Decision1WarningLineProbes(unittest.TestCase):
         self.assertEqual(cfg.get("poll_interval_sec"), 20)
 
 
+class DefaultedEnumLegsTest(unittest.TestCase):
+    """Queue A refill: defaulted.py's enum legs
+    (coverage run 40189711740: default_for lines
+    74-76, is_defaulted lines 90-92). Decision 1's
+    registry has one enum key today, dtls_greeting:
+    its documented default answers for it, an
+    unusable value for it is defaulted, a usable one
+    is not, and a key in neither table has no
+    default and is never defaulted.
+    """
+
+    def test_the_enum_key_and_the_unknown_key(self):
+        from runner.guard import defaulted
+        self.assertEqual(defaulted.default_for("dtls_greeting"),
+                         "family")
+        self.assertIsNone(defaulted.default_for("no_such_key"))
+        self.assertTrue(
+            defaulted.is_defaulted("dtls_greeting", "bogus"))
+        self.assertTrue(
+            defaulted.is_defaulted("dtls_greeting", 7))
+        self.assertFalse(
+            defaulted.is_defaulted("dtls_greeting", "full"))
+        self.assertFalse(
+            defaulted.is_defaulted("no_such_key", "bogus"))
+
+
 class DefaultedTableMatchesRegistryTests(unittest.TestCase):
     """runner/guard/defaulted.py (the runtime table behind the
     Decision-1 warning line) must agree with the registry rows."""

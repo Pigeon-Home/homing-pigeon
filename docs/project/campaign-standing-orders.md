@@ -294,6 +294,18 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/guard/defaulted.py::`
+  `default_for` and `is_defaulted` enum legs
+  (3 lines each never run, coverage run
+  40189711740) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  DefaultedEnumLegsTest in
+  runner/tests/test_defaults_table_hunt.py: the
+  one enum key's default answers, an unusable
+  value for it is defaulted, a usable one is not,
+  and an unknown key has no default and is never
+  defaulted. Done when a coverage run shows both
+  clean.
 - A (refill) — `runner/extensions/job-watcher/`
   `job_watcher.py::read_live` listing legs and
   `_clean_state` (4 lines each never run, coverage
