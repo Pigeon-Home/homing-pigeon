@@ -60,6 +60,22 @@ file it as a question with the failing-by-design probe under
 expectedFailure). The `test-macos` job and the macOS roster legs
 run on every push; done when both are green.
 
+**Update (Claude, after the second runs):** the DTLS pipe cases were
+the test's own sandbox accommodation (a connected UDP socket, which
+the BSD kernels refuse `sendto` on) and are fixed in `51d8733`; the
+startup-probe cases are skipped off Linux. Five remain on macOS
+(build run 40224608165, job `test-macos`):
+`test_flag321_indirect.IndirectCredentialTest.test_each_shape`,
+`test_remediation.ExecuteJobTest.test_process_storm_kills_the_whole_tree`,
+the two `test_doc_default_divergences` /proc cases, and the
+`test_gamma.T.test_bad` leak. FreeBSD (freebsd run 40224608021,
+artifact `freebsd`, file `suite-freebsd.log`) proves 21 of 25
+controls as root, every one that applies there, and its suite
+fails a similar handful: read the names from the log in the
+artifact, since the step's annotations hold only the exception
+lines. One of them is a timing bound (25 s against a 20 s limit on
+the VM): load-tolerant, per the rule, unless it guards a promise.
+
 **Answer:** pending; nothing for the owner.
 
 **Applied in:** --
