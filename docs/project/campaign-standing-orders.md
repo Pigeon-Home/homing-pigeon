@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — job-fuzz state caps and quiet legs
+  (coverage run 40189711740): the energy, buckets
+  and filed caps trimming to the most valuable,
+  _load_quiet with no load average to read,
+  _prune_archive passing over an unremovable
+  file, and _minimize_variant passing over an
+  unwritable archive — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  CleanStateCapLegsTest in
+  runner/tests/test_job_fuzz.py. Done when a
+  coverage run shows them clean.
 - A (refill) — `runner/ops/extsources.py` small
   legs (2 lines each never run, coverage run
   40189711740): Fetcher.get_json's not-JSON

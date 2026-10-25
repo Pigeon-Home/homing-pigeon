@@ -1373,6 +1373,94 @@ class MainTest(unittest.TestCase):
         self.assertIn("cannot write state", err)
 
 
+class CleanStateCapLegsTest(unittest.TestCase):
+    """Queue A refill: job-fuzz's state caps and
+    quiet legs (coverage run 40189711740:
+    _clean_energy 1001-1003, _clean_buckets
+    1024-1026, _clean_state filed 1064-1066,
+    _load_quiet 619-620, _prune_archive 711-712,
+    _minimize_variant 808-809). The campaign state
+    is bounded by design: past a cap the
+    least-valuable entries go -- energy keeps the
+    most-run jobs, buckets the most recent, filed
+    the largest stamps. On a platform with no load
+    average the idle gate has no vote; a file that
+    cannot be pruned or written is passed over,
+    never fatal.
+    """
+
+    def test_the_caps_trim_to_the_most_valuable(self):
+        state = {
+            "corpus": {},
+            "energy": {"j%d" % i: {"runs": i}
+                       for i in range(JF._ENERGY_CAP + 5)},
+            "buckets": {"b%d" % i: {"count": 1, "last": float(i),
+                                    "examples": []}
+                        for i in range(JF._BUCKET_CAP + 5)},
+            "filed": {"f%d" % i: float(i)
+                      for i in range(JF._FILER_CAP + 5)},
+        }
+        clean = JF._clean_state(state, corpus_cap=10)
+        self.assertEqual(len(clean["energy"]), JF._ENERGY_CAP)
+        self.assertNotIn("j0", clean["energy"])
+        self.assertIn("j%d" % (JF._ENERGY_CAP + 4),
+                      clean["energy"])
+        self.assertEqual(len(clean["buckets"]), JF._BUCKET_CAP)
+        self.assertNotIn("b0", clean["buckets"])
+        self.assertEqual(len(clean["filed"]), JF._FILER_CAP)
+        self.assertNotIn("f0", clean["filed"])
+
+    def test_no_load_average_is_no_vote(self):
+        from unittest import mock as _mock
+        with _mock.patch.object(
+                JF.os, "getloadavg",
+                side_effect=OSError("no load")):
+            self.assertTrue(JF._load_quiet(1.0))
+
+    def test_an_unprunable_file_is_passed_over(self):
+        from unittest import mock as _mock
+        with tempfile.TemporaryDirectory() as d:
+            for i in range(3):
+                with open(os.path.join(d, "a%d.json" % i),
+                          "w") as fh:
+                    fh.write("{}")
+            real_unlink = os.unlink
+
+            def flaky(path, *a, **k):
+                if path.endswith("a0.json"):
+                    raise OSError("stuck")
+                return real_unlink(path, *a, **k)
+
+            with _mock.patch.object(os, "unlink", flaky):
+                JF._prune_archive(d, 1)
+            self.assertTrue(
+                os.path.exists(os.path.join(d, "a0.json")))
+
+    def test_an_unwritable_archive_still_minimizes(self):
+        from unittest import mock as _mock
+        variant = {"job_id": "v1",
+                   "script": "one\ntwo\nthree"}
+        report = {"stage": "error", "exit_code": 1,
+                  "timed_out": False}
+        real_open = open
+
+        def refusing(path, *a, **k):
+            if str(path).endswith(".json"):
+                raise OSError("read-only")
+            return real_open(path, *a, **k)
+
+        with tempfile.TemporaryDirectory() as d, \
+                _mock.patch.object(
+                    JF, "_run_one_variant",
+                    return_value=dict(report)), \
+                _mock.patch("builtins.open", refusing):
+            out_variant, _rep, steps = JF._minimize_variant(
+                ["run"], variant, report, d,
+                timeout_sec=5, budget=5)
+        self.assertGreaterEqual(steps, 1)
+        self.assertNotIn("\nthree", out_variant["script"])
+
+
 class QuoteBreakMutatorTest(unittest.TestCase):
     """Queue A refill: the quote_break mutator had never
     run in the suite (coverage run 40187685363: the whole
