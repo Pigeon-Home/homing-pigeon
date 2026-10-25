@@ -127,7 +127,36 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -c .github/requirements-ci.txt pyrefly
-      - run: pyrefly check
+      - name: pyrefly check, its findings as annotations
+        run: |
+          set +e
+          # The job log is not readable from every seat; each error
+          # rides as a GitHub annotation (file, line, message) so a
+          # red gate can be read, and fixed, without the log.
+          pyrefly check --output-format json --output pyrefly.json
+          rc=$?
+          python3 - <<'EOF'
+          import json, sys
+          try:
+              data = json.load(open("pyrefly.json"))
+          except Exception as e:
+              print(f"::warning::pyrefly wrote no readable json ({e})")
+              sys.exit(0)
+          errors = data.get("errors", data) if isinstance(data, dict) else data
+          n = 0
+          for err in errors if isinstance(errors, list) else []:
+              if not isinstance(err, dict):
+                  continue
+              path = err.get("path") or err.get("file") or ""
+              line = err.get("line") or err.get("start_line") or 1
+              msg = (err.get("description") or err.get("message") or "")
+              name = err.get("name") or err.get("code") or ""
+              msg = msg.replace("%", "%25").replace("\r", "").replace("\n", " ")[:800]
+              print(f"::error file={path},line={line},title=pyrefly {name}::{msg}")
+              n += 1
+          print(f"pyrefly: {n} error(s) annotated")
+          EOF
+          exit $rc
 
   mutation:
     # Signal, not a block: mutation reports surviving mutants for
