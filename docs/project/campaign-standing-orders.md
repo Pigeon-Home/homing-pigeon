@@ -155,6 +155,7 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- rules refreshed 2026-10-25 03:54 PDT
 - A — `runner/oracle/remediation.py::fix_marker_digest`
   (10 lines never run on Windows, coverage run
   40183585961) — taken 2026-10-25,
@@ -197,17 +198,25 @@ when done, the proving commit or run. Newest first.
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the flag lines
   are platform pairs (O_NOFOLLOW inapplicable on
   Windows, O_BINARY on Linux, each covered on the other
-  platform); the rest is taken with it.
+  platform); the rest is taken with it. — done: coverage
+  run 40185658710 (main at 0b295ba) leaves only each
+  platform's foreign flag lines (O_NOFOLLOW on Windows,
+  O_BINARY on Linux).
 - A — `runner/extensions/lab-results/lab_results.py::`
   `_deliver_local` (11 lines never run on either
   platform, coverage run 40183585961) — taken 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 — the template
   sense itself was missing from the delivery roster its
-  copies are tested by.
+  copies are tested by. — done: coverage run 40185658710
+  (main at 0b295ba) shows no never-executed lines for
+  this function on either platform.
 - A — `runner/extensions/job-fuzz/job_fuzz.py::`
   `_run_one_variant` (11 lines never run on either
   platform, coverage run 40183585961) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage
+  run 40185658710 (main at 0b295ba) shows no
+  never-executed lines for this function on either
+  platform.
 - A — `runner/cloud/send_dtls.py::main` (11 lines never
   run on either platform, coverage run 40183585961) —
   taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run 40185441322 (main at 232f617) shows no never-executed lines for this function on either platform.
