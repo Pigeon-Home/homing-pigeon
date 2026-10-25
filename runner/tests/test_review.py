@@ -145,5 +145,23 @@ class HookTest(unittest.TestCase):
         self.assertIn("timeout_clamped", {n["id"] for n in r["notes"]})
 
 
+class ReviewPatternIdLegTest(unittest.TestCase):
+    """Queue A refill: parse_review_patterns'
+    bad-id refusal (coverage run 40189711740:
+    line 140). An extra pattern whose id is
+    not a non-empty string is a config error
+    in the owner's face, not a pattern the
+    review quietly runs under a wrong name.
+    """
+
+    def test_a_non_string_id_is_a_config_error(self):
+        from runner.oracle import review as RV
+        with self.assertRaisesRegex(
+                RuntimeError, "id must be a non-empty string"):
+            RV.parse_review_patterns(
+                {"review_patterns_extra": [
+                    {"id": 123, "pattern": "x"}]})
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

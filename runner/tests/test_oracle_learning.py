@@ -854,5 +854,47 @@ class LearningShapeTest(unittest.TestCase):
                 os.rmdir(tmp)
 
 
+class LearningSmallLegsTest(unittest.TestCase):
+    """Queue A refill: _boolish's fallthrough
+    (coverage run 40189711740: line 114) and
+    _trim_locked's Windows flag line (282). A
+    value that is neither a bool nor a known
+    string reads as the caller's default; the
+    ledger trim writes its replacement under
+    the same flag set on every platform.
+    """
+
+    def test_boolish_fallthrough(self):
+        from runner.oracle import learning as L
+        self.assertTrue(L._boolish(123, True))
+        self.assertFalse(L._boolish(None, False))
+        self.assertTrue(L._boolish("yes", False))
+
+    def test_trim_locked_writes_the_replacement(self):
+        import os
+        import tempfile
+        from unittest import mock as _mock
+        from runner.oracle import learning as L
+        had = hasattr(os, "O_BINARY")
+        os.O_BINARY = 0
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                path = os.path.join(d, "ledger.jsonl")
+                with open(path, "w") as fh:
+                    for i in range(10):
+                        fh.write("line %d\n" % i)
+                with _mock.patch.object(
+                        L, "LEDGER_MAX_LINES", 3), \
+                        _mock.patch.object(
+                            L, "LEDGER_KEEP_LINES", 2):
+                    L._trim_locked(path)
+                with open(path) as fh:
+                    kept = fh.read()
+            self.assertEqual(kept, "line 8\nline 9\n")
+        finally:
+            if not had and hasattr(os, "O_BINARY"):
+                del os.O_BINARY
+
+
 if __name__ == "__main__":
     unittest.main()

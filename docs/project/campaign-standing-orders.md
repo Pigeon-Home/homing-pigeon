@@ -294,6 +294,27 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — board, platform card, learning,
+  review and registry small legs (coverage run
+  40189711740): board.set_logger's pair and
+  no-op, platform_interpreter's Windows branch,
+  tier_of's unset tier, learning._boolish's
+  fallthrough, _trim_locked's replacement
+  write, parse_review_patterns' bad id,
+  confval.port's own line, defaulted_keys'
+  non-object guard, and sandbox
+  interpreter_binds' relative skip — taken
+  2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  BoardSetLoggerLegsTest (test_board.py),
+  PlatformCardLegsTest (test_platformcard.py),
+  LearningSmallLegsTest (test_oracle_learning.py),
+  ReviewPatternIdLegTest (test_review.py),
+  ConfvalPortAndDefaultedLegsTest
+  (test_defaults_table_hunt.py), and
+  InterpreterBindsRelativeLegTest
+  (test_confinement.py). Done when a coverage
+  run shows them clean.
 - A (refill) — extsources small legs, second
   batch (coverage run 40189711740): _regex and
   parse_declaration guards, the https-only

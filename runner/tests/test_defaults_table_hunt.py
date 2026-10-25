@@ -834,5 +834,26 @@ class ReloadHotConfigEdgesTest(unittest.TestCase):
                           out.getvalue())
 
 
+class ConfvalPortAndDefaultedLegsTest(unittest.TestCase):
+    """Queue A refill: confval.port's own line
+    (coverage run 40189711740: line 109) and
+    defaulted_keys' non-dict guard (defaulted.py
+    line 98). A port is an integer in range or
+    the documented default -- 0 is bind's
+    wildcard, never a setting -- and a config
+    that is not an object has no defaulted keys
+    to name.
+    """
+
+    def test_port_and_defaulted_legs(self):
+        from runner.guard import defaulted
+        self.assertEqual(confval.port("8080", 80), 8080)
+        self.assertEqual(confval.port("0", 80), 80)
+        self.assertEqual(confval.port("99999", 443), 443)
+        self.assertEqual(confval.port(None, 25), 25)
+        self.assertEqual(defaulted.defaulted_keys("nope"), [])
+        self.assertEqual(defaulted.defaulted_keys(None), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

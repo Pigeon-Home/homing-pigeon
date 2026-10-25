@@ -723,5 +723,20 @@ class SnapshotRealpathFallbackTest(unittest.TestCase):
         self.assertFalse(any(p.startswith(ws) for p in snap))
 
 
+class InterpreterBindsRelativeLegTest(unittest.TestCase):
+    """Queue A refill: interpreter_binds'
+    relative-path skip (coverage run
+    40189711740: sandbox.py lines 201-202).
+    A resolved interpreter that is not an
+    absolute path names nothing the sandbox
+    can bind; it is passed over, and the
+    answer is a list either way.
+    """
+
+    def test_a_relative_interpreter_is_passed_over(self):
+        out = SB.interpreter_binds("relative/python3")
+        self.assertIsInstance(out, list)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

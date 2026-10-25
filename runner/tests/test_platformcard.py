@@ -43,6 +43,32 @@ class OsFamilyLegsTest(unittest.TestCase):
                 self.assertEqual(PC.os_family(), want)
 
 
+class PlatformCardLegsTest(unittest.TestCase):
+    """Queue A refill: platform_interpreter's
+    Windows branch (coverage run 40189711740:
+    line 58) and tier_of's non-dict config (68).
+    The interpreter a job without one runs under
+    is PowerShell on Windows and sh elsewhere;
+    a config that is not an object reads every
+    tier as its default.
+    """
+
+    def test_interpreter_and_tier_legs(self):
+        import os
+        from unittest import mock as _mock
+        with _mock.patch.object(os, "name", "nt"):
+            self.assertEqual(
+                PC.platform_interpreter()[0], "powershell")
+        self.assertEqual(PC.platform_interpreter(), ["sh"])
+        tier, problem = PC.tier_of("not-a-dict", "greeting")
+        self.assertIsNone(problem)
+        self.assertIn(tier, PC.TIERS)
+        tier, problem = PC.tier_of({"greeting": None},
+                                   "greeting")
+        self.assertIsNone(problem)
+        self.assertIn(tier, PC.TIERS)
+
+
 class CardTest(unittest.TestCase):
     def test_none_is_no_card(self):
         self.assertIsNone(PC.build_card("none"))

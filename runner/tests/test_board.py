@@ -144,6 +144,31 @@ class BoardUnitTest(unittest.TestCase):
         self.assertIn("t1", Board(self.path).tasks)
 
 
+class BoardSetLoggerLegsTest(unittest.TestCase):
+    """Queue A refill: board.set_logger's legs
+    (coverage run 40189711740: lines 41 and 51).
+    A host that hands in only a log gets the
+    no-op for its vlog; a host that hands in
+    nothing clears the pair, and the board falls
+    back to the runner's live functions.
+    """
+
+    def test_set_logger_legs(self):
+        from runner.wire import board as B
+        try:
+            calls = []
+            B.set_logger(lambda m, level="INFO":
+                         calls.append(m))
+            log_fn, vlog_fn = B._runner_logger()
+            log_fn("hello")
+            self.assertEqual(calls, ["hello"])
+            self.assertIsNone(vlog_fn("quiet"))
+            B.set_logger(None)
+            self.assertIsNone(B._LOGGER)
+        finally:
+            B.set_logger(None)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 
