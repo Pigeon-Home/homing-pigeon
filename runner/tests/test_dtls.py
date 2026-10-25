@@ -1922,3 +1922,95 @@ class DtlsRunOnceLegsTest(unittest.TestCase):
         finally:
             real_sock.close()
         self.assertEqual(sent, [(b"dg-bytes", addr)])
+
+
+class RecordSealerWrapBackTest(unittest.TestCase):
+    """Queue A refill: the record opener's
+    sequence wrap-back (coverage run
+    40189711740: dtlsproto.py line 475). The
+    wire carries the low 16 bits of the
+    sequence; when the window's high bits
+    overshoot by one turn -- a record from the
+    top of the previous turn arriving after
+    the window crossed -- the opener steps
+    back one turn and the record still opens.
+    """
+
+    def test_a_record_from_the_previous_turn_opens(self):
+        sender = dtlsproto._RecordSealer(b"\x5a" * 32)
+        opener = dtlsproto._RecordSealer(b"\x5a" * 32)
+        sender.seq = 0xFFFF
+        record = sender.seal(1, dtlsproto.CT_APPDATA,
+                             b"late arrival", None)
+        opener._next_expected = 0x10000
+        ctype, content, seq = opener.open(1, record)
+        self.assertEqual(ctype, dtlsproto.CT_APPDATA)
+        self.assertEqual(content, b"late arrival")
+        self.assertEqual(seq, 0xFFFF)
+
+
+class FragmentReassemblyGarbageTest(unittest.TestCase):
+    """Queue A refill: a fragmented handshake
+    message reassembled from two fragments
+    (coverage run 40189711740: the fragment
+    paths beside dtlsproto.py lines 1002 and
+    1401). The fragments are tolerated, the
+    completed message is dispatched and
+    dropped as a type neither core acts on,
+    and neither core answers it. The
+    parse-failure returns at 1002/1401 cannot
+    fire -- the buffer returns only messages
+    built by _hs_message, which always parse;
+    probed over completed shapes of several
+    sizes on 2026-10-25.
+    """
+
+    def _fragments(self):
+        def header(off, frag_len):
+            return (bytes([20]) + (5).to_bytes(3, "big")
+                    + (0).to_bytes(2, "big")
+                    + off.to_bytes(3, "big")
+                    + frag_len.to_bytes(3, "big"))
+        return (header(0, 3) + b"abc",
+                header(3, 2) + b"de")
+
+    def test_the_client_drops_a_garbage_reassembly(self):
+        client = dtlsproto.DtlsClientCore(SECRET)
+        first, second = self._fragments()
+        self.assertEqual(
+            client._on_handshake_bytes(first, NOW, 0), [])
+        self.assertEqual(
+            client._on_handshake_bytes(second, NOW, 0), [])
+
+    def test_the_server_session_drops_one_too(self):
+        _client, server = _established_pair()
+        session = next(iter(server.by_addr.values()))
+        first, second = self._fragments()
+        self.assertEqual(
+            session._on_handshake_bytes(first, NOW, 0), [])
+        self.assertEqual(
+            session._on_handshake_bytes(second, NOW, 0), [])
+
+
+class FeedRecordByAddressTest(unittest.TestCase):
+    """Queue A refill: the server core's
+    by-address record route (coverage run
+    40189711740: dtlsproto.py lines 1547-1548).
+    A protected record carrying no connection
+    ID is offered to the session bound to the
+    sender's address -- the CID is an
+    optimization for roaming peers, not the
+    only way home.
+    """
+
+    def test_a_cid_less_record_reaches_its_session(self):
+        client, server = _established_pair()
+        session = next(iter(server.by_addr.values()))
+        epoch = max(e for e in client.senders if e >= 3)
+        framed = (7).to_bytes(4, "big") + b"by-addr"
+        record = client.senders[epoch].seal(
+            epoch, dtlsproto.CT_APPDATA, framed, None)
+        out = server.feed(record, ADDR, NOW)
+        self.assertEqual(out, [])
+        self.assertEqual(server.dropped_records, 0)
+        self.assertIn(b"by-addr", session.app_messages)

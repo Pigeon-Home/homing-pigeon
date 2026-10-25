@@ -333,6 +333,27 @@ when done, the proving commit or run. Newest first.
   lines are still blank although the deletion
   landed in f4e2378 -- the answerer's
   bookkeeping, noted here.)
+- A (refill) — DTLS record legs (coverage run
+  40189711740): the record opener's sequence
+  wrap-back, the server core's by-address
+  record route, and the fragment-reassembly
+  paths — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RecordSealerWrapBackTest,
+  FeedRecordByAddressTest,
+  FragmentReassemblyGarbageTest
+  (test_dtls.py). Recorded without a take:
+  the parse-failure returns after fragment
+  reassembly (dtlsproto 1002 and 1401) cannot
+  fire -- the fragment buffer returns only
+  messages built by _hs_message, whose header
+  and length always parse; probed over
+  completed shapes of several sizes.
+  DtlsServerCore.tick's by-address sweep
+  (1622-1624), listed on the same map, was
+  already taken in 237a9c5 after the map's
+  HEAD. Done when a coverage run shows the
+  taken legs clean.
 - A (refill) — installer legs (coverage run
   40189711740): _posix_uid's no-getuid answer,
   _path_exists' raising check, a fresh config
