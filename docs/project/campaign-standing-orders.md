@@ -879,7 +879,10 @@ when done, the proving commit or run. Newest first.
   runner/tests/test_airwaves.py pin the Q28
   contract (the reading survives, signal None).
   Claude's lane to fix; the probes are the
-  verification when it lands.
+  verification when it lands. FIXED by Claude
+  (both parsers' guards widened — verified in the
+  local full-suite run at 9a01d0a: 3,571 tests, 0
+  failures). Q29 CLOSED by evidence 2026-10-25.
 - A (refill) — `runner/wire/verify.py` fallback
   legs, `runner/guard/sandbox.py::`
   `_userns_restricted` read legs and
