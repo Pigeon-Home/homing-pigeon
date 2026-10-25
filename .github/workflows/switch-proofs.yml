@@ -38,9 +38,13 @@ on:
 
 permissions: {}
 
+# As build.yml: a running leg finishes and the newest push waits
+# behind it. Cancelling in progress starved the first hour of runs
+# when the campaign pushed a test a minute; a finished verdict on a
+# slightly older commit beats a cancelled one on the newest.
 concurrency:
   group: switch-proofs-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   linux:
