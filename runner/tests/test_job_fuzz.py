@@ -784,6 +784,76 @@ class ReadLiveCampaignLegsTest(unittest.TestCase):
         self.assertEqual(len(readings["outcomes"]), 1)
 
 
+class ScanRetainedEdgesTest(unittest.TestCase):
+    """Queue A refill: _scan_retained's listing legs
+    (coverage run 40189608702: 5 lines on both
+    platforms). The scan's docstring fixes the
+    shape: a missing store reads as empty, and the
+    scan never raises -- a store that cannot be
+    listed reads the same way, names that are not
+    seed files are passed over, and a seed that
+    vanishes between the listing and its stat is
+    skipped while its siblings are still read.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-jf-scan-")
+        self.base = os.path.join(self.tmp, "state")
+        self.retained = os.path.join(self.base, "retained")
+        os.makedirs(self.retained)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _write(self, name, record=None, raw=None):
+        path = os.path.join(self.retained, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            if raw is not None:
+                fh.write(raw)
+            else:
+                json.dump(record, fh)
+        old = time.time() - 3600
+        os.utime(path, (old, old))
+        return path
+
+    def test_an_unlistable_store_reads_as_empty(self):
+        self._write("job-a.json", _seed(
+            saved_at=time.time() - 3600))
+        with mock.patch.object(os, "listdir",
+                               side_effect=OSError("cannot list")):
+            seeds, newest = JF._scan_retained(self.base, 500)
+        self.assertEqual(seeds, [])
+        self.assertEqual(newest, 0.0)
+
+    def test_non_json_names_are_not_seeds(self):
+        good = self._write("job-a.json", _seed(
+            saved_at=time.time() - 3600))
+        self._write("notes.txt", raw="not a seed")
+        self._write("job-b.json.bak", _seed(
+            job_id="job-b", saved_at=time.time() - 3600))
+        seeds, newest = JF._scan_retained(self.base, 500)
+        self.assertEqual([s["job_id"] for s in seeds], ["job-a"])
+        self.assertEqual(newest, os.path.getmtime(good))
+
+    def test_a_seed_that_vanishes_mid_scan_is_skipped(self):
+        self._write("bad.json", _seed(
+            job_id="bad", saved_at=time.time() - 3600))
+        good = self._write("good.json", _seed(
+            job_id="good", saved_at=time.time() - 3600))
+        real_mtime = os.path.getmtime
+
+        def flaky(path, *a, **kw):
+            if os.path.basename(path) == "bad.json":
+                raise OSError("vanished")
+            return real_mtime(path, *a, **kw)
+
+        with mock.patch.object(os.path, "getmtime", flaky):
+            seeds, newest = JF._scan_retained(self.base, 500)
+        self.assertEqual([s["job_id"] for s in seeds], ["good"])
+        self.assertEqual(newest, real_mtime(good))
+
+
 class IdleVoteTest(unittest.TestCase):
     def test_fresh_job_is_never_idle(self):
         self.assertFalse(JF._box_idle(1000.0, 999.0, 600.0))

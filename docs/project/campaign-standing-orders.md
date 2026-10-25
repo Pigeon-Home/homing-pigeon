@@ -263,6 +263,23 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- rules refreshed 2026-10-25 05:07 PDT (Q24 read
+  with the refresh: queues S and R now come first;
+  the queue-A item below was already written when
+  the reset landed and is closed out here)
+- A (refill) — `runner/extensions/job-fuzz/`
+  `job_fuzz.py::_scan_retained` (5 lines never run
+  on either platform, coverage run 40189608702) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ScanRetainedEdgesTest in
+  runner/tests/test_job_fuzz.py: a store that
+  cannot be listed reads as empty; names that are
+  not seed files are passed over; a seed that
+  vanishes between the listing and its stat is
+  skipped while its sibling is still read. The
+  function is fully run under that class. Done
+  when a coverage run shows it clean.
 - rules refreshed 2026-10-25 04:48 PDT
 - A (refill) — `runner/ops/extsources.py::`
   `pin_declaration` (5 lines never run on either
