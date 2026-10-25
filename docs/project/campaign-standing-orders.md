@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/ops/auditreport.py::`
+  `_is_dangerous` fallback (4 lines never run,
+  coverage run 40189711740) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  DangerousFallbackTest in
+  runner/tests/test_audit_report.py: when the
+  security module's own check raises, the answer
+  falls back to its name list (a listed name in
+  any case is dangerous; an unlisted or non-string
+  name is not). Done when a coverage run shows
+  the function clean.
 - A (refill) — `runner/extensions/airwaves/`
   `airwaves.py::parse_iw_scan` conversion guards
   (4 lines never run, coverage run 40189711740) —

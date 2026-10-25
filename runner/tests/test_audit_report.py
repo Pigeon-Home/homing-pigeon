@@ -259,6 +259,31 @@ class FlagIntegrationTest(unittest.TestCase):
             self.assertIn("Security audit report", buf.getvalue())
 
 
+class DangerousFallbackTest(unittest.TestCase):
+    """Queue A refill: _is_dangerous' fallback (coverage
+    run 40189711740: 4 lines). The report tool asks the
+    security module's own check first; when that call
+    raises -- a damaged or mismatched install, the same
+    condition the import seam above exists for -- the
+    answer falls back to the module's name list rather
+    than failing the report or guessing clean.
+    """
+
+    def test_a_raising_delegate_falls_back_to_the_list(self):
+        import types
+
+        def boom(_name):
+            raise RuntimeError("delegate unavailable")
+
+        stub = types.SimpleNamespace(
+            is_dangerous_env_name=boom,
+            DANGEROUS_ENV_NAMES=frozenset({"LD_PRELOAD"}))
+        with mock.patch.object(AR, "_security", stub):
+            self.assertTrue(AR._is_dangerous("ld_preload"))
+            self.assertFalse(AR._is_dangerous("HARMLESS_NAME"))
+            self.assertFalse(AR._is_dangerous(None))
+
+
 class ImportSeamTest(unittest.TestCase):
     """Queue A refill: auditreport's import seam (coverage
     run 40189711740: the fallback block, 5 lines, never ran
