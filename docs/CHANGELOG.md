@@ -4,8 +4,29 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.12.66 - 2026-10-25
+## 3.12.67 - 2026-10-25
 
+- **Two audit writers no longer lose an entry on Windows.** The first
+  full switch-proofs run found it (Q25): `O_APPEND` is one atomic
+  write on POSIX, but the Windows C runtime seeks then writes, so two
+  job threads denied in the same moment overwrote each other's audit
+  entry. One re-entrant lock per process now serializes the bound
+  check, the append and the counts bump; it also closes the
+  count-then-roll and counts-file races that existed on every
+  platform. Entry format, file names and roll-by-rename are unchanged.
+- **A refused channel ack rolls back.** `IncomingMessage.ack()` now
+  returns what the channel's ack returns, so `service_channel` sees
+  the refusal (the envelope changed after the read, the move failed)
+  and runs the rollback that drops the seen-set entry; the retry is
+  no longer refused as a duplicate of itself (Q25).
+- **A withheld root that cannot be resolved still withholds on
+  Windows.** `is_withheld` compares both sides as given, made
+  absolute the same way, instead of a drive-qualified real path
+  against a bare one.
+- airwaves: a signal line too long for `int()` degrades that reading
+  to None instead of ending the sense's cycle (Q28).
+- (3.12.66 was built but not tagged: its Windows build caught the
+  audit race above; everything below shipped in this release.)
 - **The mutation signal, un-blinded.** A collection failure in the
   mutants tree (two archived probe files with one basename) ended
   mutmut's coverage pass before a test ran; mutmut ignores that

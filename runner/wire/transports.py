@@ -362,8 +362,14 @@ class IncomingMessage:
         self._reply(subject, body, target)
 
     def ack(self):
+        """Consume the message. Returns what the channel's ack
+        returns: False when the channel refused to consume (the
+        envelope changed after the read, the move failed), so the
+        caller can roll back what it recorded for it (Q25); None
+        for a channel with no ack."""
         if self._ack is not None:
-            self._ack()
+            return self._ack()
+        return None
 
 
 def fetch_channel_messages(base_dir, name, log=None):

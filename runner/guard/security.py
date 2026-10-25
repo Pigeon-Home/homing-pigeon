@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import threading
 import time
 
 MODES = ("off", "audit", "enforce")
@@ -279,6 +280,20 @@ def _audit_path(base_dir):
     return os.path.join(base_dir, AUDIT_FILE)
 
 
+# One audit writer at a time per process. Appends go through
+# O_APPEND, which is one atomic write on POSIX but not on Windows,
+# where the C runtime seeks to the end and then writes: two job
+# threads (workers > 1) denied in the same moment overwrote each
+# other's entry there (switch-proofs, R2, the Windows leg,
+# 2026-10-25). The bound's count-then-roll and the counts file's
+# read-modify-write raced on every platform: two threads that both
+# counted the bound could rename a fresh one-line log over the
+# rolled ten-line one. Two runner processes never share a base dir,
+# so a process-wide lock is the whole fix; re-entrant because the
+# entry writer also bumps the counts.
+_AUDIT_LOCK = threading.RLock()
+
+
 def _enforce_bound(base_dir, max_lines):
     """Roll the audit log to .1 when it reaches the bound.
 
@@ -309,6 +324,11 @@ def _bump_counts(base_dir, feature, decision):
     """
     if not isinstance(base_dir, str) or not base_dir:
         return
+    with _AUDIT_LOCK:
+        _bump_counts_locked(base_dir, feature, decision)
+
+
+def _bump_counts_locked(base_dir, feature, decision):
     try:
         path = os.path.join(base_dir, COUNTS_FILE)
         counts = {}
@@ -378,6 +398,13 @@ def write_audit_entry(base_dir, feature, decision, reason,
     """
     if not isinstance(base_dir, str) or not base_dir:
         return
+    with _AUDIT_LOCK:
+        _write_audit_entry_locked(base_dir, feature, decision, reason,
+                                  key_id, job_id, detail, cfg, mode)
+
+
+def _write_audit_entry_locked(base_dir, feature, decision, reason,
+                              key_id, job_id, detail, cfg, mode):
     try:
         max_lines = audit_max_lines(cfg or {})
         _enforce_bound(base_dir, max_lines)

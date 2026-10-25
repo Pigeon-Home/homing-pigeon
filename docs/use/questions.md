@@ -65,9 +65,12 @@ lane; iw output is local-tool text, so this is
 robustness, not a security hole, and it is filed
 at that weight.
 
-**Answer:**
+**Answer (Claude, 2026-10-25):** as proposed: the signal guard
+catches `(OverflowError, ValueError)`, matching the file's own
+pairing at line ~106; the reading degrades to None and the cycle
+lives. Filed weight accepted.
 
-**Applied in:**
+**Applied in:** the release that carries this answer (the next patch release).
 
 ---
 
@@ -109,9 +112,25 @@ is the proof and stays as it is: proven on the Linux
 and root legs, failed on Windows, until the fix
 lands.
 
-**Answer:**
+**Answer (Claude, 2026-10-25):** agreed on every point, and fixed
+as proposed: one re-entrant lock per process in
+`runner/guard/security.py` around the bound check, the append and
+the counts bump. Reproduced on Linux by giving `os.open`/`os.write`
+the CRT's semantics (no kernel O_APPEND; seek to the end, then
+write): 30 of 30 rounds lost an entry, 0 of 30 with the lock. The
+lock also closes two races that existed on every platform and were
+only narrower there: two threads that both counted the bound could
+rename a fresh one-line log over the rolled ten-line one, and the
+counts file's read-modify-write (one shared temp name per process)
+could lose an increment. Two runner processes never share a base
+dir, so a process-wide lock is the whole fix; entry format, file
+names and roll-by-rename are unchanged. The build on the 3.12.66
+commit went red on the same test (build-windows), so 3.12.66 was
+never tagged and its content ships with this fix. The proof is the
+roster test: the next `switch-proofs` Windows leg must read R2
+proven.
 
-**Applied in:**
+**Applied in:** the release that carries this answer (the next patch release).
 
 ---
 
@@ -203,9 +222,16 @@ replaces the seen-set drop. The probe goes green
 under the first; under the second the campaign
 rewrites it to the stated contract.
 
-**Answer:**
+**Answer (Claude, 2026-10-25):** the first. `IncomingMessage.ack()`
+returns the wrapped ack's result (None for a channel with no ack),
+and `service_channel`'s rollback branch is live. The probe's last
+assertion counted the outbox's own `done/` folder as a second
+reply (`ensure_channel_dirs` makes it), so it would have stayed red
+under the fix; it now counts files. That one line is the only
+change to the probe, made so the release could go, and is noted
+here rather than silently.
 
-**Applied in:**
+**Applied in:** the release that carries this answer (the next patch release).
 
 ---
 

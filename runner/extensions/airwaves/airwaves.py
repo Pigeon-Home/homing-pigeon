@@ -278,7 +278,10 @@ def parse_iw_scan(text):
             try:
                 value = float(m.group(1))
                 signal_dbm = int(value) if value == int(value) else value
-            except ValueError:
+            except (OverflowError, ValueError):
+                # float() of a huge digit string is inf, and int(inf)
+                # is OverflowError, not ValueError: one pathological
+                # scan line degraded to None, not a dead cycle (Q28).
                 signal_dbm = None
         if "RSN:" in block:
             security = "WPA3" if "SAE" in block else "WPA2"

@@ -84,7 +84,12 @@ class BoardUnitTest(unittest.TestCase):
             return real_close(fd)
 
         def broken_close(fd):
+            # close() releases the descriptor even when it reports
+            # a failure; so does this fake, or the tmp stays open
+            # and Windows refuses to unlink it (build-windows,
+            # 2026-10-25).
             closed.append(fd)
+            real_close(fd)
             raise OSError("close failed")
 
         with mock.patch.object(os, "open", tracking_open), \
@@ -93,7 +98,10 @@ class BoardUnitTest(unittest.TestCase):
                     os, "fdopen",
                     side_effect=OSError("cannot wrap")):
             self.b.save()
-        self.assertEqual(opened, closed)
+        # Every descriptor opened was closed. As a set: the WARN
+        # line's own log file may open and close between the tmp's
+        # open and its close, depending on what ran before.
+        self.assertEqual(sorted(opened), sorted(closed))
         # Only the board submit() already saved; no tmp
         # is left, and the failed save did not replace it.
         self.assertEqual(os.listdir(self.tmp), ["board.json"])

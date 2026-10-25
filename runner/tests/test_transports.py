@@ -1775,7 +1775,11 @@ class ChannelEdgeTest(unittest.TestCase):
                                 for m in lines))
             self.assertTrue(os.path.isfile(job))
             self.assertEqual(os.listdir(paths["inbox_done"]), [])
-            self.assertEqual(len(os.listdir(paths["outbox"])), 1)
+            # The reply landed: one file beside the outbox's own
+            # done/ folder (ensure_channel_dirs makes it).
+            self.assertEqual(len([
+                f for f in os.listdir(paths["outbox"])
+                if os.path.isfile(os.path.join(paths["outbox"], f))]), 1)
 
     def test_a_file_that_cannot_be_read_is_refused(self):
         with tempfile.TemporaryDirectory() as d:

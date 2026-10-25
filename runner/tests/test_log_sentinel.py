@@ -183,12 +183,29 @@ class ReaderGuardsTest(unittest.TestCase):
                          {"inode": 1, "offset": 5})
 
     def test_an_unreadable_file_keeps_its_recorded_offset(self):
+        # The file is there (stat works) but cannot be opened. A
+        # directory stood in for it, which reads as unreadable only
+        # on POSIX (its st_size is 0 on Windows, so no open is
+        # attempted and the entry is rewritten); a refusing open is
+        # the same case on every platform (build-windows, 2026-10-25).
+        from unittest import mock
         with tempfile.TemporaryDirectory() as d:
-            prev = {d: {"inode": 999, "offset": 0}}
-            lines, reader = LS.read_new_lines([d], prev, 100)
+            path = os.path.join(d, "kern.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("x" * 50)
+            real_open = open
+
+            def refusing(p, *a, **kw):
+                if os.fspath(p) == path:
+                    raise PermissionError("unreadable")
+                return real_open(p, *a, **kw)
+
+            prev = {path: {"inode": 999, "offset": 0}}
+            with mock.patch("builtins.open", refusing):
+                lines, reader = LS.read_new_lines([path], prev, 100)
             self.assertEqual(lines, [])
-            self.assertEqual(reader[d], {"inode": 999,
-                                         "offset": 0})
+            self.assertEqual(reader[path], {"inode": 999,
+                                            "offset": 0})
 
 
 class DecideTest(unittest.TestCase):

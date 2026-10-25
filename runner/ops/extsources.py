@@ -2145,7 +2145,16 @@ def is_withheld(path, withheld) -> bool:
         try:
             w_real = os.path.normcase(_real(w))
         except (OSError, ValueError):
-            w_real = os.path.normcase(w)
+            # Unresolvable: compare both sides as given, made absolute
+            # the same way (abspath touches no filesystem), so a bare
+            # root still matches the drive-qualified path realpath
+            # produced on Windows (queue A probe, 2026-10-25).
+            w_real = os.path.normcase(os.path.abspath(w))
+            given = os.path.normcase(os.path.abspath(path))
+            if given == w_real or given.startswith(
+                    w_real.rstrip(os.sep) + os.sep):
+                return True
+            continue
         if real == w_real or real.startswith(w_real.rstrip(os.sep) + os.sep):
             return True
     return False
