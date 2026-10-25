@@ -56,6 +56,16 @@ waiting is not testing.
   and never wait on a CI run with the rig idle: take the next item
   and come back to the run when it finishes. Hypothesis budgets go up
   when the box is under-driven, not the sleep.
+- The rig runs no model while a campaign runs. The Oracle under
+  test is simulated (fixtures, a loopback fake), so a resident model
+  server (Ollama or any other) on the rig is spending the memory the
+  shards need: the first resource line read 97% memory used on a
+  2-core box. If one is resident, stop it for the campaign, or if
+  something on the rig needs it, load the smallest model that still
+  serves that need and say which in the ledger. The tool's second
+  line, `resources-top`, names the five largest processes; paste it
+  with the resource line so the owner can see what holds the memory
+  (owner's question, 2026-10-25).
 - Two `under-driven` hourly lines in a row is a finding about the
   loop: write in the ledger what the rig was waiting on, then fix
   that. `over` for an hour (the box swapping or the suite timing out)

@@ -32,6 +32,10 @@ estimate:
   it. Under-driven for an hour means the loop is waiting on
   something: more shards, or the next item while CI runs.
 
+A second line, `resources-top`, names the five processes holding
+the most resident memory, so a box at 97% memory says what is
+eating it (a resident model server, say) without a login.
+
 Without a command, --interval samples the box for that many
 seconds and prints the same line with the cmd fields blank.
 The wrapped command's exit code is this tool's exit code.
@@ -84,6 +88,41 @@ def mem_used_percent():
         return 100.0 * (total - avail) / total if total else None
     except (OSError, KeyError, ValueError, IndexError):
         return None
+
+
+def top_memory(n=5):
+    """The n processes holding the most resident memory, from /proc:
+    [(rss_mb, name)], largest first; empty off Linux."""
+    out = []
+    try:
+        pids = [d for d in os.listdir("/proc") if d.isdigit()]
+    except OSError:
+        return out
+    for pid in pids:
+        try:
+            with open("/proc/%s/status" % pid, encoding="ascii",
+                      errors="replace") as fh:
+                name = ""
+                rss = 0
+                for line in fh:
+                    if line.startswith("Name:"):
+                        name = line.split(None, 1)[1].strip()
+                    elif line.startswith("VmRSS:"):
+                        rss = int(line.split()[1]) // 1024
+                        break
+            if rss:
+                out.append((rss, name))
+        except (OSError, ValueError, IndexError):
+            continue
+    out.sort(reverse=True)
+    return out[:n]
+
+
+def format_top(top):
+    if not top:
+        return "resources-top: n/a"
+    return "resources-top: " + ", ".join(
+        "%s %d MB" % (name, rss) for rss, name in top)
 
 
 def disk_free_gb(path="."):
@@ -165,6 +204,7 @@ def run(command, target, out=sys.stdout):
                        cmd_cpu, peak_rss_kb, mem_used_percent(),
                        disk_free_gb("."), exit_code, target)
     print(line, file=out, flush=True)
+    print(format_top(top_memory()), file=out, flush=True)
     return 0 if exit_code is None else exit_code
 
 
@@ -189,6 +229,7 @@ def main(argv=None):
                           busy_percent(before, after), a.interval, None,
                           None, mem_used_percent(), disk_free_gb("."),
                           None, a.target), flush=True)
+        print(format_top(top_memory()), flush=True)
         return 0
     return run(command, a.target)
 

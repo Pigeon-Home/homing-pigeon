@@ -59,7 +59,10 @@ class PlatformCardLegsTest(unittest.TestCase):
         with _mock.patch.object(os, "name", "nt"):
             self.assertEqual(
                 PC.platform_interpreter()[0], "powershell")
-        self.assertEqual(PC.platform_interpreter(), ["sh"])
+        # Unpatched, the answer is this platform's: sh everywhere
+        # but Windows, where it is the PowerShell leg just asserted.
+        with _mock.patch.object(os, "name", "posix"):
+            self.assertEqual(PC.platform_interpreter(), ["sh"])
         tier, problem = PC.tier_of("not-a-dict", "greeting")
         self.assertIsNone(problem)
         self.assertIn(tier, PC.TIERS)

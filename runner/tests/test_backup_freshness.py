@@ -107,16 +107,25 @@ class MidScanVanishTest(unittest.TestCase):
                     fh.write(b"backup")
             target = os.path.join(d, "gone.tar")
             real_stat = os.stat
-            calls = {"n": 0}
+            real_isfile = os.path.isfile
+
+            # The listing's probe says the file is there; the scan's
+            # own stat then fails. The probe is answered directly, not
+            # counted through os.stat: on Windows, Python 3.12+ answers
+            # os.path.isfile in C without os.stat, so a call counter
+            # never saw the probe there (build-windows, 2026-10-25).
+            def probe_ok(path):
+                if os.fspath(path) == target:
+                    return True
+                return real_isfile(path)
 
             def flaky(path, *a, **k):
                 if os.fspath(path) == target:
-                    calls["n"] += 1
-                    if calls["n"] > 1:
-                        raise OSError("vanished")
+                    raise OSError("vanished")
                 return real_stat(path, *a, **k)
 
-            with _mock.patch.object(os, "stat", flaky):
+            with _mock.patch.object(os.path, "isfile", probe_ok), \
+                    _mock.patch.object(os, "stat", flaky):
                 readings = BF.read_live(_manifest(watch_dir=d))
         self.assertEqual(readings["newest"]["name"], "stays.tar")
 

@@ -1412,8 +1412,10 @@ class CleanStateCapLegsTest(unittest.TestCase):
 
     def test_no_load_average_is_no_vote(self):
         from unittest import mock as _mock
+        # create=True: Windows has no os.getloadavg at all, and the
+        # vote must be the same "no vote" there.
         with _mock.patch.object(
-                JF.os, "getloadavg",
+                JF.os, "getloadavg", create=True,
                 side_effect=OSError("no load")):
             self.assertTrue(JF._load_quiet(1.0))
 

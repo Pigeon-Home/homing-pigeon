@@ -56,16 +56,36 @@ class LineTest(unittest.TestCase):
         self.assertTrue(line.endswith("| n/a"))
 
 
+class TopMemoryTest(unittest.TestCase):
+
+    def test_format_names_the_largest_first(self):
+        self.assertEqual(
+            rr.format_top([(5120, "ollama"), (300, "python3")]),
+            "resources-top: ollama 5120 MB, python3 300 MB")
+        self.assertEqual(rr.format_top([]), "resources-top: n/a")
+
+    def test_top_memory_reads_proc_when_there_is_one(self):
+        top = rr.top_memory(3)
+        if not os.path.isdir("/proc"):
+            self.assertEqual(top, [])
+            return
+        self.assertLessEqual(len(top), 3)
+        for rss, name in top:
+            self.assertGreater(rss, 0)
+            self.assertTrue(name)
+
+
 class RunTest(unittest.TestCase):
 
     def test_wraps_a_command_and_passes_its_exit_code(self):
         out = io.StringIO()
         rc = rr.run([sys.executable, "-c", "import sys; sys.exit(3)"], 90, out=out)
         self.assertEqual(rc, 3)
-        line = out.getvalue().strip()
+        line = out.getvalue().splitlines()[0].strip()
         self.assertTrue(line.startswith("resources "), line)
         self.assertIn("| exit 3 |", line)
         self.assertEqual(line.count("|"), 8)
+        self.assertTrue(out.getvalue().splitlines()[1].startswith("resources-top: "))
 
 
 if __name__ == "__main__":
