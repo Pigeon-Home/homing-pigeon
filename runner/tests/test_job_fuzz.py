@@ -20,7 +20,8 @@ import sys
 import tempfile
 import time
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -738,6 +739,154 @@ class MainSamplesTest(unittest.TestCase):
             with open(state, encoding="utf-8") as fh:
                 saved = json.load(fh)
             self.assertEqual(saved["campaigns"], 1)
+
+
+class MainTest(unittest.TestCase):
+    """Queue A: `main()` never ran anywhere (coverage run
+    40180268696: 23 lines on both platforms) -- the suite
+    drove decide() and read_live() directly and left the
+    command itself, the one a runner actually launches,
+    unexercised. Driven here through its own arguments:
+    --samples stands in for the machine read, --state and
+    --manifest point into a temp dir, and the local
+    delivery branches end in a real local inbox. The
+    contract under test is main()'s own: unreadable inputs
+    are a named refusal (exit 2), a failed or partial
+    delivery saves no state so the next pass retries, and
+    a saved state makes the next pass remember what it
+    filed.
+    """
+
+    SECRET_ENV = "HP_JF_MAIN_SECRET"
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-jf-main-")
+        self.state = os.path.join(self.tmp, "state.json")
+        self.samples = os.path.join(self.tmp, "samples.json")
+        with open(self.samples, "w", encoding="utf-8") as fh:
+            json.dump(_readings([_outcome(exit_code=3)]), fh)
+
+    def _run(self, argv):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = JF.main(argv)
+        return rc, out.getvalue(), err.getvalue()
+
+    def test_prints_alerts_and_the_saved_state_dedupes(self):
+        rc, out, _err = self._run(
+            ["--samples", self.samples, "--state", self.state])
+        self.assertEqual(rc, 0)
+        printed = [json.loads(line) for line in out.splitlines()
+                   if line.strip()]
+        self.assertIn("variant_divergence",
+                      [a["signal"] for a in printed])
+        self.assertTrue(os.path.isfile(self.state))
+        rc, out, _err = self._run(
+            ["--samples", self.samples, "--state", self.state])
+        self.assertEqual(rc, 0)
+        printed = [json.loads(line) for line in out.splitlines()
+                   if line.strip()]
+        self.assertNotIn("variant_divergence",
+                         [a["signal"] for a in printed])
+
+    def test_an_unreadable_manifest_is_a_named_refusal(self):
+        rc, out, err = self._run(
+            ["--manifest", os.path.join(self.tmp, "nope.json"),
+             "--samples", self.samples, "--state", self.state])
+        self.assertEqual(rc, 2)
+        self.assertEqual(out, "")
+        self.assertIn("cannot read manifest", err)
+        self.assertFalse(os.path.exists(self.state))
+
+    def test_an_unreadable_samples_file_is_a_named_refusal(self):
+        rc, _out, err = self._run(
+            ["--samples", os.path.join(self.tmp, "nope.json"),
+             "--state", self.state])
+        self.assertEqual(rc, 2)
+        self.assertIn("cannot read samples", err)
+
+    def test_a_garbage_state_file_reads_as_fresh(self):
+        with open(self.state, "w", encoding="utf-8") as fh:
+            fh.write("not json{")
+        rc, out, _err = self._run(
+            ["--samples", self.samples, "--state", self.state])
+        self.assertEqual(rc, 0)
+        self.assertIn("variant_divergence", out)
+
+    def test_runner_overrides_run_and_the_live_read_files(self):
+        base = os.path.join(self.tmp, "runner-base")
+        retained = os.path.join(base, "retained")
+        os.makedirs(retained)
+        with open(os.path.join(retained, "job-a.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump(_seed(saved_at=time.time() - 3600), fh)
+        fake = os.path.join(self.tmp, "fake.py")
+        with open(fake, "w", encoding="utf-8") as fh:
+            fh.write(FAKE_RUNNER)
+        manifest = os.path.join(self.tmp, "extension.json")
+        m = _manifest()
+        m["tunables"]["idle_load_max"] = 1e9
+        m["tunables"]["work_dir"] = os.path.join(self.tmp, "work")
+        with open(manifest, "w", encoding="utf-8") as fh:
+            json.dump(m, fh)
+        old = time.time() - 3600
+        os.utime(os.path.join(retained, "job-a.json"), (old, old))
+        rc, _out, err = self._run(
+            ["--manifest", manifest, "--state", self.state,
+             "--runner-dir", base,
+             "--runner-cmd",
+             "%s %s {variant}" % (sys.executable, fake)])
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(os.path.isfile(self.state))
+
+    def test_local_delivery_files_the_alert(self):
+        base = os.path.join(self.tmp, "runner-base")
+        env = {self.SECRET_ENV: "jf-main-secret"}
+        with mock.patch.dict(os.environ, env):
+            rc, _out, err = self._run(
+                ["--samples", self.samples, "--state", self.state,
+                 "--local-dir", base,
+                 "--secret-env", self.SECRET_ENV])
+        self.assertEqual(rc, 0, err)
+        inbox = os.path.join(base, "local-inbox")
+        # One envelope per alert: the divergence readings
+        # file variant_divergence and coverage_novelty.
+        self.assertEqual(len(os.listdir(inbox)), 2)
+        self.assertTrue(os.path.isfile(self.state))
+
+    def test_local_delivery_without_a_secret_refuses(self):
+        base = os.path.join(self.tmp, "runner-base")
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(self.SECRET_ENV, None)
+            rc, _out, _err = self._run(
+                ["--samples", self.samples, "--state", self.state,
+                 "--local-dir", base,
+                 "--secret-env", self.SECRET_ENV])
+        self.assertEqual(rc, 2)
+        self.assertFalse(os.path.exists(self.state))
+
+    def test_a_failed_delivery_saves_no_state(self):
+        base = os.path.join(self.tmp, "runner-base")
+        os.makedirs(base)
+        with open(os.path.join(base, "local-inbox"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("not a directory")
+        env = {self.SECRET_ENV: "jf-main-secret"}
+        with mock.patch.dict(os.environ, env):
+            rc, _out, err = self._run(
+                ["--samples", self.samples, "--state", self.state,
+                 "--local-dir", base,
+                 "--secret-env", self.SECRET_ENV])
+        self.assertEqual(rc, 2)
+        self.assertIn("not delivered", err)
+        self.assertFalse(os.path.exists(self.state))
+
+    def test_an_unwritable_state_is_a_named_refusal(self):
+        state = os.path.join(self.tmp, "no-such-dir", "state.json")
+        rc, _out, err = self._run(
+            ["--samples", self.samples, "--state", state])
+        self.assertEqual(rc, 2)
+        self.assertIn("cannot write state", err)
 
 
 if __name__ == "__main__":
