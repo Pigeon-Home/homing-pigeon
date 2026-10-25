@@ -88,6 +88,9 @@ class _Face:
     def initgroups(self, name, gid):
         self.demoted.append(("groups", name, gid))
 
+    def setgroups(self, groups):
+        self.demoted.append(("setgroups", list(groups)))
+
     def setuid(self, uid):
         self.demoted.append(("uid", uid))
 
@@ -165,6 +168,24 @@ class JobUserFaceTest(unittest.TestCase):
         fn = self._run(face)
         fn()
         self.assertIn(("uid", 40), face.demoted)
+        # Q18: the fallback is the user's primary group alone,
+        # set before the uid drops; never the runner's groups.
+        self.assertIn(("setgroups", [41]), face.demoted)
+        self.assertLess(face.demoted.index(("setgroups", [41])),
+                        face.demoted.index(("uid", 40)))
+
+    def test_initgroups_and_setgroups_failing_refuses_the_job(self):
+        face = _Face(mode=0o701)
+
+        def boom(*_a):
+            raise OSError("no groups")
+
+        face.initgroups = boom
+        face.setgroups = boom
+        fn = self._run(face)
+        with self.assertRaises(OSError):
+            fn()
+        self.assertNotIn(("uid", 40), face.demoted)
 
     def test_a_stat_error_stops_the_parent_walk(self):
         face = _Face(stat_error=OSError("gone"))
