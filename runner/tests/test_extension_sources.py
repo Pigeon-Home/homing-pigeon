@@ -2443,5 +2443,37 @@ class DocsTest(unittest.TestCase):
         self.assertIn("unpinned", cfg["_extension_sources"])
 
 
+class OracleNoteEdgesTest(unittest.TestCase):
+    """Queue A refill: oracle_note's two remaining legs
+    (coverage run 40189711740: 4 lines). The function's
+    contract is in its docstring -- a few lines for the
+    Oracle's context, or "", and never raises: a state
+    store that fails to load yields the empty note, and
+    more provided sources than the line budget fold
+    into a counted trailer rather than a longer note.
+    """
+
+    def _states(self, names):
+        return {(("sense", n)): {
+            "version": "1", "disclosure": "provide",
+            "installed": {"path": "/x"}, "entries": {}}
+            for n in names}
+
+    def test_an_unloadable_store_is_an_empty_note(self):
+        with mock.patch.object(X, "load_states",
+                               side_effect=RuntimeError("corrupt")):
+            self.assertEqual(X.oracle_note("/base"), "")
+
+    def test_more_sources_than_the_budget_fold_into_a_count(self):
+        states = self._states(["alpha", "beta", "gamma"])
+        with mock.patch.object(X, "load_states",
+                               return_value=states):
+            note = X.oracle_note("/base", max_lines=2)
+        self.assertTrue(note.startswith("Extension sources:"))
+        self.assertTrue(
+            note.endswith("- ... 1 more in the index"))
+        self.assertEqual(note.count("\n- sense"), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

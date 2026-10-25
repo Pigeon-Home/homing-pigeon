@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/ops/extsources.py::`
+  `oracle_note` (4 lines never run, coverage run
+  40189711740) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  OracleNoteEdgesTest in
+  runner/tests/test_extension_sources.py: an
+  unloadable state store yields the empty note
+  (the function never raises), and more provided
+  sources than the line budget fold into the
+  counted trailer. Done when a coverage run shows
+  the function clean.
 - A (refill) — `runner/ops/auditreport.py::`
   `_is_dangerous` fallback (4 lines never run,
   coverage run 40189711740) — taken 2026-10-25,
