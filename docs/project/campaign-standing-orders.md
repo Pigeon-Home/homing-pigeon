@@ -294,6 +294,23 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- S — roster M6.wall.network, M6.wall.home,
+  M6.wall.usr, M6.wall.work (the four sandbox walls
+  as separate cases, each with its mode-off
+  control) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  WallNetworkTest, WallHomeTest, WallUsrTest and
+  WallWorkTest in runner/tests/test_confinement.py,
+  each driving both modes through execute_job: a
+  loopback listener reached with the mode off is
+  unreachable in the sandbox; the base dir's marker
+  is read off and invisible on; a /usr write is
+  blocked on and lands off in a scratch tree; the
+  workdir sits at /work with the base root and a
+  sibling job's workdir unreachable on, read off.
+  The four roster entries list them. Done when the
+  switch-proofs Linux leg (bwrap) shows all four
+  proven.
 - rules refreshed 2026-10-25 05:07 PDT (Q24 read
   with the refresh: queues S and R now come first;
   the queue-A item below was already written when

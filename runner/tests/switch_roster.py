@@ -120,28 +120,28 @@ ROSTER = [
         "id": "M6.wall.network",
         "promise": "inside the sandbox a job has no network; with the mode "
                    "off the same job reaches the loopback listener.",
-        "tests": [],
+        "tests": ["runner.tests.test_confinement.WallNetworkTest"],
         "needs": ["linux", "bwrap"],
     },
     {
         "id": "M6.wall.home",
         "promise": "inside the sandbox the runner's home and config are not "
                    "visible; off, the same job reads them.",
-        "tests": [],
+        "tests": ["runner.tests.test_confinement.WallHomeTest"],
         "needs": ["linux", "bwrap"],
     },
     {
         "id": "M6.wall.usr",
         "promise": "inside the sandbox /usr is read-only; off, the same write "
                    "lands (in a scratch tree bound as /usr for the test).",
-        "tests": [],
+        "tests": ["runner.tests.test_confinement.WallUsrTest"],
         "needs": ["linux", "bwrap"],
     },
     {
         "id": "M6.wall.work",
         "promise": "inside the sandbox the workdir is at /work and nothing of "
                    "the base dir outside it is reachable.",
-        "tests": [],
+        "tests": ["runner.tests.test_confinement.WallWorkTest"],
         "needs": ["linux", "bwrap"],
     },
     {

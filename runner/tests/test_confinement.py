@@ -11,8 +11,10 @@ the passing side of EnforceNegativeControl below.
 """
 import json
 import os
+import socket
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -429,6 +431,214 @@ class EnforceNegativeControl(unittest.TestCase):
         self.assertEqual(on["exit_code"], 0, on["stderr"])
         self.assertIn("home-seen: False", on["stdout"])
         self.assertIn("host-read: failed", on["stdout"])
+
+
+def _run_in(base, cfg_extra, job):
+    """_run against a base the test prepared first (planted
+    files the job may or may not be able to reach)."""
+    cfg = {"base_dir": base}
+    cfg.update(cfg_extra)
+    result = execute_job(cfg, job, base)
+    audit = []
+    path = os.path.join(base, S.AUDIT_FILE)
+    if os.path.exists(path):
+        for line in open(path, encoding="utf-8"):
+            try:
+                audit.append(json.loads(line))
+            except ValueError:
+                pass
+    return result, audit
+
+
+@unittest.skipUnless(ENGAGES,
+                     "sandbox cannot engage on this machine "
+                     "(startup probe)")
+class WallNetworkTest(unittest.TestCase):
+    """Queue S, roster M6.wall.network: inside the sandbox a
+    job has no network (--unshare-net: its loopback is a
+    fresh namespace, not the host's). The negative control
+    is the same job with confinement off reaching the same
+    loopback listener on the host, so a blocked connect
+    under enforce is the wall, not the script. UID: same
+    uid both sides (module note); the boundary is the
+    network namespace.
+    """
+
+    def test_the_sandbox_has_no_network(self):
+        listener = socket.socket()
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(4)
+        listener.settimeout(0.5)
+        port = listener.getsockname()[1]
+        stopped = threading.Event()
+
+        def serve():
+            while not stopped.is_set():
+                try:
+                    conn, _ = listener.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    return
+                with conn:
+                    conn.sendall(b"hp-wall-token")
+
+        thread = threading.Thread(target=serve, daemon=True)
+        thread.start()
+        script = (
+            "import socket\n"
+            "try:\n"
+            "    c = socket.create_connection(('127.0.0.1', %d),"
+            " timeout=4)\n"
+            "    print('net:', c.recv(64).decode())\n"
+            "    c.close()\n"
+            "except Exception as e:\n"
+            "    print('net: blocked', type(e).__name__)\n" % port)
+        try:
+            off, _, _ = _run({}, _job("m6-wall-net-off", script))
+            self.assertEqual(off["exit_code"], 0, off["stderr"])
+            self.assertIn("net: hp-wall-token", off["stdout"])
+            on, _, _ = _run(_conf("enforce"),
+                            _job("m6-wall-net-on", script))
+            self.assertEqual(on["exit_code"], 0, on["stderr"])
+            self.assertIn("net: blocked", on["stdout"])
+        finally:
+            stopped.set()
+            listener.close()
+            thread.join(timeout=5)
+
+
+@unittest.skipUnless(ENGAGES,
+                     "sandbox cannot engage on this machine "
+                     "(startup probe)")
+class WallHomeTest(unittest.TestCase):
+    """Queue S, roster M6.wall.home: inside the sandbox the
+    runner's home -- its base dir, holding the config and
+    the audit log -- is not visible: nothing of the base is
+    bound, and /tmp inside is a fresh tmpfs. The same job
+    with confinement off reads the planted marker in the
+    base, so the enforce side's failure is the wall.
+    """
+
+    def test_the_runner_home_is_not_visible(self):
+        base = tempfile.mkdtemp(prefix="hp-m6-home-")
+        marker = os.path.join(base, "host-marker.txt")
+        with open(marker, "w", encoding="utf-8") as fh:
+            fh.write("runner-home-data")
+        script = (
+            "import os\n"
+            "try:\n"
+            "    print('home:', open(%r).read().strip())\n"
+            "except Exception:\n"
+            "    print('home: blocked')\n"
+            "print('base-seen:', os.path.exists(%r))\n"
+            % (marker, base))
+        off, _ = _run_in(base, {}, _job("m6-wall-home-off", script))
+        self.assertEqual(off["exit_code"], 0, off["stderr"])
+        self.assertIn("home: runner-home-data", off["stdout"])
+        self.assertIn("base-seen: True", off["stdout"])
+        on, audit = _run_in(base, _conf("enforce"),
+                            _job("m6-wall-home-on", script))
+        self.assertEqual(on["exit_code"], 0, on["stderr"])
+        self.assertIn("home: blocked", on["stdout"])
+        self.assertIn("base-seen: False", on["stdout"])
+        self.assertEqual(audit[-1]["decision"], "sandboxed")
+
+
+@unittest.skipUnless(ENGAGES,
+                     "sandbox cannot engage on this machine "
+                     "(startup probe)")
+class WallUsrTest(unittest.TestCase):
+    """Queue S, roster M6.wall.usr: inside the sandbox /usr
+    is a read-only bind, so the same write that lands
+    outside cannot land inside. The off side writes to a
+    scratch tree standing in for /usr, exactly as the
+    roster's promise words it: the suite never writes the
+    host's real /usr to prove the control lets it.
+    """
+
+    def test_usr_is_read_only_inside(self):
+        on, _, _ = _run(_conf("enforce"), _job("m6-wall-usr-on", (
+            "try:\n"
+            "    open('/usr/hp-wall-probe.txt', 'w').write('x')\n"
+            "    print('usr: wrote')\n"
+            "except Exception:\n"
+            "    print('usr: blocked')\n")))
+        self.assertEqual(on["exit_code"], 0, on["stderr"])
+        self.assertIn("usr: blocked", on["stdout"])
+        self.assertFalse(os.path.exists("/usr/hp-wall-probe.txt"))
+        scratch = tempfile.mkdtemp(prefix="hp-m6-usr-")
+        target = os.path.join(scratch, "hp-wall-probe.txt")
+        off, _, _ = _run({}, _job("m6-wall-usr-off", (
+            "open(%r, 'w').write('landed')\n"
+            "print('usr: wrote')\n" % target)))
+        self.assertEqual(off["exit_code"], 0, off["stderr"])
+        self.assertIn("usr: wrote", off["stdout"])
+        with open(target, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "landed")
+
+
+@unittest.skipUnless(ENGAGES,
+                     "sandbox cannot engage on this machine "
+                     "(startup probe)")
+class WallWorkTest(unittest.TestCase):
+    """Queue S, roster M6.wall.work: inside the sandbox the
+    job's workdir is bound at /work and is the working
+    directory; nothing of the base dir outside it -- not
+    the base root, not a sibling job's workdir -- is
+    reachable. With confinement off the same job reads
+    both planted files, so the enforce side's failures
+    are the wall.
+    """
+
+    def test_only_the_workdir_is_reachable(self):
+        base = tempfile.mkdtemp(prefix="hp-m6-work-")
+        outside = os.path.join(base, "outside.txt")
+        with open(outside, "w", encoding="utf-8") as fh:
+            fh.write("outside-data")
+        sibling_dir = os.path.join(base, "work", "other-job")
+        os.makedirs(sibling_dir)
+        sibling = os.path.join(sibling_dir, "secret.txt")
+        with open(sibling, "w", encoding="utf-8") as fh:
+            fh.write("sibling-data")
+        script = (
+            "import os\n"
+            "print('cwd:', os.getcwd())\n"
+            "print('at-work:', os.path.isdir('/work'))\n"
+            "try:\n"
+            "    open('/work/landed.txt', 'w').write('via-work')\n"
+            "except Exception:\n"
+            "    open('landed.txt', 'w').write('via-cwd')\n"
+            "print('landed: yes')\n"
+            "try:\n"
+            "    print('outside:', open(%r).read().strip())\n"
+            "except Exception:\n"
+            "    print('outside: blocked')\n"
+            "try:\n"
+            "    print('sibling:', open(%r).read().strip())\n"
+            "except Exception:\n"
+            "    print('sibling: blocked')\n"
+            % (outside, sibling))
+        off, _ = _run_in(base, {}, _job("m6-wall-work-off", script))
+        self.assertEqual(off["exit_code"], 0, off["stderr"])
+        self.assertIn("outside: outside-data", off["stdout"])
+        self.assertIn("sibling: sibling-data", off["stdout"])
+        off_landed = os.path.join(base, "work", "m6-wall-work-off",
+                                  "landed.txt")
+        self.assertTrue(os.path.exists(off_landed))
+        on, audit = _run_in(base, _conf("enforce"),
+                            _job("m6-wall-work-on", script))
+        self.assertEqual(on["exit_code"], 0, on["stderr"])
+        self.assertIn("cwd: /work", on["stdout"])
+        self.assertIn("at-work: True", on["stdout"])
+        self.assertIn("outside: blocked", on["stdout"])
+        self.assertIn("sibling: blocked", on["stdout"])
+        on_landed = os.path.join(base, "work", "m6-wall-work-on",
+                                 "landed.txt")
+        with open(on_landed, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "via-work")
+        self.assertEqual(audit[-1]["decision"], "sandboxed")
 
 
 if __name__ == "__main__":
