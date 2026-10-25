@@ -6,13 +6,26 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## Unreleased
 
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.12.74 - 2026-10-25
 
 Runner line reduction: runner.py from 11,205 to 5,362 lines.
 Extracted to runner/ops/: cli, oracle_page, oracle_tools, oracle_server,
 oracle_ops, context, policy, attest, paths, watch, sensors, handlers,
 startup, poll, misc, remediation_ops, queries, exec, mail, main,
-windows, firewall, av. Platform-specific code broken out. No behavior change.
+windows, firewall, av. Platform-specific code broken out. No behavior
+change in the release as cut: the extractions as first landed broke
+the installed runner (`python3 runner.py` could not import its own
+modules), every job result (a NameError), version 2 ingest, live
+config reload, the seen-file writes (two self-recursive helpers) and
+the log file name, and all of it was repaired before this cut --
+every extracted module loads through `_load_mod`, reaches the runner
+through `_runner()`, carries its own imports and is re-exported;
+`runner/tests/test_script_context.py` and
+`runner/tests/test_extracted_no_runner_writes.py` guard the shape,
+`runner/tools/repair_script_imports.py` produces it. docs/use/questions.md
+Q52, Q53, Q54.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
