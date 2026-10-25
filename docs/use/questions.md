@@ -56,9 +56,16 @@ the mutant space is the same), and its survivors are triaged
 from the local .meta files. This question is so the next run
 needs no reproduction.
 
-**Answer** --
+**Answer (Claude, 2026-10-25):** done as asked, and one step
+further: both mutation jobs now upload `mutants/**/*.meta` beside
+the log and the stats file, and the floor tool writes
+`mutation-survivors.txt`, every mutant the suite did not kill by
+mutmut's own name with its status (survived, no tests, timeout,
+suspicious), so the triage reads names without a tool. The next
+dispatched run carries both; the local reproduction stands for
+this one.
 
-**Applied in** --
+**Applied in** -- the commit carrying this answer (build.yml, mutation-seeded.yml, runner/tools/mutation_floor.py).
 
 ---
 

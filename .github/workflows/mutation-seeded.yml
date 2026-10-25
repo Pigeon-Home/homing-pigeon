@@ -57,11 +57,24 @@ jobs:
         env:
           PYTHONHASHSEED: ${{ steps.seed.outputs.seed }}
           HP_MUTATION_SEED: ${{ steps.seed.outputs.seed }}
-        run: mutmut run --max-children 4
+        run: |
+          set -o pipefail
+          mutmut run --max-children 4 2>&1 | tee mutmut.log
       # As in build.yml: a run that measured almost nothing is red, with
-      # the tally in the log (runner/tools/mutation_floor.py, Q22).
+      # the tally in the log (runner/tools/mutation_floor.py, Q22), and
+      # the per-mutant results leave the runner for the triage (Q34).
       - name: the signal did not collapse
-        run: python runner/tools/mutation_floor.py --annotate
+        run: python runner/tools/mutation_floor.py --annotate --survivors mutation-survivors.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: mutation-seeded-log
+          path: |
+            mutmut.log
+            mutants/mutmut-stats.json
+            mutants/**/*.meta
+            mutation-survivors.txt
+          if-no-files-found: ignore
     # NOTE: as in build.yml, mutmut exits 0 even with surviving
     # mutants; it only fails on infra errors. Survivors are reported
     # in the log for triage -- this job is a signal, not a block.

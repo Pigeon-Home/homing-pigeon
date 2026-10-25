@@ -183,9 +183,14 @@ jobs:
         if: always()
         with:
           name: mutation-log
+          # The per-mutant results are the .meta files; without them a
+          # tally cannot be triaged (Q34). The survivor list is the
+          # same facts by name, readable without a tool.
           path: |
             mutmut.log
             mutants/mutmut-stats.json
+            mutants/**/*.meta
+            mutation-survivors.txt
           if-no-files-found: ignore
       # mutmut also exits 0 when it measured almost nothing: on
       # 2026-10-25 a collection failure inside the mutants tree ended
@@ -193,7 +198,7 @@ jobs:
       # generated where 443 had been, and the run was green (Q22).
       # The floor turns that into a red signal with the tally in the log.
       - name: the signal did not collapse
-        run: python runner/tools/mutation_floor.py --annotate
+        run: python runner/tools/mutation_floor.py --annotate --survivors mutation-survivors.txt
     # NOTE: mutmut exits 0 even with surviving mutants; it only fails on
     # infra errors (broken baseline, collection failure). Survivors are
     # reported in the log for triage -- this job is a signal, not a block.

@@ -51,6 +51,7 @@ def read_run(mutants_dir):
         stats = None
     tally = {}
     mutants = 0
+    by_status = {}
     files = sorted(glob.glob(os.path.join(mutants_dir, "**", "*.meta"),
                              recursive=True))
     for path in files:
@@ -59,14 +60,15 @@ def read_run(mutants_dir):
                 meta = json.load(fh)
         except (OSError, ValueError):
             continue
-        for code in meta.get("exit_code_by_key", {}).values():
+        for key, code in meta.get("exit_code_by_key", {}).items():
             mutants += 1
             status = _STATUS.get(code, "suspicious")
             tally[status] = tally.get(status, 0) + 1
+            by_status.setdefault(status, []).append(key)
     return {"stats_found": stats is not None,
             "functions_with_tests": functions_with_tests,
             "tests_total": tests_total, "meta_files": len(files),
-            "mutants": mutants, "tally": tally}
+            "mutants": mutants, "tally": tally, "by_status": by_status}
 
 
 def judge(run, min_mutants, min_functions):
@@ -89,8 +91,21 @@ def main(argv=None):
     ap.add_argument("--min-mutants", type=int, default=100)
     ap.add_argument("--min-functions", type=int, default=6)
     ap.add_argument("--annotate", action="store_true")
+    ap.add_argument("--survivors", default="",
+                    help="write the names of every mutant that was not "
+                         "killed, one per line with its status, to this file")
     a = ap.parse_args(argv)
     run = read_run(a.mutants_dir)
+    if a.survivors:
+        # The triage needs identities, not a count: every mutant the
+        # suite did not kill, by mutmut's own name (module.function,
+        # mutant number), so a `mutmut show <name>` or the .meta file
+        # finds it (Q34).
+        with open(a.survivors, "w", encoding="utf-8") as fh:
+            for status in ("survived", "no tests", "timeout", "suspicious",
+                           "skipped", "not checked", "segfault"):
+                for key in sorted(run["by_status"].get(status, [])):
+                    fh.write("%s\t%s\n" % (status, key))
     tally = ", ".join("%s %d" % (k, v) for k, v in sorted(run["tally"].items()))
     summary = ("mutation run: %d mutants in %d files (%s); %d functions "
                "reached by %d tests" % (
