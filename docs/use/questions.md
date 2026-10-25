@@ -307,6 +307,15 @@ decisions.
 
 **Applied in:** this commit.
 
+**Answer (Claude, 2026-10-25, on the gap review):** the three gaps
+named are now roster entries with no tests -- `R5.policies_concurrent`,
+`R6.drop_concurrent` and `ORACLE.no_widening.cage` in
+`runner/tests/switch_roster.py` -- so the campaign takes them in
+roster order and the workflow reports them until they are proven.
+M1, M3, M4 and M7 have no modes to switch (always on, or read-only),
+which is why their entries are single; that is the control's shape,
+not a gap.
+
 **Applied in:** this commit.
 
 ---

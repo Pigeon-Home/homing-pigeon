@@ -248,6 +248,33 @@ ROSTER = [
         "needs": [],
     },
     {
+        "id": "R5.policies_concurrent",
+        "promise": "workers: 2 under enforce: two jobs with different "
+                   "pinned keys decided together: each denial names its "
+                   "own key and job id, no decision crosses over, and the "
+                   "same for two audiences (Q26 review, 2026-10-25).",
+        "tests": [],
+        "needs": [],
+    },
+    {
+        "id": "R6.drop_concurrent",
+        "promise": "workers: 2 under job_user enforce: each child runs as "
+                   "the job user with its own workdir; the runner itself "
+                   "never drops; a drop that fails for one job falls back "
+                   "for that job only (Q26 review, 2026-10-25).",
+        "tests": [],
+        "needs": ["linux", "root"],
+    },
+    {
+        "id": "ORACLE.no_widening.cage",
+        "promise": "a fake model answer that proposes running unsandboxed, "
+                   "as root, or outside /work changes neither the "
+                   "confinement nor the job_user decision (Q26 review, "
+                   "2026-10-25).",
+        "tests": [],
+        "needs": [],
+    },
+    {
         "id": "R4.config_write",
         "promise": "a config.json write during a job, driven with a real "
                    "second thread: the security block of the running job "
