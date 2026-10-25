@@ -25,7 +25,7 @@ import sys
 import tempfile
 import unittest
 from argparse import Namespace
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from unittest import mock
@@ -1395,6 +1395,129 @@ class HandleMailFailureBranchesTest(_VerbosityGuard):
         self.assertIsNotNone(result)
         self.assertEqual(result["exit_code"], -2)
         self.assertNotIn("oracle_opinion", result)
+
+
+class MainDispatchBranchesTest(_VerbosityGuard):
+    """Queue A: the runner.main branches the rig tests
+    never drove on Windows (coverage run 40183585961: 11
+    lines) -- the --setup wizard hand-off, the Q9
+    confinement refusal at startup, the two one-shot
+    dispatches that return before the mailbox gate, a
+    transport supervisor that fails to start, and a live
+    verbose edit re-resolving the level. The rig is
+    _main_rig's stub set with the seams under test left
+    scriptable.
+    """
+
+    def _rig(self, argv, cfg_extra=None, reload_changed=(),
+             wizard_cfg=None, extra_patches=()):
+        from runner.ops import setup
+        stack = contextlib.ExitStack()
+        stack.enter_context(mock.patch.object(
+            runner, "ensure_inference_ready"))
+        stack.enter_context(mock.patch.object(
+            runner, "update_llama_from_config"))
+        stack.enter_context(mock.patch.object(
+            runner, "connect_imap"))
+        stack.enter_context(mock.patch.object(
+            runner, "connect_smtp"))
+        poll = stack.enter_context(mock.patch.object(
+            runner, "poll_once", return_value=None))
+        stack.enter_context(mock.patch.object(
+            setup, "is_tty", return_value=False))
+        stack.enter_context(mock.patch.object(
+            setup, "needs_setup", return_value=None))
+        wizard = stack.enter_context(mock.patch.object(
+            setup, "run_setup_wizard",
+            return_value=wizard_cfg))
+        stack.enter_context(mock.patch.object(
+            runner, "_start_local_signals"))
+
+        def _reload(cfg_, path, state, pinned=None):
+            if "verbose" in reload_changed:
+                cfg_["verbose"] = True
+            return list(reload_changed)
+
+        stack.enter_context(mock.patch.object(
+            runner, "reload_hot_config", side_effect=_reload))
+        for target, name, value in extra_patches:
+            stack.enter_context(mock.patch.object(
+                target, name, value))
+        directory = stack.enter_context(
+            tempfile.TemporaryDirectory())
+        body = {"shared_secret": SECRET,
+                "mailbox_user": "a@b.c",
+                "mailbox_password": "pw",
+                "base_dir": directory}
+        if cfg_extra:
+            body.update(cfg_extra)
+        if wizard_cfg is not None:
+            wizard.return_value = dict(body)
+        path = os.path.join(directory, "config.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(body, fh)
+        stack.enter_context(mock.patch.object(
+            sys, "argv", ["runner", "--config", path, *argv]))
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with redirect_stdout(out), redirect_stderr(err):
+                code = runner.main()
+        finally:
+            stack.close()
+        return code, poll, wizard, out.getvalue(), err.getvalue()
+
+    def test_setup_hands_the_config_to_the_wizard(self):
+        code, poll, wizard, _out, _err = self._rig(
+            ["--setup", "--once"], wizard_cfg={})
+        self.assertEqual(code, 0)
+        self.assertEqual(wizard.call_count, 1)
+        self.assertTrue(
+            wizard.call_args[0][0].endswith("config.json"))
+        self.assertTrue(poll.called)
+
+    def test_enforce_without_a_sandbox_refuses_to_start(self):
+        code, poll, _w, _out, err = self._rig(
+            ["--once"],
+            cfg_extra={"security": {"modes":
+                                    {"confinement": "enforce"}}},
+            extra_patches=[(runner._sandbox,
+                            "startup_problem",
+                            lambda: "bwrap is not installed")])
+        self.assertEqual(code, 2)
+        self.assertIn("the sandbox cannot engage", err)
+        self.assertFalse(poll.called)
+
+    def test_fetch_sources_dispatches_and_returns(self):
+        fetch = mock.Mock(return_value=7)
+        code, _p, _w, _o, _e = self._rig(
+            ["--fetch-sources"],
+            extra_patches=[(runner, "run_fetch_sources", fetch)])
+        self.assertEqual(code, 7)
+        self.assertTrue(fetch.called)
+
+    def test_run_variant_dispatches_and_returns(self):
+        variant = mock.Mock(return_value=4)
+        code, _p, _w, _o, _e = self._rig(
+            ["--run-variant", "some-variant.json"],
+            extra_patches=[(runner, "run_variant", variant)])
+        self.assertEqual(code, 4)
+        self.assertTrue(variant.called)
+
+    def test_a_dead_supervisor_is_logged_and_the_poll_runs(self):
+        code, poll, _w, _o, _e = self._rig(
+            ["--once"],
+            extra_patches=[(runner._transports,
+                            "start_supervisor",
+                            mock.Mock(side_effect=RuntimeError(
+                                "no transports today")))])
+        self.assertEqual(code, 0)
+        self.assertTrue(poll.called)
+
+    def test_a_live_verbose_edit_re_resolves_the_level(self):
+        code, _p, _w, _o, _e = self._rig(
+            ["--once"], reload_changed=("verbose",))
+        self.assertEqual(code, 0)
+        self.assertEqual(runner._VERBOSE_LEVEL, 2)
 
 
 class Version2IngestBranchesTest(_VerbosityGuard):
