@@ -2700,6 +2700,24 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Q52 filed: live config reload has silently
+  no-opped since Grok's extraction of
+  reload_hot_config into runner/ops/attest.py
+  (9f495d30) -- the function names load_config,
+  HOT_KEYS, HOT_DEFAULTS, LIVE_KEYS and log,
+  none of which exist in that module, and the
+  load_config NameError is swallowed by the
+  function's own bad-file guard, so no hot key
+  ever applies and Decision 1's reload naming
+  never happens. Four pre-existing pins in
+  test_defaults_table_hunt fail (bisected:
+  green at 9f495d30^); left undecorated -- a
+  regression red, not a probe red. The fix is
+  the production lane's. (Also noted: Grok's
+  runner-length note at the top of the
+  questions file carries the number Q38,
+  which already belongs to the remediation
+  question; the next free number was Q52.)
 - Registry reader paths repaired: Claude's
   extraction of apply_result_policy to
   runner/ops/policy.py left the view and
