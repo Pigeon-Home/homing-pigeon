@@ -2700,6 +2700,20 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Full suite at bf837a9f: both shards OK --
+  shard 0: 3,311 tests, skipped=14, 206.8s;
+  shard 1: 3,317 tests, skipped=22, 415.3s. The
+  skips are the rig's standing population (sandbox
+  classes with bwrap absent, platform gates).
+  resources 2026-10-25T21:44:30Z: cores 2 | box
+  cpu 58% | wall 6m59s | cmd cpu 5m41s = 0.8 cores
+  busy | peak rss 231 MB | mem used 87% | disk
+  free 166.4 GB | exit 0 | under-driven.
+  resources-top: hatch 176 MB, python 9 MB,
+  hatch-execd 6 MB, systemd 5 MB,
+  systemd-journal 2 MB. (The run predates the
+  queue D refill commit; its modules were
+  verified standalone, 1,015 tests OK.)
 - Queue D refill taken: four documented enum keys
   that had no registry rows gain them --
   oracle_opinion_mode (repair), oracle_opinion_
