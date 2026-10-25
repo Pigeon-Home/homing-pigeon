@@ -690,6 +690,12 @@ The green verdict stands. The draft branch is still
 unmerged.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40200422023
 
+Progress, 2026-10-25 12:15 PDT. Repo refreshed. Newest
+finished green is 40224871510 (301d6cf) — all three
+legs success. The green verdict stands. The draft
+branch is still unmerged.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40224871510
+
 **Applied in:** this commit.
 
 ---
