@@ -589,5 +589,71 @@ class TimeToVisibleOmegaLegTest(unittest.TestCase):
             SW._time_to_visible_sec(sample, 0.5, 0.1, 10.0))
 
 
+class MainDeliveryLegsTest(unittest.TestCase):
+    """Queue A refill: main's tunables guard (line
+    616) and its partial local delivery (668-671)
+    on the local full-suite map at 93998ca. Non-dict
+    tunables read as none -- and with no observer
+    the pass files nothing; a partial delivery is
+    rc 2 with the state left unwritten."""
+
+    def _manifest(self, d, tunables):
+        import json
+        import os
+        path = os.path.join(d, "extension.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"tunables": tunables}, fh)
+        return path
+
+    def test_non_dict_tunables_file_nothing(self):
+        import io
+        import os
+        import tempfile
+        from contextlib import redirect_stderr
+        with tempfile.TemporaryDirectory() as d:
+            err = io.StringIO()
+            with redirect_stderr(err):
+                rc = SW.main([
+                    "--manifest", self._manifest(d, 42),
+                    "--state", os.path.join(d, "state.json")])
+            self.assertEqual(rc, 0)
+            self.assertIn("no observer set", err.getvalue())
+
+    def test_partial_delivery_is_rc2_and_saves_nothing(self):
+        import io
+        import json
+        import os
+        import tempfile
+        from contextlib import redirect_stderr
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            samples_path = os.path.join(d, "samples.json")
+            with open(samples_path, "w", encoding="utf-8") as fh:
+                json.dump([{"feed": 1}], fh)
+            state_path = os.path.join(d, "state.json")
+            err = io.StringIO()
+            with mock.patch.object(
+                    SW, "sample_from_feed",
+                    return_value=object()), \
+                    mock.patch.object(
+                        SW, "update",
+                        return_value=(
+                            [{"signal": "iss_visible"}], {})), \
+                    mock.patch.object(
+                        SW, "_deliver_local", return_value=0), \
+                    redirect_stderr(err):
+                rc = SW.main([
+                    "--manifest", self._manifest(
+                        d, {"observer_lat": 47.6,
+                            "observer_lon": -122.3}),
+                    "--samples", samples_path,
+                    "--state", state_path,
+                    "--local-dir", d])
+            self.assertEqual(rc, 2)
+            self.assertIn("1 of 1 alert(s) not delivered",
+                          err.getvalue())
+            self.assertFalse(os.path.exists(state_path))
+
+
 if __name__ == "__main__":
     unittest.main()

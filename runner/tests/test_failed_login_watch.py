@@ -342,5 +342,57 @@ class ParseEventBadIsoLegTest(unittest.TestCase):
         self.assertIsNone(FL.parse_event(line, now=1000.0))
 
 
+class MainDeliveryLegsTest(unittest.TestCase):
+    """Queue A refill: main's tunables guard (line
+    439) and its partial local delivery (485,
+    489-492) on the local full-suite map at
+    93998ca. Non-dict tunables read as none; a
+    partial delivery is rc 2 with the state left
+    unwritten so the offsets do not advance."""
+
+    def _drive(self, d, tunables, delivered):
+        import io
+        import json
+        import os
+        from contextlib import redirect_stderr
+        from unittest import mock
+        manifest_path = os.path.join(d, "extension.json")
+        with open(manifest_path, "w", encoding="utf-8") as fh:
+            json.dump({"tunables": tunables}, fh)
+        readings_path = os.path.join(d, "readings.json")
+        with open(readings_path, "w", encoding="utf-8") as fh:
+            json.dump({"now": 1_700_000_000.0, "events": []}, fh)
+        state_path = os.path.join(d, "state.json")
+        err = io.StringIO()
+        with mock.patch.object(
+                FL, "decide",
+                return_value=([{"signal": "login_burst"}], {})), \
+                mock.patch.object(
+                    FL, "_deliver_local", return_value=delivered), \
+                redirect_stderr(err):
+            rc = FL.main(["--manifest", manifest_path,
+                          "--readings", readings_path,
+                          "--state", state_path,
+                          "--local-dir", d])
+        return rc, err.getvalue(), state_path
+
+    def test_non_dict_tunables_and_undeliverable_is_rc2(self):
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rc, _err, state_path = self._drive(d, 42, None)
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(state_path))
+
+    def test_partial_delivery_is_rc2_and_saves_nothing(self):
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            rc, err, state_path = self._drive(d, {}, 0)
+            self.assertEqual(rc, 2)
+            self.assertIn("1 of 1 alert(s) not delivered", err)
+            self.assertFalse(os.path.exists(state_path))
+
+
 if __name__ == "__main__":
     unittest.main()

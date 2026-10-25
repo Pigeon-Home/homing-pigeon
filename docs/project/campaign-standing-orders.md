@@ -2585,3 +2585,20 @@ when done, the proving commit or run. Newest first.
   runner/tests/test_falco_feed.py. Done when a coverage
   run shows them clean and the build's Windows shards
   are green.
+- A (refill) — partial-delivery legs in four more
+  extension mains (local full-suite map at 93998ca):
+  failed-login-watch's tunables guard and partial
+  return (439, 485-492), sky-watcher's tunables
+  guard and partial return (616, 668-671),
+  port-watch's partial return (400-406),
+  log-sentinel's partial return (491-498) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  MainDeliveryLegsTest / MainPartialDeliveryLegTest
+  in the four extensions' test modules. With this
+  batch the local map's extension-main clusters are
+  all taken or dispositioned. Done when a coverage
+  run shows them clean and the build's Windows
+  shards are green.
+- rules refreshed 2026-10-25 ~09:05 PDT (standing
+  orders, AGENTS.md rules 7-9, open questions: Q33
+  stands for Claude; playbook hard rules unchanged).
