@@ -189,7 +189,12 @@ when done, the proving commit or run. Newest first.
 - A — `runner/oracle/detection.py::update_baseline` (14 lines
   never run on Windows, 8 on Linux, coverage run
   40180268696) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 — done: coverage run
+  40183995594 (main at d2f23bb) leaves only the reset line
+  that cannot be reached (the load assigns only a dict or
+  the default) and each platform's foreign flag line
+  (O_NOFOLLOW on Windows, O_BINARY on Linux), both
+  recorded in the test class docstring.
 - A — `runner/extensions/resource-sentinel/resource_sentinel.py`
   `::_read_mem_avail_pct` (19 lines never run on Windows,
   coverage run 40180268696) — taken 2026-10-25,
