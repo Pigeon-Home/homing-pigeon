@@ -103,5 +103,86 @@ class CheckTest(unittest.TestCase):
             self.assertIn("checked_at", st)
 
 
+class SaveStateFallbacksTest(unittest.TestCase):
+    """Queue A refill: the resource monitor's state-save
+    fallbacks (coverage run 40187685363: the non-dict
+    state line unrun on Windows; the chmod swallow and
+    the failure-cleanup lines unrun on both). The
+    sampler's contract, from the function's own
+    comments: a value that cannot be stored must not
+    stop the sample, and the save is best-effort -- a
+    chmod failure still leaves the state written, and
+    a write failing after the temp file opens closes
+    the descriptor, removes the temp, and raises
+    nothing. The two flag lines in the residue are the
+    platform pair (O_NOFOLLOW inapplicable on Windows,
+    O_BINARY on Linux), each covered where it applies.
+    """
+
+    def _saved(self, d):
+        with open(os.path.join(d, RS.STATE_FILE),
+                  encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def test_a_non_dict_state_saves_an_empty_object(self):
+        with tempfile.TemporaryDirectory() as d:
+            RS._save_state(d, ["not", "a", "dict"])
+            self.assertEqual(self._saved(d), {})
+
+    def test_a_chmod_failure_still_saves(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    os, "chmod",
+                    side_effect=OSError("no chmod")):
+                RS._save_state(d, {"cpu": 12.5})
+            self.assertEqual(self._saved(d), {"cpu": 12.5})
+
+    def test_an_fdopen_failure_cleans_up_and_saves_nothing(self):
+        opened, closed = [], []
+        real_open, real_close = os.open, os.close
+
+        def tracking_open(path, flags, mode=0o777):
+            fd = real_open(path, flags, mode)
+            opened.append(fd)
+            return fd
+
+        def tracking_close(fd):
+            closed.append(fd)
+            return real_close(fd)
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(os, "open", tracking_open), \
+                    mock.patch.object(os, "close",
+                                      tracking_close), \
+                    mock.patch.object(
+                        os, "fdopen",
+                        side_effect=OSError("cannot wrap")):
+                RS._save_state(d, {"cpu": 12.5})
+            self.assertFalse(os.path.exists(
+                os.path.join(d, RS.STATE_FILE)))
+            self.assertEqual(
+                [n for n in os.listdir(d)
+                 if n.startswith(RS.STATE_FILE)], [])
+        self.assertEqual(len(opened), 1)
+        self.assertEqual(closed, opened)
+
+    def test_a_close_failure_during_cleanup_is_swallowed(self):
+        real_close = os.close
+
+        def raising_close(fd):
+            real_close(fd)
+            raise OSError("close says no")
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(os, "close",
+                                   raising_close), \
+                    mock.patch.object(
+                        os, "fdopen",
+                        side_effect=OSError("cannot wrap")):
+                RS._save_state(d, {"cpu": 12.5})
+            self.assertFalse(os.path.exists(
+                os.path.join(d, RS.STATE_FILE)))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

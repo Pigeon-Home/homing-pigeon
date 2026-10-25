@@ -156,6 +156,20 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/oracle/resources.py::`
+  `_save_state` (8 lines never run on Windows, 7 on
+  Linux, coverage run 40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  SaveStateFallbacksTest in
+  runner/tests/test_resources.py: a non-dict state
+  saves as an empty object; a chmod failure still
+  leaves the state written; a write failing after
+  the temp file opens closes the descriptor, removes
+  the temp, and saves nothing; a failing close in
+  cleanup is swallowed. The residue's flag lines
+  are the platform pair (O_NOFOLLOW inapplicable on
+  Windows, O_BINARY on Linux). Done when a coverage
+  run shows only those left.
 - A (refill) — `runner/guard/security.py::_bump_counts`
   (8 lines never run on Windows, 5 on Linux, coverage
   run 40187685363) — taken 2026-10-25,
