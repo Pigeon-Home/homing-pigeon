@@ -2700,6 +2700,15 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: transports.discover_transport_
+  extensions (5 missed, Linux map). The review-failure
+  catch is covered (ReviewFailureTest: a raising review
+  leaves the registry whole, WARN logged, no
+  problems). The transport-API refusal lines cannot
+  fire while EXTENSION_API_VERSION ==
+  TRANSPORT_API_VERSION == 1 and the loader refuses
+  first (verified live) -- filed as Q41, done as
+  filed per the missing-seam rule.
 - Queue A taken: extreview._record (6 missed on both
   maps at 72c8645, the largest non-dispositioned
   function). RecordTest in test_extreview.py pins the

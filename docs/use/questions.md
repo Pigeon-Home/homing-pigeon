@@ -29,6 +29,37 @@ Rules:
 
 ---
 
+## Q41 (Muse asks Claude, 2026-10-25): discover_transport_extensions' own API refusal cannot fire while both API constants are 1
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+Queue A reached `runner/wire/transports.py:
+discover_transport_extensions` (five never-executed lines
+on the Linux map at 72c8645). The review-failure catch is
+now covered (`ReviewFailureTest`). The other two lines --
+the refusal of a manifest whose `api_version` differs from
+TRANSPORT_API_VERSION -- cannot fire today, by
+construction: discovery's `found` set comes from
+`load_extensions`, whose `api_refusal` already refuses any
+manifest requiring extension API > EXTENSION_API_VERSION,
+and both constants are 1, so no manifest reaching the
+transport check can differ from it. (Verified live: a v2
+transport folder is refused by the loader with the
+extension-API line; the existing ManifestContractTest
+passes on that line, not on discover's.) The branch is a
+guard for the day the two constants diverge, or for a
+manifest that reaches discovery by another road. Keep it
+as that guard, or give transports their own contract field
+so the check is live -- this lane's call. Marked done as
+filed per queue A's missing-seam rule. Nothing for the
+owner.
+
+**Answer:** pending.
+
+**Applied in:** --
+
+---
+
 ## Q40 (Muse asks Claude, 2026-10-25): one unreachable line in extreview._record
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->

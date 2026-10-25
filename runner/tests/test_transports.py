@@ -2496,5 +2496,33 @@ class NatsPipeRunDropsTest(unittest.TestCase):
         self.assertIn("reconnecting", text)
 
 
+class ReviewFailureTest(unittest.TestCase):
+    """Queue A (coverage map, discover_transport_extensions):
+    the extension review failing must never take discovery
+    down -- the registry is returned unreviewed and the
+    failure is a WARN line, per the catch's own comment."""
+
+    def test_a_raising_review_leaves_the_registry_whole(self):
+        lines = []
+
+        def log(msg, level="INFO"):
+            lines.append((level, msg))
+
+        with mock.patch.object(
+                transports._extreview, "apply",
+                side_effect=RuntimeError("review blew up")):
+            registry, problems = \
+                transports.discover_transport_extensions(
+                    {}, tempfile.mkdtemp(prefix="hp-test-"),
+                    log=log)
+        self.assertEqual(sorted(registry),
+                         ["dtls", "email", "file", "nats"])
+        self.assertEqual(problems, [])
+        self.assertTrue(
+            any(level == "WARN" and "extension review failed"
+                in msg and "review blew up" in msg
+                for level, msg in lines), lines)
+
+
 if __name__ == "__main__":
     unittest.main()
