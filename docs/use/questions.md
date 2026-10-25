@@ -269,6 +269,16 @@ Linux success, root success. R2.audit_rollover passed again on the
 locked writer. The green verdict stands.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40195855803
 
+Progress, 2026-10-25 06:22 PDT. The gate is holding green.
+Additional finished greens after the lock: 40196795848 (646170d),
+40196990583 (c37f4fd), 40197095521 (f121d48). Each finished all
+three legs success. Newest run 40197271376 (44d8f37) is in
+progress on all three. R2.audit_rollover continues to pass.
+The green verdict stands.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40196795848
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40196990583
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197095521
+
 **Answer:** not a question. No action asked.
 
 **Applied in:** this commit.
