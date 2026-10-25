@@ -838,6 +838,56 @@ class PidAliveWindowsBranchTest(unittest.TestCase):
 
 
 
+class PublishAnswerRaceTest(unittest.TestCase):
+    """Queue A refill: _publish_answer's race legs
+    (coverage run 40189711740: lines 345, 349-350,
+    355). The function's docstring: the first valid
+    answer stays; a crash that left a half-written
+    path is not an answer -- it is moved aside and
+    the slot retried. Two edges the store_answer
+    drives cannot reach: the slot vanishing between
+    the lost link and the check (the retry then wins
+    the slot), and the move-aside itself failing
+    (the publisher gives up after its attempts and
+    reports False, the bad file untouched).
+    """
+
+    def _pair(self, d):
+        tmp = os.path.join(d, "answer.tmp")
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write('{"answer": {}}')
+        return tmp, os.path.join(d, "q.j1.json")
+
+    def test_a_vanished_slot_is_retried_and_won(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp, path = self._pair(d)
+            real_link = os.link
+            calls = []
+
+            def flaky_link(src, dst):
+                calls.append(1)
+                if len(calls) == 1:
+                    raise OSError("lost the race")
+                return real_link(src, dst)
+
+            with mock.patch.object(v2.os, "link", flaky_link):
+                self.assertTrue(v2._publish_answer(path, tmp))
+            with open(path, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), '{"answer": {}}')
+
+    def test_a_move_aside_that_fails_gives_up(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp, path = self._pair(d)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("{")  # a half-written non-answer
+            with mock.patch.object(
+                    v2.os, "rename",
+                    side_effect=OSError("cannot move it")):
+                self.assertFalse(v2._publish_answer(path, tmp))
+            with open(path, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), "{")
+
+
 class Version2EdgesTest(unittest.TestCase):
     """The branches a normal-length id and one late answer never touch."""
 
