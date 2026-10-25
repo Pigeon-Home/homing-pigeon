@@ -156,6 +156,14 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 03:54 PDT
+- D — documented-default hunt re-run against every key
+  added since the defaults registry was last complete
+  (8748b44, Release 3.12.62): no new config keys in
+  production code or docs since that commit (the eight
+  production commits and the two doc files surveyed);
+  the registry guards (6 tests) and the defaults table
+  hunt (26 tests) green — taken and done 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90
 - A — `runner/oracle/remediation.py::fix_marker_digest`
   (10 lines never run on Windows, coverage run
   40183585961) — taken 2026-10-25,
