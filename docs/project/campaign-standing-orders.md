@@ -2709,8 +2709,10 @@ when done, the proving commit or run. Newest first.
   cpu 64% | wall 6m19s | cmd cpu 5m51s = 0.9
   cores busy | peak rss 233 MB | mem used 90% |
   disk free 166.4 GB | exit 0 | under-driven.
-  resources-top: hatch 176 MB (from the log's
-  top line). (Later D-refill commits were each
+  resources-top: hatch 190 MB, python 12 MB,
+  hatch-execd 7 MB, systemd 6 MB,
+  systemd-journal 2 MB. (Later D-refill commits
+  were each
   verified standalone; a suite at the newest
   head is taken in turn.)
 - Queue D refill taken: the remediation family
