@@ -56,31 +56,34 @@ jobs:
             export ASSUME_ALWAYS_YES=yes
             pkg bootstrap -f > pkg.log 2>&1 || true
             pkg update -f >> pkg.log 2>&1 || true
-            pkg install -y python311 >> pkg.log 2>&1 || { echo "::error title=freebsd prepare::pkg install failed: $(tail -n 6 pkg.log | tr '\n' ' ' | cut -c1-700)"; exit 1; }
-            # hypothesis from ports when the flavor exists, else the
-            # pinned wheel through ensurepip (no py311-pip package on
-            # 15.0's repositories, the second run found).
-            pkg install -y py311-hypothesis >> pkg.log 2>&1 \
-              || { python3.11 -m ensurepip --upgrade >> pkg.log 2>&1 \
-                   && python3.11 -m pip install --quiet hypothesis==6.170.5 >> pkg.log 2>&1; } \
-              || { echo "::error title=freebsd prepare::hypothesis install failed: $(tail -n 6 pkg.log | tr '\n' ' ' | cut -c1-700)"; exit 1; }
-            python3.11 -c "import hypothesis; print('hypothesis', hypothesis.__version__)"
+            # The repository carries one Python flavor's packages (3.12
+            # on 15.0, 3.11 before); take whichever flavor has
+            # hypothesis, and remember the interpreter for the run.
+            PY=""
+            for v in 312 311; do
+              if pkg install -y "python$v" "py$v-hypothesis" >> pkg.log 2>&1; then
+                PY="python3.${v#3}"; break
+              fi
+            done
+            [ -n "$PY" ] || { echo "::error title=freebsd prepare::no python flavor with hypothesis installs: $(tail -n 6 pkg.log | tr '\n' ' ' | cut -c1-600)"; exit 1; }
+            echo "$PY" > /tmp/hp-python
+            "$PY" -c "import sys, hypothesis; print(sys.version.split()[0], 'hypothesis', hypothesis.__version__)"
             pw useradd runner -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd runner failed"; exit 1; }
             pw useradd pigeon-test -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd pigeon-test failed"; exit 1; }
-            python3.11 --version
           run: |
-            echo "== workspace: $GITHUB_WORKSPACE"
+            PY="$(cat /tmp/hp-python)"
+            echo "== workspace: $GITHUB_WORKSPACE, interpreter $PY"
             cd "$GITHUB_WORKSPACE" || { echo "::error title=freebsd::no workspace at $GITHUB_WORKSPACE"; exit 1; }
             ls | head -20
             chown -R runner "$GITHUB_WORKSPACE" || { echo "::error title=freebsd::chown failed"; exit 1; }
             echo "== the suite, as the runner user"
-            su -m runner -c "cd '$GITHUB_WORKSPACE' && python3.11 runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > suite-freebsd.log 2>&1
+            su -m runner -c "cd '$GITHUB_WORKSPACE' && $PY runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > suite-freebsd.log 2>&1
             rc=$?
             tail -n 40 suite-freebsd.log
-            python3.11 runner/tools/skip_guard.py suite-freebsd.log --annotate || true
+            "$PY" runner/tools/skip_guard.py suite-freebsd.log --annotate || true
             [ "$rc" -eq 0 ] || echo "::error title=freebsd suite::the suite exited $rc; the failing tests are annotated above and the log is in the artifact"
             echo "== the roster, as root with a second user"
-            python3.11 runner/tools/switch_proofs.py --have posix --root \
+            "$PY" runner/tools/switch_proofs.py --have posix --root \
               --title FreeBSD-root --out switch-proofs-freebsd-root.md --annotate
             rrc=$?
             [ "$rc" -eq 0 ] && [ "$rrc" -eq 0 ]
