@@ -279,6 +279,13 @@ https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40196795848
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40196990583
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197095521
 
+Progress, 2026-10-25 06:25 PDT. Two more finished greens.
+40197271376 (44d8f37) finished all three legs success.
+40197394835 (3173a91) finished all three legs success.
+The green verdict stands.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197271376
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197394835
+
 Progress, 2026-10-25 06:25 PDT. Enforce-path gap review (no code changes).
 Roster has 27 controls. Full off/audit/enforce triples exist for
 M2.policy_env/files/args, M5.audience, M6.enforce (+ four walls),
