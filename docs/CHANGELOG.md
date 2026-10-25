@@ -8,6 +8,13 @@ facts a reader may need to cite. Git history carries the rest.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
+## 3.12.75 - 2026-10-25
+
+Cut from 1a808829. The Darwin suite is green on this release (the
+wrong-case shape, Q51), the extracted modules' `_runner()` is typed
+for the type gate, and the two regression guards from the line
+reduction ride with it; otherwise the 3.12.74 code.
+
 ## 3.12.74 - 2026-10-25
 
 Runner line reduction: runner.py from 11,205 to 5,362 lines.
