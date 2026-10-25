@@ -734,5 +734,62 @@ class SandboxStartupRefusalProbes(unittest.TestCase):
         self.assertEqual(rc, 0)
 
 
+class ReloadHotConfigEdgesTest(unittest.TestCase):
+    """Queue A refill: reload_hot_config's guard legs
+    (coverage run 40189608702: 5 lines on both
+    platforms). The reload's docstring fixes the
+    shape: state holds the last mtime, and anything
+    unusable is left alone for the next cycle -- a
+    state that is not a dict reads as fresh, a config
+    file that cannot be statted changes nothing, and
+    a hot verbose value that is neither a bool nor a
+    string is ignored and named, never applied.
+    """
+
+    def _write(self, d, obj):
+        import json
+        path = os.path.join(d, "config.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(obj, fh)
+        return path
+
+    def test_a_non_dict_state_reads_as_fresh(self):
+        import tempfile
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as d:
+            path = self._write(d, {"poll_interval_sec": 33})
+            cfg = {}
+            changed = R.reload_hot_config(cfg, path, "junk")
+            self.assertEqual(changed, ["poll_interval_sec"])
+            self.assertEqual(cfg["poll_interval_sec"], 33)
+
+    def test_a_missing_config_file_changes_nothing(self):
+        import tempfile
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as d:
+            cfg = {"poll_interval_sec": 20}
+            changed = R.reload_hot_config(
+                cfg, os.path.join(d, "gone.json"), {})
+            self.assertEqual(changed, [])
+            self.assertEqual(cfg, {"poll_interval_sec": 20})
+
+    def test_an_invalid_verbose_value_is_ignored_and_named(self):
+        import io
+        import tempfile
+        from contextlib import redirect_stderr, redirect_stdout
+        from runner import runner as R
+        with tempfile.TemporaryDirectory() as d:
+            path = self._write(
+                d, {"verbose": 42, "poll_interval_sec": 33})
+            cfg, state = {}, {}
+            out = io.StringIO()
+            with redirect_stdout(out), redirect_stderr(out):
+                changed = R.reload_hot_config(cfg, path, state)
+            self.assertEqual(changed, ["poll_interval_sec"])
+            self.assertNotIn("verbose", cfg)
+            self.assertIn("ignoring invalid verbose",
+                          out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

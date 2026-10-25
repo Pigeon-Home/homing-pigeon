@@ -156,6 +156,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/runner.py::reload_hot_config`
+  (5 lines never run on either platform, coverage
+  run 40189608702) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ReloadHotConfigEdgesTest in
+  runner/tests/test_defaults_table_hunt.py: a
+  state that is not a dict reads as fresh and the
+  reload proceeds; a config file that cannot be
+  statted changes nothing; a hot verbose value
+  that is neither a bool nor a string is ignored
+  and named while a valid sibling key still
+  applies. Done when a coverage run shows the
+  function clean.
 - A (refill) — `runner/runner.py::handle_board_mail`
   (5 lines never run on either platform, coverage
   run 40189608702) — taken 2026-10-25,
