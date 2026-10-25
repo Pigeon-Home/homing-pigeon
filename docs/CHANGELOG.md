@@ -8,6 +8,13 @@ facts a reader may need to cite. Git history carries the rest.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
+## 3.12.72 - 2026-10-25
+
+Cut from 342709f7, minutes after 3.12.71: the version carriers and
+the changelog section above, plus Q50's record. The campaign's
+test-fixture fixes (Q50, Q51) landed after this cut and ride in the
+next release.
+
 ## 3.12.71 - 2026-10-25
 
 Cut from b1436f85 (3.12.69 and 3.12.70 were version bumps whose
