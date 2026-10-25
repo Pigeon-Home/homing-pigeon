@@ -10,7 +10,10 @@ except ImportError:  # running from inside runner/ as __main__
     from guard import confval as _confval  # type: ignore
 
 
-def _runner():
+from typing import Any
+
+
+def _runner() -> Any:
     """The live runner module, looked up at call time.
 
     `runner.runner` when the suite or a package import loaded it,

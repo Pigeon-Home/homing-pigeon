@@ -8,7 +8,10 @@ import subprocess
 import sys
 
 
-def _runner():
+from typing import Any
+
+
+def _runner() -> Any:
     """The live runner module, looked up at call time (`runner.runner`
     under the suite, `__main__` when runner.py runs as a script or
     frozen, where `from runner import runner` cannot work)."""

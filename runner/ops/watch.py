@@ -10,7 +10,10 @@ import json
 import re as _re
 
 
-def _runner():
+from typing import Any
+
+
+def _runner() -> Any:
     """The live runner module, looked up at call time.
 
     `runner.runner` when the suite or a package import loaded it,

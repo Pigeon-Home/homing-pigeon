@@ -45,8 +45,10 @@ _IMPORT = re.compile(
 _REACH_BACK = re.compile(r"^(?P<indent>[ \t]+)from runner import runner as R\s*$", re.M)
 
 _RUNNER_HELPER = '''
+from typing import Any
 
-def _runner():
+
+def _runner() -> Any:
     """The live runner module, looked up at call time.
 
     `runner.runner` when the suite or a package import loaded it,
