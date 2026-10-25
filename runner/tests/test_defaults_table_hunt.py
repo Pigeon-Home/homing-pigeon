@@ -124,6 +124,23 @@ def _usable_number(row, value):
     return True
 
 
+class ConfvalParseLegsTest(unittest.TestCase):
+    """Queue A refill: confval._parse's type legs
+    (coverage run 40189711740: lines 60, 62). A
+    boolean is never a number (a config true once
+    read as threshold 1.0 -- the Decision-1
+    registry's documented caution), and a value
+    that already is a number passes through
+    untouched.
+    """
+
+    def test_a_bool_is_not_a_number_and_a_number_is(self):
+        self.assertIsNone(confval._parse(True))
+        self.assertIsNone(confval._parse(False))
+        self.assertEqual(confval._parse(3), 3)
+        self.assertEqual(confval._parse(2.5), 2.5)
+
+
 class ConfvalProbeTests(unittest.TestCase):
     """Rows whose reader is confval, probed through confval."""
 

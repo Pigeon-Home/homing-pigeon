@@ -70,6 +70,23 @@ def _job(job_id, kind="ping", script=None):
     return job
 
 
+class OtherAnswersLegsTest(unittest.TestCase):
+    """Queue A refill: protocol_v2._other_answers'
+    unsafe-id leg (coverage run 40189711740: lines
+    431-432). A question id that is not a safe id
+    names no answer file: the other-answers read
+    answers empty rather than following the id out
+    of the answers folder.
+    """
+
+    def test_an_unsafe_question_id_reads_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(
+                v2._other_answers(d, "../evil", None), [])
+            self.assertEqual(
+                v2._other_answers(d, "a/b", None), [])
+
+
 class BuildersTest(unittest.TestCase):
     def test_subject_kind_ignores_a_job(self):
         self.assertIsNone(v2.subject_kind("[HOMING-PIGEON] job abc"))

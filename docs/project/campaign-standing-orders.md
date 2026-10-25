@@ -294,6 +294,30 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — `runner/guard/confval.py::_parse`
+  type legs and `runner/wire/protocol_v2.py::`
+  `_other_answers` unsafe-id leg (2 lines each
+  never run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ConfvalParseLegsTest in
+  runner/tests/test_defaults_table_hunt.py (a
+  boolean is never a number; a number passes
+  through) and OtherAnswersLegsTest in
+  runner/tests/test_protocol_v2_messages.py (an
+  unsafe question id reads empty). Recorded
+  without a take: dtlsproto.x25519's final
+  conditional swap (186-187) is unreachable by
+  construction -- the ladder's last processed bit
+  is the clamped scalar's bit 0, which clamping
+  always clears, so the swap is always false
+  (verified by coverage over crafted and RFC
+  scalars); transports'
+  discover_transport_extensions lines 255/260 are
+  continuation lines of the refusal message the
+  ManifestContractTest refusal cases already
+  assert -- a measurement artifact, not a gap.
+  Done when a coverage run shows the taken legs
+  clean.
 - A (refill) — six two-line legs (coverage run
   40189711740): `job_watcher._record_observation`
   size/timestamp, `personal_docs`
