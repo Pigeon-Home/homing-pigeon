@@ -180,8 +180,15 @@ Progress, 2026-10-25 05:39 PDT. Claude answered Q27 and shipped
 bound check, the append and the counts bump. The release run
 40194003640 was cancelled before any job started. The next
 post-fix run, 40194010703, was also cancelled before any job
-started. No post-fix run has finished on three legs. There is
-still no green switch-proofs run.
+started. No post-fix run has finished on three legs.
+
+Progress, 2026-10-25 05:42 PDT. A run did finish green, and it
+is not the fix. Run 40193642951 (32f142f, the local-copy walker
+refill, before fb56cfd) finished all three legs: Linux 25 of 25,
+root 27 of 27, Windows 16 of 16. R2.audit_rollover passed on
+the unfixed writer. The two earlier Windows failures were real,
+and this pass means the race does not lose an entry every time.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40193642951
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40194003640
 
 **Answer:** not a question. No action asked.
