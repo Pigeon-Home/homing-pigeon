@@ -1476,5 +1476,46 @@ class RunnerResidualLegsTest(unittest.TestCase):
         self.assertIn("baseline", blob)
 
 
+class ReportExtensionsArmsTest(unittest.TestCase):
+    """Queue A: _report_extensions' two unreported arms --
+    the loader failing outright, and a registry member
+    that is not a dict. The startup report is the
+    operator's first view of what loaded; both arms must
+    degrade to log lines, never a crash or a phantom
+    extension."""
+
+    def _report(self, loader):
+        lines = []
+        with mock.patch.object(rr, "_load_reviewed_extensions",
+                               loader), \
+                mock.patch.object(
+                    rr, "log",
+                    lambda msg, level="INFO": lines.append(
+                        (level, msg))):
+            rr._report_extensions({}, "/b")
+        return lines
+
+    def test_a_failed_loader_is_one_warn_line(self):
+        def boom(cfg, base_dir):
+            raise RuntimeError("kaboom")
+        lines = self._report(boom)
+        self.assertEqual(
+            lines, [("WARN", "extensions: loader failed: kaboom")])
+
+    def test_a_non_dict_member_is_skipped_not_reported(self):
+        def mixed(cfg, base_dir):
+            return ({"good": {"name": "good", "version": "1",
+                              "api_version": 1, "kind": "sense",
+                              "signals": [], "capabilities": [],
+                              "dir": "/x"},
+                     "bad": "not a manifest"},
+                    ["one problem"])
+        lines = self._report(mixed)
+        self.assertEqual(len(lines), 2)
+        self.assertTrue(lines[0][1].startswith(
+            "extension loaded: good v1"), lines)
+        self.assertEqual(lines[1], ("WARN", "extensions: one problem"))
+
+
 if __name__ == "__main__":
     unittest.main()

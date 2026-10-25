@@ -2700,6 +2700,12 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: runner._report_extensions' two
+  missed arms (Linux map) -- a loader that raises is
+  exactly one WARN line ("extensions: loader failed:
+  ..."), and a registry member that is not a dict is
+  skipped while real members and problems still
+  report; pinned in test_runner_last_edges.py.
 - Queue A disposition: detection.update_baseline's
   two missed Linux lines -- the os.O_BINARY flag arm
   is the recorded platform mirror (Windows only);
