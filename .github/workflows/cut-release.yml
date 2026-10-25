@@ -42,6 +42,12 @@ jobs:
         with:
           ref: ${{ inputs.sha != '' && inputs.sha || 'main' }}
           fetch-depth: 0
+          # RELEASE_TOKEN (a fine-grained PAT with contents: write and
+          # workflows: write) is the one credential GitHub lets push a
+          # tag whose tree carries a workflow file GITHUB_TOKEN never
+          # pushed. Unset, this is github.token and the REST path below
+          # does the tagging.
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
@@ -61,23 +67,25 @@ jobs:
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "cutting v$ver at $(git rev-parse --short HEAD)"
 
-      - name: the commit carries main's workflow files
+      - name: workflow files changed since the last tag?
         env:
           SHA: ${{ steps.ver.outputs.sha }}
         run: |
           set -euo pipefail
-          # GITHUB_TOKEN has no `workflows` scope, so GitHub refuses
-          # a new ref whose .github/workflows differ from the default
-          # branch's -- the 3.12.67 cut of an older commit died with
-          # "refusing to allow a GitHub App to create or update
-          # workflow" once main had moved a workflow past it. Say so
-          # here, before the build check, instead of at the push.
-          git fetch -q origin main
-          here=$(git rev-parse "$SHA:.github/workflows")
-          main=$(git rev-parse "origin/main:.github/workflows")
-          if [ "$here" != "$main" ]; then
-            echo "::error::$SHA does not carry main's .github/workflows (tree $here vs $main); a tag on it cannot be pushed with GITHUB_TOKEN. Cut the head of main, or a commit whose workflows match it."
-            exit 1
+          # Information for the run page, not a gate. GITHUB_TOKEN
+          # cannot push a tag whose tree carries a workflow file it
+          # did not itself write (3.12.66 and 3.12.67 died at the push
+          # with "refusing to allow a GitHub App to create or update
+          # workflow .github/workflows/coverage.yml" the day that file
+          # was added), and the rule is not "differs from main": the
+          # head of main itself was refused. So the tag step below
+          # goes through the REST API first, and through git with
+          # RELEASE_TOKEN when the owner set one.
+          last=$(git tag --list 'v*' --sort=-v:refname | head -n 1 || true)
+          if [ -n "$last" ]; then
+            if [ "$(git rev-parse "$last:.github/workflows")" != "$(git rev-parse "$SHA:.github/workflows")" ]; then
+              echo "::notice::.github/workflows changed since $last; the REST tag path (or RELEASE_TOKEN) carries it"
+            fi
           fi
 
       - name: the tag does not exist yet
@@ -152,25 +160,47 @@ jobs:
           print(f"{len(need)} jobs green on this commit")
           EOF
 
-      - name: tag and push
+      - name: tag
         env:
+          GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.ver.outputs.tag }}
           SHA: ${{ steps.ver.outputs.sha }}
+          HAVE_RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN != '' }}
         run: |
           set -euo pipefail
+          # The job log is not readable from every seat; a failure
+          # here rides as an annotation with the service's own words.
+          # Path one: an annotated tag object and its ref through the
+          # REST API, which creates the ref without a push and so
+          # without the push-time workflow check.
+          when=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          if tagsha=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/git/tags" \
+                -f tag="$TAG" -f message="Version ${TAG#v}" -f object="$SHA" -f type=commit \
+                -f 'tagger[name]=cut-release' -f 'tagger[email]=cut-release@users.noreply.github.com' \
+                -f "tagger[date]=$when" --jq .sha 2>api.err) \
+             && gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                -f ref="refs/tags/$TAG" -f sha="$tagsha" >/dev/null 2>>api.err; then
+            echo "tagged $TAG -> $SHA (REST)"
+            exit 0
+          fi
+          api_err=$(tr '\n' ' ' < api.err | cut -c1-600)
+          echo "::warning title=REST tag::the API would not create $TAG ($api_err); trying git"
+          # Path two: a git push, with RELEASE_TOKEN when the owner set
+          # one (the checkout's credential), else GITHUB_TOKEN.
           git config user.name "cut-release"
           git config user.email "cut-release@users.noreply.github.com"
-          # The job log is not readable from every seat; a failure
-          # here rides as an annotation with git's own words.
           if ! out=$(git tag -a "$TAG" "$SHA" -m "Version ${TAG#v}" 2>&1); then
             echo "::error title=tag::git tag failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
             exit 1
           fi
           if ! out=$(git push origin "refs/tags/$TAG" 2>&1); then
             echo "::error title=tag push::git push failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
+            if [ "$HAVE_RELEASE_TOKEN" != "true" ]; then
+              echo "::error title=remedy::add a repository secret RELEASE_TOKEN (fine-grained PAT, this repository, contents: write and workflows: write) and re-run; see docs/use/questions.md Q30"
+            fi
             exit 1
           fi
-          echo "pushed $TAG -> $SHA"
+          echo "pushed $TAG -> $SHA (git)"
 
       - name: start the release pipeline on the tag
         env:

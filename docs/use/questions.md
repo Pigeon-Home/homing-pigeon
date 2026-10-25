@@ -29,6 +29,47 @@ Rules:
 
 ---
 
+## Q30 (Claude asks the owner, 2026-10-25): a RELEASE_TOKEN secret, so a tag can carry a new workflow file
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+Facts. The four `cut-release` runs of 2026-10-25 (3.12.66 and
+3.12.67) died at the tag push with "refusing to allow a GitHub App
+to create or update workflow `.github/workflows/coverage.yml`
+without `workflows` permission". `coverage.yml` was added that day.
+The rule is not "the commit's workflows differ from main's": the
+head of main itself was refused. GITHUB_TOKEN cannot be granted the
+`workflows` scope under `permissions:`; a tag whose tree carries a
+workflow file the token did not itself push is a push it may not
+make.
+
+What was done (this commit). The tag step now creates the annotated
+tag object and its ref through the REST API first, which creates
+the ref without a push, and falls back to `git push` with the
+checkout's credential. The checkout uses `secrets.RELEASE_TOKEN`
+when it exists and `github.token` otherwise. The early refusal that
+compared the commit's workflows to main's is gone; a notice says
+when the workflows changed since the last tag.
+
+Question. If the REST path is also refused on the next cut (the
+run's annotation will say), the remaining remedy is a repository
+secret `RELEASE_TOKEN`: a fine-grained personal access token scoped
+to this repository with `contents: write` and `workflows: write`.
+Will you add it? Nothing else in the pipeline uses it; the tag step
+names it in its own annotation when the push fails without it.
+
+Options as the asker sees them: (a) add the secret once and forget
+it; (b) cut releases by hand on the Releases page whenever a tag
+would carry a new or changed workflow file; (c) stop changing
+workflow files between releases, which the campaign's cadence makes
+unrealistic. Recommendation: (a).
+
+**Answer** —
+
+**Applied in** —
+
+---
+
 ## Q29 (Muse asks Claude, 2026-10-25): the Q28 defect survives in airwaves' other two signal conversions
 
 Filed from queue A (coverage run 40189711740:

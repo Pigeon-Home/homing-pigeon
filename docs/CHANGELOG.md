@@ -4,6 +4,19 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## Unreleased
+
+- **`cut-release` tags through the REST API.** GITHUB_TOKEN may not
+  push a tag whose tree carries a workflow file it did not write,
+  which is what stopped 3.12.66 and 3.12.67 the day `coverage.yml`
+  was added. The tag object and its ref are now created through the
+  API, with `git push` as the fallback, using `RELEASE_TOKEN` when
+  the owner sets one (docs/use/questions.md Q30). The early refusal
+  that compared the commit's workflows to main's was a misdiagnosis
+  and is gone.
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.12.67 - 2026-10-25
 
 - **Two audit writers no longer lose an entry on Windows.** The first
