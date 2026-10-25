@@ -2713,6 +2713,105 @@ def _retention_days(cfg):
     return _confval.integer(raw, 7, lo=-(10 ** 9), hi=10 ** 9)
 
 
+# ---------------------------------------------------------------- sent results
+# A job executes at most once per job_id on a runner. The result, as
+# it goes on the wire, is written under <base_dir>/sent/ BEFORE the
+# send; a redelivery of the same job (the send failed, the process
+# died between the send and the seen-set commit, a duplicate copy
+# arrived) resends those bytes and executes nothing. The seen-set
+# still commits only after a successful send, so delivery stays
+# at-least-once while execution becomes at-most-once. The entry is
+# bound to the job's received digest: a different job under a reused
+# id is not answered with a stale result. Entries age out with
+# output_retention_days (prune_retained).
+SENT_DIRNAME = "sent"
+
+
+def _sent_path(base_dir, skey):
+    name = hashlib.sha384(_as_str(skey).encode("utf-8")).hexdigest()[:48]
+    return os.path.join(base_dir, SENT_DIRNAME, name + ".json")
+
+
+def save_sent_result(base_dir, skey, job, subject, body, to=None):
+    """Record the outgoing result before it is sent. Best effort:
+    a failure to record is logged and the send proceeds, which is
+    the at-least-once behavior of before."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return False
+    digest = _opinion.received_digest(job) if _opinion is not None \
+        else hashlib.sha384(json.dumps(
+            {k: v for k, v in (job or {}).items() if k != "sig"},
+            sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False).encode("utf-8")).hexdigest()
+    rec = {"job_id": _as_str((job or {}).get("job_id")),
+           "job_digest": digest, "subject": subject, "body": body,
+           "to": to, "completed_at": datetime.now(timezone.utc).strftime(
+               "%Y-%m-%dT%H:%M:%SZ")}
+    path = _sent_path(base_dir, skey)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(rec, f)
+        os.replace(tmp, path)
+        return True
+    except Exception as e:
+        log(f"sent-result record failed for {rec['job_id']}: {e}", "WARN")
+        return False
+
+
+def load_sent_result(base_dir, skey, job):
+    """The recorded result for this exact job, or None.
+
+    None when there is no record, when the record is for a job of
+    another shape under the same id (the digest differs), or when the
+    record cannot be read. Never raises."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return None
+    path = _sent_path(base_dir, skey)
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            rec = json.load(f)
+    except Exception:
+        return None
+    if not isinstance(rec, dict) or not isinstance(rec.get("body"), str) \
+            or not isinstance(rec.get("subject"), str):
+        return None
+    digest = _opinion.received_digest(job) if _opinion is not None \
+        else None
+    if digest is not None and rec.get("job_digest") != digest:
+        return None
+    return rec
+
+
+def prune_sent(base_dir, days):
+    """Delete recorded results older than output_retention_days."""
+    if not isinstance(base_dir, str) or not base_dir:
+        return 0
+    try:
+        days = int(days)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+    if days <= 0:
+        return 0
+    d = os.path.join(base_dir, SENT_DIRNAME)
+    if not os.path.isdir(d):
+        return 0
+    cutoff = time.time() - days * 86400
+    removed = 0
+    for name in os.listdir(d):
+        path = os.path.join(d, name)
+        try:
+            if os.path.getmtime(path) < cutoff:
+                os.remove(path)
+                removed += 1
+        except Exception:
+            pass
+    return removed
+
+
 def prune_retained(base_dir, days):
     """Delete retained outputs older than output_retention_days."""
     if not isinstance(base_dir, str) or not base_dir:
@@ -6203,6 +6302,19 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 return
             send_mail(smtp, cfg, subject, body, to=_valid_reply_to(job))
 
+        # Executed before, result not yet acknowledged: resend the
+        # bytes that were produced then and run nothing. The seen-set
+        # commits below exactly as for a first delivery.
+        cached = load_sent_result(base_dir, skey, job)
+        if cached is not None:
+            with _MAIL_LOCK:
+                maybe_send(cached["subject"], cached["body"])
+                log(f"job {job_id}: result resent from the sent record "
+                    f"(executed once, completed {cached.get('completed_at')})")
+                seen[skey] = True
+                mark_seen(imap, seq)
+            return
+
         op_plan = None
         op_member = None
         run_job = job
@@ -6494,10 +6606,14 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             if cfg.get("judge") in ("advisory", "enforce"):
                 result["judgment"] = {"verdict": verdict, "reasons": reasons}
             with _MAIL_LOCK:
-                maybe_send(f"{SUBJECT_RESULT}{job_id}",
-                          _outgoing_result_body(
-                              result, secret, encrypt_result,
-                              job_id, key_id))
+                out_subject = f"{SUBJECT_RESULT}{job_id}"
+                out_body = _outgoing_result_body(
+                    result, secret, encrypt_result, job_id, key_id)
+                # Recorded before the send: a redelivery resends
+                # these bytes instead of executing again.
+                save_sent_result(base_dir, skey, job, out_subject,
+                                 out_body, to=_valid_reply_to(job))
+                maybe_send(out_subject, out_body)
                 log(f"job {job_id} done (exit={r['exit_code']})")
                 seen[skey] = True  # only after the result is safely sent (at-least-once)
                 mark_seen(imap, seq)
@@ -7307,6 +7423,7 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     key_policies = build_key_policies(cfg)
     retain_days = _retention_days(cfg)
     prune_retained(base_dir, retain_days)
+    prune_sent(base_dir, retain_days)
     # Built-in resource monitor: on by default. Threshold crossings
     # become security events for the DRI trigger evaluation.
     if _resources is not None:

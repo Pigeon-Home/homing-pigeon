@@ -6,6 +6,15 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## Unreleased
 
+- **A job runs at most once per `job_id`.** The result, as it goes on
+  the wire, is recorded under `<base_dir>/sent/` before the send; a
+  redelivered job (the send failed, the process died before the
+  seen-set commit, a duplicate copy) is answered from the record and
+  not executed again. The record is bound to the job's received
+  digest, so a different job under a reused id runs on its own, and
+  it ages out with `output_retention_days`. Delivery stays
+  at-least-once; the seen-set still commits only after a successful
+  send. PROTOCOL.md sections 5 and 6.
 - **`cut-release` tags through the REST API.** GITHUB_TOKEN may not
   push a tag whose tree carries a workflow file it did not write,
   which is what stopped 3.12.66 and 3.12.67 the day `coverage.yml`
@@ -14,11 +23,6 @@ facts a reader may need to cite. Git history carries the rest.
   the owner sets one (docs/use/questions.md Q30). The early refusal
   that compared the commit's workflows to main's was a misdiagnosis
   and is gone.
-
-<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
-
-## Unreleased
-
 - **The suite and the switch proofs run on macOS and FreeBSD.** The
   release has shipped macOS binaries since the start, smoked but
   never tested; now `test-macos` runs the suite on macos-14 on every
@@ -27,6 +31,8 @@ facts a reader may need to cite. Git history carries the rest.
   kernel). FreeBSD 14 runs the suite and the roster weekly in a VM.
   Where the suite runs and what each platform proves:
   `docs/project/testing.md`.
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.12.68 - 2026-10-25
 

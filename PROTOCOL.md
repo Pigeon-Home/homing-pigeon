@@ -357,9 +357,15 @@ Authorization then runs in this order, and all of it must pass:
    Failures here produce the -2 rejection result of section 3.2.
 
 Failures are logged, the mail is marked seen, and the job is **never**
-executed. Delivery is at-least-once: a job whose result email fails to
-send stays unseen and will be retried (re-executed) on the next cycle.
-On a file channel the same rule is the move into `inbox/done`. That
+executed. Delivery is at-least-once, execution is at-most-once: a job
+whose result message fails to send stays unseen and is retried on
+the next cycle, but the retry sends the result the first execution
+produced -- the runner records the result, as it goes on the wire,
+before the send, and a redelivered job whose record exists (bound to
+the job's received digest, so a different job under a reused id is
+not answered with it) is answered from the record and not run again.
+Records age out with `output_retention_days`; a redelivery after that
+executes again. On a file channel the same rule is the move into `inbox/done`. That
 move happens only when the core would have marked the mail seen. A
 retryable failure leaves the envelope in the inbox. A rejection is
 still consumed, so poison is not retried.
@@ -383,10 +389,13 @@ secret, in which case the runner refuses to start and names it
   environment, and the work dir as cwd.
 - On timeout the whole process tree is killed (POSIX process group;
   `taskkill /T` on Windows).
-- **Jobs must be idempotent.** If the result email fails to send, the
-  job may be executed again on a later poll. Write jobs that are safe
-  to repeat: check before creating, use unique names, prefer
-  upserts over blind inserts.
+- **A job runs at most once per `job_id` on a runner.** If the result
+  message fails to send, the next poll resends the recorded result
+  (section 5) and does not execute the job again. Idempotent jobs
+  are still good hygiene -- check before creating, use unique names,
+  prefer upserts over blind inserts -- because a job whose record
+  aged out before its redelivery, or the same job sent to a second
+  runner, does run again.
 
 ## 7. Security model
 
