@@ -156,6 +156,17 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/extensions/wazuh-feed/`
+  `wazuh_feed.py::main` (7 lines never run on either
+  platform, coverage run 40187685363) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  WazuhMainDeliveryTest in
+  runner/tests/test_wazuh_feed.py: local delivery
+  success writes the state; not set up is exit 2; a
+  short delivery is exit 2 with the state unwritten;
+  a manifest with non-object tunables reads as the
+  defaults. Done when a coverage run shows the
+  function clean.
 - A (refill) — `runner/extensions/softflowd-feed/`
   `softflowd_feed.py::main` (7 lines never run on
   either platform, coverage run 40187685363) — taken

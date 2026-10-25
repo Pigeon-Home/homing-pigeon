@@ -23,7 +23,7 @@ import shutil
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -283,6 +283,82 @@ class MainTest(unittest.TestCase):
                               "--state", os.path.join(d, "state.json")])
             self.assertEqual(rc, 0)
             self.assertEqual(out.getvalue(), "")
+
+
+class WazuhMainDeliveryTest(unittest.TestCase):
+    """Queue A refill: wazuh-feed main's tunables
+    fallback and local-delivery legs (coverage run
+    40187685363: 7 lines on both platforms). The
+    contract: a manifest whose tunables are not an
+    object reads as the defaults; delivery not set up
+    is exit 2; a short delivery is exit 2 with the
+    state unwritten, so the reader offsets do not
+    advance and the next pass re-reads the alert
+    lines.
+    """
+
+    ENV = "HP_WAZUH_SECRET"
+
+    def _drive(self, d, extra, manifest=None):
+        readings = os.path.join(d, "readings.json")
+        with open(readings, "w", encoding="utf-8") as fh:
+            json.dump(_readings([_event(level=12)]), fh)
+        state = os.path.join(d, "state.json")
+        argv = ["--readings", readings, "--state", state,
+                "--secret-env", self.ENV] + extra
+        if manifest is not None:
+            mpath = os.path.join(d, "extension.json")
+            with open(mpath, "w", encoding="utf-8") as fh:
+                json.dump(manifest, fh)
+            argv += ["--manifest", mpath]
+        err = io.StringIO()
+        with redirect_stderr(err):
+            rc = WZ.main(argv)
+        return rc, state, err.getvalue()
+
+    def test_local_delivery_success_writes_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ[self.ENV] = "ab" * 32
+            try:
+                rc, state, _err = self._drive(
+                    d, ["--local-dir", d])
+            finally:
+                os.environ.pop(self.ENV, None)
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.exists(state))
+            inbox = os.path.join(d, "local-inbox")
+            self.assertEqual(len(os.listdir(inbox)), 1)
+
+    def test_local_delivery_not_set_up_is_exit_2(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ.pop(self.ENV, None)
+            rc, state, _err = self._drive(d, ["--local-dir", d])
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(state))
+
+    def test_short_delivery_is_exit_2_and_saves_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            blocker = os.path.join(d, "blocker")
+            with open(blocker, "w", encoding="utf-8") as fh:
+                fh.write("not a directory")
+            os.environ[self.ENV] = "ab" * 32
+            try:
+                rc, state, err = self._drive(
+                    d, ["--local-dir", blocker])
+            finally:
+                os.environ.pop(self.ENV, None)
+            self.assertEqual(rc, 2)
+            self.assertIn("state not saved", err)
+            self.assertFalse(os.path.exists(state))
+
+    def test_a_manifest_with_non_object_tunables_reads_as_defaults(self):
+        manifest = _manifest()
+        manifest["tunables"] = ["not", "an", "object"]
+        with tempfile.TemporaryDirectory() as d:
+            rc, state, _err = self._drive(d, [],
+                                          manifest=manifest)
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.exists(state))
 
 
 if __name__ == "__main__":
