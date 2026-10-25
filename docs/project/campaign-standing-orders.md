@@ -156,6 +156,20 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:48 PDT
+- A (refill) — `runner/runner.py::`
+  `_ingest_local_envelope_inner` (5 lines never run
+  on either platform, coverage run 40189608702) —
+  taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  LocalEnvelopeIssuedAtTest in
+  runner/tests/test_sense_delivery.py: a config
+  whose secrets cannot be built rejects every
+  envelope unread; an issued_at that does not
+  parse and one that parses without a timezone
+  are each rejected and nothing is stored; a zoned
+  issued_at is stored (control). Done when a
+  coverage run shows the function clean but the
+  smaller tail.
 - A (refill) — `runner/runner.py::_v2_hand_off` (5
   lines never run on either platform, coverage run
   40189608702) — taken 2026-10-25,

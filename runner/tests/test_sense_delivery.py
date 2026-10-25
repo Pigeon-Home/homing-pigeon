@@ -338,5 +338,71 @@ class OutsideTheCloneTest(unittest.TestCase):
                       "homing-pigeon repo importable", proc.stderr)
 
 
+class LocalEnvelopeIssuedAtTest(unittest.TestCase):
+    """Queue A refill: _ingest_local_envelope_inner's
+    secret-build and issued_at legs (coverage run
+    40189608702: 5 lines on both platforms). The local
+    intake's contract is the mail intake's, stated in
+    AGENTS.md's "Do not emit" table and PROTOCOL.md:
+    an issued_at that does not parse, and one that
+    parses without a timezone, are each rejected --
+    and a config whose secrets cannot be built
+    rejects every envelope before any of them is
+    read.
+    """
+
+    def _cfg(self):
+        return {"shared_secret": ROOT_SECRET,
+                "additional_secrets": {KEY_ID: SENSE_SECRET},
+                "key_policies": {
+                    KEY_ID: {"allowed_kinds": ["sensor_alert"]}},
+                "sensors": {"lab_results": {
+                    "enabled": True, "key_id": KEY_ID,
+                    "weight": 1.0, "profile": {}}}}
+
+    def _text(self, issued_at):
+        from runner.ops import extensions as ext_ops
+        payload = ext_ops.build_sensor_alert(
+            "lab_results", "info", "issued-at probe",
+            key_id=KEY_ID, signal="experiment_finished")
+        payload["issued_at"] = issued_at
+        return ext_ops.sign_envelope(payload, SENSE_SECRET)
+
+    def _ingest(self, cfg, text):
+        with tempfile.TemporaryDirectory() as base:
+            with redirect_stderr(StringIO()):
+                record = _ingest_local_envelope(
+                    cfg, base, text, "file")
+            stored = senses.load_alerts(base, limit=50)
+        return record, stored
+
+    def test_an_unbuildable_secret_set_rejects_everything(self):
+        record, stored = self._ingest(
+            {"shared_secret": "short"}, "any envelope")
+        self.assertIsNone(record)
+        self.assertEqual(stored, [])
+
+    def test_an_unparseable_issued_at_is_rejected(self):
+        record, stored = self._ingest(
+            self._cfg(), self._text("not-a-date"))
+        self.assertIsNone(record)
+        self.assertEqual(stored, [])
+
+    def test_a_naive_issued_at_is_rejected(self):
+        record, stored = self._ingest(
+            self._cfg(), self._text("2026-10-15T12:00:00"))
+        self.assertIsNone(record)
+        self.assertEqual(stored, [])
+
+    def test_a_zoned_issued_at_is_stored(self):
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
+        record, stored = self._ingest(
+            self._cfg(), self._text(now))
+        self.assertIsNotNone(record)
+        self.assertEqual(len(stored), 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
