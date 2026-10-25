@@ -56,8 +56,15 @@ jobs:
             export ASSUME_ALWAYS_YES=yes
             pkg bootstrap -f > pkg.log 2>&1 || true
             pkg update -f >> pkg.log 2>&1 || true
-            pkg install -y python311 py311-pip >> pkg.log 2>&1 || { echo "::error title=freebsd prepare::pkg install failed: $(tail -n 6 pkg.log | tr '\n' ' ' | cut -c1-700)"; exit 1; }
-            python3.11 -m pip install --quiet hypothesis==6.170.5 || { echo "::error title=freebsd prepare::pip install hypothesis failed"; exit 1; }
+            pkg install -y python311 >> pkg.log 2>&1 || { echo "::error title=freebsd prepare::pkg install failed: $(tail -n 6 pkg.log | tr '\n' ' ' | cut -c1-700)"; exit 1; }
+            # hypothesis from ports when the flavor exists, else the
+            # pinned wheel through ensurepip (no py311-pip package on
+            # 15.0's repositories, the second run found).
+            pkg install -y py311-hypothesis >> pkg.log 2>&1 \
+              || { python3.11 -m ensurepip --upgrade >> pkg.log 2>&1 \
+                   && python3.11 -m pip install --quiet hypothesis==6.170.5 >> pkg.log 2>&1; } \
+              || { echo "::error title=freebsd prepare::hypothesis install failed: $(tail -n 6 pkg.log | tr '\n' ' ' | cut -c1-700)"; exit 1; }
+            python3.11 -c "import hypothesis; print('hypothesis', hypothesis.__version__)"
             pw useradd runner -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd runner failed"; exit 1; }
             pw useradd pigeon-test -m -s /bin/sh || { echo "::error title=freebsd prepare::pw useradd pigeon-test failed"; exit 1; }
             python3.11 --version
