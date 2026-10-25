@@ -323,6 +323,12 @@ The green verdict stands. The roster commit 92ed801
 controls have not yet had a finished three-leg run.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197576435
 
+Progress, 2026-10-25 06:29 PDT. Another finished green.
+40197656289 (ad69411) finished all three legs success.
+The green verdict stands. The roster controls on 92ed801
+still have not had a finished three-leg run.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197656289
+
 **Applied in:** this commit.
 
 ---
