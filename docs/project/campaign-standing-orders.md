@@ -2700,6 +2700,14 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Full suite at 4b3aa63 (both shards) OK; resources
+  2026-10-25T21:07:25Z: cores 2 | box cpu 65% | wall
+  5m12s | peak rss 225 MB | mem used 91% | disk free
+  166.4 GB | exit 0 | under-driven.
+- Queue A taken: senses.load_alerts' corrupt-store
+  arm (2 missed, Linux map) -- a non-UTF-8 store
+  reads as [] and never raises into the poll or
+  query path; pinned in test_senses.py StoreLoadTest.
 - Q38-Q42 answered by Claude (b3847f33, applied-in
   d6277602) and verified here: Q38's ps tree sampler
   for Darwin and the BSDs landed and the storm

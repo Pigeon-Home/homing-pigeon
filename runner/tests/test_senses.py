@@ -228,6 +228,16 @@ class StoreLoadTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             self.assertEqual(S.load_alerts(d), [])
 
+    def test_non_utf8_store_reads_as_no_alerts(self):
+        # Queue A: load_alerts' corrupt-store arm -- a store
+        # whose bytes are not UTF-8 must read as [], never
+        # raise into the poll or query path (the comment on
+        # the except in load_alerts states the contract).
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, S.SENSES_FILE), "wb") as f:
+                f.write(b"\xff\xfe not utf-8 \x80\n")
+            self.assertEqual(S.load_alerts(d), [])
+
     def test_score(self):
         self.assertEqual(S.alert_score({"severity": "high"}, 2.0), 6.0)
         self.assertEqual(S.alert_score({"severity": "info"}, 1.0), 0.5)
