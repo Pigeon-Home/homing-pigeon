@@ -276,6 +276,41 @@ def _jw_run(record_groups, manifest=None):
     return alerts, state
 
 
+class JobWatcherRecordLegsTest(unittest.TestCase):
+    """Queue A refill: _record_observation's size and
+    timestamp legs (coverage run 40189711740: lines
+    246, 259-260). A record past the size cap is
+    never read, and a record whose saved_at is not
+    a number falls back to the file's mtime -- with
+    no usable fallback either, it is skipped.
+    """
+
+    def _record(self, d, name, obj):
+        path = os.path.join(d, name)
+        with open(path, "w") as fh:
+            fh.write(json.dumps(obj))
+        return path
+
+    def test_an_oversize_record_is_never_read(self):
+        from unittest import mock as _mock
+        with tempfile.TemporaryDirectory() as d:
+            path = self._record(d, "big.json",
+                                {"exit_code": 0, "saved_at": 1})
+            with _mock.patch.object(JW, "_MAX_RECORD_BYTES", 4):
+                self.assertIsNone(
+                    JW._record_observation(path, 1.0))
+
+    def test_a_junk_saved_at_falls_back_or_skips(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._record(
+                d, "junk.json",
+                {"exit_code": 0, "saved_at": "abc",
+                 "job_id": "j1"})
+            got = JW._record_observation(path, 777.0)
+            self.assertEqual(got["saved_at"], 777.0)
+            self.assertIsNone(JW._record_observation(path, None))
+
+
 class JobWatcherManifestTest(unittest.TestCase):
     def test_manifest_is_valid_through_the_real_loader(self):
         clean = E.parse_manifest(_manifest(JW_DIR))

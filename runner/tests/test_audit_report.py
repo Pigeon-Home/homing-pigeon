@@ -284,6 +284,22 @@ class DangerousFallbackTest(unittest.TestCase):
             self.assertFalse(AR._is_dangerous(None))
 
 
+class EntryTsLegsTest(unittest.TestCase):
+    """Queue A refill: auditreport._entry_ts'
+    unparsable leg (coverage run 40189711740: lines
+    77-78). An entry timestamp that does not parse
+    reads as epoch 0 -- outside every report window
+    -- rather than breaking the report.
+    """
+
+    def test_an_unparsable_timestamp_is_epoch(self):
+        self.assertEqual(AR._entry_ts({"ts": "not a timestamp"}), 0)
+        self.assertEqual(AR._entry_ts({"ts": ""}), 0)
+        self.assertEqual(AR._entry_ts({}), 0)
+        self.assertGreater(
+            AR._entry_ts({"ts": "2026-10-25T00:00:00Z"}), 0)
+
+
 class ImportSeamTest(unittest.TestCase):
     """Queue A refill: auditreport's import seam (coverage
     run 40189711740: the fallback block, 5 lines, never ran

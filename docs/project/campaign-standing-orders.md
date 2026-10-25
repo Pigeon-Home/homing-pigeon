@@ -294,6 +294,23 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — six two-line legs (coverage run
+  40189711740): `job_watcher._record_observation`
+  size/timestamp, `personal_docs`
+  per-entry stat failure, `board._runner_logger`
+  bound/no-op, `opinion._shape_fits` posix and
+  unknown shapes, `resource_sentinel`
+  `_read_process_count` without /proc, and
+  `auditreport._entry_ts` unparsable — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  JobWatcherRecordLegsTest
+  (runner/tests/test_watchers.py),
+  RunnerLoggerLegsTest (test_board.py),
+  ShapeFitsLegsTest (test_oracle_opinion.py),
+  ProcessCountLegsTest (test_resource_sentinel.py),
+  EntryTsLegsTest (test_audit_report.py), and a
+  case in test_personal_docs.py. Done when a
+  coverage run shows them clean.
 - A (refill) — `log_sentinel._prev_inode` and
   `_compiled_groups`, `training_watch._read_gpu`,
   and the `backup_freshness` / `crash_watch`

@@ -38,6 +38,24 @@ def everything_present(name):
 
 # ------------------------------------------------------------- latitude
 
+class ShapeFitsLegsTest(unittest.TestCase):
+    """Queue A refill: opinion._shape_fits' posix
+    and fallthrough legs (coverage run 40189711740:
+    lines 378, 383). A posix-shaped script fits
+    only the posix-shell default; a shape the
+    classifier does not know fits anything (the
+    repair gate is for known mismatches).
+    """
+
+    def test_the_posix_and_unknown_shapes(self):
+        self.assertTrue(op._shape_fits("posix", "posix-shell"))
+        self.assertFalse(op._shape_fits("posix", "powershell"))
+        self.assertTrue(op._shape_fits("something-new",
+                                       "powershell"))
+        self.assertTrue(op._shape_fits("something-new",
+                                       "posix-shell"))
+
+
 class ModeMatrixTests(unittest.TestCase):
     """Ceiling x request: the job's request is clamped to the
     configured ceiling; no request means the ceiling itself."""

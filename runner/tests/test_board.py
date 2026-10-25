@@ -21,6 +21,33 @@ SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
 SENDER = "runner@example.com"
 
 
+class RunnerLoggerLegsTest(unittest.TestCase):
+    """Queue A refill: board._runner_logger's bound
+    and fallback legs (coverage run 40189711740:
+    lines 64, 70). A logger bound by the runner is
+    used as-is; with no runner module carrying a
+    log/vlog pair, the board logs through its no-op
+    pair rather than failing.
+    """
+
+    def test_a_bound_logger_and_the_noop_fallback(self):
+        import sys as _sys
+        import types as _types
+        from unittest import mock as _mock
+        from runner.wire import board as _board
+        pair = (lambda *a: None, lambda *a: None)
+        with _mock.patch.object(_board, "_LOGGER", pair):
+            self.assertIs(_board._runner_logger(), pair)
+        empty = _types.SimpleNamespace()
+        with _mock.patch.object(_board, "_LOGGER", None), \
+                _mock.patch.dict(_sys.modules,
+                                 {"runner.runner": empty,
+                                  "__main__": empty}):
+            log, vlog = _board._runner_logger()
+        self.assertIs(log, _board._noop)
+        self.assertIs(vlog, _board._noop)
+
+
 class BoardUnitTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()

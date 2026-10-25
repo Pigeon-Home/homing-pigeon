@@ -44,6 +44,28 @@ Buffers:           50000 kB
 """
 
 
+class ProcessCountLegsTest(unittest.TestCase):
+    """Queue A refill: _read_process_count's
+    no-/proc leg (coverage run 40189711740: lines
+    144-145). A box whose /proc cannot be listed
+    reports None, and the storm signal simply
+    never fires there.
+    """
+
+    def test_an_unlistable_proc_is_none(self):
+        real_listdir = os.listdir
+
+        def refusing(path, *a, **k):
+            if path == "/proc":
+                raise OSError("no proc")
+            return real_listdir(path, *a, **k)
+
+        with mock.patch.object(os, "listdir", refusing):
+            self.assertIsNone(RS._read_process_count())
+        if os.path.isdir("/proc"):
+            self.assertIsInstance(RS._read_process_count(), int)
+
+
 class MemAvailTest(unittest.TestCase):
     def _pct(self, text):
         opener = mock.mock_open(read_data=text)

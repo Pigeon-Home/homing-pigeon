@@ -277,6 +277,46 @@ class WarningEdgesTest(unittest.TestCase):
             with mock.patch("runner.oracle.personal_docs.os.scandir", deny_home):
                 self.assertFalse(personal_documents_present(home))
 
+    def test_an_entry_that_cannot_be_stat_is_skipped(self):
+        # Queue A refill: personal_documents_present's
+        # per-entry OSError leg (coverage run
+        # 40189711740: lines 254-255). One entry whose
+        # type cannot be determined is passed over;
+        # the scan still answers for the entries it
+        # could read.
+        import contextlib as _contextlib
+
+        class Ent:
+            def __init__(self, name, raises=False):
+                self.name = name
+                self.path = "/home/x/" + name
+                self._raises = raises
+
+            def is_symlink(self):
+                if self._raises:
+                    raise OSError("gone")
+                return False
+
+            def is_dir(self, follow_symlinks=False):
+                return False
+
+        def fake_scandir(entries):
+            @_contextlib.contextmanager
+            def cm(_path):
+                yield iter(entries)
+            return cm
+
+        with tempfile.TemporaryDirectory() as home:
+            with mock.patch(
+                    "runner.oracle.personal_docs.os.scandir",
+                    fake_scandir([Ent("gone", raises=True),
+                                  Ent("diagnosis.pdf")])):
+                self.assertTrue(personal_documents_present(home))
+            with mock.patch(
+                    "runner.oracle.personal_docs.os.scandir",
+                    fake_scandir([Ent("gone", raises=True)])):
+                self.assertFalse(personal_documents_present(home))
+
     def test_a_crash_in_the_check_prints_nothing(self):
         buf = io.StringIO()
         with mock.patch(
