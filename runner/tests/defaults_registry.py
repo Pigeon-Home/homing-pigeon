@@ -1900,7 +1900,69 @@ ROWS = [{'key': 'severity',
   'notes': 'Queue D refill (2026-10-25): the model '
            'candidate channel\'s own opt-in, the mirror '
            'of oracle_learning through the same _boolish '
-           'reader.'}]
+           'reader.'},
+ {'key': 'answer_only',
+  'scope': 'core',
+  'kind': 'boolean',
+  'default': False,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 64,
+  'doc_token': 'off',
+  'doc_status': 'verified',
+  'reader': 'runner/wire/protocol_v2.py:answer_only',
+  'reader_sites': ['runner/wire/protocol_v2.py:answer_only'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestAnswerOnlyInvalidReadsAsOff',
+  'notes': 'Queue D refill (2026-10-25): the '
+           'answerer-that-does-not-execute role. Strict '
+           'reader like protocol_v2: only the exact '
+           'boolean True takes the role.'},
+ {'key': 'mail_tls_required',
+  'scope': 'core',
+  'kind': 'boolean',
+  'default': True,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 86,
+  'doc_token': 'false',
+  'doc_status': 'verified',
+  'reader': 'runner/wire/mailbox.py:mail_tls_required',
+  'reader_sites': ['runner/wire/mailbox.py:mail_tls_required'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestMailTlsRequiredInvalidReadsAsRequired',
+  'notes': 'Queue D refill (2026-10-25): the email '
+           'binding\'s verified-TLS requirement. The '
+           'reader applies the literal-boolean '
+           'discipline: only the exact boolean False '
+           'opens the escape hatch, so an invalid '
+           'value can never relax verification.'},
+ {'key': 'job_encryption',
+  'scope': 'core',
+  'kind': 'boolean',
+  'default': None,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 83,
+  'doc_token': 'mirror',
+  'doc_status': 'verified',
+  'reader': 'runner/wire/verify.py:_job_encryption_setting',
+  'reader_sites': ['runner/wire/verify.py:_job_encryption_setting'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestJobEncryptionInvalidReadsAsEncryptAll',
+  'notes': 'Queue D refill (2026-10-25): result-body '
+           'encryption. Three shapes: absent (the '
+           'default None) mirrors the arriving job, '
+           'an explicit true encrypts every result, '
+           'and only the literal boolean false '
+           'encrypts none -- a present-but-invalid '
+           'value reads as encrypt-all.'}]
 
 
 # The generic confval helpers: their defaults are caller-supplied,
@@ -1950,9 +2012,11 @@ class RegistryShapeTests(unittest.TestCase):
         # +4 core rows in the 2026-10-25 queue D refill
         # (oracle_mode and the oracle_opinion_* enum family),
         # then +4 more the same day (protocol_v2 and the
-        # oracle_opinion_model / oracle_learning booleans).
-        self.assertEqual(108, len(ROWS))
-        self.assertEqual(57, sum(1 for r in ROWS if r["scope"] == "core"))
+        # oracle_opinion_model / oracle_learning booleans),
+        # then +3 more (answer_only, mail_tls_required,
+        # job_encryption).
+        self.assertEqual(111, len(ROWS))
+        self.assertEqual(60, sum(1 for r in ROWS if r["scope"] == "core"))
         self.assertEqual(51, sum(1 for r in ROWS if r["scope"] == "extension"))
 
 

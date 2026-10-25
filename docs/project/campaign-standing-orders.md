@@ -2700,6 +2700,15 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue D refill taken: three more documented
+  keys gain rows -- answer_only (off; strict
+  reader, only the exact True takes the role),
+  mail_tls_required (required; only the literal
+  False opens the hatch, so an invalid value can
+  never relax verification), job_encryption
+  (absent mirrors the job; a present-but-invalid
+  value reads as encrypt-all). Registry count
+  108 -> 111 (57 -> 60 core).
 - Queue D refill taken: four documented booleans
   that had no registry rows gain them --
   protocol_v2 (off; the reader is strict, only

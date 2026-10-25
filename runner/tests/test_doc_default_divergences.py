@@ -47022,6 +47022,69 @@ class TestOracleLearningModelInvalidReadsAsOff(unittest.TestCase):
                     {"oracle_learning_model": on}))
 
 
+class TestAnswerOnlyInvalidReadsAsOff(unittest.TestCase):
+    """Queue D refill: `answer_only` gains a registry
+    row. The doc states the default is off; the
+    reader is strict like its sibling `protocol_v2`
+    -- only the exact boolean True makes this
+    process an answerer that does not execute."""
+
+    def test_invalid_answer_only_reads_as_off(self):
+        from runner.wire import protocol_v2 as pv2
+        self.assertFalse(pv2.answer_only({}))
+        self.assertFalse(pv2.answer_only(None))
+        self.assertTrue(pv2.answer_only({"answer_only": True}))
+        for bad in ("true", "yes", 1, 3, None, [True]):
+            with self.subTest(bad=bad):
+                self.assertFalse(
+                    pv2.answer_only({"answer_only": bad}))
+
+
+class TestMailTlsRequiredInvalidReadsAsRequired(unittest.TestCase):
+    """Queue D refill: `mail_tls_required` gains a
+    registry row. The doc states the requirement is
+    on by default; the reader applies the
+    literal-boolean discipline -- only the exact
+    boolean False opens the escape hatch, so no
+    invalid value can relax verification."""
+
+    def test_invalid_mail_tls_required_reads_as_required(self):
+        from runner.wire import mailbox as mb
+        self.assertTrue(mb.mail_tls_required({}))
+        self.assertTrue(mb.mail_tls_required(None))
+        self.assertTrue(mb.mail_tls_required(
+            {"mail_tls_required": True}))
+        self.assertFalse(mb.mail_tls_required(
+            {"mail_tls_required": False}))
+        for bad in ("false", "no", 0, 1, 3, None, [False]):
+            with self.subTest(bad=bad):
+                self.assertTrue(mb.mail_tls_required(
+                    {"mail_tls_required": bad}))
+
+
+class TestJobEncryptionInvalidReadsAsEncryptAll(unittest.TestCase):
+    """Queue D refill: `job_encryption` gains a
+    registry row. The doc states the three shapes:
+    absent mirrors the arriving job, an explicit
+    true encrypts every result, and only the
+    literal boolean false encrypts none -- so a
+    present-but-invalid value reads as encrypt-all,
+    the fail-safe direction for confidentiality."""
+
+    def test_job_encryption_setting_shapes(self):
+        from runner.wire import verify as V
+        self.assertIsNone(V._job_encryption_setting({}))
+        self.assertIsNone(V._job_encryption_setting(None))
+        self.assertIs(V._job_encryption_setting(
+            {"job_encryption": True}), True)
+        self.assertIs(V._job_encryption_setting(
+            {"job_encryption": False}), False)
+        for bad in ("false", "no", 0, 1, 3, [], "mirror"):
+            with self.subTest(bad=bad):
+                self.assertIs(V._job_encryption_setting(
+                    {"job_encryption": bad}), True)
+
+
 class TestOracleModeInvalidReadsAsLlm(unittest.TestCase):
     """Queue D refill: `oracle_mode` gains a
     registry row. The doc states `llm` is the
