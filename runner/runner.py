@@ -80,7 +80,6 @@ def _load_attr(package, local, attr, default):
             return default
     return default
 
-
 def _load_mod(package, local, broad=False):
     """Import a sibling module. broad=True also swallows a broken import."""
     import importlib
@@ -97,22 +96,17 @@ def _load_mod(package, local, broad=False):
     except Exception if broad else ImportError:
         return None
 
-
 __version__ = _load_attr("runner._version", "_version", "__version__", "unknown")
-
 
 class _JobCryptoErrorFallback(ValueError):
     """Fallback when jobcrypto.py is unavailable; never raised."""
-
 
 JobCryptoError = _load_attr(
     "runner.wire.jobcrypto", "wire.jobcrypto", "JobCryptoError",
     _JobCryptoErrorFallback)
 
-
 class _OAuthRefreshErrorFallback(RuntimeError):
     """Fallback when oauth.py is unavailable; never raised."""
-
 
 OAuthRefreshError = _load_attr(
     "runner.wire.oauth", "wire.oauth", "OAuthRefreshError",
@@ -171,15 +165,12 @@ if _mailbox_lib is not None:
     send_mail = _mailbox_lib.send_mail
     _valid_reply_to = _mailbox_lib._valid_reply_to
 
-
 _SECURITY_EVENTS_LOCK = threading.Lock()
 _SECURITY_EVENTS_MAX = 5000
-
 
 def _valid_base(base_dir) -> bool:
     """True when base_dir is a non-empty string."""
     return isinstance(base_dir, str) and bool(base_dir)
-
 
 def _safe_open(path, flags, mode=0o600):
     """Open with O_NOFOLLOW and O_BINARY when the platform has them."""
@@ -188,7 +179,6 @@ def _safe_open(path, flags, mode=0o600):
     if hasattr(os, "O_BINARY"):
         flags |= os.O_BINARY
     return os.open(path, flags, mode)
-
 
 def _append_security_event(base_dir: str, event: dict) -> None:
     """Append one event to security-events.jsonl (capped). Best effort.
@@ -242,7 +232,6 @@ def _append_security_event(base_dir: str, event: dict) -> None:
                 except OSError:
                     pass
 
-
 def _note_resource_event(base_dir, event):
     """Record a resource event. A bad shape is ignored, not fatal.
 
@@ -271,17 +260,14 @@ def _note_resource_event(base_dir, event):
     if bits:
         log(f"resource pressure over threshold ({thr}): {', '.join(bits)}", "WARN")
 
-
 def _report_event_fallback(message: str, level: str = "ERROR") -> None:
     return None
-
 
 report_event = _load_attr("runner.ops.winlog", "ops.winlog", "report_event", _report_event_fallback)
 
 SUBJECT_JOB = "[HOMING-PIGEON] job "
 SUBJECT_RESULT = "[HOMING-PIGEON] result "
 PROTOCOL_VERSION = 1
-
 
 def _version_ok(v) -> bool:
     """True when a message's protocol version may be accepted.
@@ -295,7 +281,6 @@ def _version_ok(v) -> bool:
     """
     return isinstance(v, int) and not isinstance(v, bool) \
         and v == PROTOCOL_VERSION
-
 
 # Signing, verification, secrets, key policies, and audience live in
 # runner/wire/verify.py (PROTOCOL sections 4, 5, 14). Every name stays
@@ -329,7 +314,6 @@ _seen_key = _verify._seen_key
 verify_body_keyed = _verify.verify_body_keyed
 _job_encryption_setting = _verify._job_encryption_setting
 _outgoing_result_body = _verify._outgoing_result_body
-
 
 # Hardening M6: Linux confinement fallback chain. Returns
 # (argv, use_host_env, sandboxed). In enforce mode the job runs inside
@@ -383,7 +367,6 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
     # In the sandbox the env travels via --setenv; Popen inherits.
     return (argv, False, True)
 
-
 # Hardening M8: run jobs as a different POSIX user. Returns a preexec_fn
 # that drops privileges, or None. When a fn is returned the workdir has
 # been chown'd to the job user. Root-only; otherwise warns loudly,
@@ -427,7 +410,6 @@ class _JobUserFace:
 
     def setuid(self, uid):
         os.setuid(uid)
-
 
 def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
     if _security is None or os.name == "nt":
@@ -513,12 +495,6 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
         face.setuid(pw.pw_uid)
     return _demote
 
-
-
-
-
-
-
 # ---------------------------------------------------------------- oracle (v3 §§9-12)
 BUILTIN_REDACT_PATTERNS = {
     "aws_key": r"AKIA[0-9A-Z]{16}",
@@ -526,7 +502,6 @@ BUILTIN_REDACT_PATTERNS = {
     "bearer_token": r"(?i)bearer\s+[A-Za-z0-9\-._~+/]+=*",
 }
 VIEW_ORDER = {"attested": 0, "summary": 1, "redacted": 2, "full": 3}
-
 
 def _redact_patterns(cfg):
     pats = dict(BUILTIN_REDACT_PATTERNS)
@@ -543,7 +518,6 @@ def _redact_patterns(cfg):
         except Exception:
             log(f"bad redact pattern {name}: skipped", "WARN")
     return pats
-
 
 def apply_result_policy(cfg, job, exec_result, patterns, confined):
     """Return (result_dict, retain_bool). Job can never widen past owner ceiling."""
@@ -639,7 +613,6 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
         base["stderr"] = ""
     return base, retain
 
-
 def build_attestations(queries, ctx):
     atts = []
     if not isinstance(queries, list):
@@ -710,8 +683,6 @@ def build_attestations(queries, ctx):
             atts.append({"predicate": pred, "ok": False, "reason": "unknown"})
     return atts
 
-
-
 # ---------------------------------------------------------------- judgment / confinement / queries (v3 remaining)
 def judge_job(cfg, job):
     """Return (verdict, reasons). Only when judge in advisory/enforce."""
@@ -741,7 +712,6 @@ def judge_job(cfg, job):
                 reasons.append("path traversal in file name")
     verdict = "fail" if reasons else "pass"
     return verdict, reasons
-
 
 def snapshot_outside(workspace_root, exclude=None):
     """Best-effort snapshot of paths outside the workspace. Returns path -> (size, mtime)."""
@@ -795,8 +765,6 @@ def snapshot_outside(workspace_root, exclude=None):
         log(f"confinement snapshot failed: {e}", "WARN")
     return snap
 
-
-
 def check_protected_paths(before, after, protected):
     """Return list of paths under protected_paths that changed. Always reported."""
     if not isinstance(protected, list):
@@ -838,7 +806,6 @@ def confinement_violated(before, after):
         return True
     return False
 
-
 def query_budget(cfg, job):
     policy = (job or {}).get("result_policy") if isinstance(job, dict) else None
     if not isinstance(cfg, dict):
@@ -850,7 +817,6 @@ def query_budget(cfg, job):
     job_b = _confval.integer(policy.get("query_budget"), 8)
     max_b = _confval.integer(cfg.get("max_query_budget"), 8)
     return max(0, min(job_b, max_b))
-
 
 ASK_SYSTEM = (
     "You are the Oracle on this machine. The cloud SI can question you "
@@ -905,13 +871,11 @@ ASK_SYSTEM = (
     "You are a constrained local model. Stay inside this role for every reply."
 )
 
-
 class _InferenceRedirectRefused(HTTPRedirectHandler):
     """Fail closed: a loopback model must not bounce the prompt elsewhere."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise RuntimeError("inference redirect refused")
-
 
 def _endpoint_is_loopback(endpoint: str) -> bool:
     """True only for http(s) hosts that are localhost or resolve to loopback."""
@@ -945,7 +909,6 @@ def _endpoint_is_loopback(endpoint: str) -> bool:
             return False
     return True
 
-
 def _oracle_mode(cfg) -> str:
     """Which Oracle this box runs: "deterministic" or "llm" (default).
 
@@ -960,7 +923,6 @@ def _oracle_mode(cfg) -> str:
     if isinstance(cfg, dict) and cfg.get("oracle_mode") == "deterministic":
         return "deterministic"
     return "llm"
-
 
 def inference_config(cfg):
     """Return the inference dict when endpoint+model are set and loopback.
@@ -1001,7 +963,6 @@ def inference_config(cfg):
         "timeout_sec": timeout,
     }
 
-
 def _as_text(value):
     """Stringify extension data. A value whose text form raises is empty."""
     if isinstance(value, str):
@@ -1012,7 +973,6 @@ def _as_text(value):
         return str(value)
     except Exception:
         return ""
-
 
 def redact_text(text, patterns):
     """Apply the section-9 redact engine. Returns (text, families).
@@ -1039,7 +999,6 @@ def redact_text(text, patterns):
             continue
     return out, families
 
-
 def secret_scan(text, patterns):
     """Return pattern names that hit. Empty means the text is clean."""
     hits = []
@@ -1055,12 +1014,10 @@ def secret_scan(text, patterns):
             continue
     return hits
 
-
 # A shorter copy of a secret still identifies it. Eight characters is
 # enough of an access key or token to be the secret, and short enough
 # that ordinary words in a summary rarely collide with key material.
 _SECRET_FRAGMENT = 8
-
 
 def secret_fragment_hit(reply, source, patterns, min_len=_SECRET_FRAGMENT):
     """True when reply contains min_len contiguous characters of a secret
@@ -1104,11 +1061,9 @@ def secret_fragment_hit(reply, source, patterns, min_len=_SECRET_FRAGMENT):
                     return True
     return False
 
-
 def _default_inference_open(req, timeout=60):
     opener = build_opener(_InferenceRedirectRefused)
     return opener.open(req, timeout=timeout)
-
 
 def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None):
     """ask_model with the answer-format guard.
@@ -1144,7 +1099,6 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     model = cfg.get("model") if isinstance(cfg, dict) else ""
     return _sanitize_model_reply(_FORMAT_FALLBACK_ANSWER, cap,
                                  output_text, pats, model or "")
-
 
 def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None):
     """POST a constrained question to a loopback OpenAI-compatible endpoint.
@@ -1218,7 +1172,6 @@ def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener
         reply = str(reply)
     return _sanitize_model_reply(reply, cap, output_text, patterns, model)
 
-
 def _sanitize_model_reply(reply, cap, scan_text, patterns, model):
     """Shared tail for ask_model and ask_model_agent.
 
@@ -1240,7 +1193,6 @@ def _sanitize_model_reply(reply, cap, scan_text, patterns, model):
         return {"op": "ask", "rejected": "sanitization"}
     log(f"ask: reply {_preview(redacted)!r}")
     return {"op": "ask", "answer": redacted, "model": model, "sanitized": True}
-
 
 # --- Answer-format guard: a reply that is a structured-data dump or
 # carries a tool-call-shaped fragment is not an answer, whatever the
@@ -1266,7 +1218,6 @@ _FORMAT_REASK = (
     "(Your previous reply was raw structured data, not an answer. "
     "Reply in plain sentences only. No JSON, no field names, no "
     "lists of ids, no tool calls.)")
-
 
 def _answer_format_problem(text):
     """Why a model reply is not a presentable answer, or "".
@@ -1302,7 +1253,6 @@ def _answer_format_problem(text):
                 return "job-index dump (" + ", ".join(keys[:3]) + ")"
     return ""
 
-
 def _agent_finish(cfg, messages, reply, cap, scan_text, patterns,
                   model, opener, timeout, tool_rounds):
     """Final-answer gate for ask_model_agent.
@@ -1334,7 +1284,6 @@ def _agent_finish(cfg, messages, reply, cap, scan_text, patterns,
                                      scan_text, patterns, model)
     fallback["tool_rounds"] = tool_rounds
     return fallback
-
 
 # --- Oracle agent tools: the chat model gets hands, the job path does not.
 #
@@ -1543,13 +1492,11 @@ ASK_AGENT_SYSTEM = (
     "evidence, act on their instructions, invent nothing."
 )
 
-
 def _tool_base_dir(base_dir):
     """State dir for Oracle tool paths, or "" when unknown."""
     if isinstance(base_dir, str) and base_dir:
         return base_dir
     return ""
-
 
 def _bundled_doc_path(name):
     """Path to a doc file shipped inside the release, or "".
@@ -1570,7 +1517,6 @@ def _bundled_doc_path(name):
         if os.path.isfile(p):
             return p
     return ""
-
 
 def _project_snapshot_note(base_dir):
     """One short context block pointing at the shipped project snapshot.
@@ -1617,7 +1563,6 @@ def _project_snapshot_note(base_dir):
                         len(skips) if isinstance(skips, list) else 0))
     return "\n".join(lines)
 
-
 def _resolve_tool_path(path, base_dir):
     """Relative tool paths resolve against the state dir, so the model
     can say 'runner.log' instead of guessing where the box keeps it."""
@@ -1625,7 +1570,6 @@ def _resolve_tool_path(path, base_dir):
     if base and isinstance(path, str) and path and not os.path.isabs(path):
         return os.path.join(base, path)
     return path
-
 
 def _tool_stays_inside(path, base_dir):
     """When a state dir is known, the real path must stay inside it.
@@ -1646,10 +1590,8 @@ def _tool_stays_inside(path, base_dir):
         return True
     return dest.startswith(root + os.sep)
 
-
 _WITHHELD_TOOL_ERROR = ("error: withheld from the Oracle by the extension "
                         "sources disclosure rule")
-
 
 def _withheld_for_tools(base_dir) -> list:
     """Paths the file tools refuse (runner/ops/extsources.py). Never raises."""
@@ -1660,7 +1602,6 @@ def _withheld_for_tools(base_dir) -> list:
     except Exception:
         return []
 
-
 def _tool_withheld(path, base_dir, withheld) -> bool:
     if withheld is None:
         withheld = _withheld_for_tools(base_dir)
@@ -1670,7 +1611,6 @@ def _tool_withheld(path, base_dir, withheld) -> bool:
         return bool(_extsources.is_withheld(path, withheld))
     except Exception:
         return True
-
 
 def _run_oracle_tool(name, args, base_dir=None, withheld=None) -> str:
     """Execute one Oracle agent tool call. Never raises.
@@ -1803,7 +1743,6 @@ def _run_oracle_tool(name, args, base_dir=None, withheld=None) -> str:
         return f"exit={proc.returncode}\n{blob if blob else '(no output)'}"
     return f"error: unknown tool {name!r}"
 
-
 def _wire_tool_arguments(fargs) -> str:
     """Ollama's OpenAI shim unmarshals function.arguments as a string.
 
@@ -1817,7 +1756,6 @@ def _wire_tool_arguments(fargs) -> str:
     except (TypeError, ValueError):
         return "{}"
 
-
 def _inference_failure_text(exc, timeout=None) -> str:
     text = str(exc).lower()
     if "timed out" in text or "timeout" in text:
@@ -1829,7 +1767,6 @@ def _inference_failure_text(exc, timeout=None) -> str:
     if "400" in text:
         return "The local model rejected the chat request."
     return "The local model did not answer."
-
 
 def _apply_keep_alive(cfg, payload):
     """Keep the local model loaded between calls.
@@ -1848,12 +1785,10 @@ def _apply_keep_alive(cfg, payload):
     if keep_alive:
         payload["keep_alive"] = keep_alive
 
-
 def _inference_timeout(cfg) -> int:
     """The per-question model timeout: timeout_sec, documented default 180."""
     raw = cfg.get("timeout_sec") if isinstance(cfg, dict) else None
     return _confval.integer(raw, 180, lo=1)
-
 
 def _inference_chat(cfg, messages, tools, opener, timeout):
     """One /chat/completions call. Returns the message dict or an error dict."""
@@ -1906,7 +1841,6 @@ def _inference_chat(cfg, messages, tools, opener, timeout):
         return {"role": "error", "content": _inference_failure_text(e, timeout)}
     return msg if isinstance(msg, dict) else {"content": str(msg)}
 
-
 def _agent_context_size(messages) -> int:
     total = 0
     for m in messages:
@@ -1916,7 +1850,6 @@ def _agent_context_size(messages) -> int:
         if isinstance(c, str):
             total += len(c)
     return total
-
 
 def _agent_trim(messages):
     """Drop the oldest tool exchange while the context is over budget.
@@ -1934,7 +1867,6 @@ def _agent_trim(messages):
     while _agent_context_size(trimmed + rest) > _ORACLE_AGENT_CONTEXT_CHARS and len(rest) > 2:
         rest = rest[2:]
     return trimmed + rest
-
 
 def _parse_tool_calls(msg):
     """Normalize OpenAI-style tool_calls from a chat message.
@@ -1969,7 +1901,6 @@ def _parse_tool_calls(msg):
         if out:
             return out
     return _parse_content_tool_call(msg.get("content"))
-
 
 def _parse_content_tool_call(content):
     """Detect a tool call the model wrote as JSON in its reply text.
@@ -2010,7 +1941,6 @@ def _parse_content_tool_call(content):
         return [(_CONTENT_CALL_ID_PREFIX + "call-0", name, args)]
     return []
 
-
 def _unparsed_tool_note(content):
     """Short note when a reply names a tool but is not a parseable call.
 
@@ -2022,7 +1952,6 @@ def _unparsed_tool_note(content):
     if not any(('"' + name + '"') in content for name in _ORACLE_TOOL_NAMES):
         return ""
     return " ".join(content.split())[:160]
-
 
 # The action dispatch (owner-approved 2026-10-18). The charter
 # gives the interactive Oracle permission to act, but permission
@@ -2055,7 +1984,6 @@ _ORACLE_POLITE_PREFIXES = (
     "will you ", "i want you to ", "i need you to ",
     "go ahead and ",
 )
-
 
 def _oracle_instruction_kind(text):
     """Classify an owner message as "action" or "question".
@@ -2093,7 +2021,6 @@ def _oracle_instruction_kind(text):
         if first in _ORACLE_ACTION_VERBS:
             return "action"
     return "question"
-
 
 def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
                     opener=None, instructions=None, base_dir=None,
@@ -2295,7 +2222,6 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     log("oracle agent: round budget exhausted", "WARN")
     return {"op": "ask", "rejected": "tool_budget"}
 
-
 def _output_blob(exec_result):
     out = exec_result.get("stdout") if isinstance(exec_result, dict) else ""
     err = exec_result.get("stderr") if isinstance(exec_result, dict) else ""
@@ -2304,7 +2230,6 @@ def _output_blob(exec_result):
     if not isinstance(err, str):
         err = _as_text(err)
     return out + err
-
 
 def _raw_lines_allowed(view):
     """grep/tail leak raw lines. Only full and redacted views may return them.
@@ -2316,7 +2241,6 @@ def _raw_lines_allowed(view):
     if not isinstance(view, str):
         return False
     return view in ("full", "redacted", "")
-
 
 def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full",
                    already_spent=0, base_dir=None):
@@ -2543,9 +2467,6 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
         spent += 1
     return answers, spent
 
-
-
-
 _QUERY_TIMES = {}  # key_id -> list of timestamps
 def _write_json(path, obj):
     """Atomic. A bad path or a bad object must not crash the caller.
@@ -2582,7 +2503,6 @@ def _write_json(path, obj):
         except OSError:
             pass
 
-
 def _query_limit(cfg):
     """Queries allowed per hour. 0 means unlimited.
 
@@ -2600,7 +2520,6 @@ def _query_limit(cfg):
     except (TypeError, ValueError, OverflowError):
         return -1
 
-
 def _live_times(times, now):
     if not isinstance(times, list):
         return []
@@ -2613,9 +2532,7 @@ def _live_times(times, now):
             continue
     return live
 
-
 _QUERY_LOCK = threading.Lock()
-
 
 def _read_query_store(path):
     """The on-disk query window, or {}. A symlink is not followed."""
@@ -2631,7 +2548,6 @@ def _read_query_store(path):
     except Exception:
         return {}
     return loaded if isinstance(loaded, dict) else {}
-
 
 def check_rate_limit(key_id, cfg, path=None):
     """Return True if under max_queries_per_hour. Zero means unlimited.
@@ -2668,7 +2584,6 @@ def check_rate_limit(key_id, cfg, path=None):
             _write_json(path, store)
         return True
 
-
 def budget_status(path, cfg):
     if not isinstance(path, (str, bytes, os.PathLike)) or not path:
         return []
@@ -2681,7 +2596,6 @@ def budget_status(path, cfg):
         live = _live_times(times, now)
         out.append({"key_id": key, "spent": len(live), "limit": limit})
     return out
-
 
 def _retention_days(cfg):
     """The output_retention_days window, read once for every reader.
@@ -2705,7 +2619,6 @@ def _retention_days(cfg):
     # is the documented 7.
     return _confval.integer(raw, 7, lo=-(10 ** 9), hi=10 ** 9)
 
-
 # ---------------------------------------------------------------- sent results
 # A job executes at most once per job_id on a runner. The result, as
 # it goes on the wire, is written under <base_dir>/sent/ BEFORE the
@@ -2719,11 +2632,9 @@ def _retention_days(cfg):
 # output_retention_days (prune_retained).
 SENT_DIRNAME = "sent"
 
-
 def _sent_path(base_dir, skey):
     name = hashlib.sha384(_as_str(skey).encode("utf-8")).hexdigest()[:48]
     return os.path.join(base_dir, SENT_DIRNAME, name + ".json")
-
 
 def save_sent_result(base_dir, skey, job, subject, body, to=None):
     """Record the outgoing result before it is sent. Best effort:
@@ -2752,7 +2663,6 @@ def save_sent_result(base_dir, skey, job, subject, body, to=None):
         log(f"sent-result record failed for {rec['job_id']}: {e}", "WARN")
         return False
 
-
 def load_sent_result(base_dir, skey, job):
     """The recorded result for this exact job, or None.
 
@@ -2778,7 +2688,6 @@ def load_sent_result(base_dir, skey, job):
         return None
     return rec
 
-
 def prune_sent(base_dir, days):
     """Delete recorded results older than output_retention_days."""
     if not _valid_base(base_dir):
@@ -2803,7 +2712,6 @@ def prune_sent(base_dir, days):
         except Exception:
             pass
     return removed
-
 
 def prune_retained(base_dir, days):
     """Delete retained outputs older than output_retention_days."""
@@ -2831,7 +2739,6 @@ def prune_retained(base_dir, days):
     return removed
 
 _RETAINED_LOCK = threading.RLock()
-
 
 def save_retained(base_dir, job_id, payload):
     """Persist output for later queries. Unsafe ids are dropped, not written.
@@ -2877,7 +2784,6 @@ def save_retained(base_dir, job_id, payload):
             except OSError:
                 pass
 
-
 def load_retained(base_dir, job_id):
     """Load retained/<job_id>.json. Unsafe or missing ids return None."""
     if not _valid_base(base_dir):
@@ -2907,7 +2813,6 @@ def load_retained(base_dir, job_id):
         return None
     return data
 
-
 def retained_expired(data, cfg):
     """True when saved_at is older than output_retention_days.
 
@@ -2927,7 +2832,6 @@ def retained_expired(data, cfg):
         return True
     return (time.time() - saved) > days * 86400
 
-
 # ---------------------------------------------------------------- board (v3 §13)
 # The board lives in runner/wire/board.py (the first module carved out of
 # this file). The names stay bound here for callers and tests.
@@ -2938,10 +2842,8 @@ if _board is None:
 Board = _board.Board
 _BOARD_LOCK = _board.BOARD_LOCK
 
-
 class JobRejected(Exception):
     """Validly signed job that can never succeed (poison)."""
-
 
 # ------------------------------------------------- mail handling
 # (the IMAP/SMTP client library lives in runner/wire/mailbox.py; the
@@ -2959,14 +2861,12 @@ def get_text_body(msg) -> str:
         return payload.decode("utf-8", errors="replace")
     return msg.get_payload() or ""
 
-
 # ---------------------------------------------------------------- execution
 def platform_interpreter():
     if os.name == "nt":
         return ["powershell", "-NoProfile", "-NonInteractive",
                 "-ExecutionPolicy", "Bypass", "-File"]
     return ["sh"]
-
 
 def pong_platform(cfg):
     """The platform card a ping's result carries (PROTOCOL 3.2), at
@@ -2990,7 +2890,6 @@ def pong_platform(cfg):
         card["config_defaulted"] = _defaulted.defaulted_keys(cfg)
     return card
 
-
 def script_filename(interpreter) -> str:
     """Name the staged script so the interpreter will accept -File.
 
@@ -3009,13 +2908,11 @@ def script_filename(interpreter) -> str:
         return "script.py"
     return "script"
 
-
 _WIN_DEVICES = (
     {"CON", "PRN", "AUX", "NUL"}
     | {f"COM{i}" for i in range(1, 10)}
     | {f"LPT{i}" for i in range(1, 10)}
 )
-
 
 def windows_reserved_name(name: str) -> bool:
     """True for CON, NUL, COM1, a trailing dot, and the same with an extension.
@@ -3029,7 +2926,6 @@ def windows_reserved_name(name: str) -> bool:
     if not leaf or leaf.endswith(".") or leaf.endswith(" ") or ":" in leaf:
         return True
     return leaf.split(".", 1)[0].upper() in _WIN_DEVICES
-
 
 def kill_tree(proc: subprocess.Popen, extra_pids=None):
     try:
@@ -3054,9 +2950,7 @@ def kill_tree(proc: subprocess.Popen, extra_pids=None):
             except Exception:
                 pass
 
-
 MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024  # 100 MiB
-
 
 class _NoForeignRedirect(HTTPRedirectHandler):
     """A redirect off https is poison: downloads are HTTPS only
@@ -3071,10 +2965,8 @@ class _NoForeignRedirect(HTTPRedirectHandler):
             raise JobRejected("download redirected off https: " + shown)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
-
 def _open_download(req, timeout):
     return build_opener(_NoForeignRedirect).open(req, timeout=timeout)
-
 
 def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
     # Downloads are HTTPS only (PROTOCOL Sections 6/7, draft
@@ -3130,7 +3022,6 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
                 )
             f.write(chunk)
 
-
 def sha384_of(path: str) -> str:
     """Hash a file. A missing or unreadable file is empty, not a crash."""
     if isinstance(path, os.PathLike):
@@ -3151,9 +3042,7 @@ def sha384_of(path: str) -> str:
         return ""
     return h.hexdigest()
 
-
 _SAFE_JOB_ID = re.compile(r"\A[A-Za-z0-9._-]{1,128}\Z")
-
 
 def _safe_job_id(job_id: str) -> str:
     """Reject job_ids that could escape the work directory."""
@@ -3168,7 +3057,6 @@ def _safe_job_id(job_id: str) -> str:
         # overwrites the runner's own config.
         raise JobRejected("job_id must not be '.' or '..'")
     return job_id
-
 
 def _staged_dest(work, name):
     """Absolute path of a staged file. It must stay inside work.
@@ -3187,7 +3075,6 @@ def _staged_dest(work, name):
     if not dest.startswith(prefix):
         raise JobRejected("unsafe file name: %s" % (name,))
     return dest
-
 
 # ---------------------------------------------------------------- remediation
 # The acts are core (docs/design/remediation-design.md): only the runner
@@ -3209,7 +3096,6 @@ def _remediation_audit(base_dir, cfg, st, job_id, decision, div,
             mode=st["mode"])
     except Exception:
         pass
-
 
 def _remediation_event(base_dir, st, job_id, div, act, authority,
                        av_verdict, quarantine_path, digest,
@@ -3233,7 +3119,6 @@ def _remediation_event(base_dir, st, job_id, div, act, authority,
         })
     except Exception:
         pass
-
 
 def _remediation_ask_fn(cfg, st):
     """The Oracle's judgment call, wired for oracle mode only.
@@ -3264,7 +3149,6 @@ def _remediation_ask_fn(cfg, st):
         return ans if isinstance(ans, str) and ans.strip() else None
 
     return ask
-
 
 def _start_job_monitor(cfg, st, job_id, proc, work, base_dir,
                        script_path, before_files):
@@ -3319,7 +3203,6 @@ def _start_job_monitor(cfg, st, job_id, proc, work, base_dir,
         envelope_note=envelope_note)
     monitor.start()
     return monitor
-
 
 def _finish_remediation(cfg, st, monitor, job, job_id, work,
                         base_dir, script_path, proc=None):
@@ -3417,7 +3300,6 @@ def _finish_remediation(cfg, st, monitor, job, job_id, work,
                        av_verdict, qdir or "", digest, envelope_note)
     return member
 
-
 def _remediation_confinement_followup(cfg, job, job_id, base_dir):
     """The escape tripwire at result time.
 
@@ -3478,7 +3360,6 @@ def _remediation_confinement_followup(cfg, job, job_id, base_dir):
         f"({_remediation.divergence_text(div)}; authority "
         f"tripwire)", "WARN")
     return member
-
 
 def execute_job(cfg, job: dict, base_dir: str) -> dict:
     if not isinstance(job, dict):
@@ -3730,18 +3611,15 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         result["remediation"] = rem_member
     return result
 
-
 # ---------------------------------------------------------------- job handling
 def _as_int(value, default):
     """An int from a stored value, or default. A boolean is not an int."""
     return _confval.integer(value, default, strings=True)
 
-
 def _as_float(value, default):
     """A finite float from a stored value, or default."""
     n = _confval.number(value, None, strings=True)
     return default if n is None else float(n)
-
 
 def _default_timeout_sec(cfg) -> int:
     """The job timeout a job gets when it names none.
@@ -3754,7 +3632,6 @@ def _default_timeout_sec(cfg) -> int:
     if not isinstance(cfg, dict):
         return 300
     return _confval.integer(cfg.get("default_timeout_sec"), 300, lo=1)
-
 
 def _preview(text, n=80) -> str:
     """One line, capped. For the runner log, not for email."""
@@ -3770,7 +3647,6 @@ def _preview(text, n=80) -> str:
     if len(line) > n:
         line = line[:n] + "..."
     return line
-
 
 def append_bounded_log(path, text, max_bytes=2_097_152, backups=1):
     """Append one record. Roll once the file would pass max_bytes.
@@ -3837,7 +3713,6 @@ def append_bounded_log(path, text, max_bytes=2_097_152, backups=1):
     except Exception:
         pass
 
-
 def log(msg: str, level: str = "INFO"):
     if level == "DEBUG" and not _VERBOSE:
         return
@@ -3883,7 +3758,6 @@ def log(msg: str, level: str = "INFO"):
             append_bounded_log(_LOG_FILE, line,
                                _LOG_MAX_BYTES, _LOG_BACKUPS)
 
-
 _LOG_FILE = None
 if _mailbox_lib is not None:
     _mailbox_lib.set_logger(log)
@@ -3917,11 +3791,9 @@ _VERBOSE_LEVEL = 1
 # the default, which is to refuse.
 _ALLOW_CLEARTEXT_JOBS = False
 
-
 def _set_allow_cleartext_jobs(on) -> None:
     global _ALLOW_CLEARTEXT_JOBS
     _ALLOW_CLEARTEXT_JOBS = bool(on)
-
 
 def _cleartext_jobs_allowed() -> bool:
     """True only when this process was started with
@@ -3929,7 +3801,6 @@ def _cleartext_jobs_allowed() -> bool:
     either way; the flag waives the encryption requirement,
     never authentication."""
     return _ALLOW_CLEARTEXT_JOBS
-
 
 def _admit_object(body_text, secrets, object_id):
     """Verify a transmitted body and, when it is an envelope,
@@ -3960,7 +3831,6 @@ def _admit_object(body_text, secrets, object_id):
             "encrypted envelope key_id does not match its body")
     return inner, key_id, secret, True
 
-
 def _seal_reply(reply, secret, object_id, key_id, encrypted):
     """Sign a reply. Encrypt it when the request was encrypted."""
     text = sign_payload(reply, secret)
@@ -3969,7 +3839,6 @@ def _seal_reply(reply, secret, object_id, key_id, encrypted):
             text, secret, job_id=object_id, key_id=key_id or "",
             sign=sign_payload)
     return text
-
 
 def _resolve_verbosity(cfg, flag) -> int:
     """The verbosity level for this process.
@@ -3986,12 +3855,10 @@ def _resolve_verbosity(cfg, flag) -> int:
         return 2 if _cfg_flag(cfg.get("verbose")) else 0
     return 1
 
-
 def _set_verbosity(level) -> None:
     global _VERBOSE, _VERBOSE_LEVEL
     _VERBOSE_LEVEL = level
     _VERBOSE = level >= 1
-
 
 def vlog(msg: str, level: int = 2) -> None:
     """One verbose decision line, prefixed "verbose:".
@@ -4002,7 +3869,6 @@ def vlog(msg: str, level: int = 2) -> None:
     """
     if _VERBOSE_LEVEL >= level:
         log(f"verbose: {msg}")
-
 
 # runner.log bounds, from config (log_max_bytes / log_backups).
 # Refreshed at startup by _refresh_log_settings; the defaults here
@@ -4024,7 +3890,6 @@ _ORACLE_LOG_MAX_BYTES = _ORACLE_LOG_DEFAULT_MAX_BYTES
 _ORACLE_LOG_BACKUPS = _ORACLE_LOG_DEFAULT_BACKUPS
 _ORACLE_LOG_ANNOUNCED = False
 
-
 def _cfg_size(value, default, hi):
     """A config size/count: invalid falls back, valid clamps to [1, hi].
 
@@ -4041,7 +3906,6 @@ def _cfg_size(value, default, hi):
         return default
     return min(n, hi)
 
-
 def _cfg_flag(value) -> bool:
     """An opt-in config boolean (oracle_log). Default off."""
     if value is True or value == 1:
@@ -4049,7 +3913,6 @@ def _cfg_flag(value) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in ("true", "yes", "on", "1")
     return False
-
 
 def _log_settings(cfg):
     """(max_bytes, backups) for runner.log, from config or defaults."""
@@ -4059,7 +3922,6 @@ def _log_settings(cfg):
         _cfg_size(cfg.get("log_max_bytes"), _LOG_DEFAULT_MAX_BYTES, 2**40),
         _cfg_size(cfg.get("log_backups"), _LOG_DEFAULT_BACKUPS, 10),
     )
-
 
 def _oracle_log_settings(cfg):
     """(max_bytes, backups) for oracle.log, from config or defaults."""
@@ -4071,7 +3933,6 @@ def _oracle_log_settings(cfg):
         _cfg_size(cfg.get("oracle_log_backups"),
                   _ORACLE_LOG_DEFAULT_BACKUPS, 10),
     )
-
 
 def _refresh_log_settings(cfg, base_dir):
     """Load the log bounds (and the oracle.log switch) from config.
@@ -4092,7 +3953,6 @@ def _refresh_log_settings(cfg, base_dir):
         _ORACLE_LOG_ENABLED = False
         _ORACLE_LOG_PATH = None
 
-
 def _announce_oracle_log():
     """One startup line in runner.log naming oracle.log. Once only."""
     global _ORACLE_LOG_ANNOUNCED
@@ -4101,7 +3961,6 @@ def _announce_oracle_log():
         _ORACLE_LOG_ANNOUNCED = True
         log(f"oracle log enabled: full inference records are written "
             f"to {_ORACLE_LOG_PATH}")
-
 
 def _oracle_log_record(record):
     """Append one full-fidelity inference record to oracle.log.
@@ -4121,7 +3980,6 @@ def _oracle_log_record(record):
         return
     append_bounded_log(_ORACLE_LOG_PATH, line,
                        _ORACLE_LOG_MAX_BYTES, _ORACLE_LOG_BACKUPS)
-
 
 def _oracle_log_exchange(endpoint, model, payload, started,
                          response=None, raw=None, error=None,
@@ -4145,7 +4003,6 @@ def _oracle_log_exchange(endpoint, model, payload, started,
     if error_body is not None:
         record["error_body"] = error_body
     _oracle_log_record(record)
-
 
 def _log_job_output(job_id, kind, stdout, stderr, cfg):
     """Write a job's complete stdout/stderr to runner.log.
@@ -4184,7 +4041,6 @@ def _log_job_output(job_id, kind, stdout, stderr, cfg):
 _MAIL_LOCK = threading.RLock()
 _IN_FLIGHT: set = set()
 
-
 def _describe_job(job: dict) -> str:
     """One-line summary of what a job would do (for --dry-run)."""
     if not isinstance(job, dict):
@@ -4215,9 +4071,6 @@ def _describe_job(job: dict) -> str:
         parts.append("timeout_sec=" + _as_str(job["timeout_sec"]))
     return ", ".join(parts)
 
-
-
-
 def _issued_at_ok(value, cfg):
     """Return (ok, reason) for a protocol issued_at string."""
     try:
@@ -4234,11 +4087,9 @@ def _issued_at_ok(value, cfg):
         return False, "issued_at outside allowed window"
     return True, ""
 
-
 def _mark(imap, seq, opts):
     if opts is None or not opts.dry_run:
         mark_seen(imap, seq)
-
 
 def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir, seen=None):
     """Handle [HOMING-PIGEON] query <query_id>. Returns True if handled."""
@@ -4468,7 +4319,6 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
     _mark(imap, seq, opts)
     return True
 
-
 def _load_reviewed_extensions(cfg, base_dir):
     """The loader's (registry, problems) for the owner's sense
     extensions, with the extension review applied: under `enforce`
@@ -4490,7 +4340,6 @@ def _load_reviewed_extensions(cfg, base_dir):
         problems = list(problems) + list(refusals)
     return registry, problems
 
-
 def _extension_registry(cfg, base_dir) -> dict:
     """Loaded user extensions, keyed by sensor name. Never raises.
 
@@ -4507,7 +4356,6 @@ def _extension_registry(cfg, base_dir) -> dict:
     except Exception:
         return {}
     return registry if isinstance(registry, dict) else {}
-
 
 def _report_extensions(cfg, base_dir) -> None:
     """Startup report: which user extensions loaded, which were refused."""
@@ -4532,7 +4380,6 @@ def _report_extensions(cfg, base_dir) -> None:
             f"{', '.join(caps) if caps else 'none'}) from {m.get('dir')}")
     for problem in problems if isinstance(problems, list) else []:
         log(f"extensions: {problem}", "WARN")
-
 
 def _extension_review_now(cfg, base_dir) -> dict:
     """Review every extension this agent would load -- the owner's
@@ -4567,7 +4414,6 @@ def _extension_review_now(cfg, base_dir) -> dict:
             out["transports"] = data.get("extensions", {})
     return out
 
-
 # ---------------------------------------------------------------------------
 # Extension sources (runner/ops/extsources.py). The first time this agent
 # runs an extension -- loads a sense, starts a transport -- a
@@ -4586,7 +4432,6 @@ _EXTSOURCES_LOCK = threading.Lock()
 # that is about to go away.
 EXTSOURCES_STARTUP_GRACE_SEC = 60
 
-
 def _model_oracle_configured(cfg) -> bool:
     """Whether a local model runs the Oracle.
 
@@ -4603,7 +4448,6 @@ def _model_oracle_configured(cfg) -> bool:
             or not endpoint.strip() or not model.strip():
         return False
     return _endpoint_is_loopback(endpoint.strip())
-
 
 def _extension_source_targets(cfg, base_dir) -> list:
     """Every extension this agent runs: each loaded sense extension
@@ -4631,7 +4475,6 @@ def _extension_source_targets(cfg, base_dir) -> list:
                             "description": m.get("description") or ""})
     return out
 
-
 def _extension_sources_policy(cfg, model_oracle=None):
     if _extsources is None:
         return None
@@ -4646,7 +4489,6 @@ def _extension_sources_policy(cfg, model_oracle=None):
                 "is fixed", "WARN")
     return policy
 
-
 def _extension_sources_pass(cfg, base_dir, force=False, fetcher=None):
     """One provisioning pass, in the calling thread. Never raises."""
     if _extsources is None:
@@ -4660,7 +4502,6 @@ def _extension_sources_pass(cfg, base_dir, force=False, fetcher=None):
         log(f"extension sources: pass failed: {e}", "WARN")
         return None
 
-
 def _extension_sources_start(now=None) -> None:
     """main() calls this once at startup: the first background pass
     is due EXTSOURCES_STARTUP_GRACE_SEC later."""
@@ -4668,7 +4509,6 @@ def _extension_sources_start(now=None) -> None:
     with _EXTSOURCES_LOCK:
         _EXTSOURCES_PASS["since"] = now
         _EXTSOURCES_PASS["next_due"] = now + EXTSOURCES_STARTUP_GRACE_SEC
-
 
 def _extension_sources_tick(cfg, base_dir, now=None, due_now=False) -> bool:
     """Start a background pass when one is due. Never raises.
@@ -4704,7 +4544,6 @@ def _extension_sources_tick(cfg, base_dir, now=None, due_now=False) -> bool:
         th.start()
         return True
 
-
 def _report_extension_sources(cfg, base_dir) -> None:
     """Startup line: whether extension sources will be fetched."""
     if _extsources is None:
@@ -4726,7 +4565,6 @@ def _report_extension_sources(cfg, base_dir) -> None:
     else:
         log("extension sources: off (extension_sources is false)")
 
-
 def _extension_sources_note(base_dir) -> str:
     """The Oracle's context line for extension sources, or ""."""
     if _extsources is None or not isinstance(base_dir, str) or not base_dir:
@@ -4735,7 +4573,6 @@ def _extension_sources_note(base_dir) -> str:
         return _extsources.oracle_note(base_dir)
     except Exception:
         return ""
-
 
 def run_fetch_sources(cfg, args, fetcher=None) -> int:
     """--fetch-sources: one provisioning pass in the foreground.
@@ -4778,7 +4615,6 @@ def run_fetch_sources(cfg, args, fetcher=None) -> int:
              os.path.join(_extsources.state_root(base),
                           _extsources.INDEX_FILE)))
     return 1 if short else 0
-
 
 def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None):
     """Validate and file one sensor_alert job. The one ingest core.
@@ -4879,7 +4715,6 @@ def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None):
             f"stored ({name}/{alert['severity']}: {alert['title']})",
             record)
 
-
 def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
                          secrets, opts, base_dir, seen):
     """File a signed sensor alert. Alerts are stored, never executed.
@@ -4909,7 +4744,6 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
         with _MAIL_LOCK:
             seen[_seen_key(cfg, job_id)] = True
             mark_seen(imap, seq)
-
 
 # ---------------------------------------------------------------------------
 # Local signals: same-box delivery for senses and extensions.
@@ -4944,7 +4778,6 @@ _LOCAL_ENVELOPE_MAX_BYTES = 262144
 _LOCAL_BRIEFS_CAP = 1000
 _LOCAL_BRIEFS_KEEP = 500
 
-
 def _local_signals_enabled(cfg) -> bool:
     """Top-level local_signals switch; default on."""
     if not isinstance(cfg, dict):
@@ -4955,7 +4788,6 @@ def _local_signals_enabled(cfg) -> bool:
     if isinstance(v, str) and v.strip().lower() in ("false", "no", "off", "0"):
         return False
     return True
-
 
 def _local_signal_port(cfg) -> int:
     """Loopback listener port; 0 means the listener is off.
@@ -4979,13 +4811,11 @@ def _local_signal_port(cfg) -> int:
         return 0
     return p
 
-
 def _local_wake_cooldown(cfg) -> float:
     """Seconds between wakes for one (sensor, signal). Default 900."""
     raw = cfg.get("local_wake_cooldown_sec", 900) \
         if isinstance(cfg, dict) else 900
     return float(_confval.number(raw, 900.0, lo=0))
-
 
 def _ingest_local_envelope(cfg, base_dir, text, source):
     """Verify and file one locally delivered sensor_alert envelope.
@@ -4999,7 +4829,6 @@ def _ingest_local_envelope(cfg, base_dir, text, source):
     except Exception as e:  # the front-ends must survive any envelope
         log(f"local signal ({source}): ingest failed: {e}", "WARN")
         return None
-
 
 def _ingest_local_envelope_inner(cfg, base_dir, text, source):
     def reject(why):
@@ -5064,13 +4893,11 @@ def _ingest_local_envelope_inner(cfg, base_dir, text, source):
         return record
     return None
 
-
 # --- the wake gate and the briefing ----------------------------------------
 
 _LOCAL_WAKE_LOCK = threading.Lock()
 _LOCAL_WAKE_LAST = {}
 _LOCAL_WAKE_INFLIGHT = False
-
 
 def _wake_gate_decide(cfg, record, now=None) -> bool:
     """True when this locally filed alert may wake the Oracle now.
@@ -5128,12 +4955,10 @@ def _wake_gate_decide(cfg, record, now=None) -> bool:
          f"waking the Oracle")
     return True
 
-
 def _wake_gate_release() -> None:
     global _LOCAL_WAKE_INFLIGHT
     with _LOCAL_WAKE_LOCK:
         _LOCAL_WAKE_INFLIGHT = False
-
 
 def _maybe_wake_oracle(cfg, base_dir, record, now=None) -> bool:
     """Wake the Oracle for one locally filed alert, if the gate allows."""
@@ -5141,7 +4966,6 @@ def _maybe_wake_oracle(cfg, base_dir, record, now=None) -> bool:
         return False
     _start_brief_thread(cfg, base_dir, record)
     return True
-
 
 def _start_brief_thread(cfg, base_dir, record):
     def _go():
@@ -5156,9 +4980,7 @@ def _start_brief_thread(cfg, base_dir, record):
     th.start()
     return th
 
-
 _BRIEF_LOCK = threading.Lock()
-
 
 def _append_brief(base_dir, brief) -> None:
     """Append one brief record to oracle-briefs.jsonl. Best effort."""
@@ -5194,7 +5016,6 @@ def _append_brief(base_dir, brief) -> None:
                     os.close(fd)
         except OSError:
             pass
-
 
 def _oracle_brief(cfg, base_dir, record, opener=None):
     """Assess one woken signal and file the brief. Never raises.
@@ -5296,17 +5117,14 @@ def _oracle_brief(cfg, base_dir, record, opener=None):
     log(f"oracle brief ({sensor}/{signal or '-'}): {brief['assessment']}")
     return brief
 
-
 # --- front-end 1: the inbox watcher ----------------------------------------
 
 _LOCAL_INBOX_LOCK = threading.Lock()
-
 
 def _local_inbox_dir(base_dir):
     if not _valid_base(base_dir):
         return ""
     return os.path.join(base_dir, LOCAL_INBOX_DIRNAME)
-
 
 def _scan_local_inbox(cfg, base_dir) -> int:
     """File every envelope currently in the local inbox.
@@ -5357,12 +5175,10 @@ def _scan_local_inbox(cfg, base_dir) -> int:
              f"from the inbox")
     return handled
 
-
 # The local front-end threads pace themselves on this event
 # rather than time.sleep: the runner's own poll cadence is a
 # tested behavior, and a background thread must not show up in it.
 _LOCAL_TICK = threading.Event()
-
 
 def _local_inbox_watcher(cfg, base_dir) -> None:
     """Daemon loop: one inbox scan about once a second.
@@ -5380,9 +5196,7 @@ def _local_inbox_watcher(cfg, base_dir) -> None:
             pass
         _LOCAL_TICK.wait(1.0)
 
-
 # --- front-end 2: the loopback listener -------------------------------------
-
 
 def _local_signal_server(cfg, base_dir):
     """A bound, listening loopback socket, or None. Never raises."""
@@ -5406,7 +5220,6 @@ def _local_signal_server(cfg, base_dir):
                 pass
         return None
     return srv
-
 
 def _handle_local_signal_conn(cfg, base_dir, conn) -> None:
     """Read one envelope from one connection and file it. Never raises."""
@@ -5444,7 +5257,6 @@ def _handle_local_signal_conn(cfg, base_dir, conn) -> None:
         return
     _ingest_local_envelope(cfg, base_dir, text, "socket")
 
-
 def _serve_local_signals(cfg, base_dir, srv) -> None:
     """Accept loop for the loopback listener. Failure-isolated."""
     while True:
@@ -5464,7 +5276,6 @@ def _serve_local_signals(cfg, base_dir, srv) -> None:
                 conn.close()
             except OSError:
                 pass
-
 
 def _start_local_signals(cfg, base_dir) -> None:
     """Start the local signal front-ends (daemon threads). Never raises.
@@ -5503,7 +5314,6 @@ def _start_local_signals(cfg, base_dir) -> None:
     except Exception as e:
         log(f"local signals: failed to start: {e}", "WARN")
 
-
 def _opinion_env_facts(cfg, job):
     """Environment facts for the tier-1 opinion checks.
 
@@ -5518,7 +5328,6 @@ def _opinion_env_facts(cfg, job):
             or not all(isinstance(x, str) for x in interpreter):
         interpreter = platform_interpreter()
     return _opinion.gather_facts(job, interpreter, platform_interpreter())
-
 
 def _opinion_model_note(cfg, job):
     """Tier-2 opinion note from the local model, or None.
@@ -5550,11 +5359,9 @@ def _opinion_model_note(cfg, job):
         return None
     return text.strip()[:240]
 
-
 def _learning_fingerprint():
     return _learning.host_fingerprint(
         socket.gethostname(), "nt" if os.name == "nt" else "posix")
-
 
 def _learning_active(cfg, plan):
     """The self-learning loop runs for a job when the module
@@ -5563,7 +5370,6 @@ def _learning_active(cfg, plan):
     return _learning is not None and plan is not None \
         and bool(plan.get("active")) and plan.get("mode") != "off" \
         and _learning.learning_enabled(cfg)
-
 
 def _learning_context(cfg, base_dir, facts):
     """Fresh lessons for this job: (relevant, note sentences).
@@ -5582,7 +5388,6 @@ def _learning_context(cfg, base_dir, facts):
     except Exception as e:
         log(f"oracle learning: context load failed: {e}", "WARN")
         return None, []
-
 
 def _learning_freeze(cfg, base_dir, job_id, job, plan, facts,
                      relevant):
@@ -5622,7 +5427,6 @@ def _learning_freeze(cfg, base_dir, job_id, job, plan, facts,
             "WARN")
         return None
 
-
 def _learning_reconcile(cfg, base_dir, frozen, job_id, outcome,
                         facts, diag_facts):
     """Score the frozen call against the verified outcome and
@@ -5648,7 +5452,6 @@ def _learning_reconcile(cfg, base_dir, frozen, job_id, outcome,
         log(f"oracle learning: reconcile failed for {job_id}: {e}",
             "WARN")
         return None
-
 
 def _learning_model_candidate(cfg, base_dir, job_id, job, outcome,
                               stdout_text, stderr_text):
@@ -5717,7 +5520,6 @@ def _learning_model_candidate(cfg, base_dir, job_id, job, outcome,
     if not _learning.append_candidate(base_dir, record):
         log(f"oracle learning: candidate write failed for "
             f"{job_id}", "WARN")
-
 
 def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
                    base_dir):
@@ -5829,7 +5631,6 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
         mark_seen(imap, seq)
     return True
 
-
 def _v2_leave_unseen(ident):
     """Log once that this process will not answer a question.
 
@@ -5846,9 +5647,7 @@ def _v2_leave_unseen(ident):
     log(f"version 2 question {ident}: this process is "
         f"not an answerer; left unseen")
 
-
 _V2_LEFT_UNSEEN = set()
-
 
 def _v2_hand_off(cfg, smtp, base_dir, subject, body, target):
     """Put one version 2 message on the pipe before the wait.
@@ -5888,7 +5687,6 @@ def _v2_hand_off(cfg, smtp, base_dir, subject, body, target):
             return paths
     send_mail(smtp, cfg, subject, body, to=target)
     return []
-
 
 def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
     """File version 2 messages that arrived while a question is open.
@@ -5959,7 +5757,6 @@ def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
             except Exception as e:
                 log(f"version 2 ingest ack failed: {e}", "WARN")
 
-
 def _v2_before_execute(cfg, job, op_plan, secret, key_id, encrypted,
                        base_dir, send, pump=None):
     """Send a determination and, on Pi Light, a question.
@@ -5995,9 +5792,6 @@ def _v2_before_execute(cfg, job, op_plan, secret, key_id, encrypted,
             pending=still_out if question_paths else None))
     return segments
 
-
-
-
 def _auth_reject_event(base_dir, reason, **extra):
     """Record one auth_rejection in security-events.jsonl."""
     event = {
@@ -6008,15 +5802,12 @@ def _auth_reject_event(base_dir, reason, **extra):
     event.update(extra)
     _append_security_event(base_dir, event)
 
-
-
 def _chmod_quiet(path, mode=0o600):
     """chmod, swallowing OSError."""
     try:
         os.chmod(path, mode)
     except OSError:
         pass
-
 
 def _verify_and_decrypt(msg, secrets, job_id):
     """Verify and decrypt a job mail.
@@ -6042,8 +5833,6 @@ def _verify_and_decrypt(msg, secrets, job_id):
     if not isinstance(job, dict):
         raise ValueError("job body must be a JSON object")
     return job, key_id, secret, was_encrypted
-
-
 
 def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
                     base_dir, seen):
@@ -6080,7 +5869,6 @@ def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
         _mark(imap, seq, opts)
         return None
     return job_id, skey
-
 
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None, key_policies=None):
@@ -6688,7 +6476,6 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             if skey not in seen:
                 _disk_release(base_dir, skey)
 
-
 # ---------------------------------------------------------------- main
 def _validate_size_caps(cfg):
     """Return an error string for a bad size cap, or None.
@@ -6715,7 +6502,6 @@ def _validate_size_caps(cfg):
             return problem
     return None
 
-
 def load_config(path: str) -> dict:
     """Load a config object. A symlink is not followed."""
     if isinstance(path, str) and path and os.path.islink(path):
@@ -6726,10 +6512,8 @@ def load_config(path: str) -> dict:
         raise RuntimeError("config error: config file must be a JSON object")
     return data
 
-
 _SEEN_FILE_GUARD = threading.RLock()
 _CLAIM_STALE_SEC = 86400
-
 
 def _pid_alive(pid):
     """True when pid is still a process. A dead claim can be taken."""
@@ -6759,12 +6543,10 @@ def _pid_alive(pid):
         return False
     return True
 
-
 def _claim_path(base_dir, skey):
     folder = os.path.join(base_dir, "inflight")
     name = hashlib.sha256(str(skey).encode("utf-8")).hexdigest()
     return folder, os.path.join(folder, name)
-
 
 def _with_seen_file(path, mutator):
     """Read-modify-write seen.json under a lock other processes see.
@@ -6823,7 +6605,6 @@ def _with_seen_file(path, mutator):
                 except OSError:
                     pass
 
-
 def _write_seen_unlocked(path, seen):
     keys = []
     for key in list(seen.keys())[-SEEN_CAP:]:
@@ -6854,7 +6635,6 @@ def _write_seen_unlocked(path, seen):
             os.unlink(tmp)
         except OSError:
             pass
-
 
 def _disk_owns(base_dir, skey, seen):
     """Claim skey on disk, or report that someone else holds it.
@@ -6921,7 +6701,6 @@ def _disk_owns(base_dir, skey, seen):
     _with_seen_file(seen_path, mutate)
     return decision["ok"]
 
-
 def _disk_release(base_dir, skey):
     """Drop this process's claim without recording the job as seen.
 
@@ -6950,7 +6729,6 @@ def _disk_release(base_dir, skey):
 
     _with_seen_file(seen_path, mutate)
 
-
 def _release_saved_claims(seen_path, seen):
     folder = os.path.join(os.path.dirname(seen_path), "inflight")
     try:
@@ -6971,7 +6749,6 @@ def _release_saved_claims(seen_path, seen):
             except OSError:
                 pass
 
-
 def load_seen(path: str) -> dict:
     """Replay cache. A symlink is not followed.
 
@@ -6989,7 +6766,6 @@ def load_seen(path: str) -> dict:
         return {}
     except Exception:
         return {}
-
 
 def save_seen(path: str, seen: dict):
     """Write the replay cache, merged with whatever is already there.
@@ -7014,7 +6790,6 @@ def save_seen(path: str, seen: dict):
     _with_seen_file(path, merge)
     _release_saved_claims(path, seen)
 
-
 HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
             "max_output_bytes", "max_job_age_sec")
 # The documented default each hot key reads as when a live write is
@@ -7028,7 +6803,6 @@ HOT_DEFAULTS = {"poll_interval_sec": 20, "workers": 1,
 LIVE_KEYS = ("owner_instructions", "inference", "oracle_mode", "verbose",
              "extension_sources")
 
-
 def _valid_hot(key: str, value):
     """Return the int to store, or None if the value must be rejected."""
     try:
@@ -7038,7 +6812,6 @@ def _valid_hot(key: str, value):
     if n < 1:
         return None
     return n
-
 
 def reload_hot_config(cfg: dict, path: str, state: dict,
                       pinned=None) -> list:
@@ -7111,7 +6884,6 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
     state["mtime"] = mtime
     return changed
 
-
 def _worker_count(cfg, opts) -> int:
     """Concurrent job executions. CLI overrides config; default 1."""
     if not isinstance(cfg, dict):
@@ -7129,7 +6901,6 @@ def _worker_count(cfg, opts) -> int:
         return 1
     # A million workers is a config typo, not a thread pool.
     return max(1, min(n, 32))
-
 
 # --- one-process CLI overrides ----------------------------------------------
 #
@@ -7181,7 +6952,6 @@ _CLI_OVERRIDE_COUNTS = frozenset(
                     "remediation_mode", "require_review",
                     "local_signals", "oracle_log", "transports"))
 
-
 def _transports_arg(text):
     """argparse type for --transports: 'file,nats' -> ['file',
     'nats']. Names are transport EXTENSION names: shape is
@@ -7202,7 +6972,6 @@ def _transports_arg(text):
             "name at least one transport")
     return names
 
-
 def _enabled_transports(cfg):
     """Validated transport names for this config (runner-side
     wrapper so a missing transports module degrades to a clear
@@ -7214,7 +6983,6 @@ def _enabled_transports(cfg):
         return ["email"]
     raise ValueError("transports module unavailable; only the "
                      "email transport can run")
-
 
 def apply_cli_overrides(cfg, args) -> list:
     """Apply the one-process CLI overrides to cfg, in place.
@@ -7244,12 +7012,10 @@ def apply_cli_overrides(cfg, args) -> list:
         applied.append(key)
     return applied
 
-
 # Env vars the runner itself uses for credentials. Never leak these into
 # job subprocesses: a job can print its environment, and job output goes
 # back to the SI.
 _SENSITIVE_ENV_PREFIXES = ("PIGEON_",)
-
 
 def _scrub_env(env: dict) -> dict:
     """Remove the runner's own credential vars from a job's environment.
@@ -7271,7 +7037,6 @@ def _scrub_env(env: dict) -> dict:
         out[key] = v
     return out
 
-
 class _NullIMAP:
     """Stand-in for the mail path's mark_seen calls: a transported
     message has no mailbox flags to set. ``marked`` records that
@@ -7286,7 +7051,6 @@ class _NullIMAP:
         self.marked = True
         return ("OK", [])
 
-
 class _Outbound(list):
     """Replies from one transported envelope.
 
@@ -7300,7 +7064,6 @@ class _Outbound(list):
         super().__init__(items)
         self.consume = consume
         self.rollback = rollback
-
 
 class _CaptureSMTP:
     """Stand-in collecting what send_mail would have sent, so a
@@ -7325,7 +7088,6 @@ class _CaptureSMTP:
                 body = payload.decode("utf-8", errors="replace")
         self.sent.append((str(msg["Subject"] or ""), body))
         self.targets.append(str(msg["To"] or ""))
-
 
 def process_transport_message(cfg, base_dir, seen, secrets,
                               key_policies, subject, body_text,
@@ -7379,7 +7141,6 @@ def process_transport_message(cfg, base_dir, seen, secrets,
     dry = opts is not None and getattr(opts, "dry_run", False)
     return _Outbound(out, bool(imap.marked) and not dry, rollback)
 
-
 def _service_transports(cfg, base_dir, seen, seen_path, names,
                         secrets, key_policies, opts):
     """One cycle for each enabled transport extension's channel,
@@ -7409,7 +7170,6 @@ def _service_transports(cfg, base_dir, seen, seen_path, names,
         for k in list(seen.keys())[:-SEEN_CAP]:
             del seen[k]
     save_seen(seen_path, seen)
-
 
 def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
               imap=None, smtp=None, opts=None):
@@ -7533,8 +7293,6 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                             transport_names, secrets, key_policies,
                             opts)
 
-
-
 def update_llama_from_config(cfg, previous=None):
     """When config changes, keep the local model in sync.
 
@@ -7564,7 +7322,6 @@ def update_llama_from_config(cfg, previous=None):
             except Exception as e:
                 log(f"inference: model pull failed: {e}", "WARN")
 
-
 def daemon_popen_kwargs(windows: bool) -> dict:
     """Popen kwargs for a helper that must outlive this process.
 
@@ -7579,7 +7336,6 @@ def daemon_popen_kwargs(windows: bool) -> dict:
     else:
         kw["start_new_session"] = True
     return kw
-
 
 def _spawn_daemon(argv, log_path=None):
     kw = daemon_popen_kwargs(os.name == "nt")
@@ -7598,7 +7354,6 @@ def _spawn_daemon(argv, log_path=None):
         # can close as soon as the process exists.
         if fh is not None:
             fh.close()
-
 
 def ensure_inference_ready(cfg):
     """If inference is configured, make sure the loopback daemon is up.
@@ -7635,7 +7390,6 @@ def ensure_inference_ready(cfg):
     except Exception as e:
         log(f"could not start ollama: {e}", "WARN")
 
-
 def _base_dir_for(cfg, cfg_path=None) -> str:
     """State directory for this config.
 
@@ -7651,7 +7405,6 @@ def _base_dir_for(cfg, cfg_path=None) -> str:
     if cfg_path:
         return os.path.dirname(os.path.abspath(cfg_path))
     return os.path.join(os.path.expanduser("~"), ".homing-pigeon")
-
 
 def run_inspect(cfg, args) -> int:
     """Read local Oracle state. No mailbox, no network, no secrets printed."""
@@ -7698,7 +7451,6 @@ def run_inspect(cfg, args) -> int:
     print(json.dumps({"families": families, "redacted": redacted}, indent=2))
     return 0
 
-
 # Keys a fuzz variant may carry into execute_job. Everything
 # else in the variant file -- signature material, files,
 # script_url, delivery fields -- is dropped here, so a variant
@@ -7707,7 +7459,6 @@ def run_inspect(cfg, args) -> int:
 _VARIANT_KEYS = ("job_id", "kind", "script", "interpreter",
                  "args", "env", "timeout_sec")
 _VARIANT_TIMEOUT_CAP_SEC = 120
-
 
 def run_variant(cfg, args) -> int:
     """Run ONE locally supplied fuzz variant and print its outcome.
@@ -7806,7 +7557,6 @@ def run_variant(cfg, args) -> int:
     print(json.dumps(report, sort_keys=True))
     return 0
 
-
 def _invocation_line(argv=None) -> str:
     """This process's command line, shell-quoted for copy-paste.
 
@@ -7821,7 +7571,6 @@ def _invocation_line(argv=None) -> str:
     if os.name == "nt":
         return subprocess.list2cmdline(argv)
     return shlex.join(argv)
-
 
 def log_startup(cfg, args, base_dir):
     """One block: what is configured, what is running, what it expects.
@@ -7909,7 +7658,6 @@ def log_startup(cfg, args, base_dir):
                 "cycles, ingest, the wake gate, judge verdicts, "
                 "and board offers.")
 
-
 def _is_loopback_ip(host: str) -> bool:
     host = (host or "").split("%", 1)[0].strip("[]")
     if host.lower().startswith("::ffff:"):
@@ -7919,12 +7667,10 @@ def _is_loopback_ip(host: str) -> bool:
     except ValueError:
         return False
 
-
 _REPLY_PREVIEW = re.compile(r"ask: reply '.*'$")
 _JOB_FINISHED = re.compile(r"job (\S+) process finished exit=")
 _STDOUT_PREVIEW = re.compile(r"stdout='.*'$")
 _FULL_OUTPUT_HEAD = re.compile(r"job (\S+) \(kind=.*\) full output:$")
-
 
 def _flagged_job_ids(base_dir):
     """Job ids whose retained records carry script-path findings.
@@ -7952,7 +7698,6 @@ def _flagged_job_ids(base_dir):
                 script, base_dir, job_id):
             ids.add(job_id)
     return ids
-
 
 def _scrub_log_tail_lines(lines, base_dir):
     """Remove quoted material from the tail before it becomes context.
@@ -7997,7 +7742,6 @@ def _scrub_log_tail_lines(lines, base_dir):
                     "stdout=(preview withheld from context)", line)
         out.append(line)
     return out
-
 
 def _runner_log_tail(base_dir, max_chars=2000) -> str:
     """Last lines of the runner log, for the Oracle's context.
@@ -8046,7 +7790,6 @@ def _runner_log_tail(base_dir, max_chars=2000) -> str:
         tail = tail[-max_chars:]
     return tail
 
-
 _EVENTLOG_LEVELS = {0: "LogAlways", 1: "Critical", 2: "Error",
                     3: "Warning", 4: "Info", 5: "Verbose"}
 
@@ -8064,7 +7807,6 @@ _EVENTLOG_ATTACK = {
     4720: "T1136",       # create account
     1102: "T1070.002",   # clear the audit log
 }
-
 
 def _wevtutil_query(logname, xpath, count, timeout=15):
     """Run wevtutil and return stdout text.
@@ -8090,7 +7832,6 @@ def _wevtutil_query(logname, xpath, count, timeout=15):
         return None
     out = proc.stdout
     return out if isinstance(out, str) else None
-
 
 def _eventlog_tail(max_events=30, max_chars=2000, base_dir=""):
     """Recent Windows Event Log entries, for the Oracle's context.
@@ -8173,7 +7914,6 @@ def _eventlog_tail(max_events=30, max_chars=2000, base_dir=""):
     _file_fresh_lines(base_dir, "eventlog", blob)
     return blob
 
-
 # Registry locations the Oracle watches, read-only. Autorun and
 # persistence first: that is what "watch the registry" means on a
 # Windows box. Winlogon is bounded to its interesting values below.
@@ -8190,7 +7930,6 @@ _REG_WATCH_WINLOGON_KEEP = {
 _REG_WATCH_MAX_VALUES = 12
 _REG_WATCH_MAX_CHANGES = 15
 
-
 def _reg_attack(key):
     """ATT&CK id for a watched registry location, or ""."""
     low = key.lower().replace("/", "\\")
@@ -8199,7 +7938,6 @@ def _reg_attack(key):
     if low.endswith("\\run") or low.endswith("\\runonce"):
         return "T1547.001"
     return ""
-
 
 def _reg_query(key):
     """(values, subkeys) for a registry key, or None on failure.
@@ -8240,7 +7978,6 @@ def _reg_query(key):
         subkeys = subkeys[1:]
     return values, subkeys
 
-
 def _registry_snapshot():
     """Current watch state, or None if the registry cannot be read.
 
@@ -8271,7 +8008,6 @@ def _registry_snapshot():
             "\n".join(names).encode("utf-8", "replace")).hexdigest()[:12],
     }
     return snap
-
 
 def _registry_watch(base_dir, max_chars=2000):
     """Windows registry watch, for the Oracle's context.
@@ -8354,7 +8090,6 @@ def _registry_watch(base_dir, max_chars=2000):
         _file_registry_lines(base_dir, lines)
     return blob
 
-
 def _file_registry_lines(base_dir, lines):
     """File registry diffs. A baseline and a quiet look are not alerts."""
     for line in lines:
@@ -8372,7 +8107,6 @@ def _file_registry_lines(base_dir, lines):
             base_dir, "registry", "high" if attack else "medium",
             title, attack)
 
-
 # Canary (tripwire) files the Oracle watches, planted by the runner
 # itself under base_dir/canaries/. Tempting names, worthless contents:
 # anything that reads, edits, or deletes one is the signal.
@@ -8382,7 +8116,6 @@ _CANARY_NAMES = (
     "api-keys.txt",
 )
 _CANARY_MARKER = "HOMING-PIGEON CANARY: this file is a tripwire."
-
 
 def _canary_state(path):
     """sha1[:12] of a canary file's content, line endings normalized.
@@ -8404,7 +8137,6 @@ def _canary_state(path):
     except OSError:
         return "?"
     return hashlib.sha1(data.replace(b"\r\n", b"\n")).hexdigest()[:12]
-
 
 def _plant_canary(path):
     """Write one canary file holding a fresh random token.
@@ -8439,7 +8171,6 @@ def _plant_canary(path):
     _chmod_quiet(path)
     return _canary_state(path)
 
-
 def _file_watch_alert(base_dir, sensor, severity, title, attack):
     """Append one local-watch alert. Never raises, never executes.
 
@@ -8463,7 +8194,6 @@ def _file_watch_alert(base_dir, sensor, severity, title, attack):
         })
     except Exception:
         return
-
 
 def _file_artifact_hits(base_dir, job_id, findings):
     """File a YARA or ClamAV hit once, when the job is scanned.
@@ -8490,7 +8220,6 @@ def _file_artifact_hits(base_dir, job_id, findings):
             title = jid + ": " + title
         _file_watch_alert(base_dir, "artifact", "high", title[:200], attack)
         filed += 1
-
 
 def _file_fresh_lines(base_dir, sensor, text):
     """File log lines that carry an ATT&CK id and were not seen before.
@@ -8548,7 +8277,6 @@ def _file_fresh_lines(base_dir, sensor, text):
     except Exception:
         return
 
-
 def _local_watch(cfg, base_dir):
     """One cheap look, on the poll, not only when the chat is opened.
 
@@ -8576,7 +8304,6 @@ def _local_watch(cfg, base_dir):
             fn()
         except Exception:
             continue
-
 
 def _canary_watch(base_dir, max_chars=2000):
     """Canary tripwire watch, for the Oracle's context.
@@ -8698,7 +8425,6 @@ def _canary_watch(base_dir, max_chars=2000):
         blob = blob[:max_chars]
     return blob
 
-
 def _oracle_watch_enabled(cfg) -> bool:
     """The Oracle's system watch (Event Log + registry + canaries)
     defaults on.
@@ -8715,7 +8441,6 @@ def _oracle_watch_enabled(cfg) -> bool:
     if isinstance(v, str) and v.strip().lower() in ("false", "no", "off", "0"):
         return False
     return True
-
 
 _AUTH_LOG_PATHS = ("/var/log/auth.log", "/var/log/secure")
 _SYS_LOG_PATHS = ("/var/log/syslog", "/var/log/messages", "/var/log/system.log")
@@ -8734,7 +8459,6 @@ _AUTH_LINE_ATTACK = (
     ("groupadd", "T1136"),
 )
 
-
 def _label_auth(line):
     """Append an ATT&CK id when a line is an auth event. Otherwise unchanged."""
     if not isinstance(line, str):
@@ -8748,7 +8472,6 @@ def _label_auth(line):
             return line
     return line
 _SYS_LOG_MARKERS = ("error", "fatal", "fault", "fail")
-
 
 def _tail_marked(path, markers, max_lines=20):
     """Last matching lines of a log file, or None if it cannot be read.
@@ -8781,7 +8504,6 @@ def _tail_marked(path, markers, max_lines=20):
     if isinstance(max_lines, bool) or not isinstance(max_lines, int) or max_lines < 1:
         return []
     return kept[-max_lines:]
-
 
 def _host_log_tail(max_chars=2000, base_dir="", journal=True):
     """Narrow auth and system log tail for Linux and macOS.
@@ -8835,7 +8557,6 @@ def _host_log_tail(max_chars=2000, base_dir="", journal=True):
     _file_fresh_lines(base_dir, "hostlog", blob)
     return blob
 
-
 def _parse_netsh_profiles(text):
     """'firewall: windows Domain=ON ...' from netsh, or None."""
     if not isinstance(text, str) or not text.strip():
@@ -8860,7 +8581,6 @@ def _parse_netsh_profiles(text):
         line += " [T1562.004]"
     return line
 
-
 def _parse_ufw(text):
     if not isinstance(text, str):
         return None
@@ -8870,7 +8590,6 @@ def _parse_ufw(text):
     if "status: inactive" in low:
         return "firewall: linux ufw=inactive [T1562.004]"
     return None
-
 
 def _parse_iptables_policy(text):
     """Policy lines only. A full ruleset is not the posture."""
@@ -8892,7 +8611,6 @@ def _parse_iptables_policy(text):
         line += " [T1562.004]"
     return line
 
-
 def _parse_socketfilterfw(text):
     if not isinstance(text, str):
         return None
@@ -8904,7 +8622,6 @@ def _parse_socketfilterfw(text):
     if re.search(r"\benabled\b", low) or re.search(r"state\s*=\s*1\b", low):
         return "firewall: macos application-firewall=on"
     return None
-
 
 def _run_text(argv, timeout=5):
     """stdout of a short read-only command, or None. Never raises."""
@@ -8921,7 +8638,6 @@ def _run_text(argv, timeout=5):
     if proc.returncode != 0 or not isinstance(proc.stdout, str):
         return None
     return proc.stdout
-
 
 def _firewall_posture():
     """One line: is the host firewall on. None if it cannot be read.
@@ -8947,7 +8663,6 @@ def _firewall_posture():
             _run_text(["iptables", "-S"], timeout=3))
     return None
 
-
 def _read_posture_line(path):
     """Previous posture line, or None. A symlink is not followed."""
     if os.path.islink(path):
@@ -8960,7 +8675,6 @@ def _read_posture_line(path):
     except Exception:
         return None
     return None
-
 
 def _firewall_watch(base_dir):
     """Posture line, plus whether it changed since the last look.
@@ -8989,13 +8703,11 @@ def _firewall_watch(base_dir):
         return line + " (changed)"
     return line
 
-
 _CLAM_SIG_PATHS = (
     "/var/lib/clamav/daily.cvd",
     "/var/lib/clamav/daily.cld",
 )
 _AV_STALE_SEC = 7 * 86400
-
 
 def _parse_defender_query(text):
     """'av: windows defender=running' from sc query, or None."""
@@ -9011,7 +8723,6 @@ def _parse_defender_query(text):
         if state in ("STOPPED", "STOP_PENDING", "PAUSED"):
             return "av: windows defender=" + state.lower() + " [T1562.001]"
     return None
-
 
 def _clam_sig_line(now=None):
     """Signature age only. Does not run freshclam or scan a file."""
@@ -9035,7 +8746,6 @@ def _clam_sig_line(now=None):
         return "av: clamav signatures stale (%dd) [T1562.001]" % days
     return "av: clamav signatures current"
 
-
 def _av_posture():
     """One line: is the host antivirus effective. None if unreadable.
 
@@ -9051,7 +8761,6 @@ def _av_posture():
         return _clam_sig_line()
     except Exception:
         return None
-
 
 def _av_watch(base_dir):
     """Posture line, plus whether it changed since the last look.
@@ -9078,7 +8787,6 @@ def _av_watch(base_dir):
             base_dir, "av", "high" if attack else "info", line, attack)
         return line + " (changed)"
     return line
-
 
 _ARTIFACT_MAX_FILES = 40
 _ARTIFACT_MAX_BYTES = 1048576
@@ -9124,7 +8832,6 @@ _YARA_ATTACK = {
     "hp_reverse_shell": "T1071",
 }
 
-
 def _artifact_scan_enabled(cfg) -> bool:
     """On unless inference.artifact_scan is explicitly false.
 
@@ -9140,7 +8847,6 @@ def _artifact_scan_enabled(cfg) -> bool:
     if isinstance(v, str) and v.strip().lower() in ("false", "no", "off", "0"):
         return False
     return True
-
 
 def _work_files(work):
     """path -> (size, mtime_ns) for regular files under work."""
@@ -9159,14 +8865,12 @@ def _work_files(work):
             found[path] = (st.st_size, getattr(st, "st_mtime_ns", 0))
     return found
 
-
 def _rel_work(work, path):
     try:
         rel = os.path.relpath(path, work)
     except ValueError:
         rel = os.path.basename(path)
     return rel.replace("\\", "/")
-
 
 def _artifact_findings(work, before, cfg):
     """YARA and ClamAV hits on files this job created or changed.
@@ -9204,7 +8908,6 @@ def _artifact_findings(work, before, cfg):
         return hits
     return hits[:20]
 
-
 def _yara_rules_text(cfg):
     """Operator rules if inference.yara_rules is a readable file.
 
@@ -9222,7 +8925,6 @@ def _yara_rules_text(cfg):
         if isinstance(text, str) and text.strip():
             return text
     return _YARA_RULES
-
 
 def _yara_hits(work, targets, cfg=None):
     yr = shutil.which("yr")
@@ -9270,7 +8972,6 @@ def _yara_hits(work, targets, cfg=None):
                 pass
     return hits
 
-
 def _artifact_note(job_id, job, r):
     """A retained record that carries a scan hit and not the raw output.
 
@@ -9298,7 +8999,6 @@ def _artifact_note(job_id, job, r):
         "saved_at": time.time(),
     }
 
-
 def _clam_hits(work, targets):
     binary = shutil.which("clamdscan")
     if not binary:
@@ -9325,7 +9025,6 @@ def _clam_hits(work, targets):
         hits.append("clamav " + sig + " " + rel + " [T1204.002]")
     return hits
 
-
 def _job_facts(data, job_id):
     """(kind, status, when) for one retained job, as plain facts.
 
@@ -9347,7 +9046,6 @@ def _job_facts(data, job_id):
     except (TypeError, ValueError, OverflowError):
         pass
     return kind, status, when
-
 
 # Deterministic sensitive-access findings over a job's script. The
 # Flag321 field tests (2026-10-17) showed the Oracle's small local
@@ -9378,7 +9076,6 @@ _ORDINARY_PREFIXES = (
 )
 
 _PATH_SPLITTERS = " \t\r\n'\"`;|&<>(){}[]"
-
 
 def _script_path_findings(script, base_dir=None, job_id=None):
     """(path, reason) pairs for sensitive references in a script.
@@ -9458,7 +9155,6 @@ def _script_path_findings(script, base_dir=None, job_id=None):
             break
     return findings
 
-
 def _retained_job_summary(data, job_id, base_dir=None) -> str:
     """One retained job as context for the Oracle.
 
@@ -9521,7 +9217,6 @@ def _retained_job_summary(data, job_id, base_dir=None) -> str:
             str(item)[:200] for item in scan[:20]))
     return "\n".join(lines)
 
-
 def _chosen_retained_rows(base_dir, limit=6):
     """The retained rows a context build would use, newest first.
 
@@ -9562,7 +9257,6 @@ def _chosen_retained_rows(base_dir, limit=6):
             n = 0
     return rows if n is None else rows[:n]
 
-
 def _withheld_scan_text(base_dir, limit=6) -> str:
     """Outputs the retained summaries withhold, for the reply gate only.
 
@@ -9599,7 +9293,6 @@ def _withheld_scan_text(base_dir, limit=6) -> str:
             blobs.append(text[:8000])
     return "\n".join(blobs)
 
-
 def _deterministic_oracle_answer(cfg, base_dir, watch=None) -> str:
     """The Pi Light answer: the box's records, un-narrated.
 
@@ -9616,7 +9309,6 @@ def _deterministic_oracle_answer(cfg, base_dir, watch=None) -> str:
             "this box, so here is the current record, un-narrated.\n\n"
             + ctx)
 
-
 def _report_oracle_mode(cfg) -> None:
     """Startup report: one line when the Oracle is deterministic.
 
@@ -9626,7 +9318,6 @@ def _report_oracle_mode(cfg) -> None:
     if _oracle_mode(cfg) == "deterministic":
         log("oracle: deterministic mode (Pi Light) -- no local model; "
             "briefs and answers are assembled from the box's records")
-
 
 def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
                    watch=True) -> str:
@@ -9754,7 +9445,6 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
     if cap <= 0:
         return ""
     return blob[:cap] if len(blob) > cap else blob
-
 
 def oracle_page(token: str, model: str, ready: bool) -> str:
     """One chat page. No remote assets. The token never goes in the URL."""
@@ -9960,7 +9650,6 @@ document.getElementById("f").onsubmit = async (e) => {
 </html>
 """.replace("__BOOT__", payload)
 
-
 _ORACLE_REJECTS = {
     "inference_unconfigured": ("No loopback model is configured. Re-run install.exe "
                                "--inference-only to finish the model setup, or point "
@@ -9972,13 +9661,10 @@ _ORACLE_REJECTS = {
                     "Try a narrower question."),
 }
 
-
 _ORACLE_CHAT_MAX = 1_048_576
-
 
 _CHAT_WINDOW_TURNS = 4
 _CHAT_WINDOW_CHARS = 2000
-
 
 def recent_chat(base_dir, turns=_CHAT_WINDOW_TURNS, max_chars=_CHAT_WINDOW_CHARS):
     """The last few Oracle turns, for a continuing investigation.
@@ -10028,7 +9714,6 @@ def recent_chat(base_dir, turns=_CHAT_WINDOW_TURNS, max_chars=_CHAT_WINDOW_CHARS
         blob = blob[-cap:]
     return blob
 
-
 def record_oracle_turn(base_dir, cfg, question, ans, event="ask"):
     """One chat line on disk. Secrets are redacted. The file rolls at 1 MiB."""
     if not base_dir or not isinstance(base_dir, str):
@@ -10069,7 +9754,6 @@ def record_oracle_turn(base_dir, cfg, question, ans, event="ask"):
     append_bounded_log(path, json.dumps(rec, ensure_ascii=False),
                        max_bytes=_ORACLE_CHAT_MAX)
 
-
 def _oracle_host_ok(handler) -> bool:
     peer = handler.client_address[0] if handler.client_address else ""
     if not _is_loopback_ip(peer):
@@ -10088,7 +9772,6 @@ def _oracle_host_ok(handler) -> bool:
     return parsed.scheme == "http" and (parsed.hostname or "").lower() in (
         "127.0.0.1", "localhost", "::1")
 
-
 def _oracle_token_ok(got, token) -> bool:
     """True when the presented chat token matches.
 
@@ -10101,7 +9784,6 @@ def _oracle_token_ok(got, token) -> bool:
     return hmac.compare_digest(
         hashlib.sha256(got.encode("utf-8", "replace")).digest(),
         hashlib.sha256(token.encode("utf-8", "replace")).digest())
-
 
 def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
     """Loopback chat server. Refuses any other bind."""
@@ -10287,7 +9969,6 @@ def make_oracle_server(cfg, host="127.0.0.1", port=11436, base_dir=None):
     httpd.oracle_token = token
     return httpd
 
-
 def _warm_oracle_model(inf):
     """One tiny inference call so the first real question is not the
     cold start. Runs on a daemon thread; logs, never raises."""
@@ -10307,7 +9988,6 @@ def _warm_oracle_model(inf):
     else:
         log(f"oracle model warm-up finished in "
             f"{time.monotonic() - t0:.0f}s")
-
 
 def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     """Open the Oracle chat and wait. Does not poll the mailbox."""
@@ -10381,7 +10061,6 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
         record_oracle_turn(base, cfg, "", {}, event="close")
         httpd.server_close()
     return 0
-
 
 def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
     """Chat with the Oracle in the terminal. Does not poll the mailbox.
@@ -10492,7 +10171,6 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
         except Exception:
             pass
     return 0
-
 
 def main() -> int:
     # --help is a document: the groups below are its chapters,
@@ -11169,7 +10847,6 @@ def main() -> int:
     log("homing-pigeon exiting")
     return 0
 
-
 def _run() -> "NoReturn":
     # A frozen exe (PyInstaller) reports an uncaught KeyboardInterrupt as
     # "Failed to execute script", which looks like a crash. Ctrl+C is a
@@ -11178,7 +10855,6 @@ def _run() -> "NoReturn":
         sys.exit(main())
     except KeyboardInterrupt:
         sys.exit(0)
-
 
 if __name__ == "__main__" and len(sys.argv) > 2 \
         and sys.argv[1] == "--transport-extension-module":
