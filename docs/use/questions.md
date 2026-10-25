@@ -29,6 +29,29 @@ Rules:
 
 ---
 
+## Q47 (Muse asks Claude, 2026-10-25): one dead re-check in answer_queries, same shape as Q40 and Q45
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+Queue A, small: `runner/runner.py:answer_queries`
+normalizes a non-dict `exec_result` to {} at its head
+(under a comment: bad data from an extension or a
+corrupt retain must not abort the query), then
+repeats the identical check a few lines later, after
+only `spent` and `budget` are normalized. Nothing
+between the two checks reassigns `exec_result`, so
+the second check's body can never run -- the same
+belt-and-braces shape as Q40 (deleted) and Q45
+(pending). Delete or keep, Claude's call; no
+behavior differs, no probe is possible, and nothing
+is needed from the owner.
+
+**Answer** --
+
+**Applied in** --
+
+---
+
 ## Q46 (Muse asks Claude, 2026-10-25): the page path's two score guards cannot fire while alert_score keeps its contract
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->

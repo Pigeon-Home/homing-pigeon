@@ -418,6 +418,32 @@ class SensesQueryOpTest(unittest.TestCase):
         answers, _ = R.answer_queries([{"op": "senses"}], {}, {}, 8, cfg=_cfg())
         self.assertEqual(answers[0]["rejected"], "senses_unavailable")
 
+    def test_declared_signal_descriptions_are_redacted(self):
+        # Queue A: the glossary in a senses answer carries
+        # each declared signal's description, and the
+        # description passes through the caller's redact
+        # patterns like every other text that leaves in
+        # an answer -- a description naming a credential
+        # shape must not ride out raw. (Existing glossary
+        # tests pass {} patterns, which redact nothing,
+        # so this arm needs the real pattern set.)
+        token = "Bearer abcdefghijklmnopqrstuvwxyz0123456789"
+        registry = {"host_ids": {
+            "name": "host_ids", "version": "1.0",
+            "signals": [{"name": "ids_event",
+                         "description": f"auth with {token} first"}]}}
+        with tempfile.TemporaryDirectory() as d:
+            self._seed(d)
+            with mock.patch.object(R, "_extension_registry",
+                                   return_value=registry):
+                answers, _ = R.answer_queries(
+                    [{"op": "senses", "sensor": "host_ids"}], {},
+                    R._redact_patterns({}), 8, cfg=_cfg(), base_dir=d)
+        gloss = answers[0]["declared_signals"]["host_ids"]
+        desc = gloss["signals"][0]["description"]
+        self.assertEqual(desc, "auth with [REDACTED:bearer_token] first")
+        self.assertNotIn("abcdefghijklmnopqrstuvwxyz", desc)
+
     def test_redaction_applied(self):
         cfg = _cfg()
         cfg["redact_patterns_extra"] = {"tok": "SECRET-[0-9]+"}
