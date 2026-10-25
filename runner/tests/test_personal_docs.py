@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+from runner.oracle import personal_docs as _pd
 from runner.oracle.personal_docs import (
     BANNER,
     personal_documents_present,
@@ -327,6 +328,81 @@ class WarningEdgesTest(unittest.TestCase):
             for i in range(2001):
                 _touch(os.path.join(home, "page%04d.txt" % i))
             self.assertFalse(personal_documents_present(home))
+
+
+class ResidualBranchesTest(unittest.TestCase):
+    """Q16: the lines the CI coverage map showed never run --
+    the walk's depth guard, its skip of an entry whose stat
+    fails, the entry budget giving up in the top-level scan,
+    and a watched folder reached through OneDrive that is
+    itself a symlink."""
+
+    def test_the_depth_guard_refuses_a_deep_start(self):
+        with tempfile.TemporaryDirectory() as home:
+            _touch(os.path.join(home, "taxes.pdf"))
+            self.assertFalse(_pd._walk(
+                home, _pd._DEPTH + 1, _pd._Budget()))
+
+    def test_an_entry_whose_stat_fails_is_skipped(self):
+        class Entry:
+            def __init__(self, name, raises=False):
+                self.name = name
+                self.path = "/unused/" + name
+                self._raises = raises
+
+            def is_symlink(self):
+                return False
+
+            def is_dir(self, follow_symlinks=True):
+                if self._raises:
+                    raise OSError("vanished mid-scan")
+                return False
+
+        class Scan:
+            def __init__(self, entries):
+                self._entries = entries
+
+            def __iter__(self):
+                return iter(self._entries)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        bad = Entry("mystery", raises=True)
+        good = Entry("taxes.pdf")
+        with mock.patch.object(
+                _pd.os, "scandir",
+                lambda root: Scan([bad, good])):
+            self.assertTrue(_pd._walk("/unused", 0, _pd._Budget()))
+        with mock.patch.object(
+                _pd.os, "scandir", lambda root: Scan([bad])):
+            self.assertFalse(_pd._walk("/unused", 0, _pd._Budget()))
+
+    def test_the_entry_budget_gives_up_quietly(self):
+        with tempfile.TemporaryDirectory() as home:
+            _touch(os.path.join(home, "Documents", "taxes.pdf"))
+            for i in range(4):
+                _touch(os.path.join(home, "filler-%d.txt" % i))
+            with mock.patch.object(_pd, "_ENTRY_CAP", 3):
+                self.assertFalse(personal_documents_present(home))
+            self.assertTrue(personal_documents_present(home))
+
+    @unittest.skipUnless(hasattr(os, "symlink"), "needs symlink")
+    def test_a_onedrive_child_that_is_a_symlink_is_not_walked(self):
+        with tempfile.TemporaryDirectory() as home:
+            _touch(os.path.join(home, "realpapers", "taxes.pdf"))
+            os.makedirs(os.path.join(home, "OneDrive"))
+            os.symlink(os.path.join(home, "realpapers"),
+                       os.path.join(home, "OneDrive", "Documents"))
+            self.assertFalse(personal_documents_present(home))
+            # Control: the same papers under a real folder trip.
+            os.unlink(os.path.join(home, "OneDrive", "Documents"))
+            _touch(os.path.join(
+                home, "OneDrive", "Documents", "taxes.pdf"))
+            self.assertTrue(personal_documents_present(home))
 
 
 if __name__ == "__main__":

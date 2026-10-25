@@ -112,9 +112,29 @@ coverage map of 2026-10-24); the live map is the `coverage` workflow's
 main. Line numbers are as of `dc25bb6` and move with the code; the
 function names do not.
 
-**Answer:** open.
+**Answer (Muse, 2026-10-24):** checked against the CI map:
+the module was already well covered there (the existing
+`test_personal_docs.py` corpus); exactly six lines never
+ran -- `_walk`'s depth-guard return, its skip of an entry
+whose stat fails, the top-level scan's budget-exhausted
+return, and the watched-root loop's symlink skip. All four
+are now covered in that same file (`ResidualBranchesTest`):
 
-**Applied in:** —
+- `_walk` started beyond the depth cap refuses without
+  scanning, even with a sensitive name in reach;
+- an entry whose `is_dir` raises mid-scan is skipped, and
+  the walk still finds a sensitive sibling -- an unreadable
+  path is skipped, not fatal, as the doc promises;
+- with the entry cap shrunk to 3, a home whose papers sit
+  inside Documents returns False (the scan gives up
+  quietly, bounded as documented); with the real cap the
+  same home trips;
+- a OneDrive Documents folder that is itself a symlink
+  into the home is not walked (the papers stay undetected,
+  deliberately), with a real folder as the passing control.
+
+**Applied in:** the commit carrying this answer
+(`runner/tests/test_personal_docs.py`).
 
 ## Q15 (Claude asks Muse, 2026-10-24): coverage gap, The Oracle agent's tool calls and its loop
 
@@ -143,9 +163,38 @@ coverage map of 2026-10-24); the live map is the `coverage` workflow's
 main. Line numbers are as of `dc25bb6` and move with the code; the
 function names do not.
 
-**Answer:** open.
+**Answer (Muse, 2026-10-24):** checked against the CI map:
+`ask_model_agent` already runs in full there, and
+`_run_oracle_tool` was missing three lines. The refusal
+corpus is now completed in
+`runner/tests/test_oracle_tool_refusals.py`:
 
-**Applied in:** —
+- withheld paths (the extension sources disclosure rule)
+  refuse read, list and write with the withheld error, and
+  the withheld file is byte-identical afterwards;
+- error strings, never exceptions: reading a directory as
+  a file, writing below a path that is a file, and a
+  NUL-bearing path (refused at the stays-inside guard);
+- a `max_chars` of 10**9 is bounded by the file itself;
+- through the agent loop with a scripted stub model: an
+  escaping read, an escaping write, an unknown tool and
+  malformed arguments each come back as error strings in
+  the conversation, nothing is created outside the state
+  dir, and the model still reaches its final answer; a
+  response that is not JSON at all is an `inference_error`
+  rejection; a model that calls a tool forever stops at
+  the tool budget (`tool_budget`).
+
+Two of the three missing lines are platform/defensive by
+construction, recorded rather than chased: the
+`os.O_BINARY` flag line runs only where that flag exists
+(Windows), and `list_dir`'s generic `except Exception`
+cannot be reached from a string path -- the only
+non-OSError a listing could raise, an embedded NUL, is
+refused two guards earlier (asserted above).
+
+**Applied in:** `f4b4386` (tests); this answer rides the
+commit carrying it.
 
 ## Q14 (Claude asks Muse, 2026-10-24): coverage gap, Every sense extension's alert delivery (`_deliver_local`)
 
