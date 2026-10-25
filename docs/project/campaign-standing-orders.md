@@ -294,6 +294,23 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — extsources small legs, second
+  batch (coverage run 40189711740): _regex and
+  parse_declaration guards, the https-only
+  redirect pass-through, _commit_for's non-SHA
+  refusal, _safe_member's portable shapes,
+  _strip_top's split answer, load_states'
+  unusable names, _entry_line's branch naming,
+  is_withheld's plain paths — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ExtsourcesSmallLegs2Test in
+  runner/tests/test_extension_sources.py.
+  Recorded without a take: _clean_rel_path's
+  empty-parts raise (278-279) cannot fire --
+  the only values that would empty the parts
+  are rejected by the guards above it. Done
+  when a coverage run shows the taken legs
+  clean.
 - A (refill) — send_job and send_dtls guards
   (coverage run 40189711740): the secret pattern
   and presence refusals, sign_payload's

@@ -2664,6 +2664,99 @@ class ExtsourcesSmallLegsTest(unittest.TestCase):
             ("sense", "feed", "/x"))
 
 
+class ExtsourcesSmallLegs2Test(unittest.TestCase):
+    """Queue A refill, second extsources batch
+    (coverage run 40189711740): _regex 285,
+    parse_declaration 461, the redirect handler's
+    https pass-through 752, _commit_for 912,
+    _safe_member 1037, _strip_top 1054,
+    load_states 1315, _entry_line 1965, and
+    is_withheld's plain inside/outside answers
+    2158-2160. Each is the small print of the
+    sources contract: shapes refused in the
+    owner's face, archive members kept
+    portable, states read only under usable
+    names, and withheld answers given by the
+    resolved path.
+    """
+
+    def test_regex_and_declaration_guards(self):
+        with self.assertRaises(ValueError):
+            X._regex(123, "pattern")
+        with self.assertRaises(ValueError):
+            X._regex("x" * 201, "pattern")
+        self.assertEqual(X._regex("a+", "pattern"), "a+")
+        with self.assertRaisesRegex(ValueError,
+                                    "must be a JSON object"):
+            X.parse_declaration("nope")
+
+    def test_redirect_stays_on_https(self):
+        from urllib.request import Request
+        handler = X._HttpsOnlyRedirect()
+        req = Request("https://a.test/old")
+        out = handler.redirect_request(
+            req, None, 302, "Found", {},
+            "https://b.test/new")
+        self.assertEqual(out.full_url, "https://b.test/new")
+        with self.assertRaises(X.SourceError):
+            handler.redirect_request(
+                req, None, 302, "Found", {},
+                "http://b.test/new")
+
+    def test_commit_for_refuses_a_non_sha(self):
+        class Fetcher:
+            def get_text(self, *a):
+                return "not-a-sha"
+
+        with self.assertRaisesRegex(X.SourceError,
+                                    "did not resolve"):
+            X._commit_for(Fetcher(), "o/r", "main")
+
+    def test_safe_member_and_strip_top(self):
+        self.assertIsNone(X._safe_member("a\\b.txt"))
+        self.assertIsNone(X._safe_member("C:evil"))
+        self.assertEqual(X._safe_member("a/b.txt"),
+                         ["a", "b.txt"])
+        self.assertEqual(X._strip_top([["top", "a"],
+                                       ["top", "b"]]), 1)
+        self.assertEqual(X._strip_top([["one", "a"],
+                                       ["two", "b"]]), 0)
+
+    def test_load_states_skips_unusable_names(self):
+        with tempfile.TemporaryDirectory() as d:
+            kdir = os.path.join(d, X.STATE_DIRNAME, "sense")
+            os.makedirs(os.path.join(kdir, "bad name!"))
+            good = os.path.join(kdir, "feed")
+            os.makedirs(good)
+            with open(os.path.join(good, X.STATE_FILE),
+                      "w") as fh:
+                json.dump({"state_version": X.STATE_VERSION,
+                           "kind": "sense"}, fh)
+            states = X.load_states(d)
+        self.assertEqual(list(states), [("sense", "feed")])
+
+    def test_entry_line_names_the_branch(self):
+        lines = X._entry_line("/b", {
+            "origin": {"github": "o/r"},
+            "resolved": {"branch": "main",
+                         "commit": "a" * 40}})
+        self.assertTrue(
+            any("o/r (main)" in line for line in lines))
+
+    def test_is_withheld_plain_paths(self):
+        with tempfile.TemporaryDirectory() as d:
+            held = os.path.join(d, "held")
+            os.makedirs(held)
+            inside = os.path.join(held, "f.txt")
+            with open(inside, "w") as fh:
+                fh.write("x")
+            outside = os.path.join(d, "free.txt")
+            with open(outside, "w") as fh:
+                fh.write("x")
+            self.assertTrue(X.is_withheld(inside, [held]))
+            self.assertFalse(X.is_withheld(outside, [held]))
+
+
 class LoadDeclarationLegsTest(unittest.TestCase):
     """Queue A refill: load_declaration's quiet legs
     (coverage run 40189711740: lines 504, 513-514).
