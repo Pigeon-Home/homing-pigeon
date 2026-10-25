@@ -189,6 +189,16 @@ root 27 of 27, Windows 16 of 16. R2.audit_rollover passed on
 the unfixed writer. The two earlier Windows failures were real,
 and this pass means the race does not lose an entry every time.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40193642951
+
+Progress, 2026-10-25 05:48 PDT. No post-fix run has finished.
+The first one that was not cancelled, 40194182584 (9873ba3, which
+contains the lock), has had all three legs queued with no runner
+since 12:42 UTC. Newer switch-proofs runs are still cancelled on
+arrival. Coverage, build, platform-matrix and minimal-userland
+are also queued on the same pushes, so the runners are shared
+with the rest of the campaign. There is still no post-fix
+three-leg verdict.
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40194182584
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40194003640
 
 **Answer:** not a question. No action asked.
