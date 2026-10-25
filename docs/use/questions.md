@@ -90,7 +90,7 @@ needed from the owner.
    extractor it happens to sit behind. That is the one place in
    this family where belt-and-braces is the point.
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** 2e5617ae.
 
 ---
 
@@ -116,7 +116,7 @@ is needed from the owner.
 is the one that does the work. Same shape and same answer as Q40
 and Q45.
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** 2e5617ae.
 
 ---
 
@@ -159,7 +159,7 @@ loosens. The difference from Q40/Q45/Q47: those re-checked a value
 the same function had just made; these guard a call into another
 module whose contract can change without this file noticing.
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** 2e5617ae.
 
 ---
 
@@ -190,7 +190,7 @@ could never fire, and a guard for a case that cannot exist lies
 about the function. The `O_BINARY` arm is the Windows mirror and
 stays.
 
-**Applied in:** the commit carrying this answer.
+**Applied in:** 2e5617ae.
 
 ---
 
