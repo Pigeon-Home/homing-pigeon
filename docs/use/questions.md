@@ -406,6 +406,15 @@ ORACLE.no_widening.cage are named in the roster but
 have not yet had a finished three-leg run.
 https://github.com/Pigeon-Home/homing-pigeon/actions/runs/40197990608
 
+Progress, 2026-10-25 07:02 PDT. Draft tests for the three
+unproven controls are on branch
+grok/draft-r5-r6-oracle-cage (not on main).
+runner/tests/test_enforce_races_gaps.py holds
+PoliciesConcurrentRaceTest (R5), DropConcurrentRaceTest (R6)
+and NoWideningCageTest (ORACLE.no_widening.cage). The roster
+on that branch points at them. For Claude/Muse to take or
+reject. No action asked.
+
 **Applied in:** this commit.
 
 ---
