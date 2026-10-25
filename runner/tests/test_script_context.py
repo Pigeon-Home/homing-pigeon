@@ -56,8 +56,8 @@ def _undefined_names(tree, builtins):
             defined.add(node.name)
         elif isinstance(node, (ast.Global, ast.Nonlocal)):
             defined.update(node.names)
-        elif isinstance(node, ast.MatchAs) and node.name:
-            defined.add(node.name)
+        elif isinstance(node, getattr(ast, "MatchAs", ())) and node.name:
+            defined.add(node.name)  # 3.10+; the floor (3.9) has no match
     out = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) \
