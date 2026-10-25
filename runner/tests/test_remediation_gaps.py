@@ -162,8 +162,11 @@ class Gaps(unittest.TestCase):
                 mock.patch.object(os, "name", "posix"), \
                 mock.patch.object(os, "sysconf", side_effect=OSError("s")):
             self.assertIsNone(rem.total_memory_bytes())
+        # No /proc and no ps: the root alone (with ps, Q38's sampler
+        # answers instead).
         with mock.patch.object(os.path, "isdir", return_value=False), \
-                mock.patch.object(os, "name", "posix"):
+                mock.patch.object(os, "name", "posix"), \
+                mock.patch.object(rem, "_ps_available", return_value=False):
             self.assertEqual(rem.sample_tree(3), {3: (0.0, None)})
         ctl = {"snap": -1, "first": False, "handle": 0, "times": False,
                "mem": False, "gmem": False, "psapi_fail": True}

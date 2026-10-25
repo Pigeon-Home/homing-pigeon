@@ -91,7 +91,8 @@ class InstallMacosTest(unittest.TestCase):
     def test_the_install_completes_with_the_agent_file_in_place(self):
         home = tempfile.mkdtemp(prefix="hp-macos-")
         out = io.StringIO()
-        with mock.patch.dict(os.environ, {"HOME": home}), \
+        # expanduser reads HOME on POSIX and USERPROFILE on Windows.
+        with mock.patch.dict(os.environ, {"HOME": home, "USERPROFILE": home}), \
                 mock.patch.object(inst, "_posix_uid", return_value=501), \
                 mock.patch.object(inst, "run", _bootstrap_fails), \
                 mock.patch.object(inst.subprocess, "run",
@@ -111,7 +112,7 @@ class InstallMacosTest(unittest.TestCase):
     def test_a_loaded_agent_reports_loaded(self):
         home = tempfile.mkdtemp(prefix="hp-macos-")
         out = io.StringIO()
-        with mock.patch.dict(os.environ, {"HOME": home}), \
+        with mock.patch.dict(os.environ, {"HOME": home, "USERPROFILE": home}), \
                 mock.patch.object(inst, "_posix_uid", return_value=501), \
                 mock.patch.object(inst, "run", lambda cmd, **kw: None), \
                 redirect_stdout(out):
