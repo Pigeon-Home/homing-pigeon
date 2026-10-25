@@ -2700,6 +2700,15 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue D refill taken: the log-bounds family
+  gains its five rows -- log_max_bytes
+  (33554432), log_backups (4), oracle_log
+  (off), oracle_log_max_bytes (536870912),
+  oracle_log_backups (4) -- doc-verified against
+  configuring-oracle.md's stated fallbacks and
+  pinned through the _log_settings /
+  _oracle_log_settings / _cfg_flag seams.
+  Registry count 117 -> 122 (66 -> 71 core).
 - FULL STAMP, v3.12.70 (tag object 97ae14b6 ->
   commit 72c86458; GitHub release published
   2026-10-25T20:26:19Z): GitHub release carries

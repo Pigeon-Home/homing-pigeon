@@ -2075,7 +2075,99 @@ ROWS = [{'key': 'severity',
   'probe': 'handwritten',
   'test': 'TestRemediationSettingsInvalidReadAsDefaults',
   'notes': 'Queue D refill (2026-10-25): the '
-           'quarantine area\'s byte bound (512 MiB).'}]
+           'quarantine area\'s byte bound (512 MiB).'},
+ {'key': 'log_max_bytes',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 33554432,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 72,
+  'doc_token': '33554432',
+  'doc_status': 'verified',
+  'reader': 'runner/runner.py:_log_settings',
+  'reader_sites': ['runner/runner.py:_log_settings'],
+  'policy': 'default',
+  'lo': 1,
+  'hi': 1099511627776,
+  'probe': 'handwritten',
+  'test': 'TestLogSettingsInvalidReadAsDefaults',
+  'notes': 'Queue D refill (2026-10-25): the runner.log '
+           'rotation size, read through _cfg_size '
+           '(booleans are not sizes; below 1 falls back '
+           'rather than clamping up).'},
+ {'key': 'log_backups',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 4,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 73,
+  'doc_token': 'Default 4',
+  'doc_status': 'verified',
+  'reader': 'runner/runner.py:_log_settings',
+  'reader_sites': ['runner/runner.py:_log_settings'],
+  'policy': 'default',
+  'lo': 1,
+  'hi': 10,
+  'probe': 'handwritten',
+  'test': 'TestLogSettingsInvalidReadAsDefaults',
+  'notes': 'Queue D refill (2026-10-25): rotated '
+           'runner.log files kept; the doc calls out '
+           'that below 1 falls back to the default '
+           'rather than clamping up to 1.'},
+ {'key': 'oracle_log',
+  'scope': 'core',
+  'kind': 'boolean',
+  'default': False,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 74,
+  'doc_token': 'off by default',
+  'doc_status': 'verified',
+  'reader': 'runner/runner.py:_cfg_flag',
+  'reader_sites': ['runner/runner.py:_cfg_flag',
+                   'runner/runner.py:_refresh_log_settings'],
+  'policy': 'default',
+  'lo': None,
+  'hi': None,
+  'probe': 'handwritten',
+  'test': 'TestLogSettingsInvalidReadAsDefaults',
+  'notes': 'Queue D refill (2026-10-25): the '
+           'full-fidelity inference log opt-in; no '
+           'oracle.log file exists while it is off.'},
+ {'key': 'oracle_log_max_bytes',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 536870912,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 75,
+  'doc_token': '536870912',
+  'doc_status': 'verified',
+  'reader': 'runner/runner.py:_oracle_log_settings',
+  'reader_sites': ['runner/runner.py:_oracle_log_settings'],
+  'policy': 'default',
+  'lo': 1,
+  'hi': 4398046511104,
+  'probe': 'handwritten',
+  'test': 'TestLogSettingsInvalidReadAsDefaults',
+  'notes': 'Queue D refill (2026-10-25): the '
+           'oracle.log rotation size, same _cfg_size '
+           'reader family as log_max_bytes.'},
+ {'key': 'oracle_log_backups',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 4,
+  'doc_file': 'docs/oracle/configuring-oracle.md',
+  'doc_line': 76,
+  'doc_token': 'Default 4',
+  'doc_status': 'verified',
+  'reader': 'runner/runner.py:_oracle_log_settings',
+  'reader_sites': ['runner/runner.py:_oracle_log_settings'],
+  'policy': 'default',
+  'lo': 1,
+  'hi': 10,
+  'probe': 'handwritten',
+  'test': 'TestLogSettingsInvalidReadAsDefaults',
+  'notes': 'Queue D refill (2026-10-25): rotated '
+           'oracle.log files kept.'}]
 
 
 # The generic confval helpers: their defaults are caller-supplied,
@@ -2128,9 +2220,10 @@ class RegistryShapeTests(unittest.TestCase):
         # oracle_opinion_model / oracle_learning booleans),
         # then +3 more (answer_only, mail_tls_required,
         # job_encryption), then +6 more (the remediation
-        # family: mode plus its five numeric settings).
-        self.assertEqual(117, len(ROWS))
-        self.assertEqual(66, sum(1 for r in ROWS if r["scope"] == "core"))
+        # family: mode plus its five numeric settings),
+        # then +5 more (the log-bounds family).
+        self.assertEqual(122, len(ROWS))
+        self.assertEqual(71, sum(1 for r in ROWS if r["scope"] == "core"))
         self.assertEqual(51, sum(1 for r in ROWS if r["scope"] == "extension"))
 
 

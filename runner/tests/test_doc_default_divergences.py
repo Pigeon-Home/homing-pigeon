@@ -47157,6 +47157,67 @@ class TestRemediationSettingsInvalidReadAsDefaults(unittest.TestCase):
             "quarantine_max_bytes": 1024})
 
 
+class TestLogSettingsInvalidReadAsDefaults(unittest.TestCase):
+    """Queue D refill: the log-bounds family gains
+    registry rows -- log_max_bytes 33554432,
+    log_backups 4, oracle_log_max_bytes 536870912,
+    oracle_log_backups 4, and the oracle_log
+    opt-in flag. The docs state the fallbacks
+    exactly: an invalid value falls back to the
+    default, a value below 1 falls back rather
+    than clamping up to 1, valid values clamp at
+    the ceiling, and booleans are not sizes."""
+
+    def test_runner_log_bounds(self):
+        from runner import runner as R
+        self.assertEqual(R._log_settings({}), (33554432, 4))
+        self.assertEqual(R._log_settings(None), (33554432, 4))
+        for bad in ("x", -5, 0, True, None, []):
+            with self.subTest(key="log_max_bytes", bad=bad):
+                self.assertEqual(
+                    R._log_settings({"log_max_bytes": bad}),
+                    (33554432, 4))
+            with self.subTest(key="log_backups", bad=bad):
+                self.assertEqual(
+                    R._log_settings({"log_backups": bad}),
+                    (33554432, 4))
+        self.assertEqual(
+            R._log_settings({"log_max_bytes": 1024,
+                             "log_backups": 7}), (1024, 7))
+        self.assertEqual(
+            R._log_settings({"log_max_bytes": 2 ** 41,
+                             "log_backups": 99}),
+            (2 ** 40, 10))
+
+    def test_oracle_log_bounds_and_flag(self):
+        from runner import runner as R
+        self.assertEqual(
+            R._oracle_log_settings({}), (536870912, 4))
+        for bad in ("x", -5, 0, True, None, []):
+            with self.subTest(key="oracle_log_max_bytes",
+                              bad=bad):
+                self.assertEqual(
+                    R._oracle_log_settings(
+                        {"oracle_log_max_bytes": bad}),
+                    (536870912, 4))
+            with self.subTest(key="oracle_log_backups",
+                              bad=bad):
+                self.assertEqual(
+                    R._oracle_log_settings(
+                        {"oracle_log_backups": bad}),
+                    (536870912, 4))
+        self.assertEqual(
+            R._oracle_log_settings(
+                {"oracle_log_max_bytes": 2 ** 43}),
+            (2 ** 42, 4))
+        for truthy in (True, 1, "true", "yes", "on", "1"):
+            with self.subTest(truthy=truthy):
+                self.assertTrue(R._cfg_flag(truthy))
+        for bad in (False, 0, 3, "false", "no", None, []):
+            with self.subTest(bad=bad):
+                self.assertFalse(R._cfg_flag(bad))
+
+
 class TestOracleModeInvalidReadsAsLlm(unittest.TestCase):
     """Queue D refill: `oracle_mode` gains a
     registry row. The doc states `llm` is the
