@@ -136,6 +136,11 @@ _protocol_v2 = _load_mod("runner.wire.protocol_v2", "wire.protocol_v2")
 _personal_docs = _load_mod("runner.oracle.personal_docs", "oracle.personal_docs")
 _platformcard = _load_mod("runner.wire.platformcard", "wire.platformcard")
 _textutil = _load_mod("runner.guard.textutil", "guard.textutil")
+# The extension review (Agent-Chat-Stamp
+# 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f): the Oracle reads an
+# extension against its manifest before the loader's result is
+# acted on; see runner/guard/extreview.py.
+_extreview = _load_mod("runner.guard.extreview", "guard.extreview")
 # Typed config/job value readers (Agent-Stamp
 # 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c): the one answer to "is this
 # a usable number, and if not what do I use" -- see confval.py for
@@ -4514,18 +4519,41 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
     return True
 
 
+def _load_reviewed_extensions(cfg, base_dir):
+    """The loader's (registry, problems) for the owner's sense
+    extensions, with the extension review applied: under `enforce`
+    (the default) an extension whose code contradicts its manifest
+    is dropped here and its refusal joins `problems`, in the loader's
+    own vocabulary. The review is cached per folder until a file in
+    it changes, so the alert path pays for a directory listing, not
+    a re-read. Raises only what the loader raises."""
+    registry, problems = _extensions.load_extensions(
+        _extensions.extensions_dir_for(cfg, base_dir))
+    if not isinstance(registry, dict):
+        registry = {}
+    if not isinstance(problems, list):
+        problems = []
+    if _extreview is not None and registry:
+        registry, refusals, _report = _extreview.apply(
+            cfg, base_dir, registry, kind="sense", log=log,
+            event_sink=lambda ev: _append_security_event(base_dir, ev))
+        problems = list(problems) + list(refusals)
+    return registry, problems
+
+
 def _extension_registry(cfg, base_dir) -> dict:
     """Loaded user extensions, keyed by sensor name. Never raises.
 
-    A broken or incompatible extension is refused by the loader and
-    simply absent here; the refusal is read at startup
-    (_report_extensions), not re-litigated on the alert path.
+    A broken or incompatible extension is refused by the loader, and
+    one whose code contradicts its manifest by the extension review
+    (runner/guard/extreview.py); either is simply absent here. The
+    refusal is read at startup (_report_extensions), not re-litigated
+    on the alert path.
     """
     if _extensions is None:
         return {}
     try:
-        registry, _problems = _extensions.load_extensions(
-            _extensions.extensions_dir_for(cfg, base_dir))
+        registry, _problems = _load_reviewed_extensions(cfg, base_dir)
     except Exception:
         return {}
     return registry if isinstance(registry, dict) else {}
@@ -4536,8 +4564,7 @@ def _report_extensions(cfg, base_dir) -> None:
     if _extensions is None:
         return
     try:
-        registry, problems = _extensions.load_extensions(
-            _extensions.extensions_dir_for(cfg, base_dir))
+        registry, problems = _load_reviewed_extensions(cfg, base_dir)
     except Exception as e:
         log(f"extensions: loader failed: {e}", "WARN")
         return
@@ -4547,12 +4574,48 @@ def _report_extensions(cfg, base_dir) -> None:
         m = registry[name]
         if not isinstance(m, dict):
             continue
+        caps = m.get("capabilities") or []
         log(f"extension loaded: {m.get('name')} v{m.get('version')} "
             f"(extension API v{m.get('api_version')}, kind "
             f"{m.get('kind')}, {len(m.get('signals') or [])} declared "
-            f"signal(s)) from {m.get('dir')}")
+            f"signal(s), capabilities: "
+            f"{', '.join(caps) if caps else 'none'}) from {m.get('dir')}")
     for problem in problems if isinstance(problems, list) else []:
         log(f"extensions: {problem}", "WARN")
+
+
+def _extension_review_now(cfg, base_dir) -> dict:
+    """Review every extension this agent would load -- the owner's
+    senses and every transport the discovery finds -- and return the
+    report (`--inspect review`). Reads the folders now; writes
+    <base_dir>/extension-review.json as the agent itself would."""
+    if _extreview is not None:
+        _extreview.forget()
+    out = {"mode": _extreview.mode_of(cfg)[0] if _extreview else "off",
+           "senses": {}, "transports": {}, "problems": []}
+    if _extensions is not None:
+        try:
+            registry, problems = _extensions.load_extensions(
+                _extensions.extensions_dir_for(cfg, base_dir))
+        except Exception as e:
+            registry, problems = {}, [f"loader failed: {e}"]
+        out["problems"].extend(problems if isinstance(problems, list) else [])
+        if _extreview is not None and isinstance(registry, dict):
+            _reg, refusals, report = _extreview.apply(
+                cfg, base_dir, registry, kind="sense")
+            out["senses"] = report.get("extensions", {})
+            out["problems"].extend(refusals)
+    if _transports is not None:
+        try:
+            _registry, problems = _transports.discover_transport_extensions(
+                cfg, base_dir)
+            out["problems"].extend(problems)
+        except Exception as e:
+            out["problems"].append(f"transport discovery failed: {e}")
+        if _extreview is not None:
+            data = _extreview.last_report(base_dir, "transport") or {}
+            out["transports"] = data.get("extensions", {})
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -6704,6 +6767,10 @@ def _validate_size_caps(cfg):
         _tier, problem = _platformcard.tier_of(cfg, "pong_platform")
         if problem:
             return problem
+    if _extreview is not None and _extreview.CONFIG_KEY in cfg:
+        _mode, problem = _extreview.mode_of(cfg)
+        if problem:
+            return problem
     return None
 
 
@@ -7671,6 +7738,13 @@ def run_inspect(cfg, args) -> int:
                   file=sys.stderr)
             return 1
         print(json.dumps(_extsources.status(base), indent=2))
+        return 0
+    if args.inspect == "review":
+        if _extreview is None:
+            print("extension review: runner/guard/extreview.py is unavailable",
+                  file=sys.stderr)
+            return 1
+        print(json.dumps(_extension_review_now(cfg, base), indent=2))
         return 0
     if args.inspect == "job":
         if not args.job_id:
@@ -10750,7 +10824,7 @@ def main() -> int:
         "None of these poll the mailbox.")
     g.add_argument("--inspect",
                    choices=["board", "budget", "job", "redact",
-                            "sources"],
+                            "review", "sources"],
                    help="read local Oracle state and exit; "
                         "no mailbox")
     g.add_argument("--job-id", default=None, metavar="ID",
@@ -11051,7 +11125,9 @@ def main() -> int:
     if not getattr(args, "dry_run", False) \
             and _transports is not None:
         try:
-            _transports.start_supervisor(cfg, base_dir, log=log)
+            _transports.start_supervisor(
+                cfg, base_dir, log=log,
+                event_sink=lambda ev: _append_security_event(base_dir, ev))
             # Extensions live in their own sessions so a dead
             # one cannot take the runner down; the price is that
             # an abrupt exit (Ctrl+C converted by _run, say)

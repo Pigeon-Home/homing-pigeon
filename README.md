@@ -345,6 +345,16 @@ reinterpreted, so an extension written today keeps loading. An
 extension binds to its own signing key, exactly like the built-in
 senses, and files alerts the Oracle fuses with job activity.
 
+Nothing signs an extension's code, so the agent reads it against
+the manifest before loading it: the manifest's `capabilities` list
+(`network`, `listen`, `subprocess`, `native`) has to cover what the
+code does, a transport's `entry` has to stay inside its folder,
+every file has to compile, and no symlink, bidi control character
+or reference to the runner's own state gets through. By default a
+folder that contradicts its manifest is refused like a bad one and
+the agent runs without it (`extension_review` turns that to
+advisory or off; `--inspect review` shows the verdicts).
+
 The example is a lab-results sense: it watches a folder where
 experiment runs drop result files and files signals like
 `experiment_finished` and `metric_threshold_crossed` when a run

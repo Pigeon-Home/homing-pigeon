@@ -57,7 +57,15 @@ _VERSION_RE = re.compile(
 
 _REQUIRED_FIELDS = ("name", "version", "api_version", "kind")
 _OPTIONAL_FIELDS = ("description", "tunables", "signals", "entry",
-                    "publisher", "startup_settle_ms", "upstream")
+                    "publisher", "startup_settle_ms", "upstream",
+                    "capabilities")
+# `capabilities` (added in 3.12.x; api_version stays 1) is the
+# extension's statement of what its code does beyond reading files
+# and filing signals: "network" (it opens connections), "listen" (it
+# accepts them), "subprocess" (it runs programs), "native" (it loads
+# native code). The extension review (runner/guard/extreview.py)
+# holds the code to the statement before the extension is loaded.
+CAPABILITIES = ("network", "listen", "subprocess", "native")
 # `upstream` (added in 3.12.x; api_version stays 1) names the files
 # of another project this extension's reading depends on -- a log
 # schema, a record layout, the license that lets them ride along.
@@ -164,6 +172,7 @@ def parse_manifest(data, where=MANIFEST_FILE) -> dict:
                 "the context the Oracle receives for this signal")
         clean_signals.append({"name": sname, "description": sdesc})
     upstream = _parse_upstream(data.get("upstream"), where)
+    capabilities = _parse_capabilities(data.get("capabilities"), where)
     entry = data.get("entry")
     publisher = data.get("publisher", "")
     startup_settle_ms = data.get("startup_settle_ms", 0)
@@ -203,7 +212,27 @@ def parse_manifest(data, where=MANIFEST_FILE) -> dict:
         if isinstance(startup_settle_ms, int)
         and not isinstance(startup_settle_ms, bool) else 0,
         "upstream": upstream,
+        "capabilities": capabilities,
     }
+
+
+def _parse_capabilities(value, where):
+    """Validate the optional capabilities list. [] when absent."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ValueError(
+            f"{where}: capabilities must be a list drawn from "
+            f"{', '.join(CAPABILITIES)}")
+    out = []
+    for item in value:
+        if not isinstance(item, str) or item not in CAPABILITIES:
+            raise ValueError(
+                f"{where}: capabilities entries must be one of "
+                f"{', '.join(CAPABILITIES)} (got {item!r})")
+        if item not in out:
+            out.append(item)
+    return sorted(out)
 
 
 def _parse_upstream(block, where):

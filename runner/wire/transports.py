@@ -69,6 +69,16 @@ except Exception:  # pragma: no cover - sibling context
         from ..ops import extensions as _extensions  # type: ignore
     except Exception:
         from ops import extensions as _extensions  # type: ignore
+try:  # the extension review (runner/guard/extreview.py)
+    from runner.guard import extreview as _extreview
+except Exception:  # pragma: no cover - sibling context
+    try:
+        from ..guard import extreview as _extreview  # type: ignore
+    except Exception:
+        try:
+            from guard import extreview as _extreview  # type: ignore
+        except Exception:
+            _extreview = None
 
 TRANSPORT_API_VERSION = 1
 
@@ -225,7 +235,8 @@ def builtin_transport_roots():
     return roots
 
 
-def discover_transport_extensions(cfg, base_dir):
+def discover_transport_extensions(cfg, base_dir, log=None,
+                                  event_sink=None):
     """Find every loadable transport extension, by manifest name.
 
     Returns (registry, problems): registry maps name -> cleaned
@@ -237,6 +248,15 @@ def discover_transport_extensions(cfg, base_dir):
     sufficient. A manifest declaring any other transport API
     version is refused with a readable problem line; the runner
     keeps running without it.
+
+    Every folder then passes the extension review
+    (runner/guard/extreview.py) before it is returned: its code is
+    held to its manifest -- capabilities declared, `entry` inside
+    the folder, no symlinks, nothing that does not compile. Under
+    the owner's `enforce` posture a folder with a high finding is
+    refused here like a bad manifest; a drop-in that shadows a
+    shipped transport is loaded and said out loud. `log` and
+    `event_sink` receive the review's lines and security events.
     """
     registry = {}
     problems = []
@@ -244,12 +264,15 @@ def discover_transport_extensions(cfg, base_dir):
     user_dir = _extensions_dir_for(cfg, base_dir)
     if user_dir:
         roots.append(user_dir)
-    roots.extend(builtin_transport_roots())
+    shipped_roots = builtin_transport_roots()
+    roots.extend(shipped_roots)
+    scanned = []
     for root in roots:
         found, probs = _extensions.load_extensions(
             root, kinds=("transport",))
         for prob in probs:
             problems.append(f"{root}: {prob}")
+        usable = {}
         for name, manifest in found.items():
             if manifest.get("api_version") != TRANSPORT_API_VERSION:
                 problems.append(
@@ -258,9 +281,37 @@ def discover_transport_extensions(cfg, base_dir):
                     f"v{manifest.get('api_version')}; this runner "
                     f"speaks v{TRANSPORT_API_VERSION}")
                 continue
+            usable[name] = manifest
+        scanned.append((root, usable))
+    shipped_names = set()
+    for root, usable in scanned:
+        if root in shipped_roots:
+            shipped_names.update(usable)
+    shadows = set()
+    for root, usable in scanned:
+        if root not in shipped_roots:
+            shadows.update(set(usable) & shipped_names)
+    for root, usable in scanned:
+        for name, manifest in usable.items():
             if name in registry:
                 continue  # an earlier root already claimed the name
             registry[name] = manifest
+    # One review over the claimed set. A drop-in refused here is
+    # absent, and the shipped transport it shadowed does not step
+    # in for it: the owner installed the drop-in, and a silent
+    # substitution would run a pipe the owner did not pick. The
+    # refusal line and the "no loadable transport extension" line
+    # say what happened.
+    if _extreview is not None and registry:
+        try:
+            registry, refusals, _report = _extreview.apply(
+                cfg, base_dir, registry, kind="transport",
+                shipped_dirs=shipped_roots, shadows=shadows,
+                log=log, event_sink=event_sink)
+            problems.extend(refusals)
+        except Exception as e:  # the review never takes the runner down
+            if log is not None:
+                log(f"extension review failed: {e}", "WARN")
     return registry, problems
 
 
@@ -680,7 +731,7 @@ class TransportSupervisor:
     """
 
     def __init__(self, cfg, base_dir, log=None, popen=None,
-                 clock=None):
+                 clock=None, event_sink=None):
         self.cfg = cfg if isinstance(cfg, dict) else {}
         self.base_dir = base_dir
         self.log = log or _silent_log
@@ -688,7 +739,9 @@ class TransportSupervisor:
         self._clock = clock or time.monotonic
         self.names = enabled_transports(self.cfg)
         self.registry, self.problems = \
-            discover_transport_extensions(self.cfg, base_dir)
+            discover_transport_extensions(self.cfg, base_dir,
+                                          log=self.log,
+                                          event_sink=event_sink)
         self.missing = [n for n in self.names
                         if n not in self.registry]
         self.processes = {}   # name -> record dict
@@ -1001,14 +1054,15 @@ def _config_signature(cfg, base_dir):
     return (base_dir, blob)
 
 
-def start_supervisor(cfg, base_dir, log=None):
+def start_supervisor(cfg, base_dir, log=None, event_sink=None):
     """Start (or reuse) the supervisor for this config and base
     dir. Returns the TransportSupervisor."""
     key = _config_signature(cfg, base_dir)
     sup = _ACTIVE_SUPERVISORS.get(key)
     if sup is not None and not sup.stopped:
         return sup
-    sup = TransportSupervisor(cfg, base_dir, log=log).start()
+    sup = TransportSupervisor(cfg, base_dir, log=log,
+                              event_sink=event_sink).start()
     _ACTIVE_SUPERVISORS[key] = sup
     return sup
 

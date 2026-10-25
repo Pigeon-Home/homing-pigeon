@@ -351,7 +351,7 @@ def _mut_quote_break(job, rng, ctx):
 def _mut_unicode_edge(job, rng, ctx):
     script = job.get("script") or ""
     lines = _script_lines(script)
-    lines.append("# edge: é​\U0001F600")
+    lines.append("# edge: \u00e9\u200b\U0001F600")
     return {"script": "\n".join(lines)}
 
 

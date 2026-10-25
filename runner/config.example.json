@@ -53,6 +53,8 @@
   "key_policies_default_deny": false,
   "extensions_dir": "",
   "_extensions_dir": "where user extension folders live (docs/extend/extensions.md); empty means <base_dir>/extensions; a relative path resolves against base_dir",
+  "extension_review": "enforce",
+  "_extension_review": "the extension review (docs/extend/extensions.md, \"The review\"): before a sense or transport extension is loaded, its code is read against its manifest -- capabilities declared, entry inside the folder, every .py compiles, no symlinks, no bidi control characters, nothing naming the runner's own state. \"enforce\" (default) refuses a folder with a high finding like a bad manifest and the agent runs without it; \"advisory\" loads it and logs the findings; \"off\" skips the review. Anything else is a config error. Verdicts land in <base_dir>/extension-review.json; --inspect review prints them",
   "extension_sources": "auto",
   "_extension_sources": "the first time an extension runs, its code and the upstream sources and specs its sources.json declares are fetched in the background for the Oracle (docs/extend/extensions.md, \"Sources\"): \"auto\" (default) only when a local model runs the Oracle, so a deterministic box makes no request; true on every box, a Pi Light with no model included; false never. The object form {\"fetch\", \"oracle\": \"provide\"|\"withhold\", \"max_mb\" (default 512), \"unpinned\" (default false: an entry no lock pins waits until the owner allows trust on first use), \"extensions\": {name: {\"fetch\", \"oracle\", \"unpinned\"}}} sets the disclosure rule, the disk budget, the unpinned rule, and per-extension overrides. Read live.",
   "local_signals": true,

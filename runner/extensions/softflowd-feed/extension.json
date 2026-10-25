@@ -1,5 +1,9 @@
 {
   "api_version": 1,
+  "capabilities": [
+    "listen",
+    "network"
+  ],
   "description": "Collects softflowd NetFlow v5/v9/IPFIX over UDP and files first-seen external peers, high-volume flows, and long-lived flows.",
   "kind": "sense",
   "name": "softflowd_feed",
@@ -28,17 +32,17 @@
     "max_known_peers": 1024,
     "poll_interval_sec": 60
   },
-  "version": "0.1.0",
   "upstream": {
-    "repo": "https://github.com/irino/softflowd",
-    "ref": "master",
-    "pin": "da721d9d2ee8a8a8eeb4b377958cc9c7d421f2ae",
+    "license": "BSD-3-Clause",
     "paths": [
       "softflowd.h",
       "compat/netflow5.c",
       "compat/netflow9.c",
       "LICENSE"
     ],
-    "license": "BSD-3-Clause"
-  }
+    "pin": "da721d9d2ee8a8a8eeb4b377958cc9c7d421f2ae",
+    "ref": "master",
+    "repo": "https://github.com/irino/softflowd"
+  },
+  "version": "0.1.0"
 }

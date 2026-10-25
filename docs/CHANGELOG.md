@@ -6,6 +6,23 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## Unreleased
 
+- **The extension review: code held to the manifest before load.**
+  Nothing signs an extension's code, so the agent now reads each
+  sense and transport folder against its manifest before anything
+  acts on it (`runner/guard/extreview.py`): a new manifest field
+  `capabilities` (`network`, `listen`, `subprocess`, `native`) has to
+  cover what the code does; a transport `entry` has to stay inside
+  its folder; every `.py` has to compile; symlinks, bidi and
+  zero-width control characters, and references to the runner's own
+  state are findings. `extension_review` is `enforce` by default -- a
+  folder with a high finding is refused like a bad manifest, with a
+  security event, and the agent runs without it -- or `advisory`
+  (load and log) or `off`. A drop-in that shadows a shipped transport
+  is loaded and said out loud; one the review refuses is absent, not
+  replaced. Verdicts land in `<base_dir>/extension-review.json`;
+  `--inspect review` reads the folders now. The shipped extensions
+  declare what they use and pass clean. docs/extend/extensions.md,
+  "The review"; docs/design/extension-review-design.md.
 - **A job runs at most once per `job_id`.** The result, as it goes on
   the wire, is recorded under `<base_dir>/sent/` before the send; a
   redelivered job (the send failed, the process died before the

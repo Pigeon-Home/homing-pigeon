@@ -40,6 +40,12 @@
   listener all run as supervised extension programs under
   `runner/transport_extensions/`, enabled by the `transports`
   config key.
+- `runner/guard/extreview.py` — the extension review: before a sense
+  or transport folder is loaded, its code is read against its
+  manifest (`capabilities`, `entry` inside the folder, compiling
+  `.py`, no symlinks or bidi control characters, nothing naming the
+  runner's state); `enforce` refuses a contradiction like a bad
+  manifest (`docs/extend/extensions.md`, "The review").
 - `runner/ops/extsources.py` — extension sources: the first time an
   extension runs, its own code and the upstream sources and specs
   its `sources.json` declares reach the Oracle — fetched in the

@@ -108,6 +108,7 @@ logged.
 | `description` | no | string | One line, at most 200 characters: what the extension is, for humans reading the logs and docs. |
 | `tunables` | no | object | Your knobs, carried through unread by the agent. Your daemon reads them from its own manifest. The sense's ingest gates (severity floor, cooldown, caps) are separate: those live in the sensor's `profile` in `config.json`, as for every sense. |
 | `upstream` | no | object | The files of another project this extension's reading depends on, pinned to one commit: `repo` (an `https://github.com/<owner>/<name>` URL), `ref` (the branch or tag the nightly bump follows), `pin` (the 40-hex commit the files were taken from), `paths` (1 to 32 plain relative paths in that repository). The agent validates the shape and never fetches. See "Upstream: carrying the format you parse". |
+| `capabilities` | no | list | What the code does beyond reading files and filing signals, from a closed vocabulary: `network` (it opens connections), `listen` (it accepts them), `subprocess` (it runs programs), `native` (it loads native code). Absent means none. The review holds the code to this list before the extension is loaded; see "The review: code held to the manifest". |
 
 Validation is strict in both directions. A missing required
 field, a bad type, an unknown signal shape — refused, with the
@@ -391,6 +392,77 @@ briefing never blocks ingest, and a sense that fires constantly
 wakes the Oracle at most once per cooldown per signal — the
 gate exists so enthusiasm cannot spend the box.
 
+## The review: code held to the manifest
+
+Nothing signs an extension's code. Until something does, the
+manifest is your statement about the folder and the agent checks
+the code against it, every time the folder is read and before
+anything acts on the manifest: before a sense's signal list gates
+ingest, before a transport's `entry` is launched with a runtime
+config in hand. The review is deterministic, needs no model, and
+reads the folder in a few milliseconds; a folder nothing changed in
+is not read again. (The Oracle's model-side reading of extension
+code, the sources pass below, is unchanged and complementary: that
+one reads for meaning, this one checks the statement.)
+
+What it finds, by weight:
+
+- **High** — refused under `enforce`: a `.py` file that does not
+  compile; a symlink inside the folder; a code file too large or not
+  UTF-8 to read; a bidi or zero-width control character in a code
+  file or the manifest (Trojan Source); code that uses a capability
+  the manifest does not declare (`import subprocess` with no
+  `"capabilities": ["subprocess"]`, a socket bound with no `listen`,
+  `urllib.request` with no `network`, `ctypes` with no `native`);
+  code that names the runner's own state (`seen.json`,
+  `board.json`, the security events, or, in a sense, the mailbox
+  password and key material, which the runner never hands a sense);
+  a transport `entry` that steps outside the extension folder.
+- **Warn** — logged, never refused: a signal filed in code that the
+  manifest does not declare (ingest refuses it anyway); `exec`,
+  `eval` or `__import__` at run time; a transport in your extensions
+  directory shadowing a shipped one, which is allowed and is said
+  out loud, with a security event, at every start.
+- **Note** — in the report only: a declared signal the code never
+  files, a declared capability the code never uses, an `entry`
+  whose program is outside the folder (an interpreter, shipped
+  code).
+
+Capability detection reads imports from the parsed source and call
+shapes (`.bind(`, `os.system(`, `urlopen(`) from the text, so it
+errs toward seeing a capability that is not there; the price of a
+false positive is one word in the manifest, the price of a miss is
+the owner's. Filing through the shipped helper
+(`runner.ops.extensions.send_local_signal`, loopback only) is the
+sense contract, not a capability; it is not counted. Shell files
+count for `network` when they call `curl`, `wget`, `ssh` and
+friends. Non-code files (`README.md`, data) are not scanned for
+capabilities.
+
+The posture is one key in `config.json`:
+
+```json
+"extension_review": "enforce"
+```
+
+`enforce` (the default) refuses an extension with a high finding
+the way the loader refuses a bad manifest -- one warning naming the
+findings and the remedy, a security event, and the agent runs
+without it (a refused drop-in transport is absent; the shipped one
+it shadowed does not step in for it). `advisory` loads everything
+and logs what it found. `off` skips the review. A value outside
+those three is a config error at startup, like any other security
+mode. Every verdict is written to `<base_dir>/extension-review.json`
+(mode, time, each extension's findings and the capabilities it
+declared and the review observed), and `homing-pigeon --inspect
+review` reads the folders now and prints the same.
+
+When your own extension is refused, the log line says which file
+and which finding; the usual fix is the manifest catching up with
+the code: `"capabilities": ["network"]`. The shipped extensions
+all declare what they use and pass the review clean
+(`runner/tests/test_extreview.py` keeps it so).
+
 ## Failure posture
 
 Extensions fail closed and fail quiet:
@@ -403,7 +475,10 @@ Extensions fail closed and fail quiet:
 - A refused extension changes nothing else: the agent starts,
   other senses ingest, jobs run. A folder whose manifest is
   missing, unreadable, malformed JSON, a symlink, or a duplicate
-  name is skipped and reported the same way.
+  name is skipped and reported the same way, and so is a folder
+  whose code contradicts its manifest under the review above
+  (`extensions: sense extension 'probe' (...): refused by the
+  extension review: capability.undeclared (probe.py); ...`).
 - If an extension is refused, its sensor name is simply a plain
   sense as far as ingest is concerned (the declared-signal gate
   has no manifest to gate on). The startup report is where you

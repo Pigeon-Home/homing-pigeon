@@ -460,16 +460,28 @@ manifest:
 ```json
 {"name": "smoke", "kind": "transport", "api_version": 1,
  "version": "0.1.0", "publisher": "Your Name",
+ "capabilities": ["network"],
  "entry": ["{python}", "smoke.py", "{channel_dir}",
            "{runtime_config}"]}
 ```
 
 `entry` is the argv the runner launches (tokens `{python}`,
 `{extension_dir}`, `{channel_dir}`, `{runtime_config}`,
-`{base_dir}`, `{name}` are substituted). The manifest's
+`{base_dir}`, `{name}` are substituted). `capabilities` says
+what the code does -- `network`, `listen`, `subprocess`,
+`native` -- and the runner holds the code to it. The manifest's
 identity fields — name, publisher, version — are carried from
 day one so a future lockdown has something to pin; this build
-has no signature enforcement, no allowlist, no registry check.
+has no signature on the code, no allowlist, no registry check.
+What it has is the extension review
+([docs/extend/extensions.md](extensions.md), "The review"): before
+`entry` is launched, the folder is read against the manifest --
+every path in `entry` stays inside the folder, every `.py`
+compiles, no symlinks, no bidi control characters, nothing that
+names the runner's own state files, and every capability the
+code uses is declared. Under the default `extension_review:
+"enforce"` a folder that fails is refused like a bad manifest and
+the runner starts without it; `advisory` loads it and says so.
 
 **Registration is never a permission to run.** Drop the folder
 into the runner's extensions directory (default
@@ -478,8 +490,11 @@ name it in `transports`: the runner loads and uses it, no
 catalog consulted, registered or not. That is deliberate —
 test transports, private experiments, and pipes nobody
 catalogued are first-class. A folder in the extensions
-directory shadows a shipped transport of the same name.
-First-party extensions ship under
+directory shadows a shipped transport of the same name; the
+review says so at every start, with a security event, and a
+shadowing drop-in the review refuses is absent rather than
+quietly replaced by the shipped one. First-party extensions
+ship under
 `runner/transport_extensions/` and are found the same way. A
 manifest declaring any `api_version` other than 1 is refused
 with a log line; the runner keeps running without it.
