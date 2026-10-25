@@ -144,11 +144,11 @@ jobs:
           # The job log is not readable from every seat; a failure
           # here rides as an annotation with git's own words.
           if ! out=$(git tag -a "$TAG" "$SHA" -m "Version ${TAG#v}" 2>&1); then
-            echo "::error title=tag::git tag failed: ${out:0:600}"
+            echo "::error title=tag::git tag failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
             exit 1
           fi
           if ! out=$(git push origin "refs/tags/$TAG" 2>&1); then
-            echo "::error title=tag push::git push failed: ${out:0:600}"
+            echo "::error title=tag push::git push failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
             exit 1
           fi
           echo "pushed $TAG -> $SHA"
