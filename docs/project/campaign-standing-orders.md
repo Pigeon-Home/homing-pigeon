@@ -2700,6 +2700,19 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: extreview's review cache -- the
+  cap eviction (oldest first) and forget's two
+  scopes (one folder, all folders) pinned as
+  behavior in CacheTest, alongside the fresh/cached
+  signal apply() already relies on. Held open with
+  run_variant: three arms the tests demonstrably
+  execute locally (this cache's clear in every
+  RecordTest setUp, load_report's no-path return,
+  run_variant's error report) still showed missed
+  on the 40229324722 CI map; a fresh map at a
+  current head either credits them or names them
+  again, and the run's suite.log will say which
+  shard carried the module.
 - rules refreshed 2026-10-25 14:24 PDT (standing
   orders, AGENTS rules 7-9, open questions,
   playbook hard rules re-read; Q38-Q48 all answered

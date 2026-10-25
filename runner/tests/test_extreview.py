@@ -844,5 +844,50 @@ class RecordTest(unittest.TestCase):
         self.assertEqual(os.stat(path).st_mtime_ns, mtime)
 
 
+class CacheTest(unittest.TestCase):
+    """Queue A: the review cache's own promises --
+    _cached_review recomputes only when a file changed
+    (fresh says whether it did), the cache is capped
+    with the oldest entry evicted first, and forget
+    drops one folder or all of them."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-extreview-cache-")
+        X.forget()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        X.forget()
+
+    def _folder(self, name):
+        root = os.path.join(self.tmp, name)
+        _drop(root, ".", SENSE, {"probe.py": "x = 1\n"})
+        return root
+
+    def _fresh(self, folder):
+        _result, fresh = X._cached_review(SENSE, folder)
+        return fresh
+
+    def test_eviction_drops_the_oldest_first(self):
+        a, b, c = (self._folder(n) for n in ("a", "b", "c"))
+        with mock.patch.object(X, "_CACHE_CAP", 2):
+            self.assertTrue(self._fresh(a))
+            self.assertTrue(self._fresh(b))
+            self.assertFalse(self._fresh(a))   # still cached
+            self.assertTrue(self._fresh(c))    # evicts a
+            self.assertTrue(self._fresh(a))    # a was evicted
+            self.assertFalse(self._fresh(c))   # c survived
+
+    def test_forget_drops_one_folder_or_all(self):
+        a, b = self._folder("a"), self._folder("b")
+        self.assertTrue(self._fresh(a))
+        self.assertTrue(self._fresh(b))
+        X.forget(a)
+        self.assertTrue(self._fresh(a))        # dropped
+        self.assertFalse(self._fresh(b))       # kept
+        X.forget()
+        self.assertTrue(self._fresh(b))        # all dropped
+
+
 if __name__ == "__main__":
     unittest.main()
