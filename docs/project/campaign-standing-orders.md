@@ -295,6 +295,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - A (refill) — `runner/ops/extsources.py::`
+  `extract_archive`'s write() legs (4 lines never
+  run, coverage run 40189711740) — taken
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  two ExtractTest drives in
+  runner/tests/test_extension_sources.py: a member
+  under a symlink planted in the destination is
+  skipped by the escape check while its sibling
+  extracts (the names themselves are sanitized
+  upstream, so the planted link is the check's
+  live case), and a member whose target is already
+  a directory is counted and skipped. Done when a
+  coverage run shows write() clean.
+- A (refill) — `runner/ops/extsources.py::`
   `oracle_note` (4 lines never run, coverage run
   40189711740) — taken 2026-10-25,
   58316a92-3c4a-41cb-8a16-8c0c5a871e90 —

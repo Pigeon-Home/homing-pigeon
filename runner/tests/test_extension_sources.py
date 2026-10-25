@@ -921,6 +921,49 @@ class ExtractTest(unittest.TestCase):
         self.assertEqual((stats["files"], stats["skipped"]), (1, 2))
         self.assertEqual(self.all_files(), ["a.zip", "out/ok.txt"])
 
+    def test_a_member_under_a_planted_symlink_is_skipped(self):
+        # Queue A refill: extract_archive's write() escape
+        # check (coverage run 40189711740: lines
+        # 1073-1074). Member names are sanitized before
+        # write() ever sees them, so the check's remaining
+        # live case is a destination that already holds a
+        # symlink: a member under it would land outside,
+        # and is skipped while its siblings extract.
+        outside = os.path.join(self.tmp, "outside")
+        os.makedirs(outside)
+        os.makedirs(self.dest)
+        try:
+            os.symlink(outside, os.path.join(self.dest, "linked"))
+        except OSError:
+            self.skipTest("symlinks unavailable")
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("top/linked/evil.txt", "no")
+            zf.writestr("top/good.txt", "fine")
+        path = self.write(buf.getvalue(), "a.zip")
+        stats = X.extract_archive(path, self.dest, 1 << 20)
+        self.assertEqual((stats["files"], stats["skipped"]), (1, 1))
+        self.assertEqual(os.listdir(outside), [])
+        self.assertTrue(os.path.isfile(
+            os.path.join(self.dest, "good.txt")))
+
+    def test_a_member_the_filesystem_refuses_is_skipped(self):
+        # Queue A refill: write()'s OSError leg (coverage
+        # run 40189711740: lines 1091-1094) -- a member
+        # whose target name is already a directory cannot
+        # be written; it is counted and skipped, and the
+        # rest of the archive still extracts.
+        os.makedirs(os.path.join(self.dest, "clash"))
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("top/clash", "no")
+            zf.writestr("top/good.txt", "fine")
+        path = self.write(buf.getvalue(), "a.zip")
+        stats = X.extract_archive(path, self.dest, 1 << 20)
+        self.assertEqual((stats["files"], stats["skipped"]), (1, 1))
+        self.assertTrue(os.path.isfile(
+            os.path.join(self.dest, "good.txt")))
+
     def test_not_an_archive(self):
         path = self.write(b"plain text, not an archive", "x.bin")
         with self.assertRaisesRegex(X.SourceError, "not a readable archive"):
