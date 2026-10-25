@@ -9,6 +9,7 @@ import contextlib
 import io
 import json
 import os
+import threading
 import socket
 import sys
 import tempfile
@@ -933,6 +934,102 @@ class RunnerFailSoftLegs5Test(unittest.TestCase):
         with mock.patch.object(rr, "_extsources", None), \
                 contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(rr.run_inspect({}, args), 1)
+
+
+class RunnerFailSoftLegs6Test(unittest.TestCase):
+    """Queue A refill, sixth batch (coverage run
+    40189711740): oracle_window's non-dict config
+    and deterministic banner (10200, 10223),
+    oracle_cli's Ctrl-C exit (10360-10361),
+    do_POST's deterministic answer (10109), and
+    poll_once's supervisor-check failure (7404-7405).
+    """
+
+    def test_oracle_window_legs(self):
+        class FakeHttpd:
+            socket = types.SimpleNamespace(
+                getsockname=lambda: ("127.0.0.1", 11436))
+
+            def serve_forever(self):
+                raise KeyboardInterrupt
+
+            def server_close(self):
+                pass
+
+        out = io.StringIO()
+        with mock.patch.object(rr, "make_oracle_server",
+                               lambda *a, **k: FakeHttpd()), \
+                mock.patch.object(rr, "record_oracle_turn",
+                                  lambda *a, **k: None), \
+                mock.patch.object(rr, "_refresh_log_settings",
+                                  lambda *a: None), \
+                mock.patch.object(rr, "_announce_oracle_log",
+                                  lambda: None), \
+                mock.patch.object(rr, "_oracle_mode",
+                                  lambda cfg: "deterministic"), \
+                contextlib.redirect_stdout(out):
+            rc = rr.oracle_window("not-a-dict", port=0,
+                                  open_browser=False)
+        self.assertEqual(rc, 0)
+        self.assertIn("deterministic (Pi Light)",
+                      out.getvalue())
+
+    def test_oracle_cli_ctrl_c(self):
+        calls = []
+
+        def interrupt_on_second(*a, **k):
+            calls.append(1)
+            if len(calls) == 2:
+                raise KeyboardInterrupt
+
+        printed = []
+        with mock.patch.object(rr, "record_oracle_turn",
+                               interrupt_on_second):
+            rc = rr.oracle_cli(
+                {"oracle_mode": "deterministic"},
+                input_fn=lambda prompt="": "status?",
+                print_fn=printed.append)
+        self.assertEqual(rc, 0)
+        self.assertGreaterEqual(len(calls), 2)
+
+    def test_do_post_deterministic_answer(self):
+        import http.client
+        cfg = {"oracle_mode": "deterministic"}
+        httpd = rr.make_oracle_server(cfg, "127.0.0.1", 0,
+                                      base_dir=None)
+        port = httpd.server_address[1]
+        th = threading.Thread(target=httpd.serve_forever,
+                              daemon=True)
+        th.start()
+        try:
+            conn = http.client.HTTPConnection(
+                "127.0.0.1", port, timeout=10)
+            conn.request(
+                "POST", "/ask",
+                body=json.dumps({"question": "status?"}),
+                headers={"Content-Type": "application/json",
+                         "X-Oracle-Token": httpd.oracle_token})
+            resp = conn.getresponse()
+            body = resp.read().decode("utf-8", "replace")
+            self.assertEqual(resp.status, 200)
+            self.assertIn("answer", body)
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+
+    def test_poll_once_supervisor_failure(self):
+        sup = types.SimpleNamespace(
+            check=mock.Mock(
+                side_effect=RuntimeError("sup down")),
+            settle=lambda: None)
+        fake = types.SimpleNamespace(
+            active_supervisor=lambda cfg, base: sup,
+            enabled_transports=lambda cfg: [])
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(rr, "_transports", fake):
+            self.assertIsNone(rr.poll_once(
+                {"shared_secret": KEY_A}, d, {},
+                os.path.join(d, "seen.json")))
 
 
 if __name__ == "__main__":

@@ -294,6 +294,17 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- A (refill) — runner.py legs, sixth batch
+  (coverage run 40189711740): oracle_window's
+  non-dict config and deterministic banner,
+  oracle_cli's mid-turn Ctrl-C, do_POST's
+  deterministic answer over a real loopback
+  server, and poll_once's supervisor-check
+  failure — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  RunnerFailSoftLegs6Test in
+  runner/tests/test_runner_last_edges.py. Done
+  when a coverage run shows them clean.
 - A (refill) — runner.py legs, fifth batch
   (coverage run 40189711740): _v2_leave_unseen's
   non-string id and set cap, _v2_before_execute's
