@@ -155,6 +155,10 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- rules refreshed 2026-10-25 03:00 PDT
+- A — `runner/ops/install.py::install_files` (20 lines never run
+  on Windows, coverage run 40180268696) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90
 - A — `runner/extensions/job-fuzz/job_fuzz.py::main` (23 lines
   never run on either platform, coverage run 40180268696) —
   taken 2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
@@ -164,7 +168,13 @@ when done, the proving commit or run. Newest first.
   58316a92-3c4a-41cb-8a16-8c0c5a871e90
 - A — `runner/ops/install.py::_install_collector_linux` (31 lines
   never run on Windows, coverage run 40180268696) — taken
-  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  2026-10-25, 58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  platform-inapplicable on Windows (a Linux-only installer
+  path), covered on Linux; closed under the queue-A skip
+  rule, 2026-10-25.
 - A — `runner/ops/install.py::_install_falco_linux` (32 lines never
   run on Windows, coverage run 40180268696) — taken 2026-10-25,
-  58316a92-3c4a-41cb-8a16-8c0c5a871e90
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  platform-inapplicable on Windows (a Linux-only installer
+  path), covered on Linux; closed under the queue-A skip
+  rule, 2026-10-25.

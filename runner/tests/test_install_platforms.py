@@ -4,6 +4,8 @@ No apt, no brew, no schtasks, no launchctl. The commands are
 recorded. Files that would land in /etc are recorded too.
 A user systemd unit and a launchd agent land in a fake home.
 """
+import contextlib
+import io
 import json
 import os
 import sys
@@ -184,27 +186,106 @@ class ServiceEnvTest(unittest.TestCase):
 
 
 class FrozenEnvTest(unittest.TestCase):
+    """The frozen layout -- the shipped binary's own install
+    path, and the only layout a Windows user ever runs.
+    Queue A: the coverage map (run 40180268696) showed
+    install_files' frozen branch as 20 lines that never
+    ran on Windows, because this class skipped itself
+    there despite the function (and these tests) being
+    written host-aware: .exe names on Windows, no chmod
+    there, the self-copy guard keyed on normcase paths.
+    What the docstring promises is what is asserted: the
+    binaries and the installer land in the bin dir, the
+    config is seeded from the example only when absent,
+    and the binary that is currently running is never
+    replaced -- a copy that cannot land is a False with
+    the reason printed, not a half-install claimed true.
+    """
+
+    def _tree(self, root, example=True):
+        installer = "install.exe" if os.name == "nt" else "install"
+        names = [inst.RUNNER_BIN, installer]
+        if example:
+            names.append("config.example.json")
+        for name in names:
+            with open(os.path.join(root, name), "w",
+                      encoding="utf-8") as fh:
+                fh.write("{}\n")
+        return installer
+
     def test_a_frozen_tree_copies_the_binaries_and_seeds_config(self):
-        if os.name == "nt":
-            self.skipTest("frozen tree layout differs on Windows")
         with tempfile.TemporaryDirectory() as src, \
                 tempfile.TemporaryDirectory() as dst:
-            # The frozen names follow the host: homing-pigeon.exe
-            # and install.exe on Windows.
-            installer = "install.exe" if os.name == "nt" else "install"
-            for name in (inst.RUNNER_BIN, installer,
-                         "config.example.json"):
-                with open(os.path.join(src, name), "w",
-                          encoding="utf-8") as fh:
-                    fh.write("{}\n")
+            installer = self._tree(src)
             cfg = os.path.join(dst, "config.json")
             with mock.patch.object(inst, "FROZEN", True):
                 self.assertTrue(inst.install_files(src, dst, cfg))
                 self.assertTrue(os.path.isfile(
                     os.path.join(dst, inst.RUNNER_BIN)))
+                self.assertTrue(os.path.isfile(
+                    os.path.join(dst, installer)))
                 self.assertTrue(os.path.isfile(cfg))
                 self.assertFalse(inst.install_files(
                     os.path.join(src, "missing"), dst, cfg))
+            if os.name != "nt":
+                self.assertEqual(
+                    os.stat(os.path.join(
+                        dst, inst.RUNNER_BIN)).st_mode & 0o777,
+                    0o755)
+                self.assertEqual(
+                    os.stat(cfg).st_mode & 0o777, 0o600)
+
+    def test_an_existing_config_is_never_reseeded(self):
+        with tempfile.TemporaryDirectory() as src, \
+                tempfile.TemporaryDirectory() as dst:
+            self._tree(src)
+            cfg = os.path.join(dst, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                fh.write('{"mine": true}\n')
+            with mock.patch.object(inst, "FROZEN", True):
+                self.assertTrue(inst.install_files(src, dst, cfg))
+            with open(cfg, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), '{"mine": true}\n')
+
+    def test_running_from_the_bin_dir_replaces_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._tree(d)
+            cfg = os.path.join(d, "config.json")
+            out = io.StringIO()
+            with mock.patch.object(inst, "FROZEN", True), \
+                    contextlib.redirect_stdout(out):
+                self.assertFalse(inst.install_files(d, d, cfg))
+            text = out.getvalue()
+            self.assertIn("leaving this install", text)
+            self.assertIn("could not replace", text)
+
+    def test_a_copy_that_cannot_land_is_false_with_the_reason(self):
+        with tempfile.TemporaryDirectory() as src, \
+                tempfile.TemporaryDirectory() as dst:
+            self._tree(src)
+            # copy2 treats an existing directory as "into
+            # it", so the block is a directory where the
+            # file itself would land.
+            os.makedirs(os.path.join(
+                dst, inst.RUNNER_BIN, inst.RUNNER_BIN))
+            out = io.StringIO()
+            with mock.patch.object(inst, "FROZEN", True), \
+                    contextlib.redirect_stdout(out):
+                self.assertFalse(inst.install_files(
+                    src, dst, os.path.join(dst, "config.json")))
+            self.assertIn("is the agent still running it?",
+                          out.getvalue())
+
+    def test_a_missing_example_cannot_seed_the_config(self):
+        with tempfile.TemporaryDirectory() as src, \
+                tempfile.TemporaryDirectory() as dst:
+            self._tree(src, example=False)
+            out = io.StringIO()
+            with mock.patch.object(inst, "FROZEN", True), \
+                    contextlib.redirect_stdout(out):
+                self.assertFalse(inst.install_files(
+                    src, dst, os.path.join(dst, "config.json")))
+            self.assertIn("cannot seed config", out.getvalue())
 
 
 @unittest.skipIf(sys.platform == "win32", "POSIX installer path")
