@@ -179,6 +179,26 @@ class MutatorTest(unittest.TestCase):
         self.assertIsNone(JF.build_variant(
             {"job_id": "j", "script": ""}, "trailing_blank", 0))
 
+    def test_blank_line_inserts_exactly_one(self):
+        # Queue A: _mut_blank_line's body -- the relation
+        # probe inserts exactly one blank line somewhere
+        # in the seed (the seed's own lines all survive,
+        # in order). Even an empty seed takes one: its
+        # line list is [""], never [], so the variant is
+        # a single newline. (The mutator's not-lines
+        # decline is unreachable -- str.split always
+        # yields at least one element; the ledger
+        # records that disposition.)
+        v = JF.build_variant(self.SEED, "blank_line", 0)
+        seed_lines = self.SEED["script"].split("\n")
+        got = v["script"].split("\n")
+        self.assertEqual(len(got), len(seed_lines) + 1)
+        self.assertEqual(got.count(""), seed_lines.count("") + 1)
+        self.assertEqual([ln for ln in got if ln], seed_lines)
+        v = JF.build_variant(
+            {"job_id": "j", "script": ""}, "blank_line", 0)
+        self.assertEqual(v["script"], "\n")
+
     def test_num_renders_ints_and_floats(self):
         # Queue A refill: _num's body (coverage run
         # 40189711740: 4 lines) -- the number renderer the

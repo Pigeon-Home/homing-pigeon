@@ -2700,6 +2700,23 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: job-fuzz's blank_line mutator --
+  exactly one blank line inserted, the seed's lines
+  preserved in order, an empty seed taking one too
+  (pinned in test_job_fuzz.py). Its not-lines
+  decline is unreachable (str.split never yields
+  []), and pi-health _read_throttled's ValueError
+  arm is unreachable by grammar too (the regex
+  admits only hex digits, and int(x, 16) is exempt
+  from the digit cap and cannot raise on them; a
+  5000-digit capture parses, verified) -- both
+  dispositioned here under the Q46 family ruling.
+  Correction to the Q49 ledger entry above: the
+  extension script-entry family is every file's
+  LAST line, verified line-by-line against the
+  map; the non-entry singles (airwaves, job-fuzz,
+  log-sentinel, sky-watcher, pi-health) are worked
+  individually, as here.
 - Queue A finding: training-watch's loss scrape
   admits a non-finite loss ("loss: 1e999" parses to
   inf) that the module's own _is_number rule
