@@ -1202,5 +1202,200 @@ class SendJobHelpDocumentTest(unittest.TestCase):
                 self.assertEqual(proc.returncode, 0, proc.stderr)
 
 
+class _RecordingSMTP:
+    def __init__(self):
+        self.messages = []
+
+    def send_message(self, msg, *a, **k):
+        self.messages.append(msg)
+        return {}
+
+    def quit(self):
+        pass
+
+
+class HandleMailFailureBranchesTest(_VerbosityGuard):
+    """Queue A: handle_mail's failure branches (coverage run
+    40180268696: 13 lines on both platforms) -- every one is
+    the same promise from a different side path: a failure
+    in the Oracle's opinion, the version 2 exchange, the
+    remediation follow-up, or the diagnosis must never cost
+    the sender their result. The side path is scripted to
+    raise at the runner's own seam; the job's result --
+    decrypted and verified from the recorded mail -- is
+    the assertion.
+    """
+
+    def _opts(self):
+        opts = _Opts()
+        opts.no_send = False
+        return opts
+
+    def _exec_mail(self, job_id, script, **job_kw):
+        job = {"v": 1, "type": "job", "job_id": job_id,
+               "issued_at": _now(), "kind": "exec",
+               "interpreter": [sys.executable],
+               "script": script}
+        job.update(job_kw)
+        return _mail("[HOMING-PIGEON] job " + job_id,
+                     _encrypted_body_for(job))
+
+    def _result(self, smtp, job_id):
+        from runner.cloud import send_job
+        for msg in smtp.messages:
+            if job_id not in str(msg["Subject"]):
+                continue
+            body = msg.get_content()
+            try:
+                data = json.loads(body)
+            except ValueError:
+                data = None
+            if isinstance(data, dict) and jobcrypto.is_envelope(data):
+                body = jobcrypto.decrypt_body(
+                    data, SECRET, job_id=job_id,
+                    key_id=data.get("key_id") or "")
+            return send_job.verify_body(body, SECRET)
+        return None
+
+    def _run(self, raw, cfg=None, patches=()):
+        cfg = cfg or {"mailbox_user": "t@example.com",
+                      "shared_secret": SECRET}
+        smtp = _RecordingSMTP()
+        with tempfile.TemporaryDirectory() as d:
+            started = [mock.patch.object(*p) if len(p) == 2
+                       else mock.patch.object(*p[:2], **p[2])
+                       for p in patches]
+            for p in started:
+                p.start()
+            try:
+                with _captured_log() as buf:
+                    handle_mail(cfg, _IMAP(), smtp, 1, raw, d, {},
+                                runner.build_secrets(cfg),
+                                self._opts())
+            finally:
+                for p in started:
+                    p.stop()
+        return smtp, buf.getvalue()
+
+    def test_an_encrypted_exec_job_runs_and_reports(self):
+        smtp, _log = self._run(
+            self._exec_mail("enc-exec-1", "print('sealed hi')"))
+        result = self._result(smtp, "enc-exec-1")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("sealed hi", result["stdout"])
+
+    def test_an_opinion_failure_costs_no_result(self):
+        smtp, logs = self._run(
+            self._exec_mail("op-fail-1", "print('still ran')"),
+            patches=[(runner._opinion, "plan_before",
+                      {"side_effect": RuntimeError("opinion down")})])
+        result = self._result(smtp, "op-fail-1")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("still ran", result["stdout"])
+        self.assertNotIn("oracle_opinion", result)
+        self.assertIn("oracle opinion failed for op-fail-1", logs)
+
+    def test_a_v2_exchange_failure_costs_no_result(self):
+        cfg = {"mailbox_user": "t@example.com",
+               "shared_secret": SECRET, "protocol_v2": True}
+        smtp, logs = self._run(
+            self._exec_mail("v2-fail-1", "print('v1 result')"),
+            cfg=cfg,
+            patches=[(runner, "_v2_before_execute",
+                      {"side_effect": RuntimeError("v2 down")})])
+        result = self._result(smtp, "v2-fail-1")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("version 2 exchange failed for v2-fail-1",
+                      logs)
+
+    def test_a_malformed_envelope_claim_is_rejected(self):
+        # A signed body that carries an hp_enc member which
+        # is not a real envelope: the signature verifies, the
+        # claim does not, and the job is rejected as a bad
+        # envelope -- never decrypted, never run.
+        job = {"v": 1, "type": "job", "job_id": "badenv-1",
+               "issued_at": _now(), "kind": "ping",
+               "hp_enc": {"alg": "not-a-suite"}}
+        raw = _mail("[HOMING-PIGEON] job badenv-1",
+                    sign_payload(job, SECRET))
+        smtp, logs = self._run(raw)
+        self.assertEqual(smtp.messages, [])
+        self.assertIn("malformed encryption envelope", logs)
+
+    def test_a_remediation_followup_failure_costs_no_result(self):
+        # The followup runs when a protected path changed.
+        # Confinement snapshots watch the workspace's
+        # parent (paths outside the workspace), so the
+        # guarded file is the workspace's sibling and the
+        # job rewrites it.
+        followup = mock.Mock(
+            side_effect=RuntimeError("followup down"))
+        smtp = _RecordingSMTP()
+        with tempfile.TemporaryDirectory() as root:
+            base = os.path.join(root, "base")
+            ws = os.path.join(root, "ws")
+            os.makedirs(base)
+            os.makedirs(ws)
+            guarded = os.path.join(root, "guarded.txt")
+            with open(guarded, "w", encoding="utf-8") as fh:
+                fh.write("original\n")
+            cfg = {"mailbox_user": "t@example.com",
+                   "shared_secret": SECRET,
+                   "workspace_root": ws,
+                   "protected_paths": [guarded]}
+            script = ("open(%r, 'a').write('changed\\n')"
+                      % guarded)
+            raw = self._exec_mail("rem-fail-1", script)
+            with mock.patch.object(
+                    runner, "_remediation_confinement_followup",
+                    followup):
+                with _captured_log():
+                    handle_mail(cfg, _IMAP(), smtp, 1, raw, base,
+                                {}, runner.build_secrets(cfg),
+                                self._opts())
+        result = self._result(smtp, "rem-fail-1")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertTrue(followup.called,
+                        "the followup branch was never reached")
+
+    def test_a_diagnosis_failure_still_files_the_opinion(self):
+        plan = {"active": True, "mode": "deterministic",
+                "findings": [], "checks_run": False,
+                "attach": None, "repair_action": None}
+        smtp, _logs = self._run(
+            self._exec_mail("diag-fail-1",
+                            "import sys; sys.exit(3)"),
+            patches=[
+                (runner._opinion, "plan_before",
+                 {"return_value": plan}),
+                (runner._opinion, "tier1_findings",
+                 {"side_effect": RuntimeError("diag down")})])
+        result = self._result(smtp, "diag-fail-1")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["exit_code"], 3)
+        self.assertIn("oracle_opinion", result)
+
+    def test_a_rejected_jobs_diagnosis_failure_still_reports(self):
+        plan = {"active": True, "mode": "deterministic",
+                "findings": [], "checks_run": False,
+                "attach": None, "repair_action": None}
+        smtp, logs = self._run(
+            self._exec_mail("rej-diag-1", "print('never runs')",
+                            interpreter=["/nonexistent/hp-bin"]),
+            patches=[
+                (runner._opinion, "plan_before",
+                 {"return_value": plan}),
+                (runner._opinion, "tier1_findings",
+                 {"side_effect": RuntimeError("diag down")})])
+        result = self._result(smtp, "rej-diag-1")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["exit_code"], -2)
+        self.assertNotIn("oracle_opinion", result)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
