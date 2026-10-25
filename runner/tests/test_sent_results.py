@@ -188,6 +188,25 @@ class SentResultTest(unittest.TestCase):
         self.assertFalse(R.save_sent_result("", skey, job, "s", "b"))
         self.assertIsNone(R.load_sent_result("", skey, job))
 
+    def test_prune_skips_an_entry_it_cannot_remove(self):
+        # Queue A: prune_sent's silent-skip arm -- an entry
+        # that cannot be removed (here a directory old
+        # enough to qualify) is passed over, the count
+        # reflects only real removals, and nothing raises.
+        d = os.path.join(self.tmp, R.SENT_DIRNAME)
+        os.makedirs(d)
+        old_file = os.path.join(d, "old.json")
+        with open(old_file, "w") as f:
+            f.write("{}")
+        stuck = os.path.join(d, "stuck")
+        os.makedirs(stuck)
+        past = time.time() - 10 * 86400
+        os.utime(old_file, (past, past))
+        os.utime(stuck, (past, past))
+        self.assertEqual(R.prune_sent(self.tmp, 7), 1)
+        self.assertFalse(os.path.exists(old_file))
+        self.assertTrue(os.path.isdir(stuck))
+
     def test_a_failed_record_is_logged_and_never_raises(self):
         # Queue A: the best-effort promise in save_sent_result's
         # docstring -- a failure to record is logged at WARN

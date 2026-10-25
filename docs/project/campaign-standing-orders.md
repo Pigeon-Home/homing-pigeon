@@ -2700,6 +2700,11 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Queue A taken: runner.prune_sent's silent-skip
+  arm (2 missed, Linux map) -- an entry that cannot
+  be removed (an old directory among the records)
+  is passed over, the count reflects only real
+  removals, pinned in test_sent_results.py.
 - Queue A taken: extsources.status (2 missed, Linux
   map) -- turned up a finding instead: status()
   documents "never raises" but raises AttributeError
