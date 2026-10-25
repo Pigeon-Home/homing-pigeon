@@ -5,6 +5,15 @@ These are unproven drafts for the campaign to take or reject.
 They follow the shape of test_enforce_races.py and
 test_oracle_no_widening.py. No live model is consulted.
 
+The four that drive the policy, audience and cage checks sit under
+expectedFailure (docs/use/questions.md Q37): they came onto main red
+on every leg they run on, because they call execute_job directly or
+assume audit rows the real path does not write, and the owner's
+standing rule (Q29) is that an unproven probe rides under
+expectedFailure until it is proven. Take the decorator off as each
+one is rewritten against the real path (poll_once with a signed
+payload) and goes green.
+
 R5  two pinned keys' policies and two audiences decided together
     under enforce: each denial names its own key and job id, no
     decision crosses over.
@@ -107,6 +116,7 @@ class PoliciesConcurrentRaceTest(unittest.TestCase):
             t.join(timeout=60)
         return results
 
+    @unittest.expectedFailure  # unproven draft, Q37
     def test_two_pinned_keys_each_denial_names_its_own_key(self):
         base = tempfile.mkdtemp(prefix="hp-r5-")
         cfg = {
@@ -140,6 +150,7 @@ class PoliciesConcurrentRaceTest(unittest.TestCase):
         self.assertEqual(by_job["r5-a"].get("key_id"), KEY_A)
         self.assertEqual(by_job["r5-b"].get("key_id"), KEY_B)
 
+    @unittest.expectedFailure  # unproven draft, Q37
     def test_two_audiences_each_denial_names_its_own_runner(self):
         base = tempfile.mkdtemp(prefix="hp-r5-aud-")
         cfg = {
@@ -231,6 +242,7 @@ class NoWideningCageTest(unittest.TestCase):
                  for line in read_audit_lines(tmpdir) or []]
         return executed, audit, fake.called, tmpdir
 
+    @unittest.expectedFailure  # unproven draft, Q37
     def test_a_model_cannot_unsandbox(self):
         if not ENGAGES:
             self.skipTest("sandbox cannot engage")
@@ -249,6 +261,7 @@ class NoWideningCageTest(unittest.TestCase):
         self.assertFalse(any(a.get("decision") == "unsandboxed"
                              for a in audit), audit)
 
+    @unittest.expectedFailure  # unproven draft, Q37
     def test_a_model_cannot_drop_as_root(self):
         if not (IS_ROOT and HAS_TEST_USER):
             self.skipTest("needs root and pigeon-test")

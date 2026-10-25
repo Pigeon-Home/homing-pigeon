@@ -120,7 +120,13 @@ REGISTERED = {
         "the relay launch sets start_new_session on POSIX; runs on "
         "ubuntu and macOS. The Windows arm is "
         "test_nt_spawn_uses_the_process_group_value, which patches os.name",
+    "needs root and pigeon-test":
+        "the Q26 draft cage test drops to the pigeon-test user; runs on "
+        "the root switch-proof legs",
     "needs symlink": "run where symlinks exist (every CI leg but some Windows configs)",
+    "sandbox cannot engage":
+        "the Q26 draft cage test needs a working confinement; runs on "
+        "the ubuntu legs with bwrap",
     "symlinks unavailable": "run where symlinks exist",
     "temp test file leaks into discovery on Windows":
         "run on POSIX; the Windows guard is the one remaining follow-up "
