@@ -405,5 +405,63 @@ class ResidualBranchesTest(unittest.TestCase):
             self.assertTrue(personal_documents_present(home))
 
 
+class LogStartupBlockTest(unittest.TestCase):
+    """Queue A refill: log_startup's banner and config
+    lines (coverage run 40187685363: 6 lines on both
+    platforms). The startup block's contract is its
+    docstring: it says what is configured and never
+    prints a secret -- it prints the absence of one.
+    A personal-documents hit prints the fixed banner
+    (no name); a check that itself fails is swallowed,
+    because a warning path must not stop the start.
+    An inference config prints ask=on with the model
+    and endpoint; additional secrets print as key
+    names only, and a key with no policy entry is
+    called out as unrestricted.
+    """
+
+    def _args(self):
+        import argparse
+        return argparse.Namespace(
+            verbose=False, workers=None, poll_interval=None,
+            max_output_bytes=None, timeout=None,
+            dry_run=False, once=False, no_send=False,
+            ignore_personal_documents=False)
+
+    def _run(self, cfg, warn):
+        import runner.runner as R
+        lines = []
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(
+                    R._personal_docs,
+                    "warn_if_personal_documents", warn), \
+                    mock.patch.object(
+                    R, "log",
+                    lambda m, level="INFO": lines.append(m)):
+                R.log_startup(cfg, self._args(), d)
+        return "\n".join(lines)
+
+    def test_the_banner_and_the_config_lines(self):
+        cfg = {"inference": {
+                   "endpoint": "http://127.0.0.1:11434/v1",
+                   "model": "m"},
+               "additional_secrets": {"kid2": "s" * 40},
+               "workspace_root": "/tmp/ws"}
+        out = self._run(cfg, mock.Mock(return_value=True))
+        self.assertIn("personal-documents check tripped", out)
+        self.assertIn("ask=on model=m", out)
+        self.assertIn("additional secrets: kid2", out)
+        self.assertIn("key 'kid2' has no key_policies entry",
+                      out)
+        self.assertNotIn("s" * 40, out)
+
+    def test_a_failing_check_is_swallowed(self):
+        out = self._run(
+            {}, mock.Mock(side_effect=RuntimeError("fs gone")))
+        self.assertNotIn("personal-documents check tripped",
+                         out)
+        self.assertIn("starting", out)
+
+
 if __name__ == "__main__":
     unittest.main()

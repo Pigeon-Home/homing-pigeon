@@ -156,6 +156,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/runner.py::log_startup` (6
+  lines never run on either platform, coverage run
+  40187685363) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  LogStartupBlockTest in
+  runner/tests/test_personal_docs.py: a tripped
+  personal-documents check prints the fixed banner;
+  a failing check is swallowed and the start
+  proceeds; an inference config prints ask=on;
+  additional secrets print as key names only (the
+  value asserted absent) with the unrestricted-key
+  warning. Done when a coverage run shows the
+  function clean.
 - A (refill) — `runner/runner.py::handle_v2_mail`
   (6 lines never run on either platform, coverage
   run 40187685363) — taken 2026-10-25,
