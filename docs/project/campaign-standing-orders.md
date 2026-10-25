@@ -156,6 +156,19 @@ One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
 - rules refreshed 2026-10-25 04:24 PDT
+- A (refill) — `runner/extensions/log-sentinel/`
+  `log_sentinel.py::read_new_lines` (7 lines never
+  run on Windows, coverage run 40187685363; the code
+  is platform-neutral, the Windows fixtures were
+  not) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  ReaderGuardsTest in
+  runner/tests/test_log_sentinel.py: paths that are
+  not a list read as none; non-path entries are
+  skipped; a missing file and a file that stats but
+  will not open each keep their recorded offset.
+  Done when a coverage run shows the function clean
+  on both platforms.
 - A (refill) — `runner/runner.py::kill_tree` (7 lines
   never run on Windows, 2 on Linux, coverage run
   40187685363) — taken 2026-10-25,

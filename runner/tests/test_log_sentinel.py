@@ -154,6 +154,43 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual([e["pattern"] for e in events], ["fine"])
 
 
+class ReaderGuardsTest(unittest.TestCase):
+    """Queue A refill: read_new_lines' guard legs
+    (coverage run 40187685363: 7 lines on Windows,
+    where the POSIX-shaped reader fixtures do not
+    run; the code is platform-neutral and these drives
+    are too). The reader's contract: paths that are
+    not a list read as none; entries that are not
+    paths are skipped; a file missing or unreadable
+    this pass keeps its recorded offset, so a file
+    that comes back is not re-read from scratch.
+    """
+
+    def test_paths_that_are_not_a_list_read_as_none(self):
+        lines, reader = LS.read_new_lines("kern.log", {}, 100)
+        self.assertEqual((lines, reader), ([], {}))
+
+    def test_entries_that_are_not_paths_are_skipped(self):
+        lines, reader = LS.read_new_lines([42, ""], {}, 100)
+        self.assertEqual((lines, reader), ([], {}))
+
+    def test_a_missing_file_keeps_its_recorded_offset(self):
+        prev = {"/nonexistent/kern.log": {"inode": 1, "offset": 5}}
+        lines, reader = LS.read_new_lines(
+            ["/nonexistent/kern.log"], prev, 100)
+        self.assertEqual(lines, [])
+        self.assertEqual(reader["/nonexistent/kern.log"],
+                         {"inode": 1, "offset": 5})
+
+    def test_an_unreadable_file_keeps_its_recorded_offset(self):
+        with tempfile.TemporaryDirectory() as d:
+            prev = {d: {"inode": 999, "offset": 0}}
+            lines, reader = LS.read_new_lines([d], prev, 100)
+            self.assertEqual(lines, [])
+            self.assertEqual(reader[d], {"inode": 999,
+                                         "offset": 0})
+
+
 class DecideTest(unittest.TestCase):
     def test_each_builtin_fires_kernel_distress_high(self):
         cases = [("oom", OOM_LINE), ("panic", PANIC_LINE),
