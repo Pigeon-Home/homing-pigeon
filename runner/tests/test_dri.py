@@ -426,5 +426,49 @@ class SaveStateBranchesTest(unittest.TestCase):
                 D._save_state(d, {"a": 1})
 
 
+class DriResidualLegsTest(unittest.TestCase):
+    """Queue A refill: dri's residual legs
+    (coverage run 40189711740). A retained
+    folder holds more than job results -- a
+    stray non-JSON file is passed over, not
+    parsed. And the fused score's window is a
+    window: alerts older than it do not count,
+    however heavy they are.
+    """
+
+    def test_a_non_json_file_in_retained_is_passed_over(self):
+        with tempfile.TemporaryDirectory() as d:
+            kept = os.path.join(d, "retained")
+            os.makedirs(kept)
+            with open(os.path.join(kept, "notes.txt"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("operator notes, not a result")
+            payload = {"job_id": "job1",
+                       "saved_at": time.time()}
+            with open(os.path.join(kept, "job1.json"),
+                      "w", encoding="utf-8") as fh:
+                json.dump(payload, fh)
+            out = D._recent_retained(d, 0)
+            self.assertEqual(out, [("job1", payload)])
+
+    def test_stale_alerts_do_not_trip_the_fused_score(self):
+        old = _iso(time.time() - 7200)
+        records = [
+            {"sensor": "host_ids", "severity": "critical",
+             "title": "a", "observed_at": old,
+             "weight": 1.0},
+            {"sensor": "host_ids", "severity": "critical",
+             "title": "b", "observed_at": old,
+             "weight": 1.0},
+        ]
+        dcfg = D.parse_dri(_cfg())
+        with mock.patch.object(
+                D._senses, "load_alerts",
+                return_value=records):
+            evs = D.evaluate_page_triggers(
+                dcfg, "unused", time.time() - 10)
+        self.assertEqual(evs, [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

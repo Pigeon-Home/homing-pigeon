@@ -339,6 +339,22 @@ when done, the proving commit or run. Newest first.
   lines are still blank although the deletion
   landed in f4e2378 -- the answerer's
   bookkeeping, noted here.)
+- A (refill) — dri, audit-report and
+  remediation legs (coverage run
+  40189711740): the retained scan's non-JSON
+  pass-over, the fused score's stale-alert
+  skip, the audit report's no-security-module
+  read, and the Windows creation-time
+  reader's unreadable-times answer (kernel32
+  faked at the seam, so the leg runs on any
+  platform) — taken 2026-10-25,
+  58316a92-3c4a-41cb-8a16-8c0c5a871e90 —
+  DriResidualLegsTest (test_dri.py),
+  ReadEntriesNoSecurityLegTest
+  (test_audit_report.py),
+  WinCreatedTicksLegTest
+  (test_remediation.py). Done when a coverage
+  run shows the taken legs clean.
 - A (refill) — job-fuzz mutator legs
   (coverage run 40189711740): the truncate,
   duplicate, drop, null-byte and splice

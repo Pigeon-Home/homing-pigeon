@@ -376,5 +376,21 @@ class ImportSeamTest(unittest.TestCase):
             self.assertEqual(mod._read_entries(d), [])
 
 
+class ReadEntriesNoSecurityLegTest(unittest.TestCase):
+    """Queue A refill: _read_entries without
+    the security module (coverage run
+    40189711740: auditreport.py line 44).
+    Where the audit module itself is
+    unavailable the report reads as no
+    entries -- the audit report degrades, it
+    does not crash the caller.
+    """
+
+    def test_no_security_module_no_entries(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(AR, "_security", None):
+                self.assertEqual(AR._read_entries(d), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

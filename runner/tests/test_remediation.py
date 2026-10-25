@@ -1135,5 +1135,27 @@ class TotalMemoryWindowsBranchTest(unittest.TestCase):
             self.assertIsNone(rem.total_memory_bytes())
 
 
+class WinCreatedTicksLegTest(unittest.TestCase):
+    """Queue A refill: _win_created_ticks'
+    unreadable-times answer (coverage run
+    40189711740: remediation.py line 368). A
+    process whose times cannot be read has no
+    known birthday -- None, never a guess.
+    The kernel32 seam is a fake, so the leg
+    runs on any platform.
+    """
+
+    def test_unreadable_times_are_none(self):
+        import ctypes
+        kernel32 = mock.Mock()
+        kernel32.OpenProcess.return_value = 1234
+        kernel32.GetProcessTimes.return_value = 0
+        with mock.patch.object(
+                ctypes, "WinDLL", return_value=kernel32,
+                create=True):
+            self.assertIsNone(rem._win_created_ticks(42))
+        kernel32.CloseHandle.assert_called_once_with(1234)
+
+
 if __name__ == "__main__":
     unittest.main()
