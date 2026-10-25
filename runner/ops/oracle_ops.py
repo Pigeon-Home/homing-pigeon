@@ -1,3 +1,23 @@
+from datetime import datetime, timezone, timedelta
+import os
+import subprocess
+import sys
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 """Oracle brief and tool helpers.
 
 Extracted from runner.py.
@@ -7,18 +27,17 @@ def _oracle_brief(cfg, base_dir, record, opener=None):
     """Assess one woken signal and file the brief. Never raises.
 
     Runs on a daemon thread after the wake gate fires. With a local
-    model configured, the Oracle itself (ask_model_agent, the same
+    model configured, the Oracle itself (_runner().ask_model_agent, the same
     path the interactive doors use) assesses the signal against the
     box's current context. Without one, the brief is a deterministic
     note saying so -- the mechanism stays honest and testable with
     no model. In deterministic mode (Pi Light) the brief is
     explicitly that note, labeled as such, and no model is called
     even if one is configured. The brief lands in
-    oracle-briefs.jsonl and in the runner log, where later Oracle
+    oracle-briefs.jsonl and in the runner _runner().log, where later Oracle
     context reads it back.
     """
-    from runner import runner as R
-
+    R = _runner()
     record = record if isinstance(record, dict) else {}
     sensor = record.get("sensor")
     sensor = sensor if isinstance(sensor, str) and sensor else "?"
@@ -50,13 +69,13 @@ def _oracle_brief(cfg, base_dir, record, opener=None):
                 + (f": {title}" if title else "")
                 + ". The alert was filed in the senses store; "
                 "review it there.")
-        elif inference_config(cfg) is None:
+        elif _runner().inference_config(cfg) is None:
             brief["assessment"] = (
                 "No local model is configured on this box, so the "
                 "Oracle made no assessment. The alert was filed in "
                 "the senses store; review it there.")
         else:
-            inf = inference_config(cfg)
+            inf = _runner().inference_config(cfg)
             lines = [
                 "A sensor signal just arrived on this box and crossed "
                 "the wake threshold.",
@@ -74,9 +93,9 @@ def _oracle_brief(cfg, base_dir, record, opener=None):
                 "Assess what happened, using the box context "
                 "provided, and state plainly what happened and what, "
                 "if anything, the owner should do.")
-            ans = ask_model_agent(
+            ans = _runner().ask_model_agent(
                 inf, "\n".join(lines),
-                oracle_context(base_dir,
+                _runner().oracle_context(base_dir,
                                watch=R._oracle_watch_enabled(cfg)),
                 inf.get("max_answer_chars") or 2000,
                 R._redact_patterns(cfg),
@@ -102,7 +121,7 @@ def _oracle_brief(cfg, base_dir, record, opener=None):
             f"The briefing attempt failed: {e}. "
             f"The alert was filed in the senses store.")
     R._append_brief(base_dir, brief)
-    log(f"oracle brief ({sensor}/{signal or '-'}): {brief['assessment']}")
+    _runner().log(f"oracle brief ({sensor}/{signal or '-'}): {brief['assessment']}")
     return brief
 
 
@@ -118,8 +137,7 @@ def _run_oracle_tool(name, args, base_dir=None, withheld=None) -> str:
     list_dir, and write_file refuse them, and list_dir leaves them
     out of a listing. The run tool is a shell and is not filtered.
     """
-    from runner import runner as R
-
+    R = _runner()
     if not isinstance(args, dict):
         return "error: args must be an object"
     if name in ("read_file", "list_dir", "write_file") and withheld is None:

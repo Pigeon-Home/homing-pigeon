@@ -2,13 +2,34 @@
 
 Extracted from runner.py.
 """
+import shutil
+import subprocess
+import tempfile
+import time
 import os
+import sys
 import json
 import hashlib
 
 
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
+
+
 def _yara_hits(work, targets, cfg=None):
-    from runner import runner as R
+    R = _runner()
     yr = shutil.which("yr")
     yara = shutil.which("yara")
     if not yr and not yara:
@@ -56,7 +77,7 @@ def _yara_hits(work, targets, cfg=None):
 
 
 def recent_chat(base_dir, turns=None, max_chars=None):
-    from runner import runner as R
+    R = _runner()
     if turns is None:
         turns = R._CHAT_WINDOW_TURNS
     if max_chars is None:
@@ -66,8 +87,7 @@ def recent_chat(base_dir, turns=None, max_chars=None):
     A long chat is not sent whole. The model gets the last few ask
     events, cut to max_chars. Older turns stay in oracle-chat.jsonl.
     """
-    from runner import runner as R
-
+    R = _runner()
     if not R._valid_base(base_dir):
         return ""
     try:
@@ -124,8 +144,7 @@ def _canary_watch(base_dir, max_chars=2000):
     Untouched canaries collapse to one quiet line. Bounded. Returns ""
     when there is no usable base_dir; never raises.
     """
-    from runner import runner as R
-
+    R = _runner()
     if not R._valid_base(base_dir):
         return ""
     canary_dir = os.path.join(base_dir, "canaries")

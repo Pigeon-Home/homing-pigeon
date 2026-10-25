@@ -2,8 +2,26 @@
 
 Extracted from runner.py.
 """
+import hashlib
 import json
+import sys
 import os
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 
 
 def build_attestations(queries, ctx):
@@ -48,7 +66,7 @@ def build_attestations(queries, ctx):
                 safe_items.append((key, v))
             text = ctx.get("text", "") if isinstance(ctx, dict) else ""
             atts.append({"predicate": pred,
-                         "ok": not secret_scan(text, pats),
+                         "ok": not _runner().secret_scan(text, pats),
                          "patterns_sha384": hashlib.sha384(json.dumps(sorted(safe_items)).encode()).hexdigest()})
         elif _is("output_digest"):
             atts.append({"predicate": pred, "digest": ctx.get("digest")})
@@ -79,14 +97,13 @@ def build_attestations(queries, ctx):
 
 def reload_hot_config(cfg: dict, path: str, state: dict,
                       pinned=None) -> list:
-    from runner import runner as R
     """Apply hot keys from path if its mtime changed.
 
     state holds {"mtime": float}. pinned keys (set by CLI flags) are
     left alone. On a bad file, state is not advanced, so the next cycle
     retries the same mtime. Returns the keys that actually changed.
     """
-    from runner import runner as R
+    R = _runner()
     if not isinstance(cfg, dict) or not isinstance(path, str) or not path:
         return []
     if not isinstance(state, dict):
@@ -101,17 +118,17 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
     # A bad file must not stop the cycle. Leave mtime alone so the
     # next poll retries the same file.
     try:
-        fresh = R.load_config(path)
+        fresh = _runner().load_config(path)
     except Exception:
         return []
     changed = []
-    for key in R.HOT_KEYS:
+    for key in _runner().HOT_KEYS:
         if key in pinned or key not in fresh:
             continue
         val = R._valid_hot(key, fresh[key])
         if val is None:
-            val = R.HOT_DEFAULTS[key]
-            R.log(f"config reload: invalid {key}={fresh[key]!r} reads as "
+            val = _runner().HOT_DEFAULTS[key]
+            _runner().log(f"config reload: invalid {key}={fresh[key]!r} reads as "
                 f"the default {val}", "WARN")
         if val != cfg.get(key):
             cfg[key] = val
@@ -120,29 +137,29 @@ def reload_hot_config(cfg: dict, path: str, state: dict,
     # documented default and is named, like the hot keys above.
     if R._defaulted is not None:
         for key in R._defaulted.defaulted_keys(fresh):
-            if key in R.HOT_KEYS or key in pinned:
+            if key in _runner().HOT_KEYS or key in pinned:
                 continue
             val = R._defaulted.default_for(key)
-            R.log(f"config reload: invalid {key}={fresh[key]!r} reads as "
+            _runner().log(f"config reload: invalid {key}={fresh[key]!r} reads as "
                 f"the default {val}", "WARN")
             if val != cfg.get(key):
                 cfg[key] = val
                 changed.append(key)
-    for key in R.LIVE_KEYS:
+    for key in _runner().LIVE_KEYS:
         if key in pinned or key not in fresh:
             continue
         val = fresh[key]
         if key == "owner_instructions" and not isinstance(val, str):
-            R.log(f"config reload: ignoring invalid {key}", "WARN")
+            _runner().log(f"config reload: ignoring invalid {key}", "WARN")
             continue
         if key == "inference" and not isinstance(val, dict):
-            R.log(f"config reload: ignoring invalid {key}", "WARN")
+            _runner().log(f"config reload: ignoring invalid {key}", "WARN")
             continue
         if key == "oracle_mode" and not isinstance(val, str):
-            R.log(f"config reload: ignoring invalid {key}", "WARN")
+            _runner().log(f"config reload: ignoring invalid {key}", "WARN")
             continue
         if key == "verbose" and not isinstance(val, (bool, str)):
-            R.log(f"config reload: ignoring invalid {key}", "WARN")
+            _runner().log(f"config reload: ignoring invalid {key}", "WARN")
             continue
         if val != cfg.get(key):
             cfg[key] = val

@@ -11,7 +11,7 @@ def _runner():
     frozen, where `from runner import runner` cannot work)."""
     for name in ("runner.runner", "__main__"):
         m = sys.modules.get(name)
-        if m is not None and callable(getattr(m, "handle_mail", None)):
+        if m is not None and callable(getattr(m, "_load_mod", None)):
             return m
     from runner import runner as R  # a host that imported us first
     return R

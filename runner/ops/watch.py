@@ -2,9 +2,28 @@
 
 Extracted from runner.py.
 """
+import subprocess
+import time
 import os
+import sys
 import json
 import re as _re
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 
 
 def _eventlog_tail(max_events=30, max_chars=2000, base_dir=""):
@@ -16,9 +35,8 @@ def _eventlog_tail(max_events=30, max_chars=2000, base_dir=""):
     caller says "unreadable", never "clean"); "" means it read fine and
     found nothing. Non-Windows returns None. Never raises.
     """
-    from runner import runner as R
-
-    if sys.platform != "win32":
+    R = _runner()
+    if _runner().sys.platform != "win32":
         return None
     try:
         import xml.etree.ElementTree as ET
@@ -73,12 +91,12 @@ def _eventlog_tail(max_events=30, max_chars=2000, base_dir=""):
 
     level_xpath = "*[System[(Level=1 or Level=2 or Level=3)]]"
     results = [
-        _wevtutil_query("System", level_xpath, 18),
-        _wevtutil_query("Application", level_xpath, 8),
+        _runner()._wevtutil_query("System", level_xpath, 18),
+        _runner()._wevtutil_query("Application", level_xpath, 8),
     ]
     audit_xpath = "*[System[(%s)]]" % " or ".join(
         "EventID=%d" % i for i in R._EVENTLOG_AUDIT_IDS)
-    results.append(_wevtutil_query("Security", audit_xpath, 8))
+    results.append(_runner()._wevtutil_query("Security", audit_xpath, 8))
     if all(r is None for r in results):
         return None
     for xml_text in results:
@@ -87,7 +105,7 @@ def _eventlog_tail(max_events=30, max_chars=2000, base_dir=""):
     blob = "\n".join(lines[:max_events]).strip()
     if len(blob) > max_chars:
         blob = blob[-max_chars:]
-    _file_fresh_lines(base_dir, "eventlog", blob)
+    _runner()._file_fresh_lines(base_dir, "eventlog", blob)
     return blob
 
 
@@ -101,11 +119,10 @@ def _registry_watch(base_dir, max_chars=2000):
     "unreadable", never "clean"); non-Windows returns None. Never
     raises.
     """
-    from runner import runner as R
-
-    if sys.platform != "win32":
+    R = _runner()
+    if _runner().sys.platform != "win32":
         return None
-    snap = _registry_snapshot()
+    snap = _runner()._registry_snapshot()
     if snap is None:
         return None
     snap_path = ""
@@ -130,7 +147,7 @@ def _registry_watch(base_dir, max_chars=2000):
             if not isinstance(prv, dict):
                 prv = {}
             raw = snap["keys"].get(key + "\x00raw", {})
-            tag = _reg_attack(key)
+            tag = _runner()._reg_attack(key)
             suffix = (" [" + tag + "]") if tag else ""
             for name in sorted(set(cur) | set(prv)):
                 if changes >= R._REG_WATCH_MAX_CHANGES:
@@ -171,7 +188,7 @@ def _registry_watch(base_dir, max_chars=2000):
     if len(blob) > max_chars:
         blob = blob[:max_chars]
     if isinstance(old, dict) and isinstance(base_dir, str) and base_dir:
-        _file_registry_lines(base_dir, lines)
+        _runner()._file_registry_lines(base_dir, lines)
     return blob
 
 
@@ -185,25 +202,24 @@ def _host_log_tail(max_chars=2000, base_dir="", journal=True):
     read and the narrow set was empty. Windows returns None; the Event
     Log section covers that platform. Never raises.
     """
-    from runner import runner as R
-
-    if sys.platform == "win32":
+    R = _runner()
+    if _runner().sys.platform == "win32":
         return None
     kept = []
     readable = False
     for path in R._AUTH_LOG_PATHS:
-        rows = _tail_marked(path, R._AUTH_LOG_MARKERS)
+        rows = _runner()._tail_marked(path, R._AUTH_LOG_MARKERS)
         if rows is None:
             continue
         readable = True
-        kept.extend(_label_auth(row) for row in rows)
+        kept.extend(_runner()._label_auth(row) for row in rows)
     for path in R._SYS_LOG_PATHS:
-        rows = _tail_marked(path, R._SYS_LOG_MARKERS)
+        rows = _runner()._tail_marked(path, R._SYS_LOG_MARKERS)
         if rows is None:
             continue
         readable = True
         kept.extend(rows)
-    if not readable and journal and sys.platform.startswith("linux"):
+    if not readable and journal and _runner().sys.platform.startswith("linux"):
         try:
             proc = subprocess.run(
                 ["journalctl", "-n", "20", "-p", "err", "--no-pager",
@@ -215,7 +231,7 @@ def _host_log_tail(max_chars=2000, base_dir="", journal=True):
                 and isinstance(proc.stdout, str):
             readable = True
             kept.extend(
-                _label_auth(line.strip()[:240])
+                _runner()._label_auth(line.strip()[:240])
                 for line in proc.stdout.splitlines() if line.strip())
     if not readable:
         return None
@@ -226,7 +242,7 @@ def _host_log_tail(max_chars=2000, base_dir="", journal=True):
         max_chars = 2000
     if len(blob) > max_chars:
         blob = blob[-max_chars:]
-    _file_fresh_lines(base_dir, "hostlog", blob)
+    _runner()._file_fresh_lines(base_dir, "hostlog", blob)
     return blob
 
 
@@ -251,9 +267,8 @@ def _scrub_log_tail_lines(lines, base_dir):
       30 lines, capped chars), and the retained summary remains
       the withholding of record.
     """
-    from runner import runner as R
-
-    flagged = _flagged_job_ids(base_dir)
+    R = _runner()
+    flagged = _runner()._flagged_job_ids(base_dir)
     out = []
     skipping = False
     for line in lines:

@@ -1,3 +1,25 @@
+import email
+import hashlib
+import json
+import os
+import sys
+import threading
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 """CLI, v2 mail, and variant helpers.
 
 Extracted from runner.py.
@@ -7,14 +29,13 @@ import email
 def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
     """Chat with the Oracle in the terminal. Does not poll the mailbox.
 
-    The same ask pipeline as the --oracle window -- ask_model_agent
+    The same ask pipeline as the --oracle window -- _runner().ask_model_agent
     over the live Oracle context, answers and rejects rendered the
     same way, turns recorded to the same chat log -- with no HTTP
     server and no browser. /quit or /exit ends it, as do EOF and
     Ctrl+C. input_fn / print_fn are seams for tests.
     """
-    from runner import runner as R
-
+    R = _runner()
     if input_fn is None:
         input_fn = input
     if print_fn is None:
@@ -30,7 +51,7 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
     print_fn(f"Chat log: {os.path.join(base, 'oracle-chat.jsonl')}")
     if cfg_path:
         print_fn(f"Config: {os.path.abspath(cfg_path)}")
-    inf = inference_config(cfg) or {}
+    inf = _runner().inference_config(cfg) or {}
     if R._oracle_mode(cfg) == "deterministic":
         print_fn("Oracle mode: deterministic (Pi Light) -- no local "
                  "model; answers are this box's records, un-narrated")
@@ -47,7 +68,7 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
     print_fn("Terminal chat; the Oracle may run tools on this box. "
              "/quit ends it.")
     try:
-        record_oracle_turn(base, cfg, "", {}, event="open")
+        _runner().record_oracle_turn(base, cfg, "", {}, event="open")
     except Exception as e:
         R.log(f"oracle open not recorded: {e}", "WARN")
     try:
@@ -72,9 +93,9 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
                 ans = {"answer": R._deterministic_oracle_answer(cfg, base)}
             else:
                 try:
-                    ans = ask_model_agent(
+                    ans = _runner().ask_model_agent(
                         inf, question,
-                        oracle_context(base,
+                        _runner().oracle_context(base,
                                        watch=R._oracle_watch_enabled(cfg)),
                         (inf or {}).get("max_answer_chars") or 2000,
                         R._redact_patterns(cfg),
@@ -87,7 +108,7 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
             if not isinstance(ans, dict):
                 ans = {"rejected": "inference_error"}
             try:
-                record_oracle_turn(base, cfg, question, ans)
+                _runner().record_oracle_turn(base, cfg, question, ans)
             except Exception as e:
                 R.log(f"oracle chat log failed: {e}", "WARN")
             if isinstance(ans.get("answer"), str) and ans.get("answer"):
@@ -111,7 +132,7 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
             # writing into a directory being torn down.
             warm_thread.join(timeout=5)
         try:
-            record_oracle_turn(base, cfg, "", {}, event="close")
+            _runner().record_oracle_turn(base, cfg, "", {}, event="close")
         except Exception:
             pass
     return 0
@@ -126,8 +147,7 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     not turned version 2 on drops the message. ``answer_only``
     answers a question and does not run anything.
     """
-    from runner import runner as R
-
+    R = _runner()
     if R._protocol_v2 is None:
         return False
     found = R._protocol_v2.subject_kind(subject)
@@ -136,20 +156,20 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     kind, ident = found
 
     def reject(why):
-        vlog(f"ingest: seq {seq}: rejected: {why}")
+        _runner().vlog(f"ingest: seq {seq}: rejected: {why}")
         R.log(f"rejecting seq {seq}: {why}", "WARN")
         R._mark(imap, seq, opts)
 
     if not R._protocol_v2.receiving(cfg):
-        vlog(f"ingest: seq {seq}: version 2 message ignored; "
+        _runner().vlog(f"ingest: seq {seq}: version 2 message ignored; "
              f"protocol_v2 is off")
         R._mark(imap, seq, opts)
         return True
     try:
-        body = get_text_body(email.message_from_bytes(raw))
+        body = _runner().get_text_body(email.message_from_bytes(raw))
         payload, key_id, secret, encrypted = R._admit_object(
             body, secrets, ident)
-    except JobCryptoError as e:
+    except _runner().JobCryptoError as e:
         reject(f"bad envelope: {e}")
         return True
     except Exception as e:
@@ -176,7 +196,7 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
             R.log(f"version 2 answer for {payload.get('question_id')}: "
                 f"{'stored' if stored else 'already stored'}")
         if not dry:
-            mark_seen(imap, seq)
+            _runner().mark_seen(imap, seq)
         return True
     if kind == "question":
         if not R._protocol_v2.answer_only(cfg):
@@ -188,10 +208,10 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
             return True
         text = R._protocol_v2.local_answer_text(payload)
         if R._oracle_mode(cfg) != "deterministic":
-            inf = inference_config(cfg)
+            inf = _runner().inference_config(cfg)
             if inf is not None:
                 try:
-                    res = ask_model(
+                    res = _runner().ask_model(
                         inf,
                         "Answer in one short sentence. You are "
                         "deciding for another machine. Do not "
@@ -211,14 +231,14 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
             return True
         no_send = opts is not None and opts.no_send
         if not dry and not no_send:
-            send_mail(
+            _runner().send_mail(
                 smtp, cfg,
                 "[HOMING-PIGEON] answer " + ans["msg_id"],
                 R._seal_reply(ans, secret, ans["msg_id"], key_id,
                             encrypted))
         R.log(f"version 2 answerer replied to {ident}")
         if not dry:
-            mark_seen(imap, seq)
+            _runner().mark_seen(imap, seq)
         return True
     # A determination is the Pi telling the answerer what it
     # expects. File nothing executable. The answerer only needed
@@ -226,7 +246,7 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     R.log(f"version 2 determination {ident} for job "
         f"{payload.get('job_id')}: {payload.get('expect')}")
     if not dry:
-        mark_seen(imap, seq)
+        _runner().mark_seen(imap, seq)
     return True
 
 
@@ -258,8 +278,7 @@ def run_variant(cfg, args) -> int:
     usage or config error, reported on stderr like the other
     one-shot modes.
     """
-    from runner import runner as R
-
+    R = _runner()
     base_dir = R._base_dir_for(cfg, args.config)
     try:
         with open(args.run_variant, encoding="utf-8") as fh:
@@ -302,7 +321,7 @@ def run_variant(cfg, args) -> int:
                     detail=mutator if isinstance(mutator, str)
                     else "", cfg=cfg)
             try:
-                r = execute_job(cfg, job, work_base)
+                r = _runner().execute_job(cfg, job, work_base)
                 digest = hashlib.sha384(
                     (R._as_str(r.get("stdout"))
                      + R._as_str(r.get("stderr"))).encode(
@@ -319,7 +338,7 @@ def run_variant(cfg, args) -> int:
                         r.get("stderr")).encode("utf-8")),
                     "digest": digest,
                 }
-            except JobRejected as e:
+            except _runner().JobRejected as e:
                 report = {"stage": "refused", "reason": str(e)}
             except Exception as e:  # the path around the run
                 report = {"stage": "error",

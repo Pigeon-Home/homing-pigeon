@@ -1,3 +1,21 @@
+import os
+import sys
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 """Path-finding helper.
 
 Extracted from runner.py.
@@ -16,8 +34,7 @@ def _script_path_findings(script, base_dir=None, job_id=None):
     directory) are its own business and never findings. Capped
     at 3, in script order.
     """
-    from runner import runner as R
-
+    R = _runner()
     if not isinstance(script, str) or not script:
         return []
     workspace = ""

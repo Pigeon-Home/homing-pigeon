@@ -1,3 +1,21 @@
+import json
+import sys
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 """Oracle context builder.
 
 Extracted from runner.py.
@@ -14,8 +32,7 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
     files on every platform, and on Windows a bounded tail of the
     Event Log and a diff of registry persistence locations.
     """
-    from runner import runner as R
-
+    R = _runner()
     if not isinstance(base_dir, str):
         return ""
     chosen = R._chosen_retained_rows(base_dir, limit)
@@ -72,7 +89,7 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
         if can:
             blob += ("\n\n---\nCanary watch (tripwire files planted by "
                      "the runner):\n" + can)
-    if watch and sys.platform == "win32" and job_blob_len < cap:
+    if watch and _runner().sys.platform == "win32" and job_blob_len < cap:
         ev = R._eventlog_tail(base_dir=base_dir if isinstance(base_dir, str) else "")
         if ev is None:
             blob += ("\n\n---\nWindows Event Log: unreadable by the runner "
@@ -92,7 +109,7 @@ def oracle_context(base_dir, limit=6, max_chars=8000, log_chars=2000,
         elif reg:
             blob += ("\n\n---\nWindows registry watch (autorun and "
                      "persistence locations, services):\n" + reg)
-    if watch and job_blob_len < cap and sys.platform != "win32":
+    if watch and job_blob_len < cap and _runner().sys.platform != "win32":
         host = R._host_log_tail(base_dir=base_dir if isinstance(base_dir, str) else "")
         if host is None:
             blob += ("\n\n---\nHost log tail: unreadable by the runner "

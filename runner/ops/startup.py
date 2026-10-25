@@ -1,3 +1,23 @@
+import email
+import json
+import re
+import sys
+
+
+def _runner():
+    """The live runner module, looked up at call time.
+
+    `runner.runner` when the suite or a package import loaded it,
+    `__main__` when runner.py was started as a script (an install,
+    the one-file binaries), where `runner` is the file itself and
+    `from runner import runner` raises "'runner' is not a package".
+    """
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 """Startup and board helpers.
 
 Extracted from runner.py.
@@ -11,12 +31,11 @@ def log_startup(cfg, args, base_dir):
     A personal-documents hit prints a fixed banner and one WARN
     line. The name that matched is not logged.
     """
-    from runner import runner as R
-
+    R = _runner()
     if (not getattr(args, "ignore_personal_documents", False)
-            and _personal_docs is not None):
+            and _runner()._personal_docs is not None):
         try:
-            if _personal_docs.warn_if_personal_documents():
+            if _runner()._personal_docs.warn_if_personal_documents():
                 R.log("personal-documents check tripped. "
                     "No file was opened and no name was recorded.",
                     "WARN")
@@ -28,16 +47,16 @@ def log_startup(cfg, args, base_dir):
     _lvl = getattr(args, "verbose_level", None)
     if _lvl is None:
         _lvl = 1 if getattr(args, "verbose", False) else 0
-    auth = "oauth" if _use_oauth(cfg) else "password"
-    inf = inference_config(cfg)
+    auth = "oauth" if _runner()._use_oauth(cfg) else "password"
+    inf = _runner().inference_config(cfg)
     keys = sorted((cfg.get("additional_secrets") or {}).keys())
-    R.log(f"homing-pigeon {__version__} invocation: "
-        f"{_invocation_line()}")
-    R.log(f"homing-pigeon {__version__} starting "
-        f"(base={base_dir}, platform={sys.platform})")
+    R.log(f"homing-pigeon {_runner().__version__} invocation: "
+        f"{_runner()._invocation_line()}")
+    R.log(f"homing-pigeon {_runner().__version__} starting "
+        f"(base={base_dir}, platform={_runner().sys.platform})")
     R.log(f"auth={auth} mailbox={cfg.get('mailbox_user')} "
         f"poll={cfg.get('poll_interval_sec', 20)}s "
-        f"workers={_worker_count(cfg, args)} "
+        f"workers={_runner()._worker_count(cfg, args)} "
         f"timeout={cfg.get('default_timeout_sec', 300)}s")
     R.log(f"judge={cfg.get('judge') or 'off'} "
         f"ceiling={cfg.get('max_result_view') or 'full'} "
@@ -49,7 +68,7 @@ def log_startup(cfg, args, base_dir):
             "Installer sets this unless --no-inference was passed.")
     if keys:
         R.log(f"additional secrets: {', '.join(keys)}")
-    for kid in unrestricted_extra_keys(cfg):
+    for kid in _runner().unrestricted_extra_keys(cfg):
         R.log(f"key {kid!r} has no key_policies entry: it is unrestricted "
             f"(add a policy, or set key_policies_default_deny)", "WARN")
     flags = []
@@ -69,7 +88,7 @@ def log_startup(cfg, args, base_dir):
         "Signature is the only gate. Results return to this mailbox.")
     if not cfg.get("workspace_root"):
         R.log("confinement is off; workspace_root is not set", "WARN")
-    if _cleartext_jobs_allowed():
+    if _runner()._cleartext_jobs_allowed():
         R.log("cleartext (HMAC-only) jobs are ACCEPTED by this "
             "process (--allow-cleartext): a signed job whose "
             "body is not encrypted will execute, and its result "
@@ -95,38 +114,37 @@ def log_startup(cfg, args, base_dir):
 
 def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, base_dir):
     """Handle task_submit / task_request / task_result / task_approve. Returns True if handled."""
-    from runner import runner as R
-
+    R = _runner()
     m = re.search(r"\[HOMING-PIGEON\].*?(task_submit|task_request|task_result|task_approve)\s+(\S+)", subject, re.I)
     if not m:
         return False
     kind, ident = m.group(1).lower(), m.group(2)
     def reject(why):
         R.log(f"board reject seq {seq}: {why}", "WARN")
-        _mark(imap, seq, opts)
+        _runner()._mark(imap, seq, opts)
     try:
-        body = get_text_body(email.message_from_bytes(raw))
-        payload, key_id, secret, encrypted = _admit_object(
+        body = _runner().get_text_body(email.message_from_bytes(raw))
+        payload, key_id, secret, encrypted = _runner()._admit_object(
             body, secrets, ident)
-    except JobCryptoError as e:
+    except _runner().JobCryptoError as e:
         reject(f"bad envelope: {e}")
-        _auth_reject_event(base_dir, "bad_encryption", feature="board")
+        _runner()._auth_reject_event(base_dir, "bad_encryption", feature="board")
         return True
     except Exception as e:
         reject(f"bad signature: {e}")
-        _auth_reject_event(base_dir, "bad_signature")
+        _runner()._auth_reject_event(base_dir, "bad_signature")
         return True
-    if not encrypted and not _cleartext_jobs_allowed():
+    if not encrypted and not _runner()._cleartext_jobs_allowed():
         reject("cleartext board message refused")
-        _auth_reject_event(base_dir, "cleartext_not_supported", feature="board")
+        _runner()._auth_reject_event(base_dir, "cleartext_not_supported", feature="board")
         return True
     # Hardening M5: audience binding for every board message type
     # (task_submit, task_request, task_result, task_approve).
-    if not audience_allows(cfg, base_dir, payload, key_id, ident):
+    if not _runner().audience_allows(cfg, base_dir, payload, key_id, ident):
         reject("audience mismatch")
-        _auth_reject_event(base_dir, "security_policy", feature="audience")
+        _runner()._auth_reject_event(base_dir, "security_policy", feature="audience")
         return True
-    if not _version_ok(payload.get("v")):
+    if not _runner()._version_ok(payload.get("v")):
         reject("unsupported version")
         return True
     try:
@@ -135,26 +153,26 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         if kind == "task_submit":
             ok, reason = board.submit(payload)
             reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
-            reply_body = {"v": PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
+            reply_body = {"v": _runner().PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
         elif kind == "task_request":
             caps = payload.get("capabilities") or []
             offered = board.offer(ident, caps, key_id, cfg)
             tid = offered.get("task_id") if isinstance(offered, dict) else None
             if offered and tid:
                 reply_subj = f"[HOMING-PIGEON] task_offer {tid}"
-                reply_body = {"v": PROTOCOL_VERSION, "type": "task_offer", "task": offered}
+                reply_body = {"v": _runner().PROTOCOL_VERSION, "type": "task_offer", "task": offered}
             else:
                 reply_subj = "[HOMING-PIGEON] task_offer empty"
-                reply_body = {"v": PROTOCOL_VERSION, "type": "task_offer", "empty": True}
+                reply_body = {"v": _runner().PROTOCOL_VERSION, "type": "task_offer", "empty": True}
         elif kind == "task_result":
             require_review = cfg.get("require_review", False)
             status, reason = board.complete(ident, payload.get("result"), require_review)
             reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
-            reply_body = {"v": PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "status": status, "reason": reason}
+            reply_body = {"v": _runner().PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "status": status, "reason": reason}
         elif kind == "task_approve":
             ok, reason = board.approve(ident)
             reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
-            reply_body = {"v": PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
+            reply_body = {"v": _runner().PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
         else:
             reject("unknown board kind")
             return True
@@ -168,10 +186,10 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         # (PROTOCOL 3.1 / 13.7): a valid reply_to inside the signed
         # body receives the offer or ack; otherwise the runner's own
         # mailbox does. The From header never chooses.
-        send_mail(smtp, cfg, reply_subj, _seal_reply(
+        _runner().send_mail(smtp, cfg, reply_subj, _runner()._seal_reply(
             reply_body, secret, reply_subj.rsplit(" ", 1)[-1],
-            key_id, encrypted), to=_valid_reply_to(payload))
-    _mark(imap, seq, opts)
+            key_id, encrypted), to=_runner()._valid_reply_to(payload))
+    _runner()._mark(imap, seq, opts)
     return True
 
 

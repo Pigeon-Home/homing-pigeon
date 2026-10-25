@@ -442,7 +442,11 @@ apply_result_policy = _policy.apply_result_policy
 _sensor_alert_core = _policy._sensor_alert_core
 
 
-from runner.ops.attest import build_attestations, reload_hot_config  # noqa: E402
+_attest = _load_mod("runner.ops.attest", "ops.attest")
+if _attest is None:
+    raise ImportError("runner/ops/attest.py is missing")
+build_attestations = _attest.build_attestations
+reload_hot_config = _attest.reload_hot_config
 
 
 # ---------------------------------------------------------------- judgment / confinement / queries (v3 remaining)
@@ -1048,7 +1052,11 @@ def _tool_withheld(path, base_dir, withheld) -> bool:
     except Exception:
         return True
 
-from runner.ops.oracle_ops import _oracle_brief, _run_oracle_tool  # noqa: E402
+_oracle_ops = _load_mod("runner.ops.oracle_ops", "ops.oracle_ops")
+if _oracle_ops is None:
+    raise ImportError("runner/ops/oracle_ops.py is missing")
+_oracle_brief = _oracle_ops._oracle_brief
+_run_oracle_tool = _oracle_ops._run_oracle_tool
 
 
 def _wire_tool_arguments(fargs) -> str:
@@ -2541,7 +2549,11 @@ def _mark(imap, seq, opts):
         mark_seen(imap, seq)
 
 
-from runner.ops.startup import log_startup, handle_board_mail  # noqa: E402
+_startup = _load_mod("runner.ops.startup", "ops.startup")
+if _startup is None:
+    raise ImportError("runner/ops/startup.py is missing")
+log_startup = _startup.log_startup
+handle_board_mail = _startup.handle_board_mail
 
 
 def _load_reviewed_extensions(cfg, base_dir):
@@ -3479,7 +3491,12 @@ def _learning_reconcile(cfg, base_dir, frozen, job_id, outcome,
         return None
 
 
-from runner.ops.handlers import oracle_cli, handle_v2_mail, run_variant  # noqa: E402
+_handlers = _load_mod("runner.ops.handlers", "ops.handlers")
+if _handlers is None:
+    raise ImportError("runner/ops/handlers.py is missing")
+oracle_cli = _handlers.oracle_cli
+handle_v2_mail = _handlers.handle_v2_mail
+run_variant = _handlers.run_variant
 
 
 def _v2_leave_unseen(ident):
@@ -3588,13 +3605,20 @@ def _auth_reject_event(base_dir, reason, **extra):
 
 def _close_quiet(fd):
     """Close fd, swallowing OSError."""
-    if fd is not None:
-        _close_quiet(fd)
+    if fd is None:
+        return
+    try:
+        os.close(fd)
+    except OSError:
+        pass
 
 
 def _unlink_quiet(path):
     """Unlink path, swallowing OSError."""
-    _unlink_quiet(path)
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
 
 
 def _chmod_quiet(path, mode=0o600):
@@ -4191,7 +4215,10 @@ def _service_transports(cfg, base_dir, seen, seen_path, names,
             del seen[k]
     save_seen(seen_path, seen)
 
-from runner.ops.poll import poll_once  # noqa: E402
+_poll = _load_mod("runner.ops.poll", "ops.poll")
+if _poll is None:
+    raise ImportError("runner/ops/poll.py is missing")
+poll_once = _poll.poll_once
 
 
 def update_llama_from_config(cfg, previous=None):
@@ -4419,7 +4446,13 @@ def _flagged_job_ids(base_dir):
             ids.add(job_id)
     return ids
 
-from runner.ops.watch import _eventlog_tail, _registry_watch, _host_log_tail, _scrub_log_tail_lines  # noqa: E402
+_watch = _load_mod("runner.ops.watch", "ops.watch")
+if _watch is None:
+    raise ImportError("runner/ops/watch.py is missing")
+_eventlog_tail = _watch._eventlog_tail
+_registry_watch = _watch._registry_watch
+_host_log_tail = _watch._host_log_tail
+_scrub_log_tail_lines = _watch._scrub_log_tail_lines
 
 
 def _runner_log_tail(base_dir, max_chars=2000) -> str:
@@ -4487,7 +4520,12 @@ _EVENTLOG_ATTACK = {
     1102: "T1070.002",   # clear the audit log
 }
 
-from runner.ops.windows import _wevtutil_query, _reg_attack, _reg_query  # noqa: E402
+_windows = _load_mod("runner.ops.windows", "ops.windows")
+if _windows is None:
+    raise ImportError("runner/ops/windows.py is missing")
+_wevtutil_query = _windows._wevtutil_query
+_reg_attack = _windows._reg_attack
+_reg_query = _windows._reg_query
 
 
 
@@ -4753,7 +4791,12 @@ def _local_watch(cfg, base_dir):
         except Exception:
             continue
 
-from runner.ops.sensors import _canary_watch, _yara_hits, recent_chat  # noqa: E402
+_sensors = _load_mod("runner.ops.sensors", "ops.sensors")
+if _sensors is None:
+    raise ImportError("runner/ops/sensors.py is missing")
+_canary_watch = _sensors._canary_watch
+_yara_hits = _sensors._yara_hits
+recent_chat = _sensors.recent_chat
 
 
 
@@ -4838,7 +4881,16 @@ def _tail_marked(path, markers, max_lines=20):
     return kept[-max_lines:]
 
 
-from runner.ops.firewall import _firewall_posture  # noqa: E402
+_firewall = _load_mod("runner.ops.firewall", "ops.firewall")
+if _firewall is None:
+    raise ImportError("runner/ops/firewall.py is missing")
+_firewall_posture = _firewall._firewall_posture
+# Every name the module defines is reachable here too: the suite
+# (and a host) reads and patches them on the runner module.
+_parse_netsh_profiles = _firewall._parse_netsh_profiles
+_parse_socketfilterfw = _firewall._parse_socketfilterfw
+_parse_ufw = _firewall._parse_ufw
+_parse_iptables_policy = _firewall._parse_iptables_policy
 
 
 
@@ -5120,7 +5172,10 @@ _ORDINARY_PREFIXES = (
 
 _PATH_SPLITTERS = " \t\r\n'\"`;|&<>(){}[]"
 
-from runner.ops.paths import _script_path_findings  # noqa: E402
+_paths = _load_mod("runner.ops.paths", "ops.paths")
+if _paths is None:
+    raise ImportError("runner/ops/paths.py is missing")
+_script_path_findings = _paths._script_path_findings
 
 
 
@@ -5226,7 +5281,10 @@ def _report_oracle_mode(cfg) -> None:
         log("oracle: deterministic mode (Pi Light) -- no local model; "
             "briefs and answers are assembled from the box's records")
 
-from runner.ops.context import oracle_context  # noqa: E402
+_context = _load_mod("runner.ops.context", "ops.context")
+if _context is None:
+    raise ImportError("runner/ops/context.py is missing")
+oracle_context = _context.oracle_context
 
 
 # The Oracle's HTML page lives in runner/ops/oracle_page.py; loaded
@@ -5238,7 +5296,13 @@ oracle_page = _oracle_page_mod.oracle_page if _oracle_page_mod else None
 # The argument parser (runner/ops/cli.py), loaded here with the other
 # siblings rather than inside main(), so a test that stands in for
 # _load_mod during main() does not hand main a parser it did not ask for.
+# Every name the module defines is reachable here too: the suite
+# (and a host) reads and patches them on the runner module.
+_text = _oracle_page_mod._text
 _cli = _load_mod("runner.ops.cli", "ops.cli")
+# Every name the module defines is reachable here too: the suite
+# (and a host) reads and patches them on the runner module.
+build_parser = _cli.build_parser
 
 
 _ORACLE_REJECTS = {
@@ -5333,6 +5397,9 @@ _oracle_server = _load_mod("runner.ops.oracle_server", "ops.oracle_server")
 if _oracle_server is None:
     raise ImportError("runner/ops/oracle_server.py is missing")
 make_oracle_server = _oracle_server.make_oracle_server
+# Every name the module defines is reachable here too: the suite
+# (and a host) reads and patches them on the runner module.
+_OracleServer = _oracle_server._OracleServer
 
 
 def _warm_oracle_model(inf):

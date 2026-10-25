@@ -2,9 +2,22 @@
 
 Extracted from runner.py.
 """
+import re
 import shutil
 import subprocess
 import sys
+
+
+def _runner():
+    """The live runner module, looked up at call time (`runner.runner`
+    under the suite, `__main__` when runner.py runs as a script or
+    frozen, where `from runner import runner` cannot work)."""
+    for name in ("runner.runner", "__main__"):
+        m = sys.modules.get(name)
+        if m is not None and callable(getattr(m, "_load_mod", None)):
+            return m
+    from runner import runner as R  # a host that imported us first
+    return R
 
 
 def _firewall_posture():
@@ -15,20 +28,20 @@ def _firewall_posture():
     lines only. macOS uses the Application Firewall state and does not
     call pfctl. Never raises.
     """
-    if sys.platform == "win32":
-        return _parse_netsh_profiles(_run_text(
+    if _runner().sys.platform == "win32":
+        return _runner()._parse_netsh_profiles(_runner()._run_text(
             ["netsh", "advfirewall", "show", "allprofiles"]))
-    if sys.platform == "darwin":
-        return _parse_socketfilterfw(_run_text([
+    if _runner().sys.platform == "darwin":
+        return _runner()._parse_socketfilterfw(_runner()._run_text([
             "/usr/libexec/ApplicationFirewall/socketfilterfw",
             "--getglobalstate"]))
     if shutil.which("ufw"):
-        parsed = _parse_ufw(_run_text(["ufw", "status"]))
+        parsed = _runner()._parse_ufw(_runner()._run_text(["ufw", "status"]))
         if parsed:
             return parsed
     if shutil.which("iptables"):
-        return _parse_iptables_policy(
-            _run_text(["iptables", "-S"], timeout=3))
+        return _runner()._parse_iptables_policy(
+            _runner()._run_text(["iptables", "-S"], timeout=3))
     return None
 
 
