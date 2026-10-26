@@ -91,7 +91,9 @@ class LinesTest(unittest.TestCase):
                               ("0123456789", "break it", 2)}, 3)
         self.assertIn("python -m unittest runner.tests.test_x.T.test_a",
                       text)
-        self.assertIn("red since 01234567 (break it)", text)
+        self.assertIn("in 3 of 3 lone runs; red since 01234567 (break it). "
+                      "Reproduce", text)
+        self.assertNotIn(";.", text)
         self.assertIn("a flake", text)
         self.assertIn("regression_guard.py", text)
 

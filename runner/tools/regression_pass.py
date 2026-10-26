@@ -253,10 +253,10 @@ def q_paragraph(sha, deterministic, flaky, culprits, repeat):
     lines = []
     for ident in deterministic:
         culprit = culprits.get(ident)
-        since = (f" red since {culprit[0][:8]} ({culprit[1]})"
+        since = (f"; red since {culprit[0][:8]} ({culprit[1]})"
                  if culprit and culprit[0] else "")
-        lines.append(f"- `{ident}` fails on {sha[:8]} in {repeat + 1} of "
-                     f"{repeat + 1} lone runs;{since}. Reproduce: "
+        lines.append(f"- `{ident}` fails on {sha[:8]} in {repeat} of "
+                     f"{repeat} lone runs{since}. Reproduce: "
                      f"`python -m unittest {ident}`.")
     for ident in flaky:
         lines.append(f"- `{ident}` failed in the full run and passed in at "
