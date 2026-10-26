@@ -386,10 +386,14 @@ corpus is `runner/tests/bluemonday/<target>.jsonl` (five targets:
 `runner/tests/test_bluemonday_corpus.py` replays it on every leg.
 The loop:
 
-1. **Trigger.** Started by the owner on 2026-10-26: M runs now,
-   beside P, and does not wait for a Platinum ledger line. Each
-   cycle alternates one Platinum item with one blueMonday grow; a
-   `grow` is also P's under-driven filler (step 7).
+1. **Trigger.** Started by the conductor on 2026-10-26, and
+   continuous by his word: a grow is running on the rig at every
+   moment the hourly regression pass or a Platinum measure is not,
+   with `--jobs <cores>` and rounds sized to fill the time until
+   the next of those, and it resumes the moment they finish. The
+   campaign does not wait for a Platinum ledger line and does not
+   idle between items; a `grow` is also P's under-driven filler
+   (step 7). It stops only on the conductor's word.
 2. **Grow.** `HP_BLUEMONDAY_ROUNDS=<large> python
    runner/tools/bluemonday_corpus.py grow --jobs <cores>` under
    `rig_resources.py`; `--seed` makes a run repeatable, `--verbose`
