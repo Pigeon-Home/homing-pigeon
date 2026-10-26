@@ -30,6 +30,7 @@ import json
 import os
 import shutil
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -575,6 +576,44 @@ class StashFailureArmsTest(unittest.TestCase):
                 side_effect=ValueError("not a message")):
             self.assertIsNone(
                 R._bounce_of("subject", b"raw bytes"))
+
+
+class RollbackTest(unittest.TestCase):
+    """Cycle 3 target, logic class: the `rollback` closure
+    `process_transport_message` hands its channel (2) -- when
+    the channel's ack fails after the replies landed, rollback
+    says so once per job the attempt marked seen, and undoes
+    nothing. Driven through the public seam: one real signed,
+    encrypted job processed over the email transport, then the
+    returned outbound's rollback is called, as a channel whose
+    ack failed would call it.
+    """
+
+    def test_rollback_names_each_seen_job_and_undoes_nothing(self):
+        from runner.cloud.send_job import sign_payload
+        from runner.wire import jobcrypto
+        base = tempfile.mkdtemp(prefix="hp-plat-rollback-")
+        try:
+            cfg = _cfg()
+            job_id = "job-platinum-rollback"
+            job = {"v": 1, "type": "job", "job_id": job_id,
+                   "kind": "exec", "script": "print('hi')",
+                   "issued_at": time.strftime(
+                       "%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+            body = jobcrypto.encrypt_body(
+                sign_payload(job, TESTKEY), TESTKEY,
+                job_id=job_id, key_id="", sign=sign_payload)
+            seen = {}
+            out = R.process_transport_message(
+                cfg, base, seen, R.build_secrets(cfg), {},
+                "[HOMING-PIGEON] job " + job_id, body,
+                transport="email")
+            self.assertTrue(out)
+            self.assertEqual(len(seen), 1)
+            self.assertIsNone(out.rollback())
+            self.assertEqual(len(seen), 1)
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
 
 
 class RunInspectReviewTest(unittest.TestCase):

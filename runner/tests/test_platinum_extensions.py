@@ -75,5 +75,73 @@ class RefuseResultTest(unittest.TestCase):
             shutil.rmtree(td, ignore_errors=True)
 
 
+class ServiceWatchMainTest(unittest.TestCase):
+    """Cycle 3 target, logic class:
+    `extensions/service-watch/service_watch.py:main` (2) -- a
+    pass whose local delivery lands only some of its alerts
+    returns 2 and leaves the state file unwritten, so the next
+    pass reports the changes again. The delivery seam is the
+    module's own `_deliver_local`, scripted short; the alert
+    itself is the extension's real decide() over a learned
+    state and a process table with sshd gone.
+    """
+
+    def _load(self):
+        import importlib.util
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(
+            here, "..", "extensions", "service-watch",
+            "service_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "service_watch_platinum", os.path.normpath(path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_a_short_delivery_returns_2_and_keeps_the_state(self):
+        import json
+        import tempfile
+        from unittest import mock
+        sw = self._load()
+        td = tempfile.mkdtemp(prefix="hp-plat-svcwatch-")
+        try:
+            manifest = os.path.join(td, "extension.json")
+            here = os.path.dirname(os.path.abspath(__file__))
+            with open(os.path.join(
+                    here, "..", "extensions", "service-watch",
+                    "extension.json"), encoding="utf-8") as fh:
+                shipped = json.load(fh)
+            shipped["tunables"]["services"] = [
+                {"name": "sshd", "match": "exact"}]
+            with open(manifest, "w", encoding="utf-8") as fh:
+                json.dump(shipped, fh)
+            state = os.path.join(td, "state.json")
+            up = os.path.join(td, "up.json")
+            down = os.path.join(td, "down.json")
+            proc = {"name": "sshd", "pid": 100,
+                    "cmdline": "/usr/sbin/sshd"}
+            with open(up, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1700000000.0,
+                           "processes": [proc]}, fh)
+            with open(down, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1700000030.0, "processes": []}, fh)
+            rc = sw.main(["--manifest", manifest, "--state", state,
+                          "--readings", up])
+            self.assertEqual(rc, 0)
+            with open(state, encoding="utf-8") as fh:
+                learned = fh.read()
+            with mock.patch.object(sw, "_deliver_local",
+                                   return_value=0):
+                rc = sw.main(["--manifest", manifest,
+                              "--state", state, "--readings", down,
+                              "--local-dir", td])
+            self.assertEqual(rc, 2)
+            with open(state, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), learned)
+        finally:
+            import shutil
+            shutil.rmtree(td, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()
