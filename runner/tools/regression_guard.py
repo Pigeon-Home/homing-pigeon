@@ -430,6 +430,13 @@ def leak_run(path):
     """Run one test module in-process under the leak detector."""
     if ROOT not in sys.path:
         sys.path.insert(0, ROOT)
+    # A private temp root for this run: the shared one is busy with
+    # other shards' files on a CI box, and a tempdir left behind must
+    # be this module's own to be named.
+    private = tempfile.mkdtemp(prefix="hp-guard-tmp-")
+    for var in ("TMPDIR", "TEMP", "TMP"):
+        os.environ[var] = private
+    tempfile.tempdir = private
     name = module_name(path)
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
@@ -443,6 +450,7 @@ def leak_run(path):
     # thread still winding down shows as soft. Hard leaks are the
     # synchronous ones.
     result = runner.run(suite)
+    shutil.rmtree(private, ignore_errors=True)
     return 0 if result.wasSuccessful() else 1
 
 

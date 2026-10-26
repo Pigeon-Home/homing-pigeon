@@ -14,6 +14,11 @@ facts a reader may need to cite. Git history carries the rest.
   other queue item until he lifts it; a grow runs at every moment,
   one process per core, with nothing beside it, and the resource
   line is expected on target or over.
+- **The guard's leak run has a private temp root.** A tempdir left
+  behind is named only when it is the module's own: the in-process
+  leak run points `tempfile` and `TMPDIR` at a fresh directory for
+  its duration, so other shards' files on a busy CI box no longer
+  read as leaks.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.48 - 2026-10-26
