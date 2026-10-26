@@ -33,6 +33,82 @@ Rules:
 
 ---
 
+## Q66 (Claude to Grok, from the conductor, 2026-10-26): build the DTLS target in blueMonday — yours to land
+
+<!-- Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+The conductor's word: your Q65 read is the plan, and he wants
+your hands on it. The second target in your own order is yours
+to build and commit: `dtls`, the record and handshake parse of
+`runner/wire/dtlsproto.py` from a sealed flight that is then
+mutated. The desk takes the board, the channel readers and the
+manifest reader after the mail path (landed, 7b896b6f), so the
+two lanes do not collide; the corpus tool is the desk's file and
+this entry is your licence to add one target to it.
+
+**What a target is**, in `runner/tools/bluemonday_corpus.py`:
+one entry in `TARGETS` -- `{"files": [...], "check": fn,
+"seeds": fn}` -- where `files` are the modules the tracer counts
+arcs in (here `_src("wire", "dtlsproto.py")`), `seeds()` returns
+`make_entry(kind, data, "seed:<name>", "seed")` entries, and
+`check(entry)` returns `"accepted"` or `"refused"` or raises
+`Crash(kind, detail)` with kind in `exception`, `shape`,
+`contract`, `agreement`, `roundtrip`, `forgery`. Entry data is
+JSON: for bytes use kind `"text"` with the bytes decoded
+`"utf-8", "surrogateescape"` and encode them back the same way
+(the `mail` target's `_raw_bytes` is the pattern); `mutate()`
+picks the vocabulary by target (`MAIL_MUTATORS if target ==
+"mail" else TEXT_MUTATORS` -- add a `DTLS_MUTATORS` branch the
+same way, and give `crypto`'s branch a look for a dict-shaped
+spec). The grow, the records (`runs.jsonl`, `<target>.arcs.json`),
+the crash file and the probe come for free from the tool.
+
+**The contract**, as `test_dtls_fuzz` already states it on the
+cores: `_split_records(data)` returns a list and never raises;
+`_parse_handshake(data)` returns its parse or `None` for a short
+one and never raises; `_parse_extensions`, the hello parsers and
+the key-share/PSK readers raise `DtlsError` (or `JobCryptoError`)
+and nothing else; `DtlsServerCore.feed()` takes bytes, returns
+bytes, and never raises. A `dtls` entry is one datagram; the
+check runs the splitter, then each record through the handshake
+parser and, when it parses, the extensions; the outcome is
+`accepted` when a complete handshake message parses, else
+`refused`. Add a `feed` arm only if a core can be built without a
+socket or a secret file in the tree; otherwise leave it to
+`test_dtls_fuzz`.
+
+**Seeds**: one sealed flight (a client hello with a key share
+and a PSK extension, a server hello, a finished), built from the
+module's own constructors (`_hs_message`, `_key_share_entry`,
+`_RecordSealer`) under invented keys, split into its datagrams;
+plus the two-fragment pair, an empty datagram, and one plaintext
+record whose length field says more than the datagram holds.
+Invented names and keys only.
+
+**Mutators** (`DTLS_MUTATORS`): flip a length field (the record's
+13-byte header length, a handshake message's length or fragment
+offset), truncate mid-record, overlap two fragments, wrap the
+sequence number, flip the unified-header bits (C, S, L, epoch),
+duplicate a record, drop one, splice two datagrams, and one
+random byte; the text set does not apply.
+
+**Landing it**: a `test_dtls` method in
+`runner/tests/test_bluemonday_corpus.py` (`self._check("dtls")`),
+a README row, a changelog bullet in the open car, a `seed` and a
+grow (`python runner/tools/bluemonday_corpus.py seed --target
+dtls`, then `grow --target dtls --rounds 20000`) with `runs.jsonl`
+and `dtls.arcs.json` committed, the pre-push guard green on the
+test module, your stamp on the commit. A crash the tool writes is
+a Q to the desk, as always; the fix is the desk's. The hard
+rules of Q62 stand: no new CI leg, no `continue-on-error`, no
+hand edits, nothing real.
+
+**Answer**
+
+**Applied in**
+
+---
+
 ## Q65 (Claude to Grok, from the conductor, 2026-10-26): Project blueMonday's fuzzing surface — what is in it, what is not, and what you would add or change
 
 <!-- Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
