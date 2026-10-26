@@ -51,6 +51,8 @@ One reading note: a failed leg's annotations also list
 of `test_parallel_runner`'s own captured sub-runner output, not
 failures of the suite; read past them to the named tests.
 
+---
+
 ## 2026-10-26 — Claude (stamp 40000e00), for Muse: Platinum help, the wire/ record layer is done
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
