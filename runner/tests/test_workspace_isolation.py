@@ -64,10 +64,50 @@ def _names_outside_state(base_dir):
     return out
 
 
-def _nothing_new_outside(before, after):
-    """The names that appeared outside the state tree, minus the
-    runner's own late records."""
-    return sorted(n for n in after - before if n not in LATE_STATE)
+def _nothing_new_outside(before, after, names=()):
+    """The names that appeared outside the state tree that a job could
+    have put there: anything carrying one of the job's own file names
+    (the vector or its last component), or any name that is not one of
+    the runner's own records. The runner writes its records lazily
+    under load (a resource event, a rolled audit log), so a name that
+    is plainly the runner's never counts; a name that matches the
+    job's files always does."""
+    leaves = set()
+    for n in names:
+        if isinstance(n, str) and n:
+            leaves.add(n)
+            leaves.add(n.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1])
+    out = []
+    for n in sorted(after - before):
+        leaf = n.replace("\\", "/").rsplit("/", 1)[-1]
+        if n in leaves or leaf in leaves:
+            out.append(n)
+        elif n in LATE_STATE or leaf.startswith(("security-", "runner.log",
+                                                   "oracle-", "resources",
+                                                   "detection-", "dri-",
+                                                   "board", "extension-")):
+            continue
+        else:
+            out.append(n)
+    return out
+
+
+def _payload_outside_work(base_dir, job_id):
+    """Files outside work/<job_id> carrying the fake download's text."""
+    hits = []
+    for dirpath, dirnames, filenames in os.walk(base_dir):
+        rel = os.path.relpath(dirpath, base_dir)
+        if rel == ".":
+            dirnames[:] = [d for d in dirnames if d != "work"]
+        for name in filenames:
+            path = os.path.join(dirpath, name)
+            try:
+                with open(path, "rb") as fh:
+                    if b"payload from " in fh.read(200000):
+                        hits.append(os.path.relpath(path, base_dir))
+            except OSError:
+                continue
+    return hits
 
 
 def _fake_download(url, dest, max_bytes=0):
@@ -129,7 +169,9 @@ class RejectionVectorsEndToEnd(Harness):
                 work = os.path.join(self.tmp, "work", jid)
                 self.assertEqual(os.listdir(work) if os.path.isdir(work)
                                  else [], [])
-                self.assertEqual(_nothing_new_outside(before, _names_outside_state(self.tmp)), [])
+                self.assertEqual(_nothing_new_outside(
+                    before, _names_outside_state(self.tmp), [vector]), [])
+                self.assertEqual(_payload_outside_work(self.tmp, jid), [])
 
 
 class SweepTest(Harness):
@@ -235,8 +277,12 @@ class SweepTest(Harness):
         os.makedirs(inside)
         for target, name in ((self.tmp, "out"), (inside, "in")):
             link = os.path.join(work, name)
-            r = subprocess.run(["cmd", "/c", "mklink", "/J", link, target],
-                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            try:
+                r = subprocess.run(["cmd", "/c", "mklink", "/J", link, target],
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+            except OSError:
+                self.skipTest("cannot create a junction here")
             if r.returncode != 0:
                 self.skipTest("cannot create a junction here")
             with self.assertRaises(R.JobRejected) as cm:
@@ -455,7 +501,9 @@ if given is not None:
                     for n in names:
                         self.assertIn(n.rsplit("/", 1)[-1], result["stdout"])
                 self.assertTrue(any(jid in k for k in seen))
-                self.assertEqual(_nothing_new_outside(before, _names_outside_state(h.tmp)), [])
+                self.assertEqual(_nothing_new_outside(
+                    before, _names_outside_state(h.tmp), names), [])
+                self.assertEqual(_payload_outside_work(h.tmp, jid), [])
             finally:
                 shutil.rmtree(h.tmp, ignore_errors=True)
 
