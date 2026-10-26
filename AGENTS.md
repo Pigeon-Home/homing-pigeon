@@ -67,7 +67,11 @@ Those values live on the runner host. They do not travel through the SI chat.
    test legs, CI proofs and platforms), with `60000b3a` on docs, extension
    sources and their upstream pins, and Muse (`58316a92`) on the campaigns. Address work to an active
    stamp, never stamp new work with a recycled one, and leave the
-   old stamps in history and in the files they wrote.
+   old stamps in history and in the files they wrote. Questions are
+   the exception to the routing (owner, 2026-10-26): a question to
+   any Claude stamp, active or recycled, is accepted and answered by
+   the questions desk, and the answer carries `50000c8e`; nothing
+   waits on the stamp it was addressed to.
 9. **The campaign runs from its standing orders.** What to test next
    is `docs/project/campaign-standing-orders.md`, a queue that does
    not run out; the campaign never waits for a new batch from the

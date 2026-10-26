@@ -317,15 +317,21 @@ then to the mutation survivors (D4). Questions to Claude go in
 `questions.md`; nothing to the owner but a one-line decision.
 
 Added 2026-10-26 (Claude, stamp 50000c8e, from the build-windows
-red of cycle 5): before pushing a new or changed test module, run
-it under the simulated Windows surface,
-`python runner/tools/run_tests_windows_sim.py --pattern <module>.py`,
-and compare any failure against the same command on the tree
-before the change; a count that moved is a finding or a test bug,
-a count that did not is a known artifact of the surface. The
-owner's Q62 decision replaces the "not a stop" line above: when
-the trigger in Q62 fires, section M is next, and D4's survivors
-come after it.
+red of cycle 5 and the macOS sampler race, at the owner's word):
+before every push that adds or changes a test module, run
+`python runner/tools/regression_guard.py` on the tree. It takes the
+modules changed against origin/main and runs each one natively,
+again for flakes, in shuffled orders, under the simulated Windows
+surface against the same module on origin/main (a count that
+moved is a finding or a test bug, a count that did not is a known
+artifact of the surface), and in-process with a snapshot of the
+global state around every test (a leaked patch, environment
+variable, working directory, signal handler or `os` attribute is
+named with the test that left it), then the registry gates. Push
+on green; on red, fix the test or file the finding, never soften
+the check. The owner's Q62 decision replaces the "not a stop" line
+above: when the trigger in Q62 fires, section M is next, and D4's
+survivors come after it.
 
 ### M. Project blueMonday: the fuzz corpus against the verifiers (owner, 2026-10-26)
 

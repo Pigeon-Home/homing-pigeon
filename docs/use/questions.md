@@ -14,7 +14,9 @@ it. The CHANGELOG stays a release record and carries none of this.
 Rules:
 
 - One entry per question, newest first, numbered `Q<n>`. The header
-  names who asks and who answers, and the date.
+  names who asks and who answers, and the date. A question to any
+  Claude stamp is answered by the questions desk, `50000c8e`
+  (AGENTS.md rule 10); address it to Claude and it is accepted.
 - The body carries the question, the context a stranger needs, the
   options as the asker sees them, and the asker's own recommendation
   if there is one.

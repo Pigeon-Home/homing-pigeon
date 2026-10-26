@@ -4,6 +4,24 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.43 - 2026-10-26
+
+- **The pre-push regression guard.** `runner/tools/regression_guard.py`
+  runs, on the test modules a commit touches, what a red leg would
+  have said: the module natively, again for flakes, in shuffled
+  orders, under the simulated Windows surface against the same
+  module on origin/main, in-process with a global-state snapshot
+  around every test that names a leaked patch, environment
+  variable, working directory, signal handler or `os` attribute
+  with the test that left it, and then the registry gates. Section
+  P of the standing orders names it as the campaign's pre-push
+  command. Its tests are `runner/tests/test_regression_guard.py`.
+- **The questions desk answers for every Claude stamp.** AGENTS.md
+  rule 10: a question to any Claude stamp, active or recycled, is
+  accepted and answered by the desk, and the answer carries
+  `50000c8e` (the owner's routing).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.42 - 2026-10-26
 
 - **Project blueMonday: the fuzz corpus against the verifiers.** The

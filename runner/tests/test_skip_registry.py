@@ -39,6 +39,9 @@ REGISTERED = {
     "running as root":
         "test_switch_proofs: the --root refusal cannot be shown when the "
         "process is root; runs in every non-root job",
+    "git is not on PATH":
+        "test_regression_guard's temporary-repository tests; git is on "
+        "every CI leg's PATH, so they run in every job",
     # ---- platform splits: each side runs in its own CI job ----------
     "Linux-only suite: it pins POSIX modes, nofollow opens, signals, "
     "and systemd units, and runs in the Linux test job":
