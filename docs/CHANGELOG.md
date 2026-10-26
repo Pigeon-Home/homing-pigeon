@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.24 - 2026-10-26
+
+**The next car, with nothing new aboard.** Opened on the release
+cadence as 3.13.23 published; the tree is 3.13.22's.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.23 - 2026-10-26
 
 **The next car, with nothing new aboard.** Opened on the release
