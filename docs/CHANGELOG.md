@@ -8,6 +8,21 @@ facts a reader may need to cite. Git history carries the rest.
 
 - **The next car.** Opened on the release cadence as 3.13.7 published;
   the changes it carries are listed here as they land.
+- **A job carrying an unpaired surrogate is refused once.** JSON lets
+  a signed body escape a lone UTF-16 surrogate (`\ud800`), and a
+  JavaScript SI that slices through an emoji emits one. The runner
+  parsed it, then failed to size, stage or answer it, and retried the
+  job on every poll. It is now refused at intake and marked seen.
+- **A damaged upstream archive is a `SourceError`.** A truncated gzip,
+  a bad zip or a corrupt xz stream escaped `extract_archive` as the
+  decompressor's own error; the sources pass now gets the failure it
+  handles. A tag whose number is past Python's 4,300-digit limit is
+  no version instead of a crash.
+- **Every untrusted-input parser has a property test.**
+  `runner/tests/test_parser_properties.py` holds 23 parsers to their
+  contracts on generated input, and its `PROPERTY_ROSTER` is the
+  audit record: a parser, its promise and its proof, guarded so an
+  entry cannot lose its test. (Agent-Stamp 40000e00)
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.7 - 2026-10-26

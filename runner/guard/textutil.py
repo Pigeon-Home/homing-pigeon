@@ -79,3 +79,31 @@ def _fromiso(value):
         text, count=1)
     text = _ISO_OFFSET_RE.sub(r"\1:\2", text)
     return datetime.fromisoformat(text)
+
+
+def _lone_surrogate(value, _depth=0):
+    """True when a parsed JSON value holds an unpaired UTF-16 surrogate.
+
+    json.loads turns the escape "\\ud800" into a str no UTF-8 encoder
+    accepts, and a signed body may carry one: a JavaScript SI that
+    slices through an emoji emits exactly that. Such a job cannot be
+    written to disk, sized or answered, so it is refused at intake
+    instead of failing (and being retried) on every poll.
+    (Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab)
+    """
+    if _depth > 200:
+        return False
+    if isinstance(value, str):
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            return True
+        return False
+    if isinstance(value, dict):
+        return any(_lone_surrogate(k, _depth + 1)
+                   or _lone_surrogate(v, _depth + 1)
+                   for k, v in value.items())
+    if isinstance(value, (list, tuple)):
+        return any(_lone_surrogate(v, _depth + 1) for v in value)
+    return False
+

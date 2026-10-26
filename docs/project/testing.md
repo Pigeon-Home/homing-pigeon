@@ -96,6 +96,7 @@ it cannot:
 | `soak` | two hours of the real poll loop on the campaign rig's job mix; fails on growth in memory, the Python heap, file descriptors, threads, unreaped children, a missing result, or an oversized log (`runner/tools/soak.py`) | nightly, on dispatch |
 | `hardware` | the suite, the platform proof, the upgrade proof and a soak on the owner's own board | on dispatch |
 | `campaign-replay` | every recorded campaign cycle (13,321, in `runner/tests/archive/campaign-*/`) replayed through the executor against what the live cycle recorded; the core cut keeps them out of default discovery, not out of CI | every push |
+| `test_parser_properties` | every parser that reads input the runner did not write (protocol v2, both verifiers, reply-to, the platform card, extension manifests, `sources.json`, archive extraction, the config readers, the text helpers) held to its contract on generated input; `PROPERTY_ROSTER` names each parser, its promise and its proof, and fails if one loses its test | every push |
 | `test_live_capture` | the runner's readers take three days of a real box's files (`docs/reports/live-2026-10-25/`), the scrub holds, and `docs/use/live-examples.md` quotes them exactly | every push |
 
 The live capture is the suite's one corpus from a real deployment:

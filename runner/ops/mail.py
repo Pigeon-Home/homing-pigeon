@@ -108,6 +108,14 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject("security policy (audience): runner_id mismatch")
         _runner()._auth_reject_event(base_dir, "security_policy", feature="audience")
         return
+    # A signed body that escapes an unpaired surrogate ("\\ud800")
+    # parses, but nothing downstream can encode it: the size check,
+    # the script file and the result all raised, and the job was
+    # retried on every poll. Refused once, like any malformed job.
+    if _runner()._textutil._lone_surrogate(job):
+        reject("job text carries an unpaired UTF-16 surrogate "
+               "(not encodable as UTF-8)")
+        return
     # Hardening M1b: bound the script after the signature is verified
     # (it lives inside the signed body). 0 means unlimited.
     try:

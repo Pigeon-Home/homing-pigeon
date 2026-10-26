@@ -91,6 +91,7 @@ import tarfile
 import time
 import uuid
 import zipfile
+import zlib
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
@@ -143,6 +144,13 @@ CODELOAD_ROOT = "https://codeload.github.com"
 USER_AGENT = "homing-pigeon-extension-sources/1"
 
 _MB = 1 << 20
+
+
+try:
+    from lzma import LZMAError as _LZMAError
+except ImportError:  # a Python built without lzma
+    class _LZMAError(Exception):
+        pass
 
 
 class SourceError(Exception):
@@ -894,7 +902,12 @@ def version_tuple(tag):
     m = _VERSION_RE.search(tag)
     if not m:
         return None
-    return tuple(int(x) for x in m.group(1).split("."))
+    try:
+        return tuple(int(x) for x in m.group(1).split("."))
+    except ValueError:
+        # Past the interpreter's int-string limit (4,300 digits): a
+        # tag name from the network is no version, not a crash.
+        return None
 
 
 def _best(cands):
@@ -1057,6 +1070,26 @@ def _strip_top(file_parts):
 
 
 def extract_archive(path, dest, cap_bytes):
+    """Extract a tar (any compression) or zip archive as plain files.
+
+    A damaged archive (truncated, a bad header, a corrupt deflate or
+    xz stream) raises SourceError like every other fetch failure, not
+    whatever the decompressor raised: an unpinned upstream is bytes
+    from the network, and the sources pass expects SourceError.
+    (Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab)
+    """
+    try:
+        return _extract_archive(path, dest, cap_bytes)
+    except SourceError:
+        raise
+    except (tarfile.TarError, zipfile.BadZipFile, EOFError, zlib.error,
+            _LZMAError, OSError, ValueError, RuntimeError) as e:
+        raise SourceError("damaged archive: %s: %s"
+                          % (type(e).__name__, e),
+                          retry_sec=RETRY_CAP_SEC) from None
+
+
+def _extract_archive(path, dest, cap_bytes):
     """Extract a tar (any compression) or zip archive as plain files.
 
     Only regular files and directories are written; links, devices,
