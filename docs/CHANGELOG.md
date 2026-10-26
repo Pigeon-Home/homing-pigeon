@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.30 - 2026-10-26
+
+- **Project Platinum, cycle 3 continued.** Property tests over the
+  hosting control plane, the Oracle's paging arms, the softflowd
+  sense and the unstashable rejection (Muse).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.29 - 2026-10-26
 
 - **The cloud sender's verifier takes the signed object the
@@ -18,6 +25,14 @@ facts a reader may need to cite. Git history carries the rest.
   homes (Q61, Project Platinum cycle 2; the probe runs without its
   decorator, and `test_two_signers_agree` no longer errors on that
   payload).
+- **Project Platinum, cycle 2's ledger and most of cycle 3.** The
+  cycle-2 ledger line and the refreshed coverage table under
+  `docs/reports/v3.13.27/`, Q61 filed, the guard module's long-line
+  probes; cycle 3's logic batch (`cmd_new`'s queue refusal,
+  `apply`'s fallback, the live fallback, `inspect`'s missing
+  review), the stash, channel and filename failure arms, the
+  transport rollback closure and service-watch's short delivery
+  (Muse).
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.28 - 2026-10-26
