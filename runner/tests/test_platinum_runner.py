@@ -616,6 +616,57 @@ class RollbackTest(unittest.TestCase):
             shutil.rmtree(base, ignore_errors=True)
 
 
+class RejectionDeliveryFailureTest(unittest.TestCase):
+    """Cycle 3 target, except class: `ops/mail.py:handle_mail`
+    (2) -- a job rejected in processing (an exec with no
+    script) whose rejection result cannot even be stashed is
+    a logged ERROR, and the mail pass returns normally: the
+    message stays unseen and the sender hears about it next
+    cycle, not never. The stash failure goes through the
+    atomicio seam.
+    """
+
+    def test_a_rejection_that_cannot_be_stashed_is_contained(self):
+        from email.message import EmailMessage
+        from runner.cloud.send_job import sign_payload
+        from runner.wire import jobcrypto
+        base = tempfile.mkdtemp(prefix="hp-plat-mailrej-")
+        try:
+            cfg = _cfg()
+            job_id = "job-platinum-mailrej"
+            job = {"v": 1, "type": "job", "job_id": job_id,
+                   "kind": "exec",
+                   "issued_at": time.strftime(
+                       "%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+            body = jobcrypto.encrypt_body(
+                sign_payload(job, TESTKEY), TESTKEY,
+                job_id=job_id, key_id="", sign=sign_payload)
+            msg = EmailMessage()
+            msg["Subject"] = f"[HOMING-PIGEON] job {job_id}"
+            msg["From"] = "op@example.test"
+            msg.set_content(body)
+
+            class _IMAP:
+                def store(self, *a, **k):
+                    return "OK"
+
+            logs = []
+            with mock.patch.object(
+                    R, "log", lambda *a, **k: logs.append(a)), \
+                    mock.patch.object(
+                        R._atomicio, "write_json",
+                        side_effect=OSError("disk full")):
+                R.handle_mail(cfg, _IMAP(), object(), "7",
+                              msg.as_bytes(), base, {},
+                              R.build_secrets(cfg), None)
+            flat = " ".join(str(a[0]) for a in logs if a)
+            self.assertIn("rejected: exec job requires script",
+                          flat)
+            self.assertIn("could not send rejection result", flat)
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+
 class RunInspectReviewTest(unittest.TestCase):
     """Cycle 3 target, logic class: `runner.run_inspect` (2)
     -- asked for the extension review with the review module

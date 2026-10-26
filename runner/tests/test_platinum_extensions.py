@@ -143,5 +143,37 @@ class ServiceWatchMainTest(unittest.TestCase):
             shutil.rmtree(td, ignore_errors=True)
 
 
+class DecodeDatagramTest(unittest.TestCase):
+    """Cycle 3 target, except class:
+    `extensions/softflowd-feed/softflowd_feed.py:
+    decode_datagram` (2) -- a datagram whose header
+    announces NetFlow v5 or IPFIX but whose body is too
+    damaged to parse answers with no flows and the templates
+    it was handed: the pure function's "never raises".
+    """
+
+    def _load(self):
+        import importlib.util
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(
+            here, "..", "extensions", "softflowd-feed",
+            "softflowd_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "softflowd_platinum", os.path.normpath(path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @settings(deadline=None)
+    @given(version=st.sampled_from([5, 9, 10]),
+           tail=st.binary(min_size=0, max_size=18))
+    def test_truncated_datagrams_answer_empty(self, version, tail):
+        sf = self._load()
+        data = version.to_bytes(2, "big") + tail
+        flows, templates = sf.decode_datagram(data, {}, now=1.0)
+        self.assertEqual(flows, [])
+        self.assertEqual(templates, {})
+
+
 if __name__ == "__main__":
     unittest.main()
