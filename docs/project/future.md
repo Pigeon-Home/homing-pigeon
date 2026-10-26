@@ -1,19 +1,3 @@
-## Partial
-
-- **Platform facts on every result.** A `ping` result already
-  carries the OS family, default interpreter and protocol versions. An
-  option to attach full platform metadata to every result does not exist.
-
-- **More network senses.** Canary credentials that phone home when
-  used elsewhere, a per-job DNS log, and a netmon collector of our own.
-  Listening sockets, running services and local canary files are already
-  watched.
-
-- **Accelerator Pis.** When a Pi ships with an NPU, or an AI HAT is
-  present, the install should pull a model and switch `oracle_mode` to
-  `llm`. The switch exists; nothing detects the hardware yet.
-
-## Not built: security
 
 - **Runner integrity.** Nothing checks that `runner.py` or the binary
   is unchanged at startup, so a job running as the runner's user can
