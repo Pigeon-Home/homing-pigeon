@@ -2,7 +2,7 @@
 
 ## B. Partial: a slice is built
 
-**B2. ACK for jobs accepted into runner job board
+**B4. ** ACK for jobs accepted into runner job board
 
 **B4. Reviewer routing.** A finished task goes to a second worker
 holding the `review` capability before the owner sees it. Today only
