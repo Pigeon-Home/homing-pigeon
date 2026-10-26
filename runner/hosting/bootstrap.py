@@ -1,3 +1,4 @@
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """What a fresh machine runs to become a runner.
 
 Two shapes, one meaning: a cloud-init `user_data` script for plain

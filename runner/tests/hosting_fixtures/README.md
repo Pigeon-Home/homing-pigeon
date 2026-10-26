@@ -1,5 +1,7 @@
 # Recorded provider responses
 
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 One JSON file per provider, each a list of exchanges the suite
 replays through `runner.hosting.httpdoor.HttpClient`. The shapes
 follow each provider's public API reference as of October 2026; when

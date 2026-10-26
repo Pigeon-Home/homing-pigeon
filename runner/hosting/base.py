@@ -1,3 +1,4 @@
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """The provider interface every adapter implements, and the errors
 they all raise. The CLI and the tests speak only this vocabulary.
 """

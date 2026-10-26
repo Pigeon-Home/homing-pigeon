@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """homing-pigeon-host: put a runner on a machine the tenant pays for.
 
     homing-pigeon-host up --provider fly --token-env FLY_API_TOKEN \\

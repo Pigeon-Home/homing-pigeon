@@ -1,3 +1,4 @@
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """The control plane's memory: which machine belongs to which tenant.
 
 A JSON file, one record per machine, written atomically. The one rule

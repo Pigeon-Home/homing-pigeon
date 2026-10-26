@@ -1,3 +1,4 @@
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """Metering and prepaid billing (Phase 4): one usage event per job,
 a price table that tracks what the platforms charge, a prepaid
 balance per tenant, and a Stripe webhook handler that only ever adds
@@ -16,8 +17,8 @@ import tempfile
 import time
 
 # Cents. Linux resident is a flat monthly rate per machine; ephemeral
-# is per minute at the ratio GitHub charges (Windows 2x, macOS 10x the
-# Linux minute). docs/project/hosting.md, "Cost model".
+# targets are per minute. Placeholder values: the operator sets the
+# real table outside the code (docs/project/hosting.md, "Billing").
 PRICES = {
     "linux-resident": {"unit": "month", "cents": 500},
     "linux-ephemeral": {"unit": "minute", "cents": 1},

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """The control plane around the adapters: the inventory and its
 isolation rule, the prepaid ledger and the Stripe webhook, and the
 `homing-pigeon-host` CLI driven end to end against recorded exchanges

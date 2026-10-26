@@ -1,3 +1,4 @@
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """A recorder-player HttpClient for the hosting adapters.
 
 The suite never reaches a real API. A `Player` is loaded with named

@@ -1,3 +1,4 @@
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """GitHub Actions as an ephemeral target backend (Phase 3).
 
 A dispatch boots a fresh GitHub-hosted VM of the target's platform,

@@ -1,22 +1,15 @@
 # Hosting: a runner on a machine the tenant pays for
 
-A provisioner, not a dispatcher. Pigeon Home puts a configured
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+A provisioner, not a dispatcher. The hosting code puts a configured
 runner into a machine the tenant pays for, keeps it updated, and
 never sits in the job path: jobs keep flowing SI to transport to
 runner exactly as today. For Windows and macOS nothing runs until a
 job exists; a fresh VM boots, drains the tenant's queue once, and
-exits, billed by the minute. The owner's live plan, with the
-reasoning and the prices behind it, is the "Hosted Runner Plan"
-doc; this page is the part the code points at.
-
-Three rules cap the money:
-
-- Tenants prepay credits. No postpaid balance can run us into debt.
-- We never lease a Mac. Mac and Windows are ephemeral minutes
-  charged against prepaid credit.
-- Anything we pay for ourselves sits on a provider with a hard
-  spending stop, and the tenant count is capped, not just the
-  dollars.
+exits. This page is the part the code points at: what exists, where,
+and how it fits. Pricing, providers and the business plan live
+outside the repository.
 
 ## What is built
 
@@ -81,8 +74,9 @@ and exits; the dispatcher finds the run by its `run-name`
 (`hp <ticket>`), waits for completion, and records the billable
 minutes GitHub reports, rounded up the way GitHub bills.
 
-**Billing.** Cents, prepaid only. `PRICES` tracks the platform
-ratio (Windows 2x, macOS 10x a Linux minute); `Ledger.can_cover`
+**Billing.** Cents, prepaid only. `PRICES` carries the per-target
+unit rates (the values are placeholders until the operator sets
+them); `Ledger.can_cover`
 refuses a job whose target reserve the balance cannot meet, and a
 tenant with an open dispute is frozen. `handle_stripe_event`
 verifies `Stripe-Signature` (HMAC-SHA-256, 300 s tolerance), applies

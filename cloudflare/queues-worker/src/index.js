@@ -1,3 +1,4 @@
+// Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 // Homing Pigeon hosted queue: the Cloudflare Worker and one Durable
 // Object per tenant (docs/extend/transports.md, "Queues").
 //

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """Phase 0 of the hosting plan (docs/project/hosting.md): a runner a
 provisioner can bring up with one blob and no human on the box.
 

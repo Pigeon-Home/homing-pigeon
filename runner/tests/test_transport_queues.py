@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """The queues transport extension against a fake Worker (Phase 2 of
 docs/project/hosting.md). The fake speaks the same contract the
 Cloudflare Worker does (cloudflare/queues-worker/src/index.js, whose
