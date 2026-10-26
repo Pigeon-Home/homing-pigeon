@@ -136,11 +136,23 @@ knows it exists.
 
 ---
 
-## Cloudflare Queues — design notes (not built; deferred)
+## Cloudflare Queues — design notes (Worker boundary available)
 
 If email is the carrier pigeon, Cloudflare Queues is the freight
 rail. This is the transport the protocol *wants* to grow into, and
 it's the one we'd recommend to anyone who winces at the word "email."
+
+**Worker boundary gate (available now).** A Cloudflare Worker at
+`cloudflare/queues-worker/` can reject any inbound message that
+fails HMAC-SHA-384 validation *before* it is written to D1 or
+further compute is performed. Set the wrangler var (or secret)
+`REJECT_INVALID_HMAC=true` to turn the gate on. Default is off so
+existing flows are unchanged until the operator enables it. The
+HMAC check matches the protocol splice used by `send_job.py` and
+the runner core. Full Queues + D1 wiring remains design notes;
+the Worker is the optional edge gate so invalid jobs never reach
+the database or the runner when the option is on. See
+`cloudflare/queues-worker/README.md`.
 
 Why it fits so well it feels designed for this:
 
@@ -388,186 +400,4 @@ infrastructure can earn.
 
 ## Cloudflare Durable Objects — the real-time pick
 
-For those who find polling *philosophically* offensive: a Durable
-Object is a tiny stateful program living on Cloudflare's edge. Model
-the mailbox as one.
-
-- The SI `POST`s the signed job to the DO's HTTPS endpoint.
-- The runner holds a **WebSocket** to the same DO and gets the job
-  *pushed* the moment it lands. No polling interval, no latency
-  floor.
-- **Transactional storage** inside the DO gives you the
-  exactly-once-ish bookkeeping; the runner acks, the DO deletes.
-
-This is the only transport on the list that isn't poll-based, which
-makes it the odd one out — but for interactive back-and-forth with
-your SI (the Oracle's `ask` loop, rapid iteration), push
-notification is genuinely nicer than a 30-second poll.
-
-## Honorable mentions
-
-- **nostr relays.** Key-based identity is *philosophically* the
-  closest thing here to the protocol's HMAC identity model — your
-  keypair *is* you, no accounts, no From headers. Exotic, but the
-  shape is right, and relays are dumb pipes that can't read your
-  (signed, and optionally encrypted) blobs. One to watch.
-- **Webhooks to the SI.** Inverted direction, worth naming: some
-  SIs can receive outbound webhooks, which would let the runner
-  *push* results instead of the SI polling. Transport #1.5.
-
----
-
-## Comparison
-
-Email, File, core NATS, and DTLS run today as transport
-extensions, selected by the `transports` config key. The
-other rows are design notes.
-
-| Transport | NAT-friendly | Auth story | At-least-once | Self-hostable | Free tier | In the runner |
-|---|---|---|---|---|---|---|
-| Email | poll | HMAC signature only | Unseen flag | n/a (hosted) | yes | yes, the default |
-| File | n/a (local folder) | Folder OS ACL, then HMAC | Process-once + done/ | n/a | n/a | yes |
-| NATS (core) | outbound connect | Broker auth (required), then HMAC | Sender resend + seen-set | tiny binary | self-host | yes |
-| DTLS | no — listens (opt-in) | PSK session (the shared secret), then HMAC | Sender resend + seen-set | n/a | n/a | yes, off by default |
-| Cloudflare Queues | HTTPS poll | API token | Retries + DLQ | no | yes | no |
-| NATS JetStream | yes | NKey/JWT | Consumer acks | tiny binary | self-host | no |
-| MQTT | yes | TLS + creds | QoS 1 | Mosquitto | self-host | no |
-| Redis Streams | yes | Token/password | Pending list | yes | Upstash | no |
-| Postgres | yes | DB creds | Transactions | yes | Neon/Supabase | no |
-| Durable Objects | push | Token | Txn storage | no | yes | no |
-
-On gates: a credentialed NATS deployment in its default
-required-auth posture is the more secure option over email —
-two gates (broker authentication, then the signature) against
-email's one (the signature). A deployment with
-`allow_unauthenticated: true` is not: it falls back to the
-signature as the only gate. DTLS stands apart from the
-count: its session is authenticated with the shared secret
-itself and is confidential with perfect forward secrecy, and
-the signature still checks every job inside it. See
-"Authorization gates".
-
-## Writing a new transport
-
-The protocol is deliberately transport-agnostic, and transports
-are now *extensions*: a new transport is a new program, not a
-patch to the runner. The contract is versioned at one —
-`TRANSPORT_API_VERSION = 1` in `runner/wire/transports.py`.
-
-A transport extension is a folder with an `extension.json`
-manifest:
-
-```json
-{"name": "smoke", "kind": "transport", "api_version": 1,
- "version": "0.1.0", "publisher": "Your Name",
- "capabilities": ["network"],
- "entry": ["{python}", "smoke.py", "{channel_dir}",
-           "{runtime_config}"]}
-```
-
-`entry` is the argv the runner launches (tokens `{python}`,
-`{extension_dir}`, `{channel_dir}`, `{runtime_config}`,
-`{base_dir}`, `{name}` are substituted). `capabilities` says
-what the code does -- `network`, `listen`, `subprocess`,
-`native` -- and the runner holds the code to it. The manifest's
-identity fields — name, publisher, version — are carried from
-day one so a future lockdown has something to pin; this build
-has no signature on the code, no allowlist, no registry check.
-What it has is the extension review
-([docs/extend/extensions.md](extensions.md), "The review"): before
-`entry` is launched, the folder is read against the manifest --
-every path in `entry` stays inside the folder, every `.py`
-compiles, no symlinks, no bidi control characters, nothing that
-names the runner's own state files, and every capability the
-code uses is declared. Under the default `extension_review:
-"enforce"` a folder that fails is refused like a bad manifest and
-the runner starts without it; `advisory` loads it and says so.
-
-**Registration is never a permission to run.** Drop the folder
-into the runner's extensions directory (default
-`<base_dir>/extensions`, or `extensions_dir` in config) and
-name it in `transports`: the runner loads and uses it, no
-catalog consulted, registered or not. That is deliberate —
-test transports, private experiments, and pipes nobody
-catalogued are first-class. A folder in the extensions
-directory shadows a shipped transport of the same name; the
-review says so at every start, with a security event, and a
-shadowing drop-in the review refuses is absent rather than
-quietly replaced by the shipped one. First-party extensions
-ship under
-`runner/transport_extensions/` and are found the same way. A
-manifest declaring any `api_version` other than 1 is refused
-with a log line; the runner keeps running without it.
-
-A transport can bring its own sources for the Oracle, exactly
-as a sense can: a `sources.json` next to the manifest
-([docs/extend/extensions.md](extensions.md), "Sources"), fetched in the
-background the first time the transport starts and given to the
-Oracle under the disclosure rule. The four shipped transports
-declare their own code in the project tree and the
-specifications they speak — the IMAP, SMTP, STARTTLS, and
-message-format RFCs for email, the DTLS 1.3, TLS 1.3, HKDF, and
-X25519 RFCs for dtls, the NATS client protocol for nats.
-
-The runner supervises each enabled extension as a child
-process: it starts them with the runner, restarts a dead one
-with backoff (1s doubling to 30s) and a log line, and stops
-them at shutdown. One extension's death never takes the
-runner or the other transports down. Each extension is handed
-a runtime config file (0600) holding only its own config —
-its `transport_<name>` block, and for email the mailbox keys —
-never the shared secret, with one exception: the dtls
-extension terminates PSK authentication, so it is handed the
-secret material it authenticates with (see "DTLS — shipped").
-Verification is the core's job, not the pipe's. The extension's own output lands in
-`<channel>/extension.log`.
-
-The pipe itself is a pair of directories, the channel, at
-`<base_dir>/transport-extensions/<name>/`:
-
-- `inbox/` — job envelopes, extension → runner. An envelope
-  is a subject line, a blank line, then the signed body; drop
-  it as `<ident>.job.txt`, where `<ident>` is your stable id
-  for the job.
-- `outbox/` — result envelopes, runner → extension, same
-  shape, named `<ident>.result.txt` for the job's ident.
-
-Ack is consumption: whichever side has taken a file moves it
-into the sibling `done/` directory. The runner moves an inbox
-file only when the core would have marked that mail seen. A
-result that did not land, or a job the core will retry, stays
-in the inbox. A rejection is consumed, so poison is not
-retried. The runner services each
-channel once per poll cycle and hands every envelope to the
-same verification/execution core the mail path uses. The
-blob does not change between transports. The signatures do
-not change. The Oracle does not know the difference. (v1
-ships the file channel only; there is no socket variant.)
-
-Result routing travels with the job. A signed job may name
-where its result goes — on email that's the `reply_to` field.
-On the shipped non-mail transports the result returns over
-the same transport that carried the job in (the file outbox,
-the NATS result subject). The transport never invents a
-destination.
-
-## Bootstrapping
-
-Email is the pipe to turn on first: get that running (a
-dedicated mailbox account). The file transport needs nothing
-else — set `transports` to include `file` and drop envelopes
-in the inbox. NATS needs a broker you run (or one you already
-have) plus credentials for it. The `transports` config key
-(or `--transports` for one process) is the switch; several
-transport extensions run side by side, each supervised by
-the one runner. What is not built, and what was cut, is
-listed in docs/project/future.md.
-
-## Local socket — cut
-
-An earlier revision specified a loopback-TCP test transport
-(`127.0.0.1:8766`, length-prefixed blobs) for the local SI harness.
-It was cut along with the other broker transports: it was never
-implemented, and the harness tests through the in-process Oracle
-path and the real email transport instead. This section is kept as
-a record of the cut, not a spec.
+For those who find polling *philosophically* offensive: a
