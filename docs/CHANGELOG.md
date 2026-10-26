@@ -4,6 +4,22 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.15 - 2026-10-26
+
+- **`docs/project/future.md`, edited by the owner.** A run of the
+  owner's own edits on main, with a sibling chat reshaping after each:
+  sections A to D with items numbered consecutively, then the
+  letters and numbers dropped so the bullets carry it.
+- **The v2 deadline test's shape gives every margin a full second.**
+  A six-second deadline, the sender's pickup at two seconds and its
+  answer five seconds after that: past the deadline measured from the
+  send, a second inside it measured from the pickup, four seconds
+  before the runner would give up waiting for the pickup. The answer
+  file is written whole, by rename. One Windows leg in a few lost the
+  old 0.8/2.4/3 shape to the give-up, the answer filed and never
+  read (`runner/tests/test_protocol_v2_messages.py`).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.14 - 2026-10-26
 
 - **`docs/project/future.md` holds only what might be built.** Lettered
