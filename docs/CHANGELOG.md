@@ -6,6 +6,14 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.1 - 2026-10-25
 
+<!-- Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a -->
+
+Cloudflare Queues Worker boundary with optional REJECT_INVALID_HMAC
+gate. When the wrangler var is set, the Worker rejects any inbound
+message that fails HMAC-SHA-384 before writing to D1 or doing further
+compute. Default off. Full Queues + D1 wiring remains design notes.
+## 3.13.1 - 2026-10-25
+
 - **Worker boundary HMAC reject (optional).** The Cloudflare Queues
   Worker now rejects any inbound message that fails HMAC-SHA-384
   verification at the edge when `REJECT_INVALID_HMAC` is set. Invalid
