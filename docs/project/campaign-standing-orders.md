@@ -3846,3 +3846,59 @@ when done, the proving commit or run. Newest first.
   rules 7-10, the questions file's open
   entries, the playbook's hard rules).
   resources 2026-10-26T15:52:27Z: cores 2 | box cpu 53% | wall 38m06s | cmd cpu 34m07s = 0.9 cores busy | peak rss 455 MB | mem used 91% | disk free 165.4 GB | exit 0 | under-driven
+- platinum 6: statements 99.6% (+0.0), branches
+  97.6% (+0.1), 5 tests, 0 crashes filed,
+  resources 2026-10-26T18:27:57Z: cores 2 | box cpu 55% | wall 24m33s | cmd cpu 21m57s = 0.9 cores busy | peak rss 468 MB | mem used 93% | disk free 165.4 GB | exit 0 | under-driven
+  (under-driven is the single-process
+  measure's shape; cycle 7 opens at once
+  on the two uncredited pins and the
+  one-line frontier.) Baseline 40cc8733
+  (99.6%, 130 missing); after 61d4c77e
+  (125 missing); the after-suite ran
+  7,055 tests, OK (skipped=38). Nine
+  statements closed gross: execute_job's
+  staging trio (491, 492, 493),
+  answer_queries' non-object arm (378),
+  resend_stashed's base arm (1742), the
+  QueuePipe pair (168, 189), and
+  store_answer's pair (424, 425). Two
+  pins the full-suite map does not
+  credit stay live for cycle 7:
+  execute_job's script-shape refusal
+  (346) and _record_payload's payload
+  arm (1939); targeted runs drive both,
+  and the map is the score. Four
+  rarely-hit arms the cycle-5 map showed
+  covered read missing again (zeek-feed
+  main's 682 and 688, personal_docs
+  _walk's 209, verify_body_keyed's 743)
+  and are recorded as map wobble in the
+  refreshed gaps header
+  (docs/reports/v3.13.42/), watched
+  next cycle. Eight single lines were
+  recorded dead by construction in the
+  same header: sun_elevation_deg's
+  hour-angle arm, sample_tree_ps's
+  fallback entry, save_seen's merge,
+  ensure_inference_ready's hostless arm,
+  _oracle_instruction_kind's
+  empty-words arm, _clean_rel_path's
+  no-parts arm, the email transport's
+  raw-payload fallback, and ask_model's
+  second arm. Q62 trigger check: cycle 6
+  closed new statements, so the trigger
+  does not fire; queue P runs as written
+  and section M (Project blueMonday)
+  stands ready. Cycle 5's tests are
+  done by the Windows rule: build
+  40372240278 at 1011ad80 completed
+  success. Cycle 6's likewise: build at
+  afa70c22, a descendant of 61d4c77e,
+  completed success.
+- rules refreshed 2026-10-26 12:13 PDT
+  (standing orders incl. queue P and the
+  new section M, AGENTS.md rules 7-10,
+  the questions file's open entries incl.
+  Q62 as answered, the playbook's hard
+  rules).
+  resources 2026-10-26T18:27:57Z: cores 2 | box cpu 55% | wall 24m33s | cmd cpu 21m57s = 0.9 cores busy | peak rss 468 MB | mem used 93% | disk free 165.4 GB | exit 0 | under-driven
