@@ -2,11 +2,49 @@
 
 <!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
 
-Work that is not built, and nothing else. Sections are lettered and
-items numbered so one can be named in a breath (C2, F2). B has a slice
-built, C through F have nothing, G was cut. An item that ships leaves
-the file and its number is not reused. The decisions behind the
-finished ones are in `docs/archive/future-finished-2026-10-25.md`.
+- **B. Partial: a slice is built**
+  - B1 Cloudflare Queues
+  - B2 Mirror
+  - B3 Extension sources, three follow-ups
+  - B4 Reviewer routing
+  - B5 Platform facts on every result
+  - B6 More network senses
+  - B7 Accelerator Pis
+- **C. Not built: security**
+  - C1 Runner integrity
+  - C2 Audit log integrity
+  - C3 A cage off Linux
+  - C4 Egress control
+  - C5 A policy for the Oracle's own tool calls
+  - C6 Supply chain
+  - C7 POSIX ACL warning
+  - C8 Ed25519 signatures
+  - C9 An approval gate
+  - C10 Credentials encrypted at rest
+  - C11 A signing key for the Oracle
+  - C12 A firewall ruleset hash
+  - C13 Post-quantum DTLS
+- **D. Not built: the protocol and the board**
+  - D1 Board delegation over ping
+  - D2 Job acknowledgements
+  - D3 The concentrate (red-team extension kind)
+  - D4 Other pipes
+  - D5 A self-improving SI
+- **E. Not built: the Oracle, the senses, and paging**
+  - E1 Richer repairs
+  - E2 An Oracle dashboard
+  - E3 Patch level and disk encryption as senses
+  - E4 Signal and WhatsApp paging
+  - E5 TLS inspection and a WAF
+  - E6 Line-rate detection, a 24/7 ML pipeline, MCP
+- **F. Research: hardware**
+  - F2 A USB inference stick for the Pi
+- **G. Cut**
+  - G1 JetStream, MQTT, Redis, Postgres, Durable Objects as transports
+  - G2 SMS paging
+
+Not built, and nothing else; the finished items' decisions are in
+`docs/archive/future-finished-2026-10-25.md`.
 
 ## B. Partial: a slice is built
 
