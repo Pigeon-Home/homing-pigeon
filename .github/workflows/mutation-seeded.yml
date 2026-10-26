@@ -27,14 +27,14 @@ on:
         required: false
         type: string
 
-permissions:
-  contents: read
-
 # One walk at a time: a slow hour queues the next run, never stacks
 # them, and never cancels a walk that is half done.
 concurrency:
   group: mutation-seeded
   cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   mutation-seeded:
