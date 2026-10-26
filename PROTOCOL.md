@@ -358,15 +358,25 @@ Authorization then runs in this order, and all of it must pass:
    Failures here produce the -2 rejection result of section 3.2.
 
 Failures are logged, the mail is marked seen, and the job is **never**
-executed. Delivery is at-least-once, execution is at-most-once: a job
-whose result message fails to send stays unseen and is retried on
-the next cycle, but the retry sends the result the first execution
-produced -- the runner records the result, as it goes on the wire,
-before the send, and a redelivered job whose record exists (bound to
-the job's received digest, so a different job under a reused id is
-not answered with it) is answered from the record and not run again.
-Records age out with `output_retention_days`; a redelivery after that
-executes again. On a file channel the same rule is the move into `inbox/done`. That
+executed. **A verified job is executed at most once per runner state
+directory; its result is delivered at least once.** The moment a
+result (or a rejection) is built and signed, the runner writes it to
+`<base_dir>/outbox/` and commits the job as seen, on disk, before the
+first send is attempted; the message is marked seen then too.
+Delivery is a separate, retryable concern: a send that fails leaves
+the record waiting, later polls resend the same bytes (at least
+`result_resend_backoff_sec` apart, default 60), and a record not
+delivered within `result_stash_retention_sec` (default 86400) is
+given up into `outbox/failed/` with an audit entry -- the script is
+never run twice for it. A delivered record moves to `<base_dir>/sent/`,
+where a redelivered copy of the same job (bound to the job's received
+digest, so a different job under a reused id runs on its own) is
+answered from it and not run again; sent records age out with
+`output_retention_days`, and a redelivery after that executes again.
+The one window left is the stash write itself: a crash between the
+execution and the record is a re-execution, and nothing wider.
+`--inspect outbox` lists the waiting and the given-up records. On a
+file channel the same rule is the move into `inbox/done`. That
 move happens only when the core would have marked the mail seen. A
 retryable failure leaves the envelope in the inbox. A rejection is
 still consumed, so poison is not retried.
@@ -401,13 +411,14 @@ secret, in which case the runner refuses to start and names it
   environment, and the work dir as cwd.
 - On timeout the whole process tree is killed (POSIX process group;
   `taskkill /T` on Windows).
-- **A job runs at most once per `job_id` on a runner.** If the result
-  message fails to send, the next poll resends the recorded result
-  (section 5) and does not execute the job again. Idempotent jobs
-  are still good hygiene -- check before creating, use unique names,
-  prefer upserts over blind inserts -- because a job whose record
-  aged out before its redelivery, or the same job sent to a second
-  runner, does run again.
+- **A job runs at most once per `job_id` on a runner; its result is
+  delivered at least once.** The result is stashed and the job
+  committed as seen before the first send; a send that fails is
+  retried from the stash on later polls (section 5) and the job is
+  not executed again. Idempotent jobs are still good hygiene -- check
+  before creating, use unique names, prefer upserts over blind
+  inserts -- because a job whose sent record aged out before its
+  redelivery, or the same job sent to a second runner, does run again.
 
 ## 7. Security model
 

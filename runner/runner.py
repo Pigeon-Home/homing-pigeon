@@ -1511,58 +1511,87 @@ def _retention_days(cfg):
     # is the documented 7.
     return _confval.integer(raw, 7, lo=-(10 ** 9), hi=10 ** 9)
 
-# ---------------------------------------------------------------- sent results
-# A job executes at most once per job_id on a runner. The result, as
-# it goes on the wire, is written under <base_dir>/sent/ BEFORE the
-# send; a redelivery of the same job (the send failed, the process
-# died between the send and the seen-set commit, a duplicate copy
-# arrived) resends those bytes and executes nothing. The seen-set
-# still commits only after a successful send, so delivery stays
-# at-least-once while execution becomes at-most-once. The entry is
-# bound to the job's received digest: a different job under a reused
-# id is not answered with a stale result. Entries age out with
-# output_retention_days (prune_retained).
+# ---------------------------------------------------------------- the outbox
+# Execution is at most once per job_id on a runner; delivery is at
+# least once. The moment a result is built and signed it is written
+# to <base_dir>/outbox/ and the job is recorded as seen -- on disk --
+# before the first send is attempted. Delivery is then a separate,
+# retryable concern: a stash that never left is resent on later polls
+# (result_resend_backoff_sec between attempts, given up after
+# result_stash_retention_sec into outbox/failed/ with an audit entry);
+# the script is never run twice. A delivered record moves to
+# <base_dir>/sent/, where a redelivered copy of the same job (bound to
+# its received digest, so a different job under a reused id runs on
+# its own) is answered from it; sent records age out with
+# output_retention_days (prune_sent). The one window left is the stash
+# write itself: a crash between the execution and the record is a
+# re-execution, and nothing wider.
+OUTBOX_DIRNAME = "outbox"
+OUTBOX_FAILED_DIRNAME = "failed"
 SENT_DIRNAME = "sent"
+RESEND_PASS_CAP = 50
+
+def _record_name(skey):
+    return hashlib.sha384(_as_str(skey).encode("utf-8")).hexdigest()[:48] \
+        + ".json"
 
 def _sent_path(base_dir, skey):
-    name = hashlib.sha384(_as_str(skey).encode("utf-8")).hexdigest()[:48]
-    return os.path.join(base_dir, SENT_DIRNAME, name + ".json")
+    return os.path.join(base_dir, SENT_DIRNAME, _record_name(skey))
 
-def save_sent_result(base_dir, skey, job, subject, body, to=None):
-    """Record the outgoing result before it is sent. Best effort:
-    a failure to record is logged and the send proceeds, which is
-    the at-least-once behavior of before."""
+def _outbox_dir(base_dir):
+    return os.path.join(base_dir, OUTBOX_DIRNAME)
+
+def _stash_path(base_dir, skey):
+    return os.path.join(_outbox_dir(base_dir), _record_name(skey))
+
+def _ensure_private_dir(path):
+    if not os.path.isdir(path):
+        os.makedirs(path, exist_ok=True)
+        _chmod_quiet(path, 0o700)
+
+def _job_digest(job):
+    if _opinion is not None:
+        return _opinion.received_digest(job)
+    return hashlib.sha384(json.dumps(
+        {k: v for k, v in (job or {}).items() if k != "sig"},
+        sort_keys=True, separators=(",", ":"),
+        ensure_ascii=False).encode("utf-8")).hexdigest()
+
+def _stash_retention_sec(cfg):
+    return _confval.integer((cfg or {}).get("result_stash_retention_sec"),
+                            86400, lo=1)
+
+def _resend_backoff_sec(cfg):
+    return _confval.integer((cfg or {}).get("result_resend_backoff_sec"),
+                            60, lo=1)
+
+def stash_result(base_dir, skey, job, subject, body, to=None,
+                 transport=None, key_id=None, encrypted=False, meta=None):
+    """Write the finished, signed (and, when on, encrypted) result to
+    the outbox before the first send. Returns True when the record is
+    down. A failure to record is logged and False is returned: the
+    caller then does not commit the job as seen, so a crash here is
+    the one re-execution window, stated in the module comment."""
     if not _valid_base(base_dir):
         return False
-    digest = _opinion.received_digest(job) if _opinion is not None \
-        else hashlib.sha384(json.dumps(
-            {k: v for k, v in (job or {}).items() if k != "sig"},
-            sort_keys=True, separators=(",", ":"),
-            ensure_ascii=False).encode("utf-8")).hexdigest()
-    rec = {"job_id": _as_str((job or {}).get("job_id")),
-           "job_digest": digest, "subject": subject, "body": body,
-           "to": to, "completed_at": datetime.now(timezone.utc).strftime(
+    rec = {"skey": _as_str(skey),
+           "job_id": _as_str((job or {}).get("job_id")),
+           "job_digest": _job_digest(job),
+           "subject": subject, "body": body, "to": to,
+           "created": time.time(), "attempts": 0, "last_attempt": 0,
+           "last_error": None, "transport": transport, "key_id": key_id,
+           "encrypted": bool(encrypted), "meta": meta if isinstance(meta, dict) else {},
+           "completed_at": datetime.now(timezone.utc).strftime(
                "%Y-%m-%dT%H:%M:%SZ")}
-    path = _sent_path(base_dir, skey)
     try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        _atomicio.write_json(path, rec)
+        _ensure_private_dir(_outbox_dir(base_dir))
+        _atomicio.write_json(_stash_path(base_dir, skey), rec)
         return True
     except Exception as e:
-        log(f"sent-result record failed for {rec['job_id']}: {e}", "WARN")
+        log(f"result not stashed for {rec['job_id']}: {e}", "ERROR")
         return False
 
-def load_sent_result(base_dir, skey, job):
-    """The recorded result for this exact job, or None.
-
-    None when there is no record, when the record is for a job of
-    another shape under the same id (the digest differs), or when the
-    record cannot be read. Never raises."""
-    if not _valid_base(base_dir):
-        return None
-    path = _sent_path(base_dir, skey)
-    if not os.path.isfile(path):
-        return None
+def _read_record(path):
     try:
         with open(path, encoding="utf-8") as f:
             rec = json.load(f)
@@ -1570,6 +1599,239 @@ def load_sent_result(base_dir, skey, job):
         return None
     if not isinstance(rec, dict) or not isinstance(rec.get("body"), str) \
             or not isinstance(rec.get("subject"), str):
+        return None
+    return rec
+
+def load_stash(base_dir, skey):
+    """The waiting record for skey, or None."""
+    if not _valid_base(base_dir):
+        return None
+    return _read_record(_stash_path(base_dir, skey))
+
+def _stash_rewrite(base_dir, skey, rec):
+    try:
+        _atomicio.write_json(_stash_path(base_dir, skey), rec)
+    except Exception as e:
+        log(f"outbox record not updated for {rec.get('job_id')}: {e}",
+            "WARN")
+
+def _stash_move(base_dir, skey, folder):
+    """Move the waiting record into folder (sent/ or outbox/failed/)."""
+    src = _stash_path(base_dir, skey)
+    try:
+        _ensure_private_dir(folder)
+        os.replace(src, os.path.join(folder, _record_name(skey)))
+        return True
+    except OSError as e:
+        log(f"outbox record not moved to {os.path.basename(folder)}: {e}",
+            "WARN")
+        return False
+
+def _delivery_audit(base_dir, decision, reason, job_id, cfg=None):
+    if _security is None:
+        return
+    try:
+        _security.write_audit_entry(base_dir, "delivery", decision, reason,
+                                    job_id=_as_str(job_id), cfg=cfg)
+    except Exception:
+        pass
+
+def _stash_fail(base_dir, skey, rec, reason, cfg=None):
+    """Give the record up: outbox/failed/, an audit entry, one ERROR."""
+    log(f"result {rec.get('job_id')} not delivered: {reason}; "
+        f"kept under outbox/{OUTBOX_FAILED_DIRNAME}/", "ERROR")
+    _delivery_audit(base_dir, "failed", reason, rec.get("job_id"), cfg)
+    _stash_move(base_dir, skey,
+                os.path.join(_outbox_dir(base_dir), OUTBOX_FAILED_DIRNAME))
+
+def deliver_stash(base_dir, skey, sender, cfg=None, now=None):
+    """One delivery attempt of the waiting record for skey.
+
+    sender(subject, body, to) sends the stored bytes. On success the
+    record moves to sent/ and the delivery is logged with its attempt
+    count; on an exception the record's attempt count, time and error
+    are updated and a WARN is logged. Never raises: a delivery
+    failure is not a job failure. Returns True when delivered.
+    """
+    rec = load_stash(base_dir, skey)
+    if rec is None:
+        return False
+    now = time.time() if now is None else now
+    attempt = int(rec.get("attempts") or 0) + 1
+    try:
+        sender(rec["subject"], rec["body"], rec.get("to"))
+    except Exception as e:
+        rec["attempts"] = attempt
+        rec["last_attempt"] = now
+        rec["last_error"] = _as_text(e)[:500]
+        _stash_rewrite(base_dir, skey, rec)
+        log(f"result {rec.get('job_id')} not delivered (attempt {attempt}): "
+            f"{e}; kept in the outbox", "WARN")
+        return False
+    log(f"result {rec.get('job_id')} delivered (attempt {attempt})")
+    _stash_move(base_dir, skey, os.path.join(base_dir, SENT_DIRNAME))
+    return True
+
+def undeliver_stash(base_dir, skey, reason):
+    """A delivery that was counted as done but did not land (a channel
+    outbox write that failed after the capture): the record goes back
+    from sent/ to the outbox with the failure on it, for the resend
+    pass. The job stays seen -- it did execute. Returns True when a
+    record was moved back."""
+    if not _valid_base(base_dir):
+        return False
+    src = _sent_path(base_dir, skey)
+    rec = _read_record(src)
+    if rec is None:
+        return False
+    # The attempt is counted and the error kept; last_attempt is
+    # left alone so the next cycle's pass tries again at once -- the
+    # failure was local (a channel outbox write), not a remote server
+    # the backoff exists to spare.
+    rec["attempts"] = int(rec.get("attempts") or 0) + 1
+    rec["last_error"] = _as_text(reason)[:500]
+    try:
+        _ensure_private_dir(_outbox_dir(base_dir))
+        _atomicio.write_json(_stash_path(base_dir, skey), rec)
+        _unlink_quiet(src)
+    except Exception as e:
+        log(f"result {rec.get('job_id')} could not be re-queued: {e}", "WARN")
+        return False
+    log(f"result {rec.get('job_id')} did not land ({reason}); back in the "
+        f"outbox for the resend pass", "WARN")
+    return True
+
+def _waiting_records(base_dir):
+    """(skey, record) for every waiting outbox record, oldest first."""
+    folder = _outbox_dir(base_dir)
+    out = []
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return out
+    for name in names:
+        if not name.endswith(".json"):
+            continue
+        rec = _read_record(os.path.join(folder, name))
+        if rec is None or not isinstance(rec.get("skey"), str):
+            continue
+        out.append((rec["skey"], rec))
+    out.sort(key=lambda item: float(item[1].get("created") or 0))
+    return out
+
+def resend_stashed(base_dir, cfg, sender, now=None, limit=RESEND_PASS_CAP):
+    """The resend pass, once per poll: every waiting record past its
+    backoff is attempted again; one past its retention is given up.
+    At most `limit` records a pass, so a backlog never stalls polling.
+    Returns {"attempted", "delivered", "failed", "waiting"}."""
+    counts = {"attempted": 0, "delivered": 0, "failed": 0, "waiting": 0}
+    if not _valid_base(base_dir):
+        return counts
+    now = time.time() if now is None else now
+    backoff = _resend_backoff_sec(cfg)
+    retention = _stash_retention_sec(cfg)
+    for skey, rec in _waiting_records(base_dir)[:limit]:
+        counts["waiting"] += 1
+        created = float(rec.get("created") or now)
+        send = _record_sender(base_dir, rec, sender)
+        if now - created > retention:
+            _stash_fail(base_dir, skey, rec,
+                        f"not delivered within result_stash_retention_sec "
+                        f"({retention}s) after {rec.get('attempts', 0)} "
+                        f"attempt(s); last error: {rec.get('last_error')}",
+                        cfg)
+            counts["failed"] += 1
+            counts["waiting"] -= 1
+            continue
+        if send is None or now - float(rec.get("last_attempt") or 0) < backoff:
+            continue
+        counts["attempted"] += 1
+        if deliver_stash(base_dir, skey, send, cfg=cfg, now=now):
+            counts["delivered"] += 1
+            counts["waiting"] -= 1
+    return counts
+
+def outbox_report(base_dir):
+    """{"waiting": [...], "failed": [...]}: job id, age, attempts and
+    the last error of each record, for --inspect outbox and the
+    startup line."""
+    report = {"waiting": [], "failed": []}
+    if not _valid_base(base_dir):
+        return report
+    now = time.time()
+    folders = (("waiting", _outbox_dir(base_dir)),
+               ("failed", os.path.join(_outbox_dir(base_dir),
+                                       OUTBOX_FAILED_DIRNAME)))
+    for key, folder in folders:
+        try:
+            names = sorted(os.listdir(folder))
+        except OSError:
+            continue
+        for name in names:
+            rec = _read_record(os.path.join(folder, name))
+            if rec is None:
+                continue
+            report[key].append({
+                "job_id": rec.get("job_id"),
+                "age_sec": int(max(0.0, now - float(rec.get("created") or now))),
+                "attempts": int(rec.get("attempts") or 0),
+                "last_error": rec.get("last_error"),
+                "transport": rec.get("transport"),
+            })
+    return report
+
+def outbox_lines(base_dir):
+    """The report as text, one record a line."""
+    report = outbox_report(base_dir)
+    lines = []
+    for key in ("waiting", "failed"):
+        rows = report[key]
+        lines.append(f"{key}: {len(rows)}")
+        for row in rows:
+            err = f" -- {row['last_error']}" if row.get("last_error") else ""
+            lines.append(f"  {row['job_id']}  age {row['age_sec']}s  "
+                         f"attempts {row['attempts']}{err}")
+    return lines
+
+# The members a delivery stub keeps when a result body is refused
+# for good (review item 4): the identity and verdict of the run,
+# never its streams.
+_STUB_KEYS = ("v", "type", "job_id", "kind", "completed_at", "exit_code",
+              "timed_out", "duration_sec", "runner", "review", "judgment")
+
+def _result_meta(result):
+    if not isinstance(result, dict):
+        return {}
+    return {k: result[k] for k in _STUB_KEYS if k in result}
+
+def _record_sender(base_dir, rec, mail_sender):
+    """How a waiting record goes out this cycle: a record that came
+    through a transport extension's channel goes back out that
+    channel's outbox; a mailbox record needs the cycle's mail sender.
+    None when neither is available now (the record waits)."""
+    name = rec.get("transport")
+    if name:
+        if _transports is None:
+            return None
+
+        def via_channel(subject, body, to):
+            _transports.write_channel_result(base_dir, name, "", subject,
+                                             body, target=to)
+        return via_channel
+    return mail_sender
+
+def load_sent_result(base_dir, skey, job):
+    """The recorded result for this exact job, or None: the waiting
+    outbox record first, then the sent record.
+
+    None when there is no record, when the record is for a job of
+    another shape under the same id (the digest differs), or when the
+    record cannot be read. Never raises."""
+    if not _valid_base(base_dir):
+        return None
+    rec = _read_record(_stash_path(base_dir, skey)) \
+        or _read_record(_sent_path(base_dir, skey))
+    if rec is None:
         return None
     digest = _opinion.received_digest(job) if _opinion is not None \
         else None
@@ -4015,13 +4277,16 @@ def save_seen(path: str, seen: dict):
     _release_saved_claims(path, seen)
 
 HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
-            "max_output_bytes", "max_job_age_sec")
+            "max_output_bytes", "max_job_age_sec",
+            "result_stash_retention_sec", "result_resend_backoff_sec")
 # The documented default each hot key reads as when a live write is
 # not usable (Decision 1, live reload: the default, named in the log,
 # no hidden last-good state). workers is 1 unset (_worker_count).
 HOT_DEFAULTS = {"poll_interval_sec": 20, "workers": 1,
                 "default_timeout_sec": 300, "max_output_bytes": 100000,
-                "max_job_age_sec": 3600}
+                "max_job_age_sec": 3600,
+                "result_stash_retention_sec": 86400,
+                "result_resend_backoff_sec": 60}
 # Strings and objects the Oracle reads live. Not integers, so they do not
 # go through _valid_hot. Credentials stay out of this list.
 LIVE_KEYS = ("owner_instructions", "inference", "oracle_mode", "verbose",
@@ -4186,14 +4451,19 @@ class _Outbound(list):
     """Replies from one transported envelope.
 
     ``consume`` is false when the core left the message unseen.
-    ``rollback`` drops seen-set keys this attempt added, so a
-    reply that never reached the outbox can run again instead of
-    being treated as a replay.
+    ``requeue`` puts the results this attempt stashed back in the
+    outbox, so a reply that never reached the channel outbox is
+    resent by the next cycle's resend pass; the job itself is not
+    run again. ``rollback`` is the channel's call when its ack fails
+    after the replies landed: nothing to undo then -- the result is
+    in the channel outbox and a re-read of the envelope is a replay
+    the seen-set answers -- so it only says so.
     """
 
-    def __init__(self, items, consume, rollback):
+    def __init__(self, items, consume, requeue, rollback):
         super().__init__(items)
         self.consume = consume
+        self.requeue = requeue
         self.rollback = rollback
 
 class _CaptureSMTP:
@@ -4205,9 +4475,10 @@ class _CaptureSMTP:
     into the channel -- a pipe cannot recover it from an
     encrypted job, and never holds the secret to try."""
 
-    def __init__(self):
+    def __init__(self, transport=None):
         self.sent = []
         self.targets = []
+        self.transport = transport   # the channel the job came through
 
     def send_message(self, msg):
         body = ""
@@ -4222,7 +4493,7 @@ class _CaptureSMTP:
 
 def process_transport_message(cfg, base_dir, seen, secrets,
                               key_policies, subject, body_text,
-                              opts=None):
+                              opts=None, transport=None):
     """Run one transported envelope through the mail core.
 
     The envelope becomes a synthetic RFC822 message and handle_mail
@@ -4235,10 +4506,12 @@ def process_transport_message(cfg, base_dir, seen, secrets,
     which is the channel's default destination anyway). The
     list's ``consume`` flag is false when the core did not mark
     the message seen. The channel must leave that envelope in
-    the inbox. ``rollback`` forgets seen-set keys added during
-    this attempt.
+    the inbox. ``requeue`` puts the results stashed during this
+    attempt back for the resend pass (the job stays seen);
+    ``rollback`` is the ack-failure call, which has nothing left
+    to undo.
     """
-    cap = _CaptureSMTP()
+    cap = _CaptureSMTP(transport=transport)
     imap = _NullIMAP()
     before = set(seen) if isinstance(seen, dict) else None
     safe_subject = str(subject).replace("\r", " ").replace("\n", " ")
@@ -4262,15 +4535,23 @@ def process_transport_message(cfg, base_dir, seen, secrets,
     if before is not None:
         added = [key for key in list(seen) if key not in before]
 
-    def rollback(added=list(added), seen=seen):
-        if not isinstance(seen, dict):
-            return
+    def requeue(added=list(added)):
+        # The job executed and its result is stashed; what did not
+        # happen is the drop into the channel outbox. The job stays
+        # seen (a copy of the envelope is a replay), and the record
+        # goes back to the outbox for the resend pass, which writes
+        # it to this transport's channel on the next cycle.
         for key in added:
-            seen.pop(key, None)
-            _disk_release(base_dir, key)
+            undeliver_stash(base_dir, key, "channel outbox write failed")
+
+    def rollback(added=list(added)):
+        for key in added:
+            log(f"transport ack failed after the result landed; the job "
+                f"stays seen and its envelope is a replay next cycle "
+                f"({key})", "WARN")
 
     dry = opts is not None and getattr(opts, "dry_run", False)
-    return _Outbound(out, bool(imap.marked) and not dry, rollback)
+    return _Outbound(out, bool(imap.marked) and not dry, requeue, rollback)
 
 def _service_transports(cfg, base_dir, seen, seen_path, names,
                         secrets, key_policies, opts):
@@ -4284,12 +4565,12 @@ def _service_transports(cfg, base_dir, seen, seen_path, names,
     stays in the inbox, exactly as mail stays unseen."""
     dry_run = opts is not None and getattr(opts, "dry_run", False)
 
-    def process(subject, body_text):
-        return process_transport_message(
-            cfg, base_dir, seen, secrets, key_policies,
-            subject, body_text, opts)
-
     for name in names:
+        def process(subject, body_text, name=name):
+            return process_transport_message(
+                cfg, base_dir, seen, secrets, key_policies,
+                subject, body_text, opts, transport=name)
+
         try:
             count = _transports.service_channel(
                 base_dir, name, process, log=log, dry_run=dry_run)
@@ -4297,6 +4578,11 @@ def _service_transports(cfg, base_dir, seen, seen_path, names,
         except Exception as e:
             log(f"{name} transport: channel service failed: {e} "
                 f"(will retry next cycle)", "WARN")
+    # The resend pass: a channel result that never reached its outbox
+    # goes back out that channel; a mailbox record waits for a cycle
+    # that has a mailbox.
+    if not dry_run:
+        resend_stashed(base_dir, cfg, None)
     if len(seen) > SEEN_CAP:
         for k in list(seen.keys())[:-SEEN_CAP]:
             del seen[k]
@@ -4428,6 +4714,11 @@ def run_inspect(cfg, args) -> int:
         board = Board(os.path.join(base, "board.json"))
         print(json.dumps({"counts": board.counts(),
                           "tasks": list(board.tasks.values())}, indent=2))
+        return 0
+    if args.inspect == "outbox":
+        # Results executed but not yet delivered, and the ones given
+        # up on: job id, age, attempts, last error (review item 1).
+        print(json.dumps(outbox_report(base), indent=2))
         return 0
     if args.inspect == "budget":
         path = os.path.join(base, "query_times.json")

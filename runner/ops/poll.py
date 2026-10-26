@@ -101,6 +101,13 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                         # throw away the messages the other workers finished.
                         if exc is not None:
                             R.log(f"worker raised: {exc!r}", "ERROR")
+                # The resend pass (review item 1): results stashed by
+                # an earlier cycle whose send failed go out again,
+                # past their backoff, before the seen-set is saved.
+                if not (opts is not None and getattr(opts, "dry_run", False)):
+                    def resend(subject, body, to):
+                        _runner().send_mail(smtp, cfg, subject, body, to=to)
+                    _runner().resend_stashed(base_dir, cfg, resend)
                 if len(seen) > _runner().SEEN_CAP:
                     # _runner().save_seen caps the disk copy; keep memory in step.
                     for k in list(seen.keys())[:-_runner().SEEN_CAP]:

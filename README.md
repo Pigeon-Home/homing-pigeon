@@ -417,9 +417,12 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   runner refuses a cleartext job without that flag. One honest
   limit, stated wherever this is described: there is **no
   forward secrecy** unless it is provided by the transport layer.
-- Delivery is at-least-once, execution is at-most-once: a result that
-  fails to send is resent from the runner's record on the next poll,
-  not produced by a second run (PROTOCOL.md section 5).
+- Execution is at-most-once, delivery at-least-once: a result is
+  stashed under `<base_dir>/outbox/` and the job committed as seen
+  before the first send; a send that fails is resent from the stash
+  on later polls, never produced by a second run, and given up into
+  `outbox/failed/` after a day (`--inspect outbox`; PROTOCOL.md
+  section 5).
 - Size caps: `max_job_bytes` (default 4 MiB) bounds the raw mail before
   the signature is even checked.
 - Optional hardening controls (off by default, except the size caps

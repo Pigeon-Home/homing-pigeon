@@ -70,6 +70,16 @@ Anything that wants to carry homing-pigeon must provide:
 
 Meet those five, and you're a transport. Here's the bench.
 
+One thing a transport never has to build: the result stash. The core
+writes every result to `<base_dir>/outbox/` and commits the job as
+seen before the first send, whatever the pipe (PROTOCOL.md section
+5); for a channel transport the "send" is the drop into the
+channel's outbox, and a record that never got there goes back out
+the same channel on a later poll, named by the transport it came
+through. The core's one door out (`maybe_send`) is the seam, so an
+extension that speaks the channel contract gets the guarantee for
+free.
+
 ## Authorization gates
 
 The HMAC signature on the job body is checked by the runner's

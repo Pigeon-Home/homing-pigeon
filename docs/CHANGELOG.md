@@ -60,6 +60,26 @@ The four review items, plus workspace isolation (the runbook of
   outside the work tree after any job); `test_confinement`'s
   EnforceTest refuses a planted link before the sandbox is entered.
   PROTOCOL.md section 9.4, "The work directory".
+- **Execution at most once, delivery at least once.** The moment a
+  result (or a rejection) is built and signed it is written to
+  `<base_dir>/outbox/` and the job committed as seen, on disk, before
+  the first send; a send that fails leaves the record waiting and
+  later polls resend the same bytes (`result_resend_backoff_sec`,
+  default 60, between attempts), giving up into `outbox/failed/`
+  with an audit entry after `result_stash_retention_sec` (default
+  86400) -- the script is never run twice. A delivered record moves
+  to `sent/`, where a redelivered copy is answered from it. The one
+  window left is the stash write itself, pinned by test. A channel
+  result goes back out the channel it came through; the startup line
+  says how many results are waiting or given up, and `--inspect
+  outbox` lists them. `runner/tests/test_result_stash.py` (replacing
+  `test_sent_results.py`): the failed send that does not re-execute,
+  the byte-identical resend, the backoff, the retention with its
+  audit row, the crash window, the rejection through the same path,
+  the channel record, and a hypothesis property over random
+  send-ok / send-fail / poll / clock sequences (never two executions,
+  never a lost result). PROTOCOL.md sections 5 and 6; the two keys in
+  `docs/oracle/configuring-oracle.md`.
 
 ## 3.13.1 - 2026-10-25
 

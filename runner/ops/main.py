@@ -307,6 +307,14 @@ def main() -> int:
     if not getattr(args, "dry_run", False) \
             and not getattr(args, "once", False):
         R._extension_sources_start()
+    # The outbox backlog, once, plainly: results executed earlier whose
+    # delivery is still pending, and the ones given up on (review item
+    # 1). An operator whose mail server was down sees it here.
+    _backlog = R.outbox_report(base_dir)
+    if _backlog["waiting"] or _backlog["failed"]:
+        R.log(f"outbox: {len(_backlog['waiting'])} result(s) waiting for "
+              f"delivery, {len(_backlog['failed'])} given up "
+              f"(--inspect outbox lists them)", "WARN")
     auth_failed = False  # latch: report auth death once, not every 20s
     # Connection credentials (mailbox_user/password, oauth_*) are not
     # hot. Those still need a restart. CLI flags pin their key so a

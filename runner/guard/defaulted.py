@@ -31,6 +31,8 @@ NUMERIC = {
     "max_output_bytes": (100000, 1, None),
     "agent_wall_clock_sec": (300, 1, None),
     "poll_interval_sec": (20, 0, None),
+    "result_stash_retention_sec": (86400, 1, None),
+    "result_resend_backoff_sec": (60, 1, None),
 }
 ENUM = {
     "dtls_greeting": ("family", ("none", "family", "standard", "full")),

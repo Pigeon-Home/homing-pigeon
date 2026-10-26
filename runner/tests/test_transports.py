@@ -622,7 +622,11 @@ class FileTransportExtensionTest(unittest.TestCase):
         self.assertIn(jid, self.seen)
         self.assertEqual(os.listdir(self.inbox), ["done"])
 
-    def test_a_result_that_does_not_land_is_run_again(self):
+    def test_a_result_that_does_not_land_is_resent_not_run_again(self):
+        # Review item 1: the job executed once and is seen; the result
+        # that could not be written to the channel outbox goes back to
+        # the core's outbox and the next cycle's resend pass writes it.
+        from runner import runner as runner_mod
         jid = str(uuid.uuid4())
         self._drop("job.txt", _envelope(jid))
         self.pipe.scan_jobs()
@@ -630,11 +634,18 @@ class FileTransportExtensionTest(unittest.TestCase):
                 transports, "write_channel_result",
                 side_effect=OSError("disk full")):
             poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
-        self.assertNotIn(jid, self.seen)
+        self.assertIn(jid, self.seen)
         self.assertIn(
             "job.job.txt", os.listdir(self.paths["inbox"]))
-        self._cycle()
+        waiting = runner_mod.outbox_report(self.tmp)["waiting"]
+        self.assertEqual([w["job_id"] for w in waiting], [jid])
+        # The same cycle's resend pass hit the same failure, so the
+        # backoff holds; a cycle past it writes the result.
+        later = time.time() + 120
+        with mock.patch.object(runner_mod.time, "time", lambda: later):
+            self._cycle()
         self.assertEqual(self._results(), [f"{jid}.result.txt"])
+        self.assertEqual(runner_mod.outbox_report(self.tmp)["waiting"], [])
         with open(os.path.join(self.outbox, f"{jid}.result.txt"),
                   encoding="utf-8") as f:
             _subject, body = transports.parse_envelope(f.read())

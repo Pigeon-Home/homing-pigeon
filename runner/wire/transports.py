@@ -541,9 +541,15 @@ def service_channel(base_dir, name, process_message, log=None,
     the mail rule: a result that did not land is not finished.
     A processor that raises is still consumed, so one bad
     callback cannot wedge the channel. If writing a reply
-    raises, the envelope is not consumed. ``rollback`` on the
-    sequence, when callable, runs in that case so a seen-set
-    entry recorded before the write can be dropped.
+    raises, the envelope is not consumed. ``requeue`` on the
+    sequence (``rollback`` when there is no requeue), when
+    callable, runs in that case so the result recorded before the
+    write is re-queued for the core's resend pass (the job is not
+    run again: it is seen). An ack that fails after the replies
+    landed calls ``rollback`` (Q25) -- the core's has nothing to
+    undo then, since the result is in the outbox and a re-read of
+    the envelope is a replay the seen-set answers -- and leaves
+    the envelope for the next cycle.
 
     Dry-run acks nothing. Returns how many envelopes were
     visited, consumed or not.
@@ -553,12 +559,14 @@ def service_channel(base_dir, name, process_message, log=None,
     for msg in messages:
         consume = True
         rollback = None
+        requeue = None
         try:
             replies = process_message(msg.subject, msg.body)
             if replies is None:
                 replies = []
             consume = bool(getattr(replies, "consume", True))
             rollback = getattr(replies, "rollback", None)
+            requeue = getattr(replies, "requeue", None) or rollback
             try:
                 for reply in replies:
                     rsubject, rbody = reply[0], reply[1]
@@ -574,9 +582,9 @@ def service_channel(base_dir, name, process_message, log=None,
         except Exception as e:
             log(f"transport {name}: message {msg.ident or '?'} "
                 f"failed: {e!r}", "ERROR")
-        if not consume and callable(rollback):
+        if not consume and callable(requeue):
             try:
-                rollback()
+                requeue()
             except Exception as e:
                 log(f"transport {name}: rollback failed for "
                     f"{msg.ident or '?'}: {e}", "WARN")

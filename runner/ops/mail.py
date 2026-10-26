@@ -2,6 +2,7 @@ from datetime import datetime, timezone, timedelta
 import email
 import hashlib
 import json
+import os
 import socket
 import sys
 import time
@@ -253,12 +254,33 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             return
         R._IN_FLIGHT.add(skey)
     try:
-        def maybe_send(subject: str, body: str):
+        reply_to = _runner()._valid_reply_to(job)
+        transport = getattr(smtp, "transport", None)
+
+        def maybe_send(subject: str, body: str, to=None):
             if no_send:
                 R.log(f"no-send: result message suppressed "
                     f"(subject={subject!r}, {len(body)} bytes)")
                 return
-            _runner().send_mail(smtp, cfg, subject, body, to=_runner()._valid_reply_to(job))
+            _runner().send_mail(smtp, cfg, subject, body, to=to or reply_to)
+
+        def commit_and_deliver(subject, body, meta=None):
+            # The result, as it goes on the wire, is stashed in the
+            # outbox and the job committed as seen -- on disk -- before
+            # the first send; delivery is then its own retryable
+            # concern (the module comment above stash_result). A stash
+            # that cannot be written leaves the job uncommitted, so the
+            # next poll runs it again: the one window, and the only one.
+            with R._MAIL_LOCK:
+                if not _runner().stash_result(
+                        base_dir, skey, job, subject, body, to=reply_to,
+                        transport=transport, key_id=key_id,
+                        encrypted=encrypt_result, meta=meta):
+                    raise RuntimeError("result not stashed; will retry")
+                seen[skey] = True
+                _runner().save_seen(os.path.join(base_dir, "seen.json"), seen)
+                _runner().mark_seen(imap, seq)
+                _runner().deliver_stash(base_dir, skey, maybe_send, cfg=cfg)
 
         # Executed before, result not yet acknowledged: resend the
         # bytes that were produced then and run nothing. The seen-set
@@ -266,8 +288,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         cached = _runner().load_sent_result(base_dir, skey, job)
         if cached is not None:
             with R._MAIL_LOCK:
-                maybe_send(cached["subject"], cached["body"])
-                R.log(f"job {job_id}: result resent from the sent record "
+                maybe_send(cached["subject"], cached["body"], cached.get("to"))
+                R.log(f"job {job_id}: result resent from the record "
                     f"(executed once, completed {cached.get('completed_at')})")
                 seen[skey] = True
                 _runner().mark_seen(imap, seq)
@@ -563,18 +585,12 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 result.setdefault("confinement_detail", {})["protected_paths_changed"] = protected_changed
             if cfg.get("judge") in ("advisory", "enforce"):
                 result["judgment"] = {"verdict": verdict, "reasons": reasons}
-            with R._MAIL_LOCK:
-                out_subject = f"{_runner().SUBJECT_RESULT}{job_id}"
-                out_body = _runner()._outgoing_result_body(
-                    result, secret, encrypt_result, job_id, key_id)
-                # Recorded before the send: a redelivery resends
-                # these bytes instead of executing again.
-                _runner().save_sent_result(base_dir, skey, job, out_subject,
-                                 out_body, to=_runner()._valid_reply_to(job))
-                maybe_send(out_subject, out_body)
-                R.log(f"job {job_id} done (exit={r['exit_code']})")
-                seen[skey] = True  # only after the result is safely sent (at-least-once)
-                _runner().mark_seen(imap, seq)
+            out_subject = f"{_runner().SUBJECT_RESULT}{job_id}"
+            out_body = _runner()._outgoing_result_body(
+                result, secret, encrypt_result, job_id, key_id)
+            R.log(f"job {job_id} done (exit={r['exit_code']})")
+            commit_and_deliver(out_subject, out_body,
+                               meta=_runner()._result_meta(result))
         except _runner().JobRejected as e:
             R.log(f"job {job_id} rejected: {e}", "WARN")
             try:
@@ -623,13 +639,14 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                          "repair_attempted": bool(
                              op_plan and op_plan.get("repair_action"))},
                         op_facts, op_diag_facts)
-                with R._MAIL_LOCK:
-                    maybe_send(f"{_runner().SUBJECT_RESULT}{job_id}",
-                              _runner()._outgoing_result_body(
-                                  result, secret, encrypt_result,
-                                  job_id, key_id))
-                    seen[skey] = True
-                    _runner().mark_seen(imap, seq)
+                # The same stash-then-deliver pair as a result: one
+                # code path, the same guarantee, and a rejection whose
+                # delivery fails is retried from the outbox too.
+                commit_and_deliver(
+                    f"{_runner().SUBJECT_RESULT}{job_id}",
+                    _runner()._outgoing_result_body(
+                        result, secret, encrypt_result, job_id, key_id),
+                    meta=_runner()._result_meta(result))
             except Exception as e2:
                 R.log(f"could not send rejection result: {e2}", "ERROR")
         except Exception as e:
