@@ -394,10 +394,13 @@ The loop:
    campaign does not wait for a Platinum ledger line and does not
    idle between items; a `grow` is also P's under-driven filler
    (step 7). It stops only on the conductor's word.
-2. **Grow.** `HP_BLUEMONDAY_ROUNDS=<large> python
-   runner/tools/bluemonday_corpus.py grow --jobs <cores>` under
-   `rig_resources.py`; `--seed` makes a run repeatable, `--verbose`
-   prints each keeper. The commit is the proof of the work, every
+2. **Grow.** `python runner/tools/bluemonday_corpus.py grow --jobs
+   <cores> --rounds 20000 --minutes <until the next measure or
+   pass>` under `rig_resources.py`: the targets cycle, `--jobs` at a
+   time, the next starting the moment any one finishes, each cycle
+   with the seed moved on, until the minutes are up; that is the
+   continuous grow, and its resource line reads on target. `--seed`
+   makes a run repeatable, `--verbose` prints each keeper. The commit is the proof of the work, every
    time: the corpus files that changed, `runs.jsonl` (the tool
    appends one line per seed or grow: head, seed, rounds, what was
    tried, what was kept, what crashed) and the `<target>.arcs.json`

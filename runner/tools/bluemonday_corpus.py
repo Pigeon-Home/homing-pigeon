@@ -5,6 +5,7 @@
     python runner/tools/bluemonday_corpus.py seed   [--target T]
     python runner/tools/bluemonday_corpus.py grow   [--target T] [--rounds N]
                                                     [--seed S] [--jobs J]
+                                                    [--minutes M]
     python runner/tools/bluemonday_corpus.py replay [--target T]
     python runner/tools/bluemonday_corpus.py promote [--target T]
     python runner/tools/bluemonday_corpus.py stats  [--target T]
@@ -44,9 +45,13 @@ forms the mail path must survive) and, on a corpus that exists,
 adds only the seeds it lacks. `grow` mutates from the corpus
 for N rounds (HP_BLUEMONDAY_ROUNDS, default 400) and appends the
 keepers; with --jobs J (HP_BLUEMONDAY_JOBS) the targets grow J at
-a time in their own processes, which is how the rig keeps every
-core busy. `replay` runs every entry against its contract, which is
-what the test does on every leg, without the tracer. `promote`,
+a time in their own processes, the next one starting the moment
+any one finishes, which is how the rig keeps every core busy; with
+--minutes M the targets cycle until the time is up, the continuous
+grow that fills the gap between a measure and a pass (each cycle
+moves a target's seed on by one, so no cycle repeats the last).
+`replay` runs every entry against its contract, which is what the
+test does on every leg, without the tracer. `promote`,
 after a fix, moves the crashes that now refuse properly into the
 corpus. `stats` prints the sizes.
 
@@ -1457,28 +1462,55 @@ def grow_commands(targets, rounds, seed, verbose):
     return out
 
 
-def run_parallel(commands, jobs, out=print, spawn=None):
-    """Run the commands `jobs` at a time; each one's output is printed
-    whole when it finishes. Returns the worst exit status. `spawn`
-    is subprocess.Popen unless a test hands in its own."""
+def run_parallel(commands, jobs, out=print, spawn=None, minutes=0.0,
+                 clock=time.monotonic, nap=0.2):
+    """Run the commands `jobs` at a time, launching the next the moment
+    any one finishes, so every core stays busy; each command's output
+    is printed whole when it finishes. With `minutes` > 0 the list is
+    cycled -- a finished command goes back on the queue -- until the
+    time is up, and nothing new is started after that; what is
+    running finishes. Returns the worst exit status. `spawn` is
+    subprocess.Popen unless a test hands in its own."""
     import subprocess
     spawn = spawn or (lambda cmd: subprocess.Popen(
         cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
+    deadline = clock() + minutes * 60.0 if minutes else None
     pending = list(commands)
     running = []
     status = 0
     while pending or running:
-        while pending and len(running) < max(1, jobs):
+        while pending and len(running) < max(1, jobs) and (
+                deadline is None or clock() < deadline):
             target, cmd = pending.pop(0)
-            running.append((target, spawn(cmd)))
-        target, proc = running.pop(0)
-        output, _ = proc.communicate()
-        text = output.decode("utf-8", "replace") if isinstance(
-            output, bytes) else (output or "")
-        for line in text.rstrip().splitlines():
-            out(line)
-        status = max(status, proc.returncode or 0)
+            running.append((target, cmd, spawn(cmd)))
+        finished = [r for r in running if r[2].poll() is not None]
+        if not finished:
+            if not running:
+                break
+            time.sleep(nap)
+            continue
+        for item in finished:
+            running.remove(item)
+            target, cmd, proc = item
+            output, _ = proc.communicate()
+            text = output.decode("utf-8", "replace") if isinstance(
+                output, bytes) else (output or "")
+            for line in text.rstrip().splitlines():
+                out(line)
+            status = max(status, proc.returncode or 0)
+            if deadline is not None and clock() < deadline:
+                pending.append((target, _next_seed(cmd)))
     return status
+
+
+def _next_seed(cmd):
+    """The same command with its --seed moved on by one, so a cycled
+    target draws new children instead of the last cycle's."""
+    cmd = list(cmd)
+    if "--seed" in cmd:
+        i = cmd.index("--seed") + 1
+        cmd[i] = str(int(cmd[i]) + 1)
+    return cmd
 
 
 def cmd_grow(args, out=print):
@@ -1488,14 +1520,19 @@ def cmd_grow(args, out=print):
     seed = args.seed if args.seed is not None else \
         int.from_bytes(os.urandom(4), "big")
     targets = _targets(args.target)
-    if args.jobs > 1 and len(targets) > 1:
+    minutes = getattr(args, "minutes", 0) or 0
+    if (args.jobs > 1 and len(targets) > 1) or minutes:
         # Each target owns its corpus file, so the targets grow in
         # parallel processes: on the rig that is the difference
-        # between one core busy and all of them.
+        # between one core busy and all of them. With --minutes the
+        # targets cycle until the time is up: the continuous grow
+        # that fills the gap between a measure and a pass.
         out(f"blueMonday grow: {rounds} rounds, rng seed {seed}, "
-            f"{min(args.jobs, len(targets))} targets at a time")
+            f"{min(args.jobs, len(targets))} targets at a time"
+            + (f", for {minutes:g} minutes" if minutes else ""))
         return run_parallel(grow_commands(targets, rounds, seed,
-                                          args.verbose), args.jobs, out=out)
+                                          args.verbose), args.jobs,
+                            out=out, minutes=minutes)
     out(f"blueMonday grow: {rounds} rounds, rng seed {seed}")
     status = 0
     for target in targets:
@@ -1641,6 +1678,11 @@ def main(argv=None):
                            help="targets grown at a time, each in its own "
                                 "process (HP_BLUEMONDAY_JOBS, default 1; "
                                 "the rig's core count keeps it busy)")
+            p.add_argument("--minutes", type=float, default=0.0,
+                           help="keep cycling the targets, --jobs at a "
+                                "time, until this many minutes have "
+                                "passed; a running grow finishes "
+                                "(default 0: one pass over the targets)")
     args = ap.parse_args(argv)
     try:
         return args.fn(args)

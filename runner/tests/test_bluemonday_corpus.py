@@ -324,15 +324,51 @@ class ToolTest(unittest.TestCase):
                 live.append(self)
                 peak.append(len(live))
 
+            def poll(self):
+                return self.returncode
+
             def communicate(self):
                 live.remove(self)
                 return (f"{self.cmd[self.cmd.index('--target') + 1]}: "
-                        "done\n").encode(), None
+                        f"done {self.cmd[self.cmd.index('--seed') + 1]}\n"
+                        ).encode(), None
         lines = []
         status = B.run_parallel(commands, 2, out=lines.append, spawn=Fake)
         self.assertEqual(status, 3)
-        self.assertEqual(lines, ["wire: done", "v2: done", "stash: done"])
+        self.assertEqual(lines, ["wire: done 9", "v2: done 9",
+                                 "stash: done 9"])
         self.assertLessEqual(max(peak), 2)
+
+    def test_a_timed_grow_cycles_the_targets_with_fresh_seeds(self):
+        commands = B.grow_commands(["wire", "v2"], 50, 9, False)
+        ticks = [0.0]
+
+        def clock():
+            ticks[0] += 10.0
+            return ticks[0]
+
+        class Fake:
+            def __init__(self, cmd):
+                self.cmd = cmd
+                self.returncode = 0
+
+            def poll(self):
+                return 0
+
+            def communicate(self):
+                return (f"{self.cmd[self.cmd.index('--target') + 1]} "
+                        f"{self.cmd[self.cmd.index('--seed') + 1]}"
+                        ).encode(), None
+        lines = []
+        # One minute on a clock that moves ten seconds per look: the
+        # targets cycle a few times, each with the seed moved on, and
+        # nothing starts after the deadline.
+        B.run_parallel(commands, 2, out=lines.append, spawn=Fake,
+                       minutes=1.0, clock=clock, nap=0)
+        self.assertGreater(len(lines), 2)
+        self.assertEqual(lines[:2], ["wire 9", "v2 9"])
+        self.assertIn("wire 10", lines)
+        self.assertEqual(len(lines), len(set(lines)))
 
     def test_entry_ids_follow_the_data(self):
         a = B.make_entry("text", "abc", "seed:x", "seed")

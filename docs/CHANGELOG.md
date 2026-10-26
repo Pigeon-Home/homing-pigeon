@@ -14,12 +14,15 @@ facts a reader may need to cite. Git history carries the rest.
   Sealed seeds draw a counter nonce so their ids are stable, and
   `seed` adds to an existing corpus only what it lacks. The README
   states the refusal types so a grow never files one as a crash.
-- **Grows one per core.** `bluemonday_corpus.py grow --jobs J`
-  (`HP_BLUEMONDAY_JOBS`) grows the targets J at a time in their own
-  processes; the standing orders' throughput section names it, the
-  parallel runner under coverage for the measure step, and
-  `--jobs` on the regression pass, so the rig's resource line reads
-  on target instead of under-driven.
+- **Grows one per core, and for as long as told.**
+  `bluemonday_corpus.py grow --jobs J` (`HP_BLUEMONDAY_JOBS`) grows
+  the targets J at a time in their own processes, the next starting
+  the moment any one finishes; `--minutes M` cycles the targets,
+  each cycle with its seed moved on, until the time is up: the
+  continuous grow between a measure and a pass. The standing orders'
+  throughput section names it, the parallel runner under coverage
+  for the measure step, and `--jobs` on the regression pass, so the
+  rig's resource line reads on target instead of under-driven.
 - **The conductor.** AGENTS.md rule 11: the owner of the repository
   is the conductor, by his own word, in every document, ledger line,
   question and note from now on; older text keeps its wording.
