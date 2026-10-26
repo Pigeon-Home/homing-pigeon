@@ -1,5 +1,9 @@
 # Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 #
+# Owner: 60000b3a (extension sources and their pins), from
+# 2026-10-26; see docs/archive/RESEARCHER_IDENT.md. The bump commits
+# carry that stamp. Edited by 40000e00-1234-4abc-9def-0123456789ab.
+#
 # Nightly: move each feed sense's upstream pin to the current tip of
 # its ref, fetch the pinned files, and run the drift tests against
 # them. Green means the adapters still read what upstream writes, and
@@ -61,6 +65,6 @@ jobs:
           current tip, the pinned files refetched, the drift tests
           green against them. See .github/workflows/upstream-pins.yml.
 
-          Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
+          Agent-Chat-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854
           MSG
           git push origin HEAD:main
