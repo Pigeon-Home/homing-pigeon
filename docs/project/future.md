@@ -35,7 +35,6 @@
   - E2 An Oracle dashboard
   - E3 Patch level and disk encryption as senses
   - E5 TLS inspection and a WAF
-  - E6 Line-rate detection, a 24/7 ML pipeline, MCP
 Not built, and nothing else; the finished items' decisions are in
 `docs/archive/future-finished-2026-10-25.md`.
 
@@ -164,6 +163,3 @@ chat page (`--oracle`) and the CLI (`--oracle-cli`) exist.
 `docs/extend/senses.md`.
 
 **E5. TLS inspection and a WAF.** `docs/use/networking.md`.
-
-**E6. Line-rate network detection, a 24/7 ML pipeline, and adopting
-MCP.** `docs/project/industry-map.md`.
