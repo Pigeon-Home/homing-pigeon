@@ -3707,3 +3707,46 @@ when done, the proving commit or run. Newest first.
   (standing orders incl. queue P, AGENTS.md
   rules 7-10, Q59-Q61, the playbook's hard
   rules). resources 2026-10-26T13:58:01Z: cores 2 | box cpu 48% | wall 26m33s | cmd cpu 21m20s = 0.8 cores busy | peak rss 447 MB | mem used 92% | disk free 165.4 GB | exit 0 | under-driven
+- platinum 4: statements 99.4% (+0.0), branches
+  97.2% (+0.0), 6 tests, 0 crashes filed,
+  resources 2026-10-26T14:32:17Z: cores 2 | box cpu 49% | wall 27m46s | cmd cpu 22m46s = 0.8 cores busy | peak rss 456 MB | mem used 92% | disk free 165.4 GB | exit 0 | under-driven
+  (under-driven is the single-process
+  measure's shape.) Baseline 53e6c9bf
+  (99.4%, 185 missing); after 2006bdc2
+  (170 missing); the after-suite ran
+  6,999 tests, OK (skipped=38). All six
+  named targets cleared: cmd_new's
+  to-file arm, apply's no-folder arm,
+  run_inspect's success print,
+  Inventory.save's unlink swallow,
+  osquery-feed's short delivery, and the
+  softflowd battery. Two dispositions
+  recorded: send_dtls.main's return-5
+  lines, missed by cycle 3's combine,
+  are covered in this map (the Queue A
+  test was the proof all along; the miss
+  did not reproduce and is closed as a
+  measure artifact -- one line, 126,
+  remains in that file), and
+  decode_datagram's except arm joins the
+  recorded defensive set in the refreshed
+  gaps header (docs/reports/v3.13.30/):
+  no malformed datagram in the battery
+  made a sub-parser raise. Cycle 3's
+  tests are done by the Windows rule:
+  build 40331267199 at 53e6c9bf completed
+  success. Cycle 4's Windows verification
+  waits on a completed build at a
+  descendant head. The frontier at two
+  or more missing is down to one live
+  row -- port-watch's short delivery --
+  over the recorded dead/defensive set,
+  the wire rows (40000e00's), and the
+  platform rows; below it, 170 statements
+  remain, mostly single lines, and the
+  compass turns to them and to branch
+  arcs per Q59.
+- rules refreshed 2026-10-26 07:40 PDT
+  (standing orders incl. queue P, AGENTS.md
+  rules 7-10, Q59-Q61, the playbook's hard
+  rules). resources 2026-10-26T14:32:17Z: cores 2 | box cpu 49% | wall 27m46s | cmd cpu 22m46s = 0.8 cores busy | peak rss 456 MB | mem used 92% | disk free 165.4 GB | exit 0 | under-driven
