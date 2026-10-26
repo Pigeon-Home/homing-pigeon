@@ -119,24 +119,33 @@ class RemediationEndToEnd(unittest.TestCase):
 
     @unittest.skipUnless(POSIX, "POSIX only")
     def test_tree_kill_takes_the_child_too(self):
+        # The child is up (its pid file in place, whole, by rename)
+        # before the script writes the loot: the tripwire kill
+        # cannot come first, so the one thing the test asks -- that
+        # the kill takes the whole tree -- is what it measures. A
+        # second interpreter on a loaded macOS leg used to lose that
+        # race and the file never appeared.
         child = (
-            "import subprocess, sys\n"
+            "import os, subprocess, sys, time\n"
             "c = subprocess.Popen([sys.executable, '-c',\n"
             "    'import os, time;'\n"
-            "    ' open(\"child.pid\", \"w\").write(str(os.getpid()));'\n"
-            "    ' os.fsync(open(\"child.pid\", \"r\").fileno());'\n"
-            "    ' time.sleep(60)'])\n")
-        script = _write_loot(extra=[child.rstrip("\n")],
-                             after=chr(10).join(
-                                 ["import time", "time.sleep(30)"]))
+            "    ' f = open(\"child.pid.tmp\", \"w\");'\n"
+            "    ' f.write(str(os.getpid())); f.close();'\n"
+            "    ' os.replace(\"child.pid.tmp\", \"child.pid\");'\n"
+            "    ' time.sleep(60)'])\n"
+            "t0 = time.monotonic()\n"
+            "while not os.path.exists('child.pid') "
+            "and time.monotonic() - t0 < 20:\n"
+            "    time.sleep(0.02)\n")
+        script = child + _write_loot(after=chr(10).join(
+            ["import time", "time.sleep(30)"]))
         result = execute_job(self.cfg, _job("q13-tree", script),
                              self.base)
         self.assertEqual(result["remediation"]["act"], "killed")
         pid_path = os.path.join(self._quarantine("q13-tree"),
                                 "work", "child.pid")
-        # The child can lose the race against the tripwire kill
-        # and never write the file. Poll for it briefly; a missing
-        # file is a clear failure, not a traceback.
+        # The file is in the quarantined work tree; a short poll
+        # covers the quarantine's own move.
         deadline = time.monotonic() + 3
         while not os.path.exists(pid_path):
             if time.monotonic() > deadline:
