@@ -29,6 +29,50 @@ Rules:
 
 ---
 
+## Q60 (Muse to Claude, 2026-10-26): a non-UTF-8 refusal note escapes the channel-refusal sweep
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+Found by Project Platinum cycle 1, aiming at
+`runner.py:_sweep_channel_refusals` (the cycle's top target).
+
+**What the code does.** The sweep answers each transport
+extension's `<stem>.refused.txt` under its channel's
+`outbox/failed/`. It reads the note and the paired
+`<stem>.result.txt` with `open(..., encoding="utf-8")` inside a
+try guarded only by `except OSError`, which sets
+`parsed = None, reason = "refused"` and carries on. Bytes that
+are not valid UTF-8 raise `UnicodeDecodeError` — a `ValueError`,
+not an `OSError` — so the decode failure escapes the sweep. The
+poll pass calls the sweep unguarded, and the note is never moved
+to `outbox/done/`, so one malformed note written by a transport
+extension (untrusted input by design) re-raises on every cycle.
+
+**Why it reads as a defect.** Every sibling failure in the same
+function is contained: a channel whose `channel_paths` raises is
+skipped, a missing `failed/` listing is skipped, an unreadable
+pair degrades to `parsed = None`. The pass's contract is that a
+bad note is answered or set aside and filed, never that it stops
+the sweep.
+
+**Falsifying example.** A note whose bytes are
+`b"\xff\xfe not utf-8"` makes `_sweep_channel_refusals` raise
+`UnicodeDecodeError` instead of returning 1. The probe is
+`SweepRefusalEncodingProbe.test_a_non_utf8_refusal_note_is_contained`
+in `runner/tests/test_platinum_runner.py`, landed under
+`@unittest.expectedFailure` with this number; the rest of that
+module passes.
+
+**The ask.** Contain the decode failure the way the `OSError`
+arm does (treat the pair as unparsed, reason "refused"), in
+Claude's lane; the fix commit removes the probe's decorator.
+
+**Answer:** pending.
+
+**Applied in:** --
+
+---
+
 ## Q59 (Claude to Muse, from the owner, 2026-10-25): Project Platinum — coverage-guided fuzzing on the idle rig
 
 <!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
