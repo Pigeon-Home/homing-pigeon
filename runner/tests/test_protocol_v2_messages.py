@@ -574,6 +574,16 @@ class MailTest(unittest.TestCase):
         self.assertEqual(os.listdir(done), [])
 
     def test_the_deadline_starts_after_the_question_leaves_the_outbox(self):
+        # The shape: the sender picks the question up PICKUP seconds
+        # after it lands and files the answer ANSWER seconds after the
+        # pickup, with ANSWER past DEADLINE measured from the question
+        # (late, if the clock started at the send) and inside DEADLINE
+        # measured from the pickup (in time, as the runner counts).
+        # Each margin is a full second, and the pickup leaves four
+        # seconds before the runner would give up waiting for it: a
+        # loaded Windows leg lost the tighter 0.8/2.4/3 shape to the
+        # give-up, with the answer filed and never read.
+        DEADLINE, PICKUP, ANSWER = 6, 2.0, 5.0
         job_id = "v2wait1"
         job = _job(job_id, kind="exec", script="echo ok")
         channel = os.path.join(
@@ -607,7 +617,7 @@ class MailTest(unittest.TestCase):
             if found is None:
                 filed["why"] = "no question reached the outbox in 5s"
                 return
-            time.sleep(0.8)
+            time.sleep(PICKUP)
             # The sender's pickup. On Windows a scanner can hold the
             # fresh file for a moment, so the remove is retried for
             # up to two seconds instead of giving up on the first
@@ -625,17 +635,21 @@ class MailTest(unittest.TestCase):
                         filed["why"] = "could not remove %s: %s" % (found, e)
                         return
                     time.sleep(0.05)
-            time.sleep(2.4)
+            time.sleep(ANSWER)
             question = v2.question_for(
                 {"protocol_v2": True, "oracle_mode": "deterministic",
-                 "v2_answer_deadline_sec": 3},
+                 "v2_answer_deadline_sec": DEADLINE},
                 {"job_id": job_id, "kind": "exec", "script": "echo ok"})
             folder = os.path.join(self.tmp, "v2", "answers")
             os.makedirs(folder, exist_ok=True)
             path = os.path.join(folder, question["msg_id"] + ".json")
-            with open(path, "w", encoding="utf-8") as fh:
+            # Whole or absent: the runner reads a half-written answer
+            # as none and would look again, but not past its deadline.
+            tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
                 json.dump({"received_at": time.time(),
                            "answer": {"answer": "after the send"}}, fh)
+            os.replace(tmp, path)
             filed["ok"] = True
 
         thread = threading.Thread(target=watcher)
@@ -645,13 +659,13 @@ class MailTest(unittest.TestCase):
             sent = process_transport_message(
                 dict(self.cfg, protocol_v2=True,
                      oracle_mode="deterministic",
-                     v2_answer_deadline_sec=3, transports=["email"]),
+                     v2_answer_deadline_sec=DEADLINE, transports=["email"]),
                 self.tmp, {}, {"": SECRET}, {},
                 "[HOMING-PIGEON] job " + job_id,
                 _seal(job, job_id))
         finally:
-            thread.join(timeout=12)
-        self.assertLess(time.monotonic() - t0, 8)
+            thread.join(timeout=PICKUP + ANSWER + DEADLINE + 10)
+        self.assertLess(time.monotonic() - t0, PICKUP + DEADLINE + 4)
         self.assertTrue(filed["ok"], filed["why"])
         result = next(row for row in sent if "result " + job_id in row[0])
         parsed = verify_body(result[1], SECRET)
