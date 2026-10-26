@@ -1,9 +1,5 @@
 ## Partial
 
-- **Reviewer routing.** A finished task goes to a second worker
-  holding the `review` capability before the owner sees it. Today only
-  the owner's approval gate exists (`require_review`).
-
 - **Platform facts on every result.** A `ping` result already
   carries the OS family, default interpreter and protocol versions. An
   option to attach full platform metadata to every result does not exist.
