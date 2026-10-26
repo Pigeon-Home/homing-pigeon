@@ -583,6 +583,15 @@ class MailTest(unittest.TestCase):
         # seconds before the runner would give up waiting for it: a
         # loaded Windows leg lost the tighter 0.8/2.4/3 shape to the
         # give-up, with the answer filed and never read.
+        #
+        # The pickup takes the question by its final name only. The
+        # writer's temp file (<name>.tmp.<pid>.<thread>.<hex>) already
+        # reads "question " before it is renamed into place; a watcher
+        # that took that one removed nothing (the rename had emptied
+        # its name), left the real question in the outbox, and the
+        # runner waited out its whole deadline for a pickup that never
+        # came, then rode the local default alone: one build-windows
+        # leg in five, with the answer filed and never read.
         DEADLINE, PICKUP, ANSWER = 6, 2.0, 5.0
         job_id = "v2wait1"
         job = _job(job_id, kind="exec", script="echo ok")
@@ -590,7 +599,21 @@ class MailTest(unittest.TestCase):
             self.tmp, "transport-extensions", "email")
         outbox = os.path.join(channel, "outbox")
         os.makedirs(outbox, exist_ok=True)
+        # A writer's temp file, as the outbox holds one while the
+        # question is being written, with the question's first line
+        # already in it: the pickup leaves it alone.
+        decoy = os.path.join(outbox, "q.v2wait1.result.txt.tmp.1.1.0badf00d")
+        with open(decoy, "w", encoding="utf-8") as fh:
+            fh.write("[HOMING-PIGEON] question q.v2wait1\n")
         filed = {"ok": False, "why": "the answer was never filed"}
+        # The watcher's timeline, seconds from the start, so a failed
+        # leg says where the margin went instead of which assertion
+        # noticed.
+        t0 = time.monotonic()
+        marks = {}
+
+        def mark(what):
+            marks[what] = round(time.monotonic() - t0, 2)
 
         def watcher():
             found = None
@@ -601,7 +624,7 @@ class MailTest(unittest.TestCase):
                 except OSError:
                     names = []
                 for name in names:
-                    if name == "done":
+                    if not name.endswith(".result.txt"):
                         continue
                     full = os.path.join(outbox, name)
                     try:
@@ -617,6 +640,7 @@ class MailTest(unittest.TestCase):
             if found is None:
                 filed["why"] = "no question reached the outbox in 5s"
                 return
+            mark("found")
             time.sleep(PICKUP)
             # The sender's pickup. On Windows a scanner can hold the
             # fresh file for a moment, so the remove is retried for
@@ -635,6 +659,7 @@ class MailTest(unittest.TestCase):
                         filed["why"] = "could not remove %s: %s" % (found, e)
                         return
                     time.sleep(0.05)
+            mark("picked up")
             time.sleep(ANSWER)
             question = v2.question_for(
                 {"protocol_v2": True, "oracle_mode": "deterministic",
@@ -650,11 +675,11 @@ class MailTest(unittest.TestCase):
                 json.dump({"received_at": time.time(),
                            "answer": {"answer": "after the send"}}, fh)
             os.replace(tmp, path)
+            mark("answered")
             filed["ok"] = True
 
         thread = threading.Thread(target=watcher)
         thread.start()
-        t0 = time.monotonic()
         try:
             sent = process_transport_message(
                 dict(self.cfg, protocol_v2=True,
@@ -663,10 +688,12 @@ class MailTest(unittest.TestCase):
                 self.tmp, {}, {"": SECRET}, {},
                 "[HOMING-PIGEON] job " + job_id,
                 _seal(job, job_id))
+            mark("runner returned")
         finally:
             thread.join(timeout=PICKUP + ANSWER + DEADLINE + 10)
-        self.assertLess(time.monotonic() - t0, PICKUP + DEADLINE + 4)
-        self.assertTrue(filed["ok"], filed["why"])
+        self.assertLess(marks.get("runner returned", 999),
+                        PICKUP + DEADLINE + 4, "timeline %r" % (marks,))
+        self.assertTrue(filed["ok"], "%s; timeline %r" % (filed["why"], marks))
         result = next(row for row in sent if "result " + job_id in row[0])
         parsed = verify_body(result[1], SECRET)
         ident = result[0].rsplit(" ", 1)[-1]
@@ -675,7 +702,8 @@ class MailTest(unittest.TestCase):
                 parsed, SECRET, ident, parsed.get("key_id") or "")
             parsed = verify_body(inner, SECRET)
         kinds = [(s["kind"], s["text"]) for s in parsed["context"]]
-        self.assertIn(("answer", "after the send"), kinds)
+        self.assertIn(("answer", "after the send"), kinds,
+                      "timeline %r" % (marks,))
 
 
 class SeenClaimTest(unittest.TestCase):

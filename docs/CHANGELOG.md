@@ -6,8 +6,15 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.22 - 2026-10-26
 
-**The next car, with nothing new aboard.** Opened on the release
-cadence as 3.13.21 published; the tree is 3.13.20's.
+- **The version 2 deadline test picks the question up by its
+  final name.** The test's sender read every file in the outbox
+  and could take the writer's temp file, which already read
+  "question " before its rename; that pickup removed nothing,
+  the real question stayed, and the runner waited out its whole
+  deadline then rode the local default alone (one build-windows
+  leg in five). The sender now takes `*.result.txt` only, a
+  planted temp file proves it, and a failed leg reports the
+  watcher's timeline. The runner was never wrong.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.21 - 2026-10-26
