@@ -130,9 +130,6 @@ box it has just proven reachable. Only for the secret holder, only when
 the operator enables it for that sender, encrypted like a result. To be
 written as a separate IETF draft, not a protocol version.
 
-**D2. Job acknowledgements.** A receipt that a job arrived, sent before
-its result. Board messages are acknowledged; jobs are not.
-
 **D4. Other pipes.** A distributed ledger for file flow and board
 answers, or a transport over .onion or BitTorrent. Idea only.
 
