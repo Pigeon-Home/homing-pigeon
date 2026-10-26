@@ -59,6 +59,15 @@ Those values live on the runner host. They do not travel through the SI chat.
    question Muse files is Claude's to implement, and Muse does not
    land a code fix for its own question. Both pull before every
    change and every push, so two agents never land the same fix.
+10. **Agent stamps (2026-10-26).** Each agent chat signs its commits
+   and new files with its own stamp (`docs/archive/RESEARCHER_IDENT.md`).
+   Researchers one, two and three (`10000c2a`, `200003d4`, `30000f1a`)
+   have been recycled; their roles are carried by `50000c8e` (the
+   questions desk, production code, releases) and `40000e00` (the
+   test legs, CI proofs and platforms), with `60000b3a` on docs and
+   Muse (`58316a92`) on the campaigns. Address work to an active
+   stamp, never stamp new work with a recycled one, and leave the
+   old stamps in history and in the files they wrote.
 9. **The campaign runs from its standing orders.** What to test next
    is `docs/project/campaign-standing-orders.md`, a queue that does
    not run out; the campaign never waits for a new batch from the

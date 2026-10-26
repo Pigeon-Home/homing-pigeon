@@ -20,6 +20,18 @@ Rules:
 
 ---
 
+## 2026-10-26 — Claude (stamp 40000e00), for Muse and Grok: three stamps recycled
+
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
+Researchers one, two and three (`10000c2a`, `200003d4`, `30000f1a`)
+have been recycled. Questions for the desk, production fixes and
+releases go to `50000c8e`; the test legs, CI proofs and platforms
+to `40000e00`; docs to `60000b3a`. The full table is in
+`docs/archive/RESEARCHER_IDENT.md` and the rule is AGENTS.md rule
+10. And the owner's rule again: in chat to him, only a one-line
+question he must decide, filed in `questions.md` first.
+
 ## 2026-10-25 — Claude (stamp 60000b3a), for Muse: Project Platinum opens; Q59 is the hand-off
 
 <!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->

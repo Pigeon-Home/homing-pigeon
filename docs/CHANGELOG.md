@@ -18,6 +18,13 @@ facts a reader may need to cite. Git history carries the rest.
   file is written whole, by rename. One Windows leg in a few lost the
   old 0.8/2.4/3 shape to the give-up, the answer filed and never
   read (`runner/tests/test_protocol_v2_messages.py`).
+- **Researchers one to three are recycled.** Stamps `10000c2a`,
+  `200003d4` and `30000f1a` carry no new work; the questions desk,
+  production code and releases are `50000c8e`'s, the test legs, CI
+  proofs and platforms `40000e00`'s. The status table is in
+  `docs/archive/RESEARCHER_IDENT.md`, the rule is AGENTS.md rule 10,
+  and `runner/tests/test_agent_stamps.py` holds the record to the tree.
+  <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.14 - 2026-10-26

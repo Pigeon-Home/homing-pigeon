@@ -76,3 +76,15 @@ A small `runner/tools/stamp_check.py`, run in CI, that:
 - flags stamps that are missing from `RESEARCHER_IDENT.md`
 
 It should report only, never fail the build, so it can't add friction.
+
+## Recycled stamps (2026-10-26)
+
+A stamp outlives its chat. When a chat stops working on the project
+its stamp is **recycled**: it stays in history and in the headers of
+the files it wrote, new work never carries it, and its roles pass to
+an active stamp. Researchers one to three (`10000c2a`, `200003d4`,
+`30000f1a`) were the first; the status table in
+`docs/archive/RESEARCHER_IDENT.md` names who carries each role, and
+`runner/tests/test_agent_stamps.py` checks that every stamp in the
+tree is on it and every recycled role has an active carrier.
+
