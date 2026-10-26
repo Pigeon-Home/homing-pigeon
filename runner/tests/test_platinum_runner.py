@@ -216,14 +216,12 @@ class SweepDeterministicArms(unittest.TestCase):
 
 class SweepRefusalEncodingProbe(unittest.TestCase):
     # Q60: a refusal note (or its result file) whose bytes are not
-    # UTF-8 makes the sweep raise UnicodeDecodeError: the reads are
+    # UTF-8 made the sweep raise UnicodeDecodeError: the reads were
     # guarded only against OSError, and the poll pass calls the
-    # sweep unguarded, so one extension-written file re-kills the
-    # delivery pass every cycle. Falsifying example below; the
-    # contract everywhere else in the function is that a bad note
-    # is contained and filed. Do not green by editing this test:
-    # the fix is production code (Claude's lane).
-    @unittest.expectedFailure
+    # sweep unguarded, so one extension-written file re-killed the
+    # delivery pass every cycle. The sweep now contains a ValueError
+    # the way it contains an OSError: the pair reads as unparsed,
+    # reason "refused", and the note is filed.
     def test_a_non_utf8_refusal_note_is_contained(self):
         base = tempfile.mkdtemp(prefix="hp-plat-q60-")
         try:

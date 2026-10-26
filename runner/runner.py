@@ -2009,7 +2009,11 @@ def _sweep_channel_refusals(base_dir, cfg, names):
                     reason = fh.read().strip()
                 with open(result_file, encoding="utf-8") as fh:
                     parsed = _transports.parse_envelope(fh.read())
-            except OSError:
+            except (OSError, ValueError):
+                # An extension wrote the pair; bytes that are not
+                # UTF-8 (UnicodeDecodeError, a ValueError) are as
+                # unreadable as a missing file, and one bad note must
+                # not end the sweep every cycle (Q60).
                 parsed = None
                 reason = "refused"
             job_id = None

@@ -15,6 +15,14 @@ facts a reader may need to cite. Git history carries the rest.
   leg in five). The sender now takes `*.result.txt` only, a
   planted temp file proves it, and a failed leg reports the
   watcher's timeline. The runner was never wrong.
+- **A refusal note that is not UTF-8 no longer ends the delivery
+  sweep.** `_sweep_channel_refusals` read each extension's
+  `<stem>.refused.txt` and its result file guarded against
+  `OSError` only, so bytes that are not UTF-8 raised
+  `UnicodeDecodeError` out of the poll pass on every cycle. The
+  pair now reads as unparsed with reason "refused", the note is
+  filed to `outbox/done/`, and the sweep goes on (Q60, Project
+  Platinum cycle 1; the probe runs without its decorator).
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.21 - 2026-10-26
