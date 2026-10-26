@@ -388,19 +388,21 @@ The loop:
 
 1. **Trigger.** Started by the conductor on 2026-10-26, and
    continuous by his word: a grow is running on the rig at every
-   moment the hourly regression pass or a Platinum measure is not,
-   with `--jobs <cores>` and rounds sized to fill the time until
-   the next of those, and it resumes the moment they finish. The
+   moment, measures and passes included, with `--jobs <cores>` and
+   `--minutes` long enough to reach the next rules refresh, under
+   `nice -n 10` so a measure or a pass keeps priority while the
+   grow takes every idle cycle. The box reads on target because
+   the grow is always on; the measure and the pass share it. The
    campaign does not wait for a Platinum ledger line and does not
-   idle between items; a `grow` is also P's under-driven filler
-   (step 7). It stops only on the conductor's word.
-2. **Grow.** `python runner/tools/bluemonday_corpus.py grow --jobs
-   <cores> --rounds 20000 --minutes <until the next measure or
-   pass>` under `rig_resources.py`: the targets cycle, `--jobs` at a
-   time, the next starting the moment any one finishes, each cycle
-   with the seed moved on, until the minutes are up; that is the
-   continuous grow, and its resource line reads on target. `--seed`
-   makes a run repeatable, `--verbose` prints each keeper. The commit is the proof of the work, every
+   idle between items. It stops only on the conductor's word.
+2. **Grow.** `nice -n 10 python runner/tools/rig_resources.py --
+   python runner/tools/bluemonday_corpus.py grow --jobs <cores>
+   --rounds 20000 --minutes 55`, started again at every rules
+   refresh: the targets cycle, `--jobs` at a time, the next
+   starting the moment any one finishes, each cycle with the seed
+   moved on, until the minutes are up; that is the continuous grow,
+   and its resource line reads on target. `--seed` makes a run
+   repeatable, `--verbose` prints each keeper. The commit is the proof of the work, every
    time: the corpus files that changed, `runs.jsonl` (the tool
    appends one line per seed or grow: head, seed, rounds, what was
    tried, what was kept, what crashed) and the `<target>.arcs.json`
