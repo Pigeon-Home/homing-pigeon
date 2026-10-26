@@ -39,10 +39,6 @@
   - E6 Line-rate detection, a 24/7 ML pipeline, MCP
 - **F. Research: hardware**
   - F2 A USB inference stick for the Pi
-- **G. Cut**
-  - G1 JetStream, MQTT, Redis, Postgres, Durable Objects as transports
-  - G2 SMS paging
-
 Not built, and nothing else; the finished items' decisions are in
 `docs/archive/future-finished-2026-10-25.md`.
 
@@ -191,11 +187,3 @@ many pre-Pi-5 boards are out there, and whether to sell the stick alone
 or with a signed model subscription. Possibly one fused device:
 accelerator plus camera, mic or IMU behind one signed protocol. If it
 reads real biosignals, medical-device rules apply. Nothing built.
-
-## G. Cut
-
-**G1. NATS JetStream, MQTT, Redis Streams, Postgres, and a real-time
-Durable Objects pipe** as job transports. The notes stay in
-`docs/extend/transports.md`.
-
-**G2. SMS paging** (DRU; `runner/oracle/dri.py`).
