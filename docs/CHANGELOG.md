@@ -86,6 +86,20 @@ facts a reader may need to cite. Git history carries the rest.
   the shape, or the inbox itself. Saturated on the file surface
   at the first grows: the paths left are the ones only a failing
   disk reaches.
+- **blueMonday's local inbox, under the sequence contract.**
+  `local_inbox` holds the local signal inbox as a peer or a crash
+  may have left it -- `.json` envelopes, other files, symlinks,
+  directories, fillers, with a known-good alert beside them --
+  scanned once by `_scan_local_inbox`. Every `.json` entry is
+  handled once and removed either way, a symlink or a file that
+  is not UTF-8 without an ingest call, anything not named `.json`
+  left alone, no ingest raises, and the senses store holds
+  exactly the records the ingests answered, in inbox order, the
+  neighbor's among them whatever came before. One finding, fixed
+  and pinned: a directory whose name ends in `.json` was counted
+  as handled, logged as failed and left in place on every scan,
+  once a second for as long as the runner ran; it is left alone
+  like any non-`.json` entry. Twenty-one entries over 376 arcs.
 - **A repeated object is written twice.** `_json_safe` (the signer's
   and the board's JSON walk) treated an object that merely appears
   twice -- under two keys, or twice in a list -- as a cycle and

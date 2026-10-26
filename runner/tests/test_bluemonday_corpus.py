@@ -103,6 +103,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_inbox(self):
         self._check("inbox")
 
+    def test_local_inbox(self):
+        self._check("local_inbox")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes

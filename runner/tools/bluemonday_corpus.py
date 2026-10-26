@@ -46,6 +46,11 @@ delivered body and the agent's trust in it:
                                          inbox of files, links and dirs
                                          as a peer left them, the core's
                                          side in five shapes
+    local_inbox  runner/runner.py        _scan_local_inbox over a whole
+                                         local inbox as a peer left it:
+                                         each .json read once, filed or
+                                         refused, removed either way;
+                                         the store holds what was filed
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -958,10 +963,10 @@ def _channel_processor(mode, served, calls):
     return process
 
 
-def _channel_files(spec):
+def _channel_files(spec, reserved=("done", _NEIGHBOR)):
     """The inbox files an entry describes, in a shape the checker
     can write: (name, kind, payload) with the names that cannot be
-    a file in an inbox left out."""
+    a file in that inbox left out."""
     out = []
     seen = set()
     for item in spec.get("files") or []:
@@ -969,7 +974,7 @@ def _channel_files(spec):
             continue
         name = item.get("name")
         if (not isinstance(name, str) or not _CHANNEL_NAME_RE.match(name)
-                or name in ("done", _NEIGHBOR) or name in seen):
+                or name in reserved or name in seen):
             continue
         seen.add(name)
         if isinstance(item.get("text"), str):
@@ -1103,6 +1108,125 @@ def _channel_sequence(spec):
                 raise Crash("roundtrip", f"the result file {fname} does "
                             "not read back as the reply")
         return "accepted" if accepted else "refused"
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
+
+_LOCAL_NEIGHBOR = "zz-neighbor.json"
+
+
+def check_local_inbox(entry):
+    """local_inbox: the local signal inbox as a peer or a crash may
+    have left it -- .json envelopes, other files, symlinks, fillers,
+    in the names they were given, with a known-good alert beside
+    them -- scanned once by _scan_local_inbox. Contract: the scan
+    never raises and answers how many .json entries it handled;
+    every .json entry is handled once and removed either way, a
+    symlink or a file that is not UTF-8 without an ingest call, a
+    file that decodes with one call carrying its text (at most the
+    size cap plus one byte); anything not named .json is left
+    alone; the ingest answers a record or None and never raises;
+    the store holds exactly the records the ingests answered, in
+    inbox order, the neighbor's among them whatever came before."""
+    spec = entry["data"]
+    if not isinstance(spec, dict):
+        raise Crash("corpus", "a local_inbox entry's data must be an object")
+    return _local_inbox_sequence(spec)
+
+
+def _local_inbox_sequence(spec):
+    base = tempfile.mkdtemp(prefix="hp-bluemonday-lin-")
+    try:
+        inbox = os.path.join(base, R.LOCAL_INBOX_DIRNAME)
+        os.makedirs(inbox)
+        expected = {}      # name -> the text the ingest must see, or None
+        stays = set()
+        cap = R._LOCAL_ENVELOPE_MAX_BYTES
+        for name, kind, payload in _channel_files(spec, (_LOCAL_NEIGHBOR,)):
+            path = os.path.join(inbox, name)
+            if kind == "text":
+                if payload == "@alert":
+                    # A live alert, signed at check time: the store's
+                    # path needs a fresh issued_at.
+                    payload = V.sign_payload(_stamp_issued_at(_alert(
+                        job_id="bm-" + name[:-5].replace(".", "-"),
+                        title="alert " + name)), SENSE)
+                raw = payload.encode("utf-8", "surrogatepass")
+            elif kind == "fill":
+                raw = b"x" * payload
+            elif kind == "dir":
+                os.makedirs(path, exist_ok=True)
+                stays.add(name)
+                continue
+            else:
+                try:
+                    os.symlink(payload, path)
+                except (OSError, NotImplementedError):
+                    continue
+                if name.endswith(".json"):
+                    expected[name] = None
+                else:
+                    stays.add(name)
+                continue
+            with open(path, "wb") as fh:
+                fh.write(raw)
+            if not name.endswith(".json"):
+                stays.add(name)
+                continue
+            try:
+                expected[name] = raw[:cap + 1].decode("utf-8")
+            except UnicodeDecodeError:
+                expected[name] = None
+        good = V.sign_payload(_stamp_issued_at(_alert(
+            job_id="bm-neighbor-0001", title="neighbor")), SENSE)
+        with open(os.path.join(inbox, _LOCAL_NEIGHBOR), "w",
+                  encoding="utf-8") as fh:
+            fh.write(good)
+        expected[_LOCAL_NEIGHBOR] = good
+        calls = []
+        inner = R._ingest_local_envelope_inner
+
+        def recording(cfg, base_dir, text, source):
+            got, exc = _call(inner, cfg, base_dir, text, source)
+            calls.append((text, got, exc))
+            if exc is not None:
+                raise exc
+            return got
+
+        with _LocalRig() as rig, \
+                mock.patch.object(R, "_ingest_local_envelope_inner",
+                                  recording):
+            del rig  # the patches are what the rig is for here
+            count, exc = _call(R._scan_local_inbox, LOCAL_CFG, base)
+        if exc is not None:
+            raise Crash("exception", "_scan_local_inbox raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        if count != len(expected):
+            raise Crash("contract", f"the scan handled {count} of "
+                        f"{len(expected)} .json entries")
+        for text, got, exc in calls:
+            if exc is not None:
+                raise Crash("exception", "_ingest_local_envelope_inner "
+                            f"raised {type(exc).__name__}: {_short(exc)}")
+            if got is not None and not isinstance(got, dict):
+                raise Crash("shape", "_ingest_local_envelope_inner returned "
+                            f"{type(got).__name__}")
+        want = [expected[n] for n in sorted(expected) if expected[n] is not None]
+        if [c[0] for c in calls] != want:
+            raise Crash("contract", f"the ingest saw {len(calls)} envelopes, "
+                        f"the inbox held {len(want)} it could read")
+        left = sorted(os.listdir(inbox))
+        if left != sorted(stays):
+            raise Crash("contract", f"after the scan the inbox holds "
+                        f"{left!r}, not {sorted(stays)!r}"[:300])
+        stored = R._senses.load_alerts(base, limit=10000)
+        filed = [got for _t, got, _e in calls if got is not None]
+        if not any(r.get("title") == "neighbor" for r in filed):
+            raise Crash("contract", "the neighbor alert was not filed")
+        if [r.get("title") for r in stored] != [r.get("title") for r in filed]:
+            raise Crash("contract", f"the store holds {len(stored)} records "
+                        f"and the ingests filed {len(filed)}")
+        return "accepted" if len(filed) > 1 else "refused"
     finally:
         shutil.rmtree(base, ignore_errors=True)
 
@@ -2422,6 +2546,48 @@ def _job_body():
     return V.sign_payload(_job(), SECRET) + "\n"
 
 
+def seeds_local_inbox():
+    good = V.sign_payload(_frozen_alert(), SENSE)
+    live = {"name": "bm-0001.json", "text": "@alert"}
+    out = [
+        ("one_good", {"files": [live]}),
+        ("frozen", {"files": [_chan("bm-0002.json", good)]}),
+        ("wrong_key", {"files": [_chan("bm-0003.json",
+                                       V.sign_payload(_frozen_alert(),
+                                                      SECRET))]}),
+        ("not_an_alert", {"files": [_chan("bm-0004.json",
+                                          V.sign_payload(_job(), SECRET))]}),
+        ("not_json", {"files": [_chan("bm-0005.json", "not json at all")]}),
+        ("empty", {"files": [_chan("bm-0006.json", "")]}),
+        ("not_utf8", {"files": [_chan("bm-0007.json", "\udcff\udcfe{}")]}),
+        ("too_large", {"files": [{"name": "bm-0008.json",
+                                  "fill": R._LOCAL_ENVELOPE_MAX_BYTES + 1}]}),
+        ("at_the_cap", {"files": [{"name": "bm-0009.json",
+                                   "fill": R._LOCAL_ENVELOPE_MAX_BYTES}]}),
+        ("poison_then_good", {"files": [
+            _chan("bm-0010-a.json", "{"), dict(live, name="bm-0010-b.json"),
+            _chan("bm-0010-c.json", "\udc80"), dict(live, name="bm-0010-d.json")]}),
+        ("not_json_names", {"files": [_chan("bm-0011.txt", good),
+                                      _chan("bm-0011", good),
+                                      _chan("bm-0011.JSON", good),
+                                      _chan("bm-0011.json.bak", good)]}),
+        ("symlinks", {"files": [{"name": "bm-0012.json",
+                                 "link": "/srv/example/nowhere"},
+                                {"name": "bm-0012-b.json",
+                                 "link": "bm-0012-c.json"},
+                                dict(live, name="bm-0012-c.json"),
+                                {"name": "bm-0012.txt", "link": "bm-0012-c.json"}]}),
+        ("subdir", {"files": [{"name": "bm-0013.json", "dir": True},
+                              dict(live, name="bm-0013-b.json")]}),
+        ("twice", {"files": [dict(live, name="bm-0014-a.json"),
+                             dict(live, name="bm-0014-b.json")]}),
+        ("stale", {"files": [_chan("bm-0015.json", V.sign_payload(
+            _alert(issued_at="2020-01-01T00:00:00Z"), SENSE))]}),
+        ("empty_inbox", {"files": []}),
+    ]
+    return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -3054,16 +3220,16 @@ def _board_mutate(rng, spec, corpus):
     return spec, "board_" + edit
 
 
-def _inbox_mutate(rng, spec, corpus):
+def _inbox_mutate(rng, spec, corpus, modes=True):
     """An inbox entry's data is {files: [...]}: one file's text
     takes the text set, a name is respelled, a file is dropped,
     repeated under another name, borrowed from another entry, or
     turned into a link, a directory or a filler of some size.
     Answers (spec, name)."""
     files = [dict(f) for f in (spec.get("files") or []) if isinstance(f, dict)]
-    mode = spec.get("mode")
+    mode = spec.get("mode") if modes else None
     which = rng.random()
-    if which < 0.08:
+    if which < 0.08 and modes:
         return _chan_spec(files, rng.choice(_CHANNEL_MODES)), "chan_mode"
     if which < 0.45 and any("text" in f for f in files):
         i = rng.choice([i for i, f in enumerate(files) if "text" in f])
@@ -3156,6 +3322,8 @@ def mutate(rng, entry, corpus, target):
         data, name = _board_mutate(rng, entry["data"], corpus)
     elif target == "inbox":
         data, name = _inbox_mutate(rng, entry["data"], corpus)
+    elif target == "local_inbox":
+        data, name = _inbox_mutate(rng, entry["data"], corpus, modes=False)
     else:
         mut = rng.choice(PAYLOAD_MUTATORS)
         data = mut(rng, entry["data"], corpus)
@@ -3210,6 +3378,9 @@ TARGETS = {
                  "check": check_manifest, "seeds": seeds_manifest},
     "inbox": {"files": [_src("wire", "transports.py")],
               "check": check_inbox, "seeds": seeds_inbox},
+    "local_inbox": {"files": [_src("runner.py"), _src("ops", "policy.py"),
+                              _src("oracle", "senses.py")],
+                    "check": check_local_inbox, "seeds": seeds_local_inbox},
 }
 
 

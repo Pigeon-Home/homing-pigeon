@@ -100,6 +100,7 @@ peer on the wire reaches first.
 | 9b | `board_ops` | `runner/wire/board.py` under the sequence contract: a board file and `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order over it | in the corpus |
 | 10 | `channels` | `runner/wire/transports.py`: `fetch_channel_messages` over a throwaway directory; the entry is the pair | in the corpus (Q68) |
 | 10b | `inbox` | `runner/wire/transports.py` under the sequence contract: a whole inbox of files, links and directories through `fetch_channel_messages` and `service_channel`, the core's side in five shapes | in the corpus |
+| 12 | `local_inbox` | `runner/runner.py` under the sequence contract: the local signal inbox scanned once by `_scan_local_inbox`, the store held to the ingests | in the corpus |
 | 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | in the corpus (Q69) |
 
 Not targets, and why: the Oracle's reading of its model's replies
@@ -159,9 +160,11 @@ never files a refusal as a crash.
   service pass: every file and link is one message in name order,
   a poison file is the empty refusal and is consumed, and what
   stays, what is done, what lands in the outbox and what is
-  re-queued follow from how the core answered. `local` already
-  answers `None` for one bad alert and does not share a directory
-  with the next one.
+  re-queued follow from how the core answered. `local_inbox` is
+  the local signal inbox scanned once: every `.json` entry is
+  handled once and removed either way, a directory or a name
+  that is not `.json` is left alone, and the store holds exactly
+  what the ingests filed, the neighbor's alert among them.
 - **Reserved slots.** `sig` is the protocol's; a payload carrying
   its own is read back with the slot overwritten by the keyed
   reader and kept by the plain one, and neither is a disagreement.
@@ -258,10 +261,11 @@ nothing is still the record that those rounds were run.
   the board (Q67, and `board_ops` under the sequence contract),
   the channel readers (Q68, and `inbox` under the sequence
   contract), the manifest reader (Q69).
-- **Phase 3:** the sequence contract on `local`; the provenance
-  contract on every reader that names a destination; cross-platform
-  replay findings (a reader that reads differently on Windows is a
-  differential of its own).
+- **Phase 3 (in flight):** the sequence contract on `local`
+  (`local_inbox`, landed); the provenance contract on every reader
+  that names a destination; cross-platform replay findings (a
+  reader that reads differently on Windows is a differential of
+  its own).
 - **Phase 4:** the grammar dictionary from the IETF draft; seeds
   from the draft's own examples; a grow of every target under it.
 - **Phase 5:** live captures, scrubbed to invented names, as seeds

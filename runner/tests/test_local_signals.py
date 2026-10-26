@@ -298,6 +298,20 @@ class InboxMechanicsTest(LocalFixture):
         self.assertEqual(self.scan(), 0)
         self.assertTrue(os.path.exists(keep))
 
+    def test_directory_named_json_is_not_handled(self):
+        # Project blueMonday, local_inbox: a directory whose name
+        # ends in .json is not an envelope. It was counted as
+        # handled, logged as failed and left in place on every
+        # scan; it is left alone like any non-.json entry, and the
+        # envelope beside it is still filed.
+        inbox = os.path.join(self.base, "local-inbox")
+        os.makedirs(os.path.join(inbox, "a-folder.json"))
+        self.drop(self.lab_alert(), LAB_SECRET)
+        self.assertEqual(self.scan(), 1)
+        self.assertEqual(len(self.alerts()), 1)
+        self.assertEqual(self.inbox_names(), ["a-folder.json"])
+        self.assertEqual(self.scan(), 0)
+
 
 class SocketTransportTest(LocalFixture):
     def _serve(self, cfg=None):

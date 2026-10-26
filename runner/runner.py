@@ -3812,6 +3812,11 @@ def _scan_local_inbox(cfg, base_dir) -> int:
             if not name.endswith(".json"):
                 continue
             path = os.path.join(inbox, name)
+            if os.path.isdir(path) and not os.path.islink(path):
+                # A directory is not an envelope and cannot be
+                # removed like one; left alone, like a non-.json
+                # entry, rather than handled and logged every scan.
+                continue
             try:
                 if os.path.islink(path):
                     log(f"local signal (file): {name}: symlink refused",
