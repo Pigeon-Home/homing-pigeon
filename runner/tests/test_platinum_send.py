@@ -152,8 +152,12 @@ class SendDtlsHappyPathTest(unittest.TestCase):
                  "--ticket-file", ticket])
             self.assertEqual(rc, 0)
             self.assertTrue(os.path.exists(ticket))
-            self.assertEqual(oct(os.stat(ticket).st_mode & 0o777),
-                             "0o600")
+            # Windows keeps no POSIX mode bits (the stat reads
+            # 0o666 there): the file is the proof on every leg,
+            # its mode the proof on POSIX.
+            if os.name == "posix":
+                self.assertEqual(
+                    oct(os.stat(ticket).st_mode & 0o777), "0o600")
 
 
 class PumpTickArmTest(unittest.TestCase):

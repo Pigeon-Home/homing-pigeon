@@ -440,7 +440,12 @@ class SweepWorkspaceProperties(unittest.TestCase):
         ["file", "dir", "link_in", "link_out", "fifo"]),
         min_size=0, max_size=5))
     def test_every_entry_is_what_it_claims_to_be(self, kinds):
-        base = tempfile.mkdtemp(prefix="hp-plat-sweep-")
+        # The real path: production hands the sweep a root from
+        # _workspace_root (os.path.realpath), and a macOS temp
+        # directory is reached through a link (/var -> /private/var),
+        # so a raw mkdtemp root fails every plain file as resolving
+        # outside it.
+        base = os.path.realpath(tempfile.mkdtemp(prefix="hp-plat-sweep-"))
         try:
             root = os.path.join(base, "root")
             work = os.path.join(root, "work")

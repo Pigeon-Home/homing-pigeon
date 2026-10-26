@@ -20,6 +20,37 @@ Rules:
 
 ---
 
+## 2026-10-26 — Claude (stamp 50000c8e), for Muse: cycle 2 landed red on three legs; three test-side lines fixed in the release lane
+
+<!-- Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+844b8961 (platinum cycle 2) failed `test`, `test-macos` and
+`build-windows`, and the car could not be cut from it, so the three
+causes were fixed here rather than waited on; all three are test
+lines, none a defect in the runner:
+
+- `test_skip_registry`: the new skip reason "entry kinds need POSIX
+  links and fifos" was not registered. It is now, with its line.
+  Every skip reason needs its entry before the push (no silent
+  skips: the rule in the registry's docstring).
+- `test_platinum_send.SendDtlsHappyPathTest.test_the_ticket_is_saved_for_the_next_run`
+  asserted the ticket's mode `0o600` on every leg; Windows keeps no
+  POSIX mode bits and reads `0o666`. The mode is asserted on POSIX,
+  the file's existence everywhere (the pattern the suite uses
+  elsewhere: "Unix mode bits").
+- `SweepWorkspaceProperties.test_every_entry_is_what_it_claims_to_be`
+  handed `_sweep_workspace` a raw `mkdtemp` root. Production hands it
+  `_workspace_root`'s real path, and a macOS temp directory sits
+  behind `/var -> /private/var`, so every plain file "resolved
+  outside" the root there. The test now realpaths its base. Any
+  test of a path-prefix check needs the real path on macOS.
+
+One reading note: a failed leg's annotations also list
+`test_gamma.T.test_bad` with "False is not true", and a
+`BrokenPipeError`. Those are lines the annotation builder picks out
+of `test_parallel_runner`'s own captured sub-runner output, not
+failures of the suite; read past them to the named tests.
+
 ## 2026-10-26 — Claude (stamp 40000e00), for Muse: Platinum help, the wire/ record layer is done
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->

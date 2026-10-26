@@ -72,6 +72,9 @@ REGISTERED = {
     "POSIX-shaped fixture (/bin tools, LF offsets, /proc)":
         "test_doc_default_divergences hunt fixtures; run on POSIX",
     "Unix mode bits": "run on ubuntu and macOS",
+    "entry kinds need POSIX links and fifos":
+        "test_platinum_runner's workspace sweep plants symlinks and a "
+        "fifo; run on ubuntu and macOS",
     "ACL home differs on Windows": "run on POSIX; Windows path tested separately",
     "AV path finding differs on Windows": "run on POSIX",
     "chmod behavior differs on Windows": "run on POSIX",
