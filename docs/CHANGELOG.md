@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.41 - 2026-10-26
+
+- **Q62: Platinum's next phase.** The owner's brief to Muse, in
+  `docs/use/questions.md`: when a cycle's ledger line closes no new
+  statements, the campaign turns to a coverage-guided seed corpus
+  against the verifiers -- `runner/wire/verify.py` first, then the
+  cloud front-end's verifier, the v2 message parsers, and the
+  jobcrypto and local-signal envelope readers -- with the corpus kept
+  under `runner/tests/` as replayable fixtures and every crash filed
+  as a probe with a Q.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.40 - 2026-10-26
 
 - **Project Platinum, cycle 5's ledger and cycle 6.** The cycle-5
