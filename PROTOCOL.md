@@ -204,6 +204,24 @@ The reference default is email only: `transports` absent means
   questions (section 10) and the attestations of section 9.2.
 - `stdout`/`stderr` are truncated at a configurable byte limit
   (default 100_000); the `*_truncated` flags say so.
+- The whole body is held under `max_result_bytes` (default 5242880,
+  5 MiB; 0 means unlimited) before it is signed: when the serialized
+  (and, when on, encrypted) body would be larger, `stdout` and
+  `stderr` are cut to their head and tail in proportion with a
+  `... [N bytes dropped to fit max_result_bytes] ...` marker in the
+  middle, the `*_truncated` flags are set, and `result_truncated`
+  (`{"reason": "max_result_bytes", "dropped": N}`) is added; three
+  passes at most, the last keeping 2 KiB each side. The signature
+  always covers what is sent.
+- `delivery_note`: OPTIONAL. Present only on a stub sent in place of
+  a result the mail server refused for good (a 5xx such as 552): the
+  stub keeps `v`, `type`, `job_id`, `kind`, `completed_at`,
+  `exit_code`, `timed_out`, `duration_sec`, `runner`, `review` and
+  `judgment`, carries empty streams with both `*_truncated` flags
+  set, and says in this member what was refused and that the full
+  output is under `work/<job_id>/` on the runner. It is signed and
+  encrypted like any result. A 4xx, a socket or a TLS error is not a
+  refusal: the original is resent from the outbox (section 5).
 - `oracle_opinion`: OPTIONAL. The Oracle's opinion of the job, formed
   on the runner against the box the job ran (or was to run) on. It is
   advisory: it never blocks, holds, or approves a job by itself, and

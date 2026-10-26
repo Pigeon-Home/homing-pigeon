@@ -136,6 +136,9 @@ _textutil = _load_mod("runner.guard.textutil", "guard.textutil")
 # extension against its manifest before the loader's result is
 # acted on; see runner/guard/extreview.py.
 _extreview = _load_mod("runner.guard.extreview", "guard.extreview")
+# The channel helper, for its PermanentDeliveryError (review item 4).
+_channel = _load_mod("runner.transport_extensions.channel",
+                     "transport_extensions.channel", broad=True)
 # Typed config/job value readers (Agent-Stamp
 # 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c): the one answer to "is this
 # a usable number, and if not what do I use" -- see confval.py for
@@ -1664,11 +1667,36 @@ def deliver_stash(base_dir, skey, sender, cfg=None, now=None):
         rec["attempts"] = attempt
         rec["last_attempt"] = now
         rec["last_error"] = _as_text(e)[:500]
+        if _is_permanent_smtp(e):
+            # Refused for good (review item 4). Once: the streams are
+            # dropped and a signed stub says so; the original is kept
+            # under work/<job_id>/result.json. A stub refused too is
+            # given up.
+            if rec.get("stubbed"):
+                _stash_fail(base_dir, skey, rec,
+                            f"the delivery stub was refused too: {e}", cfg)
+                return False
+            stub = _stub_body(rec, cfg, e) if cfg is not None else None
+            if stub is None:
+                _stash_fail(base_dir, skey, rec,
+                            f"refused for good ({e}) and no stub could "
+                            f"be signed", cfg)
+                return False
+            _keep_original_result(base_dir, rec, build_secrets(cfg))
+            log(f"result {rec.get('job_id')} refused for good ({e}); "
+                f"sending the stub, the full output stays under "
+                f"work/{rec.get('job_id')}/", "WARN")
+            rec["body"] = stub
+            rec["stubbed"] = True
+            rec["attempts"] = 0
+            _stash_rewrite(base_dir, skey, rec)
+            return deliver_stash(base_dir, skey, sender, cfg=cfg, now=now)
         _stash_rewrite(base_dir, skey, rec)
         log(f"result {rec.get('job_id')} not delivered (attempt {attempt}): "
             f"{e}; kept in the outbox", "WARN")
         return False
-    log(f"result {rec.get('job_id')} delivered (attempt {attempt})")
+    log(f"result {rec.get('job_id')} delivered (attempt {attempt})"
+        + (" as the stub" if rec.get("stubbed") else ""))
     _stash_move(base_dir, skey, os.path.join(base_dir, SENT_DIRNAME))
     return True
 
@@ -1803,6 +1831,268 @@ def _result_meta(result):
     if not isinstance(result, dict):
         return {}
     return {k: result[k] for k in _STUB_KEYS if k in result}
+
+# ---- the result's size, and what a permanent refusal gets instead
+MAX_RESULT_BYTES = 5 * 1024 * 1024   # 5 MiB on the wire; providers allow 10-25 for the whole message
+_TAIL_KEEP = 2048
+
+def _max_result_bytes(cfg):
+    """max_result_bytes: a non-negative int (0 = unlimited), the
+    documented 5 MiB otherwise."""
+    raw = (cfg or {}).get("max_result_bytes")
+    if raw is None or isinstance(raw, bool) or not isinstance(raw, int) \
+            or raw < 0:
+        return MAX_RESULT_BYTES
+    return raw
+
+def _shrink_stream(text, keep):
+    """Head and tail of text, `keep` characters in all, with a marker
+    saying how much went. Returns (text, dropped)."""
+    text = _as_str(text)
+    if keep < 0:
+        keep = 0
+    if len(text) <= keep:
+        return text, 0
+    head = keep // 2
+    tail = keep - head
+    dropped = len(text) - keep
+    marker = "\n... [%d bytes dropped to fit max_result_bytes] ...\n" % dropped
+    return text[:head] + marker + (text[-tail:] if tail else ""), dropped
+
+def _fit_result_body(result, secret, encrypt, job_id, key_id, max_bytes):
+    """Build the outgoing body; when it is over max_bytes, shrink
+    stdout and stderr proportionally (head and tail kept, a marker in
+    the middle, the truncated flags set, a result_truncated member
+    saying why and how much), rebuild, and try again -- three passes
+    at most, the third dropping both streams to their first and last
+    2 KiB. The signature always covers what is sent. Returns
+    (result, body)."""
+    body = _outgoing_result_body(result, secret, encrypt, job_id, key_id)
+    if not max_bytes:
+        return result, body
+    dropped_total = 0
+    for attempt in range(3):
+        size = len(body.encode("utf-8"))
+        if size <= max_bytes:
+            break
+        out = _as_str(result.get("stdout"))
+        err = _as_str(result.get("stderr"))
+        streams = len(out) + len(err)
+        if attempt < 2 and streams > 0:
+            # Everything but the streams stays; the streams get what
+            # is left of the budget, less a margin for escaping,
+            # base64 and the envelope, split in proportion.
+            fixed = max(0, size - streams)
+            budget = int((max_bytes - fixed) * 0.6)
+            budget = max(budget, 2 * _TAIL_KEEP)
+            keep_out = int(budget * len(out) / streams)
+            keep_err = budget - keep_out
+        else:
+            keep_out = keep_err = 2 * _TAIL_KEEP
+        result = dict(result)
+        result["stdout"], d1 = _shrink_stream(out, keep_out)
+        result["stderr"], d2 = _shrink_stream(err, keep_err)
+        dropped_total += d1 + d2
+        if d1:
+            result["stdout_truncated"] = True
+        if d2:
+            result["stderr_truncated"] = True
+        result["result_truncated"] = {"reason": "max_result_bytes",
+                                      "dropped": dropped_total}
+        body = _outgoing_result_body(result, secret, encrypt, job_id, key_id)
+    return result, body
+
+def _is_permanent_smtp(exc):
+    """A refusal that will not change on retry: a 5xx SMTP response
+    (SMTPSenderRefused, SMTPDataError 552/554 included), every
+    recipient refused with 5xx, or a transport's own
+    PermanentDeliveryError. Everything else -- 4xx, sockets, TLS,
+    timeouts -- is transient."""
+    if _channel is not None and isinstance(
+            exc, getattr(_channel, "PermanentDeliveryError", ())):
+        return True
+    if isinstance(exc, smtplib.SMTPRecipientsRefused):
+        codes = [v[0] for v in (exc.recipients or {}).values()
+                 if isinstance(v, (tuple, list)) and v]
+        return bool(codes) and all(
+            isinstance(c, int) and 500 <= c <= 599 for c in codes)
+    if isinstance(exc, smtplib.SMTPResponseException):
+        code = getattr(exc, "smtp_code", None)
+        return isinstance(code, int) and 500 <= code <= 599
+    return False
+
+def _stub_result(job_id, original, reason):
+    """What is sent when the full result was refused for good: the
+    run's identity and verdict, the streams dropped, a delivery_note
+    saying why and where the full output is."""
+    stub = {k: original[k] for k in _STUB_KEYS
+            if isinstance(original, dict) and k in original}
+    stub.setdefault("v", PROTOCOL_VERSION)
+    stub.setdefault("type", "result")
+    stub["job_id"] = job_id
+    stub["stdout"] = ""
+    stub["stderr"] = ""
+    stub["stdout_truncated"] = True
+    stub["stderr_truncated"] = True
+    stub["delivery_note"] = (
+        "original result refused by the mail server (%s); streams "
+        "dropped. Full output is in the runner's job log at work/%s/."
+        % (_as_text(reason)[:300], job_id))
+    return stub
+
+def _record_payload(rec, secrets):
+    """The result dict a stashed body carries: the signed payload,
+    decrypted when the record says the body is encrypted. None when
+    it cannot be read back (a key no longer configured)."""
+    try:
+        payload = verify_body_keyed(rec["body"], secrets)
+        if isinstance(payload, tuple):
+            payload = payload[0]
+        if _jobcrypto is not None and _jobcrypto.is_envelope(payload):
+            secret = secrets.get(rec.get("key_id") or "")
+            if secret is None:
+                return None
+            inner = _jobcrypto.decrypt_body(payload, secret,
+                                            rec.get("job_id"),
+                                            rec.get("key_id") or "")
+            payload = verify_body(inner, secret)
+        return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+def _keep_original_result(base_dir, rec, secrets):
+    """work/<job_id>/result.json: the refused result, kept for the
+    operator. Best effort."""
+    job_id = rec.get("job_id")
+    if not isinstance(job_id, str) or not _SAFE_JOB_ID.match(job_id) \
+            or job_id in (".", ".."):
+        return False
+    payload = _record_payload(rec, secrets)
+    if payload is None:
+        return False
+    folder = os.path.join(base_dir, "work", job_id)
+    try:
+        os.makedirs(folder, exist_ok=True)
+        _atomicio.write_json(os.path.join(folder, "result.json"), payload,
+                             indent=1)
+        return True
+    except Exception as e:
+        log(f"result {job_id}: original not kept: {e}", "WARN")
+        return False
+
+def _stub_body(rec, cfg, reason):
+    """The signed (and, as the original was, encrypted) stub for a
+    refused record, or None when the key is gone."""
+    secrets = build_secrets(cfg)
+    key_id = rec.get("key_id") or ""
+    secret = secrets.get(key_id)
+    if secret is None:
+        return None
+    meta = rec.get("meta") if isinstance(rec.get("meta"), dict) else {}
+    stub = _stub_result(rec.get("job_id"), meta, reason)
+    return _outgoing_result_body(stub, secret, bool(rec.get("encrypted")),
+                                 rec.get("job_id"), key_id)
+
+def _sweep_channel_refusals(base_dir, cfg, names):
+    """A transport extension that was refused a result for good sets
+    it aside under its channel's outbox/failed/ with a
+    <stem>.refused.txt (channel.refuse_result). This pass answers each
+    one the way a mailbox refusal is answered: the delivered record
+    is found by the result's job id, the original is kept under
+    work/<job_id>/result.json, a signed stub goes back out the same
+    channel, once; a stub refused too is given up with an audit
+    entry. The refusal files move to outbox/done/."""
+    if _transports is None or not _valid_base(base_dir):
+        return 0
+    handled = 0
+    for name in names or ():
+        try:
+            paths = _transports.channel_paths(base_dir, name)
+        except Exception:
+            continue
+        failed = os.path.join(paths["outbox"], OUTBOX_FAILED_DIRNAME)
+        try:
+            notes = sorted(n for n in os.listdir(failed)
+                           if n.endswith(".refused.txt"))
+        except OSError:
+            continue
+        for note in notes:
+            stem = note[:-len(".refused.txt")]
+            result_file = os.path.join(failed, stem + ".result.txt")
+            try:
+                with open(os.path.join(failed, note), encoding="utf-8") as fh:
+                    reason = fh.read().strip()
+                with open(result_file, encoding="utf-8") as fh:
+                    parsed = _transports.parse_envelope(fh.read())
+            except OSError:
+                parsed = None
+                reason = "refused"
+            job_id = None
+            if parsed is not None:
+                m = _transports._RESULT_ID_RE.search(parsed[0] or "")
+                job_id = m.group(1) if m else None
+            rec = None
+            skey = _seen_key(cfg, job_id) if job_id else None
+            if skey:
+                rec = _read_record(_sent_path(base_dir, skey))
+            if rec is not None and not rec.get("stubbed"):
+                stub = _stub_body(rec, cfg, reason)
+                if stub is not None:
+                    _keep_original_result(base_dir, rec, build_secrets(cfg))
+                    try:
+                        _transports.write_channel_result(
+                            base_dir, name, "", rec["subject"], stub,
+                            ident_hint=stem, target=rec.get("to"))
+                        rec["stubbed"] = True
+                        rec["last_error"] = _as_text(reason)[:500]
+                        _atomicio.write_json(_sent_path(base_dir, skey), rec)
+                        log(f"result {job_id} refused for good by the "
+                            f"{name} transport ({reason}); the stub goes "
+                            f"back out, the full output stays under "
+                            f"work/{job_id}/", "WARN")
+                        _delivery_audit(base_dir, "stubbed", reason, job_id,
+                                        cfg)
+                    except Exception as e:
+                        log(f"result {job_id}: stub not written to the "
+                            f"{name} channel: {e}", "WARN")
+                        continue
+                else:
+                    _stash_fail_sent(base_dir, skey, rec,
+                                     f"refused for good ({reason}) and no "
+                                     f"stub could be signed", cfg)
+            elif rec is not None:
+                _stash_fail_sent(base_dir, skey, rec,
+                                 f"the delivery stub was refused too: "
+                                 f"{reason}", cfg)
+            else:
+                log(f"{name} transport: refused result {stem} has no "
+                    f"record here ({reason}); set aside", "WARN")
+            done = paths["outbox_done"]
+            for fname in (note, stem + ".result.txt"):
+                src = os.path.join(failed, fname)
+                if os.path.exists(src):
+                    try:
+                        os.makedirs(done, exist_ok=True)
+                        os.replace(src, os.path.join(done, fname))
+                    except OSError:
+                        pass
+            handled += 1
+    return handled
+
+def _stash_fail_sent(base_dir, skey, rec, reason, cfg=None):
+    """Give up a record that had been counted as delivered: it moves
+    from sent/ to outbox/failed/ with the audit entry."""
+    log(f"result {rec.get('job_id')} not delivered: {reason}; "
+        f"kept under outbox/{OUTBOX_FAILED_DIRNAME}/", "ERROR")
+    _delivery_audit(base_dir, "failed", reason, rec.get("job_id"), cfg)
+    folder = os.path.join(_outbox_dir(base_dir), OUTBOX_FAILED_DIRNAME)
+    try:
+        _ensure_private_dir(folder)
+        rec["last_error"] = _as_text(reason)[:500]
+        _atomicio.write_json(os.path.join(folder, _record_name(skey)), rec)
+        _unlink_quiet(_sent_path(base_dir, skey))
+    except Exception as e:
+        log(f"outbox record not moved to failed: {e}", "WARN")
 
 def _record_sender(base_dir, rec, mail_sender):
     """How a waiting record goes out this cycle: a record that came
@@ -4009,6 +4299,31 @@ def _verify_and_decrypt(msg, secrets, job_id):
         raise ValueError("job body must be a JSON object")
     return job, key_id, secret, was_encrypted
 
+_BOUNCE_SUBJECTS = ("undeliverable", "mail delivery failed",
+                    "delivery status notification", "returned mail",
+                    "undelivered mail returned to sender",
+                    "delivery failure", "failure notice")
+
+def _bounce_of(subject, raw):
+    """What a delivery status notification refers to ("result <id>",
+    "job <id>", or "a message"), or None when the mail is not one.
+    A DSN is a multipart/report (report-type delivery-status) message,
+    or one whose subject opens the way providers open theirs."""
+    text = _as_str(subject).strip().lower()
+    is_dsn = any(text.startswith(p) for p in _BOUNCE_SUBJECTS)
+    if not is_dsn and isinstance(raw, (bytes, bytearray)):
+        try:
+            msg = email.message_from_bytes(bytes(raw))
+            is_dsn = msg.get_content_type() == "multipart/report" and \
+                "delivery-status" in str(msg.get_param("report-type") or "")
+        except Exception:
+            is_dsn = False
+    if not is_dsn:
+        return None
+    m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+(result|job)\s+(\S+)",
+                  _as_str(subject), re.I)
+    return "%s %s" % (m.group(1).lower(), m.group(2)) if m else "a message"
+
 def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
                     base_dir, seen):
     """Handle non-job mail and already-seen jobs.
@@ -4026,6 +4341,17 @@ def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
             return None
     if handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
                       base_dir):
+        return None
+    bounce = _bounce_of(subject, raw)
+    if bounce is not None:
+        # A delivery status notification about one of this runner's
+        # own messages (review item 4): the provider refused a result
+        # after the send was accepted. Said once, marked seen, never
+        # parsed as a job -- the quoted original inside it is not a
+        # submission.
+        log(f"bounce: the mail server returned {bounce}; its result "
+            f"was refused after the send (see --inspect outbox)")
+        _mark(imap, seq, opts)
         return None
     m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)",
                   subject, re.I)
@@ -4060,7 +4386,7 @@ def _validate_size_caps(cfg):
     """
     if not isinstance(cfg, dict):
         return None
-    for key in ("max_job_bytes", "max_script_bytes"):
+    for key in ("max_job_bytes", "max_script_bytes", "max_result_bytes"):
         cap = cfg.get(key)
         if cap is None:
             continue
@@ -4583,6 +4909,7 @@ def _service_transports(cfg, base_dir, seen, seen_path, names,
     # that has a mailbox.
     if not dry_run:
         resend_stashed(base_dir, cfg, None)
+        _sweep_channel_refusals(base_dir, cfg, names)
     if len(seen) > SEEN_CAP:
         for k in list(seen.keys())[:-SEEN_CAP]:
             del seen[k]

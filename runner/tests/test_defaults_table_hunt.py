@@ -364,6 +364,10 @@ REFUSE_PROBES = {
         lambda v: _cap_probe("max_script_bytes", v),
         {"omitted", "null", "default-explicit", "zero",
          "huge-int"}),
+    "max_result_bytes": (
+        lambda v: _cap_probe("max_result_bytes", v),
+        {"omitted", "null", "default-explicit", "zero",
+         "huge-int"}),
 }
 
 

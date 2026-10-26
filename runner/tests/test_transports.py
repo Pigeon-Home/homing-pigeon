@@ -1050,6 +1050,55 @@ class EmailTransportExtensionTest(unittest.TestCase):
         result = _read_result(body, jid)
         self.assertEqual(result["stdout"], "pong")
 
+    def test_a_permanent_refusal_is_set_aside_and_answered_with_a_stub(self):
+        # Review item 4: a 552 on one result does not wedge the queue.
+        # The pipe sets it aside under outbox/failed/, sends the next
+        # result, marks the refused one's mail seen; the core's next
+        # pass answers the refusal with a signed stub the pipe then
+        # sends; the original is kept under work/<job_id>/result.json.
+        from runner import runner as rr
+        jid_big = str(uuid.uuid4())
+        jid_ok = str(uuid.uuid4())
+        imap = self.FakeIMAP([self._raw_mail(jid_big), self._raw_mail(jid_ok)])
+
+        class Picky(self.FakeSMTP):
+            refused = []
+
+            def send_message(self, msg):
+                # The first body for jid_big is "too large"; the stub
+                # that follows (encrypted like the original, so not
+                # readable here) is accepted.
+                if jid_big in str(msg["Subject"]) and not self.refused:
+                    self.refused.append(msg)
+                    raise smtplib.SMTPDataError(552, b"5.3.4 too large")
+                super().send_message(msg)
+
+        smtp = Picky()
+        pipe = self._pipe(imap, smtp)
+        pipe.pass_once()
+        poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
+        pipe.pass_once()
+        # The ok result went; the big one is set aside, its mail seen.
+        self.assertEqual([jid_ok in str(m["Subject"]) for m in smtp.sent],
+                         [True])
+        self.assertEqual(sorted(str(x) for x in imap.flagged), ["1", "2"])
+        failed = os.path.join(self.paths["outbox"], "failed")
+        self.assertEqual(len([n for n in os.listdir(failed)
+                              if n.endswith(".refused.txt")]), 1)
+        # The core's pass: the stub goes back out the channel.
+        poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
+        self.assertEqual(os.listdir(failed), [])
+        pipe.pass_once()
+        self.assertEqual(len(smtp.sent), 2)
+        stub_msg = [m for m in smtp.sent if jid_big in str(m["Subject"])][0]
+        stub = _read_result(stub_msg.get_content(), jid_big)
+        self.assertEqual(stub["stdout"], "")
+        self.assertIn("552", stub["delivery_note"])
+        with open(os.path.join(self.tmp, "work", jid_big, "result.json"),
+                  encoding="utf-8") as fh:
+            self.assertIn('"pong"', fh.read())
+        self.assertEqual(rr.outbox_report(self.tmp)["failed"], [])
+
     def test_reply_to_routes_the_result(self):
         jid = str(uuid.uuid4())
         imap = self.FakeIMAP([self._raw_mail(

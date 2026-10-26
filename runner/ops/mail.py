@@ -586,8 +586,16 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             if cfg.get("judge") in ("advisory", "enforce"):
                 result["judgment"] = {"verdict": verdict, "reasons": reasons}
             out_subject = f"{_runner().SUBJECT_RESULT}{job_id}"
-            out_body = _runner()._outgoing_result_body(
-                result, secret, encrypt_result, job_id, key_id)
+            # Fit before signing (review item 4): a body over
+            # max_result_bytes has its streams cut to head and tail,
+            # marked, and is rebuilt; the signature covers what is sent.
+            result, out_body = _runner()._fit_result_body(
+                result, secret, encrypt_result, job_id, key_id,
+                _runner()._max_result_bytes(cfg))
+            if result.get("result_truncated"):
+                R.log(f"job {job_id}: result cut to fit max_result_bytes "
+                      f"({result['result_truncated']['dropped']} bytes "
+                      f"dropped)", "WARN")
             R.log(f"job {job_id} done (exit={r['exit_code']})")
             commit_and_deliver(out_subject, out_body,
                                meta=_runner()._result_meta(result))

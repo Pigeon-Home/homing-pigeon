@@ -61,6 +61,21 @@ def _subject_body(raw):
     return subject, msg.get_payload() or ""
 
 
+def _permanent(exc):
+    """A 5xx SMTP response (every recipient refused with 5xx
+    included): retrying will not change it."""
+    import smtplib
+    if isinstance(exc, smtplib.SMTPRecipientsRefused):
+        codes = [v[0] for v in (exc.recipients or {}).values()
+                 if isinstance(v, (tuple, list)) and v]
+        return bool(codes) and all(
+            isinstance(c, int) and 500 <= c <= 599 for c in codes)
+    if isinstance(exc, smtplib.SMTPResponseException):
+        code = getattr(exc, "smtp_code", None)
+        return isinstance(code, int) and 500 <= code <= 599
+    return isinstance(exc, ch.PermanentDeliveryError)
+
+
 def reply_target(body, mailbox_addr):
     """Where a result goes: the job's signed reply_to when it
     validates (the core's own rule, applied to the job object
@@ -178,8 +193,22 @@ class EmailPipe:
                                            self.mailbox_addr)
                 else:
                     self._targets.pop(ident, None)
-                _mailbox.send_mail(smtp, self.cfg, subject, body,
-                                   to=to)
+                try:
+                    _mailbox.send_mail(smtp, self.cfg, subject, body,
+                                       to=to)
+                except Exception as e:
+                    if not _permanent(e):
+                        raise   # the server, not the message: next pass
+                    # Refused for good (552 and the rest of 5xx): this
+                    # result is set aside for the runner's stub and the
+                    # queue behind it keeps moving (review item 4).
+                    ch.refuse_result(self.channel, fname, e)
+                    self._ack_sidecar(ident)
+                    for seq, dident in list(self._delivered.items()):
+                        if dident == ident:
+                            _mailbox.mark_seen(imap, seq)
+                            del self._delivered[seq]
+                    continue
                 ch.ack_result(self.channel, fname)
                 self._ack_sidecar(ident)
                 for seq, dident in list(self._delivered.items()):

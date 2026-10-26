@@ -14,6 +14,7 @@
   "max_output_bytes": 100000,
   "max_job_bytes": 4194304,
   "max_script_bytes": 1048576,
+  "max_result_bytes": 5242880,
   "poll_interval_sec": 20,
   "result_stash_retention_sec": 86400,
   "result_resend_backoff_sec": 60,

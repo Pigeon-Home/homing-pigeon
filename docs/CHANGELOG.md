@@ -80,6 +80,28 @@ The four review items, plus workspace isolation (the runbook of
   send-ok / send-fail / poll / clock sequences (never two executions,
   never a lost result). PROTOCOL.md sections 5 and 6; the two keys in
   `docs/oracle/configuring-oracle.md`.
+- **The result's size, permanent refusals, bounces.** A body is held
+  under `max_result_bytes` (default 5 MiB) before it is signed: the
+  streams are cut to head and tail with a marker, the flags set and
+  `result_truncated` added, three passes at most, so the signature
+  covers what is sent. A 5xx refusal (552 and the rest, every
+  recipient refused, a transport's `PermanentDeliveryError`) is
+  permanent: a signed stub with the streams dropped and a
+  `delivery_note` goes out once and the original is kept under
+  `work/<job_id>/result.json`; a stub refused too is given up with
+  the audit row; a 4xx, a socket or a TLS error resends the original.
+  The email extension sets a refused result aside under its channel's
+  `outbox/failed/` instead of wedging the queue, and the core's next
+  pass answers it with the stub down the same channel. A delivery
+  status notification in the inbox is said once with the id it
+  refers to, marked seen, never parsed as a job; one message whose
+  parts raise fails alone. `runner/tests/test_result_size.py` (the
+  fit, the classification, 552 then the stub once, a refused stub
+  given up, 421 resending the original, the channel refusal, and a
+  hypothesis property that the body never exceeds the cap) and
+  `runner/tests/test_bounces.py` (Gmail-, Exchange- and Postfix-shaped
+  DSNs, the subject parser, the poison message). PROTOCOL.md 3.2;
+  `max_result_bytes` in `docs/oracle/configuring-oracle.md`.
 
 ## 3.13.1 - 2026-10-25
 

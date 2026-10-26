@@ -35,6 +35,14 @@ except ImportError:
 FILE_MAX_BYTES = 4 * 1024 * 1024
 
 
+class PermanentDeliveryError(Exception):
+    """A transport's way of saying a result will never go out as it
+    is (the far end refused it for good: a 5xx, an oversize
+    rejection). The runner treats it like a permanent SMTP refusal:
+    the record is not retried; a signed stub without the streams is
+    sent instead, once (review item 4)."""
+
+
 def log(msg, level="INFO"):
     # A weak-key refusal may name its repeating unit. A strong
     # secret is not passed here.
@@ -122,7 +130,7 @@ def pending_results(channel):
     d = dirs(channel)
     out = []
     for fname in sorted(os.listdir(d["outbox"])):
-        if fname == "done":
+        if fname in ("done", "failed"):
             continue
         path = os.path.join(d["outbox"], fname)
         if not os.path.isfile(path) or os.path.islink(path):
@@ -139,6 +147,28 @@ def pending_results(channel):
             continue
         out.append((fname, parsed[0], parsed[1]))
     return out
+
+
+def refuse_result(channel, fname, reason):
+    """A result the far end refused for good: moved to
+    outbox/failed/ beside a <stem>.refused.txt that carries the
+    reason, so the runner's next pass can answer it with a stub
+    and the queue behind it keeps moving. Never raises."""
+    d = dirs(channel)
+    failed = os.path.join(d["outbox"], "failed")
+    try:
+        os.makedirs(failed, exist_ok=True)
+        os.replace(os.path.join(d["outbox"], fname),
+                   os.path.join(failed, fname))
+        stem = fname[:-len(".result.txt")] \
+            if fname.endswith(".result.txt") else fname
+        _atomic_write(os.path.join(failed, stem + ".refused.txt"),
+                      str(reason).replace("\r", " ").replace("\n", " ")
+                      + "\n")
+        log(f"result {fname} refused for good: {reason}; set aside under "
+            f"outbox/failed/ for the runner's stub", "WARN")
+    except OSError as e:
+        log(f"cannot set aside refused result {fname}: {e}", "WARN")
 
 
 def ack_result(channel, fname):
