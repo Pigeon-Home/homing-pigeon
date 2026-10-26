@@ -497,6 +497,86 @@ class SweepWorkspaceProperties(unittest.TestCase):
             shutil.rmtree(base, ignore_errors=True)
 
 
+class StashFailureArmsTest(unittest.TestCase):
+    """Cycle 3 targets, except class: the stash family's
+    failure arms -- a write that fails while updating or
+    failing a record is a logged WARN, never an exception
+    (`_stash_rewrite`, `_stash_fail_sent`); a permanent refusal
+    with no cfg to sign a stub with gives the record up into
+    outbox/failed/ (`deliver_stash`); a directory that cannot
+    be created under the staged root is a JobRejected
+    (`_staged_dest`); and an unparsable raw message is simply
+    not a bounce (`_bounce_of`). The write failures go through
+    the atomicio seam, the one writer (Q52's lesson).
+    """
+
+    def test_a_failed_rewrite_is_logged_not_raised(self):
+        base = tempfile.mkdtemp(prefix="hp-plat-stash-")
+        try:
+            with mock.patch.object(
+                    R._atomicio, "write_json",
+                    side_effect=OSError("the disk is full")):
+                self.assertIsNone(R._stash_rewrite(
+                    base, "key1", {"job_id": "j1"}))
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+    def test_a_failed_move_to_failed_is_logged_not_raised(self):
+        base = tempfile.mkdtemp(prefix="hp-plat-stash-")
+        try:
+            with mock.patch.object(
+                    R._atomicio, "write_json",
+                    side_effect=OSError("the disk is full")):
+                self.assertIsNone(R._stash_fail_sent(
+                    base, "key1", {"job_id": "j1"}, "boom", None))
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+    def test_a_permanent_refusal_without_a_stub_gives_up(self):
+        import smtplib
+        base = tempfile.mkdtemp(prefix="hp-plat-stash-")
+        try:
+            cfg = _cfg()
+            job_id = "job-platinum-giveup"
+            skey = R._seen_key(cfg, job_id)
+            self.assertTrue(R.stash_result(
+                base, skey, {"job_id": job_id},
+                "subject", "body", key_id=""))
+
+            def sender(subject, body, to):
+                raise smtplib.SMTPResponseException(550, b"gone")
+
+            self.assertFalse(
+                R.deliver_stash(base, skey, sender, cfg=None))
+            failed = os.path.join(
+                base, "outbox", R.OUTBOX_FAILED_DIRNAME)
+            self.assertTrue(os.path.isdir(failed))
+            self.assertEqual(len(os.listdir(failed)), 1)
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+    def test_a_directory_that_cannot_be_created_is_refused(self):
+        base = tempfile.mkdtemp(prefix="hp-plat-stash-")
+        try:
+            root = os.path.join(base, "root")
+            os.makedirs(root)
+            with open(os.path.join(root, "blocker"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("a file, not a directory")
+            with self.assertRaises(R.JobRejected):
+                R._staged_dest(root, "blocker/sub/file.txt", root)
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+    def test_an_unparsable_message_is_not_a_bounce(self):
+        import email as email_mod
+        with mock.patch.object(
+                email_mod, "message_from_bytes",
+                side_effect=ValueError("not a message")):
+            self.assertIsNone(
+                R._bounce_of("subject", b"raw bytes"))
+
+
 class RunInspectReviewTest(unittest.TestCase):
     """Cycle 3 target, logic class: `runner.run_inspect` (2)
     -- asked for the extension review with the review module

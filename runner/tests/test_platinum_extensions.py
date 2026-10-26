@@ -12,6 +12,7 @@ Target from the cycle-2 refreshed table
 
 Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90
 """
+import os
 import smtplib
 import unittest
 
@@ -49,6 +50,29 @@ class PermanentProperties(unittest.TestCase):
         self.assertFalse(email_ext._permanent(OSError("down")))
         self.assertFalse(email_ext._permanent(
             smtplib.SMTPRecipientsRefused({})))
+
+
+class RefuseResultTest(unittest.TestCase):
+    """Cycle 3 target, except class:
+    `transport_extensions/channel.py:refuse_result` (2) -- a
+    result that cannot be set aside (its failed/ folder
+    cannot be created) is a logged warning, never an
+    exception: the channel's contract is "never raises".
+    """
+
+    def test_an_unwritable_channel_is_a_warning_not_a_raise(self):
+        import tempfile
+        td = tempfile.mkdtemp(prefix="hp-plat-chan-")
+        try:
+            failed = os.path.join(td, "outbox", "failed")
+            os.makedirs(os.path.dirname(failed))
+            with open(failed, "w", encoding="utf-8") as fh:
+                fh.write("a file where failed/ belongs")
+            self.assertIsNone(
+                ch.refuse_result(td, "x.result.txt", "refused"))
+        finally:
+            import shutil
+            shutil.rmtree(td, ignore_errors=True)
 
 
 if __name__ == "__main__":

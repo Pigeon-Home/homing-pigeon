@@ -95,5 +95,61 @@ class ApplyFallbackTest(unittest.TestCase):
                       entry["findings"][0]["detail"])
 
 
+class UnderAndReviewEntryTest(unittest.TestCase):
+    """Cycle 3 targets: `extreview._under` (except) and
+    `extreview._review_entry` (guard). A path realpath cannot
+    read (an embedded NUL) is simply not under anything; an
+    entry that points outside its folder, or runs shipped code
+    it does not ship, is a finding -- and no mutated entry
+    shape raises.
+    """
+
+    def test_a_path_realpath_refuses_is_not_under(self):
+        self.assertFalse(extreview._under("a\x00b", "/tmp"))
+        self.assertTrue(extreview._under("/tmp/x", "/tmp"))
+        self.assertFalse(extreview._under("/etc/x", "/tmp"))
+
+    @settings(deadline=None)
+    @given(entry=st.lists(st.one_of(
+        st.text(max_size=16),
+        st.sampled_from(["{python}", "{extension_dir}/run.py",
+                         "{extension_dir}/../escape.py",
+                         "-m", "runner.guard.extreview",
+                         "..", "../up.py", ""]),
+        st.integers(), st.none()), max_size=4))
+    def test_mutated_entries_find_or_pass_without_raising(
+            self, entry):
+        findings = []
+        extreview._review_entry({"entry": entry}, "/ext/folder",
+                                findings, shipped=True)
+        for finding in findings:
+            self.assertIn(finding["code"],
+                          {"entry.outside", "entry.program",
+                           "entry.path"})
+
+    def test_an_entry_pointing_outside_is_a_high_finding(self):
+        findings = []
+        extreview._review_entry(
+            {"entry": ["{extension_dir}/../escape.py"]},
+            "/ext/folder", findings, shipped=True)
+        self.assertEqual([f["code"] for f in findings],
+                         ["entry.outside"])
+        self.assertEqual(findings[0]["severity"], "high")
+
+
+class FileNameSurrogateTest(unittest.TestCase):
+    """Cycle 3 target, except class:
+    `guard/filenames.py:validate_file_name` (2) -- a name with
+    a lone surrogate cannot be encoded as UTF-8, and the
+    refusal is the module's BadFileName saying so.
+    """
+
+    def test_a_lone_surrogate_is_not_valid_text(self):
+        from runner.guard import filenames
+        with self.assertRaises(filenames.BadFileName) as cm:
+            filenames.validate_file_name("report-\ud800.txt")
+        self.assertIn("not valid text", str(cm.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
