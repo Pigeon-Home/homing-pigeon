@@ -26,12 +26,6 @@
 - **POSIX ACL warning.** `--posture` warns when a Windows ACL is
   missing but not when a POSIX one is.
 
-- **Ed25519 signatures** instead of the shared HMAC secret, so a leaked
-  secret is not root. `docs/design/asymmetric-signing-design.md`.
-
-- **An approval gate**: the owner says yes before a job runs.
-  `docs/design/approval-gate-design.md`.
-
 - **Credentials encrypted at rest.** `config.json` holds the shared
   secret and the mailbox credential in the clear.
 
@@ -45,12 +39,12 @@
   whose X25519 ephemeral is the one quantum-exposed piece (DRU; draft
   Section 22.1).
 
-- **Board delegation over ping** (DRU, 2026-10-20). A ping's reply
-  carries the box's open task board, so the cloud SI can submit work to a
-  box it has just proven reachable. Only for the secret holder, only when
-  the operator enables it for that sender, encrypted like a result. To be
-  written as a separate IETF draft, not a protocol version.
+- **Ed25519 signatures** instead of the shared HMAC secret, so a leaked
+  secret is not root. `docs/design/asymmetric-signing-design.md`.
 
+- **Board delegation over ping** Ping reply carries the box's open task
+  board, so the cloud SI can submit work.
+  
 - **Other pipes.** A distributed ledger for file flow and board
   answers, or a transport over .onion or BitTorrent.
 
