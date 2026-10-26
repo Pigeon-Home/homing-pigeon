@@ -4,13 +4,27 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.19 - 2026-10-26
+## 3.13.20 - 2026-10-26
 
 - **`FAQ.md` is at the root.** The FAQ, the owner's own page, moves
   from `docs/use/faq.md` to `FAQ.md` beside the other manuals, in
   caps like them; its text is untouched, one relative link now
   resolves from the root, every pointer follows, and the retired path
   is on the layout guard's list.
+- **Platinum's second pass over wire/.** `protocol_v2.validate` from
+  three valid seed messages with fields dropped, swapped and grown;
+  `verify.verify_body_keyed` from bodies `sign_payload` wrote, with
+  mail line wraps, preambles, a signature digit changed, every
+  `key_id` shape, wrong secrets, nesting past the decoder's limit and
+  wrong argument types (the payload or a ValueError, nothing else);
+  `DtlsServerCore._feed_record`'s drop path, a sealed record for no
+  session dropped and counted, never answered. The lines left dark
+  are named with their reasons (`runner/tests/test_platinum_wire.py`,
+  queue P, sibling chat).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.19 - 2026-10-26
+
 - **Platinum's first module, the DTLS record layer.**
   `runner/tests/test_platinum_wire.py` drives `_RecordSealer.open`,
   `_split_records` and `_parse_extensions` from a real corpus (records
