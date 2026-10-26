@@ -1,0 +1,16 @@
+name = "homing-pigeon-queues-worker"
+main = "src/index.ts"
+compatibility_date = "2026-10-25"
+
+# Optional: set REJECT_INVALID_HMAC = "true" to reject any inbound
+# message that fails HMAC validation before it is written to D1 or
+# further compute is performed. Default is unset / false.
+#
+# [vars]
+# REJECT_INVALID_HMAC = "true"
+# HMAC_SECRET = "..."   # better as a secret binding
+
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "homing-pigeon-jobs"
+# database_id = "..."
