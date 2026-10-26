@@ -82,6 +82,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_stash(self):
         self._check("stash")
 
+    def test_mail(self):
+        self._check("mail")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes
@@ -214,8 +217,14 @@ class CorpusFilesTest(unittest.TestCase):
                 self.assertNotIn("/Users/", line, target)
                 self.assertNotIn("Users\\\\", line, target)
                 for domain in _MAILBOX.findall(line):
-                    self.assertEqual(domain.lower(), "example.com",
-                                     f"{target}: a mailbox at {domain}")
+                    # RFC 2606's reserved names only; a mutated entry
+                    # may carry a broken form of one (the seeds are
+                    # invented, the mutators are blind), so the test
+                    # is that the reserved name is still in it.
+                    self.assertTrue(
+                        "example" in domain.lower()
+                        or domain.lower().endswith((".invalid", ".test")),
+                        f"{target}: a mailbox at {domain}")
 
 
 class ToolTest(unittest.TestCase):
@@ -434,6 +443,36 @@ class ToolTest(unittest.TestCase):
             # The same refusal on the control-character body is the
             # designed difference, not a finding.
             self.assertEqual(B.check("wire", control), "accepted")
+
+    def test_the_mail_checker_catches_the_extension_disagreeing(self):
+        entry = [e for e in B.seeds_mail() if e["from"] == "seed:plain"][0]
+        self.assertEqual(B.check("mail", entry), "accepted")
+        ext = B._email_extension()
+        with mock.patch.object(ext, "_subject_body",
+                               return_value=("[HOMING-PIGEON] job x", "")):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("mail", entry)
+        self.assertEqual(cm.exception.kind, "agreement")
+
+    def test_the_mail_checker_catches_a_reply_target_from_a_header(self):
+        entry = [e for e in B.seeds_mail()
+                 if e["from"] == "seed:reply_to_header_only"][0]
+        self.assertEqual(B.check("mail", entry), "accepted")
+        ext = B._email_extension()
+        with mock.patch.object(ext, "reply_target",
+                               return_value="spoof@example.net"):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("mail", entry)
+        self.assertEqual(cm.exception.kind, "contract")
+        inside = [e for e in B.seeds_mail()
+                  if e["from"] == "seed:reply_to_inside"][0]
+        self.assertEqual(B.check("mail", inside), "accepted")
+
+    def test_mail_bytes_round_trip_through_the_corpus(self):
+        raw = b"Subject: x\r\n\r\n\xe9\xe8 not utf-8\r\n"
+        text = raw.decode("utf-8", "surrogateescape")
+        line = json.dumps(text, ensure_ascii=True)
+        self.assertEqual(B._raw_bytes(json.loads(line)), raw)
 
     def test_saturation_reads_the_last_grow(self):
         tmp = tempfile.mkdtemp(prefix="hp-bluemonday-sat-")

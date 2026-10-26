@@ -394,8 +394,11 @@ survivors come after it.
 The hand-off, the targets and the fixed rules are Q62 in
 `docs/use/questions.md`; the owner named the campaign on
 2026-10-26. The tool is `runner/tools/bluemonday_corpus.py`, the
-corpus is `runner/tests/bluemonday/<target>.jsonl` (five targets:
-`wire`, `cloud`, `v2`, `crypto`, `local`), and
+corpus is `runner/tests/bluemonday/<target>.jsonl` (the targets
+are the tool's own list, `stats` prints them with their saturation;
+`wire`, `cloud`, `v2`, `crypto`, `local`, `stash`, `mail` as of Q65,
+with DTLS, the board, the channel readers and the manifest reader
+to follow from the desk in that order), and
 `runner/tests/test_bluemonday_corpus.py` replays it on every leg.
 The loop:
 

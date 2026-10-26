@@ -22,6 +22,10 @@ delivered body and the agent's trust in it:
             runner/wire/transports.py    parse_envelope
     stash   runner/runner.py             _record_payload (a stashed
                                          record's body, its three key slots)
+    mail    runner/runner.py             get_text_body, _bounce_of, the
+            runner/ops/mail.py           subject's job id; the email
+            transport_extensions/email   extension's _subject_body and
+            runner/wire/mailbox.py       reply_target (_valid_reply_to)
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -70,6 +74,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import shutil
 import sys
 import tempfile
@@ -89,6 +94,7 @@ from runner.wire import jobcrypto as JC  # noqa: E402
 from runner.wire import protocol_v2 as P2  # noqa: E402
 from runner.wire import transports as TR  # noqa: E402
 from runner.wire import verify as V  # noqa: E402
+from runner.wire import mailbox as MB  # noqa: E402
 import runner.runner as R  # noqa: E402
 
 STAMP = "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"
@@ -511,6 +517,93 @@ def check_stash(entry):
     return "accepted" if got is not None else "refused"
 
 
+_JOB_SUBJECT = re.compile(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)",
+                          re.I)
+MAILBOX = "runner@example.com"
+
+
+def _email_extension():
+    """The email transport extension's readers, imported once."""
+    global _EMAIL_EXT
+    if _EMAIL_EXT is None:
+        import importlib
+        _EMAIL_EXT = importlib.import_module(
+            "runner.transport_extensions.email.__main__")
+    return _EMAIL_EXT
+
+
+_EMAIL_EXT = None
+
+
+def _raw_bytes(text):
+    """A mail entry's data is the raw message as text; bytes that are
+    not UTF-8 ride as surrogate escapes, so the corpus can hold any
+    message and give the readers the exact bytes back."""
+    return text.encode("utf-8", "surrogateescape")
+
+
+def check_mail(entry):
+    """mail: the readers that choose the text a verifier will see,
+    on one raw RFC 822 message -- the core's subject, bounce check
+    and text body, the extension's own extraction of the same two
+    things, and the reply-target rule. Contract: none of them
+    raises; the extension reads the same subject and body as the
+    core (the differential); the reply target is the mailbox or a
+    single plain address from inside the body's JSON, never
+    anything a header said."""
+    import email
+    raw = _raw_bytes(entry["data"])
+    msg, exc = _call(email.message_from_bytes, raw)
+    if exc is not None:
+        raise Crash("exception", "email.message_from_bytes raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    subject, exc = _call(lambda: str(msg["Subject"] or ""))
+    if exc is not None:
+        raise Crash("exception", "the Subject header raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    bounce, exc = _call(R._bounce_of, subject, raw)
+    if exc is not None:
+        raise Crash("exception", f"_bounce_of raised {type(exc).__name__}: "
+                    f"{_short(exc)}")
+    if bounce is not None and not isinstance(bounce, str):
+        raise Crash("shape", f"_bounce_of returned {type(bounce).__name__}")
+    body, exc = _call(R.get_text_body, msg)
+    if exc is not None:
+        raise Crash("exception", "get_text_body raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if not isinstance(body, str):
+        raise Crash("shape", f"get_text_body returned {type(body).__name__}")
+    ext = _email_extension()
+    got, exc = _call(ext._subject_body, raw)
+    if exc is not None:
+        raise Crash("exception", "_subject_body raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if not (isinstance(got, tuple) and len(got) == 2
+            and all(isinstance(x, str) for x in got)):
+        raise Crash("shape", "_subject_body returned "
+                    f"{type(got).__name__}")
+    if got != (subject, body):
+        raise Crash("agreement", "the email extension reads a different "
+                    "subject or body than the core from one message")
+    target, exc = _call(ext.reply_target, body, MAILBOX)
+    if exc is not None:
+        raise Crash("exception", "reply_target raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if not isinstance(target, str):
+        raise Crash("shape", f"reply_target returned {type(target).__name__}")
+    if target != MAILBOX and (len(target) > 254
+                              or not MB._REPLY_TO_RE.match(target)):
+        raise Crash("contract", "reply_target returned an address that "
+                    f"is neither the mailbox nor a valid reply_to: "
+                    f"{target[:60]!r}")
+    if target != MAILBOX and target not in body:
+        raise Crash("contract", "reply_target returned an address that "
+                    "is not inside the body")
+    accepted = bool(_JOB_SUBJECT.search(subject)) and bool(body.strip()) \
+        and bounce is None
+    return "accepted" if accepted else "refused"
+
+
 # ------------------------------------------------------------------
 # Seeds: suite-style fixtures, invented names only
 # ------------------------------------------------------------------
@@ -814,6 +907,100 @@ def _seeds_stash():
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
+def _mail(subject, body, *, headers=(), multipart=False,
+          attachment=None, nested=False, encoding=None):
+    """One RFC 822 message as text, built by hand so the shapes are
+    the shapes a provider delivers: the Subject, an invented sender
+    and recipient, a Message-ID, then the body as a single part, a
+    multipart/alternative, a multipart with an attachment, or a
+    part nested one level down."""
+    lines = ["From: Sender <sender@example.com>",
+             "To: Runner <runner@example.com>",
+             "Message-ID: <bm-0001@example.com>",
+             "Date: Mon, 26 Oct 2026 12:00:00 +0000",
+             "Subject: " + subject, "MIME-Version: 1.0"]
+    lines.extend(headers)
+    if not multipart and attachment is None and not nested:
+        if encoding == "base64":
+            import base64
+            lines.append("Content-Type: text/plain; charset=utf-8")
+            lines.append("Content-Transfer-Encoding: base64")
+            data = base64.b64encode(body.encode("utf-8")).decode("ascii")
+            return "\r\n".join(lines) + "\r\n\r\n" + data + "\r\n"
+        lines.append("Content-Type: text/plain; charset=utf-8")
+        return "\r\n".join(lines) + "\r\n\r\n" + body + "\r\n"
+    boundary = "bm-boundary-0001"
+    lines.append(f'Content-Type: multipart/mixed; boundary="{boundary}"')
+    parts = []
+    if nested:
+        inner = "bm-boundary-0002"
+        parts.append(f'Content-Type: multipart/alternative; '
+                     f'boundary="{inner}"\r\n\r\n--{inner}\r\n'
+                     f'Content-Type: text/plain; charset=utf-8\r\n\r\n'
+                     f'{body}\r\n--{inner}\r\n'
+                     f'Content-Type: text/html\r\n\r\n<p>{body}</p>'
+                     f'\r\n--{inner}--\r\n')
+    else:
+        parts.append("Content-Type: text/plain; charset=utf-8\r\n\r\n"
+                     + body + "\r\n")
+        if multipart:
+            parts.append("Content-Type: text/html\r\n\r\n<p>" + body
+                         + "</p>\r\n")
+    if attachment is not None:
+        parts.append('Content-Type: application/octet-stream\r\n'
+                     'Content-Disposition: attachment; filename="a.bin"\r\n'
+                     'Content-Transfer-Encoding: base64\r\n\r\n'
+                     + attachment + "\r\n")
+    text = "\r\n".join(lines) + "\r\n\r\n"
+    for part in parts:
+        text += f"--{boundary}\r\n" + part
+    return text + f"--{boundary}--\r\n"
+
+
+def seeds_mail():
+    signed = V.sign_payload(_job(script="echo mail"), SECRET)
+    with_reply = V.sign_payload(_job(reply_to="ops@example.com"), SECRET)
+    subject = "[HOMING-PIGEON] job bm-exec-0001"
+    out = [
+        ("plain", _mail(subject, signed)),
+        ("multipart", _mail(subject, signed, multipart=True)),
+        ("nested", _mail(subject, signed, nested=True)),
+        ("attachment", _mail(subject, signed, attachment="AAEC")),
+        ("base64_body", _mail(subject, signed, encoding="base64")),
+        ("truncated_base64", _mail(subject, signed,
+                                   attachment="AAECAwQFBgcICQ")),
+        ("encoded_word_subject",
+         _mail("=?utf-8?q?=5BHOMING-PIGEON=5D_job_bm-exec-0001?=", signed)),
+        ("encoded_word_b64",
+         _mail("=?utf-8?b?W0hPTUlORy1QSUdFT05dIGpvYiBibS1leGVjLTAwMDE=?=",
+               signed)),
+        ("duplicate_headers",
+         _mail(subject, signed,
+               headers=["Subject: [HOMING-PIGEON] job bm-exec-0002",
+                        "Content-Type: text/html"])),
+        ("reply_to_inside", _mail(subject, with_reply)),
+        ("reply_to_header_only",
+         _mail(subject, signed, headers=["Reply-To: spoof@example.net"])),
+        ("result_subject",
+         _mail("[HOMING-PIGEON] result bm-exec-0001", signed)),
+        ("bounce_subject",
+         _mail("Undeliverable: [HOMING-PIGEON] result bm-exec-0001",
+               "The message could not be delivered.")),
+        ("bounce_report",
+         _mail("Returned mail", "delivery-status",
+               headers=["Content-Type: multipart/report; "
+                        "report-type=delivery-status; boundary=\"x\""])),
+        ("no_subject", _mail("", signed)),
+        ("empty_body", _mail(subject, "")),
+        ("latin1_bytes", _mail(subject, signed) + "\udce9\udce8\r\n"),
+        ("preamble_and_quote",
+         _mail(subject, "On Monday the connector wrote:\n\n> " + signed)),
+        ("not_mail", "just some text, no headers at all"),
+        ("empty", ""),
+    ]
+    return [make_entry("text", t, "seed:" + n, "seed") for n, t in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -961,6 +1148,105 @@ def t_resign(rng, text, corpus):
 TEXT_MUTATORS = [t_truncate, t_drop, t_insert, t_replace_char, t_duplicate,
                  t_splice, t_sig_tamper, t_fake_marker, t_wrap, t_crlf,
                  t_control, t_case, t_number, t_brace, t_resign]
+
+_MAIL_DICT = ["Subject: ", "Content-Type: text/plain", "Content-Type: "
+              "multipart/mixed; boundary=\"bm-boundary-0001\"",
+              "Content-Transfer-Encoding: base64", "Content-Transfer-"
+              "Encoding: quoted-printable", "charset=utf-8",
+              "charset=iso-8859-1", "=?utf-8?q?", "=?utf-8?b?", "?=",
+              "--bm-boundary-0001", "--bm-boundary-0001--", "\r\n\r\n",
+              "\r\n", "\n", ": ", ";", "boundary=", "filename=\"x\"",
+              "Content-Disposition: attachment", "Reply-To: ",
+              "[HOMING-PIGEON]", " job ", " result ", "Undeliverable: ",
+              "multipart/report; report-type=delivery-status",
+              "MIME-Version: 1.0", "=\r\n", "=E2=80=8B", "\x00", "\udcff"]
+
+
+def _mail_lines(text):
+    return text.split("\r\n") if "\r\n" in text else text.split("\n")
+
+
+def m_drop_header(rng, text, corpus):
+    head, sep, body = text.partition("\r\n\r\n")
+    if not sep:
+        return text
+    lines = head.split("\r\n")
+    if len(lines) < 2:
+        return text
+    del lines[rng.randrange(len(lines))]
+    return "\r\n".join(lines) + sep + body
+
+
+def m_duplicate_header(rng, text, corpus):
+    head, sep, body = text.partition("\r\n\r\n")
+    if not sep:
+        return text
+    lines = head.split("\r\n")
+    line = rng.choice(lines)
+    lines.insert(rng.randint(0, len(lines)), line)
+    return "\r\n".join(lines) + sep + body
+
+
+def m_insert_header(rng, text, corpus):
+    head, sep, body = text.partition("\r\n\r\n")
+    if not sep:
+        return rng.choice(_MAIL_DICT) + "\r\n\r\n" + text
+    lines = head.split("\r\n")
+    lines.insert(rng.randint(0, len(lines)), rng.choice(_MAIL_DICT)
+                 + rng.choice(["", "x", "bm", "\"", "=", "?", " "]))
+    return "\r\n".join(lines) + sep + body
+
+
+def m_mail_token(rng, text, corpus):
+    i = _pos(rng, text)
+    return text[:i] + rng.choice(_MAIL_DICT) + text[i:]
+
+
+def m_break_boundary(rng, text, corpus):
+    if "bm-boundary" not in text:
+        return text
+    pick = rng.choice([("--bm-boundary-0001--", "--bm-boundary-0001"),
+                       ("--bm-boundary-0001", "--bm-boundary-0002"),
+                       ('boundary="bm-boundary-0001"', 'boundary=""'),
+                       ("--bm-boundary-0001\r\n", "")])
+    return text.replace(pick[0], pick[1], 1)
+
+
+def m_truncate_part(rng, text, corpus):
+    head, sep, body = text.partition("\r\n\r\n")
+    if not sep or not body:
+        return text
+    return head + sep + body[:rng.randrange(len(body))]
+
+
+def m_fold_header(rng, text, corpus):
+    head, sep, body = text.partition("\r\n\r\n")
+    if not sep:
+        return text
+    lines = head.split("\r\n")
+    i = rng.randrange(len(lines))
+    if len(lines[i]) < 4:
+        return text
+    j = rng.randrange(1, len(lines[i]))
+    lines[i] = lines[i][:j] + "\r\n " + lines[i][j:]
+    return "\r\n".join(lines) + sep + body
+
+
+def m_blank_line(rng, text, corpus):
+    """Move or remove the header/body blank line."""
+    if "\r\n\r\n" not in text:
+        return text
+    head, sep, body = text.partition("\r\n\r\n")
+    pick = rng.random()
+    if pick < 0.5:
+        return head + "\r\n" + body
+    return head + sep + "\r\n" + body
+
+
+MAIL_MUTATORS = [m_drop_header, m_duplicate_header, m_insert_header,
+                 m_mail_token, m_break_boundary, m_truncate_part,
+                 m_fold_header, m_blank_line, t_truncate, t_duplicate,
+                 t_splice, t_control, t_case, t_crlf]
 
 _VALUES = [None, True, False, 0, -1, 1, 2 ** 31, 2 ** 63, 2 ** 64, -2 ** 63,
            1.5, -0.0, 1e308, "", " ", "x", "0", "Z", "job", "sensor_alert",
@@ -1148,7 +1434,7 @@ def mutate(rng, entry, corpus, target):
     """One child of an entry: (data, mutator name), or None when the
     mutation is a no-op or breaks the size caps."""
     if entry["kind"] == "text":
-        mut = rng.choice(TEXT_MUTATORS)
+        mut = rng.choice(MAIL_MUTATORS if target == "mail" else TEXT_MUTATORS)
         data = mut(rng, entry["data"], corpus)
         name = mut.__name__
         if len(data.encode("utf-8", "surrogatepass")) > MAX_TEXT:
@@ -1193,6 +1479,10 @@ TARGETS = {
               "check": check_local, "seeds": seeds_local},
     "stash": {"files": [_src("runner.py")], "check": check_stash,
               "seeds": seeds_stash},
+    "mail": {"files": [_src("runner.py"), _src("ops", "mail.py"),
+                       _src("wire", "mailbox.py"),
+                       _src("transport_extensions", "email", "__main__.py")],
+             "check": check_mail, "seeds": seeds_mail},
 }
 
 

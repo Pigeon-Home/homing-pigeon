@@ -16,6 +16,21 @@ facts a reader may need to cite. Git history carries the rest.
   pretty-printed form. `stats` reads the run records and marks a
   target saturated when its last grow kept nothing and reached no
   new arc.
+- **blueMonday's seventh target: the mail path (Q65).** `mail`
+  holds the readers that choose the text a verifier will see, on
+  one raw RFC 822 message: the core's subject, bounce check and
+  `get_text_body`, the email extension's `_subject_body` and
+  `reply_target` with `mailbox._valid_reply_to`. Contract: none
+  raises, the extension reads the same subject and body as the
+  core, and the reply target is the mailbox or a plain address from
+  inside the body's JSON, never anything a header said. Twenty
+  seeds in the structural shapes (plain, multipart, nested, an
+  attachment, a base64 body, a truncated base64 part, encoded-word
+  subjects, duplicate headers, a reply-to inside the body and one
+  only in a header, bounces, bytes that are not UTF-8) and
+  structural mutators (a header dropped, duplicated, folded or
+  inserted, a boundary broken, a part truncated, the blank line
+  moved). A first grow of 40,000 rounds found no crash.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.50 - 2026-10-26

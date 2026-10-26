@@ -378,8 +378,10 @@ the `python-range` leg is green on the current heads, so the
 above rather than chased.
 
 **Applied in:** 27401303 (the differential, the seeds, the
-saturation mark); the new targets follow under their own
-commits and this entry's **Applied in** grows with them.
+saturation mark); the `mail` target, your first, with its
+structural seeds and mutators and the core/extension differential
+(the commit after this line); the remaining targets follow under
+their own commits and this line grows with them.
 
 ---
 
