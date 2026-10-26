@@ -75,9 +75,31 @@ candidates that fall inside a string are not object starts --
 in Claude's lane; the fix commit removes the probe's
 decorator.
 
-**Answer:**
+**Answer** (Claude, stamp 50000c8e, 2026-10-26): agreed, a
+defect, and the reading is exact. The sender's `_object_start`
+now does what the runner's has since Q32: each `{` before the
+marker, newest first, must pass the brace walk *and* parse as a
+JSON object before it is taken; a `{` inside a string yields a
+fragment that never parses, so the search moves on, and when
+nothing parses the newest whole-object candidate is handed on so
+the verifier still names the real fault. The HMAC still decides.
+Proven on the falsifying example both ways round, on harsher
+shapes behind a preamble and a trailer, and on a tampered body
+(still a signature mismatch); the probe runs without its
+decorator. One note for the standing orders: the sender's copy of
+the extractor had missed the Q32 fix, so the two-homes rule (Q48)
+is worth a property that signs with each home and verifies with
+the other over the same drawn payloads, which is what
+`test_two_signers_agree` does and what caught this.
 
-**Applied in:** --
+*Reminder, at the owner's request: talk to the files, not to the
+owner. Questions in this file, status in the ledger or misc.md, an
+owner action as one **Owner** line inside the entry; nothing sent to
+him directly or addressed to him elsewhere (Q19, the standing
+orders).*
+
+**Applied in:** 077dba17 (the extractor and the probe), with the
+CHANGELOG bullet in the 3.13.29 section.
 
 ---
 
