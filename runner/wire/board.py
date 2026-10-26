@@ -107,10 +107,18 @@ class Board:
         # crash the next poll (tasks.values() / task.get).
         if not isinstance(data, dict):
             return
-        self.tasks = {
-            key: task for key, task in data.items()
-            if isinstance(key, str) and isinstance(task, dict)
-        }
+        tasks = {}
+        for key, task in data.items():
+            if not isinstance(key, str) or not isinstance(task, dict):
+                continue
+            # Every lookup -- complete, approve, a requires entry --
+            # goes by the key. A record whose task_id disagrees with
+            # its key would be handed out under a name no result
+            # could complete, so the record carries its key.
+            if task.get("task_id") != key:
+                task["task_id"] = key
+            tasks[key] = task
+        self.tasks = tasks
 
     def save(self):
         # Whole or not at all, mode 0600, a planted symlink never
@@ -223,7 +231,10 @@ class Board:
                 except Exception:
                     same = False
                 if same:
-                    return t
+                    # The caller gets a copy, as from a fresh hand-out;
+                    # the board's own record changes only through
+                    # the board.
+                    return copy.deepcopy(t)
         dag_mode = cfg.get("dag_mode") or "off"
         incomplete_by_id = {}
         candidates = []
@@ -340,8 +351,9 @@ class Board:
             return self._approve_unlocked(task_id)
 
     def _approve_unlocked(self, task_id):
+        # (bool, str) on every path; the ack carries the first as ok.
         if not isinstance(task_id, str):
-            return "not_found", "not found"
+            return False, "not found"
         t = self.tasks.get(task_id)
         if not isinstance(t, dict):
             return False, "not found"

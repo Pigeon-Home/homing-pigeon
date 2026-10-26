@@ -4,6 +4,65 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.52 - 2026-10-26
+
+- **blueMonday's eighth target: DTLS (Q66).** `dtls` holds one
+  datagram against `runner/wire/dtlsproto.py`: `_split_records`
+  and `_parse_handshake` never raise, a complete handshake
+  message is handed to the extension, hello, key-share and PSK
+  readers (which refuse with `DtlsError` or `JobCryptoError` and
+  nothing else), and `DtlsServerCore.feed` returns datagrams and
+  never raises. Seeds are a sealed flight built from the module's
+  constructors under invented keys (ClientHello with a key share
+  and a PSK, ServerHello, a sealed Finished), the two-fragment
+  pair, an empty datagram, and a plaintext record whose length
+  claims more than the datagram holds. The mutators are the
+  record's own, not the text set. A grow of 20,000 rounds found
+  no crash: 19 entries, 289 arcs.
+- **blueMonday's ninth target: the task board (Q67).** `board`
+  holds one task dict against `runner/wire/board.py`: `submit`,
+  `offer`, `complete`, `approve` and `reoffer_expired` never
+  raise. A task that is not a usable submission is refused and
+  stores nothing; a task that is accepted is offered, a stale
+  claim reopens on a zero lease, and a second complete is a
+  duplicate. A `bm_review` payload finishes through
+  `pending_review`. After every entry a known-good neighbor
+  still completes, and a second board file walks the allowlist
+  miss, the compartment miss, enforce withholding an unmet
+  requirement, and advisory handing it out with the warning.
+  Twenty-four seeds. Two grows of 20,000 rounds filed no crash
+  and kept nothing past the seeds: 24 entries, 249 arcs.
+- **blueMonday's board, under the sequence contract.** `board_ops`
+  holds a board file as a peer or a crash may have left it, then a
+  sequence of peer operations on it -- `submit`, `offer`,
+  `complete`, `approve`, `reoffer_expired` -- on a throwaway path,
+  held after every step: each answers its shape, a task handed out
+  is claimed under the id it carries and is a copy, and the file
+  reads back as the board in memory. Its mutators edit the file,
+  an argument, or the sequence. Three findings, each fixed and
+  pinned: the re-offer of an outstanding claim handed out the
+  board's own record where a fresh hand-out gives a copy; a record
+  whose `task_id` disagreed with its key was handed out under a
+  name no result could complete, so `load` makes the record carry
+  its key; `approve` of a non-string id answered a string where
+  every other path answers `(ok, reason)`, the shape its ack
+  carries.
+- **A repeated object is written twice.** `_json_safe` (the signer's
+  and the board's JSON walk) treated an object that merely appears
+  twice -- under two keys, or twice in a list -- as a cycle and
+  wrote the second occurrence as `null`; a true cycle is still
+  `null`, a repeat is now written twice, which is how JSON reads it
+  back.
+- **A grown child is checked as the corpus will carry it.** The
+  tool reads every payload child back through JSON before the
+  check, so a crash on file always reproduces from the file.
+- **The guard sees a staged test change.** `regression_guard.py`
+  lists the test modules changed against the baseline from the
+  commits since it, the working tree against `HEAD` (staged and
+  unstaged alike) and the untracked files; a change already
+  staged for the commit no longer slips past the pre-push run.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.51 - 2026-10-26
 
 - **The differential, both ways (Q65).** Every `wire` and `cloud`
@@ -31,32 +90,6 @@ facts a reader may need to cite. Git history carries the rest.
   structural mutators (a header dropped, duplicated, folded or
   inserted, a boundary broken, a part truncated, the blank line
   moved). A first grow of 40,000 rounds found no crash.
-- **blueMonday's eighth target: DTLS (Q66).** `dtls` holds one
-  datagram against `runner/wire/dtlsproto.py`: `_split_records`
-  and `_parse_handshake` never raise, a complete handshake
-  message is handed to the extension, hello, key-share and PSK
-  readers (which refuse with `DtlsError` or `JobCryptoError` and
-  nothing else), and `DtlsServerCore.feed` returns datagrams and
-  never raises. Seeds are a sealed flight built from the module's
-  constructors under invented keys (ClientHello with a key share
-  and a PSK, ServerHello, a sealed Finished), the two-fragment
-  pair, an empty datagram, and a plaintext record whose length
-  claims more than the datagram holds. The mutators are the
-  record's own, not the text set. A grow of 20,000 rounds found
-  no crash: 19 entries, 289 arcs.
-- **blueMonday's ninth target: the task board (Q67).** `board`
-  holds one task dict against `runner/wire/board.py`: `submit`,
-  `offer`, `complete`, `approve` and `reoffer_expired` never
-  raise. A task that is not a usable submission is refused and
-  stores nothing; a task that is accepted is offered, a stale
-  claim reopens on a zero lease, and a second complete is a
-  duplicate. A `bm_review` payload finishes through
-  `pending_review`. After every entry a known-good neighbor
-  still completes, and a second board file walks the allowlist
-  miss, the compartment miss, enforce withholding an unmet
-  requirement, and advisory handing it out with the warning.
-  Twenty-four seeds. Two grows of 20,000 rounds filed no crash
-  and kept nothing past the seeds: 24 entries, 249 arcs.
 - **The blueMonday plan.** `docs/project/bluemonday.md`: the
   campaign the conductor runs indefinitely, written down whole --
   what it is for, the instrument, the surface with every reader of

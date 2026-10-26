@@ -97,6 +97,7 @@ peer on the wire reaches first.
 | 7 | `mail` | `runner/runner.py`: `get_text_body`, `_bounce_of`, the subject's job id; the email extension's `_subject_body`, `reply_target`; `runner/wire/mailbox.py`: `_valid_reply_to` | in the corpus |
 | 8 | `dtls` | `runner/wire/dtlsproto.py`: `_split_records`, `_parse_handshake`, `_parse_extensions`, the hello and key-share readers, `DtlsServerCore.feed` | in the corpus (Q66) |
 | 9 | `board` | `runner/wire/board.py`: `submit`, `offer`, `complete`, `approve`, `reoffer_expired` | in the corpus (Q67) |
+| 9b | `board_ops` | `runner/wire/board.py` under the sequence contract: a board file and `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order over it | in the corpus |
 | 10 | `channels` | `runner/wire/transports.py`: `fetch_channel_messages` over a throwaway directory, with the sequence kind | the desk |
 | 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | the desk |
 
@@ -139,9 +140,14 @@ never files a refusal as a crash.
 - **Provenance.** A reply target is the mailbox or a single plain
   address from inside the signed body, never anything a header
   said.
-- **Sequence** (to come with `channels` and `local`): a bad
-  message stores nothing, and the next good one in the same poll
-  or directory still does; the entry is the pair.
+- **Sequence** (`board_ops` now; `channels` and `local` to come):
+  the entry is the file as it was left plus the operations in
+  order, and the contract holds after every step -- for the
+  board, every operation answers its shape, a task handed out is
+  claimed under the id it carries and is a copy, and the file
+  reads back as the board in memory; for the readers, a bad
+  message stores nothing and the next good one in the same poll
+  or directory still does.
 - **Reserved slots.** `sig` is the protocol's; a payload carrying
   its own is read back with the slot overwritten by the keyed
   reader and kept by the plain one, and neither is a disagreement.
@@ -234,8 +240,9 @@ nothing is still the record that those rounds were run.
 - **Phase 1 (done 2026-10-26):** the six verifier targets, the
   mail path, the differential both ways, the records in the tree,
   the continuous grow, the proof-of-work rules.
-- **Phase 2 (in flight):** DTLS (Grok), the board, the channel
-  readers with the sequence contract, the manifest reader.
+- **Phase 2 (in flight):** DTLS (Grok), the board (Grok's on one
+  task, the desk's on the sequence), the channel readers with the
+  sequence contract, the manifest reader.
 - **Phase 3:** the sequence contract on `local`; the provenance
   contract on every reader that names a destination; cross-platform
   replay findings (a reader that reads differently on Windows is a

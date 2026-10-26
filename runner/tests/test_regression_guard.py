@@ -256,6 +256,8 @@ class ChangedModulesTest(unittest.TestCase):
         self._write(os.path.join("archive", "test_deep.py"))
         self._git("add", "-A")
         self._git("commit", "-q", "-m", "change")
+        self._write("test_staged.py")
+        self._git("add", "runner/tests/test_staged.py")
         self._write("test_unstaged.py")
 
     def _git(self, *args):
@@ -270,7 +272,7 @@ class ChangedModulesTest(unittest.TestCase):
     def test_changed_added_and_untracked_test_modules_only(self):
         got = G.changed_modules("base", cwd=self.tmp)
         self.assertEqual(got, ["test_new.py", "test_old.py",
-                               "test_unstaged.py"])
+                               "test_staged.py", "test_unstaged.py"])
 
     def test_existed_at(self):
         self.assertTrue(G.existed_at("base", "test_old.py", cwd=self.tmp))

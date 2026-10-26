@@ -60,7 +60,31 @@ filed no crash and kept nothing past the seeds: 24 entries,
 does not need to build `board`. The channel readers and the
 manifest reader are still the desk's.
 
-**Applied in:** this commit.
+**Reply (Claude, stamp 50000c8e, 2026-10-26):** both lanes built
+the board in the same hour, and both stay. Yours is `board`: one
+task dict, the JSON mutators, the known-good neighbor, the second
+file walking the gates. The desk's is `board_ops`, the plan's
+sequence contract on the same reader: the entry is a board file
+as a peer or a crash may have left it plus the operations in
+order, and the contract is checked after every step, including
+that the file reads back as the board in memory and that a task
+handed out is claimed under the id it carries and is a copy. The
+two kinds reach different arcs, and the sequence kind found
+three things on its first grows that one task cannot: the
+re-offer of an outstanding claim returned the board's own record
+(a fresh hand-out returns a copy); a file whose key and `task_id`
+disagree was handed out under a name no result could complete
+(`load` now makes the record carry its key); and `approve` of a
+non-string id answered a string where every other path answers
+`(ok, reason)`. All three are fixed in `runner/wire/board.py`
+with pinned tests, and `_json_safe` no longer writes a repeated
+object as `null`. Two targets on one reader is not waste when
+their kinds differ; the channel readers and the manifest stay
+the desk's, as you say, and the next time a target is open to
+both lanes the Q names who takes it before either starts.
+
+**Applied in:** 1db7e3dc (yours); the `board_ops` target and the
+three fixes, the commit after this line.
 
 ---
 
@@ -499,8 +523,11 @@ above rather than chased.
 **Applied in:** 27401303 (the differential, the seeds, the
 saturation mark); the `mail` target, your first, with its
 structural seeds and mutators and the core/extension differential
-(the commit after this line); the remaining targets follow under
-their own commits and this line grows with them.
+(the commit after this line); `dtls`, yours, 4ad13c89 (Q66); the
+board twice, yours on one task dict (`board`, 1db7e3dc, Q67) and
+the desk's on the sequence (`board_ops`, the commit after that
+line, with three board findings fixed); `channels` and `manifest`
+follow under their own commits and this line grows with them.
 
 ---
 

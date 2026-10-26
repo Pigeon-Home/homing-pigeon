@@ -15,31 +15,33 @@ def _json_safe(value, _seen=None):
     """Replace NaN and Infinity. json.dumps emits them, and they are not JSON.
 
     A circular object used to recurse until RecursionError. That
-    retried the job forever. A repeat is null.
+    retried the job forever. A cycle is null. An object that merely
+    appears twice, under two keys or twice in a list, is written
+    twice, which is how JSON reads it back.
     """
+    if isinstance(value, float):
+        if value != value or value in (float("inf"), float("-inf")):
+            return None
+        return value
     if isinstance(value, (dict, list, tuple, set, frozenset)):
         if _seen is None:
             _seen = set()
         if id(value) in _seen:
             return None
         _seen.add(id(value))
-    if isinstance(value, float):
-        if value != value or value in (float("inf"), float("-inf")):
-            return None
-        return value
-    if isinstance(value, dict):
-        out = {}
-        for k, v in value.items():
-            try:
-                key = k if isinstance(k, str) else str(k)
-            except Exception:
-                key = "key"
-            out[key] = _json_safe(v, _seen)
-        return out
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(v, _seen) for v in value]
-    if isinstance(value, (set, frozenset)):
-        return [_json_safe(v, _seen) for v in value]
+        try:
+            if isinstance(value, dict):
+                out = {}
+                for k, v in value.items():
+                    try:
+                        key = k if isinstance(k, str) else str(k)
+                    except Exception:
+                        key = "key"
+                    out[key] = _json_safe(v, _seen)
+                return out
+            return [_json_safe(v, _seen) for v in value]
+        finally:
+            _seen.discard(id(value))
     if isinstance(value, (bytes, bytearray)):
         return bytes(value).decode("utf-8", "replace")
     if isinstance(value, (str, int, bool)) or value is None:

@@ -18,6 +18,7 @@ One JSON-lines file per target, grown by
 | `mail.jsonl`   | the mail path that chooses the text (Q65): `get_text_body`, `_bounce_of` and the subject's job id in the core; the email extension's `_subject_body` and `reply_target` with `mailbox._valid_reply_to`; the extension must read the same subject and body as the core |
 | `dtls.jsonl`   | `runner/wire/dtlsproto.py` (Q66): `_split_records`, `_parse_handshake`, and, when a complete handshake message parses, `_parse_extensions`, the hello parsers, the key-share and PSK readers; `DtlsServerCore.feed` on the same datagram |
 | `board.jsonl`  | `runner/wire/board.py` (Q67): `submit`, `offer`, `complete`, `approve`, `reoffer_expired` on one task dict; a refusal stores nothing, and a known-good neighbor submitted after it still runs |
+| `board_ops.jsonl` | `runner/wire/board.py`, the sequence kind: a board file as a peer or a crash left it, then `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order on a throwaway path, the contract held after every step |
 
 The first line of each file is a header; every other line is one
 entry: `id` (a hash of the kind and the data), `kind` (`text`, a
@@ -70,6 +71,20 @@ way a known-good neighbor task submitted next still completes.
 The board file is a private temp directory and does not outlive
 the check.
 
+A `board_ops` entry's data is `{"file", "ops"}`: the board file's
+text (or `null` for no file) and the operations in order, each
+`["submit", task]`, `["offer", worker_id, capabilities, key_id,
+cfg]`, `["complete", task_id, result, require_review]`,
+`["approve", task_id]` or `["reoffer", task_timeout]`. Accepted
+means some operation took effect. Its mutators edit the file text
+(the text set over the JSON), one operation's argument (the
+payload set), or the sequence itself (an operation dropped,
+repeated, swapped with its neighbour, or borrowed from another
+entry). After every step each operation has answered its shape --
+`(bool, str)`, a task copy or `None`, `(status, str)`, a count --
+a task handed out is claimed under the id it carries and is a
+copy, and the file reads back as the board in memory.
+
 The refusal types, so a grow never files one as a crash (Q63):
 for the verifiers (`wire`, `cloud`, `v2`) the refusal is
 `ValueError`, raised, not returned -- an unknown `key_id` from
@@ -81,4 +96,5 @@ never raise, and the extension and hello readers refuse with
 `DtlsError` or `JobCryptoError`. The board methods never raise:
 a bad task is a `(False, reason)` from `submit` and stores
 nothing. A raise of any other type, or a `ValueError` escaping
-`local`, `stash`, `mail`, `dtls` or `board`, is a crash.
+`local`, `stash`, `mail`, `dtls`, `board` or `board_ops`, is a
+crash.

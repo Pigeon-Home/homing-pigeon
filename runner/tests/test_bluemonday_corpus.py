@@ -91,6 +91,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_board(self):
         self._check("board")
 
+    def test_board_ops(self):
+        self._check("board_ops")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes

@@ -126,11 +126,12 @@ def module_name(path):
 
 
 def changed_modules(since, cwd=ROOT):
-    """Test modules changed or added against `since`, from git."""
+    """Test modules changed or added against `since`, from git:
+    committed since it, staged, unstaged, or untracked."""
     names = set()
     for args in (["git", "diff", "--name-only", since + "...HEAD", "--",
                   TESTS_GIT],
-                 ["git", "diff", "--name-only", "--", TESTS_GIT],
+                 ["git", "diff", "--name-only", "HEAD", "--", TESTS_GIT],
                  ["git", "ls-files", "--others", "--exclude-standard",
                   TESTS_GIT]):
         try:

@@ -32,6 +32,11 @@ delivered body and the agent's trust in it:
                                          DtlsServerCore.feed
     board   runner/wire/board.py         submit, offer, complete,
                                          approve, reoffer_expired
+    board_ops  runner/wire/board.py      Board: load, submit, offer,
+                                         complete, approve,
+                                         reoffer_expired -- a board
+                                         file and a sequence of peer
+                                         operations on it
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -76,6 +81,7 @@ and <target>.arcs.json is the arc map the corpus reaches after it,
 so every run is in the history and replayable from its seed.
 """
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -103,6 +109,7 @@ from runner.wire import verify as V  # noqa: E402
 from runner.wire import board as BD  # noqa: E402
 from runner.wire import dtlsproto as DT  # noqa: E402
 from runner.wire import mailbox as MB  # noqa: E402
+from runner.wire import board as BD  # noqa: E402
 import runner.runner as R  # noqa: E402
 
 STAMP = "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"
@@ -731,6 +738,141 @@ def check_dtls(entry):
         raise Crash("shape", "DtlsServerCore.feed returned "
                     f"{type(out).__name__}")
     return "accepted" if accepted else "refused"
+_BOARD_STATUSES = {"not_found", "duplicate", "not_claimed", "pending_review",
+                   "done"}
+_BOARD_OPS = ("submit", "offer", "complete", "approve", "reoffer")
+
+
+def check_board_ops(entry):
+    """board_ops: a board file as a peer or a crash may have left it, then
+    a sequence of peer operations on it -- submit(task),
+    offer(worker_id, capabilities, key_id, cfg), complete(task_id,
+    result, require_review), approve(task_id),
+    reoffer(task_timeout) -- on a throwaway board path. Contract:
+    loading never raises and leaves a dict of dict tasks, each
+    carrying its key as task_id; submit and approve answer (bool,
+    str); offer answers a task dict or None, and a task it hands
+    out is claimed on the board under the id it carries and is a
+    copy; complete answers (status, str) with a known status;
+    reoffer_expired answers a count; nothing raises; the board file
+    reads back as the board in memory after every step."""
+    spec = entry["data"]
+    if not isinstance(spec, dict):
+        raise Crash("corpus", "a board_ops entry's data must be an object")
+    with mock.patch.object(BD, "log", lambda *a, **k: None), \
+            mock.patch.object(BD, "vlog", lambda *a, **k: None):
+        return _board_sequence(spec)
+
+
+def _board_sequence(spec):
+    base = tempfile.mkdtemp(prefix="hp-bluemonday-board-")
+    try:
+        path = os.path.join(base, "board.json")
+        text = spec.get("file")
+        if isinstance(text, str):
+            # Bytes that are not UTF-8 ride as surrogates in the
+            # corpus; the board reads the file as UTF-8 and must
+            # treat what does not decode as no board at all.
+            with open(path, "wb") as fh:
+                fh.write(text.encode("utf-8", "surrogatepass"))
+        board, exc = _call(BD.Board, path)
+        if exc is not None:
+            raise Crash("exception", f"Board() raised {type(exc).__name__}: "
+                        f"{_short(exc)}")
+        if not isinstance(board.tasks, dict) or not all(
+                isinstance(k, str) and isinstance(v, dict)
+                for k, v in board.tasks.items()):
+            raise Crash("shape", "the board loaded something other than "
+                        "a dict of dict tasks")
+        ops = spec.get("ops")
+        if not isinstance(ops, list):
+            ops = []
+        accepted = False
+        for op in ops:
+            if not isinstance(op, list) or not op or op[0] not in _BOARD_OPS:
+                continue
+            name, args = op[0], op[1:]
+            if name == "submit":
+                got, exc = _call(board.submit, *args[:1])
+                if exc is not None:
+                    raise Crash("exception", "submit raised "
+                                f"{type(exc).__name__}: {_short(exc)}")
+                if not (isinstance(got, tuple) and len(got) == 2
+                        and isinstance(got[0], bool)
+                        and isinstance(got[1], str)):
+                    raise Crash("shape", f"submit returned {got!r}"[:200])
+                if got[0]:
+                    accepted = True
+                    task = args[0] if args else None
+                    tid = task.get("task_id") if isinstance(task, dict) \
+                        else None
+                    stored = board.tasks.get(tid)
+                    if not isinstance(stored, dict) \
+                            or stored.get("state") != "open":
+                        raise Crash("contract", "submit said ok but the "
+                                    "task is not open on the board")
+            elif name == "offer":
+                got, exc = _call(board.offer, *args[:4])
+                if exc is not None:
+                    raise Crash("exception", "offer raised "
+                                f"{type(exc).__name__}: {_short(exc)}")
+                if got is not None:
+                    if not isinstance(got, dict):
+                        raise Crash("shape", "offer returned "
+                                    f"{type(got).__name__}")
+                    tid = got.get("task_id")
+                    stored = board.tasks.get(tid)
+                    if not isinstance(stored, dict) \
+                            or stored.get("state") != "claimed":
+                        raise Crash("contract", "offer handed out a task "
+                                    "that is not claimed on the board")
+                    if stored is got:
+                        raise Crash("contract", "offer handed out the "
+                                    "board's own task object, not a copy")
+                    accepted = True
+            elif name == "complete":
+                got, exc = _call(board.complete, *args[:3])
+                if exc is not None:
+                    raise Crash("exception", "complete raised "
+                                f"{type(exc).__name__}: {_short(exc)}")
+                if not (isinstance(got, tuple) and len(got) == 2
+                        and got[0] in _BOARD_STATUSES
+                        and isinstance(got[1], str)):
+                    raise Crash("shape", f"complete returned {got!r}"[:200])
+                if got[0] == "done":
+                    accepted = True
+            elif name == "approve":
+                got, exc = _call(board.approve, *args[:1])
+                if exc is not None:
+                    raise Crash("exception", "approve raised "
+                                f"{type(exc).__name__}: {_short(exc)}")
+                if not (isinstance(got, tuple) and len(got) == 2
+                        and isinstance(got[0], bool)
+                        and isinstance(got[1], str)):
+                    raise Crash("shape", f"approve returned {got!r}"[:200])
+                if got[0]:
+                    accepted = True
+            elif name == "reoffer":
+                got, exc = _call(board.reoffer_expired, *args[:1])
+                if exc is not None:
+                    raise Crash("exception", "reoffer_expired raised "
+                                f"{type(exc).__name__}: {_short(exc)}")
+                if not isinstance(got, int) or isinstance(got, bool) \
+                        or got < 0:
+                    raise Crash("shape", "reoffer_expired returned "
+                                f"{got!r}"[:200])
+            again, exc = _call(BD.Board, path)
+            if exc is not None:
+                raise Crash("exception", "the board file no longer loads "
+                            f"after {name}: {type(exc).__name__}: "
+                            f"{_short(exc)}")
+            if again.tasks != board.tasks and os.path.exists(path):
+                # What save wrote is what load reads back.
+                raise Crash("roundtrip", f"the board file after {name} "
+                            "does not read back as the board in memory")
+        return "accepted" if accepted else "refused"
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
 
 
 # ------------------------------------------------------------------
@@ -1217,6 +1359,98 @@ def seeds_dtls():
     ]
     return [make_entry("text", _dtls_text(blob), "seed:" + name, "seed")
             for name, blob in out]
+def _task(tid="bm-task-0001", **extra):
+    task = {"task_id": tid, "priority": 1, "requires": [],
+            "capabilities": ["shell"], "compartments": [],
+            "payload": {"script": "echo task"}}
+    task.update(extra)
+    return task
+
+
+def _board_file(*tasks):
+    return json.dumps({t["task_id"]: t for t in tasks}, indent=2)
+
+
+def seeds_board_ops():
+    cfg = {"worker_allowlist": ["worker-a", "worker-b"],
+           "worker_compartments": {"worker-a": ["blue"]},
+           "dag_mode": "enforce"}
+    claimed = dict(_task(), state="claimed", claimed_by="worker-a",
+                   submitted_at="2026-10-26T12:00:00+00:00")
+    done = dict(_task("bm-task-0000"), state="done",
+                submitted_at="2026-10-26T11:00:00+00:00")
+    out = [
+        ("happy_path", {"file": None, "ops": [
+            ["submit", _task()],
+            ["offer", "worker-a", ["shell"], "ops", cfg],
+            ["complete", "bm-task-0001", {"exit_code": 0, "stdout": "task"}]]}),
+        ("duplicate_submit", {"file": None, "ops": [
+            ["submit", _task()], ["submit", _task()]]}),
+        ("not_claimed", {"file": None, "ops": [
+            ["submit", _task()], ["complete", "bm-task-0001", {}]]}),
+        ("review", {"file": None, "ops": [
+            ["submit", _task()], ["offer", "worker-b", ["shell"], "", cfg],
+            ["complete", "bm-task-0001", {"exit_code": 0}, True]]}),
+        ("allowlist_refuses", {"file": None, "ops": [
+            ["submit", _task()], ["offer", "nobody", ["shell"], "", cfg]]}),
+        ("capability_gap", {"file": None, "ops": [
+            ["submit", _task(capabilities=["gpu"])],
+            ["offer", "worker-a", ["shell"], "", cfg]]}),
+        ("compartment", {"file": None, "ops": [
+            ["submit", _task(compartments=["blue"])],
+            ["submit", _task("bm-task-0002", compartments=["red"])],
+            ["offer", "worker-a", ["shell"], "", cfg],
+            ["offer", "worker-a", ["shell"], "", cfg]]}),
+        ("dag_enforce", {"file": _board_file(done), "ops": [
+            ["submit", _task(requires=["bm-task-0000"])],
+            ["submit", _task("bm-task-0002", requires=["bm-task-0009"])],
+            ["offer", "worker-a", ["shell"], "", cfg],
+            ["offer", "worker-a", ["shell"], "", cfg]]}),
+        ("dag_advisory", {"file": None, "ops": [
+            ["submit", _task(requires=["bm-task-0009"])],
+            ["offer", "worker-a", ["shell"], "", dict(cfg, dag_mode="advisory")]]}),
+        ("reoffer_claim", {"file": _board_file(claimed), "ops": [
+            ["offer", "worker-a", [], "", {}],
+            ["complete", "bm-task-0001", "a string result"]]}),
+        ("priorities", {"file": None, "ops": [
+            ["submit", _task("bm-task-low", priority=0)],
+            ["submit", _task("bm-task-high", priority=9.5)],
+            ["submit", _task("bm-task-neg", priority=-3)],
+            ["offer", "worker-a", ["shell"], "", {}]]}),
+        ("bad_shapes", {"file": None, "ops": [
+            ["submit", "not a task"], ["submit", {"task_id": "../x"}],
+            ["submit", _task(requires="shell")],
+            ["submit", _task(priority="high")],
+            ["offer", {"id": 1}, "shell", None, "cfg"],
+            ["complete", {"task_id": 1}, None],
+            ["complete", "nope", {}]]}),
+        ("file_is_a_list", {"file": "[1, 2, 3]", "ops": [["submit", _task()]]}),
+        ("file_is_garbage", {"file": "{not json", "ops": [
+            ["submit", _task()], ["offer", "worker-a", ["shell"], "", {}]]}),
+        ("file_task_not_dict", {"file": json.dumps({"bm-task-0001": 7,
+                                                    "bm-task-0002": _task(
+                                                        "bm-task-0002")}),
+                               "ops": [["offer", "worker-a", ["shell"], "",
+                                        {}]]}),
+        ("file_requires_dict", {"file": _board_file(
+            _task(requires=[{"x": 1}])), "ops": [
+            ["offer", "worker-a", ["shell"], "", dict(cfg, dag_mode="enforce")]]}),
+        ("approve_review", {"file": None, "ops": [
+            ["submit", _task()], ["offer", "worker-a", ["shell"], "", {}],
+            ["complete", "bm-task-0001", {"exit_code": 0}, True],
+            ["approve", "bm-task-0001"], ["approve", "bm-task-0001"],
+            ["approve", "bm-task-0009"], ["approve", {"task_id": 1}]]}),
+        ("lease_expires", {"file": _board_file(dict(
+            claimed, claimed_at="2020-01-01T00:00:00+00:00")), "ops": [
+            ["reoffer", 60], ["offer", "worker-b", ["shell"], "", {}],
+            ["reoffer", 0], ["reoffer", None], ["reoffer", -5],
+            ["reoffer", True], ["reoffer", "soon"]]}),
+        ("lease_unreadable", {"file": _board_file(dict(
+            claimed, claimed_at="yesterday")), "ops": [
+            ["reoffer", 0], ["offer", "worker-b", ["shell"], "", {}]]}),
+        ("empty", {"file": None, "ops": []}),
+    ]
+    return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
 _BOARD_WORKER = "bm-worker-0001"
@@ -2080,9 +2314,62 @@ def _crypto_mutate(rng, spec, corpus):
     return spec
 
 
+def _board_mutate(rng, spec, corpus):
+    """A board_ops entry's data is {file, ops}. The file text takes the
+    text set (over the ops' own tasks serialized when the entry has
+    no file), an op's argument takes the payload set, and the
+    sequence itself is edited: an op dropped, repeated, swapped with
+    its neighbour, or borrowed from another entry. Answers (spec,
+    name)."""
+    spec = {"file": spec.get("file"), "ops": list(spec.get("ops") or [])}
+    ops = spec["ops"]
+    which = rng.random()
+    if which < 0.25:
+        text = spec["file"]
+        if not isinstance(text, str):
+            text = _board_file(*[op[1] for op in ops
+                                 if len(op) > 1 and op[0] == "submit"
+                                 and isinstance(op[1], dict)
+                                 and isinstance(op[1].get("task_id"), str)])
+        texts = [{"kind": "text", "data": e["data"]["file"]} for e in corpus
+                 if isinstance(e.get("data"), dict)
+                 and isinstance(e["data"].get("file"), str)]
+        mut = rng.choice(TEXT_MUTATORS)
+        spec["file"] = mut(rng, text, texts)
+        return spec, "board_file"
+    if which < 0.65 and ops:
+        i = rng.randrange(len(ops))
+        op = list(ops[i])
+        if len(op) > 1:
+            j = rng.randrange(1, len(op))
+            op[j] = p_mutate(rng, op[j], [])
+        else:
+            op.append(rng.choice(_VALUES))
+        ops[i] = op
+        return spec, "board_arg"
+    edit = rng.choice(("drop", "repeat", "swap", "borrow"))
+    if edit == "drop" and ops:
+        del ops[rng.randrange(len(ops))]
+    elif edit == "repeat" and ops:
+        i = rng.randrange(len(ops))
+        ops.insert(i, copy.deepcopy(ops[i]))
+    elif edit == "swap" and len(ops) > 1:
+        i = rng.randrange(len(ops) - 1)
+        ops[i], ops[i + 1] = ops[i + 1], ops[i]
+    else:
+        pool = [op for e in corpus if isinstance(e.get("data"), dict)
+                for op in (e["data"].get("ops") or [])]
+        if pool:
+            ops.insert(rng.randint(0, len(ops)), copy.deepcopy(rng.choice(pool)))
+        edit = "borrow"
+    return spec, "board_" + edit
+
+
 def mutate(rng, entry, corpus, target):
     """One child of an entry: (data, mutator name), or None when the
-    mutation is a no-op or breaks the size caps."""
+    mutation is a no-op or breaks the size caps. A payload child is
+    read back through JSON before it is checked, so the checker sees
+    exactly what the corpus file will carry."""
     if entry["kind"] == "text":
         if target == "mail":
             pool = MAIL_MUTATORS
@@ -2098,17 +2385,20 @@ def mutate(rng, entry, corpus, target):
     elif target == "crypto":
         data = _crypto_mutate(rng, entry["data"], corpus)
         name = "crypto"
+    elif target == "board_ops":
+        data, name = _board_mutate(rng, entry["data"], corpus)
     else:
         mut = rng.choice(PAYLOAD_MUTATORS)
         data = mut(rng, entry["data"], corpus)
         name = mut.__name__
     if entry["kind"] == "payload":
         try:
-            size = len(json.dumps(data, ensure_ascii=True))
+            text = json.dumps(data, ensure_ascii=True)
         except (TypeError, ValueError, RecursionError):
             return None
-        if size > MAX_PAYLOAD:
+        if len(text) > MAX_PAYLOAD:
             return None
+        data = json.loads(text)
     if data == entry["data"]:
         return None
     return data, name
@@ -2143,6 +2433,8 @@ TARGETS = {
              "seeds": seeds_dtls},
     "board": {"files": [_src("wire", "board.py")], "check": check_board,
               "seeds": seeds_board},
+    "board_ops": {"files": [_src("wire", "board.py")],
+                  "check": check_board_ops, "seeds": seeds_board_ops},
 }
 
 

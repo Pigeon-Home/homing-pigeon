@@ -2042,8 +2042,13 @@ class BoardIdFaultTest(unittest.TestCase):
             board = Board(os.path.join(d, "board.json"))
             status, _why = board.complete({"not": "a string"}, {"ok": True})
             self.assertEqual(status, "not_found")
-            status, _why = board.approve({"not": "a string"})
-            self.assertEqual(status, "not_found")
+            # approve answers (ok, reason) on every path, the shape
+            # its task_ack carries (PROTOCOL.md 13); a dict id is a
+            # refusal like an unknown one (Project blueMonday, board).
+            ok, why = board.approve({"not": "a string"})
+            self.assertIs(ok, False)
+            self.assertEqual(why, "not found")
+            self.assertEqual(board.approve("bm-task-none"), (False, "not found"))
 
 
 class RequiresShapeFaultTest(unittest.TestCase):
@@ -2157,6 +2162,22 @@ class CircularFaultTest(unittest.TestCase):
         a = {}
         a["self"] = a
         self.assertEqual(_json_safe(a), {"self": None})
+
+    def test_shared_object_is_written_twice(self):
+        # Project blueMonday, board target: a payload holding the
+        # same object under two keys, or twice in a list, is not a
+        # cycle. The board saved the second occurrence as null and
+        # read back a different task than it held.
+        from runner.runner import _json_safe
+        part = {"script": "echo task"}
+        self.assertEqual(_json_safe({"a": part, "b": part}),
+                         {"a": part, "b": part})
+        self.assertEqual(_json_safe([part, part, [part]]),
+                         [part, part, [part]])
+        ring = [part]
+        ring.append(ring)
+        self.assertEqual(_json_safe({"a": ring, "b": ring}),
+                         {"a": [part, None], "b": [part, None]})
 
     def test_circular_result_does_not_crash_complete(self):
         from runner.runner import Board
