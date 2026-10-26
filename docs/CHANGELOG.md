@@ -4,6 +4,24 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.34 - 2026-10-26
+
+- **Project Platinum, cycle 5.** The last two-line row (port-watch's
+  short delivery) and the one-line frontier top-down: the sun's
+  hour-angle wrap, the O_BINARY arms under a simulated flag, the
+  audit, stripe and ledger guards, the loader coercions, the tail
+  window, the registry tags, the provider record refusals, the
+  pump's deadline, the extraction fallback and the small seams of
+  ops and oracle (Muse).
+- **The O_BINARY simulation leaves a real flag alone.** Cycle 5's
+  Windows leg went red when a test zeroed the platform's own flag
+  and the writer fell into text mode (CRLF); `test_platinum_oracle`
+  now plants the stand-in only where the platform has no flag, the
+  runner unchanged. Muse carried the same helper into the guard and
+  oauth tests and gave the `ps` probe its registered POSIX skip;
+  the note is in `docs/use/misc.md`.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.33 - 2026-10-26
 
 - **The next car, with nothing new aboard.** Opened on the release
