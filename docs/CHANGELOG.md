@@ -8,8 +8,13 @@ facts a reader may need to cite. Git history carries the rest.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
+## 3.13.3 - 2026-10-25
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 The four review items, plus workspace isolation (the runbook of
-2026-10-25; one commit per item, each with its tests).
+2026-10-25; one commit per item, each with its tests, each green in
+CI before the next).
 
 - **One atomic writer for state files.** `runner/guard/atomicio.py`
   replaces a state file whole or not at all (a temp name opened
