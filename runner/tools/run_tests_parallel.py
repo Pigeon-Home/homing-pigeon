@@ -293,6 +293,37 @@ def under_actions(environ=None):
     return env.get("GITHUB_ACTIONS") == "true"
 
 
+_REASON_RE = re.compile(
+    r"^(?:[\w.]*(?:Error|Exception|Failure|Interrupt|Exit)|"
+    r"AssertionError|subTest)\b.*\S", re.M)
+
+
+def failure_reasons(output):
+    """test id -> the exception line its traceback ends on.
+
+    The block of a FAIL:/ERROR: header runs to the next header or
+    the next ``====`` rule. Its last exception-shaped line is the
+    reason (``AssertionError: 0 != -2``), which is what a reader of
+    the run page needs when the log itself cannot be opened.
+    (Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab)
+    """
+    reasons = {}
+    heads = list(_FAILED_TEST_RE.finditer(output))
+    for i, m in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(output)
+        block = output[m.end():end]
+        rule = block.find("\n=====")
+        if rule >= 0:
+            block = block[:rule]
+        test_id = m.group(3)
+        if not test_id.endswith("." + m.group(2)):
+            test_id += "." + m.group(2)
+        found = _REASON_RE.findall(block)
+        if found and test_id not in reasons:
+            reasons[test_id] = found[-1].strip()[:400]
+    return reasons
+
+
 def annotations_for(output, shard):
     """``::error`` workflow commands naming each failed test in a shard.
 
@@ -302,10 +333,13 @@ def annotations_for(output, shard):
     full list is still in the log above them.
     """
     lines = []
+    reasons = failure_reasons(output)
     for test_id in failed_tests(output):
         title = test_id.translate(_ANNOTATION_UNSAFE)
-        message = ("unittest failed in shard %d; its output is above"
-                   % shard).translate(_ANNOTATION_UNSAFE)
+        message = "unittest failed in shard %d; its output is above" % shard
+        if test_id in reasons:
+            message += " -- " + reasons[test_id]
+        message = message.translate(_ANNOTATION_UNSAFE)
         lines.append("::error title=%s::%s" % (title, message))
     return lines
 

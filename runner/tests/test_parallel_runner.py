@@ -327,6 +327,32 @@ class ReadableFromTheRunPageTest(_OutsideActions):
             self.assertNotIn("\n", line)
             self.assertEqual(line.count("::"), 2)
 
+    def test_annotations_carry_the_failure_reason(self):
+        # The run page is often all a reader has: the log host can be
+        # out of reach. The reason is the exception line the test's
+        # block ends on, one per test, in that test's own annotation.
+        dump = (
+            "======================================================================\n"
+            "FAIL: test_a (mod.K.test_a) (vector='x.')\n"
+            "----------------------------------------------------------------------\n"
+            "Traceback (most recent call last):\n"
+            '  File "t.py", line 3, in test_a\n'
+            "    self.assertEqual(r, -2)\n"
+            "AssertionError: 0 != -2\n"
+            "\n"
+            "======================================================================\n"
+            "ERROR: test_b (mod.K.test_b)\n"
+            "----------------------------------------------------------------------\n"
+            "Traceback (most recent call last):\n"
+            "NameError: name 'q' is not defined\n")
+        self.assertEqual(rtp.failure_reasons(dump), {
+            "mod.K.test_a": "AssertionError: 0 != -2",
+            "mod.K.test_b": "NameError: name 'q' is not defined"})
+        lines = rtp.annotations_for(dump, 1)
+        self.assertIn("AssertionError%3A 0 != -2", lines[0])
+        self.assertIn("NameError%3A name 'q' is not defined", lines[1])
+        self.assertEqual(rtp.failure_reasons("FAIL: test_c (m.K.test_c)\n"), {})
+
     def test_annotation_escapes_what_the_parser_would_eat(self):
         dump = "FAIL: test_a (mod.K.test_a)\n"
         head = rtp.annotations_for(dump, 0)[0].split("::")[1]
