@@ -5,6 +5,14 @@ set -e
 
 CONFIG="${CONFIG_PATH:-/data/config.json}"
 
+if [ ! -f "$CONFIG" ] && [ -n "$HP_CONFIG_BLOB" ]; then
+  # A hosted box (docs/project/hosting.md): the provisioner handed
+  # over one blob and a profile name; the installer's own code writes
+  # the config, applies the profile and makes sure a secret exists.
+  mkdir -p "$(dirname "$CONFIG")"
+  python3 -c 'import sys; from runner.hosting import bootstrap; bootstrap.hosted_config_from_env(sys.argv[1])' "$CONFIG"
+fi
+
 if [ ! -f "$CONFIG" ]; then
   if [ -z "$PIGEON_MAILBOX_USER" ] || [ -z "$PIGEON_MAILBOX_PASSWORD" ]; then
     echo "error: $CONFIG not found and PIGEON_MAILBOX_USER / PIGEON_MAILBOX_PASSWORD not set" >&2

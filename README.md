@@ -390,6 +390,11 @@ paths (Docker, pip, release binary) and the full first-run
 walkthrough — dedicated mail account, app password, shared
 secret, first job.
 
+**No spare machine?** One command puts a runner on a $2 machine in
+your own Fly, Hetzner or DigitalOcean account, with the hosted
+profile and nothing listening: [docs/use/own-cloud.md](docs/use/own-cloud.md).
+Your account, your bill, your secret.
+
 ## How scripts run
 
 A job carries a `script` and an optional `interpreter`; the default is PowerShell on Windows and `sh` elsewhere, and a `ping` first tells you which one a box has. Details are in [docs/use/scripts.md](docs/use/scripts.md).

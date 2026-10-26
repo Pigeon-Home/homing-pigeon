@@ -196,3 +196,44 @@ class DrainPlanTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class HostedConfigFromEnvTest(unittest.TestCase):
+    """What the container image does on start (the entrypoint calls
+    bootstrap.hosted_config_from_env)."""
+
+    def test_no_blob_means_not_ours(self):
+        from runner.hosting import bootstrap
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "config.json")
+            self.assertFalse(bootstrap.hosted_config_from_env(path, environ={}))
+            self.assertFalse(os.path.exists(path))
+
+    def test_blob_profile_and_secret_land_in_the_config(self):
+        from runner.hosting import bootstrap
+        blob = {"runner_id": "box-9", "workspace_root": "/data/work",
+                "transport_queues": {"url": "https://q.example.test/t/a",
+                                     "token_env": "HP_RUNNER_TOKEN"}}
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "data", "config.json")
+            os.makedirs(os.path.dirname(path))
+            import io
+            from contextlib import redirect_stdout
+            with redirect_stdout(io.StringIO()):
+                ok = bootstrap.hosted_config_from_env(
+                    path, environ={"HP_CONFIG_BLOB": json.dumps(blob)})
+            self.assertTrue(ok)
+            with open(path, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+        self.assertEqual(cfg["runner_id"], "box-9")
+        self.assertEqual(cfg["profile"], "hosted")
+        self.assertEqual(cfg["security"]["modes"]["confinement"], "enforce")
+        self.assertEqual(len(cfg["shared_secret"]), 64)
+
+    def test_a_bad_blob_is_refused_loudly(self):
+        from runner.hosting import bootstrap
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "config.json")
+            with self.assertRaises(ValueError):
+                bootstrap.hosted_config_from_env(
+                    path, environ={"HP_CONFIG_BLOB": '{"judge": "off"}'})

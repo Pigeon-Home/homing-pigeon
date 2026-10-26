@@ -1,10 +1,21 @@
 # Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
-"""GitHub Actions as an ephemeral target backend (Phase 3).
+"""GitHub Actions as an ephemeral target backend (Phase 3), for a
+user's OWN repository and account only.
 
 A dispatch boots a fresh GitHub-hosted VM of the target's platform,
-runs `homing-pigeon --once --drain` against the tenant's queue, and
-exits. No machine persists; the unit of cost is the run's billable
-minutes, which the timing endpoint reports.
+runs `homing-pigeon --once --drain` against the user's queue, and
+exits. No machine persists; the run's billable minutes come from
+the timing endpoint so the user can see what their own account paid.
+
+Terms, read before using this: GitHub's Actions usage policy
+limits hosted runners to building, testing and deploying the
+repository's own project. A user running their own jobs from their
+own repository decides for themselves whether that fits; this
+project does not resell minutes, run the workflow in its own
+organisation, or hold anyone's blob. The template is
+runner/hosting/workflows/hp-ephemeral.yml. Per-minute Mac and
+Windows runners sold as a product (Cirrus Runners, Namespace and the
+like) fit the same `dispatch` interface when a real need appears.
 
 API: https://api.github.com (Bearer token). Shapes recorded in
 runner/tests/hosting_fixtures/github_actions.json.

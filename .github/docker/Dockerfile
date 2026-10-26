@@ -4,6 +4,12 @@ LABEL org.opencontainers.image.source="https://github.com/Pigeon-Home/homing-pig
 LABEL org.opencontainers.image.description="Homing Pigeon runner — email-driven agent execution"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 
+# bubblewrap for the hosted profile's confinement (security.modes.
+# confinement enforce). Where the host denies user namespaces the
+# runner falls back and the audit log records it.
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends bubblewrap \
+    && rm -rf /var/lib/apt/lists/*
+
 # Non-root user: the runner never needs root inside the container.
 RUN useradd --create-home --shell /bin/bash pigeon
 

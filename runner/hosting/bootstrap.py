@@ -28,9 +28,11 @@ def pinned_requirement(version):
 
 
 def image_for(version, image=None):
+    """The release image. ghcr tags are the git tags, so they carry
+    the ``v`` (docker.yml, ``type=ref,event=tag``)."""
     base = image or DEFAULT_IMAGE
     v = str(version).strip().lstrip("v")
-    return base if ":" in base.rsplit("/", 1)[-1] else f"{base}:{v}"
+    return base if ":" in base.rsplit("/", 1)[-1] else f"{base}:v{v}"
 
 
 def user_data(spec):
@@ -87,3 +89,25 @@ def ephemeral_command(spec, drain_jobs=1, drain_seconds=900):
         ["homing-pigeon", "--once", "--drain", str(int(drain_jobs)),
          "--drain-seconds", str(int(drain_seconds))],
     ]
+
+
+def hosted_config_from_env(cfg_path, environ=None, install=None):
+    """What the container image does on start when no config exists:
+    write the blob from BLOB_ENV, apply HP_PROFILE (default hosted),
+    make sure a shared secret exists. Returns True when a config was
+    written, False when BLOB_ENV was not set (the caller falls back to
+    its older env-var scheme). Raises ValueError on a bad blob."""
+    import os
+    environ = os.environ if environ is None else environ
+    blob = environ.get(BLOB_ENV)
+    if not blob:
+        return False
+    if install is None:
+        try:
+            from runner.ops import install as install  # type: ignore
+        except ImportError:
+            from ops import install as install  # type: ignore
+    install.merge_config_blob(cfg_path, blob)
+    install.apply_profile(cfg_path, environ.get("HP_PROFILE") or "hosted")
+    install.ensure_shared_secret(cfg_path, None)
+    return True

@@ -97,6 +97,15 @@ Nothing here charges a card after the fact.
 3. **Hosted defaults.** The `hosted` profile above. A tenant may
    loosen it in their own config, and the posture card will say so.
 
+## How it ships
+
+As a feature, not a service. `docs/use/own-cloud.md` is the user's
+page: one command puts a runner on their own $2 machine, on their own
+account, under their own terms. The hosted queue runs on an
+operator's own Cloudflare account first. The ephemeral workflow is a
+template for a user's own repository. Billing stays dormant until
+someone asks to pay.
+
 ## Not yet
 
 - Provider accounts. Every adapter is tested against recorded
@@ -106,5 +115,7 @@ Nothing here charges a card after the fact.
   files for one operator; a database arrives with accounts.
 - Heartbeat over the transport. `host status` reads the inventory;
   the runner's posture card is not yet posted on start.
-- Leased Mac backends (Scaleway, MacStadium) behind the same
-  `dispatch` interface, for heavy Mac tenants, prepaid.
+- Per-minute Mac and Windows runners sold as a product (Cirrus
+  Runners, Namespace) behind the same `dispatch` interface, if a
+  real need appears. GitHub-hosted runners are a user's own call on
+  their own account, never resold.

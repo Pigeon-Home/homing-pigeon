@@ -104,7 +104,7 @@ class FlyTest(unittest.TestCase):
         app_call, machine_call = http.calls
         self.assertEqual(app_call["body"]["app_name"], "hp-alice")
         cfg = machine_call["body"]["config"]
-        self.assertEqual(cfg["image"], "ghcr.io/pigeon-home/homing-pigeon:3.13.2")
+        self.assertEqual(cfg["image"], "ghcr.io/pigeon-home/homing-pigeon:v3.13.2")
         self.assertEqual(cfg["guest"], {"cpu_kind": "shared", "cpus": 1,
                                         "memory_mb": 256})
         self.assertEqual(json.loads(cfg["env"]["HP_CONFIG_BLOB"]), BLOB)
@@ -264,11 +264,13 @@ class BootstrapTest(unittest.TestCase):
 
     def test_image_for_pins_the_tag(self):
         self.assertEqual(bootstrap.image_for("3.13.2"),
-                         "ghcr.io/pigeon-home/homing-pigeon:3.13.2")
+                         "ghcr.io/pigeon-home/homing-pigeon:v3.13.2")
+        self.assertEqual(bootstrap.image_for("v3.13.2"),
+                         "ghcr.io/pigeon-home/homing-pigeon:v3.13.2")
         self.assertEqual(bootstrap.image_for("3.13.2", "registry.test/x:dev"),
                          "registry.test/x:dev")
         self.assertEqual(bootstrap.image_for("3.13.2", "registry.test/x"),
-                         "registry.test/x:3.13.2")
+                         "registry.test/x:v3.13.2")
 
     def test_user_data_is_a_root_only_idempotent_shell_script(self):
         text = bootstrap.user_data(spec())

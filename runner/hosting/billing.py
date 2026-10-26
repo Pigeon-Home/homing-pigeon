@@ -1,8 +1,13 @@
 # Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """Metering and prepaid billing (Phase 4): one usage event per job,
-a price table that tracks what the platforms charge, a prepaid
-balance per tenant, and a Stripe webhook handler that only ever adds
-credit. Nothing here charges a card after the fact.
+a per-target price table, a prepaid balance per tenant, and a Stripe
+webhook handler that only ever adds credit. Nothing here charges a
+card after the fact.
+
+DORMANT. Nothing in the runner, the Worker or the CLI calls this
+module yet; it is tested so it is ready, not because it runs. It is
+wired in only when a user asks to pay (docs/project/hosting.md,
+"Not yet"), and the price table is a placeholder until then.
 
 Amounts are integer cents. Stripe signatures are verified with the
 standard library (HMAC-SHA-256 over `t.payload`).

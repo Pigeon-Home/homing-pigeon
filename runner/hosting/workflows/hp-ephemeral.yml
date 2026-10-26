@@ -1,12 +1,18 @@
 # Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
-# The ephemeral target workflow (docs/project/hosting.md, Phase 3).
+# The ephemeral target workflow (docs/project/hosting.md, Phase 3):
+# a TEMPLATE for your own repository and your own GitHub account.
+#
+# Read GitHub's Actions usage policy first. Hosted runners are meant
+# for building, testing and deploying the repository's own project;
+# whether your jobs fit is your call to make for your own account.
+# This project does not run this workflow for anyone, does not resell
+# minutes, and never holds your blob.
 #
 # Copy this file into the repository `homing-pigeon-host dispatch
-# --repo owner/name` points at (ours, or the tenant's own, which
-# costs us nothing). A dispatch boots a fresh GitHub-hosted VM of
-# the requested platform, installs the pinned release, writes the
-# tenant's one-blob config from the secret named by `blob_ref`,
-# drains the tenant's queue for a bounded window, and exits. The
+# --repo owner/name` points at. A dispatch boots a fresh GitHub-hosted
+# VM of the requested platform, installs the pinned release, writes
+# your one-blob config from the repository secret named by
+# `blob_ref`, drains your queue for a bounded window, and exits. The
 # run-name carries the ticket so the dispatcher can find the run.
 #
 # Nothing is uploaded, no artifact is kept, and the blob never

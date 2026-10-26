@@ -52,7 +52,7 @@
       "cpus": 1,
       "memory_mb": 256
      },
-     "image": "ghcr.io/pigeon-home/homing-pigeon:3.13.2",
+     "image": "ghcr.io/pigeon-home/homing-pigeon:v3.13.2",
      "metadata": {
       "homing-pigeon.tenant": "alice",
       "homing-pigeon.version": "3.13.2"
