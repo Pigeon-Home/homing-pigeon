@@ -56,8 +56,11 @@ def _import_atomicio():
     """
     frozen = getattr(sys, "_MEIPASS", None)
     if frozen:
-        return _load_by_path(os.path.join(frozen, "pigeon-guard",
-                                          "atomicio.py"))
+        cand = os.path.join(frozen, "pigeon-guard", "atomicio.py")
+        if os.path.isfile(cand):
+            return _load_by_path(cand)
+        # The frozen runner imports this module too; it bundles the
+        # whole package, so the import below is the one that works.
     try:
         from runner.guard import atomicio
         return atomicio

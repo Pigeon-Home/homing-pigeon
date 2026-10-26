@@ -11,3 +11,8 @@ mutants/
 # hypothesis example database, written beside the tests on every
 # local run of the property modules; scratch, never the record.
 .hypothesis/
+
+# Backslash-named scratch files a Windows-simulated test run leaves
+# in the tree on a POSIX host; never the record, and git on Windows
+# cannot check them out.
+\\tmp\\*

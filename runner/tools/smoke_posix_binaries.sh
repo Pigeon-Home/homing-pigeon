@@ -20,17 +20,34 @@ INSTALL=${2:?install binary (or 'python3 runner/ops/install.py')}
 ver=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
 
 say() { printf '%s\n' "== $*"; }
-die() { printf 'SMOKE FAILED: %s\n' "$*" >&2; exit 1; }
+# The failure is said twice: on stderr for the log, and as a GitHub
+# annotation (readable on the run page when the job log is not),
+# with the tail of whatever the failing command printed.
+die() {
+  printf 'SMOKE FAILED: %s\n' "$*" >&2
+  tail="$(printf '%s' "${last_out:-}" | tail -c 700 | tr '\n' ' ')"
+  printf '::error title=smoke::%s -- %s\n' "$*" "$tail"
+  exit 1
+}
+# run <label> <cmd...>: capture the command's output (both streams)
+# so a failure can quote it; exit status is the command's.
+run() {
+  label=$1; shift
+  if last_out=$("$@" 2>&1); then printf '%s' "$last_out"; return 0; fi
+  rc=$?
+  printf '%s\n' "$last_out" >&2
+  die "$label exited $rc"
+}
 
 say "--version matches pyproject ($ver)"
-out=$($RUNNER --version); echo "$out"
+out=$(run "runner --version" $RUNNER --version); echo "$out"
 case "$out" in *"$ver"*) ;; *) die "runner --version printed '$out', expected $ver";; esac
-out=$($INSTALL --version); echo "$out"
+out=$(run "install --version" $INSTALL --version); echo "$out"
 case "$out" in *"$ver"*) ;; *) die "install --version printed '$out', expected $ver";; esac
 
 say "--help exits 0"
-$RUNNER --help >/dev/null || die "runner --help"
-$INSTALL --help >/dev/null || die "install --help"
+run "runner --help" $RUNNER --help >/dev/null
+run "install --help" $INSTALL --help >/dev/null
 
 root=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/hp-smoke.XXXXXX")
 trap 'rm -rf "$root"' EXIT
@@ -57,14 +74,14 @@ json.dump({
 PY
 
 say "--inspect redact never echoes the planted credential"
-red=$(printf 'FLAG-CRED-POSIX-TEST' | $RUNNER --config "$cfg" --inspect redact) || die "inspect redact exited nonzero"
+red=$(printf 'FLAG-CRED-POSIX-TEST' | $RUNNER --config "$cfg" --inspect redact 2>&1) || { last_out=$red; die "inspect redact exited nonzero"; }
 case "$red" in *FLAG-CRED-POSIX-TEST*) die "flag leaked: $red";; esac
 case "$red" in *REDACTED*) ;; *) die "expected a redaction, got: $red";; esac
 
 say "--inspect board exits 0"
-$RUNNER --config "$cfg" --inspect board >/dev/null || die "inspect board exited nonzero"
+run "inspect board" $RUNNER --config "$cfg" --inspect board >/dev/null
 
 say "--once --dry-run starts, touches nothing, exits 0"
-$RUNNER --config "$cfg" --once --dry-run >/dev/null || die "startup --once --dry-run exited nonzero"
+run "startup --once --dry-run" $RUNNER --config "$cfg" --once --dry-run >/dev/null
 
 say "all smoke checks passed"
