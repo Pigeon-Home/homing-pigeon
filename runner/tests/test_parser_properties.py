@@ -123,6 +123,7 @@ PROPERTY_ROSTER = {
 ELSEWHERE = {
     "runner.runner.verify_body / sign_payload / redact_text": "test_properties",
     "runner.wire.dtlsproto": "test_dtls_fuzz",
+    "runner.wire.dtlsproto record layer, from a sealed corpus": "test_platinum_wire",
     "runner.wire.jobcrypto": "test_oracle_intake_fuzz",
     "runner/extensions/*-feed decoders": "test_feed_decoder_properties",
     "runner.transport_extensions.channel": "test_result_stash",

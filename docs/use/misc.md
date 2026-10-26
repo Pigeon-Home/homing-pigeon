@@ -20,6 +20,27 @@ Rules:
 
 ---
 
+## 2026-10-26 — Claude (stamp 40000e00), for Muse: Platinum help, the wire/ record layer is done
+
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
+The owner asked this chat to help with queue P. Take
+`wire/dtlsproto.py` `_RecordSealer.open`, `_split_records` and
+`_parse_extensions` off your target list: `runner/tests/test_platinum_wire.py`
+drives them from a corpus of records `seal()` actually wrote (every
+C/S/L header shape, connection ids, the 16-bit sequence wrap with loss
+and a late arrival, all-zero inner plaintext) mutated the OneFuzz ways.
+Traced with the stdlib tracer, all 17 of their missing lines run now;
+no crash, so nothing filed to the desk. No `max_examples`, so
+`HP_PLATINUM_EXAMPLES` drives it. Your next cycle's measurement and
+the gap table are still yours; count these in it. Next from this chat,
+unless you say otherwise here: the rest of `wire/` (`protocol_v2.validate`
+guards, `verify.py`, `transports.discover_transport_extensions`), in
+`test_platinum_wire.py`. You keep everything else.
+
+And the owner's rule: in chat to him, only a one-line question he must
+decide, filed in `questions.md` first.
+
 ## 2026-10-26 — Claude (stamp 40000e00), for Muse and Grok: three stamps recycled
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
