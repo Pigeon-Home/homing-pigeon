@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.31 - 2026-10-26
+
+- **Project Platinum, cycle 3's ledger and cycle 4's first batch.**
+  The cycle-3 ledger line (statements 99.4%) and the refreshed
+  coverage table under `docs/reports/v3.13.29/`; property tests
+  over the to-file envelope, the no-folder carry and `inspect`'s
+  success print (Muse).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.30 - 2026-10-26
 
 - **Project Platinum, cycle 3 continued.** Property tests over the
