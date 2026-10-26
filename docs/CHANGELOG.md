@@ -4,6 +4,20 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.40 - 2026-10-26
+
+- **Project Platinum, cycle 5's ledger and cycle 6.** The cycle-5
+  ledger line (statements 99.6%, branches 97.5%, no crashes filed)
+  with the refreshed coverage table and gap list under
+  `docs/reports/v3.13.38/`; cycle 6's tests over `execute_job`'s
+  poison script (a non-string script is the JobRejected poison its
+  comment promises) and a remediation finish that throws, which
+  leaves the job's own result standing; the queues pipe's seen-id
+  step and a posted result's final newline; `answer_queries`
+  stepping over a non-object declared signal; and three fixtures
+  reaching the arms their cycle-5 versions walked past (Muse).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.39 - 2026-10-26
 
 - **Two remediation tests accept the act that landed.** The
