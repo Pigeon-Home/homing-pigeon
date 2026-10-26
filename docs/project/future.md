@@ -1,6 +1,4 @@
-# Future
-
-## A. Partial: a slice is built
+## A. Partial
 
 **A1. ACK for jobs accepted into runner job board.**
 
@@ -72,7 +70,7 @@ network cage held. Only the on/off posture line exists.
 whose X25519 ephemeral is the one quantum-exposed piece (DRU; draft
 Section 22.1).
 
-## C. Not built: the protocol and the board
+## C. Not built
 
 **C1. Board delegation over ping** (DRU, 2026-10-20). A ping's reply
 carries the box's open task board, so the cloud SI can submit work to a
