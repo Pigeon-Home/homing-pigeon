@@ -131,8 +131,11 @@ campaign does not wait for the fix: it moves to the next item and
 re-verifies when the question is answered.
 
 The hourly regression pass (owner, 2026-10-26; Claude, stamp
-50000c8e): once an hour, beside whatever campaign is running, the
-rig runs `python runner/tools/rig_resources.py -- python
+50000c8e) -- suspended by the conductor's order of 2026-10-26
+(see "The queue"): until he lifts it, the rig runs no pass, and
+blueMonday is the only effort. The paragraph stands for the day it
+resumes. When it runs: once an hour, beside whatever campaign is
+running, the rig runs `python runner/tools/rig_resources.py -- python
 runner/tools/regression_pass.py --pull --jobs <cores>`. It runs the
 whole suite on the head of main, re-runs any red alone to split
 flake from deterministic, bisects each deterministic red between
@@ -200,6 +203,16 @@ Nothing else is a reason to stop. "The list is done" is not: the
 queue below does not run out (queue D refills it).
 
 ## The queue, in order
+
+**The conductor's order of 2026-10-26, which overrides the order of
+this queue until he lifts it: Project blueMonday (section M) is
+the campaign's only effort. No hourly regression pass, no Platinum
+cycle, no other item from this queue; the rig fuzzes, and the CPU
+is pegged.** Everything below M stands as written for the day he
+says so; the hourly regression pass in "The loop" is suspended the
+same way. The pre-push guard still runs before a push that touches
+a test module, since that is part of landing the work, not another
+effort.
 
 The owner reset the target on 2026-10-25 (Q24): the campaign exists
 to prove that each security control does what SECURITY.md promises
@@ -386,20 +399,19 @@ corpus is `runner/tests/bluemonday/<target>.jsonl` (five targets:
 `runner/tests/test_bluemonday_corpus.py` replays it on every leg.
 The loop:
 
-1. **Trigger.** Started by the conductor on 2026-10-26, and
-   continuous by his word: a grow is running on the rig at every
-   moment, measures and passes included, with `--jobs <cores>` and
-   `--minutes` long enough to reach the next rules refresh, under
-   `nice -n 10` so a measure or a pass keeps priority while the
-   grow takes every idle cycle. The box reads on target because
-   the grow is always on; the measure and the pass share it. The
-   campaign does not wait for a Platinum ledger line and does not
-   idle between items. It stops only on the conductor's word.
-2. **Grow.** `nice -n 10 python runner/tools/rig_resources.py --
-   python runner/tools/bluemonday_corpus.py grow --rounds 20000
+1. **Trigger.** Started by the conductor on 2026-10-26, and the
+   campaign's only effort by his order the same day: a grow is
+   running on the rig at every moment, with `--jobs` at the box's
+   core count and `--minutes` long enough to reach the next rules
+   refresh, and nothing else runs beside it -- no pass, no measure,
+   no other item. The CPU is pegged: the resource line reads on
+   target or over, and anything lower is a serial step to name in
+   the ledger. The campaign never idles between grows and stops
+   only on the conductor's word.
+2. **Grow.** `python runner/tools/rig_resources.py -- python
+   runner/tools/bluemonday_corpus.py grow --rounds 20000
    --minutes 55`, started again at every rules refresh (`--jobs`
-   defaults to the box's core count, as it does on the parallel
-   runner and the regression pass; name it only to use fewer): the targets cycle, `--jobs` at a time, the next
+   defaults to the box's core count; name it only to use fewer): the targets cycle, `--jobs` at a time, the next
    starting the moment any one finishes, each cycle with the seed
    moved on, until the minutes are up; that is the continuous grow,
    and its resource line reads on target. `--seed` makes a run

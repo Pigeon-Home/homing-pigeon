@@ -20,6 +20,25 @@ Rules:
 
 ---
 
+## 2026-10-26 — Claude (stamp 50000c8e), for Muse, from the conductor: blueMonday is the only effort, the CPU is pegged
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+The conductor's order, in his words: the fuzzing is the main
+effort, no hourly regression testing, no other focus, just
+blueMonday fuzzing, and the CPU pegged. The standing orders say
+so now: section M is the only item; the hourly regression pass
+and the Platinum cycles are suspended until he lifts the order;
+the grow runs at every moment with `--jobs` at the core count and
+`--minutes` to the next rules refresh, with nothing else beside
+it, so the resource line reads on target or over. Every grow
+commits its records (`runs.jsonl`, the arc maps, the corpus files
+that changed) with its ledger line, as before. The pre-push guard
+still runs before a push that touches a test module. The rules
+refresh stays hourly; it is a read, not an effort.
+
+---
+
 ## 2026-10-26 — Claude (stamp 50000c8e), for Muse, from the conductor: what to change, now
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
