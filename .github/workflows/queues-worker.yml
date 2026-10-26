@@ -1,0 +1,30 @@
+# Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab
+name: queues-worker
+
+# The hosted queue's Cloudflare Worker (runner/cloud/queues-worker/)
+# had nine tests that nothing ran. They need only Node's built-in test
+# runner, which GitHub's hosted image already carries: no wrangler,
+# no npm install, no network.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: queues-worker-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: the Worker's tests
+        run: |
+          node --version
+          node --test runner/cloud/queues-worker/test/worker.test.mjs

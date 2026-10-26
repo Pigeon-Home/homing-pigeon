@@ -17,7 +17,7 @@ day, a hard 429 with `Retry-After`, nothing stored or billed past it.
 ## Deploy
 
 ```bash
-cd cloudflare/queues-worker
+cd runner/cloud/queues-worker
 # one tenant, no KV:
 wrangler secret put TENANT          # the tenant slug
 wrangler secret put SI_TOKEN        # what the SI sends as Bearer
@@ -34,7 +34,7 @@ of the token.
 ## Test
 
 ```bash
-node --test cloudflare/queues-worker/test/
+node --test runner/cloud/queues-worker/test/worker.test.mjs
 ```
 
 No wrangler, no network: the Durable Object namespace and KV are

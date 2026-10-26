@@ -83,7 +83,7 @@
   webhook. Tested against recorded exchanges in
   `runner/tests/hosting_fixtures/`; never a live call. Plan:
   `docs/project/hosting.md`.
-- `cloudflare/queues-worker/` — the hosted queue's Worker and Durable
+- `runner/cloud/queues-worker/` — the hosted queue's Worker and Durable
   Object (`docs/extend/transports.md`, "Queues"); its tests run under
   node.
 - `runner/cloud/send_job.py` — cloud-side helper: builds signed job messages,

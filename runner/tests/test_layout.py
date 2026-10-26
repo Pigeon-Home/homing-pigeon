@@ -35,6 +35,7 @@ RETIRED = {
     "examples": "runner/extensions/",
     "extensions": "runner/extensions/",
     "cloud": "runner/cloud/",
+    "cloudflare": "runner/cloud/queues-worker/",
     "hardening": "docs/security/hardening/",
     "docker": ".github/docker/",
     "Dockerfile": ".github/docker/Dockerfile",

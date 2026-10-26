@@ -404,7 +404,7 @@ class PipelineLiftsTest(unittest.TestCase):
     WORKFLOWS = ("build.yml", "docker.yml", "security.yml",
                  "minimal-userland.yml", "platform-matrix.yml",
                  "env-axes.yml", "coverage.yml", "switch-proofs.yml",
-                 "freebsd.yml", "python-range.yml", "upgrade-proof.yml", "soak.yml", "campaign-replay.yml",
+                 "freebsd.yml", "python-range.yml", "upgrade-proof.yml", "soak.yml", "campaign-replay.yml", "queues-worker.yml",
                  "hardware.yml")
 
     def _wf(self, name):

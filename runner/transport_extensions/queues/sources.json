@@ -8,7 +8,7 @@
       "project": [
         "runner/transport_extensions/queues",
         "runner/transport_extensions/channel.py",
-        "cloudflare/queues-worker",
+        "runner/cloud/queues-worker",
         "runner/wire/transports.py"
       ]
     }

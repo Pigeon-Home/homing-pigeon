@@ -154,7 +154,7 @@ This file is organized by status:
 
 - Cloudflare Queues. Partial: the hosted queue ships
   (docs/extend/transports.md, "Queues"): a Worker and one Durable Object
-  per tenant at cloudflare/queues-worker/, a bearer token per role, the
+  per tenant at runner/cloud/queues-worker/, a bearer token per role, the
   HMAC-SHA-384 gate at the edge on by default (REJECT_INVALID_HMAC), a
   per-tenant quota, the runner's `queues` transport and `send_job.py
   --to-queue`. The Cloudflare Queues product itself and D1 remain design

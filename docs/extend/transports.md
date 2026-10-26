@@ -163,14 +163,14 @@ one we'd recommend to anyone who winces at the word "email."
 
 **What ships.** Three parts, one contract:
 
-- `cloudflare/queues-worker/` — a Cloudflare Worker and one Durable
+- `runner/cloud/queues-worker/` — a Cloudflare Worker and one Durable
   Object per tenant. The Worker gates every job at the edge
   (bearer token for the role, then HMAC-SHA-384 under the tenant's
   shared secret, `REJECT_INVALID_HMAC` on by default) and enforces
   the tenant's quota: jobs per hour and bytes per day, a hard 429
   with `Retry-After`. That quota is the spending cap Cloudflare
   itself does not provide. Its unit tests run under node
-  (`node --test cloudflare/queues-worker/test/`).
+  (`node --test runner/cloud/queues-worker/test/worker.test.mjs`).
 - `runner/transport_extensions/queues/` — the runner-side extension.
   Outbound only: it leases jobs from the Worker, drops them in the
   channel inbox, posts the channel's results back and acks the job

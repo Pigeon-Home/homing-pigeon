@@ -1,6 +1,6 @@
 // Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 // Unit tests for the hosted queue Worker, under node's own test
-// runner: `node --test cloudflare/queues-worker/test/`. No wrangler,
+// runner: `node --test runner/cloud/queues-worker/test/worker.test.mjs`. No wrangler,
 // no network: the Durable Object namespace and KV are in-memory
 // fakes with the same shapes the runtime hands the Worker.
 import { test } from "node:test";

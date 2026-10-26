@@ -2,7 +2,7 @@
 # Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """The queues transport extension against a fake Worker (Phase 2 of
 docs/project/hosting.md). The fake speaks the same contract the
-Cloudflare Worker does (cloudflare/queues-worker/src/index.js, whose
+Cloudflare Worker does (runner/cloud/queues-worker/src/index.js, whose
 own tests run under node): lease, ack, results. It listens on
 loopback in this process; nothing leaves the machine.
 """
