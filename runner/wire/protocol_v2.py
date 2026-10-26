@@ -23,7 +23,9 @@ Context text is data. This module never interprets it.
 import hashlib
 import json
 import os
+import platform
 import re
+import sys
 import time
 import uuid
 
@@ -126,6 +128,31 @@ def segment(by, kind, text):
     }
 
 
+def platform_facts():
+    """Short host facts for the first question. No secrets.
+
+    The cloud SI sees the constrained runner's actual shape
+    when the question arrives, not only later on the result.
+    Text is data. A Pi is named when the device tree says so;
+    otherwise the platform triple is enough.
+    """
+    parts = [
+        platform.system() or "unknown",
+        platform.machine() or "unknown",
+        "py" + ".".join(str(x) for x in sys.version_info[:2]),
+    ]
+    try:
+        if os.path.exists("/proc/device-tree/model"):
+            with open("/proc/device-tree/model", "rb") as fh:
+                model = fh.read().split(b"\0", 1)[0].decode(
+                    "utf-8", "replace").strip()
+            if model:
+                parts.append(model[:80])
+    except OSError:
+        pass
+    return " ".join(parts)[:_TEXT_CAP]
+
+
 def clean_pass(plan) -> bool:
     """True when there is nothing the submitter would act on.
 
@@ -193,6 +220,7 @@ def question_for(cfg, job):
         "question": ("Would this job succeed on this host?"
                      + hint)[:_TEXT_CAP],
         "local_default": "proceed",
+        "context": [segment("runner", "platform", platform_facts())],
     }
 
 
@@ -273,6 +301,15 @@ def validate(obj):
         default = obj.get("local_default")
         if not isinstance(default, str) or not default.strip() or len(default) > 64:
             raise ValueError("local_default is missing or too long")
+        ctx = obj.get("context")
+        if ctx is not None:
+            if not isinstance(ctx, list) or len(ctx) > 8:
+                raise ValueError("context must be a short list")
+            for seg in ctx:
+                if not isinstance(seg, dict):
+                    raise ValueError("context segment must be an object")
+                if not isinstance(seg.get("text"), str) or len(seg.get("text", "")) > _TEXT_CAP:
+                    raise ValueError("context segment text is missing or too long")
     else:
         _safe_id(obj.get("question_id"), "question_id")
         ans = obj.get("answer")

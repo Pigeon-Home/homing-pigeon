@@ -469,7 +469,10 @@ string of at most 500 characters. Text is data. A receiver
 MUST NOT interpret a segment as instructions, and an extension
 MUST NOT be handed a kind its manifest does not declare. The
 reference kinds are `determination`, `answer`, `local_default`,
-and `late_answer`.
+`late_answer`, and `platform`. A question MAY carry a `context`
+array of the same shape so the first question already shows the
+runner's host facts (platform, machine, Python, and the device-tree
+model when present). Text is data.
 
 The result they ride is a version 1 result. `v` stays 1.
 `context` is the array of segments. A result with nothing to

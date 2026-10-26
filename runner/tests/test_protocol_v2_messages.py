@@ -1257,5 +1257,31 @@ class AwaitAnswerNonStringLegTest(unittest.TestCase):
         self.assertEqual(got[0]["text"], "")
 
 
+class PlatformContextTest(unittest.TestCase):
+    def test_question_carries_platform_segment(self):
+        cfg = {"protocol_v2": True, "oracle_mode": "deterministic"}
+        job = {"kind": "exec", "job_id": "j-plat", "script": "echo hi"}
+        q = v2.question_for(cfg, job)
+        self.assertEqual(q["type"], "question")
+        ctx = q.get("context")
+        self.assertIsInstance(ctx, list)
+        self.assertEqual(len(ctx), 1)
+        seg = ctx[0]
+        self.assertEqual(seg["by"], "runner")
+        self.assertEqual(seg["kind"], "platform")
+        self.assertTrue(seg["text"])
+        self.assertLessEqual(len(seg["text"]), 500)
+        # structural validate accepts the question with context
+        v2.validate(q)
+
+    def test_platform_facts_are_short_and_secret_free(self):
+        text = v2.platform_facts()
+        self.assertIsInstance(text, str)
+        self.assertTrue(text)
+        self.assertLessEqual(len(text), 500)
+        self.assertNotIn("secret", text.lower())
+        self.assertNotIn("password", text.lower())
+
+
 if __name__ == "__main__":
     unittest.main()
