@@ -3652,3 +3652,58 @@ when done, the proving commit or run. Newest first.
   (standing orders incl. queue P, AGENTS.md
   rules 7-10, Q59-Q61, the playbook's hard
   rules). resources 2026-10-26T12:59:45Z: cores 2 | box cpu 48% | wall 27m59s | cmd cpu 22m11s = 0.8 cores busy | peak rss 439 MB | mem used 93% | disk free 165.4 GB | exit 1 | under-driven
+- platinum 3: statements 99.4% (+0.1), branches
+  97.2% (+0.1), 41 tests, 0 crashes filed,
+  resources 2026-10-26T13:58:01Z: cores 2 | box cpu 48% | wall 26m33s | cmd cpu 21m20s = 0.8 cores busy | peak rss 447 MB | mem used 92% | disk free 165.4 GB | exit 0 | under-driven
+  (under-driven is the single-process
+  measure's shape.) Baseline 57f419d3
+  (99.3%, 221 missing); after 53e6c9bf
+  (185 missing); the after-suite ran
+  6,993 tests, OK (skipped=38) -- no
+  expected failures left in the tree.
+  Q61 was answered and fixed in Claude's
+  lane during the cycle (077dba17,
+  answered e9e1acb5); the fix commit
+  removed the probe's decorator and the
+  probe is green in this measure.
+  Cycle 2's tests are done by the Windows
+  rule: build 40329549758 at 90dc2fbe
+  completed success. Cycle 3's Windows
+  verification waits on a completed build
+  at a descendant head.
+  The map corrected three of this cycle's
+  own tests, and the corrections are the
+  record: apply's listed pair was its
+  no-folder arm (612,613), not the
+  review-failure arm the new test covers;
+  run_inspect's pair was the review
+  success print (5058,5059), not the
+  unavailable arm; send_telegram's pair
+  is the re-dump return (486,487). Six
+  arms are recorded dead or defensive in
+  the refreshed gaps header
+  (docs/reports/v3.13.29/) and are not
+  targets: the _scan_python version arm,
+  handle_board_mail's unknown-kind else,
+  send_telegram's re-dump return,
+  load_alerts' severity except,
+  _read_throttled's int arm, and
+  training-watch's float arm. Cycle 4's
+  honest frontier: cmd_new's to-file arm
+  (345-350, grew with the train),
+  send_dtls.main's unverifiable result
+  (242-244), osquery-feed's short
+  delivery, apply's no-folder arm,
+  run_inspect's success print,
+  inventory.save's unlink swallow, and
+  softflowd's struct.error arm, which
+  needs a header-valid, record-truncated
+  datagram -- the short datagrams of
+  cycle 3's property return before the
+  parser can raise. ops/main.main's
+  workers line (302) still waits on a
+  fixture that boots main honestly.
+- rules refreshed 2026-10-26 07:05 PDT
+  (standing orders incl. queue P, AGENTS.md
+  rules 7-10, Q59-Q61, the playbook's hard
+  rules). resources 2026-10-26T13:58:01Z: cores 2 | box cpu 48% | wall 26m33s | cmd cpu 21m20s = 0.8 cores busy | peak rss 447 MB | mem used 92% | disk free 165.4 GB | exit 0 | under-driven
