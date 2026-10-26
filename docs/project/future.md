@@ -1,19 +1,19 @@
 ## A. Partial
 
-**A2. Reviewer routing.** A finished task goes to a second worker
+**A1. Reviewer routing.** A finished task goes to a second worker
 holding the `review` capability before the owner sees it. Today only
 the owner's approval gate exists (`require_review`).
 
-**A3. Platform facts on every result.** A `ping` result already
+**A2. Platform facts on every result.** A `ping` result already
 carries the OS family, default interpreter and protocol versions. An
 option to attach full platform metadata to every result does not exist.
 
-**A4. More network senses.** Canary credentials that phone home when
+**A3. More network senses.** Canary credentials that phone home when
 used elsewhere, a per-job DNS log, and a netmon collector of our own.
 Listening sockets, running services and local canary files are already
 watched.
 
-**A5. Accelerator Pis.** When a Pi ships with an NPU, or an AI HAT is
+**A4. Accelerator Pis.** When a Pi ships with an NPU, or an AI HAT is
 present, the install should pull a model and switch `oracle_mode` to
 `llm`. The switch exists; nothing detects the hardware yet.
 
