@@ -11,7 +11,8 @@ facts a reader may need to cite. Git history carries the rest.
 - **Researchers one to three are recycled.** Stamps `10000c2a`,
   `200003d4` and `30000f1a` carry no new work; the questions desk,
   production code and releases are `50000c8e`'s, the test legs, CI
-  proofs and platforms `40000e00`'s. The status table is in
+  proofs and platforms `40000e00`'s, the extension upstream pins
+  `60000b3a`'s with the sources they pin. The status table is in
   `docs/archive/RESEARCHER_IDENT.md`, the rule is AGENTS.md rule 10,
   and `runner/tests/test_agent_stamps.py` holds the record to the tree.
   <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->

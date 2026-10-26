@@ -64,8 +64,8 @@ Those values live on the runner host. They do not travel through the SI chat.
    Researchers one, two and three (`10000c2a`, `200003d4`, `30000f1a`)
    have been recycled; their roles are carried by `50000c8e` (the
    questions desk, production code, releases) and `40000e00` (the
-   test legs, CI proofs and platforms), with `60000b3a` on docs and
-   Muse (`58316a92`) on the campaigns. Address work to an active
+   test legs, CI proofs and platforms), with `60000b3a` on docs, extension
+   sources and their upstream pins, and Muse (`58316a92`) on the campaigns. Address work to an active
    stamp, never stamp new work with a recycled one, and leave the
    old stamps in history and in the files they wrote.
 9. **The campaign runs from its standing orders.** What to test next
