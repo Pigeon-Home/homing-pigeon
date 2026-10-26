@@ -311,5 +311,50 @@ class SmallGuardsTest(unittest.TestCase):
         self.assertTrue(remediation._ps_available())
 
 
+class ExecuteJobShapesTest(unittest.TestCase):
+    """Cycle 6 targets, logic class: `ops/exec.py:
+    execute_job` -- (346) a script that is not a string is
+    a JobRejected poison, never a TypeError that retries
+    forever; and (491,492,493) a remediation finish that
+    fails changes nothing about the result: the job's own
+    outcome stands and no remediation member is attached.
+    """
+
+    def test_a_non_string_script_is_rejected(self):
+        from runner.ops import exec as ops_exec
+        import runner.runner as R
+        td = tempfile.mkdtemp(prefix="hp-plat-exec-")
+        try:
+            with self.assertRaises(R.JobRejected) as cm:
+                ops_exec.execute_job(
+                    {}, {"job_id": "exec-num", "kind": "exec",
+                         "script": 42}, td)
+            self.assertIn("script must be a string",
+                          str(cm.exception))
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+    def test_a_failed_remediation_finish_keeps_the_result(self):
+        from runner.ops import exec as ops_exec
+        import runner.runner as R
+        td = tempfile.mkdtemp(prefix="hp-plat-exec-")
+        try:
+            job = {"job_id": "exec-rem", "kind": "exec",
+                   "script": "echo remediated",
+                   "timeout_sec": 30}
+            with mock.patch.object(
+                    R, "_start_job_monitor",
+                    return_value=object()), \
+                    mock.patch.object(
+                        R, "_finish_remediation",
+                        side_effect=RuntimeError("watch broke")):
+                result = ops_exec.execute_job({}, job, td)
+            self.assertEqual(result["exit_code"], 0)
+            self.assertIn("remediated", result["stdout"])
+            self.assertNotIn("remediation", result)
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()
