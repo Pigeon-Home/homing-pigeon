@@ -97,6 +97,16 @@ def _load_mod(package, local, broad=False):
     except Exception if broad else ImportError:
         return None
 
+
+def _required_load_mod(package, local, why=""):
+    """_load_mod, or ImportError naming the missing file: the siblings
+    nothing can run without."""
+    mod = _load_mod(package, local)
+    if mod is None:
+        raise ImportError("runner/%s.py is missing%s"
+                          % (local.replace(".", "/"), why))
+    return mod
+
 __version__ = _load_attr("runner._version", "_version", "__version__", "unknown")
 
 class _JobCryptoErrorFallback(ValueError):
@@ -147,12 +157,8 @@ _confval = _load_mod("runner.guard.confval", "guard.confval")
 _defaulted = _load_mod("runner.guard.defaulted", "guard.defaulted")
 # The one atomic writer for state files (Agent-Chat-Stamp
 # 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f): runner/guard/atomicio.py.
-_atomicio = _load_mod("runner.guard.atomicio", "guard.atomicio")
-if _atomicio is None:
-    raise ImportError("runner/guard/atomicio.py is missing")
-_filenames = _load_mod("runner.guard.filenames", "guard.filenames")
-if _filenames is None:
-    raise ImportError("runner/guard/filenames.py is missing")
+_atomicio = _required_load_mod("runner.guard.atomicio", "guard.atomicio")
+_filenames = _required_load_mod("runner.guard.filenames", "guard.filenames")
 if _textutil is None:
     raise ImportError("runner/guard/textutil.py is missing")
 _as_str = _textutil._as_str
@@ -281,10 +287,7 @@ def _version_ok(v) -> bool:
 # Signing, verification, secrets, key policies, and audience live in
 # runner/wire/verify.py (PROTOCOL sections 4, 5, 14). Every name stays
 # bound here for callers and tests.
-_verify = _load_mod("runner.wire.verify", "wire.verify")
-if _verify is None:
-    raise ImportError("runner/wire/verify.py is missing: nothing can be "
-                      "verified")
+_verify = _required_load_mod("runner.wire.verify", "wire.verify", ': nothing can be verified')
 SEEN_CAP = _verify.SEEN_CAP
 _normalize = _verify._normalize
 sign_payload = _verify.sign_payload
@@ -407,9 +410,7 @@ class _JobUserFace:
     def setuid(self, uid):
         os.setuid(uid)
 
-_remediation_ops = _load_mod("runner.ops.remediation_ops", "ops.remediation_ops")
-if _remediation_ops is None:
-    raise ImportError("runner/ops/remediation_ops.py is missing")
+_remediation_ops = _required_load_mod("runner.ops.remediation_ops", "ops.remediation_ops")
 _job_user_preexec = _remediation_ops._job_user_preexec
 _finish_remediation = _remediation_ops._finish_remediation
 _learning_model_candidate = _remediation_ops._learning_model_candidate
@@ -440,16 +441,12 @@ def _redact_patterns(cfg):
             log(f"bad redact pattern {name}: skipped", "WARN")
     return pats
 
-_policy = _load_mod("runner.ops.policy", "ops.policy")
-if _policy is None:
-    raise ImportError("runner/ops/policy.py is missing")
+_policy = _required_load_mod("runner.ops.policy", "ops.policy")
 apply_result_policy = _policy.apply_result_policy
 _sensor_alert_core = _policy._sensor_alert_core
 
 
-_attest = _load_mod("runner.ops.attest", "ops.attest")
-if _attest is None:
-    raise ImportError("runner/ops/attest.py is missing")
+_attest = _required_load_mod("runner.ops.attest", "ops.attest")
 build_attestations = _attest.build_attestations
 reload_hot_config = _attest.reload_hot_config
 
@@ -487,9 +484,7 @@ def judge_job(cfg, job):
 # runner/ops/helpers.py: loaded the way every sibling is (the package
 # name first, the local name when `runner` is this file, not the
 # package: an install's `python3 runner.py`, the one-file binaries).
-_helpers = _load_mod("runner.ops.helpers", "ops.helpers")
-if _helpers is None:
-    raise ImportError("runner/ops/helpers.py is missing")
+_helpers = _required_load_mod("runner.ops.helpers", "ops.helpers")
 snapshot_outside = _helpers.snapshot_outside
 append_bounded_log = _helpers.append_bounded_log
 
@@ -547,9 +542,7 @@ def query_budget(cfg, job):
     max_b = _confval.integer(cfg.get("max_query_budget"), 8)
     return max(0, min(job_b, max_b))
 
-_oracle_tools = _load_mod("runner.ops.oracle_tools", "ops.oracle_tools")
-if _oracle_tools is None:
-    raise ImportError("runner/ops/oracle_tools.py is missing")
+_oracle_tools = _required_load_mod("runner.ops.oracle_tools", "ops.oracle_tools")
 ASK_SYSTEM = _oracle_tools.ASK_SYSTEM
 ASK_AGENT_SYSTEM = _oracle_tools.ASK_AGENT_SYSTEM
 _ORACLE_TOOLS = _oracle_tools._ORACLE_TOOLS
@@ -789,9 +782,7 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     return _sanitize_model_reply(_FORMAT_FALLBACK_ANSWER, cap,
                                  output_text, pats, model or "")
 
-_misc = _load_mod("runner.ops.misc", "ops.misc")
-if _misc is None:
-    raise ImportError("runner/ops/misc.py is missing")
+_misc = _required_load_mod("runner.ops.misc", "ops.misc")
 _ask_model_once = _misc._ask_model_once
 _v2_ingest = _misc._v2_ingest
 _disk_owns = _misc._disk_owns
@@ -928,7 +919,6 @@ def _agent_finish(cfg, messages, reply, cap, scan_text, patterns,
 # so a poisoned file could talk it into running something unwise.
 
 
-
 # Call IDs minted for content-embedded tool calls (never issued as wire
 # tool_calls by the model endpoint).
 _CONTENT_CALL_ID_PREFIX = "content-"
@@ -1063,9 +1053,7 @@ def _tool_withheld(path, base_dir, withheld) -> bool:
     except Exception:
         return True
 
-_oracle_ops = _load_mod("runner.ops.oracle_ops", "ops.oracle_ops")
-if _oracle_ops is None:
-    raise ImportError("runner/ops/oracle_ops.py is missing")
+_oracle_ops = _required_load_mod("runner.ops.oracle_ops", "ops.oracle_ops")
 _oracle_brief = _oracle_ops._oracle_brief
 _run_oracle_tool = _oracle_ops._run_oracle_tool
 
@@ -1349,9 +1337,7 @@ def _oracle_instruction_kind(text):
             return "action"
     return "question"
 
-_exec = _load_mod("runner.ops.exec", "ops.exec")
-if _exec is None:
-    raise ImportError("runner/ops/exec.py is missing")
+_exec = _required_load_mod("runner.ops.exec", "ops.exec")
 ask_model_agent = _exec.ask_model_agent
 execute_job = _exec.execute_job
 
@@ -1376,9 +1362,7 @@ def _raw_lines_allowed(view):
         return False
     return view in ("full", "redacted", "")
 
-_queries = _load_mod("runner.ops.queries", "ops.queries")
-if _queries is None:
-    raise ImportError("runner/ops/queries.py is missing")
+_queries = _required_load_mod("runner.ops.queries", "ops.queries")
 answer_queries = _queries.answer_queries
 handle_query_mail = _queries.handle_query_mail
 
@@ -2240,10 +2224,7 @@ def retained_expired(data, cfg):
 # ---------------------------------------------------------------- board (v3 §13)
 # The board lives in runner/wire/board.py (the first module carved out of
 # this file). The names stay bound here for callers and tests.
-_board = _load_mod("runner.wire.board", "wire.board")
-if _board is None:
-    raise ImportError("runner/wire/board.py is missing: the task board "
-                      "(PROTOCOL.md section 13) cannot load")
+_board = _required_load_mod("runner.wire.board", "wire.board", ': the task board (PROTOCOL.md section 13) cannot load')
 Board = _board.Board
 _BOARD_LOCK = _board.BOARD_LOCK
 
@@ -3195,9 +3176,7 @@ def _mark(imap, seq, opts):
         mark_seen(imap, seq)
 
 
-_startup = _load_mod("runner.ops.startup", "ops.startup")
-if _startup is None:
-    raise ImportError("runner/ops/startup.py is missing")
+_startup = _required_load_mod("runner.ops.startup", "ops.startup")
 log_startup = _startup.log_startup
 handle_board_mail = _startup.handle_board_mail
 
@@ -4137,9 +4116,7 @@ def _learning_reconcile(cfg, base_dir, frozen, job_id, outcome,
         return None
 
 
-_handlers = _load_mod("runner.ops.handlers", "ops.handlers")
-if _handlers is None:
-    raise ImportError("runner/ops/handlers.py is missing")
+_handlers = _required_load_mod("runner.ops.handlers", "ops.handlers")
 oracle_cli = _handlers.oracle_cli
 handle_v2_mail = _handlers.handle_v2_mail
 run_variant = _handlers.run_variant
@@ -4371,9 +4348,7 @@ def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
         return None
     return job_id, skey
 
-_mail = _load_mod("runner.ops.mail", "ops.mail")
-if _mail is None:
-    raise ImportError("runner/ops/mail.py is missing")
+_mail = _required_load_mod("runner.ops.mail", "ops.mail")
 handle_mail = _mail.handle_mail
 
 
@@ -4696,9 +4671,7 @@ def _worker_count(cfg, opts) -> int:
 # polling and timeouts, freshness and retention, query budgets,
 # modes, local signals, and the log bounds.
 
-_tables = _load_mod("runner.ops.tables", "ops.tables")
-if _tables is None:
-    raise ImportError("runner/ops/tables.py is missing")
+_tables = _required_load_mod("runner.ops.tables", "ops.tables")
 _CLI_OVERRIDES = _tables._CLI_OVERRIDES
 _YARA_RULES = _tables._YARA_RULES
 
@@ -4955,9 +4928,7 @@ def _service_transports(cfg, base_dir, seen, seen_path, names,
             del seen[k]
     save_seen(seen_path, seen)
 
-_poll = _load_mod("runner.ops.poll", "ops.poll")
-if _poll is None:
-    raise ImportError("runner/ops/poll.py is missing")
+_poll = _required_load_mod("runner.ops.poll", "ops.poll")
 poll_once = _poll.poll_once
 
 
@@ -5191,9 +5162,7 @@ def _flagged_job_ids(base_dir):
             ids.add(job_id)
     return ids
 
-_watch = _load_mod("runner.ops.watch", "ops.watch")
-if _watch is None:
-    raise ImportError("runner/ops/watch.py is missing")
+_watch = _required_load_mod("runner.ops.watch", "ops.watch")
 _eventlog_tail = _watch._eventlog_tail
 _registry_watch = _watch._registry_watch
 _host_log_tail = _watch._host_log_tail
@@ -5265,13 +5234,10 @@ _EVENTLOG_ATTACK = {
     1102: "T1070.002",   # clear the audit log
 }
 
-_windows = _load_mod("runner.ops.windows", "ops.windows")
-if _windows is None:
-    raise ImportError("runner/ops/windows.py is missing")
+_windows = _required_load_mod("runner.ops.windows", "ops.windows")
 _wevtutil_query = _windows._wevtutil_query
 _reg_attack = _windows._reg_attack
 _reg_query = _windows._reg_query
-
 
 
 # Registry locations the Oracle watches, read-only. Autorun and
@@ -5289,7 +5255,6 @@ _REG_WATCH_WINLOGON_KEEP = {
 }
 _REG_WATCH_MAX_VALUES = 12
 _REG_WATCH_MAX_CHANGES = 15
-
 
 
 def _registry_snapshot():
@@ -5536,13 +5501,10 @@ def _local_watch(cfg, base_dir):
         except Exception:
             continue
 
-_sensors = _load_mod("runner.ops.sensors", "ops.sensors")
-if _sensors is None:
-    raise ImportError("runner/ops/sensors.py is missing")
+_sensors = _required_load_mod("runner.ops.sensors", "ops.sensors")
 _canary_watch = _sensors._canary_watch
 _yara_hits = _sensors._yara_hits
 recent_chat = _sensors.recent_chat
-
 
 
 def _cfg_section_flag(cfg, section, key, default=True) -> bool:
@@ -5631,9 +5593,7 @@ def _tail_marked(path, markers, max_lines=20):
     return kept[-max_lines:]
 
 
-_firewall = _load_mod("runner.ops.firewall", "ops.firewall")
-if _firewall is None:
-    raise ImportError("runner/ops/firewall.py is missing")
+_firewall = _required_load_mod("runner.ops.firewall", "ops.firewall")
 _firewall_posture = _firewall._firewall_posture
 # Every name the module defines is reachable here too: the suite
 # (and a host) reads and patches them on the runner module.
@@ -5643,17 +5603,11 @@ _parse_ufw = _firewall._parse_ufw
 _parse_iptables_policy = _firewall._parse_iptables_policy
 
 
-
-
-
-_av = _load_mod("runner.ops.av", "ops.av")
-if _av is None:
-    raise ImportError("runner/ops/av.py is missing")
+_av = _required_load_mod("runner.ops.av", "ops.av")
 _run_text = _av._run_text
 _av_posture = _av._av_posture
 _parse_defender_query = _av._parse_defender_query
 _clam_sig_line = _av._clam_sig_line
-
 
 
 def _read_posture_line(path):
@@ -5701,8 +5655,6 @@ _CLAM_SIG_PATHS = (
     "/var/lib/clamav/daily.cld",
 )
 _AV_STALE_SEC = 7 * 86400
-
-
 
 
 def _av_watch(base_dir):
@@ -5928,11 +5880,8 @@ _ORDINARY_PREFIXES = (
 
 _PATH_SPLITTERS = " \t\r\n'\"`;|&<>(){}[]"
 
-_paths = _load_mod("runner.ops.paths", "ops.paths")
-if _paths is None:
-    raise ImportError("runner/ops/paths.py is missing")
+_paths = _required_load_mod("runner.ops.paths", "ops.paths")
 _script_path_findings = _paths._script_path_findings
-
 
 
 def _chosen_retained_rows(base_dir, limit=6):
@@ -6037,9 +5986,7 @@ def _report_oracle_mode(cfg) -> None:
         log("oracle: deterministic mode (Pi Light) -- no local model; "
             "briefs and answers are assembled from the box's records")
 
-_context = _load_mod("runner.ops.context", "ops.context")
-if _context is None:
-    raise ImportError("runner/ops/context.py is missing")
+_context = _required_load_mod("runner.ops.context", "ops.context")
 oracle_context = _context.oracle_context
 
 
@@ -6150,9 +6097,7 @@ def _oracle_token_ok(got, token) -> bool:
         hashlib.sha256(got.encode("utf-8", "replace")).digest(),
         hashlib.sha256(token.encode("utf-8", "replace")).digest())
 
-_oracle_server = _load_mod("runner.ops.oracle_server", "ops.oracle_server")
-if _oracle_server is None:
-    raise ImportError("runner/ops/oracle_server.py is missing")
+_oracle_server = _required_load_mod("runner.ops.oracle_server", "ops.oracle_server")
 make_oracle_server = _oracle_server.make_oracle_server
 # Every name the module defines is reachable here too: the suite
 # (and a host) reads and patches them on the runner module.
@@ -6180,10 +6125,7 @@ def _warm_oracle_model(inf):
             f"{time.monotonic() - t0:.0f}s")
 
 
-
-_main = _load_mod("runner.ops.main", "ops.main")
-if _main is None:
-    raise ImportError("runner/ops/main.py is missing")
+_main = _required_load_mod("runner.ops.main", "ops.main")
 main = _main.main
 
 

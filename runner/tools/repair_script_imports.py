@@ -231,7 +231,7 @@ def _runner_module():
 def _extracted_modules(runner_src):
     """(var, module, path) for every ops module runner.py loads."""
     out = []
-    for m in re.finditer(r'^(?P<var>[A-Za-z_][A-Za-z0-9_]*) = _load_mod\("runner\.ops\.(?P<mod>[A-Za-z0-9_]+)", "ops\.(?P=mod)"\)', runner_src, re.M):
+    for m in re.finditer(r'^(?P<var>[A-Za-z_][A-Za-z0-9_]*) = (?:_required)?_load_mod\("runner\.ops\.(?P<mod>[A-Za-z0-9_]+)", "ops\.(?P=mod)"[^)\n]*\)', runner_src, re.M):
         path = os.path.join(ROOT, "runner", "ops", m.group("mod") + ".py")
         if os.path.isfile(path):
             out.append((m.group("var"), m.group("mod"), path))
@@ -322,7 +322,7 @@ def finish_modules():
         missing = [n for n in top if n != "_runner" and n not in runner_defs
                    and not re.search(r"^%s = " % re.escape(n), runner_src, re.M)]
         if missing:
-            head = re.search(r'^%s = _load_mod\("runner\.ops\.%s", "ops\.%s"\)\n' % (re.escape(var), mod, mod), runner_src, re.M)
+            head = re.search(r'^%s = (?:_required)?_load_mod\("runner\.ops\.%s", "ops\.%s"[^)\n]*\)\n' % (re.escape(var), mod, mod), runner_src, re.M)
             end = head.end()
             tail = runner_src[end:]
             bm = re.match(r'(?:if %s is None:\n    raise ImportError\([^\n]+\n)?(?:(?:#[^\n]*\n)|(?:[A-Za-z_][A-Za-z0-9_]* = %s\.[A-Za-z_][A-Za-z0-9_.]*(?: if [^\n]+)?\n))*' % (re.escape(var), re.escape(var)), tail)
