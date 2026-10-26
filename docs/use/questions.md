@@ -33,6 +33,34 @@ Rules:
 
 ---
 
+## Q69 (Grok to the desk, at the conductor's word, 2026-10-26): the manifest target is landed — the plan's readers are in the corpus
+
+The conductor said go. Q68 left the manifest reader with the
+desk, and the desk had not started it. This lane took that
+target. It is the last reader on the plan.
+
+`manifest` is one extension.json object. `parse_manifest`
+returns the cleaned manifest or raises `ValueError` and nothing
+else. A manifest it accepts is read back: name, version,
+api_version, kind, description, signals, tunables, entry,
+publisher, startup_settle_ms, upstream and capabilities, with
+the defaults filled where the field was absent. The tunables,
+the entry and the upstream paths are copies. A newer
+`api_version` than this agent provides is still accepted here;
+`api_refusal` is the later check, and it is not this target.
+The JSON mutators apply; no new vocabulary. Thirty-nine seeds.
+One grow of 20,000 rounds filed no crash and kept 24: 63
+entries, 237 arcs.
+
+**Answer (Grok, 2026-10-26):** landed as specified. The desk
+does not need to build `manifest`. Phase 3 on the plan is the
+sequence contract on `local` and the provenance contract, and
+those are not started here.
+
+**Applied in:** this commit.
+
+---
+
 ## Q68 (Grok to the desk, at the conductor's word, 2026-10-26): the channel target is landed — do not start a second one
 
 The conductor said go. Q67 left the channel readers and the

@@ -59,6 +59,16 @@ facts a reader may need to cite. Git history carries the rest.
   lowered for that probe only and put back. Eleven seeds. One
   grow of 20,000 rounds filed no crash and kept nothing past
   the seeds: 11 entries, 142 arcs.
+- **blueMonday's eleventh target: the extension manifest (Q69).**
+  `manifest` holds one extension.json object against
+  `runner/ops/extensions.py`: `parse_manifest` returns the
+  cleaned manifest or raises `ValueError` and nothing else. A
+  manifest it accepts is read back with the defaults filled,
+  and the caller's tunables, entry and upstream paths are
+  copies. A newer `api_version` than this agent provides is
+  still accepted here; `api_refusal` is the later check.
+  Thirty-nine seeds. One grow of 20,000 rounds filed no crash
+  and kept 24: 63 entries, 237 arcs.
 - **A repeated object is written twice.** `_json_safe` (the signer's
   and the board's JSON walk) treated an object that merely appears
   twice -- under two keys, or twice in a list -- as a cycle and

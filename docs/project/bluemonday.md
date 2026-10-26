@@ -99,7 +99,7 @@ peer on the wire reaches first.
 | 9 | `board` | `runner/wire/board.py`: `submit`, `offer`, `complete`, `approve`, `reoffer_expired` | in the corpus (Q67) |
 | 9b | `board_ops` | `runner/wire/board.py` under the sequence contract: a board file and `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order over it | in the corpus |
 | 10 | `channels` | `runner/wire/transports.py`: `fetch_channel_messages` over a throwaway directory; the entry is the pair | in the corpus (Q68) |
-| 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | the desk |
+| 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | in the corpus (Q69) |
 
 Not targets, and why: the Oracle's reading of its model's replies
 (`runner/ops/oracle_tools.py`), the config loader and the platform
@@ -130,7 +130,10 @@ never files a refusal as a crash.
   the next known-good task on that board still completes.
   `channels` never raises either: a file that is not an envelope
   is an ack-only refusal and stores nothing, and the known-good
-  neighbor in the same directory is still a job.
+  neighbor in the same directory is still a job. `manifest`
+  refuses with `ValueError` and nothing else, and a manifest it
+  accepts is read back with the defaults filled and the caller's
+  objects left alone.
 - **Round-trip.** What a signer signs, both verifiers read back;
   what `encrypt_body` seals, `decrypt_body` opens; the wrong secret
   is refused; an unknown key is refused before any MAC.
@@ -197,10 +200,10 @@ That is phase 4 below.
   and the fixes: every crash is fixed in the reader, never in the
   test, and the fix lands with `promote`; every new reader in the
   product gets its target in the same release.
-- **Grok** built the DTLS target (Q66), the board target (Q67)
-  and the channel target (Q68), and reviews the plan when the
-  conductor asks; its reads go under a Q and are applied by the
-  desk or recorded with the reason.
+- **Grok** built the DTLS target (Q66), the board target (Q67),
+  the channel target (Q68) and the manifest target (Q69), and
+  reviews the plan when the conductor asks; its reads go under a
+  Q and are applied by the desk or recorded with the reason.
 - **The conductor** decides what is not in this file: a new
   surface outside the readers, a second rig, the release of a
   finding's details.
@@ -245,9 +248,9 @@ nothing is still the record that those rounds were run.
 - **Phase 1 (done 2026-10-26):** the six verifier targets, the
   mail path, the differential both ways, the records in the tree,
   the continuous grow, the proof-of-work rules.
-- **Phase 2 (in flight):** DTLS (Q66), the board (Q67, and
-  `board_ops` under the sequence contract), the channel readers
-  (Q68), the manifest reader.
+- **Phase 2 (readers in the corpus, 2026-10-26):** DTLS (Q66),
+  the board (Q67, and `board_ops` under the sequence contract),
+  the channel readers (Q68), the manifest reader (Q69).
 - **Phase 3:** the sequence contract on `local`; the provenance
   contract on every reader that names a destination; cross-platform
   replay findings (a reader that reads differently on Windows is a

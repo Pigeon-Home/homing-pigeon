@@ -97,6 +97,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_channels(self):
         self._check("channels")
 
+    def test_manifest(self):
+        self._check("manifest")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes
@@ -292,7 +295,8 @@ class ToolTest(unittest.TestCase):
                               ("v2", B.seeds_v2()),
                               ("dtls", B.seeds_dtls()),
                               ("board", B.seeds_board()),
-                              ("channels", B.seeds_channels())):
+                              ("channels", B.seeds_channels()),
+                              ("manifest", B.seeds_manifest())):
             for _ in range(150):
                 parent = rng.choice(seeds)
                 child = B.mutate(rng, parent, seeds, target)
@@ -316,7 +320,7 @@ class ToolTest(unittest.TestCase):
         # so a sealed seed's id is stable and `seed` adds nothing to
         # a corpus that already holds it.
         for seeds in (B.seeds_crypto, B.seeds_stash, B.seeds_dtls,
-                      B.seeds_board, B.seeds_channels):
+                      B.seeds_board, B.seeds_channels, B.seeds_manifest):
             first = [e["id"] for e in seeds()]
             self.assertEqual(first, [e["id"] for e in seeds()])
             self.assertEqual(len(first), len(set(first)))
@@ -566,6 +570,27 @@ class ToolTest(unittest.TestCase):
         self.assertEqual(cm.exception.kind, "exception")
         self.assertIn("RuntimeError", cm.exception.detail)
         self.assertEqual(B.TR.FILE_MAX_BYTES, 4 * 1024 * 1024)
+
+    def test_the_manifest_checker_accepts_a_sense_and_refuses_a_typo(self):
+        good = [e for e in B.seeds_manifest()
+                if e["from"] == "seed:sense"][0]
+        bad = [e for e in B.seeds_manifest()
+               if e["from"] == "seed:unknown_field"][0]
+        newer = [e for e in B.seeds_manifest()
+                 if e["from"] == "seed:sense_newer_api"][0]
+        self.assertEqual(B.check("manifest", good), "accepted")
+        self.assertEqual(B.check("manifest", newer), "accepted")
+        self.assertEqual(B.check("manifest", bad), "refused")
+
+    def test_the_manifest_checker_catches_a_raise_that_is_not_valueerror(self):
+        good = [e for e in B.seeds_manifest()
+                if e["from"] == "seed:sense"][0]
+        with mock.patch.object(B.EX, "parse_manifest",
+                               side_effect=RuntimeError("manifest")):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("manifest", good)
+        self.assertEqual(cm.exception.kind, "exception")
+        self.assertIn("RuntimeError", cm.exception.detail)
 
     def test_saturation_reads_the_last_grow(self):
         tmp = tempfile.mkdtemp(prefix="hp-bluemonday-sat-")

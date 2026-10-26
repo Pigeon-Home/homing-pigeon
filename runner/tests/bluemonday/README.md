@@ -20,6 +20,7 @@ One JSON-lines file per target, grown by
 | `board.jsonl`  | `runner/wire/board.py` (Q67): `submit`, `offer`, `complete`, `approve`, `reoffer_expired` on one task dict; a refusal stores nothing, and a known-good neighbor submitted after it still runs |
 | `board_ops.jsonl` | `runner/wire/board.py`, the sequence kind: a board file as a peer or a crash left it, then `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order on a throwaway path, the contract held after every step |
 | `channels.jsonl` | `runner/wire/transports.py` (Q68): `fetch_channel_messages` over a throwaway directory. The entry is a pair of inbox files. A file that is not an envelope is an ack-only refusal and stores nothing; the known-good neighbor in the same directory is still a job |
+| `manifest.jsonl` | `runner/ops/extensions.py` (Q69): `parse_manifest` on one extension.json object. `ValueError` is the refusal. A manifest it accepts is read back with the defaults filled, and the caller's objects are left alone |
 
 The first line of each file is a header; every other line is one
 entry: `id` (a hash of the kind and the data), `kind` (`text`, a
@@ -95,6 +96,15 @@ that probe only and put back. Accepted means the poison parsed
 and came back as that subject and body. Refused means it was
 ack-only and its reply stored nothing.
 
+A `manifest` entry's data is one extension.json object, so the
+JSON mutators apply. Accepted means `parse_manifest` returned
+the cleaned manifest and the input's name, version, kind,
+signals, tunables, entry, publisher, upstream and capabilities
+read back, with defaults filled where the field was absent.
+Refused means `ValueError` and a reason. A newer `api_version`
+than this agent provides is accepted here; `api_refusal` is a
+later check and is not this target.
+
 The refusal types, so a grow never files one as a crash (Q63):
 for the verifiers (`wire`, `cloud`, `v2`) the refusal is
 `ValueError`, raised, not returned -- an unknown `key_id` from
@@ -105,6 +115,7 @@ raise at all; the DTLS splitter, handshake parser and `feed`
 never raise, and the extension and hello readers refuse with
 `DtlsError` or `JobCryptoError`. The board methods never raise:
 a bad task is a `(False, reason)` from `submit` and stores
-nothing. A raise of any other type, or a `ValueError` escaping
-`local`, `stash`, `mail`, `dtls`, `board`, `board_ops` or
-`channels`, is a crash.
+nothing. The manifest reader refuses with `ValueError` and
+nothing else. A raise of any other type, or a `ValueError`
+escaping `local`, `stash`, `mail`, `dtls`, `board`, `board_ops`
+or `channels`, is a crash.

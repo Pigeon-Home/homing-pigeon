@@ -40,6 +40,7 @@ delivered body and the agent's trust in it:
     channels runner/wire/transports.py   fetch_channel_messages over
                                          a throwaway directory; the
                                          entry is the pair
+    manifest runner/ops/extensions.py    parse_manifest
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -104,6 +105,7 @@ if ROOT not in sys.path:
 
 from runner.cloud import send_job as SJ  # noqa: E402
 from runner.guard import textutil as TU  # noqa: E402
+from runner.ops import extensions as EX  # noqa: E402
 from runner.ops.extensions import build_sensor_alert  # noqa: E402
 from runner.wire import jobcrypto as JC  # noqa: E402
 from runner.wire import protocol_v2 as P2  # noqa: E402
@@ -1950,6 +1952,190 @@ def seeds_channels():
             for name, poison, other in pairs]
 
 
+_MANIFEST_KEYS = {
+    "name", "version", "api_version", "kind", "description", "tunables",
+    "signals", "entry", "publisher", "startup_settle_ms", "upstream",
+    "capabilities",
+}
+_MANIFEST_PIN = "a" * 40
+
+
+def _sense(**extra):
+    manifest = {
+        "name": "bm-sense",
+        "version": "0.3.0",
+        "api_version": 1,
+        "kind": "sense",
+        "signals": [{"name": "bm_done",
+                     "description": "A blueMonday run finished."}],
+    }
+    manifest.update(extra)
+    return manifest
+
+
+def _transport(**extra):
+    manifest = {
+        "name": "bm-pipe",
+        "version": "0.1.0",
+        "api_version": 1,
+        "kind": "transport",
+        "entry": ["bm-pipe", "--once"],
+        "publisher": "bm.example",
+    }
+    manifest.update(extra)
+    return manifest
+
+
+def _manifest_clean(data, got):
+    """The cleaned dict is the manifest's own fields, defaults
+    filled, and a copy: editing it does not edit the input."""
+    if set(got) != _MANIFEST_KEYS:
+        raise Crash("contract", "cleaned manifest keys "
+                    f"{sorted(set(got) - _MANIFEST_KEYS) or 'missing'}")
+    for field in ("name", "version", "api_version", "kind"):
+        if got[field] != data[field]:
+            raise Crash("contract", f"{field} was not read back")
+    if got["description"] != data.get("description", ""):
+        raise Crash("contract", "description was not read back")
+    tunables = data.get("tunables", {})
+    if got["tunables"] != tunables or got["tunables"] is tunables:
+        raise Crash("contract", "tunables was not copied")
+    if data.get("kind") == "sense":
+        want = [{"name": s["name"], "description": s["description"]}
+                for s in data["signals"]]
+        if got["signals"] != want:
+            raise Crash("contract", "signals were not read back")
+    elif got["signals"]:
+        raise Crash("contract", "a transport kept signals")
+    caps = data.get("capabilities") or []
+    if set(got["capabilities"]) != set(caps) \
+            or len(got["capabilities"]) != len(set(got["capabilities"])):
+        raise Crash("contract", "capabilities were not the declared set")
+    entry = data.get("entry")
+    want_entry = list(entry) if isinstance(entry, list) else []
+    if got["entry"] != want_entry:
+        raise Crash("contract", "entry was not read back")
+    if isinstance(entry, list) and got["entry"] is entry:
+        raise Crash("contract", "entry was the live list")
+    publisher = data.get("publisher", "")
+    if not isinstance(publisher, str):
+        publisher = ""
+    if got["publisher"] != publisher:
+        raise Crash("contract", "publisher was not read back")
+    settle = data.get("startup_settle_ms", 0)
+    if isinstance(settle, bool) or not isinstance(settle, int):
+        settle = 0
+    if got["startup_settle_ms"] != settle:
+        raise Crash("contract", "startup_settle_ms was not read back")
+    block = data.get("upstream")
+    if block is None:
+        if got["upstream"] is not None:
+            raise Crash("contract", "an absent upstream was stored")
+        return
+    want = {"repo": block["repo"], "ref": block["ref"], "pin": block["pin"],
+            "paths": list(block["paths"]),
+            "license": block.get("license", "")}
+    if got["upstream"] != want:
+        raise Crash("contract", "upstream was not read back")
+    if got["upstream"]["paths"] is block["paths"]:
+        raise Crash("contract", "upstream paths were the live list")
+
+
+def check_manifest(entry):
+    """manifest: one extension.json object (Q69). parse_manifest
+    returns the cleaned manifest or raises ValueError and nothing
+    else. A manifest it accepts is read back with defaults filled
+    and the caller's objects left alone. A newer api_version than
+    this agent provides is still accepted here; api_refusal is
+    the later check, and it is not this target."""
+    got, exc = _call(EX.parse_manifest, entry["data"])
+    if exc is not None:
+        _expect_refusal(exc, ValueError, "parse_manifest")
+        if not str(exc).strip():
+            raise Crash("contract", "ValueError with no reason")
+        return "refused"
+    if not isinstance(got, dict):
+        raise Crash("shape", "parse_manifest returned "
+                    f"{type(got).__name__}")
+    _manifest_clean(entry["data"], got)
+    return "accepted"
+
+
+def seeds_manifest():
+    """extension.json objects, invented names only. A sense, a
+    transport, the optional blocks, and the refusals the
+    docstring names. api_version 2 is accepted by this reader."""
+    upstream = {
+        "repo": "https://github.com/bm-owner/bm-repo",
+        "ref": "main",
+        "pin": _MANIFEST_PIN,
+        "paths": ["schema/record.json"],
+        "license": "MIT",
+    }
+    many = [{"name": f"bm_sig_{i}", "description": "A declared signal."}
+            for i in range(65)]
+    out = [
+        ("sense", _sense()),
+        ("sense_described", _sense(
+            description="A blueMonday sense.",
+            tunables={"threshold": 1})),
+        ("sense_two_signals", _sense(signals=[
+            {"name": "bm_done", "description": "Finished."},
+            {"name": "bm_wait", "description": "Still running."},
+        ])),
+        ("sense_capabilities", _sense(
+            capabilities=["network", "listen"])),
+        ("sense_upstream", _sense(upstream=upstream)),
+        ("sense_entry_ignored", _sense(entry=["bm-sense"])),
+        ("sense_long_name", _sense(name="b" * 64)),
+        ("sense_prerelease", _sense(version="0.3.0-bm.1")),
+        ("sense_build", _sense(version="0.3.0+bm")),
+        ("sense_newer_api", _sense(api_version=2)),
+        ("sense_long_description", _sense(description="d" * 200)),
+        ("sense_settle_kept", _sense(startup_settle_ms=9000)),
+        ("transport", _transport()),
+        ("transport_settle", _transport(startup_settle_ms=5000)),
+        ("transport_caps", _transport(
+            capabilities=["subprocess", "native"])),
+        ("not_object", ["bm-sense"]),
+        ("null", None),
+        ("unknown_field", _sense(script="echo")),
+        ("missing_version", {"name": "bm-sense", "api_version": 1,
+                             "kind": "sense", "signals": [
+                                 {"name": "bm_done",
+                                  "description": "Finished."}]}),
+        ("bad_name", _sense(name="../x")),
+        ("empty_name", _sense(name="")),
+        ("bad_version", _sense(version="1")),
+        ("api_zero", _sense(api_version=0)),
+        ("api_bool", _sense(api_version=True)),
+        ("api_text", _sense(api_version="1")),
+        ("bad_kind", _sense(kind="oracle")),
+        ("description_newline", _sense(description="a\nb")),
+        ("description_long", _sense(description="d" * 201)),
+        ("no_signals", _sense(signals=[])),
+        ("duplicate_signal", _sense(signals=[
+            {"name": "bm_done", "description": "Finished."},
+            {"name": "bm_done", "description": "Again."},
+        ])),
+        ("signal_extra", _sense(signals=[{
+            "name": "bm_done", "description": "Finished.",
+            "level": "info"}])),
+        ("bad_capability", _sense(capabilities=["shell"])),
+        ("too_many_signals", _sense(signals=many)),
+        ("transport_no_entry", _transport(entry=[])),
+        ("transport_nul", _transport(entry=["bm-pipe", "a\x00b"])),
+        ("transport_settle_high", _transport(startup_settle_ms=5001)),
+        ("upstream_repo", _sense(upstream=dict(
+            upstream, repo="https://example.com/bm/repo"))),
+        ("upstream_pin", _sense(upstream=dict(upstream, pin="abcd"))),
+        ("upstream_path", _sense(upstream=dict(
+            upstream, paths=["../secret"]))),
+    ]
+    return [make_entry("payload", manifest, "seed:" + name, "seed")
+            for name, manifest in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -2654,6 +2840,8 @@ TARGETS = {
                   "check": check_board_ops, "seeds": seeds_board_ops},
     "channels": {"files": [_src("wire", "transports.py")],
                  "check": check_channels, "seeds": seeds_channels},
+    "manifest": {"files": [_src("ops", "extensions.py")],
+                 "check": check_manifest, "seeds": seeds_manifest},
 }
 
 
