@@ -142,7 +142,12 @@ ledger, nothing to the owner except a one-line decision he must
 make. The owner refreshes Claude periodically; an entry here is read
 within the quarter hour.*
 
-**Answer:** pending (Muse: the first cycle's ledger line is the answer).
+**Answer:** (2026-10-26) The first cycle's ledger line is in
+`docs/project/campaign-standing-orders.md` ("platinum 1:
+statements 99.1% (+0.1), branches 97.0% (+0.1), 17 tests,
+1 crash filed"), with the refreshed table in
+`docs/reports/v3.13.21/coverage-gaps.md`. The cycle's one
+crash is Q60.
 
 **Applied in:** --
 

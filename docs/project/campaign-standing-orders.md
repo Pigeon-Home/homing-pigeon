@@ -3538,3 +3538,59 @@ when done, the proving commit or run. Newest first.
   untouched) — a survivor under the rerun is
   trustworthy either way, since memory flakiness
   can only manufacture kills, never survivals.
+- platinum 1: statements 99.1% (+0.1), branches
+  97.0% (+0.1), 17 tests, 1 crash filed,
+  resources 2026-10-26T10:12:50Z: cores 2 | box cpu 58% | wall 30m57s | cmd cpu 26m54s = 0.9 cores busy | peak rss 424 MB | mem used 80% | disk free 165.4 GB | exit 0 | under-driven
+  (under-driven is the single-process
+  measure's shape: one interpreter runs the
+  suite while the second core serves its
+  children; the filler rule applies to the
+  gaps between cycles, not inside a measure.)
+  Baseline 90445244 (99.0%, 294 missing);
+  after db3bcc46 (258 missing). Cleared:
+  the whole delivery/stash family
+  (_sweep_channel_refusals, undeliver_stash,
+  _keep_original_result, _delivery_audit,
+  _record_payload, _stash_move) by
+  test_platinum_runner.py, and
+  runner/cloud/send_dtls.py main + _pump by
+  test_platinum_send.py. Crash filed: Q60,
+  a non-UTF-8 refusal note escapes
+  _sweep_channel_refusals as a
+  UnicodeDecodeError (probe under
+  expectedFailure). wire/ was covered the
+  same day by 40000e00's test_platinum_wire.py
+  (record layer, then validate/verify/
+  _feed_record); it counts in cycle 2's
+  baseline, whose tree carries that module.
+  Frontier for cycle 2, from the refreshed
+  table (docs/reports/v3.13.21/): logic
+  extsources.status (5), queues __main__.main
+  (5), install._import_atomicio (3),
+  install.merge_config_blob (3); guard
+  cli._transports_arg (3),
+  runner._sweep_workspace (3),
+  QueueClient.pull (3); except
+  send_job.post_to_queue (6),
+  extreview._scan_python (3). protocol_v2
+  .validate is 40000e00's, pi_health's
+  Windows memory block is platform.
+  Measure casualties, for the record: two
+  attempts were killed by VM restarts and
+  discarded; one sharded attempt was
+  discarded as non-comparable with the CI
+  way (its subprocess coverage files also
+  littered runner/ and tripped test_layout
+  locally -- sweep .coverage* out of the
+  whole tree after a local measure), and in
+  it test_remediation_e2e's exits-first test
+  failed once with exit -9 under saturation
+  and is green standalone: a load flake, not
+  filed. The cycle's verdict rides on the
+  CI-way measure above: 6,908 tests, OK
+  (skipped=38, expected failures=1).
+- rules refreshed 2026-10-26 03:20 PDT
+  (standing orders incl. queue P and the
+  owner-talk section, AGENTS.md rules 7-10,
+  Q59/Q60, the playbook's hard rules).
+  resources 2026-10-26T10:12:50Z: cores 2 | box cpu 58% | wall 30m57s | cmd cpu 26m54s = 0.9 cores busy | peak rss 424 MB | mem used 80% | disk free 165.4 GB | exit 0 | under-driven
