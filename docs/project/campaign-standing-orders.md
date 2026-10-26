@@ -361,11 +361,10 @@ corpus is `runner/tests/bluemonday/<target>.jsonl` (five targets:
 `runner/tests/test_bluemonday_corpus.py` replays it on every leg.
 The loop:
 
-1. **Trigger.** A Platinum ledger line that closes no new
-   statements, or only `platform` and `shadowed` rows. Until then
-   P runs as written, and a `grow` is P's other under-driven filler
-   (step 7): the corpus may grow on an idle rig before the trigger,
-   ledgered the same way.
+1. **Trigger.** Started by the owner on 2026-10-26: M runs now,
+   beside P, and does not wait for a Platinum ledger line. Each
+   cycle alternates one Platinum item with one blueMonday grow; a
+   `grow` is also P's under-driven filler (step 7).
 2. **Grow.** `HP_BLUEMONDAY_ROUNDS=<large> python
    runner/tools/bluemonday_corpus.py grow` under `rig_resources.py`;
    `--seed` makes a run repeatable, `--verbose` prints each keeper.
