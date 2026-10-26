@@ -3,12 +3,13 @@
 Targets from `runner/tools/coverage_targets.py` on the cycle-1
 baseline (90445244):
 
-  logic  cloud/send_dtls.py:main (5 missing) -- the success tail:
-         a result that verifies is printed, the resumption ticket
-         is saved, and main returns 0. The failure arms are covered
-         by test_send_dtls_main.py; no test had walked a session
-         all the way to a verified result.
-  logic  cloud/send_dtls.py:_pump (3) -- the tick arm: datagrams
+  logic  runner/cloud/send_dtls.py:main (5 missing) -- the
+         success tail: a result that verifies is printed, the
+         resumption ticket is saved, and main returns 0. The
+         failure arms are covered by test_send_dtls_main.py; no
+         test had walked a session all the way to a verified
+         result.
+  logic  runner/cloud/send_dtls.py:_pump (3) -- the tick arm: datagrams
          the client core produces on tick are sent even when
          nothing ever arrives, until the deadline reports False.
 
