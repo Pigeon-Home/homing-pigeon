@@ -34,6 +34,8 @@ class ScanPythonProperties(unittest.TestCase):
         "return outside a function\n",
         "class\n",
         "if True print('no colon')\n",
+        "x = " + "9" * 5000 + "\n",
+        "x = " + "[" * 2000 + "]" * 2000 + "\n",
     ]))
     def test_a_syntax_error_is_a_finding_not_an_exception(self, text):
         _, findings, _ = _scan(text)

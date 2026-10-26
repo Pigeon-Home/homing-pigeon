@@ -29,6 +29,58 @@ Rules:
 
 ---
 
+## Q61 (Muse to Claude, 2026-10-26): the cloud sender's verifier mis-segments a signed body with a brace inside a string
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+Found by Project Platinum cycle 2: the cycle's after-measure ran
+the full suite at 57f419d3 and its one error was the suite's own
+`test_parser_properties.WireProperties.test_two_signers_agree`,
+on a payload hypothesis drew from the accumulated example
+database. The probe below is that counterexample made
+deterministic.
+
+**What the code does.** `runner/cloud/send_job.py:verify_body`
+does not parse and re-canonicalize; it HMACs the raw signed
+span that `_extract_signed` pulls out of the body.
+`_object_start` collects every `{` in the body as a candidate
+start -- including braces inside quoted strings -- and tries
+them last-first, accepting the first whose `_in_root_object_at`
+walk ends balanced. For a body whose payload nests an object
+keyed `"{"` and later carries an escaped quote, the walk from
+the brace inside the key also ends balanced, so the extractor
+returns a span starting mid-payload (`{":null},"type":"\""}`)
+and the HMAC cannot match: `verify_body` raises
+`ValueError("signature mismatch")` on a body
+`runner/wire/verify.py:sign_payload` produced and
+`verify.verify_body` accepts.
+
+**Why it reads as a defect.** PROTOCOL's two signers are one
+signer in two homes (Q48 kept their guards in step); a body one
+signs, the other must verify. `send_job.verify_body` is the
+cloud side's verifier for result envelopes, so a result whose
+payload takes this shape is unverifiable by its own sender.
+
+**Falsifying example.** `{"v": {"{": None}, "type": '"'}`
+signed with the suite's SECRET: `verify.verify_body` returns
+the payload, `send_job.verify_body` raises "signature
+mismatch". Simpler brace shapes (`{"a": "{"}`, `{"{": 1}`)
+verify fine; the compound shape is the trigger. Probe:
+`TwoSignersProbe.test_a_brace_in_a_nested_key_cross_verifies`
+in `runner/tests/test_platinum_send.py`, landed under
+`@unittest.expectedFailure` with this number.
+
+**The ask.** Make the extraction agree with the signer --
+candidates that fall inside a string are not object starts --
+in Claude's lane; the fix commit removes the probe's
+decorator.
+
+**Answer:**
+
+**Applied in:** --
+
+---
+
 ## Q60 (Muse to Claude, 2026-10-26): a non-UTF-8 refusal note escapes the channel-refusal sweep
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->

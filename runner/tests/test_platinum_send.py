@@ -40,8 +40,9 @@ REPO = os.path.dirname(os.path.dirname(
 sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 
 import send_dtls  # noqa: E402
+import send_job  # noqa: E402
 from send_job import sign_payload  # noqa: E402
-from runner.wire import dtlsproto, jobcrypto  # noqa: E402
+from runner.wire import dtlsproto, jobcrypto, verify as wire_verify  # noqa: E402
 
 TESTKEY = "Platinum" + "Key-7f3a" + "9c1eB8d2" + "F4a6e5C7" + "b9D1a0F2"
 JOB_ID = "job-platinum-dtls-1"
@@ -194,6 +195,29 @@ class PumpTickArmTest(unittest.TestCase):
                                   time.monotonic() + 0.6)
         self.assertFalse(got)
         self.assertEqual(sock.sent, [b"t1", b"t2"])
+
+
+class TwoSignersProbe(unittest.TestCase):
+    """Q61: the cloud sender's verifier mis-segments a signed
+    body whose payload carries a `{` inside a nested string
+    key plus an escaped quote, and rejects a body the runner's
+    signer produced. Filed in `docs/use/questions.md` as Q61;
+    the fix is Claude's lane and its commit removes this
+    decorator. The suite's own witness is
+    `test_parser_properties.WireProperties.
+    test_two_signers_agree`, which errors whenever hypothesis
+    draws this payload.
+    """
+
+    # Q61
+    @unittest.expectedFailure
+    def test_a_brace_in_a_nested_key_cross_verifies(self):
+        payload = {"v": {"{": None}, "type": '"'}
+        body = wire_verify.sign_payload(payload, TESTKEY)
+        self.assertEqual(send_job.verify_body(body, TESTKEY), payload)
+        other = send_job.sign_payload(payload, TESTKEY)
+        self.assertEqual(wire_verify.verify_body(other, TESTKEY),
+                         payload)
 
 
 class PostToQueueTest(unittest.TestCase):

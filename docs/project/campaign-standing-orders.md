@@ -3594,3 +3594,61 @@ when done, the proving commit or run. Newest first.
   owner-talk section, AGENTS.md rules 7-10,
   Q59/Q60, the playbook's hard rules).
   resources 2026-10-26T10:12:50Z: cores 2 | box cpu 58% | wall 30m57s | cmd cpu 26m54s = 0.9 cores busy | peak rss 424 MB | mem used 80% | disk free 165.4 GB | exit 0 | under-driven
+- platinum 2: statements 99.3% (+0.1), branches
+  97.1% (+0.1), 28 tests, 1 crash filed,
+  resources 2026-10-26T12:59:45Z: cores 2 | box cpu 48% | wall 27m59s | cmd cpu 22m11s = 0.8 cores busy | peak rss 439 MB | mem used 93% | disk free 165.4 GB | exit 1 | under-driven
+  (the exit 1 is the one suite error below,
+  not the measure; under-driven is the
+  single-process measure's shape again.)
+  Baseline 82817d14 (99.2%, 250 missing --
+  wire/ counted in, per cycle 1's note);
+  after 57f419d3 (221 missing). Cleared:
+  every logic/guard/except target on the
+  cycle-1 frontier -- extsources.status,
+  queues main + QueueClient.pull,
+  install._import_atomicio +
+  merge_config_blob, cli._transports_arg,
+  runner._sweep_workspace,
+  send_job.post_to_queue,
+  extreview._scan_python's SyntaxError arm.
+  Two rows remain on the refreshed table
+  (docs/reports/v3.13.27/): _scan_python's
+  ValueError/RecursionError arm, a Python
+  3.9-3.11 arm that cannot fire on 3.12+
+  (every malformed source lands in the
+  SyntaxError arm there; recorded in the
+  gaps header, not a target), and
+  pi_health's Windows memory block
+  (platform). Crash filed: Q61 -- the
+  cloud sender's verify_body mis-segments a
+  signed body whose payload nests a "{"
+  string key beside an escaped quote and
+  rejects a body the runner's signer made;
+  the suite's own test_two_signers_agree
+  was the after-measure's one error when
+  hypothesis drew the payload, and the
+  probe in test_platinum_send.py is that
+  counterexample made deterministic.
+  Q49 and Q60 both closed this cycle:
+  answered, fixed in Claude's lane
+  (46244aea, d9b6fcf6), probes undecorated
+  and verified green here. The cycle-2
+  tests first landed red on three CI legs
+  (unregistered skip reason, a POSIX mode
+  asserted on Windows, a raw mkdtemp root
+  on macOS); the release lane fixed all
+  three test lines in 51152726 because a
+  car could not be cut from a red head --
+  the registry lesson is in misc.md and
+  stands: register the reason before the
+  push, realpath a path-prefix fixture,
+  assert mode bits on POSIX only. The
+  baseline measure was killed once by a
+  runtime restart and relaunched clean;
+  its verdict: 6,923 tests, OK (skipped=38,
+  expected failures=1, the then-unfixed
+  Q60 probe).
+- rules refreshed 2026-10-26 06:05 PDT
+  (standing orders incl. queue P, AGENTS.md
+  rules 7-10, Q59-Q61, the playbook's hard
+  rules). resources 2026-10-26T12:59:45Z: cores 2 | box cpu 48% | wall 27m59s | cmd cpu 22m11s = 0.8 cores busy | peak rss 439 MB | mem used 93% | disk free 165.4 GB | exit 1 | under-driven
