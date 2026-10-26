@@ -4,6 +4,20 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.5 - 2026-10-25
+
+- **Hosting ships as a feature.** `docs/use/own-cloud.md` is the user's
+  page: one command, their own account, their own bill. The container
+  image starts from a one-blob config (`HP_CONFIG_BLOB`) with the hosted
+  profile and carries bubblewrap; the Fly adapter names the image by
+  its git tag. The ephemeral workflow is a template for a user's own
+  repository with GitHub's terms called out; billing stays dormant.
+- **Workspace isolation's vector sweep** counts a new name outside the
+  state tree only when it carries one of the job's own file names or is
+  plainly not a runner record, so the runner's lazily written records
+  no longer trip it under load.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.4 - 2026-10-25
 
 - **Hosting, Phases 0 to 4, built against recorded exchanges.** The
@@ -20,12 +34,6 @@ facts a reader may need to cite. Git history carries the rest.
   transport and `send_job.py --to-queue`. Every provider call in the
   suite is a recorded exchange; no account exists yet.
   `docs/project/hosting.md`.
-- **Hosting ships as a feature.** `docs/use/own-cloud.md` is the user's
-  page: one command, their own account, their own bill. The container
-  image starts from a one-blob config (`HP_CONFIG_BLOB`) with the hosted
-  profile and carries bubblewrap; the Fly adapter names the image by
-  its git tag. The ephemeral workflow is a template for a user's own
-  repository with GitHub's terms called out; billing stays dormant.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.3 - 2026-10-25
