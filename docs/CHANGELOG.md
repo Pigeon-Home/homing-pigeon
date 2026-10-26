@@ -41,6 +41,25 @@ The four review items, plus workspace isolation (the runbook of
   time. `runner/tests/test_file_names.py`: the vector table with its
   rule numbers, the end-to-end rejection (poison, never retried, no
   download), the sender by path. PROTOCOL.md section 6.
+- **Workspace isolation, pinned.** The work directory's real path is
+  resolved once per job (a work directory that is itself a symlink
+  is refused) and every check answers for it; the tree is walked
+  after staging and again right before the process starts -- no
+  symlink or junction, nothing but regular files and directories,
+  nothing resolving outside -- and a violation is a `workspace
+  integrity` rejection with the work directory removed; the script
+  must be a regular file under the root; a download lands in a temp
+  name beside its destination (`O_EXCL | O_NOFOLLOW`), capped while
+  streaming, and is renamed into place whole; the Linux sandbox
+  binds the real path. `runner/tests/test_workspace_isolation.py`:
+  every rejected name end to end with nothing written outside the
+  work tree, a symlink planted between staging and start caught by
+  the pre-exec sweep, a symlinked work directory refused, the endless
+  download stopped at the cap with its temp removed, the junction leg
+  on Windows, and a property over random file lists (nothing new
+  outside the work tree after any job); `test_confinement`'s
+  EnforceTest refuses a planted link before the sandbox is entered.
+  PROTOCOL.md section 9.4, "The work directory".
 
 ## 3.13.1 - 2026-10-25
 

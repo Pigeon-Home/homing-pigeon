@@ -72,7 +72,15 @@ Defense in depth, cheapest first:
   the job sees `/usr`, its own workdir, and nothing else; when the
   interpreter lives outside `/usr` (pyenv, a venv, `/opt`), its own
   install prefix is bound read-only too, and that bind is written
-  to the audit record and the log. See SECURITY.md.
+  to the audit record and the log. See SECURITY.md. The workdir the
+  sandbox binds is its real path, resolved once per job, so a
+  symlinked state directory cannot widen the bind; the same real
+  path is what every staging check and the two workspace sweeps
+  (after staging, before the process starts: no symlink or
+  junction, nothing but regular files and directories, nothing
+  resolving outside) answer for, on every platform. On Windows,
+  where there is no sandbox, those checks are the isolation
+  (PROTOCOL.md §9.4, "The work directory").
 
 ## 4. The Oracle as a safeguard
 

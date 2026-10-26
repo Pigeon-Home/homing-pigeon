@@ -46,6 +46,7 @@ import shutil
 import signal
 import smtplib  # noqa: F401  (re-exported: tests patch it here)
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -1846,20 +1847,40 @@ def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
         # "Invalid IPv6 URL" and a control character in the URL raise
         # here. They fail the same way every cycle.
         raise JobRejected(f"bad download url: {e}")
-    with resp, open(dest, "wb") as f:
-        total = 0
-        while True:
-            chunk = resp.read(65536)
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > max_bytes:
-                # Poison, not transient: an over-cap download fails
-                # identically on every retry, burning bandwidth each cycle.
-                raise JobRejected(
-                    f"download exceeded {max_bytes} bytes"
-                )
-            f.write(chunk)
+    # The bytes land in a temp name beside dest, opened O_EXCL |
+    # O_NOFOLLOW (a symlink planted at either name is not written
+    # through), the cap is enforced while streaming, and the file is
+    # renamed into place whole: a reader never sees a partial
+    # download under the staged name (review item 5).
+    tmp = _atomicio._temp_name(dest)
+    fd = _atomicio._open_new(tmp, 0o600)
+    total = 0
+    try:
+        with resp:
+            while True:
+                chunk = resp.read(65536)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > max_bytes:
+                    # Poison, not transient: an over-cap download fails
+                    # identically on every retry, burning bandwidth each
+                    # cycle. The stream is closed here, the partial file
+                    # removed below.
+                    raise JobRejected(
+                        f"download exceeded {max_bytes} bytes"
+                    )
+                view = memoryview(chunk)
+                while len(view):
+                    view = view[os.write(fd, view):]
+        os.close(fd)
+        fd = None
+        os.replace(tmp, dest)
+    except BaseException:
+        if fd is not None:
+            _close_quiet(fd)
+        _unlink_quiet(tmp)
+        raise
 
 def sha384_of(path: str) -> str:
     """Hash a file. A missing or unreadable file is empty, not a crash."""
@@ -1950,6 +1971,68 @@ def _staged_dest(work, name, root=None):
             raise JobRejected("cannot create the directory for %s: %s"
                               % (name, e))
     return dest
+
+def _workspace_root(work):
+    """The canonical work directory, computed once per job.
+
+    A work directory that is itself a symlink is refused: the staging
+    checks and the sandbox bind are of the real path, and a link here
+    would make them answer for somewhere else.
+    """
+    if os.path.islink(work):
+        raise JobRejected("workspace integrity: the work directory is a "
+                          "symlink")
+    return os.path.realpath(work)
+
+def _reparse_point(st):
+    """True for a Windows reparse point (a junction as much as a
+    symlink); lstat marks them in st_file_attributes, which POSIX
+    stat results do not carry."""
+    return bool(getattr(st, "st_file_attributes", 0)
+                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0))
+
+def _sweep_workspace(work, root, when):
+    """Every entry under work is a regular file or directory, not a
+    symlink, with its real path under root. Anything else is
+    `JobRejected("workspace integrity: ...")` naming the entry and the
+    moment (`after staging`, `before execution`): a race between the
+    download and the execution, or a script that planted a link, shows
+    here and never runs. os.walk does not follow links."""
+    prefix = root + os.sep
+    for dirpath, dirnames, filenames in os.walk(work, followlinks=False):
+        for name in dirnames + filenames:
+            full = os.path.join(dirpath, name)
+            try:
+                st = os.lstat(full)
+            except OSError as e:
+                raise JobRejected("workspace integrity (%s): %s cannot be "
+                                  "read: %s" % (when, _rel_work(work, full), e))
+            if stat.S_ISLNK(st.st_mode) or _reparse_point(st):
+                raise JobRejected("workspace integrity (%s): %s is a symlink"
+                                  % (when, _rel_work(work, full)))
+            if not (stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode)):
+                raise JobRejected("workspace integrity (%s): %s is not a "
+                                  "regular file or directory"
+                                  % (when, _rel_work(work, full)))
+            if not os.path.realpath(full).startswith(prefix):
+                raise JobRejected("workspace integrity (%s): %s resolves "
+                                  "outside the work directory"
+                                  % (when, _rel_work(work, full)))
+
+def _check_script_path(script_path, root):
+    """The staged script is a regular, non-symlink file under root."""
+    prefix = root + os.sep
+    try:
+        st = os.lstat(script_path)
+    except OSError as e:
+        raise JobRejected("workspace integrity (before execution): the "
+                          "script cannot be read: %s" % e)
+    if stat.S_ISLNK(st.st_mode) or _reparse_point(st) \
+            or not stat.S_ISREG(st.st_mode) \
+            or not os.path.realpath(script_path).startswith(prefix):
+        raise JobRejected("workspace integrity (before execution): the "
+                          "script is not a regular file under the work "
+                          "directory")
 
 # ---------------------------------------------------------------- remediation
 # The acts are core (docs/design/remediation-design.md): only the runner

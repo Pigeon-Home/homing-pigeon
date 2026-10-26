@@ -371,9 +371,18 @@ class SandboxAuditNoteTest(unittest.TestCase):
         from runner import runner as R
         hosted = "/opt/hostedtoolcache/Python/3.12.15/x64/bin/python3"
         job = _job("m6-note", "print('hi')")
+        real_realpath = os.path.realpath
+
+        def realpath(path, *a, **k):
+            # Only the interpreter lookup is scripted; the workspace
+            # sweeps (review item 5) resolve the staged tree for real.
+            if str(path).endswith("python3"):
+                return hosted
+            return real_realpath(path, *a, **k)
+
         with mock.patch.object(SB, "sandbox_available", return_value=True), \
              mock.patch.object(SB.shutil, "which", return_value=hosted), \
-             mock.patch.object(SB.os.path, "realpath", return_value=hosted), \
+             mock.patch.object(SB.os.path, "realpath", realpath), \
              mock.patch.object(R.subprocess, "Popen") as popen:
             proc = popen.return_value
             proc.communicate.return_value = (b"hi\n", b"")
@@ -419,6 +428,42 @@ class EnforceTest(unittest.TestCase):
         # the workdir bind is read-write: the file landed on the host
         out = os.path.join(tmpdir, "work", "m6-enf", "out.txt")
         self.assertEqual(open(out).read(), "wrote-ok")
+
+    def test_a_planted_symlink_is_refused_before_the_sandbox_is_entered(self):
+        # Review item 5: a staged "file" that is a symlink at the
+        # runner's own config is a workspace-integrity rejection at
+        # the post-stage sweep. No sandbox is built, no audit row says
+        # "sandboxed", the work directory is gone, and the config is
+        # untouched.
+        from runner import runner as R
+        tmpdir = tempfile.mkdtemp(prefix="hp-m6-")
+        cfg_path = os.path.join(tmpdir, "config.json")
+        with open(cfg_path, "w", encoding="utf-8") as fh:
+            fh.write('{"shared_secret": "keep"}')
+        job = _job("m6-link", "print('must not run')")
+        job["files"] = [{"name": "in.txt",
+                         "url": "https://example.com/in.txt"}]
+
+        def plant(url, dest, max_bytes=0):
+            os.symlink(cfg_path, dest)
+
+        cfg = {"base_dir": tmpdir}
+        cfg.update(_conf("enforce"))
+        with mock.patch.object(R, "download", plant):
+            with self.assertRaises(R.JobRejected) as cm:
+                execute_job(cfg, job, tmpdir)
+        self.assertIn("workspace integrity", str(cm.exception))
+        self.assertIn("in.txt", str(cm.exception))
+        audit_path = os.path.join(tmpdir, S.AUDIT_FILE)
+        rows = []
+        if os.path.exists(audit_path):
+            rows = [json.loads(l) for l in open(audit_path, encoding="utf-8")
+                    if l.strip()]
+        self.assertEqual([r for r in rows if r.get("decision") == "sandboxed"],
+                         [])
+        self.assertFalse(os.path.exists(os.path.join(tmpdir, "work", "m6-link")))
+        with open(cfg_path, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), '{"shared_secret": "keep"}')
 
     def test_enforce_result_matches_unsandboxed(self):
         script = "print(6 * 7)"

@@ -671,6 +671,24 @@ format does not change when the sandbox is on.
 Like everything the Oracle does, the ceiling is the runner owner's:
 no job field can widen or disable confinement.
 
+#### The work directory
+
+The job's work directory is the one place a job's files land, and it
+is held to that on every platform, sandbox or not. Its real path is
+resolved once per job (a work directory that is itself a symlink is
+a rejection) and every check answers for that path: each staged
+name's real path must lie under it; after staging, and again right
+before the process starts, the whole tree is walked (links are not
+followed) and any symlink or junction, any entry that is not a
+regular file or directory, and any entry whose real path leaves the
+root is a `workspace integrity` rejection with the work directory
+removed before the result goes out. A download lands in a temp name
+beside its destination, capped while streaming, and is renamed into
+place whole. On Linux the sandbox binds that real path, so a
+symlinked state directory cannot widen the bind to wherever the link
+points. On Windows there is no sandbox: these checks are the
+isolation.
+
 #### Protected paths
 
 `protected_paths` is an optional list of absolute paths the confinement

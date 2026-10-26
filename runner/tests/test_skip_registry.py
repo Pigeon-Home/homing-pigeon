@@ -131,6 +131,10 @@ REGISTERED = {
         "the Q26 draft cage test needs a working confinement; runs on "
         "the ubuntu legs with bwrap",
     "symlinks unavailable": "run where symlinks exist",
+    "junctions exist on Windows only":
+        "test_workspace_isolation's junction leg; runs in the Windows job",
+    "cannot create a junction here":
+        "the Windows runner refused mklink /J; runs where it is allowed",
     "temp test file leaks into discovery on Windows":
         "run on POSIX; the Windows guard is the one remaining follow-up "
         "from the 2026-10-21 re-enable",

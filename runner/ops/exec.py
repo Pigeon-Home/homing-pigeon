@@ -248,6 +248,9 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     work = os.path.join(base_dir, "work", job_id)
     try:
         # A retry must not see files left by a previous attempt.
+        if os.path.islink(work):
+            raise _runner().JobRejected("workspace integrity: the work "
+                                        "directory is a symlink")
         if os.path.isdir(work):
             shutil.rmtree(work)
         os.makedirs(work)
@@ -255,6 +258,9 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         # e.g. Windows reserved names (CON, NUL, ...) or work path blocked
         # by a file, or a null in the path: poison, not transient.
         raise _runner().JobRejected(f"cannot create work dir: {e}")
+    # The canonical root, once per job: every staging check, both
+    # sweeps and the sandbox bind answer for this path (review item 5).
+    root = _runner()._workspace_root(work)
     kind = job.get("kind")
 
     if kind == "ping":
@@ -308,7 +314,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
 
     # --- stage input files
     for f, staged_name in zip(files, staged_names):
-        dest = _runner()._staged_dest(work, staged_name)
+        dest = _runner()._staged_dest(work, staged_name, root=root)
         R.log(f"downloading {f['url']}")
         try:
             _runner().download(f["url"], dest)
@@ -362,6 +368,15 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
             fh.write(script)
     else:
         raise _runner().JobRejected("exec job requires script or script_url")
+    # Post-stage sweep: everything under work is a regular file or
+    # directory with its real path under root, no symlink anywhere. A
+    # violation is a rejection and the work directory is removed before
+    # the result goes out, so nothing of it can be run or kept.
+    try:
+        _runner()._sweep_workspace(work, root, "after staging")
+    except _runner().JobRejected:
+        shutil.rmtree(work, ignore_errors=True)
+        raise
 
     timeout = min(max(timeout, 1), 3600)
     safe_args = []
@@ -396,12 +411,24 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     # Hardening M6: confinement wraps the argv in bwrap when the
     # feature is in enforce mode and bwrap is available. With the
     # feature off (default) this is exactly the old behavior.
+    # The sandbox binds `root`, the real path: a symlinked state dir
+    # cannot widen the bind to wherever the link points.
     c_argv, use_host_env, sandboxed = _runner()._confinement_argv(
         cfg, base_dir, job.get("job_id", ""), interpreter, script_path,
-        work, args, env)
+        root, args, env)
     # Hardening M8: drop to the job user when configured (POSIX,
     # root only). None when off or unavailable.
     preexec = _runner()._job_user_preexec(cfg, base_dir, job.get("job_id", ""), work)
+    # Pre-exec sweep: the same walk right before the process starts,
+    # and the script itself a regular, non-symlink file under root.
+    # Cheap (the tree is small), and the moment a race between the
+    # staging and the start would show.
+    try:
+        _runner()._sweep_workspace(work, root, "before execution")
+        _runner()._check_script_path(script_path, root)
+    except _runner().JobRejected:
+        shutil.rmtree(work, ignore_errors=True)
+        raise
     try:
         proc = subprocess.Popen(
             c_argv,
