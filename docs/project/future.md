@@ -41,9 +41,10 @@
 - **Board delegation over ping** Ping reply carries the box's open task
   board, so the cloud SI can submit work.
   
-- **Other pipes.** A distributed ledger for file flow and board
-  answers, or a transport over .onion or BitTorrent.
-
+- **Other** A distributed ledger for file flow and boards, answers,
+  onion, or BitTorrent and/or blockchain execution broker with embed
+  wallet.
+  
 - **An Oracle dashboard** on loopback, to "watch" it think
 
 - **Patch level and disk encryption as senses.**
