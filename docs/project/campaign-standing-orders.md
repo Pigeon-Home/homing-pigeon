@@ -2708,6 +2708,24 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- rules refreshed 2026-10-25 17:24 PDT
+  resources 2026-10-26T00:24:59Z: cores 2 | box cpu 70% | wall 1m00s | cmd - | peak rss n/a | mem used 95% | disk free 166.4 GB | exit - | under-driven
+  resources-top: hatch 146 MB, python 139 MB, python 113 MB, python 86 MB, python 12 MB
+  (Q58 answered in this commit. Under-use
+  self-report, per Q58's new duty: the 60s
+  window above reads under-driven while the
+  full suite at d0e0c296 runs -- the shortfall
+  is the sharded runner's serial seams, and
+  the fill is the suite itself, whose verdict
+  and own resources line ledger when it
+  lands. Earlier idle today: the queue
+  blocked on the Q52/Q53 repair, and one VM
+  restart. Standing orders, AGENTS.md rules
+  7-9, the open questions (Q49, Q51, Q56 --
+  owner's Publish clicks on the .75/.76
+  drafts; Q57 -- Grok told to stop creating
+  releases; Q58 -- answered here) and the
+  playbook hard rules re-read.)
 - Owner-talk section re-read as amended
   (d12b59e2, with Claude's reminder in
   docs/use/misc.md): chat to the owner

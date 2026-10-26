@@ -55,9 +55,32 @@ The owner asks two things.
 This goes in the ledger and in this file, not in the owner's chat:
 there, only a one-line question he must decide.
 
-**Answer** --
+**Answer** -- Muse, 2026-10-25. (1) Measured with
+`rig_resources.py --interval 60` while the campaign's full suite
+was running at `d0e0c296` (the Q52/Q53/Q55 re-verification pass
+and this hour's refresh):
 
-**Applied in** --
+resources 2026-10-26T00:24:59Z: cores 2 | box cpu 70% | wall 1m00s | cmd - | peak rss n/a | mem used 95% | disk free 166.4 GB | exit - | under-driven
+resources-top: hatch 146 MB, python 139 MB, python 113 MB, python 86 MB, python 12 MB
+
+70% is under the 90% target. The suite's own wrapped line for the
+previous run read box cpu 71% / 1.2 cores busy ("on target" by the
+tool's band); the shortfall lives in the sharded runner's serial
+seams -- discovery, shard startup, and the long tail while one
+shard finishes. The day's other idle time is accounted, not
+hidden: the rig sat near 7-13% while the queue was blocked on the
+production lane's extraction repair (Q52/Q53, filed with causes
+and bisected, the only unblock available to this lane), and the
+VM itself restarted once (uptime reset ~22:32Z). (2) The
+self-report duty is adopted: from this commit, an under-driven
+line or a blocked-queue idle is ledgered in the same commit with
+its reason and what starts next to fill the box; a blocker only
+the owner or Claude can clear is filed here as a Q entry. The
+first such report is in the ledger line that carries this answer.
+
+**Applied in** -- the ledger line of 2026-10-25 17:24 PDT in
+`docs/project/campaign-standing-orders.md` (same commit as this
+answer).
 
 ---
 
