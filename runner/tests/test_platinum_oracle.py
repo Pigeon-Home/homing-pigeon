@@ -185,5 +185,58 @@ class OracleServerChatLogTest(unittest.TestCase):
             shutil.rmtree(td, ignore_errors=True)
 
 
+class BinaryFlagArmsTest(unittest.TestCase):
+    """Cycle 5 targets, logic class: the O_BINARY arms in
+    `oracle/learning.py:_append` (255) and
+    `oracle/senses.py:_write_private` (328) -- the same
+    Windows flag as the audit writer's, simulated by the
+    attribute's presence with value 0 (see the guard
+    module's AuditBinaryFlagTest).
+    """
+
+    def test_learning_append_with_the_flag_present(self):
+        from runner.oracle import learning
+        td = tempfile.mkdtemp(prefix="hp-plat-oracle-")
+        try:
+            with mock.patch.object(os, "O_BINARY", 0, create=True):
+                learning._append(td, {"kind": "lesson", "n": 1})
+            files = os.listdir(td)
+            self.assertEqual(len(files), 1)
+            with open(os.path.join(td, files[0]),
+                      encoding="utf-8") as fh:
+                self.assertIn('"lesson"', fh.read())
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+    def test_write_private_with_the_flag_present(self):
+        td = tempfile.mkdtemp(prefix="hp-plat-oracle-")
+        try:
+            path = os.path.join(td, "senses.jsonl")
+            with mock.patch.object(os, "O_BINARY", 0, create=True):
+                senses._write_private(path, b"one\n", append=False)
+                senses._write_private(path, b"two\n", append=True)
+            with open(path, "rb") as fh:
+                self.assertEqual(fh.read(), b"one\ntwo\n")
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+
+class SampleTreePsTest(unittest.TestCase):
+    """Cycle 5 target, logic class:
+    `oracle/remediation.py:sample_tree_ps` (555) -- a root
+    the ps table does not know at all still gets its
+    (0.0, None) sample entry, from the fallback after the
+    walk, not from a row.
+    """
+
+    def test_an_unknown_root_samples_as_zero(self):
+        from types import SimpleNamespace
+        from runner.oracle import remediation
+        header_only = SimpleNamespace(stdout="  PID  PPID\n")
+        sample = remediation.sample_tree_ps(
+            999999, run=lambda *a, **k: header_only)
+        self.assertEqual(sample, {999999: (0.0, None)})
+
+
 if __name__ == "__main__":
     unittest.main()

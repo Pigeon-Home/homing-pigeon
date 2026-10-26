@@ -13,6 +13,7 @@ Target from the cycle-1 refreshed table
 
 Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90
 """
+import os
 import unittest
 
 from hypothesis import given, settings, strategies as st
@@ -173,6 +174,52 @@ class ApplyNoFolderTest(unittest.TestCase):
         self.assertIs(out["ext"], manifest)
         self.assertEqual(problems, [])
         self.assertNotIn("ext", report["extensions"])
+
+
+class AuditBinaryFlagTest(unittest.TestCase):
+    """Cycle 5 target, logic class:
+    `guard/security.py:_write_audit_entry_locked` (414) --
+    the O_BINARY flag arm: on Windows the audit file is
+    opened with O_BINARY so its lines are not translated;
+    POSIX has no such flag. Simulated by the attribute's
+    presence with value 0, which the kernel ignores: the
+    arm fires and the entry is written exactly as without
+    it.
+    """
+
+    def test_the_binary_flag_arm_writes_the_entry(self):
+        import tempfile
+        from unittest import mock
+        from runner.guard import security
+        td = tempfile.mkdtemp(prefix="hp-plat-audit-")
+        try:
+            with mock.patch.object(os, "O_BINARY", 0, create=True):
+                security._write_audit_entry_locked(
+                    td, "feature", "allow", "reason", "key",
+                    "job", "", {}, "audit")
+            audit = os.path.join(td, "security-audit.jsonl")
+            self.assertTrue(os.path.exists(audit))
+            with open(audit, encoding="utf-8") as fh:
+                self.assertIn('"feature": "feature"', fh.read())
+        finally:
+            import shutil
+            shutil.rmtree(td, ignore_errors=True)
+
+
+class LoneSurrogateDepthTest(unittest.TestCase):
+    """Cycle 5 target, guard class:
+    `guard/textutil.py:_lone_surrogate` (95) -- past the
+    depth cap the walk stops and answers False (the value
+    is not proven clean; the cap is the guard against a
+    hostile nesting bomb, and the caller treats the
+    answer accordingly).
+    """
+
+    def test_past_the_depth_cap_answers_false(self):
+        from runner.guard import textutil
+        self.assertFalse(textutil._lone_surrogate("x", _depth=201))
+        self.assertFalse(textutil._lone_surrogate("clean"))
+        self.assertTrue(textutil._lone_surrogate("bad \ud800"))
 
 
 if __name__ == "__main__":

@@ -243,5 +243,237 @@ class GitHubRateLimitTest(unittest.TestCase):
         self.assertGreater(cm.exception.retry_after, 0)
 
 
+class StripeSignatureTest(unittest.TestCase):
+    """Cycle 5 target, logic class:
+    `hosting/billing.py:verify_stripe_signature` (181) --
+    the payload may arrive as text: it is encoded before
+    the HMAC is compared, so a correctly signed text
+    payload verifies exactly as its bytes do.
+    """
+
+    def test_a_text_payload_verifies(self):
+        import hashlib
+        import hmac as hmac_mod
+        from runner.hosting import billing
+        secret = "whsec_platinum"
+        ts = 1700000000
+        payload = '{"id": "evt_1", "type": "invoice.paid"}'
+        sig = hmac_mod.new(
+            secret.encode(), f"{ts}.{payload}".encode(),
+            hashlib.sha256).hexdigest()
+        header = f"t={ts},v1={sig}"
+        self.assertTrue(billing.verify_stripe_signature(
+            payload, header, secret, now=ts))
+        self.assertTrue(billing.verify_stripe_signature(
+            payload.encode(), header, secret, now=ts))
+        with self.assertRaises(billing.SignatureError):
+            billing.verify_stripe_signature(
+                payload + " ", header, secret, now=ts)
+
+
+class CmdStatusDispatchesTest(unittest.TestCase):
+    """Cycle 5 target, logic class: `hosting/cli.py:
+    cmd_status` (129) -- with ephemeral dispatches on the
+    inventory, status says how many, after the machines.
+    """
+
+    def test_status_counts_the_dispatches(self):
+        import contextlib
+        import io
+        td = tempfile.mkdtemp(prefix="hp-plat-host-")
+        try:
+            inv = inventory.Inventory(os.path.join(td, "inv.json"))
+            inv.machines[inventory.Inventory.key("fly", "m1")] = {
+                "provider": "fly", "id": "m1", "tenant": "alice"}
+            inv.dispatches = [{"id": "d1"}, {"id": "d2"}]
+            inv.save()
+            args = argparse.Namespace(
+                inventory=os.path.join(td, "inv.json"))
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = cli.cmd_status(args, http=_Http())
+            self.assertEqual(rc, 0)
+            self.assertIn("2 ephemeral dispatch(es)", out.getvalue())
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+
+class ProviderBaseTest(unittest.TestCase):
+    """Cycle 5 targets, guard class, `hosting/base.py`: a
+    Machine's repr (87) names provider:id, state and ip; the
+    abstract Provider's create/get/destroy (98,101,104) are
+    NotImplementedError; and the shared wait_running (118)
+    raises the gone ProviderError for a machine that
+    vanished while starting.
+    """
+
+    def test_a_machine_reprs_as_provider_id_state_ip(self):
+        m = base.Machine("fly", "m1", tenant="alice",
+                         state="running", ip="1.2.3.4")
+        self.assertEqual(repr(m), "Machine(fly:m1 running 1.2.3.4)")
+
+    def test_the_abstract_provider_refuses_each_verb(self):
+        prov = base.Provider()
+        spec = base.MachineSpec("alice", "iad", "small", "1.0",
+                                blob={})
+        with self.assertRaises(NotImplementedError):
+            prov.create(spec)
+        with self.assertRaises(NotImplementedError):
+            prov.get("m1")
+        with self.assertRaises(NotImplementedError):
+            prov.destroy("m1")
+
+    def test_wait_running_names_a_vanished_machine(self):
+        class Gone(base.Provider):
+            def get(self, machine_id):
+                return base.Machine("gone", machine_id, state="gone")
+        with self.assertRaises(base.ProviderError) as cm:
+            Gone().wait_running("m1", timeout=1, interval=0)
+        self.assertEqual(cm.exception.code, "gone")
+
+
+class BillingGuardsTest(unittest.TestCase):
+    """Cycle 5 targets, guard class, `hosting/billing.py`:
+    reserve_for (52) refuses an unknown target; the balance
+    (116) skips an event whose cents are not an int; a
+    refund (138) whose Stripe event was already seen is a
+    no-op returning None.
+    """
+
+    def test_reserve_for_an_unknown_target_raises(self):
+        from runner.hosting import billing
+        with self.assertRaises(ValueError):
+            billing.reserve_for("carrier-pigeon")
+
+    def test_balance_skips_a_non_int_cents_event(self):
+        td = tempfile.mkdtemp(prefix="hp-plat-host-")
+        try:
+            from runner.hosting import billing
+            ledger = billing.Ledger(os.path.join(td, "l.json"))
+            ledger.topup("alice", 500, stripe_event="e1")
+            ledger.events.append(
+                {"tenant": "alice", "cents": "50", "kind": "topup"})
+            self.assertEqual(ledger.balance("alice"), 500)
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+    def test_a_refund_with_a_seen_event_is_a_no_op(self):
+        td = tempfile.mkdtemp(prefix="hp-plat-host-")
+        try:
+            from runner.hosting import billing
+            ledger = billing.Ledger(os.path.join(td, "l.json"))
+            ledger.topup("alice", 500, stripe_event="e1")
+            self.assertIsNone(
+                ledger.refund("alice", 100, stripe_event="e1"))
+            self.assertEqual(ledger.balance("alice"), 500)
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+
+class CliGuardsTest(unittest.TestCase):
+    """Cycle 5 targets, guard class, `hosting/cli.py`:
+    _split_key (79) refuses a key without provider and id;
+    cmd_dispatch (201) refuses a repo that is not
+    owner/name; main (316) with no subcommand returns 2.
+    """
+
+    def test_split_key_refusals(self):
+        for bad in ("nocolon", ":m1", "fly:", ""):
+            with self.assertRaises(SystemExit):
+                cli._split_key(bad)
+        self.assertEqual(cli._split_key("fly:m1"), ("fly", "m1"))
+
+    def test_dispatch_without_an_owner_repo_is_refused(self):
+        args = argparse.Namespace(
+            repo="justaname", token_env="HP_PLATINUM_TOKEN",
+            workflow="w.yml", ref="main", target=None,
+            tenant=None, version=None, blob=None, drain=1,
+            drain_seconds=1, inventory=None)
+        with mock.patch.dict(os.environ,
+                             {"HP_PLATINUM_TOKEN": "tok"}):
+            with self.assertRaises(SystemExit):
+                cli.cmd_dispatch(args, http=_Http())
+
+    def test_main_without_a_subcommand_is_an_argparse_refusal(self):
+        # The parser requires a subcommand, so main's trailing
+        # return 2 (cli.py:316) sits behind an exhaustive
+        # dispatch: argparse refuses first, with its own 2.
+        # Recorded in cycle 5's ledger as unreachable by
+        # construction.
+        with self.assertRaises(SystemExit) as cm:
+            cli.main([])
+        self.assertEqual(cm.exception.code, 2)
+
+
+class ProviderRecordGuardsTest(unittest.TestCase):
+    """Cycle 5 targets, guard class: each provider's record
+    reader refuses a record that is not an object --
+    DigitalOcean._machine (43), FlyMachines._machine (64),
+    HetznerCloud._machine (46) -- with its own ProviderError;
+    HttpClient.request (httpdoor 53) is the interface's
+    NotImplementedError; and FlyMachines.ensure_app
+    answers False for 422-already-exists and True for an ok
+    POST. (Its trailing return False at line 57 sits under
+    base.raise_for, whose tail raises for every answer
+    that reaches it: unreachable by construction, recorded
+    in cycle 5's ledger.)
+    """
+
+    def test_malformed_records_are_refused_per_provider(self):
+        http = _Http()
+        providers = [
+            digitalocean.DigitalOcean(http, "tok", "sfo3"),
+            fly.FlyMachines(http, "tok", "org"),
+            hetzner.HetznerCloud(http, "tok", "nbg1"),
+        ]
+        for prov in providers:
+            with self.assertRaises(base.ProviderError):
+                prov._machine("not a record")
+
+    def test_the_http_interface_refuses_to_run(self):
+        with self.assertRaises(NotImplementedError):
+            httpdoor.HttpClient().request("GET", "http://x/")
+
+    def test_ensure_app_answers(self):
+        http2 = _Http(httpdoor.Response(
+            422, {}, b'{"error": "app already exists"}'))
+        self.assertFalse(
+            fly.FlyMachines(http2, "tok", "org").ensure_app("hp-alice"))
+        http3 = _Http(httpdoor.Response(200, {}, b'{}'))
+        self.assertTrue(
+            fly.FlyMachines(http3, "tok", "org").ensure_app("hp-alice"))
+
+
+class GitHubActionsGuardsTest(unittest.TestCase):
+    """Cycle 5 targets, guard class, `hosting/
+    github_actions.py`: Dispatch.minutes (60) is None
+    until a billable time exists; find_run (135) steps
+    over run entries that are not objects; timing (159)
+    answers None for a dispatch with no run yet.
+    """
+
+    def test_minutes_is_none_without_a_billable_time(self):
+        d = github_actions.Dispatch("t1", "linux")
+        self.assertIsNone(d.minutes)
+        d.billable_ms = 61_000
+        self.assertEqual(d.minutes, 2)
+
+    def test_find_run_steps_over_junk_entries(self):
+        http = _Http(httpdoor.Response(
+            200, {}, b'{"workflow_runs": ["junk", '
+            b'{"display_title": "hp t1", "id": 7}]}'))
+        gh = github_actions.GitHubActions(
+            http, "tok", "owner", "repo")
+        d = github_actions.Dispatch("t1", "linux")
+        gh.find_run(d)
+        self.assertEqual(d.run_id, 7)
+
+    def test_timing_without_a_run_is_none(self):
+        gh = github_actions.GitHubActions(
+            _Http(), "tok", "owner", "repo")
+        d = github_actions.Dispatch("t1", "linux")
+        self.assertIsNone(gh.timing(d))
+
+
 if __name__ == "__main__":
     unittest.main()

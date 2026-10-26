@@ -668,6 +668,290 @@ class RejectionDeliveryFailureTest(unittest.TestCase):
             shutil.rmtree(base, ignore_errors=True)
 
 
+class CoercionSeamsTest(unittest.TestCase):
+    """Cycle 5 targets, logic class, one line each: the
+    loader's answers are never trusted for their type --
+    `_load_reviewed_extensions` (3196) coerces a non-list
+    problems to [], `_report_extensions` (3231) coerces a
+    non-dict registry to {}, and `save_seen`'s merge (4570)
+    coerces a non-dict seen file on disk to {} before the
+    in-memory keys are folded in.
+    """
+
+    def test_problems_that_are_not_a_list_become_empty(self):
+        with mock.patch.object(
+                R._extensions, "load_extensions",
+                return_value=({"ext": {"name": "ext"}}, "junk")):
+            registry, problems = R._load_reviewed_extensions(
+                {}, "/base")
+        self.assertEqual(problems, [])
+        self.assertIn("ext", registry)
+
+    def test_a_registry_that_is_not_a_dict_reports_nothing(self):
+        with mock.patch.object(
+                R, "_load_reviewed_extensions",
+                return_value=("junk", [])):
+            self.assertIsNone(R._report_extensions({}, "/base"))
+
+    def test_a_seen_file_that_is_not_an_object_is_rebuilt(self):
+        base = tempfile.mkdtemp(prefix="hp-plat-seen-")
+        try:
+            path = os.path.join(base, "seen.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("42")
+            R.save_seen(path, {"key-a": True})
+            with open(path, encoding="utf-8") as fh:
+                self.assertIn("key-a", json.load(fh))
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+
+class TailMarkedTest(unittest.TestCase):
+    """Cycle 5 target, logic class: `runner._tail_marked`
+    (5564) -- reading the tail of a file bigger than the
+    4 KiB window drops the first, partial line, so a marker
+    is never matched against half a line.
+    """
+
+    def test_a_big_file_drops_its_partial_first_line(self):
+        base = tempfile.mkdtemp(prefix="hp-plat-tail-")
+        try:
+            path = os.path.join(base, "log.txt")
+            filler = "x" * 3000
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(filler + " MARK\n")
+                fh.write("y" * 3000 + "\n")
+                fh.write("the MARK line\n")
+            kept = R._tail_marked(path, ["mark"], 10)
+            self.assertEqual(kept, ["the MARK line"])
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+
+class FileRegistryLinesTest(unittest.TestCase):
+    """Cycle 5 target, logic class:
+    `runner._file_registry_lines` (5284) -- a bracketed tag
+    that is not an ATT&CK technique id (does not start with
+    T) is no attack at all: the line files as a medium
+    registry alert with an empty attack, where a T-tag
+    files high with the technique named.
+    """
+
+    def test_a_non_t_tag_is_a_medium_alert_without_attack(self):
+        seen = []
+        with mock.patch.object(
+                R, "_file_watch_alert",
+                lambda *a: seen.append(a)):
+            R._file_registry_lines(
+                "/base", [r"HKLM\Software\X [note] = 1",
+                          r"HKLM\Software\Y [T1059] = 2"])
+        self.assertEqual(seen[0][1:3], ("registry", "medium"))
+        self.assertEqual(seen[0][4], "")
+        self.assertEqual(seen[1][1:3], ("registry", "high"))
+        self.assertEqual(seen[1][4], "T1059")
+
+
+class GuardSinglesTest(unittest.TestCase):
+    """Cycle 5 targets, guard class, one refusal each:
+    `_required_load_mod` (106) raises ImportError for a
+    missing sibling; `_job_digest` (1547) falls back to
+    its own SHA-384 when the opinion module is absent;
+    `resend_stashed` (1742) counts nothing for an unusable
+    base; `_result_meta` (1817) reads a non-dict result as
+    {}; `_record_sender` (2094) waits when the transports
+    module is absent; `_close_quiet` (4231) takes None.
+    """
+
+    def test_a_missing_sibling_is_an_import_error(self):
+        with self.assertRaises(ImportError):
+            R._required_load_mod("runner.guard.no_such_sibling",
+                                 "guard.no_such_sibling")
+
+    def test_the_digest_fallback_hashes_the_job(self):
+        import hashlib
+        job = {"job_id": "j1", "kind": "ping", "sig": "x"}
+        with mock.patch.object(R, "_opinion", None):
+            digest = R._job_digest(job)
+        raw = json.dumps({"job_id": "j1", "kind": "ping"},
+                         sort_keys=True, separators=(",", ":"),
+                         ensure_ascii=False).encode("utf-8")
+        self.assertEqual(digest, hashlib.sha384(raw).hexdigest())
+
+    def test_resend_stashed_on_an_unusable_base(self):
+        counts = R.resend_stashed(
+            "/nonexistent-base-dir", {}, sender=None)
+        self.assertEqual(counts, {"attempted": 0, "delivered": 0,
+                                  "failed": 0, "waiting": 0})
+
+    def test_result_meta_of_a_non_dict_is_empty(self):
+        self.assertEqual(R._result_meta("not a result"), {})
+        self.assertEqual(R._result_meta(None), {})
+
+    def test_a_record_sender_without_transports_waits(self):
+        with mock.patch.object(R, "_transports", None):
+            self.assertIsNone(R._record_sender(
+                "/base", {"transport": "file"}, None))
+
+    def test_close_quiet_takes_none(self):
+        self.assertIsNone(R._close_quiet(None))
+
+
+class WaitingRecordsTest(unittest.TestCase):
+    """Cycle 5 target, guard class: `runner._waiting_records`
+    (1730) -- an outbox record whose skey is not a string is
+    not a waiting record and is stepped over; the well-formed
+    ones come back oldest first.
+    """
+
+    def test_a_record_with_a_non_string_skey_is_skipped(self):
+        base = tempfile.mkdtemp(prefix="hp-plat-waiting-")
+        try:
+            outbox = os.path.join(base, "outbox")
+            os.makedirs(outbox)
+            for name, rec in (
+                    ("a.json", {"skey": "k-older", "created": 1,
+                                "body": "b", "subject": "s"}),
+                    ("b.json", {"skey": 7, "created": 0,
+                                "body": "b", "subject": "s"}),
+                    ("c.json", {"skey": "k-newer", "created": 2,
+                                "body": "b", "subject": "s"})):
+                with open(os.path.join(outbox, name), "w",
+                          encoding="utf-8") as fh:
+                    json.dump(rec, fh)
+            got = R._waiting_records(base)
+            self.assertEqual([k for k, _ in got],
+                             ["k-older", "k-newer"])
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+
+class RecordPayloadTest(unittest.TestCase):
+    """Cycle 5 target, guard class: `runner._record_payload`
+    (1939) -- a stashed body that is an encrypted envelope
+    whose key is no longer configured cannot be read back:
+    the answer is None, not an exception.
+    """
+
+    def test_an_envelope_without_its_key_reads_as_none(self):
+        from runner.wire import jobcrypto, verify as wire_verify
+        payload = {"job_id": "j-env", "kind": "ping"}
+        body = jobcrypto.encrypt_body(
+            wire_verify.sign_payload(payload, TESTKEY), TESTKEY,
+            job_id="j-env", key_id="gone",
+            sign=wire_verify.sign_payload)
+        rec = {"body": body, "key_id": "gone", "job_id": "j-env"}
+        self.assertIsNone(R._record_payload(rec, {}))
+        got = R._record_payload(rec, {"gone": TESTKEY})
+        self.assertEqual(got["job_id"], "j-env")
+
+
+class SweepWorkspaceTest(unittest.TestCase):
+    """Cycle 5 target, guard class: `runner._sweep_workspace`
+    (2550) -- an entry whose real path escapes the work root
+    is a workspace-integrity rejection, never run.
+    """
+
+    def test_a_symlink_out_of_the_root_is_rejected(self):
+        base = tempfile.mkdtemp(prefix="hp-plat-sweep-")
+        try:
+            work = os.path.join(base, "work")
+            os.makedirs(work)
+            with open(os.path.join(work, "ok.txt"), "w") as fh:
+                fh.write("fine")
+            os.symlink("/etc", os.path.join(work, "escape"))
+            with self.assertRaises(R.JobRejected) as cm:
+                R._sweep_workspace(work, base, "after staging")
+            self.assertIn("is a symlink", str(cm.exception))
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+    def test_a_work_dir_reached_through_a_link_is_rejected(self):
+        # The 2550 arm itself: the entries are ordinary files,
+        # but the work root they were reached through is a
+        # symlink, so their real paths do not sit under the
+        # root as spelled.
+        base = tempfile.mkdtemp(prefix="hp-plat-sweep-")
+        try:
+            real_root = os.path.join(base, "real")
+            work = os.path.join(real_root, "work")
+            os.makedirs(work)
+            with open(os.path.join(work, "ok.txt"), "w") as fh:
+                fh.write("fine")
+            link_root = os.path.join(base, "link")
+            os.symlink(real_root, link_root)
+            with self.assertRaises(R.JobRejected) as cm:
+                R._sweep_workspace(os.path.join(link_root, "work"),
+                                   link_root, "after staging")
+            self.assertIn("resolves outside", str(cm.exception))
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+
+class GetTextBodyTest(unittest.TestCase):
+    """Cycle 5 target, guard class: `runner.get_text_body`
+    (2243) -- a multipart message with no text/plain part
+    has an empty text body; one with a text part reads it.
+    """
+
+    def test_a_multipart_without_a_text_part_is_empty(self):
+        import email
+        from email.message import EmailMessage
+        msg = EmailMessage()
+        msg["Subject"] = "attachment only"
+        msg.add_attachment(b"\x00\x01", maintype="application",
+                           subtype="octet-stream",
+                           filename="blob.bin")
+        raw = msg.as_bytes()
+        parsed = email.message_from_bytes(raw)
+        self.assertEqual(R.get_text_body(parsed), "")
+
+
+class FitResultBodyTest(unittest.TestCase):
+    """Cycle 5 target, logic class: `runner._fit_result_body`
+    (1876) -- a result over its byte budget whose streams
+    are both empty has nothing to proportion: both keeps
+    are the flat tail allowance, the body is rebuilt and
+    re-signed, and what comes back still verifies.
+    """
+
+    def test_empty_streams_take_the_flat_allowance(self):
+        from runner.wire import verify as wire_verify
+        result = {"exit_code": 0, "stdout": "", "stderr": "",
+                  "truncated": False}
+        out, body = R._fit_result_body(
+            dict(result), TESTKEY, False, "j-fit", "", 50)
+        self.assertEqual(out["stdout"], "")
+        self.assertEqual(
+            wire_verify.verify_body(body, TESTKEY)["exit_code"], 0)
+
+
+class InstructionKindTest(unittest.TestCase):
+    """Cycle 5 target, guard class:
+    `runner._oracle_instruction_kind` (1330) -- a leading
+    clause that strips to no words (a bare courtesy) is
+    stepped over; the kind comes from the clause that
+    carries the verb.
+    """
+
+    def test_a_bare_courtesy_clause_is_stepped_over(self):
+        self.assertEqual(
+            R._oracle_instruction_kind(
+                "Please. Open the pod bay doors."), "action")
+
+
+class InferenceReadyTest(unittest.TestCase):
+    """Cycle 5 target, guard class:
+    `runner.ensure_inference_ready` (4988) -- an endpoint
+    with no host in it is not dialled and not an error:
+    the function simply returns.
+    """
+
+    def test_an_endpoint_without_a_host_is_left_alone(self):
+        for cfg in ({"inference": {"endpoint": "/just/a/path"}},
+                    {"inference": {"endpoint": "notaurl"}}):
+            self.assertIsNone(R.ensure_inference_ready(cfg))
+
+
 class RunInspectReviewTest(unittest.TestCase):
     """Cycle 3 target, logic class: `runner.run_inspect` (2)
     -- asked for the extension review with the review module

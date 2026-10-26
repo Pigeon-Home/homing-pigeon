@@ -273,6 +273,34 @@ class CmdNewQueueTest(unittest.TestCase):
             "job-platinum-cmdnew")
 
 
+class PumpAndExtractionTest(unittest.TestCase):
+    """Cycle 5 targets, guard class: `send_dtls._pump` (126)
+    -- a pump whose deadline passes with nothing arriving
+    answers False (the wait is over, nothing was fed); and
+    `send_job._object_start` (218) -- a body whose only
+    whole-object candidate does not parse is handed on by
+    position, so the verifier names the real fault instead
+    of the extraction giving up.
+    """
+
+    def test_a_pump_with_a_past_deadline_answers_false(self):
+        import socket
+        import time as time_mod
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.bind(("127.0.0.1", 0))
+            client = mock.Mock()
+            self.assertFalse(send_dtls._pump(
+                sock, client, time_mod.monotonic() - 1.0))
+        finally:
+            sock.close()
+
+    def test_an_unparseable_candidate_is_handed_on(self):
+        norm = '{"a": ,,"sig":"' + "a" * 96 + '"}'
+        sig_at = norm.rfind(',"sig":"')
+        self.assertEqual(send_job._object_start(norm, sig_at), 0)
+
+
 class PostToQueueTest(unittest.TestCase):
     """Cycle 2 target, except class:
     `runner/cloud/send_job.py:post_to_queue` (6) -- the

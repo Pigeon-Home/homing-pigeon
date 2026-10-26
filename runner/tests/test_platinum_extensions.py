@@ -270,5 +270,173 @@ class OsqueryFeedMainTest(unittest.TestCase):
             shutil.rmtree(td, ignore_errors=True)
 
 
+class PortWatchMainTest(unittest.TestCase):
+    """Cycle 5 target, logic class:
+    `extensions/port-watch/port_watch.py:main` (400,403,406)
+    -- the third sibling with the same delivery contract: a
+    pass whose local delivery lands only some of its alerts
+    returns 2 and leaves the state unwritten. The alert is
+    the extension's real decide() over a readings fixture
+    with learning off and one exposed listener; the delivery
+    seam is the module's own `_deliver_local`, scripted
+    short.
+    """
+
+    def _load(self):
+        import importlib.util
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(
+            here, "..", "extensions", "port-watch",
+            "port_watch.py")
+        spec = importlib.util.spec_from_file_location(
+            "port_watch_platinum", os.path.normpath(path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_a_short_delivery_returns_2_and_keeps_the_state(self):
+        import json
+        import tempfile
+        from unittest import mock
+        pw = self._load()
+        td = tempfile.mkdtemp(prefix="hp-plat-portwatch-")
+        try:
+            here = os.path.dirname(os.path.abspath(__file__))
+            with open(os.path.join(
+                    here, "..", "extensions", "port-watch",
+                    "extension.json"), encoding="utf-8") as fh:
+                shipped = json.load(fh)
+            shipped["tunables"]["learn_first_pass"] = False
+            manifest = os.path.join(td, "extension.json")
+            with open(manifest, "w", encoding="utf-8") as fh:
+                json.dump(shipped, fh)
+            readings = os.path.join(td, "readings.json")
+            with open(readings, "w", encoding="utf-8") as fh:
+                json.dump({"now": 1792382200.0, "listeners": [
+                    {"proto": "tcp", "addr": "0.0.0.0",
+                     "port": 22}]}, fh)
+            state = os.path.join(td, "state.json")
+            with mock.patch.object(pw, "_deliver_local",
+                                   return_value=0):
+                rc = pw.main(["--manifest", manifest,
+                              "--state", state,
+                              "--readings", readings,
+                              "--local-dir", td])
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(state))
+        finally:
+            import shutil
+            shutil.rmtree(td, ignore_errors=True)
+
+
+class SkyWatcherSunTest(unittest.TestCase):
+    """Cycle 5 target, logic class:
+    `extensions/sky-watcher/sky_watcher.py:
+    sun_elevation_deg` (231) -- the hour-angle wrap: far
+    enough west (or east) at the right hour, the true solar
+    time pushes the hour angle past -180 and it wraps by
+    +360. Whatever the inputs, the elevation is a finite
+    angle in [-90, 90].
+    """
+
+    def _load(self):
+        import importlib.util
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(
+            here, "..", "extensions", "sky-watcher",
+            "sky_watcher.py")
+        spec = importlib.util.spec_from_file_location(
+            "sky_watcher_platinum", os.path.normpath(path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @settings(deadline=None, max_examples=200)
+    @given(lat=st.floats(min_value=-89.0, max_value=89.0),
+           lon=st.floats(min_value=-180.0, max_value=180.0),
+           ts=st.floats(min_value=0.0, max_value=2_000_000_000.0))
+    def test_the_elevation_is_always_a_real_angle(
+            self, lat, lon, ts):
+        import math
+        sky = self._load()
+        elev = sky.sun_elevation_deg(lat, lon, ts)
+        self.assertTrue(math.isfinite(elev))
+        self.assertGreaterEqual(elev, -90.0)
+        self.assertLessEqual(elev, 90.0)
+
+
+class JobFuzzBlankLineTest(unittest.TestCase):
+    """Cycle 5 target, guard class:
+    `extensions/job-fuzz/job_fuzz.py:_mut_blank_line`
+    (391) -- a job with no script lines has nothing to
+    insert a blank line into, and the mutator answers
+    None (no variant) rather than inventing a script.
+    """
+
+    def _load(self):
+        import importlib.util
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(
+            here, "..", "extensions", "job-fuzz", "job_fuzz.py")
+        spec = importlib.util.spec_from_file_location(
+            "job_fuzz_platinum", os.path.normpath(path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_blank_line_variants(self):
+        import random
+        jf = self._load()
+        rng = random.Random(7)
+        # A scriptless job still yields a variant ("\n"): the
+        # mutator's empty-lines guard above this can never
+        # fire, because str.split never returns an empty list
+        # -- recorded in cycle 5's ledger as a dead guard;
+        # what the mutator does today is pinned here.
+        self.assertEqual(jf._mut_blank_line({}, rng, {}),
+                         {"script": "\n"})
+        variant = jf._mut_blank_line({"script": "print(1)"},
+                                     rng, {})
+        self.assertEqual(variant["script"].split("\n"),
+                         ["", "print(1)"])
+
+
+class EmailSubjectBodyTest(unittest.TestCase):
+    """Cycle 5 target, guard class:
+    `transport_extensions/email/__main__.py:_subject_body`
+    (61) -- a body in a transfer encoding the mail library
+    cannot decode does not decode to bytes; the body falls
+    back to the raw payload text, where a plain message
+    decodes directly. (A multipart is walked for its text
+    part earlier in the function.)
+    """
+
+    def _load(self):
+        import importlib.util
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(
+            here, "..", "transport_extensions", "email",
+            "__main__.py")
+        spec = importlib.util.spec_from_file_location(
+            "email_transport_platinum", os.path.normpath(path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_an_undecodable_body_falls_back_to_the_raw_text(self):
+        import email
+        em = self._load()
+        raw = (b"Subject: odd encoding\n"
+               b"Content-Transfer-Encoding: x-weird\n"
+               b"\n"
+               b"the raw body\n")
+        self.assertEqual(em._subject_body(raw),
+                         ("odd encoding", "the raw body\n"))
+        plain = email.message_from_bytes(
+            b"Subject: one\n\nhello body\n")
+        self.assertEqual(em._subject_body(plain.as_bytes()),
+                         ("one", "hello body\n"))
+
+
 if __name__ == "__main__":
     unittest.main()

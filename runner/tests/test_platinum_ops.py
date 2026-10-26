@@ -275,5 +275,39 @@ class OpsMainMissingCliTest(unittest.TestCase):
                 ops_main.main()
 
 
+class SmallGuardsTest(unittest.TestCase):
+    """Cycle 5 targets, guard class, one refusal each:
+    `ops/extsources.py:_clean_rel_path` (289) -- a value
+    with no usable segment names no path; `ops/
+    install.py:_load_by_path` (40) -- a file no loader
+    claims is an ImportError; `ops/oracle_page.py:_text`
+    (9) -- a non-string reads as empty text on the status
+    page; `oracle/remediation.py:_ps_available` (499) --
+    the ps probe answers for this machine.
+    """
+
+    def test_a_path_with_no_segments_is_refused(self):
+        from runner.ops import extsources
+        with self.assertRaises(ValueError):
+            extsources._clean_rel_path("", "the field")
+        self.assertEqual(
+            extsources._clean_rel_path("a/b.py", "the field"),
+            "a/b.py")
+
+    def test_an_unloadable_path_is_an_import_error(self):
+        from runner.ops import install
+        with self.assertRaises(ImportError):
+            install._load_by_path("/nonexistent/x.zzzunknown")
+
+    def test_non_text_reads_as_empty_on_the_page(self):
+        from runner.ops import oracle_page
+        self.assertEqual(oracle_page._text(7), "")
+        self.assertEqual(oracle_page._text("ready"), "ready")
+
+    def test_the_ps_probe_answers(self):
+        from runner.oracle import remediation
+        self.assertTrue(remediation._ps_available())
+
+
 if __name__ == "__main__":
     unittest.main()
