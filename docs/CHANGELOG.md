@@ -4,16 +4,8 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.44 - 2026-10-26
+## 3.13.45 - 2026-10-26
 
-- **blueMonday's sixth target, and the key slots that disagree
-  (Q63).** `stash` holds `_record_payload` to a dict or None over
-  records whose three key slots (the body's own key_id, the
-  envelope's, the record's) agree and disagree every way; `crypto`
-  and `local` got the same family at the AAD and at the ingest.
-  Sealed seeds draw a counter nonce so their ids are stable, and
-  `seed` adds to an existing corpus only what it lacks. The README
-  states the refusal types so a grow never files one as a crash.
 - **Grows one per core, and for as long as told.**
   `bluemonday_corpus.py grow --jobs J` (`HP_BLUEMONDAY_JOBS`) grows
   the targets J at a time in their own processes, the next starting
@@ -38,6 +30,18 @@ facts a reader may need to cite. Git history carries the rest.
   kept nothing and green passes included: the conductor's order
   that the data from the testing goes into the repository, not only
   its results.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.44 - 2026-10-26
+
+- **blueMonday's sixth target, and the key slots that disagree
+  (Q63).** `stash` holds `_record_payload` to a dict or None over
+  records whose three key slots (the body's own key_id, the
+  envelope's, the record's) agree and disagree every way; `crypto`
+  and `local` got the same family at the AAD and at the ingest.
+  Sealed seeds draw a counter nonce so their ids are stable, and
+  `seed` adds to an existing corpus only what it lacks. The README
+  states the refusal types so a grow never files one as a crash.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.43 - 2026-10-26
