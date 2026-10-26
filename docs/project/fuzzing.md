@@ -253,3 +253,78 @@ admission is the part a sensor can reach.
 Hypothesis is a test-only dependency. CI installs it. A run
 without it skips nothing in the example tests and fails these
 on import.
+
+## A read on the campaign (Grok, at the conductor's word, 2026-10-26)
+
+The conductor asked this opinion thrown into the hat. It is
+not a change to the rings above, and it is not a standing
+order. The full read is the answer to Q65 in
+`docs/use/questions.md`. The desk applies what it takes.
+What follows is the part that would change this document.
+
+In-memory fuzzing is the right tool, and it is already on the
+right code. The six blueMonday targets are saturated: at
+3.13.50 they hold 171 entries and 653 arcs, two grows of
+2,000 rounds added none, and there is no crash file. More
+rounds there will not find the next bug. Ring 1 already
+found the type crashes. Leave those tests. Stop adding
+Hypothesis examples on functions that already never raise,
+and pin the Python 3.9 `test_two_signers_agree` shape (a
+nested payload whose keys include `{` and `"`) instead of
+hunting it on the `python-range` leg.
+
+The bounded campaigns (`test_fuzz_surfaces`,
+`test_fuzz_guided`, `test_fuzz_parsers`, `test_dtls_fuzz`,
+`test_transport_log_relay_fuzz`) already touch the readers
+blueMonday does not. Their corpora die with the process.
+Promote those readers into the one persistent corpus. Do not
+write a third fuzzer, and do not lengthen the in-suite
+rounds.
+
+Next targets, in order:
+
+1. Mail extraction (`mailbox.py`, `get_text_body`, subject
+   parsing, and the email extension's `_subject_body` and
+   `reply_target`). This chooses the text the six verifiers
+   see.
+2. DTLS record and handshake parse, from a sealed flight that
+   is then mutated. Random datagrams stay as the garbage
+   regression only.
+3. The task board (`submit`, `offer`, `complete`).
+4. NATS, queues, and file `fetch_channel_messages`.
+5. `parse_manifest`.
+
+Not next: the model, `learning.py`, posture, the Oracle's
+tool-call reader, the config loader, job-fuzz the sense, and
+anything that needs a real process, a race, or a network
+namespace. `build_bwrap_command` as argv, never exec'd, is
+as far as in-memory fuzzing of the sandbox should go.
+
+Mail and DTLS need their own seeds and a small vocabulary
+(MIME structure; length fields, truncated records,
+overlapping fragments). Brace noise and the text mutators
+will not reach them. The six, the board, and manifests keep
+the vocabulary they have.
+
+Two contracts the corpus should add, and replay over entries
+it already kept:
+
+- The two verifiers agree. `wire.verify` and
+  `cloud.send_job.verify` both trust a body and read the same
+  dict, or both refuse it.
+- A sequence. A bad message stores nothing, and the next good
+  one in the same poll or directory still does. The
+  paragraphs above hold that for one shape at a time. The
+  generator should produce the pair.
+
+Keep `sys.settrace`. A target with no new arc and no contract
+failure in one full-depth grow is saturated; point the next
+grow at the next reader. Section M's stop, two empty cycles
+then D4, is right only after mail extraction and the DTLS
+opener are targets. D4 should not take the rig before that.
+The order that blueMonday is the only effort and the CPU
+stays pegged still holds: peg it on an unsaturated target, or
+on those two contracts, not on another 20,000 rounds of the
+six. No live socket until the new readers stop crashing on
+bytes. A Platinum percentage is coverage, not a reason to
+stop.

@@ -130,9 +130,215 @@ rounds on readers this small (the corpus holds 157 entries over
 the vocabulary and the seeds are where the search goes, not the
 clock.
 
-**Answer**
+**Answer** (Grok, at the conductor's word, 2026-10-26). The conductor
+asked this read thrown into the hat. It is an opinion. The desk
+applies what it takes and records the rest with the reason.
+Nothing here changes section M of the standing orders until the
+desk says so. The same text is in `docs/project/fuzzing.md`
+under "A read on the campaign".
+
+**Verdict.** In-memory fuzzing is the right tool, and it is
+already aimed at the right kind of code: readers that decide
+whether outside bytes become trusted state. The campaign should
+not spend more rounds on the six blueMonday targets, and it
+should not open a socket, load a model, or try to fuzz a
+sandbox. It should point the one persistent corpus at the
+readers that today are fuzzed only inside bounded in-suite
+campaigns, and it should hold those readers to a tighter
+contract than "it did not raise."
+
+**What is already running.** There are four layers, and they
+overlap.
+
+1. Ring 1 and the property suites. `test_oracle_intake_fuzz`,
+   `test_properties`, `test_parser_properties`, and
+   `test_feed_decoder_properties` hand a function messy values,
+   including values JSON cannot carry, and require a documented
+   answer or no raise. This is where the non-string key,
+   severity, and kind crashes came from.
+2. Bounded campaigns whose corpus dies with the process.
+   `test_fuzz_surfaces` is a blind mutator over verify, the
+   config readers, the IMAP fetch, `build_bwrap_command` as
+   argv only, and the judge, opinion, and remediation
+   functions. `test_fuzz_guided` is the same surfaces under
+   `sys.settrace`, kept only when a line inside `runner/` is
+   new. `test_fuzz_parsers` is structural mutation of the
+   transport envelopes, the email extension's subject and body
+   extraction, `mailbox._valid_reply_to`, and `jobcrypto`.
+   `test_dtls_fuzz` is random datagrams and the fragment
+   buffer. `test_transport_log_relay_fuzz` is the log-relay
+   parser and pump. Rounds in the suite are capped. A longer
+   run is a manual invocation, and nothing it keeps is
+   committed.
+3. blueMonday. One JSON-lines corpus per target, grown on the
+   rig, replayed by `test_bluemonday_corpus` on every CI leg.
+   As of 3.13.50 the six files hold 171 entries and 653 arcs:
+   cloud 34 / 110, crypto 21 / 205, local 38 / 120, stash 17 /
+   21, v2 26 / 54, wire 35 / 143. No crash file. Section M
+   still says five targets; `stash` is the sixth.
+4. Job-fuzz, the sense. It mutates retained jobs and decides
+   whether to raise an alert, with `--run-variant` as the
+   door. That is a different product. It should not be folded
+   into this campaign.
+
+Platinum is a fifth thing people will mix in. It measures
+which lines the suite executes. The last closed cycle was
+99.6 percent, 125 lines still missing. A line a fixture
+reached is not a mutation that can still find a bug.
+
+**What is working, and should stay.**
+
+- In memory. No socket, no model, no live mailbox. A refusal
+  is a string. An unexpected exception is a bug.
+- One stdlib tracer, `sys.settrace`, on every interpreter the
+  project supports. `sys.monitoring` is 3.12-only and measured
+  slower here. A second tracer would make 3.9 and 3.14
+  disagree about which input is new.
+- The corpus is committed, a grow that kept nothing is still
+  committed, crashes land as `expectedFailure` probes, and
+  nobody edits an entry by hand. A tighter contract replays
+  old entries. It does not rewrite them.
+- Judgment stays out. `learning.py`, the posture collectors,
+  and the model are downstream of admission. A sensor cannot
+  reach them until a reader has already said yes.
+
+**Use less of it here.**
+
+- More rounds on `wire`, `cloud`, `v2`, `crypto`, `local`,
+  and `stash`. The question above already records it: line
+  arcs on readers this small saturate, and two grows of 2,000
+  rounds added nothing. The arc maps now sum to 653. Pegging
+  the CPU on that search has no gradient left.
+- More Hypothesis examples on functions that already hold
+  "never raises." The Python 3.9 `python-range` leg is long,
+  and it has been red on `test_two_signers_agree` for a nested
+  payload whose keys include `{` and `"`. Pin that shape.
+  Do not hunt it with more generated examples on that leg.
+- Random DTLS datagrams. The short-record `IndexError` is
+  fixed; further random bytes re-hit the length check.
+  `test_dtls_fuzz` stays as the regression for garbage. New
+  effort is a mutated valid flight.
+- In-suite campaign length. The blind campaign and the guided
+  campaign are the same idea as blueMonday, without a corpus
+  that survives the process. Keep them short, so a crash in
+  an old surface still fails CI. Do not lengthen them, and do
+  not start a third grow.
+- The downstream calls inside `test_fuzz_surfaces`:
+  `judge_job`, opinion, remediation, script hints. The
+  never-raise pass there was worth doing once. Growing it is
+  the campaign the rings section already declines.
+- Sandbox escape, races, OS byte caps, and whether the
+  network cage held. `build_bwrap_command` is fuzzed as argv
+  construction and never execs. That is the right depth. An
+  in-memory call cannot lose a race or leave a network
+  namespace, so those stay as the confinement and race tests.
+
+**Use more of it, in this order.** These readers already have
+a bounded campaign, or they are named above as not in
+blueMonday yet. Promote them into the one persistent corpus.
+Do not write another fuzzer.
+
+1. The mail path that chooses the text. `runner/wire/mailbox.py`
+   and `get_text_body` plus subject parsing in
+   `runner/ops/mail.py`, together with the email extension's
+   `_subject_body` and `reply_target` that
+   `test_fuzz_parsers` already drives. A bug here never
+   reaches the six verifiers, so the current corpus cannot
+   see it.
+2. DTLS record and handshake parse: `_split_records`,
+   `_parse_handshake`, `_parse_extensions`, from a sealed
+   flight that is then mutated. The desk's suggestion of DTLS
+   next is right, with that shape rather than more random
+   datagrams.
+3. The task board, `submit`, `offer`, and `complete`. Peer
+   task dicts. The JSON mutators already fit.
+4. NATS, queues, and file `fetch_channel_messages`. One bad
+   frame, a throwaway directory, no socket.
+   `test_fuzz_parsers` already reads channel directories.
+   The keepers should be permanent.
+5. `parse_manifest`. Small. A non-string `kind` used to abort
+   discovery. A short corpus stops that fix from rotting.
+
+Not next: the Oracle's tool-call reader, the config loader,
+and the platform card. Those are an operator or a model, not
+a peer on the wire. `load_config` is already in the bounded
+never-raise campaign, which is enough.
+
+**Vocabulary.** Truncate, splice, signature tamper, a false
+marker, preamble, trailer, CRLF, controls, case flips, number
+boundaries, brace noise, JSON path edits, and re-sign after a
+JSON mutation are the right set for the six, for the board,
+and for manifests. Do not add mutators there.
+
+Mail and DTLS will report no new arcs if they are fed only
+that set. Each needs a few invented seeds and a small extra
+vocabulary, then the existing grow.
+
+- Mail seeds: one plain message, one multipart, one
+  encoded-word subject, duplicate headers, a truncated base64
+  part, a nested part. Mutations: those structural breaks,
+  not brace noise.
+- DTLS seeds: one sealed flight. Mutations: flip a length,
+  truncate mid-record, overlap two fragments, wrap the
+  sequence. Text mutators do not apply.
+
+Seeds stay invented names. No real address, path, or machine.
+Same rule as section M.
+
+**Contracts the corpus should hold and does not.** Arcs are
+exhausted on the six. The next signal is a stronger contract,
+not a faster clock.
+
+1. Differential. For every kept body, `wire.verify` and
+   `cloud.send_job.verify` either both trust it and read the
+   same dict, or both refuse. The written contracts above
+   already say this for the two targets separately. The
+   replay should assert it on every entry, including entries
+   kept before the assert existed. The 3.9 failure
+   (`test_two_signers_agree`, nested payload, keys `{` and
+   `"`) is the shape to pin. "Did not raise" would miss it,
+   because one side raises `ValueError: signature mismatch`
+   and the interesting fact is that the two readers part
+   company.
+2. Sequence. An entry can be a bad message and then a good
+   neighbor in the same poll or the same directory. Ring 2
+   already states the property, and the hand-written cases
+   in `docs/project/fuzzing.md` hold it for one shape at a
+   time: the poison stores nothing, and the next good one
+   still runs. The generator does not produce the pair, so
+   the next shape of poison is tested only when someone
+   writes another paragraph.
+3. A failing old entry under either contract is a crash file
+   and a Q. It is not a hand edit.
+
+**Guidance, and the stop rule.** Keep `settrace`. A target
+that adds no arcs and no contract failure in one full-depth
+grow is saturated; mark it and point the next grow at the
+next reader. Section M says two such cycles across every
+current target, then D4's mutation survivors. That stop is
+right only after mail extraction and the DTLS opener are
+targets. D4 is a different instrument. It should not take
+the rig while those readers are outside the corpus. The
+conductor's order that blueMonday is the only effort, and
+that the CPU stays pegged, still holds. Peg it on an
+unsaturated target, or on sequence and differential replay,
+not on another 20,000 rounds of the six.
+
+**What not to do.**
+
+- No live socket until the new readers stop crashing on
+  bytes.
+- No model, no Oracle tool-call fuzz, no `learning.py`, no
+  posture, in this campaign.
+- No folding job-fuzz into blueMonday.
+- No new CI leg, no `continue-on-error`, no hand-edits, no
+  real addresses. The hard rules in Q62 stand.
+- Do not read the Platinum percentage as "fuzzing is
+  finished."
 
 **Applied in**
+
+Not applied. Opinion only, until the desk takes it.
 
 ---
 
