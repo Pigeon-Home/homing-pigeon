@@ -304,6 +304,8 @@ class SmallGuardsTest(unittest.TestCase):
         self.assertEqual(oracle_page._text(7), "")
         self.assertEqual(oracle_page._text("ready"), "ready")
 
+    @unittest.skipUnless(os.name == "posix",
+                         "ps and a POSIX shell")
     def test_the_ps_probe_answers(self):
         from runner.oracle import remediation
         self.assertTrue(remediation._ps_available())

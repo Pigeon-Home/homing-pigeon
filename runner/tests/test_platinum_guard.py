@@ -13,12 +13,28 @@ Target from the cycle-1 refreshed table
 
 Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90
 """
+import contextlib
 import os
 import unittest
+from unittest import mock
 
 from hypothesis import given, settings, strategies as st
 
 from runner.guard import extreview
+
+
+def _binary_flag_present():
+    """The O_BINARY arm's precondition, the helper the
+    oracle module's copy carries (misc.md, 2026-10-26,
+    Claude 50000c8e): plant a zero-valued stand-in only
+    where the platform has no flag of its own (POSIX, where
+    the kernel ignores the bit); where the flag is real
+    (Windows, 0x8000), leave it exactly as it stands --
+    replacing it with 0 would open files in text mode.
+    """
+    if hasattr(os, "O_BINARY"):
+        return contextlib.nullcontext()
+    return mock.patch.object(os, "O_BINARY", 0, create=True)
 
 
 def _scan(text, rel="ext.py"):
@@ -181,19 +197,19 @@ class AuditBinaryFlagTest(unittest.TestCase):
     `guard/security.py:_write_audit_entry_locked` (414) --
     the O_BINARY flag arm: on Windows the audit file is
     opened with O_BINARY so its lines are not translated;
-    POSIX has no such flag. Simulated by the attribute's
-    presence with value 0, which the kernel ignores: the
-    arm fires and the entry is written exactly as without
-    it.
+    POSIX has no such flag. Driven through
+    `_binary_flag_present()`: a zero-valued stand-in where
+    the platform has no flag (the kernel ignores the bit),
+    the real flag left untouched where it has one. The
+    entry is written exactly as without it.
     """
 
     def test_the_binary_flag_arm_writes_the_entry(self):
         import tempfile
-        from unittest import mock
         from runner.guard import security
         td = tempfile.mkdtemp(prefix="hp-plat-audit-")
         try:
-            with mock.patch.object(os, "O_BINARY", 0, create=True):
+            with _binary_flag_present():
                 security._write_audit_entry_locked(
                     td, "feature", "allow", "reason", "key",
                     "job", "", {}, "audit")

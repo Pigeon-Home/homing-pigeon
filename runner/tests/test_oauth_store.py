@@ -88,11 +88,22 @@ class OAuthSmallLegsTest(unittest.TestCase):
             server.handle_error(None, ("127.0.0.1", 1)))
 
     def test_store_writes_under_the_binary_flag(self):
+        import contextlib
         import os
         import tempfile
-        had = hasattr(os, "O_BINARY")
-        os.O_BINARY = 0
-        try:
+        # The binary-flag arm, driven the way the platinum
+        # O_BINARY tests drive it: plant a zero-valued
+        # stand-in only where the platform has no flag of
+        # its own (POSIX), and leave a real flag (Windows,
+        # 0x8000) exactly as it stands -- replacing it with
+        # 0 would open the file in text mode (misc.md,
+        # 2026-10-26, Claude 50000c8e).
+        if hasattr(os, "O_BINARY"):
+            ctx = contextlib.nullcontext()
+        else:
+            ctx = unittest.mock.patch.object(
+                os, "O_BINARY", 0, create=True)
+        with ctx:
             with tempfile.TemporaryDirectory() as d:
                 path = os.path.join(d, "config.json")
                 oauth.store_refresh_token(
@@ -101,9 +112,6 @@ class OAuthSmallLegsTest(unittest.TestCase):
                     saved = json.load(fh)
             self.assertEqual(
                 saved["oauth_refresh_token"], "tok-123")
-        finally:
-            if not had and hasattr(os, "O_BINARY"):
-                del os.O_BINARY
 
 
 class StoreWriteTest(unittest.TestCase):
