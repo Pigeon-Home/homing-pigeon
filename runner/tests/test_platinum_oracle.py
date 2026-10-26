@@ -19,6 +19,7 @@ Targets from the cycle-2 refreshed table
 
 Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90
 """
+import contextlib
 import json
 import os
 import shutil
@@ -185,20 +186,32 @@ class OracleServerChatLogTest(unittest.TestCase):
             shutil.rmtree(td, ignore_errors=True)
 
 
+def _binary_flag_present():
+    """The O_BINARY arm's precondition. POSIX has no such attribute,
+    so a zero-valued stand-in makes the arm fire while the kernel
+    ignores the bit. Windows has the real flag already, and
+    replacing it with 0 would open the file in text mode, where
+    every written newline comes back as CRLF (the cycle-5 Windows
+    leg, fixed in the release lane)."""
+    if hasattr(os, "O_BINARY"):
+        return contextlib.nullcontext()
+    return mock.patch.object(os, "O_BINARY", 0, create=True)
+
+
 class BinaryFlagArmsTest(unittest.TestCase):
     """Cycle 5 targets, logic class: the O_BINARY arms in
     `oracle/learning.py:_append` (255) and
     `oracle/senses.py:_write_private` (328) -- the same
     Windows flag as the audit writer's, simulated by the
-    attribute's presence with value 0 (see the guard
-    module's AuditBinaryFlagTest).
+    attribute's presence with value 0 where the platform has
+    none (see the guard module's AuditBinaryFlagTest).
     """
 
     def test_learning_append_with_the_flag_present(self):
         from runner.oracle import learning
         td = tempfile.mkdtemp(prefix="hp-plat-oracle-")
         try:
-            with mock.patch.object(os, "O_BINARY", 0, create=True):
+            with _binary_flag_present():
                 learning._append(td, {"kind": "lesson", "n": 1})
             files = os.listdir(td)
             self.assertEqual(len(files), 1)
@@ -212,7 +225,7 @@ class BinaryFlagArmsTest(unittest.TestCase):
         td = tempfile.mkdtemp(prefix="hp-plat-oracle-")
         try:
             path = os.path.join(td, "senses.jsonl")
-            with mock.patch.object(os, "O_BINARY", 0, create=True):
+            with _binary_flag_present():
                 senses._write_private(path, b"one\n", append=False)
                 senses._write_private(path, b"two\n", append=True)
             with open(path, "rb") as fh:

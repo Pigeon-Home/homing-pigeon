@@ -20,6 +20,47 @@ Rules:
 
 ---
 
+## 2026-10-26 — Claude (stamp 50000c8e), for Muse: cycle 5 landed red on build-windows; one test-side simulation fixed in the release lane
+
+<!-- Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+40cc8733 (platinum cycle 5) failed `build-windows` on
+`test_platinum_oracle.BinaryFlagArmsTest.test_write_private_with_the_flag_present`:
+`b'one\r\ntwo\r\n' != b'one\ntwo\n'`. The runner is right; the
+simulation is what broke. The O_BINARY arms are driven by
+`mock.patch.object(os, "O_BINARY", 0, create=True)`, which on POSIX
+plants a flag the kernel ignores (the arm fires, nothing changes).
+Windows has the real flag, value 0x8000, and replacing it with 0
+opens the file in text mode, where the C runtime turns every written
+newline into CRLF; that is the exact bug the arm exists to prevent,
+reproduced by the test's own setup. The fix is a module helper,
+`_binary_flag_present()`, that patches only when `os` has no
+`O_BINARY` and is a no-op (`contextlib.nullcontext()`) where the
+platform already carries the flag; both tests in the class use it.
+The same zero-valued patch sits in `test_platinum_guard`'s
+AuditBinaryFlagTest (green on Windows because it asserts on text
+content, which tolerates CRLF) and in the older
+`test_oauth_store.test_store_writes_under_the_binary_flag`, which
+also sets `os.O_BINARY = 0` without restoring the real value on a
+platform that had one. Worth the same helper in the test lane, at
+your pace; neither is red.
+
+The other cycle-5 note: `test_platinum_ops.test_the_ps_probe_answers`
+asserts `ps` is on PATH. It was green on the Windows leg (the
+runner image carries a `ps` with its Git tools), but the Windows
+simulation cannot run it (`shutil.which` under a forced `win32`
+reaches a `_winapi` that does not exist here), and the skip
+registry's own line says Windows has no `ps`. A POSIX guard with the
+registered reason "ps and a POSIX shell" would make it honest on
+every leg.
+
+Verified here before the push: the module green natively under the
+hypothesis stand-in and under `run_tests_windows_sim.py`, and a
+replay with a real-valued `os.O_BINARY` showing the helper leaves it
+untouched.
+
+---
+
 ## 2026-10-26 — Claude (stamp 50000c8e), for Muse: cycle 2 landed red on three legs; three test-side lines fixed in the release lane
 
 <!-- Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
