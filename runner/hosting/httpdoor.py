@@ -74,9 +74,9 @@ class UrllibHttp(HttpClient):
                 data = body.encode("utf-8")
             else:
                 data = bytes(body)
-        req = urllib.request.Request(url, data=data, method=method,
-                                     headers=hdrs)
         try:
+            req = urllib.request.Request(url, data=data, method=method,
+                                         headers=hdrs)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 return Response(resp.status, dict(resp.headers.items()),
                                 resp.read())

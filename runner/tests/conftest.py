@@ -39,6 +39,16 @@ try:
 except ImportError:  # pragma: no cover - hypothesis is a test-only dep
     pass
 else:
+    # Project Platinum (campaign-standing-orders.md, queue P):
+    # HP_PLATINUM_EXAMPLES=N widens every property test that names no
+    # max_examples of its own, so an idle rig spends its cycles on
+    # more examples without a test edit. Unset, nothing changes. The
+    # mutation profile below still wins when both are set.
+    if os.environ.get("HP_PLATINUM_EXAMPLES"):
+        settings.register_profile(
+            "platinum", deadline=None,
+            max_examples=int(os.environ["HP_PLATINUM_EXAMPLES"]))
+        settings.load_profile("platinum")
     if os.environ.get("MUTANT_UNDER_TEST"):
         settings.register_profile(
             "mutation",
