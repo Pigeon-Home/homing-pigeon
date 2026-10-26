@@ -4058,3 +4058,16 @@ when done, the proving commit or run. Newest first.
   seat's dirty one; passes.jsonl is
   committed with this line, as every
   pass's will be. No reds.
+- blueMonday 3: 171 entries, 653 arcs, 0 crashes
+  filed. The first cycling grow in the
+  recipe's shape (--rounds 20000
+  --minutes 45, seed 6203): local yielded
+  (+14 entries, +2 arcs; its text
+  mutators are finding new shapes), the
+  other five targets added nothing this
+  run. Stopped at about 39 of its 45
+  minutes at the conductor's word to
+  yield the box to the cycle-7 measure;
+  every finished cycle's records were
+  already in the tree and are committed
+  here, runs.jsonl included.
