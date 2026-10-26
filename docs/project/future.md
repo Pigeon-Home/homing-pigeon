@@ -2,21 +2,7 @@
 
 ## B. Partial: a slice is built
 
-**B1. Cloudflare Queues.** The hosted queue runs on a Worker and a
-Durable Object per tenant. Moving it onto the Cloudflare Queues product
-with D1 storage is design notes only.
-
-**B2. Mirror.** The result carries the Oracle's full reasoning (signals,
-lessons, box state) home to the cloud SI, and a light Oracle can send a
-question up and act on the signed answer, or on its local default when
-none arrives in time. Only the question-and-answer part exists, as
-protocol version 2 (`docs/ietf/draft-homing-pigeon-v2-00.md`). The
-full context on results is not built.
-
-**B3. Extension sources, three follow-ups.** Check an upstream's own
-release signature where one is published. Fetch the upstream version
-installed on the box, not the latest at build. List what the Oracle
-can read (names, versions, licenses) in the `senses` answer.
+**B2. ACK for jobs accepted into runner job board
 
 **B4. Reviewer routing.** A finished task goes to a second worker
 holding the `review` capability before the owner sees it. Today only
