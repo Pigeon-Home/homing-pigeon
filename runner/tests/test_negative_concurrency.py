@@ -735,9 +735,20 @@ class NameOracleResourcesPoisonTest(unittest.TestCase):
             record_oracle_turn(d, {}, "q", "bad")
             record_oracle_turn(d, {}, 5, None)
             record_oracle_turn(d, None, None, {"answer": 5, "rejected": 1})
-            self.assertIsNone(resources.check_resources(None, d))
-            self.assertIsNone(resources.check_resources({"resources": None}, d))
-            self.assertIsNone(resources.check_resources({"resources": "bad"}, d))
+            # The poison legs assert the config is tolerated;
+            # the live memory reading is not theirs to assert.
+            # On a box whose real memory sits over the 0.95
+            # threshold (this rig under a full suite), the
+            # unstubbed reading returns a genuine pressure
+            # alert and the poison assertion fails for a
+            # reason that has nothing to do with poison.
+            with mock.patch.object(resources, "_mem_fraction",
+                                   return_value=0.5):
+                self.assertIsNone(resources.check_resources(None, d))
+                self.assertIsNone(
+                    resources.check_resources({"resources": None}, d))
+                self.assertIsNone(
+                    resources.check_resources({"resources": "bad"}, d))
 
     def test_concurrent_name_and_resources_do_not_raise(self):
         import threading

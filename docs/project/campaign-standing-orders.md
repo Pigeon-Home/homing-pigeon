@@ -2708,6 +2708,42 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Suite verdict at d0e0c296 (3.13.2 tree): the
+  wholesale red is gone. One shard OK
+  (skipped=22); the other ran 3,330 tests with
+  failures=1, skipped=14 -- the single failure
+  was test_negative_concurrency's poison test,
+  which asserted check_resources returns None
+  while reading the rig's live memory (0.957,
+  over the 0.95 threshold, mid-suite). A
+  load-sensitive test, not a product defect:
+  fixed in this commit by stubbing
+  _mem_fraction at its seam for the poison
+  legs. No RecursionError or NameError
+  signatures remain in the run.
+  resources 2026-10-26T00:30:33Z: cores 2 | box cpu 61% | wall 6m39s | cmd cpu 5m53s = 0.9 cores busy | peak rss 227 MB | mem used 89% | disk free 165.9 GB | exit 1 | under-driven
+  resources-top: hatch 262 MB, browser-service 15 MB, curl 13 MB, python3 10 MB, python 10 MB
+  (under-use self-report, per Q58: under-
+  driven because the hour carried one suite
+  pass plus the .74 stamp's downloads and
+  this fix; next fill is the confirming full
+  pass at the new head.)
+- v3.12.74 FULL STAMP DONE: GitHub release
+  published 2026-10-25T23:02:31Z by
+  github-actions[bot], 13 assets; all 12
+  SHA384SUMS entries verify on downloaded
+  copies (~/workspace/stamp-3.12.74/); wheel
+  and sdist SHA-256 match PyPI; GHCR
+  v3.12.74 and latest both resolve (index,
+  2 manifests); GitLab release v3.12.74
+  carries 13 asset links; SourceForge
+  publish job succeeded in the tag build and
+  the v3.12.74 folder resolves (its file
+  listing is not machine-readable from this
+  seat). Tag build 40242410821: every
+  publish job success; the run's red was
+  test-macos and the typecheck job (the
+  latter is Q55's, fixed in 3020a8f2).
 - rules refreshed 2026-10-25 17:24 PDT
   resources 2026-10-26T00:24:59Z: cores 2 | box cpu 70% | wall 1m00s | cmd - | peak rss n/a | mem used 95% | disk free 166.4 GB | exit - | under-driven
   resources-top: hatch 146 MB, python 139 MB, python 113 MB, python 86 MB, python 12 MB
