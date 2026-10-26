@@ -3992,3 +3992,33 @@ when done, the proving commit or run. Newest first.
   the split-and-bisect steps are serial;
   no reds, so no bisect ran and no Q was
   filed.)
+- rules refreshed 2026-10-26 13:31 PDT
+  (standing orders incl. queue P, section
+  M as b3538185 rewrote it — the grow is
+  continuous — the throughput recipe,
+  AGENTS.md rules 7-11, the questions
+  file incl. Q63's answer, the playbook's
+  hard rules, and the desk's misc entry
+  of this hour: four fixes, all taken up
+  in this commit and the next).
+- blueMonday 1 (record rerun): 147 entries, 651 arcs, 0 crashes
+  filed, resources 2026-10-26T20:31:49Z: cores 2 | box cpu 64% | wall 24s | cmd cpu 27s = 1.1 cores busy | peak rss 38 MB | mem used 95% | disk free 165.3 GB | exit 0 | under-driven
+  (under-driven: the rerun is a
+  record-keeping step, 2,000 rounds by
+  the desk's prescription, done in 24
+  seconds; the continuous deep grow is
+  the throughput step and starts with
+  this commit.) Grow 1 run again on the
+  current tool at the conductor's word
+  (seed 6201, 2,000 rounds, --jobs 2,
+  all six targets incl. the new stash)
+  so its record exists in the tree:
+  runs.jsonl and the arc maps are
+  committed with this line, a
+  kept-nothing grow included, as every
+  grow's will be from here. No target
+  gained an entry or an arc; no crash.
+  The deep grow runs continuously from
+  here, one per the recipe, resuming
+  whenever a measure or a pass frees
+  the box.
