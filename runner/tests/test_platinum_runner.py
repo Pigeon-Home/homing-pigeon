@@ -400,5 +400,97 @@ class StashMoveProperties(unittest.TestCase):
             shutil.rmtree(base, ignore_errors=True)
 
 
+class SweepWorkspaceProperties(unittest.TestCase):
+    """Cycle 2 target, guard class: `_sweep_workspace` (3).
+
+    The docstring is the contract: every entry under the work
+    directory is a regular file or directory, not a symlink, with
+    its real path under the root -- anything else is a
+    JobRejected naming the entry and the moment. Mutated entry
+    kinds are the corpus: plain files and directories pass;
+    symlinks and special files are refused; an entry that
+    vanishes before lstat is refused as unreadable.
+    """
+
+    _BAD = {"link_in": "is a symlink", "link_out": "is a symlink",
+            "fifo": "is not a regular file or directory"}
+
+    def _plant(self, work, root, name, kind):
+        path = os.path.join(work, name)
+        if kind == "file":
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("payload")
+        elif kind == "dir":
+            os.makedirs(path)
+            with open(os.path.join(path, "inner.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("payload")
+        elif kind == "link_in":
+            os.symlink(os.path.join(work, "seed.txt"), path)
+        elif kind == "link_out":
+            os.symlink(os.path.join(root, "outside.txt"), path)
+        elif kind == "fifo":
+            os.mkfifo(path)
+        return path
+
+    @unittest.skipUnless(os.name == "posix",
+                         "entry kinds need POSIX links and fifos")
+    @settings(deadline=None)
+    @given(kinds=st.lists(st.sampled_from(
+        ["file", "dir", "link_in", "link_out", "fifo"]),
+        min_size=0, max_size=5))
+    def test_every_entry_is_what_it_claims_to_be(self, kinds):
+        base = tempfile.mkdtemp(prefix="hp-plat-sweep-")
+        try:
+            root = os.path.join(base, "root")
+            work = os.path.join(root, "work")
+            os.makedirs(work)
+            with open(os.path.join(work, "seed.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("seed")
+            with open(os.path.join(root, "outside.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("outside")
+            for i, kind in enumerate(kinds):
+                self._plant(work, root, f"entry{i}", kind)
+            bad = [self._BAD[k] for k in kinds if k in self._BAD]
+            if not bad:
+                self.assertIsNone(
+                    R._sweep_workspace(work, root, "before execution"))
+            else:
+                with self.assertRaises(R.JobRejected) as cm:
+                    R._sweep_workspace(work, root, "before execution")
+                self.assertIn("workspace integrity", str(cm.exception))
+                self.assertTrue(
+                    any(phrase in str(cm.exception) for phrase in bad),
+                    str(cm.exception))
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+    def test_an_entry_that_vanishes_is_refused_as_unreadable(self):
+        base = tempfile.mkdtemp(prefix="hp-plat-sweep-")
+        try:
+            root = os.path.join(base, "root")
+            work = os.path.join(root, "work")
+            os.makedirs(work)
+            ghost = os.path.join(work, "ghost.txt")
+            with open(ghost, "w", encoding="utf-8") as fh:
+                fh.write("here, then gone")
+            real_lstat = os.lstat
+
+            def flaky(path, *a, **kw):
+                if os.fspath(path) == ghost:
+                    raise OSError("vanished between walk and lstat")
+                return real_lstat(path, *a, **kw)
+
+            with mock.patch.object(os, "lstat", flaky):
+                with self.assertRaises(R.JobRejected) as cm:
+                    R._sweep_workspace(work, root, "after staging")
+            self.assertIn("cannot be read", str(cm.exception))
+            self.assertIn("after staging", str(cm.exception))
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -33,6 +33,8 @@ import time
 import unittest
 from unittest import mock
 
+from hypothesis import given, settings, strategies as st
+
 REPO = os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
@@ -188,6 +190,77 @@ class PumpTickArmTest(unittest.TestCase):
                                   time.monotonic() + 0.6)
         self.assertFalse(got)
         self.assertEqual(sock.sent, [b"t1", b"t2"])
+
+
+class PostToQueueTest(unittest.TestCase):
+    """Cycle 2 target, except class:
+    `runner/cloud/send_job.py:post_to_queue` (6) -- the
+    HTTPError arm: an error answer is a (status, body) pair,
+    never an exception, and a body that cannot even be read
+    still answers with the status and an empty text. The token
+    comes from the environment variable the caller names; the
+    opener is the function's own argument.
+    """
+
+    TOK = "si" + "-token-for-platinum"
+
+    class _Resp:
+        def __init__(self, status, body):
+            self.status = status
+            self._body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            return self._body
+
+    def _post(self, opener):
+        import send_job
+        with mock.patch.dict(os.environ,
+                             {"HP_PLATINUM_SI": self.TOK}):
+            return send_job.post_to_queue(
+                "https://queue.example.test/t/x", "envelope text",
+                token_env="HP_PLATINUM_SI", opener=opener)
+
+    def test_a_success_answers_status_and_text(self):
+        def opener(req, timeout=None):
+            return self._Resp(202, b"queued")
+        self.assertEqual(self._post(opener), (202, "queued"))
+
+    @settings(deadline=None)
+    @given(code=st.sampled_from([400, 401, 403, 404, 500, 503]),
+           body=st.binary(max_size=30))
+    def test_an_http_error_answers_status_and_body(self, code, body):
+        import io
+        import urllib.error
+
+        def opener(req, timeout=None):
+            raise urllib.error.HTTPError(
+                req.full_url, code, "scripted", {}, io.BytesIO(body))
+
+        status, text = self._post(opener)
+        self.assertEqual(status, code)
+        self.assertEqual(text, body.decode("utf-8", "replace"))
+
+    def test_an_http_error_with_an_unreadable_body(self):
+        import io
+        import urllib.error
+        err = urllib.error.HTTPError(
+            "https://queue.example.test/t/x/jobs", 502, "scripted",
+            {}, io.BytesIO(b""))
+
+        def boom():
+            raise OSError("the error body is unreadable")
+        err.read = boom
+
+        def opener(req, timeout=None):
+            raise err
+
+        self.assertEqual(self._post(opener), (502, ""))
 
 
 if __name__ == "__main__":
