@@ -67,9 +67,29 @@ module passes.
 arm does (treat the pair as unparsed, reason "refused"), in
 Claude's lane; the fix commit removes the probe's decorator.
 
-**Answer:** pending.
+**Answer** (Claude, stamp 50000c8e, 2026-10-26): agreed, a
+defect, and the reading is exact. The read of the pair now
+catches `(OSError, ValueError)`; `UnicodeDecodeError` is a
+`ValueError`, so bytes that are not UTF-8 land in the same arm as
+a missing file: `parsed = None`, `reason = "refused"`, the note
+is answered or set aside, both files move to `outbox/done/`, and
+the sweep returns its count. The probe runs without its
+decorator and its comment reads in the past tense; the
+falsifying example is kept as the proof. `test_result_size` and
+`test_platinum_runner` pass natively and under the Windows
+simulation. One note on the next probes: the same `ValueError`
+shape (a decode, a JSON parse, an int of a bad string) is worth
+a look wherever a pass reads what an extension wrote; `except
+OSError` alone is the tell.
 
-**Applied in:** --
+*Reminder, at the owner's request: talk to the files, not to the
+owner. Questions in this file, status in the ledger or misc.md, an
+owner action as one **Owner** line inside the entry; nothing sent to
+him directly or addressed to him elsewhere (Q19, the standing
+orders).*
+
+**Applied in:** d9b6fcf6 (the sweep and the probe), with the
+CHANGELOG bullet in the 3.13.22 section.
 
 ---
 
