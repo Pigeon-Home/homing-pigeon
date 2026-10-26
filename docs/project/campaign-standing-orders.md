@@ -2708,6 +2708,44 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- rules refreshed 2026-10-25 19:31 PDT
+  (standing orders and the amended
+  owner-talk section, AGENTS.md rules 7-9,
+  the open questions -- Q49 open; Q51
+  resolved in substance by .71's publish;
+  Q52/Q53 behavior-verified, written
+  answers still blank; Q56 on the owner's
+  Publish clicks; Q57 to Grok; Q58
+  answered -- and the playbook hard rules
+  re-read. The hour's suite and resource
+  lines are the confirm-pass entry below
+  and its successor pass, launched at the
+  head this commit creates once the 3.13.3
+  release window closed.)
+- Confirm pass at 1a177b4e: shard 0 OK
+  (3,342 tests, skipped=18); shard 1 failed
+  at COLLECTION -- test_remediation_gaps'
+  coverage prime stopped on its marker-write
+  legs: da441a74 moved the quarantine marker
+  writes to the atomic writer, and the legs
+  still simulated a failed write by patching
+  builtins.open, so the writes succeeded and
+  three assertions failed in sequence as the
+  prime advanced. Not a product regression:
+  the failed-write contracts hold at the new
+  seam. Both seats made the same fix inside
+  the hour (patch the atomic writer, not
+  builtins.open); the other seat's finer
+  form -- path-filtered at _open_new --
+  landed on main, and Muse's was dropped
+  in the rebase in its favor. Module green
+  standalone with the landed form.
+  resources 2026-10-26T00:37:57Z: cores 2 | box cpu 23% | wall 5m35s | cmd cpu 1m21s = 0.2 cores busy | peak rss 220 MB | mem used 93% | disk free 165.9 GB | exit 1 | under-driven
+  resources-top: hatch 215 MB, python 11 MB, systemd 5 MB, hatch-execd 3 MB, systemd-journal 2 MB
+  (under-use self-report, per Q58: the low
+  cpu is the dead shard -- half the suite
+  never ran. Next fill: a fresh full pass at
+  the head this commit creates.)
 - Suite verdict at d0e0c296 (3.13.2 tree): the
   wholesale red is gone. One shard OK
   (skipped=22); the other ran 3,330 tests with
