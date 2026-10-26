@@ -20,6 +20,9 @@ facts a reader may need to cite. Git history carries the rest.
   parallel runner under coverage for the measure step, and
   `--jobs` on the regression pass, so the rig's resource line reads
   on target instead of under-driven.
+- **The conductor.** AGENTS.md rule 11: the owner of the repository
+  is the conductor, by his own word, in every document, ledger line,
+  question and note from now on; older text keeps its wording.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.43 - 2026-10-26

@@ -79,6 +79,13 @@ Those values live on the runner host. They do not travel through the SI chat.
    or money. During a campaign it speaks to the owner in chat only to
    ask him something he must decide, and it re-reads its rules at
    least hourly (both in the standing orders).
+11. **The conductor (2026-10-26).** The owner of this repository is
+   the conductor, by his own word, and that is his title in every
+   document, ledger line, question and note written from now on:
+   "the conductor decides", "at the conductor's word", "a question
+   for the conductor". The release train runs on his signal. Older
+   entries keep the word they were written with; nothing is
+   rewritten.
 
 
 ## Where things live

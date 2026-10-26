@@ -16,6 +16,10 @@ and when to stop.
 
 ## Talking to the owner
 
+The owner is the conductor (AGENTS.md rule 11, 2026-10-26): the
+title in every ledger line, question and note from now on. This
+file's older text keeps its word.
+
 During a campaign the owner hears from the campaign in chat only when
 he must act: a question in the "When to stop and ask the owner" list
 below, worded so he can answer it in one line. No progress reports,
