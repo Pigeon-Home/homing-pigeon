@@ -17,11 +17,7 @@
   enforce mode on Linux. Per-job egress rules, and anything off Linux, do
   not exist. `docs/use/networking.md`.
 
-- **A policy for the Oracle's own tool calls.** They are logged but
-  nothing bounds what the Oracle may do with its tools.
-
-- **Supply chain.** The installer verifies neither `SHA384SUMS` nor
-  the Sigstore attestation, and installs Ollama with `curl | sh`.
+- **Supply chain.** Installer verifies `SHA384SUMS` and Sigstore attestation
 
 - **POSIX ACL warning.** `--posture` warns when a Windows ACL is
   missing but not when a POSIX one is.
