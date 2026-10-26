@@ -1,381 +1,339 @@
 # Future
 
-Ideas worth building, with the reasoning behind each. Some are chosen
-directions, some are open questions, and a few are already built and kept here
-for the story. If one grabs you, the linked design notes say where to start.
+<!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 (this edition, 2026-10-25) -->
 
-This file is organized by status:
+Ideas worth building, with the reasoning behind each, and the record
+of the decisions that shaped the ones already built. The only list of
+work that is not built. If one grabs you, the linked design note says
+where to start.
 
-- **Finished** — shipped and in the tree.
-- **Partial** — a slice is built; the rest is still future.
-- **Unfinished** — not built (or explicitly cut / decided against).
+Sections are lettered and items numbered so an item can be named in
+one breath (C2, F2). Status is per section: A is shipped and kept for
+the record, B has a slice built, C through F are not built, G was cut.
+An item moves between sections when its status changes; its number
+moves with it and the old number is not reused.
 
-## Finished
+## A. Finished, kept for the record
 
-- Per-job encryption & transport enc -- CHOSEN DIRECTION (DRU, over the
-  DTLS-session alternative): encrypt the job object itself to the runner
-  -- an AEAD under a key derived from the shared secret (HKDF) -- riding
-  the existing email binding. Confidentiality without a channel: no UDP,
-  no handshake, no listener, no new burden on the SI, and it reaches every
-  SI email reaches. Honest scope: this gives the job (and, applied
-  symmetrically, the result) confidentiality end-to-end across store-and-
-  forward hops, which hop TLS never can; it does not create a session. The
-  change that ships it MUST revise the confidentiality claims (then draft
-  Section 16.2) in step -- BUILT: runner/wire/jobcrypto.py (pure-Python
-  AES-256-GCM per NIST SP 800-38D, HKDF-SHA-384 per RFC 5869, stdlib
-  only); runner/cloud/send_job.py encrypts by default and takes
-  --cleartext; the runner unwraps after the signature verifies and before
-  the recovered body's own verification; results mirror the job's form,
-  with the job_encryption config key as the explicit override; specified
-  in the draft's Section 16 (the confidentiality discussion moved to
-  Section 17.2, revised in step, the no-forward-secrecy limit stated in
-  both places). Placement (DRU): the feature is specified in the current
-  IETF draft (Section 16) as a requirement of the protocol -- no second
-  document is needed for it, and neither version axis moves: the protocol
-  stays version 1 and the application version keeps its own cadence.
-  Default posture (DRU, reversing the usual feature-flag pattern):
-  encryption is ON BY DEFAULT in the software. A command-line parameter
-  turns it off -- clear text -- for anyone who wants the old behavior. The
-  parameter doubles as the interop escape: a sender talking to a runner
-  too old to read encrypted jobs uses it to drop to clear text
-  deliberately, never silently. When this ships, the default install's
-  confidentiality story flips, and the documentation sweep that revises
-  the claims (above) covers README, docs/extend/transports.md, and the
-  configuring docs in the same change. (Live docs describe shipped state;
-  this entry remains as the record of the decision.)
+**A1. Per-job encryption, over the existing email binding.** Chosen
+direction (DRU, over the DTLS-session alternative): encrypt the job
+object itself to the runner, an AEAD under a key derived from the
+shared secret, so confidentiality rides every pipe an SI can reach,
+with no session, no listener and no new burden on the SI. Honest
+scope: end-to-end across store-and-forward hops, which hop TLS never
+gives; it does not create a session and has no forward secrecy.
+Decisions of record (DRU): specified in the current draft (Section
+16) as a protocol requirement, no second document, neither version
+axis moves; and encryption is ON by default, with `--cleartext` as
+the explicit, never silent, way down for an older runner. Built:
+`runner/wire/jobcrypto.py` (AES-256-GCM, HKDF-SHA-384, stdlib only),
+`send_job.py` encrypts by default, results mirror the job's form with
+`job_encryption` as the override. Live docs describe the shipped
+state; this entry is the decision.
 
-- DTLS with the shared secret as an external pre-shared key (PSK) -- BUILT
-  as a binding of protocol version 1 (details at the end of this entry). A
-  direct binding (DTLS 1.3, RFC 9147; connection ID so NAT rebinding does
-  not kill the session) where the channel itself provides confidentiality
-  and authentication. The existing 128-bit entropy floor already sizes the
-  secret for PSK use. On such a binding the HMAC becomes defense in depth
-  rather than the sole gate. The hop caveat survives: anywhere a store-
-  and-forward intermediary terminates the channel, confidentiality ends at
-  that hop (Section 17.2 of the draft). Channel security is not delivery
-  -- the result/ack flow is unchanged. It also asks something real of the
-  cloud SI: the SI would have to terminate DTLS itself -- handshake,
-  sessions, connection IDs, retransmission -- where today its whole burden
-  is signing JSON and handing it to a connector. Many SI environments
-  cannot open a UDP socket at all, so the binding is an addition, never a
-  replacement: the email binding stays the one every SI can already reach.
-  Hard requirement (DRU): this binding MUST enforce perfect forward
-  secrecy, and as built it does. PSK-only key exchange (psk_ke) is
-  prohibited -- sessions are established and resumed only with ephemeral
-  (EC)DHE in the loop (psk_dhe_ke), resumption included, so a later
-  compromise of the shared secret decrypts no recorded session. A DTLS
-  extension without forward secrecy is not worth building. BUILT (DRU's
-  order: implement the future now). Shipped as the dtls transport
-  extension: `runner/wire/dtlsproto.py` (the bounded profile: one
-  ciphersuite, psk_dhe_ke only, stateless cookie exchange, Connection
-  IDs), `runner/transport_extensions/dtls/`, client
-  `runner/cloud/send_dtls.py`, specified in `docs/ietf/draft-homing-
-  pigeon-00.md` (Sections 19-22). Perfect forward secrecy is a hard
-  requirement of the profile as built: psk_dhe_ke only, a fresh X25519
-  ephemeral on every handshake and every resumption, and psk_ke never
-  offered or accepted. Follow-on (DRU): a hybrid post-quantum key exchange
-  for the profile. The X25519 ephemeral is the binding's one quantum-
-  exposed element (a recorded session falls to a future cryptographically
-  relevant quantum computer; the core protocol's symmetric constructions
-  do not). Draft-homing-pigeon-00 Section 22.1 states the limit; the
-  hybrid exchange is the remedy when the ecosystem's post-quantum pieces
-  are askable.
+**A2. DTLS 1.3 with the shared secret as the external PSK.** A direct
+binding of protocol version 1 where the channel gives confidentiality
+and authentication and the HMAC becomes defense in depth. An addition,
+never a replacement: many SI environments cannot open a UDP socket,
+and the SI would have to terminate DTLS itself. Hard requirement
+(DRU): perfect forward secrecy, `psk_dhe_ke` only, `psk_ke` never
+offered; a DTLS extension without it is not worth building. Built as
+the dtls transport extension: `runner/wire/dtlsproto.py` (one
+ciphersuite, stateless cookies, Connection IDs), `runner/transport_extensions/dtls/`,
+client `runner/cloud/send_dtls.py`, draft Sections 19 to 22. The
+follow-on is C13.
 
-- A session's first acknowledgment carries the platform -- BUILT with the
-  DTLS binding (details at the end of this entry): the direct binding
-  (above) gives the two sides a real session, which store-and-forward
-  email never has. The runner's first acknowledgment in such a session
-  SHOULD carry rudimentary platform information -- the OS family at
-  minimum, on anything Python runs on -- so the SI knows what it is
-  talking to before the first job, instead of learning it from a failure.
-  How much it hands out is the responder's choice, tiered by the owner's
-  configured mode and posture: in the TLS exchange the SI initiates, but
-  the host agent selects -- so the greeting's disclosure level is set on
-  the host, from nothing beyond protocol necessities at the tightest
-  posture to versions and PATH tools at the open ones. Disclosure happens
-  only after authentication completes; an unauthenticated peer harvests
-  nothing. Development note (history): the greeting hangs on the DTLS
-  session existing -- a store-and-forward binding has no session to hang
-  it on (the email-era relative is the platform-metadata-on-results idea
-  under "Before a job runs"). The same change that adds any
-  confidentiality mechanism MUST revise the documentation's
-  confidentiality claims in step -- the draft's confidentiality
-  discussion (Section 17.2, with per-job encryption specified as Section
-  16) says what exists and what does not, and claims describe shipped
-  state only. BUILT with the DTLS binding above: the greeting is the
-  session's first application message, sent only after authentication
-  completes, tiered by the runner's `dtls_greeting` config (none / family,
-  the default / standard / full), chosen by the responder; a resumed
-  session re-runs it. Specified in draft-homing-pigeon-00 Section 20.
+**A3. The session's first acknowledgment carries the platform.** The
+DTLS session gives a real first message, so the runner greets with
+what the SI needs before the first job: OS family at the tightest
+posture, versions and PATH tools at the open ones, chosen by the
+responder, sent only after authentication. Built with A2: the
+`dtls_greeting` tiers (none, family, standard, full), re-run on
+resumption, draft Section 20. The same card now rides a ping's result
+(B6).
 
-- The Oracle's opinion, as a result member -- BUILT (DRU). The design is
-  `docs/design/oracle-opinion-design.md`; the member is specified in
-  PROTOCOL 3.1/3.2 and implemented in `runner/oracle/opinion.py`:
-  diagnose / advise / repair latitudes under the `oracle_opinion_mode`
-  ceiling, deterministic tier-1 checks, an optional labeled model note,
-  and the one mechanical repair (absent interpreter to platform default)
-  re-judged before it runs. What remains future here: richer repairs
-  beyond the mechanical one, and the opinion as a signed statement by the
-  Oracle as an authenticated party in a confidentiality-on mode.
+**A4. The Oracle's opinion as a result member.** Built (DRU):
+`docs/design/oracle-opinion-design.md`, PROTOCOL 3.1 and 3.2,
+`runner/oracle/opinion.py`: diagnose, advise and repair latitudes
+under the `oracle_opinion_mode` ceiling, deterministic tier-1 checks,
+an optional labeled model note, and the one mechanical repair (absent
+interpreter to platform default), re-judged before it runs. What
+remains is E1 and C11.
 
-- One declaration, not three -- RESOLVED (2026-10-22, same day it was
-  filed). The manifest's `upstream` block is the one declaration:
-  runner/tools/fetch_upstream.py keeps its pinned files in the tree for
-  the build and the drift tests, runner/ops/extsources.py hands the same
-  files to the Oracle as the entry `pinned` under the digests
-  `upstream/PIN.json` recorded, and a `sources.json` entry says
-  `"upstream": true` to fetch more from that repository without naming it
-  again. `upstream.json`, the provenance bundles, and the
-  vendor_upstreams.py tool were retired. A pin bump touches one file. Kept
-  here as the record of the decision.
+**A5. One declaration, not three.** Resolved 2026-10-22, the day it
+was filed: the manifest's `upstream` block is the one declaration.
+`fetch_upstream.py` keeps the pinned files for the build and the
+drift tests, `extsources.py` hands the same files to the Oracle as
+`pinned` under the recorded digests, and a `sources.json` entry says
+`"upstream": true` to fetch more. `upstream.json`, the provenance
+bundles and `vendor_upstreams.py` were retired. A pin bump touches
+one file.
 
-- A separate Oracle signing key. (Job review once message bodies are
-  encrypted is BUILT -- runner/oracle/review.py, and bodies are encrypted
-  by default now; this entry remains for the signing key alone.)
-  `docs/oracle/job-review.md`.
+**A6. Job review once bodies are encrypted.** Built:
+`runner/oracle/review.py`, and bodies are encrypted by default. The
+separate Oracle signing key the same entry asked for is C11.
 
-- The local test chat runs the whole exchange on one box: it acts as the
-  cloud SI in-process and reads the result directly -- no email is sent.
-  `docs/archive/handoff-local-si.md`.
+**A7. The local test chat.** The whole exchange on one box, acting as
+the cloud SI in-process and reading the result directly; no mail is
+sent. `--local-test`; `docs/archive/handoff-local-si.md`.
 
-- A firewall ruleset hash, and a check that a job's network cage held. The
-  on/off posture line is shipped. `docs/extend/senses.md`.
+**A8. The firewall posture line.** On or off, with the T1562.004
+change alert, shipped. The ruleset hash and the cage-held check are
+C12.
 
-- NATS JetStream, MQTT, Redis, Postgres, and Durable Objects. Cut. (NATS
-  pub/sub shipped as a job transport -- a standalone transport extension;
-  the core has been transport-blind since 3.10.0 --
-  docs/extend/transports.md.) (The local-signal socket shipped -- signed
-  `sensor_alert` envelopes only, not a job transport.) (A Durable Object
-  per tenant now holds the hosted queue's state; what was cut is the
-  real-time Durable Objects pipe.)
-  docs/extend/transports.md.
+## B. Partial: a slice is built
 
-## Partial
+**B1. Cloudflare Queues.** The hosted queue ships
+(`docs/extend/transports.md`, "Queues"): a Worker and one Durable
+Object per tenant at `runner/cloud/queues-worker/`, a bearer token per
+role, the HMAC-SHA-384 gate at the edge on by default
+(`REJECT_INVALID_HMAC`), a per-tenant quota, the runner's `queues`
+transport and `send_job.py --to-queue`. The Cloudflare Queues product
+itself and D1 storage remain design notes.
 
-- Cloudflare Queues. Partial: the hosted queue ships
-  (docs/extend/transports.md, "Queues"): a Worker and one Durable Object
-  per tenant at runner/cloud/queues-worker/, a bearer token per role, the
-  HMAC-SHA-384 gate at the edge on by default (REJECT_INVALID_HMAC), a
-  per-tenant quota, the runner's `queues` transport and `send_job.py
-  --to-queue`. The Cloudflare Queues product itself and D1 remain design
-  notes.
+**B2. Mirror** (DRU's coinage, 2026-10-20). The result carries the
+Oracle's full decision context home to the cloud SI, and a light
+Oracle sends the question it would have asked itself UP, with its
+context, the answer returning signed, the local default deciding when
+none comes by the deadline. Trust is the design: mirror flows only to
+the holder of the shared secret, only when the operator enables it for
+that sender, encrypted and bounded like everything else; the general
+form lets any component append its signed, provenance-carrying,
+seen-once segment to a shared context. Refined the same day (DRU): a
+determination travels BEFORE the job executes, as its own message,
+triggered by the box's determination not being a clean pass, never by
+a request in the job; the cloud SI adapts to the version the endpoint
+speaks, falling back to version 1 with no negotiation. Built: the
+determination / question / answer slice as protocol version 2,
+`runner/wire/protocol_v2.py`, off unless `protocol_v2` is set,
+`answer_only` as the laptop mode; the draft is
+`docs/ietf/draft-homing-pigeon-v2-00.md`. Not built: the Oracle's full
+context on results, extension segment kinds, and the red-team
+concentrate (D3).
 
-- Mirror (DRU's coinage, 2026-10-20; the determination / question / answer
-  slice is BUILT as protocol v2, off unless `protocol_v2` is set -- see
-  the end of this entry; the rest of Mirror is not built): the result
-  carries the Oracle's full decision context home to the cloud SI -- the
-  signals, lessons, and box state the opinion was made from -- so a
-  trusted SI plans its next job with the system's actual state in view
-  instead of guessing from an exit code. Mirror also runs mid-decision: a
-  light Oracle (Pi Light's deterministic tier) sends the question it would
-  have asked itself UP to the cloud SI with its context attached, the
-  answer returns as a signed object, and no answer by the deadline means
-  the local default decides. Trust is the whole design: mirror flows only
-  to the holder of the shared secret, only when the operator enables it
-  for that sender, encrypted like the job itself, bounded like everything
-  else. The general form is the same move everywhere: any component may
-  append its signed view to a shared context -- the Oracle offers its
-  context to extensions as readily as the box offers it to the SI --
-  segments carrying provenance and seen-once ids, so context accumulates
-  without echoing itself. Refined the same day (DRU): a determination also
-  travels BEFORE the job executes, as its own message; the trigger is the
-  box's own determination -- mirror messages flow when the determination
-  is not a clean pass -- not a request in the job's body. The cloud SI
-  adapts to the protocol version the endpoint supports: faced with a
-  runner that never speaks version 2, it falls back to version 1, with no
-  negotiation machinery. The design now has a protocol document of its own
-  -- docs/ietf/draft-homing-pigeon-v2-00.md, in progress -- backwards
-  compatible with version 1 by construction. The reference slice is
-  runner/wire/protocol_v2.py. It is off unless protocol_v2 is set.
-  answer_only is the laptop mode: it answers, and it does not execute. The
-  rest of Mirror (the Oracle's full context, extension segment kinds, the
-  red-team concentrate) is not built.
+**B3. Extension sources.** Shipped (`runner/ops/extsources.py`,
+`docs/extend/extensions.md` "Sources"). Three follow-ups are not:
+verifying an upstream's own release signature (a `.asc` beside the
+tarball) where one is published, since today's pin proves the box got
+the bytes the build saw, not that the upstream signed them; resolving
+the upstream version installed on the box rather than the latest at
+build, so the Oracle reads the source that matches the running
+daemon; and source cards (names, versions, licenses, never content) in
+the `senses` answer, so a cloud SI knows what the box's Oracle can
+read.
 
-- Extension sources ship (runner/ops/extsources.py, docs/extend/extensions.md
-  "Sources"); three follow-ups are not built. Verifying an upstream's own
-  release signature (a `.asc` beside the tarball) where a project
-  publishes one: today the build's pin proves the box got the bytes the
-  build saw, not that the upstream signed them. Resolving the upstream
-  version installed on the box instead of the latest at build, so the
-  Oracle reads the source that matches the running daemon. Source cards
-  (names, versions, licenses -- never content) in the `senses` answer, so
-  a cloud SI knows what the box's Oracle can read.
+**B4. Reviewer routing on the task board.** PROTOCOL 13.4 once
+described the Oracle dealing a finished `task_result` to a second
+worker holding `review` before the human gate; it was not built (spec
+corrected 2026-10-21). What ships is the human gate alone:
+`require_review` parks the task in `pending_review` until the owner
+approves (13.7). Routing to reviewing workers remains an idea.
 
-- Reviewer routing on the task board: the Oracle dealing a finished
-  `task_result` to a second worker holding the `review` capability before
-  it reaches the human gate. PROTOCOL 13.4 described this as shipped; it
-  was not (spec corrected 2026-10-21). What ships is the human gate alone:
-  `require_review` parks the task in `pending_review` until the owner
-  approves. Routing to reviewing workers remains an idea.
+**B5. Platform metadata for the sender.** A remote agent rarely knows
+the box. Built: a `ping` result carries the platform card at the
+owner's `pong_platform` tier (PROTOCOL 3.2), so the SI learns the OS
+family, the default interpreter and the protocol versions before the
+first real job. Not built: the option that attaches full platform
+metadata to every result.
 
-- Accelerator Pis. Pi Light ships the deterministic Oracle because current
-  Pis have no neural accelerator worth loading a model on, so the install
-  downloads nothing. When a Pi generation ships an integrated NPU -- or an
-  AI-HAT-class board is on the box -- the same install flips `oracle_mode`
-  to `llm` and pulls a model. The mode is config, not architecture: the
-  runner, the protocol, the briefs, and the records do not change.
+**B6. Senses for the box's own posture.** Built as shipped senses:
+listening sockets (`port-watch`), the services that should be running
+(`service-watch`), and the local canary tripwire (`inference.watch_system`,
+on by default). Not built: patch level and disk encryption as senses,
+canary credentials that phone home when used elsewhere, a real netmon
+collector beyond the softflowd, Zeek and Suricata feeds, and a per-job
+DNS log. `docs/extend/senses.md`, `docs/use/networking.md`.
 
-## Unfinished
+**B7. Accelerator Pis.** Pi Light ships the deterministic Oracle
+because current Pis have no neural accelerator worth loading a model
+on, so the install downloads nothing. When a Pi generation ships an
+integrated NPU, or an AI-HAT-class board is on the box, the same
+install flips `oracle_mode` to `llm` and pulls a model. The mode is
+config, not architecture: nothing else changes. The hardware side of
+this is F1.
 
-- ChatGPT implements/runs self-improvement project by watching protocol and
-  software, in motion.
+## C. Not built: security
 
-- Encrypted credentials at rest
+The order follows `docs/security/security-gaps.md`: the default
+posture is the owner's choice and flipping it closes none of these,
+because each is a mechanism that does not yet exist.
 
-- Ack messages
+**C1. Runner integrity.** Nothing checks that `runner.py` or the
+binary is unchanged at startup; a same-user job can patch the runner
+and own every later run. The smallest form is a self-digest logged at
+start and a WARN when it differs from the last start's; the real form
+is a read-only install directory.
 
-- cloud-task-board-delegation (DRU, 2026-10-20; nothing built): the liveness
-  check -- the ping a sender already spends to learn the box is reachable
-  -- returns the job board along with the pong. The cloud SI then sees
-  that box's open work (unclaimed, claimed, waiting on review) and may
-  delegate onto it: submit a task to a board it has just proven it can
-  reach, instead of guessing which bird is free. Same trust boundary as
-  Mirror: only the holder of the shared secret, only when the operator
-  enables it for that sender, the board view bounded and encrypted like
-  the result. A ping the operator has not opened this way stays a pong.
-  Placement (DRU): this is NOT a version of the base specification -- it
-  is to be written as a separate IETF draft document riding the current
-  protocol, whether or not it one day becomes a version 2 or stays a
-  different draft. Versioning caused problems the first time; folding it
-  in as a version remains the possible end state, reached by the separate
-  draft first. The irony is part of the record: the optimization is in
-  some sense less secure -- it trusts the cloud SI with fuller control --
-  and it is also the more advanced system, because it is designed for
-  hardware with significantly more restrictions. That is the industry
-  pattern: build the big chunky crypto and security system first, then
-  design and implement a lightweight optimized version alongside it.
-  Nothing here is built.
+**C2. Audit log integrity.** `security-events.jsonl` is rewritten
+past 5,000 lines, so the watched principal can edit history;
+`security-audit.jsonl` is append-only in the runner's hands but has no
+hash chain, no `chattr +a`, and no remote copy.
 
+**C3. A cage off Linux.** bwrap is the only enforcement. On macOS,
+FreeBSD and Windows the workspace sweeps detect after the fact. The
+real cages are `sandbox-exec`, a jail, and a job object with a
+restricted token; the interim is the POSIX ACL (`setfacl`, `chmod +a`)
+set at the moment the workdir is chowned for `job_user`, never from
+anything in the signed job.
 
-- Consider dist blockchain for file flow and work board/answers or
-  transport extension.onion or bt for that matter
+**C4. Egress control.** Exfiltration from inside a job is blocked only
+by bwrap in enforce mode. Per-job egress rules, and anything off
+Linux, do not exist. `docs/use/networking.md`.
 
-- An approval gate: the owner says yes before the job runs.
-  `docs/design/approval-gate-design.md`
+**C5. A policy on the Oracle's own tool calls.** The action log
+exists (the oracle log records every tool call); a policy that bounds
+what the Oracle may do with its tools does not.
+`docs/project/industry-map.md`.
 
-- A remote agent rarely knows the box: the OS, the tools on PATH, the
-  versions, what is installed. An Oracle option attaches full platform
-  metadata to every result, so the sender stops guessing.
+**C6. Supply chain.** Releases ship `SHA384SUMS` and a Sigstore
+attestation, but the installer verifies neither, and the Ollama step
+is `curl | sh`. Verify the sums on install; pin and hash the Ollama
+script.
 
-- A new extension kind, the concentrate, and its first member: the red-team
-  concentrate (DRU coined the kind, 2026-10-20). A concentrate is neither
-  a sense nor a transport: a sense observes the box and files signals, a
-  transport carries jobs, and a concentrate takes incoming jobs themselves
-  as its material, analyzes them before they run, and hands the platform
-  back a better opinion of them than the job's literal text supports. Its
-  seat is narrow and fixed: after signature verification (it never sees
-  an unverified job) and before the Oracle's opinion freezes, inside the
-  runner, holding no admission power of its own -- a concentrate opines,
-  it never admits, refuses, or executes, and the core's gates decide
-  exactly as they would without it. The red-team concentrate spends that
-  seat adversarially. Where a plain opinion reads the job, this one
-  attacks the reading: it generates near neighbors of the job -- grammar-
-  shaped mutations, boundary values, reordered and re-typed fields,
-  encodings at the edge of what the parsers accept -- and replays them
-  against the deterministic checkers and the sandbox, hunting for the
-  variant that flips the verdict: a job judged benign whose one-byte
-  neighbor executes differently, a job judged dangerous whose neighbor is
-  inert, any edge the forming opinion has not priced in. What it returns
-  is the opinion itself, revised by the attack -- weakened and annotated
-  with the flipping variant when one is found, standing stronger, with the
-  searched neighborhood recorded, when none is. Every flip reproduces from
-  an archived seed and the exact variant bytes, never from a model's say-
-  so: the generation of variants may be model-assisted in the same
-  division of labor as the in-memory fuzzing entry below (the model
-  proposes, deterministic machinery disposes), but a flip counts only when
-  the machinery replays it. The yield compounds through the Oracle's self-
-  learning: the frozen opinion is scored against the outcome today, and
-  the cases that teach most -- the ones where the opinion was almost wrong
-  -- are precisely the ones that never occur naturally, because the job
-  that ran was the job as sent. The concentrate manufactures those cases
-  before the fact, while they can still change the verdict, and files the
-  near misses as first-class learning input. Design constraints carried
-  from the rest of the platform: the deterministic tier must do the whole
-  job on Pi Light, where there is no model; the analysis budget is an
-  operator-tunable cost charged against the job's wait, not the box's idle
-  time; and the extension contract for the kind (manifest, what a
-  concentrate may see, what shape an annotated opinion takes) is unwritten
-  -- the fuzz sense was chosen ahead of this (a sense, background, off by
-  default), and the kind-defining gentler sibling, a concentrate that maps
-  a job's mutation neighborhood without attacking the opinion, was
-  sketched in the same conversation. This entry is the red team's record;
-  nothing here is built.
+**C7. The posture report's POSIX ACL warning.** `--posture` warns
+about a missing Windows ACL and not about a missing POSIX one.
 
-- Ed25519 signatures instead of the shared HMAC secret.
-  `docs/design/asymmetric-signing-design.md`
+**C8. Ed25519 signatures instead of the shared HMAC secret**, so a
+leaked secret is not root. `docs/design/asymmetric-signing-design.md`.
 
-- A loopback dashboard for the Oracle (its spec was removed from the tree;
-  the idea stands). `--oracle` and `--oracle-cli` are the current.
+**C9. An approval gate**: the owner says yes before the job runs.
+`docs/design/approval-gate-design.md`.
 
-- Per-job egress rules. `docs/extend/senses.md`, `docs/use/networking.md`.
+**C10. Credentials encrypted at rest.** `config.json` holds the
+shared secret and the mailbox credential in the clear.
 
-- Patch level, listening sockets, persistence, and disk encryption, as
-  senses. `docs/extend/senses.md`.
+**C11. A separate Oracle signing key**, and the opinion as a signed
+statement by the Oracle as an authenticated party in a
+confidentiality-on mode. `docs/oracle/job-review.md`.
 
-- A real netmon collector, a per-job DNS log, and canary credentials that
-  phone home. `docs/use/networking.md`.
+**C12. A firewall ruleset hash, and a check that a job's network
+cage held.** The on/off line is A8. `docs/extend/senses.md`.
 
-- Signal and WhatsApp paging. Telegram is the channel that exists.
-  `docs/oracle/dri-playbook.md`.
+**C13. A hybrid post-quantum key exchange for the DTLS profile**
+(DRU). The X25519 ephemeral is the binding's one quantum-exposed
+element; the core protocol's symmetric constructions are not. Draft
+Section 22.1 states the limit; the hybrid exchange is the remedy when
+the ecosystem's post-quantum pieces are askable.
 
-- An Oracle action log, and a policy on the Oracle's own tool calls.
-  `docs/project/industry-map.md`.
+## D. Not built: the protocol and the board
 
-- A check that the runner binary has not changed, a hash chain on the audit
-  log, and checking SHA384SUMS during install.
-  `docs/security/security-gaps.md`.
+**D1. Cloud task-board delegation** (DRU, 2026-10-20). The ping a
+sender already spends to learn the box is reachable returns the job
+board with the pong, so the cloud SI sees that box's open work and may
+submit a task to a board it has just proven it can reach. Same trust
+boundary as Mirror: only the holder of the shared secret, only when
+the operator enables it for that sender, the view bounded and
+encrypted like a result; a ping the operator has not opened stays a
+pong. Placement (DRU): NOT a version of the base specification; a
+separate IETF draft riding the current protocol, whether or not it
+later folds in as a version. The irony is part of the record: the
+optimization trusts the cloud SI with fuller control and is also the
+more advanced system, designed for more restricted hardware. That is
+the industry pattern: build the big chunky crypto and security system
+first, then design the lightweight optimized version alongside it.
 
-- SMS paging -- decided against (DRU; see runner/oracle/dri.py).
-  `docs/oracle/dri-playbook.md`.
+**D2. Ack messages.** The board's `task_ack` ships (PROTOCOL 13.7)
+and a result's attestation is a job's receipt. A receipt that
+acknowledges a job before its result does not exist.
 
-- TLS inspection and a WAF. `docs/use/networking.md`.
+**D3. The concentrate, a third extension kind, and its first member,
+the red-team concentrate** (DRU coined the kind, 2026-10-20). A sense
+observes the box, a transport carries jobs; a concentrate takes
+incoming jobs as its material, analyzes them before they run, and
+hands back a better opinion than the job's literal text supports. Its
+seat is fixed: after signature verification, before the Oracle's
+opinion freezes, inside the runner, with no admission power of its
+own. The red-team concentrate spends that seat adversarially: it
+generates near neighbors of the job (grammar-shaped mutations,
+boundary values, reordered and re-typed fields, encodings at the edge
+of what the parsers accept), replays them against the deterministic
+checkers and the sandbox, and hunts for the variant that flips the
+verdict. It returns the opinion revised by the attack, annotated with
+the flipping variant or with the searched neighborhood. Every flip
+reproduces from an archived seed and the exact variant bytes; a model
+may propose variants but a flip counts only when the machinery
+replays it. The yield compounds through the Oracle's self-learning:
+the near misses that never occur naturally are manufactured before
+the fact and filed as first-class learning input. Constraints: the
+deterministic tier must do the whole job on Pi Light; the budget is an
+operator-tunable cost charged against the job's wait; the kind's
+contract (manifest, what it may see, the shape of an annotated
+opinion) is unwritten. The gentler sibling that maps a job's mutation
+neighborhood without attacking the opinion was sketched in the same
+conversation. The job-fuzz sense was chosen ahead of this.
 
-- Line-rate network detection, a 24/7 ML pipeline, and adopting MCP.
-  `docs/project/industry-map.md`.
+**D4. A distributed ledger for file flow and the work board's answers,
+or a transport extension over .onion or BitTorrent.** An idea on the
+record, nothing designed.
 
-- Neural link / USB inference stick for Pi (research direction, nothing
-  built). Earlier USB inference stick, largely superseded.
-  - PiEEG / similar shields -- actual EEG/BCI add-ons for Pi (GPIO, not
-    USB-universal), research-grade, open source.
+**D5. An SI that runs a self-improvement project** by watching the
+protocol and the software in motion.
 
-  Differentiation angles worth researching:
-  - Universal USB for any Pi (Zero through 5), not just the Pi 5 PCIe path.
-    Older installed base is the market the big kits ignore.
-  - Not just inference: a "neural link" could mean a fused peripheral --
-    accelerator + sensors (camera, mic, IMU, or even a light BCI front-
-    end) with a single signed protocol so the host Pi sees one device,
-    not a pile of drivers.
-  - Homing-Pigeon fit: the peripheral is the local Oracle's muscle. A Pi
-    Light that currently does deterministic checks gains a small model
-    it can call; mirror (above) can ship the question up when the stick
-    is absent or the model is unsure.
-  - Power and heat on USB 2 vs USB 3; many older Pis only have USB 2. A
-    design that is useful on USB 2 (lower TOPS, still better than CPU)
-    wins the installed base.
-  - Model portability: Coral locked to TF-Lite. A stick that runs a small
-    open set (ONNX, a fixed GGUF class, or a Homing-Pigeon-signed model
-    format) reduces lock-in.
-  - Security: the stick holds no long-term secrets; jobs that need
-    inference are signed, results are signed, the stick is a
-    coprocessor not a trust root. Same discipline as the rest of the
-    system.
+## E. Not built: the Oracle, the senses, and paging
 
-  Research fronts to expand:
-  - Bandwidth: what USB 2 actually delivers for a small model vs USB 3;
-    latency budget for a local Oracle decision.
-  - Thermal: a sealed USB dongle that does not throttle under continuous
-    inference.
-  - Existing-base census: how many Pis in the wild are pre-Pi-5 and
-    therefore cannot take an M.2 AI kit.
-  - Killer app equivalent to GLQuake: the one demo that makes a person plug
-    the stick into the Pi they already own. For Homing Pigeon that is
-    probably "the box that was silent now has an opinion."
-  - Regulatory: if the "neural link" leans toward real biosignals (EEG),
-    medical-device lines appear; pure compute acceleration does not.
-  - Company shape: sell the stick, or sell the stick + a signed model
-    subscription that only runs on the stick (the Glide-era lesson: the
-    API and the hardware travel together).
+**E1. Richer repairs** beyond the one mechanical one in A4.
 
-  Nothing to build yet. Record the direction so later work can pick it up
-  without rediscovering the external-GPU analogy or the existing
-  Coral/Hailo/PiEEG map.
+**E2. A loopback dashboard for the Oracle**: watch it think. Its spec
+was removed from the tree; the idea stands. `--oracle` (the loopback
+chat page) and `--oracle-cli` are what exists.
+
+**E3. Patch level and disk encryption as senses.** The rest of that
+family is B6.
+
+**E4. Signal and WhatsApp paging.** Telegram is the channel that
+exists. `docs/oracle/dri-playbook.md`.
+
+**E5. TLS inspection and a WAF.** `docs/use/networking.md`.
+
+**E6. Line-rate network detection, a 24/7 ML pipeline, and adopting
+MCP.** `docs/project/industry-map.md`.
+
+## F. Research directions: hardware
+
+**F1. A Pi with an accelerator** is B7's hardware half: when it
+exists, the install pulls a model and nothing else changes.
+
+**F2. A neural link, or USB inference stick, for the Pi.** Research
+direction, nothing built. The earlier USB inference stick idea is
+largely superseded by this; PiEEG-class shields (real EEG/BCI add-ons
+on GPIO, research-grade, open source) are the nearest existing thing.
+
+Differentiation angles worth researching:
+- Universal USB for any Pi, Zero through 5, not only the Pi 5 PCIe
+  path: the older installed base is the market the big kits ignore.
+- Not only inference: a fused peripheral (accelerator plus camera,
+  mic, IMU, or a light BCI front-end) behind one signed protocol, so
+  the host sees one device, not a pile of drivers.
+- The Homing Pigeon fit: the peripheral is the local Oracle's muscle.
+  A Pi Light gains a small model it can call; Mirror (B2) ships the
+  question up when the stick is absent or the model unsure.
+- Power and heat on USB 2 versus USB 3; a design useful on USB 2
+  (lower TOPS, still better than CPU) wins the installed base.
+- Model portability: Coral is locked to TF-Lite; a stick that runs a
+  small open set (ONNX, a fixed GGUF class, or a Homing-Pigeon-signed
+  model format) reduces lock-in.
+- Security: the stick holds no long-term secrets; jobs that need
+  inference are signed, results are signed, the stick is a
+  coprocessor, not a trust root.
+
+Research fronts to expand: what USB 2 delivers for a small model and
+the latency budget for a local decision; a sealed dongle that does
+not throttle under continuous inference; a census of pre-Pi-5 boards
+that cannot take an M.2 AI kit; the killer demo, GLQuake's equivalent,
+which for Homing Pigeon is probably "the box that was silent now has
+an opinion"; the regulatory line that appears if the link leans toward
+real biosignals; and company shape, the stick alone or the stick plus
+a signed model subscription that runs only on it (the Glide-era
+lesson: the API and the hardware travel together).
+
+## G. Cut, or decided against
+
+**G1. NATS JetStream, MQTT, Redis Streams, Postgres, and a real-time
+Durable Objects pipe.** Cut as job transports; the design notes stay
+in `docs/extend/transports.md` for the story. Core NATS pub/sub
+shipped as a transport extension (the core has been transport-blind
+since 3.10.0), the local-signal socket carries signed `sensor_alert`
+envelopes only, and a Durable Object per tenant holds the hosted
+queue's state (B1).
+
+**G2. SMS paging.** Decided against (DRU; `runner/oracle/dri.py`).
