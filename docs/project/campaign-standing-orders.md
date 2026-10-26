@@ -3925,3 +3925,20 @@ when done, the proving commit or run. Newest first.
   Q62 as answered, the playbook's hard
   rules).
   resources 2026-10-26T18:27:57Z: cores 2 | box cpu 55% | wall 24m33s | cmd cpu 21m57s = 0.9 cores busy | peak rss 468 MB | mem used 93% | disk free 165.4 GB | exit 0 | under-driven
+- blueMonday 1: 130 entries, 630 arcs, 0 crashes
+  filed, resources 2026-10-26T19:42:36Z: cores 2 | box cpu 58% | wall 23s | cmd cpu 23s = 1.0 cores busy | peak rss 37 MB | mem used 95% | disk free 165.3 GB | exit 0 | under-driven
+  (under-driven: the grow ran 23 seconds;
+  what fills the box next is the seed
+  step below, then a deeper grow.)
+  Begun at the owner's word, ahead of
+  Platinum's trigger; queue P still
+  runs. Grow seed 6201, 2,000 rounds per
+  target: no target gained an entry or
+  an arc (wire 143, cloud 110, v2 54,
+  crypto 205, local 118) and no crash
+  was found; the seeded corpus already
+  covers the arcs those rounds reach.
+  Next per section M: the seed step —
+  fixtures the suite builds that the
+  tool's seed does not yet — then grow
+  again at a larger depth.
