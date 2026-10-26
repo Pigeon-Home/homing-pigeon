@@ -6,7 +6,7 @@ name: mutation-seeded
 # varied per run, so different Hypothesis draws and a different hash
 # seed walk the mutant space the fixed release configuration never
 # visits. It is a signal, never a gate: nothing needs it, no publish
-# keys off it, and it does not run on pushes or tags.
+# keys off it, and it does not run on pushes or tags; it runs hourly on main's head.
 #
 # The seed is the run number unless a manual dispatch supplies one.
 # It is printed in the log and the run summary together with the
@@ -15,8 +15,11 @@ name: mutation-seeded
 # to it locally and `mutmut run` walks the same space.
 on:
   schedule:
-    # Weekly, Monday 06:17 UTC. Off the hour, off the release path.
-    - cron: "17 6 * * 1"
+    # Hourly at :17, off the hour (owner, 2026-10-25: main takes a
+    # commit every few minutes, and a weekly walk saw four seeds a
+    # month). Each run takes about the release job's seven minutes.
+    # (Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab)
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       seed:
@@ -26,6 +29,12 @@ on:
 
 permissions:
   contents: read
+
+# One walk at a time: a slow hour queues the next run, never stacks
+# them, and never cancels a walk that is half done.
+concurrency:
+  group: mutation-seeded
+  cancel-in-progress: false
 
 jobs:
   mutation-seeded:
