@@ -372,7 +372,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertTrue(http.exhausted())
         self.assertEqual(http.calls[1]["body"]["config"]["image"],
-                         "ghcr.io/pigeon-home/homing-pigeon:3.13.3")
+                         "ghcr.io/pigeon-home/homing-pigeon:v3.13.3")
         self.assertTrue(http.calls[-1]["url"].endswith("/machines/old1?force=true"))
         inv = inventory.Inventory(self.inv)
         self.assertNotIn("fly:old1", inv.machines)
