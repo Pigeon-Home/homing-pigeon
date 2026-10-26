@@ -449,15 +449,18 @@ class LastHarnessBranchesTest(unittest.TestCase):
             saved = getattr(os, "O_NOFOLLOW", None)
             if had:
                 delattr(os, "O_NOFOLLOW")
-            os.O_BINARY = 0
+            # The binary-flag arm: a zero stand-in where the platform has
+            # no flag, the real flag kept and restored where it has one.
             try:
-                with mock.patch.object(os, "chmod", side_effect=OSError):
+                with mock.patch.object(os, "O_BINARY",
+                                       getattr(os, "O_BINARY", 0),
+                                       create=True), \
+                        mock.patch.object(os, "chmod", side_effect=OSError):
                     H.run_diagnose({}, out=lambda _l: None, base_dir=d,
                                    sections=[])
             finally:
                 if had:
                     os.O_NOFOLLOW = saved
-                del os.O_BINARY
             with mock.patch.object(R, "_base_dir_for", return_value=d):
                 H.run_diagnose({}, out=lambda _l: None, base_dir=None,
                                sections=[])

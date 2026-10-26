@@ -894,13 +894,13 @@ class TailTest(unittest.TestCase):
                 inst.inference_model_for(prof),
                 inst.DEFAULT_INFERENCE_MODEL)
             path = os.path.join(d, "note.txt")
-            os.O_BINARY = 0
-            try:
+            # The binary-flag arm: a zero stand-in where the platform has
+            # no flag, the real flag kept and restored where it has one.
+            with mock.patch.object(os, "O_BINARY",
+                                   getattr(os, "O_BINARY", 0), create=True):
                 inst._write_text(path, "n")
                 with mock.patch.object(os, "chmod", side_effect=OSError):
                     inst._write_json(os.path.join(d, "c.json"), {"a": 1})
-            finally:
-                del os.O_BINARY
 
 
 class CleanupTest(unittest.TestCase):

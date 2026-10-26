@@ -34,13 +34,16 @@ KEY_B = "bravo-" + "b2" * 28
 
 
 class _Binary:
+    # The binary-flag arm: a zero stand-in where the platform has no
+    # flag, the real flag kept and restored where it has one, so the
+    # process never continues with the attribute zeroed or deleted.
     def setUp(self):
-        self._had = hasattr(os, "O_BINARY")
-        os.O_BINARY = 0
+        self._binary = mock.patch.object(
+            os, "O_BINARY", getattr(os, "O_BINARY", 0), create=True)
+        self._binary.start()
 
     def tearDown(self):
-        if not self._had and hasattr(os, "O_BINARY"):
-            del os.O_BINARY
+        self._binary.stop()
 
 
 class PureEdgeTest(_Binary, unittest.TestCase):
@@ -881,9 +884,8 @@ class RunnerFailSoftLegs4Test(unittest.TestCase):
                              ["file"])
 
     def test_security_event_rollover(self):
-        had = hasattr(os, "O_BINARY")
-        os.O_BINARY = 0
-        try:
+        with mock.patch.object(os, "O_BINARY", getattr(os, "O_BINARY", 0),
+                               create=True):
             with tempfile.TemporaryDirectory() as d, \
                     mock.patch.object(
                         rr, "_SECURITY_EVENTS_MAX", 2):
@@ -895,9 +897,6 @@ class RunnerFailSoftLegs4Test(unittest.TestCase):
                     lines = fh.read().splitlines()
             self.assertEqual(len(lines), 2)
             self.assertIn('"k2"', lines[-1])
-        finally:
-            if not had and hasattr(os, "O_BINARY"):
-                del os.O_BINARY
 
 
 class RunnerFailSoftLegs5Test(unittest.TestCase):
@@ -1107,19 +1106,16 @@ class RunnerResidualLegsTest(unittest.TestCase):
         sg.assert_called_once_with([1000, 1001])
 
     def test_write_json_with_the_binary_flag_present(self):
-        # _write_json's O_BINARY flag line, run
-        # under the _Binary trick (flag value 0).
-        had = hasattr(os, "O_BINARY")
-        os.O_BINARY = 0
-        try:
+        # _write_json's O_BINARY flag line, run under the
+        # _Binary trick (a zero stand-in where the platform
+        # has no flag, the real flag where it has one).
+        with mock.patch.object(os, "O_BINARY", getattr(os, "O_BINARY", 0),
+                               create=True):
             with tempfile.TemporaryDirectory() as d:
                 path = os.path.join(d, "out.json")
                 rr._write_json(path, {"a": 1})
                 with open(path, encoding="utf-8") as fh:
                     self.assertEqual(json.load(fh), {"a": 1})
-        finally:
-            if not had:
-                del os.O_BINARY
 
     def test_get_text_body_with_no_payload(self):
         # get_text_body's last return: a message

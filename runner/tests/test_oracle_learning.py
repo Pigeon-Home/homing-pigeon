@@ -877,9 +877,10 @@ class LearningSmallLegsTest(unittest.TestCase):
         import tempfile
         from unittest import mock as _mock
         from runner.oracle import learning as L
-        had = hasattr(os, "O_BINARY")
-        os.O_BINARY = 0
-        try:
+        # The binary-flag arm: a zero stand-in where the platform has no
+        # flag, the real flag kept and restored where it has one.
+        with _mock.patch.object(os, "O_BINARY", getattr(os, "O_BINARY", 0),
+                                create=True):
             with tempfile.TemporaryDirectory() as d:
                 path = os.path.join(d, "ledger.jsonl")
                 with open(path, "w") as fh:
@@ -893,9 +894,6 @@ class LearningSmallLegsTest(unittest.TestCase):
                 with open(path) as fh:
                     kept = fh.read()
             self.assertEqual(kept, "line 8\nline 9\n")
-        finally:
-            if not had and hasattr(os, "O_BINARY"):
-                del os.O_BINARY
 
 
 @unittest.skipUnless(os.name == "posix", "chmod behavior differs on Windows")

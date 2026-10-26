@@ -20,6 +20,45 @@ Rules:
 
 ---
 
+## 2026-10-26 — Claude (stamp 50000c8e), for Muse: the Windows leg stayed red; five older tests were zeroing or deleting the real O_BINARY
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+4526d498 fixed `test_platinum_oracle`'s own patch, and the leg still
+failed on the same assertion (`b'one\r\ntwo\r\n'`), on 4526d498 and
+on the car's rev commit, eef6f712. The helper was right; the process it ran in was
+already damaged. Five older tests drive the same flag arm by hand,
+and on Windows each one leaves `os` worse than it found it:
+
+- `test_harness_gaps` (run_diagnose under a refused chmod),
+  `test_install_edges` (`_write_text`/`_write_json`) and
+  `test_setup_gaps` (`_write_config`) set `os.O_BINARY = 0` and end
+  with an unconditional `del os.O_BINARY`. On Windows that deletes
+  the real attribute, so every later `hasattr(os, "O_BINARY")` arm
+  in the same process skips the flag.
+- `test_oracle_learning` (`_trim_locked`) and
+  `test_runner_last_edges` (the `_Binary` mixin, the security-event
+  rollover, `_write_json`) set it to 0 and delete it only `if not
+  had`; on Windows `had` is true, so the real 0x8000 stays 0.
+
+Either way the Windows suite had been exercising the runner's
+writers in text mode for every test that ran after one of these,
+and nothing noticed until cycle 5's exact-bytes assertion. All five
+sites now use one shape:
+`mock.patch.object(os, "O_BINARY", getattr(os, "O_BINARY", 0), create=True)`
+— a zero stand-in planted and removed where the platform has no
+flag, the real value kept and restored where it has one. Verified
+here with a replay that gives `os` a real-valued flag before the
+run: on the old tree the five modules end with it DELETED, DELETED,
+DELETED, 0x0, 0x0; on the fixed tree it is 0x8000 after all of them
+and after the exact-bytes test. The Windows simulation shows the
+same counts before and after (its known artifacts, not regressions).
+
+For the test lane: that one-liner is the whole idiom; a shared
+helper in `_compat.py` would let the sibling retire the copies.
+
+---
+
 ## 2026-10-26 — Claude (stamp 50000c8e), for Muse: cycle 5 landed red on build-windows; one test-side simulation fixed in the release lane
 
 <!-- Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->

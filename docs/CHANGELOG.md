@@ -20,6 +20,15 @@ facts a reader may need to cite. Git history carries the rest.
   runner unchanged. Muse carried the same helper into the guard and
   oauth tests and gave the `ps` probe its registered POSIX skip;
   the note is in `docs/use/misc.md`.
+- **Five older tests no longer zero or delete the real O_BINARY.**
+  The leg stayed red after that: `test_harness_gaps`,
+  `test_install_edges` and `test_setup_gaps` ended their flag arm
+  with `del os.O_BINARY`, and `test_oracle_learning` and
+  `test_runner_last_edges` left it at 0, so on Windows every writer
+  later in the same test process ran in text mode (CRLF) until a
+  test finally asserted exact bytes. Each site now patches the flag
+  to its own value and restores it; a replay with a real-valued
+  flag shows it surviving all five modules.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.33 - 2026-10-26

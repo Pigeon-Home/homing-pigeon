@@ -94,13 +94,16 @@ class SetupGapsTest(unittest.TestCase):
             saved = getattr(os, "O_NOFOLLOW", 0)
             if had:
                 del os.O_NOFOLLOW
-            os.O_BINARY = 0
+            # The binary-flag arm: a zero stand-in where the platform has
+            # no flag, the real flag kept and restored where it has one.
             try:
-                SU._write_config(path, {"a": 4})
+                with mock.patch.object(os, "O_BINARY",
+                                       getattr(os, "O_BINARY", 0),
+                                       create=True):
+                    SU._write_config(path, {"a": 4})
             finally:
                 if had:
                     setattr(os, "O_NOFOLLOW", saved)
-                del os.O_BINARY
             for name in ("os.write", "os.replace"):
                 with mock.patch(name, side_effect=OSError("x")), \
                         self.assertRaises(OSError):
