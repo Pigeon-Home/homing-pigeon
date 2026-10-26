@@ -8,6 +8,17 @@ facts a reader may need to cite. Git history carries the rest.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
+## 3.13.0 - 2026-10-25
+
+<!-- Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a -->
+
+Grok constraint-solve line reduction and human refactor. runner.py
+cut from 11,205 lines to ~5,400; platform modules extracted
+(ops/mail, ops/exec, ops/av, ops/windows, ops/startup, and the
+rest). No behavior change — the same suite, the same gates, the
+same protocol. The typecheck gate is green again after the
+extraction repairs (dead globals dropped, _runner() typed, the
+script-context loads restored).
 ## 3.12.77 - 2026-10-25
 
 <!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
