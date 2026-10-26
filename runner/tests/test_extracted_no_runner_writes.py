@@ -100,5 +100,28 @@ class ExtractedModulesDoNotWriteRunner(unittest.TestCase):
         self.assertEqual(_runner_writes(ok, os.path.join(OPS, "y.py")), [])
 
 
+class RunnerHasNoShadowedDefs(unittest.TestCase):
+    def test_no_def_in_runner_py_is_rebound_later(self):
+        # An extraction that leaves the original def behind and then
+        # binds the name to the module's copy (`_transports_arg =
+        # _cli._transports_arg`, 2026-10-25) leaves nineteen dead
+        # lines that coverage reports as never executed. The def or
+        # the binding, not both.
+        path = os.path.join(ROOT, "runner", "runner.py")
+        with open(path, encoding="utf-8") as fh:
+            tree = ast.parse(fh.read(), path)
+        ends = {}
+        rebound = []
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                ends[node.name] = node.end_lineno
+            elif isinstance(node, ast.Assign):
+                for t in node.targets:
+                    if isinstance(t, ast.Name) and t.id in ends:
+                        rebound.append(f"{t.id}: def ends L{ends[t.id]}, "
+                                       f"rebound L{node.lineno}")
+        self.assertEqual(rebound, [], "\n".join(rebound))
+
+
 if __name__ == "__main__":
     unittest.main()

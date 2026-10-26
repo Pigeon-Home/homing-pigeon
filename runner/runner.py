@@ -4687,26 +4687,6 @@ _CLI_OVERRIDE_COUNTS = frozenset(
                     "remediation_mode", "require_review",
                     "local_signals", "oracle_log", "transports"))
 
-def _transports_arg(text):
-    """argparse type for --transports: 'file,nats' -> ['file',
-    'nats']. Names are transport EXTENSION names: shape is
-    checked here, at startup; whether a name has a loadable
-    extension is discovery's question at supervisor start (any
-    valid drop-in manifest counts, registered or not)."""
-    names = [p.strip() for p in str(text).split(",") if p.strip()]
-    probe = {"transports": names}
-    try:
-        if _transports is not None:
-            _transports.enabled_transports(probe)
-        elif not names:
-            raise ValueError("empty")
-    except ValueError as e:
-        raise argparse.ArgumentTypeError(str(e)) from None
-    if not names:
-        raise argparse.ArgumentTypeError(
-            "name at least one transport")
-    return names
-
 def _enabled_transports(cfg):
     """Validated transport names for this config (runner-side
     wrapper so a missing transports module degrades to a clear

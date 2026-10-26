@@ -21,7 +21,11 @@ except ImportError:
 
 
 def _transports_arg(text):
-    """argparse type for --transports."""
+    """argparse type for --transports: 'file,nats' -> ['file',
+    'nats']. Names are transport EXTENSION names: shape is
+    checked here, at startup; whether a name has a loadable
+    extension is discovery's question at supervisor start (any
+    valid drop-in manifest counts, registered or not)."""
     names = [p.strip() for p in str(text).split(",") if p.strip()]
     probe = {"transports": names}
     try:
