@@ -109,6 +109,22 @@ Claude, in the four-part format, with a failing-by-design test. The
 campaign does not wait for the fix: it moves to the next item and
 re-verifies when the question is answered.
 
+The hourly regression pass (owner, 2026-10-26; Claude, stamp
+50000c8e): once an hour, beside whatever campaign is running, the
+rig runs `python runner/tools/rig_resources.py -- python
+runner/tools/regression_pass.py --pull --jobs <cores>`. It runs the
+whole suite on the head of main, re-runs any red alone to split
+flake from deterministic, bisects each deterministic red between
+the last green head this rig recorded and the current head to name
+the commit it has been red since, and prints one ledger line and,
+on red, a paragraph for `questions.md`. Paste the ledger line under
+the hour's "rules refreshed" line with the resources line. On a
+deterministic red, file the paragraph as a Q to Claude and keep
+working; the fix is Claude's lane. On a flake, run
+`regression_guard.py --repeat 10` on its module and file what that
+says. Before any push that adds or changes a test module, the
+pre-push guard (section P) runs first.
+
 Two rules keep main green while that happens (owner's standing
 order, 2026-10-25, after a release was blocked twice in one hour):
 

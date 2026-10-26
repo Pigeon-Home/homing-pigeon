@@ -20,6 +20,16 @@ facts a reader may need to cite. Git history carries the rest.
   rule 10: a question to any Claude stamp, active or recycled, is
   accepted and answered by the desk, and the answer carries
   `50000c8e` (the owner's routing).
+- **The rig's regression pass.** `runner/tools/regression_pass.py`
+  runs the whole suite on the head of main, re-runs any red alone
+  to split flake from deterministic, bisects each deterministic red
+  between the last green head the rig recorded and the current head
+  (the failing tests alone, in a temporary worktree per step; a
+  test that did not exist before is named as red since the commit
+  that added it), and prints the ledger line and a paragraph ready
+  for `questions.md`. State stays outside the tree. The standing
+  orders run it hourly beside the campaign; its tests include a
+  bisect on a throwaway repository.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.42 - 2026-10-26
