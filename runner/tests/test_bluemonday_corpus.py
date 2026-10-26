@@ -88,6 +88,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_dtls(self):
         self._check("dtls")
 
+    def test_board(self):
+        self._check("board")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes
@@ -281,7 +284,8 @@ class ToolTest(unittest.TestCase):
         for target, seeds in (("wire", B.seeds_wire()),
                               ("crypto", B.seeds_crypto()),
                               ("v2", B.seeds_v2()),
-                              ("dtls", B.seeds_dtls())):
+                              ("dtls", B.seeds_dtls()),
+                              ("board", B.seeds_board())):
             for _ in range(150):
                 parent = rng.choice(seeds)
                 child = B.mutate(rng, parent, seeds, target)
@@ -304,7 +308,8 @@ class ToolTest(unittest.TestCase):
         # encrypt_body's nonce is drawn from a counter while seeding,
         # so a sealed seed's id is stable and `seed` adds nothing to
         # a corpus that already holds it.
-        for seeds in (B.seeds_crypto, B.seeds_stash, B.seeds_dtls):
+        for seeds in (B.seeds_crypto, B.seeds_stash, B.seeds_dtls,
+                      B.seeds_board):
             first = [e["id"] for e in seeds()]
             self.assertEqual(first, [e["id"] for e in seeds()])
             self.assertEqual(len(first), len(set(first)))
@@ -517,6 +522,23 @@ class ToolTest(unittest.TestCase):
         line = json.dumps(text, ensure_ascii=True)
         self.assertEqual(B._raw_bytes(json.loads(line)), raw)
         self.assertTrue(line.isascii())
+
+    def test_the_board_checker_accepts_a_task_and_refuses_a_bad_id(self):
+        good = [e for e in B.seeds_board() if e["from"] == "seed:open"][0]
+        bad = [e for e in B.seeds_board() if e["from"] == "seed:bad_id"][0]
+        review = [e for e in B.seeds_board() if e["from"] == "seed:review"][0]
+        self.assertEqual(B.check("board", good), "accepted")
+        self.assertEqual(B.check("board", review), "accepted")
+        self.assertEqual(B.check("board", bad), "refused")
+
+    def test_the_board_checker_catches_submit_raising(self):
+        good = [e for e in B.seeds_board() if e["from"] == "seed:open"][0]
+        with mock.patch.object(B.BD.Board, "submit",
+                               side_effect=RuntimeError("submit")):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("board", good)
+        self.assertEqual(cm.exception.kind, "exception")
+        self.assertIn("RuntimeError", cm.exception.detail)
 
     def test_saturation_reads_the_last_grow(self):
         tmp = tempfile.mkdtemp(prefix="hp-bluemonday-sat-")

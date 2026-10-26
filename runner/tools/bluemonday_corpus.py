@@ -30,6 +30,8 @@ delivered body and the agent's trust in it:
                                          _parse_extensions, the hello,
                                          key-share and PSK readers,
                                          DtlsServerCore.feed
+    board   runner/wire/board.py         submit, offer, complete,
+                                         approve, reoffer_expired
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -98,6 +100,7 @@ from runner.wire import jobcrypto as JC  # noqa: E402
 from runner.wire import protocol_v2 as P2  # noqa: E402
 from runner.wire import transports as TR  # noqa: E402
 from runner.wire import verify as V  # noqa: E402
+from runner.wire import board as BD  # noqa: E402
 from runner.wire import dtlsproto as DT  # noqa: E402
 from runner.wire import mailbox as MB  # noqa: E402
 import runner.runner as R  # noqa: E402
@@ -1216,6 +1219,286 @@ def seeds_dtls():
             for name, blob in out]
 
 
+_BOARD_WORKER = "bm-worker-0001"
+_BOARD_NEIGHBOR = "bm-board-neighbor"
+_BOARD_CFG = {"dag_mode": "off"}
+
+
+def _board_pair(got, what):
+    """(bool or str, str) from submit, offer's neighbors, complete."""
+    if not (isinstance(got, tuple) and len(got) == 2
+            and isinstance(got[1], str)):
+        raise Crash("shape", f"{what} returned {type(got).__name__}")
+    return got
+
+
+def _board_offer(board, caps):
+    got, exc = _call(board.offer, _BOARD_WORKER, caps, "", _BOARD_CFG)
+    if exc is not None:
+        raise Crash("exception", "offer raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    return got
+
+
+def _board_finish(board, task_id, review, caps):
+    """Claim, expire the zero lease and claim again, then complete.
+    A review task stops at pending_review until approve."""
+    offered = _board_offer(board, caps)
+    if not isinstance(offered, dict) or offered.get("task_id") != task_id:
+        raise Crash("contract", "an open task was not offered")
+    if board.tasks[task_id].get("state") != "claimed":
+        raise Crash("contract", "offer did not claim the task")
+    offered["state"] = "tampered"
+    if board.tasks[task_id].get("state") == "tampered":
+        raise Crash("contract", "offer handed out the live record")
+    # A stale claim, not the clock: a lease of zero reopens a
+    # claimed_at that is already in the past.
+    board.tasks[task_id]["claimed_at"] = "2020-01-01T00:00:00+00:00"
+    n, exc = _call(board.reoffer_expired, 0)
+    if exc is not None:
+        raise Crash("exception", "reoffer_expired raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if not isinstance(n, int) or n < 1:
+        raise Crash("contract", "a zero lease did not reopen the claim")
+    if board.tasks[task_id].get("state") != "open":
+        raise Crash("contract", "reoffer left the task claimed")
+    offered = _board_offer(board, caps)
+    if not isinstance(offered, dict) or offered.get("task_id") != task_id:
+        raise Crash("contract", "a reopened task was not offered")
+    got, exc = _call(board.complete, task_id, {"text": "bm-result"},
+                     review)
+    if exc is not None:
+        raise Crash("exception", "complete raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    status, _msg = _board_pair(got, "complete")
+    if review:
+        if status != "pending_review":
+            raise Crash("contract", f"review complete returned {status!r}")
+        approved, exc = _call(board.approve, task_id)
+        if exc is not None:
+            raise Crash("exception", "approve raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        flag, _why = _board_pair(approved, "approve")
+        if flag is not True or board.tasks[task_id].get("state") != "done":
+            raise Crash("contract", "approve did not finish the task")
+    elif status != "done":
+        raise Crash("contract", f"complete returned {status!r}")
+    again, exc = _call(board.complete, task_id, {"text": "again"}, False)
+    if exc is not None:
+        raise Crash("exception", "a second complete raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    status, _msg = _board_pair(again, "complete")
+    if status != "duplicate":
+        raise Crash("contract", f"a second complete returned {status!r}")
+
+
+def _board_offer_cfg(board, caps, cfg):
+    got, exc = _call(board.offer, _BOARD_WORKER, caps, "", cfg)
+    if exc is not None:
+        raise Crash("exception", "offer raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    return got
+
+
+def _board_gates(directory):
+    """The board's own gates, on a second file in the same temp:
+    an allowlist miss, a compartment miss, enforce withholding an
+    unmet requirement, and advisory handing it out with the
+    warning. A poison entry must not be what reaches these."""
+    board = BD.Board(os.path.join(directory, "gates.json"))
+    task = {"task_id": "bm-task-gates", "priority": 1,
+            "requires": ["bm-missing"], "capabilities": ["code"],
+            "compartments": ["lab"], "payload": {"note": "gates"}}
+    got, exc = _call(board.submit, task)
+    if exc is not None:
+        raise Crash("exception", "the gates submit raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    ok, _msg = _board_pair(got, "submit")
+    if ok is not True:
+        raise Crash("contract", "the gates task was refused")
+    tid = task["task_id"]
+    blocked = _board_offer_cfg(board, ["code"], {
+        "dag_mode": "off", "worker_allowlist": ["bm-other"]})
+    if blocked is not None or board.tasks[tid].get("state") != "open":
+        raise Crash("contract", "an allowlist miss still offered")
+    hidden = _board_offer_cfg(board, ["code"], {
+        "dag_mode": "off",
+        "worker_allowlist": [_BOARD_WORKER],
+        "worker_compartments": {_BOARD_WORKER: ["other"]}})
+    if hidden is not None or board.tasks[tid].get("state") != "open":
+        raise Crash("contract", "a compartment miss still offered")
+    held = _board_offer_cfg(board, ["code"], {
+        "dag_mode": "enforce",
+        "worker_allowlist": [_BOARD_WORKER],
+        "worker_compartments": {_BOARD_WORKER: ["lab"]}})
+    if held is not None or board.tasks[tid].get("state") != "open":
+        raise Crash("contract", "enforce offered a task whose "
+                    "requirement is not done")
+    weird, exc = _call(board.offer, {"not": "text"}, ["code"], "",
+                       {"dag_mode": "off",
+                        "worker_allowlist": ["bm-other"]})
+    if exc is not None:
+        raise Crash("exception", "offer of a non-string worker raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if weird is not None:
+        raise Crash("contract", "a non-string worker was offered a task")
+    warned = _board_offer_cfg(board, ["code"], {
+        "dag_mode": "advisory",
+        "worker_allowlist": [_BOARD_WORKER],
+        "worker_compartments": {_BOARD_WORKER: ["lab"]}})
+    if not isinstance(warned, dict) or warned.get("task_id") != tid:
+        raise Crash("contract", "advisory did not hand out the task")
+    warning = warned.get("dag_warning") or {}
+    missing = warning.get("incomplete_requires")
+    if missing != ["bm-missing"]:
+        raise Crash("contract", "advisory warning did not name the "
+                    f"missing requirement: {missing!r}")
+    if board.tasks[tid].get("state") != "claimed":
+        raise Crash("contract", "advisory did not claim the task")
+
+
+def _board_neighbor(board, task):
+    """A known-good task after the entry, whatever the entry did.
+    A poison task must not stop the next one (the sequence)."""
+    nid = _BOARD_NEIGHBOR
+    if isinstance(task, dict) and task.get("task_id") == nid:
+        nid = nid + "-2"
+    good = {"task_id": nid, "priority": 0, "capabilities": ["code"],
+            "payload": {"note": "neighbor"}}
+    got, exc = _call(board.submit, good)
+    if exc is not None:
+        raise Crash("exception", "the neighbor submit raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    ok, _msg = _board_pair(got, "submit")
+    if ok is not True:
+        raise Crash("contract", "the neighbor task was refused")
+    _board_finish(board, nid, False, ["code"])
+
+
+def check_board(entry):
+    """board: one task dict (Q67). submit, offer, complete, approve
+    and reoffer_expired never raise. A task that is not a usable
+    submission is refused and stores nothing. A task that is
+    accepted is offered to a worker who holds its capabilities,
+    completed once (the second complete is a duplicate), and a
+    known-good neighbor submitted after it still runs. Invented
+    ids only; the board file is a private temp and does not
+    outlive the check."""
+    task = entry["data"]
+    directory = tempfile.mkdtemp(prefix="hp-bm-board-")
+    previous = BD._LOGGER
+    try:
+        BD.set_logger(lambda *_a, **_k: None)
+        board = BD.Board(os.path.join(directory, "board.json"))
+        got, exc = _call(board.submit, task)
+        if exc is not None:
+            raise Crash("exception", "submit raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        ok, _msg = _board_pair(got, "submit")
+        if ok is True:
+            if not isinstance(task, dict):
+                raise Crash("contract", "submit accepted a non-object")
+            tid = task.get("task_id")
+            stored = board.tasks.get(tid)
+            if not isinstance(stored, dict) or stored.get("state") != "open":
+                raise Crash("contract", "an accepted task is not open")
+            again, exc = _call(board.submit, task)
+            if exc is not None:
+                raise Crash("exception", "a duplicate submit raised "
+                            f"{type(exc).__name__}: {_short(exc)}")
+            dup, why = _board_pair(again, "submit")
+            if (dup, why) != (False, "duplicate task_id"):
+                raise Crash("contract", "a second submit returned "
+                            f"{dup!r} {why!r}")
+            if board.tasks[tid] is not stored:
+                raise Crash("contract", "a duplicate submit replaced "
+                            "the first task")
+            review = (isinstance(task.get("payload"), dict)
+                      and task["payload"].get("bm_review") is True)
+            caps = list(task.get("capabilities") or [])
+            _board_finish(board, tid, review, caps)
+            _board_neighbor(board, task)
+            _board_gates(directory)
+            return "accepted"
+        if board.tasks:
+            raise Crash("contract", "a refused task was stored")
+        missed, exc = _call(board.complete, "bm-task-missing",
+                            {"text": "x"}, False)
+        if exc is not None:
+            raise Crash("exception", "complete on an empty board raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        status, _msg = _board_pair(missed, "complete")
+        if status != "not_found":
+            raise Crash("contract", "complete on an empty board returned "
+                        f"{status!r}")
+        if _board_offer(board, ["code"]) is not None:
+            raise Crash("contract", "offer returned a task from an "
+                        "empty board")
+        _board_neighbor(board, task)
+        _board_gates(directory)
+        return "refused"
+    finally:
+        BD._LOGGER = previous
+        shutil.rmtree(directory, True)
+
+
+def _board_task(**extra):
+    task = {"task_id": "bm-task-0001", "priority": 1, "requires": [],
+            "capabilities": ["code"], "compartments": [],
+            "payload": {"script": "echo board"}}
+    task.update(extra)
+    return task
+
+
+def seeds_board():
+    """Task dicts a worker could submit. The ids are invented.
+    A `bm_review` payload is the one that completes through
+    pending_review. NaN and Infinity are the finite-number
+    refusals; they are JSON values the loader accepts."""
+    out = [
+        ("open", _board_task()),
+        ("minimal", {"task_id": "bm-task-0002"}),
+        ("high_priority", _board_task(task_id="bm-task-0003", priority=100)),
+        ("negative_priority", _board_task(task_id="bm-task-0004",
+                                          priority=-3)),
+        ("requires", _board_task(task_id="bm-task-0005",
+                                 requires=["bm-task-0001"])),
+        ("two_capabilities", _board_task(
+            task_id="bm-task-0006", capabilities=["review", "code"])),
+        ("compartments", _board_task(task_id="bm-task-0007",
+                                     compartments=["lab"])),
+        ("empty_capabilities", _board_task(task_id="bm-task-0008",
+                                           capabilities=[])),
+        ("review", _board_task(task_id="bm-task-0009",
+                               payload={"bm_review": True})),
+        ("bad_id", _board_task(task_id="../x")),
+        ("empty_id", _board_task(task_id="")),
+        ("long_id", _board_task(task_id="b" * 129)),
+        ("id_not_text", {"task_id": 7}),
+        ("not_object", ["bm-task-0001"]),
+        ("null", None),
+        ("empty_object", {}),
+        ("requires_not_list", _board_task(task_id="bm-task-0010",
+                                          requires="code")),
+        ("requires_dict", _board_task(task_id="bm-task-0011",
+                                      requires=[{"a": 1}])),
+        ("caps_not_strings", _board_task(task_id="bm-task-0012",
+                                        capabilities=[1, "code"])),
+        ("priority_text", _board_task(task_id="bm-task-0013",
+                                      priority="high")),
+        ("priority_bool", _board_task(task_id="bm-task-0014", priority=True)),
+        ("nan_priority", _board_task(task_id="bm-task-0015",
+                                     priority=float("nan"))),
+        ("inf_priority", _board_task(task_id="bm-task-0016",
+                                     priority=float("inf"))),
+        ("nested_payload", _board_task(
+            task_id="bm-task-0017",
+            payload={"a": {"b": [1, None, True]}})),
+    ]
+    return [make_entry("payload", task, "seed:" + name, "seed")
+            for name, task in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -1858,6 +2141,8 @@ TARGETS = {
              "check": check_mail, "seeds": seeds_mail},
     "dtls": {"files": [_src("wire", "dtlsproto.py")], "check": check_dtls,
              "seeds": seeds_dtls},
+    "board": {"files": [_src("wire", "board.py")], "check": check_board,
+              "seeds": seeds_board},
 }
 
 

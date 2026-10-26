@@ -17,6 +17,7 @@ One JSON-lines file per target, grown by
 | `stash.jsonl`  | `runner/runner.py`: `_record_payload` (a stashed record's body and its three key slots, Q63) |
 | `mail.jsonl`   | the mail path that chooses the text (Q65): `get_text_body`, `_bounce_of` and the subject's job id in the core; the email extension's `_subject_body` and `reply_target` with `mailbox._valid_reply_to`; the extension must read the same subject and body as the core |
 | `dtls.jsonl`   | `runner/wire/dtlsproto.py` (Q66): `_split_records`, `_parse_handshake`, and, when a complete handshake message parses, `_parse_extensions`, the hello parsers, the key-share and PSK readers; `DtlsServerCore.feed` on the same datagram |
+| `board.jsonl`  | `runner/wire/board.py` (Q67): `submit`, `offer`, `complete`, `approve`, `reoffer_expired` on one task dict; a refusal stores nothing, and a known-good neighbor submitted after it still runs |
 
 The first line of each file is a header; every other line is one
 entry: `id` (a hash of the kind and the data), `kind` (`text`, a
@@ -59,6 +60,16 @@ one random byte), not the text set. Accepted means a complete
 handshake message parsed; a fragment, an empty datagram and a
 record whose length overruns the datagram are refusals.
 
+A `board` entry's data is one task dict, a JSON value, so the
+JSON mutators apply. Accepted means `submit` stored it: it is
+offered to a worker holding its capabilities, a zero-lease
+reopens the claim, `complete` finishes it (a `bm_review` payload
+goes through `pending_review` and `approve`), and a second
+complete is a duplicate. Refused means nothing was stored. Either
+way a known-good neighbor task submitted next still completes.
+The board file is a private temp directory and does not outlive
+the check.
+
 The refusal types, so a grow never files one as a crash (Q63):
 for the verifiers (`wire`, `cloud`, `v2`) the refusal is
 `ValueError`, raised, not returned -- an unknown `key_id` from
@@ -67,6 +78,7 @@ the surfaces that read for a caller (`local`, `stash`) contain
 those raises themselves and answer `None`; the mail readers never
 raise at all; the DTLS splitter, handshake parser and `feed`
 never raise, and the extension and hello readers refuse with
-`DtlsError` or `JobCryptoError`. A raise of any other type, or a
-`ValueError` escaping `local`, `stash`, `mail` or `dtls`, is a
-crash.
+`DtlsError` or `JobCryptoError`. The board methods never raise:
+a bad task is a `(False, reason)` from `submit` and stores
+nothing. A raise of any other type, or a `ValueError` escaping
+`local`, `stash`, `mail`, `dtls` or `board`, is a crash.

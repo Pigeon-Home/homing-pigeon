@@ -44,6 +44,19 @@ facts a reader may need to cite. Git history carries the rest.
   claims more than the datagram holds. The mutators are the
   record's own, not the text set. A grow of 20,000 rounds found
   no crash: 19 entries, 289 arcs.
+- **blueMonday's ninth target: the task board (Q67).** `board`
+  holds one task dict against `runner/wire/board.py`: `submit`,
+  `offer`, `complete`, `approve` and `reoffer_expired` never
+  raise. A task that is not a usable submission is refused and
+  stores nothing; a task that is accepted is offered, a stale
+  claim reopens on a zero lease, and a second complete is a
+  duplicate. A `bm_review` payload finishes through
+  `pending_review`. After every entry a known-good neighbor
+  still completes, and a second board file walks the allowlist
+  miss, the compartment miss, enforce withholding an unmet
+  requirement, and advisory handing it out with the warning.
+  Twenty-four seeds. Two grows of 20,000 rounds filed no crash
+  and kept nothing past the seeds: 24 entries, 249 arcs.
 - **The blueMonday plan.** `docs/project/bluemonday.md`: the
   campaign the conductor runs indefinitely, written down whole --
   what it is for, the instrument, the surface with every reader of
