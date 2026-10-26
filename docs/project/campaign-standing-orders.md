@@ -4083,3 +4083,18 @@ when done, the proving commit or run. Newest first.
   every finished cycle's records were
   already in the tree and are committed
   here, runs.jsonl included.
+- rules refreshed 2026-10-26 15:07 PDT
+  (standing orders incl. queue P,
+  section M, the throughput recipe;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules). The conductor's new
+  order stands at the head of the
+  queue: blueMonday is the only effort;
+  the hourly pass and the Platinum
+  cycles are suspended until he lifts
+  it. Cycle 7's measure, four minutes
+  in, was stopped where it stood; its
+  pins stay on main for the cycle's
+  resume. The grow below runs alone
+  from this line.
