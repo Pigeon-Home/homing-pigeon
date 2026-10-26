@@ -130,15 +130,21 @@ class CorpusFilesTest(unittest.TestCase):
             self.assertTrue(any(e["mutator"] == "seed" for e in
                                 B.load(B.corpus_path(target))), target)
 
-    def test_files_are_ascii_with_unix_line_ends(self):
+    def test_files_are_ascii_with_no_raw_control_in_an_entry(self):
         # ensure_ascii keeps lone surrogates and controls as escapes,
-        # so the files survive every checkout and every editor.
+        # so the files survive every checkout and every editor. The
+        # tool writes LF; a Windows checkout may turn that into CRLF
+        # (autocrlf), which the loader strips, so the line end is
+        # not asserted -- a CR anywhere else would be.
         for target in B.TARGETS:
             path = B.corpus_path(target)
             with open(path, "rb") as fh:
                 blob = fh.read()
-            self.assertNotIn(b"\r", blob, target)
             blob.decode("ascii")
+            self.assertNotIn(b"\r", blob.replace(b"\r\n", b"\n"), target)
+            for raw in blob.split(b"\n"):
+                self.assertFalse(any(c < 32 for c in raw.rstrip(b"\r")),
+                                 f"{target}: a raw control in an entry")
 
     def test_fixtures_name_nothing_real(self):
         # Invented names only: no home directories, no mailboxes

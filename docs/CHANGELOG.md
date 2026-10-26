@@ -18,8 +18,9 @@ facts a reader may need to cite. Git history carries the rest.
   mutated the job-fuzz ways. `runner/tests/bluemonday/<target>.jsonl`
   is the corpus and `runner/tests/test_bluemonday_corpus.py` replays
   it on every leg, carrying any crash on file as an
-  `expectedFailure` probe. Section M of the standing orders is the
-  campaign's loop.
+  `expectedFailure` probe; its ASCII check tolerates a Windows
+  checkout's CRLF, which the first car caught. Section M of the
+  standing orders is the campaign's loop.
 - **`jobcrypto` refuses a non-text job or key name.** The corpus's
   first finding: `decrypt_body` and `encrypt_body` built the AAD
   from `job_id` and `key_id` unchecked, so a number, a list or a
