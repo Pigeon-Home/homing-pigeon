@@ -375,7 +375,3 @@ install and at startup. The check is a speed bump, not a
 protection. It exists so the assistant and the human both see it.
 What happens next is on them -- and on the vendor who said their
 model could handle it.
-
-<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
-
-Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854
