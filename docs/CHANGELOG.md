@@ -4,16 +4,22 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.38 - 2026-10-26
+## 3.13.39 - 2026-10-26
 
-- **Two remediation tests accept the act that landed.** A tag
-  build's macOS leg caught the 0.1 s sampler killing a job whose
-  script exits in milliseconds, where Linux lets it finish and
-  quarantines; the runner records whichever act landed, and
+- **Two remediation tests accept the act that landed.** The
+  3.13.38 tag build's macOS leg caught the 0.1 s sampler killing a
+  job whose script exits in milliseconds, where Linux lets it finish
+  and quarantines; the runner records whichever act landed, and
   `test_remediation`'s two quick-script tests now assert that the
   recorded act matches the process's fate (a clean exit for a
   quarantine, a signal for a kill) instead of naming one branch.
   Runner unchanged; the note is in `docs/use/misc.md`.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.38 - 2026-10-26
+
+- **The next car, with nothing new aboard.** Opened on the release
+  cadence as 3.13.37 published; the tree is 3.13.34's.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.37 - 2026-10-26
