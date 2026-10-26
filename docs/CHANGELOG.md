@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.49 - 2026-10-26
+
+- **Records carry the interpreter and the platform.** Every
+  blueMonday run line and every regression pass line says which
+  Python and which platform produced it.
+- **blueMonday is the only effort.** The conductor's order in the
+  standing orders: no hourly regression pass, no Platinum cycle, no
+  other queue item until he lifts it; a grow runs at every moment,
+  one process per core, with nothing beside it, and the resource
+  line is expected on target or over.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.48 - 2026-10-26
 
 - **Parallel by default.** `bluemonday_corpus.py grow` and
