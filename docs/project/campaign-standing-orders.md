@@ -4101,3 +4101,21 @@ when done, the proving commit or run. Newest first.
   pins stay on main for the cycle's
   resume. The grow below runs alone
   from this line.
+- rules refreshed 2026-10-26 16:09 PDT
+  (standing orders incl. section M as
+  the only effort at the conductor's
+  order, the throughput recipe;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules).
+  blueMonday 4: 185 entries, 653 arcs, 0 crashes filed. The
+  first full hour in the cycling shape
+  (seed 6204): local yielded again
+  (+14 entries, 38 to 52; the other
+  five kept nothing). At the hour's
+  end the desk's Q65 work had landed
+  the seventh target, mail; grow 5
+  below takes it up, and the saturated
+  five ride the cycle at the desk's
+  word while local and mail carry the
+  search.
