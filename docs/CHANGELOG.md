@@ -4,10 +4,21 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.27 - 2026-10-26
+## 3.13.28 - 2026-10-26
 
 **The next car, with nothing new aboard.** Opened on the release
-cadence as 3.13.26 published; the tree is 3.13.22's.
+cadence as 3.13.27 published; the tree is 3.13.27's.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.27 - 2026-10-26
+
+- **A provision record that is not fetched says why.**
+  `test_extension_sources` asserted a record's status alone, so a
+  Windows leg that saw `partial` lost the reasons; `_Base.assertFetched`
+  fails on one line with the record's detail, its per-file problems,
+  the transient count and the pass's last warnings (the fake opener
+  is deterministic, so a partial record there can only be a refused
+  local write).
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.26 - 2026-10-26
