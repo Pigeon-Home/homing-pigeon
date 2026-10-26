@@ -14,6 +14,7 @@ One JSON-lines file per target, grown by
 | `v2.jsonl`     | `runner/wire/protocol_v2.py`: `validate`                       |
 | `crypto.jsonl` | `runner/wire/jobcrypto.py`: `decrypt_body`                     |
 | `local.jsonl`  | `runner/runner.py`: `_ingest_local_envelope_inner`, with `runner/wire/transports.py`: `parse_envelope` |
+| `stash.jsonl`  | `runner/runner.py`: `_record_payload` (a stashed record's body and its three key slots, Q63) |
 
 The first line of each file is a header; every other line is one
 entry: `id` (a hash of the kind and the data), `kind` (`text`, a
@@ -28,3 +29,11 @@ it here.
 The files are ASCII with Unix line ends and are written by the
 tool only; grow the corpus with the tool, never by hand. Every
 name in them is invented (`example.com`, `bm-*` ids, `/srv/example`).
+
+The refusal types, so a grow never files one as a crash (Q63):
+for the verifiers (`wire`, `cloud`, `v2`) the refusal is
+`ValueError`, raised, not returned -- an unknown `key_id` from
+`verify_body_keyed` included; for `crypto` it is `JobCryptoError`;
+the surfaces that read for a caller (`local`, `stash`) contain
+those raises themselves and answer `None`. A raise of any other
+type, or a `ValueError` escaping `local` or `stash`, is a crash.

@@ -18,6 +18,8 @@ delivered body and the agent's trust in it:
     crypto  runner/wire/jobcrypto.py     decrypt_body
     local   runner/runner.py             _ingest_local_envelope_inner,
             runner/wire/transports.py    parse_envelope
+    stash   runner/runner.py             _record_payload (a stashed
+                                         record's body, its three key slots)
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -37,7 +39,8 @@ earlier entry reached, measured with sys.settrace over the target's
 own files only. `seed` writes the suite-style fixtures (signed
 jobs, an exec job, a sensor alert, v2 messages, an encryption
 envelope, and the preamble, trailer, CRLF and control-character
-forms the mail path must survive). `grow` mutates from the corpus
+forms the mail path must survive) and, on a corpus that exists,
+adds only the seeds it lacks. `grow` mutates from the corpus
 for N rounds (HP_BLUEMONDAY_ROUNDS, default 400) and appends the
 keepers. `replay` runs every entry against its contract, which is
 what the test does on every leg, without the tracer. `promote`,
@@ -452,6 +455,22 @@ def check_local(entry):
     return _local_ingest(body)
 
 
+def check_stash(entry):
+    """stash: a stashed record {body, key_id, job_id} read back by
+    _record_payload -- the signed payload, decrypted when the body
+    is an envelope -- which answers a dict or None and never raises,
+    whatever the record's three key slots (the body's own key_id,
+    the envelope's, the record's) say to each other (Q63)."""
+    rec = entry["data"]
+    got, exc = _call(R._record_payload, rec, SECRETS)
+    if exc is not None:
+        raise Crash("exception", "_record_payload raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if got is not None and not isinstance(got, dict):
+        raise Crash("shape", f"_record_payload returned {type(got).__name__}")
+    return "accepted" if got is not None else "refused"
+
+
 # ------------------------------------------------------------------
 # Seeds: suite-style fixtures, invented names only
 # ------------------------------------------------------------------
@@ -571,7 +590,34 @@ def seeds_v2():
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
+class _FixedNonces:
+    """encrypt_body draws its nonce from secrets.token_bytes; the
+    seeds draw from a counter instead, so a seed's id is the same on
+    every run and `seed` can tell an old seed from a new one."""
+
+    def __init__(self):
+        self.n = 0
+
+    def __call__(self, size):
+        self.n += 1
+        return hashlib.sha256(b"bluemonday-nonce-%d" % self.n).digest()[:size]
+
+    def __enter__(self):
+        self._patch = mock.patch.object(JC.secrets, "token_bytes", self)
+        self._patch.start()
+        return self
+
+    def __exit__(self, *exc):
+        self._patch.stop()
+        return False
+
+
 def seeds_crypto():
+    with _FixedNonces():
+        return _seeds_crypto()
+
+
+def _seeds_crypto():
     inner = V.sign_payload(_job(script="echo sealed"), SECRET)
     sealed = V.verify_body(JC.encrypt_body(inner, SECRET, "bm-exec-0001",
                                            "", V.sign_payload), SECRET)
@@ -593,6 +639,24 @@ def seeds_crypto():
                           "job_id": "bm-exec-0001", "key_id": ""}),
         ("none", {"envelope": None, "job_id": None, "key_id": None}),
     ]
+    # Key slots that disagree (Q63): the body under one key, the
+    # envelope's AAD and member under another, each alone and paired.
+    crossed = V.verify_body(JC.encrypt_body(keyed_inner, SECRET,
+                                            "bm-exec-0001", "",
+                                            V.sign_payload), SECRET)
+    out.append(("body_ops_envelope_default",
+                {"envelope": crossed, "job_id": "bm-exec-0001",
+                 "key_id": "", "expect": keyed_inner}))
+    crossed = V.verify_body(JC.encrypt_body(inner, SECRET, "bm-exec-0001",
+                                            "ops", V.sign_payload), SECRET)
+    out.append(("body_default_envelope_ops",
+                {"envelope": crossed, "job_id": "bm-exec-0001",
+                 "key_id": "ops", "expect": inner}))
+    out.append(("member_ops_aad_default",
+                {"envelope": keyed, "job_id": "bm-exec-0001", "key_id": ""}))
+    out.append(("member_default_aad_gone",
+                {"envelope": sealed, "job_id": "bm-exec-0001",
+                 "key_id": "gone"}))
     enc = dict(sealed)
     enc["hp_enc"] = dict(sealed["hp_enc"], alg="none")
     out.append(("alg", {"envelope": enc, "job_id": "bm-exec-0001",
@@ -615,6 +679,8 @@ def seeds_local():
         ("exec_job", V.sign_payload(_job(script="true"), SECRET)),
         ("default_key_alert",
          V.sign_payload(dict(_frozen_alert(), key_id=""), SECRET)),
+        ("unknown_key", V.sign_payload(dict(_frozen_alert(), key_id="gone"),
+                                       SENSE)),
         ("empty", ""),
         ("spaces", "   \n\t"),
         ("not_json", "hello pigeon"),
@@ -635,6 +701,51 @@ def seeds_local():
     return ([make_entry("text", t, "seed:" + n, "seed") for n, t in texts]
             + [make_entry("payload", p, "seed:" + n, "seed")
                for n, p in payloads])
+
+
+def seeds_stash():
+    with _FixedNonces():
+        return _seeds_stash()
+
+
+def _seeds_stash():
+    """Records with their three key slots agreeing and disagreeing:
+    the body's own key_id member, the envelope's (the AAD and the
+    member), and the record's. Q63's family, each alone and paired."""
+    plain = V.sign_payload(_job(script="echo stashed"), SECRET)
+    plain_ops = V.sign_payload(_job(key_id="ops"), OPS)
+    plain_gone = V.sign_payload(_job(key_id="gone"), SECRET)
+
+    def sealed(inner, key_id, secret):
+        return JC.encrypt_body(inner, secret, "bm-exec-0001", key_id,
+                               V.sign_payload)
+
+    def rec(body, key_id, job_id="bm-exec-0001"):
+        return {"body": body, "key_id": key_id, "job_id": job_id}
+
+    out = [
+        ("plain_default", rec(plain, "")),
+        ("plain_ops", rec(plain_ops, "ops")),
+        ("plain_record_gone", rec(plain, "gone")),
+        ("plain_body_gone", rec(plain_gone, "")),
+        ("sealed_default", rec(sealed(plain, "", SECRET), "")),
+        ("sealed_ops", rec(sealed(plain_ops, "ops", OPS), "ops")),
+        ("sealed_record_gone", rec(sealed(plain, "", SECRET), "gone")),
+        ("sealed_envelope_gone", rec(sealed(plain, "gone", SECRET), "")),
+        ("sealed_body_gone", rec(sealed(plain_gone, "", SECRET), "")),
+        ("sealed_body_ops_envelope_default",
+         rec(sealed(plain_ops, "", SECRET), "")),
+        ("sealed_body_default_envelope_ops",
+         rec(sealed(plain, "ops", OPS), "ops")),
+        ("sealed_record_none", {"body": sealed(plain, "", SECRET),
+                                "key_id": None, "job_id": None}),
+        ("sealed_other_job", rec(sealed(plain, "", SECRET), "",
+                                 "bm-exec-0002")),
+        ("no_body", {"key_id": "", "job_id": "bm-exec-0001"}),
+        ("body_not_text", rec(7, "")),
+        ("empty", rec("", "")),
+    ]
+    return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
 # ------------------------------------------------------------------
@@ -1014,6 +1125,8 @@ TARGETS = {
                "check": check_crypto, "seeds": seeds_crypto},
     "local": {"files": [_src("runner.py"), _src("wire", "transports.py")],
               "check": check_local, "seeds": seeds_local},
+    "stash": {"files": [_src("runner.py")], "check": check_stash,
+              "seeds": seeds_stash},
 }
 
 
@@ -1212,14 +1325,24 @@ def _record_crashes(target, session, out):
 
 
 def cmd_seed(args, out=print):
+    """Write the seeds. An existing corpus keeps every entry it has;
+    seeds it lacks are added (so a new seed function never discards
+    what the grows found)."""
     for target in _targets(args.target):
-        session = Session(target, TARGETS[target]["seeds"]())
+        existing = load(corpus_path(target))
+        session = Session(target, existing)
+        names = {e["from"] for e in existing}
+        fresh = [e for e in TARGETS[target]["seeds"]()
+                 if e["id"] not in session.ids and e["from"] not in names]
+        for e in fresh:
+            session.entries.append(e)
+            session.ids.add(e["id"])
         _with_rig(session.baseline)
-        for e in session.entries:
+        for e in fresh:
             e["arcs"] = 0
         save(corpus_path(target), target, session.entries)
-        out(f"{target}: {len(session.entries)} seeds, "
-            f"{len(session.tracer.arcs)} arcs, "
+        out(f"{target}: {len(fresh)} seeds added to {len(existing)} "
+            f"entries, {len(session.tracer.arcs)} arcs, "
             f"{session.outcomes['accepted']} accepted, "
             f"{session.outcomes['refused']} refused, "
             f"{session.outcomes['crash']} crashes")

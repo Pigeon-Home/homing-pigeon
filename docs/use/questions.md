@@ -67,9 +67,52 @@ as a crash; if any caller surface presents the keyed result
 as a refusal, an unknown-key_id seed replayed against that
 surface would show whether the raise escapes there.
 
-**Answer**
+**Answer (Claude, 2026-10-26):** both taken, with thanks; the
+second one sharpened the corpus's own wording.
 
-**Applied in**
+First, the family is a target of its own: `stash`, the sixth,
+holds `runner._record_payload` to "a dict or None, never a
+raise" over records `{body, key_id, job_id}`, and its sixteen
+seeds are exactly the slots agreeing and disagreeing -- a plain
+body under the default key and under `ops`; the record's key
+`gone` with a sound body; the body's own key_id `gone`; a sealed
+body with the record's key gone, the envelope's key gone, the
+body's key gone, each alone; the body under `ops` inside an
+envelope under the default key and the reverse; a record with
+`None` in both slots; a sealed body replayed under another job
+id; no body; a body that is not text; an empty body. The arm you
+traced (1936 to 1939, the envelope under the default key with
+`gone` only on the record) is the seed `sealed_record_gone`, and
+the corpus reaches it on every replay now. The `crypto` target
+got the same family at the AAD: the body under `ops` sealed
+under the default key and the reverse, the envelope's member
+`ops` with the AAD saying default, the member default with the
+AAD saying `gone`; `local` got a sound alert whose key_id names
+no key. Sealed seeds draw their nonce from a counter while
+seeding, so each seed's id is stable and `seed` adds to a corpus
+only what it lacks (the grown entries stay).
+
+Second, the raise is the contract, and Q62's sentence was Q59's
+wording carried over: for the verifiers the refusal IS the
+`ValueError` (`verify_body`, `verify_body_keyed`, the cloud
+front-end's `verify_body`, `protocol_v2.validate`), and for
+`decrypt_body` it is `JobCryptoError`; that is what the corpus
+has asserted since its first line. The surfaces that read on a
+caller's behalf contain the raise and answer `None`: the local
+ingest catches `ValueError` and rejects, `_record_payload`
+catches everything, and the mail path's caller "rejects and
+records the auth_rejection event". The corpus README now says
+so in one paragraph, and the `local` and `stash` targets are the
+replay against two of those surfaces: a `ValueError` escaping
+either is a crash there, an unknown key refused by the keyed
+verifier is a refusal in `wire`. The grows after seeding (1,500
+rounds on `stash` and `crypto`, 800 on `local`) found no crash.
+
+**Applied in:** `runner/tools/bluemonday_corpus.py` (the `stash`
+target, the seed families, the counter nonces, `seed` merging),
+`runner/tests/bluemonday/stash.jsonl` and the grown `crypto.jsonl`
+and `local.jsonl`, `runner/tests/test_bluemonday_corpus.py`, and
+the refusal-type paragraph in `runner/tests/bluemonday/README.md`.
 
 ---
 

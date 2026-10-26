@@ -24,7 +24,9 @@ import json
 import os
 import random
 import re
+import shutil
 import sys
+import tempfile
 import unittest
 from unittest import mock
 
@@ -76,6 +78,9 @@ class CorpusReplayTest(unittest.TestCase):
 
     def test_local(self):
         self._check("local")
+
+    def test_stash(self):
+        self._check("stash")
 
 
 class CrashProbesTest(unittest.TestCase):
@@ -227,6 +232,28 @@ class ToolTest(unittest.TestCase):
                         len(json.dumps(data, ensure_ascii=True)),
                         B.MAX_PAYLOAD, name)
                     self.assertLessEqual(B._depth(data), B.MAX_DEPTH + 2)
+
+    def test_seeds_are_the_same_on_every_run(self):
+        # encrypt_body's nonce is drawn from a counter while seeding,
+        # so a sealed seed's id is stable and `seed` adds nothing to
+        # a corpus that already holds it.
+        for seeds in (B.seeds_crypto, B.seeds_stash):
+            first = [e["id"] for e in seeds()]
+            self.assertEqual(first, [e["id"] for e in seeds()])
+            self.assertEqual(len(first), len(set(first)))
+
+    def test_seed_adds_only_what_the_corpus_lacks(self):
+        tmp = tempfile.mkdtemp(prefix="hp-bluemonday-seed-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        lines = []
+        with mock.patch.object(B, "CORPUS_DIR", tmp):
+            B.cmd_seed(argparse.Namespace(target="v2"), out=lines.append)
+            first = B.load(B.corpus_path("v2"))
+            B.cmd_seed(argparse.Namespace(target="v2"), out=lines.append)
+            second = B.load(B.corpus_path("v2"))
+        self.assertEqual(len(first), len(B.seeds_v2()))
+        self.assertEqual([e["id"] for e in first], [e["id"] for e in second])
+        self.assertTrue(lines[-1].startswith("v2: 0 seeds added"))
 
     def test_entry_ids_follow_the_data(self):
         a = B.make_entry("text", "abc", "seed:x", "seed")
