@@ -150,6 +150,13 @@ This file is organized by status:
 
 ## Partial
 
+- Cloudflare Queues: design notes in docs/extend/transports.md. Partial: the
+  optional Worker boundary gate at cloudflare/queues-worker/ rejects any
+  inbound message that fails HMAC-SHA-384 validation before it is written
+  to D1 or further compute is performed. Set REJECT_INVALID_HMAC=true
+  (wrangler var or secret) to turn the gate on; default is off. Full
+  Queues + D1 wiring remains design notes.
+
 - Mirror (DRU's coinage, 2026-10-20; the determination / question / answer
   slice is BUILT as protocol v2, off unless `protocol_v2` is set -- see
   the end of this entry; the rest of Mirror is not built): the result
@@ -236,7 +243,6 @@ This file is organized by status:
   design and implement a lightweight optimized version alongside it.
   Nothing here is built.
 
-- Cloudflare Queues: The design notes are docs/extend/transports.md
 
 - Consider dist blockchain for file flow and work board/answers or
   transport extension.onion or bt for that matter
