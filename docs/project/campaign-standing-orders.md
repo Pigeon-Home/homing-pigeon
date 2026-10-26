@@ -3975,3 +3975,16 @@ when done, the proving commit or run. Newest first.
   fixtures the suite builds that the
   tool's seed does not yet — then grow
   again at a larger depth.
+- rules refreshed 2026-10-26 13:22 PDT
+  (standing orders incl. queue P, section
+  M, and the throughput recipe; AGENTS.md
+  rules 7-11; the questions file's open
+  entries incl. Q63; the playbook's hard
+  rules).
+  regression 56f9b408: 7112 tests green in 7m10s
+  resources 2026-10-26T20:02:22Z: cores 2 | box cpu 69% | wall 7m12s | cmd cpu 6m24s = 0.9 cores busy | peak rss 263 MB | mem used 93% | disk free 165.3 GB | exit 0 | under-driven
+  (under-driven is the pass's own shape:
+  its shards are one process per core but
+  the split-and-bisect steps are serial;
+  no reds, so no bisect ran and no Q was
+  filed.)

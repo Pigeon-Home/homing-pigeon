@@ -1006,3 +1006,26 @@ class RunInspectReviewTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+class RecordPayloadKeySlotTest(unittest.TestCase):
+    """Cycle 7 follow-up to RecordPayloadTest: `_record_payload`
+    (1939) -- the envelope arm's own return None. There are
+    three key slots: the signed body's key_id member, the
+    envelope's, and the stash record's. The cycle-5 fixture
+    set all three to "gone", so verify_body_keyed raised on
+    the body and the except arm supplied the None. The arm
+    itself fires when the body's key verifies under a
+    configured key while the record's key_id names a key no
+    longer configured: an envelope under the default key,
+    carried by a record that claims "gone".
+    """
+
+    def test_the_envelope_arm_returns_none_for_a_gone_record_key(self):
+        from runner.wire import jobcrypto, verify as wire_verify
+        payload = {"job_id": "j-env", "kind": "ping"}
+        body = jobcrypto.encrypt_body(
+            wire_verify.sign_payload(payload, TESTKEY), TESTKEY,
+            job_id="j-env", key_id="",
+            sign=wire_verify.sign_payload)
+        rec = {"body": body, "key_id": "gone", "job_id": "j-env"}
+        self.assertIsNone(R._record_payload(rec, {"": TESTKEY}))
+

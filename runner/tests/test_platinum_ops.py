@@ -399,3 +399,36 @@ class AnswerQueriesSignalsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+class ExecuteJobGateAttributionTest(unittest.TestCase):
+    """Cycle 7 follow-up to ExecuteJobShapesTest:
+    `ops/exec.py:execute_job` (346) -- the inline-script
+    branch's own "script must be a string" raise never
+    fires: the up-front shape gate near the top of the
+    function refuses a non-string script before staging,
+    downloads, or the interpreter checks, so by the branch
+    the script is a string or nothing. 346 is a belt under
+    that gate, recorded dead by construction in the cycle-7
+    gaps header. This class pins the attribution: the
+    refusal is the gate's JobRejected, and no download is
+    attempted on the way to it.
+    """
+
+    def test_the_gate_refuses_before_any_download(self):
+        from runner.ops import exec as ops_exec
+        import runner.runner as R
+        td = tempfile.mkdtemp(prefix="hp-plat-exec-")
+        try:
+            job = {"job_id": "exec-gate", "kind": "exec",
+                   "script": 42,
+                   "script_url": "https://nonexistent.invalid/x.py"}
+            with mock.patch.object(
+                    R, "download",
+                    side_effect=AssertionError(
+                        "download attempted")) as dl, \
+                    self.assertRaises(R.JobRejected) as cm:
+                ops_exec.execute_job({}, job, td)
+            self.assertIn("script must be a string",
+                          str(cm.exception))
+            dl.assert_not_called()
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
