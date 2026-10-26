@@ -57,6 +57,7 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 TESTS = os.path.join("runner", "tests")
+TESTS_GIT = "runner/tests"   # git pathspecs take forward slashes everywhere
 GATES = ("runner.tests.test_skip_registry",
          "runner.tests.test_doc_version_rot",
          "runner.tests.test_layout")
@@ -128,10 +129,10 @@ def changed_modules(since, cwd=ROOT):
     """Test modules changed or added against `since`, from git."""
     names = set()
     for args in (["git", "diff", "--name-only", since + "...HEAD", "--",
-                  TESTS],
-                 ["git", "diff", "--name-only", "--", TESTS],
+                  TESTS_GIT],
+                 ["git", "diff", "--name-only", "--", TESTS_GIT],
                  ["git", "ls-files", "--others", "--exclude-standard",
-                  TESTS]):
+                  TESTS_GIT]):
         try:
             out = subprocess.run(args, cwd=cwd, stdout=subprocess.PIPE,
                                  stderr=subprocess.DEVNULL, timeout=60)
@@ -140,9 +141,9 @@ def changed_modules(since, cwd=ROOT):
         for line in out.stdout.decode("utf-8", "replace").splitlines():
             line = line.strip().replace("\\", "/")
             base = os.path.basename(line)
-            if (line.startswith(TESTS.replace("\\", "/") + "/")
+            if (line.startswith(TESTS_GIT + "/")
                     and base.startswith("test_") and base.endswith(".py")
-                    and "/" not in line[len(TESTS) + 1:]):
+                    and "/" not in line[len(TESTS_GIT) + 1:]):
                 names.add(base)
     return sorted(names)
 
@@ -150,7 +151,7 @@ def changed_modules(since, cwd=ROOT):
 def existed_at(since, module_file, cwd=ROOT):
     try:
         proc = subprocess.run(["git", "cat-file", "-e",
-                               f"{since}:{TESTS}/{module_file}"],
+                               f"{since}:{TESTS_GIT}/{module_file}"],
                               cwd=cwd, stdout=subprocess.DEVNULL,
                               stderr=subprocess.DEVNULL, timeout=60)
     except (OSError, subprocess.TimeoutExpired):

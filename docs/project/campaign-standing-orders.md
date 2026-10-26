@@ -363,7 +363,9 @@ The loop:
 
 1. **Trigger.** A Platinum ledger line that closes no new
    statements, or only `platform` and `shadowed` rows. Until then
-   P runs as written.
+   P runs as written, and a `grow` is P's other under-driven filler
+   (step 7): the corpus may grow on an idle rig before the trigger,
+   ledgered the same way.
 2. **Grow.** `HP_BLUEMONDAY_ROUNDS=<large> python
    runner/tools/bluemonday_corpus.py grow` under `rig_resources.py`;
    `--seed` makes a run repeatable, `--verbose` prints each keeper.
