@@ -1,7 +1,5 @@
 ## A. Partial
 
-**A1. ACK for jobs accepted into runner job board.**
-
 **A2. Reviewer routing.** A finished task goes to a second worker
 holding the `review` capability before the owner sees it. Today only
 the owner's approval gate exists (`require_review`).
