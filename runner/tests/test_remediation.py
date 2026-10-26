@@ -693,13 +693,22 @@ class ExecuteJobTest(unittest.TestCase):
                 "job_id": "leak-1", "kind": "exec",
                 "script": "printf 'read /home/user/.aws/cre%s' "
                           "'dentials now' > leak.txt; echo done"})
-        self.assertEqual(r["exit_code"], 0)
         member = r["remediation"]
         self.assertEqual(member["mode"], "deterministic")
         self.assertEqual(member["authority"], "tripwire")
         self.assertTrue(member["divergence"].startswith(
             "credential_artifact"))
-        self.assertEqual(member["act"], "quarantined")
+        # The script exits in milliseconds. Whether the sampler's
+        # kill lands before the shell's own exit is a race the
+        # runner reports as it fell (remediation_ops: the act that
+        # landed), so either act is the right record; what must
+        # hold is that the recorded act matches what happened to
+        # the process -- a clean exit for a quarantine, a signal
+        # for a kill. A loaded macOS runner took the kill branch
+        # where Linux takes the quarantine.
+        self.assertIn(member["act"], ("quarantined", "killed"))
+        self.assertEqual(r["exit_code"] == 0,
+                         member["act"] == "quarantined")
         self.assertEqual(member["av_verdict"], "clean")
         self.assertEqual(member["received_digest"],
                          rem.received_digest({
@@ -711,7 +720,7 @@ class ExecuteJobTest(unittest.TestCase):
         self.assertFalse(os.path.exists(
             os.path.join(base, "work", "leak-1")))
         marker = rem.load_marker(base, "leak-1")
-        self.assertEqual(marker["act"], "quarantined")
+        self.assertEqual(marker["act"], member["act"])
         events = rem._read_jsonl_window(
             os.path.join(base, "security-events.jsonl"), 0)
         self.assertTrue(any(e.get("type") == "remediation"
@@ -787,7 +796,10 @@ class ExecuteJobTest(unittest.TestCase):
             "script": "printf 'read /home/user/.aws/cre%s' "
                       "'dentials' > leak.txt; echo done"})
         self.assertIn("remediation", r)
-        self.assertEqual(r["remediation"]["act"], "quarantined")
+        # Tripped either way; the act is the one that landed (see
+        # test_undeclared_credential_artifact_quarantines).
+        self.assertIn(r["remediation"]["act"], ("quarantined", "killed"))
+        self.assertEqual(r["remediation"]["authority"], "tripwire")
         src = open(runner.__file__, encoding="utf-8").read()
         self.assertNotIn('job.get("remediation"', src)
         self.assertNotIn("job['remediation']", src)
