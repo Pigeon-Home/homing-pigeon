@@ -99,6 +99,7 @@ peer on the wire reaches first.
 | 9 | `board` | `runner/wire/board.py`: `submit`, `offer`, `complete`, `approve`, `reoffer_expired` | in the corpus (Q67) |
 | 9b | `board_ops` | `runner/wire/board.py` under the sequence contract: a board file and `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order over it | in the corpus |
 | 10 | `channels` | `runner/wire/transports.py`: `fetch_channel_messages` over a throwaway directory; the entry is the pair | in the corpus (Q68) |
+| 10b | `inbox` | `runner/wire/transports.py` under the sequence contract: a whole inbox of files, links and directories through `fetch_channel_messages` and `service_channel`, the core's side in five shapes | in the corpus |
 | 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | in the corpus (Q69) |
 
 Not targets, and why: the Oracle's reading of its model's replies
@@ -153,9 +154,14 @@ never files a refusal as a crash.
   is a copy, and the file reads back as the board in memory.
   `channels` is the pair of inbox files, and the check plants a
   neighbor the entry cannot erase: a bad file stores nothing and
-  the neighbor in the same directory is still a job. `local`
-  already answers `None` for one bad alert and does not share a
-  directory with the next one.
+  the neighbor in the same directory is still a job. `inbox` is
+  the whole inbox as it was left, through the fetch and then the
+  service pass: every file and link is one message in name order,
+  a poison file is the empty refusal and is consumed, and what
+  stays, what is done, what lands in the outbox and what is
+  re-queued follow from how the core answered. `local` already
+  answers `None` for one bad alert and does not share a directory
+  with the next one.
 - **Reserved slots.** `sig` is the protocol's; a payload carrying
   its own is read back with the slot overwritten by the keyed
   reader and kept by the plain one, and neither is a disagreement.
@@ -250,7 +256,8 @@ nothing is still the record that those rounds were run.
   the continuous grow, the proof-of-work rules.
 - **Phase 2 (readers in the corpus, 2026-10-26):** DTLS (Q66),
   the board (Q67, and `board_ops` under the sequence contract),
-  the channel readers (Q68), the manifest reader (Q69).
+  the channel readers (Q68, and `inbox` under the sequence
+  contract), the manifest reader (Q69).
 - **Phase 3:** the sequence contract on `local`; the provenance
   contract on every reader that names a destination; cross-platform
   replay findings (a reader that reads differently on Windows is a

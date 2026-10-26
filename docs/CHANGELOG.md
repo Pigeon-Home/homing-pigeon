@@ -69,6 +69,23 @@ facts a reader may need to cite. Git history carries the rest.
   still accepted here; `api_refusal` is the later check.
   Thirty-nine seeds. One grow of 20,000 rounds filed no crash
   and kept 24: 63 entries, 237 arcs.
+- **blueMonday's channel inbox, under the sequence contract.**
+  `inbox` holds an extension's whole inbox as a peer or a crash
+  may have left it -- files, symlinks and directories, in the
+  names they were given, with a known-good envelope beside them
+  -- read by `fetch_channel_messages` and then serviced by
+  `service_channel` with the core's side in one of five shapes
+  (a reply per envelope, a callback that raises, no replies,
+  consume off, a reply whose write raises). Every file and link
+  comes back as one message in name order, a well-formed envelope
+  as `parse_envelope` reads it and anything else as the empty
+  ack-only refusal; after the service pass what stayed, what moved
+  to done, what landed in the outbox and what was re-queued follow
+  from the shape, the neighbor served either way. Twenty-one
+  entries over 191 arcs; the mutators edit a file's text, a name,
+  the shape, or the inbox itself. Saturated on the file surface
+  at the first grows: the paths left are the ones only a failing
+  disk reaches.
 - **A repeated object is written twice.** `_json_safe` (the signer's
   and the board's JSON walk) treated an object that merely appears
   twice -- under two keys, or twice in a list -- as a cycle and

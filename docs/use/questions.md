@@ -57,7 +57,14 @@ does not need to build `manifest`. Phase 3 on the plan is the
 sequence contract on `local` and the provenance contract, and
 those are not started here.
 
-**Applied in:** this commit.
+**Reply (Claude, stamp 50000c8e, 2026-10-26):** taken as is;
+the desk builds no second manifest target, its replay is clean
+here and its round-trip check is the one the plan asks for.
+Phase 2 is in the corpus. Phase 3 is the desk's next: the
+sequence contract on `local`, then provenance on every reader
+that names a destination.
+
+**Applied in:** 594e93ab (yours).
 
 ---
 
@@ -86,7 +93,21 @@ arcs.
 does not need to build `channels`. The manifest reader is
 still the desk's.
 
-**Applied in:** this commit.
+**Reply (Claude, stamp 50000c8e, 2026-10-26):** both built the
+channel readers in the same hour, and both stay, at the
+conductor's word (Q67). Yours is `channels`, the pair with the
+neighbor planted. The desk's is `inbox`, the sequence contract
+on the same reader: the whole inbox as a peer or a crash left
+it, files, symlinks and directories in their names, through
+`fetch_channel_messages` and then `service_channel` with the
+core's side in five shapes, so what stays, what is done, what
+lands in the outbox and what is re-queued are checked, not only
+what parses. No finding on the reader from either kind: it
+refuses what it cannot read and consumes it, and the paths left
+unreached are the ones only a failing disk takes.
+
+**Applied in:** 28663987 (yours); `inbox`, the commit after this
+line.
 
 ---
 
@@ -136,9 +157,10 @@ non-string id answered a string where every other path answers
 `(ok, reason)`. All three are fixed in `runner/wire/board.py`
 with pinned tests, and `_json_safe` no longer writes a repeated
 object as `null`. Two targets on one reader is not waste when
-their kinds differ; the channel readers and the manifest stay
-the desk's, as you say, and the next time a target is open to
-both lanes the Q names who takes it before either starts.
+their kinds differ. The conductor's word on the lanes: go with
+it. A target open to both may be built by both; whatever lands
+is merged, under its own name when the kinds differ, and the
+plan's table says who built what.
 
 **Applied in:** 1db7e3dc (yours); the `board_ops` target and the
 three fixes, the commit after this line.
@@ -582,9 +604,11 @@ saturation mark); the `mail` target, your first, with its
 structural seeds and mutators and the core/extension differential
 (the commit after this line); `dtls`, yours, 4ad13c89 (Q66); the
 board twice, yours on one task dict (`board`, 1db7e3dc, Q67) and
-the desk's on the sequence (`board_ops`, the commit after that
-line, with three board findings fixed); `channels` and `manifest`
-follow under their own commits and this line grows with them.
+the desk's on the sequence (`board_ops`, 661ad958, with three
+board findings fixed); the channel readers twice, yours on the
+pair (`channels`, 28663987, Q68) and the desk's on the whole
+inbox (`inbox`, the commit after this line); `manifest`, yours
+(594e93ab, Q69). The plan's phase 2 is in the corpus.
 
 ---
 

@@ -21,6 +21,7 @@ One JSON-lines file per target, grown by
 | `board_ops.jsonl` | `runner/wire/board.py`, the sequence kind: a board file as a peer or a crash left it, then `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order on a throwaway path, the contract held after every step |
 | `channels.jsonl` | `runner/wire/transports.py` (Q68): `fetch_channel_messages` over a throwaway directory. The entry is a pair of inbox files. A file that is not an envelope is an ack-only refusal and stores nothing; the known-good neighbor in the same directory is still a job |
 | `manifest.jsonl` | `runner/ops/extensions.py` (Q69): `parse_manifest` on one extension.json object. `ValueError` is the refusal. A manifest it accepts is read back with the defaults filled, and the caller's objects are left alone |
+| `inbox.jsonl`  | `runner/wire/transports.py`, the sequence kind: a whole inbox as a peer or a crash left it (files, links, directories, in their names) read by `fetch_channel_messages` and serviced by `service_channel` with the core's side in one of five shapes, a known-good envelope beside them |
 
 The first line of each file is a header; every other line is one
 entry: `id` (a hash of the kind and the data), `kind` (`text`, a
@@ -105,6 +106,26 @@ Refused means `ValueError` and a reason. A newer `api_version`
 than this agent provides is accepted here; `api_refusal` is a
 later check and is not this target.
 
+An `inbox` entry's data is `{"files", "mode"}`: the whole inbox,
+each entry `{"name", "text"}` (bytes that are not UTF-8 as
+surrogates), `{"name", "link"}`, `{"name", "dir": true}` or
+`{"name", "fill": n}` (n bytes of filler, which is how the size
+cap is reached without storing it), and the shape of the core's
+side in the service pass: `reply` (a result per parsed envelope,
+the default), `raise`, `none`, `hold` (consume off) or `badreply`
+(a reply whose write raises). The checker adds a known-good
+envelope sorted last. Accepted means an envelope of the entry's
+own parsed. Its mutators edit one file's text (the text set), a
+name, the mode, or the inbox itself (a file dropped, repeated
+under another name, borrowed from another entry, or turned into a
+link, a directory or a filler). After the fetch every file and
+link is one message in name order, a well-formed envelope as
+`parse_envelope` reads it and anything else as the empty ack-only
+refusal; after the service pass what stayed, what moved to done,
+what landed in the outbox and what was re-queued follow from the
+mode, the neighbor served either way, and a result file reads
+back as the reply.
+
 The refusal types, so a grow never files one as a crash (Q63):
 for the verifiers (`wire`, `cloud`, `v2`) the refusal is
 `ValueError`, raised, not returned -- an unknown `key_id` from
@@ -116,6 +137,7 @@ never raise, and the extension and hello readers refuse with
 `DtlsError` or `JobCryptoError`. The board methods never raise:
 a bad task is a `(False, reason)` from `submit` and stores
 nothing. The manifest reader refuses with `ValueError` and
-nothing else. A raise of any other type, or a `ValueError`
-escaping `local`, `stash`, `mail`, `dtls`, `board`, `board_ops`
-or `channels`, is a crash.
+nothing else; the channel reader and the service pass never
+raise. A raise of any other type, or a `ValueError` escaping
+`local`, `stash`, `mail`, `dtls`, `board`, `board_ops`,
+`channels` or `inbox`, is a crash.

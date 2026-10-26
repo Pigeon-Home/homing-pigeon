@@ -41,6 +41,11 @@ delivered body and the agent's trust in it:
                                          a throwaway directory; the
                                          entry is the pair
     manifest runner/ops/extensions.py    parse_manifest
+    inbox    runner/wire/transports.py   fetch_channel_messages and
+                                         service_channel over a whole
+                                         inbox of files, links and dirs
+                                         as a peer left them, the core's
+                                         side in five shapes
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -114,7 +119,6 @@ from runner.wire import verify as V  # noqa: E402
 from runner.wire import board as BD  # noqa: E402
 from runner.wire import dtlsproto as DT  # noqa: E402
 from runner.wire import mailbox as MB  # noqa: E402
-from runner.wire import board as BD  # noqa: E402
 import runner.runner as R  # noqa: E402
 
 STAMP = "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"
@@ -875,6 +879,229 @@ def _board_sequence(spec):
                 # What save wrote is what load reads back.
                 raise Crash("roundtrip", f"the board file after {name} "
                             "does not read back as the board in memory")
+        return "accepted" if accepted else "refused"
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
+
+_CHANNEL = "bm-chan"
+_CHANNEL_NAME_RE = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
+_NEIGHBOR = "zz-neighbor.job.txt"
+_NEIGHBOR_SUBJECT = "[HOMING-PIGEON] job bm-neighbor-0001"
+_NEIGHBOR_BODY = '{"job_id": "bm-neighbor-0001", "type": "ping"}\n'
+_RESULT_SUBJECT = "[HOMING-PIGEON] result bm-result-0001"
+_RESULT_BODY = '{"job_id": "bm-result-0001", "exit_code": 0}\n'
+
+
+def check_inbox(entry):
+    """inbox: an extension's inbox as a peer or a crash may have
+    left it -- files, symlinks, directories, in the names they were
+    given -- read by fetch_channel_messages and then serviced by
+    service_channel, with a known-good envelope beside them. Contract:
+    neither raises; every file and link in the inbox comes back as
+    one message, in name order, a well-formed envelope as its
+    (subject, body) from parse_envelope and anything else as the
+    empty ack-only refusal; a reply lands in the outbox as an
+    envelope that reads back; an ack moves the file to done; after
+    the service pass the inbox holds nothing but done, every name is
+    in done, and the neighbor was served and answered."""
+    spec = entry["data"]
+    if not isinstance(spec, dict):
+        raise Crash("corpus", "an inbox entry's data must be an object")
+    return _channel_sequence(spec)
+
+
+_CHANNEL_MODES = ("reply", "raise", "none", "hold", "badreply")
+
+
+class _Replies(list):
+    """A processor's replies as the core returns them: a sequence
+    with `consume` and a `requeue` the channel runs when the
+    envelope is to stay for the next cycle."""
+
+    consume = True
+
+    def __init__(self, calls, replies=()):
+        super().__init__(replies)
+        self.calls = calls
+
+    def requeue(self):
+        self.calls.append(1)
+
+
+class _Held(_Replies):
+    consume = False
+
+
+def _channel_processor(mode, served, calls):
+    """The core's side of service_channel, in one of five shapes:
+    reply (a result per parsed envelope), raise (every callback
+    fails), none (no replies), hold (consume off), badreply (a
+    reply whose write raises)."""
+
+    def process(subject, body):
+        served.append((subject, body))
+        if mode == "raise":
+            raise RuntimeError("the processor failed")
+        if mode == "none":
+            return None
+        if mode == "hold":
+            return _Held(calls)
+        if subject == "":
+            return []
+        if mode == "badreply":
+            # A body that is not text: the outbox writer raises on
+            # it, which is the reply-did-not-land path.
+            return _Replies(calls, [(_RESULT_SUBJECT, 123)])
+        return [(_RESULT_SUBJECT, _RESULT_BODY)]
+
+    return process
+
+
+def _channel_files(spec):
+    """The inbox files an entry describes, in a shape the checker
+    can write: (name, kind, payload) with the names that cannot be
+    a file in an inbox left out."""
+    out = []
+    seen = set()
+    for item in spec.get("files") or []:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if (not isinstance(name, str) or not _CHANNEL_NAME_RE.match(name)
+                or name in ("done", _NEIGHBOR) or name in seen):
+            continue
+        seen.add(name)
+        if isinstance(item.get("text"), str):
+            out.append((name, "text", item["text"]))
+        elif isinstance(item.get("link"), str):
+            out.append((name, "link", item["link"]))
+        elif item.get("dir") is True:
+            out.append((name, "dir", None))
+        elif isinstance(item.get("fill"), int) and not isinstance(
+                item["fill"], bool) and 0 <= item["fill"] <= 2 * TR.FILE_MAX_BYTES:
+            out.append((name, "fill", item["fill"]))
+    return out
+
+
+def _channel_sequence(spec):
+    base = tempfile.mkdtemp(prefix="hp-bluemonday-chan-")
+    try:
+        paths = TR.ensure_channel_dirs(base, _CHANNEL)
+        inbox = paths["inbox"]
+        expected = {}
+        dirs = ["done"]
+        for name, kind, payload in _channel_files(spec):
+            path = os.path.join(inbox, name)
+            if kind == "text":
+                raw = payload.encode("utf-8", "surrogatepass")
+                with open(path, "wb") as fh:
+                    fh.write(raw)
+            elif kind == "fill":
+                with open(path, "wb") as fh:
+                    fh.write(b"x" * payload)
+                raw = None
+            elif kind == "dir":
+                # A directory is not a message; it stays where it is.
+                os.makedirs(path, exist_ok=True)
+                dirs.append(name)
+                continue
+            else:
+                try:
+                    os.symlink(payload, path)
+                except (OSError, NotImplementedError):
+                    continue    # a platform without links: not a file
+                raw = None
+            expected[name] = raw
+        with open(os.path.join(inbox, _NEIGHBOR), "wb") as fh:
+            fh.write(TR.format_envelope(_NEIGHBOR_SUBJECT,
+                                        _NEIGHBOR_BODY).encode("utf-8"))
+        expected[_NEIGHBOR] = None
+        msgs, exc = _call(TR.fetch_channel_messages, base, _CHANNEL)
+        if exc is not None:
+            raise Crash("exception", "fetch_channel_messages raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        if not isinstance(msgs, list):
+            raise Crash("shape", "fetch_channel_messages returned "
+                        f"{type(msgs).__name__}")
+        idents = [getattr(m, "ident", None) for m in msgs]
+        if idents != sorted(expected):
+            raise Crash("contract", "the inbox holds "
+                        f"{sorted(expected)!r} and the fetch returned "
+                        f"{idents!r}"[:300])
+        accepted = False
+        for msg in msgs:
+            if not (isinstance(msg.subject, str)
+                    and isinstance(msg.body, str)):
+                raise Crash("shape", f"{msg.ident}: subject or body is "
+                            "not a string")
+            raw = expected.get(msg.ident)
+            want = None
+            if raw is not None and len(raw) <= TR.FILE_MAX_BYTES:
+                try:
+                    want = TR.parse_envelope(raw.decode("utf-8"))
+                except UnicodeDecodeError:
+                    want = None
+            if msg.ident == _NEIGHBOR:
+                want = (_NEIGHBOR_SUBJECT, _NEIGHBOR_BODY)
+            if want is None:
+                if (msg.subject, msg.body) != ("", ""):
+                    raise Crash("contract", f"{msg.ident}: a refusal must "
+                                "be the empty message")
+            else:
+                if (msg.subject, msg.body) != want:
+                    raise Crash("contract", f"{msg.ident}: the message is "
+                                "not what parse_envelope reads")
+                accepted = accepted or msg.ident != _NEIGHBOR
+        # Service the same inbox with the core's side in the shape
+        # the entry names: what is consumed, what stays, what lands
+        # in the outbox and what is re-queued follow from it, the
+        # neighbor served either way.
+        mode = spec.get("mode")
+        if mode not in _CHANNEL_MODES:
+            mode = "reply"
+        served, calls = [], []
+        count, exc = _call(TR.service_channel, base, _CHANNEL,
+                           _channel_processor(mode, served, calls))
+        if exc is not None:
+            raise Crash("exception", "service_channel raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        if count != len(msgs):
+            raise Crash("contract", f"service_channel visited {count} of "
+                        f"{len(msgs)} messages")
+        if (_NEIGHBOR_SUBJECT, _NEIGHBOR_BODY) not in served:
+            raise Crash("contract", "the neighbor envelope was not served")
+        parsed = {m.ident for m in msgs if m.subject != ""}
+        if mode == "hold":
+            stay = set(expected)
+        elif mode == "badreply":
+            stay = parsed
+        else:
+            stay = set()
+        left = sorted(os.listdir(inbox))
+        if left != sorted(set(dirs) | stay):
+            raise Crash("contract", f"after {mode}, the inbox holds "
+                        f"{left!r}, not {sorted(set(dirs) | stay)!r}"[:300])
+        done = set(os.listdir(paths["inbox_done"]))
+        if done != set(expected) - stay:
+            raise Crash("contract", f"after {mode}, done holds "
+                        f"{sorted(done)!r}"[:300])
+        if len(calls) != len(stay):
+            raise Crash("contract", f"after {mode}, requeue ran "
+                        f"{len(calls)} times for {len(stay)} held envelopes")
+        results = sorted(f for f in os.listdir(paths["outbox"])
+                         if f.endswith(".txt"))
+        want = len(parsed) if mode == "reply" else 0
+        if len(results) != want:
+            raise Crash("contract", f"after {mode}, {want} result files "
+                        f"expected and {len(results)} in the outbox")
+        for fname in results:
+            with open(os.path.join(paths["outbox"], fname),
+                      encoding="utf-8") as fh:
+                back = TR.parse_envelope(fh.read())
+            if back is None or back[0] != _RESULT_SUBJECT:
+                raise Crash("roundtrip", f"the result file {fname} does "
+                            "not read back as the reply")
         return "accepted" if accepted else "refused"
     finally:
         shutil.rmtree(base, ignore_errors=True)
@@ -2134,6 +2361,65 @@ def seeds_manifest():
     ]
     return [make_entry("payload", manifest, "seed:" + name, "seed")
             for name, manifest in out]
+def _chan(name, text):
+    return {"name": name, "text": text}
+
+
+def seeds_inbox():
+    good = TR.format_envelope("[HOMING-PIGEON] job bm-job-0001",
+                              _job_body())
+    out = [
+        ("one_good", {"files": [_chan("bm-0001.job.txt", good)]}),
+        ("crlf", {"files": [_chan("bm-0002.job.txt",
+                                  good.replace("\n", "\r\n"))]}),
+        ("no_blank_line", {"files": [_chan("bm-0003.job.txt",
+                                           good.replace("\n\n", "\n", 1))]}),
+        ("empty_file", {"files": [_chan("bm-0004.job.txt", "")]}),
+        ("subject_only", {"files": [_chan("bm-0005.job.txt",
+                                          "[HOMING-PIGEON] job bm-0005\n\n")]}),
+        ("not_utf8", {"files": [_chan("bm-0006.job.txt",
+                                      "[HOMING-PIGEON] job x\n\n\udcff\udcfe")]}),
+        ("bom", {"files": [_chan("bm-0007.job.txt", "\ufeff" + good)]}),
+        ("many_blank_lines", {"files": [_chan("bm-0008.job.txt",
+                                              good.replace("\n\n", "\n\n\n\n"))]}),
+        ("poison_then_good", {"files": [
+            _chan("bm-0009-a.job.txt", "no envelope here"),
+            _chan("bm-0009-b.job.txt", good),
+            _chan("bm-0009-c.job.txt", "\udc80\udc81"),
+            _chan("bm-0009-d.job.txt", good)]}),
+        ("no_suffix", {"files": [_chan("bm-0010", good),
+                                 _chan("bm-0010.txt", good),
+                                 _chan("bm-0010.job", good)]}),
+        ("symlinks", {"files": [{"name": "bm-0011.job.txt",
+                                 "link": "/srv/example/nowhere"},
+                                {"name": "bm-0011-b.job.txt",
+                                 "link": "bm-0011-c.job.txt"},
+                                _chan("bm-0011-c.job.txt", good)]}),
+        ("subdir", {"files": [{"name": "bm-0012", "dir": True},
+                              _chan("bm-0012.job.txt", good)]}),
+        ("oversize", {"files": [{"name": "bm-0013.job.txt",
+                                 "fill": TR.FILE_MAX_BYTES + 1},
+                                _chan("bm-0013-b.job.txt", good)]}),
+        ("at_the_cap", {"files": [{"name": "bm-0014.job.txt",
+                                   "fill": TR.FILE_MAX_BYTES}]}),
+        ("odd_names", {"files": [_chan("a", good), _chan("A.job.txt", good),
+                                 _chan("9.job.txt", good),
+                                 _chan("x" * 64, good),
+                                 _chan("bm.job.txt.job.txt", good),
+                                 _chan("done.job.txt", good)]}),
+        ("same_stem", {"files": [_chan("bm-0021", good),
+                                 _chan("bm-0021.job.txt", good)]}),
+        ("empty_inbox", {"files": []}),
+    ]
+    pair = [_chan("bm-0020-a.job.txt", "no envelope here"),
+            _chan("bm-0020-b.job.txt", good)]
+    for mode in _CHANNEL_MODES[1:]:
+        out.append(("core_" + mode, {"files": pair, "mode": mode}))
+    return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
+
+
+def _job_body():
+    return V.sign_payload(_job(), SECRET) + "\n"
 
 
 # ------------------------------------------------------------------
@@ -2768,6 +3054,84 @@ def _board_mutate(rng, spec, corpus):
     return spec, "board_" + edit
 
 
+def _inbox_mutate(rng, spec, corpus):
+    """An inbox entry's data is {files: [...]}: one file's text
+    takes the text set, a name is respelled, a file is dropped,
+    repeated under another name, borrowed from another entry, or
+    turned into a link, a directory or a filler of some size.
+    Answers (spec, name)."""
+    files = [dict(f) for f in (spec.get("files") or []) if isinstance(f, dict)]
+    mode = spec.get("mode")
+    which = rng.random()
+    if which < 0.08:
+        return _chan_spec(files, rng.choice(_CHANNEL_MODES)), "chan_mode"
+    if which < 0.45 and any("text" in f for f in files):
+        i = rng.choice([i for i, f in enumerate(files) if "text" in f])
+        texts = [{"kind": "text", "data": f["text"]}
+                 for e in corpus if isinstance(e.get("data"), dict)
+                 for f in (e["data"].get("files") or [])
+                 if isinstance(f, dict) and isinstance(f.get("text"), str)]
+        mut = rng.choice(TEXT_MUTATORS)
+        files[i]["text"] = mut(rng, files[i]["text"], texts)
+        return _chan_spec(files, mode), "chan_text"
+    if which < 0.6 and files:
+        i = rng.randrange(len(files))
+        name = files[i].get("name") or "bm"
+        edit = rng.choice(("suffix", "nosuffix", "case", "dots", "long",
+                           "prefix"))
+        if edit == "suffix":
+            name = name + ".job.txt"
+        elif edit == "nosuffix":
+            name = name[:-len(".job.txt")] if name.endswith(".job.txt") \
+                else name + ".txt"
+        elif edit == "case":
+            name = name.swapcase()
+        elif edit == "dots":
+            name = name.replace("-", ".")
+        elif edit == "long":
+            name = (name + "-" * 70)[:64]
+        else:
+            name = rng.choice("0aZ") + name
+        files[i]["name"] = name
+        return _chan_spec(files, mode), "chan_name"
+    edit = rng.choice(("drop", "repeat", "borrow", "link", "dir", "fill"))
+    if edit == "drop" and files:
+        del files[rng.randrange(len(files))]
+    elif edit == "repeat" and files:
+        twin = dict(rng.choice(files))
+        twin["name"] = "bm-twin-%04d" % rng.randrange(10000) + \
+            rng.choice(("", ".job.txt"))
+        files.append(twin)
+    elif edit == "borrow":
+        pool = [f for e in corpus if isinstance(e.get("data"), dict)
+                for f in (e["data"].get("files") or []) if isinstance(f, dict)]
+        if pool:
+            files.append(dict(rng.choice(pool)))
+    elif edit == "link" and files:
+        f = files[rng.randrange(len(files))]
+        f.pop("text", None); f.pop("dir", None); f.pop("fill", None)
+        f["link"] = rng.choice(["/srv/example/nowhere", "done", ".",
+                                "../outbox", rng.choice(files).get("name", "x")])
+    elif edit == "dir" and files:
+        f = files[rng.randrange(len(files))]
+        f.pop("text", None); f.pop("link", None); f.pop("fill", None)
+        f["dir"] = True
+    elif files:
+        f = files[rng.randrange(len(files))]
+        f.pop("text", None); f.pop("link", None); f.pop("dir", None)
+        f["fill"] = rng.choice([0, 1, 2, 1024, TR.FILE_MAX_BYTES - 1,
+                                TR.FILE_MAX_BYTES, TR.FILE_MAX_BYTES + 1])
+        edit = "fill"
+    return _chan_spec(files, mode), "chan_" + edit
+
+
+def _chan_spec(files, mode):
+    spec = {"files": files}
+    if mode in _CHANNEL_MODES:
+        spec["mode"] = mode
+    return spec
+
+
 def mutate(rng, entry, corpus, target):
     """One child of an entry: (data, mutator name), or None when the
     mutation is a no-op or breaks the size caps. A payload child is
@@ -2790,6 +3154,8 @@ def mutate(rng, entry, corpus, target):
         name = "crypto"
     elif target == "board_ops":
         data, name = _board_mutate(rng, entry["data"], corpus)
+    elif target == "inbox":
+        data, name = _inbox_mutate(rng, entry["data"], corpus)
     else:
         mut = rng.choice(PAYLOAD_MUTATORS)
         data = mut(rng, entry["data"], corpus)
@@ -2842,6 +3208,8 @@ TARGETS = {
                  "check": check_channels, "seeds": seeds_channels},
     "manifest": {"files": [_src("ops", "extensions.py")],
                  "check": check_manifest, "seeds": seeds_manifest},
+    "inbox": {"files": [_src("wire", "transports.py")],
+              "check": check_inbox, "seeds": seeds_inbox},
 }
 
 
