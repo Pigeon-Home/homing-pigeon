@@ -484,8 +484,8 @@ says so. [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) has the rest.
 
 ## Mirrors
 
+- SourceForge: https://sourceforge.net/projects/homing-pigeon
 - GitLab: https://gitlab.com/pigeon-home/homing-pigeon
-- SourceForge: https://sourceforge.net/projects/homing-pigeon/
 - Randall Munroe: [xkcd 568](https://xkcd.com/568/) "You'll never find a programming language that frees you from the burden of clarifying your ideas." (Except with English + SI + a long context paragraph clarifying your ideas => the cycle begins again)
 - https://pigeon-home.com
 - "I once saw a forklift lift a crate of forks. And it was way to literal for me" - Mitch Hedberg
