@@ -70,6 +70,10 @@ import re
 import threading
 
 try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:
+    from guard import atomicio as _atomicio  # type: ignore
+try:
     from runner.guard import confval as _confval
 except ImportError:
     from guard import confval as _confval  # type: ignore
@@ -272,25 +276,10 @@ def _trim_locked(path):
         return
     if len(lines) <= LEDGER_MAX_LINES:
         return
-    kept = "".join(lines[-LEDGER_KEEP_LINES:])
-    tmp = path + ".tmp." + str(os.getpid())
     try:
-        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        if hasattr(os, "O_BINARY"):
-            flags |= os.O_BINARY
-        fd = os.open(tmp, flags, 0o600)
-        try:
-            os.write(fd, kept.encode("utf-8"))
-        finally:
-            os.close(fd)
-        os.replace(tmp, path)
+        _atomicio.write_text(path, "".join(lines[-LEDGER_KEEP_LINES:]))
     except OSError:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
+        pass
 
 
 def read_records(base_dir):

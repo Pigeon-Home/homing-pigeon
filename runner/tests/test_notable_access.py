@@ -3025,7 +3025,7 @@ class RetentionWindowTest(unittest.TestCase):
         self.assertEqual(len(live), 1)
         R._write_json("", {"a": 1})
         path = os.path.join(tempfile.mkdtemp(), "q.json")
-        with unittest.mock.patch("runner.runner.json.dump",
+        with unittest.mock.patch("runner.guard.atomicio.json.dumps",
                                  side_effect=ValueError("no")):
             R._write_json(path, {"a": 1})
         self.assertFalse(os.path.exists(path))

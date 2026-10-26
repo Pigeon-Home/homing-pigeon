@@ -18,14 +18,19 @@ from it -- the contract is the directories and the envelope
 shape, and an owner can drop in an extension that speaks it in
 any language, registered or not.
 
-Stdlib only.
+Stdlib, plus the runner's one atomic writer (guard/atomicio.py):
+an envelope lands whole or not at all.
 """
 
 import json
 import os
 import sys
 import time
-import uuid
+
+try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:
+    from guard import atomicio as _atomicio  # type: ignore
 
 FILE_MAX_BYTES = 4 * 1024 * 1024
 
@@ -91,10 +96,7 @@ def dirs(channel):
 
 
 def _atomic_write(path, text):
-    tmp = path + ".tmp-" + uuid.uuid4().hex[:8]
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(text)
-    os.replace(tmp, path)
+    _atomicio.write_text(path, text)
 
 
 def deliver_job(channel, ident, subject, body):

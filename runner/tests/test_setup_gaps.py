@@ -101,7 +101,7 @@ class SetupGapsTest(unittest.TestCase):
                 if had:
                     setattr(os, "O_NOFOLLOW", saved)
                 del os.O_BINARY
-            for name in ("os.fdopen", "os.replace"):
+            for name in ("os.write", "os.replace"):
                 with mock.patch(name, side_effect=OSError("x")), \
                         self.assertRaises(OSError):
                     SU._write_config(path, {"a": 5})

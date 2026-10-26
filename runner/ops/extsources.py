@@ -96,6 +96,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:
+    from guard import atomicio as _atomicio  # type: ignore
+
 SOURCES_FILE = "sources.json"
 LOCK_FILE = "sources.lock.json"
 PROJECT_LOCK_FILE = "EXTENSION-SOURCES.lock.json"
@@ -195,10 +200,7 @@ def _rel(base_dir, path):
 
 
 def _atomic_write(path, text):
-    tmp = "%s.tmp-%s" % (path, uuid.uuid4().hex[:8])
-    with open(tmp, "w", encoding="utf-8") as fh:
-        fh.write(text)
-    os.replace(tmp, path)
+    _atomicio.write_text(path, text)
 
 
 def _write_json(path, obj):

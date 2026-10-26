@@ -197,7 +197,7 @@ class SaveStateFallbacksTest(unittest.TestCase):
                     mock.patch.object(os, "close",
                                       tracking_close), \
                     mock.patch.object(
-                        os, "fdopen",
+                        os, "write",
                         side_effect=OSError("cannot wrap")):
                 RS._save_state(d, {"cpu": 12.5})
             self.assertFalse(os.path.exists(
@@ -219,7 +219,7 @@ class SaveStateFallbacksTest(unittest.TestCase):
             with mock.patch.object(os, "close",
                                    raising_close), \
                     mock.patch.object(
-                        os, "fdopen",
+                        os, "write",
                         side_effect=OSError("cannot wrap")):
                 RS._save_state(d, {"cpu": 12.5})
             self.assertFalse(os.path.exists(

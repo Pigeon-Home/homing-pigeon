@@ -39,6 +39,11 @@ import sys
 import threading
 import time
 
+try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:
+    from guard import atomicio as _atomicio  # type: ignore
+
 MODES = ("off", "deterministic", "oracle")
 DEFAULT_MODE = "deterministic"
 
@@ -914,10 +919,11 @@ def quarantine_job(base_dir, job_id, work_dir, marker):
         "%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     record["files"] = _work_file_list(os.path.join(dest, "work"))
     try:
-        with open(os.path.join(dest, "remediation.json"), "w",
-                  encoding="utf-8") as fh:
-            json.dump(record, fh, indent=1)
-    except OSError:
+        # Whole or not at all: a kill mid-write used to leave a
+        # truncated marker beside a seized workdir (guard/atomicio).
+        _atomicio.write_json(os.path.join(dest, "remediation.json"),
+                             record, indent=1, fsync=True)
+    except (OSError, TypeError, ValueError):
         pass
     return dest
 
@@ -941,9 +947,9 @@ def fix_marker_digest(base_dir, job_id, digest):
     path = os.path.join(quarantine_root(base_dir), job_id,
                         "remediation.json")
     try:
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(marker, fh, indent=1)
-    except OSError:
+        # The operator's evidence record: replaced whole, fsynced.
+        _atomicio.write_json(path, marker, indent=1, fsync=True)
+    except (OSError, TypeError, ValueError):
         pass
 
 
@@ -1038,10 +1044,9 @@ def release_quarantine(base_dir, job_id):
     marker["released_at"] = time.strftime(
         "%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     try:
-        with open(os.path.join(dest, "remediation-marker.json"), "w",
-                  encoding="utf-8") as fh:
-            json.dump(marker, fh, indent=1)
-    except OSError:
+        _atomicio.write_json(os.path.join(dest, "remediation-marker.json"),
+                             marker, indent=1, fsync=True)
+    except (OSError, TypeError, ValueError):
         pass
     try:
         marker_src = os.path.join(src_dir, "remediation.json")

@@ -231,7 +231,7 @@ class UpdateBaselineBranchesTest(unittest.TestCase):
         # leaks the staging fd on purpose, and Windows will
         # not unlink a file this process still holds open.
         with lenient_tempdir() as d:
-            with mock.patch.object(detection.os, "fdopen",
+            with mock.patch.object(detection.os, "write",
                                    side_effect=OSError("no writer")), \
                     mock.patch.object(detection.os, "close",
                                       side_effect=OSError("stuck fd")), \
@@ -243,7 +243,7 @@ class UpdateBaselineBranchesTest(unittest.TestCase):
     def test_a_failed_open_closes_the_fd_and_cleans_up(self):
         from unittest import mock
         with tempfile.TemporaryDirectory() as d:
-            with mock.patch.object(detection.os, "fdopen",
+            with mock.patch.object(detection.os, "write",
                                    side_effect=OSError("no writer")):
                 got = detection.update_baseline(d, {"kind": "exec"})
             self.assertEqual(got["kinds"], {"exec": 1})

@@ -12,6 +12,8 @@ import threading
 import unittest
 from unittest import mock
 
+from runner.guard import atomicio as _atomicio
+
 from runner.runner import Board
 
 
@@ -20,7 +22,21 @@ def _mode(path):
 
 
 def _tmp_for(path):
-    return "%s.tmp.%s.%s" % (path, os.getpid(), threading.get_ident())
+    return path + ".tmp.pinned"
+
+# The atomic writer (runner/guard/atomicio.py) picks a random temp
+# name; these tests plant symlinks at the exact name, so the name is
+# pinned for the module (Agent-Chat-Stamp
+# 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f).
+_PIN = mock.patch.object(_atomicio, "_temp_name", lambda p: p + ".tmp.pinned")
+
+
+def setUpModule():
+    _PIN.start()
+
+
+def tearDownModule():
+    _PIN.stop()
 
 
 import sys
@@ -176,7 +192,10 @@ class BoardFuzzTest(unittest.TestCase):
             with open(target, encoding="utf-8") as fh:
                 if fh.read() != "keep":
                     crashes.append("followed")
-            self.assertFalse(os.path.lexists(link))
+            # The planted name is refused (O_EXCL | O_NOFOLLOW), never
+            # written through: the link is still a link, the target is
+            # untouched, and the save is the one that lost.
+            self.assertTrue(os.path.islink(link))
         self.assertEqual(crashes, [])
 
 

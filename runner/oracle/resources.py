@@ -22,6 +22,10 @@ import threading
 import time
 
 try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:
+    from guard import atomicio as _atomicio  # type: ignore
+try:
     from runner.guard import confval as _confval
 except ImportError:
     from guard import confval as _confval  # type: ignore
@@ -172,38 +176,11 @@ def _save_state(base_dir, state):
             except Exception:
                 continue
     path = os.path.join(base_dir, STATE_FILE)
-    tmp = path + ".tmp." + str(threading.get_ident())
-    fd = None
     try:
         with _STATE_LOCK:
-            try:
-                os.unlink(tmp)
-            except FileNotFoundError:
-                pass
-            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            if hasattr(os, "O_BINARY"):
-                flags |= os.O_BINARY
-            fd = os.open(tmp, flags, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                fd = None
-                json.dump(clean, f)
-            os.replace(tmp, path)
-            try:
-                os.chmod(path, 0o600)
-            except OSError:
-                pass
+            _atomicio.write_json(path, clean)
     except (OSError, TypeError, ValueError):
-        if fd is not None:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
+        pass
 
 
 def check_resources(cfg, base_dir, now=None):

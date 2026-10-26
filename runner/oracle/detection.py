@@ -14,10 +14,13 @@ No external dependencies.
 """
 import json
 import os
-import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:
+    from guard import atomicio as _atomicio  # type: ignore
 try:
     from runner.guard import confval as _confval
 except ImportError:
@@ -184,37 +187,10 @@ def update_baseline(base_dir: str, job: Dict[str, Any],
             kept.append(len(stdout))
             baseline["output_sizes"] = kept[-50:]
     baseline["updated"] = int(time.time())
-    tmp = path + ".tmp." + str(threading.get_ident())
-    fd = None
     try:
-        try:
-            os.unlink(tmp)
-        except FileNotFoundError:
-            pass
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        if hasattr(os, "O_BINARY"):
-            flags |= os.O_BINARY
-        fd = os.open(tmp, flags, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            fd = None
-            json.dump(baseline, f, allow_nan=False)
-        os.replace(tmp, path)
-        try:
-            os.chmod(path, 0o600)
-        except OSError:
-            pass
+        _atomicio.write_json(path, baseline, allow_nan=False)
     except (OSError, TypeError, ValueError):
-        if fd is not None:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
+        pass
     return baseline
 
 

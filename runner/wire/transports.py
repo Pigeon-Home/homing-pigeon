@@ -69,6 +69,13 @@ except Exception:  # pragma: no cover - sibling context
         from ..ops import extensions as _extensions  # type: ignore
     except Exception:
         from ops import extensions as _extensions  # type: ignore
+try:  # the atomic writer (runner/guard/atomicio.py)
+    from runner.guard import atomicio as _atomicio
+except Exception:  # pragma: no cover - sibling context
+    try:
+        from ..guard import atomicio as _atomicio  # type: ignore
+    except Exception:
+        from guard import atomicio as _atomicio  # type: ignore
 try:  # the extension review (runner/guard/extreview.py)
     from runner.guard import extreview as _extreview
 except Exception:  # pragma: no cover - sibling context
@@ -342,10 +349,7 @@ def ensure_channel_dirs(base_dir, name):
 
 
 def _atomic_write(path, text):
-    tmp = path + ".tmp-" + uuid.uuid4().hex[:8]
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(text)
-    os.replace(tmp, path)
+    _atomicio.write_text(path, text)
 
 
 def write_channel_result(base_dir, name, job_subject, subject, body,

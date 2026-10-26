@@ -843,10 +843,12 @@ class LearningShapeTest(unittest.TestCase):
             with open(path, "w", encoding="utf-8") as fh:
                 for _i in range(L.LEDGER_MAX_LINES + 1):
                     fh.write("{}\n")
-            tmp = path + ".tmp." + str(os.getpid())
+            tmp = path + ".tmp.pinned"
             os.mkdir(tmp)
             try:
-                L._trim_locked(path)
+                with mock.patch.object(L._atomicio, "_temp_name",
+                                       lambda p: p + ".tmp.pinned"):
+                    L._trim_locked(path)
                 with open(path, encoding="utf-8") as fh:
                     self.assertGreater(
                         len(fh.readlines()), L.LEDGER_KEEP_LINES)

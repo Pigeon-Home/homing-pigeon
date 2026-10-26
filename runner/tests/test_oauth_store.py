@@ -139,7 +139,7 @@ class StoreWriteTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "config.json")
             with mock.patch.object(
-                    os, "fdopen",
+                    os, "write",
                     side_effect=OSError("disk")):
                 with self.assertRaises(OSError) as cm:
                     store_refresh_token(path, dict(CFG), "tok")
@@ -157,7 +157,7 @@ class StoreWriteTest(unittest.TestCase):
         with lenient_tempdir() as d:
             path = os.path.join(d, "config.json")
             with mock.patch.object(
-                    os, "fdopen",
+                    os, "write",
                     side_effect=OSError("disk")), \
                     mock.patch.object(
                         os, "close",  # portable: ignore_cleanup_errors above
@@ -177,7 +177,7 @@ class StoreWriteTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "config.json")
             with mock.patch.object(
-                    os, "fdopen",
+                    os, "write",
                     side_effect=OSError("disk")), \
                     mock.patch.object(os, "unlink", unlink):
                 with self.assertRaises(OSError) as cm:

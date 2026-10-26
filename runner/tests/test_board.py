@@ -122,8 +122,8 @@ class BoardUnitTest(unittest.TestCase):
         with mock.patch.object(os, "open", tracking_open), \
                 mock.patch.object(os, "close", tracking_close), \
                 mock.patch.object(
-                    os, "fdopen",
-                    side_effect=OSError("cannot wrap")):
+                    os, "write",
+                    side_effect=OSError("cannot write")):
             self.b.save()
         # Every descriptor opened was closed. As a set: the WARN
         # line's own log file may open and close between the tmp's
@@ -137,8 +137,8 @@ class BoardUnitTest(unittest.TestCase):
         with mock.patch.object(os, "open", tracking_open), \
                 mock.patch.object(os, "close", broken_close), \
                 mock.patch.object(
-                    os, "fdopen",
-                    side_effect=OSError("cannot wrap")):
+                    os, "write",
+                    side_effect=OSError("cannot write")):
             self.b.save()
         self.assertEqual(os.listdir(self.tmp), ["board.json"])
         self.assertIn("t1", Board(self.path).tasks)

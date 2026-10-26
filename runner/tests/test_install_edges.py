@@ -961,7 +961,7 @@ class CleanupTest(unittest.TestCase):
             with open(path, encoding="utf-8") as fh:
                 self.assertEqual(json.load(fh)["a"], 1)
 
-            def fdopen(*_a, **_k):
+            def write(*_a, **_k):
                 raise OSError("fd")
 
             def close(_fd):
@@ -977,7 +977,7 @@ class CleanupTest(unittest.TestCase):
                 return fd
 
             with mock.patch.object(os, "open", tracking_open), \
-                    mock.patch.object(os, "fdopen", fdopen), \
+                    mock.patch.object(os, "write", write), \
                     mock.patch.object(os, "close", close):
                 with self.assertRaises(OSError):
                     inst._write_json(path, {"b": 2})
@@ -990,12 +990,17 @@ class CleanupTest(unittest.TestCase):
                 except OSError:
                     pass
 
+            # A replace that fails raises the replace's error, and a
+            # refused cleanup unlink never masks it (guard/atomicio).
             def unlink(_p):
                 raise OSError("unlink")
 
-            with mock.patch.object(os, "unlink", unlink):
-                with self.assertRaises(OSError):
+            with mock.patch.object(os, "replace",
+                                   side_effect=OSError("replace")), \
+                    mock.patch.object(os, "unlink", unlink):
+                with self.assertRaises(OSError) as cm:
                     inst._write_json(path, {"c": 3})
+            self.assertEqual(str(cm.exception), "replace")
 
     def test_collectors_when_the_package_leaves_nothing_behind(self):
         args = mock.Mock(wazuh_manager=None)

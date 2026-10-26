@@ -183,8 +183,7 @@ def _registry_watch(base_dir, max_chars=2000):
                     "services": snap["services"]}
             for key in R._REG_WATCH_KEYS:
                 slim["keys"][key] = snap["keys"].get(key, {})
-            with open(snap_path, "w", encoding="utf-8") as fh:
-                json.dump(slim, fh)
+            _runner()._atomicio.write_json(snap_path, slim)
         except Exception:
             pass
     blob = "\n".join(lines).strip()

@@ -4,6 +4,28 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## Unreleased
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+The four review items, plus workspace isolation (the runbook of
+2026-10-25; one commit per item, each with its tests).
+
+- **One atomic writer for state files.** `runner/guard/atomicio.py`
+  replaces a state file whole or not at all (a temp name opened
+  `O_EXCL | O_NOFOLLOW`, written, `os.replace`d, mode 0600; the temp
+  unlinked and the cause re-raised on any failure). The ten
+  hand-rolled copies of that block (the replay cache, retained
+  results, the sent record, config and the OAuth token, the board,
+  the DRI, resource and detection state, the security counts, the
+  review report, the learning ledger trim, the channel envelopes)
+  are calls now, and the two quarantine markers remediation wrote
+  straight into the file -- a kill mid-write left a truncated
+  record -- go through it fsynced. `runner/tests/test_atomicio.py`:
+  a writer killed at random fifty times leaves the destination
+  absent or complete, a planted symlink is replaced and never
+  followed, and a scan of the core fails on the eleventh copy.
+
 ## 3.13.1 - 2026-10-25
 
 <!-- Agent-Stamp: 30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a -->
@@ -12,20 +34,6 @@ Cloudflare Queues Worker boundary with optional REJECT_INVALID_HMAC
 gate. When the wrangler var is set, the Worker rejects any inbound
 message that fails HMAC-SHA-384 before writing to D1 or doing further
 compute. Default off. Full Queues + D1 wiring remains design notes.
-## 3.13.1 - 2026-10-25
-
-- **Worker boundary HMAC reject (optional).** The Cloudflare Queues
-  Worker now rejects any inbound message that fails HMAC-SHA-384
-  verification at the edge when `REJECT_INVALID_HMAC` is set. Invalid
-  jobs are never written to D1 and no further compute runs. Default
-  is off so existing flows are unchanged until the operator turns it
-  on. See `cloudflare/queues-worker/`.
-
-## Unreleased
-
-<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
-
-## 3.13.1 - 2026-10-25
 
 - **Worker boundary HMAC reject (optional).** The Cloudflare Queues
   Worker rejects any inbound message that fails HMAC-SHA-384

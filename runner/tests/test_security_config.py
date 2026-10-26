@@ -457,7 +457,7 @@ class BumpCountsFallbacksTest(unittest.TestCase):
                     mock.patch.object(os, "close",
                                       tracking_close), \
                     mock.patch.object(
-                        os, "fdopen",
+                        os, "write",
                         side_effect=OSError("cannot wrap")):
                 got = S._bump_counts(d, "audience", "denied")
             self.assertIsNone(got)
@@ -477,7 +477,7 @@ class BumpCountsFallbacksTest(unittest.TestCase):
             with mock.patch.object(os, "close",
                                    raising_close), \
                     mock.patch.object(
-                        os, "fdopen",
+                        os, "write",
                         side_effect=OSError("cannot wrap")):
                 got = S._bump_counts(d, "audience", "denied")
             self.assertIsNone(got)

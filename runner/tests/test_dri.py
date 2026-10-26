@@ -397,7 +397,7 @@ class SaveStateBranchesTest(unittest.TestCase):
 
     def test_a_failed_writer_closes_and_cleans_up(self):
         with tempfile.TemporaryDirectory() as d:
-            with mock.patch.object(D.os, "fdopen",
+            with mock.patch.object(D.os, "write",
                                    side_effect=OSError("no writer")):
                 D._save_state(d, {"a": 1})
             self.assertEqual(os.listdir(d), [])
@@ -417,7 +417,7 @@ class SaveStateBranchesTest(unittest.TestCase):
         # leaks the staging fd on purpose, and Windows will
         # not unlink a file this process still holds open.
         with lenient_tempdir() as d:
-            with mock.patch.object(D.os, "fdopen",
+            with mock.patch.object(D.os, "write",
                                    side_effect=OSError("no writer")), \
                     mock.patch.object(D.os, "close",
                                       side_effect=OSError("stuck")), \

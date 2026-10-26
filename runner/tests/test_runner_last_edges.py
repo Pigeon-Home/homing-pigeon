@@ -174,7 +174,7 @@ class IoEdgeTest(_Binary, unittest.TestCase):
             opened.clear()
 
         with mock.patch.object(rr.os, "open", tracking_open), \
-                mock.patch.object(rr.os, "fdopen", side_effect=OSError("fd")), \
+                mock.patch.object(rr.os, "write", side_effect=OSError("fd")), \
                 mock.patch.object(rr.os, "close", side_effect=OSError("c")):
             rr.save_seen(seen, {"a": True})
         # close() was simulated as broken. Windows cannot delete the
@@ -184,7 +184,7 @@ class IoEdgeTest(_Binary, unittest.TestCase):
             rr.save_seen(seen, {"a": True})
         rr.save_retained(tmp.name, "job-1", {"a": 1})
         with mock.patch.object(rr.os, "open", tracking_open), \
-                mock.patch.object(rr.os, "fdopen", side_effect=OSError("fd")), \
+                mock.patch.object(rr.os, "write", side_effect=OSError("fd")), \
                 mock.patch.object(rr.os, "close", side_effect=OSError("c")), \
                 mock.patch.object(rr.os, "unlink", side_effect=OSError("u")):
             rr.save_retained(tmp.name, "job-2", {"a": 1})

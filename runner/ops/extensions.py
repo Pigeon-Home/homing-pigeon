@@ -46,6 +46,11 @@ import socket
 import uuid
 from datetime import datetime, timezone
 
+try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:
+    from guard import atomicio as _atomicio  # type: ignore
+
 EXTENSION_API_VERSION = 1
 MANIFEST_FILE = "extension.json"
 
@@ -525,10 +530,7 @@ def drop_local_signal(base_dir, payload, secret) -> str:
     if not isinstance(job_id, str) or not _NAME_RE.match(job_id):
         job_id = uuid.uuid4().hex
     path = os.path.join(inbox, job_id + ".json")
-    tmp = os.path.join(inbox, "." + job_id + ".tmp")
-    with open(tmp, "w", encoding="utf-8") as fh:
-        fh.write(text)
-    os.replace(tmp, path)
+    _atomicio.write_text(path, text)
     return path
 
 

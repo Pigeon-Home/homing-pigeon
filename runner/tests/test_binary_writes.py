@@ -46,9 +46,11 @@ class BinaryWriteFlagsTest(unittest.TestCase):
                 self.assertIn(
                     "flags |= os.O_BINARY", following,
                     "%s:%d sets O_NOFOLLOW without O_BINARY" % (name, i + 1))
-        # Self-check: the idiom is used across the package; if the
-        # scan ever matches nothing, this test would pass vacuously.
-        self.assertGreaterEqual(total, 15)
+        # Self-check: if the scan ever matches nothing, this test
+        # would pass vacuously. The state writers share one idiom now
+        # (runner/guard/atomicio.py), so the count is the handful of
+        # readers, locks and appends that open descriptors themselves.
+        self.assertGreaterEqual(total, 5)
 
 
 if __name__ == "__main__":

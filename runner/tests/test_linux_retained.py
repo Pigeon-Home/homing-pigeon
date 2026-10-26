@@ -11,6 +11,8 @@ import threading
 import unittest
 from unittest import mock
 
+from runner.guard import atomicio as _atomicio
+
 from runner.runner import load_retained, save_retained
 
 
@@ -19,7 +21,21 @@ def _mode(path):
 
 
 def _tmp_for(path):
-    return path + ".tmp." + str(threading.get_ident())
+    return path + ".tmp.pinned"
+
+# The atomic writer (runner/guard/atomicio.py) picks a random temp
+# name; these tests plant symlinks at the exact name, so the name is
+# pinned for the module (Agent-Chat-Stamp
+# 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f).
+_PIN = mock.patch.object(_atomicio, "_temp_name", lambda p: p + ".tmp.pinned")
+
+
+def setUpModule():
+    _PIN.start()
+
+
+def tearDownModule():
+    _PIN.stop()
 
 
 import sys
@@ -37,7 +53,7 @@ class RetainedFileTest(unittest.TestCase):
             real_open = os.open
 
             def spy(path, flags, *args, **kwargs):
-                if path.endswith(".tmp." + str(threading.get_ident())):
+                if ".tmp." in str(path):
                     seen.append(flags)
                 return real_open(path, flags, *args, **kwargs)
 

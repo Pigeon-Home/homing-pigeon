@@ -32,6 +32,30 @@ import time
 import zipfile
 from xml.sax.saxutils import escape
 
+
+def _import_atomicio():
+    """runner/guard/atomicio.py, whichever way this file is running:
+    the package (`runner.guard`), the install layout (`guard` beside
+    `ops`), or this script started by path from a source tree."""
+    try:
+        from runner.guard import atomicio
+        return atomicio
+    except ImportError:
+        pass
+    try:
+        from guard import atomicio  # type: ignore
+        return atomicio
+    except ImportError:
+        pass
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    from guard import atomicio  # type: ignore
+    return atomicio
+
+
+_atomicio = _import_atomicio()
+
 # Frozen binaries cannot import the package the same way a live run can.
 # The constant is the source of truth for --version; runner/tests/test_version.py
 # fails the build if it drifts from pyproject.toml.
@@ -1564,44 +1588,9 @@ def _read_config(path: str) -> dict:
 
 
 def _write_json(path: str, cfg: dict) -> None:
-    """Atomic config write. The temp name is not a symlink.
-
-    The replacement is mode 0600. os.replace swaps the name, so a
-    symlink at path is replaced rather than written through.
-    """
-    tmp = path + ".tmp." + str(threading.get_ident())
-    fd = None
-    try:
-        try:
-            os.unlink(tmp)
-        except FileNotFoundError:
-            pass
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        if hasattr(os, "O_BINARY"):
-            flags |= os.O_BINARY
-        fd = os.open(tmp, flags, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            fd = None
-            json.dump(cfg, f, indent=2)
-            f.write("\n")
-        os.replace(tmp, path)
-        try:
-            os.chmod(path, 0o600)
-        except OSError:
-            pass
-    except Exception:
-        if fd is not None:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+    """Atomic config write: whole or not at all, mode 0600, a symlink
+    at path replaced rather than written through (guard/atomicio)."""
+    _atomicio.write_json(path, cfg, indent=2, newline=True)
 
 
 def set_instructions(cfg_path: str, text_in: str, append: bool) -> None:

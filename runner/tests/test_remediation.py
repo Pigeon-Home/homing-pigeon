@@ -1104,14 +1104,10 @@ class FixMarkerDigestWriteTest(unittest.TestCase):
         # keeps the digest it had.
         with tempfile.TemporaryDirectory() as base:
             self._quarantine(base)
-            real_open = open
-
-            def guarded(path, mode="r", *a, **k):
-                if "w" in str(mode):
-                    raise OSError("read-only")
-                return real_open(path, mode, *a, **k)
-
-            with mock.patch("builtins.open", guarded):
+            # The rewrite is the atomic writer's os.open of the temp
+            # name (guard/atomicio); the marker read is builtins.open.
+            with mock.patch.object(rem._atomicio, "_open_new",
+                                   side_effect=OSError("read-only")):
                 rem.fix_marker_digest(base, "job-1", "def")
             marker = rem.load_marker(base, "job-1")
             self.assertEqual(marker["received_digest"], "abc")

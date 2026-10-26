@@ -23,7 +23,11 @@ import os
 import secrets
 import ssl
 import sys
-import threading
+
+try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:  # running from inside runner/ as __main__
+    from guard import atomicio as _atomicio  # type: ignore
 
 try:
     from runner.wire.oauth import browser_consent, refresh_access_token
@@ -161,50 +165,14 @@ def _ask(prompt: str) -> str:
 
 
 def _write_config(cfg_path: str, cfg: dict) -> None:
-    """Write config.json without following a symlink.
-
-    The temp file is created with O_EXCL | O_NOFOLLOW. os.replace
-    swaps the name, so a symlink at cfg_path is replaced rather than
-    written through. The file is mode 0600.
-    """
+    """Write config.json whole or not at all, mode 0600, a symlink at
+    cfg_path replaced rather than written through (guard/atomicio)."""
     if not isinstance(cfg, dict):
         raise TypeError("config must be an object")
     parent = os.path.dirname(os.path.abspath(cfg_path))
     if parent:
         os.makedirs(parent, exist_ok=True)
-    tmp = cfg_path + ".tmp." + str(threading.get_ident())
-    fd = None
-    try:
-        try:
-            os.unlink(tmp)
-        except FileNotFoundError:
-            pass
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        if hasattr(os, "O_BINARY"):
-            flags |= os.O_BINARY
-        fd = os.open(tmp, flags, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fd = None
-            json.dump(cfg, fh, indent=2)
-            fh.write("\n")
-        os.replace(tmp, cfg_path)
-        try:
-            os.chmod(cfg_path, 0o600)
-        except OSError:
-            pass
-    except Exception:
-        if fd is not None:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+    _atomicio.write_json(cfg_path, cfg, indent=2, newline=True)
 
 
 def _secret_is_real(secret: str) -> bool:

@@ -23,6 +23,11 @@ import os
 import threading
 import time
 
+try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:
+    from guard import atomicio as _atomicio  # type: ignore
+
 MODES = ("off", "audit", "enforce")
 
 # Features recognized in security.modes. Entries are added as their
@@ -345,33 +350,7 @@ def _bump_counts_locked(base_dir, feature, decision):
             feat = {}
             counts[feature] = feat
         feat[decision] = int(feat.get(decision) or 0) + 1
-        tmp = path + ".tmp." + str(os.getpid())
-        fd = None
-        try:
-            try:
-                os.unlink(tmp)
-            except FileNotFoundError:
-                pass
-            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            if hasattr(os, "O_BINARY"):
-                flags |= os.O_BINARY
-            fd = os.open(tmp, flags, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                fd = None
-                json.dump(counts, fh)
-            os.replace(tmp, path)
-            try:
-                os.chmod(path, 0o600)
-            except OSError:
-                pass
-        finally:
-            if fd is not None:
-                try:
-                    os.close(fd)
-                except OSError:
-                    pass
+        _atomicio.write_json(path, counts)
     except Exception:
         pass
 

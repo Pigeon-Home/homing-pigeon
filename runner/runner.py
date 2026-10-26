@@ -141,6 +141,11 @@ _extreview = _load_mod("runner.guard.extreview", "guard.extreview")
 # the fifty-six documented defaults that motivated it.
 _confval = _load_mod("runner.guard.confval", "guard.confval")
 _defaulted = _load_mod("runner.guard.defaulted", "guard.defaulted")
+# The one atomic writer for state files (Agent-Chat-Stamp
+# 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f): runner/guard/atomicio.py.
+_atomicio = _load_mod("runner.guard.atomicio", "guard.atomicio")
+if _atomicio is None:
+    raise ImportError("runner/guard/atomicio.py is missing")
 if _textutil is None:
     raise ImportError("runner/guard/textutil.py is missing")
 _as_str = _textutil._as_str
@@ -197,7 +202,6 @@ def _append_security_event(base_dir: str, event: dict) -> None:
         line = (json.dumps(event, ensure_ascii=False) + "\n").encode("utf-8")
     except (TypeError, ValueError):
         return
-    tmp = None
     with _SECURITY_EVENTS_LOCK:
         try:
             flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
@@ -213,21 +217,9 @@ def _append_security_event(base_dir: str, event: dict) -> None:
                 lines = f.readlines()
             if len(lines) <= _SECURITY_EVENTS_MAX:
                 return
-            kept = "".join(lines[-_SECURITY_EVENTS_MAX:]).encode("utf-8")
-            tmp = path + ".tmp." + str(os.getpid()) + "." + str(
-                threading.get_ident())
-            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-            fd = _safe_open(tmp, flags, 0o600)
-            try:
-                os.write(fd, kept)
-            finally:
-                os.close(fd)
-            os.replace(tmp, path)
-            tmp = None
-            _chmod_quiet(path)
+            _atomicio.write_text(path, "".join(lines[-_SECURITY_EVENTS_MAX:]))
         except Exception:
-            if tmp:
-                _unlink_quiet(tmp)
+            pass
 
 def _note_resource_event(base_dir, event):
     """Record a resource event. A bad shape is ignored, not fatal.
@@ -1394,22 +1386,10 @@ def _write_json(path, obj):
     """
     if not isinstance(path, str) or not path:
         return
-    tmp = f"{path}.tmp.{threading.get_ident()}"
-    fd = None
     try:
-        _unlink_quiet(tmp)
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        fd = _safe_open(tmp, flags, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            fd = None
-            json.dump(_json_safe(obj), f, allow_nan=False)
-        os.replace(tmp, path)
-        _chmod_quiet(path)
+        _atomicio.write_json(path, _json_safe(obj), allow_nan=False)
     except (OSError, TypeError, ValueError) as e:
         log(f"json not written to {path}: {e}", "WARN")
-        if fd is not None:
-            _close_quiet(fd)
-        _unlink_quiet(tmp)
 
 def _query_limit(cfg):
     """Queries allowed per hour. 0 means unlimited.
@@ -1562,10 +1542,7 @@ def save_sent_result(base_dir, skey, job, subject, body, to=None):
     path = _sent_path(base_dir, skey)
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(rec, f)
-        os.replace(tmp, path)
+        _atomicio.write_json(path, rec)
         return True
     except Exception as e:
         log(f"sent-result record failed for {rec['job_id']}: {e}", "WARN")
@@ -1650,23 +1627,11 @@ def save_retained(base_dir, job_id, payload):
         except OSError:
             return
         path = os.path.join(d, f"{job_id}.json")
-        tmp = path + ".tmp." + str(threading.get_ident())
-        fd = None
         try:
-            _unlink_quiet(tmp)
-            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-            fd = _safe_open(tmp, flags, 0o600)
             safe = _json_safe(payload) if isinstance(payload, dict) else {}
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                fd = None
-                json.dump(safe, f, allow_nan=False)
-            os.replace(tmp, path)
-            _chmod_quiet(path)
+            _atomicio.write_json(path, safe, allow_nan=False)
         except (TypeError, ValueError, OSError) as e:
             log(f"retained not saved for {job_id}: {e}", "WARN")
-            if fd is not None:
-                _close_quiet(fd)
-            _unlink_quiet(tmp)
 
 def load_retained(base_dir, job_id):
     """Load retained/<job_id>.json. Unsafe or missing ids return None."""
@@ -3851,20 +3816,10 @@ def _write_seen_unlocked(path, seen):
         if "\x00" in text:
             continue
         keys.append(text)
-    tmp = path + ".tmp." + str(threading.get_ident())
-    fd = None
     try:
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        fd = _safe_open(tmp, flags, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fd = None
-            json.dump(keys, fh)
-        os.replace(tmp, path)
-        _chmod_quiet(path)
+        _atomicio.write_json(path, keys)
     except (OSError, TypeError, ValueError):
-        if fd is not None:
-            _close_quiet(fd)
-        _unlink_quiet(tmp)
+        pass
 
 
 def _disk_release(base_dir, skey):

@@ -11,6 +11,22 @@ import tempfile
 import unittest
 from unittest import mock
 
+from runner.guard import atomicio as _atomicio
+
+# The atomic writer (runner/guard/atomicio.py) picks a random temp
+# name; these tests plant symlinks at the exact name, so the name is
+# pinned for the module (Agent-Chat-Stamp
+# 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f).
+_PIN = mock.patch.object(_atomicio, "_temp_name", lambda p: p + ".tmp.pinned")
+
+
+def setUpModule():
+    _PIN.start()
+
+
+def tearDownModule():
+    _PIN.stop()
+
 from runner.guard.security import (
     COUNTS_FILE, bump_evaluated, write_audit_entry)
 
@@ -20,7 +36,7 @@ def _mode(path):
 
 
 def _counts_tmp(base):
-    return os.path.join(base, COUNTS_FILE + ".tmp." + str(os.getpid()))
+    return os.path.join(base, COUNTS_FILE + ".tmp.pinned")
 
 
 import sys
@@ -39,7 +55,7 @@ class AuditFileTest(unittest.TestCase):
 
             def spy(path, flags, *args, **kwargs):
                 if str(path).endswith(("security-audit.jsonl",
-                                       COUNTS_FILE + ".tmp." + str(os.getpid()))):
+                                       COUNTS_FILE + ".tmp.pinned")):
                     seen.append((os.path.basename(str(path)), flags))
                 return real_open(path, flags, *args, **kwargs)
 

@@ -27,7 +27,6 @@ import json
 import os
 import secrets
 import sys
-import threading
 import time
 import urllib.error
 import urllib.parse
@@ -36,6 +35,10 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
+try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:  # running from inside runner/ as __main__
+    from guard import atomicio as _atomicio  # type: ignore
 try:
     from runner._version import __version__
 except ImportError:  # running from inside runner/ as __main__
@@ -314,39 +317,7 @@ def store_refresh_token(path, cfg, refresh):
     parent = os.path.dirname(os.path.abspath(path))
     if parent:
         os.makedirs(parent, exist_ok=True)
-    tmp = path + ".tmp." + str(threading.get_ident())
-    fd = None
-    try:
-        try:
-            os.unlink(tmp)
-        except FileNotFoundError:
-            pass
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        if hasattr(os, "O_BINARY"):
-            flags |= os.O_BINARY
-        fd = os.open(tmp, flags, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fd = None
-            json.dump(saved, fh, indent=2)
-            fh.write("\n")
-        os.replace(tmp, path)
-        try:
-            os.chmod(path, 0o600)
-        except OSError:
-            pass
-    except Exception:
-        if fd is not None:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+    _atomicio.write_json(path, saved, indent=2, newline=True)
     return saved
 
 

@@ -46,6 +46,12 @@
   `.py`, no symlinks or bidi control characters, nothing naming the
   runner's state); `enforce` refuses a contradiction like a bad
   manifest (`docs/extend/extensions.md`, "The review").
+- `runner/guard/atomicio.py` — the one way a state file is replaced:
+  a temp name opened `O_EXCL | O_NOFOLLOW`, the bytes written (and
+  fsynced where the record is evidence, as the quarantine markers
+  are), `os.replace`, mode 0600. Every state writer in the core goes
+  through it; `runner/tests/test_atomicio.py` kills a writer
+  mid-write and scans the tree for a second copy.
 - `runner/ops/extsources.py` — extension sources: the first time an
   extension runs, its own code and the upstream sources and specs
   its `sources.json` declares reach the Oracle — fetched in the

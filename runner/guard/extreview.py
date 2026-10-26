@@ -77,6 +77,11 @@ import sys
 import threading
 from datetime import datetime, timezone
 
+try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:
+    from guard import atomicio as _atomicio  # type: ignore
+
 CONFIG_KEY = "extension_review"
 MODES = ("off", "advisory", "enforce")
 DEFAULT_MODE = "enforce"
@@ -688,16 +693,10 @@ def _record(base_dir, kind, full):
         data["mode"] = full.get("mode")
         data["reviewed_at"] = _now_iso()
         data[f"{kind}s"] = full.get("extensions", {})
-        tmp = path + ".tmp"
         try:
-            with open(tmp, "w", encoding="utf-8") as fh:
-                json.dump(data, fh, indent=2, sort_keys=True)
-            os.replace(tmp, path)
+            _atomicio.write_json(path, data, indent=2, sort_keys=True)
         except OSError:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
+            pass
 
 
 def last_report(base_dir, kind):
