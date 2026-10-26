@@ -43,7 +43,11 @@ class InventoryTest(unittest.TestCase):
         rec = inv.place(machine(tenant="alice"), "alice")
         self.assertEqual(rec["tenant"], "alice")
         inv.save()
-        self.assertEqual(oct(os.stat(self.path).st_mode & 0o777), "0o600")
+        if os.name == "posix":
+            # Windows has no owner-only mode to read back (the first
+            # Windows build after this module landed failed here).
+            self.assertEqual(oct(os.stat(self.path).st_mode & 0o777),
+                             "0o600")
         again = inventory.Inventory(self.path)
         self.assertEqual(again.machines["fly:m1"]["tenant"], "alice")
         self.assertEqual(again.resident_for("alice")[0]["id"], "m1")
