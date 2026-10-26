@@ -4027,3 +4027,20 @@ when done, the proving commit or run. Newest first.
   here, one per the recipe, resuming
   whenever a measure or a pass frees
   the box.
+- blueMonday 2: 157 entries, 651 arcs, 0 crashes
+  filed. The deep grow (seed 6202, 50,000
+  rounds, --jobs 2) was killed by a VM
+  restart at about 13:39 PDT, so it has
+  no resources line; the targets it
+  finished wrote their keeps and run
+  records before the kill and they are
+  committed here (local +1 entry), with
+  the seed step's nested-sig pair merged
+  into wire and cloud (+2 each). Pass
+  2's first launch died in 3s on this
+  seat's uncommitted tree (its pull
+  refused the dirty tool file); it is
+  relaunched on this commit. From here
+  the grow runs in the recipe's cycling
+  shape: --rounds 20000 --minutes <until
+  the next measure or pass>.

@@ -537,6 +537,10 @@ def _payload_seeds():
         ("unicode", _job(title="café — 中文 \U0001f426")),
         ("escapes", _job(note="a\"quote\\slash\nnewline\ttab")),
         ("nested", _job(detail={"a": [1, 2.5, None, True, {"b": []}]})),
+        ("nested_sig", _job(detail={"v": 1, "key_id": "ops",
+                                    "sig": "0" * 96})),
+        ("nested_sig_outer_ops",
+         _job(key_id="ops", detail={"v": 1, "sig": "f" * 96})),
         ("empty", {}),
         ("big_int", _job(size=2 ** 63)),
     ]
