@@ -4,6 +4,22 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.7 - 2026-10-26
+
+- **The tree-kill fixture brings its child up before it writes the
+  loot.** `test-macos` kept failing on
+  `test_tree_kill_takes_the_child_too` because the tripwire kill
+  could land before the second interpreter existed; the script now
+  spawns the child, waits for its pid file (written whole, by
+  rename), then writes the loot, so the test measures the kill and
+  not the race (`runner/tests/test_remediation_e2e.py`).
+- **Claims audit, two passes.** Undocumented knobs and flags named
+  in the docs, an overclaimed platform list trimmed, the ops layout
+  and the line-reduction runbook's repaired rules current, the hosted
+  queue counted as the fifth shipped transport everywhere
+  (`docs/`, by a sibling chat).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.6 - 2026-10-26
 
 - **The isolation sweep names its vector on every check**, one line
