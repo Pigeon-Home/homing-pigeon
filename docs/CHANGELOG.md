@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.17 - 2026-10-26
+
+- **The next car, with nothing new aboard.** Opened on the release
+  cadence as 3.13.16 published; the tree is 3.13.16's.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.16 - 2026-10-26
 
 - **No first names in the tree.** A first name dropped from test
@@ -16,6 +22,10 @@ facts a reader may need to cite. Git history carries the rest.
   `docs/archive/RESEARCHER_IDENT.md`, the rule is AGENTS.md rule 10,
   and `runner/tests/test_agent_stamps.py` holds the record to the tree.
   <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+- **The nightly upstream-pins bump signs as its owner.**
+  `.github/workflows/upstream-pins.yml` stamps its commits `60000b3a`
+  (sibling chat). This tag was cut from that commit, not from the
+  rev: a tag cannot carry a workflow tree that differs from main's.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.15 - 2026-10-26
