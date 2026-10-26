@@ -5623,18 +5623,20 @@ def _read_posture_line(path):
         return None
     return None
 
-def _firewall_watch(base_dir):
+def _posture_watch(base_dir, posture, fname, sensor, attack_id, calm):
     """Posture line, plus whether it changed since the last look.
 
     The snapshot is the one line, not the ruleset. Unreadable returns
-    None and does not overwrite a previous reading. Never raises.
+    None and does not overwrite a previous reading. A baseline is not
+    an alert; a change files one, `high` when the line carries the
+    sensor's ATT&CK id, else `calm`. Never raises.
     """
-    line = _firewall_posture()
+    line = posture()
     if not isinstance(line, str) or not line:
         return None
     if not _valid_base(base_dir):
         return line
-    path = os.path.join(base_dir, "oracle-firewall.json")
+    path = os.path.join(base_dir, fname)
     prev = _read_posture_line(path)
     try:
         _write_json(path, {"line": line, "saved_at": time.time()})
@@ -5643,12 +5645,16 @@ def _firewall_watch(base_dir):
     if prev is None:
         return line + " (baseline recorded just now)"
     if prev != line:
-        attack = "T1562.004" if "T1562.004" in line else ""
-        _file_watch_alert(
-            base_dir, "firewall", "high" if attack else "medium",
-            line, attack)
+        attack = attack_id if attack_id in line else ""
+        _file_watch_alert(base_dir, sensor, "high" if attack else calm,
+                          line, attack)
         return line + " (changed)"
     return line
+
+def _firewall_watch(base_dir):
+    """The firewall posture line, and whether it changed (T1562.004)."""
+    return _posture_watch(base_dir, _firewall_posture, "oracle-firewall.json",
+                          "firewall", "T1562.004", "medium")
 
 _CLAM_SIG_PATHS = (
     "/var/lib/clamav/daily.cvd",
@@ -5658,30 +5664,9 @@ _AV_STALE_SEC = 7 * 86400
 
 
 def _av_watch(base_dir):
-    """Posture line, plus whether it changed since the last look.
-
-    Unreadable returns None and does not overwrite a previous reading.
-    A baseline is not an alert. Never raises.
-    """
-    line = _av_posture()
-    if not isinstance(line, str) or not line:
-        return None
-    if not _valid_base(base_dir):
-        return line
-    path = os.path.join(base_dir, "oracle-av.json")
-    prev = _read_posture_line(path)
-    try:
-        _write_json(path, {"line": line, "saved_at": time.time()})
-    except Exception:
-        pass
-    if prev is None:
-        return line + " (baseline recorded just now)"
-    if prev != line:
-        attack = "T1562.001" if "T1562.001" in line else ""
-        _file_watch_alert(
-            base_dir, "av", "high" if attack else "info", line, attack)
-        return line + " (changed)"
-    return line
+    """The antivirus posture line, and whether it changed (T1562.001)."""
+    return _posture_watch(base_dir, _av_posture, "oracle-av.json",
+                          "av", "T1562.001", "info")
 
 _ARTIFACT_MAX_FILES = 40
 _ARTIFACT_MAX_BYTES = 1048576
