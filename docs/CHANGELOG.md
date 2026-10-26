@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.11 - 2026-10-26
+
+- **The next car, with nothing new aboard.** Opened on the release
+  cadence as 3.13.10 published; the tree is 3.13.10's.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.10 - 2026-10-26
 
 - **Project Platinum opens.** Coverage-guided fuzzing on the idle rig
@@ -15,6 +21,14 @@ facts a reader may need to cite. Git history carries the rest.
   examples a property test without its own `max_examples` runs. The
   hosting entry point, the real HTTP client and the hosting edges
   gained their tests (sibling chat).
+- **The queue Worker lives in `runner/cloud/queues-worker/`.** Out of
+  the root, with its own tests run in CI
+  (`.github/workflows/queues-worker.yml`); the mutation-seeded
+  workflow runs hourly, one walk at a time (sibling chats).
+- **The hosting-edges vanished-temp leg runs on Windows.** Its fake
+  writer closes the ledger's temp handle before it unlinks the file,
+  which Windows refuses while open
+  (`runner/tests/test_hosting_edges.py`).
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.9 - 2026-10-26
