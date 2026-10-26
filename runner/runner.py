@@ -1382,6 +1382,16 @@ def _write_json(path, obj):
     except (OSError, TypeError, ValueError) as e:
         log(f"json not written to {path}: {e}", "WARN")
 
+def _read_json_dict(path):
+    """The dict a JSON file holds, or None: unreadable, malformed, or
+    not an object. Never raises."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
 def _query_limit(cfg):
     """Queries allowed per hour. 0 means unlimited.
 
@@ -1421,12 +1431,7 @@ def _read_query_store(path):
         return {}
     if not os.path.exists(path):
         return {}
-    try:
-        with open(path, encoding="utf-8") as f:
-            loaded = json.load(f)
-    except Exception:
-        return {}
-    return loaded if isinstance(loaded, dict) else {}
+    return _read_json_dict(path) or {}
 
 def check_rate_limit(key_id, cfg, path=None):
     """Return True if under max_queries_per_hour. Zero means unlimited.
@@ -1579,12 +1584,8 @@ def stash_result(base_dir, skey, job, subject, body, to=None,
         return False
 
 def _read_record(path):
-    try:
-        with open(path, encoding="utf-8") as f:
-            rec = json.load(f)
-    except Exception:
-        return None
-    if not isinstance(rec, dict) or not isinstance(rec.get("body"), str) \
+    rec = _read_json_dict(path)
+    if rec is None or not isinstance(rec.get("body"), str) \
             or not isinstance(rec.get("subject"), str):
         return None
     return rec
@@ -2193,13 +2194,7 @@ def load_retained(base_dir, job_id):
     with _RETAINED_LOCK:
         if not os.path.isfile(path):
             return None
-        try:
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception:
-            return None
-    if not isinstance(data, dict):
-        return None
+        data = _read_json_dict(path)
     return data
 
 def retained_expired(data, cfg):
@@ -5115,6 +5110,19 @@ _JOB_FINISHED = re.compile(r"job (\S+) process finished exit=")
 _STDOUT_PREVIEW = re.compile(r"stdout='.*'$")
 _FULL_OUTPUT_HEAD = re.compile(r"job (\S+) \(kind=.*\) full output:$")
 
+
+def _flagged_retained(base_dir, limit):
+    """(job_id, record) for the newest retained jobs whose script names
+    a protected path: the records both withholding channels read.
+    Unreadable or shapeless records are skipped."""
+    for _mtime, path, job_id in _chosen_retained_rows(base_dir, limit):
+        data = _read_json_dict(path)
+        if data is None:
+            continue
+        script = data.get("script") if isinstance(
+            data.get("script"), str) else ""
+        if script.strip() and _script_path_findings(script, base_dir, job_id):
+            yield job_id, data
 def _flagged_job_ids(base_dir):
     """Job ids whose retained records carry script-path findings.
 
@@ -5127,19 +5135,8 @@ def _flagged_job_ids(base_dir):
     # The tail window is the last 30 lines; a job whose logged
     # output can sit in it is among the newest retained records
     # by a wide margin. 25 is that margin.
-    for _mtime, path, job_id in _chosen_retained_rows(base_dir, 25):
-        try:
-            with open(path, encoding="utf-8") as fh:
-                data = json.load(fh)
-        except Exception:
-            continue
-        if not isinstance(data, dict):
-            continue
-        script = data.get("script") if isinstance(
-            data.get("script"), str) else ""
-        if script.strip() and _script_path_findings(
-                script, base_dir, job_id):
-            ids.add(job_id)
+    for job_id, _data in _flagged_retained(base_dir, 25):
+        ids.add(job_id)
     return ids
 
 _watch = _required_load_mod("runner.ops.watch", "ops.watch")
@@ -5594,13 +5591,9 @@ def _read_posture_line(path):
     """Previous posture line, or None. A symlink is not followed."""
     if os.path.islink(path):
         return None
-    try:
-        with open(path, encoding="utf-8") as fh:
-            old = json.load(fh)
-        if isinstance(old, dict) and isinstance(old.get("line"), str):
-            return old["line"]
-    except Exception:
-        return None
+    old = _read_json_dict(path)
+    if old is not None and isinstance(old.get("line"), str):
+        return old["line"]
     return None
 
 def _posture_watch(base_dir, posture, fname, sensor, attack_id, calm):
@@ -5906,20 +5899,7 @@ def _withheld_scan_text(base_dir, limit=6) -> str:
     defense, and it stands.
     """
     blobs = []
-    for _mtime, path, job_id in _chosen_retained_rows(base_dir, limit):
-        try:
-            with open(path, encoding="utf-8") as fh:
-                data = json.load(fh)
-        except Exception:
-            continue
-        if not isinstance(data, dict):
-            continue
-        script = data.get("script") if isinstance(
-            data.get("script"), str) else ""
-        if not script.strip():
-            continue
-        if not _script_path_findings(script, base_dir, job_id):
-            continue
+    for job_id, data in _flagged_retained(base_dir, limit):
         text = _output_blob(data).strip()
         if text:
             blobs.append(text[:8000])
