@@ -332,11 +332,12 @@ class PortWatchMainTest(unittest.TestCase):
 class SkyWatcherSunTest(unittest.TestCase):
     """Cycle 5 target, logic class:
     `extensions/sky-watcher/sky_watcher.py:
-    sun_elevation_deg` (231) -- the hour-angle wrap: far
-    enough west (or east) at the right hour, the true solar
-    time pushes the hour angle past -180 and it wraps by
-    +360. Whatever the inputs, the elevation is a finite
-    angle in [-90, 90].
+    sun_elevation_deg` -- whatever the inputs, the
+    elevation is a finite angle in [-90, 90]. (The
+    hour-angle wrap at line 231 did not fire at any input:
+    the modulo above it bounds the angle to [-180, 180),
+    so the wrap is recorded dead by construction in cycle
+    6's ledger; the contract is what is pinned here.)
     """
 
     def _load(self):
@@ -404,11 +405,14 @@ class JobFuzzBlankLineTest(unittest.TestCase):
 class EmailSubjectBodyTest(unittest.TestCase):
     """Cycle 5 target, guard class:
     `transport_extensions/email/__main__.py:_subject_body`
-    (61) -- a body in a transfer encoding the mail library
-    cannot decode does not decode to bytes; the body falls
-    back to the raw payload text, where a plain message
-    decodes directly. (A multipart is walked for its text
-    part earlier in the function.)
+    -- a body in a transfer encoding the mail library
+    cannot decode comes back as its raw text, and a plain
+    message decodes directly. (A multipart is walked for
+    its text part earlier in the function. The trailing
+    fallback at line 61 did not fire for any shape tried:
+    the library's decode falls back to the raw bytes
+    itself, so the belt under it is recorded dead by
+    construction in cycle 6's ledger.)
     """
 
     def _load(self):
@@ -427,11 +431,11 @@ class EmailSubjectBodyTest(unittest.TestCase):
         import email
         em = self._load()
         raw = (b"Subject: odd encoding\n"
-               b"Content-Transfer-Encoding: x-weird\n"
+               b"Content-Transfer-Encoding: base64\n"
                b"\n"
-               b"the raw body\n")
+               b"!!! not base64 !!!\n")
         self.assertEqual(em._subject_body(raw),
-                         ("odd encoding", "the raw body\n"))
+                         ("odd encoding", "!!! not base64 !!!"))
         plain = email.message_from_bytes(
             b"Subject: one\n\nhello body\n")
         self.assertEqual(em._subject_body(plain.as_bytes()),

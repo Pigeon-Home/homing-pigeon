@@ -176,5 +176,88 @@ class MainPassTest(unittest.TestCase):
                 ConnectionError("the queue is down"))), 0)
 
 
+class _PipeClient:
+    """The queue client as QueuePipe sees it: scripted
+    pulls, recorded posts and acks."""
+
+    def __init__(self, pulls=()):
+        self.pulls = list(pulls)
+        self.posted = []
+        self.acked = []
+
+    def pull(self, max_jobs):
+        return list(self.pulls)
+
+    def post_result(self, text):
+        self.posted.append(text)
+
+    def ack(self, ident):
+        self.acked.append(ident)
+
+
+def _load_pipe():
+    import importlib.util
+    here = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(
+        here, "..", "transport_extensions", "queues",
+        "__main__.py")
+    spec = importlib.util.spec_from_file_location(
+        "queues_pipe_platinum", os.path.normpath(path))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class QueuePipeTest(unittest.TestCase):
+    """Cycle 6 targets, guard class:
+    `transport_extensions/queues/__main__.py` -- pull_jobs
+    (168) steps over a queue id this process has already
+    seen, delivering nothing twice; push_results (189)
+    gives a posted envelope its final newline when the
+    stashed body does not end with one.
+    """
+
+    def test_a_seen_id_is_not_delivered_twice(self):
+        import tempfile
+        mod = _load_pipe()
+        td = tempfile.mkdtemp(prefix="hp-plat-pipe-")
+        try:
+            client = _PipeClient(pulls=[("q1", "job text")])
+            pipe = mod.QueuePipe({}, td, client)
+            pipe._seen.add("q1")
+            pipe.pull_jobs()
+            inbox = os.path.join(td, "inbox")
+            landed = [n for n in os.listdir(inbox)
+                      if n.endswith(".job.txt")] \
+                if os.path.isdir(inbox) else []
+            self.assertEqual(landed, [])
+        finally:
+            import shutil
+            shutil.rmtree(td, ignore_errors=True)
+
+    def test_a_result_without_a_final_newline_gets_one(self):
+        import tempfile
+        mod = _load_pipe()
+        from runner.transport_extensions import channel as ch
+        td = tempfile.mkdtemp(prefix="hp-plat-pipe-")
+        try:
+            dirs = ch.dirs(td)
+            body = "the result body"
+            with open(os.path.join(dirs["outbox"], "q1.result.txt"),
+                      "w", encoding="utf-8") as fh:
+                fh.write(ch.envelope("result q1", body))
+            client = _PipeClient()
+            pipe = mod.QueuePipe({}, td, client)
+            pipe._pending["q1"] = "job-1"
+            pipe.push_results()
+            self.assertEqual(
+                client.posted,
+                [ch.envelope("result q1", body) + "\n"])
+            self.assertEqual(client.acked, ["q1"])
+        finally:
+            import shutil
+            shutil.rmtree(td, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()

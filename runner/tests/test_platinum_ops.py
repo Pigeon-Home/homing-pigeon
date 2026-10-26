@@ -277,13 +277,16 @@ class OpsMainMissingCliTest(unittest.TestCase):
 
 class SmallGuardsTest(unittest.TestCase):
     """Cycle 5 targets, guard class, one refusal each:
-    `ops/extsources.py:_clean_rel_path` (289) -- a value
-    with no usable segment names no path; `ops/
-    install.py:_load_by_path` (40) -- a file no loader
-    claims is an ImportError; `ops/oracle_page.py:_text`
-    (9) -- a non-string reads as empty text on the status
-    page; `oracle/remediation.py:_ps_available` (499) --
-    the ps probe answers for this machine.
+    `ops/extsources.py:_clean_rel_path` -- a value with
+    an unusable segment is refused (its "names no path"
+    arm at 289 never fires: a split always yields a
+    segment for the loop to refuse; recorded in cycle
+    6's ledger); `ops/install.py:_load_by_path` (40) --
+    a file no loader claims is an ImportError; `ops/
+    oracle_page.py:_text` (9) -- a non-string reads as
+    empty text on the status page; `oracle/
+    remediation.py:_ps_available` (499) -- the ps probe
+    answers for this machine.
     """
 
     def test_a_path_with_no_segments_is_refused(self):
@@ -352,6 +355,44 @@ class ExecuteJobShapesTest(unittest.TestCase):
             self.assertEqual(result["exit_code"], 0)
             self.assertIn("remediated", result["stdout"])
             self.assertNotIn("remediation", result)
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+
+class AnswerQueriesSignalsTest(unittest.TestCase):
+    """Cycle 6 target, guard class: `ops/queries.py:
+    answer_queries` (378) -- the declared-signals context
+    for a senses answer steps over a manifest signal that
+    is not an object; the well-formed signals are declared
+    with their descriptions, so the reader is never handed
+    a signal nobody defined -- or one that is not a signal
+    at all.
+    """
+
+    def test_a_non_object_signal_is_not_declared(self):
+        import runner.runner as R
+        from runner.oracle import senses
+        from runner.ops import queries as ops_queries
+        td = tempfile.mkdtemp(prefix="hp-plat-queries-")
+        try:
+            senses.store_alert(td, {
+                "sensor": "svc", "severity": "high",
+                "title": "svc heating", "signal": "heating",
+                "observed_at": 100, "received_at": 100})
+            registry = {"svc": {"signals": [
+                "junk",
+                {"name": "heating", "description": "it is hot"}]}}
+            with mock.patch.object(
+                    R, "_extension_registry",
+                    return_value=registry):
+                answers, _spent = ops_queries.answer_queries(
+                    [{"op": "senses", "sensor": "svc"}],
+                    {"stdout": "", "stderr": "", "exit_code": 0},
+                    [], 10, cfg={}, base_dir=td)
+            declared = answers[0]["declared_signals"]["svc"]
+            self.assertEqual(
+                declared["signals"],
+                [{"name": "heating", "description": "it is hot"}])
         finally:
             shutil.rmtree(td, ignore_errors=True)
 

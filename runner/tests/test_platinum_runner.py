@@ -673,9 +673,11 @@ class CoercionSeamsTest(unittest.TestCase):
     loader's answers are never trusted for their type --
     `_load_reviewed_extensions` (3196) coerces a non-list
     problems to [], `_report_extensions` (3231) coerces a
-    non-dict registry to {}, and `save_seen`'s merge (4570)
-    coerces a non-dict seen file on disk to {} before the
-    in-memory keys are folded in.
+    non-dict registry to {}, and a seen file on disk that
+    is not an object is rebuilt around the in-memory keys
+    (the coercion sits at the _with_seen_file call site;
+    merge's own belt at 4570 never receives a non-dict and
+    is recorded dead by construction in cycle 6's ledger).
     """
 
     def test_problems_that_are_not_a_list_become_empty(self):
@@ -778,8 +780,10 @@ class GuardSinglesTest(unittest.TestCase):
         self.assertEqual(digest, hashlib.sha384(raw).hexdigest())
 
     def test_resend_stashed_on_an_unusable_base(self):
-        counts = R.resend_stashed(
-            "/nonexistent-base-dir", {}, sender=None)
+        counts = R.resend_stashed("", {}, sender=None)
+        self.assertEqual(counts, {"attempted": 0, "delivered": 0,
+                                  "failed": 0, "waiting": 0})
+        counts = R.resend_stashed(None, {}, sender=None)
         self.assertEqual(counts, {"attempted": 0, "delivered": 0,
                                   "failed": 0, "waiting": 0})
 
@@ -840,8 +844,9 @@ class RecordPayloadTest(unittest.TestCase):
             job_id="j-env", key_id="gone",
             sign=wire_verify.sign_payload)
         rec = {"body": body, "key_id": "gone", "job_id": "j-env"}
-        self.assertIsNone(R._record_payload(rec, {}))
-        got = R._record_payload(rec, {"gone": TESTKEY})
+        self.assertIsNone(R._record_payload(rec, {"": TESTKEY}))
+        got = R._record_payload(
+            rec, {"": TESTKEY, "gone": TESTKEY})
         self.assertEqual(got["job_id"], "j-env")
 
 
@@ -927,10 +932,13 @@ class FitResultBodyTest(unittest.TestCase):
 
 class InstructionKindTest(unittest.TestCase):
     """Cycle 5 target, guard class:
-    `runner._oracle_instruction_kind` (1330) -- a leading
-    clause that strips to no words (a bare courtesy) is
-    stepped over; the kind comes from the clause that
-    carries the verb.
+    `runner._oracle_instruction_kind` -- a bare courtesy
+    clause dispatches nothing; the kind comes from the
+    clause that carries the verb. (The second empty-words
+    return at line 1330 did not fire: the lead is rebuilt
+    from split words, so a stripped prefix always leaves
+    the following word; recorded dead by construction in
+    cycle 6's ledger.)
     """
 
     def test_a_bare_courtesy_clause_is_stepped_over(self):
@@ -941,15 +949,20 @@ class InstructionKindTest(unittest.TestCase):
 
 class InferenceReadyTest(unittest.TestCase):
     """Cycle 5 target, guard class:
-    `runner.ensure_inference_ready` (4988) -- an endpoint
-    with no host in it is not dialled and not an error:
-    the function simply returns.
+    `runner.ensure_inference_ready` -- an endpoint with
+    no host in it is not dialled and not an error: the
+    function simply returns. (The no-host return at line
+    4988 sits under inference_config, which refuses a
+    hostless endpoint first -- fail-closed -- so the belt
+    is recorded dead by construction in cycle 6's ledger;
+    the refusal itself is what is pinned here.)
     """
 
     def test_an_endpoint_without_a_host_is_left_alone(self):
         for cfg in ({"inference": {"endpoint": "/just/a/path"}},
                     {"inference": {"endpoint": "notaurl"}}):
             self.assertIsNone(R.ensure_inference_ready(cfg))
+            self.assertIsNone(R.inference_config(cfg))
 
 
 class RunInspectReviewTest(unittest.TestCase):

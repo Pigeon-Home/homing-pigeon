@@ -236,10 +236,12 @@ class BinaryFlagArmsTest(unittest.TestCase):
 
 class SampleTreePsTest(unittest.TestCase):
     """Cycle 5 target, logic class:
-    `oracle/remediation.py:sample_tree_ps` (555) -- a root
-    the ps table does not know at all still gets its
-    (0.0, None) sample entry, from the fallback after the
-    walk, not from a row.
+    `oracle/remediation.py:sample_tree_ps` -- a root the
+    ps table does not know at all still gets its
+    (0.0, None) sample entry. (The fallback at line 555
+    did not fire: tree_pids always walks the root itself,
+    so the entry always comes from the walk; the fallback
+    is recorded dead by construction in cycle 6's ledger.)
     """
 
     def test_an_unknown_root_samples_as_zero(self):
