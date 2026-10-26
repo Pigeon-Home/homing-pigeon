@@ -33,10 +33,31 @@ import zipfile
 from xml.sax.saxutils import escape
 
 
+def _load_by_path(path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("hp_atomicio", path)
+    if spec is None or spec.loader is None:
+        raise ImportError("%s not loadable" % path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def _import_atomicio():
-    """runner/guard/atomicio.py, whichever way this file is running:
-    the package (`runner.guard`), the install layout (`guard` beside
-    `ops`), or this script started by path from a source tree."""
+    """runner/guard/atomicio.py, whichever way this file is running.
+
+    The frozen installer first: it carries the file as data
+    (`--add-data runner/guard/atomicio.py`), because importing it as
+    `runner.guard.atomicio` would run `runner/__init__.py`, which
+    imports the whole runner -- more than the installer bundles.
+    Then the package (`runner.guard`), the install layout (`guard`
+    beside `ops`), and this script started by path from a source
+    tree.
+    """
+    frozen = getattr(sys, "_MEIPASS", None)
+    if frozen:
+        return _load_by_path(os.path.join(frozen, "pigeon-guard",
+                                          "atomicio.py"))
     try:
         from runner.guard import atomicio
         return atomicio
@@ -48,10 +69,7 @@ def _import_atomicio():
     except ImportError:
         pass
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if here not in sys.path:
-        sys.path.insert(0, here)
-    from guard import atomicio  # type: ignore
-    return atomicio
+    return _load_by_path(os.path.join(here, "guard", "atomicio.py"))
 
 
 _atomicio = _import_atomicio()

@@ -307,12 +307,9 @@ class Gaps(unittest.TestCase):
                                    return_value={"received_digest": "new"}):
                 rem.fix_marker_digest(d, "../evil", "other")
             self.assertEqual(rem.load_marker(d, "job-2")["received_digest"], "new")
-            real_open = open
-            def ro(path, mode="r", *a, **k):
-                if "w" in str(mode):
-                    raise OSError("ro")
-                return real_open(path, mode, *a, **k)
-            with mock.patch("builtins.open", ro):
+            # The rewrite is the atomic writer's own open (guard/atomicio).
+            with mock.patch.object(rem._atomicio, "_open_new",
+                                   side_effect=OSError("ro")):
                 rem.fix_marker_digest(d, "job-2", "newer")
             self.assertEqual(rem.load_marker(d, "job-2")["received_digest"], "new")
             w2 = os.path.join(d, "src", "jobb")
@@ -323,11 +320,13 @@ class Gaps(unittest.TestCase):
             w3 = os.path.join(d, "src", "jobc")
             os.makedirs(w3)
             open(os.path.join(w3, "z"), "w").write("q")
-            def wo(path, mode="r", *a, **k):
-                if str(path).endswith("remediation.json") and "w" in str(mode):
+            real_open_new = rem._atomicio._open_new
+
+            def wo(path, mode):
+                if ".tmp." in str(path) and "remediation.json" in str(path):
                     raise OSError("ro")
-                return real_open(path, mode, *a, **k)
-            with mock.patch("builtins.open", wo):
+                return real_open_new(path, mode)
+            with mock.patch.object(rem._atomicio, "_open_new", wo):
                 dest = rem.quarantine_job(d, "jobc", w3, {"authority": "t"})
             self.assertTrue(os.path.isdir(os.path.join(dest, "work")))
             self.assertIsNone(rem.load_marker(d, "jobc"))
@@ -335,11 +334,11 @@ class Gaps(unittest.TestCase):
             os.makedirs(os.path.join(rel, "work"))
             open(os.path.join(rel, "work", "f.txt"), "w").write("hi")
             open(os.path.join(rel, "extra"), "w").write("x")
-            def mo(path, mode="r", *a, **k):
-                if str(path).endswith("remediation-marker.json"):
+            def mo(path, mode):
+                if "remediation-marker.json" in str(path):
                     raise OSError("ro")
-                return real_open(path, mode, *a, **k)
-            with mock.patch("builtins.open", mo):
+                return real_open_new(path, mode)
+            with mock.patch.object(rem._atomicio, "_open_new", mo):
                 info = rem.release_quarantine(d, "rel")
             self.assertTrue(info["restored_to"].endswith(os.path.join("work", "rel")))
             self.assertTrue(os.path.exists(os.path.join(info["restored_to"], "f.txt")))
