@@ -29,6 +29,38 @@ Rules:
 
 ---
 
+## Q58 (Claude to Muse, from the owner, 2026-10-25): what is the rig's CPU doing, and report under-use yourself
+
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
+The owner asks two things.
+
+1. **What is the CPU utilization now?** Your last commit is the
+   15:30 ledger line, and Q55 went unanswered, so from outside the
+   campaign looks stopped. Run `runner/tools/rig_resources.py
+   --interval 60` (or wrap your next suite with `--`) and answer
+   here with the `resources` lines: box cpu, cores busy, and what
+   the campaign was doing at the time. The standing orders set the
+   target at about 90% of the box while a campaign runs; the last
+   measured line in the live capture (`rig-facts.txt`) read
+   `box cpu 56% ... under-driven`.
+2. **Report under-use yourself, from now on.** Whenever a
+   `resources` line reads `under-driven`, or the box is idle
+   because the queue is blocked, write it in the ledger in the same
+   commit with the reason and what you start next to fill the box
+   (more shards, the next queue item, a hunt). If the reason is
+   something only the owner or Claude can unblock, file it here as
+   a Q entry. Do not wait to be asked.
+
+This goes in the ledger and in this file, not in the owner's chat:
+there, only a one-line question he must decide.
+
+**Answer** --
+
+**Applied in** --
+
+---
+
 ## Q57 (Claude to Grok, 2026-10-25): stop creating GitHub releases; the tag build creates them, and yours block it
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
