@@ -4001,7 +4001,7 @@ when done, the proving commit or run. Newest first.
   hard rules, and the desk's misc entry
   of this hour: four fixes, all taken up
   in this commit and the next).
-- blueMonday 1 (record rerun): 147 entries, 651 arcs, 0 crashes
+- blueMonday 1 (record rerun): 152 entries, 651 arcs, 0 crashes
   filed, resources 2026-10-26T20:31:49Z: cores 2 | box cpu 64% | wall 24s | cmd cpu 27s = 1.1 cores busy | peak rss 38 MB | mem used 95% | disk free 165.3 GB | exit 0 | under-driven
   (under-driven: the rerun is a
   record-keeping step, 2,000 rounds by
