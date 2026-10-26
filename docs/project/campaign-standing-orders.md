@@ -391,7 +391,10 @@ survivors come after it.
 
 <!-- Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
-The hand-off, the targets and the fixed rules are Q62 in
+The plan is `docs/project/bluemonday.md` (the conductor's
+campaign, to run indefinitely: the surface, the contracts, the
+seeds and vocabulary, the roles, the saturation rule and the
+phases); the hand-off and the fixed rules are Q62 in
 `docs/use/questions.md`; the owner named the campaign on
 2026-10-26. The tool is `runner/tools/bluemonday_corpus.py`, the
 corpus is `runner/tests/bluemonday/<target>.jsonl` (the targets

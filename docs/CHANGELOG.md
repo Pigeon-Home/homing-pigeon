@@ -31,6 +31,14 @@ facts a reader may need to cite. Git history carries the rest.
   structural mutators (a header dropped, duplicated, folded or
   inserted, a boundary broken, a part truncated, the blank line
   moved). A first grow of 40,000 rounds found no crash.
+- **The blueMonday plan.** `docs/project/bluemonday.md`: the
+  campaign the conductor runs indefinitely, written down whole --
+  what it is for, the instrument, the surface with every reader of
+  outside bytes and its status, the contracts (refusal, round-trip,
+  differential, provenance, sequence), the seeds and vocabulary,
+  the roles, the cadence and records, saturation and what comes
+  after it, the phases, what perfection looks like, the hard rules.
+  Section M of the standing orders points at it.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.50 - 2026-10-26
