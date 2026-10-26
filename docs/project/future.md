@@ -37,8 +37,6 @@
   - E4 Signal and WhatsApp paging
   - E5 TLS inspection and a WAF
   - E6 Line-rate detection, a 24/7 ML pipeline, MCP
-- **F. Research: hardware**
-  - F2 A USB inference stick for the Pi
 Not built, and nothing else; the finished items' decisions are in
 `docs/archive/future-finished-2026-10-25.md`.
 
@@ -173,17 +171,3 @@ chat page (`--oracle`) and the CLI (`--oracle-cli`) exist.
 
 **E6. Line-rate network detection, a 24/7 ML pipeline, and adopting
 MCP.** `docs/project/industry-map.md`.
-
-## F. Research: hardware
-
-(F1, the accelerator Pi, folded into B7.)
-
-**F2. A USB inference stick for the Pi.** A plug-in accelerator that
-gives a Pi Light a small model, on any Pi from the Zero up, including
-USB 2 boards the M.2 kits ignore. Open questions: what USB 2 bandwidth
-allows, heat in a sealed dongle, an open model format rather than
-TF-Lite lock-in, the stick as a coprocessor and never a trust root, how
-many pre-Pi-5 boards are out there, and whether to sell the stick alone
-or with a signed model subscription. Possibly one fused device:
-accelerator plus camera, mic or IMU behind one signed protocol. If it
-reads real biosignals, medical-device rules apply. Nothing built.
