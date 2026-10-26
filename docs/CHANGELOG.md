@@ -4,6 +4,23 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.6 - 2026-10-26
+
+- **The isolation sweep names its vector on every check**, one line
+  per assertion, so a red `build-windows` leg reads from the run page
+  when the log host is out of reach. A record's writer temp
+  (`<record>.tmp.<pid>.<thread>.<hex>`, as `runner/guard/atomicio.py`
+  names it) and the canaries the local watch plants are the runner's
+  own, never counted as a job's escape; a name carrying the job's own
+  file name still counts first, whatever its shape
+  (`runner/tests/test_workspace_isolation.py`, `OutsideCheckTest`).
+- **A failed test's annotation carries its exception line.** The
+  parallel runner's `::error` for each FAIL/ERROR block now ends with
+  the block's last exception-shaped line (`AssertionError: 0 != -2`),
+  so the run page says why, not only which
+  (`runner/tools/run_tests_parallel.py`, `failure_reasons`).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.5 - 2026-10-25
 
 - **Hosting ships as a feature.** `docs/use/own-cloud.md` is the user's
