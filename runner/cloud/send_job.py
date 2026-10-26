@@ -181,18 +181,41 @@ def _extract_signed(norm: str):
 
 
 def _object_start(norm: str, sig_at: int) -> int:
-    """Index of the `{` that opens the object ending at the sig marker."""
-    j = 0
-    candidates = []
-    while True:
-        j = norm.find("{", j, sig_at)
-        if j < 0:
-            break
-        candidates.append(j)
-        j += 1
-    for start in reversed(candidates):
-        if _in_root_object_at(norm, start, sig_at):
+    """Index of the `{` that opens the object ending at the sig marker.
+
+    Every `{` before the marker is tried, newest first; the one taken
+    is the first whose text up to the marker is a whole root object
+    (the brace walk) and parses as a JSON object. A `{` inside a
+    string can pass the walk alone: a payload that nests an object
+    keyed `"{"` and later carries an escaped quote walks balanced
+    from the brace inside the key, and the brace walk alone returned
+    a span starting mid-payload, so a body the runner's signer
+    produced failed here as a signature mismatch (Q61, Project
+    Platinum cycle 2). The parse check is the same one
+    runner/wire/verify.py has carried since Q32: the two signers are
+    one signer in two homes (Q48), and this keeps the extraction in
+    step. A wrong candidate fails the parse before any HMAC is
+    computed; the HMAC still decides.
+    """
+    first_walk = None
+    for start in range(sig_at - 1, -1, -1):
+        if norm[start] != "{":
+            continue
+        if not _in_root_object_at(norm, start, sig_at):
+            continue
+        if first_walk is None:
+            first_walk = start
+        try:
+            candidate = json.loads(norm[start:sig_at] + "}")
+        except (ValueError, RecursionError):
+            continue
+        if isinstance(candidate, dict):
             return start
+    if first_walk is not None:
+        # Nothing parses: hand the newest whole-object candidate on,
+        # so the verifier names the real fault (invalid JSON, a
+        # signature mismatch) as it always did.
+        return first_walk
     raise ValueError("no JSON object before signature")
 
 

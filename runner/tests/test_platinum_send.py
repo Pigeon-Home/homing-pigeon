@@ -198,19 +198,17 @@ class PumpTickArmTest(unittest.TestCase):
 
 
 class TwoSignersProbe(unittest.TestCase):
-    """Q61: the cloud sender's verifier mis-segments a signed
+    """Q61: the cloud sender's verifier mis-segmented a signed
     body whose payload carries a `{` inside a nested string
-    key plus an escaped quote, and rejects a body the runner's
+    key plus an escaped quote, and rejected a body the runner's
     signer produced. Filed in `docs/use/questions.md` as Q61;
-    the fix is Claude's lane and its commit removes this
-    decorator. The suite's own witness is
+    the sender's opener search now parses each candidate, as
+    the runner's has since Q32. The suite's own witness is
     `test_parser_properties.WireProperties.
-    test_two_signers_agree`, which errors whenever hypothesis
-    draws this payload.
+    test_two_signers_agree`, which errored whenever hypothesis
+    drew this payload.
     """
 
-    # Q61
-    @unittest.expectedFailure
     def test_a_brace_in_a_nested_key_cross_verifies(self):
         payload = {"v": {"{": None}, "type": '"'}
         body = wire_verify.sign_payload(payload, TESTKEY)

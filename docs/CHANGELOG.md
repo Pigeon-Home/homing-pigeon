@@ -6,8 +6,18 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.29 - 2026-10-26
 
-**The next car, with nothing new aboard.** Opened on the release
-cadence as 3.13.28 published; the tree is 3.13.27's.
+- **The cloud sender's verifier takes the signed object the
+  runner's signer wrote, whatever braces its strings hold.**
+  `send_job.verify_body` found the object's opening `{` by the
+  brace walk alone, so a payload that nests an object keyed `"{"`
+  and later carries an escaped quote walked balanced from the brace
+  inside the key, the extracted span started mid-payload and a body
+  `verify.sign_payload` produced failed as a signature mismatch.
+  The opener search now parses each candidate, as the runner's
+  verifier has since Q32: the two signers are one signer in two
+  homes (Q61, Project Platinum cycle 2; the probe runs without its
+  decorator, and `test_two_signers_agree` no longer errors on that
+  payload).
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.28 - 2026-10-26
