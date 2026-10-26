@@ -85,6 +85,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_mail(self):
         self._check("mail")
 
+    def test_dtls(self):
+        self._check("dtls")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes
@@ -277,7 +280,8 @@ class ToolTest(unittest.TestCase):
         rng = random.Random(11)
         for target, seeds in (("wire", B.seeds_wire()),
                               ("crypto", B.seeds_crypto()),
-                              ("v2", B.seeds_v2())):
+                              ("v2", B.seeds_v2()),
+                              ("dtls", B.seeds_dtls())):
             for _ in range(150):
                 parent = rng.choice(seeds)
                 child = B.mutate(rng, parent, seeds, target)
@@ -300,7 +304,7 @@ class ToolTest(unittest.TestCase):
         # encrypt_body's nonce is drawn from a counter while seeding,
         # so a sealed seed's id is stable and `seed` adds nothing to
         # a corpus that already holds it.
-        for seeds in (B.seeds_crypto, B.seeds_stash):
+        for seeds in (B.seeds_crypto, B.seeds_stash, B.seeds_dtls):
             first = [e["id"] for e in seeds()]
             self.assertEqual(first, [e["id"] for e in seeds()])
             self.assertEqual(len(first), len(set(first)))
@@ -473,6 +477,46 @@ class ToolTest(unittest.TestCase):
         text = raw.decode("utf-8", "surrogateescape")
         line = json.dumps(text, ensure_ascii=True)
         self.assertEqual(B._raw_bytes(json.loads(line)), raw)
+
+    def test_the_dtls_checker_accepts_a_hello_and_refuses_a_short_one(self):
+        hello = [e for e in B.seeds_dtls()
+                 if e["from"] == "seed:client_hello"][0]
+        server = [e for e in B.seeds_dtls()
+                  if e["from"] == "seed:server_hello"][0]
+        empty = [e for e in B.seeds_dtls() if e["from"] == "seed:empty"][0]
+        overrun = [e for e in B.seeds_dtls()
+                   if e["from"] == "seed:length_overrun"][0]
+        self.assertEqual(B.check("dtls", hello), "accepted")
+        self.assertEqual(B.check("dtls", server), "accepted")
+        self.assertEqual(B.check("dtls", empty), "refused")
+        self.assertEqual(B.check("dtls", overrun), "refused")
+
+    def test_the_dtls_checker_catches_a_parser_that_raises(self):
+        hello = [e for e in B.seeds_dtls()
+                 if e["from"] == "seed:client_hello"][0]
+        with mock.patch.object(B.DT, "_split_records",
+                               side_effect=RuntimeError("split")):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("dtls", hello)
+        self.assertEqual(cm.exception.kind, "exception")
+        self.assertIn("RuntimeError", cm.exception.detail)
+
+    def test_the_dtls_checker_catches_feed_raising(self):
+        hello = [e for e in B.seeds_dtls()
+                 if e["from"] == "seed:client_hello"][0]
+        with mock.patch.object(B.DT.DtlsServerCore, "feed",
+                               side_effect=TypeError("feed")):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("dtls", hello)
+        self.assertEqual(cm.exception.kind, "exception")
+        self.assertIn("TypeError", cm.exception.detail)
+
+    def test_dtls_bytes_round_trip_through_the_corpus(self):
+        raw = bytes(range(256))
+        text = B._dtls_text(raw)
+        line = json.dumps(text, ensure_ascii=True)
+        self.assertEqual(B._raw_bytes(json.loads(line)), raw)
+        self.assertTrue(line.isascii())
 
     def test_saturation_reads_the_last_grow(self):
         tmp = tempfile.mkdtemp(prefix="hp-bluemonday-sat-")

@@ -31,6 +31,19 @@ facts a reader may need to cite. Git history carries the rest.
   structural mutators (a header dropped, duplicated, folded or
   inserted, a boundary broken, a part truncated, the blank line
   moved). A first grow of 40,000 rounds found no crash.
+- **blueMonday's eighth target: DTLS (Q66).** `dtls` holds one
+  datagram against `runner/wire/dtlsproto.py`: `_split_records`
+  and `_parse_handshake` never raise, a complete handshake
+  message is handed to the extension, hello, key-share and PSK
+  readers (which refuse with `DtlsError` or `JobCryptoError` and
+  nothing else), and `DtlsServerCore.feed` returns datagrams and
+  never raises. Seeds are a sealed flight built from the module's
+  constructors under invented keys (ClientHello with a key share
+  and a PSK, ServerHello, a sealed Finished), the two-fragment
+  pair, an empty datagram, and a plaintext record whose length
+  claims more than the datagram holds. The mutators are the
+  record's own, not the text set. A grow of 20,000 rounds found
+  no crash: 19 entries, 289 arcs.
 - **The blueMonday plan.** `docs/project/bluemonday.md`: the
   campaign the conductor runs indefinitely, written down whole --
   what it is for, the instrument, the surface with every reader of

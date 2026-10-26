@@ -26,6 +26,10 @@ delivered body and the agent's trust in it:
             runner/ops/mail.py           subject's job id; the email
             transport_extensions/email   extension's _subject_body and
             runner/wire/mailbox.py       reply_target (_valid_reply_to)
+    dtls    runner/wire/dtlsproto.py     _split_records, _parse_handshake,
+                                         _parse_extensions, the hello,
+                                         key-share and PSK readers,
+                                         DtlsServerCore.feed
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -94,6 +98,7 @@ from runner.wire import jobcrypto as JC  # noqa: E402
 from runner.wire import protocol_v2 as P2  # noqa: E402
 from runner.wire import transports as TR  # noqa: E402
 from runner.wire import verify as V  # noqa: E402
+from runner.wire import dtlsproto as DT  # noqa: E402
 from runner.wire import mailbox as MB  # noqa: E402
 import runner.runner as R  # noqa: E402
 
@@ -523,12 +528,20 @@ MAILBOX = "runner@example.com"
 
 
 def _email_extension():
-    """The email transport extension's readers, imported once."""
+    """The email transport extension's readers, imported once.
+
+    The extension's script header inserts its parents onto
+    sys.path so it can run as a program. The corpus is not that
+    program: the insertion is undone, or the next test in the
+    process inherits a path it did not set.
+    """
     global _EMAIL_EXT
     if _EMAIL_EXT is None:
         import importlib
+        before = list(sys.path)
         _EMAIL_EXT = importlib.import_module(
             "runner.transport_extensions.email.__main__")
+        sys.path[:] = before
     return _EMAIL_EXT
 
 
@@ -601,6 +614,119 @@ def check_mail(entry):
                     "is not inside the body")
     accepted = bool(_JOB_SUBJECT.search(subject)) and bool(body.strip()) \
         and bounce is None
+    return "accepted" if accepted else "refused"
+
+
+_DTLS_ALLOWED = (DT.DtlsError, JC.JobCryptoError)
+_DTLS_ADDR = ("192.0.2.1", 4430)   # TEST-NET-1, an invented peer
+_DTLS_NOW = 1_700_000_000.0
+_DTLS_IDENTITY = b"bm-psk-0001"
+
+
+def _dtls_text(data):
+    """A datagram as corpus text: every byte, including those that
+    are not UTF-8, rides as a surrogate escape."""
+    return bytes(data).decode("utf-8", "surrogateescape")
+
+
+def _only_dtls(fn, *args, what):
+    """Run one DTLS reader. DtlsError and JobCryptoError are the
+    refusal; anything else is a crash. The result is returned."""
+    got, exc = _call(fn, *args)
+    if exc is not None and not isinstance(exc, _DTLS_ALLOWED):
+        raise Crash("exception", f"{what} raised {type(exc).__name__}: "
+                    f"{_short(exc)}")
+    return got
+
+
+def _dtls_readers(body):
+    """The handshake readers on one body: extensions, both hellos,
+    the key-share and the PSK, and again on whatever a hello
+    actually carried. Each may refuse; none may raise anything else."""
+    _only_dtls(DT._parse_extensions, body, 0, what="_parse_extensions")
+    client = _only_dtls(DT._parse_client_hello, body,
+                        what="_parse_client_hello")
+    server = _only_dtls(DT._parse_server_hello, body,
+                        what="_parse_server_hello")
+    _only_dtls(DT._key_share_entry, body, False, what="_key_share_entry")
+    _only_dtls(DT._key_share_entry, body, True, what="_key_share_entry")
+    _only_dtls(DT._parse_psk_extension, body, what="_parse_psk_extension")
+    for fields in (client, server):
+        if not isinstance(fields, dict):
+            continue
+        exts = fields.get("exts") or {}
+        share = exts.get(DT.EXT_KEY_SHARE)
+        if share is not None:
+            _only_dtls(DT._key_share_entry, share, False,
+                       what="_key_share_entry")
+            _only_dtls(DT._key_share_entry, share, True,
+                       what="_key_share_entry")
+        psk = exts.get(DT.EXT_PRE_SHARED_KEY)
+        if psk is not None:
+            _only_dtls(DT._parse_psk_extension, psk,
+                       what="_parse_psk_extension")
+
+
+def _complete_handshake(parsed):
+    """A whole handshake message, not a fragment and not a short
+    buffer. _parse_handshake's complete form is four fields and
+    its fragment form starts with the string "fragment"."""
+    return (isinstance(parsed, tuple) and len(parsed) == 4
+            and parsed[0] != "fragment"
+            and isinstance(parsed[2], (bytes, bytearray)))
+
+
+def check_dtls(entry):
+    """dtls: one datagram (Q66). The splitter returns a list and
+    never raises; each record goes through the handshake parser,
+    which returns a parse or None and never raises; a complete
+    handshake message is then handed to the extension, hello,
+    key-share and PSK readers, which raise DtlsError or
+    JobCryptoError and nothing else. DtlsServerCore.feed takes
+    the datagram and returns datagrams, and never raises: the
+    core is built in memory, with an invented secret map and no
+    socket. Accepted when a complete handshake message parses,
+    refused otherwise."""
+    data = _raw_bytes(entry["data"])
+    records, exc = _call(DT._split_records, data)
+    if exc is not None:
+        raise Crash("exception", "_split_records raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if not isinstance(records, list):
+        raise Crash("shape", "_split_records returned "
+                    f"{type(records).__name__}")
+    accepted = False
+    for rec in records:
+        if not isinstance(rec, (bytes, bytearray)) or not rec:
+            raise Crash("shape", "a split record is empty or not bytes")
+        payloads = [bytes(rec)]
+        if DT._is_plaintext_record(rec) and len(rec) >= 13:
+            length = int.from_bytes(rec[11:13], "big")
+            payloads.append(bytes(rec[13:13 + length]))
+        for payload in payloads:
+            parsed, exc = _call(DT._parse_handshake, payload)
+            if exc is not None:
+                raise Crash("exception", "_parse_handshake raised "
+                            f"{type(exc).__name__}: {_short(exc)}")
+            if not _complete_handshake(parsed):
+                continue
+            accepted = True
+            _dtls_readers(bytes(parsed[2]))
+
+    def _feed():
+        core = DT.DtlsServerCore(
+            secrets_map={_DTLS_IDENTITY: "bm-secret-0001"},
+            rng=lambda n: b"\x5a" * n)
+        return core.feed(data, _DTLS_ADDR, _DTLS_NOW)
+
+    out, exc = _call(_feed)
+    if exc is not None:
+        raise Crash("exception", "DtlsServerCore.feed raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if (not isinstance(out, list)
+            or not all(isinstance(dg, (bytes, bytearray)) for dg in out)):
+        raise Crash("shape", "DtlsServerCore.feed returned "
+                    f"{type(out).__name__}")
     return "accepted" if accepted else "refused"
 
 
@@ -1001,6 +1127,95 @@ def seeds_mail():
     return [make_entry("text", t, "seed:" + n, "seed") for n, t in out]
 
 
+def _dtls_fragment(message, off, chunk):
+    """One handshake fragment of `message`, in the header shape
+    `_hs_message` writes: total length, then this piece's offset
+    and length."""
+    msg_type = message[0]
+    total = int.from_bytes(message[1:4], "big")
+    msg_seq = int.from_bytes(message[4:6], "big")
+    return (bytes([msg_type]) + total.to_bytes(3, "big")
+            + msg_seq.to_bytes(2, "big") + off.to_bytes(3, "big")
+            + len(chunk).to_bytes(3, "big") + chunk)
+
+
+def _dtls_flight():
+    """A sealed flight from the module's own constructors, under
+    invented keys: a ClientHello carrying a key share and a PSK
+    extension, a ServerHello, and a Finished sealed for epoch 2.
+    Returns the three datagrams."""
+    public = b"\x42" * 32
+    share = (DT.GROUP_X25519.to_bytes(2, "big")
+             + (32).to_bytes(2, "big") + public)
+    shares = len(share).to_bytes(2, "big") + share
+    # The reader's own parse is what the seed claims to be.
+    group, got = DT._key_share_entry(shares)
+    if (group, got) != (DT.GROUP_X25519, public):
+        raise RuntimeError("dtls seed key share did not parse back")
+    identity = _DTLS_IDENTITY
+    id_entry = (len(identity).to_bytes(2, "big") + identity
+                + (0).to_bytes(4, "big"))
+    psk = (len(id_entry).to_bytes(2, "big") + id_entry
+           + bytes([1 + DT.HASH_LEN]) + bytes([DT.HASH_LEN])
+           + b"\x11" * DT.HASH_LEN)
+    identities, binders = DT._parse_psk_extension(psk)
+    if identities != [identity] or len(binders) != 1:
+        raise RuntimeError("dtls seed PSK extension did not parse back")
+    extensions = DT._extensions_bytes([
+        (DT.EXT_KEY_SHARE, shares),
+        (DT.EXT_PSK_MODES, bytes([1, DT.PSK_MODE_DHE_KE])),
+        (DT.EXT_PRE_SHARED_KEY, psk),
+    ])
+    hello_body = (DT.LEGACY_VERSION.to_bytes(2, "big") + b"\x22" * 32
+                  + b"\x00" + b"\x00"
+                  + (2).to_bytes(2, "big")
+                  + DT.SUITE_AES256.to_bytes(2, "big")
+                  + b"\x01\x00" + extensions)
+    hello = DT._hs_message(DT.HS_CLIENT_HELLO, hello_body, 0)
+    server_share = (DT.GROUP_X25519.to_bytes(2, "big")
+                    + (32).to_bytes(2, "big") + b"\x43" * 32)
+    server_body = (DT.LEGACY_VERSION.to_bytes(2, "big") + b"\x44" * 32
+                   + b"\x00" + DT.SUITE_AES256.to_bytes(2, "big")
+                   + b"\x00" + DT._extensions_bytes([
+                       (DT.EXT_SUPPORTED_VERSIONS,
+                        DT.DTLS_1_3.to_bytes(2, "big")),
+                       (DT.EXT_KEY_SHARE, server_share),
+                       (DT.EXT_PRE_SHARED_KEY, (0).to_bytes(2, "big")),
+                   ]))
+    server = DT._hs_message(DT.HS_SERVER_HELLO, server_body, 0)
+    finished = DT._hs_message(DT.HS_FINISHED, b"\x66" * DT.HASH_LEN, 1)
+    sealer = DT._RecordSealer(b"\x55" * DT.HASH_LEN)
+    sealed = sealer.seal(2, DT.CT_HANDSHAKE, finished, cid=b"bm01")
+    client_dg = DT._plaintext_record(DT.CT_HANDSHAKE, 0, 0, hello)
+    server_dg = DT._plaintext_record(DT.CT_HANDSHAKE, 0, 1, server)
+    return hello, client_dg, server_dg, sealed
+
+
+def seeds_dtls():
+    """One datagram per entry (Q66): the flight's three datagrams,
+    the two-fragment pair of the ClientHello, an empty datagram,
+    and a plaintext record whose length field claims more bytes
+    than the datagram holds. Invented names and keys only."""
+    hello, client_dg, server_dg, sealed = _dtls_flight()
+    mid = len(hello[12:]) // 2
+    body = hello[12:]
+    frag_a = _dtls_fragment(hello, 0, body[:mid])
+    frag_b = _dtls_fragment(hello, mid, body[mid:])
+    overrun = bytearray(DT._plaintext_record(DT.CT_HANDSHAKE, 0, 2, b"bm"))
+    overrun[11:13] = (len(overrun) + 40).to_bytes(2, "big")
+    out = [
+        ("client_hello", client_dg),
+        ("server_hello", server_dg),
+        ("finished", sealed),
+        ("fragment_a", DT._plaintext_record(DT.CT_HANDSHAKE, 0, 3, frag_a)),
+        ("fragment_b", DT._plaintext_record(DT.CT_HANDSHAKE, 0, 4, frag_b)),
+        ("empty", b""),
+        ("length_overrun", bytes(overrun)),
+    ]
+    return [make_entry("text", _dtls_text(blob), "seed:" + name, "seed")
+            for name, blob in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -1248,6 +1463,158 @@ MAIL_MUTATORS = [m_drop_header, m_duplicate_header, m_insert_header,
                  m_fold_header, m_blank_line, t_truncate, t_duplicate,
                  t_splice, t_control, t_case, t_crlf]
 
+
+def d_flip_length(rng, text, corpus):
+    """Flip a length the record or the handshake message states:
+    the plaintext record's 13-byte header, or a handshake
+    message's length or fragment offset."""
+    data = bytearray(_raw_bytes(text))
+    if len(data) >= 13 and DT._is_plaintext_record(data):
+        cur = int.from_bytes(data[11:13], "big")
+        pick = rng.choice([0, 1, 0xFFFF, (cur + 1) & 0xFFFF,
+                           (cur - 1) & 0xFFFF, cur ^ 0x00FF])
+        data[11:13] = pick.to_bytes(2, "big")
+        return _dtls_text(data)
+    if len(data) >= 12:
+        if rng.random() < 0.5:
+            cur = int.from_bytes(data[1:4], "big")
+            pick = rng.choice([0, 1, 0xFFFFFF, (cur + 1) & 0xFFFFFF,
+                               (cur - 1) & 0xFFFFFF])
+            data[1:4] = pick.to_bytes(3, "big")
+        else:
+            cur = int.from_bytes(data[6:9], "big")
+            pick = rng.choice([0, 1, 0xFFFFFF, (cur + 8) & 0xFFFFFF])
+            data[6:9] = pick.to_bytes(3, "big")
+            frag = rng.choice([0, 1, min(len(data), 0xFFFFFF)])
+            data[9:12] = frag.to_bytes(3, "big")
+        return _dtls_text(data)
+    return text
+
+
+def d_truncate(rng, text, corpus):
+    """Cut a datagram in the middle of a record."""
+    data = _raw_bytes(text)
+    if len(data) < 2:
+        return text
+    return _dtls_text(data[:rng.randrange(1, len(data))])
+
+
+def d_overlap_fragments(rng, text, corpus):
+    """Two handshake fragments of one message whose ranges overlap,
+    each in its own plaintext record, one datagram."""
+    data = _raw_bytes(text)
+    body = data
+    if len(data) >= 13 and DT._is_plaintext_record(data):
+        length = int.from_bytes(data[11:13], "big")
+        body = data[13:13 + length] or data
+    if len(body) < 4:
+        body = (b"\x01" + (8).to_bytes(3, "big") + b"\x00\x07"
+                + b"abcdEFGH")
+    msg_type = body[0]
+    if len(body) >= 12:
+        stated = int.from_bytes(body[1:4], "big")
+        msg_seq = int.from_bytes(body[4:6], "big")
+        if stated and 12 + stated <= len(body):
+            real = body[12:12 + stated]
+        else:
+            real = body[12:] or body
+    else:
+        msg_seq = 1
+        real = body
+    if not real:
+        real = b"\x00"
+    total = len(real)
+    mid = rng.randint(1, total)
+    first = real[:min(total, mid + 1)]
+    off = max(0, mid - 1)
+
+    def frag(start, chunk):
+        return (bytes([msg_type]) + total.to_bytes(3, "big")
+                + msg_seq.to_bytes(2, "big") + start.to_bytes(3, "big")
+                + len(chunk).to_bytes(3, "big") + chunk)
+
+    blob = (DT._plaintext_record(DT.CT_HANDSHAKE, 0, 0, frag(0, first))
+            + DT._plaintext_record(DT.CT_HANDSHAKE, 0, 1,
+                                   frag(off, real[off:])))
+    out = _dtls_text(blob)
+    return out if out != text else text + _dtls_text(b"\x00")
+
+
+def d_wrap_seq(rng, text, corpus):
+    """Put a sequence number on the wrap: the plaintext record's
+    6-byte sequence, or the unified header's low sequence."""
+    data = bytearray(_raw_bytes(text))
+    if len(data) >= 13 and DT._is_plaintext_record(data):
+        data[5:11] = rng.choice([b"\xff" * 6,
+                                 b"\x00" * 4 + b"\xff\xff",
+                                 b"\xff\xff" + b"\x00" * 4])
+        return _dtls_text(data)
+    if data and data[0] & 0xE0 == 0x20:
+        pos = 1
+        if data[0] & 0x04 and pos < len(data):
+            pos += 1 + data[pos]
+        width = 2 if data[0] & 0x10 else 1
+        if pos + width <= len(data):
+            data[pos:pos + width] = b"\xff" * width
+            return _dtls_text(data)
+    wrapped = DT._plaintext_record(
+        DT.CT_HANDSHAKE, 0, 0xFFFFFFFFFFFF, data[:8] or b"\x00")
+    return _dtls_text(wrapped)
+
+
+def d_flip_unified_bits(rng, text, corpus):
+    """Flip one unified-header bit: C, S, L, or the epoch, and
+    force the unified-header marker so the byte is a record."""
+    data = bytearray(_raw_bytes(text))
+    bit = rng.choice([0x04, 0x10, 0x08, 0x01, 0x02])
+    if not data:
+        return _dtls_text(bytes([0x20 | bit]))
+    data[0] = ((data[0] ^ bit) & 0x1F) | 0x20
+    return _dtls_text(data)
+
+
+def d_duplicate_record(rng, text, corpus):
+    data = _raw_bytes(text)
+    if not data:
+        return text
+    records = DT._split_records(data) or [data]
+    return _dtls_text(data + rng.choice(records))
+
+
+def d_drop_record(rng, text, corpus):
+    data = _raw_bytes(text)
+    if not data:
+        return text
+    records = DT._split_records(data)
+    if len(records) >= 2:
+        del records[rng.randrange(len(records))]
+        return _dtls_text(b"".join(records))
+    return ""
+
+
+def d_splice_datagrams(rng, text, corpus):
+    others = [e["data"] for e in corpus if isinstance(e.get("data"), str)]
+    other = rng.choice(others) if others else text
+    out = text + other if rng.random() < 0.5 else other + text
+    return out if out != text else text + _dtls_text(b"\x01")
+
+
+def d_random_byte(rng, text, corpus):
+    data = bytearray(_raw_bytes(text))
+    if not data:
+        return _dtls_text(bytes([rng.randrange(256)]))
+    i = rng.randrange(len(data))
+    nxt = rng.randrange(256)
+    if nxt == data[i]:
+        nxt ^= 0x01
+    data[i] = nxt
+    return _dtls_text(data)
+
+
+DTLS_MUTATORS = [d_flip_length, d_truncate, d_overlap_fragments,
+                 d_wrap_seq, d_flip_unified_bits, d_duplicate_record,
+                 d_drop_record, d_splice_datagrams, d_random_byte]
+
 _VALUES = [None, True, False, 0, -1, 1, 2 ** 31, 2 ** 63, 2 ** 64, -2 ** 63,
            1.5, -0.0, 1e308, "", " ", "x", "0", "Z", "job", "sensor_alert",
            "proceed", "2026-10-26T12:00:00Z", "2026-10-26T12:00:00",
@@ -1434,7 +1801,13 @@ def mutate(rng, entry, corpus, target):
     """One child of an entry: (data, mutator name), or None when the
     mutation is a no-op or breaks the size caps."""
     if entry["kind"] == "text":
-        mut = rng.choice(MAIL_MUTATORS if target == "mail" else TEXT_MUTATORS)
+        if target == "mail":
+            pool = MAIL_MUTATORS
+        elif target == "dtls":
+            pool = DTLS_MUTATORS
+        else:
+            pool = TEXT_MUTATORS
+        mut = rng.choice(pool)
         data = mut(rng, entry["data"], corpus)
         name = mut.__name__
         if len(data.encode("utf-8", "surrogatepass")) > MAX_TEXT:
@@ -1483,6 +1856,8 @@ TARGETS = {
                        _src("wire", "mailbox.py"),
                        _src("transport_extensions", "email", "__main__.py")],
              "check": check_mail, "seeds": seeds_mail},
+    "dtls": {"files": [_src("wire", "dtlsproto.py")], "check": check_dtls,
+             "seeds": seeds_dtls},
 }
 
 

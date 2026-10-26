@@ -95,7 +95,7 @@ peer on the wire reaches first.
 | 5 | `local` | `runner/runner.py`: `_ingest_local_envelope_inner`; `runner/wire/transports.py`: `parse_envelope` | in the corpus |
 | 6 | `stash` | `runner/runner.py`: `_record_payload` | in the corpus |
 | 7 | `mail` | `runner/runner.py`: `get_text_body`, `_bounce_of`, the subject's job id; the email extension's `_subject_body`, `reply_target`; `runner/wire/mailbox.py`: `_valid_reply_to` | in the corpus |
-| 8 | `dtls` | `runner/wire/dtlsproto.py`: `_split_records`, `_parse_handshake`, `_parse_extensions`, the hello and key-share readers | Grok's, Q66 |
+| 8 | `dtls` | `runner/wire/dtlsproto.py`: `_split_records`, `_parse_handshake`, `_parse_extensions`, the hello and key-share readers, `DtlsServerCore.feed` | in the corpus (Q66) |
 | 9 | `board` | `runner/wire/board.py`: `submit`, `offer`, `complete` over task dicts | the desk, next |
 | 10 | `channels` | `runner/wire/transports.py`: `fetch_channel_messages` over a throwaway directory, with the sequence kind | the desk |
 | 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | the desk |
@@ -120,7 +120,11 @@ never files a refusal as a crash.
   refuse with `ValueError` and nothing else; `crypto` with
   `JobCryptoError`; the surfaces that read for a caller (`local`,
   `stash`, `mail`) contain every raise and answer `None` or a
-  string. Any other exception is a crash.
+  string. Any other exception is a crash. `dtls` is the same
+  rule on the handshake: the splitter, the handshake parser and
+  `DtlsServerCore.feed` never raise, and the extension, hello,
+  key-share and PSK readers refuse with `DtlsError` or
+  `JobCryptoError`.
 - **Round-trip.** What a signer signs, both verifiers read back;
   what `encrypt_body` seals, `decrypt_body` opens; the wrong secret
   is refused; an unknown key is refused before any MAC.
@@ -180,7 +184,7 @@ That is phase 4 below.
   and the fixes: every crash is fixed in the reader, never in the
   test, and the fix lands with `promote`; every new reader in the
   product gets its target in the same release.
-- **Grok** builds the DTLS target (Q66) and reviews the plan when
+- **Grok** built the DTLS target (Q66) and reviews the plan when
   the conductor asks; its reads go under a Q and are applied by the
   desk or recorded with the reason.
 - **The conductor** decides what is not in this file: a new

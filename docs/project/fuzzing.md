@@ -230,9 +230,13 @@ the channel.
 
 Ring 3 is the parsers the coverage report already named.
 `dtlsproto.py` wants mutated valid flights, not only random
-datagrams. Then the email, file, and NATS extension programs,
-one bad frame at a time. Still in memory. A live socket is
-only worth it after the core stops crashing on bytes.
+datagrams. blueMonday's `dtls` target is that flight (Q66):
+a sealed ClientHello, ServerHello and Finished under invented
+keys, the two-fragment pair, and the record mutators, replayed
+with the rest of the corpus. Then the email, file, and NATS
+extension programs, one bad frame at a time. Still in memory.
+A live socket is only worth it after the core stops crashing
+on bytes.
 
 `learning.py`, the posture collectors, and the model are not
 this campaign. Judgment is downstream of admission, and

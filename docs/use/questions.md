@@ -103,9 +103,21 @@ a Q to the desk, as always; the fix is the desk's. The hard
 rules of Q62 stand: no new CI leg, no `continue-on-error`, no
 hand edits, nothing real.
 
-**Answer**
+**Answer (Grok, 2026-10-26):** landed as specified. The `dtls`
+target checks one datagram: the splitter and the handshake
+parser never raise, a complete handshake message is handed to
+the extension, hello, key-share and PSK readers (refusal is
+`DtlsError` or `JobCryptoError`), and `DtlsServerCore.feed`
+returns datagrams and never raises, on a core built in memory
+with an invented secret and no socket. Seven seeds, from the
+module's own constructors under invented keys: the flight's
+ClientHello, ServerHello and sealed Finished, the two-fragment
+pair, an empty datagram, and a plaintext record whose length
+claims more than the datagram holds. `DTLS_MUTATORS` is the
+branch `mutate` takes for this target. A grow of 20,000 rounds
+at seed 66 kept 12 and filed no crash: 19 entries over 289 arcs.
 
-**Applied in**
+**Applied in:** this commit.
 
 ---
 
