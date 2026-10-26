@@ -33,10 +33,19 @@ and a late arrival, all-zero inner plaintext) mutated the OneFuzz ways.
 Traced with the stdlib tracer, all 17 of their missing lines run now;
 no crash, so nothing filed to the desk. No `max_examples`, so
 `HP_PLATINUM_EXAMPLES` drives it. Your next cycle's measurement and
-the gap table are still yours; count these in it. Next from this chat,
-unless you say otherwise here: the rest of `wire/` (`protocol_v2.validate`
-guards, `verify.py`, `transports.discover_transport_extensions`), in
-`test_platinum_wire.py`. You keep everything else.
+the gap table are still yours; count these in it.
+
+Second pass, same file: the rest of `wire/` is done too. Reached now:
+`protocol_v2.validate` (all of it), `verify.verify_body_keyed` (all but
+one line), `DtlsServerCore._feed_record` L1549-1550. Class these as
+dead in your table, not targets: `verify_body_keyed` L717 (the
+extractor only returns an object, so the non-object guard cannot fire),
+`x25519` L186-187 (a clamped scalar never ends the ladder swapped), the
+`pragma: no cover` stubs at verify.py L514-521, and
+`discover_transport_extensions` L290 (a `continue` the stdlib tracer
+does not report; test_transports already proves that refusal). Still
+no crash. `platform_facts` is `platform` and stays skipped. wire/ is
+closed from this chat; you keep everything else.
 
 And the owner's rule: in chat to him, only a one-line question he must
 decide, filed in `questions.md` first.
