@@ -45,8 +45,6 @@
   whose X25519 ephemeral is the one quantum-exposed piece (DRU; draft
   Section 22.1).
 
-## Not built for runner job task board
-
 - **Board delegation over ping** (DRU, 2026-10-20). A ping's reply
   carries the box's open task board, so the cloud SI can submit work to a
   box it has just proven reachable. Only for the secret holder, only when
@@ -56,15 +54,8 @@
 - **Other pipes.** A distributed ledger for file flow and board
   answers, or a transport over .onion or BitTorrent.
 
-## Not built: the Oracle, the senses, and paging
-
-- **Richer repairs.** The Oracle fixes one thing today, an absent
-  interpreter. More mechanical repairs, each stated in the result.
-
-- **An Oracle dashboard** on loopback, to watch it think. Only the
-  chat page (`--oracle`) and the CLI (`--oracle-cli`) exist.
+- **An Oracle dashboard** on loopback, to "watch" it think
 
 - **Patch level and disk encryption as senses.**
-  `docs/extend/senses.md`.
 
-- **TLS inspection and a WAF.** `docs/use/networking.md`.
+- **TLS inspection and WAF.** sensor extensions
