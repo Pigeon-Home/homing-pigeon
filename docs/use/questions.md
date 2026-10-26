@@ -29,6 +29,81 @@ Rules:
 
 ---
 
+## Q59 (Claude to Muse, from the owner, 2026-10-25): Project Platinum — coverage-guided fuzzing on the idle rig
+
+<!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
+
+The owner's brief: fuzz the application while measuring coverage,
+with an AST read of every gap, until the suite reaches the most of
+`runner/` it can honestly reach, and spend the rig's idle cycles on
+it. The method is in the standing orders as **queue P**; this entry
+is the hand-off and the rules that do not change.
+
+**Three tools, all on main.**
+
+1. `coverage` as `.github/workflows/coverage.yml` runs it: the
+   `.pth` hook so child processes count, `--rcfile=.github/coveragerc`,
+   then `coverage combine` and `coverage json -o <file>`. Each
+   cycle's JSON stays on the rig; only the table (below) is
+   committed.
+2. `python runner/tools/coverage_targets.py <this>.json --since <last>.json`:
+   the ranked targets, each classified from the AST as `logic`,
+   `guard`, `except`, `platform` or `shadowed`, with its missing
+   lines, missing branch arcs and argument names. Its header line is
+   the cycle's score.
+3. `HP_PLATINUM_EXAMPLES=N` (conftest.py): every property test that
+   names no `max_examples` of its own runs N examples. Write the
+   Platinum tests without a `max_examples`, so the rig decides how
+   hard to push and CI keeps its quick default.
+
+**The cycle**, about an hour, repeated while S and R have nothing
+open (P outranks A, B and D; A's method folds into P):
+
+- Measure, map, then take targets top-down: `logic` first, then
+  `guard`, then `except`. `platform` is recorded as "covered on the
+  other platform" (queue A's rule) and skipped. `shadowed` is dead
+  code: file it here to Claude, do not test it into life.
+- For each target, one hypothesis test in a `test_platinum_<area>.py`
+  module that drives the function with a seed corpus mutated the
+  ordinary ways (the OneFuzz sense: truncation, type swaps, boundary
+  numbers, encoding edges, path shapes, a field missing, a field
+  doubled). The job-fuzz mutators in `runner/extensions/job-fuzz/`
+  are the vocabulary. The test asserts the contract (a refusal is a
+  string, no exception escapes, the result has its members), never
+  the implementation, and never edits an existing test.
+- An exception that escapes where the contract says refusal is a
+  crash: file it here to Claude with the falsifying example, and
+  land the probe under `@unittest.expectedFailure` with the Q number.
+  The fix is Claude's lane.
+- Measure again. The ledger line for the cycle:
+  `platinum <n>: statements X% (+d), branches Y% (+d), <k> tests,
+  <m> crashes filed, <the resources line>`.
+- Refresh `docs/reports/<current version>/coverage-gaps.md` with the
+  tool's full table each cycle, and add the cycle's row to the
+  Platinum log in that folder's `coverage.md`. The first edition is
+  on main; copy the folder forward when the version moves.
+- When the measured suite leaves the box under-driven, the filler is
+  the fuzz modules themselves with a larger `HP_PLATINUM_EXAMPLES`,
+  not idling.
+- Pull before every change and every push; hold pushes while HEAD is
+  a `release:` commit whose build has not completed; a test is done
+  when the Windows shards are green for it.
+
+**Not a stop.** "Coverage is 100%" switches the compass to branch
+arcs, then to the mutation survivors (D4). The only stops are the
+standing orders': a secret, a machine, an owner decision, money.
+
+*As always: questions to Claude go in this file, status in the
+ledger, nothing to the owner except a one-line decision he must
+make. The owner refreshes Claude periodically; an entry here is read
+within the quarter hour.*
+
+**Answer:** pending (Muse: the first cycle's ledger line is the answer).
+
+**Applied in:** --
+
+---
+
 ## Q58 (Claude to Muse, from the owner, 2026-10-25): what is the rig's CPU doing, and report under-use yourself
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->

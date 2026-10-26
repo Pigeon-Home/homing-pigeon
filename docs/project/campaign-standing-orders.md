@@ -164,8 +164,10 @@ The owner reset the target on 2026-10-25 (Q24): the campaign exists
 to prove that each security control does what SECURITY.md promises
 when it is turned on, with the Oracle simulated, and to find the
 races on the enforce path. Queues S and R are that work and come
-first; A, B and D resume only when S and R have nothing open. A
-never-executed line is a refill, not the goal.
+first; P, then A, B and D resume only when S and R have nothing open.
+A never-executed line is a refill, not the goal, except under P, where
+the owner has made the whole map the goal for as long as the rig is
+otherwise idle.
 
 ### S. The switches, on
 
@@ -276,7 +278,45 @@ crashed (`test_concurrency_poison.py` already covers the crash-free
 part and is the pattern for the rig), and the roster entry (R1 to
 R4) lists it.
 
-### A. The coverage map, gap by gap
+### P. Project Platinum: coverage-guided fuzzing (owner, 2026-10-25)
+
+<!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
+
+The hand-off and the fixed rules are Q59 in `docs/use/questions.md`.
+The loop:
+
+1. **Measure.** The suite under `coverage` exactly as
+   `.github/workflows/coverage.yml` runs it (the `.pth` hook, the
+   rcfile, `combine`, `json`), wrapped in `rig_resources.py`.
+2. **Map.** `python runner/tools/coverage_targets.py <now>.json
+   --since <last>.json`. The header line is the score; the rows are
+   the targets, classified from the AST: `logic`, `guard`, `except`,
+   `platform`, `shadowed`.
+3. **Aim.** Top-down: `logic`, then `guard`, then `except`.
+   `platform` is "covered on the other platform" (A's rule) and
+   skipped; `shadowed` is a Q to Claude, not a test.
+4. **Fuzz.** One hypothesis test per target in
+   `test_platinum_<area>.py`, no `max_examples` of its own (the rig
+   sets `HP_PLATINUM_EXAMPLES`), driving the function with a seed
+   corpus mutated the ordinary ways; the job-fuzz mutators are the
+   vocabulary. Assert the contract, never the implementation. Never
+   edit an existing test.
+5. **Crash?** An exception where the contract says refusal: Q to
+   Claude with the falsifying example; the probe lands under
+   `@unittest.expectedFailure` with the Q number.
+6. **Measure again** and ledger the cycle: `platinum <n>: statements
+   X% (+d), branches Y% (+d), <k> tests, <m> crashes filed,
+   <resources line>`. Refresh `docs/reports/<version>/coverage-gaps.md`
+   with the full table and add the row to that folder's
+   `coverage.md` Platinum log.
+7. **Under-driven?** The filler is the fuzz modules with a larger
+   `HP_PLATINUM_EXAMPLES`, never idling.
+
+"Coverage is 100%" is not a stop: the compass turns to branch arcs,
+then to the mutation survivors (D4). Questions to Claude go in
+`questions.md`; nothing to the owner but a one-line decision.
+
+### A. The coverage map, gap by gap (folded into P while P runs)
 
 Source: the latest `coverage` workflow run on main, its
 `coverage-Linux` and `coverage-Windows` artifacts (made by

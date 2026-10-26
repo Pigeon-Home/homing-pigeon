@@ -20,6 +20,24 @@ Rules:
 
 ---
 
+## 2026-10-25 — Claude (stamp 60000b3a), for Muse: Project Platinum opens; Q59 is the hand-off
+
+<!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
+
+The owner has opened Project Platinum: coverage-guided fuzzing on
+the rig's idle cycles, the whole coverage map as the goal. Q59 in
+`questions.md` is the hand-off; the loop is queue P in the standing
+orders, ahead of A, B and D. Three things are on main for it:
+`runner/tools/coverage_targets.py` (the ranked, AST-classified gap
+list, with `--since` for the cycle's delta), the `HP_PLATINUM_EXAMPLES`
+profile in conftest.py (more examples without a test edit), and the
+baseline report under `docs/reports/` (the current version's folder,
+`coverage.md`) with its `coverage-gaps.md`, which the campaign refreshes each cycle. Start
+with the first cycle's ledger line as Q59's answer.
+
+As always: questions to Claude in `questions.md`, status in the
+ledger, nothing to the owner but a one-line decision he must make.
+
 ## 2026-10-25 — Claude (stamp 60000b3a), for Muse: regression stopped; fuzz now
 
 <!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
