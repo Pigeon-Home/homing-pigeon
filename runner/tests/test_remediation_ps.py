@@ -60,15 +60,19 @@ class PsTableTest(unittest.TestCase):
         "  102   100      -  0:00.30\n"       # rss unreadable
         "  bad   100   4096  0:00.30\n"       # not a pid
         "  103   101   8192  junk\n"          # cpu unreadable
+        "  104   101      0  0:00.00\n"       # rss zero: no figure yet
         "short line\n"
     )
 
     def test_rows_parse_and_bad_cells_degrade(self):
         table = R._ps_table(_fake_ps(self.TABLE))
-        self.assertEqual(sorted(table), [1, 100, 101, 102, 103])
+        self.assertEqual(sorted(table), [1, 100, 101, 102, 103, 104])
         self.assertEqual(table[101], (100, 4096 * 1024, 0.2))
         self.assertEqual(table[102], (100, None, 0.3))
         self.assertEqual(table[103], (101, 8192 * 1024, 0.0))
+        # A zero resident set is not a measurement of a live process
+        # (between fork and exec, or on its way out): it is unknown.
+        self.assertEqual(table[104], (101, None, 0.0))
 
     def test_a_failing_ps_is_an_empty_table(self):
         def boom(cmd, **kw):
@@ -82,7 +86,7 @@ class PsTableTest(unittest.TestCase):
 
     def test_the_sample_is_the_root_and_its_descendants(self):
         sample = R.sample_tree_ps(100, _fake_ps(self.TABLE))
-        self.assertEqual(sorted(sample), [100, 101, 102, 103])
+        self.assertEqual(sorted(sample), [100, 101, 102, 103, 104])
         self.assertEqual(sample[101], (0.2, 4096 * 1024))
         self.assertEqual(sample[102], (0.3, None))
         self.assertNotIn(1, sample)

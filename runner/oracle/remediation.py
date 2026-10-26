@@ -259,7 +259,7 @@ def _proc_usage(pid, tck, page):
     try:
         with open(f"/proc/{pid}/statm", "r") as fh:
             parts = fh.read().split()
-        rss = int(parts[1]) * page
+        rss = int(parts[1]) * page or None   # zero pages: no figure
     except (OSError, ValueError, IndexError):
         rss = None
     return (ticks / tck, rss)
@@ -536,7 +536,10 @@ def _ps_table(run=None):
         except ValueError:
             continue
         try:
-            rss = int(parts[2]) * 1024
+            # A zero resident set is ps saying it has no figure yet (a
+            # process between fork and exec, or on its way out), not a
+            # measurement: it reads as unknown, like a dash.
+            rss = int(parts[2]) * 1024 or None
         except ValueError:
             rss = None
         cpu = _cpu_seconds(parts[3])

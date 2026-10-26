@@ -11,6 +11,12 @@ facts a reader may need to cite. Git history carries the rest.
   leak run points `tempfile` and `TMPDIR` at a fresh directory for
   its duration, so other shards' files on a busy CI box no longer
   read as leaks.
+- **A zero resident set reads as unknown.** The tree samplers (the
+  `ps` reader on Darwin and the BSDs, the `/proc` reader on Linux)
+  report `None` for a process whose resident set is zero, which is
+  the platform saying it has no figure yet, a process between fork
+  and exec or on its way out, not a measurement; the tree's memory
+  signals skip it as they skip every unknown.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.49 - 2026-10-26
