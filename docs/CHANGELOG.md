@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.14 - 2026-10-26
+
+- **`docs/project/future.md` holds only what might be built.** Lettered
+  sections and numbered items, each a sentence or two with its status
+  re-read against the code and no cross-references; a table of
+  contents in place of the preamble; the cut and hardware-research
+  sections gone, and the items already decided against (Signal and
+  WhatsApp paging, line-rate detection with an ML pipeline and MCP, a
+  self-improving SI, the concentrate) removed; the security
+  mechanisms that posture cannot close are listed (sibling chat).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.13 - 2026-10-26
 
 - **The next car, with nothing new aboard.** Opened on the release
