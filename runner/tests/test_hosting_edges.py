@@ -126,7 +126,11 @@ class StateWriterFailureTest(unittest.TestCase):
         real_unlink = os.unlink
 
         def dump(*a, **k):
-            # the temp file is gone before the handler reaches it
+            # The temp file is gone before the handler reaches it.
+            # Its handle is closed first: Windows refuses to unlink
+            # an open file (WinError 32), and that refusal, not the
+            # ValueError, is what build-windows reported.
+            a[1].close()
             for n in os.listdir(self.td.name):
                 if n.startswith(".ledger-"):
                     real_unlink(os.path.join(self.td.name, n))
