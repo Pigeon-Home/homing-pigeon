@@ -4,6 +4,20 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.19 - 2026-10-26
+
+- **Platinum's first module, the DTLS record layer.**
+  `runner/tests/test_platinum_wire.py` drives `_RecordSealer.open`,
+  `_split_records` and `_parse_extensions` from a real corpus (records
+  sealed by `_RecordSealer.seal`, with and without a connection id,
+  several epochs, plaintext records, extension blocks) mutated the
+  ordinary ways, truncation, a flipped bit, a boundary octet, the
+  length field rewritten, a byte dropped or doubled, the record
+  repeated, junk appended, and asserts the contract: the splitter
+  never raises and cuts the datagram contiguously from the start, an
+  unmutated run splits back into its records (queue P, sibling chat).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.18 - 2026-10-26
 
 - **The next car, with nothing new aboard.** Opened on the release
