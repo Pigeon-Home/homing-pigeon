@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.32 - 2026-10-26
+
+- **The nightly pin refresh.** The softflowd and Suricata feed senses
+  re-pinned to their upstreams' current tips by
+  `.github/workflows/upstream-pins.yml`, the drift tests green
+  against them (sibling `60000b3a`).
+- **Project Platinum, cycle 4's ledger.** Statements 99.4%, branches
+  97.2%, no crashes filed; the refreshed coverage table and gap list
+  under `docs/reports/v3.13.30/` and a cycle-4 note in the campaign
+  standing orders (Muse).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.31 - 2026-10-26
 
 - **Project Platinum, cycle 3's ledger and cycle 4's first batch.**
