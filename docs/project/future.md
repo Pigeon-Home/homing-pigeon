@@ -29,7 +29,6 @@
   - D2 Job acknowledgements
   - D3 The concentrate (red-team extension kind)
   - D4 Other pipes
-  - D5 A self-improving SI
 - **E. Not built: the Oracle, the senses, and paging**
   - E1 Richer repairs
   - E2 An Oracle dashboard
@@ -147,9 +146,6 @@ kind's manifest and contract are unwritten.
 
 **D4. Other pipes.** A distributed ledger for file flow and board
 answers, or a transport over .onion or BitTorrent. Idea only.
-
-**D5. A self-improving SI**, running a project to improve the protocol
-and the software by watching both in motion. Idea only.
 
 ## E. Not built: the Oracle, the senses, and paging
 
