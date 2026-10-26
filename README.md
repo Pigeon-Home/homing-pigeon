@@ -459,7 +459,7 @@ one, or add your own.
 ## Status
 
 What ships today is what's described above: the agent, the Oracle
-(opinions, self-learning, remediation), four job transports, and
+(opinions, self-learning, remediation), five job transports, and
 the example senses. The current release is in
 [docs/CHANGELOG.md](docs/CHANGELOG.md); the version number lives in
 `pyproject.toml`, and the message field `"v"` is a different

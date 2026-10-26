@@ -1,18 +1,20 @@
 # Transports: beyond email
 
-> **Status.** Four job transports are implemented, and all
-> four are **transport extensions**: standalone programs the
+> **Status.** Five job transports are implemented, and all
+> five are **transport extensions**: standalone programs the
 > runner supervises as child processes, selected by the
 > `transports` config key (default `["email"]`): **email** (the
 > default, and the project's test transport), the **file**
-> transport (a watched folder), **core NATS** pub/sub, and the
-> **DTLS** session binding (shipped below; off unless enabled).
+> transport (a watched folder), **core NATS** pub/sub, the
+> **queues** transport (the hosted queue: a Cloudflare Worker the
+> runner polls over HTTPS, shipped below), and the **DTLS** session
+> binding (shipped below; off unless enabled).
 > The
 > runner core is transport-blind — it imports no transport code
 > and talks to each extension through a file channel (job
 > envelopes in, result envelopes out; see "Writing a new
-> transport"). Everything else below — Cloudflare Queues, NATS
-> JetStream, MQTT, Redis, Postgres, Durable Objects — is design
+> transport"). Everything else below — NATS JetStream, MQTT,
+> Redis, Postgres, a real-time Durable Objects pipe — is design
 > notes, not implementation, and is listed in docs/project/future.md. (A
 > loopback local-signal socket IS also shipped — it carries
 > signed `sensor_alert` envelopes from same-box producers, not
@@ -114,6 +116,12 @@ required gate in front of the signature — not a formality:
   that sets `transport_nats.allow_unauthenticated: true` gives
   the first gate up — it falls back to the signature as the
   only gate, and the startup log says so.
+- **Queues** has two: the Worker refuses a job without the SI's
+  bearer token, and with the default `REJECT_INVALID_HMAC` it
+  checks the HMAC at the edge under the tenant's shared secret;
+  the core checks the signature again after the runner leases
+  the job. The runner's own token leases, acks and posts results;
+  it cannot submit a job.
 - **File** has two: the inbox folder's OS access control —
   only principals the owner grants write access can submit a
   job file at all — and then the signature.
@@ -128,7 +136,7 @@ required gate in front of the signature — not a formality:
 
 That makes a credentialed broker transport, in its default
 required-auth posture, the more secure option of the shipped
-store-and-forward three: submitting a job must pass transport
+store-and-forward four: submitting a job must pass transport
 authentication AND the signature, where email checks the
 signature alone. Email remains the default anyway — it is the
 most universal pipe and the project's test transport. Here,
@@ -141,7 +149,7 @@ shared secret), the core unwraps it after the signature
 verifies, and the result mirrors the job's form. A transport
 carries the envelope exactly as it carried the cleartext
 body — it is an opaque blob either way — so encryption is
-identical on email, NATS, and file, and no transport code
+identical on email, NATS, file and queues, and no transport code
 knows it exists.
 
 ---

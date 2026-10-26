@@ -4,8 +4,8 @@
   verification rules, security model).
 - `docs/project/future.md` — work that is not built. The only list.
 - `docs/extend/transports.md` — the job transports as shipped: email (default),
-  file, core NATS, and the DTLS session binding (off unless
-  enabled — it is the one transport that listens). Everything
+  file, core NATS, the hosted queue, and the DTLS session binding
+  (off unless enabled — it is the one transport that listens). Everything
   past those in that file is design notes, not code.
 - `docs/security/safeguards.md` — how to run this without getting burned: the
   non-negotiables, containment, the Oracle as a safeguard, and what

@@ -7,10 +7,10 @@ Config (transport_queues block, handed over by the runner):
     token_env   name of the environment variable holding the
                 runner token (preferred); `token` is accepted
                 but lands in config.json, so avoid it
-    lease_sec   how long a pulled job stays leased to this
-                runner before the queue may offer it again
-                (default 300)
     max_jobs    jobs pulled per pass (default 8)
+How long a pulled job stays leased before the queue may offer it
+again is the Worker's setting (LEASE_MS, default 300 s), not this
+block's.
 
 The contract (docs/extend/transports.md, "Queues"):
     GET  {url}/jobs?max=N          -> {"jobs": [{"id", "envelope"}]}

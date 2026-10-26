@@ -145,17 +145,20 @@ This file is organized by status:
   pub/sub shipped as a job transport -- a standalone transport extension;
   the core has been transport-blind since 3.10.0 --
   docs/extend/transports.md.) (The local-signal socket shipped -- signed
-  `sensor_alert` envelopes only, not a job transport.)
+  `sensor_alert` envelopes only, not a job transport.) (A Durable Object
+  per tenant now holds the hosted queue's state; what was cut is the
+  real-time Durable Objects pipe.)
   docs/extend/transports.md.
 
 ## Partial
 
-- Cloudflare Queues: design notes in docs/extend/transports.md. Partial: the
-  optional Worker boundary gate at cloudflare/queues-worker/ rejects any
-  inbound message that fails HMAC-SHA-384 validation before it is written
-  to D1 or further compute is performed. Set REJECT_INVALID_HMAC=true
-  (wrangler var or secret) to turn the gate on; default is off. Full
-  Queues + D1 wiring remains design notes.
+- Cloudflare Queues. Partial: the hosted queue ships
+  (docs/extend/transports.md, "Queues"): a Worker and one Durable Object
+  per tenant at cloudflare/queues-worker/, a bearer token per role, the
+  HMAC-SHA-384 gate at the edge on by default (REJECT_INVALID_HMAC), a
+  per-tenant quota, the runner's `queues` transport and `send_job.py
+  --to-queue`. The Cloudflare Queues product itself and D1 remain design
+  notes.
 
 - Mirror (DRU's coinage, 2026-10-20; the determination / question / answer
   slice is BUILT as protocol v2, off unless `protocol_v2` is set -- see
