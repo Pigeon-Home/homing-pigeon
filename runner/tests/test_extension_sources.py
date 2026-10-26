@@ -291,6 +291,24 @@ class _Base(unittest.TestCase):
     def entry_dir(self, eid, name="feed", kind="sense"):
         return os.path.join(self.base, X.STATE_DIRNAME, kind, name, eid)
 
+    def assertFetched(self, rec):
+        """The entry is whole. A `partial` or failed record says
+        why in its detail and its per-file problems; a leg that
+        fails here reports them with the pass's log lines, so a
+        refused write on a loaded Windows runner names itself
+        instead of reading as 'partial' != 'fetched'."""
+        if rec.get("status") == "fetched":
+            return
+        files = rec.get("files") if isinstance(rec.get("files"), dict) \
+            else {}
+        # One line: the run page's annotation carries the exception
+        # line alone, so the reasons ride on it.
+        self.fail("status %r, not fetched; detail=%r problems=%r "
+                  "transient=%r logs=%r" % (
+                      rec.get("status"), rec.get("detail"),
+                      files.get("problems"), files.get("transient"),
+                      [m for lvl, m in self.logs if lvl != "INFO"][-5:]))
+
 
 # ---------------------------------------------------------------------------
 # The declaration
@@ -1008,7 +1026,7 @@ class ProvisionTest(_Base):
         self.assertTrue(rep["ran"])
         st = self.state()
         up = st["entries"]["up"]
-        self.assertEqual(up["status"], "fetched")
+        self.assertFetched(up)
         self.assertEqual(up["pinned_by"], "first-run")
         self.assertEqual(up["resolved"]["tag"], "v1.10.2")
         self.assertEqual(sorted(up["files"]["items"]),
@@ -1071,7 +1089,7 @@ class ProvisionTest(_Base):
         self.assertGreater(len(down.seen), seen)
         self.assertEqual(self.state()["entries"]["up"]["attempts"], 2)
         self.run_pass(now=self.now + 10 * X.RETRY_CAP_SEC)
-        self.assertEqual(self.state()["entries"]["up"]["status"], "fetched")
+        self.assertFetched(self.state()["entries"]["up"])
         idx = self.index()
         self.assertNotIn("not here yet", idx)
 
@@ -1080,13 +1098,13 @@ class ProvisionTest(_Base):
         down = FakeOpener({u: URLError("down") for u in upstream_routes()})
         self.run_pass(opener=down)
         self.run_pass(force=True, now=self.now + 1)
-        self.assertEqual(self.state()["entries"]["up"]["status"], "fetched")
+        self.assertFetched(self.state()["entries"]["up"])
 
     def test_a_missing_file_is_noted_not_retried(self):
         write_ext(self.ext, upstream_decl(files=["LICENSE", "gone.txt"]))
         self.run_pass()
         up = self.state()["entries"]["up"]
-        self.assertEqual(up["status"], "fetched")
+        self.assertFetched(up)
         self.assertIn("gone.txt", up["detail"])
         self.assertIn("missing: gone.txt", self.index())
         before = len(self.opener.seen)
@@ -1114,7 +1132,7 @@ class ProvisionTest(_Base):
             json.dump(self._lock_for(decl, upstream_routes()), fh)
         self.run_pass()
         up = self.state()["entries"]["up"]
-        self.assertEqual(up["status"], "fetched")
+        self.assertFetched(up)
         self.assertEqual(up["pinned_by"], "build")
         self.assertFalse([u for u in self.opener.urls()
                           if "api.github.com" in u],
@@ -1195,7 +1213,7 @@ class ProvisionTest(_Base):
         bigger = self.policy({"extension_sources": {"max_mb": 64,
                                                     "unpinned": True}})
         self.run_pass(policy=bigger, now=self.now + 60)
-        self.assertEqual(self.state()["entries"]["up"]["status"], "fetched")
+        self.assertFetched(self.state()["entries"]["up"])
 
     def test_installed_code_outside_the_state_dir_is_copied_safely(self):
         outside = os.path.join(self.tmp, "elsewhere", "feed")
@@ -1224,7 +1242,7 @@ class ProvisionTest(_Base):
         write_ext(self.ext, decl)
         self.run_pass(project_root=REPO)
         code = self.state()["entries"]["code"]
-        self.assertEqual(code["status"], "fetched")
+        self.assertFetched(code)
         items = code["project"]["items"]
         self.assertEqual(items["runner/wire/mailbox.py"],
                          "extension-sources/sense/feed/code/files/runner/"
@@ -1259,7 +1277,7 @@ class ProvisionTest(_Base):
              "extension_sources": {"fetch": True, "unpinned": True}},
             model=False))
         self.assertTrue(rep["ran"])
-        self.assertEqual(self.state()["entries"]["up"]["status"], "fetched")
+        self.assertFetched(self.state()["entries"]["up"])
 
     def test_the_manifest_upstream_reaches_the_oracle_as_pinned(self):
         # The manifest's upstream block, with the PIN.json the build
