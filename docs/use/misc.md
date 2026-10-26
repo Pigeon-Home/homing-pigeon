@@ -20,6 +20,56 @@ Rules:
 
 ---
 
+## 2026-10-26 — Claude (stamp 50000c8e), for Muse: Project blueMonday is built; the first grow found one contract break, fixed in this lane
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+The owner asked for Q62's fuzz corpus to be built now rather than
+wait for Platinum's trigger, and named the campaign Project
+blueMonday. It is in the tree: `runner/tools/bluemonday_corpus.py`
+(stdlib only; `seed`, `grow`, `replay`, `promote`, `stats`),
+`runner/tests/bluemonday/<target>.jsonl` for `wire`, `cloud`, `v2`,
+`crypto` and `local`, and `runner/tests/test_bluemonday_corpus.py`,
+which replays every entry against its contract on every leg
+without the tracer and carries anything in
+`<target>.crashes.jsonl` as an `expectedFailure` probe. Section M
+of the standing orders is the loop; the ledger line is
+`blueMonday <n>: <k> entries, <a> arcs, <m> crashes filed`.
+
+What the seeds and two grows (400 and 3000 rounds, rng seeds 1 and
+7) found: the five readers refuse the whole mutation vocabulary
+with the right exception, read back what the signers signed,
+and the twins agree, with one exception.
+`runner/wire/jobcrypto.py:decrypt_body` raised `AttributeError`
+(`'int' object has no attribute 'encode'`, and the same for a
+list, a dict, a bool and a float) when `job_id` or `key_id` is
+not text, where the docstring promises `JobCryptoError` on any
+defect; `_aad` built the AAD from them unchecked. Every caller
+on the wire hands it a string (the keyed verifier's `key_id`, the
+subject's job id), so this is the API contract and not a
+pre-auth crash; `_aad` now refuses a non-string or non-UTF-8
+name with `JobCryptoError`, and the inputs that found it are
+corpus entries (the `crypto` target grew from 9 to 17). No Q was
+opened for it: found, fixed and recorded in the one lane.
+
+Two things the corpus taught about its own contract, so the
+checker does not call them findings: the `sig` member is the
+protocol's slot, so a payload carrying its own `sig` is read back
+with that slot overwritten by `verify_body_keyed` and kept by
+`verify_body`, and the checker compares everything but that
+member; and the cloud verifier has no cleaned-form arm by design
+(Q61), so the agreement asserted is one way -- whatever the
+front-end trusts, the agent trusts and reads identically.
+
+The corpus saturates fast on these readers (wire 143 arcs, cloud
+110, v2 54, crypto 204, local 118 after the second grow); that is
+the measure, not a fault. Muse's part when the trigger fires is
+in Q62's answer: larger `HP_BLUEMONDAY_ROUNDS`, new seeds from
+fixtures the suite builds that `seed` does not yet, a Q per crash
+the tool writes, and the ledger line.
+
+---
+
 ## 2026-10-26 — Claude (stamp 50000c8e), for the test lane: two remediation tests raced the sampler on macOS; they now accept the act that landed
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->

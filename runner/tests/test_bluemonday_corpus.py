@@ -1,0 +1,307 @@
+# Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
+"""Project blueMonday: the fuzz corpus replays on every leg (Q62).
+
+runner/tests/bluemonday/<target>.jsonl is the corpus the tool
+runner/tools/bluemonday_corpus.py grew against the verifiers: the
+seed fixtures and every mutation that reached a new arc. This
+module runs each entry against its target's contract, with no
+tracer and no hypothesis, so a leg that ships a reader which
+raises the wrong thing, returns the wrong shape, or disagrees with
+its twin goes red here before a Q is ever written.
+
+A crash the tool wrote to <target>.crashes.jsonl is replayed too,
+as an expectedFailure probe per entry: it stays red-as-expected
+until the reader is fixed, and then turns into an unexpected
+success, which is the signal to run `promote`.
+
+The rest of the module tests the tool: the tracer gives back the
+tracer it displaced (a coverage run's), a grow in memory writes
+nothing, the mutators keep their caps, the checker catches a
+broken reader, and the fixtures name nothing real.
+"""
+import argparse
+import json
+import os
+import random
+import re
+import sys
+import unittest
+from unittest import mock
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from runner.tools import bluemonday_corpus as B  # noqa: E402
+
+_MAILBOX = re.compile(r"[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})")
+
+
+def _replay(target):
+    """[(entry, crash)] for the committed corpus of one target."""
+    entries = B.load(B.corpus_path(target))
+    session = B.Session(target, entries)
+    B._with_rig(lambda: [session.run(e, trace=False) for e in entries])
+    return entries, session
+
+
+class CorpusReplayTest(unittest.TestCase):
+    """Every committed entry meets its target's contract."""
+
+    def _check(self, target):
+        entries, session = _replay(target)
+        self.assertTrue(entries, f"{target}: the corpus is empty; run "
+                        "`python runner/tools/bluemonday_corpus.py seed`")
+        crashes = [f"{e['id']} ({e['from']}, {e['mutator']}): {c}"
+                   for e, c in session.crashes]
+        self.assertEqual(crashes, [], f"{target}: contract broken by:\n  "
+                         + "\n  ".join(crashes))
+        # Both halves of each contract are exercised: something was
+        # trusted and something was refused.
+        self.assertGreater(session.outcomes["accepted"], 0, target)
+        self.assertGreater(session.outcomes["refused"], 0, target)
+
+    def test_wire(self):
+        self._check("wire")
+
+    def test_cloud(self):
+        self._check("cloud")
+
+    def test_v2(self):
+        self._check("v2")
+
+    def test_crypto(self):
+        self._check("crypto")
+
+    def test_local(self):
+        self._check("local")
+
+
+class CrashProbesTest(unittest.TestCase):
+    """One probe per crash on file, under expectedFailure: it passes
+    only once the reader is fixed, and an unexpected success says
+    to run `promote`."""
+
+
+def _make_probe(target, record):
+    def probe(self):
+        entry = {k: record[k] for k in
+                 ("id", "kind", "data", "from", "mutator", "arcs")}
+        B._with_rig(lambda: B.check(target, entry))
+    probe.__doc__ = f"{target} {record['id']}: {record.get('detail')}"
+    return unittest.expectedFailure(probe)
+
+
+for _target in B.TARGETS:
+    for _record in B.load(B.corpus_path(_target, crashes=True)):
+        setattr(CrashProbesTest, f"test_{_target}_{_record['id']}",
+                _make_probe(_target, _record))
+
+
+class CorpusFilesTest(unittest.TestCase):
+    def _lines(self, target, crashes=False):
+        path = B.corpus_path(target, crashes=crashes)
+        if not os.path.exists(path):
+            return None
+        with open(path, encoding="utf-8") as fh:
+            return [line.rstrip("\n") for line in fh if line.strip()]
+
+    def test_every_target_has_a_stamped_corpus(self):
+        for target in B.TARGETS:
+            lines = self._lines(target)
+            self.assertIsNotNone(lines, target)
+            head = json.loads(lines[0])
+            self.assertEqual(head, B.header(target), target)
+            self.assertEqual(head["Agent-Stamp"], B.STAMP)
+
+    def test_entries_are_well_formed_and_unique(self):
+        for target in B.TARGETS:
+            seen = set()
+            for entry in B.load(B.corpus_path(target)):
+                self.assertEqual(set(entry), {"id", "kind", "data", "from",
+                                              "mutator", "arcs"}, target)
+                self.assertIn(entry["kind"], ("text", "payload"))
+                self.assertEqual(entry["id"],
+                                 B.entry_id(entry["kind"], entry["data"]),
+                                 f"{target}: id does not match the data")
+                self.assertNotIn(entry["id"], seen, f"{target}: duplicate")
+                seen.add(entry["id"])
+            self.assertTrue(any(e["mutator"] == "seed" for e in
+                                B.load(B.corpus_path(target))), target)
+
+    def test_files_are_ascii_with_unix_line_ends(self):
+        # ensure_ascii keeps lone surrogates and controls as escapes,
+        # so the files survive every checkout and every editor.
+        for target in B.TARGETS:
+            path = B.corpus_path(target)
+            with open(path, "rb") as fh:
+                blob = fh.read()
+            self.assertNotIn(b"\r", blob, target)
+            blob.decode("ascii")
+
+    def test_fixtures_name_nothing_real(self):
+        # Invented names only: no home directories, no mailboxes
+        # outside example.com, no user names from any machine.
+        for target in B.TARGETS:
+            for line in self._lines(target):
+                self.assertNotIn("/home/", line, target)
+                self.assertNotIn("/Users/", line, target)
+                self.assertNotIn("Users\\\\", line, target)
+                for domain in _MAILBOX.findall(line):
+                    self.assertEqual(domain.lower(), "example.com",
+                                     f"{target}: a mailbox at {domain}")
+
+
+class ToolTest(unittest.TestCase):
+    def test_the_tracer_gives_back_the_tracer_it_displaced(self):
+        def sentinel(frame, event, arg):
+            return None
+        tracer = B.ArcTracer([os.path.join(ROOT, "runner", "wire",
+                                           "protocol_v2.py")])
+        previous = sys.gettrace()
+        sys.settrace(sentinel)
+        try:
+            got = tracer.run(B.P2.validate, B._v2("answer"))
+            self.assertIs(sys.gettrace(), sentinel)
+        finally:
+            sys.settrace(previous)
+        self.assertEqual(got["type"], "answer")
+        self.assertGreater(tracer.new, 0)
+        self.assertTrue(all(f.endswith("protocol_v2.py")
+                            for f, _a, _b in tracer.arcs))
+
+    def test_the_tracer_gives_back_the_tracer_when_the_call_raises(self):
+        tracer = B.ArcTracer([os.path.join(ROOT, "runner", "wire",
+                                           "protocol_v2.py")])
+        previous = sys.gettrace()
+        with self.assertRaises(ValueError):
+            tracer.run(B.P2.validate, "not a message")
+        self.assertIs(sys.gettrace(), previous)
+
+    def test_a_grow_in_memory_writes_nothing(self):
+        before = {}
+        for name in os.listdir(B.CORPUS_DIR):
+            with open(os.path.join(B.CORPUS_DIR, name), "rb") as fh:
+                before[name] = fh.read()
+        session = B.Session("v2", B.seeds_v2())
+        B._with_rig(session.baseline)
+        arcs = len(session.tracer.arcs)
+        added = B._with_rig(lambda: session.grow(random.Random(5), 60))
+        self.assertEqual(session.outcomes["crash"], 0, session.crashes)
+        self.assertEqual(session.crashes, [])
+        self.assertEqual(len(session.entries), len(B.seeds_v2()) + len(added))
+        self.assertEqual(len(session.tracer.arcs),
+                         arcs + sum(e["arcs"] for e in added))
+        after = {}
+        for name in os.listdir(B.CORPUS_DIR):
+            with open(os.path.join(B.CORPUS_DIR, name), "rb") as fh:
+                after[name] = fh.read()
+        self.assertEqual(before, after)
+
+    def test_mutators_keep_the_caps_and_change_something(self):
+        rng = random.Random(11)
+        for target, seeds in (("wire", B.seeds_wire()),
+                              ("crypto", B.seeds_crypto()),
+                              ("v2", B.seeds_v2())):
+            for _ in range(150):
+                parent = rng.choice(seeds)
+                child = B.mutate(rng, parent, seeds, target)
+                if child is None:
+                    continue
+                data, name = child
+                self.assertNotEqual(data, parent["data"], name)
+                if parent["kind"] == "text":
+                    self.assertIsInstance(data, str, name)
+                    self.assertLessEqual(
+                        len(data.encode("utf-8", "surrogatepass")),
+                        B.MAX_TEXT, name)
+                else:
+                    self.assertLessEqual(
+                        len(json.dumps(data, ensure_ascii=True)),
+                        B.MAX_PAYLOAD, name)
+                    self.assertLessEqual(B._depth(data), B.MAX_DEPTH + 2)
+
+    def test_entry_ids_follow_the_data(self):
+        a = B.make_entry("text", "abc", "seed:x", "seed")
+        b = B.make_entry("text", "abc", "seed:y", "t_drop")
+        c = B.make_entry("payload", "abc", "seed:x", "seed")
+        self.assertEqual(a["id"], b["id"])
+        self.assertNotEqual(a["id"], c["id"])
+        self.assertEqual(len(a["id"]), 16)
+
+    def test_the_checker_catches_a_reader_that_raises_the_wrong_thing(self):
+        entry = B.seeds_crypto()[0]
+        with mock.patch.object(B.JC, "decrypt_body",
+                               side_effect=AttributeError("encode")):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("crypto", entry)
+        self.assertEqual(cm.exception.kind, "exception")
+        self.assertIn("AttributeError", cm.exception.detail)
+
+    def test_the_checker_catches_a_reader_of_the_wrong_shape(self):
+        entry = [e for e in B.seeds_wire() if e["kind"] == "text"][0]
+        with mock.patch.object(B.V, "verify_body", return_value=["x"]):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("wire", entry)
+        self.assertEqual(cm.exception.kind, "shape")
+
+    def test_the_checker_catches_a_forgery(self):
+        entry = [e for e in B.seeds_wire() if e["kind"] == "payload"][0]
+        real = B.V.verify_body
+
+        def trusting(body, secret):
+            return real(body, B.SECRET)
+        with mock.patch.object(B.V, "verify_body", trusting):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("wire", entry)
+        self.assertEqual(cm.exception.kind, "forgery")
+
+    def test_the_checker_catches_the_twins_disagreeing(self):
+        entry = [e for e in B.seeds_wire() if e["kind"] == "text"][0]
+        with mock.patch.object(B.V, "verify_body",
+                               side_effect=ValueError("no")):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("cloud", entry)
+        self.assertEqual(cm.exception.kind, "agreement")
+
+    def test_a_reader_that_refuses_properly_is_a_refusal(self):
+        # The jobcrypto finding that opened the campaign: a job_id
+        # that is not text is the module's own refusal now.
+        spec = {"envelope": B.seeds_crypto()[0]["data"]["envelope"],
+                "job_id": 7, "key_id": ""}
+        entry = B.make_entry("payload", spec, "test", "test")
+        self.assertEqual(B.check("crypto", entry), "refused")
+        spec = dict(spec, job_id="bm-exec-0001", key_id=["ops"])
+        entry = B.make_entry("payload", spec, "test", "test")
+        self.assertEqual(B.check("crypto", entry), "refused")
+
+    def test_the_sig_slot_is_the_protocol_s(self):
+        # A payload carrying its own sig member is read back with the
+        # slot kept by one reader and overwritten by the other; the
+        # checker compares the rest and calls neither a disagreement.
+        entry = B.make_entry("payload", B._job(sig="0" * 96), "t", "t")
+        self.assertEqual(B.check("wire", entry), "accepted")
+
+    def test_replay_reports_and_exits_nonzero_on_a_crash(self):
+        lines = []
+        with mock.patch.object(B, "check",
+                               side_effect=B.Crash("shape", "fake")):
+            status = B.cmd_replay(
+                argparse.Namespace(target="v2"),
+                out=lines.append)
+        self.assertEqual(status, 1)
+        self.assertTrue(any("CRASH" in line for line in lines))
+
+    def test_stats_names_every_target(self):
+        lines = []
+        status = B.cmd_stats(
+            argparse.Namespace(target="all"),
+            out=lines.append)
+        self.assertEqual(status, 0)
+        self.assertEqual([line.split(":")[0] for line in lines],
+                         list(B.TARGETS))
+
+
+if __name__ == "__main__":
+    unittest.main()

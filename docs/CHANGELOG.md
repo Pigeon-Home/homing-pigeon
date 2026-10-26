@@ -4,6 +4,30 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.42 - 2026-10-26
+
+- **Project blueMonday: the fuzz corpus against the verifiers.** The
+  owner's name for Q62's campaign, built at his request in this
+  lane: `runner/tools/bluemonday_corpus.py` grows a coverage-guided
+  corpus (an entry is kept when it reaches a line arc no earlier
+  entry did, measured with `sys.settrace` over the target's own
+  files) against five readers -- `verify_body` and
+  `verify_body_keyed`, the cloud front-end's `verify_body`,
+  `protocol_v2.validate`, `jobcrypto.decrypt_body`, and the
+  local-signal ingest with `parse_envelope` -- from suite-style seeds
+  mutated the job-fuzz ways. `runner/tests/bluemonday/<target>.jsonl`
+  is the corpus and `runner/tests/test_bluemonday_corpus.py` replays
+  it on every leg, carrying any crash on file as an
+  `expectedFailure` probe. Section M of the standing orders is the
+  campaign's loop.
+- **`jobcrypto` refuses a non-text job or key name.** The corpus's
+  first finding: `decrypt_body` and `encrypt_body` built the AAD
+  from `job_id` and `key_id` unchecked, so a number, a list or a
+  missing name raised `AttributeError` where the module promises
+  `JobCryptoError`; `_aad` refuses it now. Every caller on the wire
+  passes text, so no envelope could reach it from outside.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.41 - 2026-10-26
 
 - **Q62: Platinum's next phase.** The owner's brief to Muse, in

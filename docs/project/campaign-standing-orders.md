@@ -164,7 +164,7 @@ The owner reset the target on 2026-10-25 (Q24): the campaign exists
 to prove that each security control does what SECURITY.md promises
 when it is turned on, with the Oracle simulated, and to find the
 races on the enforce path. Queues S and R are that work and come
-first; P, then A, B and D resume only when S and R have nothing open.
+first; P, then M, A, B and D resume only when S and R have nothing open.
 A never-executed line is a refill, not the goal, except under P, where
 the owner has made the whole map the goal for as long as the rig is
 otherwise idle.
@@ -315,6 +315,57 @@ The loop:
 "Coverage is 100%" is not a stop: the compass turns to branch arcs,
 then to the mutation survivors (D4). Questions to Claude go in
 `questions.md`; nothing to the owner but a one-line decision.
+
+Added 2026-10-26 (Claude, stamp 50000c8e, from the build-windows
+red of cycle 5): before pushing a new or changed test module, run
+it under the simulated Windows surface,
+`python runner/tools/run_tests_windows_sim.py --pattern <module>.py`,
+and compare any failure against the same command on the tree
+before the change; a count that moved is a finding or a test bug,
+a count that did not is a known artifact of the surface. The
+owner's Q62 decision replaces the "not a stop" line above: when
+the trigger in Q62 fires, section M is next, and D4's survivors
+come after it.
+
+### M. Project blueMonday: the fuzz corpus against the verifiers (owner, 2026-10-26)
+
+<!-- Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+The hand-off, the targets and the fixed rules are Q62 in
+`docs/use/questions.md`; the owner named the campaign on
+2026-10-26. The tool is `runner/tools/bluemonday_corpus.py`, the
+corpus is `runner/tests/bluemonday/<target>.jsonl` (five targets:
+`wire`, `cloud`, `v2`, `crypto`, `local`), and
+`runner/tests/test_bluemonday_corpus.py` replays it on every leg.
+The loop:
+
+1. **Trigger.** A Platinum ledger line that closes no new
+   statements, or only `platform` and `shadowed` rows. Until then
+   P runs as written.
+2. **Grow.** `HP_BLUEMONDAY_ROUNDS=<large> python
+   runner/tools/bluemonday_corpus.py grow` under `rig_resources.py`;
+   `--seed` makes a run repeatable, `--verbose` prints each keeper.
+   The corpus files that changed are the commit.
+3. **Seed.** Fixtures the suite builds that the tool's `seed` does
+   not yet (a signed body, an envelope, a v2 message) go into the
+   tool's seed functions, invented names only, then `seed` and
+   `grow` again. Never a real address, path or machine.
+4. **Crash?** The tool writes it to `<target>.crashes.jsonl`,
+   shrunk, and exits 1; `test_bluemonday_corpus` carries it from
+   there as an `expectedFailure` probe. File it in `questions.md`
+   as a Q to Claude with the entry id and the detail line. The fix
+   is Claude's lane; after it lands, `python
+   runner/tools/bluemonday_corpus.py promote` moves the entry into
+   the corpus and the probe disappears.
+5. **Ledger.** `blueMonday <n>: <k> entries, <a> arcs, <m> crashes
+   filed, <resources line>`, from `stats` and the grow summary.
+6. **Stop?** When a grow of the rig's full depth adds no arcs on any
+   target for two cycles, D4's mutation survivors are next.
+
+Hard rules, as Q62: no new CI legs, no `continue-on-error`, every
+skip registered, nothing about any machine in the tree, the
+contract asserted and never the implementation, and the existing
+corpus entries are never edited or removed by hand.
 
 ### A. The coverage map, gap by gap (folded into P while P runs)
 

@@ -89,9 +89,23 @@ def _job_key(secret, nonce):
 
 
 def _aad(job_id, key_id):
-    return (job_id.encode("utf-8") + b"\x00"
-            + (key_id or "").encode("utf-8") + b"\x00"
-            + ALG.encode("ascii"))
+    # The AAD binds the envelope to its job and key. Both names must
+    # be text: a caller that hands over a stash record's missing
+    # job_id, or a number, gets the module's refusal, not an
+    # AttributeError (the blueMonday corpus's first finding).
+    if not isinstance(job_id, str):
+        raise JobCryptoError("job_id must be a string")
+    if key_id is None:
+        key_id = ""
+    if not isinstance(key_id, str):
+        raise JobCryptoError("key_id must be a string")
+    try:
+        return (job_id.encode("utf-8") + b"\x00"
+                + key_id.encode("utf-8") + b"\x00"
+                + ALG.encode("ascii"))
+    except UnicodeEncodeError:
+        raise JobCryptoError("job_id and key_id must be UTF-8 text") \
+            from None
 
 
 # ------------------------------------------------------------------

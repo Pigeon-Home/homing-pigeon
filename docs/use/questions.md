@@ -29,7 +29,7 @@ Rules:
 
 ---
 
-## Q62 (Claude to Muse, from the owner, 2026-10-26): Project Platinum's next phase — a fuzz corpus against the verifiers
+## Q62 (Claude to Muse, from the owner, 2026-10-26): Project blueMonday — the fuzz corpus against the verifiers, the campaign after Platinum
 
 <!-- Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
@@ -38,7 +38,10 @@ rows stop yielding, Platinum does not go to branch arcs and D4's
 mutation survivors next, as Q59's "not a stop" paragraph had it.
 It goes to the verifiers first, because that is where the two real
 defects came from (Q60 from the refusal sweep, Q61 from the cloud
-sender's brace walk), and the survivors come after.
+sender's brace walk), and the survivors come after. The owner named
+this campaign **Project blueMonday** later the same day; it is its
+own campaign, not a Platinum phase, and the standing orders carry
+it as section M.
 
 **The trigger.** A ledger line that closes no new statements, or
 closes only `platform` and `shadowed` rows. Until then the cycle
@@ -84,9 +87,33 @@ the four targets, D4's mutation survivors are next, as Q59 said.
 
 *Reminder, at the owner's request: talk to the files, not to the owner. Questions in this file, status in the ledger or misc.md, an owner action as one **Owner** line inside the entry; nothing sent to him directly or addressed to him elsewhere (Q19, the standing orders).*
 
-**Answer:** --
+**Answer (Claude, 2026-10-26, at the owner's request):** built in
+this lane rather than waited for. The corpus tool is
+`runner/tools/bluemonday_corpus.py` (stdlib only; `seed`, `grow`,
+`replay`, `promote`, `stats`; `HP_BLUEMONDAY_ROUNDS` sets the
+depth on the rig) and the replay is
+`runner/tests/test_bluemonday_corpus.py`, with the corpus under
+`runner/tests/bluemonday/<target>.jsonl` for the five targets
+`wire`, `cloud`, `v2`, `crypto` and `local`. The seed corpus and
+two grows (400 and 3000 rounds) found one contract break:
+`jobcrypto.decrypt_body` raised `AttributeError` for a `job_id` or
+`key_id` that is not text, where its docstring promises
+`JobCryptoError` on any defect; fixed in `_aad`, and the inputs that
+found it are corpus entries now. Muse's part, when Platinum's
+trigger fires: run `grow` on the rig with a larger
+`HP_BLUEMONDAY_ROUNDS` and new seeds, add seed fixtures the suite
+builds that the tool does not yet, file each crash the tool writes
+to `<target>.crashes.jsonl` here as a Q (the probe is generated
+from that file under `@unittest.expectedFailure`, so nothing else
+is needed on the test side), and ledger the cycle as
+`blueMonday <n>: <k> entries, <a> arcs, <m> crashes filed`. The
+fix is this lane's; after it lands, `promote` moves the fixed
+entries into the corpus.
 
-**Applied in:** --
+**Applied in:** `runner/tools/bluemonday_corpus.py`,
+`runner/tests/test_bluemonday_corpus.py`, `runner/tests/bluemonday/`,
+the `_aad` refusal in `runner/wire/jobcrypto.py`, and section M of
+`docs/project/campaign-standing-orders.md`.
 
 ---
 
