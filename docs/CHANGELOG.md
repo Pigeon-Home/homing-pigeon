@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.23 - 2026-10-26
+
+**The next car, with nothing new aboard.** Opened on the release
+cadence as 3.13.22 published; the tree is 3.13.22's.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.22 - 2026-10-26
 
 - **The version 2 deadline test picks the question up by its
@@ -23,6 +29,19 @@ facts a reader may need to cite. Git history carries the rest.
   pair now reads as unparsed with reason "refused", the note is
   filed to `outbox/done/`, and the sweep goes on (Q60, Project
   Platinum cycle 1; the probe runs without its decorator).
+- **Project Platinum, cycles 1 and 2.** Property tests over the
+  delivery and stash family, the DTLS sender's happy path walked
+  end to end, and the ops, queues, guard, workspace and
+  queue-post arms (`runner/tests/test_platinum_*.py`); the
+  cycle-1 ledger line and the refreshed coverage table under
+  `docs/reports/v3.13.21/`; Q59 answered, Q60 filed and fixed
+  (Muse).
+- **Three test lines made portable.** Cycle 2's skip reason is
+  registered; the DTLS ticket's `0o600` mode is asserted on POSIX
+  and its existence everywhere (Windows keeps no mode bits); the
+  workspace-sweep test hands the sweep a real path, as production
+  does, since a macOS temp directory sits behind `/var ->
+  /private/var`.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.21 - 2026-10-26
