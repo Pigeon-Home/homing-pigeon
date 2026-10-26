@@ -255,6 +255,33 @@ class ToolTest(unittest.TestCase):
         self.assertEqual([e["id"] for e in first], [e["id"] for e in second])
         self.assertTrue(lines[-1].startswith("v2: 0 seeds added"))
 
+    def test_parallel_grow_runs_targets_jobs_at_a_time(self):
+        commands = B.grow_commands(["wire", "v2", "stash"], 50, 9, False)
+        self.assertEqual([t for t, _c in commands], ["wire", "v2", "stash"])
+        for target, cmd in commands:
+            self.assertIn("--target", cmd)
+            self.assertEqual(cmd[cmd.index("--target") + 1], target)
+            self.assertEqual(cmd[cmd.index("--jobs") + 1], "1")
+        live = []
+        peak = []
+
+        class Fake:
+            def __init__(self, cmd):
+                self.cmd = cmd
+                self.returncode = 3 if "v2" in cmd else 0
+                live.append(self)
+                peak.append(len(live))
+
+            def communicate(self):
+                live.remove(self)
+                return (f"{self.cmd[self.cmd.index('--target') + 1]}: "
+                        "done\n").encode(), None
+        lines = []
+        status = B.run_parallel(commands, 2, out=lines.append, spawn=Fake)
+        self.assertEqual(status, 3)
+        self.assertEqual(lines, ["wire: done", "v2: done", "stash: done"])
+        self.assertLessEqual(max(peak), 2)
+
     def test_entry_ids_follow_the_data(self):
         a = B.make_entry("text", "abc", "seed:x", "seed")
         b = B.make_entry("text", "abc", "seed:y", "t_drop")

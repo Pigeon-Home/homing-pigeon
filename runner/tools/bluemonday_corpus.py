@@ -3,7 +3,8 @@
 """Project blueMonday: the fuzz corpus against the verifiers (Q62).
 
     python runner/tools/bluemonday_corpus.py seed   [--target T]
-    python runner/tools/bluemonday_corpus.py grow   [--target T] [--rounds N] [--seed S]
+    python runner/tools/bluemonday_corpus.py grow   [--target T] [--rounds N]
+                                                    [--seed S] [--jobs J]
     python runner/tools/bluemonday_corpus.py replay [--target T]
     python runner/tools/bluemonday_corpus.py promote [--target T]
     python runner/tools/bluemonday_corpus.py stats  [--target T]
@@ -42,7 +43,9 @@ envelope, and the preamble, trailer, CRLF and control-character
 forms the mail path must survive) and, on a corpus that exists,
 adds only the seeds it lacks. `grow` mutates from the corpus
 for N rounds (HP_BLUEMONDAY_ROUNDS, default 400) and appends the
-keepers. `replay` runs every entry against its contract, which is
+keepers; with --jobs J (HP_BLUEMONDAY_JOBS) the targets grow J at
+a time in their own processes, which is how the rig keeps every
+core busy. `replay` runs every entry against its contract, which is
 what the test does on every leg, without the tracer. `promote`,
 after a fix, moves the crashes that now refuse properly into the
 corpus. `stats` prints the sizes.
@@ -1350,15 +1353,61 @@ def cmd_seed(args, out=print):
     return 0
 
 
+def grow_commands(targets, rounds, seed, verbose):
+    """One `grow` subprocess command per target, for --jobs."""
+    out = []
+    for target in targets:
+        cmd = [sys.executable, os.path.abspath(__file__), "grow",
+               "--target", target, "--rounds", str(rounds),
+               "--seed", str(seed), "--jobs", "1"]
+        if verbose:
+            cmd.append("--verbose")
+        out.append((target, cmd))
+    return out
+
+
+def run_parallel(commands, jobs, out=print, spawn=None):
+    """Run the commands `jobs` at a time; each one's output is printed
+    whole when it finishes. Returns the worst exit status. `spawn`
+    is subprocess.Popen unless a test hands in its own."""
+    import subprocess
+    spawn = spawn or (lambda cmd: subprocess.Popen(
+        cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
+    pending = list(commands)
+    running = []
+    status = 0
+    while pending or running:
+        while pending and len(running) < max(1, jobs):
+            target, cmd = pending.pop(0)
+            running.append((target, spawn(cmd)))
+        target, proc = running.pop(0)
+        output, _ = proc.communicate()
+        text = output.decode("utf-8", "replace") if isinstance(
+            output, bytes) else (output or "")
+        for line in text.rstrip().splitlines():
+            out(line)
+        status = max(status, proc.returncode or 0)
+    return status
+
+
 def cmd_grow(args, out=print):
     rounds = args.rounds
     if rounds is None:
         rounds = int(os.environ.get("HP_BLUEMONDAY_ROUNDS", DEFAULT_ROUNDS))
     seed = args.seed if args.seed is not None else \
         int.from_bytes(os.urandom(4), "big")
+    targets = _targets(args.target)
+    if args.jobs > 1 and len(targets) > 1:
+        # Each target owns its corpus file, so the targets grow in
+        # parallel processes: on the rig that is the difference
+        # between one core busy and all of them.
+        out(f"blueMonday grow: {rounds} rounds, rng seed {seed}, "
+            f"{min(args.jobs, len(targets))} targets at a time")
+        return run_parallel(grow_commands(targets, rounds, seed,
+                                          args.verbose), args.jobs, out=out)
     out(f"blueMonday grow: {rounds} rounds, rng seed {seed}")
     status = 0
-    for target in _targets(args.target):
+    for target in targets:
         rng = random.Random(seed)
         entries = load(corpus_path(target))
         if not entries:
@@ -1487,6 +1536,12 @@ def main(argv=None):
                            help="rng seed (default: random, printed)")
             p.add_argument("--verbose", action="store_true",
                            help="print every keeper and crash")
+            p.add_argument("--jobs", type=int,
+                           default=int(os.environ.get(
+                               "HP_BLUEMONDAY_JOBS", "1")),
+                           help="targets grown at a time, each in its own "
+                                "process (HP_BLUEMONDAY_JOBS, default 1; "
+                                "the rig's core count keeps it busy)")
     args = ap.parse_args(argv)
     try:
         return args.fn(args)

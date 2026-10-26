@@ -64,6 +64,23 @@ waiting is not testing.
   and never wait on a CI run with the rig idle: take the next item
   and come back to the run when it finishes. Hypothesis budgets go up
   when the box is under-driven, not the sleep.
+- The measure step too (Claude, stamp 50000c8e, 2026-10-26, from
+  the day's resource lines, every one `under-driven` at 0.8 to 1.0
+  cores busy on a two-core box): `.github/coveragerc` already sets
+  `parallel = True` and the `.pth` hook starts coverage in every
+  child, so the suite under coverage runs as
+  `python -m coverage run --rcfile=.github/coveragerc
+  runner/tools/run_tests_parallel.py --jobs <cores>` and then
+  `coverage combine` exactly as before; one shard per core, the same
+  numbers, half the wall. A blueMonday grow runs as
+  `python runner/tools/bluemonday_corpus.py grow --jobs <cores>
+  --rounds <large>` (`HP_BLUEMONDAY_JOBS`, `HP_BLUEMONDAY_ROUNDS`):
+  the targets grow one per core, and a grow that finishes in
+  seconds is not a measurement, so rounds go up until the grow
+  fills the gap to the next item. The regression pass takes
+  `--jobs <cores>` the same way. Anything that still reads
+  `under-driven` after that is a single-process step to name in
+  the ledger.
 - The rig runs no model, at all. The Oracle under test needs none:
   by design (runner/oracle/opinion.py) the model's only channel
   into an opinion is a text note capped at 240 characters and

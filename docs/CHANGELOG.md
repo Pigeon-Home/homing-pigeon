@@ -14,6 +14,12 @@ facts a reader may need to cite. Git history carries the rest.
   Sealed seeds draw a counter nonce so their ids are stable, and
   `seed` adds to an existing corpus only what it lacks. The README
   states the refusal types so a grow never files one as a crash.
+- **Grows one per core.** `bluemonday_corpus.py grow --jobs J`
+  (`HP_BLUEMONDAY_JOBS`) grows the targets J at a time in their own
+  processes; the standing orders' throughput section names it, the
+  parallel runner under coverage for the measure step, and
+  `--jobs` on the regression pass, so the rig's resource line reads
+  on target instead of under-driven.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.43 - 2026-10-26
