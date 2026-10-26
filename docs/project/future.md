@@ -34,7 +34,6 @@
   - E1 Richer repairs
   - E2 An Oracle dashboard
   - E3 Patch level and disk encryption as senses
-  - E4 Signal and WhatsApp paging
   - E5 TLS inspection and a WAF
   - E6 Line-rate detection, a 24/7 ML pipeline, MCP
 Not built, and nothing else; the finished items' decisions are in
@@ -163,9 +162,6 @@ chat page (`--oracle`) and the CLI (`--oracle-cli`) exist.
 
 **E3. Patch level and disk encryption as senses.**
 `docs/extend/senses.md`.
-
-**E4. Signal and WhatsApp paging.** Only Telegram exists.
-`docs/oracle/dri-playbook.md`.
 
 **E5. TLS inspection and a WAF.** `docs/use/networking.md`.
 
