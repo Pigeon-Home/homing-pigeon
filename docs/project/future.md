@@ -1,26 +1,23 @@
 ## A. Partial
 
-**A1. Reviewer routing.** A finished task goes to a second worker
+**A2. Reviewer routing.** A finished task goes to a second worker
 holding the `review` capability before the owner sees it. Today only
 the owner's approval gate exists (`require_review`).
 
-**A2. Platform facts on every result.** A `ping` result already
+**A3. Platform facts on every result.** A `ping` result already
 carries the OS family, default interpreter and protocol versions. An
 option to attach full platform metadata to every result does not exist.
 
-**A3. More network senses.** Canary credentials that phone home when
+**A4. More network senses.** Canary credentials that phone home when
 used elsewhere, a per-job DNS log, and a netmon collector of our own.
 Listening sockets, running services and local canary files are already
 watched.
 
-**A4. Accelerator Pis.** When a Pi ships with an NPU, or an AI HAT is
+**A5. Accelerator Pis.** When a Pi ships with an NPU, or an AI HAT is
 present, the install should pull a model and switch `oracle_mode` to
 `llm`. The switch exists; nothing detects the hardware yet.
 
 ## B. Not built: security
-
-Each is a mechanism, so changing the default posture closes none of
-them. The order is `docs/security/security-gaps.md`'s.
 
 **B1. Runner integrity.** Nothing checks that `runner.py` or the binary
 is unchanged at startup, so a job running as the runner's user can
@@ -68,7 +65,7 @@ network cage held. Only the on/off posture line exists.
 whose X25519 ephemeral is the one quantum-exposed piece (DRU; draft
 Section 22.1).
 
-## C. Not built
+## C. Not built for runner job task board
 
 **C1. Board delegation over ping** (DRU, 2026-10-20). A ping's reply
 carries the box's open task board, so the cloud SI can submit work to a
