@@ -396,9 +396,10 @@ The loop:
    campaign does not wait for a Platinum ledger line and does not
    idle between items. It stops only on the conductor's word.
 2. **Grow.** `nice -n 10 python runner/tools/rig_resources.py --
-   python runner/tools/bluemonday_corpus.py grow --jobs <cores>
-   --rounds 20000 --minutes 55`, started again at every rules
-   refresh: the targets cycle, `--jobs` at a time, the next
+   python runner/tools/bluemonday_corpus.py grow --rounds 20000
+   --minutes 55`, started again at every rules refresh (`--jobs`
+   defaults to the box's core count, as it does on the parallel
+   runner and the regression pass; name it only to use fewer): the targets cycle, `--jobs` at a time, the next
    starting the moment any one finishes, each cycle with the seed
    moved on, until the minutes are up; that is the continuous grow,
    and its resource line reads on target. `--seed` makes a run

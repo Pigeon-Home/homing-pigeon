@@ -15,6 +15,10 @@ facts a reader may need to cite. Git history carries the rest.
   member inside a nested object, with and without an outer key)
   merged into the `wire` and `cloud` seeds; the grow's keeps and
   run records committed, 157 entries, 651 arcs, no crash.
+- **Parallel by default.** `bluemonday_corpus.py grow` and
+  `regression_pass.py` take `--jobs` as the box's core count unless
+  told otherwise, as the parallel test runner always has, so a plain
+  command keeps every core busy.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.46 - 2026-10-26

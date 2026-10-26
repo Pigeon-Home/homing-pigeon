@@ -361,8 +361,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--pull", action="store_true",
                     help="git pull --ff-only origin main first")
-    ap.add_argument("--jobs", type=int, default=0,
-                    help="shards for run_tests_parallel.py (its default)")
+    ap.add_argument("--jobs", type=int, default=os.cpu_count() or 1,
+                    help="shards for run_tests_parallel.py (default: this "
+                         "box's core count)")
     ap.add_argument("--repeat", type=int, default=3,
                     help="lone re-runs of each red test (default 3)")
     ap.add_argument("--state-dir", default=None,

@@ -44,9 +44,10 @@ envelope, and the preamble, trailer, CRLF and control-character
 forms the mail path must survive) and, on a corpus that exists,
 adds only the seeds it lacks. `grow` mutates from the corpus
 for N rounds (HP_BLUEMONDAY_ROUNDS, default 400) and appends the
-keepers; with --jobs J (HP_BLUEMONDAY_JOBS) the targets grow J at
-a time in their own processes, the next one starting the moment
-any one finishes, which is how the rig keeps every core busy; with
+keepers; the targets grow --jobs at a time in their own processes
+(HP_BLUEMONDAY_JOBS; the default is the box's core count), the
+next one starting the moment any one finishes, so a plain grow
+keeps every core busy; with
 --minutes M the targets cycle until the time is up, the continuous
 grow that fills the gap between a measure and a pass (each cycle
 moves a target's seed on by one, so no cycle repeats the last).
@@ -1678,10 +1679,11 @@ def main(argv=None):
                            help="print every keeper and crash")
             p.add_argument("--jobs", type=int,
                            default=int(os.environ.get(
-                               "HP_BLUEMONDAY_JOBS", "1")),
+                               "HP_BLUEMONDAY_JOBS", os.cpu_count() or 1)),
                            help="targets grown at a time, each in its own "
-                                "process (HP_BLUEMONDAY_JOBS, default 1; "
-                                "the rig's core count keeps it busy)")
+                                "process (HP_BLUEMONDAY_JOBS; the default "
+                                "is this box's core count, so a plain grow "
+                                "keeps every core busy)")
             p.add_argument("--minutes", type=float, default=0.0,
                            help="keep cycling the targets, --jobs at a "
                                 "time, until this many minutes have "
