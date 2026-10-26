@@ -275,14 +275,16 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     files = job.get("files") or []
     if not isinstance(files, list):
         raise _runner().JobRejected("files must be a list")
+    staged_names = []
     for f in files:
         if not isinstance(f, dict) or not isinstance(f.get("name"), str) \
                 or not isinstance(f.get("url"), str):
             raise _runner().JobRejected("each file needs string 'name' and 'url'")
         if "sha384" in f and not isinstance(f["sha384"], str):
             raise _runner().JobRejected("file 'sha384' must be a string")
-        if os.name == "nt" and _runner().windows_reserved_name(f["name"]):
-            raise _runner().JobRejected(f"unsafe file name: {f['name']}")
+        # One rule set on every platform (runner/guard/filenames.py),
+        # before any download: a bad name is poison and costs no fetch.
+        staged_names.append(_runner().validate_file_name(f["name"]))
     args = job.get("args") or []
     if not isinstance(args, list):
         raise _runner().JobRejected("args must be a list")
@@ -305,8 +307,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     timeout = min(max(timeout, 1), 3600)
 
     # --- stage input files
-    for f in files:
-        dest = _runner()._staged_dest(work, f["name"])
+    for f, staged_name in zip(files, staged_names):
+        dest = _runner()._staged_dest(work, staged_name)
         R.log(f"downloading {f['url']}")
         try:
             _runner().download(f["url"], dest)

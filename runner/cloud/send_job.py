@@ -61,6 +61,18 @@ except ImportError:  # run by path: load the one implementation by file
     _jc_spec.loader.exec_module(jobcrypto)
 
 try:
+    from runner.guard import filenames as _filenames
+except ImportError:  # run by path: the same rules the runner applies
+    import importlib.util
+    _fn_path = os.path.join(_RUNNER_DIR, "guard", "filenames.py")
+    _fn_spec = importlib.util.spec_from_file_location(
+        "hp_filenames", _fn_path)
+    if _fn_spec is None or _fn_spec.loader is None:
+        raise ImportError("runner/guard/filenames.py not loadable")
+    _filenames = importlib.util.module_from_spec(_fn_spec)
+    _fn_spec.loader.exec_module(_filenames)
+
+try:
     from runner._version import __version__
 except ImportError:  # run by path (python runner/cloud/send_job.py) instead of -m
     try:
@@ -259,6 +271,14 @@ def cmd_new(args) -> int:
                 name, _, url = spec.partition("=")
                 if not url:
                     print(f"bad --file spec (want name=url): {spec}", file=sys.stderr)
+                    return 2
+                try:
+                    # The runner's own rules (runner/guard/filenames.py),
+                    # applied here so the author hears it now, not from
+                    # a rejection result.
+                    name = _filenames.validate_file_name(name)
+                except ValueError as e:
+                    print(f"bad --file name {name!r}: {e}", file=sys.stderr)
                     return 2
                 files.append({"name": name, "url": url})
             payload["files"] = files

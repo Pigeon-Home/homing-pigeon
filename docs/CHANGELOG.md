@@ -25,6 +25,22 @@ The four review items, plus workspace isolation (the runbook of
   a writer killed at random fifty times leaves the destination
   absent or complete, a planted symlink is replaced and never
   followed, and a scan of the core fails on the eleventh copy.
+- **`files[].name`, refused the same way on every platform.**
+  `runner/guard/filenames.py` is one numbered rule set (no NUL, 255
+  bytes a component and 1024 in all; no backslash; not absolute --
+  no leading `/`, drive letter or UNC prefix; no `.`, `..` or empty
+  component; `[A-Za-z0-9._-]` components that do not start with `-`;
+  no Windows device name, with or without an extension, whatever
+  the runner's OS), checked in the job-shape loop before any download
+  so a bad name is poison and costs no fetch, and the rejection names
+  the rule. `os.path.join("/w", "C:\\x")` used to stage a file named
+  `C:\x` on Linux, and `CON` was refused only on Windows. A nested
+  name has its directories made inside the work dir, after the walk
+  confirms no component is a symlink; the real-path gate still runs
+  after. `runner/cloud/send_job.py` applies the same module at composition
+  time. `runner/tests/test_file_names.py`: the vector table with its
+  rule numbers, the end-to-end rejection (poison, never retried, no
+  download), the sender by path. PROTOCOL.md section 6.
 
 ## 3.13.1 - 2026-10-25
 

@@ -2379,12 +2379,18 @@ class StagedDestTest(unittest.TestCase):
             self.assertIn("path traversal in file name", reasons)
             self.assertEqual(judge_job({"judge": "off"}, {"files": [{"name": ".."}]})[0], "pass")
 
-    def test_nothing_is_created(self):
+    def test_nothing_is_downloaded_and_only_parents_are_made(self):
+        # A nested name has its directories made inside work (review
+        # item 2); the file itself is the download's to create, and a
+        # flat name creates nothing at all.
         with tempfile.TemporaryDirectory() as d:
             work = os.path.join(d, "work")
             os.makedirs(work)
-            _staged_dest(work, "new/file.txt")
+            _staged_dest(work, "file.txt")
             self.assertEqual(os.listdir(work), [])
+            _staged_dest(work, "new/file.txt")
+            self.assertEqual(os.listdir(work), ["new"])
+            self.assertEqual(os.listdir(os.path.join(work, "new")), [])
 
 
 class StagedDestFuzzTest(unittest.TestCase):
@@ -2415,8 +2421,12 @@ class StagedDestFuzzTest(unittest.TestCase):
                 if not isinstance(dest, str) or not dest.startswith(root):
                     crashes.append(dest)
                     break
-            if set(os.listdir(work)) != before:
-                crashes.append("created")
+            # Only directories inside work may have appeared (the
+            # parents of nested names); never a file, never a link.
+            for name in set(os.listdir(work)) - before:
+                full = os.path.join(work, name)
+                if os.path.islink(full) or not os.path.isdir(full):
+                    crashes.append("created " + name)
         self.assertEqual(crashes, [])
 
 

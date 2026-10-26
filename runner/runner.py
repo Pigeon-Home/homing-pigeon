@@ -146,6 +146,9 @@ _defaulted = _load_mod("runner.guard.defaulted", "guard.defaulted")
 _atomicio = _load_mod("runner.guard.atomicio", "guard.atomicio")
 if _atomicio is None:
     raise ImportError("runner/guard/atomicio.py is missing")
+_filenames = _load_mod("runner.guard.filenames", "guard.filenames")
+if _filenames is None:
+    raise ImportError("runner/guard/filenames.py is missing")
 if _textutil is None:
     raise ImportError("runner/guard/textutil.py is missing")
 _as_str = _textutil._as_str
@@ -1757,24 +1760,11 @@ def script_filename(interpreter) -> str:
         return "script.py"
     return "script"
 
-_WIN_DEVICES = (
-    {"CON", "PRN", "AUX", "NUL"}
-    | {f"COM{i}" for i in range(1, 10)}
-    | {f"LPT{i}" for i in range(1, 10)}
-)
-
-def windows_reserved_name(name: str) -> bool:
-    """True for CON, NUL, COM1, a trailing dot, and the same with an extension.
-
-    Windows opens these as devices, or rewrites the trailing dot, no
-    matter which directory they are joined onto.
-    """
-    if not isinstance(name, str):
-        return False
-    leaf = name.replace("/", "\\").rsplit("\\", 1)[-1]
-    if not leaf or leaf.endswith(".") or leaf.endswith(" ") or ":" in leaf:
-        return True
-    return leaf.split(".", 1)[0].upper() in _WIN_DEVICES
+# The file-name rules live in runner/guard/filenames.py (one rule set,
+# refused the same way on every platform); the names stay on this
+# module for the suite and the sender.
+_WIN_DEVICES = _filenames._WIN_DEVICES
+windows_reserved_name = _filenames.windows_reserved_name
 
 def kill_tree(proc: subprocess.Popen, extra_pids=None):
     try:
@@ -1907,22 +1897,58 @@ def _safe_job_id(job_id: str) -> str:
         raise JobRejected("job_id must not be '.' or '..'")
     return job_id
 
-def _staged_dest(work, name):
+def validate_file_name(name) -> str:
+    """A files[].name, or JobRejected naming the rule it broke.
+
+    The rules are runner/guard/filenames.py's, checked on every
+    platform before any download, so a bad name is poison (rejected
+    once, never retried) and never costs a fetch. Returns the
+    normalized relative path, components joined by '/'.
+    """
+    try:
+        return _filenames.validate_file_name(name)
+    except _filenames.BadFileName as e:
+        raise JobRejected(str(e))
+
+def _staged_dest(work, name, root=None):
     """Absolute path of a staged file. It must stay inside work.
 
     An absolute name, `..`, or a symlink that points outside is
-    rejected. Nothing is created and nothing is downloaded.
+    rejected: the real path of the destination must start with the
+    real path of work (`root`, computed once per job by the caller
+    when given). The parent directories of a nested name are created
+    here, after confirming that no existing path component on the
+    way is a symlink. Nothing is downloaded.
     """
     if not isinstance(name, str) or not name or "\x00" in name:
         raise JobRejected("unsafe file name: %r" % (name,))
     try:
+        if root is None:
+            root = os.path.realpath(work)
         dest = os.path.realpath(os.path.join(work, name))
-        root = os.path.realpath(work)
     except (TypeError, ValueError) as e:
         raise JobRejected("unsafe file name: %s" % (e,))
     prefix = root + os.sep
     if not dest.startswith(prefix):
         raise JobRejected("unsafe file name: %s" % (name,))
+    # The lexical path, component by component: a symlink already
+    # sitting where a parent directory should be is refused before
+    # anything is created under it (the real path above resolved it;
+    # this is where it is named).
+    parts = name.replace("\\", "/").split("/")[:-1]
+    cur = work
+    for i, part in enumerate(parts):
+        cur = os.path.join(cur, part)
+        if os.path.islink(cur):
+            raise JobRejected("workspace integrity: %s is a symlink"
+                              % "/".join(parts[:i + 1]))
+    parent = os.path.dirname(dest)
+    if parent != root:
+        try:
+            os.makedirs(parent, exist_ok=True)
+        except OSError as e:
+            raise JobRejected("cannot create the directory for %s: %s"
+                              % (name, e))
     return dest
 
 # ---------------------------------------------------------------- remediation

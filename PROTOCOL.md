@@ -353,7 +353,8 @@ Authorization then runs in this order, and all of it must pass:
 7. **Job-shape validation** (job messages): `kind` is `exec` or
    `ping`; `script_sha384`, when present, matches the script — for
    `script_url`, the downloaded bytes, checked before anything
-   runs; and every `files[]` name stays inside the workdir.
+   runs; and every `files[]` name passes the rules of section 6
+   and stays inside the workdir.
    Failures here produce the -2 rejection result of section 3.2.
 
 Failures are logged, the mail is marked seen, and the job is **never**
@@ -381,9 +382,20 @@ secret, in which case the runner refuses to start and names it
 ## 6. Execution semantics
 
 - Working directory: `<base_dir>/work/<job_id>/`, created fresh per job.
-- `files[]` are downloaded over HTTPS into the work dir. `name` must
-  not escape the work dir (path traversal is rejected). `sha384` is
-  verified when present.
+- `files[]` are downloaded over HTTPS into the work dir. `name` is a
+  relative path under it, checked by one rule set on every platform
+  before any download (a bad name is a rejection, never a retry, and
+  costs no fetch): non-empty, no NUL, at most 255 bytes per component
+  and 1024 in all (1); no backslash, `/` is the only separator (2);
+  not absolute -- no leading `/`, drive letter or `//server/share`
+  (3); no `.`, `..` or empty component (4); components of
+  `[A-Za-z0-9._-]` that do not start with `-` and are not dots only
+  (5); no Windows device name such as `CON`, `NUL` or `COM1`, with
+  or without an extension, whatever the runner's OS (6). The
+  rejection names the rule. A nested name (`data/in.csv`) has its
+  directories made inside the work dir; the staged path's real path
+  must still lie inside it (a planted symlink is refused). `sha384`
+  is verified when present.
 - The script runs as `<interpreter...> script <args...>` (see section
   3.1) with stdout/stderr captured, `env` merged into the process
   environment, and the work dir as cwd.

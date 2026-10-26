@@ -9572,9 +9572,13 @@ class TestFilesNameStaysInsideWorkdir(unittest.TestCase):
         import os
         import tempfile
         from runner import runner as R
+        # linkin/ok.txt resolves inside the work dir and used to pass;
+        # a symlink where a parent directory should be is refused now
+        # (review item 2), whichever way it points.
         escapes = ["../escape.txt", "a/../../escape.txt",
                    "..", ".", "/etc/passwd",
                    "linkout/evil.txt", "dangling/x.txt",
+                   "linkin/ok.txt",
                    "", "a\x00b", None, 123, b"a.txt"]
         if os.name == "nt":
             escapes.append(".../x.txt")
@@ -9599,7 +9603,6 @@ class TestFilesNameStaysInsideWorkdir(unittest.TestCase):
                 "a/../b.txt": "b.txt",
                 "a//b.txt": os.path.join("a", "b.txt"),
                 "~/x.txt": os.path.join("~", "x.txt"),
-                "linkin/ok.txt": os.path.join("real", "ok.txt"),
                 "no/such/deep.txt": os.path.join(
                     "no", "such", "deep.txt"),
                 "sub/": "sub",

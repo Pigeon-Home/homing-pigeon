@@ -52,6 +52,9 @@
   are), `os.replace`, mode 0600. Every state writer in the core goes
   through it; `runner/tests/test_atomicio.py` kills a writer
   mid-write and scans the tree for a second copy.
+- `runner/guard/filenames.py` — the `files[].name` rules (PROTOCOL.md
+  section 6), numbered so a rejection names the one broken; the
+  runner's gate and `runner/cloud/send_job.py` both call it.
 - `runner/ops/extsources.py` — extension sources: the first time an
   extension runs, its own code and the upstream sources and specs
   its `sources.json` declares reach the Oracle — fetched in the
