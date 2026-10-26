@@ -75,6 +75,8 @@ STALE = [
      "docs/security/hardening/"),
     (re.compile(_EDGE + r"docker/(entrypoint|minimal-userland)"),
      ".github/docker/"),
+    # the FAQ moved to the root (the owner's own page, 2026-10-26)
+    (re.compile(_EDGE + r"docs/use/faq\.md\b"), "FAQ.md"),
     # pip's -c/-r and a path string; prose may name the file
     (re.compile(r'(?:-[cr]\s+|(?<!"\.github", )["\'])requirements-ci\.txt'),
      ".github/requirements-ci.txt"),

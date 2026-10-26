@@ -435,7 +435,7 @@ The runner is fully inspectable, so audit what it would do before it does it, an
 
 ## Questions people ask
 
-The [FAQ](docs/use/faq.md) is where the odd corners get answered.
+The [FAQ](FAQ.md) is where the odd corners get answered.
 Does the Oracle poll or get woken by a signal? Can a hostile job
 talk its way into a repair? Why email, and why not PGP or public-key
 signatures? Is one shared secret really safe for both signing and

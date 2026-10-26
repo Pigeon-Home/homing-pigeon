@@ -2245,7 +2245,7 @@ class TestBooleanPollIntervalDefaultsTo20(unittest.TestCase):
     becomes a 1-second poll instead of the documented
     20-second default.
 
-    (a) Doc claim (docs/use/faq.md, line 9):
+    (a) Doc claim (FAQ.md, line 9):
         "The deterministic code around the model does the
         watching on the runner's poll cycle -- every 20 seconds
         by default (`poll_interval_sec`)."
@@ -2603,7 +2603,7 @@ class TestHugeEmailPollIntervalDefaultsTo20(unittest.TestCase):
     20-second default; an infinite value likewise becomes
     an infinite poll interval instead of the default.
 
-    (a) Doc claim (docs/use/faq.md, line 9): the runner's poll
+    (a) Doc claim (FAQ.md, line 9): the runner's poll
         cycle runs "every 20 seconds by default
         (`poll_interval_sec`)". docs/oracle/configuring-oracle.md
         (flag-to-key map, line 82) maps `--poll-interval
@@ -18159,7 +18159,7 @@ class TestPollIntervalSecFifteenShapesAtEmailReader(unittest.TestCase):
     (a) Doc claim: registry row "poll_interval_sec":
         core, number, default 20, policy default under
         Decision 1, lo 0, doc_status verified --
-        docs/use/faq.md line 9: "The deterministic code
+        FAQ.md line 9: "The deterministic code
         around the model does the watching on the
         runner's poll cycle -- every 20 seconds by
         default (`poll_interval_sec`)." The reader's

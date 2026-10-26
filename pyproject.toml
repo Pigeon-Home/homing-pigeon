@@ -99,7 +99,7 @@ also_copy = [
     # runner/tests/ comes with source_paths). Without
     # these, stats collection dies on "INSTALL.md not found" before
     # any mutant runs.
-    "AGENTS.md", "ENTERPRISE.md",
+    "AGENTS.md", "ENTERPRISE.md", "FAQ.md",
     "INSTALL.md",
     "PROTOCOL.md", "README.md",
     "SECURITY.md",

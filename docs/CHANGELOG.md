@@ -6,6 +6,11 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.19 - 2026-10-26
 
+- **`FAQ.md` is at the root.** The FAQ, the owner's own page, moves
+  from `docs/use/faq.md` to `FAQ.md` beside the other manuals, in
+  caps like them; its text is untouched, one relative link now
+  resolves from the root, every pointer follows, and the retired path
+  is on the layout guard's list.
 - **Platinum's first module, the DTLS record layer.**
   `runner/tests/test_platinum_wire.py` drives `_RecordSealer.open`,
   `_split_records` and `_parse_extensions` from a real corpus (records

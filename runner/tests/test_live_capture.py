@@ -144,7 +144,7 @@ class LivePageTest(unittest.TestCase):
                       "docs/use/live-examples.md")
 
     def test_the_pointers_lead_to_the_page(self):
-        for doc in ("docs/use/faq.md", "docs/use/runbook.md", "SECURITY.md",
+        for doc in ("FAQ.md", "docs/use/runbook.md", "SECURITY.md",
                     "docs/oracle/configuring-oracle.md"):
             with open(os.path.join(ROOT, doc), encoding="utf-8") as fh:
                 self.assertIn("live-examples.md", fh.read(), doc)
