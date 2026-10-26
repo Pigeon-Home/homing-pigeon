@@ -124,6 +124,7 @@ class RemediationEndToEnd(unittest.TestCase):
             "c = subprocess.Popen([sys.executable, '-c',\n"
             "    'import os, time;'\n"
             "    ' open(\"child.pid\", \"w\").write(str(os.getpid()));'\n"
+            "    ' os.fsync(open(\"child.pid\", \"r\").fileno());'\n"
             "    ' time.sleep(60)'])\n")
         script = _write_loot(extra=[child.rstrip("\n")],
                              after=chr(10).join(
@@ -133,6 +134,15 @@ class RemediationEndToEnd(unittest.TestCase):
         self.assertEqual(result["remediation"]["act"], "killed")
         pid_path = os.path.join(self._quarantine("q13-tree"),
                                 "work", "child.pid")
+        # The child can lose the race against the tripwire kill
+        # and never write the file. Poll for it briefly; a missing
+        # file is a clear failure, not a traceback.
+        deadline = time.monotonic() + 3
+        while not os.path.exists(pid_path):
+            if time.monotonic() > deadline:
+                self.fail("child.pid never appeared; "
+                          "child lost the race to the kill")
+            time.sleep(0.05)
         with open(pid_path, encoding="utf-8") as fh:
             child_pid = int(fh.read().strip())
         deadline = time.monotonic() + 5
