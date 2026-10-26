@@ -300,6 +300,21 @@ def cmd_new(args) -> int:
         body = jobcrypto.encrypt_body(
             body, args.secret, job_id=payload["job_id"],
             key_id=args.key_id or "", sign=sign_payload)
+    if getattr(args, "to_queue", None):
+        # The hosted queue: POST the same envelope to the tenant's
+        # Worker URL with the SI token from the environment.
+        envelope = f"[HOMING-PIGEON] job {payload['job_id']}\n\n{body}"
+        if not envelope.endswith("\n"):
+            envelope += "\n"
+        status, text = post_to_queue(args.to_queue, envelope,
+                                     getattr(args, "queue_token_env", None))
+        if status in (200, 202):
+            print(f"queued job {payload['job_id']} at {args.to_queue} "
+                  f"(HTTP {status})", file=sys.stderr)
+            return 0
+        print(f"queue refused job {payload['job_id']}: HTTP {status}: "
+              f"{text[:200]}", file=sys.stderr)
+        return 1
     if getattr(args, "to_file", None):
         # The file transport's envelope is exactly what would
         # have been printed; write it instead of printing.
@@ -314,6 +329,42 @@ def cmd_new(args) -> int:
     print()
     print(body)
     return 0
+
+
+def post_to_queue(url, envelope, token_env=None, opener=None):
+    """POST an envelope to a tenant's hosted queue. The SI token is
+    read from the environment variable named by `token_env`
+    (default HP_SI_TOKEN); it is never taken from the command line.
+    Returns (status, response_text)."""
+    import os as _os
+    import urllib.error
+    import urllib.request
+    name = token_env or "HP_SI_TOKEN"
+    token = _os.environ.get(name)
+    if not token:
+        raise SystemExit(f"error: --to-queue needs the SI token in "
+                         f"environment variable {name}")
+    if not isinstance(url, str) or not (
+            url.startswith("https://") or url.startswith("http://127.0.0.1")
+            or url.startswith("http://localhost")):
+        raise SystemExit("error: --to-queue must be an https URL "
+                         "(loopback http is allowed for tests)")
+    req = urllib.request.Request(
+        url.rstrip("/") + "/jobs", data=envelope.encode("utf-8"),
+        method="POST",
+        headers={"Authorization": f"Bearer {token}",
+                 "Content-Type": "text/plain; charset=utf-8",
+                 "User-Agent": "homing-pigeon-send-job"})
+    opener = opener or urllib.request.urlopen
+    try:
+        with opener(req, timeout=30) as resp:
+            return resp.status, resp.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        try:
+            text = e.read().decode("utf-8", "replace")
+        except Exception:
+            text = ""
+        return e.code, text
 
 
 def repair_line(payload):
@@ -491,6 +542,15 @@ def main() -> int:
                    help="write the envelope (subject, blank line, "
                         "signed body) to PATH for the runner's "
                         "file transport instead of printing it")
+    g.add_argument("--to-queue", default=None, metavar="URL",
+                   help="POST the envelope to a tenant's hosted queue "
+                        "(the Worker URL ending in /t/<tenant>) instead "
+                        "of printing it; the SI token comes from the "
+                        "environment, see --queue-token-env")
+    g.add_argument("--queue-token-env", default="HP_SI_TOKEN",
+                   metavar="NAME",
+                   help="environment variable holding the SI token for "
+                        "--to-queue (default HP_SI_TOKEN)")
     g.add_argument("--cleartext", action="store_true",
                    help="do NOT encrypt the job: send the plain "
                         "HMAC-signed body. The shared secret is "

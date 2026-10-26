@@ -1,0 +1,83 @@
+# The ephemeral target workflow (docs/project/hosting.md, Phase 3).
+#
+# Copy this file into the repository `homing-pigeon-host dispatch
+# --repo owner/name` points at (ours, or the tenant's own, which
+# costs us nothing). A dispatch boots a fresh GitHub-hosted VM of
+# the requested platform, installs the pinned release, writes the
+# tenant's one-blob config from the secret named by `blob_ref`,
+# drains the tenant's queue for a bounded window, and exits. The
+# run-name carries the ticket so the dispatcher can find the run.
+#
+# Nothing is uploaded, no artifact is kept, and the blob never
+# appears in the log: it is read from a repository secret into the
+# installer's --config-json env: form.
+name: hp-ephemeral
+run-name: hp ${{ inputs.ticket }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticket:
+        description: run ticket (the dispatcher's correlation id)
+        required: true
+      target:
+        description: linux-ephemeral | windows-ephemeral | macos-ephemeral
+        required: true
+      tenant:
+        description: tenant slug (for the log line only)
+        required: true
+      version:
+        description: release to install (the version in pyproject.toml)
+        required: true
+      runs_on:
+        description: runner label (ubuntu-latest | windows-latest | macos-latest)
+        required: true
+      blob_ref:
+        description: name of the repository secret holding the tenant's one-blob config
+        required: true
+      drain_jobs:
+        description: stop after this many jobs
+        required: false
+        default: "1"
+      drain_seconds:
+        description: stop after this many seconds
+        required: false
+        default: "900"
+
+permissions: {}
+
+concurrency:
+  group: hp-ephemeral-${{ inputs.tenant }}
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    name: ${{ inputs.target }} for ${{ inputs.tenant }}
+    runs-on: ${{ inputs.runs_on }}
+    timeout-minutes: 30
+    env:
+      HP_CONFIG_BLOB: ${{ secrets[inputs.blob_ref] }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install the pinned release
+        shell: bash
+        run: python -m pip install --quiet "pigeon-home-runner==${{ inputs.version }}"
+      - name: configure (hosted profile, blob from the secret)
+        shell: bash
+        run: |
+          test -n "$HP_CONFIG_BLOB" || { echo "::error::secret ${{ inputs.blob_ref }} is empty"; exit 2; }
+          homing-pigeon-install --no-inference --profile hosted \
+            --dir "$RUNNER_TEMP/hp" --config "$RUNNER_TEMP/hp/config.json" \
+            --config-json env:HP_CONFIG_BLOB
+      - name: drain the queue
+        shell: bash
+        run: |
+          homing-pigeon --config "$RUNNER_TEMP/hp/config.json" \
+            --once --drain "${{ inputs.drain_jobs }}" \
+            --drain-seconds "${{ inputs.drain_seconds }}"
+      - name: scrub
+        if: always()
+        shell: bash
+        run: rm -rf "$RUNNER_TEMP/hp"

@@ -279,7 +279,7 @@ class ManifestContractTest(unittest.TestCase):
                 {}, tempfile.mkdtemp(prefix="hp-test-"))
         self.assertEqual(problems, [])
         self.assertEqual(sorted(registry),
-                         ["dtls", "email", "file", "nats"])
+                         ["dtls", "email", "file", "nats", "queues"])
         for name, manifest in registry.items():
             self.assertEqual(manifest["api_version"], 1, name)
             self.assertEqual(manifest["kind"], "transport", name)
@@ -2576,7 +2576,7 @@ class ReviewFailureTest(unittest.TestCase):
                     {}, tempfile.mkdtemp(prefix="hp-test-"),
                     log=log)
         self.assertEqual(sorted(registry),
-                         ["dtls", "email", "file", "nats"])
+                         ["dtls", "email", "file", "nats", "queues"])
         self.assertEqual(problems, [])
         self.assertTrue(
             any(level == "WARN" and "extension review failed"

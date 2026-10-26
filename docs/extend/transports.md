@@ -146,25 +146,62 @@ knows it exists.
 
 ---
 
-## Cloudflare Queues — design notes (Worker boundary available)
+## Queues — the hosted pipe (built)
 
-If email is the carrier pigeon, Cloudflare Queues is the freight
-rail. This is the transport the protocol *wants* to grow into, and
-it's the one we'd recommend to anyone who winces at the word "email."
+If email is the carrier pigeon, the hosted queue is the freight
+rail. It is the transport a hosted runner uses when the tenant has
+no mailbox to bring (`docs/project/hosting.md`, Phase 2), and the
+one we'd recommend to anyone who winces at the word "email."
 
-**Worker boundary gate (available now).** A Cloudflare Worker at
-`cloudflare/queues-worker/` can reject any inbound message that
-fails HMAC-SHA-384 validation *before* it is written to D1 or
-further compute is performed. Set the wrangler var (or secret)
-`REJECT_INVALID_HMAC=true` to turn the gate on. Default is off so
-existing flows are unchanged until the operator enables it. The
-HMAC check matches the protocol splice used by `send_job.py` and
-the runner core. Full Queues + D1 wiring remains design notes;
-the Worker is the optional edge gate so invalid jobs never reach
-the database or the runner when the option is on. See
-`cloudflare/queues-worker/README.md`.
+**What ships.** Three parts, one contract:
 
-Why it fits so well it feels designed for this:
+- `cloudflare/queues-worker/` — a Cloudflare Worker and one Durable
+  Object per tenant. The Worker gates every job at the edge
+  (bearer token for the role, then HMAC-SHA-384 under the tenant's
+  shared secret, `REJECT_INVALID_HMAC` on by default) and enforces
+  the tenant's quota: jobs per hour and bytes per day, a hard 429
+  with `Retry-After`. That quota is the spending cap Cloudflare
+  itself does not provide. Its unit tests run under node
+  (`node --test cloudflare/queues-worker/test/`).
+- `runner/transport_extensions/queues/` — the runner-side extension.
+  Outbound only: it leases jobs from the Worker, drops them in the
+  channel inbox, posts the channel's results back and acks the job
+  only once its result has been posted (or the core consumed it
+  without one). A malformed or oversize envelope is refused and
+  acked so it does not return every lease.
+- `send_job.py new --to-queue <url>` — the SI side. The SI token is
+  read from `HP_SI_TOKEN` (or `--queue-token-env NAME`), never from
+  the command line.
+
+**The contract** (every route under `/t/<tenant>/`, every call with
+`Authorization: Bearer <token>`; the envelope is the file transport's
+shape, subject line, blank line, signed body):
+
+| Who | Call | Means |
+| --- | --- | --- |
+| SI | `POST /jobs` | a signed job in; 202 `{"id"}`, 200 `{"duplicate": true}` on a repeat, 403 bad signature, 429 over quota |
+| runner | `GET /jobs?max=N` | lease up to N jobs; 200 `{"jobs": [{"id", "envelope", "attempt"}]}` or 204 |
+| runner | `POST /jobs/<id>/ack` | the job is finished; 204, or 404 if already gone |
+| runner | `POST /results` | a result envelope in; 202 |
+| SI | `GET /results?max=N` | results out; 200 `{"results": [...]}` or 204 |
+| SI | `POST /results/<id>/ack` | the SI has it; 204 |
+
+A lease lasts `LEASE_MS` (default 300 s); an unacked job is offered
+again when it expires, and after five attempts it moves to the
+tenant's dead-letter list. Tenant records live in the `TENANTS` KV
+namespace (`si_token_sha256`, `runner_token_sha256`, `hmac_secret`,
+`quota`), or in the four secrets `TENANT`, `SI_TOKEN`,
+`RUNNER_TOKEN`, `HMAC_SECRET` for a one-tenant deployment.
+
+Runner config:
+
+```json
+"transports": ["queues"],
+"transport_queues": {"url": "https://hp.example.workers.dev/t/alice",
+                     "token_env": "HP_RUNNER_TOKEN"}
+```
+
+Why it fits so well it feels designed for this (the notes that led here):
 
 - **HTTP polling API.** The runner long-polls over HTTPS — outbound
   only, NAT-indifferent, no IMAP client, no mailbox quirks. The

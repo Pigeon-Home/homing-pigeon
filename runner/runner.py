@@ -4602,6 +4602,46 @@ def save_seen(path: str, seen: dict):
     _with_seen_file(path, merge)
     _release_saved_claims(path, seen)
 
+
+class DrainPlan:
+    """The life of an ephemeral runner: poll until `jobs` have run or
+    `seconds` have passed, whichever comes first. Progress is read
+    from the seen-set's growth (one entry per job that ran and whose
+    result was sent), so no transport has to report a count."""
+
+    def __init__(self, jobs, seconds, start_seen=0, clock=None):
+        self.jobs = max(0, int(jobs or 0))
+        self.seconds = max(0, int(seconds or 0))
+        self.start_seen = int(start_seen or 0)
+        self._clock = clock or time.monotonic
+        self.t0 = self._clock()
+
+    def done_jobs(self, seen_size):
+        return max(0, int(seen_size) - self.start_seen)
+
+    def more(self, seen_size) -> bool:
+        """True while another poll cycle is wanted."""
+        if self.jobs and self.done_jobs(seen_size) >= self.jobs:
+            return False
+        if self.seconds and self._clock() - self.t0 >= self.seconds:
+            return False
+        return True
+
+
+def drain_plan(args, seen_size=0):
+    """A DrainPlan for --once --drain, or None for a plain --once.
+
+    Unusable values (negative, non-numeric) read as off, Decision 1.
+    """
+    jobs = _confval.integer(getattr(args, "drain", 0), 0, lo=0) \
+        if _confval is not None else 0
+    seconds = _confval.integer(getattr(args, "drain_seconds", 0), 0, lo=0) \
+        if _confval is not None else 0
+    if not getattr(args, "once", False) or (not jobs and not seconds):
+        return None
+    return DrainPlan(jobs, seconds, seen_size)
+
+
 HOT_KEYS = ("poll_interval_sec", "workers", "default_timeout_sec",
             "max_output_bytes", "max_job_age_sec",
             "result_stash_retention_sec", "result_resend_backoff_sec")

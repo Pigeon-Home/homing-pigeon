@@ -1,0 +1,16 @@
+{
+  "sources_version": 1,
+  "sources": [
+    {
+      "id": "code",
+      "role": "self",
+      "description": "The hosted queue pipe in full: this extension, the Worker that fronts it, and the channel every transport shares.",
+      "project": [
+        "runner/transport_extensions/queues",
+        "runner/transport_extensions/channel.py",
+        "cloudflare/queues-worker",
+        "runner/wire/transports.py"
+      ]
+    }
+  ]
+}

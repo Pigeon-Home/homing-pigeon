@@ -26,6 +26,7 @@ homing-pigeon = "runner.runner:main"
 homing-pigeon-install = "runner.ops.install:main"
 homing-pigeon-send-job = "runner.cloud.send_job:main"
 homing-pigeon-auth = "runner.wire.oauth:main"
+homing-pigeon-host = "runner.hosting.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Pigeon-Home/homing-pigeon"
@@ -48,6 +49,7 @@ runner = ["config.example.json"]
 "runner.transport_extensions.email" = ["extension.json", "sources.json"]
 "runner.transport_extensions.file" = ["extension.json", "sources.json"]
 "runner.transport_extensions.nats" = ["extension.json", "sources.json"]
+"runner.transport_extensions.queues" = ["extension.json", "sources.json"]
 
 [tool.mutmut]
 source_paths = ["runner"]

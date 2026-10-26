@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+"""The queues transport extension against a fake Worker (Phase 2 of
+docs/project/hosting.md). The fake speaks the same contract the
+Cloudflare Worker does (cloudflare/queues-worker/src/index.js, whose
+own tests run under node): lease, ack, results. It listens on
+loopback in this process; nothing leaves the machine.
+"""
+import http.server
+import json
+import os
+import sys
+import tempfile
+import threading
+import unittest
+import urllib.request
+
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))
+sys.path.insert(0, REPO)
+
+from runner.transport_extensions import channel as ch  # noqa: E402
+from runner.transport_extensions.queues import __main__ as q  # noqa: E402
+from runner.cloud import send_job  # noqa: E402
+
+RUNNER_TOKEN = "runner-token"
+SI_TOKEN = "si-token"
+
+
+class FakeWorkerState:
+    def __init__(self):
+        self.jobs = {}       # id -> envelope
+        self.leased = set()
+        self.acked = []
+        self.results = {}
+        self.calls = []
+        self.fail_results = 0  # next N result posts answer 503
+
+
+def make_handler(state):
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _auth(self, token):
+            return self.headers.get("Authorization") == f"Bearer {token}"
+
+        def _send(self, status, body=b"", ctype="application/json"):
+            self.send_response(status)
+            if body:
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Length", str(len(body)))
+            else:
+                self.send_header("Content-Length", "0")
+            self.end_headers()
+            if body:
+                self.wfile.write(body)
+
+        def do_GET(self):
+            state.calls.append(("GET", self.path))
+            if not self.path.startswith("/t/alice/jobs"):
+                return self._send(404)
+            if not self._auth(RUNNER_TOKEN):
+                return self._send(401)
+            free = [(i, e) for i, e in state.jobs.items()
+                    if i not in state.leased]
+            if not free:
+                return self._send(204)
+            out = []
+            for i, e in free[:8]:
+                state.leased.add(i)
+                out.append({"id": i, "envelope": e})
+            return self._send(200, json.dumps({"jobs": out}).encode())
+
+        def do_POST(self):
+            n = int(self.headers.get("Content-Length") or 0)
+            body = self.rfile.read(n).decode("utf-8") if n else ""
+            state.calls.append(("POST", self.path))
+            if self.path == "/t/alice/jobs":
+                if not self._auth(SI_TOKEN):
+                    return self._send(401)
+                parsed = ch.parse_envelope(body)
+                if parsed is None:
+                    return self._send(400, b'{"error":"malformed"}')
+                jid = q._job_id(parsed[0])
+                state.jobs[jid] = body
+                return self._send(202, json.dumps({"id": jid}).encode())
+            if self.path.startswith("/t/alice/jobs/") and \
+                    self.path.endswith("/ack"):
+                if not self._auth(RUNNER_TOKEN):
+                    return self._send(401)
+                jid = self.path.split("/")[4]
+                had = state.jobs.pop(jid, None)
+                state.leased.discard(jid)
+                state.acked.append(jid)
+                return self._send(204 if had else 404)
+            if self.path == "/t/alice/results":
+                if not self._auth(RUNNER_TOKEN):
+                    return self._send(401)
+                if state.fail_results:
+                    state.fail_results -= 1
+                    return self._send(503, b'{"error":"later"}')
+                parsed = ch.parse_envelope(body)
+                rid = q._result_id(parsed[0]) if parsed else None
+                state.results[rid] = body
+                return self._send(202, json.dumps({"id": rid}).encode())
+            return self._send(404)
+    return Handler
+
+
+class FakeWorker:
+    def __enter__(self):
+        self.state = FakeWorkerState()
+        self.server = http.server.ThreadingHTTPServer(
+            ("127.0.0.1", 0), make_handler(self.state))
+        self.thread = threading.Thread(target=self.server.serve_forever,
+                                       daemon=True)
+        self.thread.start()
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}/t/alice"
+        return self
+
+    def __exit__(self, *exc):
+        self.server.shutdown()
+        self.server.server_close()
+
+
+def envelope(job_id, body='{"v":1,"sig":"00"}'):
+    return f"[HOMING-PIGEON] job {job_id}\n\n{body}\n"
+
+
+class QueueClientTest(unittest.TestCase):
+    def test_pull_ack_and_post(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            c = q.QueueClient(w.url, RUNNER_TOKEN)
+            jobs = c.pull(8)
+            self.assertEqual(jobs, [("j1", envelope("j1"))])
+            self.assertEqual(c.pull(8), [])
+            self.assertTrue(c.post_result(
+                "[HOMING-PIGEON] result j1\n\n{\"exit_code\":0}\n"))
+            self.assertIn("j1", w.state.results)
+            self.assertTrue(c.ack("j1"))
+            self.assertTrue(c.ack("j1"))  # 404 is still finished
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+
+    def test_wrong_token_is_an_error_not_a_crash(self):
+        with FakeWorker() as w:
+            c = q.QueueClient(w.url, "nope")
+            with self.assertRaises(RuntimeError) as cm:
+                c.pull(8)
+            self.assertIn("401", str(cm.exception))
+
+    def test_resolve_token_prefers_the_environment(self):
+        self.assertEqual(q.resolve_token({"token_env": "X"}, {"X": "abc"}), "abc")
+        self.assertEqual(q.resolve_token({"token_env": "X", "token": "t"}, {}), "t")
+        self.assertIsNone(q.resolve_token({"token_env": "X"}, {}))
+        self.assertIsNone(q.resolve_token({}, {}))
+
+    def test_int_reads_unusable_as_default(self):
+        for bad in (None, True, "x", -1, 0, 10 ** 400, 1000):
+            self.assertEqual(q._int(bad, 8, lo=1, hi=100), 8, repr(bad))
+        self.assertEqual(q._int("5", 8, lo=1, hi=100), 5)
+
+
+class QueuePipeTest(unittest.TestCase):
+    def setUp(self):
+        self.td = tempfile.TemporaryDirectory()
+        self.channel = os.path.join(self.td.name, "channel")
+        ch.dirs(self.channel)
+
+    def tearDown(self):
+        self.td.cleanup()
+
+    def _core_answers(self, ident, job_id):
+        """Pretend the core ran the job: consume the inbox file and
+        drop a result in the outbox, the way runner.py does."""
+        d = ch.dirs(self.channel)
+        os.replace(os.path.join(d["inbox"], ident + ".job.txt"),
+                   os.path.join(d["inbox_done"], ident + ".job.txt"))
+        ch._atomic_write(os.path.join(d["outbox"], ident + ".result.txt"),
+                         f"[HOMING-PIGEON] result {job_id}\n\n"
+                         f"{{\"exit_code\":0,\"sig\":\"00\"}}\n")
+
+    def test_jobs_flow_in_results_flow_out_and_acks_follow(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.jobs["j2"] = envelope("j2")
+            pipe = q.QueuePipe({"max_jobs": 8}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            inbox = sorted(os.listdir(ch.dirs(self.channel)["inbox"]))
+            self.assertEqual(inbox, ["done", "j1.job.txt", "j2.job.txt"])
+            self.assertEqual(w.state.acked, [])  # nothing finished yet
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self._core_answers("j1", "j1")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", w.state.results)
+            self.assertEqual(
+                os.listdir(ch.dirs(self.channel)["outbox_done"]),
+                ["j1.result.txt"])
+            # A pull while j2 is still leased delivers nothing new.
+            pipe.pull_jobs()
+            self.assertEqual(sorted(os.listdir(
+                ch.dirs(self.channel)["inbox"])),
+                ["done", "j2.job.txt"])
+
+    def test_a_rejected_job_is_acked_without_a_result(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            os.replace(os.path.join(d["inbox"], "j1.job.txt"),
+                       os.path.join(d["inbox_done"], "j1.job.txt"))
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+
+    def test_a_result_the_worker_refuses_is_retried_not_dropped(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.fail_results = 1
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            self._core_answers("j1", "j1")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertEqual(sorted(os.listdir(ch.dirs(self.channel)["outbox"])),
+                             ["done", "j1.result.txt"])
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", w.state.results)
+
+    def test_malformed_and_oversize_envelopes_are_refused_and_acked(self):
+        with FakeWorker() as w:
+            w.state.jobs["bad"] = "no blank line here"
+            w.state.jobs["big"] = envelope("big", "x" * (q.MAX_BYTES + 1))
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            self.assertEqual(sorted(w.state.acked), ["bad", "big"])
+            self.assertEqual(os.listdir(ch.dirs(self.channel)["inbox"]),
+                             ["done"])
+
+    def test_main_runs_bounded_passes_and_refuses_bad_config(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            cfg_path = os.path.join(self.td.name, "rt.json")
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                json.dump({"url": w.url, "token_env": "HP_TEST_RUNNER_TOKEN",
+                           "extension_poll_interval_sec": 0.2}, fh)
+            os.environ["HP_TEST_RUNNER_TOKEN"] = RUNNER_TOKEN
+            try:
+                rc = q.main(["queues", self.channel, cfg_path], passes=1)
+            finally:
+                del os.environ["HP_TEST_RUNNER_TOKEN"]
+            self.assertEqual(rc, 0)
+            self.assertIn("j1.job.txt",
+                          os.listdir(ch.dirs(self.channel)["inbox"]))
+            # No token: refuse to start.
+            self.assertEqual(q.main(["queues", self.channel, cfg_path],
+                                    passes=1), 2)
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                json.dump({"url": "http://plain.example.test/t/a",
+                           "token": "t"}, fh)
+            self.assertEqual(q.main(["queues", self.channel, cfg_path],
+                                    passes=1), 2)
+
+
+class SendJobToQueueTest(unittest.TestCase):
+    def test_post_to_queue_uses_the_env_token_and_the_jobs_route(self):
+        with FakeWorker() as w:
+            os.environ["HP_SI_TOKEN"] = SI_TOKEN
+            try:
+                status, text = send_job.post_to_queue(w.url, envelope("j9"))
+            finally:
+                del os.environ["HP_SI_TOKEN"]
+            self.assertEqual(status, 202)
+            self.assertEqual(json.loads(text)["id"], "j9")
+            self.assertIn("j9", w.state.jobs)
+            self.assertEqual(w.state.calls[-1], ("POST", "/t/alice/jobs"))
+
+    def test_missing_token_and_plain_http_are_refused(self):
+        os.environ.pop("HP_SI_TOKEN", None)
+        with self.assertRaises(SystemExit):
+            send_job.post_to_queue("https://q.example.test/t/a", envelope("j"))
+        os.environ["HP_SI_TOKEN"] = SI_TOKEN
+        try:
+            with self.assertRaises(SystemExit):
+                send_job.post_to_queue("http://q.example.test/t/a",
+                                       envelope("j"))
+        finally:
+            del os.environ["HP_SI_TOKEN"]
+
+    def test_the_cli_queues_a_signed_job_end_to_end(self):
+        with FakeWorker() as w:
+            os.environ["HP_SI_TOKEN"] = SI_TOKEN
+            try:
+                import io
+                from contextlib import redirect_stderr, redirect_stdout
+                from unittest import mock
+                err = io.StringIO()
+                import secrets as _s
+                argv = ["send_job", "new", "--secret", _s.token_hex(32),
+                        "--kind", "ping", "--to-queue", w.url]
+                with mock.patch.object(sys, "argv", argv), \
+                        redirect_stdout(io.StringIO()), redirect_stderr(err):
+                    rc = send_job.main()
+            finally:
+                del os.environ["HP_SI_TOKEN"]
+            self.assertEqual(rc, 0, err.getvalue())
+            self.assertEqual(len(w.state.jobs), 1)
+            jid, env = next(iter(w.state.jobs.items()))
+            self.assertIn(f"[HOMING-PIGEON] job {jid}", env)
+            self.assertIn('"hp_enc"', env)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

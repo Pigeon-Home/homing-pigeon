@@ -466,7 +466,7 @@ class ShippedExtensionsTest(unittest.TestCase):
         registry, problems = transports.discover_transport_extensions(
             {}, tempfile.mkdtemp(prefix="hp-test-"))
         self.assertEqual(problems, [])
-        self.assertEqual(sorted(registry), ["dtls", "email", "file", "nats"])
+        self.assertEqual(sorted(registry), ["dtls", "email", "file", "nats", "queues"])
         self.assertEqual(registry["dtls"]["capabilities"],
                          ["listen", "network"])
         self.assertEqual(registry["email"]["capabilities"], ["network"])
@@ -602,7 +602,7 @@ class RunnerGateTest(unittest.TestCase):
         self.assertEqual(out["mode"], "enforce")
         self.assertEqual(out["senses"]["probe"]["verdict"], "refused")
         self.assertEqual(sorted(out["transports"]),
-                         ["dtls", "email", "file", "nats"])
+                         ["dtls", "email", "file", "nats", "queues"])
         self.assertTrue(any("probe" in p for p in out["problems"]))
 
     def test_inspect_review_survives_a_loader_failure(self):

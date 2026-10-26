@@ -1,0 +1,197 @@
+[
+ {
+  "name": "create-app-ok",
+  "request": {
+   "body_has": [
+    "app_name",
+    "org_slug"
+   ],
+   "method": "POST",
+   "url": "/v1/apps"
+  },
+  "response": {
+   "json": {
+    "created_at": 1792982000,
+    "id": "hp-alice"
+   },
+   "status": 201
+  }
+ },
+ {
+  "name": "create-app-exists",
+  "request": {
+   "method": "POST",
+   "url": "/v1/apps"
+  },
+  "response": {
+   "json": {
+    "error": "Name has already been taken"
+   },
+   "status": 422
+  }
+ },
+ {
+  "name": "create-machine-ok",
+  "request": {
+   "body_has": [
+    "name",
+    "region",
+    "config"
+   ],
+   "method": "POST",
+   "url": "/v1/apps/hp-alice/machines"
+  },
+  "response": {
+   "json": {
+    "config": {
+     "env": {
+      "HP_PROFILE": "hosted"
+     },
+     "guest": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 256
+     },
+     "image": "ghcr.io/pigeon-home/homing-pigeon:3.13.2",
+     "metadata": {
+      "homing-pigeon.tenant": "alice",
+      "homing-pigeon.version": "3.13.2"
+     }
+    },
+    "created_at": "2026-10-25T23:40:00Z",
+    "id": "e784079b561e58",
+    "instance_id": "01J9ZX2Q",
+    "name": "hp-alice",
+    "private_ip": "fdaa:0:1:a7b:2d8:1:2:3",
+    "region": "iad",
+    "state": "created"
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "get-machine-starting",
+  "request": {
+   "method": "GET",
+   "url": "/v1/apps/hp-alice/machines/e784079b561e58"
+  },
+  "response": {
+   "json": {
+    "config": {
+     "metadata": {
+      "homing-pigeon.tenant": "alice",
+      "homing-pigeon.version": "3.13.2"
+     }
+    },
+    "id": "e784079b561e58",
+    "name": "hp-alice",
+    "private_ip": "fdaa:0:1:a7b:2d8:1:2:3",
+    "region": "iad",
+    "state": "starting"
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "get-machine-started",
+  "request": {
+   "method": "GET",
+   "url": "/v1/apps/hp-alice/machines/e784079b561e58"
+  },
+  "response": {
+   "json": {
+    "config": {
+     "metadata": {
+      "homing-pigeon.tenant": "alice",
+      "homing-pigeon.version": "3.13.2"
+     }
+    },
+    "id": "e784079b561e58",
+    "name": "hp-alice",
+    "private_ip": "fdaa:0:1:a7b:2d8:1:2:3",
+    "region": "iad",
+    "state": "started"
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "get-machine-gone",
+  "request": {
+   "method": "GET",
+   "url": "/v1/apps/hp-alice/machines/nope"
+  },
+  "response": {
+   "json": {
+    "error": "machine not found"
+   },
+   "status": 404
+  }
+ },
+ {
+  "name": "destroy-ok",
+  "request": {
+   "method": "DELETE",
+   "url": "/v1/apps/hp-alice/machines/e784079b561e58?force=true"
+  },
+  "response": {
+   "json": {
+    "ok": true
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "unauthorized",
+  "request": {
+   "method": "POST",
+   "url": "/v1/apps"
+  },
+  "response": {
+   "json": {
+    "error": "Unauthorized"
+   },
+   "status": 401
+  }
+ },
+ {
+  "name": "rate-limited",
+  "request": {
+   "method": "POST",
+   "url": "/v1/apps/hp-alice/machines"
+  },
+  "response": {
+   "headers": {
+    "Retry-After": "7"
+   },
+   "json": {
+    "error": "rate limit exceeded"
+   },
+   "status": 429
+  }
+ },
+ {
+  "name": "server-error",
+  "request": {
+   "method": "POST",
+   "url": "/v1/apps/hp-alice/machines"
+  },
+  "response": {
+   "body": "<html>bad gateway</html>",
+   "status": 502
+  }
+ },
+ {
+  "name": "destroy-old-ok",
+  "request": {
+   "method": "DELETE",
+   "url": "/v1/apps/hp-alice/machines/old1?force=true"
+  },
+  "response": {
+   "json": {
+    "ok": true
+   },
+   "status": 200
+  }
+ }
+]

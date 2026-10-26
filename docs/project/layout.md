@@ -70,6 +70,17 @@
   (Linux), launchd (macOS), cron @reboot (FreeBSD), Scheduled Task
   (Windows).
 - `runner/config.example.json` — copy to `config.json` and fill in.
+- `runner/hosting/` — the hosting control plane (`homing-pigeon-host`):
+  one HTTP door (`httpdoor.py`), the provider interface (`base.py`),
+  adapters for Fly Machines, Hetzner Cloud, DigitalOcean and GitHub
+  Actions, the bootstrap a fresh machine runs, the inventory with its
+  one-tenant-per-machine rule, and prepaid billing with the Stripe
+  webhook. Tested against recorded exchanges in
+  `runner/tests/hosting_fixtures/`; never a live call. Plan:
+  `docs/project/hosting.md`.
+- `cloudflare/queues-worker/` — the hosted queue's Worker and Durable
+  Object (`docs/extend/transports.md`, "Queues"); its tests run under
+  node.
 - `runner/cloud/send_job.py` — cloud-side helper: builds signed job messages,
   verifies result messages. (Your SI uses this logic when dispatching jobs.)
 - `runner/tests/` — the suite: the real runner driven against fake

@@ -1,0 +1,207 @@
+[
+ {
+  "name": "create-ok",
+  "request": {
+   "body_has": [
+    "name",
+    "server_type",
+    "image",
+    "location",
+    "user_data",
+    "labels"
+   ],
+   "method": "POST",
+   "url": "/v1/servers"
+  },
+  "response": {
+   "json": {
+    "action": {
+     "command": "create_server",
+     "id": 1,
+     "progress": 0,
+     "status": "running"
+    },
+    "next_actions": [],
+    "root_password": null,
+    "server": {
+     "created": "2026-10-25T23:40:00+00:00",
+     "datacenter": {
+      "location": {
+       "name": "nbg1"
+      },
+      "name": "nbg1-dc3"
+     },
+     "id": 42,
+     "labels": {
+      "homing-pigeon.tenant": "alice",
+      "homing-pigeon.version": "3.13.2"
+     },
+     "name": "hp-alice",
+     "public_net": {
+      "ipv4": {
+       "blocked": false,
+       "ip": "203.0.113.10"
+      },
+      "ipv6": {
+       "ip": "2001:db8::/64"
+      }
+     },
+     "server_type": {
+      "name": "cx23"
+     },
+     "status": "initializing"
+    }
+   },
+   "status": 201
+  }
+ },
+ {
+  "name": "get-initializing",
+  "request": {
+   "method": "GET",
+   "url": "/v1/servers/42"
+  },
+  "response": {
+   "json": {
+    "server": {
+     "datacenter": {
+      "location": {
+       "name": "nbg1"
+      }
+     },
+     "id": 42,
+     "labels": {
+      "homing-pigeon.tenant": "alice",
+      "homing-pigeon.version": "3.13.2"
+     },
+     "name": "hp-alice",
+     "public_net": {
+      "ipv4": {
+       "ip": "203.0.113.10"
+      }
+     },
+     "status": "initializing"
+    }
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "get-running",
+  "request": {
+   "method": "GET",
+   "url": "/v1/servers/42"
+  },
+  "response": {
+   "json": {
+    "server": {
+     "datacenter": {
+      "location": {
+       "name": "nbg1"
+      }
+     },
+     "id": 42,
+     "labels": {
+      "homing-pigeon.tenant": "alice",
+      "homing-pigeon.version": "3.13.2"
+     },
+     "name": "hp-alice",
+     "public_net": {
+      "ipv4": {
+       "ip": "203.0.113.10"
+      }
+     },
+     "status": "running"
+    }
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "get-gone",
+  "request": {
+   "method": "GET",
+   "url": "/v1/servers/999"
+  },
+  "response": {
+   "json": {
+    "error": {
+     "code": "not_found",
+     "message": "server with ID '999' not found"
+    }
+   },
+   "status": 404
+  }
+ },
+ {
+  "name": "delete-ok",
+  "request": {
+   "method": "DELETE",
+   "url": "/v1/servers/42"
+  },
+  "response": {
+   "json": {
+    "action": {
+     "command": "delete_server",
+     "id": 2,
+     "status": "running"
+    }
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "unauthorized",
+  "request": {
+   "method": "POST",
+   "url": "/v1/servers"
+  },
+  "response": {
+   "json": {
+    "error": {
+     "code": "unauthorized",
+     "message": "unable to authenticate"
+    }
+   },
+   "status": 401
+  }
+ },
+ {
+  "name": "rate-limited",
+  "request": {
+   "method": "POST",
+   "url": "/v1/servers"
+  },
+  "response": {
+   "headers": {
+    "RateLimit-Limit": "3600",
+    "RateLimit-Remaining": "0",
+    "RateLimit-Reset": "1792982400",
+    "Retry-After": "30"
+   },
+   "json": {
+    "error": {
+     "code": "rate_limit_exceeded",
+     "message": "rate limit exceeded"
+    }
+   },
+   "status": 429
+  }
+ },
+ {
+  "name": "uniqueness",
+  "request": {
+   "method": "POST",
+   "url": "/v1/servers"
+  },
+  "response": {
+   "json": {
+    "error": {
+     "code": "uniqueness_error",
+     "message": "server name is already used"
+    }
+   },
+   "status": 409
+  }
+ }
+]

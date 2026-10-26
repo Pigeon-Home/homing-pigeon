@@ -81,6 +81,13 @@ def build_parser():
                    help="config file to load (default: config.json)")
     g.add_argument("--once", action="store_true",
                    help="run a single poll cycle, then exit")
+    g.add_argument("--drain", type=int, default=0, metavar="N",
+                   help="with --once: keep polling until N jobs have "
+                        "run, then exit (an ephemeral box's whole life; "
+                        "0 = one cycle)")
+    g.add_argument("--drain-seconds", type=int, default=0, metavar="T",
+                   help="with --once: stop draining after T seconds "
+                        "even if fewer jobs arrived (0 = no time cap)")
     g.add_argument("--dry-run", action="store_true",
                    help="verify signatures and print what would run; "
                         "execute nothing, send nothing, change nothing")

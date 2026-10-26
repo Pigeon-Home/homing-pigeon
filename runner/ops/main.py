@@ -327,6 +327,7 @@ def main() -> int:
         # a later config edit of "verbose" must not undo it.
         pinned.add("verbose")
     reload_state = {"mtime": os.path.getmtime(args.config)}
+    drain = R.drain_plan(args, len(seen))
     try:
         while True:
             # Re-read config if the file changed. Edit config.json all you
@@ -384,7 +385,11 @@ def main() -> int:
                     import pdb
                     pdb.post_mortem(sys.exc_info()[2])
             if args.once:
-                break
+                # --drain: an ephemeral box keeps polling until its
+                # job count or its clock is spent, then exits like
+                # a plain --once. A seen-set growth is a job run.
+                if drain is None or not drain.more(len(seen)):
+                    break
             try:
                 delay = int(cfg.get("poll_interval_sec", 20))
             except (TypeError, ValueError, OverflowError):

@@ -1,16 +1,28 @@
 name = "homing-pigeon-queues-worker"
-main = "src/index.ts"
+main = "src/index.js"
 compatibility_date = "2026-10-25"
 
-# Optional: set REJECT_INVALID_HMAC = "true" to reject any inbound
-# message that fails HMAC validation before it is written to D1 or
-# further compute is performed. Default is unset / false.
+# One Durable Object per tenant holds its queue, results and quota.
+[[durable_objects.bindings]]
+name = "TENANT_QUEUE"
+class_name = "TenantQueue"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["TenantQueue"]
+
+# Tenant records: {si_token_sha256, runner_token_sha256, hmac_secret,
+# quota: {jobs_per_hour, bytes_per_day}} keyed by tenant slug.
+# [[kv_namespaces]]
+# binding = "TENANTS"
+# id = "..."
+
+# A one-tenant deployment with no KV: set these as secrets instead.
+#   wrangler secret put TENANT
+#   wrangler secret put SI_TOKEN
+#   wrangler secret put RUNNER_TOKEN
+#   wrangler secret put HMAC_SECRET
 #
 # [vars]
-# REJECT_INVALID_HMAC = "true"
-# HMAC_SECRET = "..."   # better as a secret binding
-
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "homing-pigeon-jobs"
-# database_id = "..."
+# REJECT_INVALID_HMAC = "true"   # the default; "false" turns the gate off
+# LEASE_MS = "300000"

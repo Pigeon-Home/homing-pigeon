@@ -6,6 +6,20 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## Unreleased
 
+- **Hosting, Phases 0 to 4, built against recorded exchanges.** The
+  `hosted` install profile and the one-blob config
+  (`homing-pigeon-install --config-json`); `--once --drain N
+  --drain-seconds T` for an ephemeral runner's bounded life; the
+  `runner/hosting/` control plane (`homing-pigeon-host up / status /
+  redeploy / rotate / destroy / dispatch`) with adapters for Fly
+  Machines, Hetzner Cloud, DigitalOcean and GitHub Actions, the machine
+  bootstrap, the one-tenant-per-machine inventory, prepaid billing and
+  the Stripe webhook; the hosted queue (a Cloudflare Worker and one
+  Durable Object per tenant with the token gate, the HMAC gate and a
+  per-tenant quota, tested under node), the runner's `queues`
+  transport and `send_job.py --to-queue`. Every provider call in the
+  suite is a recorded exchange; no account exists yet.
+  `docs/project/hosting.md`.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.3 - 2026-10-25

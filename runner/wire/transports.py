@@ -93,7 +93,7 @@ TRANSPORT_API_VERSION = 1
 # discovery finds under runner/transport_extensions/). Enabled
 # names are NOT limited to these: any valid transport manifest
 # in the extensions directory is loadable, registered or not.
-FIRST_PARTY_TRANSPORTS = ("email", "file", "nats", "dtls")
+FIRST_PARTY_TRANSPORTS = ("email", "file", "nats", "dtls", "queues")
 
 DEFAULT_TRANSPORTS = ["email"]
 

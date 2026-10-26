@@ -1092,7 +1092,8 @@ class RunnerHelpDocumentTest(unittest.TestCase):
               "reports and harnesses"]
     FLAGS = [
         "--help", "--version",
-        "--config", "--once", "--dry-run", "--no-send", "--setup",
+        "--config", "--once", "--drain", "--drain-seconds",
+        "--dry-run", "--no-send", "--setup",
         "--pdb", "--ignore-personal-documents",
         "--workers", "--poll-interval", "--timeout",
         "--max-output-bytes", "--max-job-age", "--retention-days",

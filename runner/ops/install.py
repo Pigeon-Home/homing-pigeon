@@ -1117,6 +1117,9 @@ def _setup_fresh_config(args, cfg_path):
     pi_light marks an install that deliberately set up no model:
     nothing was installed or downloaded for inference, and the
     profile wrote oracle_mode deterministic into the config."""
+    _blob_spec = getattr(args, "config_json", None)
+    if isinstance(_blob_spec, str):
+        merge_config_blob(cfg_path, _blob_spec)
     ensure_shared_secret(cfg_path, args.shared_secret)
     # Mailbox auth is the one thing install cannot invent. On a TTY,
     # offer the same Thunderbird-style wizard the runner uses, so a
@@ -1501,6 +1504,27 @@ BUILTIN_PROFILES = {
         "max_result_view": "attested",
         "judge": "advisory",
     },
+    # A box somebody else provisions for a tenant (docs/project/
+    # hosting.md): password-only's redaction and ceiling, plus the
+    # sandbox enforced, the audience check auditing, and no local
+    # signal listener (nothing else runs on a hosted box). The
+    # workspace root and runner_id come from the one-blob config
+    # the provisioner writes (--config-json), not from here.
+    "hosted": {
+        "description": "A tenant's hosted runner: attested results, "
+                       "advisory judge, bwrap enforced, no local "
+                       "signals",
+        "redact_patterns_extra": {
+            "shadow_hash": r"\$[0-9a-z]+\$[A-Za-z0-9./]{20,}",
+            "password_assignment": r"(?i)(password|passwd|pwd)\s*[=:]\s*\S+",
+        },
+        "protected_paths": ["/etc/shadow"],
+        "max_result_view": "attested",
+        "judge": "advisory",
+        "local_signals": False,
+        "security": {"modes": {"confinement": "enforce",
+                               "audience": "audit"}},
+    },
 }
 
 
@@ -1591,6 +1615,83 @@ def inference_model_for(profile, explicit=None, faster=False) -> str:
         return model.strip()
     return DEFAULT_INFERENCE_MODEL
 
+
+
+
+# --- the one-blob config a provisioner hands a hosted box -----------
+
+# Keys a blob may set. Everything a hosted runner needs that the
+# profile cannot know: the secret, where the transport is, which box
+# this is. A key outside this set is refused, so a blob cannot flip a
+# security mode or widen the result view past what the profile set.
+CONFIG_BLOB_KEYS = frozenset((
+    "shared_secret", "runner_id", "workspace_root", "base_dir",
+    "owner_instructions", "poll_interval_sec",
+    "transport_queues", "transport_nats", "transport_dtls",
+    "transports", "mailbox_user", "mailbox_password",
+    "imap_host", "imap_port", "smtp_host", "smtp_port",
+    "inference", "oracle_mode", "pong_platform",
+))
+
+
+def read_config_blob(spec):
+    """The blob --config-json names: a JSON object inline, ``@path``
+    for a file, or ``env:NAME`` for an environment variable holding
+    the JSON. Returns a dict, or raises ValueError saying why not."""
+    if spec is None:
+        return {}
+    if not isinstance(spec, str) or not spec.strip():
+        raise ValueError("config blob: empty")
+    text = spec.strip()
+    if text.startswith("@"):
+        try:
+            with open(text[1:], encoding="utf-8") as fh:
+                text = fh.read()
+        except OSError as e:
+            raise ValueError(f"config blob: cannot read {text[1:]}: {e}")
+    elif text.startswith("env:"):
+        name = text[4:]
+        text = os.environ.get(name)
+        if text is None:
+            raise ValueError(f"config blob: {name} is not set")
+    try:
+        data = json.loads(text)
+    except ValueError as e:
+        raise ValueError(f"config blob: not JSON: {e}")
+    if not isinstance(data, dict):
+        raise ValueError("config blob: must be a JSON object")
+    bad = sorted(k for k in data if k not in CONFIG_BLOB_KEYS)
+    if bad:
+        raise ValueError("config blob: refused key(s) "
+                         + ", ".join(bad)
+                         + " (a profile sets security and the view)")
+    return data
+
+
+def merge_config_blob(cfg_path: str, spec) -> dict:
+    """Write the blob's keys into config.json before the profile runs.
+
+    The provisioner's one secret becomes the config: shared secret,
+    transport block, runner id, workspace root. Keys already in the
+    file are overwritten, since the blob is the deployment's word;
+    the profile applied afterwards still owns security and the view.
+    Returns the keys written."""
+    data = read_config_blob(spec)
+    if not data:
+        return {}
+    cfg = {}
+    if os.path.exists(cfg_path):
+        try:
+            with open(cfg_path, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+        except (OSError, ValueError):
+            cfg = {}
+        if not isinstance(cfg, dict):
+            cfg = {}
+    cfg.update(data)
+    _write_json(cfg_path, cfg)
+    print(f"config blob: wrote {', '.join(sorted(data))}")
+    return data
 
 
 
@@ -2021,9 +2122,23 @@ def apply_profile(cfg_path: str, profile: str) -> None:
         cfg[key] = merged
     for key in ("protected_paths", "max_result_view", "judge", "workspace_root",
                 "max_query_budget", "output_retention_days", "worker_allowlist",
-                "dag_mode", "require_review", "oracle_mode"):
+                "dag_mode", "require_review", "oracle_mode", "local_signals"):
         if key in data:
             cfg[key] = data[key]
+    # security.modes merges one mode at a time, so a profile that
+    # enforces confinement leaves the owner's other modes alone.
+    modes = (data.get("security") or {}).get("modes") \
+        if isinstance(data.get("security"), dict) else None
+    if isinstance(modes, dict):
+        sec = cfg.get("security") if isinstance(cfg.get("security"), dict) \
+            else {}
+        cur = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
+        merged_modes = dict(cur)
+        merged_modes.update({k: v for k, v in modes.items()
+                             if isinstance(k, str) and isinstance(v, str)})
+        sec = dict(sec)
+        sec["modes"] = merged_modes
+        cfg["security"] = sec
     cfg["profile"] = name
     _write_json(cfg_path, cfg)
     print(f"profile: applied {name}")
@@ -3118,7 +3233,7 @@ def main() -> int:
                         "instructions")
     g.add_argument("--profile", default=None, metavar="NAME_OR_PATH",
                    help="apply a deployment profile (pi-light, "
-                        "display-board, password-only, or a JSON "
+                        "display-board, password-only, hosted, or a JSON "
                         "file; raspberry-pi-home is pi-light's "
                         "former name). display-board is a dedicated "
                         "Linux board behind a screen: no model. "
@@ -3127,6 +3242,12 @@ def main() -> int:
                         "profile is chosen automatically.")
     g.add_argument("--no-profile", action="store_true",
                    help="do not apply any deployment profile")
+    g.add_argument("--config-json", default=None, metavar="JSON|@FILE|env:NAME",
+                   help="a provisioner's one-blob config, merged into "
+                        "config.json before the profile: shared_secret, "
+                        "runner_id, workspace_root, a transport block. "
+                        "Security modes and the result view are refused "
+                        "here; the profile owns them (hosted installs)")
     g.add_argument("--additional-secret", action="append", default=[],
                    metavar="KEY_ID",
                    help="register an additional key under KEY_ID "

@@ -1,0 +1,203 @@
+[
+ {
+  "name": "dispatch-ok",
+  "request": {
+   "body_has": [
+    "ref",
+    "inputs"
+   ],
+   "method": "POST",
+   "url": "/actions/workflows/hp-ephemeral.yml/dispatches"
+  },
+  "response": {
+   "body": "",
+   "status": 204
+  }
+ },
+ {
+  "name": "list-runs-pending",
+  "request": {
+   "method": "GET",
+   "url": "/actions/runs?event=workflow_dispatch&per_page=30"
+  },
+  "response": {
+   "json": {
+    "total_count": 1,
+    "workflow_runs": [
+     {
+      "conclusion": "success",
+      "display_title": "hp other-ticket",
+      "event": "workflow_dispatch",
+      "id": 40242410821,
+      "name": "hp-ephemeral",
+      "status": "completed"
+     }
+    ]
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "list-runs-found",
+  "request": {
+   "method": "GET",
+   "url": "/actions/runs?event=workflow_dispatch&per_page=30"
+  },
+  "response": {
+   "json": {
+    "total_count": 2,
+    "workflow_runs": [
+     {
+      "conclusion": null,
+      "created_at": "2026-10-25T23:45:00Z",
+      "display_title": "hp t1c2k3e4t5a6",
+      "event": "workflow_dispatch",
+      "id": 40250000001,
+      "name": "hp-ephemeral",
+      "status": "queued"
+     },
+     {
+      "conclusion": "success",
+      "display_title": "hp other-ticket",
+      "event": "workflow_dispatch",
+      "id": 40242410821,
+      "name": "hp-ephemeral",
+      "status": "completed"
+     }
+    ]
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "get-run-in-progress",
+  "request": {
+   "method": "GET",
+   "url": "/actions/runs/40250000001"
+  },
+  "response": {
+   "json": {
+    "conclusion": null,
+    "display_title": "hp t1c2k3e4t5a6",
+    "id": 40250000001,
+    "status": "in_progress"
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "get-run-completed",
+  "request": {
+   "method": "GET",
+   "url": "/actions/runs/40250000001"
+  },
+  "response": {
+   "json": {
+    "conclusion": "success",
+    "display_title": "hp t1c2k3e4t5a6",
+    "id": 40250000001,
+    "status": "completed"
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "timing-macos",
+  "request": {
+   "method": "GET",
+   "url": "/actions/runs/40250000001/timing"
+  },
+  "response": {
+   "json": {
+    "billable": {
+     "MACOS": {
+      "job_runs": [
+       {
+        "duration_ms": 272000,
+        "job_id": 1
+       }
+      ],
+      "jobs": 1,
+      "total_ms": 272000
+     }
+    },
+    "run_duration_ms": 281000
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "timing-duration-only",
+  "request": {
+   "method": "GET",
+   "url": "/actions/runs/40250000001/timing"
+  },
+  "response": {
+   "json": {
+    "billable": {},
+    "run_duration_ms": 61000
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "bad-credentials",
+  "request": {
+   "method": "POST",
+   "url": "/actions/workflows/hp-ephemeral.yml/dispatches"
+  },
+  "response": {
+   "json": {
+    "documentation_url": "https://docs.github.com/rest",
+    "message": "Bad credentials"
+   },
+   "status": 401
+  }
+ },
+ {
+  "name": "rate-limited",
+  "request": {
+   "method": "GET",
+   "url": "/actions/runs?event=workflow_dispatch&per_page=30"
+  },
+  "response": {
+   "headers": {
+    "X-RateLimit-Remaining": "0",
+    "X-RateLimit-Reset": "1792982460"
+   },
+   "json": {
+    "documentation_url": "https://docs.github.com/rest/overview/rate-limits-for-the-rest-api",
+    "message": "API rate limit exceeded for user ID 1."
+   },
+   "status": 403
+  }
+ },
+ {
+  "name": "workflow-missing",
+  "request": {
+   "method": "POST",
+   "url": "/actions/workflows/hp-ephemeral.yml/dispatches"
+  },
+  "response": {
+   "json": {
+    "documentation_url": "https://docs.github.com/rest",
+    "message": "Not Found"
+   },
+   "status": 404
+  }
+ },
+ {
+  "name": "unprocessable-ref",
+  "request": {
+   "method": "POST",
+   "url": "/actions/workflows/hp-ephemeral.yml/dispatches"
+  },
+  "response": {
+   "json": {
+    "documentation_url": "https://docs.github.com/rest",
+    "message": "No ref found for: nope"
+   },
+   "status": 422
+  }
+ }
+]

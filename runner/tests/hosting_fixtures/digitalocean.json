@@ -1,0 +1,189 @@
+[
+ {
+  "name": "create-ok",
+  "request": {
+   "body_has": [
+    "name",
+    "region",
+    "size",
+    "image",
+    "user_data",
+    "tags"
+   ],
+   "method": "POST",
+   "url": "/v2/droplets"
+  },
+  "response": {
+   "json": {
+    "droplet": {
+     "id": 3164494,
+     "image": {
+      "slug": "ubuntu-24-04-x64"
+     },
+     "memory": 512,
+     "name": "hp-alice",
+     "networks": {
+      "v4": [],
+      "v6": []
+     },
+     "region": {
+      "name": "New York 3",
+      "slug": "nyc3"
+     },
+     "status": "new",
+     "tags": [
+      "hp-tenant-alice",
+      "hp-version-3-13-2"
+     ],
+     "vcpus": 1
+    },
+    "links": {
+     "actions": [
+      {
+       "href": "https://api.digitalocean.com/v2/actions/36804636",
+       "id": 36804636,
+       "rel": "create"
+      }
+     ]
+    }
+   },
+   "status": 202
+  }
+ },
+ {
+  "name": "get-new",
+  "request": {
+   "method": "GET",
+   "url": "/v2/droplets/3164494"
+  },
+  "response": {
+   "json": {
+    "droplet": {
+     "id": 3164494,
+     "name": "hp-alice",
+     "networks": {
+      "v4": []
+     },
+     "region": {
+      "slug": "nyc3"
+     },
+     "status": "new",
+     "tags": [
+      "hp-tenant-alice",
+      "hp-version-3-13-2"
+     ]
+    }
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "get-active",
+  "request": {
+   "method": "GET",
+   "url": "/v2/droplets/3164494"
+  },
+  "response": {
+   "json": {
+    "droplet": {
+     "id": 3164494,
+     "name": "hp-alice",
+     "networks": {
+      "v4": [
+       {
+        "ip_address": "10.132.0.5",
+        "type": "private"
+       },
+       {
+        "ip_address": "198.51.100.7",
+        "type": "public"
+       }
+      ]
+     },
+     "region": {
+      "slug": "nyc3"
+     },
+     "status": "active",
+     "tags": [
+      "hp-tenant-alice",
+      "hp-version-3-13-2"
+     ]
+    }
+   },
+   "status": 200
+  }
+ },
+ {
+  "name": "get-gone",
+  "request": {
+   "method": "GET",
+   "url": "/v2/droplets/1"
+  },
+  "response": {
+   "json": {
+    "id": "not_found",
+    "message": "The resource you were accessing could not be found."
+   },
+   "status": 404
+  }
+ },
+ {
+  "name": "delete-ok",
+  "request": {
+   "method": "DELETE",
+   "url": "/v2/droplets/3164494"
+  },
+  "response": {
+   "body": "",
+   "status": 204
+  }
+ },
+ {
+  "name": "unauthorized",
+  "request": {
+   "method": "POST",
+   "url": "/v2/droplets"
+  },
+  "response": {
+   "json": {
+    "id": "Unauthorized",
+    "message": "Unable to authenticate you"
+   },
+   "status": 401
+  }
+ },
+ {
+  "name": "rate-limited",
+  "request": {
+   "method": "POST",
+   "url": "/v2/droplets"
+  },
+  "response": {
+   "headers": {
+    "RateLimit-Limit": "5000",
+    "RateLimit-Remaining": "0",
+    "RateLimit-Reset": "1792982400",
+    "Retry-After": "45"
+   },
+   "json": {
+    "id": "too_many_requests",
+    "message": "API Rate limit exceeded."
+   },
+   "status": 429
+  }
+ },
+ {
+  "name": "unprocessable",
+  "request": {
+   "method": "POST",
+   "url": "/v2/droplets"
+  },
+  "response": {
+   "json": {
+    "id": "unprocessable_entity",
+    "message": "You specified an invalid region for Droplet creation."
+   },
+   "status": 422
+  }
+ }
+]

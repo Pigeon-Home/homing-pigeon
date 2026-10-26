@@ -477,7 +477,7 @@ class ShippedDeclarationsTest(unittest.TestCase):
 
     ADAPTERS = ("aide-feed", "falco-feed", "osquery-feed", "softflowd-feed",
                 "suricata-feed", "sysmon-feed", "wazuh-feed", "zeek-feed")
-    TRANSPORTS = ("dtls", "email", "file", "nats")
+    TRANSPORTS = ("dtls", "email", "file", "nats", "queues")
     NAMED_REFS = {"softflowd": "master"}
 
     def folders(self):

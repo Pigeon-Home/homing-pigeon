@@ -663,6 +663,40 @@ ROWS = [{'key': 'severity',
            '`result_subject_prefix` (homing-pigeon.results) — not numeric/enum, not counted as '
            'separate keys here. Probe moved from policy-conflict to refuse (Q3, 2026-10-24) '
            'once url_port moved in 54dafe7.'},
+ {'key': 'drain (--once --drain N)',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 0,
+  'doc_file': 'docs/project/hosting.md',
+  'doc_line': 0,
+  'doc_token': '--drain',
+  'doc_status': 'unverified',
+  'reader': 'runner/runner.py:drain_plan',
+  'reader_sites': ['runner/runner.py:drain_plan'],
+  'policy': 'default',
+  'lo': 0,
+  'hi': None,
+  'probe': 'confval',
+  'test': 'DrainPlanTest',
+  'notes': 'CLI flag, not a config key: with --once, poll until N jobs ran. 0 = one cycle. '
+           'An unusable value reads as off (runner/tests/test_hosting_phase0.py).'},
+ {'key': 'drain_seconds (--once --drain-seconds T)',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 0,
+  'doc_file': 'docs/project/hosting.md',
+  'doc_line': 0,
+  'doc_token': '--drain-seconds',
+  'doc_status': 'unverified',
+  'reader': 'runner/runner.py:drain_plan',
+  'reader_sites': ['runner/runner.py:drain_plan'],
+  'policy': 'default',
+  'lo': 0,
+  'hi': None,
+  'probe': 'confval',
+  'test': 'DrainPlanTest',
+  'notes': 'CLI flag, not a config key: with --once, stop draining after T seconds. 0 = no cap. '
+           'An unusable value reads as off (runner/tests/test_hosting_phase0.py).'},
  {'key': 'extension_poll_interval_sec',
   'scope': 'core',
   'kind': 'number',
@@ -2343,6 +2377,8 @@ COVERAGE_EXEMPT_SITES = frozenset({
 # pinned: documenting one of these keys (or a new undocumented
 # key appearing) fails the drift guard until the row is updated.
 KNOWN_UNDOCUMENTED = frozenset({
+    "drain (--once --drain N)",
+    "drain_seconds (--once --drain-seconds T)",
     "timeout_sec (plan step)",
     "max_script_bytes",
     "extension_poll_interval_sec",
@@ -2417,8 +2453,9 @@ class RegistryShapeTests(unittest.TestCase):
         # size caps (refuse class).
         # then the two outbox stash keys (review item 1) and the
         # result body cap (review item 4).
-        self.assertEqual(130, len(ROWS))
-        self.assertEqual(79, sum(1 for r in ROWS if r["scope"] == "core"))
+        # then the two --once drain flags (hosting, Phase 0).
+        self.assertEqual(132, len(ROWS))
+        self.assertEqual(81, sum(1 for r in ROWS if r["scope"] == "core"))
         self.assertEqual(51, sum(1 for r in ROWS if r["scope"] == "extension"))
 
 
