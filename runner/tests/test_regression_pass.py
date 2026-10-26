@@ -218,11 +218,11 @@ class BisectTest(unittest.TestCase):
 class PassFlowTest(unittest.TestCase):
     """regression_pass with the suite and git faked: the verdicts."""
 
-    def _args(self, tmp):
+    def _args(self, tmp, record=""):
         import argparse
         return argparse.Namespace(pull=False, jobs=0, repeat=2,
                                   state_dir=tmp, no_bisect=True,
-                                  timeout=10)
+                                  timeout=10, record=record)
 
     def test_green_records_the_head(self):
         tmp = tempfile.mkdtemp(prefix="hp-regress-flow-")
@@ -256,6 +256,26 @@ class PassFlowTest(unittest.TestCase):
         self.assertIn("1 deterministic: runner.tests.test_x.T.test_a", ledger)
         self.assertIn("1 flaky: runner.tests.test_x.T.test_b", ledger)
         self.assertTrue(any("for questions.md" in l for l in lines))
+
+    def test_each_pass_appends_one_line_to_the_tree_record(self):
+        tmp = tempfile.mkdtemp(prefix="hp-regress-flow-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        record = os.path.join("reports", "passes.jsonl")
+        with mock.patch.object(P, "REPO", tmp), \
+                mock.patch.object(P, "git", return_value="f" * 40), \
+                mock.patch.object(P, "run_suite",
+                                  return_value=(0, "Ran 7 tests in 1s\n\nOK\n")):
+            P.regression_pass(self._args(tmp, record), out=lambda s: None)
+            P.regression_pass(self._args(tmp, record), out=lambda s: None)
+        with open(os.path.join(tmp, record), encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+        self.assertEqual(len(lines), 3)
+        self.assertEqual(json.loads(lines[0])["Agent-Stamp"], P.STAMP)
+        rec = json.loads(lines[2])
+        self.assertEqual(rec["sha"], "f" * 40)
+        self.assertEqual(rec["tests"], 7)
+        self.assertTrue(rec["ledger"].startswith("regression ffffffff"))
+        self.assertIn("when", rec)
 
     def test_a_suite_that_did_not_run_is_exit_2(self):
         tmp = tempfile.mkdtemp(prefix="hp-regress-flow-")

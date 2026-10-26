@@ -18,11 +18,14 @@ one the test has been red since. The result is one ledger line for
 the standing orders and, on red, a paragraph ready to paste under a
 Q in docs/use/questions.md with the reproduce command.
 
-State lives outside the tree, under --state-dir (default
-~/.cache/homing-pigeon/regression/): the last green head and one
-JSON record per pass. Nothing here writes to the repository; the
-ledger line and the Q paragraph are printed for the campaign to
-file. Exit 0 green, 1 deterministic red, 3 flakes only, 2 when the
+The rig's own state lives outside the tree, under --state-dir
+(default ~/.cache/homing-pigeon/regression/): the last green head
+and a JSON record per pass. The proof of the work lives in the
+tree: every pass appends one line to --record (default
+docs/reports/regression/passes.jsonl) -- the head, the test count,
+the wall time, the failing ids, the flake split, the culprits and
+the ledger line -- which the campaign commits with the ledger
+line. Exit 0 green, 1 deterministic red, 3 flakes only, 2 when the
 suite could not run at all.
 """
 import argparse
@@ -39,6 +42,8 @@ from datetime import datetime, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 REPO = ROOT   # the repository the pass runs in (tests point it elsewhere)
+STAMP = "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"
+RECORD = os.path.join("docs", "reports", "regression", "passes.jsonl")
 _RAN = re.compile(r"^Ran (\d+) tests? in", re.M)
 _RED = re.compile(r"^(FAIL|ERROR): (\S+) \(([^)]+)\)", re.M)
 _LOADER = "unittest.loader._FailedTest."
@@ -134,6 +139,19 @@ class State:
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(record, fh, indent=1, sort_keys=True)
         return path
+
+
+def append_record(path, record):
+    """One line per pass in the tree, a stamped header on the first."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    new = not os.path.exists(path)
+    with open(path, "a", encoding="utf-8", newline="\n") as fh:
+        if new:
+            fh.write(json.dumps({"regression": 1, "file": "passes",
+                                 "Agent-Stamp": STAMP},
+                                ensure_ascii=True) + "\n")
+        fh.write(json.dumps(record, ensure_ascii=True, sort_keys=True)
+                 + "\n")
 
 
 def run_suite(jobs, timeout):
@@ -289,7 +307,11 @@ def regression_pass(args, out=print):
         state.record_green(sha, tests)
         line = ledger_line(sha, tests, seconds, [], [], {})
         record["ledger"] = line
+        record["when"] = datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
         state.record_run(record)
+        if args.record:
+            append_record(os.path.join(REPO, args.record), record)
         out(line)
         return 0
     if rc != 0 and not ids:
@@ -323,7 +345,11 @@ def regression_pass(args, out=print):
                    "culprits": {k: list(v) for k, v in culprits.items()}})
     line = ledger_line(sha, tests, seconds, deterministic, flaky, culprits)
     record["ledger"] = line
+    record["when"] = datetime.now(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ")
     path = state.record_run(record)
+    if args.record:
+        append_record(os.path.join(REPO, args.record), record)
     out(line)
     out("for questions.md:")
     out(q_paragraph(sha, deterministic, flaky, culprits, args.repeat))
@@ -345,6 +371,12 @@ def main(argv=None):
                     help="classify only; do not bisect")
     ap.add_argument("--timeout", type=int, default=7200,
                     help="seconds for the full suite (default 7200)")
+    ap.add_argument("--record", default=RECORD,
+                    help="the in-tree pass log, relative to the "
+                         "repository (default %s)" % RECORD.replace(
+                             os.sep, "/"))
+    ap.add_argument("--no-record", dest="record", action="store_const",
+                    const="", help="append nothing to the tree")
     args = ap.parse_args(argv)
     return regression_pass(args)
 

@@ -151,6 +151,58 @@ class CorpusFilesTest(unittest.TestCase):
                 self.assertFalse(any(c < 32 for c in raw.rstrip(b"\r")),
                                  f"{target}: a raw control in an entry")
 
+    def test_runs_and_arc_maps_carry_the_stamp_and_parse(self):
+        with open(B.runs_path(), encoding="utf-8") as fh:
+            lines = [l for l in fh.read().splitlines() if l.strip()]
+        head = json.loads(lines[0])
+        self.assertEqual(head.get("Agent-Stamp"), B.STAMP)
+        self.assertGreater(len(lines), 1, "no run recorded yet")
+        for line in lines[1:]:
+            rec = json.loads(line)
+            self.assertIn(rec["kind"], ("seed", "grow"))
+            self.assertIn(rec["target"], B.TARGETS)
+            for key in ("when", "head", "entries_before", "entries_after",
+                        "arcs_before", "arcs_after", "kept", "crashes",
+                        "outcomes", "seconds"):
+                self.assertIn(key, rec, line[:120])
+            if rec["kind"] == "grow":
+                for key in ("rounds", "seed", "tried", "mutators_tried",
+                            "mutators_kept"):
+                    self.assertIn(key, rec, line[:120])
+        for target in B.TARGETS:
+            with open(B.arcs_path(target), encoding="utf-8") as fh:
+                arcs = json.load(fh)
+            self.assertEqual(arcs["Agent-Stamp"], B.STAMP)
+            self.assertEqual(arcs["target"], target)
+            self.assertTrue(arcs["arcs"], target)
+            for row in arcs["arcs"]:
+                self.assertEqual(len(row), 3)
+                self.assertIsInstance(row[0], str)
+                self.assertFalse(row[0].startswith("/"), row[0])
+                self.assertIsInstance(row[1], int)
+                self.assertIsInstance(row[2], int)
+            self.assertEqual(arcs["arcs"], sorted(arcs["arcs"]))
+
+    def test_seed_and_grow_record_their_runs(self):
+        tmp = tempfile.mkdtemp(prefix="hp-bluemonday-runs-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        with mock.patch.object(B, "CORPUS_DIR", tmp):
+            B.cmd_seed(argparse.Namespace(target="v2"), out=lambda s: None)
+            B.cmd_grow(argparse.Namespace(target="v2", rounds=20, seed=3,
+                                          verbose=False, jobs=1),
+                       out=lambda s: None)
+            with open(B.runs_path(), encoding="utf-8") as fh:
+                lines = fh.read().splitlines()
+            self.assertEqual(len(lines), 3)
+            seed_rec, grow_rec = json.loads(lines[1]), json.loads(lines[2])
+            self.assertEqual((seed_rec["kind"], grow_rec["kind"]),
+                             ("seed", "grow"))
+            self.assertEqual(grow_rec["seed"], 3)
+            self.assertEqual(grow_rec["rounds"], 20)
+            self.assertEqual(grow_rec["entries_before"],
+                             seed_rec["entries_after"])
+            self.assertTrue(os.path.exists(B.arcs_path("v2")))
+
     def test_fixtures_name_nothing_real(self):
         # Invented names only: no home directories, no mailboxes
         # outside example.com, no user names from any machine.

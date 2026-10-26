@@ -23,6 +23,18 @@ facts a reader may need to cite. Git history carries the rest.
 - **The conductor.** AGENTS.md rule 11: the owner of the repository
   is the conductor, by his own word, in every document, ledger line,
   question and note from now on; older text keeps its wording.
+- **The work is data in the tree.** The corpus tool appends one
+  line per seed or grow to `runner/tests/bluemonday/runs.jsonl`
+  (head, seed, rounds, what was tried and by which mutator, what
+  was kept, what crashed, how long) and rewrites
+  `<target>.arcs.json`, the arc map the corpus reaches; the
+  regression pass appends one line per pass to
+  `docs/reports/regression/passes.jsonl` (head, tests, wall time,
+  failing ids, the flake split, the culprits, the ledger line). The
+  standing orders commit both with the ledger lines, grows that
+  kept nothing and green passes included: the conductor's order
+  that the data from the testing goes into the repository, not only
+  its results.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.43 - 2026-10-26

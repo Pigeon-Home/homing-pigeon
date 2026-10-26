@@ -53,7 +53,11 @@ corpus. `stats` prints the sizes.
 Stdlib only; no hypothesis, no new CI leg. Every entry is a JSON
 line: {"id", "kind": "text"|"payload", "data", "from",
 "mutator", "arcs"}. The first line of each file is a header
-carrying the chat stamp.
+carrying the chat stamp. The work itself is data in the tree too:
+runs.jsonl gets one line per seed or grow (the head, the seed, the
+rounds, what was tried, what was kept, what crashed, how long),
+and <target>.arcs.json is the arc map the corpus reaches after it,
+so every run is in the history and replayable from its seed.
 """
 import argparse
 import hashlib
@@ -1175,6 +1179,79 @@ def check(target, entry):
     return TARGETS[target]["check"](entry)
 
 
+def runs_path():
+    return os.path.join(CORPUS_DIR, "runs.jsonl")
+
+
+def arcs_path(target):
+    return os.path.join(CORPUS_DIR, target + ".arcs.json")
+
+
+def head_sha():
+    import subprocess
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                             timeout=60)
+        return out.stdout.decode("ascii", "replace").strip() or "unknown"
+    except (OSError, subprocess.TimeoutExpired):
+        return "unknown"
+
+
+def write_arcs(target, arcs):
+    """The arc map a target's corpus reaches, as data in the tree:
+    sorted [file, from, to] with the file relative to the repository.
+    It is the record of the last seed or grow, not an assertion --
+    line numbers move with every edit of the reader."""
+    rows = sorted([os.path.relpath(f, ROOT).replace(os.sep, "/"), a, b]
+                  for f, a, b in arcs)
+    path = arcs_path(target)
+    os.makedirs(CORPUS_DIR, exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump({"bluemonday": 1, "target": target, "Agent-Stamp": STAMP,
+                   "arcs": rows}, fh, ensure_ascii=True, indent=0,
+                  separators=(",", ":"))
+        fh.write("\n")
+    os.replace(tmp, path)
+
+
+def record_run(record):
+    """One line per seed or grow in runs.jsonl: what ran, with which
+    seed, against which head, and what it found -- the proof of the
+    work, replayable from the seed and the corpus before it."""
+    path = runs_path()
+    os.makedirs(CORPUS_DIR, exist_ok=True)
+    new = not os.path.exists(path)
+    with open(path, "a", encoding="utf-8", newline="\n") as fh:
+        if new:
+            fh.write(json.dumps({"bluemonday": 1, "file": "runs",
+                                 "Agent-Stamp": STAMP},
+                                ensure_ascii=True) + "\n")
+        fh.write(json.dumps(record, ensure_ascii=True, sort_keys=True)
+                 + "\n")
+
+
+def _run_record(kind, target, session, before, added, seconds, **extra):
+    record = {
+        "kind": kind, "target": target,
+        "when": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "head": head_sha()[:12],
+        "entries_before": before["entries"],
+        "entries_after": len(session.entries),
+        "arcs_before": before["arcs"],
+        "arcs_after": len(session.tracer.arcs),
+        "kept": [e["id"] for e in added],
+        "crashes": len(session.crashes),
+        "outcomes": dict(session.outcomes),
+        "slowest_ms": round(session.slowest[0] * 1000),
+        "slowest": session.slowest[1],
+        "seconds": round(seconds, 1),
+    }
+    record.update(extra)
+    return record
+
+
 class Session:
     """One target's corpus in memory, with the tracer and the rig."""
 
@@ -1187,6 +1264,9 @@ class Session:
         self.crashes = []
         self.slowest = (0.0, None)
         self.outcomes = {"accepted": 0, "refused": 0, "crash": 0}
+        self.tried = 0
+        self.mutators_tried = {}
+        self.mutators_kept = {}
 
     def run(self, entry, trace=True):
         """(outcome, new_arcs, seconds) of one entry; a Crash is
@@ -1219,6 +1299,9 @@ class Session:
         """Mutate from the corpus for `rounds` children; keep each one
         that reaches a new arc. Returns the entries added."""
         added = []
+        self.tried = 0
+        self.mutators_tried = {}
+        self.mutators_kept = {}
         if not self.entries:
             return added
         for n in range(rounds):
@@ -1230,6 +1313,8 @@ class Session:
             entry = make_entry(parent["kind"], data, parent["id"], name)
             if entry["id"] in self.ids:
                 continue
+            self.tried += 1
+            self.mutators_tried[name] = self.mutators_tried.get(name, 0) + 1
             outcome, new, _dt = self.run(entry)
             if outcome == "crash":
                 if log:
@@ -1240,6 +1325,7 @@ class Session:
                 self.entries.append(entry)
                 self.ids.add(entry["id"])
                 added.append(entry)
+                self.mutators_kept[name] = self.mutators_kept.get(name, 0) + 1
                 if log:
                     log(f"  +{new:3d} arcs  {name:14s} {entry['id']}  "
                         f"({outcome})")
@@ -1340,10 +1426,15 @@ def cmd_seed(args, out=print):
         for e in fresh:
             session.entries.append(e)
             session.ids.add(e["id"])
+        t0 = time.perf_counter()
         _with_rig(session.baseline)
         for e in fresh:
             e["arcs"] = 0
         save(corpus_path(target), target, session.entries)
+        write_arcs(target, session.tracer.arcs)
+        record_run(_run_record(
+            "seed", target, session, {"entries": len(existing), "arcs": 0},
+            fresh, time.perf_counter() - t0, seeds_added=len(fresh)))
         out(f"{target}: {len(fresh)} seeds added to {len(existing)} "
             f"entries, {len(session.tracer.arcs)} arcs, "
             f"{session.outcomes['accepted']} accepted, "
@@ -1415,6 +1506,7 @@ def cmd_grow(args, out=print):
             status = 2
             continue
         session = Session(target, entries)
+        t0 = time.perf_counter()
 
         def work():
             session.baseline()
@@ -1425,6 +1517,13 @@ def cmd_grow(args, out=print):
         before, added = _with_rig(work)
         if added:
             save(corpus_path(target), target, session.entries)
+        write_arcs(target, session.tracer.arcs)
+        record_run(_run_record(
+            "grow", target, session,
+            {"entries": len(entries), "arcs": before}, added,
+            time.perf_counter() - t0, rounds=rounds, seed=seed,
+            tried=session.tried, mutators_tried=session.mutators_tried,
+            mutators_kept=session.mutators_kept))
         out(f"{target}: {len(entries)} -> {len(session.entries)} entries, "
             f"arcs {before} -> {len(session.tracer.arcs)}, "
             f"{session.outcomes['crash']} crashes, slowest "

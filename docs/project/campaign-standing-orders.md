@@ -139,9 +139,13 @@ flake from deterministic, bisects each deterministic red between
 the last green head this rig recorded and the current head to name
 the commit it has been red since, and prints one ledger line and,
 on red, a paragraph for `questions.md`. Paste the ledger line under
-the hour's "rules refreshed" line with the resources line. On a
-deterministic red, file the paragraph as a Q to Claude and keep
-working; the fix is Claude's lane. On a flake, run
+the hour's "rules refreshed" line with the resources line, and
+commit `docs/reports/regression/passes.jsonl` with it: the pass
+appended its own line there (head, tests, wall time, the failing
+ids, the flake split, the culprits), and that file is the proof
+the pass ran, green passes included. On a deterministic red, file
+the paragraph as a Q to Claude and keep working; the fix is
+Claude's lane. On a flake, run
 `regression_guard.py --repeat 10` on its module and file what that
 says. Before any push that adds or changes a test module, the
 pre-push guard (section P) runs first.
@@ -387,9 +391,17 @@ The loop:
    cycle alternates one Platinum item with one blueMonday grow; a
    `grow` is also P's under-driven filler (step 7).
 2. **Grow.** `HP_BLUEMONDAY_ROUNDS=<large> python
-   runner/tools/bluemonday_corpus.py grow` under `rig_resources.py`;
-   `--seed` makes a run repeatable, `--verbose` prints each keeper.
-   The corpus files that changed are the commit.
+   runner/tools/bluemonday_corpus.py grow --jobs <cores>` under
+   `rig_resources.py`; `--seed` makes a run repeatable, `--verbose`
+   prints each keeper. The commit is the proof of the work, every
+   time: the corpus files that changed, `runs.jsonl` (the tool
+   appends one line per seed or grow: head, seed, rounds, what was
+   tried, what was kept, what crashed) and the `<target>.arcs.json`
+   maps it rewrote, with the ledger line. A grow that kept nothing
+   is still committed, because its line in `runs.jsonl` is the
+   record that those rounds were run (the conductor's standing
+   order, 2026-10-26: the data from the fuzzing goes into the
+   repository, not only its results).
 3. **Seed.** Fixtures the suite builds that the tool's `seed` does
    not yet (a signed body, an envelope, a v2 message) go into the
    tool's seed functions, invented names only, then `seed` and
