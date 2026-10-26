@@ -4,6 +4,19 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.10 - 2026-10-26
+
+- **Project Platinum opens.** Coverage-guided fuzzing on the idle rig
+  (queue P in the campaign's standing orders, Q59): `coverage` runs
+  under `.github/workflows/coverage.yml` with the child-process hook,
+  `runner/tools/coverage_targets.py` ranks the gaps from the AST
+  (`logic`, `guard`, `except`, `platform`, `shadowed`), and
+  `HP_PLATINUM_EXAMPLES` in `runner/tests/conftest.py` sets how many
+  examples a property test without its own `max_examples` runs. The
+  hosting entry point, the real HTTP client and the hosting edges
+  gained their tests (sibling chat).
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.9 - 2026-10-26
 
 - **One `_runner()` for the ops modules.** `runner/ops/live.py` holds
