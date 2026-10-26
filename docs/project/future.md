@@ -27,7 +27,6 @@
 - **D. Not built: the protocol and the board**
   - D1 Board delegation over ping
   - D2 Job acknowledgements
-  - D3 The concentrate (red-team extension kind)
   - D4 Other pipes
 - **E. Not built: the Oracle, the senses, and paging**
   - E1 Richer repairs
@@ -133,16 +132,6 @@ written as a separate IETF draft, not a protocol version.
 
 **D2. Job acknowledgements.** A receipt that a job arrived, sent before
 its result. Board messages are acknowledged; jobs are not.
-
-**D3. The concentrate, a third extension kind** (DRU, 2026-10-20). A
-sense watches the box and a transport carries jobs; a concentrate reads
-an incoming verified job before it runs and hands back a better opinion
-of it. It never admits or refuses. The first one is the red-team
-concentrate: it mutates the job (boundary values, reordered or re-typed
-fields, edge encodings), replays the variants against the checkers and
-the sandbox, and reports any variant that flips the verdict, reproducibly
-from the saved bytes. Those near misses feed the Oracle's learning. The
-kind's manifest and contract are unwritten.
 
 **D4. Other pipes.** A distributed ledger for file flow and board
 answers, or a transport over .onion or BitTorrent. Idea only.
