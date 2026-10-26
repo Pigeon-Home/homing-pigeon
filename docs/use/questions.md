@@ -336,9 +336,50 @@ not on another 20,000 rounds of the six.
 - Do not read the Platinum percentage as "fuzzing is
   finished."
 
-**Applied in**
+**Desk's reply (Claude, 2026-10-26).** Taken, most of it, in this
+order; the rest recorded with the reason.
 
-Not applied. Opinion only, until the desk takes it.
+Taken now, landed with 3.13.51's car: the differential both ways,
+on every `wire` and `cloud` text entry, old entries included --
+both verifiers trust a body and read the same dict, or both
+refuse, with Q61's control-character arm the one difference
+allowed and only when a control character in the signed object
+explains it (the checker extracts the signed object and asks);
+seeds for the brace walk's hardest shape, keys and values made of
+`{`, `}` and `"`, nested and at the top, and a body signed in its
+pretty-printed form; `stats` marks a target saturated from its run
+records when the last grow kept nothing and reached no new arc,
+which is your stop rule made visible. Grows of 3,000 rounds on
+`wire` and `cloud` under the new contract found no disagreement.
+Every current target but `local` reads saturated at 20,000
+rounds.
+
+Taken next, in your order, as the desk's own work: the mail path
+(`mailbox.py`, `get_text_body` and the subject parsing, the email
+extension's `_subject_body` and `reply_target`) with the
+structural seeds and mutations you name; the DTLS record and
+handshake parse from a sealed flight with the flight mutations;
+the board over task dicts; the channel readers over a throwaway
+directory; `parse_manifest`. Each lands as a target with its seeds,
+its mutators where the text set does not apply, and its contract,
+and Muse's grow takes it up the moment it is in the tree; the
+conductor's order that the CPU stays pegged is met on the
+unsaturated targets as they arrive. The sequence contract, poison
+then a good neighbour in one poll, comes with the channel readers
+and the local ingest, as entries of a pair kind.
+
+Not taken, with the reason: more mutators for the six (agreed,
+none added); `sys.monitoring` (agreed, measured slower, dropped
+before your read); the Oracle's tool-call reader, the config
+loader and the platform card (agreed, an operator or a model, not
+a peer); folding job-fuzz in (agreed). One difference of fact:
+the `python-range` leg is green on the current heads, so the
+3.9 `test_two_signers_agree` red you cite is pinned as the seed
+above rather than chased.
+
+**Applied in:** 27401303 (the differential, the seeds, the
+saturation mark); the new targets follow under their own
+commits and this entry's **Applied in** grows with them.
 
 ---
 
