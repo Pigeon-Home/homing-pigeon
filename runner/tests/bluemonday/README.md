@@ -19,6 +19,7 @@ One JSON-lines file per target, grown by
 | `dtls.jsonl`   | `runner/wire/dtlsproto.py` (Q66): `_split_records`, `_parse_handshake`, and, when a complete handshake message parses, `_parse_extensions`, the hello parsers, the key-share and PSK readers; `DtlsServerCore.feed` on the same datagram |
 | `board.jsonl`  | `runner/wire/board.py` (Q67): `submit`, `offer`, `complete`, `approve`, `reoffer_expired` on one task dict; a refusal stores nothing, and a known-good neighbor submitted after it still runs |
 | `board_ops.jsonl` | `runner/wire/board.py`, the sequence kind: a board file as a peer or a crash left it, then `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order on a throwaway path, the contract held after every step |
+| `channels.jsonl` | `runner/wire/transports.py` (Q68): `fetch_channel_messages` over a throwaway directory. The entry is a pair of inbox files. A file that is not an envelope is an ack-only refusal and stores nothing; the known-good neighbor in the same directory is still a job |
 
 The first line of each file is a header; every other line is one
 entry: `id` (a hash of the kind and the data), `kind` (`text`, a
@@ -85,6 +86,15 @@ entry). After every step each operation has answered its shape --
 a task handed out is claimed under the id it carries and is a
 copy, and the file reads back as the board in memory.
 
+A `channels` entry's data is a pair, `{"poison", "other"}`, both
+inbox texts (or a list of byte values for a non-UTF-8 poison),
+so the JSON mutators apply. The check also plants a neighbor the
+entry cannot change, a subdirectory, a symlink, a non-UTF-8
+file, and one oversize envelope with the size cap lowered for
+that probe only and put back. Accepted means the poison parsed
+and came back as that subject and body. Refused means it was
+ack-only and its reply stored nothing.
+
 The refusal types, so a grow never files one as a crash (Q63):
 for the verifiers (`wire`, `cloud`, `v2`) the refusal is
 `ValueError`, raised, not returned -- an unknown `key_id` from
@@ -96,5 +106,5 @@ never raise, and the extension and hello readers refuse with
 `DtlsError` or `JobCryptoError`. The board methods never raise:
 a bad task is a `(False, reason)` from `submit` and stores
 nothing. A raise of any other type, or a `ValueError` escaping
-`local`, `stash`, `mail`, `dtls`, `board` or `board_ops`, is a
-crash.
+`local`, `stash`, `mail`, `dtls`, `board`, `board_ops` or
+`channels`, is a crash.

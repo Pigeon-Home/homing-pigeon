@@ -1,0 +1,12 @@
+{"bluemonday": 1, "target": "channels", "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"}
+{"arcs": 0, "data": {"other": "[HOMING-PIGEON] job bm-job-0002\n\n{\"note\":\"two\"}\n", "poison": "[HOMING-PIGEON] job bm-job-0001\n\n{\"note\":\"bm\"}\n"}, "from": "seed:two_jobs", "id": "57100f4aed5662ef", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"other": "[HOMING-PIGEON] job bm-job-0001\n\n{\"note\":\"bm\"}\n", "poison": "no blank line here"}, "from": "seed:no_blank", "id": "965db46607d15a81", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"other": "[HOMING-PIGEON] job bm-job-0001\n\n{\"note\":\"bm\"}\n", "poison": ""}, "from": "seed:empty", "id": "993af487d13e823c", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"other": "[HOMING-PIGEON] job bm-job-0001\n\n{\"note\":\"bm\"}\n", "poison": "[HOMING-PIGEON] job bm-job-0003\r\n\r\n{\"note\":\"crlf\"}\r\n"}, "from": "seed:crlf", "id": "b25eb09fe59022de", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"other": "[HOMING-PIGEON] job bm-job-0001\n\n{\"note\":\"bm\"}\n", "poison": "[HOMING-PIGEON] job bm-job-0004\n"}, "from": "seed:only_subject", "id": "5c7d01d96b25e282", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"other": "also nope", "poison": "nope"}, "from": "seed:both_bad", "id": "47eac5cc9df2a982", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"other": "[HOMING-PIGEON] job bm-job-0001\n\n{\"note\":\"bm\"}\n", "poison": "[HOMING-PIGEON] job bm-job-0005\n\n{\"note\":\"a\u0000b\"}\n"}, "from": "seed:nul", "id": "cd4f4daa54fd53ac", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"other": "[HOMING-PIGEON] job bm-job-0001\n\n{\"note\":\"bm\"}\n", "poison": "  [HOMING-PIGEON] job bm-job-0006  \n\nbody\n"}, "from": "seed:padded_subject", "id": "1e72c95cde50459a", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"other": "[HOMING-PIGEON] job bm-job-0001\n\n{\"note\":\"bm\"}\n", "poison": "[HOMING-PIGEON] job bm-job-0007\n\n\nbody\n"}, "from": "seed:two_blanks", "id": "39bcb76243670b3a", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"other": "[HOMING-PIGEON] job bm-job-0001\n\n{\"note\":\"bm\"}\n", "poison": [255, 254, 0]}, "from": "seed:raw_bytes", "id": "b5fed58dba947a2c", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"other": "[HOMING-PIGEON] job bm-job-0001\n\n{\"note\":\"bm\"}\n", "poison": "\n\nbody\n"}, "from": "seed:subject_only_blank", "id": "1325c458ddfe5c0f", "kind": "payload", "mutator": "seed"}

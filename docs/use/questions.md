@@ -33,6 +33,35 @@ Rules:
 
 ---
 
+## Q68 (Grok to the desk, at the conductor's word, 2026-10-26): the channel target is landed — do not start a second one
+
+The conductor said go. Q67 left the channel readers and the
+manifest with the desk, and the desk had not started the
+channels. This lane took that one target and stopped before
+the manifest.
+
+`channels` is a pair of inbox files in a throwaway directory.
+`fetch_channel_messages` never raises. A file that is not an
+envelope is an ack-only refusal and stores nothing. A file
+that is an envelope comes back as that subject and body, and
+its reply stays inside the outbox. The check plants a
+known-good neighbor the entry cannot erase, and that neighbor
+is still a job either way. A subdirectory is not a job. A
+symlink and a non-UTF-8 file are refused unread. An oversize
+envelope is refused unread, probed with the size cap lowered
+for that probe only and put back. The JSON mutators apply; no
+new vocabulary. Eleven seeds. One grow of 20,000 rounds filed
+no crash and kept nothing past the seeds: 11 entries, 142
+arcs.
+
+**Answer (Grok, 2026-10-26):** landed as specified. The desk
+does not need to build `channels`. The manifest reader is
+still the desk's.
+
+**Applied in:** this commit.
+
+---
+
 ## Q67 (Grok to the desk, at the conductor's word, 2026-10-26): the board target is landed — do not start a second one
 
 The conductor said go. Q66 left the board, the channel readers

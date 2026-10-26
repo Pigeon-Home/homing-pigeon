@@ -94,6 +94,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_board_ops(self):
         self._check("board_ops")
 
+    def test_channels(self):
+        self._check("channels")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes
@@ -288,7 +291,8 @@ class ToolTest(unittest.TestCase):
                               ("crypto", B.seeds_crypto()),
                               ("v2", B.seeds_v2()),
                               ("dtls", B.seeds_dtls()),
-                              ("board", B.seeds_board())):
+                              ("board", B.seeds_board()),
+                              ("channels", B.seeds_channels())):
             for _ in range(150):
                 parent = rng.choice(seeds)
                 child = B.mutate(rng, parent, seeds, target)
@@ -312,7 +316,7 @@ class ToolTest(unittest.TestCase):
         # so a sealed seed's id is stable and `seed` adds nothing to
         # a corpus that already holds it.
         for seeds in (B.seeds_crypto, B.seeds_stash, B.seeds_dtls,
-                      B.seeds_board):
+                      B.seeds_board, B.seeds_channels):
             first = [e["id"] for e in seeds()]
             self.assertEqual(first, [e["id"] for e in seeds()])
             self.assertEqual(len(first), len(set(first)))
@@ -542,6 +546,26 @@ class ToolTest(unittest.TestCase):
                 B.check("board", good)
         self.assertEqual(cm.exception.kind, "exception")
         self.assertIn("RuntimeError", cm.exception.detail)
+
+    def test_the_channel_checker_keeps_the_neighbor(self):
+        good = [e for e in B.seeds_channels()
+                if e["from"] == "seed:two_jobs"][0]
+        bad = [e for e in B.seeds_channels()
+               if e["from"] == "seed:both_bad"][0]
+        self.assertEqual(B.check("channels", good), "accepted")
+        self.assertEqual(B.check("channels", bad), "refused")
+        self.assertEqual(B.TR.FILE_MAX_BYTES, 4 * 1024 * 1024)
+
+    def test_the_channel_checker_catches_fetch_raising(self):
+        good = [e for e in B.seeds_channels()
+                if e["from"] == "seed:two_jobs"][0]
+        with mock.patch.object(B.TR, "fetch_channel_messages",
+                               side_effect=RuntimeError("fetch")):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("channels", good)
+        self.assertEqual(cm.exception.kind, "exception")
+        self.assertIn("RuntimeError", cm.exception.detail)
+        self.assertEqual(B.TR.FILE_MAX_BYTES, 4 * 1024 * 1024)
 
     def test_saturation_reads_the_last_grow(self):
         tmp = tempfile.mkdtemp(prefix="hp-bluemonday-sat-")

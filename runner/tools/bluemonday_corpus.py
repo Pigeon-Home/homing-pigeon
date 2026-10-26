@@ -37,6 +37,9 @@ delivered body and the agent's trust in it:
                                          reoffer_expired -- a board
                                          file and a sequence of peer
                                          operations on it
+    channels runner/wire/transports.py   fetch_channel_messages over
+                                         a throwaway directory; the
+                                         entry is the pair
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -1733,6 +1736,220 @@ def seeds_board():
             for name, task in out]
 
 
+_CHANNEL_NAME = "bmch"
+_CHANNEL_NEIGHBOR = (
+    "[HOMING-PIGEON] job bm-job-neighbor\n\n"
+    "{\"note\":\"neighbor\"}\n")
+_CHANNEL_GOOD = (
+    "[HOMING-PIGEON] job bm-job-0001\n\n"
+    "{\"note\":\"bm\"}\n")
+
+
+def _channel_bytes(payload):
+    """The bytes one inbox file holds. A string is written as
+    UTF-8, surrogatepass so a lone surrogate becomes a refusal
+    the reader meets as bad bytes. A list of byte values is
+    written raw. Anything else is JSON, which has no blank line
+    and so cannot be an envelope."""
+    if isinstance(payload, str):
+        return payload.encode("utf-8", "surrogatepass")
+    if (isinstance(payload, list) and payload
+            and all(isinstance(x, int) and not isinstance(x, bool)
+                    and 0 <= x <= 255 for x in payload)):
+        return bytes(payload)
+    try:
+        return json.dumps(payload, ensure_ascii=True).encode("ascii")
+    except (TypeError, ValueError, RecursionError):
+        return b"?"
+
+
+def _channel_expect(raw):
+    """("job", subject, body) or ("refuse",) for the bytes the
+    reader will see. The reader's own parse, so the two cannot
+    disagree about what a blank line means."""
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return ("refuse",)
+    parsed = TR.parse_envelope(text)
+    if parsed is None:
+        return ("refuse",)
+    return ("job", parsed[0], parsed[1])
+
+
+def _channel_outbox(path):
+    return [name for name in os.listdir(path)
+            if os.path.isfile(os.path.join(path, name))]
+
+
+def _channel_place(inbox, name, payload):
+    raw = _channel_bytes(payload)
+    with open(os.path.join(inbox, name), "wb") as fh:
+        fh.write(raw)
+    return raw
+
+
+def _channel_check_message(msg, outbox, expect):
+    """One fetched message. A job's reply stores one result
+    inside the outbox. A refusal's reply stores nothing."""
+    if not isinstance(msg, TR.IncomingMessage):
+        raise Crash("shape", "fetch returned "
+                    f"{type(msg).__name__}")
+    before = set(_channel_outbox(outbox))
+    _got, exc = _call(msg.reply, "bm-result", "bm-body")
+    if exc is not None:
+        raise Crash("exception", "reply raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    new = set(_channel_outbox(outbox)) - before
+    root = os.path.realpath(outbox) + os.sep
+    for name in new:
+        real = os.path.realpath(os.path.join(outbox, name))
+        if not real.startswith(root):
+            raise Crash("contract", "a reply left the outbox")
+    if expect[0] == "job":
+        if msg.subject != expect[1] or msg.body != expect[2]:
+            raise Crash("contract", "a parsed envelope was not "
+                        "returned as its subject and body")
+        if len(new) != 1:
+            raise Crash("contract", "a job reply stored "
+                        f"{len(new)} results")
+    else:
+        if msg.subject or msg.body:
+            raise Crash("contract", "a refusal carried a subject "
+                        "or a body")
+        if new:
+            raise Crash("contract", "a refusal stored a result")
+    _got, exc = _call(msg.ack)
+    if exc is not None:
+        raise Crash("exception", "ack raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+
+
+def check_channels(entry):
+    """channels: a pair of inbox files, plus a known-good
+    neighbor the entry cannot change (Q68).
+    fetch_channel_messages never raises. A file that is not an
+    envelope is an ack-only refusal and stores nothing. A file
+    that is an envelope comes back as that subject and body, and
+    its reply stays inside the outbox. The neighbor in the same
+    directory is still a job either way. A symlink and a
+    non-UTF-8 file are refused unread. An oversize file is
+    refused unread, probed with the cap lowered and put back."""
+    data = entry["data"] if isinstance(entry["data"], dict) else {}
+    poison = data.get("poison", entry["data"])
+    other = data.get("other", "")
+    directory = tempfile.mkdtemp(prefix="hp-bm-channel-")
+    saved_cap = TR.FILE_MAX_BYTES
+    try:
+        paths = TR.ensure_channel_dirs(directory, _CHANNEL_NAME)
+        inbox = paths["inbox"]
+        os.mkdir(os.path.join(inbox, "notes"))
+        placed = {
+            "a-poison.job.txt": _channel_place(inbox, "a-poison.job.txt",
+                                               poison),
+            "b-other.job.txt": _channel_place(inbox, "b-other.job.txt",
+                                              other),
+            "c-neighbor.job.txt": _channel_place(
+                inbox, "c-neighbor.job.txt", _CHANNEL_NEIGHBOR),
+        }
+        with open(os.path.join(inbox, "e-bad.job.txt"), "wb") as fh:
+            fh.write(b"\xff\xfe not utf-8")
+        linked = False
+        try:
+            os.symlink(os.path.join(directory, "outside"),
+                       os.path.join(inbox, "z-link.job.txt"))
+            linked = True
+        except OSError:
+            linked = False
+        messages, exc = _call(TR.fetch_channel_messages, directory,
+                              _CHANNEL_NAME, lambda *_a, **_k: None)
+        if exc is not None:
+            raise Crash("exception", "fetch_channel_messages raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        if not isinstance(messages, list):
+            raise Crash("shape", "fetch returned "
+                        f"{type(messages).__name__}")
+        by_ident = {}
+        for msg in messages:
+            ident = getattr(msg, "ident", None)
+            if ident in by_ident:
+                raise Crash("contract", f"two messages for {ident}")
+            by_ident[ident] = msg
+        expected = {
+            "a-poison.job.txt": _channel_expect(placed["a-poison.job.txt"]),
+            "b-other.job.txt": _channel_expect(placed["b-other.job.txt"]),
+            "c-neighbor.job.txt": ("job",) + TR.parse_envelope(
+                _CHANNEL_NEIGHBOR),
+            "e-bad.job.txt": ("refuse",),
+        }
+        if linked:
+            expected["z-link.job.txt"] = ("refuse",)
+        if set(by_ident) != set(expected):
+            raise Crash("contract", "the poll dropped or invented a "
+                        f"file: {sorted(by_ident)} != {sorted(expected)}")
+        if "notes" in by_ident:
+            raise Crash("contract", "a directory was returned as a job")
+        for ident, want in expected.items():
+            _channel_check_message(by_ident[ident], paths["outbox"], want)
+        neighbor = os.path.join(paths["inbox_done"], "c-neighbor.job.txt")
+        if not os.path.isfile(neighbor):
+            raise Crash("contract", "acking the neighbor did not "
+                        "consume it")
+        # The cap, lowered only for this probe and put back. The
+        # file is a real envelope, so a reader that skipped the
+        # size check would trust it.
+        TR.FILE_MAX_BYTES = 8
+        cap_root = os.path.join(directory, "cap")
+        cap_paths = TR.ensure_channel_dirs(cap_root, _CHANNEL_NAME)
+        with open(os.path.join(cap_paths["inbox"], "big.job.txt"),
+                  "w", encoding="utf-8") as fh:
+            fh.write("SS\n\nbody\n")
+        capped, exc = _call(TR.fetch_channel_messages, cap_root,
+                            _CHANNEL_NAME, lambda *_a, **_k: None)
+        if exc is not None:
+            raise Crash("exception", "an oversize fetch raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        if not isinstance(capped, list) or len(capped) != 1:
+            raise Crash("shape", "an oversize inbox did not yield "
+                        "one refusal")
+        _channel_check_message(capped[0], cap_paths["outbox"], ("refuse",))
+        poison_expect = expected["a-poison.job.txt"]
+        return "accepted" if poison_expect[0] == "job" else "refused"
+    finally:
+        TR.FILE_MAX_BYTES = saved_cap
+        shutil.rmtree(directory, True)
+
+
+def seeds_channels():
+    """Pairs of inbox texts. The neighbor the contract requires
+    is planted by the check, so a mutation of this pair cannot
+    erase it. Invented job ids only. The raw list is the
+    non-UTF-8 seed."""
+    other = ("[HOMING-PIGEON] job bm-job-0002\n\n"
+             "{\"note\":\"two\"}\n")
+    pairs = [
+        ("two_jobs", _CHANNEL_GOOD, other),
+        ("no_blank", "no blank line here", _CHANNEL_GOOD),
+        ("empty", "", _CHANNEL_GOOD),
+        ("crlf", "[HOMING-PIGEON] job bm-job-0003\r\n\r\n"
+                 "{\"note\":\"crlf\"}\r\n", _CHANNEL_GOOD),
+        ("only_subject", "[HOMING-PIGEON] job bm-job-0004\n",
+         _CHANNEL_GOOD),
+        ("both_bad", "nope", "also nope"),
+        ("nul", "[HOMING-PIGEON] job bm-job-0005\n\n"
+                "{\"note\":\"a\u0000b\"}\n", _CHANNEL_GOOD),
+        ("padded_subject", "  [HOMING-PIGEON] job bm-job-0006  \n\n"
+                           "body\n", _CHANNEL_GOOD),
+        ("two_blanks", "[HOMING-PIGEON] job bm-job-0007\n\n\nbody\n",
+         _CHANNEL_GOOD),
+        ("raw_bytes", [255, 254, 0], _CHANNEL_GOOD),
+        ("subject_only_blank", "\n\nbody\n", _CHANNEL_GOOD),
+    ]
+    return [make_entry("payload", {"poison": poison, "other": other},
+                       "seed:" + name, "seed")
+            for name, poison, other in pairs]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -2435,6 +2652,8 @@ TARGETS = {
               "seeds": seeds_board},
     "board_ops": {"files": [_src("wire", "board.py")],
                   "check": check_board_ops, "seeds": seeds_board_ops},
+    "channels": {"files": [_src("wire", "transports.py")],
+                 "check": check_channels, "seeds": seeds_channels},
 }
 
 

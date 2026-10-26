@@ -47,6 +47,18 @@ facts a reader may need to cite. Git history carries the rest.
   its key; `approve` of a non-string id answered a string where
   every other path answers `(ok, reason)`, the shape its ack
   carries.
+- **blueMonday's tenth target: the channel inbox (Q68).**
+  `channels` holds a pair of inbox files against
+  `runner/wire/transports.py`: `fetch_channel_messages` never
+  raises. A file that is not an envelope is an ack-only refusal
+  and stores nothing; a file that is an envelope comes back as
+  that subject and body, and its reply stays inside the outbox.
+  A known-good neighbor in the same directory is still a job
+  either way. The check also plants a subdirectory, a symlink,
+  a non-UTF-8 file, and one oversize envelope with the size cap
+  lowered for that probe only and put back. Eleven seeds. One
+  grow of 20,000 rounds filed no crash and kept nothing past
+  the seeds: 11 entries, 142 arcs.
 - **A repeated object is written twice.** `_json_safe` (the signer's
   and the board's JSON walk) treated an object that merely appears
   twice -- under two keys, or twice in a list -- as a cycle and
