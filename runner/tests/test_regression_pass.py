@@ -276,6 +276,8 @@ class PassFlowTest(unittest.TestCase):
         self.assertEqual(rec["tests"], 7)
         self.assertTrue(rec["ledger"].startswith("regression ffffffff"))
         self.assertIn("when", rec)
+        self.assertRegex(rec["python"], r"^\d+\.\d+")
+        self.assertIn("-", rec["platform"])
 
     def test_a_dirty_tree_under_pull_is_a_recorded_refusal(self):
         # Q64: the pass's own record says why it did not run; no

@@ -287,6 +287,13 @@ def q_paragraph(sha, deterministic, flaky, culprits, repeat):
     return "\n".join(lines)
 
 
+def environment():
+    """The interpreter and platform that produced a record."""
+    import platform
+    return {"python": platform.python_version(),
+            "platform": f"{platform.system()}-{platform.machine()}"}
+
+
 def dirty_files():
     """The paths git would refuse to pull over: modified, staged or
     untracked, as `git status --porcelain` lists them."""
@@ -301,6 +308,7 @@ def refuse(args, state, sha, why, out):
     record = {"sha": sha, "tests": 0, "seconds": 0.0, "exit": 2,
               "failing": [], "deterministic": [], "flaky": [],
               "culprits": {}, "refused": why, "ledger": line,
+              **environment(),
               "when": datetime.now(timezone.utc).strftime(
                   "%Y-%m-%dT%H:%M:%SZ")}
     state.record_run(record)
@@ -342,7 +350,7 @@ def regression_pass(args, out=print):
         return 2
     record = {"sha": sha, "tests": tests, "seconds": round(seconds, 1),
               "exit": rc, "failing": ids, "deterministic": [],
-              "flaky": [], "culprits": {}}
+              "flaky": [], "culprits": {}, **environment()}
     if rc == 0 and not ids:
         state.record_green(sha, tests)
         line = ledger_line(sha, tests, seconds, [], [], {})

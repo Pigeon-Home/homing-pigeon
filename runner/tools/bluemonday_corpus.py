@@ -1242,11 +1242,20 @@ def record_run(record):
                  + "\n")
 
 
+def _environment():
+    """What produced a record: the interpreter and the platform, so a
+    run can be read against the box that made it."""
+    import platform
+    return {"python": platform.python_version(),
+            "platform": f"{platform.system()}-{platform.machine()}"}
+
+
 def _run_record(kind, target, session, before, added, seconds, **extra):
     record = {
         "kind": kind, "target": target,
         "when": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "head": head_sha()[:12],
+        **_environment(),
         "entries_before": before["entries"],
         "entries_after": len(session.entries),
         "arcs_before": before["arcs"],

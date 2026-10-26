@@ -199,6 +199,8 @@ class CorpusFilesTest(unittest.TestCase):
                              ("seed", "grow"))
             self.assertEqual(grow_rec["seed"], 3)
             self.assertEqual(grow_rec["rounds"], 20)
+            self.assertRegex(grow_rec["python"], r"^\d+\.\d+")
+            self.assertIn("-", grow_rec["platform"])
             self.assertEqual(grow_rec["entries_before"],
                              seed_rec["entries_after"])
             self.assertTrue(os.path.exists(B.arcs_path("v2")))
