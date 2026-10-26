@@ -277,6 +277,57 @@ class PassFlowTest(unittest.TestCase):
         self.assertTrue(rec["ledger"].startswith("regression ffffffff"))
         self.assertIn("when", rec)
 
+    def test_a_dirty_tree_under_pull_is_a_recorded_refusal(self):
+        # Q64: the pass's own record says why it did not run; no
+        # traceback, no pull attempted.
+        tmp = tempfile.mkdtemp(prefix="hp-regress-flow-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        record = os.path.join("reports", "passes.jsonl")
+        lines = []
+        calls = []
+
+        def fake_git(*args, cwd=None, check=True):
+            calls.append(args)
+            if args[0] == "rev-parse":
+                return "a" * 40
+            if args[0] == "status":
+                return " M runner/tools/x.py\n?? runner/tests/new.py\n"
+            raise AssertionError(f"git {args} must not run")
+        args = self._args(tmp, record)
+        args.pull = True
+        with mock.patch.object(P, "REPO", tmp), \
+                mock.patch.object(P, "git", fake_git), \
+                mock.patch.object(P, "run_suite",
+                                  side_effect=AssertionError("no suite")):
+            status = P.regression_pass(args, out=lines.append)
+        self.assertEqual(status, 2)
+        self.assertFalse(any(a[0] == "pull" for a in calls))
+        self.assertTrue(lines[-1].startswith("regression aaaaaaaa: NOT RUN"))
+        self.assertIn("runner/tools/x.py", lines[-1])
+        with open(os.path.join(tmp, record), encoding="utf-8") as fh:
+            rec = json.loads(fh.read().splitlines()[-1])
+        self.assertEqual(rec["exit"], 2)
+        self.assertIn("dirty", rec["refused"])
+
+    def test_a_pull_that_fails_is_a_recorded_refusal(self):
+        tmp = tempfile.mkdtemp(prefix="hp-regress-flow-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        lines = []
+
+        def fake_git(*args, cwd=None, check=True):
+            if args[0] == "rev-parse":
+                return "b" * 40
+            if args[0] == "status":
+                return ""
+            raise RuntimeError("git pull: the remote is away")
+        args = self._args(tmp, "")
+        args.pull = True
+        with mock.patch.object(P, "REPO", tmp), \
+                mock.patch.object(P, "git", fake_git):
+            status = P.regression_pass(args, out=lines.append)
+        self.assertEqual(status, 2)
+        self.assertIn("NOT RUN, the pull failed", lines[-1])
+
     def test_a_suite_that_did_not_run_is_exit_2(self):
         tmp = tempfile.mkdtemp(prefix="hp-regress-flow-")
         self.addCleanup(shutil.rmtree, tmp, True)

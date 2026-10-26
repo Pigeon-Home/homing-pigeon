@@ -19,6 +19,13 @@ facts a reader may need to cite. Git history carries the rest.
   `regression_pass.py` take `--jobs` as the box's core count unless
   told otherwise, as the parallel test runner always has, so a plain
   command keeps every core busy.
+- **Q64: the pass refuses a dirty tree in its own shape, and the
+  guard's soft leaks are pinned.** Under `--pull` the regression
+  pass reads `git status` first and a dirty tree is a `NOT RUN`
+  ledger line with its record in `passes.jsonl`, never a traceback;
+  a failing pull is recorded the same way. The guard's leak run is
+  held to naming a tempdir and a thread left behind, as soft, with
+  the test that left them.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.46 - 2026-10-26

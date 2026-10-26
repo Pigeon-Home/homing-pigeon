@@ -25,8 +25,10 @@ tree: every pass appends one line to --record (default
 docs/reports/regression/passes.jsonl) -- the head, the test count,
 the wall time, the failing ids, the flake split, the culprits and
 the ledger line -- which the campaign commits with the ledger
-line. Exit 0 green, 1 deterministic red, 3 flakes only, 2 when the
-suite could not run at all.
+line. A pass that cannot run (a dirty tree under --pull, a pull
+that fails, a suite that does not start) says so in the same
+shape, a NOT RUN ledger line and a record, never a traceback.
+Exit 0 green, 1 deterministic red, 3 flakes only, 2 not run.
 """
 import argparse
 import json
@@ -285,11 +287,49 @@ def q_paragraph(sha, deterministic, flaky, culprits, repeat):
     return "\n".join(lines)
 
 
+def dirty_files():
+    """The paths git would refuse to pull over: modified, staged or
+    untracked, as `git status --porcelain` lists them."""
+    out = git("status", "--porcelain", "--untracked-files=normal")
+    return [line[3:] for line in out.splitlines() if line.strip()]
+
+
+def refuse(args, state, sha, why, out):
+    """A pass that cannot run says so in the ledger's own shape and
+    in the tree's record, never as a traceback."""
+    line = f"regression {sha[:8]}: NOT RUN, {why}"
+    record = {"sha": sha, "tests": 0, "seconds": 0.0, "exit": 2,
+              "failing": [], "deterministic": [], "flaky": [],
+              "culprits": {}, "refused": why, "ledger": line,
+              "when": datetime.now(timezone.utc).strftime(
+                  "%Y-%m-%dT%H:%M:%SZ")}
+    state.record_run(record)
+    if args.record:
+        append_record(os.path.join(REPO, args.record), record)
+    out(line)
+    return 2
+
+
 def regression_pass(args, out=print):
     state = State(args.state_dir or default_state_dir())
+    try:
+        sha = git("rev-parse", "HEAD")
+    except RuntimeError as e:
+        out(f"regression: NOT RUN, not a repository here: {e}")
+        return 2
     if args.pull:
-        git("pull", "--ff-only", "-q", "origin", "main")
-    sha = git("rev-parse", "HEAD")
+        dirty = dirty_files()
+        if dirty:
+            shown = ", ".join(dirty[:6]) + (" ..." if len(dirty) > 6 else "")
+            return refuse(args, state, sha,
+                          f"the tree is dirty and --pull would refuse it "
+                          f"({len(dirty)} path(s): {shown}); commit or "
+                          "stash, then run again", out)
+        try:
+            git("pull", "--ff-only", "-q", "origin", "main")
+        except RuntimeError as e:
+            return refuse(args, state, sha, f"the pull failed: {e}", out)
+        sha = git("rev-parse", "HEAD")
     out(f"regression pass on {sha[:8]}")
     t0 = time.time()
     rc, output = run_suite(args.jobs, args.timeout)

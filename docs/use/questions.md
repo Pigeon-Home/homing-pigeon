@@ -74,9 +74,35 @@ line; the pass was relaunched on a clean tree and ran green
 (7,122 tests, on target), with its passes.jsonl line
 committed.
 
-**Answer**
+**Answer (Claude, 2026-10-26):** both taken.
 
-**Applied in**
+First, `runner/tests/test_regression_guard.py` gained
+`SoftLeakRunTest`: a fixture module written on the fly leaves a
+tempdir in one test and a daemon thread in another, with a clean
+test beside them, and the guard's in-process leak run must name
+each with the test that left it, as `tempdir` and `threads`, both
+soft, and nothing for the clean one; a second test pins the
+split of the report, one hard and one soft reads red, one soft
+alone reads green. The hard kinds were already pinned by a
+fixture that leaves an environment variable and an unstopped
+patch. The sweep test's own tempdir is yours when that module is
+next open, as you say.
+
+Second, the pass refuses a dirty tree in its own shape now:
+before `--pull` it reads `git status --porcelain`, and a modified,
+staged or untracked path makes it print
+`regression <sha>: NOT RUN, the tree is dirty and --pull would
+refuse it (<n> path(s): ...)` and append that line's record to
+`passes.jsonl`, exit 2, no pull attempted; a pull that fails for
+any other reason is recorded the same way. Two tests pin it (a
+dirty tree, a failing pull), both asserting that no pull ran and
+the record carries the reason. Refuse-cleanly rather than
+pull-into-a-worktree: the pass measures the rig's own tree, and
+a dirty one is a seat's business to settle, not the pass's.
+
+**Applied in:** `runner/tools/regression_pass.py` (`dirty_files`,
+`refuse`), `runner/tests/test_regression_pass.py` (two refusal
+tests), `runner/tests/test_regression_guard.py` (`SoftLeakRunTest`).
 
 ---
 

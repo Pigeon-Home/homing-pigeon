@@ -7,6 +7,7 @@ wrong verdict would come from: the unittest summary parser, the
 module selection from git, the snapshot diff that names a leak, and
 the in-process leak run on a module written to leak on purpose.
 """
+import json
 import os
 import shutil
 import subprocess
@@ -150,6 +151,82 @@ class LeakRunTest(unittest.TestCase):
         self.assertIn("test_patch_never_stopped", leaks[1])
         self.assertIn('"what": "patches"', leaks[1])
         self.assertFalse(any("test_clean" in l for l in leaks))
+
+
+class SoftLeakRunTest(unittest.TestCase):
+    """Q64: the soft reports -- a tempdir and a thread left behind --
+    are named by the guard with the test that left them, so a change
+    to the snapshot machinery cannot turn the leak check into a
+    no-op without a red here."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-guard-soft-")
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.path = os.path.join(self.tmp, "test_soft_leaky_example.py")
+        with open(self.path, "w", encoding="utf-8") as fh:
+            fh.write(textwrap.dedent('''\
+                import tempfile
+                import threading
+                import time
+                import unittest
+
+
+                class SoftLeakyTest(unittest.TestCase):
+                    def test_tempdir_left_behind(self):
+                        tempfile.mkdtemp(prefix="hp-guard-soft-leak-")
+
+                    def test_thread_left_running(self):
+                        t = threading.Thread(target=time.sleep, args=(3,),
+                                             name="hp-guard-soft-thread",
+                                             daemon=True)
+                        t.start()
+
+                    def test_clean(self):
+                        pass
+                '''))
+
+    def tearDown(self):
+        base = tempfile.gettempdir()
+        for name in os.listdir(base):
+            if name.startswith("hp-guard-soft-leak-"):
+                shutil.rmtree(os.path.join(base, name), ignore_errors=True)
+
+    def test_a_tempdir_and_a_thread_are_named_as_soft_leaks(self):
+        rc, out = G.run_python([os.path.join("runner", "tools",
+                                             "regression_guard.py"),
+                                "--leaks", self.path])
+        self.assertEqual(rc, 0, out)
+        leaks = [json.loads(l[5:]) for l in out.splitlines()
+                 if l.startswith("LEAK ")]
+        by_test = {}
+        for leak in leaks:
+            by_test.setdefault(leak["test"].rsplit(".", 1)[1], []).append(
+                leak["what"])
+        self.assertEqual(by_test.get("test_tempdir_left_behind"),
+                         ["tempdir"], leaks)
+        self.assertEqual(by_test.get("test_thread_left_running"),
+                         ["threads"], leaks)
+        self.assertNotIn("test_clean", by_test)
+        for leak in leaks:
+            self.assertNotIn(leak["what"], G._HARD_LEAKS)
+        detail = [l["detail"] for l in leaks if l["what"] == "threads"][0]
+        self.assertIn("hp-guard-soft-thread", detail)
+
+    def test_the_report_splits_hard_from_soft(self):
+        with mock.patch.object(G, "run_python", return_value=(0, (
+                'LEAK {"test": "m.T.test_a", "what": "tempdir", '
+                '"detail": "left behind: [\'x\']"}\n'
+                'LEAK {"test": "m.T.test_b", "what": "environ", '
+                '"detail": "added [\'K\']"}\n'))):
+            verdict = G.check_leaks("test_whatever.py")
+        self.assertFalse(verdict.ok)
+        self.assertIn("1 hard, 1 soft", verdict.note)
+        with mock.patch.object(G, "run_python", return_value=(0, (
+                'LEAK {"test": "m.T.test_a", "what": "tempdir", '
+                '"detail": "left behind: [\'x\']"}\n'))):
+            verdict = G.check_leaks("test_whatever.py")
+        self.assertTrue(verdict.ok)
+        self.assertIn("0 hard, 1 soft", verdict.note)
 
 
 class ChangedModulesTest(unittest.TestCase):
