@@ -365,8 +365,8 @@ Same rule as section M.
 exhausted on the six. The next signal is a stronger contract,
 not a faster clock.
 
-1. Differential. For every kept body, `wire.verify` and
-   `cloud.send_job.verify` either both trust it and read the
+1. Differential. For every kept body, `runner/wire/verify.py` and
+   `runner/cloud/send_job.py` either both trust it and read the
    same dict, or both refuse. The written contracts above
    already say this for the two targets separately. The
    replay should assert it on every entry, including entries

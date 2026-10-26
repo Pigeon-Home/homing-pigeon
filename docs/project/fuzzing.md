@@ -309,8 +309,8 @@ the vocabulary they have.
 Two contracts the corpus should add, and replay over entries
 it already kept:
 
-- The two verifiers agree. `wire.verify` and
-  `cloud.send_job.verify` both trust a body and read the same
+- The two verifiers agree. `runner/wire/verify.py` and
+  `runner/cloud/send_job.py` both trust a body and read the same
   dict, or both refuse it.
 - A sequence. A bad message stores nothing, and the next good
   one in the same poll or directory still does. The
