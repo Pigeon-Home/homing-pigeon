@@ -580,7 +580,7 @@ class MailTest(unittest.TestCase):
             self.tmp, "transport-extensions", "email")
         outbox = os.path.join(channel, "outbox")
         os.makedirs(outbox, exist_ok=True)
-        filed = {"ok": False}
+        filed = {"ok": False, "why": "the answer was never filed"}
 
         def watcher():
             found = None
@@ -605,12 +605,26 @@ class MailTest(unittest.TestCase):
                 if found is None:
                     time.sleep(0.02)
             if found is None:
+                filed["why"] = "no question reached the outbox in 5s"
                 return
             time.sleep(0.8)
-            try:
-                os.remove(found)
-            except OSError:
-                return
+            # The sender's pickup. On Windows a scanner can hold the
+            # fresh file for a moment, so the remove is retried for
+            # up to two seconds instead of giving up on the first
+            # refusal (one build-windows leg in five lost here).
+            removed = False
+            give_up = time.monotonic() + 2
+            while not removed:
+                try:
+                    os.remove(found)
+                    removed = True
+                except FileNotFoundError:
+                    removed = True
+                except OSError as e:
+                    if time.monotonic() >= give_up:
+                        filed["why"] = "could not remove %s: %s" % (found, e)
+                        return
+                    time.sleep(0.05)
             time.sleep(2.4)
             question = v2.question_for(
                 {"protocol_v2": True, "oracle_mode": "deterministic",
@@ -638,7 +652,7 @@ class MailTest(unittest.TestCase):
         finally:
             thread.join(timeout=12)
         self.assertLess(time.monotonic() - t0, 8)
-        self.assertTrue(filed["ok"])
+        self.assertTrue(filed["ok"], filed["why"])
         result = next(row for row in sent if "result " + job_id in row[0])
         parsed = verify_body(result[1], SECRET)
         ident = result[0].rsplit(" ", 1)[-1]
