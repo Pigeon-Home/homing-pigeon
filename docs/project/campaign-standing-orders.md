@@ -2708,6 +2708,23 @@ when done, the proving commit or run. Newest first.
   exit 0 | under-driven
   resources-top: hatch 203 MB, python 12 MB,
   hatch-execd 4 MB, systemd 3 MB, bash 3 MB
+- Full pass at b56b07fb (the 3.13.3 tree +
+  the seam fix): BOTH SHARDS OK -- 3,370
+  tests, skipped=15 and skipped=23 (the
+  rig's standing sandbox/platform gates).
+  The extraction-breakage episode is closed:
+  Q52/Q53's defects are repaired in the
+  tree and verified from this seat.
+  resources 2026-10-26T02:39:06Z: cores 2 | box cpu 63% | wall 6m50s | cmd cpu 7m15s = 1.1 cores busy | peak rss 241 MB | mem used 89% | disk free 165.9 GB | exit 0 | under-driven
+  resources-top: hatch 147 MB, python 9 MB, systemd 4 MB, hatch-execd 2 MB, systemd-journal 1 MB
+  (under-use self-report, per Q58: under-
+  driven by the tool's band at 1.1 of 2
+  cores -- the shard tail again; the box
+  then idled while the owner asked his
+  questions. Next fill: the stamp queue for
+  the release train -- .71 full, .72 and
+  .78 light, .77, 3.13.0, 3.13.1, 3.13.2
+  and 3.13.3 full -- starting now.)
 - rules refreshed 2026-10-25 19:31 PDT
   (standing orders and the amended
   owner-talk section, AGENTS.md rules 7-9,
