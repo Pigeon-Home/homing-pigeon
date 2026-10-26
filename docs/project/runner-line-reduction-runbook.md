@@ -1,8 +1,16 @@
 # Runbook: get runner.py under 10,000 lines
 
-Goal: `runner/runner.py` below 10,000 lines, with no behavior
-change. Current: 11,205 lines, 303 functions. Target: under
-10,000. Gap: about 1,200 lines.
+<!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 (status and the repaired rules) -->
+
+Status: done. The series of 2026-10-25 took `runner/runner.py` from
+11,205 lines to 5,362 (it has grown since with new work), moving the
+pieces into `runner/ops/`; it shipped in 3.12.74 after a repair of
+how the extracted modules load (Q52-Q55 in `docs/use/questions.md`).
+The phases below are the record of how it was planned. The rules
+are current and bind any further extraction.
+
+Goal (met): `runner/runner.py` below 10,000 lines, with no behavior
+change. Starting point: 11,205 lines, 303 functions.
 
 This is extraction, not deletion. Every cut is a helper that
 replaces a repeated or oversized block. Tests must stay green.
@@ -35,6 +43,21 @@ replaces a repeated or oversized block. Tests must stay green.
   sibling imports fall back the same way (`try: from runner.wire
   import x / except ImportError: from wire import x`), as
   `runner/wire/oauth.py` does.
+- **The extracted module reaches the runner at call time**, through
+  its own `_runner()` (the live module: `runner.runner` under the
+  suite, `__main__` as a script or frozen), never with a bare name
+  and never with `from runner import runner`. That covers runner
+  globals (`log`, `HOT_KEYS`, `JobRejected`), calls to functions
+  still in `runner.py`, calls between extracted modules (so the
+  suite's patches on the runner module hold), and `sys.platform`
+  reads. It carries its own stdlib imports. It never assigns onto
+  the runner (`R.x = ...`, `for R.x in ...`), and a `global` names
+  only something the module itself binds; the one intended write is
+  `R._LOG_FILE`.
+- **Before each push**: `python3 runner/tools/repair_script_imports.py
+  --check` prints nothing, and `runner.tests.test_script_context` and
+  `runner.tests.test_extracted_no_runner_writes` pass. The repair
+  tool without `--check` performs the mechanical part.
 
 ## Already done
 
@@ -126,16 +149,22 @@ When `wc -l runner/runner.py` prints a number under 10000:
 - Do not remove comments that explain a security decision.
 - Do not change a log line, a reject reason, or an event
   field name.
-- Do not touch files outside `runner/runner.py` for this goal.
+- Do not touch files outside `runner/runner.py`, the new module
+  under `runner/ops/`, and the `--hidden-import` lists in
+  `.github/workflows/build.yml` for this goal.
 
 ## Check
 
 ```bash
 wc -l runner/runner.py
 python3 -m py_compile runner/runner.py
+python3 runner/tools/repair_script_imports.py --check
 python3 -m unittest runner.tests.test_security_config \
   runner.tests.test_audience runner.tests.test_enforce_races \
-  runner.tests.test_confinement
+  runner.tests.test_confinement runner.tests.test_script_context \
+  runner.tests.test_extracted_no_runner_writes
+(cd runner && python3 runner.py --version)
 ```
 
-Green and under 10000 means done.
+Green, silent and printing the version means the extraction is safe
+to push.

@@ -34,7 +34,10 @@ a separate package -- `zypper install python311` or `dnf install
 python3.11` -- so run the installer with that interpreter
 (`python3.11 install.py`). Rocky/Alma 9, Debian 11+, Ubuntu 22.04+,
 Fedora, Amazon Linux 2023 and Alpine 3 ship 3.9 or newer already.
-The platform matrix proves each of these.
+The platform matrix runs the proof on openSUSE Leap 15 and
+AlmaLinux 8 (with the separate interpreter), Rocky 9, Debian 12
+and 13, Ubuntu 22.04 and 24.04, Fedora, Amazon Linux 2023 and
+Alpine 3; Alma 9 and Debian 11 are not legs of their own.
 
 ## 2. pip (best for Raspberry Pi)
 

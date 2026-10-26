@@ -409,7 +409,7 @@ The runner is fully inspectable, so audit what it would do before it does it, an
 
 ## Security notes
 
-- Threat model: [docs/security/threat-model.md](docs/security/threat-model.md) and it's
+- Threat model: [docs/security/threat-model.md](docs/security/threat-model.md) and its
   companion [docs/security/security-gaps.md](docs/security/security-gaps.md).
 - Industry map: [docs/project/industry-map.md](docs/project/industry-map.md) — five years
   of commercial detection (2021–2026) read honestly against this project,

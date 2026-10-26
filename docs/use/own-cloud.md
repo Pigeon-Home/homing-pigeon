@@ -86,6 +86,12 @@ shared secret; the secret is printed once and stored nowhere.
 One resident machine per tenant per provider: `up` refuses a second
 and tells you to redeploy or destroy instead.
 
+`up` and `redeploy` also take `--size` (the provider's machine size;
+the defaults above when left off) and, on Fly, `--image` (a container
+image other than the release image). `--inventory PATH` before the
+subcommand points every command at an inventory file other than
+`~/.homing-pigeon/hosting.json`.
+
 ## Ephemeral Mac and Windows, on your own GitHub account
 
 `runner/hosting/workflows/hp-ephemeral.yml` is a template for your
@@ -102,6 +108,13 @@ homing-pigeon-host dispatch --target macos-ephemeral --tenant you \
 A fresh runner VM boots, installs the release, drains your queue
 for one job or fifteen minutes, and exits. The billable minutes your
 account paid are recorded in the inventory.
+
+`--drain N` and `--drain-seconds T` change the one job and fifteen
+minutes. `--workflow` names the workflow file if you renamed the copy
+(default `hp-ephemeral.yml`), `--ref` the branch it runs from (default
+`main`), and `--ticket` sets the run ticket instead of a fresh one; the
+workflow's `run-name` must stay `hp <ticket>`, since that is how the
+dispatcher finds its run.
 
 ## What it costs, and who pays
 

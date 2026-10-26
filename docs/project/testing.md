@@ -18,7 +18,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--no-send` | Execute, but log results instead of emailing them |
 | `--once` | Single poll cycle, then exit |
 | `--inspect {board,budget,job,redact,sources}` | Read local Oracle state and exit; no mailbox |
-| `--audit-report [--since 14d|48h] [--feature NAME]` | Summarize the security audit log and exit; no mailbox, read-only. `--feature` narrows it to one control's entries |
+| `--audit-report [--since 14d|48h] [--feature NAME] [--key KEY_ID]` | Summarize the security audit log and exit; no mailbox, read-only. `--feature` narrows it to one control's entries, `--key` to one key's |
 | `--posture` | Report the runner's security posture (exit 0/1/2) and exit; no mailbox |
 | `--run-variant FILE` | Run one locally supplied fuzz variant job from FILE through validation and confined execution, print its outcome as JSON, and exit; no mailbox. The job-fuzz sense's execution door: variants are unsigned local artifacts, admitted only here, never through the job path |
 | `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `docs/CONTRIBUTING.md` (maintainer notes: the `--oracle` flag). |

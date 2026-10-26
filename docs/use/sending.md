@@ -15,7 +15,12 @@ python3 runner/cloud/send_job.py new --kind exec --script-file job.sh \
   --arg --verbose --env MODE=ci --secret <the-string>
 ```
 
-`--arg` and `--env KEY=value` are repeatable. Two more subcommands
+`--arg` and `--env KEY=value` are repeatable. `--script-url URL` sends
+the script by link instead (https only; the runner downloads it), and
+`--script-sha384 HEX` pins its hash, checked before anything runs.
+`--aud RUNNER_ID` sets the job's `runner_id` audience claim, so only
+the runner whose config carries that `runner_id` accepts it
+(PROTOCOL.md section 3). Two more subcommands
 drive the task board (PROTOCOL.md section 13): `send_job.py
 task-submit --task-id <id> --priority 1 --secret <the-string>` opens a
 task, and `send_job.py task-request --worker-id <name> --secret

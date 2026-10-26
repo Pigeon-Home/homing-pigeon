@@ -27,7 +27,12 @@
   board, the platform card), `runner/guard/` (security controls,
   the sandbox, typed config readers, text helpers) and `runner/ops/`
   (install, setup, extensions and their sources, the harness, the
-  local test, posture, the audit report, the Windows event log).
+  local test, posture, the audit report, the Windows event log, and
+  the parts of the agent's own loop split out of `runner.py`: the
+  CLI, polling, mail handling, execution, queries, startup, the
+  Oracle's page and tools, and `main`; `runner.py` loads each through
+  `_load_mod` and re-exports its names, so `python3 runner.py` and
+  the frozen binaries reach them the same way).
   Two of them are bound back onto it:
   `runner/wire/verify.py` (signing, verification, secrets, key policies,
   audience — PROTOCOL.md sections 4, 5, 14) and `runner/wire/board.py`
