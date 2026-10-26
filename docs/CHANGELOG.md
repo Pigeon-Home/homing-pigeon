@@ -4,9 +4,27 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.1 - 2026-10-25
+
+- **Worker boundary HMAC reject (optional).** The Cloudflare Queues
+  Worker now rejects any inbound message that fails HMAC-SHA-384
+  verification at the edge when `REJECT_INVALID_HMAC` is set. Invalid
+  jobs are never written to D1 and no further compute runs. Default
+  is off so existing flows are unchanged until the operator turns it
+  on. See `cloudflare/queues-worker/`.
+
 ## Unreleased
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.1 - 2026-10-25
+
+- **Worker boundary HMAC reject (optional).** The Cloudflare Queues
+  Worker rejects any inbound message that fails HMAC-SHA-384
+  verification at the edge when `REJECT_INVALID_HMAC` is set.
+  Invalid jobs are never written to D1 and no further compute runs.
+  Default is off so existing flows are unchanged until the operator
+  turns it on. See `cloudflare/queues-worker/`.
 
 ## 3.13.0 - 2026-10-25
 
