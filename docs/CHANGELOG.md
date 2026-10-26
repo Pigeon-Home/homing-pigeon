@@ -4,6 +4,19 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.16 - 2026-10-26
+
+- **No first names in the tree.** A first name dropped from test
+  comments and the playbook (`runner/tests/`, sibling chat).
+- **Researchers one to three are recycled.** Stamps `10000c2a`,
+  `200003d4` and `30000f1a` carry no new work; the questions desk,
+  production code and releases are `50000c8e`'s, the test legs, CI
+  proofs and platforms `40000e00`'s. The status table is in
+  `docs/archive/RESEARCHER_IDENT.md`, the rule is AGENTS.md rule 10,
+  and `runner/tests/test_agent_stamps.py` holds the record to the tree.
+  <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.15 - 2026-10-26
 
 - **`docs/project/future.md`, edited by the owner.** A run of the
@@ -18,13 +31,6 @@ facts a reader may need to cite. Git history carries the rest.
   file is written whole, by rename. One Windows leg in a few lost the
   old 0.8/2.4/3 shape to the give-up, the answer filed and never
   read (`runner/tests/test_protocol_v2_messages.py`).
-- **Researchers one to three are recycled.** Stamps `10000c2a`,
-  `200003d4` and `30000f1a` carry no new work; the questions desk,
-  production code and releases are `50000c8e`'s, the test legs, CI
-  proofs and platforms `40000e00`'s. The status table is in
-  `docs/archive/RESEARCHER_IDENT.md`, the rule is AGENTS.md rule 10,
-  and `runner/tests/test_agent_stamps.py` holds the record to the tree.
-  <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.14 - 2026-10-26
