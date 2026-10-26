@@ -74,7 +74,7 @@
   written as a separate IETF draft, not a protocol version.
 
 - **C2. Other pipes.** A distributed ledger for file flow and board
-  answers, or a transport over .onion or BitTorrent. Idea only.
+  answers, or a transport over .onion or BitTorrent.
 
 ## D. Not built: the Oracle, the senses, and paging
 
