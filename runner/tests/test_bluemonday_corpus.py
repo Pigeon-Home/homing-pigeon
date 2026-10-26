@@ -415,6 +415,39 @@ class ToolTest(unittest.TestCase):
                 B.check("cloud", entry)
         self.assertEqual(cm.exception.kind, "agreement")
 
+    def test_the_differential_allows_only_the_control_character_arm(self):
+        # Q65: the agent trusting what the front-end refuses is a
+        # finding unless a control character in the signed object
+        # explains it (Q61's one difference by design).
+        clean = [e for e in B.seeds_wire() if e["from"] == "seed:compact"][0]
+        control = [e for e in B.seeds_wire()
+                   if e["from"] == "seed:control"][0]
+        self.assertEqual(B.check("wire", control), "accepted")
+        self.assertEqual(B.check("cloud", control), "refused")
+        with mock.patch.object(B.SJ, "verify_body",
+                               side_effect=ValueError("mismatch")):
+            with self.assertRaises(B.Crash) as cm:
+                B.check("wire", clean)
+            self.assertEqual(cm.exception.kind, "agreement")
+            self.assertIn("no control character explains it",
+                          cm.exception.detail)
+            # The same refusal on the control-character body is the
+            # designed difference, not a finding.
+            self.assertEqual(B.check("wire", control), "accepted")
+
+    def test_saturation_reads_the_last_grow(self):
+        tmp = tempfile.mkdtemp(prefix="hp-bluemonday-sat-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        with mock.patch.object(B, "CORPUS_DIR", tmp):
+            self.assertEqual(B.saturation("v2"), "no grow recorded")
+            B.cmd_seed(argparse.Namespace(target="v2"), out=lambda s: None)
+            B.cmd_grow(argparse.Namespace(target="v2", rounds=5, seed=1,
+                                          verbose=False, jobs=1, minutes=0),
+                       out=lambda s: None)
+            text = B.saturation("v2")
+        self.assertTrue(text.startswith("saturated at 5 rounds")
+                        or text.startswith("last grow +"), text)
+
     def test_a_reader_that_refuses_properly_is_a_refusal(self):
         # The jobcrypto finding that opened the campaign: a job_id
         # that is not text is the module's own refusal now.

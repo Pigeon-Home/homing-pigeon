@@ -4,6 +4,20 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.51 - 2026-10-26
+
+- **The differential, both ways (Q65).** Every `wire` and `cloud`
+  text entry now holds the agent's verifier and the front-end's to
+  agreeing on one body: both trust it and read the same dict, or
+  both refuse, with the one difference by design (Q61) allowed
+  only when a control character in the signed object explains it.
+  Seeds for the brace walk's hardest shape (keys and values made of
+  `{`, `}` and `"`, nested and at the top) and a body signed in its
+  pretty-printed form. `stats` reads the run records and marks a
+  target saturated when its last grow kept nothing and reached no
+  new arc.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.50 - 2026-10-26
 
 - **The guard's leak run has a private temp root.** A tempdir left

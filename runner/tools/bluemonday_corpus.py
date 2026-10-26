@@ -251,14 +251,46 @@ def _unsigned(payload):
     return {k: v for k, v in payload.items() if k != "sig"}
 
 
+def _differential(text, agent, aexc):
+    """The two verifiers of one body, the agent's and the front-end's,
+    either both trust it and read the same dict or both refuse (Q65).
+    The one difference by design (Q61): the agent retries a body
+    with a transport's control characters stripped and the
+    front-end does not, so the agent trusting what the front-end
+    refuses is a finding only when the signed object carries no
+    control character to explain it."""
+    cloud, cexc = _call(SJ.verify_body, text, SECRET)
+    if cexc is not None:
+        _expect_refusal(cexc, ValueError, "send_job.verify_body")
+    elif not isinstance(cloud, dict):
+        raise Crash("shape", "send_job.verify_body returned "
+                    f"{type(cloud).__name__}")
+    if aexc is None and cexc is None:
+        if agent != cloud:
+            raise Crash("agreement", "the agent and the front-end read "
+                        "different payloads from one body")
+    elif aexc is None:
+        raw, _rexc = _call(lambda: V._extract_signed(
+            V._normalize(text).rstrip())[0])
+        if raw is None or V._strip_controls(raw) == raw:
+            raise Crash("agreement", "the agent trusts a body the "
+                        "front-end refuses, and no control character "
+                        f"explains it: {_short(cexc)}")
+    elif cexc is None:
+        raise Crash("agreement", "the front-end trusts a body the agent "
+                    f"refuses: {_short(aexc)}")
+
+
 def _verify_text(text):
     """wire: both readers of runner/wire/verify.py on one received
-    body, each to its contract, and the two in agreement."""
+    body, each to its contract, the two in agreement, and the
+    front-end's verifier in agreement with them (the differential)."""
     got, exc = _call(V.verify_body, text, SECRET)
     if exc is not None:
         _expect_refusal(exc, ValueError, "verify_body")
     elif not isinstance(got, dict):
         raise Crash("shape", f"verify_body returned {type(got).__name__}")
+    _differential(text, got, exc)
     keyed, kexc = _call(V.verify_body_keyed, text, SECRETS)
     if kexc is not None:
         _expect_refusal(kexc, ValueError, "verify_body_keyed")
@@ -285,24 +317,19 @@ def _verify_text(text):
 
 def _cloud_text(text):
     """cloud: the front-end's verifier refuses with ValueError or
-    returns a dict; whatever it trusts, the agent's verifier trusts
-    too, and reads the same payload (the agent's is the superset:
-    it also survives a mail transport's control characters)."""
+    returns a dict, and the agent's verifier agrees with it both
+    ways (the differential, with Q61's one difference by design)."""
     got, exc = _call(SJ.verify_body, text, SECRET)
     if exc is not None:
         _expect_refusal(exc, ValueError, "send_job.verify_body")
-        return "refused"
-    if not isinstance(got, dict):
+    elif not isinstance(got, dict):
         raise Crash("shape", f"send_job.verify_body returned "
                     f"{type(got).__name__}")
     agent, aexc = _call(V.verify_body, text, SECRET)
     if aexc is not None:
-        raise Crash("agreement", "the front-end trusts a body the agent "
-                    f"refuses: {_short(aexc)}")
-    if agent != got:
-        raise Crash("agreement", "the front-end and the agent read "
-                    "different payloads from one body")
-    return "accepted"
+        _expect_refusal(aexc, ValueError, "verify_body")
+    _differential(text, agent, aexc)
+    return "accepted" if exc is None else "refused"
 
 
 def _signed_payload(payload, signer, who):
@@ -544,7 +571,25 @@ def _payload_seeds():
          _job(key_id="ops", detail={"v": 1, "sig": "f" * 96})),
         ("empty", {}),
         ("big_int", _job(size=2 ** 63)),
+        # Keys and values made of the JSON delimiters themselves: the
+        # brace walk's hardest shape (Q61, Q65).
+        ("brace_quote_keys", _job(detail={"{": {"\"": "}"}, "a\"b": "{\"}",
+                                          "\\": "\\{"})),
+        ("brace_key_at_top", {"v": 1, "type": "job", "{": "x", "\"}": "{",
+                              "job_id": "bm-brace-0001",
+                              "issued_at": FIXED_AT, "kind": "exec"}),
     ]
+
+
+def _pretty_signed(payload):
+    """A body signed in its pretty-printed form: the newlines are
+    inside the signature, so both verifiers take it raw."""
+    import hashlib as _h
+    import hmac as _hmac
+    body = json.dumps(payload, indent=2, ensure_ascii=False)
+    sig = _hmac.new(SECRET.encode("utf-8"), body.encode("utf-8"),
+                    _h.sha384).hexdigest()
+    return body[:-1] + ',"sig":"' + sig + '"}'
 
 
 def _text_bodies():
@@ -565,6 +610,10 @@ def _text_bodies():
         ("two_objects", "{\"v\":0}\n" + exec_body),
         ("brace_in_string",
          V.sign_payload(_job(script="x = '{'"), SECRET)),
+        ("pretty_signed", _pretty_signed(_job(script="echo pretty"))),
+        ("brace_quote_signed",
+         V.sign_payload(_job(detail={"{": {"\"": "}"}, "a\"b": "{\"}"}),
+                        SECRET)),
         ("no_marker", json.dumps(_job())),
         ("short_tail", exec_body[:-10] + "\"}"),
         ("pretty", json.dumps(_job(), indent=2)),
@@ -1651,6 +1700,44 @@ def cmd_promote(args, out=print):
     return status
 
 
+def last_grow(target):
+    """The newest grow record for a target in runs.jsonl, or None."""
+    last = None
+    for record in load_runs():
+        if record.get("kind") == "grow" and record.get("target") == target:
+            last = record
+    return last
+
+
+def load_runs():
+    path = runs_path()
+    if not os.path.exists(path):
+        return []
+    out = []
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                obj = json.loads(line)
+                if "kind" in obj:
+                    out.append(obj)
+    return out
+
+
+def saturation(target):
+    """"saturated at <rounds> rounds" when the last grow kept nothing
+    and reached no new arc (Q65's stop rule: point the next grow at
+    the next reader), else what the last grow added."""
+    rec = last_grow(target)
+    if rec is None:
+        return "no grow recorded"
+    if not rec.get("kept") and rec.get("arcs_after") == rec.get("arcs_before"):
+        return f"saturated at {rec.get('rounds')} rounds ({rec.get('when')})"
+    return (f"last grow +{len(rec.get('kept', []))} entries, "
+            f"+{rec.get('arcs_after', 0) - rec.get('arcs_before', 0)} arcs "
+            f"at {rec.get('rounds')} rounds")
+
+
 def cmd_stats(args, out=print):
     for target in _targets(args.target):
         entries = load(corpus_path(target))
@@ -1663,7 +1750,8 @@ def cmd_stats(args, out=print):
         top = ", ".join(f"{m} {n}" for m, n in sorted(
             muts.items(), key=lambda kv: -kv[1])[:6])
         out(f"{target}: {len(entries)} entries ({kinds}), "
-            f"{len(crashes)} crashes on file; mutators: {top}")
+            f"{len(crashes)} crashes on file; {saturation(target)}; "
+            f"mutators: {top}")
     return 0
 
 
