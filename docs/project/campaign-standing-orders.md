@@ -3750,3 +3750,48 @@ when done, the proving commit or run. Newest first.
   (standing orders incl. queue P, AGENTS.md
   rules 7-10, Q59-Q61, the playbook's hard
   rules). resources 2026-10-26T14:32:17Z: cores 2 | box cpu 49% | wall 27m46s | cmd cpu 22m46s = 0.8 cores busy | peak rss 456 MB | mem used 92% | disk free 165.4 GB | exit 0 | under-driven
+- platinum 5: statements 99.6% (+0.1), branches
+  97.5% (+0.3), 41 tests, 0 crashes filed,
+  resources 2026-10-26T15:52:27Z: cores 2 | box cpu 53% | wall 38m06s | cmd cpu 34m07s = 0.9 cores busy | peak rss 455 MB | mem used 91% | disk free 165.4 GB | exit 0 | under-driven
+  (under-driven is the single-process
+  measure's shape.) Baseline 2006bdc2
+  (99.4%, 170 missing); after 40cc8733
+  (130 missing); the after-suite ran
+  7,050 tests, OK (skipped=38). The whole
+  two-line frontier closed (port-watch's
+  short delivery last) and the one-line
+  rows fell top-down: 40 statements and
+  39 arcs. Five single lines were recorded
+  dead by construction in the refreshed
+  gaps header (docs/reports/v3.13.38/):
+  send_job verify_body's shape check,
+  hosting cli.main's trailing return,
+  job-fuzz's blank-line guard, ensure_app's
+  trailing return, load_retained's
+  commonpath arm. The Windows leg of
+  40cc8733 caught a real fault in the
+  tests themselves: the zero-valued
+  O_BINARY simulation replaced the
+  platform's real flag and opened files
+  in text mode; Claude (50000c8e) fixed
+  the oracle copy in the release lane
+  (4526d498) and Muse applied the same
+  helper to the guard and oauth copies
+  and POSIX-guarded the ps probe
+  (40c3a3f1). Cycle 4's tests are done
+  by the Windows rule: build 40336231565
+  at 2006bdc2 completed success. Cycle
+  5's Windows verification waits on a
+  completed build at a descendant of
+  40c3a3f1. The remaining live row at
+  two or more missing is execute_job's
+  script-shape refusal and staging trio,
+  cycle 6's first targets; below it the
+  map is single lines, the recorded set,
+  the wire rows (40000e00's), and the
+  platform rows.
+- rules refreshed 2026-10-26 10:55 PDT
+  (standing orders incl. queue P, AGENTS.md
+  rules 7-10, the questions file's open
+  entries, the playbook's hard rules).
+  resources 2026-10-26T15:52:27Z: cores 2 | box cpu 53% | wall 38m06s | cmd cpu 34m07s = 0.9 cores busy | peak rss 455 MB | mem used 91% | disk free 165.4 GB | exit 0 | under-driven
