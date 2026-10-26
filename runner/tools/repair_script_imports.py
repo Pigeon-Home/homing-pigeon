@@ -45,23 +45,10 @@ _IMPORT = re.compile(
 _REACH_BACK = re.compile(r"^(?P<indent>[ \t]+)from runner import runner as R\s*$", re.M)
 
 _RUNNER_HELPER = '''
-from typing import Any
-
-
-def _runner() -> Any:
-    """The live runner module, looked up at call time.
-
-    `runner.runner` when the suite or a package import loaded it,
-    `__main__` when runner.py was started as a script (an install,
-    the one-file binaries), where `runner` is the file itself and
-    `from runner import runner` raises "'runner' is not a package".
-    """
-    for name in ("runner.runner", "__main__"):
-        m = sys.modules.get(name)
-        if m is not None and callable(getattr(m, "_load_mod", None)):
-            return m
-    from runner import runner as R  # a host that imported us first
-    return R
+try:
+    from runner.ops.live import _runner
+except ImportError:  # running from inside runner/ as __main__
+    from ops.live import _runner  # type: ignore
 '''
 
 
@@ -105,10 +92,7 @@ def rewrite_module(path):
     if not _REACH_BACK.search(src):
         return False
     new = _REACH_BACK.sub(lambda m: m.group("indent") + "R = _runner()", src)
-    if "def _runner()" not in new:
-        if not re.search(r"^import sys$", new, re.M):
-            new = re.sub(r"^(import [a-z_]+\n)", r"\1import sys\n", new,
-                         count=1, flags=re.M)
+    if not _has_runner(new):
         # after the import block
         m = list(re.finditer(r"^(?:import|from) [^\n]+\n", new, re.M))
         at = m[-1].end() if m else 0
@@ -176,6 +160,13 @@ def main(argv=None):
 # ---------------------------------------------------------------------------
 
 _HELPER_MARK = "def _runner()"
+_HELPER_RE = re.compile(r"^def _runner\(\)|^    from (?:runner\.)?ops\.live import _runner$", re.M)
+
+
+def _has_runner(src):
+    """True when the module defines _runner or imports the shared one."""
+    return bool(_HELPER_RE.search(src))
+
 _CONFVAL_IMPORT = '''try:
     from runner.guard import confval as _confval
 except ImportError:  # running from inside runner/ as __main__
@@ -260,13 +251,11 @@ def finish_modules():
                 add_imports.append("import " + n)
             elif hasattr(RR, n):
                 globs.append(n)
-        if globs or _HELPER_MARK not in src and (globs or "sys.platform" in src):
-            if _HELPER_MARK not in src:
+        if globs or not _has_runner(src) and (globs or "sys.platform" in src):
+            if not _has_runner(src):
                 m = list(re.finditer(r"^(?:import|from) [^\n]+\n", src, re.M))
                 at = m[-1].end() if m else 0
                 src = src[:at] + _RUNNER_HELPER + src[at:]
-                if not re.search(r"^import sys$", src, re.M):
-                    add_imports.append("import sys")
         for n in globs:
             if n == "_confval":
                 # The typed readers are a module of their own; the
@@ -280,7 +269,7 @@ def finish_modules():
                 continue
             src = re.sub(r"(?<![\w.])%s\b(?!\s*=[^=])" % re.escape(n),
                          "_runner().%s" % n, src)
-        if _HELPER_MARK in src:
+        if _has_runner(src):
             for n in defs:
                 src = re.sub(r"(?<![\w.])%s\(" % re.escape(n),
                              "_runner().%s(" % n, src)
@@ -307,7 +296,7 @@ def finish_modules():
         # back through _runner()), never for a sibling that was its
         # own module from the start, and never over a def runner.py
         # still has.
-        if _HELPER_MARK not in src:
+        if not _has_runner(src):
             continue
         runner_defs = set(re.findall(r"^(?:def|class) ([A-Za-z_][A-Za-z0-9_]*)", runner_src, re.M))
         tree = ast.parse(src)

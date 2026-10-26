@@ -1,9 +1,12 @@
+"""Agent and job execution.
+
+Extracted from runner.py.
+"""
 import hashlib
 import json
 import os
 import shutil
 import subprocess
-import sys
 import time
 try:
     from runner.guard import confval as _confval
@@ -11,27 +14,10 @@ except ImportError:  # running from inside runner/ as __main__
     from guard import confval as _confval  # type: ignore
 
 
-from typing import Any
-
-
-def _runner() -> Any:
-    """The live runner module, looked up at call time.
-
-    `runner.runner` when the suite or a package import loaded it,
-    `__main__` when runner.py was started as a script (an install,
-    the one-file binaries), where `runner` is the file itself and
-    `from runner import runner` raises "'runner' is not a package".
-    """
-    for name in ("runner.runner", "__main__"):
-        m = sys.modules.get(name)
-        if m is not None and callable(getattr(m, "_load_mod", None)):
-            return m
-    from runner import runner as R  # a host that imported us first
-    return R
-"""Agent and job execution.
-
-Extracted from runner.py.
-"""
+try:
+    from runner.ops.live import _runner
+except ImportError:  # running from inside runner/ as __main__
+    from ops.live import _runner  # type: ignore
 import email
 
 def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,

@@ -7,30 +7,13 @@ import json
 import os
 import re
 import socket
-import sys
 from datetime import datetime, timezone
 
 
-from typing import Any
-
-
-def _runner() -> Any:
-    """The live runner module, looked up at call time.
-
-    `runner.runner` when the suite or a package import loaded it,
-    `__main__` when runner.py was started as a script (an install,
-    the one-file binaries), where `runner` is the file itself and
-    `from runner import runner` raises "'runner' is not a package".
-    Looked up rather than imported so the module that is actually
-    running, with its config and its loaded siblings, is the one
-    this code reaches.
-    """
-    for name in ("runner.runner", "__main__"):
-        m = sys.modules.get(name)
-        if m is not None and callable(getattr(m, "_load_mod", None)):
-            return m
-    from runner import runner as R  # a host that imported us first
-    return R
+try:
+    from runner.ops.live import _runner
+except ImportError:  # running from inside runner/ as __main__
+    from ops.live import _runner  # type: ignore
 
 
 def apply_result_policy(cfg, job, exec_result, patterns, confined):

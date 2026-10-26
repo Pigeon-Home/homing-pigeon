@@ -5,22 +5,12 @@ Extracted from runner.py.
 import re
 import shutil
 import subprocess
-import sys
 
 
-from typing import Any
-
-
-def _runner() -> Any:
-    """The live runner module, looked up at call time (`runner.runner`
-    under the suite, `__main__` when runner.py runs as a script or
-    frozen, where `from runner import runner` cannot work)."""
-    for name in ("runner.runner", "__main__"):
-        m = sys.modules.get(name)
-        if m is not None and callable(getattr(m, "_load_mod", None)):
-            return m
-    from runner import runner as R  # a host that imported us first
-    return R
+try:
+    from runner.ops.live import _runner
+except ImportError:  # running from inside runner/ as __main__
+    from ops.live import _runner  # type: ignore
 
 
 def _firewall_posture():
