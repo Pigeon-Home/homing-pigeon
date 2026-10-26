@@ -151,5 +151,29 @@ class FileNameSurrogateTest(unittest.TestCase):
         self.assertIn("not valid text", str(cm.exception))
 
 
+class ApplyNoFolderTest(unittest.TestCase):
+    """Cycle 4 target, logic class: `extreview.apply`
+    (612,613) -- a registry entry with no usable folder is
+    carried into the result unchanged and never reviewed:
+    no findings, no problems, the manifest object itself.
+    """
+
+    @settings(deadline=None)
+    @given(manifest=st.one_of(
+        st.just({}),
+        st.just({"version": "1"}),
+        st.just({"dir": ""}),
+        st.just({"dir": 7}),
+        st.just("not a manifest"),
+        st.none()))
+    def test_an_entry_without_a_folder_is_carried_unchanged(
+            self, manifest):
+        out, problems, report = extreview.apply(
+            {}, "/base", {"ext": manifest}, kind="sense")
+        self.assertIs(out["ext"], manifest)
+        self.assertEqual(problems, [])
+        self.assertNotIn("ext", report["extensions"])
+
+
 if __name__ == "__main__":
     unittest.main()

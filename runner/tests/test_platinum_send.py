@@ -251,6 +251,27 @@ class CmdNewQueueTest(unittest.TestCase):
             rc = send_job.cmd_new(self._args())
         self.assertEqual(rc, 0 if status in (200, 202) else 1)
 
+    def test_to_file_writes_the_envelope_and_returns_0(self):
+        # Cycle 4 target, logic class: `cmd_new` (345-350) --
+        # with --to-file the envelope that would have been
+        # printed is written to the file instead: the subject
+        # line, a blank line, the signed body, a final newline.
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "job.txt")
+            rc = send_job.cmd_new(
+                self._args(to_file=path, to_queue=None))
+            self.assertEqual(rc, 0)
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+        self.assertTrue(text.startswith(
+            "[HOMING-PIGEON] job job-platinum-cmdnew\n\n"))
+        self.assertTrue(text.endswith("\n"))
+        self.assertEqual(
+            send_job.verify_body(
+                text.split("\n\n", 1)[1], TESTKEY)["job_id"],
+            "job-platinum-cmdnew")
+
 
 class PostToQueueTest(unittest.TestCase):
     """Cycle 2 target, except class:

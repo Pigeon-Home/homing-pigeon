@@ -160,6 +160,26 @@ class InventorySaveTest(unittest.TestCase):
         finally:
             shutil.rmtree(td, ignore_errors=True)
 
+    def test_a_failed_save_and_a_failed_unlink_still_reraises(self):
+        # Cycle 4 target, except class: `Inventory.save`
+        # (57,58) -- when the cleanup unlink also fails, the
+        # swallow keeps it quiet and the original error is
+        # the one that propagates.
+        td = tempfile.mkdtemp(prefix="hp-plat-host-")
+        try:
+            inv = inventory.Inventory(os.path.join(td, "inv.json"))
+            with mock.patch.object(
+                    os, "replace",
+                    side_effect=OSError("the disk is full")), \
+                    mock.patch.object(
+                        os, "unlink",
+                        side_effect=OSError("cannot remove it")):
+                with self.assertRaises(OSError) as cm:
+                    inv.save()
+            self.assertIn("disk is full", str(cm.exception))
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
     def test_a_good_save_writes_the_json(self):
         td = tempfile.mkdtemp(prefix="hp-plat-host-")
         try:

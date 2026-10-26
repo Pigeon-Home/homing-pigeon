@@ -29,6 +29,7 @@ Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90
 import json
 import os
 import shutil
+import sys
 import tempfile
 import time
 import unittest
@@ -680,6 +681,30 @@ class RunInspectReviewTest(unittest.TestCase):
         with mock.patch.object(R, "_extreview", None):
             rc = R.run_inspect({}, args)
         self.assertEqual(rc, 1)
+
+    def test_review_with_the_module_prints_and_returns_0(self):
+        # Cycle 4 target, logic class: `runner.run_inspect`
+        # (5058,5059) -- the arm the unavailable case is the
+        # refusal of: with the module present, inspect prints
+        # the review of the (here empty) base and returns 0.
+        import argparse
+        import io
+        base = tempfile.mkdtemp(prefix="hp-plat-inspect-")
+        try:
+            cfg_path = os.path.join(base, "config.json")
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                fh.write("{}")
+            args = argparse.Namespace(inspect="review",
+                                      config=cfg_path, job_id=None)
+            out = io.StringIO()
+            with mock.patch.object(sys, "stdout", out):
+                rc = R.run_inspect({}, args)
+            self.assertEqual(rc, 0)
+            report = json.loads(out.getvalue())
+            self.assertIn("transports", report)
+            self.assertIn("mode", report)
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
 
 
 if __name__ == "__main__":

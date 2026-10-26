@@ -174,6 +174,101 @@ class DecodeDatagramTest(unittest.TestCase):
         self.assertEqual(flows, [])
         self.assertEqual(templates, {})
 
+    def test_header_valid_record_damaged_datagrams(self):
+        # The harder shapes: a v9 template set whose data set
+        # is truncated mid-record, a template claiming fields
+        # its body does not carry, an IPFIX enterprise field
+        # cut short. Each answers with no flows; a template
+        # learned before the damage is kept. (The function's
+        # own except arm did not fire for any of these: every
+        # sub-parser length-checks its unpacks, verified on
+        # this rig in cycle 4 -- the arm stands as the belt
+        # over their braces, recorded in the cycle's ledger.)
+        import struct
+        sf = self._load()
+        hdr9 = struct.pack(">HHIII", 9, 2, 1000, 1700000000, 1) \
+            + struct.pack(">I", 7)
+        tmpl_body = struct.pack(">HH", 256, 1) \
+            + struct.pack(">HH", 1, 8)
+        tmpl_set = struct.pack(">HH", 0, 4 + len(tmpl_body)) \
+            + tmpl_body
+        data_set = struct.pack(">HH", 256, 8) + b"\x00\x00\x00\x01"
+        flows, templates = sf.decode_datagram(
+            hdr9 + tmpl_set + data_set, {}, now=1.0)
+        self.assertEqual(flows, [])
+        self.assertIn((9, 7, 256), templates)
+        greedy = struct.pack(">HH", 0, 12) \
+            + struct.pack(">HH", 256, 50) + struct.pack(">HH", 1, 8)
+        self.assertEqual(
+            sf.decode_datagram(hdr9 + greedy, {}, now=1.0),
+            ([], {}))
+
+
+class OsqueryFeedMainTest(unittest.TestCase):
+    """Cycle 4 target, logic class:
+    `extensions/osquery-feed/osquery_feed.py:main` (590,596)
+    -- the same delivery contract as service-watch: a pass
+    whose local delivery lands only some of its alerts
+    returns 2 and leaves the state unwritten, so the offsets
+    do not advance and the next pass re-reads the lines. The
+    alert is the extension's real decide() over a readings
+    fixture carrying one added process; the delivery seam is
+    the module's own `_deliver_local`, scripted short.
+    """
+
+    def _load(self):
+        import importlib.util
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(
+            here, "..", "extensions", "osquery-feed",
+            "osquery_feed.py")
+        spec = importlib.util.spec_from_file_location(
+            "osquery_feed_platinum", os.path.normpath(path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_a_short_delivery_returns_2_and_keeps_the_state(self):
+        import json
+        import tempfile
+        from unittest import mock
+        of = self._load()
+        td = tempfile.mkdtemp(prefix="hp-plat-osq-")
+        try:
+            here = os.path.dirname(os.path.abspath(__file__))
+            manifest = os.path.join(td, "extension.json")
+            with open(os.path.join(
+                    here, "..", "extensions", "osquery-feed",
+                    "extension.json"), encoding="utf-8") as fh:
+                raw = fh.read()
+            with open(manifest, "w", encoding="utf-8") as fh:
+                fh.write(raw)
+            line = json.dumps({
+                "name": "hp_processes",
+                "hostIdentifier": "fixture-host",
+                "unixTime": 1792382200,
+                "columns": {"name": "sshd",
+                            "path": "/usr/sbin/sshd", "pid": "812"},
+                "action": "added"})
+            event = of.parse_event(line)
+            self.assertIsNotNone(event)
+            readings = os.path.join(td, "readings.json")
+            with open(readings, "w", encoding="utf-8") as fh:
+                json.dump({"now": event["ts"], "events": [event]},
+                          fh)
+            state = os.path.join(td, "state.json")
+            with mock.patch.object(of, "_deliver_local",
+                                   return_value=0):
+                rc = of.main(["--manifest", manifest,
+                              "--state", state,
+                              "--readings", readings,
+                              "--local-dir", td])
+            self.assertEqual(rc, 2)
+            self.assertFalse(os.path.exists(state))
+        finally:
+            import shutil
+            shutil.rmtree(td, ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()
