@@ -4,17 +4,8 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.47 - 2026-10-26
+## 3.13.48 - 2026-10-26
 
-- **The grow is always on.** Section M of the standing orders: a
-  blueMonday grow runs on the rig at every moment, measures and
-  passes included, with `--jobs <cores>` and `--minutes` to the
-  next rules refresh, under `nice -n 10` so a measure or a pass
-  keeps priority while the grow takes every idle cycle.
-- **blueMonday 2 (Muse).** Two nested-signature seeds (a `sig`
-  member inside a nested object, with and without an outer key)
-  merged into the `wire` and `cloud` seeds; the grow's keeps and
-  run records committed, 157 entries, 651 arcs, no crash.
 - **Parallel by default.** `bluemonday_corpus.py grow` and
   `regression_pass.py` take `--jobs` as the box's core count unless
   told otherwise, as the parallel test runner always has, so a plain
@@ -26,6 +17,19 @@ facts a reader may need to cite. Git history carries the rest.
   a failing pull is recorded the same way. The guard's leak run is
   held to naming a tempdir and a thread left behind, as soft, with
   the test that left them.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.47 - 2026-10-26
+
+- **The grow is always on.** Section M of the standing orders: a
+  blueMonday grow runs on the rig at every moment, measures and
+  passes included, with `--jobs <cores>` and `--minutes` to the
+  next rules refresh, under `nice -n 10` so a measure or a pass
+  keeps priority while the grow takes every idle cycle.
+- **blueMonday 2 (Muse).** Two nested-signature seeds (a `sig`
+  member inside a nested object, with and without an outer key)
+  merged into the `wire` and `cloud` seeds; the grow's keeps and
+  run records committed, 157 entries, 651 arcs, no crash.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.46 - 2026-10-26
