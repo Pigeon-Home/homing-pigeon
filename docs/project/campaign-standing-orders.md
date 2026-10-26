@@ -4044,3 +4044,16 @@ when done, the proving commit or run. Newest first.
   the grow runs in the recipe's cycling
   shape: --rounds 20000 --minutes <until
   the next measure or pass>.
+- rules refreshed 2026-10-26 14:23 PDT
+  (standing orders incl. queue P, section
+  M in the cycling-grow shape, the
+  throughput recipe; AGENTS.md rules
+  7-11; the questions file's open
+  entries; the playbook's hard rules).
+  regression 5dd6ae6f: 7122 tests green in 5m08s
+  resources 2026-10-26T21:12:13Z: cores 2 | box cpu 72% | wall 5m10s | cmd cpu 5m38s = 1.1 cores busy | peak rss 283 MB | mem used 89% | disk free 165.3 GB | exit 0 | on target
+  Pass 2, relaunched on a clean tree
+  after its first launch died on this
+  seat's dirty one; passes.jsonl is
+  committed with this line, as every
+  pass's will be. No reds.

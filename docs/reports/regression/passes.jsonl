@@ -1,0 +1,2 @@
+{"regression": 1, "file": "passes", "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"}
+{"culprits": {}, "deterministic": [], "exit": 0, "failing": [], "flaky": [], "ledger": "regression 5dd6ae6f: 7122 tests green in 5m08s", "seconds": 308.6, "sha": "5dd6ae6fe89fcb69de245b4748c714ca60358dc5", "tests": 7122, "when": "2026-10-26T21:12:13Z"}
