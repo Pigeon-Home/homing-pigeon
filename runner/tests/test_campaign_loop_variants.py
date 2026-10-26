@@ -1,6 +1,6 @@
 """Campaign loop variants, recorded as unit tests (2026-10-23).
 
-Andrew's directive after the first night of the open-ended campaign:
+The directive after the first night of the open-ended campaign:
 hundreds of loop cycles had produced bookkeeping marks ("pure
 repeat, covered") instead of test cases. These tests are the
 representation he asked for -- one working test case per variant the

@@ -7,7 +7,7 @@ the `campaign-1-record` tag) so that a second run can start from
 this document alone.
 
 The campaign's product is not findings. It is committed unit tests.
-Andrew's proof-of-work rule governs everything below: every test
+The proof-of-work rule governs everything below: every test
 run, scenario, or test point, every iteration, is attempted as a
 unit test committed and merged to main. Logs and chat reports are
 not proof; a committed test is. One finding spawning a family of

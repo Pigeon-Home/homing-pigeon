@@ -2,7 +2,7 @@
 """The cleartext (HMAC-only) job policy: secure by default,
 command line only.
 
-Andrew's confirmed shape (2026-10-19): the runner refuses a
+The confirmed shape (2026-10-19): the runner refuses a
 signature-valid job whose body is not an hp_enc envelope BY
 DEFAULT. Acceptance exists only as a command-line switch on
 the runner process (--allow-cleartext): per-process,
@@ -19,7 +19,7 @@ This file pins that contract:
   (logged, message marked seen, auth_rejection event recorded,
   NO result sent, job_id NOT recorded in the seen set);
 - the flag enables acceptance for the process, and the result
-  then mirrors in cleartext -- the field loop Andrew runs:
+  then mirrors in cleartext -- the field loop that runs:
   send --cleartext, run the runner with the flag, read the
   cleartext job and result in the inbox (both are plain signed
   JSON as they sit on the wire, no encoding or wrapping);
@@ -345,7 +345,7 @@ class FlagAcceptanceTest(CleartextBase):
 
 
 class FieldScenarioTest(CleartextBase):
-    """Andrew's acceptance scenario, composed end to end: the
+    """The acceptance scenario, composed end to end: the
     sender's --cleartext output is the job; a runner process
     with ONLY the command-line flag accepts and executes it and
     the result comes back readable; a runner without the flag

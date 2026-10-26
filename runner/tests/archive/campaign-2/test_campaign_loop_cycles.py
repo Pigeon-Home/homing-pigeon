@@ -1,6 +1,6 @@
 """Campaign loop cycles (second run), one test case per recorded cycle (2026-10-23).
 
-Andrew's expectation for the campaign: a unit test for every test
+The expectation for the campaign: a unit test for every test
 run. This file is generated from the loop's own records
 (campaign-results/loop-*.json): each test replays the exact script
 its cycle sent (rebuilt from the cycle number and variant, as

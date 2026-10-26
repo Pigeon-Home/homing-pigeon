@@ -434,7 +434,7 @@ class PolicyConflictDivergenceTests(unittest.TestCase):
     four-part record of what the divergence was; its assertions
     now pin the refusing behavior they demanded.
 
-    (a) The claim (Decision 1, Andrew via Claude, 2026-10-23,
+    (a) The claim (Decision 1, via Claude, 2026-10-23,
         stamped by Muse; the normative sentence for PROTOCOL.md
         and docs/oracle/configuring-oracle.md): "a setting that is
         present but not usable reads as its documented default

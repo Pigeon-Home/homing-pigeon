@@ -1,4 +1,4 @@
-"""Phase 2.1: the credential canary (Andrew's phase-2 order, 2026-10-24).
+"""Phase 2.1: the credential canary (the phase-2 order, 2026-10-24).
 
 One unique fake credential is planted everywhere a real one
 lives -- a file under a fake home, an environment variable, a
