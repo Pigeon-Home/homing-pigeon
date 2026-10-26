@@ -68,5 +68,32 @@ class ScanPythonProperties(unittest.TestCase):
             [f for f in findings if f["code"] == "syntax"], [])
 
 
+class ApplyFallbackTest(unittest.TestCase):
+    """Cycle 3 target, logic class: `extreview.apply` (2) --
+    a review that itself fails must not abort the agent: the
+    extension is reported with one high "unreviewed" finding
+    naming the failure, and apply returns its triple. The
+    review seam is the module's own `_cached_review`.
+    """
+
+    def test_a_review_that_raises_reports_unreviewed(self):
+        import tempfile
+        from unittest import mock
+        folder = tempfile.mkdtemp(prefix="hp-plat-apply-")
+        registry = {"broken-ext": {"dir": folder, "version": "1",
+                                   "kind": "sense"}}
+        with mock.patch.object(
+                extreview, "_cached_review",
+                side_effect=RuntimeError("the review blew up")):
+            out, problems, report = extreview.apply(
+                {}, "/base", registry, kind="sense")
+        entry = report["extensions"]["broken-ext"]
+        self.assertEqual(len(entry["findings"]), 1)
+        self.assertEqual(entry["findings"][0]["code"], "unreviewed")
+        self.assertEqual(entry["findings"][0]["severity"], "high")
+        self.assertIn("the review blew up",
+                      entry["findings"][0]["detail"])
+
+
 if __name__ == "__main__":
     unittest.main()

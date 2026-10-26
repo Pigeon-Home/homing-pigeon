@@ -244,5 +244,36 @@ class TransportsArgProperties(unittest.TestCase):
                 cli._transports_arg("nosuch")
 
 
+class LiveRunnerFallbackTest(unittest.TestCase):
+    """Cycle 3 target, logic class: `ops/live.py:_runner` (2)
+    -- when neither the runner-as-package nor the runner as
+    __main__ is in sys.modules with the loader hook, the
+    fallback imports the package and returns it.
+    """
+
+    def test_the_package_import_is_the_fallback(self):
+        from runner.ops import live
+        dummy = mock.Mock(spec=[])  # no _load_mod attribute
+        with mock.patch.dict(sys.modules, {"runner.runner": dummy,
+                                           "__main__": dummy}):
+            got = live._runner()
+        from runner import runner as real
+        self.assertIs(got, real)
+
+
+class OpsMainMissingCliTest(unittest.TestCase):
+    """Cycle 3 target, logic class: `ops/main.py:main` (1 of 2)
+    -- with the cli module gone, main raises ImportError
+    naming the missing file before it parses anything.
+    """
+
+    def test_no_cli_module_is_an_import_error(self):
+        from runner import runner as R
+        from runner.ops import main as ops_main
+        with mock.patch.object(R, "_cli", None):
+            with self.assertRaises(ImportError):
+                ops_main.main()
+
+
 if __name__ == "__main__":
     unittest.main()

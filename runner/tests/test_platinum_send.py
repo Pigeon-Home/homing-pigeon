@@ -218,6 +218,40 @@ class TwoSignersProbe(unittest.TestCase):
                          payload)
 
 
+class CmdNewQueueTest(unittest.TestCase):
+    """Cycle 3 target, logic class:
+    `runner/cloud/send_job.py:cmd_new` (2) -- the queue's
+    refusal: a hosted queue that answers anything but 200/202
+    has refused the job, and the command says so and returns 1
+    (the queued arm returns 0). `post_to_queue` is the module's
+    own function, scripted here; the payload is a plain note so
+    no interpreter or script is involved.
+    """
+
+    def _args(self, **over):
+        import argparse
+        args = argparse.Namespace(
+            job_id="job-platinum-cmdnew", kind="note", key_id=None,
+            aud=None, reply_to=None, script_url=None,
+            script_sha384=None, script_file=None, file=None,
+            arg=None, env=None, interpreter=None, timeout=None,
+            secret=TESTKEY, cleartext=True,
+            to_queue="https://queue.example.test/t/x",
+            queue_token_env=None)
+        for key, value in over.items():
+            setattr(args, key, value)
+        return args
+
+    @settings(deadline=None)
+    @given(status=st.integers(min_value=100, max_value=599))
+    def test_the_queues_answer_decides_the_return(self, status):
+        with mock.patch.object(
+                send_job, "post_to_queue",
+                return_value=(status, "scripted answer")):
+            rc = send_job.cmd_new(self._args())
+        self.assertEqual(rc, 0 if status in (200, 202) else 1)
+
+
 class PostToQueueTest(unittest.TestCase):
     """Cycle 2 target, except class:
     `runner/cloud/send_job.py:post_to_queue` (6) -- the

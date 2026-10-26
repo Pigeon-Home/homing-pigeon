@@ -497,5 +497,20 @@ class SweepWorkspaceProperties(unittest.TestCase):
             shutil.rmtree(base, ignore_errors=True)
 
 
+class RunInspectReviewTest(unittest.TestCase):
+    """Cycle 3 target, logic class: `runner.run_inspect` (2)
+    -- asked for the extension review with the review module
+    unavailable, inspect says so on stderr and returns 1.
+    """
+
+    def test_review_without_the_module_returns_1(self):
+        import argparse
+        args = argparse.Namespace(inspect="review", config=None,
+                                  job_id=None)
+        with mock.patch.object(R, "_extreview", None):
+            rc = R.run_inspect({}, args)
+        self.assertEqual(rc, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
