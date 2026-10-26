@@ -12,6 +12,7 @@ capped while streaming; and after any job, valid or not, nothing new
 exists outside the work tree and the runner's own state files.
 """
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -47,7 +48,30 @@ LATE_STATE = {"security-events.jsonl", "security-audit.jsonl",
               "security-audit.jsonl.1",
               "detection-baseline.json", "dri-state.json",
               "oracle-learning.jsonl", "runner.log", "board.json",
-              "extension-review.json", "oracle-chat.jsonl"}
+              "extension-review.json", "oracle-chat.jsonl",
+              "canary-watch.json", "canaries"}
+RECORD_PREFIXES = ("security-", "runner.log", "oracle-", "resources",
+                   "detection-", "dri-", "board", "extension-",
+                   "canary-watch")
+# The canaries the local watch plants under canaries/ on a poll.
+CANARIES = set(getattr(R, "_CANARY_NAMES", ()))
+# A record's writer temp (runner/guard/atomicio.py names it
+# <path>.tmp.<pid>.<thread>.<hex>) is the record's, not a job's: on
+# Windows a scanner can hold the fresh file while it is renamed and
+# again while the refused rename is cleaned up, leaving the temp.
+_WRITER_TEMP = re.compile(r"\.tmp\.\d+\.\d+\.[0-9a-f]+$")
+
+
+def _runner_record(n, leaf):
+    """True when a name outside the state tree is plainly one of the
+    runner's own records (or a record's writer temp)."""
+    base = _WRITER_TEMP.sub("", leaf)
+    if base in LATE_STATE or base in STATE_FILES \
+            or base.startswith(RECORD_PREFIXES):
+        return True
+    parent = n.replace("\\", "/").rsplit("/", 1)[0] if "/" in \
+        n.replace("\\", "/") else ""
+    return parent == "canaries" and base in CANARIES
 
 
 def _names_outside_state(base_dir):
@@ -82,10 +106,7 @@ def _nothing_new_outside(before, after, names=()):
         leaf = n.replace("\\", "/").rsplit("/", 1)[-1]
         if n in leaves or leaf in leaves:
             out.append(n)
-        elif n in LATE_STATE or leaf.startswith(("security-", "runner.log",
-                                                   "oracle-", "resources",
-                                                   "detection-", "dri-",
-                                                   "board", "extension-")):
+        elif _runner_record(n, leaf):
             continue
         else:
             out.append(n)
@@ -161,17 +182,30 @@ class RejectionVectorsEndToEnd(Harness):
 
                 with mock.patch.object(R, "download", never):
                     imap, smtp, seen = self._cycle([mail])
+                # One line per check, naming the vector: the run page
+                # shows a failed test's last exception line and the
+                # log itself is not always within reach.
+                self.assertEqual(len(smtp.sent), 1,
+                                 "results sent for %r" % (vector,))
                 result = self._result(smtp)
-                self.assertEqual(result["exit_code"], -2)
-                self.assertIn("(rule %d)" % rule, result["stderr"])
-                self.assertEqual([str(x) for x in imap.flagged], ["1"])
-                self.assertTrue(any(jid in k for k in seen))
+                self.assertEqual(result["exit_code"], -2, repr(vector))
+                self.assertIn("(rule %d)" % rule, result["stderr"],
+                              repr(vector))
+                self.assertEqual([str(x) for x in imap.flagged], ["1"],
+                                 repr(vector))
+                self.assertTrue(any(jid in k for k in seen),
+                                "job not in seen for %r" % (vector,))
                 work = os.path.join(self.tmp, "work", jid)
-                self.assertEqual(os.listdir(work) if os.path.isdir(work)
-                                 else [], [])
-                self.assertEqual(_nothing_new_outside(
-                    before, _names_outside_state(self.tmp), [vector]), [])
-                self.assertEqual(_payload_outside_work(self.tmp, jid), [])
+                left = os.listdir(work) if os.path.isdir(work) else []
+                self.assertFalse(left, "left in work for %r: %r"
+                                 % (vector, left))
+                outside = _nothing_new_outside(
+                    before, _names_outside_state(self.tmp), [vector])
+                self.assertFalse(outside, "new outside the state tree for "
+                                 "%r: %r" % (vector, outside))
+                payload = _payload_outside_work(self.tmp, jid)
+                self.assertFalse(payload, "payload outside work for %r: %r"
+                                 % (vector, payload))
 
 
 class SweepTest(Harness):
@@ -506,6 +540,32 @@ if given is not None:
                 self.assertEqual(_payload_outside_work(h.tmp, jid), [])
             finally:
                 shutil.rmtree(h.tmp, ignore_errors=True)
+
+
+class OutsideCheckTest(unittest.TestCase):
+    """The sweep's classifier: a job's name always counts, a runner
+    record (or its writer temp) never does, anything else counts."""
+
+    def test_a_record_and_its_writer_temp_are_the_runners(self):
+        before = set()
+        after = {"seen.json.tmp.4242.139.0a1b2c3d",
+                 "canary-watch.json.tmp.1.2.ff",
+                 "security-events.jsonl", "runner.log.1",
+                 os.path.join("canaries", "passwords.txt"), "canaries"}
+        self.assertEqual(_nothing_new_outside(before, after, ["CON"]), [])
+
+    def test_anything_else_counts(self):
+        after = {"x", os.path.join("canaries", "evil"),
+                 "report.txt.tmp.1.2.ab", "notes.tmp.1.2.ab"}
+        self.assertEqual(_nothing_new_outside(set(), after, []),
+                         sorted(after))
+
+    def test_the_jobs_own_name_counts_even_shaped_like_a_record(self):
+        vector = "seen.json.tmp.1.2.ab"
+        after = {vector, os.path.join("deep", "runner.log")}
+        self.assertEqual(
+            _nothing_new_outside(set(), after, [vector, "a/runner.log"]),
+            sorted(after))
 
 
 if __name__ == "__main__":
