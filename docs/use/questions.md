@@ -103,9 +103,13 @@ confirmation on the owner's phone has value too.
 My preference is to build it as written, with no notice. Should I do
 this, yes or no?
 
-**Answer:** pending (the desk).
+**Answer:** (the conductor, recorded by Grok, 2026-10-27)
+Yes. Build it as written. No notice. A stopped box stays
+silent on every transport, including the owner's own
+mailbox. The owner learns it by the quiet, and re-arms
+on the box.
 
-**Applied in:** --
+**Applied in:** -- (the desk builds it).
 
 ---
 
