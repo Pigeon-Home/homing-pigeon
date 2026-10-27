@@ -22,6 +22,13 @@ facts a reader may need to cite. Git history carries the rest.
   checker runs an entry whose pattern the bound names over lines
   cut short, so a reader that fails to refuse it answers in bounded
   time and is still told apart.
+- **blueMonday's sixteenth target, `query`.** One query message --
+  its subject id, the sealed object a sender chose, the key -- over
+  the retained record of a job as the runner saved it or as a crash
+  left it, through `handle_query_mail` with the mail rig: the reply
+  opened and held to the queries contract against the record, the
+  record held to spent and saved_at, a copy of the message taken
+  without a second reply; sixty-seven seeds.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.61 - 2026-10-26

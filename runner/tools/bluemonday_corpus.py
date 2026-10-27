@@ -66,6 +66,9 @@ delivered body and the agent's trust in it:
              runner/runner.py            _safe_job_id on one name a
                                          sender chose; an accepted
                                          file name is staged
+    query    runner/ops/queries.py       handle_query_mail on one
+                                         query message over a retained
+                                         record, through the mail rig
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -122,6 +125,7 @@ import shutil
 import sys
 import tempfile
 import time
+import types
 from datetime import datetime, timedelta, timezone
 from unittest import mock
 
@@ -1708,9 +1712,13 @@ def _query_answers(declared, answers, spent, budget, view, text_lines):
                 raise Crash("contract", "ask without a model answered "
                             f"{a!r}"[:200])
         elif op == "senses":
-            if a.get("rejected") != "senses_unavailable":
-                raise Crash("contract", "senses without a base answered "
-                            f"{a!r}"[:200])
+            # Unavailable without a base directory (the queries target);
+            # with one (the query target) the alerts filed, none here.
+            alerts = a.get("alerts")
+            if a.get("rejected") != "senses_unavailable" and not (
+                    isinstance(alerts, list)
+                    and a.get("count") == len(alerts)):
+                raise Crash("contract", f"senses answered {a!r}"[:200])
         elif a != {"rejected": "unknown_op"}:
             raise Crash("contract", f"op {op!r} answered {a!r}"[:200])
     return handed, refused
@@ -1820,6 +1828,267 @@ def check_queries(entry):
         note("result", _digest(result))
         note("answers", _digest(answers))
     return "refused" if refused else "accepted"
+
+
+# ------------------------------------------------------------------
+# query: the query message handler over a retained record
+# ------------------------------------------------------------------
+
+_QUERY_CFG = {
+    "shared_secret": SECRET,
+    "additional_secrets": {"canary-key": SENSE, "ops": OPS},
+    "mailbox_user": "runner@example.com",
+    "max_job_age_sec": 3600,
+    "max_queries_per_hour": 4,
+    "output_retention_days": 7,
+}
+_QUERY_REJECTIONS = ("unsupported", "rate_limit", "expired", "unknown_job",
+                     "query_error")
+_DEFAULT_RETAINED = {
+    "job_id": "bm-job-0001", "kind": "exec", "script": "echo",
+    "stdout": "ok\nERROR one\nERROR two\n", "stderr": "", "exit_code": 0,
+    "timed_out": False, "duration_sec": 0.5, "view": "full", "budget": 8,
+    "spent": 0, "patterns": _QUERY_PATTERNS, "confined": True,
+    "digest": "d" * 96, "saved_at": NOW}
+
+
+class _FakeImap:
+    """An IMAP connection that keeps the flags it was asked to store."""
+
+    def __init__(self):
+        self.marked = []
+
+    def store(self, seq, flags, value):
+        self.marked.append((seq, flags, value))
+        return "OK", [b""]
+
+
+def _query_retained(record):
+    """The retained record as the runner would have saved it: the
+    saved_at token stamped with the present (so the record is within
+    the retention window at check time), anything else as it is."""
+    if isinstance(record, dict) and record.get("saved_at") == NOW:
+        record = dict(record)
+        record["saved_at"] = time.time()
+    return record
+
+
+def _query_mail(subject_id, payload, key_id):
+    """A query message as the sender seals it: the signed object,
+    encrypted under the subject's id, the envelope signed."""
+    import email.message as _em
+    secret = SECRETS.get(key_id, SECRET) if isinstance(key_id, str) \
+        else SECRET
+    body = V.sign_payload(payload, secret)
+    body = JC.encrypt_body(body, secret, subject_id, key_id or "",
+                           V.sign_payload)
+    msg = _em.EmailMessage()
+    msg["From"] = "si@example.com"
+    msg["To"] = "runner@example.com"
+    msg["Subject"] = "[HOMING-PIGEON] query " + subject_id
+    msg.set_content(body)
+    return msg.as_bytes()
+
+
+def _query_open_reply(msg, subject_id, key_id):
+    """The qresult inside a sent reply: verified, decrypted under the
+    subject's id, verified again."""
+    secret = SECRETS.get(key_id, SECRET) if isinstance(key_id, str) \
+        else SECRET
+    text = msg.get_content()
+    outer, exc = _call(V.verify_body, text, secret)
+    if exc is not None:
+        raise Crash("roundtrip", "the reply does not verify: "
+                    f"{_short(exc)}")
+    if not JC.is_envelope(outer):
+        raise Crash("contract", "the reply to a sealed query is not sealed")
+    inner, exc = _call(JC.decrypt_body, outer, secret, subject_id,
+                       key_id or "")
+    if exc is not None:
+        raise Crash("roundtrip", "the reply does not open under the "
+                    f"subject's id: {_short(exc)}")
+    reply, exc = _call(V.verify_body, inner, secret)
+    if exc is not None:
+        raise Crash("roundtrip", "the reply's object does not verify: "
+                    f"{_short(exc)}")
+    return reply
+
+
+def check_query(entry):
+    """query: one query message -- the subject's id, the signed and
+    sealed object a sender chose (its type, version, ids, issued_at
+    and queries), under a key -- over the retained record of a job
+    as the runner saved it or as a crash left it, through
+    handle_query_mail with the mail rig. Contract: the handler
+    takes the message (True) and never raises; the message is
+    marked seen exactly once; at most one reply goes out, addressed
+    to the mailbox under the subject's id, a qresult naming the
+    subject's id that verifies and opens under the key, with a list
+    of answers and either a known rejection or a budget that is not
+    negative; a reply with answers follows the answer contract of
+    the queries target (one per query, the lines handed back the
+    retained output's own under the retained view, nothing of the
+    output under summary or attested); the retained record after
+    the query, if the job was known and in its window, is the same
+    record with spent and saved_at kept, spent never over the
+    budget; a copy of the message is taken without a second reply.
+    Accepted when the reply carries no rejection."""
+    data = entry["data"]
+    if not isinstance(data, dict):
+        # A mutator that wrapped or replaced the whole entry: what is
+        # left is the message's queries, over the default record.
+        data = {"query": data}
+    subject_id = data.get("subject_id")
+    if not isinstance(subject_id, str) or not subject_id \
+            or any(c.isspace() for c in subject_id):
+        subject_id = "bm-q-0001"
+    payload = _stamp_issued_at(data.get("query"))
+    if not isinstance(payload, dict):
+        payload = {"v": 1, "type": "query", "query_id": subject_id,
+                   "job_id": "bm-job-0001", "issued_at": FIXED_AT,
+                   "queries": payload}
+    key_id = data.get("key_id") if isinstance(data.get("key_id"), str) \
+        and data.get("key_id") in SECRETS else ""
+    record = _query_retained(data.get("retained", _DEFAULT_RETAINED))
+    if TU._lone_surrogate(payload):
+        note("gate", "lone surrogate")
+        return "refused"
+    try:
+        raw = _query_mail(subject_id, payload, key_id)
+    except ValueError as e:
+        # The sender's own signer refuses the object; the runner
+        # never sees it.
+        note("gate", "unsignable", _short(e))
+        return "refused"
+    base = tempfile.mkdtemp(prefix="hp-bluemonday-query-")
+    try:
+        job_id = payload.get("job_id")
+        if record is not None and isinstance(job_id, str):
+            R.save_retained(base, job_id, record)
+        before = R.load_retained(base, job_id) if isinstance(job_id, str) \
+            else None
+        cfg = dict(_QUERY_CFG)
+        secrets = R.build_secrets(cfg)
+        opts = types.SimpleNamespace(dry_run=False, no_send=False)
+        seen = {}
+        subject = "[HOMING-PIGEON] query " + subject_id
+        outs = []
+        for attempt in (1, 2):
+            imap, smtp = _FakeImap(), _FakeSmtp()
+            with mock.patch.object(R, "log", lambda *a, **k: None), \
+                    mock.patch.object(R, "vlog", lambda *a, **k: None):
+                got, exc = _call(R.handle_query_mail, cfg, imap, smtp,
+                                 attempt, raw, subject, secrets, opts,
+                                 base, seen)
+            if exc is not None:
+                raise Crash("exception", "handle_query_mail raised "
+                            f"{type(exc).__name__}: {_short(exc)}")
+            if got is not True:
+                raise Crash("contract", f"handle_query_mail answered {got!r} "
+                            "for a query subject")
+            if len(imap.marked) != 1:
+                raise Crash("contract", f"the message was marked "
+                            f"{len(imap.marked)} times")
+            if len(smtp.sent) > 1:
+                raise Crash("contract", f"{len(smtp.sent)} replies went out")
+            outs.append(smtp.sent)
+        first, again = outs
+        if again:
+            raise Crash("contract", "a copy of the query was answered again")
+        if not first:
+            note("reply", "none", sorted(seen))
+            after = R.load_retained(base, job_id) if isinstance(job_id, str) \
+                else None
+            if after != before:
+                raise Crash("contract", "a query that got no reply changed "
+                            "the retained record")
+            return "refused"
+        msg = first[0]
+        if msg["To"] != _QUERY_CFG["mailbox_user"]:
+            raise Crash("provenance", f"the reply is addressed to {msg['To']!r}")
+        if str(msg["Subject"]) != "[HOMING-PIGEON] qresult " + subject_id:
+            raise Crash("contract", f"the reply's subject is "
+                        f"{str(msg['Subject'])[:60]!r}")
+        reply = _query_open_reply(msg, subject_id, key_id)
+        if not isinstance(reply, dict) or reply.get("type") != "qresult" \
+                or reply.get("query_id") != subject_id \
+                or not isinstance(reply.get("answers"), list):
+            raise Crash("shape", f"the reply is {_short(reply)}"[:200])
+        rejected = reply.get("rejected")
+        if rejected is not None and rejected not in _QUERY_REJECTIONS:
+            raise Crash("contract", f"the reply names rejection {rejected!r}")
+        remaining = reply.get("budget_remaining")
+        if remaining is not None and (not isinstance(remaining, int)
+                                      or isinstance(remaining, bool)
+                                      or remaining < 0):
+            raise Crash("contract", f"budget_remaining is {remaining!r}")
+        after = R.load_retained(base, job_id) if isinstance(job_id, str) \
+            else None
+        if rejected is None:
+            _query_reply_answers(payload, record, reply, before, after)
+        elif after != before:
+            raise Crash("contract", f"a query rejected as {rejected} changed "
+                        "the retained record")
+        note("reply", rejected or "answered", _digest(reply.get("answers")),
+             remaining, sorted(seen))
+        return "refused" if rejected is not None else "accepted"
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
+
+def _query_reply_answers(payload, record, reply, before, after):
+    """A reply with answers against the retained record it read."""
+    if not isinstance(before, dict):
+        raise Crash("contract", "a query was answered with no retained "
+                    "record to read")
+    declared = payload.get("queries") or []
+    if not isinstance(declared, list):
+        declared = []
+    answers = reply["answers"]
+    view = before.get("view") or "full"
+    if not isinstance(view, str) or view not in R.VIEW_ORDER:
+        view = "full"
+    out = TU._as_str(before.get("stdout"))
+    err = TU._as_str(before.get("stderr"))
+    text_lines = (out + err).splitlines()
+    try:
+        budget = int(before.get("budget"))
+    except (TypeError, ValueError, OverflowError):
+        budget = int(_QUERY_CFG.get("max_query_budget", 8))
+    try:
+        already = int(before.get("spent") or 0)
+    except (TypeError, ValueError, OverflowError):
+        already = 0
+    free = max(0, budget - already)
+    handed, _rejected = _query_answers(declared, answers, len(declared),
+                                       free, view, text_lines)
+    pieces = _query_pieces(out, err)
+    policy_text = json.dumps(payload, sort_keys=True, default=str)
+    _query_no_leak("reply", view, reply, pieces, policy_text)
+    # The record's own patterns redact its lines; a record without
+    # any is redacted under the runner's current ones, which do not
+    # know the canary.
+    patterns = before.get("patterns")
+    if not (isinstance(patterns, dict) and patterns):
+        patterns = R._redact_patterns(_QUERY_CFG)
+    if _QUERY_PATTERNS["canary"] in patterns.values():
+        _query_no_canary("reply", view, handed)
+    if not isinstance(after, dict):
+        raise Crash("contract", "the retained record is gone after an "
+                    "answered query")
+    spent = after.get("spent")
+    if not isinstance(spent, int) or isinstance(spent, bool) \
+            or spent != already + len(declared):
+        raise Crash("contract", f"spent is {spent!r} after {len(declared)} "
+                    f"queries on {already}")
+    if reply.get("budget_remaining") != max(0, budget - spent):
+        raise Crash("contract", "budget_remaining does not follow the "
+                    "record's budget and spent")
+    kept = {k: v for k, v in after.items() if k not in ("spent", "saved_at")}
+    was = {k: v for k, v in before.items() if k not in ("spent", "saved_at")}
+    if kept != was:
+        raise Crash("contract", "an answered query changed the retained "
+                    "record beyond spent and saved_at")
 
 
 # ------------------------------------------------------------------
@@ -3969,6 +4238,118 @@ def seeds_names():
                        "seed:" + n, "seed") for n, t in out]
 
 
+def seeds_query():
+    canary = "SECRET-12345 is the canary line of the output\n"
+    output = "ok\n" + canary + "ERROR one\nERROR two\nwarn: three\n"
+    grep = {"op": "grep", "pattern": "ERROR", "max_matches": 5}
+    tail = {"op": "tail", "lines": 3}
+    attest = {"op": "attest", "predicate": "exit_zero"}
+
+    def retained(**extra):
+        rec = {"job_id": "bm-job-0001", "kind": "exec", "script": "echo",
+               "stdout": output, "stderr": "", "exit_code": 0,
+               "timed_out": False, "duration_sec": 0.5, "view": "full",
+               "budget": 8, "spent": 0, "patterns": _QUERY_PATTERNS,
+               "confined": True, "digest": "d" * 96, "saved_at": NOW,
+               "judgment": None, "artifact_scan": [], "remediation": None}
+        rec.update(extra)
+        return rec
+
+    def query(**extra):
+        q = {"v": 1, "type": "query", "query_id": "bm-q-0001",
+             "job_id": "bm-job-0001", "issued_at": NOW,
+             "queries": [attest, grep, tail]}
+        q.update(extra)
+        return q
+
+    def entry(name, q=None, rec="default", **top):
+        data = {"subject_id": "bm-q-0001", "query": q or query(),
+                "retained": retained() if rec == "default" else rec}
+        data.update(top)
+        return (name, data)
+
+    out = [
+        entry("happy"),
+        entry("keyed", key_id="ops"),
+        entry("canary_key", key_id="canary-key"),
+        entry("no_record", rec=None),
+        entry("record_expired", rec=retained(saved_at=1.0)),
+        entry("record_no_saved_at", rec=retained(saved_at=None)),
+        entry("record_saved_at_text", rec=retained(saved_at="yesterday")),
+        entry("record_summary", rec=retained(view="summary")),
+        entry("record_attested", rec=retained(view="attested")),
+        entry("record_redacted", rec=retained(view="redacted"),
+              q=query(queries=[{"op": "grep", "pattern": "SECRET"}, tail])),
+        entry("record_view_unknown", rec=retained(view="wide")),
+        entry("record_view_number", rec=retained(view=7)),
+        entry("record_budget_text", rec=retained(budget="eight")),
+        entry("record_budget_null", rec=retained(budget=None)),
+        entry("record_budget_zero", rec=retained(budget=0)),
+        entry("record_spent_all", rec=retained(spent=8)),
+        entry("record_spent_over", rec=retained(spent=9)),
+        entry("record_spent_text", rec=retained(spent="three")),
+        entry("record_spent_float", rec=retained(spent=2.5)),
+        entry("record_no_stdout", rec=retained(stdout=None)),
+        entry("record_stdout_number", rec=retained(stdout=7)),
+        entry("record_stdout_list", rec=retained(stdout=["a", "b"])),
+        entry("record_patterns_list", rec=retained(patterns=["x"])),
+        entry("record_patterns_bad", rec=retained(patterns={"x": "("})),
+        entry("record_patterns_number_key", rec=retained(patterns={"1": "a"})),
+        entry("record_digest_null", rec=retained(digest=None)),
+        entry("record_exit_text", rec=retained(exit_code="zero")),
+        entry("record_is_list", rec=[1, 2]),
+        entry("record_is_text", rec="retained"),
+        entry("record_empty", rec={}),
+        entry("record_extra_members", rec=retained(note="x", nested={"a": 1})),
+        entry("query_v2", q=query(v=2)),
+        entry("query_v_text", q=query(v="1")),
+        entry("query_type_job", q=query(type="job")),
+        entry("query_no_type", q={k: v for k, v in query().items()
+                                   if k != "type"}),
+        entry("query_id_other", q=query(query_id="bm-q-0002")),
+        entry("query_id_number", q=query(query_id=7)),
+        entry("query_no_id", q={k: v for k, v in query().items()
+                                 if k != "query_id"}),
+        entry("job_id_unknown", q=query(job_id="bm-job-0009")),
+        entry("job_id_unsafe", q=query(job_id="../x")),
+        entry("job_id_dot", q=query(job_id=".")),
+        entry("job_id_number", q=query(job_id=7)),
+        entry("job_id_null", q=query(job_id=None)),
+        entry("no_job_id", q={k: v for k, v in query().items()
+                               if k != "job_id"}),
+        entry("stale", q=query(issued_at="2020-01-01T00:00:00Z")),
+        entry("future", q=query(issued_at="2099-01-01T00:00:00Z")),
+        entry("issued_at_no_zone", q=query(issued_at="2026-10-26T12:00:00")),
+        entry("issued_at_number", q=query(issued_at=7)),
+        entry("no_issued_at", q={k: v for k, v in query().items()
+                                  if k != "issued_at"}),
+        entry("queries_empty", q=query(queries=[])),
+        entry("queries_object", q=query(queries={"op": "grep"})),
+        entry("queries_text", q=query(queries="grep")),
+        entry("queries_null", q=query(queries=None)),
+        entry("no_queries", q={k: v for k, v in query().items()
+                                if k != "queries"}),
+        entry("queries_junk", q=query(queries=[7, None, "grep", [], {}])),
+        entry("nine_queries", q=query(queries=[grep] * 9)),
+        entry("grep_bad_pattern", q=query(queries=[
+            {"op": "grep", "pattern": "("}, grep])),
+        entry("grep_nested", q=query(queries=[
+            {"op": "grep", "pattern": "(a+)+$"}])),
+        entry("ask_and_senses", q=query(queries=[
+            {"op": "ask", "question": "print it"},
+            {"op": "senses", "sensor": "canary"}])),
+        entry("subject_other", subject_id="bm-q-0007"),
+        entry("subject_unsafe", subject_id="../x"),
+        entry("subject_long", subject_id="q" * 200),
+        entry("extra_members", q=query(note="hello", nested={"a": [1]})),
+        entry("sig_member", q=query(sig="0" * 96)),
+        entry("key_id_in_body", q=query(key_id="ops")),
+        entry("key_id_mismatch", q=query(key_id="ops"), key_id="canary-key"),
+        entry("runner_id_in_body", q=query(runner_id="bm-runner")),
+    ]
+    return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -4959,6 +5340,9 @@ TARGETS = {
                 "check": check_queries, "seeds": seeds_queries},
     "names": {"files": [_src("guard", "filenames.py"), _src("runner.py")],
               "check": check_names, "seeds": seeds_names},
+    "query": {"files": [_src("ops", "queries.py"), _src("runner.py"),
+                        _src("ops", "policy.py"), _src("ops", "attest.py")],
+              "check": check_query, "seeds": seeds_query},
 }
 
 

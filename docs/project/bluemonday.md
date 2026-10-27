@@ -108,6 +108,7 @@ peer on the wire reaches first.
 | 13 | `secret` | `runner/cloud/send_job.py` `require_signable_secret` and `runner/guard/security.py` `validate_shared_secret`: the sender's and the runner's strength rules on one candidate secret, held in step (a differential the code itself asks for) | in the corpus |
 | 14 | `queries` | `runner/ops/policy.py` `apply_result_policy` and `runner/ops/queries.py` `answer_queries` (with `runner/ops/attest.py` and the pattern bound in `runner/guard/security.py`): a job's `result_policy` -- the view it asks for, its queries, its budget -- and the job's own output, under every ceiling the owner can set (Q84) | in the corpus |
 | 15 | `names` | `runner/guard/filenames.py` `validate_file_name` and `runner/runner.py` `_safe_job_id`: one name a sender chose, before the six file-name rules (the same on every platform) and the job-id rule; an accepted file name is staged under a scratch work directory on the host (`_staged_dest`) | in the corpus |
+| 16 | `query` | `runner/ops/queries.py` `handle_query_mail` through the mail rig: one query message (its subject id, the sealed object a sender chose, under a key) over the retained record of a job as the runner saved it or as a crash left it; the reply opened and held to the queries contract, the record held to spent and saved_at, a copy taken without a second reply | in the corpus |
 
 Not targets, and why: the Oracle's reading of its model's replies
 (`runner/ops/oracle_tools.py`), the config loader and the platform
@@ -216,6 +217,19 @@ never files a refusal as a crash.
   will not create is a refusal, not a crash). `_safe_job_id`
   refuses with `JobRejected` and nothing else, or answers the same
   string, one safe component under either flavour.
+- **The query message** (`query`). The handler takes the message
+  and never raises; the message is marked seen exactly once; at
+  most one reply goes out, to the mailbox under the subject's id, a
+  qresult naming that id that verifies and opens under the key,
+  with a list of answers and either a known rejection or a budget
+  that is not negative; a reply with answers follows the queries
+  contract against the retained record (the lines handed back the
+  record's own under the record's view, nothing of the output under
+  summary or attested, the record's own patterns redacting); the
+  record after an answered query is the same record with spent
+  advanced by the queries and saved_at kept, and a rejected query
+  leaves it as it was; a copy of the message is taken without a
+  second reply.
 
 A contract added later replays over every entry already kept; an
 old entry that fails a new contract is a crash file and a Q, never
