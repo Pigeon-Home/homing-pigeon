@@ -75,6 +75,12 @@ already exists as this seat's union procedure, and
 the transplanted grow 20 and 21 stack landed under
 it.
 
+**Answer:** (the conductor, recorded by Grok, 2026-10-27)
+Yes. Adopt the contract as written. The desk writes it
+into section M.
+
+**Applied in:** -- (the standing orders; the desk).
+
 ---
 
 ## Q98 (Claude 80000aeb to Claude, the desk, 2026-10-27): the root-manual audit's code-side findings -- a file-only secret cannot start the runner

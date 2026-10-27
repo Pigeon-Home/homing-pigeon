@@ -128,8 +128,10 @@ import posixpath
 import random
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
+import threading
 import time
 import types
 from datetime import datetime, timedelta, timezone
@@ -360,6 +362,116 @@ def _differential(text, agent, aexc):
                     f"refuses: {_short(aexc)}")
 
 
+def _sig_verdict(text, secret):
+    """The core's signature and nothing past it: accept, accept-cleaned
+    (the control-character retry, Q61), mismatch, or no-sig. Nesting,
+    surrogates and the JSON parse are not this answer."""
+    import hmac as _hmac
+    if not isinstance(text, str) or not isinstance(secret, str):
+        return "no-sig"
+    try:
+        raw, sig = V._extract_signed(V._normalize(text).rstrip())
+    except ValueError:
+        return "no-sig"
+    try:
+        raw_b = raw.encode("utf-8")
+        key = secret.encode("utf-8")
+    except UnicodeEncodeError:
+        return "mismatch"
+    expect = _hmac.new(key, raw_b, hashlib.sha384).hexdigest()
+    if _hmac.compare_digest(expect, sig.lower()):
+        return "accept"
+    cleaned = V._strip_controls(raw)
+    try:
+        expect = _hmac.new(key, cleaned.encode("utf-8"),
+                           hashlib.sha384).hexdigest()
+    except UnicodeEncodeError:
+        return "mismatch"
+    if _hmac.compare_digest(expect, sig.lower()):
+        return "accept-cleaned"
+    return "mismatch"
+
+
+class _Edge:
+    """The Worker's signature gate, one node process for the run.
+    None when node is not there: the campaign still replays."""
+
+    proc = None
+    skip = False
+    lock = threading.Lock()
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "..", "cloud", "queues-worker", "src",
+                          "edge_stdio.mjs")
+
+    @classmethod
+    def verdict(cls, text, secret):
+        with cls.lock:
+            if cls.skip:
+                return None
+            if cls.proc is None or cls.proc.poll() is not None:
+                try:
+                    cls.proc = subprocess.Popen(
+                        ["node", cls.script],
+                        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                        stderr=subprocess.DEVNULL, text=True, bufsize=1)
+                except OSError:
+                    cls.skip = True
+                    return None
+            try:
+                cls.proc.stdin.write(json.dumps(
+                    {"text": text, "secret": secret},
+                    ensure_ascii=True) + "\n")
+                cls.proc.stdin.flush()
+                line = cls.proc.stdout.readline()
+            except (OSError, UnicodeEncodeError, TypeError, ValueError):
+                cls._drop()
+                return None
+            if not line:
+                cls._drop()
+                return None
+            try:
+                why = json.loads(line).get("why")
+            except ValueError:
+                cls._drop()
+                return None
+            if why not in ("accept", "no-sig", "mismatch"):
+                cls._drop()
+                return None
+            return why
+
+    @classmethod
+    def _drop(cls):
+        proc = cls.proc
+        cls.proc = None
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+
+
+def _edge_agrees(text, secret):
+    """The edge gate and the core, on the signature alone. The edge
+    accepts what the core accepts on the raw bytes, and refuses what
+    the core refuses. The core's control-character retry is not the
+    edge's job (Q61): both refusing is agreement. A signature the
+    edge takes and the core does not is a job queued for a refusal.
+    A signature the core takes and the edge does not is a lost job."""
+    edge = _Edge.verdict(text, secret)
+    if edge is None:
+        note("edge", "skipped")
+        return
+    py = _sig_verdict(text, secret)
+    if edge == "accept" and py == "accept":
+        note("edge", "accept")
+        return
+    if edge != "accept" and py != "accept":
+        note("edge", "refuse")
+        return
+    if edge == "accept":
+        raise Crash("agreement", "the edge accepts a signature the "
+                    f"core refuses ({py})")
+    raise Crash("agreement", "the edge refuses a signature the core "
+                f"accepts ({edge})")
+
+
 class _FakeSmtp:
     """An SMTP connection that keeps what it was given to send."""
 
@@ -435,9 +547,10 @@ def _provenance(job):
 
 def _verify_text(text):
     """wire: both readers of runner/wire/verify.py on one received
-    body, each to its contract, the two in agreement, and the
-    front-end's verifier in agreement with them (the differential);
-    a trusted body's reply target is held to provenance."""
+    body, each to its contract, the two in agreement, the front-end's
+    verifier in agreement with them, and the Worker's signature gate
+    in agreement with the core on the raw signature (the edge
+    differential); a trusted body's reply target is held to provenance."""
     got, exc = _call(V.verify_body, text, SECRET)
     if exc is not None:
         _expect_refusal(exc, ValueError, "verify_body")
@@ -471,6 +584,7 @@ def _verify_text(text):
         if _unsigned(payload) != _unsigned(got):
             raise Crash("agreement", "the two readers disagree on the "
                         "payload of one body")
+    _edge_agrees(text, SECRET)
     return "accepted" if exc is None else "refused"
 
 
@@ -539,6 +653,7 @@ def _signed_payload(payload, signer, who):
         if _unsigned(got) != _unsigned(expect):
             raise Crash("roundtrip", "verify_body_keyed reads back a "
                         f"payload {who} did not sign")
+    _edge_agrees(body, secret or SECRET)
     if isinstance(expect, dict):
         _provenance(expect)
     return "accepted"

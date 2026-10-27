@@ -46,6 +46,29 @@ export async function sha256Hex(text) {
   return hex(await crypto.subtle.digest("SHA-256", enc.encode(text)));
 }
 
+export async function signatureVerdict(secret, body) {
+  // The gate's own answer, and nothing past it: no JSON parse, no
+  // nesting limit, no surrogate check. "accept", "no-sig", or
+  // "mismatch". A secret that is not text cannot sign.
+  if (typeof secret !== "string") return "mismatch";
+  const ex = extractSigAndPayload(typeof body === "string" ? body : "");
+  if (!ex) return "no-sig";
+  let want;
+  try {
+    want = await hmacSha384Hex(secret, ex.payload);
+  } catch {
+    return "mismatch";
+  }
+  return constantTimeEqual(want, ex.sig) ? "accept" : "mismatch";
+}
+
+export async function bodyVerdict(secret, text) {
+  // What the gate HMACs. An envelope is split first, the same way
+  // fetch does; a bare body is the body.
+  const parsed = parseEnvelope(typeof text === "string" ? text : "");
+  return signatureVerdict(secret, parsed ? parsed.body : text);
+}
+
 export async function hmacSha384Hex(secret, payload) {
   const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-384" }, false, ["sign"]);
   return hex(await crypto.subtle.sign("HMAC", key, enc.encode(payload)));
@@ -155,10 +178,9 @@ export default {
       if (!jobId) return json(400, { error: "subject does not name a job" });
       if (rejectOn(env)) {
         if (!tenant.hmac_secret) return json(500, { error: "tenant has no hmac_secret" });
-        const ex = extractSigAndPayload(parsed.body);
-        if (!ex) return json(400, { error: "body carries no sig member" });
-        const want = await hmacSha384Hex(tenant.hmac_secret, ex.payload);
-        if (!constantTimeEqual(want, ex.sig)) return json(403, { error: "invalid signature" });
+        const verdict = await signatureVerdict(tenant.hmac_secret, parsed.body);
+        if (verdict === "no-sig") return json(400, { error: "body carries no sig member" });
+        if (verdict !== "accept") return json(403, { error: "invalid signature" });
       }
       return forward("/enqueue", {
         method: "POST",
