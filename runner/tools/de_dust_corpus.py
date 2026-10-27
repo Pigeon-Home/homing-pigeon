@@ -2482,6 +2482,11 @@ def check_board_mail(entry):
                             f"{_short(exc)}")
             secrets = R.build_secrets(cfg)
             replies = []
+            # The board as each reply left it: a reply is judged
+            # against the board at the moment it went out, not after
+            # the second copy moved it again (Q97: a zero lease
+            # re-offers a claim at once).
+            states = []
             logbook = _MailLog(base)
             start = _digest(board.tasks)
             for attempt in (1, 2):
@@ -2511,6 +2516,8 @@ def check_board_mail(entry):
                 if opts.dry_run and _digest(board.tasks) != start:
                     raise Crash("contract", "a dry run moved the board (Q87)")
                 replies.append(smtp.sent[0] if smtp.sent else None)
+                states.append({k: v.get("state") for k, v
+                               in board.tasks.items() if isinstance(v, dict)})
                 again, exc = _call(BD.Board, path)
                 if exc is not None:
                     raise Crash("exception", "the board file no longer loads: "
@@ -2573,9 +2580,7 @@ def check_board_mail(entry):
                                 or task.get("task_id") != words[2]:
                             raise Crash("contract", "the offer's task is not "
                                         "the one its subject names")
-                        on_board = board.tasks.get(task["task_id"])
-                        if not isinstance(on_board, dict) \
-                                or on_board.get("state") != "claimed":
+                        if states[i].get(task["task_id"]) != "claimed":
                             raise Crash("contract", "a task offered is not "
                                         "claimed on the board")
                         good = True

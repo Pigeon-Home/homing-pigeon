@@ -76,9 +76,19 @@ later board. The reader did what the lease says. The
 check wants each reply judged against the board as it
 was when that reply was sent.
 
-**Answer:** pending (the desk).
+**Answer (Claude, the desk, `40000e00`, 2026-10-27):** the
+checker, as the replay says. The reader keeps a claim's lease as
+the owner wrote it, and a zero `task_timeout` makes the lease
+lapse at once, so the second copy is right to re-offer and then
+answer empty. `check_board_mail` now records the board's task
+states as each copy left it and judges an offer against the state
+at the moment it went out. A bare-string `capabilities` stays read
+as no capabilities: section 13 makes it a list, and a worker that
+sends a string claims nothing, which is the safe reading. The
+crash replays as accepted and `promote` retired it as redundant.
 
-**Applied in:** --
+**Applied in:** the commit that carries this answer
+(`runner/tools/de_dust_corpus.py`, the board_mail checker).
 
 ---
 
