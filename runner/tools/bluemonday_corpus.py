@@ -58,6 +58,10 @@ delivered body and the agent's trust in it:
                                          each .json read once, filed or
                                          refused, removed either way;
                                          the store holds what was filed
+    queries  runner/ops/policy.py        apply_result_policy and
+             runner/ops/queries.py       answer_queries on a job's
+                                         result_policy and its own
+                                         output, under every ceiling
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -124,6 +128,8 @@ from runner.cloud import send_job as SJ  # noqa: E402
 from runner.guard import security as SEC  # noqa: E402
 from runner.guard import textutil as TU  # noqa: E402
 from runner.ops import extensions as EX  # noqa: E402
+from runner.ops import policy as PO  # noqa: E402
+from runner.ops import queries as QU  # noqa: E402
 from runner.ops.extensions import build_sensor_alert  # noqa: E402
 from runner.wire import jobcrypto as JC  # noqa: E402
 from runner.wire import protocol_v2 as P2  # noqa: E402
@@ -1529,6 +1535,256 @@ def _fault(message):
         if word in text:
             return word
     return text[:60]
+
+
+# ------------------------------------------------------------------
+# queries: the result policy and its queries (Q84)
+# ------------------------------------------------------------------
+
+_QUERY_PATTERNS = {"canary": r"SECRET-[0-9]+"}
+_QUERY_EXEC = {"exit_code": 0, "timed_out": False, "duration_sec": 0.5,
+               "runner": "bm-runner", "completed_at": FIXED_AT,
+               "stdout_truncated": False, "stderr_truncated": False}
+# The owner's ceilings the policy is read under: the four views, the
+# ceiling absent, the ceiling not a view.
+_QUERY_CEILINGS = ("attested", "summary", "redacted", "full", None, 7)
+# The output a queries entry may carry. The grep op runs a pattern of
+# the sender's over every line of it, and the plain repeats a pattern
+# may keep are bounded only by the text (Q84), so the text is short.
+QUERIES_MAX_TEXT = 1024
+_LEAK_MIN = 12
+
+
+def _query_text(value):
+    """What the job's output is for an entry: text as it is, anything
+    else in its JSON form, so a mutated output still varies. The
+    streams are what the runner decoded with replacement, so a lone
+    surrogate a mutator plants reads as the replacement character."""
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        value = json.dumps(value, ensure_ascii=True, default=str)
+    return value.encode("utf-8", "replace").decode("utf-8")
+
+
+_QUERY_FIXED_TEXT = json.dumps(dict(_QUERY_EXEC, job_id="bm-q-0001",
+                                    kind="exec"), sort_keys=True)
+
+
+def _query_pieces(out, err):
+    """The parts of the output a non-full view must not carry: the
+    whole of each stream and every line of them long enough to be
+    recognized, less any that is also a fixed member of the result
+    (the output may say the completion time)."""
+    pieces = set()
+    for text in (out, err):
+        if len(text) >= _LEAK_MIN:
+            pieces.add(text)
+        for line in text.splitlines():
+            if len(line) >= _LEAK_MIN:
+                pieces.add(line)
+    return {p for p in pieces if p not in _QUERY_FIXED_TEXT}
+
+
+def _query_no_leak(what, view, obj, pieces, policy_text):
+    """Under summary and attested, nothing of the output is in what
+    the runner answers -- unless the sender put it in the policy
+    itself, which is the sender's own text coming back."""
+    if view not in ("summary", "attested"):
+        return
+    blob = json.dumps(obj, sort_keys=True, default=str)
+    for piece in pieces:
+        if piece in blob and piece not in policy_text:
+            raise Crash("leak", f"the {what} under {view} carries the "
+                        "job's output")
+
+
+def _query_no_canary(what, view, values):
+    """Under redacted, no line handed back matches the owner's
+    pattern (the pattern a query echoes is the sender's own)."""
+    if view != "redacted":
+        return
+    pat = re.compile(_QUERY_PATTERNS["canary"])
+    for value in values:
+        if isinstance(value, str) and pat.search(value):
+            raise Crash("leak", f"the {what} under redacted carries the "
+                        "canary")
+
+
+def _query_answers(declared, answers, spent, budget, view, text_lines):
+    """The answer list against the query list (PROTOCOL.md section
+    10): one answer per query in order, every query spending one,
+    each answer a dict that says `op` or `rejected`, the budget's
+    refusals after the budget, grep and tail refused as policy under
+    the views that never hand lines back, their lines the output's
+    own under full, the unavailable ops named as such."""
+    if not isinstance(answers, list) or len(answers) != len(declared):
+        raise Crash("contract", f"{len(declared)} queries got "
+                    f"{len(answers) if isinstance(answers, list) else answers!r}"
+                    " answers")
+    if spent != len(declared):
+        raise Crash("contract", f"{len(declared)} queries spent {spent!r}")
+    handed = []
+    refused = False
+    for i, (q, a) in enumerate(zip(declared, answers)):
+        if not isinstance(a, dict) or not ("op" in a or "rejected" in a):
+            raise Crash("shape", f"answer {i} is {a!r}"[:200])
+        if "rejected" in a:
+            refused = True
+        if not isinstance(q, dict):
+            if a != {"rejected": "unknown_op"}:
+                raise Crash("contract", f"a query that is not an object "
+                            f"got {a!r}"[:200])
+            continue
+        if i >= budget:
+            if a != {"rejected": "budget"}:
+                raise Crash("contract", f"query {i} past the budget of "
+                            f"{budget} got {a!r}"[:200])
+            continue
+        op = q.get("op")
+        if op in ("grep", "tail"):
+            if view in ("summary", "attested"):
+                if a.get("rejected") != "policy":
+                    raise Crash("contract", f"{op} under {view} answered "
+                                f"{a!r}"[:200])
+                continue
+            if "rejected" in a:
+                continue
+            key = "matches" if op == "grep" else "lines"
+            lines = a.get(key)
+            if not isinstance(lines, list) or not all(
+                    isinstance(x, str) for x in lines):
+                raise Crash("shape", f"{op} answered {key}={lines!r}"[:200])
+            if len(lines) > (100 if op == "grep" else 200):
+                raise Crash("contract", f"{op} handed back {len(lines)} lines")
+            if view == "full":
+                if any(x not in text_lines for x in lines):
+                    raise Crash("contract", f"{op} handed back a line the "
+                                "output does not have")
+                if op == "tail" and lines != text_lines[len(text_lines)
+                                                       - len(lines):]:
+                    raise Crash("contract", "tail's lines are not the "
+                                "output's last lines")
+            if op == "grep" and not isinstance(a.get("truncated"), bool):
+                raise Crash("shape", "grep's truncated is not a bool")
+            handed.extend(lines)
+        elif op == "attest":
+            if "rejected" not in a and "predicate" not in a:
+                raise Crash("shape", f"attest answered {a!r}"[:200])
+        elif op == "ask":
+            if a.get("rejected") != "inference_unconfigured":
+                raise Crash("contract", "ask without a model answered "
+                            f"{a!r}"[:200])
+        elif op == "senses":
+            if a.get("rejected") != "senses_unavailable":
+                raise Crash("contract", "senses without a base answered "
+                            f"{a!r}"[:200])
+        elif a != {"rejected": "unknown_op"}:
+            raise Crash("contract", f"op {op!r} answered {a!r}"[:200])
+    return handed, refused
+
+
+def check_queries(entry):
+    """queries: a job's result_policy -- the view it asks for, its
+    queries, its query budget -- and the job's own output, read by
+    apply_result_policy and answer_queries under every ceiling the
+    owner can set. Contract: neither raises; the view handed back is
+    the one asked for, capped at the ceiling, and an unknown or
+    absent request is full; the retain flag follows the view; under
+    summary and attested nothing of the output comes back, and
+    attested blanks the streams; under redacted no line handed back
+    matches the owner's pattern; the answers are one per query, each
+    query spending one, with the budget's and the policy's refusals
+    where section 10 puts them and the lines handed back the
+    output's own; the result with its answers signs and verifies as
+    a body. Accepted when every query under the full ceiling was
+    answered, refused when one was rejected."""
+    data = entry["data"]
+    if isinstance(data, dict):
+        policy = data.get("policy")
+        out = _query_text(data.get("output"))
+        err = _query_text(data.get("stderr"))
+    else:
+        policy, out, err = data, "", ""
+    if len(out) + len(err) > QUERIES_MAX_TEXT:
+        raise Crash("corpus", "a queries entry's output is over the cap")
+    if TU.has_lone_surrogate(policy):
+        # The verifier refuses a body with a lone surrogate (Q85), so
+        # a policy carrying one never reaches these readers.
+        note("gate", "lone surrogate")
+        return "refused"
+    job = {"job_id": "bm-q-0001", "kind": "exec", "result_policy": policy}
+    exe = dict(_QUERY_EXEC, stdout=out, stderr=err)
+    pieces = _query_pieces(out, err)
+    policy_text = json.dumps(policy, sort_keys=True, default=str)
+    text_lines = (out + err).splitlines()
+    want = policy.get("view") if isinstance(policy, dict) else None
+    asked = want if isinstance(want, str) and want in R.VIEW_ORDER else "full"
+    declared = policy.get("queries") if isinstance(policy, dict) else None
+    declared = declared or []
+    if not isinstance(declared, list):
+        declared = []
+    refused = False
+    for ceiling in _QUERY_CEILINGS:
+        cfg = {} if ceiling is None else {"max_result_view": ceiling}
+        got, exc = _call(PO.apply_result_policy, cfg, job, exe,
+                         _QUERY_PATTERNS, True)
+        if exc is not None:
+            raise Crash("exception", "apply_result_policy raised "
+                        f"{type(exc).__name__} under ceiling {ceiling!r}: "
+                        f"{_short(exc)}")
+        if not (isinstance(got, tuple) and len(got) == 2
+                and isinstance(got[0], dict) and isinstance(got[1], bool)):
+            raise Crash("shape", "apply_result_policy returned "
+                        f"{type(got).__name__}")
+        result, retain = got
+        top = ceiling if ceiling in R.VIEW_ORDER else "full"
+        expect = asked if R.VIEW_ORDER[asked] <= R.VIEW_ORDER[top] else top
+        view = result.get("view")
+        if view != expect:
+            raise Crash("contract", f"a request of {want!r} under ceiling "
+                        f"{ceiling!r} got view {view!r}, not {expect!r}")
+        if retain != (view != "full"):
+            raise Crash("contract", f"retain is {retain!r} under {view}")
+        if view == "attested":
+            if result.get("stdout") != "" or result.get("stderr") != "":
+                raise Crash("leak", "an attested result carries a stream")
+            if not isinstance(result.get("attestations"), list):
+                raise Crash("shape", "attested without an attestation list")
+        if view == "summary" and "stdout" in result:
+            raise Crash("leak", "a summary result carries stdout")
+        _query_no_leak("result", view, result, pieces, policy_text)
+        _query_no_canary("result", view, [result.get("stdout")])
+        budget = R.query_budget(cfg, job)
+        ctx = {"stdout": out, "stderr": err, "exit_code": 0,
+               "confined": True, "digest": result.get("output_digest")}
+        got, exc = _call(QU.answer_queries, declared, ctx, _QUERY_PATTERNS,
+                         budget, cfg, view)
+        if exc is not None:
+            raise Crash("exception", "answer_queries raised "
+                        f"{type(exc).__name__} under {view}: {_short(exc)}")
+        if not (isinstance(got, tuple) and len(got) == 2):
+            raise Crash("shape", f"answer_queries returned {type(got).__name__}")
+        answers, spent = got
+        handed, rejected = _query_answers(declared, answers, spent, budget,
+                                          view, text_lines)
+        if ceiling == "full":
+            refused = rejected
+        _query_no_leak("answers", view, answers, pieces, policy_text)
+        _query_no_canary("answers", view, handed)
+        signed = dict(result, answers=answers)
+        body, exc = _call(V.sign_payload, signed, SECRET)
+        if exc is not None:
+            raise Crash("contract", "the result with its answers would not "
+                        f"sign: {_short(exc)}")
+        back, exc = _call(V.verify_body, body, SECRET)
+        if exc is not None or not isinstance(back, dict):
+            raise Crash("roundtrip", "the signed result does not verify: "
+                        f"{_short(exc) if exc else type(back).__name__}")
+        note("view", ceiling, view, budget)
+        note("result", _digest(result))
+        note("answers", _digest(answers))
+    return "refused" if refused else "accepted"
 
 
 # ------------------------------------------------------------------
@@ -3385,6 +3641,128 @@ def seeds_secret():
     return [make_entry("text", t, "seed:" + n, "seed") for n, t in out]
 
 
+def seeds_queries():
+    canary = "SECRET-12345 is the canary line of the output\n"
+    output = ("ok\n" + canary + "ERROR one\nERROR two\nwarn: three\n"
+              + "a" * 40 + "!\n")
+    long_line = " " * 800 + "!"
+
+    def entry(name, policy, output=output, stderr=None):
+        data = {"policy": policy, "output": output}
+        if stderr is not None:
+            data["stderr"] = stderr
+        return (name, data)
+
+    grep = {"op": "grep", "pattern": "ERROR", "max_matches": 5}
+    tail = {"op": "tail", "lines": 3}
+    attest = {"op": "attest", "predicate": "exit_zero"}
+    out = [
+        entry("happy", {"view": "full", "queries": [attest, grep, tail]}),
+        entry("views_attested", {"view": "attested", "queries": [
+            attest, grep, tail, {"op": "attest", "predicate": "no_secrets"},
+            {"op": "attest", "predicate": "output_digest"},
+            {"op": "attest", "predicate": "confined_to_workspace"}]}),
+        entry("views_summary", {"view": "summary", "queries": [grep, tail]}),
+        entry("views_redacted", {"view": "redacted", "queries": [
+            {"op": "grep", "pattern": "SECRET"}, {"op": "tail", "lines": 9}]}),
+        entry("view_unknown", {"view": "wide", "queries": [grep]}),
+        entry("view_empty", {"view": "", "queries": [tail]}),
+        entry("view_number", {"view": 7}),
+        entry("view_true", {"view": True}),
+        entry("view_null", {"view": None}),
+        entry("view_list", {"view": ["full"]}),
+        entry("policy_list", [grep]),
+        entry("policy_text", "full"),
+        entry("policy_number", 7),
+        entry("policy_null", None),
+        entry("policy_empty", {}),
+        entry("queries_object", {"queries": {"op": "grep"}}),
+        entry("queries_text", {"queries": "grep ERROR"}),
+        entry("queries_empty", {"queries": []}),
+        entry("queries_not_objects", {"queries": [7, "grep", None, [], attest]}),
+        entry("op_unknown", {"queries": [{"op": "count"}, {"op": None},
+                                         {"op": 7}, {}]}),
+        entry("grep_no_pattern", {"queries": [{"op": "grep"}]}),
+        entry("grep_pattern_null", {"queries": [{"op": "grep", "pattern": None}]}),
+        entry("grep_pattern_number", {"queries": [{"op": "grep", "pattern": 7}]}),
+        entry("grep_not_compiling", {"queries": [{"op": "grep", "pattern": "("}]}),
+        entry("grep_nested_repeat", {"queries": [
+            {"op": "grep", "pattern": "(a+)+$"}, grep]}),
+        entry("grep_repeated_alternation", {"queries": [
+            {"op": "grep", "pattern": "(a|aa)+$"}]}),
+        entry("grep_two_wildcards", {"queries": [
+            {"op": "grep", "pattern": "error.*timeout"}]}),
+        entry("grep_three_repeats", {"queries": [
+            {"op": "grep", "pattern": "^\\s*\\d+\\s+passed"}]}),
+        entry("grep_empty_pattern", {"queries": [{"op": "grep", "pattern": ""}]}),
+        entry("grep_every_line", {"queries": [
+            {"op": "grep", "pattern": ".", "max_matches": 100}]}),
+        entry("grep_max_zero", {"queries": [
+            {"op": "grep", "pattern": "ERROR", "max_matches": 0}]}),
+        entry("grep_max_negative", {"queries": [
+            {"op": "grep", "pattern": "ERROR", "max_matches": -1}]}),
+        entry("grep_max_over", {"queries": [
+            {"op": "grep", "pattern": ".", "max_matches": 1000}]}),
+        entry("grep_max_text", {"queries": [
+            {"op": "grep", "pattern": "ERROR", "max_matches": "7"}]}),
+        entry("grep_max_bool", {"queries": [
+            {"op": "grep", "pattern": "ERROR", "max_matches": True}]}),
+        entry("grep_max_float", {"queries": [
+            {"op": "grep", "pattern": "ERROR", "max_matches": 1.5}]}),
+        entry("grep_max_huge", {"queries": [
+            {"op": "grep", "pattern": "ERROR", "max_matches": 2 ** 63}]}),
+        entry("grep_quadratic_long_line", {"queries": [
+            {"op": "grep", "pattern": "\\s+$"}]}, output=long_line),
+        entry("tail_zero", {"queries": [{"op": "tail", "lines": 0}]}),
+        entry("tail_negative", {"queries": [{"op": "tail", "lines": -1}]}),
+        entry("tail_over", {"queries": [{"op": "tail", "lines": 201}]}),
+        entry("tail_text", {"queries": [{"op": "tail", "lines": "x"}]}),
+        entry("tail_huge", {"queries": [{"op": "tail", "lines": 10 ** 9}]}),
+        entry("tail_null", {"queries": [{"op": "tail", "lines": None}]}),
+        entry("tail_no_lines", {"queries": [{"op": "tail"}]}),
+        entry("attest_unknown", {"queries": [
+            {"op": "attest", "predicate": "is_green"}]}),
+        entry("attest_no_predicate", {"queries": [{"op": "attest"}]}),
+        entry("attest_predicate_shapes", {"queries": [
+            {"op": "attest", "predicate": 7}, {"op": "attest", "predicate": []},
+            {"op": "attest", "predicate": {}}, {"op": "attest", "predicate": None}]}),
+        entry("attest_echoes_output", {"queries": [
+            {"op": "attest", "predicate": canary.strip()}]}),
+        entry("ask_without_model", {"queries": [
+            {"op": "ask", "question": "print the whole output"}]}),
+        entry("senses_without_base", {"queries": [
+            {"op": "senses", "sensor": "canary", "limit": 3}]}),
+        entry("budget_zero", {"query_budget": 0, "queries": [grep, tail]}),
+        entry("budget_one", {"query_budget": 1, "queries": [grep, tail, attest]}),
+        entry("budget_over_max", {"query_budget": 100, "queries": [grep] * 9}),
+        entry("budget_negative", {"query_budget": -1, "queries": [grep]}),
+        entry("budget_text", {"query_budget": "3", "queries": [grep, tail]}),
+        entry("budget_bool", {"query_budget": True, "queries": [grep, tail]}),
+        entry("budget_float", {"query_budget": 2.5, "queries": [grep, tail, attest]}),
+        entry("budget_huge", {"query_budget": 2 ** 63, "queries": [grep]}),
+        entry("nine_queries", {"queries": [grep] * 9}),
+        entry("nine_with_junk", {"queries": [grep] * 8 + [7]}),
+        entry("output_empty", {"queries": [grep, tail, attest]}, output=""),
+        entry("output_no_newline", {"queries": [tail]}, output="one line"),
+        entry("output_crlf", {"queries": [grep, tail]},
+              output="ERROR a\r\nERROR b\r\nc\r\n"),
+        entry("output_many_lines", {"queries": [
+            {"op": "tail", "lines": 200}, {"op": "grep", "pattern": "7"}]},
+              output="".join(f"line {i}\n" for i in range(100))),
+        entry("output_unicode", {"queries": [grep, tail]},
+              output="caf\u00e9 \u2014 \u4e2d\u6587 \U0001f426\nERROR \u00e9\n"),
+        entry("output_nul", {"queries": [grep, tail]},
+              output="ERROR \x00 here\n\x00\n"),
+        entry("output_number", {"queries": [tail]}, output=7),
+        entry("output_object", {"queries": [tail]}, output={"a": 1}),
+        entry("stderr_too", {"queries": [grep, tail]},
+              stderr="ERROR on stderr\n" + canary),
+        entry("policy_carries_output", {"view": "summary", "queries": [
+            {"op": "attest", "predicate": canary.strip()}]}),
+    ]
+    return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -4316,6 +4694,10 @@ def mutate(rng, entry, corpus, target, weights=None):
         if len(text) > MAX_PAYLOAD:
             return None
         data = json.loads(text)
+    if target == "queries" and isinstance(data, dict) and (
+            len(_query_text(data.get("output")))
+            + len(_query_text(data.get("stderr"))) > QUERIES_MAX_TEXT):
+        return None
     if data == entry["data"]:
         return None
     return data, name
@@ -4365,6 +4747,10 @@ TARGETS = {
     "secret": {"files": [_src("cloud", "send_job.py"),
                          _src("guard", "security.py")],
                "check": check_secret, "seeds": seeds_secret},
+    "queries": {"files": [_src("ops", "policy.py"), _src("ops", "queries.py"),
+                          _src("ops", "attest.py"),
+                          _src("guard", "security.py")],
+                "check": check_queries, "seeds": seeds_queries},
 }
 
 
@@ -4868,12 +5254,14 @@ def cmd_grow(args, out=print):
     for target in targets:
         rng = random.Random(seed)
         entries = load(corpus_path(target))
-        if not entries:
-            out(f"{target}: no corpus; run `seed` first")
+        session = Session(target, entries)
+        # A target without a corpus yet (a reader the desk just put
+        # on the surface) starts from its seeds here.
+        fresh = merge_seeds(session)
+        if not session.entries:
+            out(f"{target}: no corpus and no seeds")
             status = 2
             continue
-        session = Session(target, entries)
-        fresh = merge_seeds(session)
         for e in fresh:
             e["arcs"] = 0
         t0 = time.perf_counter()

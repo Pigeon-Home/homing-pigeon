@@ -37,9 +37,9 @@ try:
 except ImportError:
     from wire.platformcard import platform_interpreter  # type: ignore
 try:
-    from runner.guard.textutil import _json_safe
+    from runner.guard.textutil import _json_safe, has_lone_surrogate
 except ImportError:
-    from guard.textutil import _json_safe  # type: ignore
+    from guard.textutil import _json_safe, has_lone_surrogate  # type: ignore
 try:
     from runner.guard import confval as _confval
 except ImportError:
@@ -63,6 +63,11 @@ def sign_payload(payload: dict, secret: str) -> str:
         raise ValueError("secret must be a string")
     if not isinstance(payload, dict):
         raise ValueError("payload must be an object")
+    # The body is UTF-8 text; a lone surrogate in the payload would
+    # make the encode below raise, so it is named here instead (the
+    # other signer refuses the same, as its encode raises).
+    if has_lone_surrogate(payload):
+        raise ValueError("payload carries a lone surrogate")
     body = _normalize(json.dumps(_json_safe(payload), separators=(",", ":"),
                                  ensure_ascii=False, allow_nan=False))
     # The one signer with a transformation between the payload and
@@ -203,6 +208,12 @@ def verify_body(body: str, secret: str) -> dict:
     # word before the body is trusted (Q48).
     if not isinstance(job, dict):
         raise ValueError("signed body is not a JSON object")
+    # A \\ud800 escape reads as a lone surrogate: valid JSON syntax,
+    # not UTF-8 text. A body that carries one is refused here, so no
+    # text of the sender's that the runner echoes (the job's kind on
+    # every result) can leave the runner unable to sign its answer.
+    if has_lone_surrogate(job):
+        raise ValueError("signed body carries a lone surrogate")
     return job
 
 
@@ -717,6 +728,8 @@ def verify_body_keyed(body_text: str, secrets: dict):
             continue
         if not isinstance(payload, dict):
             raise ValueError("signed body must be a JSON object")
+        if has_lone_surrogate(payload):
+            raise ValueError("signed body carries a lone surrogate")
         # Key selection follows the draft (Section 10) exactly:
         # absent selects the default secret; a present key_id
         # must be a string in the map (the empty string names

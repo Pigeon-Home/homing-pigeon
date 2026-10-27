@@ -106,6 +106,7 @@ peer on the wire reaches first.
 | 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | in the corpus (Q69) |
 | 12 | `local_inbox` | `runner/runner.py` under the sequence contract: the local signal inbox scanned once by `_scan_local_inbox`, the store held to the ingests | in the corpus |
 | 13 | `secret` | `runner/cloud/send_job.py` `require_signable_secret` and `runner/guard/security.py` `validate_shared_secret`: the sender's and the runner's strength rules on one candidate secret, held in step (a differential the code itself asks for) | in the corpus |
+| 14 | `queries` | `runner/ops/policy.py` `apply_result_policy` and `runner/ops/queries.py` `answer_queries` (with `runner/ops/attest.py` and the pattern bound in `runner/guard/security.py`): a job's `result_policy` -- the view it asks for, its queries, its budget -- and the job's own output, under every ceiling the owner can set (Q84) | in the corpus |
 
 Not targets, and why: the Oracle's reading of its model's replies
 (`runner/ops/oracle_tools.py`), the config loader and the platform
@@ -185,6 +186,22 @@ never files a refusal as a crash.
 - **Reserved slots.** `sig` is the protocol's; a payload carrying
   its own is read back with the slot overwritten by the keyed
   reader and kept by the plain one, and neither is a disagreement.
+- **Ceiling and view** (`queries`). The policy is read under every
+  ceiling the owner can set -- the four views, the ceiling absent,
+  the ceiling not a view -- and neither reader raises; the view
+  handed back is the one asked for, capped at the ceiling, an
+  unknown or absent request reading as full; the retain flag
+  follows the view; under summary and attested nothing of the
+  output comes back (the sender's own text echoed from the policy
+  is not the output), and attested blanks the streams; under
+  redacted no line handed back matches the owner's pattern; the
+  answers are one per query in order, each query spending one,
+  the budget's refusals after the budget, grep and tail refused as
+  policy under the views that hand no lines back, their lines the
+  output's own under full, ask and senses named unavailable; the
+  result with its answers signs and verifies as a body. The output
+  an entry carries is short (1,024 characters): the plain repeats
+  a grep pattern may keep are bounded only by the text (Q84).
 
 A contract added later replays over every entry already kept; an
 old entry that fails a new contract is a crash file and a Q, never

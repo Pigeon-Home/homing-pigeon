@@ -260,7 +260,38 @@ def verify_body(body: str, secret: str) -> dict:
     # word before the body is trusted (Q48).
     if not isinstance(job, dict):
         raise ValueError("signed body is not a JSON object")
+    # A \\ud800 escape reads as a lone surrogate: valid JSON syntax,
+    # not UTF-8 text. The runner's verifier refuses it (Q85); this
+    # one does the same, in step.
+    if _has_lone_surrogate(job):
+        raise ValueError("signed body carries a lone surrogate")
     return job
+
+
+def _has_lone_surrogate(value, _seen=None) -> bool:
+    """True when a string anywhere in a JSON value cannot be encoded
+    as UTF-8 (runner/guard/textutil.py has the runner's copy; this
+    file runs by path too, so it carries its own)."""
+    if isinstance(value, str):
+        try:
+            value.encode("utf-8")
+            return False
+        except UnicodeEncodeError:
+            return True
+    if isinstance(value, (dict, list, tuple)):
+        if _seen is None:
+            _seen = set()
+        if id(value) in _seen:
+            return False
+        _seen.add(id(value))
+        try:
+            items = value.items() if isinstance(value, dict) else \
+                enumerate(value)
+            return any(_has_lone_surrogate(k, _seen)
+                       or _has_lone_surrogate(v, _seen) for k, v in items)
+        finally:
+            _seen.discard(id(value))
+    return False
 
 
 def cmd_new(args) -> int:

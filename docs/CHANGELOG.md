@@ -27,6 +27,22 @@ facts a reader may need to cite. Git history carries the rest.
   the desk's run over the merged seeds, the rest named kind by kind
   in the corpus README; the plan's section 6 carries the conductor's
   split of the campaign's work.
+- **A signed body that carries a lone surrogate is refused.** The
+  JSON escape `\ud800` is valid syntax and not UTF-8 text; both
+  verifiers accepted a job whose `kind` was one, and the result that
+  echoed it -- the rejection included -- could not be signed, so
+  the sender never heard back. `verify_body`, `verify_body_keyed`
+  and the front-end's verifier refuse it anywhere in the object
+  (PROTOCOL.md section 3; Q85), and the runner's signer names it
+  before its encode would. `runner/tests/test_lone_surrogate.py`.
+- **blueMonday's fourteenth target, `queries`.** A job's
+  `result_policy` and its own output through `apply_result_policy`
+  and `answer_queries` under every ceiling the owner can set: the
+  view capped at the ceiling, nothing of the output under summary
+  or attested, no canary under redacted, one answer per query with
+  the budget's and the policy's refusals where section 10 puts
+  them, the result signed and verified; seventy-one seeds. Q85 is
+  its first finding.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 - **The DRI page's closing line names where the context is.** The
   page, `security-audit.jsonl` and `runner.log`, the three places

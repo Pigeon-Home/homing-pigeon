@@ -31,6 +31,7 @@ too (Q74). The capture's own bytes are not.
 | `inbox.jsonl`  | `runner/wire/transports.py`, the sequence kind: a whole inbox as a peer or a crash left it (files, links, directories, in their names) read by `fetch_channel_messages` and serviced by `service_channel` with the core's side in one of nine shapes, a known-good envelope beside them |
 | `local_inbox.jsonl` | `runner/runner.py`, the sequence kind: the local signal inbox as a peer or a crash left it, scanned once by `_scan_local_inbox`; each `.json` entry handled once and removed either way, the store holding exactly what the ingests filed, a known-good alert beside them |
 | `secret.jsonl` | `runner/cloud/send_job.py` and `runner/guard/security.py`: one candidate shared secret before the sender's `require_signable_secret` and the runner's `validate_shared_secret`, the two held in step (both refuse naming the same fault, or both accept; one entropy estimate) |
+| `queries.jsonl` | `runner/ops/policy.py` and `runner/ops/queries.py` (with `runner/ops/attest.py` and the pattern bound): a job's `result_policy` and its own output, read by `apply_result_policy` and `answer_queries` under every ceiling the owner can set; the view capped at the ceiling, nothing of the output under summary or attested, no canary under redacted, one answer per query with the budget's and the policy's refusals where section 10 puts them, the result signed and verified (Q84, Q85) |
 
 The first line of each file is a header; every other line is one
 entry: `id` (a hash of the kind and the data), `kind` (`text`, a

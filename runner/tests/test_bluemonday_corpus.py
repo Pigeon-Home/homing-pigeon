@@ -100,6 +100,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_manifest(self):
         self._check("manifest")
 
+    def test_queries(self):
+        self._check("queries")
+
     def test_the_corpus_agrees_with_itself_on_the_windows_surface(self):
         bad = []
         for target in B.TARGETS:
@@ -337,7 +340,8 @@ class ToolTest(unittest.TestCase):
                               ("inbox", B.seeds_inbox()),
                               ("local_inbox", B.seeds_local_inbox()),
                               ("secret", B.seeds_secret()),
-                              ("manifest", B.seeds_manifest())):
+                              ("manifest", B.seeds_manifest()),
+                              ("queries", B.seeds_queries())):
             for _ in range(150):
                 parent = rng.choice(seeds)
                 child = B.mutate(rng, parent, seeds, target)
@@ -362,7 +366,8 @@ class ToolTest(unittest.TestCase):
         # a corpus that already holds it.
         for seeds in (B.seeds_crypto, B.seeds_stash, B.seeds_dtls,
                       B.seeds_board, B.seeds_board_ops, B.seeds_channels,
-                      B.seeds_inbox, B.seeds_local_inbox, B.seeds_manifest):
+                      B.seeds_inbox, B.seeds_local_inbox, B.seeds_manifest,
+                      B.seeds_queries):
             first = [e["id"] for e in seeds()]
             self.assertEqual(first, [e["id"] for e in seeds()])
             self.assertEqual(len(first), len(set(first)))
