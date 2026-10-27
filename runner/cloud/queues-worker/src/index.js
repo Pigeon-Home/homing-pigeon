@@ -85,11 +85,103 @@ export function parseEnvelope(text) {
   return { subject: norm.slice(0, i).trim(), body: norm.slice(i + 2) };
 }
 
+// The core's extractor (runner/wire/verify.py, _extract_signed), line
+// for line, so the gate queues exactly the jobs the runner will trust.
+// The body is normalized the core's way (CRLF and a lone CR to LF, then
+// Python's rstrip); the sig member is the last `,"sig":"` followed by
+// 96 hex digits and `"}`; the object it closes opens at the newest `{`
+// whose text up to the marker is a whole root object that parses as a
+// JSON object, the stripped-controls form included, else the newest
+// whole-object `{`. A wrong candidate fails the HMAC either way.
+const PY_SPACE = /[\t\n\x0b\x0c\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$/;
+const SIG_MARKER = ',"sig":"';
+
+export function normalizeBody(text) {
+  return (typeof text === "string" ? text : "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(PY_SPACE, "");
+}
+
+export function stripControls(text) {
+  return text.replace(/[\x00-\x08\x0a-\x1f]/g, "");
+}
+
+function inRootObjectAt(norm, start, sigAt) {
+  let depth = 0, inStr = false, escape = false;
+  for (let k = start; k < sigAt; k++) {
+    const c = norm[k];
+    if (inStr) {
+      if (escape) escape = false;
+      else if (c === "\\") escape = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) return false;
+    }
+  }
+  return depth === 1 && !inStr;
+}
+
+// Python's json.loads takes NaN, Infinity and -Infinity; JSON.parse
+// does not. The opener search is the core's, so a candidate is read
+// with those tokens (outside strings) taken as numbers.
+function pyLoads(text) {
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    if (!/NaN|Infinity/.test(text)) throw e;
+  }
+  let out = "", inStr = false, escape = false;
+  for (let k = 0; k < text.length; k++) {
+    const c = text[k];
+    if (inStr) {
+      if (escape) escape = false;
+      else if (c === "\\") escape = true;
+      else if (c === '"') inStr = false;
+      out += c;
+      continue;
+    }
+    if (c === '"') { inStr = true; out += c; continue; }
+    if (text.startsWith("-Infinity", k)) { out += "0"; k += 8; continue; }
+    if (text.startsWith("Infinity", k)) { out += "0"; k += 7; continue; }
+    if (text.startsWith("NaN", k)) { out += "0"; k += 2; continue; }
+    out += c;
+  }
+  return JSON.parse(out);
+}
+
+function objectStart(norm, sigAt) {
+  let firstWalk = -1;
+  for (let start = sigAt - 1; start >= 0; start--) {
+    if (norm[start] !== "{") continue;
+    if (!inRootObjectAt(norm, start, sigAt)) continue;
+    if (firstWalk < 0) firstWalk = start;
+    const text = norm.slice(start, sigAt) + "}";
+    for (const form of [text, stripControls(text)]) {
+      let candidate;
+      try {
+        candidate = pyLoads(form);
+      } catch {
+        continue;
+      }
+      if (candidate !== null && typeof candidate === "object" && !Array.isArray(candidate)) return start;
+      break;
+    }
+  }
+  return firstWalk;
+}
+
 export function extractSigAndPayload(body) {
-  const trimmed = body.replace(/\s+$/, "");
-  const m = trimmed.match(/,\s*"sig"\s*:\s*"([0-9a-fA-F]+)"\s*\}$/);
-  if (!m) return null;
-  return { payload: trimmed.slice(0, m.index) + "}", sig: m[1].toLowerCase() };
+  const norm = normalizeBody(body);
+  const i = norm.lastIndexOf(SIG_MARKER);
+  if (i < 0) return null;
+  const tail = norm.slice(i + SIG_MARKER.length);
+  if (tail.length < 98 || tail.slice(96, 98) !== '"}' || !/^[0-9a-fA-F]{96}$/.test(tail.slice(0, 96))) return null;
+  const start = objectStart(norm, i);
+  if (start < 0) return null;
+  return { payload: norm.slice(start, i) + "}", sig: tail.slice(0, 96).toLowerCase() };
 }
 
 export function jobIdOf(subject) {

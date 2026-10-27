@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 
 import worker, {
   TenantQueue, hmacSha384Hex, sha256Hex, parseEnvelope,
-  extractSigAndPayload, jobIdOf, resultIdOf, DEFAULT_QUOTA,
+  extractSigAndPayload, signatureVerdict, jobIdOf, resultIdOf, DEFAULT_QUOTA,
 } from "../src/index.js";
 
 class FakeStorage {
@@ -93,6 +93,25 @@ test("helpers: envelope, sig splice, ids", async () => {
   assert.equal(resultIdOf("[HOMING-PIGEON] qresult abc"), "abc");
   assert.equal(parseEnvelope("no blank line"), null);
   assert.equal(extractSigAndPayload('{"a":1}'), null);
+});
+
+test("the extractor is the core's: preamble, trailer, lone CR, spaced sig", async () => {
+  const body = parseEnvelope(await signedJob("j2")).body.trim();
+  const ok = async (b) => (await signatureVerdict(SECRET, b));
+  assert.equal(await ok(body), "accept");
+  assert.equal(await ok("> note {\n" + body + "\n\n-- \nsig\n"), "accept");
+  assert.equal(await ok("\ufeff" + body), "accept");
+  assert.equal(await ok(body + "}"), "accept");
+  const payload = '{\r  "v": 1,\r  "job_id": "cr"\r}';
+  const sig = await hmacSha384Hex(SECRET, payload.replace(/\r/g, "\n"));
+  assert.equal(await ok(payload.slice(0, -1) + `,"sig":"${sig}"}`), "accept");
+  // The core reads no whitespace inside the marker, so neither does the gate.
+  assert.equal(await ok(body.replace(',"sig":"', ', "sig": "')), "no-sig");
+  // Signed over text that is not JSON: the core HMACs the newest whole
+  // object, and so does the gate.
+  const bad = '{"a":{"b":';
+  const bsig = await hmacSha384Hex(SECRET, bad + "}");
+  assert.equal(await ok(bad + `,"sig":"${bsig}"}`), "mismatch");
 });
 
 test("unknown tenant and routes are 404; health is open", async () => {

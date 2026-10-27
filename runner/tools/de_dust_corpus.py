@@ -446,6 +446,13 @@ class _Edge:
             proc.kill()
 
 
+def _queued_body(text):
+    """The body the runner's queue channel hands the core for `text`
+    sent under a job subject, the frame edge_stdio.mjs puts on it."""
+    framed = "[HOMING-PIGEON] job dust\n\n" + (text if isinstance(text, str) else "")
+    return framed.replace("\r\n", "\n").partition("\n\n")[2]
+
+
 def _edge_agrees(text, secret):
     """The edge gate and the core, on the signature alone. The edge
     accepts what the core accepts on the raw bytes, and refuses what
@@ -457,7 +464,10 @@ def _edge_agrees(text, secret):
     if edge is None:
         note("edge", "skipped")
         return
-    py = _sig_verdict(text, secret)
+    # Both sides read the body the queue delivers: the runner's
+    # channel splits the framed envelope (one CRLF pass) before the
+    # core normalizes, exactly as the gate's fetch does.
+    py = _sig_verdict(_queued_body(text), secret)
     if edge == "accept" and py == "accept":
         note("edge", "accept")
         return

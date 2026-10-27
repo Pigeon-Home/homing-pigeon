@@ -10,7 +10,10 @@ quota counters in one transactional store.
 Gates, in order: the tenant must exist, the bearer token must hash to
 the role's stored hash, a job body must carry a valid HMAC-SHA-384
 under the tenant's shared secret (`REJECT_INVALID_HMAC`, on by
-default), and the tenant's quota must have room. The quota is the
+default), and the tenant's quota must have room. The gate finds the
+signed object with the runner's own extractor, ported line for line,
+so it queues exactly the signatures the runner accepts; the de_dust
+wire target checks the two against each other on every replay. The quota is the
 spending cap Cloudflare does not provide: jobs per hour and bytes per
 day, a hard 429 with `Retry-After`, nothing stored or billed past it.
 
