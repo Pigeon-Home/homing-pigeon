@@ -475,9 +475,13 @@ The loop:
    shrunk, and exits 1; `test_bluemonday_corpus` carries it from
    there as an `expectedFailure` probe. File it in `questions.md`
    as a Q to Claude with the entry id and the detail line. The fix
-   is Claude's lane; after it lands, `python
-   runner/tools/bluemonday_corpus.py promote` moves the entry into
-   the corpus and the probe disappears.
+   is Claude's lane, and the desk runs `python
+   runner/tools/bluemonday_corpus.py promote` in the commit that
+   lands it (the one step the desk takes on the crash file, so the
+   probe never stands red between the fix and the next bank): an
+   entry that now meets its contract and reaches a new arc moves
+   into the corpus, one reaching nothing new is dropped, one still
+   crashing stays, and the probe disappears with the entry.
 5. **Ledger.** `blueMonday <n>: <k> entries, <a> arcs, <m> crashes
    filed, <resources line>`, from `stats` and the grow summary.
 6. **Stop?** When a grow of the rig's full depth adds no arcs on any

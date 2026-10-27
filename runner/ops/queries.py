@@ -238,9 +238,12 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                 answers.append({"op": "grep", "rejected": "policy"})
             else:
                 pattern = q.get("pattern") if isinstance(q.get("pattern"), str) else ""
+                # Whatever the engine refuses is a bad pattern: a
+                # syntax error, and a repetition count past what it
+                # can hold (OverflowError, Q92) the same.
                 try:
                     cre = re.compile(pattern)
-                except re.error:
+                except Exception:
                     answers.append({"op": "grep", "rejected": "bad_pattern"})
                     spent += 1
                     continue

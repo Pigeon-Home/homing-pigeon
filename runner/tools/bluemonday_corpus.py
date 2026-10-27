@@ -2222,8 +2222,10 @@ def _query_reply_answers(payload, record, reply, before, after):
     view = before.get("view") or "full"
     if not isinstance(view, str) or view not in R.VIEW_ORDER:
         view = "full"
-    out = TU._as_str(before.get("stdout"))
-    err = TU._as_str(before.get("stderr"))
+    # A stream is text or nothing (Q90): the record a crash left may
+    # hold a list or a number where the executor wrote text.
+    out = before.get("stdout") if isinstance(before.get("stdout"), str) else ""
+    err = before.get("stderr") if isinstance(before.get("stderr"), str) else ""
     text_lines = (out + err).splitlines()
     try:
         budget = int(before.get("budget"))
@@ -4682,6 +4684,17 @@ def seeds_queries():
         entry("grep_pattern_null", {"queries": [{"op": "grep", "pattern": None}]}),
         entry("grep_pattern_number", {"queries": [{"op": "grep", "pattern": 7}]}),
         entry("grep_not_compiling", {"queries": [{"op": "grep", "pattern": "("}]}),
+        # A repetition count past what the engine holds is a bad
+        # pattern too (Q92): the engine's OverflowError, not its
+        # error class, and the refusal is the same.
+        entry("grep_repeat_overflow", {"queries": [
+            {"op": "grep", "pattern": "a{99999999999}"}, grep]}),
+        entry("grep_repeat_overflow_range", {"queries": [
+            {"op": "grep", "pattern": "a{1,99999999999}"}]}),
+        entry("grep_repeat_overflow_nested", {"queries": [
+            {"op": "grep", "pattern": "(?:a+){9223372036854775808}"}]}),
+        entry("grep_repeat_large", {"queries": [
+            {"op": "grep", "pattern": "a{65536}"}, {"op": "grep", "pattern": "a{2147483648}"}]}),
         entry("grep_nested_repeat", {"queries": [
             {"op": "grep", "pattern": "(a+)+$"}, grep]}),
         entry("grep_repeated_alternation", {"queries": [
@@ -4881,6 +4894,22 @@ def seeds_query():
         entry("record_no_stdout", rec=retained(stdout=None)),
         entry("record_stdout_number", rec=retained(stdout=7)),
         entry("record_stdout_list", rec=retained(stdout=["a", "b"])),
+        # A stream that is not text is no text (Q90): an empty list or
+        # object, a list of lines, a number, where the executor wrote
+        # text; nothing of their text form is an output line.
+        entry("record_stderr_empty_list", rec=retained(stderr=[]),
+              q=query(queries=[attest, grep, tail])),
+        entry("record_stderr_empty_object", rec=retained(stderr={}),
+              q=query(queries=[tail])),
+        entry("record_stderr_list", rec=retained(stderr=["warn: x", "warn: y"]),
+              q=query(queries=[tail, grep])),
+        entry("record_stderr_number", rec=retained(stderr=7),
+              q=query(queries=[tail])),
+        entry("record_streams_not_text", rec=retained(stdout=["a"], stderr={"b": 1}),
+              q=query(queries=[tail, grep, attest])),
+        entry("record_pattern_overflow", rec=retained(
+            view="redacted", patterns={"x": "a{99999999999}"}),
+            q=query(queries=[tail, {"op": "grep", "pattern": "ERROR"}])),
         entry("record_patterns_list", rec=retained(patterns=["x"])),
         entry("record_patterns_bad", rec=retained(patterns={"x": "("})),
         entry("record_patterns_number_key", rec=retained(patterns={"1": "a"})),

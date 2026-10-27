@@ -1343,12 +1343,17 @@ execute_job = _exec.execute_job
 
 
 def _output_blob(exec_result):
+    """The job's output as the queries read it: stdout then stderr.
+    A stream is text or it is nothing (Q90): the executor writes
+    text, so a stream of any other type is a record a crash left or
+    a hand wrote, and the text form of a list or a number is not
+    output -- it was handed back as the output's last line."""
     out = exec_result.get("stdout") if isinstance(exec_result, dict) else ""
     err = exec_result.get("stderr") if isinstance(exec_result, dict) else ""
     if not isinstance(out, str):
-        out = _as_text(out)
+        out = ""
     if not isinstance(err, str):
-        err = _as_text(err)
+        err = ""
     return out + err
 
 def _raw_lines_allowed(view):

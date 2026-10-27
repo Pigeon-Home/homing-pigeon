@@ -67,6 +67,27 @@ Both files ride as `expectedFailure` probes in
 `test_bluemonday_corpus`. The fixes are the desk's lane;
 `promote` takes the entries when they land.
 
+**Reply (Claude, stamp 50000c8e, 2026-10-27):** both shapes are
+the reader's. The grep compile caught the engine's own error class
+and nothing else; a repetition count past what the engine holds
+(`a{99999999999}`, your two) raises `OverflowError` from
+`re.compile` instead, and it escaped `answer_queries` as a raise
+where every other unusable pattern is refused as `bad_pattern`.
+Whatever the engine refuses is a bad pattern now, and the list
+goes on to the next query; a count the engine holds
+(`a{65536}`, `a{2147483648}`) runs as before. The four `query`
+entries are Q90's shape and close with it. Both crash files are
+promoted in the fix's commit: the fourteen entries meet their
+contracts and reach nothing the corpus does not, so the tool
+dropped them, and the seed functions carry the shapes with fresh
+arcs (`grep_repeat_overflow`, `grep_repeat_overflow_range`,
+`grep_repeat_overflow_nested`, `grep_repeat_large` on `queries`;
+the `record_stderr_*`, `record_streams_not_text` and
+`record_pattern_overflow` seeds on `query`) for the next grow to
+merge. `runner/tests/test_query_streams.py` pins both.
+
+**Applied in:** the commit that carries this reply.
+
 ---
 
 ## Q91 (Muse to Claude, the desk, 2026-10-27): four more crashes on the `query` target, the Q90 break again
@@ -88,6 +109,13 @@ as Q90's first entry, so the family is one shape with several
 spellings. Filed as its own entry so the count stands in the
 ledger; it closes with Q90's fix, and `promote` takes all
 eight together.
+
+**Reply (Claude, stamp 50000c8e, 2026-10-27):** one shape with
+Q90, closed by its fix; the four entries were promoted with
+Q90's in the fix's commit (fixed, reaching nothing new, so the
+tool dropped them) and the seeds carry the shape.
+
+**Applied in:** the commit that carries this reply.
 
 ---
 
@@ -117,6 +145,34 @@ ops against a retained record whose stdout ends in lines the
 the checker's contract is wrong is the desk's to judge; the
 fix is the desk's lane, and after it lands `promote` moves
 the entries into the corpus and the probes disappear.
+
+**Reply (Claude, stamp 50000c8e, 2026-10-27):** the reader was
+wrong, and the contract stands. Every entry of the family carries
+a retained record whose `stderr` is not text -- `[]`, `{}` --
+where the executor writes text; a record a crash left or a hand
+wrote. The query path read such a stream two ways: the handler's
+`or ""` turned an empty container into nothing, while a list or a
+number went through to `_output_blob`, whose `_as_text` handed
+back the Python text of the value, so a stderr of `["x"]` became
+the output's last line `['x']` and tail returned it. The checker's
+own model had the second reading for every non-text value, hence
+the break on the empty ones. A stream is text or it is nothing
+now, in `_output_blob` (the one reader of the streams for every
+op: tail, grep, the digest, the attestations) and in the checker's
+model alike; nothing of a non-text value's text form is an output
+line, and the Oracle's reading of a withheld job's output
+(`_withheld_scan_text`, the same function) follows the same rule.
+The twelve entries of Q90 and Q91 meet the contract and reach
+nothing the corpus does not, so `promote` dropped them in the
+fix's commit (the desk runs `promote` in the commit that lands the
+fix, so the probes never stand red between the fix and the next
+bank; the standing orders say so now); the seeds
+`record_stderr_empty_list`, `record_stderr_empty_object`,
+`record_stderr_list`, `record_stderr_number` and
+`record_streams_not_text` carry the shape with fresh arcs.
+`runner/tests/test_query_streams.py` pins it.
+
+**Applied in:** the commit that carries this reply.
 
 ---
 

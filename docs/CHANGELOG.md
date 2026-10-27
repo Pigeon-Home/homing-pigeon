@@ -4,6 +4,25 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.67 - 2026-10-27
+
+- **A retained stream is text or nothing (Q90, Q91).** A record a
+  crash left or a hand wrote may hold a list, an object or a number
+  where the executor wrote text; the query path read an empty
+  container as nothing and a list or a number as the Python text of
+  the value, which tail handed back as the output's last line.
+  `_output_blob` takes text and nothing else now, for every op and
+  for the Oracle's reading of a withheld job's output. Found by
+  blueMonday grows 12 to 14, twelve spellings of one shape;
+  promoted, the seeds carry it. `runner/tests/test_query_streams.py`.
+- **A repetition count the engine cannot hold is a bad pattern
+  (Q92).** `re.compile` raises `OverflowError`, not its own error
+  class, on `a{99999999999}`, and the raise escaped `answer_queries`
+  where every other unusable pattern is refused as `bad_pattern`.
+  Whatever the engine refuses is a bad pattern now, the list going
+  on to the next query. Found by blueMonday grow 14.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.66 - 2026-10-27
 
 - **A signed body is JSON and no more (Q89).** The literals `NaN`,
