@@ -37,8 +37,12 @@ Changelog = "https://github.com/Pigeon-Home/homing-pigeon/releases"
 
 [tool.setuptools.packages.find]
 include = ["runner*"]
-# The suite lives in runner/tests/ and never ships in the wheel.
-exclude = ["runner.tests", "runner.tests.*"]
+# The suite, the build tools and the shipped sense extensions never
+# ship in the wheel (AGENTS.md, "Where things live"): the suite is
+# development, the tools are the build's, and a sense is installed
+# from the tree into the owner's extensions directory, never imported.
+exclude = ["runner.tests", "runner.tests.*", "runner.tools", "runner.tools.*",
+           "runner.extension*"]
 
 [tool.setuptools.package-data]
 runner = ["config.example.json"]

@@ -127,6 +127,12 @@ class KeyPolicyTest(unittest.TestCase):
         self.assertIsNone(check_key_policy({"w": pol}, "w", cfg, good))
         self.assertIsNotNone(check_key_policy({"w": pol}, "w", cfg, evil))
         self.assertIsNotNone(check_key_policy({"w": pol}, "w", cfg, url))
+        # An allowlisted inline script beside a script_url: the executor
+        # stages the URL first, so the pair is refused like the URL alone.
+        both = dict(good, script_url="https://x/y.sh")
+        self.assertIsNotNone(check_key_policy({"w": pol}, "w", cfg, both))
+        both_empty = dict(good, script_url="")
+        self.assertIsNotNone(check_key_policy({"w": pol}, "w", cfg, both_empty))
         # ping has no script; governed by allowed_kinds only
         self.assertIsNone(check_key_policy({"w": pol}, "w", cfg, ping))
 

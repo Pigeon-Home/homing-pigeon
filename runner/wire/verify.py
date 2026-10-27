@@ -486,9 +486,11 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
                     f"of {cap}s")
     if "allowed_script_sha384" in pol and kind == "exec":
         # The allowlist pins exact scripts. script_url cannot be checked
-        # before download, so it is not permitted under such a policy.
+        # before download, so it is not permitted under such a policy:
+        # not alone, and not beside an allowlisted inline script either,
+        # since the executor stages the URL first when both are present.
         script = job.get("script")
-        if not isinstance(script, str):
+        if job.get("script_url") is not None or not isinstance(script, str):
             return ("this key may only run allowlisted scripts "
                     "(inline script required, script_url not permitted)")
         allow = pol["allowed_script_sha384"]

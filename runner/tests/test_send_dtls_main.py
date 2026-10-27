@@ -112,6 +112,25 @@ class SendDtlsMainFailuresTest(unittest.TestCase):
             rc = send_dtls.main(argv)
         return rc, out.getvalue(), err.getvalue()
 
+    def test_no_flag_means_encrypted(self):
+        # --encrypt and --cleartext share one dest; without a pinned
+        # default the group's default was the last action registered,
+        # and a bare invocation sent cleartext.
+        seen = []
+
+        def capture(args):
+            seen.append(args.cleartext)
+            return None, None
+
+        with mock.patch.object(send_dtls, "_build_body", capture):
+            for extra, want in (([], False), (["--encrypt"], False),
+                                (["--cleartext"], True)):
+                rc, _out, _err = self._main(
+                    ["--host", "127.0.0.1", "--secret", SECRET,
+                     "--kind", "ping"] + extra)
+                self.assertEqual(rc, 2)
+        self.assertEqual(seen, [False, False, True])
+
     def test_an_exec_without_a_script_file_is_refused(self):
         rc, _out, err = self._main(
             ["--host", "127.0.0.1", "--secret", SECRET,

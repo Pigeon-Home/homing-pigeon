@@ -188,6 +188,9 @@ def main(argv=None):
     enc.add_argument("--cleartext", dest="cleartext",
                      action="store_true",
                      help="send the plain signed job instead")
+    # Two store_* actions on one dest: the group's default is the last
+    # one registered, so pin it, or no flag at all means cleartext.
+    enc.set_defaults(cleartext=False)
     ap.add_argument("--ticket-file",
                     help="persist the resumption ticket here "
                          "and reuse it on the next run (0600)")
