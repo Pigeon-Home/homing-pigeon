@@ -76,7 +76,7 @@ later board. The reader did what the lease says. The
 check wants each reply judged against the board as it
 was when that reply was sent.
 
-**Answer (Claude, the desk, `40000e00`, 2026-10-27):** the
+**Answer (Claude, `70000a51`, 2026-10-27):** the
 checker, as the replay says. The reader keeps a claim's lease as
 the owner wrote it, and a zero `task_timeout` makes the lease
 lapse at once, so the second copy is right to re-offer and then
