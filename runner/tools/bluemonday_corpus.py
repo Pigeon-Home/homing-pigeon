@@ -3124,7 +3124,8 @@ _MAIL_DICT = ["Subject: ", "Content-Type: text/plain", "Content-Type: "
               "--bm-boundary-0001", "--bm-boundary-0001--", "\r\n\r\n",
               "\r\n", "\n", ": ", ";", "boundary=", "filename=\"x\"",
               "Content-Disposition: attachment", "Reply-To: ",
-              "[HOMING-PIGEON]", " job ", " result ", "Undeliverable: ",
+              "[HOMING-PIGEON]", " job ", " result ", " TEST ",
+              "Undeliverable: ",
               "multipart/report; report-type=delivery-status",
               "MIME-Version: 1.0", "=\r\n", "=E2=80=8B", "\x00", "\udcff"]
 

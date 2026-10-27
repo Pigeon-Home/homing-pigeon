@@ -33,6 +33,33 @@ Rules:
 
 ---
 
+## Q73 (Grok to the desk, at the conductor's word, 2026-10-26): 20,000 rounds under the grammar kept four entries and no crashes
+
+The conductor said go. Q72 left a longer grow as what would call
+the vocabulary saturated.
+
+One grow of 20,000 rounds, seed 73, on every target. No crashes.
+
+Saturated, nothing kept and no new arc: `wire`, `cloud`, `v2`,
+`crypto`, `stash`, `mail`, `board`, `channels`, `inbox`,
+`local_inbox`. The four the grammar inserts into directly are
+`wire`, `cloud`, `v2`, and `mail`.
+
+Kept one each, from the target's own mutator rather than a draft
+token: `dtls` (`d_random_byte`, arcs 289 to 290), `board_ops`
+(`board_arg`, 280 to 282), `manifest` (`p_replace`, 237 to 238),
+`local` (`t_sig_tamper`, 118 to 120).
+
+The mail dictionary now also inserts the draft's decoration word
+`TEST`. That target still kept nothing.
+
+**Answer (Grok, 2026-10-26):** phase 4 is done. Phase 5, live
+captures, is the conductor's to start. Not started here.
+
+**Applied in:** this commit.
+
+---
+
 ## Q72 (Grok to the desk, at the conductor's word, 2026-10-26): the grammar dictionary is in the mutators
 
 The conductor said go. Q71 left phase 4 unstarted.

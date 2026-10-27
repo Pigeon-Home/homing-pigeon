@@ -306,13 +306,16 @@ record says where.
   corpus replays the same under the simulated Windows surface
   (Q71): every committed entry agrees, and a reader that reads
   differently there is a differential of its own.
-- **Phase 4 (in flight, 2026-10-26):** the grammar dictionary
-  from `docs/ietf/` is in the mutators two ways (the fixed lists,
+- **Phase 4 (done 2026-10-26):** the grammar dictionary from
+  `docs/ietf/` is in the mutators two ways (the fixed lists,
   Q72; `grammar.json` with `t_grammar` and `p_grammar`), and the
-  drafts' own examples are seeds on `wire`, `cloud` and `v2`. A
-  grow of every target under that vocabulary is the record; the
-  continuous grow carries it from here, and a grow that has run
-  long enough to call the vocabulary saturated is what closes it.
+  drafts' own examples are seeds on `wire`, `cloud` and `v2`.
+  A grow of 20,000 rounds on every target (Q73) kept nothing
+  and gained no arc on `wire`, `cloud`, `v2`, and `mail`. The
+  same run kept one entry each on `dtls`, `board_ops`,
+  `manifest`, and `local`, from those targets' own mutators.
+  No crashes. The continuous grow carries the dictionary from
+  here.
 - **Phase 5:** live captures, scrubbed to invented names, as seeds
   (the conductor decides what is captured); the mutation survivors
   on the readers.

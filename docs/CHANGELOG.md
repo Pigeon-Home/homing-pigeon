@@ -117,6 +117,14 @@ facts a reader may need to cite. Git history carries the rest.
   the draft's identifier rule is the runner's safe-id check, not
   this verifier's refusal, so those seeds are recorded as
   accepted and the verifier was not changed.
+- **blueMonday under the grammar, 20,000 rounds (Q73).** Every
+  target was grown again with the dictionary in the pool. `wire`,
+  `cloud`, `v2`, and `mail` kept nothing and gained no arc.
+  `dtls`, `board_ops`, `manifest`, and `local` each kept one,
+  from their own mutators (`d_random_byte`, `board_arg`,
+  `p_replace`, `t_sig_tamper`), not from a draft token. No
+  crashes. The mail dictionary also inserts the draft's
+  decoration word `TEST`.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.52 - 2026-10-26
