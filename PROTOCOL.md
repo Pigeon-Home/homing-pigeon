@@ -1268,13 +1268,19 @@ board and dispatch (section 13). Then the privacy-preserving results
 (sections 9-12), the largest and most security-sensitive piece. Docs
 ship with each piece, not after.
 
-*Status: implemented. The runner accepts `"v": 1` and rejects any
-other value.*
+*Status: implemented. A job or result carries `"v": 1`, the integer:
+any other value, JSON `true` and `1.0` included, is rejected before
+the signature is checked. The version 2 messages (determination,
+question, answer: `docs/ietf/draft-homing-pigeon-v2-00.md`) are a
+second family with `"v": 2`, opened only when the owner enables them,
+and a sender learns whether a runner opens them from
+`protocol_versions` on the platform card (section 5), never by
+negotiation.*
 
 ### Agent Guide
 - The python script to compose transport message: https://github.com/Pigeon-Home/homing-pigeon/blob/main/runner/cloud/send_job.py
 - Project context: https://github.com/Pigeon-Home/homing-pigeon/blob/main/AGENTS.md
 - The source: https://github.com/Pigeon-Home/homing-pigeon/tree/main/runner
-- The test suite: https://github.com/Pigeon-Home/homing-pigeon/tree/main/tests
+- The test suite: https://github.com/Pigeon-Home/homing-pigeon/tree/main/runner/tests
 - The CI pipeline (every workflow): https://github.com/Pigeon-Home/homing-pigeon/tree/main/.github/workflows
 - The whole project as a snapshot (every file, the full git history, and the CI facts and test results of the build), inside every release archive as `project/` and alone as `homing-pigeon-project-<version>.tar.gz`: https://github.com/Pigeon-Home/homing-pigeon/releases/latest — its index is `project/PROJECT-SNAPSHOT.md`. On an installed runner it is `<state dir>/project/`.
