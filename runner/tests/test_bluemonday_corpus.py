@@ -318,7 +318,10 @@ class ToolTest(unittest.TestCase):
                               ("v2", B.seeds_v2()),
                               ("dtls", B.seeds_dtls()),
                               ("board", B.seeds_board()),
+                              ("board_ops", B.seeds_board_ops()),
                               ("channels", B.seeds_channels()),
+                              ("inbox", B.seeds_inbox()),
+                              ("local_inbox", B.seeds_local_inbox()),
                               ("manifest", B.seeds_manifest())):
             for _ in range(150):
                 parent = rng.choice(seeds)
@@ -343,7 +346,8 @@ class ToolTest(unittest.TestCase):
         # so a sealed seed's id is stable and `seed` adds nothing to
         # a corpus that already holds it.
         for seeds in (B.seeds_crypto, B.seeds_stash, B.seeds_dtls,
-                      B.seeds_board, B.seeds_channels, B.seeds_manifest):
+                      B.seeds_board, B.seeds_board_ops, B.seeds_channels,
+                      B.seeds_inbox, B.seeds_local_inbox, B.seeds_manifest):
             first = [e["id"] for e in seeds()]
             self.assertEqual(first, [e["id"] for e in seeds()])
             self.assertEqual(len(first), len(set(first)))
@@ -682,3 +686,80 @@ class ToolTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+class GrammarTest(unittest.TestCase):
+    """The dictionary the drafts dictate (phase 4 of the plan)."""
+
+    DRAFT = (
+        "# A draft\n\nThe `job_id` member is 1*128 `job-id-char`. "
+        "A `timeout_sec` above 3600 is reduced. `kind` is `exec` or "
+        "`ping`; the spaced `not a token` is not one.\n\n"
+        "```json\n{\"v\": 1, \"type\": \"job\", \"sig\": \"00\"}\n```\n"
+        "```\nnot json\n```\n```\n{\"v\": 2, \"type\": \"answer\"}\n```\n")
+
+    def test_build_grammar_reads_tokens_numbers_and_examples(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "draft-x-00.md")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(self.DRAFT)
+            g = B.build_grammar([path])
+            again = B.build_grammar([path])
+        self.assertEqual(g, again)
+        self.assertEqual(g["Agent-Stamp"], B.STAMP)
+        self.assertEqual(g["tokens"], ["exec", "job-id-char", "job_id",
+                                       "kind", "ping", "timeout_sec"])
+        # 1*128, 3600, the examples' v values and the sig's 00, each
+        # with its neighbours on both sides.
+        self.assertEqual(g["numbers"], [-1, 0, 1, 2, 3, 127, 128, 129,
+                                        3599, 3600, 3601])
+        self.assertEqual(g["examples"], [
+            {"from": "draft-x-00.md#1", "value": {"v": 1, "type": "job"}},
+            {"from": "draft-x-00.md#3", "value": {"v": 2, "type": "answer"}}])
+
+    def test_the_committed_dictionary_is_stamped_and_populated(self):
+        with open(B.GRAMMAR_PATH, encoding="utf-8") as fh:
+            raw = fh.read()
+        self.assertTrue(raw.isascii())
+        g = json.loads(raw)
+        self.assertEqual(g["Agent-Stamp"], B.STAMP)
+        self.assertIn("job_id", g["tokens"])
+        self.assertIn("[HOMING-PIGEON]", g["tokens"])
+        self.assertIn(3600, g["numbers"])
+        self.assertIn(-2, g["numbers"])
+        sources = [e["from"] for e in g["examples"]]
+        self.assertTrue(any(s.startswith("draft-homing-pigeon-00.md")
+                            for s in sources))
+        self.assertTrue(any(s.startswith("draft-homing-pigeon-v2-00.md")
+                            for s in sources))
+        for e in g["examples"]:
+            self.assertNotIn("sig", e["value"])
+
+    def test_grammar_mutators_use_the_drafts_words(self):
+        rng = random.Random(4)
+        tokens = set(B.grammar()["tokens"])
+        text = '{"v": 1, "type": "job", "job_id": "bm-0001"}'
+        hits = 0
+        for _ in range(40):
+            out = B.t_grammar(rng, text, [])
+            self.assertNotEqual(out, text)
+            if any(t in out and t not in text for t in tokens):
+                hits += 1
+        self.assertGreater(hits, 0)
+        value = {"v": 1, "type": "job", "n": 5, "d": {"k": 1}}
+        changed = 0
+        for _ in range(60):
+            out = B.p_grammar(rng, value, [])
+            if out != value:
+                changed += 1
+                json.dumps(out)     # still a JSON value
+                self.assertEqual(value, {"v": 1, "type": "job", "n": 5,
+                                         "d": {"k": 1}})   # a copy, not it
+        self.assertGreater(changed, 30)
+
+    def test_draft_examples_seed_the_verifier_and_v2_targets(self):
+        wire = {e["from"] for e in B.seeds_wire()}
+        v2 = {e["from"] for e in B.seeds_v2()}
+        self.assertTrue(any(f.startswith("seed:draft_") for f in wire))
+        self.assertTrue(any(f.startswith("seed:draft_") for f in v2))

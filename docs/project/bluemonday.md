@@ -202,12 +202,14 @@ encoded-word subjects, duplicate headers, bounces, bytes that are
 not UTF-8), a sealed DTLS flight and its two-fragment pair.
 
 The vocabulary grows only where a target's readers would not meet
-the existing one. The next vocabulary with leverage is a
-dictionary built from the IETF draft's own grammar (`docs/ietf/`):
-every literal, every member name, every enumerated value, every
-boundary the draft states, as insertion tokens and as JSON values.
-That dictionary is in the mutators (Q72), and the drafts' own
-examples are seeds.
+the existing one. The dictionary built from the IETF drafts' own
+grammar (`docs/ietf/`) is in it now, two ways: the fixed lists
+carry the drafts' member names, enumerations, subject markers and
+boundaries by hand (Q72), and `runner/tests/bluemonday/grammar.json`,
+built by the tool's `dictionary` command, carries every literal,
+every member name, every enumerated value and every boundary the
+drafts state, as insertion tokens and as JSON values, drawn on by
+every target's grow. The drafts' own examples are seeds beside it.
 
 ## 6. Roles
 
@@ -279,15 +281,17 @@ nothing is still the record that those rounds were run.
   contract), the manifest reader (Q69).
 - **Phase 3 (done 2026-10-26):** the sequence contract on
   `local` (`local_inbox` on the scanner, and Q70 on the envelope
-  reader). Provenance on `mail`, `wire`, `cloud` and `inbox`.
-  The corpus replays the same under the simulated Windows
-  surface (Q71): every committed entry agrees. A reader that
-  reads differently there is a differential of its own.
+  reader); provenance on `mail`, `wire`, `cloud` and `inbox`; the
+  corpus replays the same under the simulated Windows surface
+  (Q71): every committed entry agrees, and a reader that reads
+  differently there is a differential of its own.
 - **Phase 4 (in flight, 2026-10-26):** the grammar dictionary
-  from `docs/ietf/` is in the mutators, and the drafts' own
-  examples are seeds (Q72). A grow of every target under that
-  vocabulary is the record. Still to come: a grow that has run
-  long enough to call the vocabulary saturated.
+  from `docs/ietf/` is in the mutators two ways (the fixed lists,
+  Q72; `grammar.json` with `t_grammar` and `p_grammar`), and the
+  drafts' own examples are seeds on `wire`, `cloud` and `v2`. A
+  grow of every target under that vocabulary is the record; the
+  continuous grow carries it from here, and a grow that has run
+  long enough to call the vocabulary saturated is what closes it.
 - **Phase 5:** live captures, scrubbed to invented names, as seeds
   (the conductor decides what is captured); the mutation survivors
   on the readers.

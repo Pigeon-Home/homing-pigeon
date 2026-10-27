@@ -1454,7 +1454,19 @@ def _payload_seeds():
         ("draft_job_id_over", _job(job_id="d" * 129)),
         ("draft_job_id_dot", _job(job_id=".")),
         ("draft_job_id_dotdot", _job(job_id="..")),
-    ]
+    ] + _draft_examples("draft-homing-pigeon-00.md")
+
+
+def _draft_examples(name):
+    """The JSON examples of one draft, from the dictionary, as
+    (name, value) seeds with the stale issued_at the draft prints
+    (the window refuses it; the signature path still runs)."""
+    out = []
+    for ex in grammar().get("examples") or []:
+        src = ex.get("from", "")
+        if src.startswith(name) and isinstance(ex.get("value"), dict):
+            out.append(("draft_" + src.split("#")[-1], ex["value"]))
+    return out
 
 
 def _pretty_signed(payload):
@@ -1559,6 +1571,7 @@ def seeds_v2():
     out += [("v1", {"v": 1, "type": "answer"}), ("empty", {}),
             ("list", []), ("string", "answer"), ("none", None),
             ("number", 2)]
+    out += _draft_examples("draft-homing-pigeon-v2-00.md")
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
@@ -2928,9 +2941,113 @@ def t_resign(rng, text, corpus):
         return text
 
 
+# ------------------------------------------------------------------
+# The grammar dictionary: the IETF drafts' own words (phase 4)
+# ------------------------------------------------------------------
+
+IETF_DIR = os.path.join(ROOT, "docs", "ietf")
+GRAMMAR_PATH = os.path.join(CORPUS_DIR, "grammar.json")
+_GRAMMAR = None
+
+
+def build_grammar(paths):
+    """The dictionary the drafts dictate: every backticked token
+    without a space (member names, literals, enumerated values,
+    patterns), every number the text states, with its neighbours
+    on both sides as the boundaries a reader may get wrong, and
+    every JSON example, sig removed, as a seed. Sorted, so the file
+    is the same for the same drafts."""
+    tokens, numbers, examples = set(), set(), []
+    for path in paths:
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        for tok in re.findall(r"`([^`\n]{1,64})`", text):
+            if " " not in tok:
+                tokens.add(tok)
+        for num in re.findall(r"(?<![\w.])(-?\d{1,7})(?![\w.])", text):
+            n = int(num)
+            numbers.update((n - 1, n, n + 1))
+        # A fenced block that parses as JSON is an example, tagged
+        # ```json or not.
+        for i, block in enumerate(re.findall(r"```\w*\n(.*?)```", text,
+                                            re.S)):
+            if not block.lstrip().startswith(("{", "[")):
+                continue
+            try:
+                value = json.loads(block)
+            except ValueError:
+                continue
+            if isinstance(value, dict):
+                value.pop("sig", None)
+            examples.append({"from": os.path.basename(path) + "#%d" % (i + 1),
+                             "value": value})
+    return {"bluemonday": 1, "Agent-Stamp": STAMP,
+            "tokens": sorted(tokens), "numbers": sorted(numbers),
+            "examples": examples}
+
+
+def grammar():
+    """The committed dictionary, read once; empty when absent."""
+    global _GRAMMAR
+    if _GRAMMAR is None:
+        try:
+            with open(GRAMMAR_PATH, encoding="utf-8") as fh:
+                _GRAMMAR = json.load(fh)
+        except (OSError, ValueError):
+            _GRAMMAR = {"tokens": [], "numbers": [], "examples": []}
+    return _GRAMMAR
+
+
+def t_grammar(rng, text, corpus):
+    """A word of the drafts dropped into the text: at a random
+    position, or in place of the content of a quoted string."""
+    tokens = grammar().get("tokens") or []
+    if not tokens:
+        return text
+    tok = rng.choice(tokens)
+    quoted = [m for m in re.finditer(r'"([^"\\]{0,64})"', text)]
+    if quoted and rng.random() < 0.5:
+        m = rng.choice(quoted)
+        return text[:m.start(1)] + tok + text[m.end(1):]
+    i = _pos(rng, text)
+    return text[:i] + tok + text[i:]
+
+
+def p_grammar(rng, value, corpus):
+    """A member of the drafts set on an object, to a word or a
+    boundary number of the drafts; or a number anywhere moved to a
+    boundary; or a key respelled as a draft member name."""
+    g = grammar()
+    tokens, numbers = g.get("tokens") or [], g.get("numbers") or []
+    if not tokens or not numbers:
+        return value
+    objects = [(p, v) for p, v in _paths(value) if isinstance(v, dict)]
+    which = rng.random()
+    if which < 0.5 and objects:
+        path, obj = rng.choice(objects)
+        obj = dict(obj)
+        key = rng.choice(tokens)
+        obj[key] = rng.choice([rng.choice(tokens), rng.choice(numbers),
+                               True, None, [rng.choice(tokens)]])
+        return _set_path(value, path, obj)
+    numeric = [(p, v) for p, v in _paths(value)
+               if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    if which < 0.75 and numeric:
+        path, _old = rng.choice(numeric)
+        return _set_path(value, path, rng.choice(numbers))
+    if objects:
+        path, obj = rng.choice(objects)
+        if obj:
+            old = rng.choice(list(obj))
+            obj = dict(obj)
+            obj[rng.choice(tokens)] = obj.pop(old)
+            return _set_path(value, path, obj)
+    return value
+
+
 TEXT_MUTATORS = [t_truncate, t_drop, t_insert, t_replace_char, t_duplicate,
                  t_splice, t_sig_tamper, t_fake_marker, t_wrap, t_crlf,
-                 t_control, t_case, t_number, t_brace, t_resign]
+                 t_control, t_case, t_number, t_brace, t_resign, t_grammar]
 
 _MAIL_DICT = ["Subject: ", "Content-Type: text/plain", "Content-Type: "
               "multipart/mixed; boundary=\"bm-boundary-0001\"",
@@ -3351,7 +3468,7 @@ def p_swap(rng, value, corpus):
 
 
 PAYLOAD_MUTATORS = [p_replace, p_delete, p_add_key, p_rename_key, p_text,
-                    p_number, p_nest, p_splice, p_swap]
+                    p_number, p_nest, p_splice, p_swap, p_grammar]
 
 
 def p_mutate(rng, value, corpus):
@@ -4213,9 +4330,27 @@ def cmd_stats(args, out=print):
     return 0
 
 
+def cmd_dictionary(args, out=print):
+    """Rebuild runner/tests/bluemonday/grammar.json from the drafts."""
+    paths = sorted(os.path.join(IETF_DIR, f) for f in os.listdir(IETF_DIR)
+                   if f.endswith(".md"))
+    g = build_grammar(paths)
+    os.makedirs(CORPUS_DIR, exist_ok=True)
+    tmp = GRAMMAR_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(g, fh, ensure_ascii=True, indent=1)
+        fh.write("\n")
+    os.replace(tmp, GRAMMAR_PATH)
+    out(f"grammar: {len(g['tokens'])} tokens, {len(g['numbers'])} numbers, "
+        f"{len(g['examples'])} examples from {len(paths)} draft(s)")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("dictionary")
+    p.set_defaults(fn=cmd_dictionary)
     for name, fn in (("seed", cmd_seed), ("grow", cmd_grow),
                      ("replay", cmd_replay), ("platform", cmd_platform),
                      ("promote", cmd_promote),

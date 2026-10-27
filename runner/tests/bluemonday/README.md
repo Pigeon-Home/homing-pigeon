@@ -155,6 +155,16 @@ a result over its subject text. In `inbox` the reply carries the
 target the core would pass, and the `.target.txt` sidecar beside
 the result must carry exactly that.
 
+`grammar.json` is the dictionary the drafts in `docs/ietf/`
+dictate, built by `python runner/tools/bluemonday_corpus.py
+dictionary`: every backticked token without a space, every number
+the text states with its neighbours on both sides, every JSON
+example with `sig` removed. The `t_grammar` and `p_grammar`
+mutators draw on it for every target, and the examples seed
+`wire`, `cloud` and `v2`. It is rebuilt by the desk when the
+drafts change; the test holds it to its shape, not to the drafts'
+current text.
+
 The refusal types, so a grow never files one as a crash (Q63):
 for the verifiers (`wire`, `cloud`, `v2`) the refusal is
 `ValueError`, raised, not returned -- an unknown `key_id` from

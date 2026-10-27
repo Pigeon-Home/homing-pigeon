@@ -4,71 +4,20 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.52 - 2026-10-26
+## 3.13.53 - 2026-10-26
 
-- **blueMonday's eighth target: DTLS (Q66).** `dtls` holds one
-  datagram against `runner/wire/dtlsproto.py`: `_split_records`
-  and `_parse_handshake` never raise, a complete handshake
-  message is handed to the extension, hello, key-share and PSK
-  readers (which refuse with `DtlsError` or `JobCryptoError` and
-  nothing else), and `DtlsServerCore.feed` returns datagrams and
-  never raises. Seeds are a sealed flight built from the module's
-  constructors under invented keys (ClientHello with a key share
-  and a PSK, ServerHello, a sealed Finished), the two-fragment
-  pair, an empty datagram, and a plaintext record whose length
-  claims more than the datagram holds. The mutators are the
-  record's own, not the text set. A grow of 20,000 rounds found
-  no crash: 19 entries, 289 arcs.
-- **blueMonday's ninth target: the task board (Q67).** `board`
-  holds one task dict against `runner/wire/board.py`: `submit`,
-  `offer`, `complete`, `approve` and `reoffer_expired` never
-  raise. A task that is not a usable submission is refused and
-  stores nothing; a task that is accepted is offered, a stale
-  claim reopens on a zero lease, and a second complete is a
-  duplicate. A `bm_review` payload finishes through
-  `pending_review`. After every entry a known-good neighbor
-  still completes, and a second board file walks the allowlist
-  miss, the compartment miss, enforce withholding an unmet
-  requirement, and advisory handing it out with the warning.
-  Twenty-four seeds. Two grows of 20,000 rounds filed no crash
-  and kept nothing past the seeds: 24 entries, 249 arcs.
-- **blueMonday's board, under the sequence contract.** `board_ops`
-  holds a board file as a peer or a crash may have left it, then a
-  sequence of peer operations on it -- `submit`, `offer`,
-  `complete`, `approve`, `reoffer_expired` -- on a throwaway path,
-  held after every step: each answers its shape, a task handed out
-  is claimed under the id it carries and is a copy, and the file
-  reads back as the board in memory. Its mutators edit the file,
-  an argument, or the sequence. Three findings, each fixed and
-  pinned: the re-offer of an outstanding claim handed out the
-  board's own record where a fresh hand-out gives a copy; a record
-  whose `task_id` disagreed with its key was handed out under a
-  name no result could complete, so `load` makes the record carry
-  its key; `approve` of a non-string id answered a string where
-  every other path answers `(ok, reason)`, the shape its ack
-  carries.
-- **blueMonday's tenth target: the channel inbox (Q68).**
-  `channels` holds a pair of inbox files against
-  `runner/wire/transports.py`: `fetch_channel_messages` never
-  raises. A file that is not an envelope is an ack-only refusal
-  and stores nothing; a file that is an envelope comes back as
-  that subject and body, and its reply stays inside the outbox.
-  A known-good neighbor in the same directory is still a job
-  either way. The check also plants a subdirectory, a symlink,
-  a non-UTF-8 file, and one oversize envelope with the size cap
-  lowered for that probe only and put back. Eleven seeds. One
-  grow of 20,000 rounds filed no crash and kept nothing past
-  the seeds: 11 entries, 142 arcs.
-- **blueMonday's eleventh target: the extension manifest (Q69).**
-  `manifest` holds one extension.json object against
-  `runner/ops/extensions.py`: `parse_manifest` returns the
-  cleaned manifest or raises `ValueError` and nothing else. A
-  manifest it accepts is read back with the defaults filled,
-  and the caller's tunables, entry and upstream paths are
-  copies. A newer `api_version` than this agent provides is
-  still accepted here; `api_refusal` is the later check.
-  Thirty-nine seeds. One grow of 20,000 rounds filed no crash
-  and kept 24: 63 entries, 237 arcs.
+- **blueMonday's grammar dictionary (phase 4).** `python
+  runner/tools/bluemonday_corpus.py dictionary` builds
+  `runner/tests/bluemonday/grammar.json` from the drafts in
+  `docs/ietf/`: every backticked token without a space (member
+  names, literals, enumerated values, patterns), every number the
+  text states with its neighbours on both sides, and every JSON
+  example with `sig` removed. Two mutators use it on every
+  target: a word of the drafts dropped into a text or in place of
+  a quoted string, and a draft member set on an object, a number
+  moved to a boundary, or a key respelled as a draft member. The
+  drafts' examples seed `wire`, `cloud` and `v2`. The desk rebuilds
+  the dictionary when the drafts change.
 - **blueMonday's channel inbox, under the sequence contract.**
   `inbox` holds an extension's whole inbox as a peer or a crash
   may have left it -- files, symlinks and directories, in the
@@ -145,6 +94,73 @@ facts a reader may need to cite. Git history carries the rest.
   the draft's identifier rule is the runner's safe-id check, not
   this verifier's refusal, so those seeds are recorded as
   accepted and the verifier was not changed.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.52 - 2026-10-26
+
+- **blueMonday's eighth target: DTLS (Q66).** `dtls` holds one
+  datagram against `runner/wire/dtlsproto.py`: `_split_records`
+  and `_parse_handshake` never raise, a complete handshake
+  message is handed to the extension, hello, key-share and PSK
+  readers (which refuse with `DtlsError` or `JobCryptoError` and
+  nothing else), and `DtlsServerCore.feed` returns datagrams and
+  never raises. Seeds are a sealed flight built from the module's
+  constructors under invented keys (ClientHello with a key share
+  and a PSK, ServerHello, a sealed Finished), the two-fragment
+  pair, an empty datagram, and a plaintext record whose length
+  claims more than the datagram holds. The mutators are the
+  record's own, not the text set. A grow of 20,000 rounds found
+  no crash: 19 entries, 289 arcs.
+- **blueMonday's ninth target: the task board (Q67).** `board`
+  holds one task dict against `runner/wire/board.py`: `submit`,
+  `offer`, `complete`, `approve` and `reoffer_expired` never
+  raise. A task that is not a usable submission is refused and
+  stores nothing; a task that is accepted is offered, a stale
+  claim reopens on a zero lease, and a second complete is a
+  duplicate. A `bm_review` payload finishes through
+  `pending_review`. After every entry a known-good neighbor
+  still completes, and a second board file walks the allowlist
+  miss, the compartment miss, enforce withholding an unmet
+  requirement, and advisory handing it out with the warning.
+  Twenty-four seeds. Two grows of 20,000 rounds filed no crash
+  and kept nothing past the seeds: 24 entries, 249 arcs.
+- **blueMonday's board, under the sequence contract.** `board_ops`
+  holds a board file as a peer or a crash may have left it, then a
+  sequence of peer operations on it -- `submit`, `offer`,
+  `complete`, `approve`, `reoffer_expired` -- on a throwaway path,
+  held after every step: each answers its shape, a task handed out
+  is claimed under the id it carries and is a copy, and the file
+  reads back as the board in memory. Its mutators edit the file,
+  an argument, or the sequence. Three findings, each fixed and
+  pinned: the re-offer of an outstanding claim handed out the
+  board's own record where a fresh hand-out gives a copy; a record
+  whose `task_id` disagreed with its key was handed out under a
+  name no result could complete, so `load` makes the record carry
+  its key; `approve` of a non-string id answered a string where
+  every other path answers `(ok, reason)`, the shape its ack
+  carries.
+- **blueMonday's tenth target: the channel inbox (Q68).**
+  `channels` holds a pair of inbox files against
+  `runner/wire/transports.py`: `fetch_channel_messages` never
+  raises. A file that is not an envelope is an ack-only refusal
+  and stores nothing; a file that is an envelope comes back as
+  that subject and body, and its reply stays inside the outbox.
+  A known-good neighbor in the same directory is still a job
+  either way. The check also plants a subdirectory, a symlink,
+  a non-UTF-8 file, and one oversize envelope with the size cap
+  lowered for that probe only and put back. Eleven seeds. One
+  grow of 20,000 rounds filed no crash and kept nothing past
+  the seeds: 11 entries, 142 arcs.
+- **blueMonday's eleventh target: the extension manifest (Q69).**
+  `manifest` holds one extension.json object against
+  `runner/ops/extensions.py`: `parse_manifest` returns the
+  cleaned manifest or raises `ValueError` and nothing else. A
+  manifest it accepts is read back with the defaults filled,
+  and the caller's tunables, entry and upstream paths are
+  copies. A newer `api_version` than this agent provides is
+  still accepted here; `api_refusal` is the later check.
+  Thirty-nine seeds. One grow of 20,000 rounds filed no crash
+  and kept 24: 63 entries, 237 arcs.
 - **A repeated object is written twice.** `_json_safe` (the signer's
   and the board's JSON walk) treated an object that merely appears
   twice -- under two keys, or twice in a list -- as a cycle and
