@@ -4597,3 +4597,19 @@ when done, the proving commit or run. Newest first.
   on wire, cloud and crypto. Totals
   moved +8 entries and +16 arcs.
   No crashes.
+- rules refreshed 2026-10-27 15:00 PDT.
+  The second rig is up: Hetzner Cloud,
+  Nuremberg, 1 vCPU AMD EPYC-Genoa,
+  917 MiB, Fedora 44, Python 3.14.7.
+  The address is not written down.
+  resources 2026-10-27T22:00:43Z: cores 1 | box cpu 100% | wall 1m00s | cmd - | peak rss n/a | mem used 48% | disk free 17.7 GB | exit - | over
+  resources-top: python 60 MB, python3 53 MB, python 53 MB, python3 33 MB, NetworkManager 20 MB
+  Grow 21 is in flight (seed
+  3180357378, 55 minutes, one target
+  at a time) and was on board_mail at
+  the sample. local kept one entry and
+  two arcs; stash and query kept
+  entries and no arc. No crashes.
+  The same box polls the one-tenant
+  Cloudflare Worker. The facts are
+  docs/reports/rig-2026-10-27.md.
