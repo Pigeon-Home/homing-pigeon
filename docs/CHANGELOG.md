@@ -43,6 +43,14 @@ facts a reader may need to cite. Git history carries the rest.
   the budget's and the policy's refusals where section 10 puts
   them, the result signed and verified; seventy-one seeds. Q85 is
   its first finding.
+- **Version 2 messages keep the replay cache and the freshness
+  window.** A determination, question or answer is held to the job
+  window on `issued_at`, and its `msg_id` is recorded in the seen-set
+  under the runner's namespace once the message is acted on, so a
+  copy is dropped without acting again -- a replayed question is no
+  longer answered twice, and a captured message replayed days later
+  is stale (the version 2 draft's section 5; Q86, found by the
+  project review). `runner/tests/test_v2_replay.py`.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 - **The DRI page's closing line names where the context is.** The
   page, `security-audit.jsonl` and `runner.log`, the three places

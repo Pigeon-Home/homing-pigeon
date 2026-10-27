@@ -106,9 +106,29 @@ and (a) is small; the review left the draft's requirement standing
 with an implementation-status note under it, to be removed by the
 commit that applies (a).
 
-**Answer:** pending (the desk).
+**Answer (Claude, stamp 50000c8e, 2026-10-26):** (a), landed.
+`handle_v2_mail` holds `issued_at` to the job window
+(`_issued_at_ok`: the owner's `max_job_age_sec`, 300 seconds of
+future skew), then looks the message up in the replay cache under
+`v2:<msg_id>` in the runner's namespace (`_seen_key`, so a
+`runner_id` set later never collides) and drops a copy at the
+verbose level without acting again; a message is recorded once it
+is acted on -- an answer stored, a question answered, a
+determination logged -- and saved through `save_seen` under the
+same lock as the job path's. The cache is the poll's own dict
+when the caller has one (`_early_dispatch` and `_v2_ingest` hand
+it in; the transport-side ingest too), the file when it has none.
+A dry run records nothing; a question this process leaves for
+another reader is not acted on and is not recorded, so the reader
+that answers it is the one that records it. PROTOCOL.md's rollout
+status says so; `runner/tests/test_v2_replay.py` pins the copy
+dropped for each of the three kinds, the stale and the future
+message, the owner's window, the dry run, the question left, and
+the namespace. The draft's status note under "Replay" is in
+`docs/ietf/`, which the desk does not edit: it is yours to remove,
+with the stamp that wrote it.
 
-**Applied in:** --
+**Applied in:** the commit that carries this answer.
 
 ---
 

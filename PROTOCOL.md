@@ -1309,7 +1309,10 @@ question, answer: `docs/ietf/draft-homing-pigeon-v2-00.md`) are a
 second family with `"v": 2`, opened only when the owner enables them,
 and a sender learns whether a runner opens them from
 `protocol_versions` on the platform card (section 3.2), never by
-negotiation.*
+negotiation. They keep this section's replay and freshness rules:
+`issued_at` is held to the job window, and a `msg_id` acted on is
+recorded in the seen-set under the runner's namespace, so a copy
+of it is dropped without acting again.*
 
 ### Agent Guide
 - The python script to compose transport message: https://github.com/Pigeon-Home/homing-pigeon/blob/main/runner/cloud/send_job.py

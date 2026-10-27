@@ -1694,7 +1694,7 @@ class Version2IngestBranchesTest(_VerbosityGuard):
         plain = self._Msg("just a note")
 
         def handler(cfg_, box, smtp, seq, raw, subject,
-                    secrets, opts, base_dir):
+                    secrets, opts, base_dir, seen=None):
             if subject == consumed.subject:
                 box.store()  # consumed: the core marks it seen
 
@@ -1712,7 +1712,7 @@ class Version2IngestBranchesTest(_VerbosityGuard):
                             ack_error=OSError("gone"))
 
         def handler(cfg_, box, smtp, seq, raw, subject,
-                    secrets, opts, base_dir):
+                    secrets, opts, base_dir, seen=None):
             if subject == boom.subject:
                 raise RuntimeError("handler down")
             box.store()

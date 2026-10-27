@@ -169,11 +169,11 @@ def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
     """File version 2 messages that arrived while a question is open.
 
     Jobs stay where they are. A second job must not start on
-    top of the one that asked. ``seen`` is unused; the mail
-    core's own mark is what records a message.
+    top of the one that asked. ``seen`` is the poll's replay
+    cache: a version 2 message acted on here is recorded in it
+    (Q86), as one the mail core handles is.
     """
     R = _runner()
-    del seen
     if _runner()._protocol_v2 is None:
         return
     if imap is not None and not isinstance(imap, _runner()._NullIMAP):
@@ -196,7 +196,7 @@ def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
             if _runner()._protocol_v2.subject_kind(subject) is None:
                 continue
             _runner().handle_v2_mail(cfg, imap, None, seq, raw, subject,
-                           secrets, opts, base_dir)
+                           secrets, opts, base_dir, seen)
         return
     if _runner()._transports is None:
         return
@@ -224,7 +224,7 @@ def _v2_ingest(cfg, imap, base_dir, seen, secrets, opts):
                 box = _runner()._NullIMAP()
                 _runner().handle_v2_mail(
                     cfg, box, _runner()._CaptureSMTP(), "transport",
-                    raw, msg.subject, secrets, opts, base_dir)
+                    raw, msg.subject, secrets, opts, base_dir, seen)
             except Exception as e:
                 R.log(f"version 2 ingest message failed: {e}", "WARN")
                 continue

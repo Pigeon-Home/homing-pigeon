@@ -4321,7 +4321,7 @@ def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
                              cfg["board"], secrets, opts, base_dir):
             return None
     if handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
-                      base_dir):
+                      base_dir, seen):
         return None
     bounce = _bounce_of(subject, raw)
     if bounce is not None:

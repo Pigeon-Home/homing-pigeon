@@ -128,13 +128,23 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
 
 
 def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
-                   base_dir):
+                   base_dir, seen=None):
     """Determination, question, or answer. Never a job.
 
     Returns True when the subject is one of those three, so
     the caller does not try to execute it. A process that has
     not turned version 2 on drops the message. ``answer_only``
     answers a question and does not run anything.
+
+    Replay and freshness follow the job path (the version 2
+    draft's section 5; Q86): ``issued_at`` is held to the job
+    window, and a message's ``msg_id`` is recorded in the replay
+    cache (``seen``, the poll's dict, or the file when the caller
+    has none) once the message is acted on -- an answer stored, a
+    question answered, a determination logged -- under the
+    runner's namespace with a ``v2:`` prefix, so a copy of it is
+    dropped without acting again. A question this process leaves
+    for another reader is not acted on and is not recorded.
     """
     R = _runner()
     if R._protocol_v2 is None:
@@ -178,12 +188,34 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     if payload.get("type") != kind or payload.get("msg_id") != ident:
         reject("version 2 subject does not match the body")
         return True
+    fresh, why = R._issued_at_ok(payload.get("issued_at"), cfg)
+    if not fresh:
+        reject(why)
+        return True
+    seen_path = os.path.join(base_dir, "seen.json") \
+        if isinstance(base_dir, str) and base_dir else ""
+    if not isinstance(seen, dict):
+        seen = R.load_seen(seen_path)
+    skey = R._seen_key(cfg, "v2:" + ident)
+    if seen.get(skey):
+        _runner().vlog(f"ingest: seq {seq}: version 2 {kind} {ident}: "
+                       "skipped; already seen")
+        R._mark(imap, seq, opts)
+        return True
     dry = opts is not None and opts.dry_run
+
+    def acted():
+        if dry:
+            return
+        seen[skey] = True
+        R.save_seen(seen_path, seen)
+
     if kind == "answer":
         if not dry:
             stored = R._protocol_v2.store_answer(base_dir, payload)
             R.log(f"version 2 answer for {payload.get('question_id')}: "
                 f"{'stored' if stored else 'already stored'}")
+        acted()
         if not dry:
             _runner().mark_seen(imap, seq)
         return True
@@ -226,6 +258,7 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
                 R._seal_reply(ans, secret, ans["msg_id"], key_id,
                             encrypted))
         R.log(f"version 2 answerer replied to {ident}")
+        acted()
         if not dry:
             _runner().mark_seen(imap, seq)
         return True
@@ -234,6 +267,7 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     # to see it.
     R.log(f"version 2 determination {ident} for job "
         f"{payload.get('job_id')}: {payload.get('expect')}")
+    acted()
     if not dry:
         _runner().mark_seen(imap, seq)
     return True
