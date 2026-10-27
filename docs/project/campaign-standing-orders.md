@@ -4365,3 +4365,41 @@ when done, the proving commit or run. Newest first.
   about eighteen minutes in and
   unfinished; it reruns beside grow 14
   and its record rides that bank.
+- rules refreshed 2026-10-27 05:47 PDT
+  (standing orders incl. section M as
+  the only effort, the blueMonday plan;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules).
+  blueMonday 14: 1113 entries, 4631 arcs, 6 crashes filed.
+  A steered run on twenty targets
+  (seed 6260, one pass, the archive
+  recording) sharing the box with the
+  survivors rerun, resources on target
+  (box cpu 79%, wall 1h18m), ended on
+  the crash exit. Two shapes, filed
+  together as Q92: on `queries`, a new
+  exception class -- `answer_queries`
+  raised OverflowError over a pattern
+  whose repetition number is too
+  large (entries a0593865f5a8114b and
+  10cd337a428ea77a, both by p_text);
+  on `query`, four new entries of the
+  Q90 tail break (twelve in the file
+  now), its record counting six
+  crashes because two children shrank
+  to entries already filed. The grow
+  kept 4 (board_mail 2, local 1, query
+  1); totals moved +4 entries and +7
+  arcs. 241,076 children tried over
+  its 17 run records, all of them in
+  the archive. The survivors rerun
+  beside it completed: 173 of 2,756
+  mutants not killed over 15 readers
+  (172 survived, 1 timeout) in
+  4,496s: board 5, dtlsproto 0,
+  extensions 0, filenames 5, handlers
+  9, jobcrypto 28, mailbox 4, policy 0,
+  protocol_v2 41, queries 34, security
+  4, send_job 14, startup 4, transports
+  7 (and the timeout), verify 17.
