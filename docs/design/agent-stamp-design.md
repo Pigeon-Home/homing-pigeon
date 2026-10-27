@@ -84,6 +84,21 @@ the record exists to catch. It does not flag spellings: both
 `Agent-Stamp` and `Agent-Chat-Stamp` are read, and history is not
 scanned.
 
+## History held to the record (2026-10-27)
+
+The tree check sees stamps in files; it cannot see a real stamp
+signed by the wrong chat. `runner/tools/stamp_audit.py` reads the
+commit trailers instead (`Agent-Stamp` or `Agent-Chat-Stamp`, and
+`Claude-Session` where the chat runs in Claude Code) and holds four
+rules from 2026-10-27T23:00Z on: one stamp, one session; one
+session, one stamp; a recycled stamp signs nothing new; every stamp
+is on the record. History before that moment is reported, never
+failed. The suite runs the check on whatever history its clone
+holds (`test_agent_stamps`, `StampHistoryTest`), and the
+`stamp-audit` workflow runs it over the full history on every push,
+with the report on the run's summary. The baseline is
+`docs/reports/stamp-audit/2026-10-27.md`.
+
 ## Recycled stamps (2026-10-26)
 
 A stamp outlives its chat. When a chat stops working on the project

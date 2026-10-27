@@ -100,6 +100,7 @@ it cannot:
 | `hardware` | the suite, the platform proof, the upgrade proof and a soak on the owner's own board | on dispatch |
 | `campaign-replay` | every recorded campaign cycle (13,321, in `runner/tests/archive/campaign-*/`) replayed through the executor against what the live cycle recorded; the core cut keeps them out of default discovery, not out of CI | every push |
 | `coverage` | the map of code no test runs, on Linux and Windows, by function (`runner/tools/coverage_gaps.py`); a signal, never a gate | every quarter hour on the tip of main, and on dispatch |
+| `stamp-audit` | every commit's agent stamp against `docs/archive/RESEARCHER_IDENT.md` over the full history: one stamp one session, one session one stamp, no recycled or unregistered stamp from 2026-10-27 on (`runner/tools/stamp_audit.py`) | every push |
 | `test_parser_properties` | every parser that reads input the runner did not write (protocol v2, both verifiers, reply-to, the platform card, extension manifests, `sources.json`, archive extraction, the config readers, the text helpers) held to its contract on generated input; `PROPERTY_ROSTER` names each parser, its promise and its proof, and fails if one loses its test | every push |
 | `test_live_capture` | the runner's readers take three days of a real box's files (`docs/reports/live-2026-10-25/`), the scrub holds, and `docs/use/live-examples.md` quotes them exactly | every push |
 

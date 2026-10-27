@@ -85,7 +85,11 @@ Those values live on the runner host. They do not travel through the SI chat.
    the exception to the routing (owner, 2026-10-26): a question to
    any Claude stamp, active or recycled, is accepted and answered by
    the questions desk, and the answer carries `40000e00`; nothing
-   waits on the stamp it was addressed to.
+   waits on the stamp it was addressed to. One chat signs with one
+   stamp from one session (2026-10-27): `runner/tools/stamp_audit.py`
+   fails the push that signs a stamp from a second session, a
+   session as a second stamp, a recycled stamp, or an unregistered
+   one.
 9. **The campaign runs from its standing orders.** What to test next
    is `docs/project/campaign-standing-orders.md`, a queue that does
    not run out; the campaign never waits for a new batch from the

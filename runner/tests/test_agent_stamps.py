@@ -11,6 +11,7 @@ and the campaigns seat's first stamp was retired for a named one
 (AGENTS.md rule 10).
 """
 import re
+import shutil
 import unittest
 from pathlib import Path
 
@@ -91,6 +92,85 @@ class AgentStampRecordTest(unittest.TestCase):
         text = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
         for stamp in RECYCLED:
             self.assertIn("`%s`" % stamp[:8], text)
+
+
+from runner.tools import stamp_audit as SA  # noqa: E402
+
+_T0 = SA.ENFORCED_FROM
+_A = "40000e00-1234-4abc-9def-0123456789ab"
+_B = "60000b3a-32a6-4847-996f-638cbcb6d854"
+_OLD = "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"
+_KNOWN = {_A: "active", _B: "active", _OLD: "recycled"}
+
+
+def _c(minutes, stamps, session, sha=None):
+    when = _T0 + SA.datetime.timedelta(minutes=minutes)
+    return SA.Commit(sha or ("%040x" % (abs(minutes) + 1)), when, "Claude",
+                     list(stamps), session, "a commit")
+
+
+class StampAuditRulesTest(unittest.TestCase):
+    """runner/tools/stamp_audit.py: the four rules, on made-up history."""
+
+    def _rules(self, commits):
+        _s, violations, history = SA.audit(commits, _KNOWN)
+        return sorted(r for _c_, r, _m in violations), history
+
+    def test_one_stamp_one_session_clean(self):
+        self.assertEqual(self._rules([_c(1, [_A], "session_a"),
+                                      _c(2, [_A], "session_a"),
+                                      _c(3, [_B], "session_b")])[0], [])
+
+    def test_a_borrowed_stamp_breaks_rule_one_and_two(self):
+        rules, _h = self._rules([_c(1, [_A], "session_a"),
+                                 _c(2, [_B], "session_b"),
+                                 _c(3, [_A], "session_b")])
+        self.assertIn("rule 1", rules)
+        self.assertIn("rule 2", rules)
+
+    def test_a_recycled_stamp_signs_nothing_new(self):
+        self.assertEqual(self._rules([_c(1, [_OLD], "session_x")])[0], ["rule 3"])
+
+    def test_an_unknown_stamp_is_named(self):
+        rules, _h = self._rules([_c(1, ["deadbeef-0000-4000-8000-000000000000"], None)])
+        self.assertEqual(rules, ["rule 4"])
+
+    def test_a_short_trailer_resolves_to_its_stamp(self):
+        self.assertEqual(SA.resolve("40000e00", _KNOWN), _A)
+        self.assertIsNone(SA.resolve("4000", _KNOWN))
+
+    def test_history_is_reported_never_failed(self):
+        rules, history = self._rules([_c(-10, [_A], "session_a"),
+                                      _c(-9, [_A], "session_b"),
+                                      _c(-8, [_OLD], "session_c")])
+        self.assertEqual(rules, [])
+        self.assertTrue(any("40000e00" in m for _r, m in history), history)
+
+    def test_a_seat_without_sessions_is_held_to_rules_three_and_four(self):
+        self.assertEqual(self._rules([_c(1, [_A], None), _c(2, [_B], None)])[0], [])
+
+    def test_the_log_parser_reads_trailers_and_the_session(self):
+        text = ("a" * 40 + "\x1f2026-10-28T00:00:00+00:00\x1fClaude\x1fsubject\n\n"
+                "Agent-Stamp: " + _A + "\n"
+                "Claude-Session: https://claude.ai/code/session_01ABC\n\x1e")
+        (c,) = SA.parse_log(text)
+        self.assertEqual(c.stamps, [_A])
+        self.assertEqual(c.session, "session_01ABC")
+
+
+class StampHistoryTest(unittest.TestCase):
+    """The repository's own history holds the rules from ENFORCED_FROM
+    on (a shallow clone is held as far as it reaches; the stamp-audit
+    workflow reads the whole history)."""
+
+    def test_no_violation_in_the_enforced_window(self):
+        if shutil.which("git") is None:
+            self.skipTest("git is not on PATH")
+        commits = SA.git_log()
+        if commits is None:
+            self.skipTest("git is not on PATH")
+        _s, violations, _h = SA.audit(commits, SA.record())
+        self.assertEqual([(c.sha[:9], r, m) for c, r, m in violations], [])
 
 
 if __name__ == "__main__":
