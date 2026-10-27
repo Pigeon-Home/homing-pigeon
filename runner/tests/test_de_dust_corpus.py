@@ -380,7 +380,53 @@ class ToolTest(unittest.TestCase):
                     self.assertLessEqual(
                         len(json.dumps(data, ensure_ascii=True)),
                         B.MAX_PAYLOAD, name)
-                    self.assertLessEqual(B._depth(data), B.MAX_DEPTH + 2)
+                    self.assertLessEqual(B._depth(data), B.MAX_DEPTH)
+
+    def test_the_walks_and_the_mutators_survive_any_depth(self):
+        # Q95: a value nested past the interpreter's recursion limit
+        # (a graft compounded across generations) is measured and
+        # walked without recursion, a mutator leaves it alone, and the
+        # session never dies on a mutator.
+        deep = 1
+        for _ in range(5000):
+            deep = [deep]
+        self.assertEqual(B._depth(deep), 5000)
+        self.assertEqual(sum(1 for _p in B._paths(deep)), 5001)
+        self.assertEqual(B._depth({"a": {"b": [1, [2]]}}), 4)
+        self.assertEqual([p for p, _v in B._paths({"a": [1, {"b": 2}]})],
+                         [(), ("a",), ("a", 0), ("a", 1), ("a", 1, "b")])
+        rng = random.Random(5)
+        corpus = B.seeds_wire()
+        self.assertIs(B.p_mutate(rng, deep, corpus), deep)
+        parent = B.make_entry("payload", {"v": 1, "deep": deep}, "seed:deep",
+                              "seed")
+        for _ in range(20):
+            self.assertIsNone(B.mutate(rng, parent, corpus, "wire"))
+        # A child a graft would push past the bound is not a child.
+        shallow = B.make_entry("payload", {"v": 1, "type": "job"}, "x", "seed")
+        wide = {"x": None}
+        node = wide
+        for _ in range(B.MAX_DEPTH + 5):
+            node["x"] = {"x": None}
+            node = node["x"]
+        pool = [B.make_entry("payload", wide, "y", "seed")]
+        for _ in range(60):
+            child = B.mutate(rng, shallow, pool + [shallow], "wire")
+            if child is not None:
+                self.assertLessEqual(B._depth(child[0]), B.MAX_DEPTH)
+        # A mutator that raises is counted in the run record, not a
+        # dead worker.
+        session = B.Session("wire", list(corpus))
+
+        def boom(*_a, **_k):
+            raise RecursionError("maximum recursion depth exceeded")
+
+        with mock.patch.object(B, "mutate", boom):
+            added = B._with_rig(lambda: (session.baseline(),
+                                         session.grow(rng, 5))[1])
+        self.assertEqual(added, [])
+        self.assertEqual(session.mutator_errors, {"RecursionError": 5})
+        self.assertEqual(session.tried, 0)
 
     def test_seeds_are_the_same_on_every_run(self):
         # encrypt_body's nonce is drawn from a counter while seeding,

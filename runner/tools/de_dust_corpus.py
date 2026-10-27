@@ -6306,23 +6306,37 @@ _KEYS = ["v", "type", "job_id", "msg_id", "issued_at", "kind", "key_id",
          "sha384", "url", "name", "runner", "oracle_opinion"]
 
 
-def _depth(value, d=0):
-    if isinstance(value, dict):
-        return max([d] + [_depth(v, d + 1) for v in value.values()])
-    if isinstance(value, list):
-        return max([d] + [_depth(v, d + 1) for v in value])
-    return d
+def _depth(value):
+    """How deep a JSON value nests (a scalar 0, a list of scalars 1).
+    A stack, not recursion: a child grafted deeper than the
+    interpreter's recursion limit is measured, not a worker death
+    (Q95)."""
+    deepest = 0
+    stack = [(value, 0)]
+    while stack:
+        item, d = stack.pop()
+        if d > deepest:
+            deepest = d
+        if isinstance(item, dict):
+            stack.extend((v, d + 1) for v in item.values())
+        elif isinstance(item, list):
+            stack.extend((v, d + 1) for v in item)
+    return deepest
 
 
 def _paths(value, prefix=()):
-    """Every (path, value) in a JSON value, the root included."""
-    yield prefix, value
-    if isinstance(value, dict):
-        for k, v in value.items():
-            yield from _paths(v, prefix + (k,))
-    elif isinstance(value, list):
-        for i, v in enumerate(value):
-            yield from _paths(v, prefix + (i,))
+    """Every (path, value) in a JSON value, the root included, in
+    walk order; a stack, not recursion (Q95)."""
+    stack = [(prefix, value)]
+    while stack:
+        path, item = stack.pop()
+        yield path, item
+        if isinstance(item, dict):
+            stack.extend((path + (k,), v)
+                         for k, v in reversed(list(item.items())))
+        elif isinstance(item, list):
+            stack.extend((path + (i,), v)
+                         for i, v in reversed(list(enumerate(item))))
 
 
 def _set_path(value, path, new):
@@ -6453,8 +6467,16 @@ PAYLOAD_MUTATORS = [p_replace, p_delete, p_add_key, p_rename_key, p_text,
 
 
 def p_mutate(rng, value, corpus):
+    # A value already past the bound is left alone (a no-op child,
+    # which the session drops): the grafts of p_replace and p_splice
+    # compound across generations, and the walks along a path are as
+    # deep as the value (Q95).
+    if _depth(value) > MAX_DEPTH:
+        return value
     for _ in range(rng.randint(1, 3)):
         value = rng.choice(PAYLOAD_MUTATORS)(rng, value, corpus)
+        if _depth(value) > MAX_DEPTH:
+            return value
     return value
 
 
@@ -6640,10 +6662,18 @@ def mutate(rng, entry, corpus, target, weights=None):
     elif target == "local_inbox":
         data, name = _inbox_mutate(rng, entry["data"], corpus, modes=False)
     else:
+        if _depth(entry["data"]) > MAX_DEPTH:
+            return None
         mut = pick(rng, PAYLOAD_MUTATORS, weights)
         data = mut(rng, entry["data"], corpus)
         name = mut.__name__
     if entry["kind"] == "payload":
+        # The bound the mutators may nest to (p_nest keeps it; a
+        # graft of a corpus value can pass it, and the grafts
+        # compound across generations): a child past it is not a
+        # child (Q95).
+        if _depth(data) > MAX_DEPTH:
+            return None
         try:
             text = json.dumps(data, ensure_ascii=True)
         except (TypeError, ValueError, RecursionError):
@@ -6884,6 +6914,7 @@ class Session:
         self.outcomes = {"accepted": 0, "refused": 0, "crash": 0}
         self.tried = 0
         self.mutators_tried = {}
+        self.mutator_errors = {}
         self.mutators_kept = {}
 
     def run(self, entry, trace=True):
@@ -6929,9 +6960,23 @@ class Session:
             return added
         history = dict(history or {})
         weights = steering(history) if history else None
+        self.mutator_errors = {}
         for n in range(rounds):
             parent = rng.choice(self.entries)
-            child = mutate(rng, parent, self.entries, self.target, weights)
+            try:
+                child = mutate(rng, parent, self.entries, self.target,
+                               weights)
+            except Exception as e:
+                # The mutator's fault, not the reader's: counted in the
+                # run record, logged, and the grow goes on (Q95). A
+                # reader's fault is a Crash from the checker, below.
+                kind = type(e).__name__
+                self.mutator_errors[kind] = \
+                    self.mutator_errors.get(kind, 0) + 1
+                if log:
+                    log(f"  mutator raised at round {n}: {kind}: "
+                        f"{_short(e)}")
+                continue
             if child is None:
                 continue
             data, name = child
@@ -7259,6 +7304,8 @@ def cmd_grow(args, out=print):
             extra["steered"] = True
         if fresh:
             extra["seeds_added"] = len(fresh)
+        if getattr(session, "mutator_errors", None):
+            extra["mutator_errors"] = dict(session.mutator_errors)
         record_run(_run_record(
             "grow", target, session,
             {"entries": len(entries), "arcs": before}, added,

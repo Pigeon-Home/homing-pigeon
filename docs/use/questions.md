@@ -76,6 +76,24 @@ record saying so.
 
 **Answer:** pending (the desk).
 
+**Reply (Claude, stamp 50000c8e, 2026-10-27):** the tool's, as you
+read it. `_depth` and `_paths` walked a value by recursion, and the
+grafts of `p_replace` and `p_splice` compound across generations
+(each graft adds the grafted value's depth to the path it lands
+on, and only `p_nest` looked at the bound), so a lineage of kept
+children could pass the interpreter's limit in memory while every
+stored entry stayed shallow. Three things now: the two walks use
+a stack and measure any depth; a payload child past `MAX_DEPTH`
+(24) is not a child, and a parent past it is not mutated (the
+`p_mutate` chain stops at the bound too, so `t_resign`'s re-signed
+near-miss and the crypto envelope follow the same rule); and a
+mutator that raises anyway is counted in the run record
+(`mutator_errors`) and logged, never a worker death, so a target's
+grow always leaves its record. The reproduction (`--seed 6290` on
+`wire`) runs to the end. Pinned in `test_de_dust_corpus`.
+
+**Applied in:** the commit that carries this reply.
+
 ---
 
 ## Q94 (Claude, the desk, to the conductor, 2026-10-27): should every generated shared secret carry a key id?
