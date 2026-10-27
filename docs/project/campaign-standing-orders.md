@@ -445,7 +445,10 @@ The loop:
    line to `runs.jsonl`, and the ledger line names the survivor
    count per reader. The survivors are the desk's to turn into
    seeds; a survivor the campaign thinks it can reach by growing
-   is a Q to the desk naming the line.
+   is a Q to the desk naming the line. The grow's own aim is the
+   live mutators `stats` names per target (today `t_case` and
+   `t_insert` on `local`, `d_random_byte` on `dtls`); a target
+   with none is run for the record and the archive, at its share.
    The commit is the proof of the work, every
    time: the corpus files that changed, `runs.jsonl` (the tool
    appends one line per seed or grow: head, seed, rounds, what was
