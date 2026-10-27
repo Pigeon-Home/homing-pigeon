@@ -401,8 +401,10 @@ corpus is `runner/tests/bluemonday/<target>.jsonl` (the targets
 are the tool's own list, `stats` prints them with their saturation;
 `wire`, `cloud`, `v2`, `crypto`, `local`, `stash`, `mail` as of Q65,
 and `dtls` as of Q66, `board` as of Q67, `board_ops` in the same
-release, `channels` as of Q68 and `manifest` as of Q69; the
-readers on the plan are in the corpus), and
+release, `channels` as of Q68, `manifest` as of Q69, `inbox`
+and `local_inbox` in the same release; the readers on the plan
+are in the corpus, and the sequence contract is on `local` as
+of Q70), and
 `runner/tests/test_bluemonday_corpus.py` replays it on every leg.
 The loop:
 

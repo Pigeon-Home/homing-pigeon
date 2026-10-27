@@ -170,6 +170,9 @@ never files a refusal as a crash.
   handled once and removed either way, a directory or a name
   that is not `.json` is left alone, and the store holds exactly
   what the ingests filed, the neighbor's alert among them.
+  `local` is the same rule on the envelope reader (Q70): a
+  refusal leaves the senses store untouched, and a known-good
+  neighbor alert filed next into that directory is stored.
 - **Reserved slots.** `sig` is the protocol's; a payload carrying
   its own is read back with the slot overwritten by the keyed
   reader and kept by the plain one, and neither is a disagreement.
@@ -215,9 +218,10 @@ That is phase 4 below.
   test, and the fix lands with `promote`; every new reader in the
   product gets its target in the same release.
 - **Grok** built the DTLS target (Q66), the board target (Q67),
-  the channel target (Q68) and the manifest target (Q69), and
-  reviews the plan when the conductor asks; its reads go under a
-  Q and are applied by the desk or recorded with the reason.
+  the channel target (Q68) and the manifest target (Q69), put
+  the sequence contract on `local` (Q70), and reviews the plan
+  when the conductor asks; its reads go under a Q and are
+  applied by the desk or recorded with the reason.
 - **The conductor** decides what is not in this file: a new
   surface outside the readers, a second rig, the release of a
   finding's details.
@@ -267,10 +271,11 @@ nothing is still the record that those rounds were run.
   the channel readers (Q68, and `inbox` under the sequence
   contract), the manifest reader (Q69).
 - **Phase 3 (in flight):** the sequence contract on `local`
-  (`local_inbox`, landed); the provenance contract on every reader
-  that names a destination (landed on `wire`, `cloud` and `inbox`,
-  beside `mail`'s); cross-platform replay findings (a reader that
-  reads differently on Windows is a differential of its own).
+  (`local_inbox` on the scanner, and Q70 on the envelope reader,
+  replaying the corpus already kept). Provenance is on `mail`,
+  `wire`, `cloud` and `inbox`. Still to come: cross-platform
+  replay findings (a reader that reads differently on Windows is
+  a differential of its own).
 - **Phase 4:** the grammar dictionary from the IETF draft; seeds
   from the draft's own examples; a grow of every target under it.
 - **Phase 5:** live captures, scrubbed to invented names, as seeds

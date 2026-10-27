@@ -598,6 +598,20 @@ class ToolTest(unittest.TestCase):
         self.assertEqual(cm.exception.kind, "exception")
         self.assertIn("RuntimeError", cm.exception.detail)
 
+    def test_the_local_sequence_stores_the_neighbor_after_a_refusal(self):
+        bad = [e for e in B.seeds_local() if e["from"] == "seed:empty"][0]
+        good = [e for e in B.seeds_local()
+                if e["from"] == "seed:alert_now"][0]
+        out = {}
+
+        def go():
+            out["bad"] = B.check("local", bad)
+            out["good"] = B.check("local", good)
+
+        B._with_rig(go)
+        self.assertEqual(out["bad"], "refused")
+        self.assertEqual(out["good"], "accepted")
+
     def test_saturation_reads_the_last_grow(self):
         tmp = tempfile.mkdtemp(prefix="hp-bluemonday-sat-")
         self.addCleanup(shutil.rmtree, tmp, True)

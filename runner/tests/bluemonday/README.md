@@ -13,7 +13,7 @@ One JSON-lines file per target, grown by
 | `cloud.jsonl`  | `runner/cloud/send_job.py`: `verify_body`; the same provenance check on every trusted body |
 | `v2.jsonl`     | `runner/wire/protocol_v2.py`: `validate`                       |
 | `crypto.jsonl` | `runner/wire/jobcrypto.py`: `decrypt_body`                     |
-| `local.jsonl`  | `runner/runner.py`: `_ingest_local_envelope_inner`, with `runner/wire/transports.py`: `parse_envelope` |
+| `local.jsonl`  | `runner/runner.py`: `_ingest_local_envelope_inner`, with `runner/wire/transports.py`: `parse_envelope`. A refusal leaves the senses store untouched, and a known-good neighbor alert filed next into the same directory is stored (Q70) |
 | `stash.jsonl`  | `runner/runner.py`: `_record_payload` (a stashed record's body and its three key slots, Q63) |
 | `mail.jsonl`   | the mail path that chooses the text (Q65): `get_text_body`, `_bounce_of` and the subject's job id in the core; the email extension's `_subject_body` and `reply_target` with `mailbox._valid_reply_to`; the extension must read the same subject and body as the core |
 | `dtls.jsonl`   | `runner/wire/dtlsproto.py` (Q66): `_split_records`, `_parse_handshake`, and, when a complete handshake message parses, `_parse_extensions`, the hello parsers, the key-share and PSK readers; `DtlsServerCore.feed` on the same datagram |

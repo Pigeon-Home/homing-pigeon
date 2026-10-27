@@ -563,7 +563,48 @@ class _LocalRig:
 _RIG = None
 
 
+def _senses_bytes(base):
+    """The senses store in one base directory, or empty when the
+    directory has not filed an alert. A refusal must leave this
+    untouched (Q70)."""
+    path = os.path.join(base, "senses.jsonl")
+    try:
+        with open(path, "rb") as fh:
+            return fh.read()
+    except OSError:
+        return b""
+
+
+def _local_neighbor():
+    """One known-good alert into the same directory the entry just
+    used. It must be stored, whatever the entry did. The title is
+    unique for the run so a previous neighbor is not this one."""
+    n = getattr(_local_neighbor, "n", 0) + 1
+    _local_neighbor.n = n
+    title = f"bm-neighbor-{n}"
+    payload = _stamp_issued_at(_alert(
+        title=title, job_id=f"bm-n-{n:08d}",
+        detail={"path": "/srv/example/neighbor.txt"}))
+    body, exc = _call(V.sign_payload, payload, SENSE)
+    if exc is not None:
+        raise Crash("exception", "the neighbor alert would not sign: "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    got, exc = _call(R._ingest_local_envelope_inner, LOCAL_CFG,
+                     _RIG.dir, body, "bluemonday-neighbor")
+    if exc is not None:
+        raise Crash("exception", "the neighbor alert raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if not isinstance(got, dict) or got.get("title") != title \
+            or got.get("sensor") != "canary":
+        raise Crash("contract", "the next good alert in the same "
+                    "directory was not stored")
+    if title.encode("ascii") not in _senses_bytes(_RIG.dir):
+        raise Crash("contract", "the neighbor was returned but not "
+                    "written to the senses store")
+
+
 def _local_ingest(text):
+    before = _senses_bytes(_RIG.dir)
     got, exc = _call(R._ingest_local_envelope_inner, LOCAL_CFG, _RIG.dir,
                      text, "bluemonday")
     if exc is not None:
@@ -572,10 +613,15 @@ def _local_ingest(text):
     if got is not None and not isinstance(got, dict):
         raise Crash("shape", "_ingest_local_envelope_inner returned "
                     f"{type(got).__name__}")
+    if got is None and _senses_bytes(_RIG.dir) != before:
+        raise Crash("contract", "a refused local alert stored a record")
     return "accepted" if got is not None else "refused"
 
 
 def check_local(entry):
+    """local: one envelope, then a known-good neighbor in the same
+    directory (Q70). A refusal stores nothing. The neighbor is
+    stored either way."""
     if entry["kind"] == "text":
         text = entry["data"]
         parsed, exc = _call(TR.parse_envelope, text)
@@ -589,14 +635,18 @@ def check_local(entry):
             raise Crash("shape", "parse_envelope returned "
                         f"{type(parsed).__name__}")
         body = parsed[1] if parsed is not None else text
-        return _local_ingest(body)
-    payload = _stamp_issued_at(entry["data"])
-    secret, _key_id = _signing_secret(payload)
-    body, exc = _call(V.sign_payload, payload, secret or SECRET)
-    if exc is not None:
-        _expect_refusal(exc, ValueError, "sign_payload")
-        return "refused"
-    return _local_ingest(body)
+        outcome = _local_ingest(body)
+    else:
+        payload = _stamp_issued_at(entry["data"])
+        secret, _key_id = _signing_secret(payload)
+        body, exc = _call(V.sign_payload, payload, secret or SECRET)
+        if exc is not None:
+            _expect_refusal(exc, ValueError, "sign_payload")
+            outcome = "refused"
+        else:
+            outcome = _local_ingest(body)
+    _local_neighbor()
+    return outcome
 
 
 def check_stash(entry):

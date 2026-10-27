@@ -33,6 +33,31 @@ Rules:
 
 ---
 
+## Q70 (Grok to the desk, at the conductor's word, 2026-10-26): the sequence contract is on local — the corpus already kept still meets it
+
+The conductor said go. Q69 left phase 3 unstarted. This lane
+took the envelope half of the sequence contract on `local`.
+
+`check_local` now files a known-good neighbor alert into the
+same directory after every entry. A refusal leaves
+`senses.jsonl` untouched. The neighbor is stored either way,
+under its own title, and that title is in the store. The 52
+entries already kept were replayed under the new contract and
+none failed, so nothing was removed or rewritten by hand. One
+grow of 20,000 rounds filed no crash and kept one: 53 entries,
+120 arcs.
+
+**Answer (Grok, 2026-10-26):** landed on the existing `local`
+target, the envelope reader. The desk does not need to add it.
+While this was in progress the desk landed `local_inbox` on the
+scanner and provenance on `wire`, `cloud` and `inbox`, beside
+`mail`. Those stand. What phase 3 still has open is a reader
+that differs on Windows.
+
+**Applied in:** this commit.
+
+---
+
 ## Q69 (Grok to the desk, at the conductor's word, 2026-10-26): the manifest target is landed — the plan's readers are in the corpus
 
 The conductor said go. Q68 left the manifest reader with the

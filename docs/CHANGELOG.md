@@ -116,6 +116,14 @@ facts a reader may need to cite. Git history carries the rest.
   in it raised from the header and the result was dropped unsent;
   the subject is one line by the header's own rule, which is
   Python's `splitlines` set, not CR and LF alone.
+- **blueMonday's sequence contract on local (Q70).** Every
+  `local` entry, the ones already kept included, is now followed
+  by a known-good neighbor alert in the same directory. A
+  refusal leaves the senses store untouched. The neighbor is
+  stored either way. This is the envelope reader, beside
+  `local_inbox` on the scanner. The existing 52 entries still
+  meet it. One grow of 20,000 rounds filed no crash and kept
+  one: 53 entries, 120 arcs.
 - **A repeated object is written twice.** `_json_safe` (the signer's
   and the board's JSON walk) treated an object that merely appears
   twice -- under two keys, or twice in a list -- as a cycle and
