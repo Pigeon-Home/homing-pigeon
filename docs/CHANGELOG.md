@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.61 - 2026-10-26
+
+- **blueMonday's fifteenth target, `names`.** One name a sender
+  chose before the six file-name rules (`validate_file_name`, the
+  same on every platform: the normalized path stable under a second
+  pass, not absolute under either path flavour, staged under a
+  scratch work directory on the host) and the job-id rule
+  (`_safe_job_id`); seventy-five seeds, both platforms in agreement.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.60 - 2026-10-26
 
 - **A `grep` query's pattern is refused before it can run forever.**

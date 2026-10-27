@@ -62,6 +62,10 @@ delivered body and the agent's trust in it:
              runner/ops/queries.py       answer_queries on a job's
                                          result_policy and its own
                                          output, under every ceiling
+    names    runner/guard/filenames.py   validate_file_name and
+             runner/runner.py            _safe_job_id on one name a
+                                         sender chose; an accepted
+                                         file name is staged
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -109,7 +113,9 @@ import argparse
 import copy
 import hashlib
 import json
+import ntpath
 import os
+import posixpath
 import random
 import re
 import shutil
@@ -125,6 +131,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from runner.cloud import send_job as SJ  # noqa: E402
+from runner.guard import filenames as FN  # noqa: E402
 from runner.guard import security as SEC  # noqa: E402
 from runner.guard import textutil as TU  # noqa: E402
 from runner.ops import extensions as EX  # noqa: E402
@@ -1785,6 +1792,96 @@ def check_queries(entry):
         note("result", _digest(result))
         note("answers", _digest(answers))
     return "refused" if refused else "accepted"
+
+
+# ------------------------------------------------------------------
+# names: the two readers of a name a sender chose
+# ------------------------------------------------------------------
+
+def _stage_name(name):
+    """An accepted file name through the staging check on this host:
+    the destination's real path is under the work directory's, and
+    the relative path is the name itself. A refusal there (a
+    directory the host will not create) is a refusal, not a crash:
+    the rules are the first gate and the staging check the second."""
+    work = tempfile.mkdtemp(prefix="hp-bluemonday-names-")
+    try:
+        root = os.path.realpath(work)
+        dest, exc = _call(R._staged_dest, work, name, root)
+        if exc is not None:
+            _expect_refusal(exc, R.JobRejected, "_staged_dest")
+            note("stage", "refused")
+            return
+        if not isinstance(dest, str) or not dest.startswith(root + os.sep):
+            raise Crash("contract", f"an accepted name staged at {dest!r}, "
+                        "outside the work directory"[:200])
+        rel = os.path.relpath(dest, root).replace(os.sep, "/")
+        if rel != name:
+            raise Crash("contract", f"an accepted name staged at {rel!r}, "
+                        f"not at {name!r}"[:200])
+        note("stage", "ok")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def check_names(entry):
+    """names: one text before the two readers of a name a sender
+    chose -- `files[].name` through validate_file_name (the six
+    rules of runner/guard/filenames.py, the same on every platform)
+    and `job_id` through _safe_job_id. Contract: validate_file_name
+    refuses with BadFileName naming one of the six rules and
+    nothing else, or answers the normalized path, which a second
+    pass accepts unchanged, which has no empty, dot, backslash or
+    Windows-device component, is not absolute under either path
+    flavour, and stages under a scratch work directory on this
+    host or is refused there; _safe_job_id refuses with JobRejected
+    and nothing else, or answers the same string, which is one
+    safe component under either path flavour. Accepted when either
+    reader accepts."""
+    name = entry["data"]
+    file_ok = False
+    got, exc = _call(FN.validate_file_name, name)
+    if exc is not None:
+        _expect_refusal(exc, FN.BadFileName, "validate_file_name")
+        rule = getattr(exc, "rule", None)
+        if rule not in FN.RULES:
+            raise Crash("contract", "validate_file_name refused with rule "
+                        f"{rule!r}, which is not one of its six")
+        note("file", "rule", rule)
+    else:
+        if not isinstance(got, str) or not got:
+            raise Crash("shape", f"validate_file_name answered {got!r}"[:200])
+        again, exc2 = _call(FN.validate_file_name, got)
+        if exc2 is not None or again != got:
+            raise Crash("contract", "the normalized name is not accepted "
+                        "unchanged by a second pass")
+        parts = got.split("/")
+        if "\\" in got or "\x00" in got or any(
+                p in ("", ".", "..") or FN.windows_reserved_name(p)
+                for p in parts):
+            raise Crash("contract", f"an accepted name carries a component "
+                        f"the rules refuse: {got!r}"[:200])
+        if posixpath.isabs(got) or ntpath.isabs(got) \
+                or ntpath.splitdrive(got)[0]:
+            raise Crash("contract", f"an accepted name is absolute under a "
+                        f"path flavour: {got!r}"[:200])
+        note("file", "ok", _digest(got), len(parts))
+        _stage_name(got)
+        file_ok = True
+    jid, jexc = _call(R._safe_job_id, name)
+    if jexc is not None:
+        _expect_refusal(jexc, R.JobRejected, "_safe_job_id")
+        note("job_id", "refused")
+    else:
+        if jid != name:
+            raise Crash("contract", "_safe_job_id answered a string other "
+                        "than the one it was given")
+        if posixpath.basename(jid) != jid or ntpath.basename(jid) != jid \
+                or jid in (".", "..") or "\x00" in jid:
+            raise Crash("contract", f"an accepted job_id is not one safe "
+                        f"component: {jid!r}"[:200])
+        note("job_id", "ok", _digest(jid))
+    return "accepted" if file_ok or jexc is None else "refused"
 
 
 # ------------------------------------------------------------------
@@ -3763,6 +3860,50 @@ def seeds_queries():
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
+def seeds_names():
+    long_part = "p" * FN.MAX_COMPONENT_BYTES
+    out = [
+        ("plain", "a"), ("file", "a.txt"), ("nested", "dir/sub/file.tar.gz"),
+        ("deep", "/".join(["d"] * 32)), ("dot_file", ".hidden"),
+        ("dot_dir", ".git/config"), ("dots_in_name", "a.b.c"),
+        ("underscore", "_x_"), ("digits", "0123"),
+        ("flag", "-x"), ("flag_inside", "a/-x"), ("flag_dot", "-"),
+        ("dot", "."), ("dotdot", ".."), ("dotdot_inside", "a/../b"),
+        ("dotdot_first", "../a"), ("dot_inside", "a/./b"),
+        ("three_dots", "..."), ("dots_then_name", "...a"),
+        ("trailing_dot", "a."), ("trailing_dots", "a.."),
+        ("absolute", "/etc/passwd"), ("double_slash_first", "//server/share"),
+        ("drive", "C:a"), ("drive_slash", "C:/a"), ("drive_lower", "c:x"),
+        ("drive_inside", "a/C:b"), ("backslash", "a\\b"),
+        ("backslash_abs", "C:\\x"), ("unc", "\\\\server\\share"),
+        ("doubled_slash", "a//b"), ("trailing_slash", "a/"),
+        ("leading_slash_name", "/a"), ("empty", ""),
+        ("space", "a b"), ("tab", "a\tb"), ("newline", "a\nb"),
+        ("nul", "a\x00b"), ("colon", "a:b"), ("tilde", "~"),
+        ("home", "~/x"), ("dollar", "$HOME"), ("percent", "%2e%2e/x"),
+        ("unicode", "caf\u00e9"), ("emoji", "\U0001f426.txt"),
+        ("fullwidth_slash", "a\uff0fb"), ("lone_surrogate", "a\ud800b"),
+        ("con", "CON"), ("con_lower", "con"), ("con_ext", "con.txt"),
+        ("nul_inside", "a/NUL"), ("nul_ext_dir", "nul.d/x"),
+        ("com1", "COM1"), ("com9_ext", "COM9.log"), ("com10", "COM10"),
+        ("lpt1", "LPT1"), ("lpt0", "LPT0"), ("aux_tar", "aux.tar.gz"),
+        ("prn_prefix", "PRNT"), ("conx", "CONX"),
+        ("component_cap", long_part), ("component_over", long_part + "p"),
+        ("component_cap_nested", long_part + "/" + long_part),
+        ("name_cap", "/".join(["q" * 63] * 16)),
+        ("name_over", "/".join(["q" * 63] * 16) + "/q"),
+        ("name_cap_bytes", "/".join(["r" * 127] * 8)),
+        ("name_over_bytes", "/".join(["r" * 127] * 8) + "r"),
+        ("job_id_cap", "j" * 128), ("job_id_over", "j" * 129),
+        ("job_id_uuid", "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b"),
+        ("job_id_dotted", "d.bm-draft-0017"),
+        ("not_text_number", 7), ("not_text_list", ["a"]),
+        ("not_text_null", None), ("not_text_object", {"name": "a"}),
+    ]
+    return [make_entry("text" if isinstance(t, str) else "payload", t,
+                       "seed:" + n, "seed") for n, t in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -4751,6 +4892,8 @@ TARGETS = {
                           _src("ops", "attest.py"),
                           _src("guard", "security.py")],
                 "check": check_queries, "seeds": seeds_queries},
+    "names": {"files": [_src("guard", "filenames.py"), _src("runner.py")],
+              "check": check_names, "seeds": seeds_names},
 }
 
 

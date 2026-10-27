@@ -107,6 +107,7 @@ peer on the wire reaches first.
 | 12 | `local_inbox` | `runner/runner.py` under the sequence contract: the local signal inbox scanned once by `_scan_local_inbox`, the store held to the ingests | in the corpus |
 | 13 | `secret` | `runner/cloud/send_job.py` `require_signable_secret` and `runner/guard/security.py` `validate_shared_secret`: the sender's and the runner's strength rules on one candidate secret, held in step (a differential the code itself asks for) | in the corpus |
 | 14 | `queries` | `runner/ops/policy.py` `apply_result_policy` and `runner/ops/queries.py` `answer_queries` (with `runner/ops/attest.py` and the pattern bound in `runner/guard/security.py`): a job's `result_policy` -- the view it asks for, its queries, its budget -- and the job's own output, under every ceiling the owner can set (Q84) | in the corpus |
+| 15 | `names` | `runner/guard/filenames.py` `validate_file_name` and `runner/runner.py` `_safe_job_id`: one name a sender chose, before the six file-name rules (the same on every platform) and the job-id rule; an accepted file name is staged under a scratch work directory on the host (`_staged_dest`) | in the corpus |
 
 Not targets, and why: the Oracle's reading of its model's replies
 (`runner/ops/oracle_tools.py`), the config loader and the platform
@@ -202,6 +203,19 @@ never files a refusal as a crash.
   result with its answers signs and verifies as a body. The output
   an entry carries is short (1,024 characters): the plain repeats
   a grep pattern may keep are bounded only by the text (Q84).
+- **One rule set on every platform** (`names`). `validate_file_name`
+  refuses with `BadFileName` naming one of its six rules and
+  nothing else, or answers the normalized path, which a second pass
+  accepts unchanged, which has no empty, dot, backslash or Windows
+  device component, and which is not absolute under either path
+  flavour (`posixpath` and `ntpath` are both asked, since the rules
+  promise the same answer whatever runner holds the key); an
+  accepted name stages under a scratch work directory on the host
+  with its real path under the root and its relative path the name
+  itself, or the staging check refuses it (a directory the host
+  will not create is a refusal, not a crash). `_safe_job_id`
+  refuses with `JobRejected` and nothing else, or answers the same
+  string, one safe component under either flavour.
 
 A contract added later replays over every entry already kept; an
 old entry that fails a new contract is a crash file and a Q, never

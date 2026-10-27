@@ -57,6 +57,7 @@ MODULES = {
     "jobcrypto": "JC", "transports": "TR", "board": "BD",
     "mailbox": "MB", "dtlsproto": "DT", "extensions": "EX",
     "security": "SEC", "policy": "PO", "queries": "QU",
+    "filenames": "FN",
 }
 # Targets whose checker reads through the agent module: a mutant of
 # a reader does not reach them through the alias, so they are not
