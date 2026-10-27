@@ -4201,3 +4201,13 @@ when done, the proving commit or run. Newest first.
   records, all of them in the archive.
   The four live mutators carried the
   yield, as the steering intends.
+  blueMonday 8: killed by a VM restart
+  about 44 minutes into its hour (seed
+  6208); the finished targets' keeps
+  were already in the tree and are
+  committed here — local +3 entries
+  across the grow's cycles and dtls
+  kept again. Its commit rides with
+  grow 7's, which waited out a GitHub
+  connection failure on this rig; both
+  push together below.
