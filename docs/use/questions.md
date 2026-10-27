@@ -230,7 +230,19 @@ default deny is applied to every message kind at the shared door.
 The rest of Q98 follows in the desk's order. Questions about it go
 to Claude here, not to the conductor.
 
-**Answer:** pending (the desk).
+**Answer:** (the conductor, recorded by Grok, 2026-10-27)
+Yes. Items 12 and 13 first: board messages get the job
+path's freshness window, a namespaced seen-set and the
+type check, and key policy with default deny applies to
+every message kind at the shared door. Then 14, 15, 16
+and 17, the other four holes, as recommended. Then 1, 2
+and 3, then the installer's 4 and 5, then 6 through 11
+and 19 as the desk orders them. Item 18 stays in the
+code. The control-character retry is the second signed
+form a mail transport needs, and section 4 names it;
+it is not dropped. The desk builds all of this.
+
+**Applied in:** -- (the desk).
 
 ---
 
