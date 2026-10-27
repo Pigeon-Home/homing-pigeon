@@ -1560,6 +1560,31 @@ _QUERY_CEILINGS = ("attested", "summary", "redacted", "full", None, 7)
 # may keep are bounded only by the text (Q84), so the text is short.
 QUERIES_MAX_TEXT = 1024
 _LEAK_MIN = 12
+# The pattern bound as it is at import, held in a container so a
+# replay that puts a mutant of the bound in every module (the
+# survivors instrument) leaves this one alone: an entry whose pattern
+# the bound names runs over lines cut short, so a reader that fails
+# to refuse it answers in bounded time and is still told apart.
+_HOSTILE = {"names": SEC.regex_backtracks}
+_HOSTILE_LINE = 16
+
+
+def _query_hostile(declared):
+    """True when a grep query in the list carries a pattern the bound
+    names (a repeat nested in a repeat, an alternation under one)."""
+    if not isinstance(declared, list):
+        return False
+    for q in declared:
+        if isinstance(q, dict) and q.get("op") == "grep" \
+                and isinstance(q.get("pattern"), str) \
+                and _HOSTILE["names"](q["pattern"]):
+            return True
+    return False
+
+
+def _cut_lines(text, width):
+    lines = text.split("\n")
+    return "\n".join(line[:width] for line in lines)
 
 
 def _query_text(value):
@@ -1720,6 +1745,13 @@ def check_queries(entry):
         # a policy carrying one never reaches these readers.
         note("gate", "lone surrogate")
         return "refused"
+    declared = policy.get("queries") if isinstance(policy, dict) else None
+    declared = declared or []
+    if not isinstance(declared, list):
+        declared = []
+    if _query_hostile(declared):
+        out, err = _cut_lines(out, _HOSTILE_LINE), _cut_lines(err, _HOSTILE_LINE)
+        note("gate", "hostile pattern, lines cut")
     job = {"job_id": "bm-q-0001", "kind": "exec", "result_policy": policy}
     exe = dict(_QUERY_EXEC, stdout=out, stderr=err)
     pieces = _query_pieces(out, err)
@@ -1727,10 +1759,6 @@ def check_queries(entry):
     text_lines = (out + err).splitlines()
     want = policy.get("view") if isinstance(policy, dict) else None
     asked = want if isinstance(want, str) and want in R.VIEW_ORDER else "full"
-    declared = policy.get("queries") if isinstance(policy, dict) else None
-    declared = declared or []
-    if not isinstance(declared, list):
-        declared = []
     refused = False
     for ceiling in _QUERY_CEILINGS:
         cfg = {} if ceiling is None else {"max_result_view": ceiling}
@@ -2084,6 +2112,19 @@ def _text_bodies():
         ("signed_not_json", _hmac_signed_text('{"a":{"b":}')),
         ("closed_then_in_string",
          '{"a":1}{"b":"x,"sig":"' + "0" * 96 + '"}'),
+        # A lone surrogate as the JSON escape (Q85): in the kind, in a
+        # nested list, in a key; a surrogate pair is a character.
+        ("surrogate_kind", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-s-0001","kind":"\\ud800"}')),
+        ("surrogate_nested", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-s-0002","kind":"exec",'
+            '"detail":{"a":["x","\\udfff"]}}')),
+        ("surrogate_key", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-s-0003","kind":"exec",'
+            '"\\ud83d":1}')),
+        ("surrogate_pair", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-s-0004","kind":"exec",'
+            '"note":"\\ud83d\\udc26 caf\\u00e9"}')),
         ("bom", "﻿" + exec_body),
         ("wrong_secret", V.sign_payload(_job(), WRONG)),
         # The draft's subject: a decoration word, then job, then the id.
@@ -3741,7 +3782,7 @@ def seeds_secret():
 def seeds_queries():
     canary = "SECRET-12345 is the canary line of the output\n"
     output = ("ok\n" + canary + "ERROR one\nERROR two\nwarn: three\n"
-              + "a" * 40 + "!\n")
+              + "a" * 12 + "!\n")
     long_line = " " * 800 + "!"
 
     def entry(name, policy, output=output, stderr=None):
@@ -3846,6 +3887,25 @@ def seeds_queries():
         entry("output_many_lines", {"queries": [
             {"op": "tail", "lines": 200}, {"op": "grep", "pattern": "7"}]},
               output="".join(f"line {i}\n" for i in range(100))),
+        # Past the caps: a grep over more lines than it may hand back,
+        # a tail at its default and over its cap on more lines than
+        # either.
+        entry("grep_over_a_hundred", {"queries": [
+            {"op": "grep", "pattern": ".", "max_matches": 1000},
+            {"op": "grep", "pattern": "."}]},
+              output="".join(f"l{i}\n" for i in range(120))),
+        entry("tail_over_two_hundred", {"queries": [
+            {"op": "tail"}, {"op": "tail", "lines": 250},
+            {"op": "tail", "lines": 200}]},
+              output="".join(f"l{i}\n" for i in range(210))),
+        # The bound's own edges: a repeat whose maximum is 2, 0 and 1
+        # around a repeat.
+        entry("grep_repeat_max_two", {"queries": [
+            {"op": "grep", "pattern": "(?:a+){2}"}]}),
+        entry("grep_repeat_max_zero", {"queries": [
+            {"op": "grep", "pattern": "(?:a+){0}"}]}),
+        entry("grep_repeat_optional", {"queries": [
+            {"op": "grep", "pattern": "(?:a+)?b"}]}),
         entry("output_unicode", {"queries": [grep, tail]},
               output="caf\u00e9 \u2014 \u4e2d\u6587 \U0001f426\nERROR \u00e9\n"),
         entry("output_nul", {"queries": [grep, tail]},
@@ -3895,6 +3955,11 @@ def seeds_names():
         ("name_cap_bytes", "/".join(["r" * 127] * 8)),
         ("name_over_bytes", "/".join(["r" * 127] * 8) + "r"),
         ("job_id_cap", "j" * 128), ("job_id_over", "j" * 129),
+        # Refused names whose shown form sits at the cut of the
+        # rejection's text (sixty characters of repr).
+        ("shown_57", "-" + "s" * 56), ("shown_58", "-" + "s" * 57),
+        ("shown_59", "-" + "s" * 58), ("shown_60", "-" + "s" * 59),
+        ("shown_61", "-" + "s" * 60),
         ("job_id_uuid", "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b"),
         ("job_id_dotted", "d.bm-draft-0017"),
         ("not_text_number", 7), ("not_text_list", ["a"]),

@@ -441,9 +441,10 @@ The loop:
    where the rest of the proof is; the archive is never committed.
    Once per rules refresh, after the grow cycle and before the
    next one starts, `python runner/tools/bluemonday_survivors.py`
-   (about two minutes): it rewrites `survivors.json` and adds its
-   line to `runs.jsonl`, and the ledger line names the survivor
-   count per reader. The survivors are the desk's to turn into
+   (about three minutes; every target is in its kill set, the
+   agent module's readers included): it rewrites `survivors.json`
+   and adds its line to `runs.jsonl`, and the ledger line names
+   the survivor count per reader. The survivors are the desk's to turn into
    seeds; a survivor the campaign thinks it can reach by growing
    is a Q to the desk naming the line. The grow's own aim is the
    live mutators `stats` names per target (today `t_case` and

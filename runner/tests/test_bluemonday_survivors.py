@@ -140,7 +140,11 @@ class ReportTest(unittest.TestCase):
         r = json.loads(raw)
         self.assertEqual(r["Agent-Stamp"], B.STAMP)
         self.assertEqual(r["kind"], "survivors")
-        self.assertEqual(r["through_agent"], sorted(S.THROUGH_AGENT))
+        # The set the run left out, as it was at that run: a list of
+        # target names (empty since the mutant reaches the agent
+        # module's readers too).
+        self.assertIsInstance(r["through_agent"], list)
+        self.assertTrue(set(r["through_agent"]) <= set(B.TARGETS))
         self.assertTrue(set(r["modules"]) <= set(S.MODULES))
         for name, m in r["modules"].items():
             self.assertEqual(m["mutants"], m["killed"] + m["survived"]
@@ -151,11 +155,51 @@ class ReportTest(unittest.TestCase):
                 self.assertEqual(set(s), {"index", "op", "line", "verdict",
                                           "text"})
 
-    def test_targets_for_follows_the_files_and_skips_the_agent_path(self):
+    def test_targets_for_follows_the_files(self):
         self.assertIn("wire", S.targets_for("verify"))
         self.assertIn("inbox", S.targets_for("transports"))
-        self.assertNotIn("local", S.targets_for("transports"))
+        self.assertIn("local", S.targets_for("transports"))
+        self.assertIn("queries", S.targets_for("security"))
         self.assertEqual(S.targets_for("no_such_module"), [])
+
+    def test_a_mutant_is_put_where_every_reader_holds_the_module(self):
+        """The corpus tool's alias, a module that imported the reader
+        under its own name, and the agent module's re-export of a
+        function all point at the mutant during a replay, and at the
+        real one after."""
+        import types
+        real = B.SEC
+        mutant = types.ModuleType(real.__name__)
+        mutant.__dict__.update(real.__dict__)
+
+        def regex_backtracks(_pattern):
+            return "mutant"
+
+        def validate_shared_secret(_secret):
+            return "mutant"
+        # The mutant's functions carry the real module's name, as a
+        # mutant executed under it does.
+        regex_backtracks.__module__ = real.__name__
+        validate_shared_secret.__module__ = real.__name__
+        mutant.regex_backtracks = regex_backtracks
+        mutant.validate_shared_secret = validate_shared_secret
+        from runner.ops import queries as QU
+        from runner.wire import verify as V
+        from runner import runner as R
+        held_before = (B.SEC, QU._security, V.validate_shared_secret,
+                       R.validate_shared_secret)
+        undo = S.rebind(real, mutant)
+        try:
+            self.assertIs(B.SEC, mutant)
+            self.assertIs(QU._security, mutant)
+            self.assertIs(V.validate_shared_secret, validate_shared_secret)
+            self.assertIs(R.validate_shared_secret, validate_shared_secret)
+            self.assertEqual(QU._security.regex_backtracks("a"), "mutant")
+        finally:
+            S.unbind(undo)
+        self.assertEqual((B.SEC, QU._security, V.validate_shared_secret,
+                          R.validate_shared_secret), held_before)
+        self.assertIsNone(B.SEC.regex_backtracks("a"))
 
     def test_every_reader_replays_the_same_twice(self):
         corpora = {t: B.load(B.corpus_path(t)) for t in B.TARGETS}

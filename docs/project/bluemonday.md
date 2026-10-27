@@ -356,7 +356,15 @@ not a verdict on the reader, and the response is in this order:
    them a hang the replay detects. The grow merges the seeds the
    corpus lacks before it starts, so the desk's seeds reach the
    campaign's next run with no step between; the campaign's
-   survivors run after it carries the count.
+   survivors run after it carries the count. The instrument then
+   learned to put a mutant where every reader holds the module --
+   the tool's alias, a module's own import of it, the agent
+   module's re-exports -- so the four targets that read through
+   the agent module joined the kill set and a module read only
+   through another's import (the pattern bound under `queries`)
+   is told apart; with the `queries` and `names` targets that is
+   2,357 mutants, 81 of them standing, every one named by kind in
+   the corpus README.
 
 The grow never idles: a saturated target still runs its share
 while the desk brings the next step, since a grow that keeps

@@ -183,9 +183,14 @@ accepted, refused or crash, and the same notes (the key a reader
 chose, a digest of what it returned, each operation's answer, the
 refusal's reason) -- has survived, and its line is what the next
 seeds are for. Each run adds a line of kind `survivors` to
-`runs.jsonl`. The targets that read through the agent module
-(`local`, `stash`, `mail`, `local_inbox`) are outside the kill set
-and the report says so.
+`runs.jsonl`. A mutant is put where every reader will meet it: the
+tool's own alias, every module that imported the reader under its
+own name, and the agent module's re-exports of its functions, each
+put back after the replay; so the targets that read through the
+agent module (`local`, `stash`, `mail`, `local_inbox`) are in the
+kill set, and a module one target reads only through another's
+import (the pattern bound under `queries`) is told apart too. The
+report's `through_agent` is the set a run left out, empty now.
 
 The survivors are turned into seeds by the desk, one line at a
 time (the seed functions name them: `pretty_cr`, `sig_last_not_hex`,
@@ -194,8 +199,9 @@ time (the seed functions name them: `pretty_cr`, `sig_last_not_hex`,
 `rank_*` and `lease_default_edge` board sequences), and the board
 sequence now records what the board logs through its own seam, so
 a line that only logs is a line the corpus reads. What remains
-after that round (the desk's own run over the seeded corpora: 65 of
-1,970, one of them a hang the replay detects as a timeout) is,
+after that round and the two targets that followed (the desk's own
+run over the seeded corpora, every target in the kill set: 81 of
+2,357, one of them a hang the replay detects as a timeout) is,
 reader by reader, the kind of mutant no input tells apart: in the
 cipher, the masking slack of GHASH and the key schedule (a mask
 one bit wider, a length field one byte shorter whose integer is
@@ -211,7 +217,12 @@ of a unit that already covers the string); in the board and the
 channel readers, a return nothing reads, the key names of a paths
 table the readers here never index, the directory name the inbox
 cannot hold as a file, a flag the next line overwrites, and the
-file's indentation. A line in that file is still a claim to
+file's indentation; in the result policy and its queries, a budget
+the caller already clamped, a digest the caller already computed
+from the same text, the one attestation read from either end of
+its list, and a senses answer the absent base directory decides
+alone; in the file-name rules, the leaf of a component that has no
+separator. A line in that file is still a claim to
 check when a reader changes: a survivor that was equivalent can
 stop being so, and the run after the change says which. The
 committed report is the campaign's last run; the campaign's next

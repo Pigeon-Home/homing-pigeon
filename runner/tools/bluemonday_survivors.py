@@ -17,13 +17,17 @@ reader from the real one, and the survivor's line is the next thing
 the campaign has to find an input for (the plan's section 8, step
 5). A killed mutant is a line the corpus already pins.
 
-The readers mutated are the ones the corpus tool calls directly by
-module (verify, send_job, protocol_v2, jobcrypto, transports, board,
-mailbox, dtlsproto, extensions); the targets that read through the
-agent module (local, stash, mail, local_inbox) are not in the kill
-set here, and the report says so. Each mutant runs in this process
-under an alarm on the platforms that have one, so a mutant that
-loops is a timeout, not a hang.
+A mutant is put where every reader will meet it: the corpus tool's
+own alias, and every reference to the module, to its functions and
+to its classes held by any loaded module of the project (the agent
+module re-exports readers by name, and a module imports another
+under its own alias), each put back after the replay. So the
+targets that read through the agent module (local, stash, mail,
+local_inbox) are in the kill set too, and a module one target
+reads only through another module's import (the pattern bound
+under the queries) is told apart as well. Each mutant runs in this
+process under an alarm on the platforms that have one, so a mutant
+that loops is a timeout, not a hang.
 
 The result is runner/tests/bluemonday/survivors.json, the latest
 run, and one line of kind "survivors" in runs.jsonl, the record of
@@ -59,10 +63,11 @@ MODULES = {
     "security": "SEC", "policy": "PO", "queries": "QU",
     "filenames": "FN",
 }
-# Targets whose checker reads through the agent module: a mutant of
-# a reader does not reach them through the alias, so they are not
-# evidence either way here.
-THROUGH_AGENT = {"local", "stash", "mail", "local_inbox"}
+# Targets whose checker reads through the agent module. The rebinding
+# in kill() puts a mutant where the agent module holds the reader
+# too, so these are in the kill set; the name stays in the report so
+# a reader of an older report knows what the set once left out.
+THROUGH_AGENT = set()
 
 _SWAP_CMP = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.Lt: ast.LtE,
              ast.LtE: ast.Lt, ast.Gt: ast.GtE, ast.GtE: ast.Gt,
@@ -296,6 +301,64 @@ def outcomes(targets, corpora):
     return out
 
 
+_RUNNER_DIR = os.path.join(ROOT, "runner") + os.sep
+
+
+def _project_modules():
+    """The loaded modules a mutant must reach: every module whose
+    file is under the runner's directory, whatever name it was
+    imported by (the package's, or a role folder's when the runner
+    was started as a script), the corpus tool itself included."""
+    for mod in list(sys.modules.values()):
+        if mod is None:
+            continue
+        path = getattr(mod, "__file__", None)
+        if isinstance(path, str) and os.path.abspath(path).startswith(
+                _RUNNER_DIR):
+            yield mod
+
+
+def rebind(real, mutant):
+    """Point every reference to the real module -- the module itself,
+    and its functions and classes re-exported by name -- held by any
+    loaded module of the project at the mutant's, and return the
+    undo list for unbind(). A module imports a reader under its own
+    alias (`from runner.guard import security as _security`) and the
+    agent module re-exports readers by name
+    (`answer_queries = _queries.answer_queries`); the mutant has to
+    sit in both places to be read."""
+    undo = []
+    for mod in _project_modules():
+        if mod is real or mod is mutant:
+            continue
+        for attr, value in list(vars(mod).items()):
+            if value is real:
+                replacement = mutant
+            elif (isinstance(value, (types.FunctionType, type))
+                    and getattr(value, "__module__", None) == real.__name__
+                    and getattr(real, getattr(value, "__name__", ""), None)
+                    is value):
+                replacement = getattr(mutant, value.__name__, None)
+                if replacement is None:
+                    continue
+            else:
+                continue
+            undo.append((mod, attr, value))
+            try:
+                setattr(mod, attr, replacement)
+            except (AttributeError, TypeError):
+                undo.pop()
+    return undo
+
+
+def unbind(undo):
+    for mod, attr, value in reversed(undo):
+        try:
+            setattr(mod, attr, value)
+        except (AttributeError, TypeError):
+            pass
+
+
 def kill(alias, text, targets, corpora, baseline, timeout=20):
     """"killed", "survived", "timeout" or "broken" for one mutant of
     the module behind `alias`, replayed over the corpora of
@@ -305,6 +368,7 @@ def kill(alias, text, targets, corpora, baseline, timeout=20):
         mod = load_mutant(real, text)
     except Exception:
         return "broken"      # the mutant does not even import
+    undo = rebind(real, mod)
     setattr(B, alias, mod)
     old = _alarm(timeout)
     try:
@@ -316,6 +380,7 @@ def kill(alias, text, targets, corpora, baseline, timeout=20):
     finally:
         _disarm(old)
         setattr(B, alias, real)
+        unbind(undo)
     return "killed" if got != baseline else "survived"
 
 

@@ -4,6 +4,26 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.62 - 2026-10-26
+
+- **blueMonday's survivors instrument reaches every reader.** A
+  mutant is put where every reader holds the module -- the tool's
+  own alias, every module that imported the reader under its own
+  name, the agent module's re-exports of its functions -- and put
+  back after the replay, so the four targets that read through the
+  agent module (`local`, `stash`, `mail`, `local_inbox`) are in the
+  kill set and a module one target reads only through another's
+  import (the pattern bound under `queries`) is told apart: 2,357
+  mutants over fifteen targets, 81 standing, each named by kind in
+  the corpus README. The seeds the new survivors named are in the
+  seed functions (a grep over more lines than it may hand back, a
+  tail past its cap, the bound's edges, lone-surrogate bodies on the
+  wire, the shown length of a refused name), and the `queries`
+  checker runs an entry whose pattern the bound names over lines
+  cut short, so a reader that fails to refuse it answers in bounded
+  time and is still told apart.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.61 - 2026-10-26
 
 - **blueMonday's fifteenth target, `names`.** One name a sender
