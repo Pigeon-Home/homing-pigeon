@@ -4333,3 +4333,35 @@ when done, the proving commit or run. Newest first.
   this bank -- the module set has
   outgrown the two-minute measure --
   so its record rides grow 13's bank.
+- rules refreshed 2026-10-27 03:47 PDT
+  (standing orders incl. section M as
+  the only effort, the blueMonday plan;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules).
+  blueMonday 13: 1109 entries, 4624 arcs, 4 crashes filed.
+  Two starts: the first (seed 6250) was
+  killed by a VM restart about thirteen
+  minutes in with nine target records
+  banked in the tree and nothing kept;
+  the relaunch (seed 6255) ran its full
+  slot, resources on target (box cpu
+  82%, wall 59m20s), and ended on the
+  crash exit again -- the Q90 break on
+  `query` four more times, entries
+  52a3d2d17c1716ee, 6b7b77b5733f6ced,
+  8599f401ca4094fa and 2dda176068286530,
+  filed as Q91; the crashes file holds
+  eight now. +67 entries and +245
+  arcs: the Q87-Q89 flag and form seeds
+  merged at this head (board_mail +18
+  entries the largest), and the grow
+  kept 11 (query 6, queries 2, v2_mail
+  2, local 1). 396,887 children tried
+  over its 27 run records, all of them
+  in the archive. The grow-12 survivors
+  run was killed by the same restart
+  that took grow 13's first start,
+  about eighteen minutes in and
+  unfinished; it reruns beside grow 14
+  and its record rides that bank.
