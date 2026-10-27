@@ -432,8 +432,11 @@ not a verdict on the reader, and the response is in this order:
    return no caller reads, the root path no reader of the paths
    dict asks for, and the done folder's name a directory check
    skips either way; in `startup`, the board kind the subject gate
-   never admits. A reading starts from this list; a survivor not
-   on it is a seed to write.
+   never admits; in `filenames`, the leaf split of the device-name
+   check, which every caller on the surface hands a single
+   component (the full-path form is the unit test's), and the
+   split's limit past the first dot. A reading starts from this
+   list; a survivor not on it is a seed to write.
 
 The grow never idles: a saturated target still runs its share
 while the desk brings the next step, since a grow that keeps
