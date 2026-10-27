@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.3 - 2026-10-27
+
+- **Ships the board-mail checker fix (Q97, `260f9bc`).** A
+  second copy of the same message with `task_timeout` 0
+  reopens the lease at once and leaves the task open. The
+  checker was grading the first offer, a re-offer of a claim
+  that was live when it was sent, against that later board.
+  Each reply is graded against the board as it stood when
+  that reply went out. The reader is unchanged. A bare-string
+  `capabilities` is still no capabilities. Promote dropped
+  the one crash: fixed, and it reached no new arc.
+
 ## 3.14.2 - 2026-10-27
 
 - **Every secret has a name (Q94).** A secret's name by default is

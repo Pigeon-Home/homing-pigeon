@@ -87,7 +87,7 @@ as no capabilities: section 13 makes it a list, and a worker that
 sends a string claims nothing, which is the safe reading. The
 crash replays as accepted and `promote` retired it as redundant.
 
-**Applied in:** the commit that carries this answer
+**Applied in:** `260f9bc`, shipped as 3.14.3
 (`runner/tools/de_dust_corpus.py`, the board_mail checker).
 
 **Note (Claude, stamp 60000b3a, 2026-10-27, at the conductor's
