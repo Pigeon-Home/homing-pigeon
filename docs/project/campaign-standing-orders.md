@@ -4211,3 +4211,20 @@ when done, the proving commit or run. Newest first.
   grow 7's, which waited out a GitHub
   connection failure on this rig; both
   push together below.
+- rules refreshed 2026-10-26 20:58 PDT
+  (standing orders incl. section M as
+  the only effort, the blueMonday plan;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules).
+  blueMonday 9: 650 entries, 2678 arcs, 0 crashes filed. A
+  full steered hour on fifteen targets
+  (seed 6211, the archive recording):
+  +7 entries banked (manifest +3, local
+  +2, dtls +1, board_ops +1) and +11
+  arcs; 914,150 children tried over its
+  run records, all of them in the
+  archive. A fifteenth target, secret,
+  stands in the tree now. The grow's
+  own resources line reads on target
+  (box cpu 84%, wall 1h01m).
