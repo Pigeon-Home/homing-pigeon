@@ -1,4 +1,6 @@
 {
+  "bluemonday": 1,
+  "target": "dtls",
   "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
   "arcs": [
     [
@@ -1486,7 +1488,5 @@
       1575,
       1576
     ]
-  ],
-  "bluemonday": 1,
-  "target": "dtls"
+  ]
 }

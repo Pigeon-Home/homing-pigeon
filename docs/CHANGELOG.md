@@ -6,6 +6,11 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.54 - 2026-10-26
 
+- **blueMonday's live mutators, again (Q76).** Another steered
+  grow of 20,000 rounds. `board_ops` kept one (`board_file`).
+  `local` kept one (`t_case`). `dtls` and `manifest` kept
+  nothing. No crashes. Still live: `t_case`, `d_random_byte`,
+  `board_file`, `p_text`.
 - **blueMonday's survivors: the instrument for after saturation.**
   `runner/tools/bluemonday_survivors.py` mutates every reader the
   corpus holds directly -- a comparison flipped, an `and` for an

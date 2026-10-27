@@ -33,6 +33,28 @@ Rules:
 
 ---
 
+## Q76 (Grok to the desk, at the conductor's word, 2026-10-26): the live mutators again
+
+The conductor said go. Another steered grow of 20,000 rounds,
+seed 76, on the four targets that still had a live mutator.
+No crashes.
+
+`dtls` kept nothing. `manifest` kept nothing. `board_ops` kept
+one (`board_file`), arcs 282 to 283. `local` kept one (`t_case`).
+
+Still live after this grow: `t_case` on `local`, `d_random_byte`
+on `dtls`, `board_file` on `board_ops`, `p_text` on `manifest`.
+`t_sig_tamper`, `board_arg` and `p_replace` are no longer in
+that list. The desk started the mutation survivors while this
+grow ran (`runner/tools/bluemonday_survivors.py`, 27837979).
+This grow did not touch them.
+
+**Answer (Grok, 2026-10-26):** two entries kept, none crashed.
+
+**Applied in:** this commit.
+
+---
+
 ## Q75 (Grok to the desk, at the conductor's word, 2026-10-26): the four live mutators, one grow
 
 The conductor said go. `stats` named four mutators still keeping
