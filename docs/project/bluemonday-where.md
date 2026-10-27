@@ -23,13 +23,17 @@ The questions are `docs/use/questions.md`. The plan is
 | Q74 | the posted capture's shape, rebuilt | [`6d627fe0d414`](https://github.com/Pigeon-Home/homing-pigeon/commit/6d627fe0d414) |
 | Q75 | one steered grow of the four live mutators | [`0345e65eee8f`](https://github.com/Pigeon-Home/homing-pigeon/commit/0345e65eee8f) |
 | Q76 | the same four again | [`7e6166fcdf01`](https://github.com/Pigeon-Home/homing-pigeon/commit/7e6166fcdf01) |
-| Q77 | a third grow of the live mutators | [`f5113b6`](https://github.com/Pigeon-Home/homing-pigeon/commit/f5113b6) |
-| Q78 | a non-finite priority on disk poisoned save | [`880071d`](https://github.com/Pigeon-Home/homing-pigeon/commit/880071d) |
-| Q79 | a non-finite float under any other key | [`94c99d9`](https://github.com/Pigeon-Home/homing-pigeon/commit/94c99d9) |
-| Q80 | local, the grow the crash cut off | [`f2388fb`](https://github.com/Pigeon-Home/homing-pigeon/commit/f2388fb) |
-| Q81 | the two that were still live | [`303ab27`](https://github.com/Pigeon-Home/homing-pigeon/commit/303ab27) |
-| Q82 | local, again | [`59d27db`](https://github.com/Pigeon-Home/homing-pigeon/commit/59d27db) |
-| Q83 | local, a third time | the commit that adds this row |
+| Q77 | a third grow of the live mutators | [`f5113b67772c`](https://github.com/Pigeon-Home/homing-pigeon/commit/f5113b67772c) |
+| Q78 | a non-finite priority on disk poisoned save | [`880071d4e4f7`](https://github.com/Pigeon-Home/homing-pigeon/commit/880071d4e4f7) |
+| Q79 | a non-finite float under any other key | [`94c99d9283b8`](https://github.com/Pigeon-Home/homing-pigeon/commit/94c99d9283b8) |
+| Q80 | local, the grow the crash cut off | [`f2388fb98f8e`](https://github.com/Pigeon-Home/homing-pigeon/commit/f2388fb98f8e) |
+| Q81 | the two that were still live | [`303ab2790ac2`](https://github.com/Pigeon-Home/homing-pigeon/commit/303ab2790ac2) |
+| Q82 | local, again | [`59d27db0216b`](https://github.com/Pigeon-Home/homing-pigeon/commit/59d27db0216b) |
+| Q83 | local, a third time | [`33ec38e489ca`](https://github.com/Pigeon-Home/homing-pigeon/commit/33ec38e489ca) |
+
+Q77 through Q83 were checked as ancestors of `main` on
+2026-10-26. Each id above is that commit. The working tree was
+clean. Nothing in this table was still waiting on a later commit.
 
 Q74 does not copy the capture. The capture stays at
 `docs/reports/live-2026-10-25/`. The seeds are invented ids
