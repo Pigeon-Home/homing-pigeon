@@ -31,5 +31,18 @@ Q74 does not copy the capture. The capture stays at
 `docs/reports/live-2026-10-25/`. The seeds are invented ids
 under the corpus secret.
 
-Not started: the mutation survivors, and any further live
-capture the conductor has not named.
+The desk's lane in the same days, under the same plan:
+
+| What | Commit |
+|------|--------|
+| the board under the sequence contract (`board_ops`), three board findings fixed | [`661ad958`](https://github.com/Pigeon-Home/homing-pigeon/commit/661ad958) |
+| the channel inbox under the sequence contract (`inbox`) | [`e8ed200f`](https://github.com/Pigeon-Home/homing-pigeon/commit/e8ed200f) |
+| the local inbox under the sequence contract (`local_inbox`), a directory named `.json` left alone | [`34bc052f`](https://github.com/Pigeon-Home/homing-pigeon/commit/34bc052f) |
+| the provenance contract on the verifiers; a result subject is one line | [`3c97ec0f`](https://github.com/Pigeon-Home/homing-pigeon/commit/3c97ec0f) |
+| the generated grammar dictionary (`grammar.json`) | [`01aa1ffe`](https://github.com/Pigeon-Home/homing-pigeon/commit/01aa1ffe) |
+| steered grows, the archive, the learning dictionary, the recovery seeds (Muse's four) | [`5b15a9fb`](https://github.com/Pigeon-Home/homing-pigeon/commit/5b15a9fb) |
+| the mutation survivors (`runner/tools/bluemonday_survivors.py`, `survivors.json`) | [`27837979`](https://github.com/Pigeon-Home/homing-pigeon/commit/27837979) |
+| the survivors' seeds, the `secret` target | [`b0524bfb`](https://github.com/Pigeon-Home/homing-pigeon/commit/b0524bfb), [`5e981e21`](https://github.com/Pigeon-Home/homing-pigeon/commit/5e981e21), [`d6a87250`](https://github.com/Pigeon-Home/homing-pigeon/commit/d6a87250), [`6a6410cd`](https://github.com/Pigeon-Home/homing-pigeon/commit/6a6410cd), [`564efb9b`](https://github.com/Pigeon-Home/homing-pigeon/commit/564efb9b) |
+
+Not started: any further live capture the conductor has not
+named (phase 5).
