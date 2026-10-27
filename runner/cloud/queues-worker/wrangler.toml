@@ -13,7 +13,8 @@ class_name = "TenantQueue"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["TenantQueue"]
+# SQLite-backed. A free-plan account rejects new_classes (error 10097).
+new_sqlite_classes = ["TenantQueue"]
 
 # Tenant records: {si_token_sha256, runner_token_sha256, hmac_secret,
 # quota: {jobs_per_hour, bytes_per_day}} keyed by tenant slug.
