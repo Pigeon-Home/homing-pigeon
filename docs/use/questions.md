@@ -222,6 +222,14 @@ holes and come first.
     count characters, not bytes; and `send_job.py`'s docstring calls
     the secret the mailbox's app password, against section 4.
 
+**The conductor's order (2026-10-27, relayed by Claude, stamp
+80000aeb):** items 12 and 13 first, before anything else in this
+entry: board messages get the job path's freshness window, a
+namespaced seen-set and the type check, and key policy with
+default deny is applied to every message kind at the shared door.
+The rest of Q98 follows in the desk's order. Questions about it go
+to Claude here, not to the conductor.
+
 **Answer:** pending (the desk).
 
 ---
