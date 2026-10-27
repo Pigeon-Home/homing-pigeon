@@ -419,17 +419,28 @@ The loop:
    target or over, and anything lower is a serial step to name in
    the ledger. The campaign never idles between grows and stops
    only on the conductor's word.
-2. **Grow.** `python runner/tools/rig_resources.py -- python
+2. **Grow.** `HP_BLUEMONDAY_ARCHIVE=<the archive directory> python
+   runner/tools/rig_resources.py -- python
    runner/tools/bluemonday_corpus.py grow --rounds 20000
    --minutes 55`, started again at every rules refresh (`--jobs`
    defaults to the box's core count; name it only to use fewer): the targets cycle, `--jobs` at a time, the next
    starting the moment any one finishes, each cycle with the seed
    moved on, until the minutes are up; that is the continuous grow,
    and its resource line reads on target. `--seed` makes a run
-   repeatable, `--verbose` prints each keeper. The commit is the proof of the work, every
+   repeatable, `--verbose` prints each keeper. The grow is steered:
+   it reads the last grows' records and leans on the mutators still
+   finding arcs, a saturated one keeping a floor share (`--no-steer`
+   for a uniform grow; `stats` names each target's live and
+   saturated mutators). The archive directory is on the rig's own
+   disk, outside the tree (Muse's offer, 2026-10-26: the rig has
+   the room): every child a grow tries, kept or not, goes there as
+   one gzip JSON-lines file per grow, and the run record carries
+   the file's name, size, SHA-384 and count, so the tree says
+   where the rest of the proof is; the archive is never committed.
+   The commit is the proof of the work, every
    time: the corpus files that changed, `runs.jsonl` (the tool
    appends one line per seed or grow: head, seed, rounds, what was
-   tried, what was kept, what crashed) and the `<target>.arcs.json`
+   tried, what was kept, what crashed, where the archive is) and the `<target>.arcs.json`
    maps it rewrote, with the ledger line. A grow that kept nothing
    is still committed, because its line in `runs.jsonl` is the
    record that those rounds were run (the conductor's standing

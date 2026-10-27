@@ -159,11 +159,22 @@ the result must carry exactly that.
 dictate, built by `python runner/tools/bluemonday_corpus.py
 dictionary`: every backticked token without a space, every number
 the text states with its neighbours on both sides, every JSON
-example with `sig` removed. The `t_grammar` and `p_grammar`
-mutators draw on it for every target, and the examples seed
-`wire`, `cloud` and `v2`. It is rebuilt by the desk when the
-drafts change; the test holds it to its shape, not to the drafts'
-current text.
+example with `sig` removed -- and, under `learned`, the tokens the
+search itself found: the keys and short string values of every
+grown entry that reached a new arc, each with the target and entry
+it came from, capped. The `t_grammar` and `p_grammar` mutators draw
+on both, and the examples seed `wire`, `cloud` and `v2`. It is
+rebuilt by the desk when the drafts change or the corpus has grown;
+the test holds it to its shape, not to the drafts' current text.
+
+A grow is steered: it reads the last grows' records for the target
+and chooses mutators by their keep rate, a saturated one keeping a
+floor share of the best one's (saturation is per mutator, and
+`stats` names each target's live and saturated mutators). With
+`--archive <dir>` (or `HP_BLUEMONDAY_ARCHIVE`) every child a grow
+tries, kept or not, is written to one gzip JSON-lines file per grow
+in that directory, outside the tree; the run record's `archive`
+member carries the file's name, size, SHA-384 and count.
 
 The refusal types, so a grow never files one as a crash (Q63):
 for the verifiers (`wire`, `cloud`, `v2`) the refusal is

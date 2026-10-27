@@ -18,6 +18,29 @@ facts a reader may need to cite. Git history carries the rest.
   moved to a boundary, or a key respelled as a draft member. The
   drafts' examples seed `wire`, `cloud` and `v2`. The desk rebuilds
   the dictionary when the drafts change.
+- **blueMonday steers, archives and learns (Muse's four, from the
+  grow seat).** Saturation is per mutator: `stats` names each
+  target's live and saturated mutators from the last grows'
+  records, and a grow reads the same records and chooses mutators
+  by their keep rate, a saturated one keeping a floor share of the
+  best one's (`--no-steer` for the uniform grow; the record says
+  `steered`). `--archive <dir>` (`HP_BLUEMONDAY_ARCHIVE`) writes
+  every child a grow tries, kept or not, to one gzip JSON-lines
+  file per grow on a disk outside the tree -- the rig's, which has
+  the room -- and the run record carries the file's name, size,
+  SHA-384 and count. The dictionary learns: `dictionary` also
+  harvests the keys and short values of every grown entry that
+  reached a new arc into a `learned` section with its provenance,
+  and the grammar mutators draw on both. The sequence seeds carry
+  the recovery shapes: two different poisons before the good one on
+  `inbox` and `local_inbox`, a run of refusals before the happy
+  path on `board_ops`.
+- **Every guard subprocess reads from nothing.** The pre-push
+  guard's test runs, the simulated surface and the in-process leak
+  run take `stdin` from the null device: a test that reaches the
+  terminal (the install wizard behind an unpatched module copy)
+  fails in the open instead of waiting on an inherited stdin that
+  never delivers.
 - **blueMonday's channel inbox, under the sequence contract.**
   `inbox` holds an extension's whole inbox as a peer or a crash
   may have left it -- files, symlinks and directories, in the

@@ -2003,6 +2003,13 @@ def seeds_board_ops():
         ("lease_unreadable", {"file": _board_file(dict(
             claimed, claimed_at="yesterday")), "ops": [
             ["reoffer", 0], ["offer", "worker-b", ["shell"], "", {}]]}),
+        ("refusals_then_good", {"file": "{not json", "ops": [
+            ["submit", "not a task"], ["submit", {"task_id": "../x"}],
+            ["complete", "bm-task-0001", {}], ["approve", {"task_id": 1}],
+            ["offer", "nobody", ["shell"], "", cfg],
+            ["submit", _task()],
+            ["offer", "worker-a", ["shell"], "ops", cfg],
+            ["complete", "bm-task-0001", {"exit_code": 0}]]}),
         ("empty", {"file": None, "ops": []}),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
@@ -2710,6 +2717,14 @@ def seeds_inbox():
             _chan("bm-0009-b.job.txt", good),
             _chan("bm-0009-c.job.txt", "\udc80\udc81"),
             _chan("bm-0009-d.job.txt", good)]}),
+        # Two different poisons, then the good one: the first
+        # refusal must leave nothing the second trips on.
+        ("poison_poison_good", {"files": [
+            _chan("bm-0016-a.job.txt", "no envelope here"),
+            _chan("bm-0016-b.job.txt", "\udc80\udc81"),
+            {"name": "bm-0016-c.job.txt", "link": "/srv/example/nowhere"},
+            {"name": "bm-0016-d.job.txt", "fill": TR.FILE_MAX_BYTES + 1},
+            _chan("bm-0016-e.job.txt", good)]}),
         ("no_suffix", {"files": [_chan("bm-0010", good),
                                  _chan("bm-0010.txt", good),
                                  _chan("bm-0010.job", good)]}),
@@ -2766,6 +2781,11 @@ def seeds_local_inbox():
         ("poison_then_good", {"files": [
             _chan("bm-0010-a.json", "{"), dict(live, name="bm-0010-b.json"),
             _chan("bm-0010-c.json", "\udc80"), dict(live, name="bm-0010-d.json")]}),
+        ("poison_poison_good", {"files": [
+            _chan("bm-0017-a.json", "{"), _chan("bm-0017-b.json", "\udc80"),
+            {"name": "bm-0017-c.json", "link": "/srv/example/nowhere"},
+            _chan("bm-0017-d.json", V.sign_payload(_job(), SECRET)),
+            dict(live, name="bm-0017-e.json")]}),
         ("not_json_names", {"files": [_chan("bm-0011.txt", good),
                                       _chan("bm-0011", good),
                                       _chan("bm-0011.JSON", good),
@@ -2986,6 +3006,50 @@ def build_grammar(paths):
             "examples": examples}
 
 
+LEARN_CAP = 400            # learned tokens kept, newest grows first
+_LEARN_RE = re.compile(r'"([^"\\]{1,32})"')
+
+
+def harvest(entries, target, known):
+    """Tokens the search found: the keys and short string values of
+    every grown (not seeded) entry that is not already a word of
+    the drafts, each with where it came from (Muse, 2026-10-26: the
+    kept entries are the other half of the evidence)."""
+    out = {}
+    for e in entries:
+        if e.get("mutator") == "seed":
+            continue
+        found = []
+        if e.get("kind") == "payload":
+            for _path, v in _paths(e["data"]):
+                if isinstance(v, dict):
+                    found.extend(k for k in v if isinstance(k, str))
+                elif isinstance(v, str):
+                    found.append(v)
+        elif isinstance(e.get("data"), str):
+            found.extend(_LEARN_RE.findall(e["data"]))
+        for tok in found:
+            if (0 < len(tok) <= 32 and tok.isascii() and tok.isprintable()
+                    and " " not in tok and tok not in known
+                    and tok not in out):
+                out[tok] = f"{target}:{e['id']}"
+    return out
+
+
+def learn(grammar_doc, corpora):
+    """The dictionary with its learned section rebuilt from the
+    corpora {target: entries}: tokens the grows found, capped."""
+    known = set(grammar_doc.get("tokens") or [])
+    learned = {}
+    for target in sorted(corpora):
+        for tok, src in harvest(corpora[target], target, known).items():
+            learned.setdefault(tok, src)
+    rows = sorted(learned.items())[:LEARN_CAP]
+    doc = dict(grammar_doc)
+    doc["learned"] = [{"token": t, "from": src} for t, src in rows]
+    return doc
+
+
 def grammar():
     """The committed dictionary, read once; empty when absent."""
     global _GRAMMAR
@@ -2995,13 +3059,16 @@ def grammar():
                 _GRAMMAR = json.load(fh)
         except (OSError, ValueError):
             _GRAMMAR = {"tokens": [], "numbers": [], "examples": []}
+        _GRAMMAR["words"] = list(_GRAMMAR.get("tokens") or []) + [
+            r["token"] for r in _GRAMMAR.get("learned") or []
+            if isinstance(r, dict) and isinstance(r.get("token"), str)]
     return _GRAMMAR
 
 
 def t_grammar(rng, text, corpus):
     """A word of the drafts dropped into the text: at a random
     position, or in place of the content of a quoted string."""
-    tokens = grammar().get("tokens") or []
+    tokens = grammar().get("words") or []
     if not tokens:
         return text
     tok = rng.choice(tokens)
@@ -3018,7 +3085,7 @@ def p_grammar(rng, value, corpus):
     boundary number of the drafts; or a number anywhere moved to a
     boundary; or a key respelled as a draft member name."""
     g = grammar()
-    tokens, numbers = g.get("tokens") or [], g.get("numbers") or []
+    tokens, numbers = g.get("words") or [], g.get("numbers") or []
     if not tokens or not numbers:
         return value
     objects = [(p, v) for p, v in _paths(value) if isinstance(v, dict)]
@@ -3621,11 +3688,22 @@ def _chan_spec(files, mode):
     return spec
 
 
-def mutate(rng, entry, corpus, target):
+def pick(rng, pool, weights=None):
+    """One mutator from a pool: uniformly, or by the weights a grow
+    keeps per mutator name (a saturated mutator keeps a floor share,
+    never none: steered, not abandoned)."""
+    if not weights:
+        return rng.choice(pool)
+    ws = [weights.get(m.__name__, 1.0) for m in pool]
+    return rng.choices(pool, weights=ws)[0]
+
+
+def mutate(rng, entry, corpus, target, weights=None):
     """One child of an entry: (data, mutator name), or None when the
     mutation is a no-op or breaks the size caps. A payload child is
     read back through JSON before it is checked, so the checker sees
-    exactly what the corpus file will carry."""
+    exactly what the corpus file will carry. `weights`, when given,
+    steer the choice within the text and payload pools."""
     if entry["kind"] == "text":
         if target == "mail":
             pool = MAIL_MUTATORS
@@ -3633,7 +3711,7 @@ def mutate(rng, entry, corpus, target):
             pool = DTLS_MUTATORS
         else:
             pool = TEXT_MUTATORS
-        mut = rng.choice(pool)
+        mut = pick(rng, pool, weights)
         data = mut(rng, entry["data"], corpus)
         name = mut.__name__
         if len(data.encode("utf-8", "surrogatepass")) > MAX_TEXT:
@@ -3648,7 +3726,7 @@ def mutate(rng, entry, corpus, target):
     elif target == "local_inbox":
         data, name = _inbox_mutate(rng, entry["data"], corpus, modes=False)
     else:
-        mut = rng.choice(PAYLOAD_MUTATORS)
+        mut = pick(rng, PAYLOAD_MUTATORS, weights)
         data = mut(rng, entry["data"], corpus)
         name = mut.__name__
     if entry["kind"] == "payload":
@@ -3875,18 +3953,25 @@ class Session:
         for e in self.entries:
             self.run(e)
 
-    def grow(self, rng, rounds, log=None):
+    def grow(self, rng, rounds, log=None, history=None, archive=None):
         """Mutate from the corpus for `rounds` children; keep each one
-        that reaches a new arc. Returns the entries added."""
+        that reaches a new arc. Returns the entries added. `history`
+        is {name: (tried, kept)} from earlier grows of this target,
+        and with it the choice of mutator is steered toward the ones
+        still finding arcs (Muse, 2026-10-26: saturation is per
+        mutator). `archive`, when given, is called with a record of
+        every child tried, kept or not."""
         added = []
         self.tried = 0
         self.mutators_tried = {}
         self.mutators_kept = {}
         if not self.entries:
             return added
+        history = dict(history or {})
+        weights = steering(history) if history else None
         for n in range(rounds):
             parent = rng.choice(self.entries)
-            child = mutate(rng, parent, self.entries, self.target)
+            child = mutate(rng, parent, self.entries, self.target, weights)
             if child is None:
                 continue
             data, name = child
@@ -3895,11 +3980,20 @@ class Session:
                 continue
             self.tried += 1
             self.mutators_tried[name] = self.mutators_tried.get(name, 0) + 1
-            outcome, new, _dt = self.run(entry)
+            outcome, new, dt = self.run(entry)
+            if archive is not None:
+                archive({"id": entry["id"], "from": parent["id"],
+                         "mutator": name, "kind": entry["kind"],
+                         "data": data, "outcome": outcome, "arcs": new,
+                         "ms": round(dt * 1000, 3),
+                         "crash": str(self.crashes[-1][1])
+                         if outcome == "crash" else None})
             if outcome == "crash":
                 if log:
                     log(f"  crash at round {n}: {self.crashes[-1][1]}")
                 continue
+            tried, kept = history.get(name, (0, 0))
+            history[name] = (tried + 1, kept + (1 if new else 0))
             if new:
                 entry["arcs"] = new
                 self.entries.append(entry)
@@ -3909,6 +4003,8 @@ class Session:
                 if log:
                     log(f"  +{new:3d} arcs  {name:14s} {entry['id']}  "
                         f"({outcome})")
+            if weights is not None and self.tried % 200 == 0:
+                weights = steering(history)
         return added
 
     def shrink(self, entry, crash):
@@ -4024,7 +4120,8 @@ def cmd_seed(args, out=print):
     return 0
 
 
-def grow_commands(targets, rounds, seed, verbose):
+def grow_commands(targets, rounds, seed, verbose, archive=None,
+                  no_steer=False):
     """One `grow` subprocess command per target, for --jobs."""
     out = []
     for target in targets:
@@ -4033,8 +4130,47 @@ def grow_commands(targets, rounds, seed, verbose):
                "--seed", str(seed), "--jobs", "1"]
         if verbose:
             cmd.append("--verbose")
+        if archive:
+            cmd += ["--archive", archive]
+        if no_steer:
+            cmd.append("--no-steer")
         out.append((target, cmd))
     return out
+
+
+class Archive:
+    """Every child a grow tried, kept or not, as gzip JSON lines on a
+    disk outside the tree (Muse's offer, 2026-10-26): the search
+    itself, where the corpus keeps only what it found. The run
+    record carries the file's name, size, digest and count, so the
+    tree says where the rest of the proof is."""
+
+    def __init__(self, directory, target, seed):
+        import gzip
+        os.makedirs(directory, exist_ok=True)
+        when = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        self.name = f"{target}-{when}-{seed}.jsonl.gz"
+        self.path = os.path.join(directory, self.name)
+        self.count = 0
+        self._fh = gzip.open(self.path, "wt", encoding="utf-8",
+                             newline="\n")
+        self._fh.write(json.dumps({"bluemonday": 1, "archive": target,
+                                   "seed": seed, "Agent-Stamp": STAMP},
+                                  ensure_ascii=True) + "\n")
+
+    def add(self, record):
+        self._fh.write(json.dumps(record, ensure_ascii=True,
+                                  sort_keys=True) + "\n")
+        self.count += 1
+
+    def close(self):
+        self._fh.close()
+        digest = hashlib.sha384()
+        with open(self.path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 16), b""):
+                digest.update(chunk)
+        return {"file": self.name, "bytes": os.path.getsize(self.path),
+                "sha384": digest.hexdigest(), "tried": self.count}
 
 
 def run_parallel(commands, jobs, out=print, spawn=None, minutes=0.0,
@@ -4106,8 +4242,10 @@ def cmd_grow(args, out=print):
             f"{min(args.jobs, len(targets))} targets at a time"
             + (f", for {minutes:g} minutes" if minutes else ""))
         return run_parallel(grow_commands(targets, rounds, seed,
-                                          args.verbose), args.jobs,
-                            out=out, minutes=minutes)
+                                          args.verbose,
+                                          getattr(args, "archive", None),
+                                          getattr(args, "no_steer", False)),
+                            args.jobs, out=out, minutes=minutes)
     out(f"blueMonday grow: {rounds} rounds, rng seed {seed}")
     status = 0
     for target in targets:
@@ -4119,23 +4257,36 @@ def cmd_grow(args, out=print):
             continue
         session = Session(target, entries)
         t0 = time.perf_counter()
+        no_steer = getattr(args, "no_steer", False)
+        where = getattr(args, "archive", None)
+        history = None if no_steer else mutator_history(target)
+        archive = Archive(where, target, seed) if where else None
 
         def work():
             session.baseline()
             before = len(session.tracer.arcs)
             added = session.grow(rng, rounds, log=out if args.verbose
-                                 else None)
+                                 else None, history=history,
+                                 archive=archive.add if archive else None)
             return before, added
-        before, added = _with_rig(work)
+        try:
+            before, added = _with_rig(work)
+        finally:
+            archived = archive.close() if archive else None
         if added:
             save(corpus_path(target), target, session.entries)
         write_arcs(target, session.tracer.arcs)
+        extra = {}
+        if archived:
+            extra["archive"] = archived
+        if history is not None:
+            extra["steered"] = True
         record_run(_run_record(
             "grow", target, session,
             {"entries": len(entries), "arcs": before}, added,
             time.perf_counter() - t0, rounds=rounds, seed=seed,
             tried=session.tried, mutators_tried=session.mutators_tried,
-            mutators_kept=session.mutators_kept))
+            mutators_kept=session.mutators_kept, **extra))
         out(f"{target}: {len(entries)} -> {len(session.entries)} entries, "
             f"arcs {before} -> {len(session.tracer.arcs)}, "
             f"{session.outcomes['crash']} crashes, slowest "
@@ -4276,11 +4427,14 @@ def cmd_promote(args, out=print):
 
 
 def last_grow(target):
-    """The newest grow record for a target in runs.jsonl, or None."""
+    """The newest grow record for a target in runs.jsonl (by the time
+    it ran), or None."""
     last = None
     for record in load_runs():
         if record.get("kind") == "grow" and record.get("target") == target:
-            last = record
+            if last is None or str(record.get("when", "")) >= str(
+                    last.get("when", "")):
+                last = record
     return last
 
 
@@ -4297,6 +4451,51 @@ def load_runs():
                 if "kind" in obj:
                     out.append(obj)
     return out
+
+
+STEER_FLOOR = 0.1          # a saturated mutator's share of the best one's
+
+
+def steering(history):
+    """Weights per mutator name from {name: (tried, kept)}: the keep
+    rate with a prior, floored at STEER_FLOOR of the best, so the
+    rounds go where the arcs still are and no mutator is abandoned."""
+    rates = {name: (kept + 1) / (tried + 4) for name, (tried, kept)
+             in history.items()}
+    if not rates:
+        return None
+    best = max(rates.values())
+    return {name: max(rate, best * STEER_FLOOR) for name, rate in rates.items()}
+
+
+def mutator_history(target, grows=5):
+    """{name: (tried, kept)} summed over the last `grows` grow records
+    of a target, the memory a steered grow starts from."""
+    # By the time each grow ran, not by its place in the file: the
+    # records of several lanes merge in commit order.
+    recs = sorted((r for r in load_runs()
+                   if r.get("kind") == "grow" and r.get("target") == target),
+                  key=lambda r: str(r.get("when", "")))
+    history = {}
+    for rec in recs[-grows:]:
+        tried = rec.get("mutators_tried") or {}
+        kept = rec.get("mutators_kept") or {}
+        for name, n in tried.items():
+            t, k = history.get(name, (0, 0))
+            history[name] = (t + int(n), k + int(kept.get(name, 0)))
+    return history
+
+
+def mutator_saturation(target, grows=3, floor=100):
+    """(live, saturated): the mutators that kept something over the
+    last grows, and the ones tried at least `floor` times that kept
+    nothing (Muse, 2026-10-26: saturation is per mutator, and a
+    target reads unsaturated while one of its mutators is live)."""
+    history = mutator_history(target, grows)
+    live = sorted(n for n, (t, k) in history.items() if k)
+    saturated = sorted(n for n, (t, k) in history.items()
+                       if not k and t >= floor)
+    return live, saturated
 
 
 def saturation(target):
@@ -4324,9 +4523,11 @@ def cmd_stats(args, out=print):
             muts[e["mutator"]] = muts.get(e["mutator"], 0) + 1
         top = ", ".join(f"{m} {n}" for m, n in sorted(
             muts.items(), key=lambda kv: -kv[1])[:6])
+        live, done = mutator_saturation(target)
         out(f"{target}: {len(entries)} entries ({kinds}), "
             f"{len(crashes)} crashes on file; {saturation(target)}; "
-            f"mutators: {top}")
+            f"mutators: {top}; live: {', '.join(live) or 'none'}; "
+            f"saturated: {', '.join(done) or 'none'}")
     return 0
 
 
@@ -4335,6 +4536,8 @@ def cmd_dictionary(args, out=print):
     paths = sorted(os.path.join(IETF_DIR, f) for f in os.listdir(IETF_DIR)
                    if f.endswith(".md"))
     g = build_grammar(paths)
+    corpora = {t: load(corpus_path(t)) for t in TARGETS}
+    g = learn(g, corpora)
     os.makedirs(CORPUS_DIR, exist_ok=True)
     tmp = GRAMMAR_PATH + ".tmp"
     with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
@@ -4342,7 +4545,8 @@ def cmd_dictionary(args, out=print):
         fh.write("\n")
     os.replace(tmp, GRAMMAR_PATH)
     out(f"grammar: {len(g['tokens'])} tokens, {len(g['numbers'])} numbers, "
-        f"{len(g['examples'])} examples from {len(paths)} draft(s)")
+        f"{len(g['examples'])} examples from {len(paths)} draft(s); "
+        f"{len(g['learned'])} learned from the corpora")
     return 0
 
 
@@ -4380,6 +4584,16 @@ def main(argv=None):
                                 "time, until this many minutes have "
                                 "passed; a running grow finishes "
                                 "(default 0: one pass over the targets)")
+            p.add_argument("--archive", default=os.environ.get(
+                               "HP_BLUEMONDAY_ARCHIVE") or None,
+                           help="a directory outside the tree that keeps "
+                                "every child tried, kept or not, one gzip "
+                                "JSON-lines file per grow; the run record "
+                                "names it (HP_BLUEMONDAY_ARCHIVE)")
+            p.add_argument("--no-steer", action="store_true",
+                           help="choose mutators uniformly instead of "
+                                "steering toward the ones still finding "
+                                "arcs in the last grows")
     args = ap.parse_args(argv)
     try:
         return args.fn(args)

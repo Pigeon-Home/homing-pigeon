@@ -104,8 +104,12 @@ def run_python(args, cwd=ROOT, timeout=1800):
     env = dict(os.environ)
     env.setdefault("PYTHONDONTWRITEBYTECODE", "1")
     try:
+        # No test reads the terminal: an inherited stdin that never
+        # delivers (a socket, a pipe nobody writes) is a hang, so
+        # every run reads from nothing.
         proc = subprocess.run([sys.executable] + list(args), cwd=cwd,
-                              env=env, stdout=subprocess.PIPE,
+                              env=env, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, timeout=timeout)
     except subprocess.TimeoutExpired as e:
         out = (e.output or b"").decode("utf-8", "replace")

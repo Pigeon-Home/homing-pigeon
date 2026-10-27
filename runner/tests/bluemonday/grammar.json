@@ -391,5 +391,559 @@
     "text": "the script references /missing"
    }
   }
+ ],
+ "learned": [
+  {
+   "token": "--once",
+   "from": "manifest:7ff63c21e4bdf180"
+  },
+  {
+   "token": "../secret",
+   "from": "manifest:64a9e9fd9087847c"
+  },
+  {
+   "token": "/srv/eb_id",
+   "from": "local:b81d9c04b3125156"
+  },
+  {
+   "token": "/srv/example/watc,",
+   "from": "local:d29eee145198dc5a"
+  },
+  {
+   "token": "/srv/example/watched.txt",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "/srv/ex}}ample/watched.txt",
+   "from": "local:0cb5da83f527730d"
+  },
+  {
+   "token": "0.1.0",
+   "from": "manifest:7ff63c21e4bdf180"
+  },
+  {
+   "token": "0.3.0",
+   "from": "manifest:2b95b673a044fd48"
+  },
+  {
+   "token": "2022147483648-10-26T12:00:00Z",
+   "from": "local:249acd4e2ec6d7e2"
+  },
+  {
+   "token": "2026-10-26T12:00:",
+   "from": "local:026d64692d4953b8"
+  },
+  {
+   "token": "2026-10-26T12:00:00Z",
+   "from": "cloud:d95bc30fba7d773b"
+  },
+  {
+   "token": "2099-01-01T00:00:00Z",
+   "from": "local:1d92b52eaebf33ac"
+  },
+  {
+   "token": ":00Z",
+   "from": "local:026d64692d4953b8"
+  },
+  {
+   "token": ":01",
+   "from": "local:8581e294838e7aff"
+  },
+  {
+   "token": ":1,",
+   "from": "local:45b8fe2621799456"
+  },
+  {
+   "token": ":{",
+   "from": "local:45b8fe2621799456"
+  },
+  {
+   "token": "@now",
+   "from": "local:9d2138b4221ecbe7"
+  },
+  {
+   "token": "@nullnow",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "Finished.",
+   "from": "manifest:3c60f9488439dffb"
+  },
+  {
+   "token": "MIT",
+   "from": "manifest:64a9e9fd9087847c"
+  },
+  {
+   "token": "SIG",
+   "from": "local:6173ee0a5be1056e"
+  },
+  {
+   "token": "TEXT",
+   "from": "v2:74a9ca656a98f111"
+  },
+  {
+   "token": "a",
+   "from": "cloud:9bd6d33b14dd1d69"
+  },
+  {
+   "token": "a.bin",
+   "from": "mail:ad4c2379c247ef3b"
+  },
+  {
+   "token": "abcd",
+   "from": "manifest:5094acc8f92f8801"
+  },
+  {
+   "token": "advisory",
+   "from": "board_ops:826f7d94c67c6d93"
+  },
+  {
+   "token": "aes-256-gcm/hkdf-sha384",
+   "from": "crypto:56aa047107448640"
+  },
+  {
+   "token": "anged",
+   "from": "local:1c858880cca09240"
+  },
+  {
+   "token": "api_version",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "api_versi{",
+   "from": "local:45b8fe2621799456"
+  },
+  {
+   "token": "b",
+   "from": "cloud:9bd6d33b14dd1d69"
+  },
+  {
+   "token": "blue",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "bm\"v\":done",
+   "from": "manifest:3f627e6d5bcfe27f"
+  },
+  {
+   "token": "bm-0002.json",
+   "from": "local_inbox:586e1d0c25b61a48"
+  },
+  {
+   "token": "bm-0003.json",
+   "from": "local_inbox:b4e305c6b41196b9"
+  },
+  {
+   "token": "bm-0004.json",
+   "from": "local_inbox:4c3d1384b8ba89b2"
+  },
+  {
+   "token": "bm-0015.json",
+   "from": "local_inbox:78d61026323c6c46"
+  },
+  {
+   "token": "bm-al",
+   "from": "local:78182a24f85d0693"
+  },
+  {
+   "token": "bm-alert-0",
+   "from": "local:8581e294838e7aff"
+  },
+  {
+   "token": "bm-alert-0001",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "bm-boundary-0001",
+   "from": "mail:02fe4b268f82e2cf"
+  },
+  {
+   "token": "bm-boundary-0002",
+   "from": "mail:02fe4b268f82e2cf"
+  },
+  {
+   "token": "bm-exec-0001",
+   "from": "cloud:d95bc30fba7d773b"
+  },
+  {
+   "token": "bm-exec-0002",
+   "from": "crypto:56aa047107448640"
+  },
+  {
+   "token": "bm-job-0001",
+   "from": "v2:e446161af0370834"
+  },
+  {
+   "token": "bm-msg-0000",
+   "from": "v2:7d95334dcce625db"
+  },
+  {
+   "token": "bm-msg-0001",
+   "from": "v2:7d95334dcce625db"
+  },
+  {
+   "token": "bm-pipe",
+   "from": "manifest:57a61fc11b0178d0"
+  },
+  {
+   "token": "bm-sense",
+   "from": "manifest:2b95b673a044fd48"
+  },
+  {
+   "token": "bm-task-0001",
+   "from": "board_ops:3467b9ebb516052b"
+  },
+  {
+   "token": "bm-task-0002",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "bm-task-0009",
+   "from": "board_ops:826f7d94c67c6d93"
+  },
+  {
+   "token": "bm.example",
+   "from": "manifest:57a61fc11b0178d0"
+  },
+  {
+   "token": "bm_done",
+   "from": "manifest:2b95b673a044fd48"
+  },
+  {
+   "token": "bm_wait",
+   "from": "manifest:3c60f9488439dffb"
+  },
+  {
+   "token": "body",
+   "from": "stash:121cc16c81c534c6"
+  },
+  {
+   "token": "ca,ary",
+   "from": "local:7d34380bf8acac82"
+  },
+  {
+   "token": "canary",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "canary-key",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "canary.changed",
+   "from": "local:1d92b52eaebf33ac"
+  },
+  {
+   "token": "capabilities",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "compartments",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "complete",
+   "from": "board_ops:3467b9ebb516052b"
+  },
+  {
+   "token": "dag_mode",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "description",
+   "from": "manifest:2b95b673a044fd48"
+  },
+  {
+   "token": "detail",
+   "from": "cloud:9bd6d33b14dd1d69"
+  },
+  {
+   "token": "enforce",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "entry",
+   "from": "manifest:7ff63c21e4bdf180"
+  },
+  {
+   "token": "envelope",
+   "from": "crypto:56aa047107448640"
+  },
+  {
+   "token": "file",
+   "from": "board_ops:69121d4f7d4c8bf2"
+  },
+  {
+   "token": "gone",
+   "from": "local:2dc7f6f4205dacb7"
+  },
+  {
+   "token": "hed.txt",
+   "from": "local:ad92947759f383be"
+  },
+  {
+   "token": "high",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "https://example.com/bm/repo",
+   "from": "manifest:c0ddc1f592581f4f"
+  },
+  {
+   "token": "jochanged",
+   "from": "local:b81d9c04b3125156"
+  },
+  {
+   "token": "ke:",
+   "from": "local:9d2052a112cf08ac"
+  },
+  {
+   "token": "l0",
+   "from": "v2:071548f9fe31dd38"
+  },
+  {
+   "token": "l1",
+   "from": "v2:071548f9fe31dd38"
+  },
+  {
+   "token": "l2",
+   "from": "v2:be4c2673d57766bd"
+  },
+  {
+   "token": "l3",
+   "from": "v2:071548f9fe31dd38"
+  },
+  {
+   "token": "l4",
+   "from": "v2:071548f9fe31dd38"
+  },
+  {
+   "token": "l5",
+   "from": "v2:071548f9fe31dd38"
+  },
+  {
+   "token": "l6",
+   "from": "v2:18bfe74373db369e"
+  },
+  {
+   "token": "l7",
+   "from": "v2:071548f9fe31dd38"
+  },
+  {
+   "token": "license",
+   "from": "manifest:64a9e9fd9087847c"
+  },
+  {
+   "token": "listen",
+   "from": "manifest:bac0d85259f1d258"
+  },
+  {
+   "token": "main",
+   "from": "manifest:64a9e9fd9087847c"
+  },
+  {
+   "token": "network",
+   "from": "manifest:bac0d85259f1d258"
+  },
+  {
+   "token": "nonce",
+   "from": "crypto:56aa047107448640"
+  },
+  {
+   "token": "note",
+   "from": "wire:57acee001a4c5c4e"
+  },
+  {
+   "token": "offer",
+   "from": "board_ops:69121d4f7d4c8bf2"
+  },
+  {
+   "token": "ops",
+   "from": "board_ops:69121d4f7d4c8bf2"
+  },
+  {
+   "token": "path",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "paths",
+   "from": "manifest:64a9e9fd9087847c"
+  },
+  {
+   "token": "payload",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "pin",
+   "from": "manifest:64a9e9fd9087847c"
+  },
+  {
+   "token": "priority",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "publisher",
+   "from": "manifest:57a61fc11b0178d0"
+  },
+  {
+   "token": "red",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "ref",
+   "from": "manifest:64a9e9fd9087847c"
+  },
+  {
+   "token": "reoffer",
+   "from": "board_ops:84f589aba9a0611f"
+  },
+  {
+   "token": "repo",
+   "from": "manifest:64a9e9fd9087847c"
+  },
+  {
+   "token": "requires",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "schema/record.json",
+   "from": "manifest:9564dd7e3479619e"
+  },
+  {
+   "token": "sense",
+   "from": "manifest:2b95b673a044fd48"
+  },
+  {
+   "token": "sensor",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "sensor_alert",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "severity",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "shell",
+   "from": "board_ops:69121d4f7d4c8bf2"
+  },
+  {
+   "token": "sie10be37cc36fd5",
+   "from": "local:f6515d07e75efc85"
+  },
+  {
+   "token": "signal",
+   "from": "local:1d92b52eaebf33ac"
+  },
+  {
+   "token": "signals",
+   "from": "manifest:2b95b673a044fd48"
+  },
+  {
+   "token": "soon",
+   "from": "board_ops:84f589aba9a0611f"
+  },
+  {
+   "token": "startup_settle_ms",
+   "from": "manifest:b4e45d3d7a57cb9f"
+  },
+  {
+   "token": "submit",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "t,",
+   "from": "local:3acceabd98a11354"
+  },
+  {
+   "token": "tD8eQ6cd87Xm3LqI",
+   "from": "crypto:56aa047107448640"
+  },
+  {
+   "token": "task_id",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "threshold",
+   "from": "manifest:680098e0f5b9423c"
+  },
+  {
+   "token": "title",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "tripwire",
+   "from": "local:488b80281750d20f"
+  },
+  {
+   "token": "true",
+   "from": "local:02654ed5bc96f911"
+  },
+  {
+   "token": "tunables",
+   "from": "manifest:680098e0f5b9423c"
+  },
+  {
+   "token": "unknowwnn",
+   "from": "v2:7e4b97c039a34f51"
+  },
+  {
+   "token": "upstream",
+   "from": "manifest:64a9e9fd9087847c"
+  },
+  {
+   "token": "version",
+   "from": "manifest:2b95b673a044fd48"
+  },
+  {
+   "token": "worker-a",
+   "from": "board_ops:69121d4f7d4c8bf2"
+  },
+  {
+   "token": "worker-b",
+   "from": "board_ops:84f589aba9a0611f"
+  },
+  {
+   "token": "worker_allowlist",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "worker_compartments",
+   "from": "board_ops:a3dc0abc8788f01a"
+  },
+  {
+   "token": "x",
+   "from": "mail:f98cc8564db3932f"
+  },
+  {
+   "token": "x/y",
+   "from": "manifest:e7117ad732239a04"
+  },
+  {
+   "token": "{\"a\":\"bm-exec-0001\"}",
+   "from": "wire:57acee001a4c5c4e"
+  },
+  {
+   "token": "{\"a\":\"job\"}",
+   "from": "cloud:9bd6d33b14dd1d69"
+  },
+  {
+   "token": "}'",
+   "from": "wire:9c2ab1c8c49c69c9"
+  },
+  {
+   "token": "},",
+   "from": "local:02654ed5bc96f911"
+  },
+  {
+   "token": "}:",
+   "from": "local:72d0144b941225bf"
+  },
+  {
+   "token": "}ype",
+   "from": "local:3acceabd98a11354"
+  }
  ]
 }

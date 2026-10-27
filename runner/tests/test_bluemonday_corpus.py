@@ -763,3 +763,130 @@ class GrammarTest(unittest.TestCase):
         v2 = {e["from"] for e in B.seeds_v2()}
         self.assertTrue(any(f.startswith("seed:draft_") for f in wire))
         self.assertTrue(any(f.startswith("seed:draft_") for f in v2))
+
+
+class SteeringTest(unittest.TestCase):
+    """Saturation is per mutator, and a grow leans on the live ones
+    (Muse, 2026-10-26)."""
+
+    def test_weights_follow_the_keep_rate_with_a_floor(self):
+        w = B.steering({"t_live": (100, 20), "t_dead": (1000, 0),
+                        "t_new": (0, 0)})
+        self.assertGreater(w["t_live"], w["t_dead"])
+        self.assertGreaterEqual(w["t_dead"], w["t_live"] * B.STEER_FLOOR)
+        self.assertGreater(w["t_new"], w["t_dead"])   # untried is not dead
+        self.assertIsNone(B.steering({}))
+
+    def test_pick_honours_the_weights(self):
+        rng = random.Random(3)
+
+        def a(rng, t, c):
+            return t
+
+        def b(rng, t, c):
+            return t
+        picks = [B.pick(rng, [a, b], {"a": 100.0, "b": 1.0}).__name__
+                 for _ in range(300)]
+        self.assertGreater(picks.count("a"), 250)
+        self.assertIn("b", picks)
+        self.assertIn(B.pick(rng, [a, b]).__name__, ("a", "b"))
+
+    def test_history_and_saturation_read_the_records_by_time(self):
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(B, "CORPUS_DIR", d):
+            B.record_run({"kind": "grow", "target": "t", "when": "2026-01-02",
+                          "mutators_tried": {"m1": 300, "m2": 50},
+                          "mutators_kept": {"m2": 2}})
+            B.record_run({"kind": "grow", "target": "t", "when": "2026-01-01",
+                          "mutators_tried": {"m1": 10}, "mutators_kept": {}})
+            B.record_run({"kind": "grow", "target": "u", "when": "2026-01-03",
+                          "mutators_tried": {"m3": 500}, "mutators_kept": {}})
+            self.assertEqual(B.mutator_history("t"),
+                             {"m1": (310, 0), "m2": (50, 2)})
+            self.assertEqual(B.mutator_history("t", grows=1),
+                             {"m1": (300, 0), "m2": (50, 2)})
+            self.assertEqual(B.mutator_saturation("t"), (["m2"], ["m1"]))
+            self.assertEqual(B.last_grow("t")["when"], "2026-01-02")
+
+    def test_a_steered_grow_records_it_and_keeps_every_mutator(self):
+        entries = B.seeds_v2()
+        session = B.Session("v2", entries)
+        rng = random.Random(9)
+        history = {m.__name__: (500, 0) for m in B.PAYLOAD_MUTATORS}
+        history["p_text"] = (10, 5)
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(B, "CORPUS_DIR", d):
+            B._with_rig(lambda: session.grow(rng, 400, history=history))
+        self.assertGreater(session.mutators_tried.get("p_text", 0),
+                           max(n for m, n in session.mutators_tried.items()
+                               if m != "p_text"))
+        self.assertGreater(len(session.mutators_tried), 3)
+
+
+class ArchiveTest(unittest.TestCase):
+    """Every child tried, on a disk outside the tree, named by the
+    run record (Muse's hard drive, 2026-10-26)."""
+
+    def test_the_archive_holds_every_child_and_the_record_names_it(self):
+        import gzip
+        entries = B.seeds_v2()
+        session = B.Session("v2", entries)
+        rng = random.Random(5)
+        with tempfile.TemporaryDirectory() as d:
+            archive = B.Archive(d, "v2", 5)
+            with tempfile.TemporaryDirectory() as c, \
+                    mock.patch.object(B, "CORPUS_DIR", c):
+                B._with_rig(lambda: session.grow(rng, 120,
+                                                 archive=archive.add))
+            summary = archive.close()
+            self.assertEqual(summary["tried"], session.tried)
+            self.assertEqual(sorted(summary), ["bytes", "file", "sha384",
+                                               "tried"])
+            with gzip.open(os.path.join(d, summary["file"]), "rt",
+                           encoding="utf-8") as fh:
+                lines = [json.loads(l) for l in fh if l.strip()]
+            self.assertEqual(lines[0]["Agent-Stamp"], B.STAMP)
+            self.assertEqual(len(lines) - 1, session.tried)
+            for row in lines[1:]:
+                self.assertEqual(set(row), {"id", "from", "mutator", "kind",
+                                            "data", "outcome", "arcs", "ms",
+                                            "crash"})
+                self.assertIn(row["outcome"], ("accepted", "refused",
+                                               "crash"))
+            self.assertEqual(sum(1 for r in lines[1:] if r["arcs"]),
+                             len(session.mutators_kept) and sum(
+                                 session.mutators_kept.values()))
+
+
+class LearnTest(unittest.TestCase):
+    """The dictionary learns from what the grows kept."""
+
+    def test_harvest_takes_grown_tokens_only_with_provenance(self):
+        entries = [
+            {"id": "a1", "kind": "payload", "mutator": "seed",
+             "data": {"seeded": "ignored"}},
+            {"id": "b2", "kind": "payload", "mutator": "p_text",
+             "data": {"found_key": "found value", "n": 1, "known": "x"}},
+            {"id": "c3", "kind": "text", "mutator": "t_insert",
+             "data": '{"job_id": "bm-}-0001", "sig": "ab"}'},
+        ]
+        got = B.harvest(entries, "t", known={"known", "sig", "job_id", "n"})
+        self.assertEqual(got, {"found_key": "t:b2", "x": "t:b2",
+                               "bm-}-0001": "t:c3", "ab": "t:c3"})
+        doc = B.learn({"tokens": ["known", "n", "sig", "job_id"]},
+                      {"t": entries})
+        self.assertEqual([r["token"] for r in doc["learned"]],
+                         ["ab", "bm-}-0001", "found_key", "x"])
+        self.assertEqual(doc["learned"][0]["from"], "t:c3")
+
+    def test_the_committed_dictionary_learned_from_the_corpora(self):
+        with open(B.GRAMMAR_PATH, encoding="utf-8") as fh:
+            g = json.load(fh)
+        self.assertIn("learned", g)
+        self.assertLessEqual(len(g["learned"]), B.LEARN_CAP)
+        for row in g["learned"]:
+            self.assertEqual(set(row), {"token", "from"})
+            target, _id = row["from"].split(":")
+            self.assertIn(target, B.TARGETS)
+        self.assertTrue(set(r["token"] for r in g["learned"])
+                        <= set(B.grammar()["words"]))

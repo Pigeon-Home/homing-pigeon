@@ -186,6 +186,14 @@ A contract added later replays over every entry already kept; an
 old entry that fails a new contract is a crash file and a Q, never
 a hand edit.
 
+The sequence entries carry the recovery shapes too, not only
+isolation: two different poisons before the good one (the first
+refusal must leave nothing the second trips on), and a run of
+refusals before the happy path on the same board. A crash entry
+followed by a good one is the pair `promote` makes when a crash
+is fixed: the fixed entry stays in the corpus and the good
+neighbour beside it is the checker's own.
+
 ## 5. Seeds and vocabulary
 
 Seeds are suite-style fixtures with invented names (`example.com`,
@@ -210,6 +218,10 @@ built by the tool's `dictionary` command, carries every literal,
 every member name, every enumerated value and every boundary the
 drafts state, as insertion tokens and as JSON values, drawn on by
 every target's grow. The drafts' own examples are seeds beside it.
+The dictionary also learns: the same command harvests the keys and
+short values of every grown entry that reached a new arc into a
+`learned` section with its provenance, so the vocabulary follows
+the search as well as preceding it (Muse, 2026-10-26).
 
 ## 6. Roles
 
@@ -253,6 +265,12 @@ the conductor's call (offered 2026-10-26).
 
 A target whose full-depth grow keeps nothing and reaches no new
 arc is saturated; `stats` says so from the run records. Saturation
+is per mutator before it is per target (Muse, 2026-10-26): a
+target reads unsaturated while one of its mutators is still
+finding arcs, `stats` names the live and the saturated ones, and
+the grow steers its rounds toward the live ones with a floor share
+for the rest, so the pegged hour spends itself where the arcs
+still are. Saturation
 is a fact about the vocabulary and the seeds against that reader,
 not a verdict on the reader, and the response is in this order:
 
@@ -268,7 +286,10 @@ not a verdict on the reader, and the response is in this order:
 
 The grow never idles: a saturated target still runs its share
 while the desk brings the next step, since a grow that keeps
-nothing is still the record that those rounds were run.
+nothing is still the record that those rounds were run. What it
+tried is kept too: with the archive on the rig's disk, every
+child of every grow is on file outside the tree, and the run
+record says where.
 
 ## 9. Phases
 
