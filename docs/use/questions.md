@@ -122,7 +122,14 @@ My preference is to do this: per-key rotation and revocation from
 day one, and a sender always has a name to give. Should I do this,
 yes or no?
 
-**Answer (the conductor):** pending.
+**Answer (the conductor, 2026-10-27):** Yes. Name every
+generated secret by default, on the design as written: the
+installer names the first secret, senders send the key id by
+default, the empty key id stays a legacy alias through the
+next line of releases, and a rotation names the new key.
+
+**Applied in:** the answer is recorded in the commit that
+carries it; the implementation is the desk's.
 
 ---
 
