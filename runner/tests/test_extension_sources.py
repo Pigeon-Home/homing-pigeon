@@ -1193,8 +1193,8 @@ class ProvisionTest(_Base):
         write_ext(self.ext, upstream_decl(files=["doc/schema.json"]))
         self.run_pass()
         up = self.state()["entries"]["up"]
-        self.assertEqual((up["status"], up["pinned_by"]),
-                         ("fetched", "first-run"))
+        self.assertFetched(up)
+        self.assertEqual(up["pinned_by"], "first-run")
 
     def test_the_budget_skips_archives_and_a_raised_budget_retries(self):
         big = tgz({"blob": os.urandom(3 << 20)})
@@ -1293,8 +1293,8 @@ class ProvisionTest(_Base):
         self.assertEqual(st["manifest_upstream"],
                          {"github": "o/up", "pin": PINNED_SHA, "pinned": True})
         rec = st["entries"]["pinned"]
-        self.assertEqual((rec["status"], rec["pinned_by"]),
-                         ("fetched", "manifest"))
+        self.assertFetched(rec)
+        self.assertEqual(rec["pinned_by"], "manifest")
         self.assertEqual(rec["license"], "MIT")
         self.assertEqual(rec["resolved"]["commit"], PINNED_SHA)
         self.assertEqual(sorted(rec["files"]["items"]),
@@ -1334,8 +1334,8 @@ class ProvisionTest(_Base):
             {"extension_sources": {"fetch": True, "unpinned": True}}),
             now=self.now + 5)
         rec = self.state()["entries"]["pinned"]
-        self.assertEqual((rec["status"], rec["pinned_by"]),
-                         ("fetched", "first-run"))
+        self.assertFetched(rec)
+        self.assertEqual(rec["pinned_by"], "first-run")
 
     def test_a_stale_pin_json_does_not_vouch(self):
         # PIN.json from an older pin: the manifest moved, the tool
@@ -1415,8 +1415,8 @@ class ProvisionTest(_Base):
             "fetch": True, "extensions": {"feed": {"unpinned": True}}}}),
             now=self.now + 20)
         up = self.state()["entries"]["up"]
-        self.assertEqual((up["status"], up["pinned_by"]),
-                         ("fetched", "first-run"))
+        self.assertFetched(up)
+        self.assertEqual(up["pinned_by"], "first-run")
 
     def test_a_build_pin_needs_no_unpinned_consent(self):
         decl = upstream_decl()
@@ -1427,7 +1427,10 @@ class ProvisionTest(_Base):
             json.dump(self._lock_for(decl, upstream_routes()), fh)
         self.run_pass(policy=self.policy({"extension_sources": True}))
         up = self.state()["entries"]["up"]
-        self.assertEqual((up["status"], up["pinned_by"]), ("fetched", "build"))
+        # assertFetched names the reason when a loaded runner's
+        # refused write leaves the record partial.
+        self.assertFetched(up)
+        self.assertEqual(up["pinned_by"], "build")
 
     def test_fetch_off_for_one_extension_fetches_nothing(self):
         write_ext(self.ext, upstream_decl())
@@ -2456,7 +2459,8 @@ class PinToolTest(_Base):
             json.dump(lock, fh)
         self.run_pass()
         st = self.state()["entries"]["up"]
-        self.assertEqual((st["status"], st["pinned_by"]), ("fetched", "build"))
+        self.assertFetched(st)
+        self.assertEqual(st["pinned_by"], "build")
         self.assertIn("unavailable when this build was made", st["detail"])
 
     def test_no_archives_records_urls_only(self):
