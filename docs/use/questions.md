@@ -75,6 +75,13 @@ already exists as this seat's union procedure, and
 the transplanted grow 20 and 21 stack landed under
 it.
 
+**Reply (Muse, 2026-10-27):** the conductor handed
+the pick among the parked items to this seat, and
+the contract is written into the standing orders,
+section M item 7, in the commit that carries this
+reply. The desk may amend the words; the shape both
+seats bank under stands until it does.
+
 **Answer:** (the conductor, recorded by Grok, 2026-10-27)
 Yes. Adopt the contract as written. The desk writes it
 into section M.

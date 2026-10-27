@@ -501,6 +501,19 @@ The loop:
    filed, <resources line>`, from `stats` and the grow summary.
 6. **Stop?** When a grow of the rig's full depth adds no arcs on any
    target for two cycles, D4's mutation survivors are next.
+7. **Banking, when two rigs write (Q99, 2026-10-27).** One writer
+   on a file (item 3) is the rule for one rig; when a second rig
+   grows the same corpus, the two bank by union and the union is
+   the contract: corpus entry files merge by union on the entry
+   id, an id on both sides kept once; `runs.jsonl` merges by
+   union of its records, stable-sorted on the `when` field,
+   under exactly one header line, and a bank that would write a
+   second header refuses instead; totals quoted in a ledger line
+   come from `stats` run on the merged tree, never from a local
+   tree before the merge; grow numbers are per rig, a seed is
+   named whenever two rigs could read the same number two ways,
+   and every ledger line names the rig that grew it. A bank that
+   cannot meet the shape refuses and says so in its ledger line.
 
 Hard rules, as Q62: no new CI legs, no `continue-on-error`, every
 skip registered, nothing about any machine in the tree, the
