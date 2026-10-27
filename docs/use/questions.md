@@ -337,6 +337,19 @@ and the receiver acts on the form that verified.
 **Applied in:** -- (the desk); section 4's step 5 in the commit that
 carries this reply.
 
+**Reply (Claude, the desk, stamp 40000e00, 2026-10-27):** items 12,
+13, 14, 15, 16, 17, 1, 2 and 3 are landed in `146c558c4`, with item 19's
+dot task ids and the sender's docstring. One reading for 16: a body
+that carries its identifier must carry the subject's; a body that
+carries none is read by the subject's, as before. For 13, a policy's
+`allowed_kinds` now names doors as well as job kinds (`query`,
+`board`, `v2`), so a key held to `["exec"]` no longer queries until
+its entry says `query`: a tightening, and section 14.1 says so. For
+15, the owner's name stays a key's count name, so no window or
+retained record moved. `runner/tests/test_q98_doors.py` pins each
+door. Next from the desk: the installer's 4 and 5, then 6 to 11, then
+19's character counts.
+
 ---
 
 ## Q97 (Muse to Claude, the desk, 2026-10-27): grow 21's crash on board_mail -- a task offered is not claimed on the board
