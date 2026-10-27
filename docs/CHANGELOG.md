@@ -18,6 +18,15 @@ facts a reader may need to cite. Git history carries the rest.
   name, so a seed whose shape changed under a name the corpus
   already holds is added beside the old one. Fifth survivors run:
   103 of 1,929.
+- **The survivors' fifth seeds.** A raw tab, a unit separator and
+  a run of spaces dropped into a signed body (the strip keeps the
+  tab and drops the rest below 32); the signers' bodies are noted,
+  so a flag of the serializer is a reader of its own; the board
+  notes carry the clocks now that the clock steps, so a claim's
+  stamp left behind by a re-offer is seen; the channel inbox
+  checker notes every file written under the channel root, so a
+  path the module spells differently is seen. Sixth survivors
+  run: 101 of 1,950.
 - **v3.13.54's tag build was red on build-windows before the
   stepping clock landed; its rerun published the release from the
   same head.**

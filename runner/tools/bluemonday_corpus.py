@@ -464,6 +464,7 @@ def _signed_payload(payload, signer, who):
         return "refused"
     if not isinstance(body, str):
         raise Crash("shape", f"{who} returned {type(body).__name__}")
+    note("signed", who, _digest(body))
     expect = TU._json_safe(payload) if signer is V.sign_payload else payload
     for verifier, name in ((V.verify_body, "verify_body"),
                            (SJ.verify_body, "send_job.verify_body")):
@@ -926,9 +927,6 @@ def check_board_ops(entry):
         return _board_sequence(spec)
 
 
-_BOARD_CLOCKS = ("submitted_at", "claimed_at", "completed_at")
-
-
 class _StepClock(datetime):
     """The board's clock for a check: one second per reading, from
     a fixed start, so a lease of zero has always expired by the
@@ -944,17 +942,6 @@ class _StepClock(datetime):
         base = datetime(2026, 10, 26, 12, 0, 0, tzinfo=timezone.utc)
         when = base + timedelta(seconds=cls._tick)
         return when if tz is None else when.astimezone(tz)
-
-
-def _timeless(value):
-    """A board value with the clock fields taken out, so a note
-    about it is the same on every run."""
-    if isinstance(value, dict):
-        return {k: _timeless(v) for k, v in value.items()
-                if k not in _BOARD_CLOCKS}
-    if isinstance(value, (list, tuple)):
-        return [_timeless(v) for v in value]
-    return value
 
 
 def _board_sequence(spec):
@@ -1054,7 +1041,7 @@ def _board_sequence(spec):
                         or got < 0:
                     raise Crash("shape", "reoffer_expired returned "
                                 f"{got!r}"[:200])
-            note(name, _digest(_timeless(got)), _digest(_timeless(board.tasks)))
+            note(name, _digest(got), _digest(board.tasks))
             again, exc = _call(BD.Board, path)
             if exc is not None:
                 raise Crash("exception", "the board file no longer loads "
@@ -1320,6 +1307,10 @@ def _channel_sequence(spec):
                             "not read back as the reply")
         note("log", _digest(logged))
         note("results", _digest(texts))
+        layout = sorted(os.path.relpath(os.path.join(d, f), base)
+                        .replace(os.sep, "/")
+                        for d, _dirs, files in os.walk(base) for f in files)
+        note("layout", _digest(layout))
         return "accepted" if accepted else "refused"
     finally:
         shutil.rmtree(base, ignore_errors=True)
@@ -1655,6 +1646,11 @@ def _text_bodies():
         ("tab_in_string", V.sign_payload(_job(script="a\tb"), SECRET)),
         ("control_in_string",
          exec_body.replace('"script"', '"scr\x01ipt"', 1)),
+        # The strip keeps a tab and drops the rest below 32: a raw
+        # tab and a unit separator each dropped into the object.
+        ("raw_tab", exec_body[:40] + "\t" + exec_body[40:]),
+        ("raw_unit_separator", exec_body[:40] + "\x1f" + exec_body[40:]),
+        ("raw_space_run", exec_body[:40] + "  " + exec_body[40:]),
         ("bom", "﻿" + exec_body),
         ("wrong_secret", V.sign_payload(_job(), WRONG)),
         # The draft's subject: a decoration word, then job, then the id.
