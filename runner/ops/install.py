@@ -1060,6 +1060,7 @@ def do_console(home, bin_dir, cfg_path) -> int:
         print("console: no HomingPigeon task found; running the agent directly")
     print(f"console: starting {exe} --config {cfg_path} "
           "(Ctrl+C stops it and restores the task)")
+    restart_failed = False
     try:
         subprocess.run([exe, "--config", cfg_path])
     except KeyboardInterrupt:
@@ -1070,9 +1071,10 @@ def do_console(home, bin_dir, cfg_path) -> int:
             if _task_run() != 0:
                 print("console: WARNING: could not restart the task; "
                       "start it by hand: schtasks /Run /TN HomingPigeon")
-                return 1
-            print("console: task restarted")
-    return 0
+                restart_failed = True
+            else:
+                print("console: task restarted")
+    return 1 if restart_failed else 0
 
 
 def _runner_log_path(cfg_path) -> str:
