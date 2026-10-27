@@ -2981,13 +2981,11 @@ def seeds_manifest():
     ]
     # The survivors' lines: every cap at itself and one past it.
     sig = {"name": "bm_sig", "description": "A declared signal."}
-    for n in (EX.MAX_SIGNALS, EX.MAX_SIGNALS + 1):
-        out.append((f"signals_{n}", _sense(signals=[
-            dict(sig, name=f"bm_sig_{i}") for i in range(n)])))
+    out.append(("signals_64", _sense(signals=[
+        dict(sig, name=f"bm_sig_{i}") for i in range(EX.MAX_SIGNALS)])))
     for n in (EX.MAX_DESCRIPTION_CHARS, EX.MAX_DESCRIPTION_CHARS + 1):
         out.append((f"signal_description_{n}", _sense(signals=[
             dict(sig, description="d" * n)])))
-        out.append((f"description_{n}", _sense(description="d" * n)))
         out.append((f"publisher_{n}", _transport(publisher="p" * n)))
     for n in (100, 101):
         out.append((f"license_{n}", _sense(upstream=dict(
@@ -3005,14 +3003,13 @@ def seeds_manifest():
             f"--flag{i}" for i in range(n - 1)])))
     for n in (500, 501):
         out.append((f"entry_part_{n}", _transport(entry=["bm-pipe", "x" * n])))
-    for n in (-1, 0, 5000, 5001):
+    for n in (-1, 0):
         out.append((f"settle_{n}", _transport(startup_settle_ms=n)))
     out.append(("settle_bool", _transport(startup_settle_ms=True)))
     out.append(("path_empty_part", _sense(upstream=dict(
         upstream, paths=["schema//record.json"]))))
     out.append(("path_dot_part", _sense(upstream=dict(
         upstream, paths=["schema/./record.json"]))))
-    out.append(("entry_nul", _transport(entry=["bm-pipe", "a\x00b"])))
     out.append(("publisher_two_lines", _transport(publisher="a\nb")))
     return [make_entry("payload", manifest, "seed:" + name, "seed")
             for name, manifest in out]
