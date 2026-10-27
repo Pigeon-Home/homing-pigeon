@@ -75,7 +75,8 @@ is load-bearing — see `docs/extend/senses.md` ("why this shape").
 
 ## What the picture still lacks
 
-Listed in docs/project/future.md.
+What ships and what does not, item by item; the unbuilt ones that are
+planned are in docs/project/future.md.
 
 - **NIDS** — Zeek/Suricata as a network-side sense next to the
   host IDS. This ships: the `suricata-feed` and `zeek-feed`
@@ -93,5 +94,7 @@ Listed in docs/project/future.md.
 - **FIM proper** — file integrity monitoring ships as two senses:
   `tripwire` (a tree's SHA-384 baseline) and `aide-feed` (AIDE's
   own report), both in `runner/extensions/`.
-- **Out of scope:** TLS inspection, WAF (there is no inbound
-  HTTP service to protect — the Oracle page is loopback-only).
+- **TLS inspection and a WAF** — not built; planned as sensor
+  extensions. There is no inbound HTTP service today (the Oracle
+  page is loopback-only), so they would watch the job's outbound
+  traffic, not protect a listener.

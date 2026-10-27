@@ -75,7 +75,7 @@ Questions to settle before any of this goes into `PROTOCOL.md`:
 
 `runner/tests/test_agent_stamps.py` (2026-10-26) lists every stamp
 written after a stamp label anywhere in the tree and fails when one
-is missing from `RESEARCHER_IDENT.md`, when a listed stamp has no
+is missing from `docs/archive/RESEARCHER_IDENT.md`, when a listed stamp has no
 status row, or when a recycled stamp names no active carrier. It
 runs with the suite, so a stamp the record does not know fails the
 build; the original idea of a report-only `stamp_check.py` was

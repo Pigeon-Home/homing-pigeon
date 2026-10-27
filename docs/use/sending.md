@@ -26,7 +26,9 @@ task-submit --task-id <id> --priority 1 --secret <the-string>` opens a
 task, and `send_job.py task-request --worker-id <name> --secret
 <the-string>` pulls one. Both take `--reply-to` so the ack or the
 offer lands in your inbox instead of the runner's, and `--cleartext`
-with the same meaning as for `new`.
+with the same meaning as for `new`. Every subcommand takes
+`--keyring PATH` to read secrets from a keyring other than the default
+(`$HP_KEYRING`, else `~/.homing-pigeon/keyring.json`).
 
 Or paste the string to your SI in chat — it composes, signs, and sends
 the job message itself, and reads the result message when it arrives. Large files

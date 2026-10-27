@@ -21,7 +21,6 @@ socket was cut from the code (the runner's shipped loopback
 local-signal socket is a different thing — it carries signed
 sensor alerts, not jobs); the broker transports are not part of
 this test.
-See docs/project/future.md.
 
 To run the email test you need a real mailbox in `config.json`
 (`smtp_host`, `smtp_port`, `mailbox_user`, password or OAuth) and a

@@ -212,11 +212,11 @@ sense. Senses never enforce. The design lives in
   unattended-upgrades/dnf-automatic state, macOS
   softwareupdate). Info-level; the Oracle correlates "unpatched
   for 90 days" with everything else.
-- `listening_sockets` — *(future sense, listed in docs/project/future.md)*
+- `listening_sockets` — *(ships as the `port_watch` sense extension, `runner/extensions/port-watch/`)*
   listening ports vs the expected baseline in profile
   (`expected_ports`). A new listener is medium by default; the
   Oracle decides if it matters.
-- `persistence` — *(future sense, listed in docs/project/future.md)*
+- `persistence` — *(not built)*
   autorun/persistence locations: Windows autoruns (Run keys,
   services, scheduled tasks), Linux systemd units + cron,
   macOS LaunchAgents/LaunchDaemons. A new entry outside a job
