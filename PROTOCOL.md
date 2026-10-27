@@ -89,7 +89,7 @@ The reference default is email only: `transports` absent means
   "args": ["--flag", "value"],
   "env": {"MY_VAR": "value"},
   "timeout_sec": 300,
-  "runner_id": "<audience, optional>",
+  "aud": "<audience, optional>",
   "reply_to": "<result email address, optional>",
   "oracle_opinion": "<opinion latitude, optional>",
   "sig": "<hex hmac>"
@@ -104,12 +104,14 @@ The reference default is email only: `transports` absent means
   never trigger a reply to anyone. Omit it and results behave as
   before (the SI polls the runner mailbox).
 
-- `runner_id`: optional audience claim. When the runner's config sets
-  `runner_id` and the `audience` security feature is not `off`,
-  the body's `runner_id` must equal the configured one or the job is
-  rejected (enforce) / logged (audit). With the feature off (default),
-  the field is ignored. Every message type (job, query, task_*,
-  sensor_alert) may carry it. A **fresh config** — one created by the
+- `aud`: optional audience claim (`runner_id` is accepted as its
+  older spelling; when both are present `aud` wins). When the
+  runner's config sets `runner_id` and the `audience` security
+  feature is not `off`, the body's claim must equal the configured
+  `runner_id` or the job is rejected (enforce) / logged (audit).
+  With the feature off (default), the field is ignored. Every
+  message type (job, query, task_*, sensor_alert) may carry it;
+  `send_job.py --aud` writes `aud`. A **fresh config** — one created by the
   setup wizard (`--setup`), not hand-edited — gets a random `runner_id`
   automatically.
 
@@ -128,8 +130,10 @@ The reference default is email only: `transports` absent means
 - `key_id`: optional; names which shared secret verifies this
   message (section 14). Absent means the default secret.
 
-- `kind`: `exec` or `ping`. A `ping` job carries no script; the runner
-  answers with a `pong` result (health check).
+- `kind`: `exec` or `ping`, or `sensor_alert` (a signed alert from a
+  sense, filed for the Oracle and answered with no result;
+  `docs/extend/senses.md`). A `ping` job carries no script; the
+  runner answers with a `pong` result (health check).
 - For `exec`, at least one of `script` / `script_url` is required.
   A job carrying both is accepted and `script_url` wins; the inline
   `script` is ignored.
@@ -185,12 +189,14 @@ The reference default is email only: `transports` absent means
   version before the first real job, and nothing a port scan would
   not tell. `standard` adds `os_release`, `python_version`, and
   `runner_version`; `full` adds `path_tools`, a fixed list of tool
-  names mapped to whether each is on PATH. `none` sends the bare
+  names mapped to whether each is on PATH, and `config_defaulted`,
+  the config keys read as their defaults. `none` sends the bare
   pong. The tier is the owner's ceiling: no job member widens it.
   The card leaves only in a result, which answers a verified job, so
   an unauthenticated sender learns nothing from it. The DTLS
   greeting (draft Section 20) carries the same card at its own tier
-  (`dtls_greeting`); the two describe the box the same way.
+  (`dtls_greeting`), without `runner_version`, `config_defaulted`
+  or the `disclosure` member; the two describe the box the same way.
   `protocol_versions` is also how a sender discovers that a runner
   opens version 2 messages (`docs/ietf/draft-homing-pigeon-v2-00.md`)
   without a negotiation: ping first, then send what the box opens.
@@ -199,11 +205,13 @@ The reference default is email only: `transports` absent means
   failure: unknown kind, SHA384 mismatch, unsafe file name...); details in
   `stderr`. Rejected jobs do not retry — the mail is marked seen
   (section 5).
-- `answers[]` / `attestations[]`: present when the job declared a
-  `result_policy` with queries — the answers to its declared
-  questions (section 10) and the attestations of section 9.2.
-- `stdout`/`stderr` are truncated at a configurable byte limit
-  (default 100_000); the `*_truncated` flags say so.
+- `answers[]` / `attestations[]`: `answers` is present when the job
+  declared a `result_policy` with queries — the answers to its
+  declared questions (section 10); `attestations` (section 9.2)
+  only under the `attested` view.
+- `stdout`/`stderr` are truncated at a configurable limit on
+  characters of decoded text (default 100_000); the `*_truncated`
+  flags say so.
 - The whole body is held under `max_result_bytes` (default 5242880,
   5 MiB; 0 means unlimited) before it is signed: when the serialized
   (and, when on, encrypted) body would be larger, `stdout` and
@@ -308,8 +316,9 @@ canonicalization entirely:
 Verification:
 
 1. Normalize line endings to LF.
-2. Find the **last** occurrence of `,"sig":"`. Everything after it must
-   match `^[0-9a-f]{96}"\}$`; otherwise reject.
+2. Find the **last** occurrence of `,"sig":"`. The 96 characters after
+   it must be hex (either case) and be followed by `"}`; otherwise
+   reject. Text after that `"}` (a trailer) is ignored.
 3. `raw = <everything before the marker> + "}"`.
 4. Recompute `HEX(HMAC_SHA384(secret, raw))` and compare with the
    presented signature using a constant-time comparison.
@@ -333,7 +342,8 @@ looked up in the seen-set, and the raw mail is bounded by
 `max_job_bytes` before any signature work. These checks route
 and deduplicate; they authorize nothing, and the seen-set
 lookup cannot poison the set — an id is recorded only for a
-job that verified and ran, once its result is safely sent.
+job that verified and ran, once its result is stashed in the
+outbox (section 6, "Execution at most once").
 Two senses of *seen* are kept apart throughout: *marking the
 mail seen* is the channel-level flag — the message will not
 be reprocessed — while *recording the id in the seen-set* is
@@ -351,15 +361,16 @@ Authorization then runs in this order, and all of it must pass:
    valid signature authorizes execution. The sender address is logged
    for audit but never trusted.
 2. **Audience binding** (when `security.modes.audience` is not
-   `off` and the config sets `runner_id`): the body's `runner_id` must
-   equal the configured one. The expected value always comes from the
+   `off` and the config sets `runner_id`): the body's `aud` (or its
+   older spelling `runner_id`) must equal the configured one. The expected value always comes from the
    config the runner loaded, never from the signed body. Applies to
    jobs, queries (including the `ask` op), board messages, and sensor
    alerts.
 3. The signed script is bounded by `max_script_bytes`.
 4. `v == 1`; `type` is the message type the subject announces; and
-   the body's identifier (`job_id`, `query_id`, or `task_id`) equals
-   the subject's.
+   for a job the body's `job_id` equals the subject's (a query or a
+   task message is routed by its subject, and its body identifier
+   is read from the body).
 5. `issued_at` parses, carries a timezone, and is within
    `max_job_age_sec` (default 3600) of the runner's clock
    (replay / stale protection).
@@ -573,8 +584,9 @@ The job gains an optional `result_policy` object:
 
 - `view`: one of `full` (stdout and stderr), `redacted`, `summary`, `attested`.
   Default: `full` (backward compatible).
-- `redact_patterns`: named secret families to scrub in `redacted` view
-  (runner ships a built-in set; config may extend it).
+- `redact_patterns`: reserved. In `redacted` view the runner applies
+  every family it is configured with (its built-in set plus the
+  owner's `redact_patterns_extra`) and reads no list from the job.
 - `queries`: **all** questions the SI will ever ask about this job's
   output, declared upfront before any answer is seen (section 10). This
   is what makes the exchange non-interactive.
@@ -604,10 +616,13 @@ user's box decides what leaves it.
   (section 12).
 - `summary`: no raw output. Contains `exit_code`, `timed_out`,
   `duration_sec`, `stdout_bytes`, `stderr_bytes`, `result_class`
-  (`ok`/`fail`), and `output_digest`
-  (SHA-384 of the complete untruncated stdout+stderr).
-- `attested`: `summary` fields plus an `attestations` array — and nothing
-  else. No output bytes cross the boundary at all.
+  (`ok`/`fail`), and `output_digest` (SHA-384 of the retained
+  stdout+stderr, each stream already cut to `max_output_bytes`).
+- `attested`: the common members (`exit_code`, `timed_out`,
+  `duration_sec`, `output_digest`), an `attestations` array, and
+  `stdout` and `stderr` as empty strings — and nothing else: no
+  byte counts, no `result_class`. No output bytes cross the
+  boundary at all.
 
 ### 9.2 Attestations
 
@@ -620,13 +635,15 @@ user's box decides what leaves it.
 ]
 ```
 
-Built-in predicates (extensible by runner config):
+Built-in predicates (a fixed set; an unknown predicate answers
+`ok: false` with reason `unknown`):
 
 - `exit_zero`: `exit_code == 0`.
 - `no_secrets`: the retained output was scanned against the runner's
   secret patterns and none matched. `patterns_sha384` binds *which*
   pattern set ran, so the SI knows what "secrets" meant.
-- `output_digest`: SHA-384 of the full output. This is a **commitment**:
+- `output_digest`: SHA-384 of the retained output (each stream cut
+  to `max_output_bytes` first). This is a **commitment**:
   the SI can't see the output, but the runner is bound to it — if a
   wider view is ever granted later, the SI can verify the digest.
 - `confined_to_workspace`: the job created or modified no file outside
@@ -643,15 +660,16 @@ Before anything runs, the Oracle reads the job — its code, its
 declared intent, its interpreters and paths — and renders a verdict:
 does this look like it will do what it claims?
 
-The verdict is deterministic: checks against the job text (writes
-outside the workspace, known-dangerous patterns). No model
+The verdict is deterministic: checks against the job text (a
+denylist of known-dangerous commands, a `script_url` that is not
+https, a `..` in a file name). No model
 participates in it, whether or not a local model is configured for
 the `ask` op (section 10.1).
 
 *A semantic verdict — a model-backed reading such as "this script
 deletes files outside its workspace" or "this matches its
 description" — would run alongside the deterministic checks. It is
-not shipped; it is listed in docs/project/future.md. (The optional model-backed
+not shipped and not planned. (The optional model-backed
 note in the `oracle_opinion` result member is advisory and is not the
 verdict.)*
 
@@ -676,17 +694,21 @@ write. An optional Linux sandbox does. Config for the snapshot:
 - `workspace_root`: absolute path (e.g. `/home/user/workspace`). When
   set, it names the root the confinement snapshot watches. The job's
   working directory is always `<base_dir>/work/<job_id>`; the Oracle
-  snapshots file metadata outside `workspace_root` before and after.
-  The walk stops at 50000 files and logs that the result is partial.
+  snapshots file metadata outside `workspace_root` but under its
+  parent directory, before and after (a `workspace_root` whose
+  parent is the filesystem root is refused, and with no
+  `workspace_root` nothing is snapshotted). The walk stops at
+  50000 files and logs that the result is partial.
   The job's own working tree never counts against it: the snapshot
   excludes `<base_dir>` — the workdir included — so
   `confined_to_workspace` reports only files outside both
   `workspace_root` and the runner's own tree.
 
 The snapshot is a record, not a cage. `confined_to_workspace` means
-no file outside `workspace_root` was created or modified during the
-job. Best-effort: a write that was reverted before the post-snapshot
-is not caught.
+no file outside `workspace_root`, within its parent directory, was
+created or modified during the job. Best-effort: a write that was
+reverted before the post-snapshot is not caught, and a write
+elsewhere on the disk is outside the walk.
 
 OS containment is a separate switch, off by default. Set
 `security.modes.confinement` to `enforce` on Linux with `bwrap`
@@ -724,7 +746,9 @@ isolation.
 snapshot watches closely. Paths listed here are checked first; any
 creation, modification, or deletion under them is always reported in
 the confinement attestation detail, even if the overall
-`confined_to_workspace` verdict logic is unchanged. Default is an empty
+`confined_to_workspace` verdict logic is unchanged. They are compared
+against the same snapshot, so a protected path must lie under
+`workspace_root`'s parent directory to be seen. Default is an empty
 list (least restrictive).
 
 ```json
@@ -755,14 +779,16 @@ counted against the budget so probing the policy itself isn't free.
 ```
 
 Query ops: `attest` (evaluate a named predicate now), `grep` (regex over
-retained stdout+stderr, up to `max_matches` lines), `tail` (`lines`:
-last N lines), `ask` (natural-language question answered by local
+retained stdout+stderr, up to `max_matches` lines, default 10,
+capped at 100), `tail` (`lines`: last N lines, default 20, capped
+at 200), `ask` (natural-language question answered by local
 inference — see below), and `senses` (the alerts the Oracle's senses
 filed around this job, ranked by weight × severity; parameters
 `sensor`, `severity_floor`, `since`, `until`, `limit` — specified in
 docs/extend/senses.md, "Reading signals"). Answers obey the job's effective
-view exactly as section 9 requires — under `attested`, `grep`/`tail`
-are rejected; under `redacted`, returned lines are scrubbed first.
+view exactly as section 9 requires — under `summary` or `attested`,
+`grep`/`tail` are rejected; under `redacted`, returned lines are
+scrubbed first.
 
 A `grep` pattern that does not compile is answered `{"op": "grep",
 "rejected": "bad_pattern"}`. So is one whose shape can take
@@ -1035,8 +1061,8 @@ the task straight to `done`; nothing is flagged. With
 `pending_review` (section 13.6) and stays there until the owner
 approves it. The Oracle does not route results to reviewing workers;
 a `review` capability tag is an ordinary tag a task may require, and
-automatic routing of results to such workers is listed in docs/project/future.md,
-not shipped.
+automatic routing of results to such workers is not shipped and not
+planned.
 
 ### 13.5 Liveness and delivery
 
@@ -1095,7 +1121,7 @@ pattern: `[HOMING-PIGEON] <type> <id>`.
   header never chooses. The ack: `{"v": 1, "type": "task_ack", "task_id":
   "<id>", ...}` carrying `ok` and `reason` (for submit and approve)
   or `status` and `reason` (for a result: `done`, `pending_review`,
-  or `duplicate`). `task_request` is answered by `task_offer`, or by
+  `duplicate`, `not_found`, or `not_claimed`). `task_request` is answered by `task_offer`, or by
   `task_offer` with `"empty": true` when nothing fits (section 13.2).
 
 ## 14. Multiple shared secrets
@@ -1282,7 +1308,7 @@ the signature is checked. The version 2 messages (determination,
 question, answer: `docs/ietf/draft-homing-pigeon-v2-00.md`) are a
 second family with `"v": 2`, opened only when the owner enables them,
 and a sender learns whether a runner opens them from
-`protocol_versions` on the platform card (section 5), never by
+`protocol_versions` on the platform card (section 3.2), never by
 negotiation.*
 
 ### Agent Guide

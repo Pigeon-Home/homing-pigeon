@@ -57,7 +57,7 @@ Two things are out of scope for this document and are established out of band: t
 
 This document specifies one version of the protocol: version 1. Its bindings are the email binding (Section 5), the file binding (Section 5.1), the NATS binding (Section 5.2), and the DTLS session binding (Section 19), which also carries the session greeting (Section 20). It consolidates this document's earlier text, which specified the email binding alone, with the DTLS binding text that was first drafted as a companion document. The companion draft that now carries the name draft-homing-pigeon-v2-00 is a different document: it specifies protocol version 2 (the determination, question, and answer exchange) and does not specify a binding.
 
-A binding does not version the messages. The job and result objects are the same objects on every binding, byte for byte; their `v` member is 1, and a receiver MUST NOT reject an object for carrying `v` = 1 on any binding. A receiver that does not offer a binding is not non-conformant; it simply does not offer that binding. An earlier framing treated the DTLS binding as a second version of the protocol. That framing is withdrawn: there is no version 2, and the protocol's version is 1 on every binding this document specifies.
+A binding does not version the messages. The job and result objects are the same objects on every binding, byte for byte; their `v` member is 1, and a receiver MUST NOT reject an object for carrying `v` = 1 on any binding. A receiver that does not offer a binding is not non-conformant; it simply does not offer that binding. An earlier framing treated the DTLS binding as a second version of the protocol. That framing is withdrawn: there is no version 2 of the job and result objects (the version 2 of draft-homing-pigeon-v2-00 is a different message family, carried beside them), and the protocol's version is 1 on every binding this document specifies.
 
 The reference implementation speaks version 1, and it implements the bindings this document specifies, including the DTLS session binding of Section 19. On 2026-10-17 the implementation briefly required `v` = 2. That bump changed the integer only, and it was reverted the same day. A receiver following this document rejects any message `v` other than 1.
 
@@ -231,7 +231,7 @@ A receiver MUST ignore object members it does not implement, except:
 
 * `v` other than 1 MUST be rejected
 * `type` other than `job`, on a message the receiver is executing as a job, MUST be rejected
-* `kind` other than `exec` or `ping` MUST be rejected and MUST NOT be executed
+* `kind` other than `exec` or `ping` MUST NOT be executed; the reference receiver rejects any other value except `sensor_alert`, which it files as a signed alert for its Oracle (PROTOCOL.md, "Senses") and never executes
 
 Ignoring a member means the member is still covered by the MAC and has no effect on version 1 processing.
 
@@ -243,7 +243,7 @@ Ignoring a member means the member is still covered by the MAC and has no effect
 | `type` | string | REQUIRED | `job` or `result`. |
 | `job_id` | string | REQUIRED | Section 6. |
 | `key_id` | string | OPTIONAL | Selects the HMAC key. Absent selects the default secret. |
-| `runner_id` | string | OPTIONAL | Audience claim. Enforcement is LOCAL. |
+| `aud` | string | OPTIONAL | Audience claim. Enforcement is LOCAL. `runner_id` is accepted as its older spelling; when both are present `aud` is the claim. |
 | `sig` | string | REQUIRED | Section 7. Not part of the signed octets. |
 
 `key_id` is covered by the MAC. Key identifiers MAY appear in logs. An unknown `key_id` MUST be rejected before the MAC is computed. The receiver MUST NOT try another secret.
@@ -406,7 +406,7 @@ If `timed_out` is true, `exit_code` MUST be -1.
 
 ### 13.2. Truncation
 
-Each stream MAY be cut at a LOCAL byte limit. The RECOMMENDED limit is 100000 octets. When a stream is cut, its `*_truncated` member MUST be true. When it is not cut, that member MUST be false.
+Each stream MAY be cut at a LOCAL limit on the decoded text. The RECOMMENDED limit is 100000 characters. When a stream is cut, its `*_truncated` member MUST be true. When it is not cut, that member MUST be false.
 
 A result specified here includes the output the receiver chose to send. Omitting output for a local privacy policy is outside version 1. A submitter MUST NOT assume output will be withheld. Where a disclosure policy is layered on the exchange (Section 1), this guidance does not hold and the submitter MUST NOT rely on it.
 
@@ -423,15 +423,15 @@ For each unseen message:
 5. Verify the MAC (Section 7). On failure, reject with no result. Mark seen. Stop. The `From` header is not an input to this step.
 6. Parse the signed octets as one JSON object. If it is not an object, reject with no result. Mark seen. Stop.
 7. If `v` is not 1 or `type` is not `job`, reject with no result. Mark seen. Stop.
-8. If the subject `job_id` and the member `job_id` differ, or `job_id` is illegal (Section 6), reject with no result. Mark seen. Stop.
+8. If the subject `job_id` and the member `job_id` differ, reject with no result. Mark seen. Stop. (A `job_id` that is illegal under Section 6 is a shape failure of step 12: the job verified, so it is answered with an `exit_code` -2 result and enters the seen-set.)
 9. Check `issued_at` (Section 11.1). On failure, reject with no result. Mark seen. Stop.
 10. LOCAL checks (audience, per-key policy) MAY reject here. A reject at this step MUST NOT execute the job. Whether a result is sent is LOCAL. The reference receiver sends no result for an audience failure.
 11. If `kind` is `ping`, go to step 13.
 12. If `kind` is `exec`, resolve the script and files (Section 11). On failure, send a result with `exit_code` -2, mark seen, stop. If `kind` is anything else, send a result with `exit_code` -2, mark seen, stop.
 13. Execute. Honor `timeout_sec`.
 14. Build the result (Section 13) and sign it with the secret from step 4.
-15. Send the result to `reply_to` if that member is valid, otherwise to the runner mailbox.
-16. If the send succeeds, mark seen. If the send fails, leave the job unseen. A later poll will execute it again (Section 15).
+15. Stash the signed result in a LOCAL outbox, record `job_id` in the seen-set, and mark seen, in that order, before any send is attempted.
+16. Send the result to `reply_to` if that member is valid, otherwise to the runner mailbox. If the send fails, the stashed result is resent on later polls, the same octets each time, until it lands or the stash's retention lapses. The job is never executed again (Section 15).
 
 If the object verified at step 5 is an encryption envelope, Section 16 applies: decrypt after step 5 and process the recovered body from step 4. The envelope's verification never substitutes for the body's own.
 
@@ -439,13 +439,13 @@ The email `From` address MAY be logged after step 5. It MUST NOT authorize the j
 
 ## 15. Retry
 
-Delivery of the result is at-least-once.
+Execution is at most once; delivery of the result is at least once.
 
-If step 16 fails, the receiver MUST leave the job out of the seen-set. The next poll MUST be allowed to run the job again.
+A receiver MUST record `job_id` in the seen-set once it holds a signed result for the job (step 15), before the first send, and MUST NOT execute the job again because a send failed. A send that fails is retried from the stash; the resent result is the same octets.
 
-Submitters MUST treat `exec` as repeatable. A job that is not safe to run twice is not a conforming job.
+Submitters MUST still treat `exec` as repeatable: a receiver whose seen-set was cleared, or a job delivered to two receivers, runs it twice.
 
-Two senses of "seen" are kept apart. Marking a message seen (Section 14, steps 3 through 12 and 16) is the binding-level flag: that copy of the message is not reprocessed. Recording a `job_id` in the seen-set is the replay state of Section 14, and a receiver MUST add a `job_id` to the seen-set only after it has produced a result for it: on a successful send at step 16, or on the `exit_code` -2 result of step 12. A reject that produces no result (steps 3 through 9, and step 10 when the LOCAL choice is silence) MUST NOT enter the seen-set. A redelivered copy of such a message is therefore processed afresh and rejected afresh. This is deliberate: a message that never verified cannot burn a `job_id`, so a forger holding a victim's `job_id` cannot block the genuine job from running.
+Two senses of "seen" are kept apart. Marking a message seen (Section 14, steps 3 through 12 and 15) is the binding-level flag: that copy of the message is not reprocessed. Recording a `job_id` in the seen-set is the replay state of Section 14, and a receiver MUST add a `job_id` to the seen-set only after it has produced a result for it: the stashed result of step 15, or the `exit_code` -2 result of step 12. A reject that produces no result (steps 3 through 9, and step 10 when the LOCAL choice is silence) MUST NOT enter the seen-set. A redelivered copy of such a message is therefore processed afresh and rejected afresh. This is deliberate: a message that never verified cannot burn a `job_id`, so a forger holding a victim's `job_id` cannot block the genuine job from running.
 
 ## 16. Per-Job Encryption
 
@@ -518,7 +518,7 @@ Failing closed before the MAC stops a message from verifying under the default s
 
 ### 17.6. Replay
 
-The past window rejects stale `issued_at`. The seen-set rejects a repeated `job_id`. A receiver with a wrong clock will accept stale jobs or reject fresh ones. A receiver whose seen-set is cleared will accept a replay that is still inside the past window. Jobs MUST be safe to repeat, because a lost result already causes a second execution.
+The past window rejects stale `issued_at`. The seen-set rejects a repeated `job_id`. A receiver with a wrong clock will accept stale jobs or reject fresh ones. A receiver whose seen-set is cleared will accept a replay that is still inside the past window. Jobs MUST be safe to repeat for that reason; a lost result no longer causes one (Section 15).
 
 ### 17.7. Two secrets
 
@@ -534,7 +534,7 @@ Version 1 results carry `stdout` and `stderr` up to the truncation limit. A rece
 
 ### 17.10. At-least-once
 
-An attacker who can drop the result mail can cause another execution. That is the same outcome as a failed send. Idempotent jobs bound the damage. This protocol does not add a separate ack.
+An attacker who can drop the result mail delays delivery: the receiver resends the stashed result, the same octets, and does not execute the job again (Section 15). This protocol does not add a separate ack.
 
 ## 18. IANA Considerations
 
@@ -596,7 +596,9 @@ The greeting is a JSON object [RFC8259] in the protocol's idiom:
 
 ```
 {"disclosure": "family",
- "platform": {"os_family": "linux"},
+ "platform": {"os_family": "linux",
+              "default_interpreter": ["sh"],
+              "protocol_versions": [1]},
  "transport": "dtls",
  "type": "greeting",
  "v": 1}
@@ -605,7 +607,7 @@ The greeting is a JSON object [RFC8259] in the protocol's idiom:
 The members `type` (always `greeting`), `transport` (always `dtls`), `v` (the protocol version, 1), and `disclosure` (the tier in force) are always present. The `platform` member is present unless the tier is `none`, and its members depend on the tier:
 
 - `none`: no `platform` member. The greeting still goes out; it says the session exists and nothing about the host.
-- `family`: `os_family` only -- one of `windows`, `macos`, `linux`, `other`. This is the reference default.
+- `family`: `os_family` (one of `windows`, `macos`, `linux`, `other`), `default_interpreter` (the argv the receiver runs a script with when the job names none) and `protocol_versions` (the message versions it opens). This is the reference default.
 - `standard`: `family` plus `os_release` (the operating system's release string) and `python_version` (the runner runtime's version).
 - `full`: `standard` plus `path_tools`, an object naming a fixed, bounded set of common tools and whether each is on the runner's PATH.
 

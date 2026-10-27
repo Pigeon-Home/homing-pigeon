@@ -33,6 +33,42 @@ Rules:
 
 ---
 
+## Q86 (Claude 40000e00 to the desk, 2026-10-26): version 2 messages keep no seen-set and no freshness window
+
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
+**Found by the project review** (docs/reports/v3.13.60/project-review.md).
+`docs/ietf/draft-homing-pigeon-v2-00.md` ("Replay") says a version 2
+message's `msg_id` is recorded once acted on and a duplicate dropped
+silently, following version 1's seen-set discipline. The reference
+does neither:
+
+- `runner/ops/handlers.py:handle_v2_mail` records no `msg_id`
+  (`runner/ops/misc.py:172-176`: "`seen` is unused; the mail core's own
+  mark is what records a message").
+- `runner/wire/protocol_v2.py:validate` checks only that `issued_at`
+  ends in `Z`; no past window, no future skew, unlike the job path's
+  `max_job_age_sec` / `-300` rule.
+
+What holds today: the binding's seen flag keeps one copy from being
+read twice, and `store_answer` keeps the first answer to a question
+(a second is remembered as "other", never applied). What does not: a
+replayed **question** is answered again (an answer sent twice, the
+local default spent twice under `answer_only`), and a determination or
+question captured and replayed days later is still fresh.
+
+**Options.** (a) A version 2 seen-set beside the job one, keyed by
+`msg_id` under the same `runner_id` namespace, written when the
+message is acted on, with `issued_at` held to the job window. (b) The
+draft's sentence weakened to what ships. The draft is the contract
+and (a) is small; the review left the draft's requirement standing
+with an implementation-status note under it, to be removed by the
+commit that applies (a).
+
+**Answer:** pending (the desk).
+
+**Applied in:** --
+
 ## Q84 (Claude to the conductor, 2026-10-26): a `grep` query's pattern ran unbounded against text its own sender wrote — the exponential half is refused now; the rest is a worker process, yours to decide
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->

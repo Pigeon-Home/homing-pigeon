@@ -59,10 +59,10 @@ This Internet-Draft will expire on 20 April 2027.
 ## 1. Introduction
 
 Version 1's core exchange is two messages: a signed job object and a
-signed result object, carried unchanged over any binding. (Version 1
-also specifies the query and query-result messages of its two-phase
-exchange, the task-board messages, and the sensor alert; none of
-those is the subject here.) The runner's decisions in version 1 are
+signed result object, carried unchanged over any binding. (PROTOCOL.md,
+the reference's own specification, also specifies the query and
+query-result messages of its two-phase exchange, the task-board
+messages, and the sensor alert; none of those is the subject here.) The runner's decisions in version 1 are
 local: it verifies the signature and the further admission checks of
 its Section 14, forms whatever expectation its configuration gives
 it, executes, and reports an exit code and output. The result may
@@ -282,6 +282,12 @@ its own identifier (`msg_id`), and carries `issued_at` as in
 version 1. Replay handling follows the seen-set discipline of
 version 1: an identifier is recorded once the message has been
 acted on, and a duplicate is dropped silently.
+
+*Implementation status (2026-10-26): the reference receiver does
+not yet keep a version 2 seen-set or a freshness window on
+`issued_at` beyond its form; a duplicate copy is held off by the
+binding's seen flag, and a second answer to one question by
+first-answer-wins at the answer store (docs/use/questions.md, Q86).*
 
 ---
 
