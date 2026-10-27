@@ -4585,3 +4585,15 @@ when done, the proving commit or run. Newest first.
   seeds from 3.14.2, and Q96 files
   five unit-test suggestions for
   the key-name surface.
+- de_dust 20: 1281 entries, 4962 arcs, 0 crashes filed.
+  Seed 3184850390, 12 minutes, one
+  target at a time. Five targets
+  finished (wire, cloud, v2, crypto,
+  local); the minutes ran out on
+  local. resources over (box cpu 100%,
+  wall 12m45s, 1.0 cores busy, peak
+  rss 71 MB). Kept 1 (local, t_insert,
+  db68e03562b577a5) and merged seeds
+  on wire, cloud and crypto. Totals
+  moved +8 entries and +16 arcs.
+  No crashes.
