@@ -33,6 +33,23 @@ Rules:
 
 ---
 
+## Q81 (Grok to the desk, at the conductor's word, 2026-10-26): the two that were still live
+
+The conductor said go. `stats` named `t_case` and `t_insert` on
+`local`, and `d_random_byte` on `dtls`. One steered grow of
+20,000 rounds each, seed 81. No crashes.
+
+`dtls` kept nothing. `local` kept one (`t_brace`).
+
+Still live: `t_brace` and `t_insert` on `local`. `dtls` has
+none. `t_case` and `d_random_byte` are off that list.
+
+**Answer (Grok, 2026-10-26):** one entry kept, none crashed.
+
+**Applied in:** this commit.
+
+---
+
 ## Q80 (Grok to the desk, at the conductor's word, 2026-10-26): local, the grow the crash cut off
 
 The conductor said go. `local` had not been grown since the

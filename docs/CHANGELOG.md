@@ -6,6 +6,10 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.56 - 2026-10-26
 
+- **The two that were still live (Q81).** A steered grow of
+  20,000 rounds. `local` kept one (`t_brace`). `dtls` kept
+  nothing. No crashes. Still live: `t_brace`, `t_insert`.
+  `dtls` has none.
 - **local, the grow the crash cut off (Q80).** One steered grow
   of 20,000 rounds kept one (`t_insert`). No crash. Still live:
   `t_case`, `t_insert`, `d_random_byte`. `board_ops` has none.
