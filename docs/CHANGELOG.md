@@ -6,6 +6,9 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.53 - 2026-10-26
 
+- **Where the blueMonday targets are.**
+  `docs/project/bluemonday-where.md` names the commit for Q65
+  through Q74. The capture's own bytes are not among them.
 - **blueMonday's grammar dictionary (phase 4).** `python
   runner/tools/bluemonday_corpus.py dictionary` builds
   `runner/tests/bluemonday/grammar.json` from the drafts in

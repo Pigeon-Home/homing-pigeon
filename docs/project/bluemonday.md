@@ -258,7 +258,9 @@ is a line in `runs.jsonl`; every pass of the regression tool, when
 the conductor lifts its suspension, is a line in
 `docs/reports/regression/passes.jsonl`; the campaign's ledger is
 the end of the standing orders; the campaign's questions are in
-`questions.md`. A release's evidence manifest beside its SBOM is
+`questions.md`. Where each target Grok built landed is
+`docs/project/bluemonday-where.md`. A release's evidence
+manifest beside its SBOM is
 the conductor's call (offered 2026-10-26).
 
 ## 8. Saturation and what comes after it
