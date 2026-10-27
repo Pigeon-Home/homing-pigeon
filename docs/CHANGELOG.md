@@ -6,6 +6,12 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.54 - 2026-10-26
 
+- **blueMonday's live mutators, a third grow (Q77).** Another
+  steered grow of 20,000 rounds. `dtls` kept one
+  (`d_random_byte`, one new arc). `local` kept one (`t_insert`).
+  `board_ops` and `manifest` kept nothing. No crashes. Still
+  live: `t_case`, `t_insert`, `d_random_byte`, `board_file`.
+  `manifest` has none.
 - **blueMonday's live mutators, again (Q76).** Another steered
   grow of 20,000 rounds. `board_ops` kept one (`board_file`).
   `local` kept one (`t_case`). `dtls` and `manifest` kept

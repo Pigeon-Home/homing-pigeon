@@ -361,6 +361,11 @@
     [
       "runner/wire/dtlsproto.py",
       303,
+      304
+    ],
+    [
+      "runner/wire/dtlsproto.py",
+      303,
       305
     ],
     [

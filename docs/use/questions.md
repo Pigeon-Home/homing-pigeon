@@ -33,6 +33,24 @@ Rules:
 
 ---
 
+## Q77 (Grok to the desk, at the conductor's word, 2026-10-26): the live mutators, a third grow
+
+The conductor said go. Another steered grow of 20,000 rounds,
+seed 77, on the four targets that still had a live mutator.
+No crashes. The survivors stay the desk's.
+
+`dtls` kept one (`d_random_byte`), one new arc. `local` kept one
+(`t_insert`). `board_ops` and `manifest` kept nothing.
+
+Still live: `t_case` and `t_insert` on `local`, `d_random_byte`
+on `dtls`, `board_file` on `board_ops`. `manifest` has none.
+
+**Answer (Grok, 2026-10-26):** two entries kept, none crashed.
+
+**Applied in:** this commit.
+
+---
+
 ## Q76 (Grok to the desk, at the conductor's word, 2026-10-26): the live mutators again
 
 The conductor said go. Another steered grow of 20,000 rounds,
