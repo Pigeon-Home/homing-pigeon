@@ -2,18 +2,18 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "alarm": true,
  "bluemonday": 1,
- "head": "6a6410cdda5d",
+ "head": "2642bb025923",
  "kind": "survivors",
  "limit": null,
  "modules": {
   "board": {
    "broken": 0,
-   "entries": 61,
+   "entries": 62,
    "file": "runner/wire/board.py",
    "killed": 256,
-   "mutants": 278,
-   "reached_lines": 313,
-   "survived": 22,
+   "mutants": 274,
+   "reached_lines": 254,
+   "survived": 18,
    "survivors": [
     {
      "index": 1,
@@ -93,77 +93,49 @@
      "verdict": "survived"
     },
     {
-     "index": 183,
-     "line": 316,
-     "op": "int+1",
-     "text": "priority = 0",
-     "verdict": "survived"
-    },
-    {
-     "index": 184,
-     "line": 316,
-     "op": "int-1",
-     "text": "priority = 0",
-     "verdict": "survived"
-    },
-    {
-     "index": 187,
+     "index": 185,
      "line": 330,
      "op": "str-empty",
      "text": "elif \"dag_warning\" in chosen:",
      "verdict": "survived"
     },
     {
-     "index": 210,
+     "index": 208,
      "line": 402,
      "op": "int-1",
      "text": "task_timeout = _confval.number(task_timeout, 86400, lo=0)",
      "verdict": "survived"
     },
     {
-     "index": 212,
+     "index": 210,
      "line": 132,
      "op": "str-empty",
      "text": "if task.get(\"task_id\") != key:",
      "verdict": "survived"
     },
     {
-     "index": 216,
+     "index": 214,
      "line": 152,
      "op": "int+1",
      "text": "indent=2, allow_nan=False)",
      "verdict": "survived"
     },
     {
-     "index": 217,
+     "index": 215,
      "line": 152,
      "op": "int-1",
      "text": "indent=2, allow_nan=False)",
      "verdict": "survived"
     },
     {
-     "index": 218,
+     "index": 216,
      "line": 152,
      "op": "bool",
      "text": "indent=2, allow_nan=False)",
      "verdict": "survived"
     },
     {
-     "index": 245,
-     "line": 333,
-     "op": "str-empty",
-     "text": "del chosen[\"dag_warning\"]",
-     "verdict": "survived"
-    },
-    {
-     "index": 260,
-     "line": 256,
-     "op": "bool",
-     "text": "same = False",
-     "verdict": "survived"
-    },
-    {
-     "index": 263,
+     "index": 259,
      "line": 317,
      "op": "str-empty",
      "text": "return (-priority, _as_str(task.get(\"submitted_at\")))",
@@ -178,11 +150,11 @@
   },
   "dtlsproto": {
    "broken": 0,
-   "entries": 25,
+   "entries": 28,
    "file": "runner/wire/dtlsproto.py",
-   "killed": 516,
-   "mutants": 516,
-   "reached_lines": 255,
+   "killed": 536,
+   "mutants": 536,
+   "reached_lines": 267,
    "survived": 0,
    "survivors": [],
    "targets": [
@@ -192,11 +164,11 @@
   },
   "extensions": {
    "broken": 0,
-   "entries": 89,
+   "entries": 93,
    "file": "runner/ops/extensions.py",
-   "killed": 241,
-   "mutants": 241,
-   "reached_lines": 179,
+   "killed": 242,
+   "mutants": 242,
+   "reached_lines": 180,
    "survived": 0,
    "survivors": [],
    "targets": [
@@ -867,8 +839,8 @@
   }
  },
  "platform": "Linux-x86_64",
- "python": "3.13.16",
- "seconds": 101.0,
+ "python": "3.12.3",
+ "seconds": 121.6,
  "seed": 0,
  "through_agent": [
   "local",
@@ -877,5 +849,5 @@
   "stash"
  ],
  "timeout": 20,
- "when": "2026-10-27T01:49:24Z"
+ "when": "2026-10-27T04:45:16Z"
 }

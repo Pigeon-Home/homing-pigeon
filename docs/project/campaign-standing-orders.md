@@ -4235,3 +4235,30 @@ when done, the proving commit or run. Newest first.
   stands in the tree now. The grow's
   own resources line reads on target
   (box cpu 84%, wall 1h01m).
+- rules refreshed 2026-10-26 21:47 PDT
+  (standing orders incl. section M as
+  the only effort, the blueMonday plan;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules).
+  blueMonday 10: 650 entries, 2678 arcs, 0 crashes filed.
+  Killed by a VM restart about 48
+  minutes into its hour (seed 6220, the
+  archive recording); the finished
+  targets' records are committed here:
+  no entry kept and no arc gained over
+  its 40 run records, 622,110 children
+  tried, all of them in the archive.
+  The local target was mid-cycle when
+  the box went down, and its cycle is
+  not recorded. The dtls arc map the
+  tool rewrote at the grow's start
+  carries 309 arcs, the count its own
+  run records carry; the 312-arc file
+  it replaces came from grow 9's union
+  merge. The survivors run after it
+  counts 97 of 1,967 mutants surviving
+  over 10 readers: board 18, dtlsproto
+  0, extensions 0, jobcrypto 28,
+  mailbox 1, protocol_v2 3, security 4,
+  send_job 14, transports 18, verify 11.
