@@ -4455,3 +4455,39 @@ when done, the proving commit or run. Newest first.
   the archive. The survivors run goes
   beside grow 16 and its record rides
   that bank.
+- rules refreshed 2026-10-27 07:55 PDT
+  (standing orders incl. section M
+  under its new name, Project de_dust;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules). Q93 is answered by the
+  desk in 3.13.68: the surrogate pair
+  was the reader's, promote moved one
+  of the five into the corpus and
+  dropped four.
+  de_dust 16: 1119 entries, 4638 arcs, 0 crashes filed.
+  Grow 16 ran under the old tool in
+  memory, per the desk's rename note
+  (seed 6280, the archive recording),
+  and the VM restarted at 07:51 PDT,
+  killing it about 54 minutes in with
+  15 of 20 targets recorded: 206,965
+  children over its 15 run records.
+  wire, cloud, query, board_mail and
+  v2_mail were unrecorded when it
+  died. It kept 1 (local, +2 arcs on
+  that target) and merged the desk's
+  four Q92 seeds on queries; totals
+  moved +5 entries and +7 arcs. The
+  wrapper's resources line never
+  printed, so none is claimed. The
+  survivors run beside it died in the
+  same restart with no record
+  (survivors.json unchanged); it is
+  rerun after grow 17. Grow 17 starts
+  on this bank with the new command
+  and the new archive name,
+  HP_DE_DUST_ARCHIVE. The box idled
+  from the restart until this bank;
+  that gap is the restart's, recorded
+  here per Q58.
