@@ -4639,3 +4639,46 @@ when done, the proving commit or run. Newest first.
   box idled from the restart until
   this bank; recorded per Q58.
   Grow 21 (seed 6330) follows.
+- rules refreshed 2026-10-27 15:03 PDT
+  (standing orders incl. section M;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules). A correction to grow
+  20's line above: the Q96 pinning it
+  names as 191d41a6 was Grok's
+  original commit; the desk re-landed
+  that work in the 60a3f3a2 chain and
+  it is on main in that form.
+  de_dust 21: 1292 entries, 4978 arcs, 1 crash filed.
+  Grow 21 (seed 6330, the archive
+  recording) ran on target (box cpu
+  82%, wall 1h33m sharing the box)
+  and exited 1 on the crash: 279,836
+  children over 19 run records; it
+  merged 5 seeds (query 3, board_mail
+  2) and kept 2 (local 1, board_mail
+  1). v2_mail wrote no record before
+  the minutes ran out, the second
+  grow in a row it sat at the end of
+  the rotation. The crash is the
+  first on board_mail: entry
+  c5309423121a8b50, a p_splice child
+  whose task_request carries
+  capabilities as the bare string
+  "shell", and the board's contract
+  answers "a task offered is not
+  claimed on the board" -- filed as
+  Q97; the entry rides in
+  board_mail.crashes.jsonl as the
+  expected-failure probe. The
+  survivors pass beside it completed:
+  87 of 2,986 mutants not killed
+  over 15 modules in 7,039s
+  (per-module counts in
+  survivors.json; protocol_v2 and
+  queries, the two largest counts in
+  grow 14's pass, are at 0 after the
+  Q89/Q92/Q93 fixes). The box idled
+  from that pass's end (14:13) until
+  this bank; recorded per Q58.
+  Grow 22 (seed 6340) follows.

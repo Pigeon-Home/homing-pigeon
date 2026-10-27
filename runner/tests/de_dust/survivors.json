@@ -2,13 +2,13 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "alarm": true,
  "de_dust": 1,
- "head": "e5e5307f392b",
+ "head": "b68eeae588e3",
  "kind": "survivors",
  "limit": null,
  "modules": {
   "board": {
    "broken": 0,
-   "entries": 150,
+   "entries": 152,
    "file": "runner/wire/board.py",
    "killed": 270,
    "mutants": 275,
@@ -74,7 +74,7 @@
   },
   "extensions": {
    "broken": 0,
-   "entries": 93,
+   "entries": 128,
    "file": "runner/ops/extensions.py",
    "killed": 242,
    "mutants": 242,
@@ -138,77 +138,13 @@
   },
   "handlers": {
    "broken": 0,
-   "entries": 63,
+   "entries": 80,
    "file": "runner/ops/handlers.py",
-   "killed": 68,
-   "mutants": 77,
-   "reached_lines": 96,
-   "survived": 9,
-   "survivors": [
-    {
-     "index": 32,
-     "line": 196,
-     "op": "boolop",
-     "text": "if isinstance(base_dir, str) and base_dir else \"\"",
-     "verdict": "survived"
-    },
-    {
-     "index": 36,
-     "line": 210,
-     "op": "bool",
-     "text": "seen[skey] = True",
-     "verdict": "survived"
-    },
-    {
-     "index": 57,
-     "line": 231,
-     "op": "str-empty",
-     "text": "if R._oracle_mode(cfg) != \"deterministic\":",
-     "verdict": "survived"
-    },
-    {
-     "index": 69,
-     "line": 242,
-     "op": "int+1",
-     "text": "500, R._redact_patterns(cfg))",
-     "verdict": "survived"
-    },
-    {
-     "index": 70,
-     "line": 242,
-     "op": "int-1",
-     "text": "500, R._redact_patterns(cfg))",
-     "verdict": "survived"
-    },
-    {
-     "index": 73,
-     "line": 241,
-     "op": "boolop",
-     "text": "str(payload.get(\"question\") or \"\"),",
-     "verdict": "survived"
-    },
-    {
-     "index": 74,
-     "line": 244,
-     "op": "str-empty",
-     "text": "res.get(\"answer\"), str) and res[\"answer\"].strip():",
-     "verdict": "survived"
-    },
-    {
-     "index": 75,
-     "line": 241,
-     "op": "str-empty",
-     "text": "str(payload.get(\"question\") or \"\"),",
-     "verdict": "survived"
-    },
-    {
-     "index": 76,
-     "line": 244,
-     "op": "str-empty",
-     "text": "res.get(\"answer\"), str) and res[\"answer\"].strip():",
-     "verdict": "survived"
-    }
-   ],
+   "killed": 67,
+   "mutants": 67,
+   "reached_lines": 101,
+   "survived": 0,
+   "survivors": [],
    "targets": [
     "v2_mail"
    ],
@@ -216,7 +152,7 @@
   },
   "jobcrypto": {
    "broken": 0,
-   "entries": 44,
+   "entries": 73,
    "file": "runner/wire/jobcrypto.py",
    "killed": 342,
    "mutants": 370,
@@ -427,12 +363,12 @@
   },
   "mailbox": {
    "broken": 0,
-   "entries": 279,
+   "entries": 313,
    "file": "runner/wire/mailbox.py",
-   "killed": 18,
+   "killed": 19,
    "mutants": 22,
    "reached_lines": 25,
-   "survived": 4,
+   "survived": 3,
    "survivors": [
     {
      "index": 1,
@@ -454,13 +390,6 @@
      "op": "str-empty",
      "text": "imap.store(seq, \"+FLAGS\", \"\\\\Seen\")",
      "verdict": "survived"
-    },
-    {
-     "index": 17,
-     "line": 354,
-     "op": "str-empty",
-     "text": "msg[\"Subject\"] = \" \".join(str(subject or \"\").splitlines())",
-     "verdict": "survived"
     }
    ],
    "targets": [
@@ -473,11 +402,11 @@
   },
   "policy": {
    "broken": 0,
-   "entries": 209,
+   "entries": 250,
    "file": "runner/ops/policy.py",
-   "killed": 140,
-   "mutants": 140,
-   "reached_lines": 105,
+   "killed": 163,
+   "mutants": 163,
+   "reached_lines": 135,
    "survived": 0,
    "survivors": [],
    "targets": [
@@ -489,301 +418,13 @@
   },
   "protocol_v2": {
    "broken": 0,
-   "entries": 131,
+   "entries": 148,
    "file": "runner/wire/protocol_v2.py",
-   "killed": 168,
-   "mutants": 209,
-   "reached_lines": 154,
-   "survived": 41,
-   "survivors": [
-    {
-     "index": 0,
-     "line": 50,
-     "op": "return-none",
-     "text": "return isinstance(cfg, dict) and cfg.get(\"protocol_v2\") is True",
-     "verdict": "survived"
-    },
-    {
-     "index": 11,
-     "line": 50,
-     "op": "boolop",
-     "text": "return isinstance(cfg, dict) and cfg.get(\"protocol_v2\") is True",
-     "verdict": "survived"
-    },
-    {
-     "index": 12,
-     "line": 55,
-     "op": "boolop",
-     "text": "return isinstance(cfg, dict) and cfg.get(\"answer_only\") is True",
-     "verdict": "survived"
-    },
-    {
-     "index": 13,
-     "line": 60,
-     "op": "boolop",
-     "text": "return enabled(cfg) or answer_only(cfg)",
-     "verdict": "survived"
-    },
-    {
-     "index": 24,
-     "line": 106,
-     "op": "boolop",
-     "text": "if len(ident) <= 128 and _ID.match(ident):",
-     "verdict": "survived"
-    },
-    {
-     "index": 27,
-     "line": 233,
-     "op": "boolop",
-     "text": "if not isinstance(text, str) or not text.strip():",
-     "verdict": "survived"
-    },
-    {
-     "index": 42,
-     "line": 436,
-     "op": "boolop",
-     "text": "if not isinstance(text, str) or not text.strip():",
-     "verdict": "survived"
-    },
-    {
-     "index": 44,
-     "line": 453,
-     "op": "boolop",
-     "text": "if text in have or len(have) >= 8:",
-     "verdict": "survived"
-    },
-    {
-     "index": 45,
-     "line": 50,
-     "op": "compare",
-     "text": "return isinstance(cfg, dict) and cfg.get(\"protocol_v2\") is True",
-     "verdict": "survived"
-    },
-    {
-     "index": 54,
-     "line": 104,
-     "op": "str-empty",
-     "text": "_safe_id(job_id, \"job_id\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 56,
-     "line": 106,
-     "op": "compare",
-     "text": "if len(ident) <= 128 and _ID.match(ident):",
-     "verdict": "survived"
-    },
-    {
-     "index": 58,
-     "line": 231,
-     "op": "str-empty",
-     "text": "qid = _safe_id(question.get(\"msg_id\"), \"question msg_id\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 59,
-     "line": 232,
-     "op": "str-empty",
-     "text": "job_id = _safe_id(question.get(\"job_id\"), \"job_id\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 70,
-     "line": 250,
-     "op": "boolop",
-     "text": "if isinstance(default, str) and default.strip():",
-     "verdict": "survived"
-    },
-    {
-     "index": 89,
-     "line": 340,
-     "op": "str-empty",
-     "text": "_safe_id(question_id, \"question_id\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 90,
-     "line": 341,
-     "op": "str-empty",
-     "text": "folder = os.path.join(base_dir, \"v2\", \"answers\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 91,
-     "line": 341,
-     "op": "str-empty",
-     "text": "folder = os.path.join(base_dir, \"v2\", \"answers\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 93,
-     "line": 373,
-     "op": "int+1",
-     "text": "for _ in range(3):",
-     "verdict": "survived"
-    },
-    {
-     "index": 94,
-     "line": 373,
-     "op": "int-1",
-     "text": "for _ in range(3):",
-     "verdict": "survived"
-    },
-    {
-     "index": 100,
-     "line": 418,
-     "op": "not",
-     "text": "if not won:",
-     "verdict": "survived"
-    },
-    {
-     "index": 101,
-     "line": 436,
-     "op": "not",
-     "text": "if not isinstance(text, str) or not text.strip():",
-     "verdict": "survived"
-    },
-    {
-     "index": 102,
-     "line": 436,
-     "op": "not",
-     "text": "if not isinstance(text, str) or not text.strip():",
-     "verdict": "survived"
-    },
-    {
-     "index": 104,
-     "line": 453,
-     "op": "compare",
-     "text": "if text in have or len(have) >= 8:",
-     "verdict": "survived"
-    },
-    {
-     "index": 105,
-     "line": 453,
-     "op": "compare",
-     "text": "if text in have or len(have) >= 8:",
-     "verdict": "survived"
-    },
-    {
-     "index": 106,
-     "line": 50,
-     "op": "bool",
-     "text": "return isinstance(cfg, dict) and cfg.get(\"protocol_v2\") is True",
-     "verdict": "survived"
-    },
-    {
-     "index": 112,
-     "line": 106,
-     "op": "int+1",
-     "text": "if len(ident) <= 128 and _ID.match(ident):",
-     "verdict": "survived"
-    },
-    {
-     "index": 113,
-     "line": 106,
-     "op": "int-1",
-     "text": "if len(ident) <= 128 and _ID.match(ident):",
-     "verdict": "survived"
-    },
-    {
-     "index": 143,
-     "line": 409,
-     "op": "str-empty",
-     "text": "tmp = path + \".tmp-\" + uuid.uuid4().hex",
-     "verdict": "survived"
-    },
-    {
-     "index": 144,
-     "line": 435,
-     "op": "str-empty",
-     "text": "text = obj.get(\"answer\") if isinstance(obj, dict) else \"\"",
-     "verdict": "survived"
-    },
-    {
-     "index": 145,
-     "line": 453,
-     "op": "int+1",
-     "text": "if text in have or len(have) >= 8:",
-     "verdict": "survived"
-    },
-    {
-     "index": 146,
-     "line": 453,
-     "op": "int-1",
-     "text": "if text in have or len(have) >= 8:",
-     "verdict": "survived"
-    },
-    {
-     "index": 147,
-     "line": 50,
-     "op": "str-empty",
-     "text": "return isinstance(cfg, dict) and cfg.get(\"protocol_v2\") is True",
-     "verdict": "survived"
-    },
-    {
-     "index": 172,
-     "line": 342,
-     "op": "str-empty",
-     "text": "return folder, os.path.join(folder, question_id + \".json\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 175,
-     "line": 380,
-     "op": "return-none",
-     "text": "return False",
-     "verdict": "survived"
-    },
-    {
-     "index": 177,
-     "line": 414,
-     "op": "str-empty",
-     "text": "fh.write(\"\\n\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 182,
-     "line": 251,
-     "op": "int+1",
-     "text": "return default.strip()[:64]",
-     "verdict": "survived"
-    },
-    {
-     "index": 196,
-     "line": 380,
-     "op": "bool",
-     "text": "return False",
-     "verdict": "survived"
-    },
-    {
-     "index": 198,
-     "line": 442,
-     "op": "str-empty",
-     "text": "with open(more, encoding=\"utf-8\") as fh:",
-     "verdict": "survived"
-    },
-    {
-     "index": 200,
-     "line": 460,
-     "op": "str-empty",
-     "text": "}) + \"\\n\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 205,
-     "line": 458,
-     "op": "str-empty",
-     "text": "\"received_at\": time.time(),",
-     "verdict": "survived"
-    },
-    {
-     "index": 206,
-     "line": 459,
-     "op": "str-empty",
-     "text": "\"answer\": text,",
-     "verdict": "survived"
-    }
-   ],
+   "killed": 235,
+   "mutants": 235,
+   "reached_lines": 165,
+   "survived": 0,
+   "survivors": [],
    "targets": [
     "v2",
     "v2_mail"
@@ -792,261 +433,65 @@
   },
   "queries": {
    "broken": 0,
-   "entries": 187,
+   "entries": 228,
    "file": "runner/ops/queries.py",
-   "killed": 262,
-   "mutants": 296,
-   "reached_lines": 226,
-   "survived": 34,
+   "killed": 389,
+   "mutants": 395,
+   "reached_lines": 376,
+   "survived": 0,
    "survivors": [
     {
-     "index": 16,
-     "line": 199,
-     "op": "compare",
-     "text": "if budget < 0:",
-     "verdict": "survived"
-    },
-    {
-     "index": 41,
-     "line": 199,
-     "op": "int+1",
-     "text": "if budget < 0:",
-     "verdict": "survived"
-    },
-    {
-     "index": 42,
-     "line": 199,
-     "op": "int-1",
-     "text": "if budget < 0:",
-     "verdict": "survived"
-    },
-    {
-     "index": 43,
-     "line": 200,
-     "op": "int+1",
-     "text": "budget = 0",
-     "verdict": "survived"
-    },
-    {
-     "index": 44,
-     "line": 200,
-     "op": "int-1",
-     "text": "budget = 0",
-     "verdict": "survived"
-    },
-    {
-     "index": 93,
-     "line": 100,
-     "op": "bool",
-     "text": "dry = bool(opts is not None and getattr(opts, \"dry_run\", False))",
-     "verdict": "survived"
-    },
-    {
-     "index": 115,
-     "line": 140,
-     "op": "str-empty",
-     "text": "view = retained.get(\"view\") or \"full\"",
-     "verdict": "survived"
-    },
-    {
-     "index": 125,
-     "line": 171,
-     "op": "compare",
-     "text": "if remaining < 0:",
-     "verdict": "survived"
-    },
-    {
-     "index": 140,
-     "line": 36,
-     "op": "bool",
-     "text": "if reply is not None and secret and opts is not None and (opts.dry_run or getattr(opts, \"no_send\", False)):",
-     "verdict": "survived"
-    },
-    {
-     "index": 152,
-     "line": 168,
-     "op": "boolop",
-     "text": "retained[\"saved_at\"] = retained.get(\"saved_at\") or time.time()",
-     "verdict": "survived"
-    },
-    {
-     "index": 153,
-     "line": 171,
-     "op": "int+1",
-     "text": "if remaining < 0:",
-     "verdict": "survived"
-    },
-    {
-     "index": 187,
-     "line": 232,
-     "op": "int-1",
-     "text": "item.update(atts[0])",
-     "verdict": "survived"
-    },
-    {
-     "index": 189,
-     "line": 233,
-     "op": "int-1",
-     "text": "if \"ok\" in atts[0]:",
-     "verdict": "survived"
-    },
-    {
-     "index": 204,
-     "line": 168,
-     "op": "str-empty",
-     "text": "retained[\"saved_at\"] = retained.get(\"saved_at\") or time.time()",
-     "verdict": "survived"
-    },
-    {
-     "index": 206,
-     "line": 234,
-     "op": "int-1",
-     "text": "item[\"value\"] = atts[0][\"ok\"]",
-     "verdict": "survived"
-    },
-    {
-     "index": 228,
-     "line": 130,
-     "op": "str-empty",
-     "text": "budget = int(cfg.get(\"max_query_budget\", 8))",
-     "verdict": "survived"
-    },
-    {
-     "index": 277,
-     "line": 309,
-     "op": "boolop",
-     "text": "sensors = _runner()._senses.parse_sensors(cfg or {})",
-     "verdict": "survived"
-    },
-    {
-     "index": 278,
-     "line": 378,
-     "op": "bool",
-     "text": "items.sort(key=lambda a: a[\"score\"], reverse=True)",
-     "verdict": "survived"
-    },
-    {
-     "index": 279,
-     "line": 386,
-     "op": "str-empty",
-     "text": "if isinstance(q.get(\"sensor\"), str):",
-     "verdict": "survived"
-    },
-    {
-     "index": 280,
-     "line": 318,
-     "op": "int+1",
-     "text": "limit=_confval.integer(q.get(\"limit\"), 20, lo=0),",
-     "verdict": "survived"
-    },
-    {
-     "index": 281,
-     "line": 318,
-     "op": "int-1",
-     "text": "limit=_confval.integer(q.get(\"limit\"), 20, lo=0),",
-     "verdict": "survived"
-    },
-    {
-     "index": 283,
-     "line": 388,
-     "op": "str-empty",
-     "text": "wanted.update(it.get(\"sensor\") for it in items)",
-     "verdict": "survived"
-    },
-    {
-     "index": 284,
-     "line": 314,
-     "op": "str-empty",
-     "text": "sensor=q.get(\"sensor\") if isinstance(q.get(\"sensor\"), str) else None,",
-     "verdict": "survived"
-    },
-    {
-     "index": 285,
-     "line": 315,
-     "op": "str-empty",
-     "text": "severity_floor=q.get(\"severity_floor\") if isinstance(q.get(\"severity_floor\"), str) else None,",
-     "verdict": "survived"
-    },
-    {
-     "index": 286,
-     "line": 316,
-     "op": "str-empty",
-     "text": "since=q.get(\"since\") if isinstance(q.get(\"since\"), str) else None,",
-     "verdict": "survived"
-    },
-    {
-     "index": 287,
+     "index": 3,
      "line": 317,
+     "op": "return-none",
+     "text": "return box[0] if box else b\"\"",
+     "verdict": "timeout"
+    },
+    {
+     "index": 55,
+     "line": 242,
      "op": "str-empty",
-     "text": "until=q.get(\"until\") if isinstance(q.get(\"until\"), str) else None,",
-     "verdict": "survived"
+     "text": "return [sys.executable, \"-m\", \"runner.ops.queries\"]",
+     "verdict": "timeout"
     },
     {
-     "index": 288,
-     "line": 318,
+     "index": 56,
+     "line": 242,
      "op": "str-empty",
-     "text": "limit=_confval.integer(q.get(\"limit\"), 20, lo=0),",
-     "verdict": "survived"
+     "text": "return [sys.executable, \"-m\", \"runner.ops.queries\"]",
+     "verdict": "timeout"
     },
     {
-     "index": 289,
-     "line": 318,
-     "op": "int+1",
-     "text": "limit=_confval.integer(q.get(\"limit\"), 20, lo=0),",
-     "verdict": "survived"
+     "index": 110,
+     "line": 348,
+     "op": "compare",
+     "text": "if raw is None or (proc.poll() is not None and not raw):",
+     "verdict": "timeout"
     },
     {
-     "index": 290,
-     "line": 318,
-     "op": "int-1",
-     "text": "limit=_confval.integer(q.get(\"limit\"), 20, lo=0),",
-     "verdict": "survived"
-    },
-    {
-     "index": 291,
-     "line": 378,
+     "index": 175,
+     "line": 328,
      "op": "str-empty",
-     "text": "items.sort(key=lambda a: a[\"score\"], reverse=True)",
-     "verdict": "survived"
+     "text": "\"limit\": limit}) + \"\\n\").encode(\"utf-8\")",
+     "verdict": "timeout"
     },
     {
-     "index": 292,
-     "line": 314,
-     "op": "str-empty",
-     "text": "sensor=q.get(\"sensor\") if isinstance(q.get(\"sensor\"), str) else None,",
-     "verdict": "survived"
-    },
-    {
-     "index": 293,
-     "line": 315,
-     "op": "str-empty",
-     "text": "severity_floor=q.get(\"severity_floor\") if isinstance(q.get(\"severity_floor\"), str) else None,",
-     "verdict": "survived"
-    },
-    {
-     "index": 294,
-     "line": 316,
-     "op": "str-empty",
-     "text": "since=q.get(\"since\") if isinstance(q.get(\"since\"), str) else None,",
-     "verdict": "survived"
-    },
-    {
-     "index": 295,
-     "line": 317,
-     "op": "str-empty",
-     "text": "until=q.get(\"until\") if isinstance(q.get(\"until\"), str) else None,",
-     "verdict": "survived"
+     "index": 177,
+     "line": 331,
+     "op": "compare",
+     "text": "if _worker is None or _worker.poll() is not None:",
+     "verdict": "timeout"
     }
    ],
    "targets": [
     "queries",
     "query"
    ],
-   "timeout": 0
+   "timeout": 6
   },
   "security": {
    "broken": 0,
-   "entries": 104,
+   "entries": 108,
    "file": "runner/guard/security.py",
    "killed": 65,
    "mutants": 69,
@@ -1055,28 +500,28 @@
    "survivors": [
     {
      "index": 3,
-     "line": 121,
+     "line": 122,
      "op": "boolop",
      "text": "if not isinstance(secret, str) or not secret:",
      "verdict": "survived"
     },
     {
      "index": 5,
-     "line": 124,
+     "line": 125,
      "op": "compare",
      "text": "if alphabet <= 1:",
      "verdict": "survived"
     },
     {
      "index": 24,
-     "line": 124,
+     "line": 125,
      "op": "int-1",
      "text": "if alphabet <= 1:",
      "verdict": "survived"
     },
     {
      "index": 65,
-     "line": 149,
+     "line": 150,
      "op": "int+1",
      "text": "if secret == (unit * ((n // period) + 1))[:n]:",
      "verdict": "survived"
@@ -1090,107 +535,100 @@
   },
   "send_job": {
    "broken": 0,
-   "entries": 112,
+   "entries": 128,
    "file": "runner/cloud/send_job.py",
-   "killed": 133,
-   "mutants": 147,
-   "reached_lines": 125,
-   "survived": 14,
+   "killed": 159,
+   "mutants": 172,
+   "reached_lines": 151,
+   "survived": 13,
    "survivors": [
     {
-     "index": 7,
-     "line": 283,
-     "op": "int+1",
-     "text": "NESTING_LIMIT = 200",
-     "verdict": "survived"
-    },
-    {
-     "index": 8,
-     "line": 283,
-     "op": "int-1",
-     "text": "NESTING_LIMIT = 200",
-     "verdict": "survived"
-    },
-    {
      "index": 9,
-     "line": 287,
-     "op": "raise-pass",
-     "text": "raise ValueError(f\"signed body carries {name}, which is not JSON\")",
+     "line": 327,
+     "op": "return-none",
+     "text": "return False",
+     "verdict": "survived"
+    },
+    {
+     "index": 10,
+     "line": 353,
+     "op": "return-none",
+     "text": "return False",
      "verdict": "survived"
     },
     {
      "index": 11,
-     "line": 107,
+     "line": 119,
      "op": "boolop",
      "text": "if not isinstance(secret, str) or not secret:",
      "verdict": "survived"
     },
     {
      "index": 13,
-     "line": 110,
+     "line": 122,
      "op": "compare",
      "text": "if alphabet <= 1:",
      "verdict": "survived"
     },
     {
-     "index": 42,
-     "line": 293,
-     "op": "raise-pass",
-     "text": "raise ValueError(\"signed body carries a number that is not finite\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 48,
-     "line": 110,
+     "index": 52,
+     "line": 122,
      "op": "int-1",
      "text": "if alphabet <= 1:",
      "verdict": "survived"
     },
     {
-     "index": 69,
-     "line": 201,
+     "index": 73,
+     "line": 213,
      "op": "add-sub",
      "text": "for start in range(sig_at - 1, -1, -1):",
      "verdict": "survived"
     },
     {
-     "index": 83,
-     "line": 176,
-     "op": "int-1",
-     "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
-     "verdict": "survived"
-    },
-    {
-     "index": 89,
-     "line": 201,
-     "op": "int-1",
-     "text": "for start in range(sig_at - 1, -1, -1):",
-     "verdict": "survived"
-    },
-    {
-     "index": 90,
-     "line": 201,
-     "op": "int+1",
-     "text": "for start in range(sig_at - 1, -1, -1):",
-     "verdict": "survived"
-    },
-    {
-     "index": 133,
-     "line": 243,
+     "index": 85,
+     "line": 337,
      "op": "return-none",
      "text": "return False",
      "verdict": "survived"
     },
     {
-     "index": 136,
-     "line": 127,
+     "index": 95,
+     "line": 188,
+     "op": "int-1",
+     "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
+     "verdict": "survived"
+    },
+    {
+     "index": 101,
+     "line": 213,
+     "op": "int-1",
+     "text": "for start in range(sig_at - 1, -1, -1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 102,
+     "line": 213,
+     "op": "int+1",
+     "text": "for start in range(sig_at - 1, -1, -1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 152,
+     "line": 255,
+     "op": "return-none",
+     "text": "return False",
+     "verdict": "survived"
+    },
+    {
+     "index": 158,
+     "line": 139,
      "op": "int+1",
      "text": "if secret == (unit * ((n // period) + 1))[:n]:",
      "verdict": "survived"
     },
     {
-     "index": 141,
-     "line": 242,
+     "index": 163,
+     "line": 254,
      "op": "int-1",
      "text": "if depth == 0:",
      "verdict": "survived"
@@ -1204,36 +642,36 @@
   },
   "startup": {
    "broken": 0,
-   "entries": 79,
+   "entries": 81,
    "file": "runner/ops/startup.py",
-   "killed": 85,
-   "mutants": 89,
-   "reached_lines": 59,
+   "killed": 90,
+   "mutants": 94,
+   "reached_lines": 62,
    "survived": 4,
    "survivors": [
     {
-     "index": 28,
+     "index": 30,
      "line": 139,
      "op": "bool",
      "text": "if opts is not None and getattr(opts, \"dry_run\", False):",
      "verdict": "survived"
     },
     {
-     "index": 43,
+     "index": 46,
      "line": 156,
      "op": "boolop",
      "text": "if offered and tid:",
      "verdict": "survived"
     },
     {
-     "index": 46,
+     "index": 49,
      "line": 179,
      "op": "bool",
      "text": "if opts is None or not getattr(opts, \"no_send\", False):",
      "verdict": "survived"
     },
     {
-     "index": 77,
+     "index": 82,
      "line": 185,
      "op": "int+1",
      "text": "reply_body, secret, reply_subj.rsplit(\" \", 1)[-1],",
@@ -1247,7 +685,7 @@
   },
   "transports": {
    "broken": 0,
-   "entries": 131,
+   "entries": 137,
    "file": "runner/wire/transports.py",
    "killed": 106,
    "mutants": 114,
@@ -1320,130 +758,88 @@
   },
   "verify": {
    "broken": 0,
-   "entries": 88,
+   "entries": 104,
    "file": "runner/wire/verify.py",
-   "killed": 74,
-   "mutants": 91,
-   "reached_lines": 125,
-   "survived": 17,
+   "killed": 142,
+   "mutants": 153,
+   "reached_lines": 140,
+   "survived": 11,
    "survivors": [
     {
-     "index": 0,
-     "line": 55,
-     "op": "int+1",
-     "text": "SEEN_CAP = 2000",
-     "verdict": "survived"
-    },
-    {
-     "index": 1,
-     "line": 55,
-     "op": "int-1",
-     "text": "SEEN_CAP = 2000",
-     "verdict": "survived"
-    },
-    {
-     "index": 4,
-     "line": 61,
-     "op": "return-none",
-     "text": "return \"\"",
-     "verdict": "survived"
-    },
-    {
-     "index": 18,
-     "line": 196,
-     "op": "raise-pass",
-     "text": "raise ValueError(\"secret must be a string\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 21,
-     "line": 217,
-     "op": "raise-pass",
-     "text": "raise ValueError(\"signed body is not a JSON object\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 22,
-     "line": 713,
+     "index": 32,
+     "line": 254,
      "op": "boolop",
-     "text": "if isinstance(rid, str) and rid:",
-     "verdict": "survived"
-    },
-    {
-     "index": 24,
-     "line": 721,
-     "op": "raise-pass",
-     "text": "raise ValueError(\"body must be a string\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 26,
-     "line": 723,
-     "op": "raise-pass",
-     "text": "raise ValueError(\"secrets must be an object\")",
+     "text": "if not isinstance(secrets, dict) or not isinstance(key_id, str):",
      "verdict": "survived"
     },
     {
      "index": 35,
+     "line": 259,
+     "op": "boolop",
+     "text": "if key_id and isinstance(default, str) and key_id.startswith(\"k-\"):",
+     "verdict": "survived"
+    },
+    {
+     "index": 52,
      "line": 129,
      "op": "add-sub",
      "text": "for start in range(sig_at - 1, -1, -1):",
      "verdict": "survived"
     },
     {
-     "index": 41,
-     "line": 746,
-     "op": "raise-pass",
-     "text": "raise ValueError(\"signed body must be a JSON object\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 44,
+     "index": 74,
      "line": 80,
      "op": "str-empty",
      "text": "if not body.endswith(\"}\"):",
      "verdict": "survived"
     },
     {
-     "index": 47,
+     "index": 78,
      "line": 100,
      "op": "int-1",
      "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
      "verdict": "survived"
     },
     {
-     "index": 50,
+     "index": 84,
      "line": 129,
      "op": "int-1",
      "text": "for start in range(sig_at - 1, -1, -1):",
      "verdict": "survived"
     },
     {
-     "index": 51,
+     "index": 85,
      "line": 129,
      "op": "int+1",
      "text": "for start in range(sig_at - 1, -1, -1):",
      "verdict": "survived"
     },
     {
-     "index": 60,
-     "line": 712,
+     "index": 97,
+     "line": 259,
      "op": "str-empty",
-     "text": "rid = cfg.get(\"runner_id\") if isinstance(cfg, dict) else None",
+     "text": "if key_id and isinstance(default, str) and key_id.startswith(\"k-\"):",
      "verdict": "survived"
     },
     {
-     "index": 65,
+     "index": 105,
      "line": 76,
      "op": "bool",
      "text": "ensure_ascii=False, allow_nan=False))",
      "verdict": "survived"
     },
     {
-     "index": 81,
+     "index": 132,
      "line": 177,
      "op": "return-none",
      "text": "return False",
+     "verdict": "survived"
+    },
+    {
+     "index": 140,
+     "line": 176,
+     "op": "int-1",
+     "text": "if depth == 0:",
      "verdict": "survived"
     }
    ],
@@ -1455,9 +851,9 @@
  },
  "platform": "Linux-x86_64",
  "python": "3.12.3",
- "seconds": 4496.4,
+ "seconds": 7039.1,
  "seed": 0,
  "through_agent": [],
  "timeout": 20,
- "when": "2026-10-27T10:45:13Z"
+ "when": "2026-10-27T19:16:20Z"
 }
