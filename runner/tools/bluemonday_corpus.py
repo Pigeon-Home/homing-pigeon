@@ -1060,8 +1060,11 @@ def _board_sequence(spec):
                 raise Crash("exception", "the board file no longer loads "
                             f"after {name}: {type(exc).__name__}: "
                             f"{_short(exc)}")
-            if again.tasks != board.tasks and os.path.exists(path):
-                # What save wrote is what load reads back.
+            if TU._json_safe(board.tasks) != again.tasks \
+                    and os.path.exists(path):
+                # What save wrote (the JSON-safe form of the board: a
+                # NaN a hand-written file carried is null on disk) is
+                # what load reads back.
                 raise Crash("roundtrip", f"the board file after {name} "
                             "does not read back as the board in memory")
         return "accepted" if accepted else "refused"
@@ -2305,6 +2308,31 @@ def seeds_board_ops():
         ("lease_unreadable", {"file": _board_file(dict(
             claimed, claimed_at="yesterday")), "ops": [
             ["reoffer", 0], ["offer", "worker-b", ["shell"], "", {}]]}),
+        # A lease of exactly one second is not expired one second on;
+        # half a second is (the board's clock steps one second per
+        # reading under the checker).
+        ("lease_one_second", {"file": None, "ops": [
+            ["submit", _task()], ["offer", "worker-a", ["shell"], "", {}],
+            ["reoffer", 1], ["offer", "worker-b", ["shell"], "", {}],
+            ["reoffer", 0.5], ["offer", "worker-b", ["shell"], "", {}]]}),
+        # Tasks a hand-written file left without a priority, with
+        # NaN, with a negative fraction: the offer order says what
+        # each reads as.
+        ("file_priorities", {"file": json.dumps({
+            "bm-task-a": {"task_id": "bm-task-a", "state": "open",
+                          "submitted_at": "2026-10-26T10:00:01+00:00"},
+            "bm-task-b": dict(_task("bm-task-b", priority=0.5), state="open",
+                              submitted_at="2026-10-26T10:00:02+00:00"),
+            "bm-task-c": dict(_task("bm-task-c", priority=float("nan")),
+                              state="open",
+                              submitted_at="2026-10-26T10:00:03+00:00"),
+            "bm-task-d": dict(_task("bm-task-d", priority=-0.5), state="open",
+                              submitted_at="2026-10-26T10:00:04+00:00"),
+            "bm-task-e": dict(_task("bm-task-e"), state="open",
+                              submitted_at="2026-10-26T10:00:00"),
+        }), "ops": [["offer", w, [], "", {}] for w in
+                    ("worker-a", "worker-b", "worker-c", "worker-d",
+                     "worker-e")]}),
         ("refusals_then_good", {"file": "{not json", "ops": [
             ["submit", "not a task"], ["submit", {"task_id": "../x"}],
             ["complete", "bm-task-0001", {}], ["approve", {"task_id": 1}],
@@ -4492,14 +4520,16 @@ def _record_crashes(target, session, out):
 
 def cmd_seed(args, out=print):
     """Write the seeds. An existing corpus keeps every entry it has;
-    seeds it lacks are added (so a new seed function never discards
-    what the grows found)."""
+    seeds it lacks are added by id (so a new seed function never
+    discards what the grows found, and a seed whose shape changed
+    under a name the corpus already holds is added beside the old
+    one: the seeds are deterministic, so the same shape is never
+    added twice)."""
     for target in _targets(args.target):
         existing = load(corpus_path(target))
         session = Session(target, existing)
-        names = {e["from"] for e in existing}
         fresh = [e for e in TARGETS[target]["seeds"]()
-                 if e["id"] not in session.ids and e["from"] not in names]
+                 if e["id"] not in session.ids]
         for e in fresh:
             session.entries.append(e)
             session.ids.add(e["id"])

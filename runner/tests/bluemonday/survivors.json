@@ -2,18 +2,18 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "alarm": true,
  "bluemonday": 1,
- "head": "f5113b67772c",
+ "head": "ef6e91c7893c",
  "kind": "survivors",
  "limit": null,
  "modules": {
   "board": {
    "broken": 0,
-   "entries": 55,
+   "entries": 59,
    "file": "runner/wire/board.py",
-   "killed": 238,
+   "killed": 239,
    "mutants": 257,
    "reached_lines": 237,
-   "survived": 19,
+   "survived": 18,
    "survivors": [
     {
      "index": 0,
@@ -128,13 +128,6 @@
      "verdict": "survived"
     },
     {
-     "index": 232,
-     "line": 388,
-     "op": "compare",
-     "text": "if (now - claimed).total_seconds() > task_timeout:",
-     "verdict": "survived"
-    },
-    {
      "index": 244,
      "line": 293,
      "op": "str-empty",
@@ -185,7 +178,7 @@
   },
   "jobcrypto": {
    "broken": 0,
-   "entries": 37,
+   "entries": 44,
    "file": "runner/wire/jobcrypto.py",
    "killed": 342,
    "mutants": 370,
@@ -889,7 +882,7 @@
  },
  "platform": "Linux-x86_64",
  "python": "3.13.16",
- "seconds": 93.3,
+ "seconds": 99.4,
  "seed": 0,
  "through_agent": [
   "local",
@@ -898,5 +891,5 @@
   "stash"
  ],
  "timeout": 20,
- "when": "2026-10-27T01:33:18Z"
+ "when": "2026-10-27T01:40:11Z"
 }

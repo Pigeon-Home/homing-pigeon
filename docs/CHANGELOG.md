@@ -4,8 +4,23 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.54 - 2026-10-26
+## 3.13.55 - 2026-10-26
 
+- **The survivors' fourth seeds, and a seed merge by id.** The
+  board's lease at exactly one second is not expired one second
+  on and half a second is (the board checks run on a stepping
+  clock), tasks a hand-written file left without a priority, with
+  NaN and with a negative fraction are offered in the order the
+  reader ranks them, and the board's round-trip contract compares
+  the JSON-safe form of the board with what the file reads back
+  (a NaN a hand-written file carried is `null` on disk). The seed
+  command adds a seed whose id the corpus lacks, whatever its
+  name, so a seed whose shape changed under a name the corpus
+  already holds is added beside the old one. Fifth survivors run:
+  103 of 1,929.
+- **v3.13.54's tag build was red on build-windows before the
+  stepping clock landed; its rerun published the release from the
+  same head.**
 - **A non-finite float under any other key (Q79).** `save`
   stores null for `NaN` and `Infinity`. `load` left the float
   in memory when it was not the priority, so the file after
@@ -29,26 +44,6 @@ facts a reader may need to cite. Git history carries the rest.
   `local` kept one (`t_case`). `dtls` and `manifest` kept
   nothing. No crashes. Still live: `t_case`, `d_random_byte`,
   `board_file`, `p_text`.
-- **blueMonday's survivors: the instrument for after saturation.**
-  `runner/tools/bluemonday_survivors.py` mutates every reader the
-  corpus holds directly -- a comparison flipped, an `and` for an
-  `or`, a `not` dropped, a constant moved by one, a literal
-  emptied, a return made `None`, a raise made `pass`, a plus made
-  minus -- on the lines the arc maps say the corpus reaches, and
-  replays the corpus of every target that reads through that
-  module against each mutant, under an alarm. A mutant the replay
-  cannot tell from the reader has survived, and its line is the
-  next seed to write; the checkers now note what they see beyond
-  accepted or refused (the key chosen, a digest of what the reader
-  returned, each board operation's answer, the refusal's reason),
-  so a mutant that accepts the same entries but reads them
-  differently is killed too. `survivors.json` holds the last run
-  and `runs.jsonl` the line of every run. First run: 1,877
-  mutants over nine readers, 171 survivors, the DTLS reader losing
-  none of 513. Twenty `v2` seeds came out of it at once: the
-  deadline floor and each cap at itself and one past it, the
-  version in every wrong type, a sent clean pass, a non-UTC
-  `issued_at`.
 - **The survivors' first seeds, and a thirteenth target.** The
   verifier's survivors named their seeds and got them: the marker
   at the very start of a body, the tail one short and one long, a
@@ -102,6 +97,30 @@ facts a reader may need to cite. Git history carries the rest.
   wall clock read twice within one tick (Windows) made the same
   sequence answer two ways, and the survivors' replay-twice test
   said so on the v3.13.54 tag build.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.54 - 2026-10-26
+
+- **blueMonday's survivors: the instrument for after saturation.**
+  `runner/tools/bluemonday_survivors.py` mutates every reader the
+  corpus holds directly -- a comparison flipped, an `and` for an
+  `or`, a `not` dropped, a constant moved by one, a literal
+  emptied, a return made `None`, a raise made `pass`, a plus made
+  minus -- on the lines the arc maps say the corpus reaches, and
+  replays the corpus of every target that reads through that
+  module against each mutant, under an alarm. A mutant the replay
+  cannot tell from the reader has survived, and its line is the
+  next seed to write; the checkers now note what they see beyond
+  accepted or refused (the key chosen, a digest of what the reader
+  returned, each board operation's answer, the refusal's reason),
+  so a mutant that accepts the same entries but reads them
+  differently is killed too. `survivors.json` holds the last run
+  and `runs.jsonl` the line of every run. First run: 1,877
+  mutants over nine readers, 171 survivors, the DTLS reader losing
+  none of 513. Twenty `v2` seeds came out of it at once: the
+  deadline floor and each cap at itself and one past it, the
+  version in every wrong type, a sent clean pass, a non-UTC
+  `issued_at`.
 - **blueMonday's live mutators, one grow (Q75).** A steered grow
   of 20,000 rounds on the four mutators `stats` still called
   live. `dtls` kept two (`d_random_byte`, arcs 290 to 295).
