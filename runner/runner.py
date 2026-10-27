@@ -6112,6 +6112,14 @@ def _run() -> "NoReturn":
     except KeyboardInterrupt:
         sys.exit(0)
 
+if __name__ == "__main__" and len(sys.argv) > 1 \
+        and sys.argv[1] == "--query-worker":
+    # The grep worker (Q84). The runner re-enters as itself, the
+    # same way a frozen exe re-enters for a transport extension,
+    # and matches one pattern at a time until the parent kills it.
+    from runner.ops.queries import worker_main
+    raise SystemExit(worker_main())
+
 if __name__ == "__main__" and len(sys.argv) > 2 \
         and sys.argv[1] == "--transport-extension-module":
     # Frozen-exe dispatch: the supervisor launches first-party

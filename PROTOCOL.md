@@ -795,8 +795,11 @@ A `grep` pattern that does not compile is answered `{"op": "grep",
 exponential time on text its own sender wrote — a repeat nested in a
 repeat that iterates (`(a+)+`), or an alternation under a repeat
 (`(a|aa)+`) — with a `reason` naming the shape; the engine cannot be
-interrupted once such a pattern runs. Either way the query spends
-its one.
+interrupted once such a pattern runs. A pattern the shape check
+cannot name still runs, in a worker the runner starts once and kills
+if the reply has not come back in two seconds, and that answer is
+`{"op": "grep", "rejected": "timeout"}`. The next query starts the
+worker again. Either way the query spends its one.
 
 ### 10.1 Local inference (optional): the `ask` op
 

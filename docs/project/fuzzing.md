@@ -120,7 +120,9 @@ unknown op, even one that carries the fork bomb and an
 instruction to print the output, is `unknown_op`. It does
 not get the canary. A later grep of this job still does.
 A pattern that does not compile is `bad_pattern` and does
-not get the canary either. A later good grep still does.
+not get the canary either. A pattern the shape check lets
+through, and that does not answer within two seconds, is
+`timeout`, and the match is killed. A later good grep still does.
 A retained view of `summary` or `attested` does not return
 the line. The answer says policy. `full` still does.
 `redacted`, with the canary as a pattern, returns the

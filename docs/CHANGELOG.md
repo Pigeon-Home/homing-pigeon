@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.1 - 2026-10-27
+
+- **A grep that does not answer in two seconds is killed
+  (Q84).** The exponential shapes were already refused. A
+  pattern the shape check cannot name runs in a worker the
+  runner starts once, and a late reply is `{"op": "grep",
+  "rejected": "timeout"}`. The next query starts the worker
+  again. Q54 and Q57 are answered: extractions go through
+  the repair tool, and this seat does not create a release.
+
 ## 3.14.0 - 2026-10-27
 
 - **The release line moves to 3.14.** `pyproject.toml`,

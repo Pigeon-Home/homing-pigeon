@@ -4,8 +4,13 @@ Extracted from runner.py.
 """
 import email
 import hashlib
+import json
 import os
 import re
+import signal
+import subprocess
+import sys
+import threading
 import time
 try:
     from runner.guard import confval as _confval
@@ -216,6 +221,175 @@ def _stream_text(exec_result):
         + _carriable(exec_result.get("stderr"))
 
 
+# Two seconds. A plain pattern over the output cap finishes well
+# under it. A polynomial one the shape check cannot name does not,
+# and this engine cannot be interrupted in the process that owns
+# the mailbox, so the match runs in another process (Q84).
+_GREP_DEADLINE = 2.0
+_worker = None
+_worker_lock = threading.Lock()
+
+
+def _query_worker_argv():
+    """The runner, again. A frozen exe re-enters on --query-worker,
+    the same way it re-enters for a transport extension. A source
+    tree runs this module with -m, because executing runner.py
+    as a file makes `runner` the script and not the package."""
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--query-worker"]
+    return [sys.executable, "-m", "runner.ops.queries"]
+
+
+def _stop_worker(proc):
+    if proc is None:
+        return
+    if proc.poll() is None:
+        try:
+            if os.name == "posix":
+                os.killpg(proc.pid, signal.SIGKILL)
+            else:
+                proc.kill()
+        except (OSError, ProcessLookupError):
+            pass
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass
+    for stream in (proc.stdin, proc.stdout, proc.stderr):
+        if stream is not None:
+            try:
+                stream.close()
+            except (OSError, ValueError):
+                pass
+
+
+def _start_worker():
+    env = dict(os.environ)
+    # A child that inherits mutmut's stats variable takes the stats
+    # path and dies on the first call. The worker runs the real code.
+    env.pop("MUTANT_UNDER_TEST", None)
+    if not getattr(sys, "frozen", False):
+        root = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))))
+        existing = env.get("PYTHONPATH", "")
+        parts = existing.split(os.pathsep) if existing else []
+        if root not in parts:
+            env["PYTHONPATH"] = os.pathsep.join([root] + parts)
+    kw = {"stdin": subprocess.PIPE, "stdout": subprocess.PIPE,
+          "stderr": subprocess.DEVNULL, "env": env}
+    if os.name == "posix":
+        kw["start_new_session"] = True
+    elif os.name == "nt":
+        kw["creationflags"] = getattr(
+            subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    return subprocess.Popen(_query_worker_argv(), **kw)
+
+
+def _read_line(stream, deadline):
+    """One line, or None when the deadline passes. select() does
+    not work on a pipe on Windows, so the read sits in a thread
+    the kill below unblocks."""
+    box = []
+
+    def _read():
+        try:
+            box.append(stream.readline())
+        except Exception:
+            box.append(b"")
+
+    t = threading.Thread(target=_read, daemon=True)
+    t.start()
+    t.join(deadline)
+    if t.is_alive():
+        return None
+    return box[0] if box else b""
+
+
+def grep_matches(pattern, lines, limit, deadline=None):
+    """Match in the query worker. ("ok", matches, truncated) or
+    ("timeout",). One worker for this process; a late reply is
+    killed and the next call starts another."""
+    global _worker
+    if deadline is None:
+        deadline = _GREP_DEADLINE
+    payload = (json.dumps({"pattern": pattern, "lines": lines,
+                           "limit": limit}) + "\n").encode("utf-8")
+    with _worker_lock:
+        try:
+            if _worker is None or _worker.poll() is not None:
+                _worker = _start_worker()
+            proc = _worker
+            try:
+                proc.stdin.write(payload)
+                proc.stdin.flush()
+            except (BrokenPipeError, OSError, ValueError):
+                _stop_worker(proc)
+                _worker = _start_worker()
+                proc = _worker
+                proc.stdin.write(payload)
+                proc.stdin.flush()
+        except OSError as e:
+            _runner().log(f"query worker did not start: {e}", "WARN")
+            _worker = None
+            return ("timeout",)
+        raw = _read_line(proc.stdout, deadline)
+        if raw is None or (proc.poll() is not None and not raw):
+            _stop_worker(proc)
+            _worker = None
+            return ("timeout",)
+        try:
+            msg = json.loads(raw.decode("utf-8"))
+        except (UnicodeError, json.JSONDecodeError, ValueError):
+            _stop_worker(proc)
+            _worker = None
+            return ("timeout",)
+        if not isinstance(msg, dict):
+            return ("timeout",)
+        if msg.get("rejected"):
+            return ("bad_pattern",)
+        matches = msg.get("matches")
+        if not isinstance(matches, list):
+            return ("timeout",)
+        return ("ok", [m for m in matches if isinstance(m, str)],
+                bool(msg.get("truncated")))
+
+
+def worker_main():
+    """One JSON request a line, one JSON reply a line. The parent
+    kills this process when a reply is late."""
+    while True:
+        raw = sys.stdin.buffer.readline()
+        if not raw:
+            return 0
+        try:
+            req = json.loads(raw.decode("utf-8"))
+            pattern = req.get("pattern") if isinstance(req, dict) else None
+            lines = req.get("lines") if isinstance(req, dict) else None
+            limit = req.get("limit") if isinstance(req, dict) else 0
+            if not isinstance(pattern, str) or not isinstance(lines, list):
+                raise ValueError("shape")
+            limit = int(limit)
+            cre = re.compile(pattern)
+        except Exception:
+            sys.stdout.buffer.write(b'{"rejected":"bad_pattern"}\n')
+            sys.stdout.buffer.flush()
+            continue
+        matches = []
+        truncated = False
+        for line in lines:
+            if not isinstance(line, str):
+                continue
+            if cre.search(line):
+                if len(matches) >= limit:
+                    truncated = True
+                    break
+                matches.append(line)
+        body = json.dumps(
+            {"matches": matches, "truncated": truncated}).encode("utf-8")
+        sys.stdout.buffer.write(body + b"\n")
+        sys.stdout.buffer.flush()
+
+
 def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full",
                    already_spent=0, base_dir=None):
     """Answer declared queries. Every query spends 1, answered or rejected."""
@@ -279,7 +453,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                 # syntax error, and a repetition count past what it
                 # can hold (OverflowError, Q92) the same.
                 try:
-                    cre = re.compile(pattern)
+                    re.compile(pattern)
                 except Exception:
                     answers.append({"op": "grep", "rejected": "bad_pattern"})
                     spent += 1
@@ -298,20 +472,23 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                 # max_matches; a usable number is clamped to [0, 100].
                 limit = _confval.integer(q.get("max_matches"), 10, lo=0)
                 limit = min(limit, 100)
-                matches = []
-                truncated = False
-                for line in text.splitlines():
-                    if cre.search(line):
-                        if len(matches) >= limit:
-                            truncated = True
-                            break
-                        matches.append(line)
-                if view == "redacted":
-                    matches = [_runner().redact_text(line, patterns)[0] for line in matches]
-                answers.append({
-                    "op": "grep", "pattern": pattern,
-                    "matches": matches, "truncated": truncated,
-                })
+                # The match itself is the other process. A reply that
+                # does not come back within the deadline is a kill,
+                # and the answer is timeout, not a wedged mail cycle.
+                found = grep_matches(pattern, text.splitlines(), limit)
+                if found[0] == "timeout":
+                    answers.append({"op": "grep", "rejected": "timeout"})
+                elif found[0] == "bad_pattern":
+                    answers.append({"op": "grep", "rejected": "bad_pattern"})
+                else:
+                    matches, truncated = found[1], found[2]
+                    if view == "redacted":
+                        matches = [_runner().redact_text(line, patterns)[0]
+                                   for line in matches]
+                    answers.append({
+                        "op": "grep", "pattern": pattern,
+                        "matches": matches, "truncated": truncated,
+                    })
         elif op == "tail":
             if not _runner()._raw_lines_allowed(view):
                 answers.append({"op": "tail", "rejected": "policy"})
@@ -454,5 +631,9 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
             answers.append({"rejected": "unknown_op"})
         spent += 1
     return answers, spent
+
+
+if __name__ == "__main__":
+    raise SystemExit(worker_main())
 
 

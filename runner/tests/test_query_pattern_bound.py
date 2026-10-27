@@ -143,6 +143,30 @@ class GrepRefusalTest(unittest.TestCase):
         self.assertEqual(answers[0]["rejected"], "bad_pattern")
         self.assertEqual(answers[1], {"rejected": "budget"})
 
+    def test_a_slow_match_is_killed_and_the_next_answers(self):
+        """The polynomial class is not a shape the parser can name
+        without refusing patterns people write. It runs in the
+        worker. A deadline that passes is a timeout, and the query
+        after it still answers, which is the worker having been
+        started again."""
+        import runner.ops.queries as Q
+        old = Q._GREP_DEADLINE
+        Q._GREP_DEADLINE = 0.2
+        try:
+            hostile = " " * 30000 + "x"
+            answers, spent = answer_queries(
+                [{"op": "grep", "pattern": r"\s+$"},
+                 {"op": "grep", "pattern": "ERROR"}],
+                {"stdout": hostile + "\nERROR x\n", "stderr": ""},
+                {}, 8, cfg={})
+        finally:
+            Q._GREP_DEADLINE = old
+            Q._stop_worker(Q._worker)
+            Q._worker = None
+        self.assertEqual(spent, 2)
+        self.assertEqual(answers[0], {"op": "grep", "rejected": "timeout"})
+        self.assertEqual(answers[1]["matches"], ["ERROR x"])
+
 
 if __name__ == "__main__":
     unittest.main()

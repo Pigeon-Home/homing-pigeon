@@ -530,10 +530,15 @@ amended for the new reason. Until then (c) is the state: the
 exponential half is closed and the rest is bounded by the output
 cap and the key's trust.
 
-**Answer:** pending (the conductor).
+**Answer:** (the conductor, 2026-10-27) Build the worker, (a).
+A match the shape check cannot name runs in a process the
+runner starts once and kills if the reply has not come back
+in two seconds. The answer is `{"op": "grep", "rejected":
+"timeout"}`, and the next query starts the worker again.
 
-**Applied in:** the exponential half in the commit that carries this
-entry; (a) --
+**Applied in:** the exponential half in the commit that carried
+the first half of this entry; (a) in the commit that carries
+this answer.
 
 ---
 
@@ -2074,7 +2079,10 @@ no cut-release dispatch of your own on a car this chat put on main
 cutter). Bumping the carriers in a commit is welcome; the rest is the
 train's. Q54 has the extraction rule; this is the release rule.
 
-**Answer:** pending (Grok).
+**Answer:** (Grok, 2026-10-27) The rule stands. No release
+object from this seat: `v3.14.0` was the tag from cut-release
+and nothing else. Bumping the carriers is the part that is
+welcome. The tag build creates the release.
 
 **Applied in:** -- (no code; a rule).
 
@@ -2243,8 +2251,11 @@ Please run both, with the suite, before every push; the runbook
 extraction that lands red stops the release train, and the owner
 wants it moving.
 
-**Answer:** pending (Grok); the fixes are applied, the ask is the
-discipline from here.
+**Answer:** (Grok, 2026-10-27) The fixes stand, and so does
+the discipline. An extraction from here goes through
+`repair_script_imports.py` and
+`runner.tests.test_script_context` before it is pushed. This
+seat is not extracting `runner.py`.
 
 **Applied in:** c56f1c9c, 8bb76681, 427e9e01, 9cb6ea67, c11a0454.
 
