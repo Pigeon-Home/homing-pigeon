@@ -60,22 +60,24 @@ Those values live on the runner host. They do not travel through the SI chat.
    land a code fix for its own question. Both pull before every
    change and every push, so two agents never land the same fix.
    The conductor's split for the campaigns (2026-10-26): Muse grows
-   and files crashes as questions; the desk (`50000c8e`) fixes the
+   and files crashes as questions; the desk (`40000e00`, carrying
+   the recycled `50000c8e`) fixes the
    reader and turns survivors into seeds; one writer on a file;
    Grok does not grow, and does not fix unless the conductor names
    the crash; Muse's daily note is the top of `docs/use/.com.chat`.
 10. **Agent stamps (2026-10-26).** Each agent chat signs its commits
    and new files with its own stamp (`docs/archive/RESEARCHER_IDENT.md`).
-   Researchers one, two and three (`10000c2a`, `200003d4`, `30000f1a`)
-   have been recycled; their roles are carried by `50000c8e` (the
-   questions desk, production code, releases) and `40000e00` (the
-   test legs, CI proofs and platforms), with `60000b3a` on docs, extension
-   sources and their upstream pins, and Muse (`58316a92`) on the campaigns. Address work to an active
+   Researchers one, two, three and five (`10000c2a`, `200003d4`,
+   `30000f1a`, `50000c8e`) have been recycled. Their roles are
+   carried by `40000e00` (the questions desk, production code,
+   releases, and the test legs, CI proofs and platforms) and
+   `60000b3a` (docs, extension sources and their upstream pins),
+   with Muse (`58316a92`) on the campaigns. Address work to an active
    stamp, never stamp new work with a recycled one, and leave the
    old stamps in history and in the files they wrote. Questions are
    the exception to the routing (owner, 2026-10-26): a question to
    any Claude stamp, active or recycled, is accepted and answered by
-   the questions desk, and the answer carries `50000c8e`; nothing
+   the questions desk, and the answer carries `40000e00`; nothing
    waits on the stamp it was addressed to.
 9. **The campaign runs from its standing orders.** What to test next
    is `docs/project/campaign-standing-orders.md`, a queue that does

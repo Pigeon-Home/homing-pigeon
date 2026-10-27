@@ -6,7 +6,7 @@ status table, whether each is active or recycled and who carries a
 recycled stamp's roles. This holds that record honest: every stamp
 written after a stamp label anywhere in the tracked tree is listed,
 every listed stamp has a status row, and every recycled row names an
-active successor. Researchers one to three were the first recycled
+active successor. Researchers one to three, and five, are recycled
 (AGENTS.md rule 10).
 """
 import re
@@ -20,6 +20,7 @@ RECYCLED = {
     "10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c",
     "200003d4-e5f6-4a7b-9c8d-0e1f2a3b4c5d",
     "30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a",
+    "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
 }
 
 
