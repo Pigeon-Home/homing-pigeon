@@ -15,13 +15,18 @@ failure, fix, repeat, from your phone or anywhere.
 
 It works like a GitHub self-hosted runner. A small program on hardware
 you own picks up signed jobs from a mailbox you control and runs them.
-By default nothing listens on the network: the runner only polls
-outward, so it works behind NAT with no open ports (the DTLS
-binding, off unless enabled, is the one listener).
+By default nothing listens on an external interface: the runner
+only polls outward, so it works behind NAT with no open ports. The
+DTLS binding, off unless enabled, is the one network listener, and a
+loopback-only port (127.0.0.1:39271) takes this box's own sensor
+signals.
 
-Setup walks you through connecting a dedicated email account. The
-recommended path is a browser sign-in, so the account password never
-lands in config; an app password is the other choice.
+Setup walks you through connecting a dedicated mailbox on the
+recommended provider. The recommended path is a browser sign-in, so
+the account password never lands in config; an app password is the
+other choice.
+Another provider works by setting `imap_host` and `smtp_host` in
+`config.json` with an app password.
 
 Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 
@@ -32,6 +37,12 @@ Shared Secret: "YOUR_SECRET_STRING"
 Run a job that retrieves the system clock and then display it here.
 ```
 IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-homing-pigeon-00.md
+
+**No mailbox yet?** `python3 runner/runner.py --config config.json
+--local-test` runs the whole loop in process: you play the SI in a
+terminal chat, a local model (Ollama on loopback, which the installer
+sets up) answers, and nothing is emailed. See
+[docs/use/local-si-test.md](docs/use/local-si-test.md).
 
 ## What this is for
 
@@ -234,7 +245,9 @@ notes ride in the result) and logs resource pressure, but it never
 pages the owner and never blocks a job. A fresh install sits one
 notch tighter: on non-Pi hardware the installer applies the
 `password-only` profile (judge `advisory`, view `attested`) unless
-`--no-profile` is passed, and a Raspberry Pi gets `pi-light`. See
+`--profile` names another or `--no-profile` is passed, and a
+Raspberry Pi, or any install from the pi-light archive, gets
+`pi-light`. See
 docs/use/runbook.md Job 7.
 
 **eyes open** (recommended): same trust, but the Oracle watches on the
@@ -268,14 +281,15 @@ Confinement ships in two kinds, and they are not the same kind
 of thing:
 
 - **A snapshot is not a sandbox.** The workspace check compares
-  file metadata outside the job's workspace before and after the
-  run, then attests `confined_to_workspace`: it *detects* a job
+  file metadata in the workspace's parent directory (the
+  workspace's siblings) before and after the run, then attests `confined_to_workspace`: it *detects* a job
   that reached outside, it does not prevent one. The walk stops
   at 50000 files, so a huge tree yields a partial snapshot and
   the log records the cap being hit. The key is `workspace_root`.
 - **The sandbox** (Linux only) actually walls the job in:
   bubblewrap runs it with `/usr` read-only, no network, and only
-  the job workdir writable. It is off by default. Under `enforce`
+  the job workdir (at `/work`) and a throwaway tmpfs `/tmp`
+  writable. It is off by default. Under `enforce`
   a sandbox that cannot engage (no `bwrap`, user namespaces
   blocked, not Linux) refuses to start the runner; one that
   breaks after a good start falls back loudly and the audit log
@@ -317,7 +331,7 @@ requires the repair latitude, the mismatch re-verified on the
 current job, and the repaired job judged again before it runs.
 Set `oracle_learning` to false to turn the loop off. Design:
 `docs/design/oracle-opinion-design.md`. Measured on a real rig in
-deterministic mode: 87.5% of 2,247 calls right, 0 lessons, every
+deterministic mode: 1,967 of 2,248 reconciled calls right (87.5%), 0 lessons, every
 miss a job that simply ran `exit 3`, which leaves no fact for a
 model-less Oracle to learn ([live examples](docs/use/live-examples.md)).
 
@@ -326,7 +340,7 @@ members of a `"v": 1` message. They are not a separate message version.
 
 ## Proven platforms
 
-Every push or nightly, one portable proof runs on native runners, distributions, other architectures, maker boards, BSD virtual machines and administrator fat-fingers, and a leg fails unless every test ran and passed. The full table and the board notes are in [docs/use/platforms.md](docs/use/platforms.md).
+Every push runs one portable proof on a core set of legs, and the nightly run takes the whole corpus: native runners, distributions, other architectures, maker-board userspaces under QEMU, BSD virtual machines and administrator fat-fingers, and a leg fails unless every test ran and passed. The full table and the board notes are in [docs/use/platforms.md](docs/use/platforms.md).
 
 [![platform-matrix](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml)
 
@@ -392,8 +406,9 @@ paths (Docker, pip, release binary) and the full first-run
 walkthrough — dedicated mail account, app password, shared
 secret, first job.
 
-**No spare machine?** One command puts a runner on a $2 machine in
-your own Fly, Hetzner or DigitalOcean account, with the hosted
+**No spare machine?** One command puts a runner on a small machine
+(about $2 a month on Fly, a few dollars on Hetzner or DigitalOcean)
+in your own account, with the hosted
 profile and nothing listening: [docs/use/own-cloud.md](docs/use/own-cloud.md).
 Your account, your bill, your secret.
 
@@ -430,10 +445,10 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   on later polls, never produced by a second run, and given up into
   `outbox/failed/` after a day (`--inspect outbox`; PROTOCOL.md
   section 5).
-- Size caps: `max_job_bytes` (default 4 MiB) bounds the raw mail before
-  the signature is even checked.
+- Size caps: `max_job_bytes` (default 4 MiB) bounds a raw job mail
+  before its signature is checked.
 - Optional hardening controls (off by default, except the size caps
-  above, which are always on): see [SECURITY.md](SECURITY.md).
+  above, which are on by default and turned off by 0): see [SECURITY.md](SECURITY.md).
 
 ## Questions people ask
 
@@ -464,7 +479,7 @@ What ships today is what's described above: the agent, the Oracle
 (opinions, self-learning, remediation), five job transports, and
 the example senses. The current release is in
 [docs/CHANGELOG.md](docs/CHANGELOG.md); the version number lives in
-`pyproject.toml`, and the message field `"v"` is a different
+`pyproject.toml` and `runner/_version.py` (a test keeps them equal), and the message field `"v"` is a different
 number — the protocol's version and the release number move on
 separate tracks.
 
@@ -472,7 +487,8 @@ What a real box writes, and what 19,227 jobs on the campaign rig
 came to, is in [docs/use/live-examples.md](docs/use/live-examples.md).
 
 Current-state facts worth knowing: `config.json` hot-reloads poll
-interval, workers, timeouts, output limits, max job age, the
+interval, workers, the default job timeout, `max_output_bytes`, max
+job age, the
 result stash's retention and resend backoff, and the live keys
 (`owner_instructions`, `inference`, `oracle_mode`, `verbose`,
 `extension_sources`); a `security` mode change still needs a
