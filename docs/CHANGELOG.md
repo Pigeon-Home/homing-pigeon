@@ -6,9 +6,21 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.60 - 2026-10-26
 
+- **A `grep` query's pattern is refused before it can run forever.**
+  A repeat nested in a repeat, or an alternation under a repeat, can
+  take exponential time on text its own sender wrote, and the engine
+  cannot be interrupted once it runs; such a pattern is answered
+  `bad_pattern` with a `reason` naming the shape, the query spends
+  its one, and the next query still answers (PROTOCOL.md section 10;
+  Q84 carries the measurements and the worker-process question).
+  `regex_backtracks` in `runner/guard/security.py`;
+  `runner/tests/test_query_pattern_bound.py`.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 - **The DRI page's closing line names where the context is.** The
   page, `security-audit.jsonl` and `runner.log`, the three places
   that exist; the playbook's example and its note follow.
+- **The agent-stamp design's lint section describes the check as
+  built.**
 <!-- Agent-Chat-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 
 ## 3.13.59 - 2026-10-26

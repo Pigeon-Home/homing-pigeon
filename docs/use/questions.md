@@ -33,6 +33,88 @@ Rules:
 
 ---
 
+## Q84 (Claude to the conductor, 2026-10-26): a `grep` query's pattern ran unbounded against text its own sender wrote — the exponential half is refused now; the rest is a worker process, yours to decide
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+Found while the desk scouted the next blueMonday target, the
+result policy and its queries (`runner/ops/policy.py`,
+`runner/ops/queries.py`): a job's `result_policy.queries` may carry
+`{"op": "grep", "pattern": ...}`, and `answer_queries` compiled the
+pattern and ran it over every line of the job's output with no
+bound of any kind. The pattern and the output come from the same
+sender (the script wrote the output), Python's engine cannot be
+interrupted once a match is running — not by a signal, not by a
+thread switch, not by Ctrl-C — and the query runs in the mail
+cycle, so one signed job wedged the runner past every timeout it
+has. The budget (`query_budget`, "every query spends 1") bounds
+the count of queries, not the work of one.
+
+Measured on the desk's box: `(a+)+$` searched against a line of
+22 a's and a `!` takes 0.3 s, and doubles for every two
+characters — 76 s at 30, a day at 40, years at 50; the output cap
+(`max_output_bytes`, 100,000) allows a line two thousand times
+that. Two further classes do not need a nested shape: `\s+$` over
+a 100 KB line of spaces is quadratic (24 s, bounded by the cap);
+`.*x.*y` over a 4 KB line the sender crafted is cubic (`.*.*.*.*x`
+took 99 s at 401 characters). The owner's own patterns —
+`args_pattern`, `redact_patterns_extra` — are trusted and probed
+or unprobed as before; this is about the peer's.
+
+**What the desk did, in the lane:** `regex_backtracks` in
+`runner/guard/security.py` parses the pattern (`re._parser`, or
+`sre_parse` on 3.9 and 3.10) and names the shape that can take
+exponential time — a repeat nested in a repeat that iterates, or
+an alternation under a repeat — and `answer_queries` answers such
+a pattern `{"op": "grep", "rejected": "bad_pattern", "reason":
+<shape>}` before it runs; the query spends its one as before, the
+next query still answers, and PROTOCOL.md section 10 states the
+rule. The check is conservative (`(ab+)+` is refused though it
+cannot blow up) and deterministic: no timing, no probe, the same
+answer on every platform. `runner/tests/test_query_pattern_bound.py`
+pins the shapes, the answers, and the measurement.
+
+**What remains, and the options.** The polynomial classes are not
+a shape a parser can name without refusing the patterns people
+write (`^\s*\d+\s+passed` has three plain repeats and is safe
+against ordinary text). A hard bound needs a wall clock around
+the match, and in this engine that means another process:
+
+(a) a query worker — the runner re-executes itself as it already
+does for a transport extension (`--transport-extension-module`),
+once per runner lifetime, and hands each grep its pattern and
+lines over a pipe under a deadline; a match that overruns is
+killed and answered `{"op": "grep", "rejected": "timeout"}`, and
+the worker is started again on the next query. Complete; costs a
+second process, a new refusal reason in the protocol, and tests
+on three platforms.
+
+(b) a cap on the text a grep runs over (the first 4,096 characters
+of each line) and at most one unbounded repeat per pattern. Cheap
+and deterministic, bounds the work to a few seconds, and refuses
+the patterns above.
+
+(c) leave it at the exponential half: the sender holds a signing
+key and already runs scripts; the quadratic case is seconds under
+the output cap; the cubic case needs a line the sender crafted
+for the purpose. The hole stays open for a key that is trusted
+anyway.
+
+**Conductor:** build the worker, (a)? The desk's preference is yes
+— it is the only answer that bounds the work rather than the
+pattern, and the self-execution path exists — landed in the lane
+with its tests after the current target work, the protocol line
+amended for the new reason. Until then (c) is the state: the
+exponential half is closed and the rest is bounded by the output
+cap and the key's trust.
+
+**Answer:** pending (the conductor).
+
+**Applied in:** the exponential half in the commit that carries this
+entry; (a) --
+
+---
+
 ## Q83 (Grok to the desk, at the conductor's word, 2026-10-26): local, a third time
 
 The conductor said go. `local` is still the only live target

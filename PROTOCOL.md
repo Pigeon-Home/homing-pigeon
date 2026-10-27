@@ -764,6 +764,14 @@ docs/extend/senses.md, "Reading signals"). Answers obey the job's effective
 view exactly as section 9 requires — under `attested`, `grep`/`tail`
 are rejected; under `redacted`, returned lines are scrubbed first.
 
+A `grep` pattern that does not compile is answered `{"op": "grep",
+"rejected": "bad_pattern"}`. So is one whose shape can take
+exponential time on text its own sender wrote — a repeat nested in a
+repeat that iterates (`(a+)+`), or an alternation under a repeat
+(`(a|aa)+`) — with a `reason` naming the shape; the engine cannot be
+interrupted once such a pattern runs. Either way the query spends
+its one.
+
 ### 10.1 Local inference (optional): the `ask` op
 
 When the runner has a local model, the Oracle becomes a true

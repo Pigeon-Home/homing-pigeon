@@ -176,6 +176,84 @@ def validate_shared_secret(secret: str) -> None:
             f"need at least 128). {hint}")
 
 
+# ---- a peer's regular expression, before it runs against text the
+# same peer wrote (Q84)
+
+try:
+    from re import _parser as _rx  # Python 3.11+
+except ImportError:  # 3.9 and 3.10
+    import sre_parse as _rx  # type: ignore
+
+_RX_REPEATS = tuple(
+    op for op in (getattr(_rx, name, None)
+                  for name in ("MAX_REPEAT", "MIN_REPEAT",
+                               "POSSESSIVE_REPEAT"))
+    if op is not None)
+_RX_GROUPS = tuple(
+    op for op in (getattr(_rx, name, None)
+                  for name in ("SUBPATTERN", "ATOMIC_GROUP", "ASSERT",
+                               "ASSERT_NOT", "GROUPREF_EXISTS"))
+    if op is not None)
+
+
+def _rx_subpatterns(op, av):
+    """The subpatterns one parsed item holds, whatever its shape."""
+    if op in _RX_REPEATS:
+        return [av[2]]
+    if op == _rx.BRANCH:
+        return list(av[1])
+    if op == _rx.GROUPREF_EXISTS:
+        return [p for p in av[1:] if p is not None]
+    if op in _RX_GROUPS:
+        return [av[-1]] if isinstance(av, tuple) else [av]
+    return []
+
+
+def _rx_walk(items, under_repeat):
+    """The first reason the parsed pattern can take exponential time,
+    or None. `under_repeat` says an enclosing repeat can iterate."""
+    for op, av in items:
+        if op in _RX_REPEATS:
+            iterates = av[1] != 1
+            if under_repeat and iterates:
+                return "nested repeat"
+            found = _rx_walk(av[2], under_repeat or iterates)
+            if found:
+                return found
+        elif op == _rx.BRANCH:
+            if under_repeat:
+                return "repeated alternation"
+            for sub in av[1]:
+                found = _rx_walk(sub, under_repeat)
+                if found:
+                    return found
+        else:
+            for sub in _rx_subpatterns(op, av):
+                found = _rx_walk(sub, under_repeat)
+                if found:
+                    return found
+    return None
+
+
+def regex_backtracks(pattern) -> str | None:
+    """Why a pattern that compiles may still take exponential time on
+    text its sender chose, or None when its shape cannot: a repeat
+    nested in a repeat that iterates (`(a+)+`, `(\\w+\\s?)*`,
+    `(?:a{1,3}){2,}`) or an alternation under one (`(a|aa)+`). Each
+    such shape lets the engine split the same text in exponentially
+    many ways before it gives up; the plain repeats that remain are
+    bounded by the length of the text they run over. A pattern that
+    does not parse answers None: the compile step before this one
+    is what refuses it."""
+    if not isinstance(pattern, str):
+        return None
+    try:
+        parsed = _rx.parse(pattern)
+    except Exception:
+        return None
+    return _rx_walk(parsed, False)
+
+
 def sec_mode(cfg, feature):
     """Return the mode for a feature: off, audit, or enforce.
 

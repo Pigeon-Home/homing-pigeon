@@ -9,8 +9,10 @@ import re
 import time
 try:
     from runner.guard import confval as _confval
+    from runner.guard import security as _security
 except ImportError:  # running from inside runner/ as __main__
     from guard import confval as _confval  # type: ignore
+    from guard import security as _security  # type: ignore
 
 
 try:
@@ -233,6 +235,16 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     cre = re.compile(pattern)
                 except re.error:
                     answers.append({"op": "grep", "rejected": "bad_pattern"})
+                    spent += 1
+                    continue
+                # The pattern and the text it runs over come from the
+                # same sender, and the engine cannot be interrupted
+                # mid-match: a shape that can take exponential time is
+                # refused before it runs, with the shape named (Q84).
+                why = _security.regex_backtracks(pattern)
+                if why:
+                    answers.append({"op": "grep", "rejected": "bad_pattern",
+                                    "reason": why})
                     spent += 1
                     continue
                 # Default 10 for an omitted, unparseable, or boolean
