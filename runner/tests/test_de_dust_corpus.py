@@ -398,8 +398,13 @@ class ToolTest(unittest.TestCase):
         rng = random.Random(5)
         corpus = B.seeds_wire()
         self.assertIs(B.p_mutate(rng, deep, corpus), deep)
-        parent = B.make_entry("payload", {"v": 1, "deep": deep}, "seed:deep",
-                              "seed")
+        # The entry is built by hand: the corpus never writes a value
+        # this deep (a child past the bound is not a child), and the
+        # JSON encoder that names an entry recurses -- past its own
+        # limit on an interpreter with a small one (3.9; Windows).
+        parent = {"id": "deep", "kind": "payload", "data": {"v": 1,
+                  "deep": deep}, "from": "seed:deep", "mutator": "seed",
+                  "arcs": 0}
         for _ in range(20):
             self.assertIsNone(B.mutate(rng, parent, corpus, "wire"))
         # A child a graft would push past the bound is not a child.

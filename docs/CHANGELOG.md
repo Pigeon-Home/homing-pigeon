@@ -32,6 +32,12 @@ facts a reader may need to cite. Git history carries the rest.
   hash over a 256-bit secret give an attacker nothing a signed
   message does not already) is in SECURITY.md, "Key names are
   public", written for the reviewer who will ask.
+- **The Windows build and the 3.9 leg are green again.** The
+  depth test of the de_dust tool (Q95) built its 5000-deep entry
+  through the JSON encoder, which recurses, and the encoder's limit
+  on the 3.9 interpreter and on the Windows build is below that
+  depth; the entry is built by hand now, as the corpus never writes
+  one that deep (a child past the bound is not a child).
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.14.1 - 2026-10-27
