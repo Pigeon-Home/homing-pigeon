@@ -353,6 +353,14 @@ Verification:
    the marker, plus `"}"`. Text before that `{` is not signed.
 4. Recompute `HEX(HMAC_SHA384(secret, raw))` and compare with the
    presented signature using a constant-time comparison.
+5. If that does not match, form `raw'` by removing from `raw` every
+   character below U+0020 except TAB (LF and CR included), recompute
+   the HMAC over `raw'`, and accept a match. This is the second
+   signed form: a mail transport may wrap a long line by inserting a
+   control character the sender never signed, and a compact body
+   signs no newlines of its own. A receiver MUST compare the second
+   form in constant time as well, and MUST parse and act on `raw'`,
+   the form that verified, never the received text.
 
 The shared secret is a dedicated high-entropy string in the `shared_secret`
 config field, separate from the mailbox password (which is only a mailbox

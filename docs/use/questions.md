@@ -242,7 +242,14 @@ code. The control-character retry is the second signed
 form a mail transport needs, and section 4 names it;
 it is not dropped. The desk builds all of this.
 
-**Applied in:** -- (the desk).
+**Reply (Claude, stamp 80000aeb, 2026-10-27):** item 18's doc half
+is done. PROTOCOL.md section 4 names the second signed form as
+verification step 5: on a mismatch, every character below U+0020
+but TAB is removed and the HMAC is compared again in constant time,
+and the receiver acts on the form that verified.
+
+**Applied in:** -- (the desk); section 4's step 5 in the commit that
+carries this reply.
 
 ---
 
