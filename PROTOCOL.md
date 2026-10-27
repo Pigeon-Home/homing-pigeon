@@ -128,7 +128,10 @@ The reference default is email only: `transports` absent means
   shaped by (section 9).
 
 - `key_id`: optional; names which shared secret verifies this
-  message (section 14). Absent means the default secret.
+  message (section 14). Absent means the default secret. Every
+  secret has a name a sender can compute from it, its fingerprint
+  `k-<8 hex>` (section 14.2), and the reference sender names the
+  key that way by default; the absent form stays accepted.
 
 - `kind`: `exec` or `ping`, or `sensor_alert` (a signed alert from a
   sense, filed for the Oracle and answered with no result;
@@ -157,6 +160,7 @@ The reference default is email only: `transports` absent means
   "type": "result",
   "job_id": "3f9a1c2e-...-uuid",
   "kind": "exec",
+  "key_id": "k-6ed528bf",
   "completed_at": "2026-10-13T12:01:23Z",
   "exit_code": 0,
   "timed_out": false,
@@ -167,7 +171,8 @@ The reference default is email only: `transports` absent means
   "duration_sec": 12.345,
   "runner": "DESKTOP-ABC123",
   "platform": {"disclosure": "family", "os_family": "linux",
-               "default_interpreter": ["sh"], "protocol_versions": [1]},
+               "default_interpreter": ["sh"], "protocol_versions": [1],
+               "key_ids": ["k-6ed528bf"]},
   "oracle_opinion": {"mode": "repair", "verdict": "likely_failure",
                      "note": "..."},
   "remediation": {"mode": "deterministic", "authority": "tripwire",
@@ -195,11 +200,25 @@ The reference default is email only: `transports` absent means
   The card leaves only in a result, which answers a verified job, so
   an unauthenticated sender learns nothing from it. The DTLS
   greeting (draft Section 20) carries the same card at its own tier
-  (`dtls_greeting`), without `runner_version`, `config_defaulted`
-  or the `disclosure` member; the two describe the box the same way.
+  (`dtls_greeting`), without `runner_version`, `config_defaulted`,
+  `key_ids` (the PSK identity already names the key there) or the
+  `disclosure` member; the two describe the box the same way.
   `protocol_versions` is also how a sender discovers that a runner
   opens version 2 messages (`docs/ietf/draft-homing-pigeon-v2-00.md`)
   without a negotiation: ping first, then send what the box opens.
+  `key_ids` (every tier that sends a card) lists the key ids the
+  runner accepts: the default key by its fingerprint and each
+  additional key by name (section 14.2) -- names only, never a
+  value, and never the empty key id. It is the identity hint of a
+  TLS-PSK server: a sender whose ping verified already holds one of
+  these keys and learns what to call it.
+- `key_id`: the name of the key that verified the job (section
+  14.2): the `key_id` the job carried, or, for a job that carried
+  none, the default key's fingerprint. A name, never a value. It
+  says which key signed what, and it tells a sender that was handed
+  a bare secret what that secret is called. Every result carries
+  it, the rejection result (`exit_code` -2) and the delivery stub
+  included.
 - `timed_out: true` implies the process tree was killed; `exit_code` is -1.
 - `exit_code` -2 means the job was rejected before execution (validation
   failure: unknown kind, SHA384 mismatch, unsafe file name...); details in
@@ -486,7 +505,12 @@ The object protocol uses three cryptographic primitives:
   algorithm (`aes-256-gcm/hkdf-sha384`), a 12-byte nonce, and
   the ciphertext — and the envelope is itself signed as
   transmitted; the receiver verifies the envelope's signature
-  before decrypting. A receiver MUST accept the encrypted form, and MUST NOT execute a job received in cleartext unless the operator has explicitly enabled cleartext acceptance; in the reference software that enable is the `--allow-cleartext` command-line parameter, deliberately not a configuration setting. The reference receiver applies that same refusal to a query and to a board message, and an encrypted query or board message is answered in the same form.
+  before decrypting. The envelope's `key_id` member is bound into
+  the AEAD's associated data as the sender wrote it (`""` for the
+  unnamed default, else the name, the default key's fingerprint
+  included), and a reply is sealed under the name its request
+  used; a receiver takes the key id from the envelope, never from
+  a guess. A receiver MUST accept the encrypted form, and MUST NOT execute a job received in cleartext unless the operator has explicitly enabled cleartext acceptance; in the reference software that enable is the `--allow-cleartext` command-line parameter, deliberately not a configuration setting. The reference receiver applies that same refusal to a query and to a board message, and an encrypted query or board message is answered in the same form.
   A result mirrors the form of the job it answers unless
   `job_encryption` says otherwise: an explicit true encrypts
   every result, and the literal false encrypts none. A real
@@ -623,6 +647,11 @@ user's box decides what leaves it.
   `stdout` and `stderr` as empty strings — and nothing else: no
   byte counts, no `result_class`. No output bytes cross the
   boundary at all.
+
+Every view keeps the result's identity members (`v`, `type`,
+`job_id`, `kind`, `completed_at`, `runner`, `view`) and `key_id`,
+the name of the key that verified the job (3.2): a name says
+nothing about the output, so no view hides it.
 
 ### 9.2 Attestations
 
@@ -906,7 +935,8 @@ Defenses, in order of importance:
    human look — even when there is no security concern at all.
 3. **Rate limiting.** Before committing expensive work, demand proof
    of seriousness — the challenge-cookie pattern: `max_queries_per_hour`
-   per key ID in runner config, on top of the freshness and seen-set
+   per key in runner config (one window for a key under every name
+   it carries, section 14.2), on top of the freshness and seen-set
    checks every query already passes. This slows automated probing;
    the budget is what stops it.
 
@@ -1148,12 +1178,11 @@ keeps working. This is backward compatible by construction — the
 single-secret default never moves. Operators adding secrets keep the
 original secret as `shared_secret` so keyless senders keep verifying.
 
-The conductor decided (Q94, 2026-10-27) that a secret the
-installer generates will be named, and that an empty `key_id`
-stays the way a sender selects that first secret through the
-next line of releases. The installer does not do this yet. Until
-it does, an absent `key_id` selects `shared_secret`, and the
-first secret it generates has no name.
+Every secret also has a name of its own, its fingerprint, which the
+installer prints beside the secret it generates and the reference
+sender uses by default; an absent or empty `key_id` stays the way a
+sender selects that first secret (section 14.2; the conductor's
+decision, Q94, 2026-10-27).
 
 Key IDs are labels, not secrets. They may appear in logs and error
 messages. Unknown key IDs are rejected before any cryptographic work,
@@ -1161,7 +1190,7 @@ and a message naming a key ID it cannot satisfy verifies against
 nothing.
 
 The key ID is also the natural key for per-sender policy. Rate limits
-(`max_queries_per_hour`, section 11) are tracked per key ID, so one
+(`max_queries_per_hour`, section 11) are tracked per key, so one
 chatty worker cannot consume another worker's rate allowance. Privacy
 budgets are tracked per job (section 11). Rotation is a config edit:
 add a new key ID, hand it out, retire the old one. No flag day.
@@ -1242,11 +1271,73 @@ exactly as before — unrestricted.
 
 Two guards against a forgotten entry. At startup the runner logs a
 warning naming every `additional_secrets` key with no policy entry
-(the default key is intentionally unrestricted and never listed).
-And `key_policies_default_deny` (default false) flips the default for
-additional keys: a key with no entry is refused outright. The default
-stays loose; strict is opt-in. The default key (`""`) is never
-affected by the deny flag.
+(the default key is intentionally unrestricted and never listed,
+under any of its names). And `key_policies_default_deny` (default
+false) flips the default for additional keys: a key with no entry
+is refused outright. The default stays loose; strict is opt-in. The
+default key is never affected by the deny flag, whether a sender
+names it by the empty key id, by its fingerprint or by a name the
+installer stored the same secret under (section 14.2). A policy is
+a property of the key, not of the name: an entry under any one of a
+key's names is the key's policy, and entries under two of its names
+are a config error at startup.
+
+### 14.2 Every secret has a name
+
+A secret's name by default is its **fingerprint**: the string `k-`
+followed by the first eight hex digits of SHA-384 over a fixed label
+and the secret's UTF-8 octets:
+
+```
+key_id = "k-" + hex(SHA-384("homing-pigeon key id v1\n" || secret))[:8]
+```
+
+Anyone holding the secret can compute it, so a sender always has a
+name to give and a runner always has one to list; `send_job.py
+key-id --secret <secret>` prints it, the installer prints it beside
+the secret it generates, and the doctor prints it for the key in
+`config.json`. The runner's default key answers to its fingerprint
+exactly as it answers to the empty key id: both are the same key,
+and a message may name it either way. An additional key keeps the
+name the operator gave it (`additional_secrets`), and a chosen name
+for the runner's own key (`install --key-id <name>`) is stored as an
+additional entry carrying the same secret, so that key then has
+three names. Every rule that knows a key by name -- its policy
+entry, the deny flag, the hourly query window, the `v2_answerers`
+list, a sense's `key_id` binding -- reads the key by its value, so a
+name is a label and never a second identity: whichever name a sender
+uses, the same policy applies and the same window counts.
+
+Names travel in the open. A result names the key that verified its
+job (3.2), the pong's platform card lists the names a runner accepts
+(3.2), and the reference sender writes the name into every message it
+signs. That is safe by construction, and the reasoning is short
+enough to repeat wherever a reviewer meets it:
+
+- A name is a label, like a user name; the secret is the credential.
+  Learning a name tells an attacker which key to try, which the
+  default key's empty key id told them already.
+- The fingerprint is eight hex digits (32 bits) of a one-way
+  function over a 256-bit random secret. It cannot be inverted, and
+  as an oracle for a guessed secret it adds nothing: every signed
+  message is already a full HMAC oracle for a guess, and 32 bits of
+  hash leaves 224 bits of the secret unconstrained.
+- The label (`homing-pigeon key id v1\n`) separates this hash from
+  everything else the secret keys -- the HMAC over a body, the HKDF
+  that derives a job key -- so no name can be confused with, or
+  derived into, a signature or a key.
+- Nothing a runner publishes about a key is more than its name.
+  `key_ids` leaves only in a result, which answers a verified job,
+  so an unauthenticated sender learns nothing from it.
+
+The reference sender keeps a keyring (`send_job.py keyring add|list|
+remove`; `~/.homing-pigeon/keyring.json`, mode 0600, or `HP_KEYRING`),
+so a sender never holds a bare secret without its name: `new`,
+`task-submit` and `task-request` sign from the entry `--key-id`
+names when `--secret` is absent, and `verify` reads the `key_id` a
+result names and verifies with that entry. `--key-id ""` sends the
+unnamed form senders used before keys had names; the runner accepts
+it as it always has.
 
 ## 15. Rollout plan
 

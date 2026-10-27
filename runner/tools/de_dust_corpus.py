@@ -173,7 +173,15 @@ SECRET = "5e0f3c2a9b8d7e6f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7081"
 SENSE = "9c4e1b7a2d5f8036b1e4c7a9d2f5083a6c9e1b4d7f0a3c6e9b2d5f8a1c4e7b0d"
 OPS = "3b7d1f9a5c2e8046d9a3f1c7b5e2096a8d4c0f6b2e9a7c3d1f5b8e0a6c4d2f91"
 WRONG = "0000000000000000000000000000000000000000000000000000000000000001"
-SECRETS = {"": SECRET, "canary-key": SENSE, "ops": OPS}
+# The default key answers to its fingerprint as well as to the empty
+# key id (Q94): the name a sender computes from the secret it holds.
+# The map here mirrors build_secrets, so a payload named by that
+# fingerprint signs under the default secret, and the keyed verifier
+# is expected to choose that name back. Another key's fingerprint
+# (FP_OPS) is registered nowhere: a body naming it must be refused.
+FP = SEC.key_fingerprint(SECRET)
+FP_OPS = SEC.key_fingerprint(OPS)
+SECRETS = {"": SECRET, FP: SECRET, "canary-key": SENSE, "ops": OPS}
 LOCAL_CFG = {
     "shared_secret": SECRET,
     "additional_secrets": {"canary-key": SENSE, "ops": OPS},
@@ -2115,9 +2123,14 @@ def check_query(entry):
         cfg = dict(_QUERY_CFG)
         secrets = R.build_secrets(cfg)
         window = os.path.join(base, "query_times.json")
-        _query_window(window, data.get("window"), key_id)
+        # The window is per key, not per name (Q94): the slots are
+        # planted and counted under the one name the runner counts
+        # the key under, whichever name the message carries.
+        bucket = R.canonical_key_id(secrets, key_id) \
+            if isinstance(key_id, str) else key_id
+        _query_window(window, data.get("window"), bucket)
         window_before = _file_text(window)
-        live_before = _query_live(window, key_id)
+        live_before = _query_live(window, bucket)
         seen = {}
         outs = []
         logbook = _MailLog(base)
@@ -2154,7 +2167,7 @@ def check_query(entry):
                 and R.load_retained(base, job_id) != before:
             raise Crash("contract", "a dry run spent the retained record's "
                         "budget (Q87)")
-        live_after = _query_live(window, key_id)
+        live_after = _query_live(window, bucket)
         note("window", live_before, live_after)
         first, again = outs
         if again:
@@ -3048,6 +3061,10 @@ def _payload_seeds():
     return [
         ("exec_job", _job(script="echo hello", shell="sh")),
         ("exec_job_keyed", _job(key_id="ops", script="true")),
+        # The default key by its own name (Q94), and a name no key
+        # answers to though it has the shape of one.
+        ("exec_job_fingerprint_key", _job(key_id=FP, script="true")),
+        ("other_fingerprint_key", _job(key_id=FP_OPS)),
         ("alert", _frozen_alert()),
         ("unknown_key", _job(key_id="nobody")),
         ("null_key", _job(key_id=None)),
@@ -3462,6 +3479,21 @@ def _seeds_crypto():
                  "key_id": "ops", "expect": inner}))
     out.append(("member_ops_aad_default",
                 {"envelope": keyed, "job_id": "bm-exec-0001", "key_id": ""}))
+    # The default key under its own name (Q94): the AAD binds the
+    # name, so an envelope sealed under the fingerprint opens under
+    # it and not under the empty key id, and the other way round.
+    named_inner = V.sign_payload(_job(key_id=FP, script="echo named"),
+                                 SECRET)
+    named = V.verify_body(JC.encrypt_body(named_inner, SECRET,
+                                          "bm-exec-0001", FP,
+                                          V.sign_payload), SECRET)
+    out.append(("fingerprint_keyed",
+                {"envelope": named, "job_id": "bm-exec-0001",
+                 "key_id": FP, "expect": named_inner}))
+    out.append(("fingerprint_read_as_default",
+                {"envelope": named, "job_id": "bm-exec-0001", "key_id": ""}))
+    out.append(("default_read_as_fingerprint",
+                {"envelope": sealed, "job_id": "bm-exec-0001", "key_id": FP}))
     out.append(("member_default_aad_gone",
                 {"envelope": sealed, "job_id": "bm-exec-0001",
                  "key_id": "gone"}))
@@ -3580,6 +3612,8 @@ def _seeds_stash():
     plain = V.sign_payload(_job(script="echo stashed"), SECRET)
     plain_ops = V.sign_payload(_job(key_id="ops"), OPS)
     plain_gone = V.sign_payload(_job(key_id="gone"), SECRET)
+    plain_named = V.sign_payload(_job(key_id=FP), SECRET)
+    plain_other_fp = V.sign_payload(_job(key_id=FP_OPS), OPS)
 
     def sealed(inner, key_id, secret):
         return JC.encrypt_body(inner, secret, "bm-exec-0001", key_id,
@@ -3609,6 +3643,15 @@ def _seeds_stash():
         ("no_body", {"key_id": "", "job_id": "bm-exec-0001"}),
         ("body_not_text", rec(7, "")),
         ("empty", rec("", "")),
+        # The default key under its own name (Q94), in each slot;
+        # after the rest, so the earlier envelopes keep their nonces.
+        ("plain_fingerprint", rec(plain_named, FP)),
+        ("sealed_fingerprint", rec(sealed(plain_named, FP, SECRET), FP)),
+        ("sealed_body_fingerprint_record_default",
+         rec(sealed(plain_named, FP, SECRET), "")),
+        ("sealed_default_record_fingerprint",
+         rec(sealed(plain, "", SECRET), FP)),
+        ("plain_other_fingerprint", rec(plain_other_fp, FP_OPS)),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
@@ -5156,6 +5199,8 @@ def seeds_query():
     out = [
         entry("happy"),
         entry("keyed", key_id="ops"),
+        entry("fingerprint_key", key_id=FP),
+        entry("other_fingerprint_key", key_id=FP_OPS),
         entry("canary_key", key_id="canary-key"),
         entry("no_record", rec=None),
         entry("record_expired", rec=retained(saved_at=1.0)),
@@ -5318,6 +5363,7 @@ def seeds_query():
         # sender, stale, and as a crash left the file.
         entry("rate_limited", window=4),
         entry("rate_limited_keyed", window=4, key_id="ops"),
+        entry("rate_limited_fingerprint", window=4, key_id=FP),
         entry("rate_limited_dry", window=4, dry=True),
         entry("rate_limited_unsupported", window=4, q=query(type="job")),
         entry("window_one_under_cap", window=3),
@@ -5397,6 +5443,10 @@ def seeds_board_mail():
         entry("submit", "task_submit", "bm-task-0001", submit()),
         entry("submit_keyed", "task_submit", "bm-task-0001", submit(),
               key_id="ops"),
+        entry("submit_fingerprint_key", "task_submit", "bm-task-0001",
+              submit(), key_id=FP),
+        entry("submit_other_fingerprint_key", "task_submit", "bm-task-0001",
+              submit(), key_id=FP_OPS),
         entry("submit_reply_to", "task_submit", "bm-task-0001",
               submit(reply_to="worker@example.com")),
         entry("submit_reply_to_header_only", "task_submit", "bm-task-0001",
@@ -5586,6 +5636,12 @@ def seeds_v2_mail():
     out = [
         entry("question", "question", "q.bm-job-0001", q()),
         entry("question_keyed", "question", "q.bm-job-0001", q(), key_id="ops"),
+        entry("question_fingerprint_key", "question", "q.bm-job-0001", q(),
+              key_id=FP),
+        entry("answer_fingerprint_key", "answer", "a.q.bm-job-0001", a(),
+              key_id=FP),
+        entry("question_other_fingerprint_key", "question", "q.bm-job-0001",
+              q(), key_id=FP_OPS),
         entry("question_canary_key", "question", "q.bm-job-0001", q(),
               key_id="canary-key"),
         entry("question_answerer_listed", "question", "q.bm-job-0001", q(),

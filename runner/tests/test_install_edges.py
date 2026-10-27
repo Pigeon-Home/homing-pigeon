@@ -395,8 +395,9 @@ class LastBranchesTest(unittest.TestCase):
 
     def test_the_doctor_names_the_key_ids_and_never_a_secret(self):
         # A sender who must say which key signs can read the key ids
-        # here; the default secret has no name of its own (its key id
-        # is the empty string), and no value is ever printed.
+        # here: the runner's key by its fingerprint (Q94; the empty
+        # key id is the same key's legacy alias) and the additional
+        # keys by name. No value is ever printed.
         with tempfile.TemporaryDirectory() as home:
             bind = os.path.join(home, "bin")
             os.makedirs(bind)
@@ -420,8 +421,11 @@ class LastBranchesTest(unittest.TestCase):
                     contextlib.redirect_stdout(out):
                 inst.do_check(home, bind, cfg, os.path.join(home, "state"))
             text = out.getvalue()
-            self.assertIn('shared_secret -- set (the default key, key id "")'
-                          '; additional key ids: canary-key, ops', text)
+            first = inst.key_fingerprint("s3cret-value-" + "a" * 50)
+            self.assertIn(f"shared_secret -- set (the runner's key, key id "
+                          f"{first}; the unnamed default, key id \"\", is "
+                          "the same key); additional key ids: canary-key, "
+                          "ops", text)
             self.assertNotIn("s3cret", text)
             self.assertNotIn("o" * 64, text)
             with open(cfg, "w", encoding="utf-8") as fh:
@@ -874,7 +878,7 @@ class TailTest(unittest.TestCase):
         # Frozen binaries hardcode the version; the constant is the
         # source of truth. runner/tests/test_version.py checks it matches
         # pyproject.toml.
-        self.assertEqual(inst.__version__, "3.14.1")
+        self.assertEqual(inst.__version__, "3.14.2")
 
     def test_the_last_platform_decisions(self):
         args = mock.Mock(no_collector=False, collector=["osquery"],

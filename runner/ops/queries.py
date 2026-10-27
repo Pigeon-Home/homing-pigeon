@@ -112,9 +112,11 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     dry = bool(opts is not None and getattr(opts, "dry_run", False))
     # "" is the default secret. Do not replace it with query_id or each
     # query gets its own bucket and the cap never trips. PROTOCOL section 11
-    # is per sender.
+    # is per sender -- per key, whichever of its names the sender used
+    # (Q94: the default key's fingerprint is the default key).
     if not _runner().check_rate_limit(
-            key_id, cfg, os.path.join(base_dir, "query_times.json"), peek=dry):
+            _runner().canonical_key_id(secrets, key_id), cfg,
+            os.path.join(base_dir, "query_times.json"), peek=dry):
         R.log(f"query rate limit exceeded seq {seq}", "WARN")
         finish({
             "v": _runner().PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,

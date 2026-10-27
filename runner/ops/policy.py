@@ -56,6 +56,10 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
         "duration_sec": exec_result.get("duration_sec"),
         "view": effective, "output_digest": digest,
     }
+    if isinstance(exec_result.get("key_id"), str):
+        # The key that verified the job, by name (Q94), rides every
+        # view: a name, never a value.
+        base["key_id"] = exec_result["key_id"]
     # Spec-required members (PROTOCOL result table): the exec
     # result carries both, and this rebuild must not drop them.
     # A caller that hands in a bare exec result gets them minted
@@ -112,7 +116,8 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     return base, retain
 
 
-def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None):
+def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None,
+                       names=None):
     """Validate and file one sensor_alert job. The one ingest core.
 
     Every delivery path -- a mailed job (via _ingest_sensor_alert)
@@ -151,7 +156,14 @@ def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None):
     if not scfg.get("enabled"):
         return ("rejected", f"rejected: sensor {name!r} is not enabled",
                 None)
-    bound = R._senses.sensor_for_key(sensors, key_id)
+    # The binding names a key; the key answers under any of its
+    # names (Q94), the sender's first.
+    bound = None
+    for candidate in (names if isinstance(names, (tuple, list)) and names
+                      else (key_id,)):
+        bound = R._senses.sensor_for_key(sensors, candidate)
+        if bound is not None:
+            break
     if bound != name:
         return ("rejected",
                 f"rejected: key {key_id!r} is not bound to sensor {name!r}",

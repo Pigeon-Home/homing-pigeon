@@ -217,10 +217,16 @@ loop, with the helper:
 (PROTOCOL.md section 14) sets `--key-id <id>` on every job and signs
 with that secret; the runner then applies that key's `key_policies`
 entry. A worker whose key policy allows only `sensor_alert` cannot
-pull tasks or run scripts. Omit `--key-id` for the default secret.
-The installer still generates that secret unnamed (key id `""`);
-`install.py --check` prints the ids a runner holds and never the
-values. The conductor decided (Q94) that a generated secret is
-named and a sender sends that id by default. `send_job.py` does
-not do that yet, so do not invent a `key_id` the config does not
-have.
+pull tasks or run scripts. Every secret has a name of its own, its
+fingerprint `k-<8 hex>` (section 14.2), and that is what a message
+carries when `--key-id` is omitted: the runner's own key answers to
+its fingerprint as it does to the unnamed form, so omitting the flag
+still means the default secret. The owner hands you the pair, the key
+id and the secret; `send_job.py key-id --secret <secret>` recovers
+the name from a bare secret, and `send_job.py keyring add --secret
+<secret> --runner <runner mailbox>` keeps the two together so later
+commands take `--key-id <id>` with no `--secret` (`verify` reads the
+`key_id` a result names and looks the entry up). Every result carries
+`key_id`, the name of the key that verified the job; a ping's
+platform card carries `key_ids`, the names the runner accepts. Names
+are public; secrets are not. `--key-id ""` sends the unnamed form.

@@ -80,7 +80,7 @@ _atomicio = _import_atomicio()
 # Frozen binaries cannot import the package the same way a live run can.
 # The constant is the source of truth for --version; runner/tests/test_version.py
 # fails the build if it drifts from pyproject.toml.
-__version__ = "3.14.1"
+__version__ = "3.14.2"
 
 SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py", "wire/__init__.py", "wire/oauth.py",
@@ -181,18 +181,42 @@ def _looks_patterned(secret: str) -> bool:
     return False
 
 
-def ensure_shared_secret(cfg_path: str, provided: str | None) -> None:
-    """Write a shared_secret into config.json.
+_KEY_ID_LABEL = b"homing-pigeon key id v1\n"
+
+
+def key_fingerprint(secret: str) -> str:
+    """The name a secret carries by default (Q94): `k-` and the first
+    eight hex digits of SHA-384 over a fixed label and the secret.
+    The runner computes the same (runner/guard/security.py); this
+    file runs by path, so it carries its own copy. The name is public
+    by design, like a user name; it gives an attacker nothing a
+    signed message does not already."""
+    import hashlib
+    digest = hashlib.sha384(_KEY_ID_LABEL + secret.encode("utf-8")).hexdigest()
+    return "k-" + digest[:8]
+
+
+def ensure_shared_secret(cfg_path: str, provided: str | None,
+                         key_id: str | None = None) -> None:
+    """Write a shared_secret into config.json, and say its name.
 
     Uses the --shared-secret value when given (automated deployments);
     otherwise generates a random 256-bit secret. Either way the user
     retrieves it from config.json afterwards and hands it to their
-    cloud SI. A provided secret gets the same entropy bar as the
+    cloud SI together with its key id: the fingerprint the runner
+    answers to (Q94), printed here, and a chosen name under --key-id
+    when one was given, stored as an additional key with the same
+    value. A provided secret gets the same entropy bar as the
     runner's startup check.
     """
     cfg = _read_config(cfg_path)
     current = cfg.get("shared_secret") or ""
     if current and not provided and not _looks_like_placeholder(current):
+        if key_id:
+            _name_first_key(cfg_path, current, key_id)
+        print(f"the runner's key is named {key_fingerprint(current)}"
+              + (f" (and {key_id})" if key_id else "")
+              + " -- a sender gives that key id with the secret")
         return  # user-set real secret; leave it alone
     # Missing, empty, or still the example placeholder: (re)generate.
     secret = provided or secrets.token_hex(32)
@@ -206,12 +230,41 @@ def ensure_shared_secret(cfg_path: str, provided: str | None) -> None:
         sys.exit(2)
     cfg["shared_secret"] = secret
     _write_json(cfg_path, cfg)
+    name = key_fingerprint(secret)
+    if key_id:
+        _name_first_key(cfg_path, secret, key_id)
+    pair = (f"key id {name}" + (f" (and {key_id})" if key_id else "")
+            + " -- give your cloud SI the pair, this key id and the "
+            "shared_secret value in config.json")
     if provided:
-        print("wrote --shared-secret into config.json")
+        print(f"wrote --shared-secret into config.json: {pair}")
     else:
-        print(f"generated a random shared_secret into {cfg_path} -- "
-              f"give this string to your cloud SI")
+        print(f"generated the runner's key into {cfg_path}: {pair}")
     ensure_runner_id(cfg_path)
+
+
+def _name_first_key(cfg_path: str, secret: str, key_id: str) -> None:
+    """A chosen name for the first key, beside its fingerprint: the
+    same value under additional_secrets[key_id]."""
+    if not isinstance(key_id, str) or not _KEY_ID.match(key_id):
+        print("error: --key-id must match [A-Za-z0-9._-]{1,64}",
+              file=sys.stderr)
+        sys.exit(2)
+    cfg = _read_config(cfg_path)
+    extra = cfg.get("additional_secrets")
+    if extra is None:
+        extra = {}
+    if not isinstance(extra, dict):
+        print("error: additional_secrets in config is not an object",
+              file=sys.stderr)
+        sys.exit(2)
+    if extra.get(key_id) not in (None, secret):
+        print(f"error: additional_secrets already holds a different key "
+              f"under {key_id}", file=sys.stderr)
+        sys.exit(2)
+    extra[key_id] = secret
+    cfg["additional_secrets"] = extra
+    _write_json(cfg_path, cfg)
 
 
 def ensure_runner_id(cfg_path: str) -> None:
@@ -900,8 +953,14 @@ def do_check(home, bin_dir, cfg_path, state_dir) -> int:
             extra = cfg.get("additional_secrets")
             names = sorted(k for k in extra if isinstance(k, str)) \
                 if isinstance(extra, dict) else []
+            default = cfg.get("shared_secret")
+            try:
+                first = key_fingerprint(default)
+            except Exception:
+                first = "?"
             rec("PASS", "shared_secret",
-                "set (the default key, key id \"\")"
+                f"set (the runner's key, key id {first}; the unnamed "
+                "default, key id \"\", is the same key)"
                 + (f"; additional key ids: {', '.join(names)}"
                    if names else "; no additional key ids"))
         bd = cfg.get("base_dir")
@@ -1132,7 +1191,10 @@ def _setup_fresh_config(args, cfg_path):
     _blob_spec = getattr(args, "config_json", None)
     if isinstance(_blob_spec, str):
         merge_config_blob(cfg_path, _blob_spec)
-    ensure_shared_secret(cfg_path, args.shared_secret)
+    first_key_id = getattr(args, "key_id", None)
+    ensure_shared_secret(cfg_path, args.shared_secret,
+                         first_key_id if isinstance(first_key_id, str)
+                         else None)
     # Mailbox auth is the one thing install cannot invent. On a TTY,
     # offer the same Thunderbird-style wizard the runner uses, so a
     # fresh install ends with a working service and no hand-edited
@@ -3237,6 +3299,11 @@ def main() -> int:
     g.add_argument("--shared-secret", default=None, metavar="SECRET",
                    help="shared secret to write into config.json "
                         "(default: generate a random one)")
+    g.add_argument("--key-id", default=None, metavar="KEY_ID",
+                   help="a chosen name for the runner's first key, "
+                        "beside the fingerprint it answers to by "
+                        "default (k-<8 hex>); stored as an additional "
+                        "key with the same value")
     g.add_argument("--instructions", default=None, metavar="TEXT",
                    help="human-readable instructions for this box "
                         "(replaces any existing)")

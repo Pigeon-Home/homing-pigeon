@@ -305,6 +305,12 @@ DANGEROUS_ENV_NAMES = _verify.DANGEROUS_ENV_NAMES
 _estimate_secret_entropy = _verify._estimate_secret_entropy
 _secret_pattern_reason = _verify._secret_pattern_reason
 validate_shared_secret = _verify.validate_shared_secret
+secret_named = _verify.secret_named
+key_names = _verify.key_names
+is_default_key = _verify.is_default_key
+canonical_key_id = _verify.canonical_key_id
+policy_for = _verify.policy_for
+key_fingerprint = _security.key_fingerprint
 _env_name_in = _verify._env_name_in
 check_policy_constraints = _verify.check_policy_constraints
 check_audience = _verify.check_audience
@@ -1829,8 +1835,9 @@ def outbox_lines(base_dir):
 # The members a delivery stub keeps when a result body is refused
 # for good (review item 4): the identity and verdict of the run,
 # never its streams.
-_STUB_KEYS = ("v", "type", "job_id", "kind", "completed_at", "exit_code",
-              "timed_out", "duration_sec", "runner", "review", "judgment")
+_STUB_KEYS = ("v", "type", "job_id", "kind", "key_id", "completed_at",
+              "exit_code", "timed_out", "duration_sec", "runner", "review",
+              "judgment")
 
 def _result_meta(result):
     if not isinstance(result, dict):
@@ -1954,7 +1961,7 @@ def _record_payload(rec, secrets):
         if isinstance(payload, tuple):
             payload = payload[0]
         if _jobcrypto is not None and _jobcrypto.is_envelope(payload):
-            secret = secrets.get(rec.get("key_id") or "")
+            secret = secret_named(secrets, rec.get("key_id") or "")
             if secret is None:
                 return None
             inner = _jobcrypto.decrypt_body(payload, secret,
@@ -1990,7 +1997,7 @@ def _stub_body(rec, cfg, reason):
     refused record, or None when the key is gone."""
     secrets = build_secrets(cfg)
     key_id = rec.get("key_id") or ""
-    secret = secrets.get(key_id)
+    secret = secret_named(secrets, key_id)
     if secret is None:
         return None
     meta = rec.get("meta") if isinstance(rec.get("meta"), dict) else {}
@@ -2273,6 +2280,19 @@ def platform_interpreter():
                 "-ExecutionPolicy", "Bypass", "-File"]
     return ["sh"]
 
+def _key_name(key_id, secret):
+    """The name a result reports for the key that verified a job
+    (Q94): the key id the sender used, or, for the unnamed default
+    key, the fingerprint it answers to, so an unnamed sender learns
+    the name too. Never a value."""
+    if isinstance(key_id, str) and key_id:
+        return key_id
+    try:
+        return key_fingerprint(secret)
+    except Exception:
+        return ""
+
+
 def pong_platform(cfg):
     """The platform card a ping's result carries (PROTOCOL 3.2), at
     the owner's `pong_platform` tier, or None at `none` (or when the
@@ -2289,6 +2309,17 @@ def pong_platform(cfg):
         versions.append(2)
     card = _platformcard.build_card(tier, cfg, protocol_versions=versions,
                                     runner_version=__version__)
+    if card is not None:
+        # The key ids this runner accepts (Q94), names only, never a
+        # value: the default key under its fingerprint and every
+        # additional key, so a sender whose ping verified knows which
+        # names it may sign with (TLS-PSK's identity hint, in effect).
+        # The sender already holds one of these keys, or the ping
+        # would not have verified.
+        try:
+            card["key_ids"] = sorted(k for k in build_secrets(cfg) if k)
+        except Exception:
+            card["key_ids"] = []
     if card is not None and tier == "full" and _defaulted is not None:
         # Decision 1: the settings that read as their default are
         # named, at the tier that already tells the SI the most.
@@ -2919,7 +2950,7 @@ def _admit_object(body_text, secrets, object_id):
     if not isinstance(object_id, str):
         object_id = ""
     payload, key_id = verify_body_keyed(body_text, secrets)
-    secret = secrets[key_id]
+    secret = secret_named(secrets, key_id)
     enc = payload.get("hp_enc") if isinstance(payload, dict) else None
     if not isinstance(enc, dict):
         return payload, key_id, secret, False
@@ -3513,7 +3544,8 @@ def _ingest_sensor_alert(cfg, imap, seq, job_id, job, key_id,
     """
     dry = opts is not None and opts.dry_run
     status, why, _record = _sensor_alert_core(
-        cfg, job, key_id, base_dir, dry=dry)
+        cfg, job, key_id, base_dir, dry=dry,
+        names=key_names(secrets, key_id))
     if status == "dry":
         log(f"dry-run: would ingest sensor alert {job_id} "
             f"({job.get('sensor')}/{job.get('severity', 'info')}: "
@@ -3663,12 +3695,14 @@ def _ingest_local_envelope_inner(cfg, base_dir, text, source):
     max_age = _confval.integer(cfg.get("max_job_age_sec"), 3600, lo=1)
     if age < -300 or age > max_age:
         return reject(f"issued_at outside allowed window (age {age:.0f}s)")
-    violation = check_key_policy(key_policies, key_id, cfg, job)
+    violation = check_key_policy(key_policies, key_id, cfg, job,
+                                 secrets=secrets)
     if violation:
         _auth_reject_event(base_dir, "key_policy", feature="local_signals")
         return reject(f"key policy: {violation}")
     status, why, record = _sensor_alert_core(
-        cfg, job, key_id, base_dir, extra={"source": "local"})
+        cfg, job, key_id, base_dir, extra={"source": "local"},
+        names=key_names(secrets, key_id))
     log(f"local sensor alert {job_id} via {source}: {why}")
     vlog(f"local signal ({source}): job {job_id}: {status}: {why}")
     if status == "stored" and record is not None:
@@ -4283,7 +4317,7 @@ def _verify_and_decrypt(msg, secrets, job_id):
     the auth_rejection event.
     """
     job, key_id = verify_body_keyed(get_text_body(msg), secrets)
-    secret = secrets[key_id]
+    secret = secret_named(secrets, key_id)
     was_encrypted = False
     if isinstance(job, dict) and isinstance(job.get("hp_enc"), dict):
         if _jobcrypto is None or not _jobcrypto.is_envelope(job):
@@ -4294,7 +4328,7 @@ def _verify_and_decrypt(msg, secrets, job_id):
         if inner_key_id != key_id:
             raise ValueError(
                 "encrypted envelope key_id does not match its body")
-        secret = secrets[key_id]
+        secret = secret_named(secrets, key_id)
         was_encrypted = True
     if not isinstance(job, dict):
         raise ValueError("job body must be a JSON object")

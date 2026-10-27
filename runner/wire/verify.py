@@ -246,6 +246,86 @@ def _read_secret_file(path, label):
     return value
 
 
+def secret_named(secrets, key_id):
+    """The secret a key id selects from a map, or None: the map's own
+    entry, or, for the fingerprint the default key answers to (Q94),
+    the default key -- so a map built by hand as {"": secret} names
+    its key the same way build_secrets does."""
+    if not isinstance(secrets, dict) or not isinstance(key_id, str):
+        return None
+    if key_id in secrets:
+        return secrets[key_id]
+    default = secrets.get("")
+    if key_id and isinstance(default, str) and key_id.startswith("k-"):
+        try:
+            if key_id == _key_fingerprint(default):
+                return default
+        except Exception:
+            return None
+    return None
+
+
+def key_names(secrets, key_id):
+    """Every name the key a key id selects answers to, the given one
+    first (Q94). A key is its value: the default key's empty id, its
+    fingerprint, and any additional name the installer stored the
+    same secret under (--key-id) are one key with several names, and
+    two additional names over one secret are one key too. A key id
+    that selects nothing has only itself. The rules that know a key
+    by name -- its policy, the deny flag, the hourly query window,
+    the answerer list, a sensor binding -- read the key through
+    this, so a name is a label and never a second identity."""
+    if not isinstance(key_id, str):
+        return (key_id,)
+    secret = secret_named(secrets, key_id)
+    if secret is None:
+        return (key_id,)
+    names = [key_id]
+    default = secrets.get("")
+    if default == secret and key_id != "":
+        names.append("")
+    if default == secret:
+        try:
+            fp = _key_fingerprint(default)
+        except Exception:
+            fp = None
+        if fp and fp not in names:
+            names.append(fp)
+    names.extend(sorted(n for n, v in secrets.items()
+                        if isinstance(n, str) and v == secret
+                        and n not in names))
+    return tuple(names)
+
+
+def is_default_key(secrets, key_id) -> bool:
+    """Whether a key id names the runner's own key, by any of its
+    names (Q94): the owner, unrestricted and never default-denied."""
+    return "" in key_names(secrets, key_id)
+
+
+def canonical_key_id(secrets, key_id):
+    """The one name a key is counted under, whichever name a sender
+    used (Q94): the empty id for the default key, else the first of
+    its names in sorted order. The hourly query window (PROTOCOL
+    section 11) is per key, not per name."""
+    names = key_names(secrets, key_id)
+    if "" in names:
+        return ""
+    return min(names, key=lambda n: (not isinstance(n, str), str(n)))
+
+
+def policy_for(policies, secrets, key_id):
+    """The key_policies entry for a key, under any of its names (Q94),
+    or None. Two of its names with entries is a config error
+    build_key_policies refuses, so the first hit is the only one."""
+    if not isinstance(policies, dict):
+        return None
+    for name in key_names(secrets, key_id):
+        if name in policies:
+            return policies[name]
+    return None
+
+
 def build_secrets(cfg) -> dict:
     """key_id -> secret. Default key is "". Every secret passes entropy gate.
 
@@ -270,6 +350,11 @@ def build_secrets(cfg) -> dict:
                            "(or shared_secret_file)")
     validate_shared_secret(default)
     secrets[""] = default
+    # The default key answers to its name too (Q94): the fingerprint
+    # a sender computes from the secret it holds. The empty key id
+    # stays the legacy alias of the same key.
+    named = _key_fingerprint(default)
+    secrets[named] = default
     extra = cfg.get("additional_secrets") or {}
     if not isinstance(extra, dict):
         raise RuntimeError("config error: additional_secrets must be an object")
@@ -282,6 +367,10 @@ def build_secrets(cfg) -> dict:
             raise RuntimeError("config error: additional_secrets keys and values must be strings")
         if kid == "":
             raise RuntimeError("config error: empty key_id reserved for default")
+        if kid == named and sec != default:
+            raise RuntimeError(f"config error: key id {kid} is the default "
+                               "key's own name; another secret cannot "
+                               "carry it")
         validate_shared_secret(sec)
         secrets[kid] = sec
     for kid, path in extra_files.items():
@@ -289,10 +378,14 @@ def build_secrets(cfg) -> dict:
             raise RuntimeError("config error: additional_secrets_files keys and values must be strings")
         if kid == "":
             raise RuntimeError("config error: empty key_id reserved for default")
-        if kid in secrets:
+        if kid in secrets and kid != named:
             raise RuntimeError(
                 f"config error: key {kid!r} given both inline and via file")
         sec = _read_secret_file(path, f"additional_secrets_files[{kid!r}]")
+        if kid == named and sec != default:
+            raise RuntimeError(f"config error: key id {kid} is the default "
+                               "key's own name; another secret cannot "
+                               "carry it")
         validate_shared_secret(sec)
         secrets[kid] = sec
     return secrets
@@ -430,6 +523,22 @@ def build_key_policies(cfg) -> dict:
                     "may backtrack catastrophically on hostile input")
             clean["args_pattern"] = pattern
         policies[kid] = clean
+    # One key, one entry (Q94): a key's names -- the default key's
+    # empty id and fingerprint, an additional name over the same
+    # secret -- share a policy, so entries under two of them would
+    # make the policy depend on which name a sender chose.
+    try:
+        secrets = build_secrets(cfg)
+    except RuntimeError:
+        secrets = None     # the secrets' own errors are reported there
+    if secrets:
+        for kid in list(policies):
+            for other in key_names(secrets, kid)[1:]:
+                if other in policies:
+                    raise RuntimeError(
+                        f"config error: key_policies names one key twice "
+                        f"({kid!r} and {other!r} are the same key); keep "
+                        "one entry")
     return policies
 
 
@@ -444,17 +553,29 @@ def unrestricted_extra_keys(cfg) -> list:
     policies = cfg.get("key_policies") or {}
     if not isinstance(extra, dict) or not isinstance(policies, dict):
         return []
+    try:
+        secrets = build_secrets(cfg)
+    except RuntimeError:
+        secrets = {}
+    # A name the installer stored the runner's own secret under
+    # (--key-id) is the default key, unrestricted by design (Q94),
+    # and a key with an entry under another of its names has one.
     return sorted(k for k in extra
-                  if isinstance(k, str) and k and k not in policies)
+                  if isinstance(k, str) and k
+                  and not is_default_key(secrets, k)
+                  and policy_for(policies, secrets, k) is None)
 
 
-def check_key_policy(policies: dict, key_id: str, cfg, job):
+def check_key_policy(policies: dict, key_id: str, cfg, job, secrets=None):
     """Return None if the key's policy allows the job, else a reason string.
 
     Keys without a policy entry are unrestricted by default — the
     default stays loose. Set key_policies_default_deny to refuse
     everything from an additional key with no entry. The default key
-    (key_id "") is always unrestricted: it is the owner.
+    is always unrestricted: it is the owner -- under its empty key
+    id, its fingerprint, or any name the installer stored the same
+    secret under (Q94; with the secrets map given, a key is read by
+    its value, and its policy entry may sit under any of its names).
     Every specified constraint must hold; the check runs on the
     effective interpreter and timeout (job value or configured
     default), mirroring execute_job.
@@ -467,9 +588,14 @@ def check_key_policy(policies: dict, key_id: str, cfg, job):
         return "invalid key id"
     if not isinstance(cfg, dict):
         cfg = {}
-    pol = policies.get(key_id)
+    if isinstance(secrets, dict):
+        names = key_names(secrets, key_id)
+        pol = policy_for(policies, secrets, key_id)
+    else:
+        names = (key_id,)
+        pol = policies.get(key_id)
     if not pol:
-        if key_id != "" and cfg.get("key_policies_default_deny"):
+        if "" not in names and cfg.get("key_policies_default_deny"):
             return ("no key policy entry for this key "
                     "(key_policies_default_deny)")
         return None
@@ -535,8 +661,12 @@ if _security is not None:
     _estimate_secret_entropy = _security._estimate_secret_entropy
     _secret_pattern_reason = _security._secret_pattern_reason
     validate_shared_secret = _security.validate_shared_secret
+    _key_fingerprint = _security.key_fingerprint
 else:  # pragma: no cover - import failure is already fatal elsewhere
     def _estimate_secret_entropy(secret):
+        raise RuntimeError("security module unavailable")
+
+    def _key_fingerprint(secret):
         raise RuntimeError("security module unavailable")
 
     def _secret_pattern_reason(secret):
@@ -760,9 +890,9 @@ def verify_body_keyed(body_text: str, secrets: dict):
             key_id = payload["key_id"]
         else:
             key_id = ""
-        if not isinstance(key_id, str) or key_id not in secrets:
+        secret = secret_named(secrets, key_id)
+        if secret is None:
             raise ValueError(f"unknown key_id {key_id!r}")
-        secret = secrets[key_id]
         if not isinstance(secret, str):
             raise ValueError("secret must be a string")
         expect = hmac.new(secret.encode("utf-8"), cand.encode("utf-8"),

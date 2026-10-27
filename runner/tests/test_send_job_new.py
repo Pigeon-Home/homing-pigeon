@@ -65,7 +65,11 @@ class CmdNew(unittest.TestCase):
         job, key_id, encrypted, job_id, body = self._built_job(
             ["--script-file", self.script])
         self.assertTrue(encrypted)
-        self.assertEqual(key_id, "")
+        # The job carries the key's name by default (Q94): the
+        # fingerprint of the secret, which the runner's default key
+        # answers to even in a map built by hand as {"": secret}.
+        self.assertEqual(key_id, send_job.key_fingerprint(SECRET))
+        self.assertEqual(job["key_id"], key_id)
         self.assertEqual(job["job_id"], job_id)
         self.assertEqual(job["kind"], "exec")
         self.assertEqual(job["script"],

@@ -150,7 +150,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject(f"issued_at outside allowed window (age {age:.0f}s)")
         return
 
-    violation = _runner().check_key_policy(key_policies or {}, key_id, cfg, job)
+    violation = _runner().check_key_policy(key_policies or {}, key_id, cfg, job,
+                                           secrets=secrets)
     if violation:
         reject(f"key policy: {violation}")
         _runner()._auth_reject_event(base_dir, "key_policy")
@@ -161,7 +162,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # denies through the existing reject path. When every feature is
     # off the check is skipped entirely, so off changes nothing.
     if _runner()._security is not None:
-        _pol = (key_policies or {}).get(key_id)
+        _pol = _runner().policy_for(key_policies or {}, secrets, key_id)
         _m2_features = ("policy_env", "policy_files", "policy_args")
         if _pol and any(_runner()._security.sec_mode(cfg, f) != "off"
                         for f in _m2_features):
@@ -342,7 +343,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 # dealing path exactly as a received job would.
                 r_verdict, r_reasons = _runner().judge_job(cfg, repaired_job)
                 r_violation = _runner().check_key_policy(
-                    key_policies or {}, key_id, cfg, repaired_job)
+                    key_policies or {}, key_id, cfg, repaired_job,
+                    secrets=secrets)
                 if r_violation or (cfg.get("judge") == "enforce"
                                    and r_reasons):
                     why = r_violation or (
@@ -399,6 +401,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             result = {
                 "v": _runner().PROTOCOL_VERSION, "type": "result", "job_id": job_id,
                 "kind": job.get("kind"),
+                # The key that verified the job, by name (Q94): the
+                # sender learns the name of a key it was handed bare,
+                # and the log of results says which key signed what.
+                "key_id": _runner()._key_name(key_id, secret),
                 "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "exit_code": _runner()._as_int(r.get("exit_code"), -1),
                 "timed_out": bool(r.get("timed_out")),
@@ -602,6 +608,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 result = {
                     "v": _runner().PROTOCOL_VERSION, "type": "result", "job_id": job_id,
                     "kind": job.get("kind"),
+                    "key_id": _runner()._key_name(key_id, secret),
                     "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                     "exit_code": -2, "timed_out": False,
                     "stdout": "", "stderr": f"job rejected: {e}",

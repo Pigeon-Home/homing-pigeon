@@ -80,7 +80,8 @@ pip3 install pigeon-home-runner
 ```bash
 homing-pigeon-install
 # edit ~/.homing-pigeon/config.json — add your mailbox address + app password
-# (the installer generates a shared_secret for you; give that string to your SI)
+# (the installer generates a shared_secret for you and prints its key id,
+#  k-<8 hex>; give your SI the pair, the key id and the secret)
 homing-pigeon --config ~/.homing-pigeon/config.json --once
 ```
 
@@ -336,6 +337,19 @@ and that board does not need Python either.
 5. When you want an SI to send jobs, make sure `shared_secret` in
    config.json matches the string you pasted to the SI in chat
    (the wizard shows you a fresh one; `openssl rand -hex 32` works too).
+   Every secret has a name, its key id `k-<8 hex>` (PROTOCOL.md
+   section 14.2): the installer prints it beside the secret it
+   generates (`key id k-6ed528bf -- give your cloud SI the pair`),
+   `install --check` (the doctor) prints it for the key in
+   `config.json`, and `python3 runner/cloud/send_job.py key-id
+   --secret <secret>` recovers it from a bare secret. Hand the SI
+   both; it keeps them together (`send_job.py keyring add --secret
+   <secret> --runner <the runner's mailbox>`) and then signs with
+   `--key-id k-6ed528bf` and no secret on the command line. Want a
+   readable name as well? `--key-id prod-1` on a fresh install
+   stores it beside the fingerprint; both name the same key. The name
+   is public and safe to share (SECURITY.md, "Key names are public");
+   the secret is not.
 6. **More than one signer?** Give each its own key instead of sharing
    the one secret: `python3 runner/ops/install.py --additional-secret
    grok-4` generates a 256-bit secret under `additional_secrets`
@@ -344,12 +358,10 @@ and that board does not need Python either.
    `key_policies` entry for it by hand, since a key without one is
    unrestricted and the runner says so at startup. The signer then
    passes `--key-id grok-4` to `send_job.py`. The secret the
-   installer generates for you is still unnamed (key id `""`).
-   The conductor decided it will be named (Q94); that is not
-   what this installer does yet. `install.py --check` prints the
-   key ids this runner holds and never the values. Rotation and
-   the policy details: `docs/use/secret-rotation.md`, PROTOCOL.md
-   section 14.
+   installer generates for you is named too, by its fingerprint
+   (step 5 above; Q94), and `install.py --check` prints the key ids
+   this runner holds and never the values. Rotation and the policy
+   details: `docs/use/secret-rotation.md`, PROTOCOL.md section 14.
 
 **From source** (needs Python 3.9+):
 

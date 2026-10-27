@@ -152,8 +152,43 @@ installer names the first secret, senders send the key id by
 default, the empty key id stays a legacy alias through the
 next line of releases, and a rotation names the new key.
 
-**Applied in:** the answer is recorded in the commit that
-carries it; the implementation is the desk's.
+**Reply (Claude, stamp 50000c8e, 2026-10-27):** landed in
+3.14.2, on the design as answered with two details the conductor
+settled in chat the same day, after the IKEv2 question (RFC 7296
+section 3.5 carries a PSK's identity as an opaque ID the peers
+agree on; the TLS-PSK identity hint is the same idea): the first
+key's name by default is not `main` but its **fingerprint**, `k-`
+and the first eight hex digits of SHA-384 over the label
+`homing-pigeon key id v1\n` and the secret, so a sender holding a
+bare secret can compute the name itself (`send_job.py key-id`), and
+a chosen name (`install --key-id prod-1`) is stored beside it rather
+than instead of it. Everything else is as written: the installer
+prints the pair, the sender names the key by default and keeps a
+keyring, the empty key id stays the legacy alias, and the rules read
+a key by its value so no name is a second identity (a rotation names
+the new key; the doc says so). The conductor's bar for it -- it
+changes nothing except making one more thing public, and that
+safely -- is argued in SECURITY.md ("Key names are public") and
+PROTOCOL.md section 14.2, and held by `test_key_names`.
+
+**Applied in:** 3.14.2 -- `runner/guard/security.py`
+(`key_fingerprint`), `runner/wire/verify.py` (`build_secrets`
+registers the default under its fingerprint; `secret_named`,
+`key_names`, `is_default_key`, `canonical_key_id`, `policy_for`;
+`check_key_policy` reads the key by value; `build_key_policies`
+refuses one key policed under two names), `runner/runner.py`
+(`pong_platform` lists `key_ids`; `_key_name`; the stub keeps
+`key_id`), `runner/ops/mail.py` and `runner/ops/policy.py` (every
+result names the key that verified the job), `runner/ops/queries.py`
+(one window per key), `runner/ops/handlers.py` (the answerer list
+by any name), `runner/cloud/send_job.py` (the fingerprint default,
+`key-id`, `keyring add|list|remove`, `verify` from the keyring,
+`--key-id ""`), `runner/ops/install.py` (`--key-id`, the printed
+pair, the doctor's line), `runner/tests/test_key_names.py`, the
+de_dust seeds under the fingerprint (`runner/tools/de_dust_corpus.py`,
+merged by the next grow), PROTOCOL.md 3.1, 3.2, 8, 11, 14 and the
+new 14.2, SECURITY.md, INSTALL.md, AGENTS.md,
+`docs/use/secret-rotation.md`.
 
 ---
 

@@ -306,9 +306,13 @@ class SendJobCliTest(unittest.TestCase):
         out = self.run_new()
         subject, _, body = out.partition("\n\n")
         jid = subject.rsplit(" ", 1)[1]
-        payload, _ = verify_body_keyed(body, {"": SECRET})
+        payload, key_id = verify_body_keyed(body, {"": SECRET})
         self.assertTrue(jobcrypto.is_envelope(payload))
-        inner = jobcrypto.decrypt_body(payload, SECRET, jid, "")
+        # The envelope names the key (its fingerprint by default since
+        # 3.14.2, Q94); a reader takes the key id from the envelope.
+        self.assertEqual(key_id, send_job.key_fingerprint(SECRET))
+        inner = jobcrypto.decrypt_body(payload, SECRET, jid,
+                                       payload.get("key_id") or "")
         job = verify_body(inner, SECRET)
         self.assertEqual(job["kind"], "ping")
 

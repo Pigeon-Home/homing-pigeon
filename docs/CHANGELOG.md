@@ -4,6 +4,36 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.2 - 2026-10-27
+
+- **Every secret has a name (Q94).** A secret's name by default is
+  its fingerprint, `k-` and the first eight hex digits of SHA-384
+  over a fixed label and the secret, which anyone holding the secret
+  can compute (PROTOCOL.md section 14.2). The installer prints it
+  beside the secret it generates ("give your cloud SI the pair") and
+  takes `--key-id <name>` for a chosen name stored beside it; the
+  doctor prints it for the key in `config.json`; `send_job.py key-id`
+  recovers it from a bare secret. The runner's own key answers to
+  its fingerprint as it does to the empty key id, and
+  `send_job.py` names the key that way by default (`--key-id ""`
+  sends the unnamed form; both verify as before). Every result now
+  carries `key_id`, the name of the key that verified the job, and
+  a ping's platform card lists `key_ids`, the names the runner
+  accepts -- names only, never a value. The sender keeps a keyring
+  (`send_job.py keyring add|list|remove`, `~/.homing-pigeon/
+  keyring.json`, 0600), signs from it with `--key-id` and no secret
+  on the command line, and `verify` reads the `key_id` a result
+  names. Nothing else changes: a key is read by its value, so the
+  default key under any of its names is still the owner's -- the
+  same policy, never default-denied, one hourly query window, the
+  same answerer-list and sense bindings -- and a `key_policies`
+  entry under two names of one key is refused at startup. The
+  security case (a name is a label; 32 bits of a labelled one-way
+  hash over a 256-bit secret give an attacker nothing a signed
+  message does not already) is in SECURITY.md, "Key names are
+  public", written for the reviewer who will ask.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.14.1 - 2026-10-27
 
 - **A grep that does not answer in two seconds is killed

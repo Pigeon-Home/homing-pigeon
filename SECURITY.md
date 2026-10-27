@@ -246,6 +246,46 @@ empty file. File secrets pass the same entropy gate.
   the output is correct; review (`require_review`, the human gate)
   is the correctness anchor.
 
+### Key names are public (Q94)
+
+Every secret has a name, its fingerprint `k-<8 hex>` (PROTOCOL.md
+section 14.2), and the names travel in the open: a result names the
+key that verified its job, the pong's platform card lists the names a
+runner accepts, the installer prints the name beside the secret, and
+the reference sender writes the name into every message. The
+questions a reviewer asks about that, and the answers:
+
+- **Is the name a secret?** No. It is a label, like a user name; the
+  secret is the credential. A name tells an attacker which key to
+  try -- which the empty key id of the default key told them before
+  there were names.
+- **Does the fingerprint leak the secret?** No. It is eight hex
+  digits (32 bits) of SHA-384 over a fixed label and a 256-bit random
+  secret: one-way, and too short to constrain the secret (224 bits
+  stay free). As an oracle for a guessed secret it adds nothing a
+  signed message does not give already, since every HMAC is a full
+  oracle for a guess, and the secret's entropy is what defeats both.
+- **Can the name be confused with a signature or a key?** No. The
+  label (`homing-pigeon key id v1\n`) separates this hash from the
+  HMAC over a body and from the HKDF that derives a job key; nothing
+  the secret keys starts from the same input.
+- **Can a name change what a key may do?** No. The runner reads a
+  key by its value: the default key's empty key id, its fingerprint
+  and any name `install --key-id` stored the same secret under are
+  one key to every rule -- its policy entry, `key_policies_default_
+  deny`, the hourly query window, `v2_answerers`, a sense's `key_id`
+  binding. Naming the owner's key by fingerprint grants nothing and
+  escapes nothing, and a `key_policies` entry under two names of one
+  key is refused at startup.
+- **What does a runner publish about its keys?** Names, never values:
+  `key_ids` in the pong card, `key_id` in a result, the key ids in
+  the doctor's line. The card leaves only in a result, which answers
+  a verified job, so an unauthenticated sender sees none of it.
+- **Where does the sender keep the pair?** `send_job.py keyring`
+  (`~/.homing-pigeon/keyring.json`, mode 0600 in a 0700 directory,
+  or `HP_KEYRING`), written whole or not at all; `list` prints names
+  and runners, never a secret.
+
 See the hardening report (`docs/archive/HARDENING_REPORT.md`) for per-milestone
 status, and the threat model (`docs/security/threat-model.md`) for the
 overall posture: the Oracle reviews while the operating system

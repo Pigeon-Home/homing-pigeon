@@ -9,7 +9,9 @@ in the job (`send_job.py new --interpreter '["bash"]'`).
 
 **Ask before you guess.** A `ping` job's result carries a platform
 card at the tier the owner set (`pong_platform`, default `family`):
-the OS family, the default interpreter, and the protocol versions
-the runner speaks. Ping first and the interpreter-mismatch class of
-failure never happens; the same card rides the DTLS greeting.
+the OS family, the default interpreter, the protocol versions
+the runner speaks, and `key_ids`, the names of the keys it accepts
+(so a sender handed a bare secret sees what the runner calls it).
+Ping first and the interpreter-mismatch class of failure never
+happens; the same card rides the DTLS greeting.
 PROTOCOL.md section 3.2.

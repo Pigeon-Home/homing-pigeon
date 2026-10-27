@@ -194,7 +194,7 @@ class SenderFloorTest(unittest.TestCase):
         # inside the hp_enc envelope.
         self.assertTrue(send_job.jobcrypto.is_envelope(payload))
         inner = send_job.jobcrypto.decrypt_body(
-            payload, SECRET, "sj-1", "")
+            payload, SECRET, "sj-1", payload.get("key_id") or "")
         payload = send_job.verify_body(inner, SECRET)
         self.assertEqual(payload["v"], 1)
         self.assertEqual(payload["v"], send_job.PROTOCOL_VERSION)

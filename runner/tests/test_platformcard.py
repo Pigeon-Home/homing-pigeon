@@ -147,10 +147,13 @@ class PongTest(unittest.TestCase):
         self.assertEqual(result["stdout"], "pong")
         card = result["platform"]
         self.assertEqual(card["disclosure"], "family")
+        # The key ids ride every tier (Q94): the names a sender may
+        # sign with, never a value.
         self.assertEqual(set(card), {"disclosure", "os_family",
                                      "default_interpreter",
-                                     "protocol_versions"})
+                                     "protocol_versions", "key_ids"})
         self.assertEqual(card["protocol_versions"], [1])
+        self.assertEqual(card["key_ids"], [R.key_fingerprint(TR.SECRET)])
 
     def test_none_sends_the_bare_pong(self):
         result = self._pong(pong_platform="none")

@@ -280,7 +280,15 @@ hardest shape (keys and values made of `{`, `}` and `"`), the
 protocol messages at their caps, MIME in its shapes (plain,
 multipart, nested, an attachment, a truncated base64 part,
 encoded-word subjects, duplicate headers, bounces, bytes that are
-not UTF-8), a sealed DTLS flight and its two-fragment pair.
+not UTF-8), a sealed DTLS flight and its two-fragment pair, and
+since Q94 the default key under its own name: the tool's
+secrets map registers the fingerprint as `build_secrets` does, so
+a body, an envelope, a stashed record, a query, a board message and
+a version 2 message each have a seed naming the default key by
+fingerprint (accepted) and one naming another key's fingerprint,
+which no map registers (refused); the query target counts the
+hourly window under the one name the runner counts the key under,
+whichever name the message carries.
 
 The vocabulary grows only where a target's readers would not meet
 the existing one. The dictionary built from the IETF drafts' own

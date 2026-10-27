@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
 from runner.runner import (build_secrets, verify_body_keyed, poll_once,
                            build_key_policies,
                            check_key_policy, unrestricted_extra_keys)
+from runner.tests.test_runner import FakeIMAP, FakeSMTP, job_email  # noqa: E402
 from send_job import sign_payload
 
 SECRET = "2d2d42b99b668d4bcc0120c172c09e1059cdf4dd94d3422524519e3708937be4"
@@ -26,7 +27,10 @@ class MultiSecretTest(unittest.TestCase):
         cfg = {"shared_secret": SECRET}
         s = build_secrets(cfg)
         self.assertEqual(s[""], SECRET)
-        self.assertEqual(len(s), 1)
+        # One key, two names (Q94): the empty key id and the
+        # fingerprint a sender computes from the secret.
+        self.assertEqual(len(s), 2)
+        self.assertEqual(set(s.values()), {SECRET})
 
     def test_build_secrets_additional(self):
         cfg = {"shared_secret": SECRET, "additional_secrets": {"worker1": OTHER}}
@@ -146,8 +150,8 @@ class KeyPolicyTest(unittest.TestCase):
             {"": pol}, "", cfg, {"kind": "exec", "script": "x"}))
 
     def test_policy_enforced_end_to_end(self):
-        from runner.tests.test_runner import FakeIMAP, FakeSMTP, job_email
         tmp = tempfile.mkdtemp(prefix="hp-pol-")
+        self.addCleanup(__import__("shutil").rmtree, tmp, True)
         cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": SECRET,

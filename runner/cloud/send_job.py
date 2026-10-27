@@ -73,6 +73,18 @@ except ImportError:  # run by path: the same rules the runner applies
     _fn_spec.loader.exec_module(_filenames)
 
 try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:  # run by path: the one writer of a state file
+    import importlib.util
+    _io_path = os.path.join(_RUNNER_DIR, "guard", "atomicio.py")
+    _io_spec = importlib.util.spec_from_file_location(
+        "hp_atomicio", _io_path)
+    if _io_spec is None or _io_spec.loader is None:
+        raise ImportError("runner/guard/atomicio.py not loadable")
+    _atomicio = importlib.util.module_from_spec(_io_spec)
+    _io_spec.loader.exec_module(_atomicio)
+
+try:
     from runner._version import __version__
 except ImportError:  # run by path (python runner/cloud/send_job.py) instead of -m
     try:
@@ -341,7 +353,125 @@ def _has_lone_surrogate(value, _seen=None) -> bool:
     return False
 
 
+KEY_ID_LABEL = b"homing-pigeon key id v1\n"
+
+
+def key_fingerprint(secret: str) -> str:
+    """The name a secret carries by default (Q94): `k-` and the first
+    eight hex digits of SHA-384 over a fixed label and the secret,
+    the same the runner computes (runner/guard/security.py; this
+    file runs by path, so it carries its own copy). Anyone holding
+    the secret can compute it, so a sender always has a name to
+    give. The name is public by design, like a user name: a signed
+    message is already an oracle for a guessed secret, and eight hex
+    digits of a one-way function over 256 random bits add nothing
+    to that; the label keeps this hash apart from everything else
+    the key derives."""
+    if not isinstance(secret, str):
+        raise ValueError("secret must be a string")
+    digest = hashlib.sha384(KEY_ID_LABEL + secret.encode("utf-8")).hexdigest()
+    return "k-" + digest[:8]
+
+
+def resolve_key_id(args) -> str:
+    """The key id a message carries: --key-id as given (the empty
+    string names the runner's unnamed default slot, the form senders
+    used before keys had names), or by default the fingerprint of the secret
+    in use, which the runner's default key answers to."""
+    kid = getattr(args, "key_id", None)
+    if kid is None:
+        return key_fingerprint(args.secret)
+    return kid
+
+
+def keyring_path(args=None) -> str:
+    given = getattr(args, "keyring", None) if args is not None else None
+    return (given or os.environ.get("HP_KEYRING")
+            or os.path.join(os.path.expanduser("~"), ".homing-pigeon",
+                            "keyring.json"))
+
+
+def keyring_load(path: str) -> dict:
+    """{key_id: {"secret": ..., "runner": ...}}; absent is empty."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as e:
+        raise ValueError(f"keyring {path} does not read: {e}")
+    if not isinstance(data, dict) or not all(
+            isinstance(k, str) and isinstance(v, dict)
+            and isinstance(v.get("secret"), str) for k, v in data.items()):
+        raise ValueError(f"keyring {path} is not a map of key ids to "
+                         "entries with a secret")
+    return data
+
+
+def keyring_save(path: str, data: dict) -> None:
+    """The keyring is the sender's own copy of its secrets: a private
+    file (0600 in a 0700 directory), written whole or not at all,
+    never printed."""
+    folder = os.path.dirname(path)
+    if folder:
+        os.makedirs(folder, mode=0o700, exist_ok=True)
+    _atomicio.write_json(path, data, mode=0o600, indent=2, sort_keys=True,
+                         newline=True)
+
+
+def secret_for(args) -> str:
+    """The secret a command signs with: --secret as given, else the
+    keyring entry --key-id names."""
+    secret = getattr(args, "secret", None)
+    if secret:
+        return secret
+    kid = getattr(args, "key_id", None)
+    if kid:
+        entry = keyring_load(keyring_path(args)).get(kid)
+        if entry is not None:
+            return entry["secret"]
+        raise ValueError(f"no --secret given and the keyring holds no "
+                         f"key id {kid!r} (send_job.py keyring list)")
+    raise ValueError("give --secret, or --key-id naming a keyring entry")
+
+
+def cmd_key_id(args) -> int:
+    """Print the name a secret carries by default."""
+    print(key_fingerprint(secret_for(args)))
+    return 0
+
+
+def cmd_keyring(args) -> int:
+    path = keyring_path(args)
+    ring = keyring_load(path)
+    if args.action == "add":
+        if not args.secret:
+            raise ValueError("keyring add needs --secret")
+        kid = args.key_id if args.key_id is not None else \
+            key_fingerprint(args.secret)
+        entry = {"secret": args.secret}
+        if args.runner:
+            entry["runner"] = args.runner
+        ring[kid] = entry
+        keyring_save(path, ring)
+        print(kid)
+        return 0
+    if args.action == "remove":
+        if args.key_id is None or args.key_id not in ring:
+            raise ValueError(f"the keyring holds no key id {args.key_id!r}")
+        del ring[args.key_id]
+        keyring_save(path, ring)
+        return 0
+    # list: the names and the runners, never a secret
+    for kid in sorted(ring):
+        runner = ring[kid].get("runner")
+        print(kid + (f"  {runner}" if isinstance(runner, str) else ""))
+    return 0
+
+
 def cmd_new(args) -> int:
+    args.secret = secret_for(args)
+    key_id = resolve_key_id(args)
     payload = {
         "v": PROTOCOL_VERSION,
         "type": "job",
@@ -349,8 +479,8 @@ def cmd_new(args) -> int:
         "issued_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "kind": args.kind,
     }
-    if args.key_id:
-        payload["key_id"] = args.key_id
+    if key_id:
+        payload["key_id"] = key_id
     if args.aud:
         payload["aud"] = args.aud
     if args.reply_to:
@@ -400,7 +530,7 @@ def cmd_new(args) -> int:
         # body whole, then sign the envelope as transmitted.
         body = jobcrypto.encrypt_body(
             body, args.secret, job_id=payload["job_id"],
-            key_id=args.key_id or "", sign=sign_payload)
+            key_id=key_id, sign=sign_payload)
     if getattr(args, "to_queue", None):
         # The hosted queue: POST the same envelope to the tenant's
         # Worker URL with the SI token from the environment.
@@ -490,8 +620,33 @@ def repair_line(payload):
     return "repair: refused; the job as received was not rewritten"
 
 
+def _named_key_in(text: str):
+    """The key_id a body names, read before any verification so the
+    keyring can supply the secret; nothing else is trusted from it."""
+    try:
+        raw, _sig = _extract_signed(normalize(text).rstrip())
+        obj = json.loads(raw)
+    except Exception:
+        return None
+    kid = obj.get("key_id") if isinstance(obj, dict) else None
+    return kid if isinstance(kid, str) else None
+
+
 def cmd_verify(args) -> int:
     text = open(args.file, encoding="utf-8").read() if args.file else sys.stdin.read()
+    if not args.secret:
+        # The body names its key; the keyring supplies the secret.
+        kid = args.key_id if args.key_id is not None else _named_key_in(text)
+        if kid is None:
+            print("INVALID: no --secret given and the body names no key_id "
+                  "to look up in the keyring", file=sys.stderr)
+            return 1
+        try:
+            args.key_id = kid
+            args.secret = secret_for(args)
+        except ValueError as e:
+            print(f"INVALID: {e}", file=sys.stderr)
+            return 1
     try:
         payload = verify_body(text, args.secret)
         if jobcrypto.is_envelope(payload):
@@ -526,12 +681,15 @@ def _board_body(payload, ident, args) -> str:
     --allow-cleartext, and it decrypts a board envelope under the
     identifier in the subject (the task id or the worker id), so
     that identifier is the envelope's object id here."""
+    args.secret = secret_for(args)
+    key_id = resolve_key_id(args)
+    if key_id:
+        payload["key_id"] = key_id
     body = sign_payload(payload, args.secret)
     if not getattr(args, "cleartext", False):
         body = jobcrypto.encrypt_body(
             body, args.secret, job_id=ident,
-            key_id=getattr(args, "key_id", None) or "",
-            sign=sign_payload)
+            key_id=key_id, sign=sign_payload)
     return body
 
 
@@ -627,7 +785,12 @@ def main() -> int:
                         "repeatable")
     g = n.add_argument_group("addressing and signing")
     g.add_argument("--key-id", default=None, metavar="KEY_ID",
-                   help="key_id for multi-secret setups")
+                   help="the key id the job carries (default: the "
+                        "fingerprint of the secret, k-<8 hex>, which "
+                        "the runner's key answers to; an empty "
+                        "string sends the unnamed form senders used "
+                        "before keys had names; a keyring entry's id also "
+                        "supplies the secret)")
     g.add_argument("--aud", default=None, metavar="RUNNER_ID",
                    help="audience: the runner_id this job is "
                         "addressed to")
@@ -635,9 +798,13 @@ def main() -> int:
                    help="email the result to this address "
                         "instead of the runner mailbox (must be "
                         "inside the signed body)")
-    g.add_argument("--secret", required=True, metavar="SECRET",
+    g.add_argument("--secret", default=None, metavar="SECRET",
                    help="the shared secret, used as-is as the "
-                        "HMAC key; never logged")
+                        "HMAC key; never logged (or --key-id naming "
+                        "a keyring entry)")
+    g.add_argument("--keyring", default=None, metavar="PATH",
+                   help="the sender's keyring (default: $HP_KEYRING "
+                        "or ~/.homing-pigeon/keyring.json)")
     g = n.add_argument_group("delivery")
     g.add_argument("--to-file", default=None, metavar="PATH",
                    help="write the envelope (subject, blank line, "
@@ -667,7 +834,13 @@ def main() -> int:
     ts.add_argument("--task-id", required=True, metavar="ID")
     ts.add_argument("--priority", type=int, default=0,
                     help="task priority (default: 0)")
-    ts.add_argument("--secret", required=True, metavar="SECRET")
+    ts.add_argument("--secret", default=None, metavar="SECRET",
+                    help="the shared secret (or --key-id naming a "
+                         "keyring entry)")
+    ts.add_argument("--key-id", default=None, metavar="KEY_ID",
+                    help="the key id the message carries (default: "
+                         "the secret's fingerprint)")
+    ts.add_argument("--keyring", default=None, metavar="PATH")
     ts.add_argument("--reply-to", default=None, metavar="ADDRESS",
                     help="email the task_ack to this address instead "
                          "of the runner mailbox (inside the signed body)")
@@ -686,7 +859,13 @@ def main() -> int:
                     help="a capability tag this worker claims "
                          "(repeatable); a task is offered only when "
                          "the worker claims every tag it requires")
-    tr.add_argument("--secret", required=True, metavar="SECRET")
+    tr.add_argument("--secret", default=None, metavar="SECRET",
+                    help="the shared secret (or --key-id naming a "
+                         "keyring entry)")
+    tr.add_argument("--key-id", default=None, metavar="KEY_ID",
+                    help="the key id the message carries (default: "
+                         "the secret's fingerprint)")
+    tr.add_argument("--keyring", default=None, metavar="PATH")
     tr.add_argument("--reply-to", default=None, metavar="ADDRESS",
                     help="email the task_offer to this address instead "
                          "of the runner mailbox (inside the signed body)")
@@ -699,13 +878,48 @@ def main() -> int:
         "verify", help="verify a signed result body",
         description="Verify a signed result body and "
                     "pretty-print it.")
-    v.add_argument("--secret", required=True, metavar="SECRET")
+    v.add_argument("--secret", default=None, metavar="SECRET",
+                   help="the shared secret (default: the keyring entry "
+                        "the body's key_id names)")
+    v.add_argument("--key-id", default=None, metavar="KEY_ID",
+                   help="the keyring entry to verify with (default: "
+                        "the key_id the body names)")
+    v.add_argument("--keyring", default=None, metavar="PATH")
     v.add_argument("--job-id", default=None, metavar="ID",
                    help="job id from the message subject; "
                         "required to decrypt an encrypted body")
     v.add_argument("file", nargs="?", default=None, metavar="PATH",
                    help="file to read (default: stdin)")
     v.set_defaults(func=cmd_verify)
+
+    k = sub.add_parser(
+        "key-id", help="print the name a secret carries by default",
+        description="Print the key id a secret carries by default: "
+                    "k- and the first eight hex digits of SHA-384 over "
+                    "a fixed label and the secret. The runner's key "
+                    "answers to it; the name is public, the secret "
+                    "is not.")
+    k.add_argument("--secret", default=None, metavar="SECRET")
+    k.add_argument("--key-id", default=None, metavar="KEY_ID",
+                   help="a keyring entry whose secret to name")
+    k.add_argument("--keyring", default=None, metavar="PATH")
+    k.set_defaults(func=cmd_key_id)
+
+    r = sub.add_parser(
+        "keyring", help="the sender's keyring: add, list, remove",
+        description="Keep the key id and the secret together, so a "
+                    "sender never holds a bare secret: `add` stores a "
+                    "secret under its fingerprint (or --key-id) with "
+                    "the runner it belongs to, `list` prints the names "
+                    "and runners (never a secret), `remove` drops one. "
+                    "The file is private to the sender (0600).")
+    r.add_argument("action", choices=["add", "list", "remove"])
+    r.add_argument("--secret", default=None, metavar="SECRET")
+    r.add_argument("--key-id", default=None, metavar="KEY_ID")
+    r.add_argument("--runner", default=None, metavar="ADDRESS",
+                   help="the runner this key belongs to (its mailbox)")
+    r.add_argument("--keyring", default=None, metavar="PATH")
+    r.set_defaults(func=cmd_keyring)
 
     args = ap.parse_args()
     # stderr: stdout is the email body contract (subject + blank + body).

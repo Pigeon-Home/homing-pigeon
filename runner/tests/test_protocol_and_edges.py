@@ -1354,10 +1354,14 @@ class ReplyToTests(unittest.TestCase):
         # cmd_new always encrypts now: the signed body under test
         # rides inside the hp_enc envelope.
         self.assertTrue(send_job.jobcrypto.is_envelope(payload))
+        # The envelope and the body name the key by default (Q94):
+        # the fingerprint of the secret, which the AAD binds.
+        self.assertEqual(payload["key_id"], send_job.key_fingerprint(SECRET))
         inner = send_job.jobcrypto.decrypt_body(
-            payload, SECRET, "jid-1", "")
+            payload, SECRET, "jid-1", payload["key_id"])
         payload = send_job.verify_body(inner, SECRET)
         self.assertEqual(payload["reply_to"], "owner@example.com")
+        self.assertEqual(payload["key_id"], send_job.key_fingerprint(SECRET))
         self.assertEqual(payload["v"], 1)
 
     def test_send_job_omits_reply_to_when_unset(self):
@@ -1376,6 +1380,6 @@ class ReplyToTests(unittest.TestCase):
         payload = send_job.verify_body(body, SECRET)
         self.assertTrue(send_job.jobcrypto.is_envelope(payload))
         inner = send_job.jobcrypto.decrypt_body(
-            payload, SECRET, "jid-2", "")
+            payload, SECRET, "jid-2", payload["key_id"])
         payload = send_job.verify_body(inner, SECRET)
         self.assertNotIn("reply_to", payload)

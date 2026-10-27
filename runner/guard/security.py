@@ -17,6 +17,7 @@ Python 3.9 compatible. Standard library only.
 """
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import math
@@ -149,6 +150,28 @@ def _secret_pattern_reason(secret: str) -> str | None:
         if secret == (unit * ((n // period) + 1))[:n]:
             return f"it repeats the {period}-character unit {unit!r}"
     return None
+
+
+KEY_ID_LABEL = b"homing-pigeon key id v1\n"
+
+
+def key_fingerprint(secret) -> str:
+    """The name a secret carries by default (Q94): `k-` and the first
+    eight hex digits of SHA-384 over a fixed label and the secret.
+
+    Anyone holding the secret can compute it, so a sender always has
+    a name to give and a runner always has one to list; nothing else
+    the key derives (the HMAC over a body, the HKDF of the job key)
+    starts from this hash, the label sees to that, and eight hex
+    digits of a one-way function over 256 random bits give an
+    attacker nothing a signed message does not already (a signed
+    message is an oracle for a guessed secret as it is). The name
+    is public by design, like a user name; the secret is not.
+    """
+    if not isinstance(secret, str):
+        raise TypeError("secret must be a string")
+    digest = hashlib.sha384(KEY_ID_LABEL + secret.encode("utf-8")).hexdigest()
+    return "k-" + digest[:8]
 
 
 def validate_shared_secret(secret: str) -> None:

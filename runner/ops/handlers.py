@@ -177,7 +177,10 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     if not encrypted and not R._cleartext_jobs_allowed():
         reject("cleartext version 2 message refused")
         return True
-    if not R._protocol_v2.answerer_allowed(cfg, key_id):
+    # The answerer list names keys; a key answers under any of its
+    # names (Q94: the default key's fingerprint is the default key).
+    if not any(R._protocol_v2.answerer_allowed(cfg, name)
+               for name in R.key_names(secrets, key_id)):
         reject("answerer is not enabled for this key")
         return True
     try:
