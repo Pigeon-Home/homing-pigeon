@@ -6,7 +6,8 @@ status table, whether each is active or recycled and who carries a
 recycled stamp's roles. This holds that record honest: every stamp
 written after a stamp label anywhere in the tracked tree is listed,
 every listed stamp has a status row, and every recycled row names an
-active successor. Researchers one to three, and five, are recycled
+active successor. Researchers one to three, and five, are recycled,
+and the campaigns seat's first stamp was retired for a named one
 (AGENTS.md rule 10).
 """
 import re
@@ -16,18 +17,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 IDENT = ROOT / "docs" / "archive" / "RESEARCHER_IDENT.md"
 UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+# The campaigns seat's named stamp (registered 2026-10-27 at the
+# conductor's word): a zero block, the seat's name, and hex for the
+# rest. It is the one stamp the hex pattern cannot see, so the stamp
+# pattern admits this exact form alongside it.
+NAMED = r"00000000-muse-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+STAMP = r"(?:%s|%s)" % (NAMED, UUID)
 RECYCLED = {
     "10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c",
     "200003d4-e5f6-4a7b-9c8d-0e1f2a3b4c5d",
     "30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a",
     "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+    "58316a92-3c4a-41cb-8a16-8c0c5a871e90",
 }
 
 
 def _rows():
     rows = {}
     for line in IDENT.read_text(encoding="utf-8").splitlines():
-        m = re.match(r"\|[^|]*\|\s*`(%s)`\s*\|\s*(\w+)\s*\|([^|]*)\|([^|]*)\|" % UUID, line)
+        m = re.match(r"\|[^|]*\|\s*`(%s)`\s*\|\s*(\w+)\s*\|([^|]*)\|([^|]*)\|" % STAMP, line)
         if m:
             rows[m.group(1)] = (m.group(2), m.group(4))
     return rows
@@ -35,7 +43,7 @@ def _rows():
 
 def _tree_stamps():
     """Every stamp written after a stamp label, outside .git and caches."""
-    label = re.compile(r"stamp[^0-9a-f\n]{0,12}(%s)" % UUID, re.I)
+    label = re.compile(r"stamp[^0-9a-f\n]{0,12}(%s)" % STAMP, re.I)
     found = set()
     for path in ROOT.rglob("*"):
         parts = path.relative_to(ROOT).parts
@@ -53,7 +61,7 @@ def _tree_stamps():
 
 class AgentStampRecordTest(unittest.TestCase):
     def test_every_listed_stamp_has_a_status(self):
-        listed = set(re.findall(r"^(%s)$" % UUID,
+        listed = set(re.findall(r"^(%s)$" % STAMP,
                                 IDENT.read_text(encoding="utf-8"), re.M))
         self.assertTrue(listed)
         self.assertEqual(listed, set(_rows()))

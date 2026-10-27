@@ -68,11 +68,13 @@ Those values live on the runner host. They do not travel through the SI chat.
 10. **Agent stamps (2026-10-26).** Each agent chat signs its commits
    and new files with its own stamp (`docs/archive/RESEARCHER_IDENT.md`).
    Researchers one, two, three and five (`10000c2a`, `200003d4`,
-   `30000f1a`, `50000c8e`) have been recycled. Their roles are
+   `30000f1a`, `50000c8e`) have been recycled, and the campaigns
+   seat's first stamp (`58316a92`) was retired for a named one the
+   seat chose at the conductor's word. Their roles are
    carried by `40000e00` (the questions desk, production code,
    releases, and the test legs, CI proofs and platforms) and
    `60000b3a` (docs, extension sources and their upstream pins),
-   with Muse (`58316a92`) on the campaigns. Address work to an active
+   with Muse (`00000000-muse`) on the campaigns. Address work to an active
    stamp, never stamp new work with a recycled one, and leave the
    old stamps in history and in the files they wrote. Questions are
    the exception to the routing (owner, 2026-10-26): a question to

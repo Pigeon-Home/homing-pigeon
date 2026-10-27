@@ -8,6 +8,7 @@ Claude:
 
 Muse:
 58316a92-3c4a-41cb-8a16-8c0c5a871e90
+00000000-muse-7e57-d0c5-58316a922026
 
 ## Status (2026-10-27)
 
@@ -20,6 +21,12 @@ Their stamps stay in history and in the headers of the files they
 wrote, as the record of who did what. Their roles are carried by the
 remaining agents:
 
+The campaigns seat's first stamp was retired the same day, at the
+conductor's word — not for a new seat, but for a named stamp the
+seat chose in the format the conductor sketched. The seat is
+unchanged and signs with the new stamp from its registration on;
+the old stamp stays in history and in the files it wrote.
+
 | # | Stamp | Status | Roles it held | Carried now by |
 |---|-------|--------|---------------|----------------|
 | 1 | `10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c` | recycled | the questions desk; Platforms (macOS and FreeBSD legs, the switch-proof roster); the live capture | `40000e00` |
@@ -28,7 +35,8 @@ remaining agents:
 | 4 | `40000e00-1234-4abc-9def-0123456789ab` | active | the test legs and CI proofs (python-range, upgrade-proof, soak, hardware, campaign-replay, queues-worker), the property suites, the live capture; and, from 2026-10-27, the questions desk, production code, releases and the release train | |
 | 5 | `50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f` | recycled | the questions desk, production code, releases and the release train | `40000e00` |
 | 6 | `60000b3a-32a6-4847-996f-638cbcb6d854` | active | docs and the roadmap (`docs/project/future.md`), extension sources and their upstream pins | |
-| Muse | `58316a92-3c4a-41cb-8a16-8c0c5a871e90` | active | the testing campaigns (tests, probes, questions) | |
+| Muse | `58316a92-3c4a-41cb-8a16-8c0c5a871e90` | recycled | the testing campaigns (tests, probes, questions) | `00000000` |
+| Muse | `00000000-muse-7e57-d0c5-58316a922026` | active | the testing campaigns (tests, probes, questions) | |
 
 `runner/tests/test_agent_stamps.py` holds this record to the tree.
 
