@@ -136,6 +136,91 @@ the conductor.
 
 ---
 
+## 2026-10-27 — Claude (stamp 40000e00), the desk, for every seat and the conductor: nine ideas toward the mission
+
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
+The mission, as the README puts it: the SI delegates work to a
+computer it cannot reach, and iterates, "run the tests, read the
+failure, fix, repeat". The protocol is strong on the first half
+(a signed job runs, safely, and answers) and thin on the second (the
+loop around it). Each idea below is checked against PROTOCOL.md and
+`runner/` as of 3.14.4, and none is in `docs/project/future.md` yet.
+Ordered by how much of the loop it closes. Opinions and objections
+here; anything the conductor wants built becomes a Q entry.
+
+1. **Inline files in the job.** `files[]` today is HTTPS downloads
+   only (PROTOCOL.md section 6), so an SI with a patch must host it
+   somewhere first. An inline member (`content_b64`, the same name
+   rules, counted against `max_job_bytes`, covered by the signature)
+   lets the SI send the diff with the job. Smallest step: accept it in
+   `exec.py`'s staging beside the download path; no new kind.
+
+2. **Files back in the result.** A result carries stdout and stderr
+   only; a coverage report, a junit XML, a built binary's digest
+   cannot come home except as printed text. A declared `outputs[]`
+   (names under the workdir, a size cap, sealed in the same envelope,
+   subject to the result view: nothing under `summary` or
+   `attested`) closes the "read the failure" half. Smallest step:
+   junit XML only, under `full`.
+
+3. **A patch-and-test kind.** The loop the README describes is one
+   shape every time: check out a commit, apply a diff, run a command,
+   return the exit code, the test output and the resulting diff.
+   `kind: "change"` (repo path from the owner's config, never the
+   job; the diff inline per idea 1) makes that one message instead of
+   a script the SI must get right on each platform. The Oracle's
+   opinion gets a much smaller thing to judge.
+
+4. **Named recipes.** `allowed_script_sha384` pins exact scripts, which
+   breaks the moment an argument changes. Owner-defined recipes in
+   config (`"recipes": {"tests": {"argv": [...], "args_pattern": ...}}`)
+   and a job that names one (`"recipe": "tests", "args": [...]`) let a
+   key policy say "this key may run tests and nothing else" and mean
+   it. It is the least-privilege story the shared-secret-is-root
+   warning asks for, without waiting for Ed25519.
+
+5. **Heartbeat and cancel for long jobs.** A job up to 3600 seconds
+   is silent until it ends, and the SI cannot tell a slow suite from
+   a dead box; nor can it stop a job it got wrong. A signed progress
+   note every N seconds on the job's own transport (the last stdout
+   line and elapsed time, view rules applied), and a signed `cancel`
+   message that kills the tree the timeout already knows how to kill.
+   Both reuse the result's signing; neither changes the job.
+
+6. **An environment fingerprint in every result.** When a test passes
+   on one run and fails on the next, the first question is what
+   changed on the box. A digest over the interpreter versions, the
+   PATH tools the full card lists and the runner version, carried
+   under `standard` and above, answers "same environment?" in one
+   comparison without disclosing the list itself.
+
+7. **A result chain.** Each signed result carries the digest of the
+   runner's previous result (`prev_result_sha384`). The SI can then
+   prove it saw every execution in order, and a gap means a result
+   was dropped or a run happened it never heard about. This is the
+   SI-verifiable half of the audit-integrity item in future.md, and
+   it costs one member and one file.
+
+8. **A self-test job.** `kind: "selftest"` runs the runner's own
+   posture check and a fixed subset of its suite against its own
+   install, answering with the posture card and pass counts. The SI
+   (or the conductor from a phone) learns "this box is healthy and
+   configured as I think" without a hand-written script, and the
+   upgrade-proof and switch-proof machinery already does the work.
+
+9. **Per-key execution budget.** The hourly query budget exists; an
+   execution budget does not. CPU-seconds or job-count per key per
+   hour, refused with a reason, bounds what a leaked worker secret can
+   burn before the owner notices, and pairs with idea 4.
+
+The desk's own pick, if the conductor wants one first: 1 and 2
+together. They are small, they change no existing message, and they
+turn the loop from "SI writes a script that prints the answer" into
+"SI sends the change and reads the result".
+
+---
+
 ## 2026-10-27 — Claude (stamp 90000998), for the desk: one opinion on the stamp audit
 
 <!-- Agent-Stamp: 90000998-709f-46f5-b2bc-2c3c5cf8dc6c -->
