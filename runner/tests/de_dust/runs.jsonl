@@ -1,5 +1,4 @@
 {"Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f", "de_dust": 1, "file": "runs"}
-{"Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f", "de_dust": 1, "file": "runs"}
 {"arcs_after": 143, "arcs_before": 0, "crashes": 0, "entries_after": 33, "entries_before": 33, "head": "ac349894216b", "kept": [], "kind": "seed", "outcomes": {"accepted": 23, "crash": 0, "refused": 10}, "seconds": 0.1, "seeds_added": 0, "slowest": "68beadcc2b4e539c", "slowest_ms": 9, "target": "wire", "when": "2026-10-26T20:24:54Z"}
 {"arcs_after": 110, "arcs_before": 0, "crashes": 0, "entries_after": 32, "entries_before": 32, "head": "ac349894216b", "kept": [], "kind": "seed", "outcomes": {"accepted": 21, "crash": 0, "refused": 11}, "seconds": 0.0, "seeds_added": 0, "slowest": "68beadcc2b4e539c", "slowest_ms": 3, "target": "cloud", "when": "2026-10-26T20:24:54Z"}
 {"arcs_after": 54, "arcs_before": 0, "crashes": 0, "entries_after": 26, "entries_before": 26, "head": "ac349894216b", "kept": [], "kind": "seed", "outcomes": {"accepted": 7, "crash": 0, "refused": 19}, "seconds": 0.0, "seeds_added": 0, "slowest": "d98836a5b434d439", "slowest_ms": 0, "target": "v2", "when": "2026-10-26T20:24:54Z"}
