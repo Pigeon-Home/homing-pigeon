@@ -4695,3 +4695,32 @@ when done, the proving commit or run. Newest first.
   from that pass's end (14:13) until
   this bank; recorded per Q58.
   Grow 22 (seed 6340) follows.
+- rules refreshed 2026-10-27 16:40 PDT
+  (standing orders incl. section M
+  as amended today; AGENTS.md rules
+  7-11 in their fresh copy; the
+  questions file's open entries).
+  de_dust 22 (VM rig): 1293 entries, 4978 arcs, 0 crashes filed.
+  Grow 22 (seed 6340) ran on target
+  (box cpu 82%, wall 1h33m21s):
+  278,430 children over 19 run
+  records; it kept 1 (local,
+  198fc93a4fa0e163), whose arcs the
+  merged tree already covered, so
+  the totals move by the entry
+  alone -- the first bank under
+  the section M item 7 contract,
+  totals from stats on the merged
+  tree. v2_mail wrote no record,
+  the third grow in a row it sat
+  at the end of the rotation. The
+  survivors pass beside it was
+  still running at this bank; its
+  record rides grow 23's bank. The
+  box ran that pass alone for the
+  six minutes between this grow's
+  end and grow 23's launch, at
+  this seat's sequencing of the
+  conductor's doc work; recorded
+  per Q58. Grow 23 (seed 6350)
+  follows.
