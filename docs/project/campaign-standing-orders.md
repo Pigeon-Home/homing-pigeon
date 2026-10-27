@@ -4127,3 +4127,22 @@ when done, the proving commit or run. Newest first.
   five ride the cycle at the desk's
   word while local and mail carry the
   search.
+- rules refreshed 2026-10-26 17:20 PDT
+  (standing orders incl. section M as
+  the only effort, the blueMonday plan;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules).
+  blueMonday 5: 239 entries, 755 arcs, 0 crashes filed. The
+  first grow on seven targets (seed
+  6205, the full hour, on target at 83%
+  box cpu): local yielded +20 entries
+  (52 to 72) and is the one target the
+  saturation mark does not claim; wire
+  and cloud carry the desk's new seeds
+  (39 and 38 entries) and read
+  saturated with v2, crypto, stash and
+  mail. Grok's targets (dtls, board,
+  channels, manifest, the inbox pair)
+  landed during this grow; grow 6
+  takes the whole surface up.
