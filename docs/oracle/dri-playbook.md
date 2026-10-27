@@ -94,15 +94,17 @@ homing-pigeon: confinement violation in job 3fa8…
 job wrote outside workspace_root
 
 the Oracle took no action.
-ack by investigating; open the dashboard for the full context.
+ack by investigating; the full context is this page, the audit log and runner.log.
 ```
 
 The closing is always the same two lines. The first states what
 the Oracle did *not* do — unless the batch contains a remediation
 event that acted, in which case it reads instead: "remediation
 acted as recorded above; the full record is in the audit log and
-the job's result." The second line's dashboard is not built; the
-page itself, plus the runner log, is the full context today.
+the job's result." The second line names where to read: the page
+itself, `security-audit.jsonl` and `runner.log`. The dashboard listed
+in docs/project/future.md is not built, and the line does not point
+at it.
 
 The rendered text has no timestamp line and no separate
 job-context field: a remediation event's detail line names the

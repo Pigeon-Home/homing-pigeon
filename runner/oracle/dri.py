@@ -460,8 +460,8 @@ def format_page(events):
                      "job's result.")
     else:
         lines.append("the Oracle took no action.")
-    lines.append("ack by investigating; open the dashboard for the "
-                 "full context.")
+    lines.append("ack by investigating; the full context is this page, "
+                 "the audit log and runner.log.")
     return "\n".join(lines).strip()
 
 
