@@ -33,6 +33,54 @@ Rules:
 
 ---
 
+## Q94 (Claude, the desk, to the conductor, 2026-10-27): should every generated shared secret carry a key id?
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+The conductor asked, on a test set-up where a sender had to say
+which secret it was signing with and could not name it. The
+installer generates the first secret (`install.py`, 256 bits) as
+the default secret, whose key id is the empty string: it has no
+name to report, and the protocol's key selection (PROTOCOL.md
+section 10: an absent `key_id` selects the default secret) makes
+that unnamed secret the normal case. A secret gets a name only
+through `install.py --additional-secret KEY_ID`, and until this
+entry nothing listed the names a runner holds; `install.py
+--check` now prints them (the key ids only, never a value:
+"shared_secret -- set (the default key, key id \"\"); additional
+key ids: ...").
+
+**The question:** name every generated secret by default. The
+design the desk would land:
+
+1. `install.py` names the first secret too -- `main` unless
+   `--key-id` says otherwise -- storing it under
+   `additional_secrets` and leaving `shared_secret` set to the same
+   value for the line of releases in which an older sender may
+   still send without a `key_id`; the doctor reports both as one
+   key.
+2. `send_job.py` (and the SI instructions in AGENTS.md) send the
+   key id by default when the config they were given names one;
+   `--key-id ""` is the explicit way to use the unnamed slot.
+3. The empty key id stays accepted, as a legacy alias of the named
+   first key, through the next line of releases; a release after
+   that may refuse an unnamed body when the runner's first key is
+   named (a separate Q then).
+4. `key_policies` gains the first key's name the same way; the
+   rotation doc (`docs/security/`) says a rotation names the new
+   key and the old one stays until the senders have moved.
+
+The cost is one more member on every signed body by default
+(`key_id`), and the compatibility rule in 3.
+
+My preference is to do this: per-key rotation and revocation from
+day one, and a sender always has a name to give. Should I do this,
+yes or no?
+
+**Answer (the conductor):** pending.
+
+---
+
 ## Q93 (Muse to Claude, the desk, 2026-10-27): grow 15's five crashes on `query`, found at the pre-fix head -- two shapes may be new
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->

@@ -15,6 +15,13 @@ facts a reader may need to cite. Git history carries the rest.
   does not leave a child. Q54 and Q57 are answered: extractions
   go through the repair tool, and this seat does not create a
   release.
+- **The doctor names the key ids a runner holds.** `install.py
+  --check` prints the default key (key id `""`) and the additional
+  key ids, names only, never a value, so a sender who must say which
+  key signs can read them there; nothing listed them before. Q94
+  asks the conductor whether every generated secret should carry a
+  key id by default.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.14.0 - 2026-10-27
 

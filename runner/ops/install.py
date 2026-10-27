@@ -892,6 +892,18 @@ def do_check(home, bin_dir, cfg_path, state_dir) -> int:
         if not cfg.get("shared_secret"):
             rec("WARN", "shared_secret",
                 "not set in config.json; signed jobs cannot verify")
+        else:
+            # The key ids this runner holds, names only: a sender who
+            # must say which key signs can read them here, since the
+            # default secret has no name of its own (its key id is
+            # the empty string) and nothing else lists them.
+            extra = cfg.get("additional_secrets")
+            names = sorted(k for k in extra if isinstance(k, str)) \
+                if isinstance(extra, dict) else []
+            rec("PASS", "shared_secret",
+                "set (the default key, key id \"\")"
+                + (f"; additional key ids: {', '.join(names)}"
+                   if names else "; no additional key ids"))
         bd = cfg.get("base_dir")
         if (bd and os.path.normcase(os.path.abspath(bd))
                 != os.path.normcase(os.path.abspath(state_dir))):

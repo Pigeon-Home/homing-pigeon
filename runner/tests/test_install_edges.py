@@ -4,6 +4,7 @@ Health judgments, the one-home install, the ACL call, and
 the fetches. Package commands are fake. Nothing is installed.
 """
 import contextlib
+import io
 import json
 import os
 import socket
@@ -391,6 +392,47 @@ class LastBranchesTest(unittest.TestCase):
                                       return_value=[]):
                 self.assertEqual(inst.do_check(
                     home, bind, cfg, os.path.join(home, "state")), 1)
+
+    def test_the_doctor_names_the_key_ids_and_never_a_secret(self):
+        # A sender who must say which key signs can read the key ids
+        # here; the default secret has no name of its own (its key id
+        # is the empty string), and no value is ever printed.
+        with tempfile.TemporaryDirectory() as home:
+            bind = os.path.join(home, "bin")
+            os.makedirs(bind)
+            with open(os.path.join(bind, inst.RUNNER_BIN), "w",
+                      encoding="utf-8") as fh:
+                fh.write("x")
+            cfg = os.path.join(home, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                json.dump({"shared_secret": "s3cret-value-" + "a" * 50,
+                           "additional_secrets": {"ops": "o" * 64,
+                                                  "canary-key": "c" * 64}},
+                          fh)
+            with open(os.path.join(home, "install-receipt.json"), "w",
+                      encoding="utf-8") as fh:
+                fh.write('{"version": "3"}\n')
+            os.makedirs(os.path.join(home, "state"))
+            out = io.StringIO()
+            with mock.patch.object(inst.sys, "platform", "darwin"), \
+                    mock.patch.object(inst, "collector_health_rows",
+                                      return_value=[]), \
+                    contextlib.redirect_stdout(out):
+                inst.do_check(home, bind, cfg, os.path.join(home, "state"))
+            text = out.getvalue()
+            self.assertIn('shared_secret -- set (the default key, key id "")'
+                          '; additional key ids: canary-key, ops', text)
+            self.assertNotIn("s3cret", text)
+            self.assertNotIn("o" * 64, text)
+            with open(cfg, "w", encoding="utf-8") as fh:
+                json.dump({"shared_secret": "x" * 64}, fh)
+            out = io.StringIO()
+            with mock.patch.object(inst.sys, "platform", "darwin"), \
+                    mock.patch.object(inst, "collector_health_rows",
+                                      return_value=[]), \
+                    contextlib.redirect_stdout(out):
+                inst.do_check(home, bind, cfg, os.path.join(home, "state"))
+            self.assertIn("no additional key ids", out.getvalue())
 
     def test_console_without_a_config_and_a_follow_that_waits(self):
         with tempfile.TemporaryDirectory() as home:
