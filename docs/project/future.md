@@ -48,6 +48,9 @@
 - **Ed25519 signatures** instead of the shared HMAC secret, so a leaked
   secret is not root. `docs/design/asymmetric-signing-design.md`.
 
+- **An approval gate (M10)**, a human yes before a job runs, for the
+  jobs a policy names. `docs/design/approval-gate-design.md`.
+
 - **Board delegation over ping** Ping reply carries the box's open task
   board, so the cloud SI can submit work.
   

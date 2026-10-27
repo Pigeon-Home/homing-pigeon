@@ -69,8 +69,7 @@ to turn this example into your own package — is in
 
 ## Light mode
 
-For a Pi Light install, tune it down with the tunables the code
-actually implements: raise `poll_interval_sec` from 120 to
+For a Pi Light install, tune it down with its tunables: raise `poll_interval_sec` from 120 to
 600, and set `high_only` to true. On a quiet Pi only the
 street-facing doors then file — wildcard and low-port
 listeners — and the medium chatter is absorbed into the

@@ -64,7 +64,7 @@ contract yet, and no README line claims them.
 | Tunable | Default | What it does |
 |---------|---------|--------------|
 | `log_paths` | `["/var/log/syslog", "/var/log/messages"]` | The Sysmon event text files to tail — the Linux syslog/journal export on Linux; on Windows, point it at the file the owner's export schedule refreshes |
-| `poll_interval_sec` | 60 | How often the runner offers this sense a pass; the cost knob (see Light mode) |
+| `poll_interval_sec` | 60 | The cadence to run the pass on (advisory; the runner never runs sense code); the cost knob (see Light mode) |
 
 Run one pass:
 
@@ -106,8 +106,7 @@ into your own package — is in
 
 ## Light mode
 
-For a Pi Light install, tune it down with the tunables
-the code actually implements: raise `poll_interval_sec`
+For a Pi Light install, tune it down with its tunables: raise `poll_interval_sec`
 from 60 to 600 — the producer's own cost is one tail pass,
 so cadence is the whole cost — and point `log_paths` at
 the single file the box actually keeps. The honest limit

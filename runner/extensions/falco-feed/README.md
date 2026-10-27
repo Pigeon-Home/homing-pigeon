@@ -69,7 +69,7 @@ line malformed, and malformed lines are ignored.
 | Tunable | Default | Meaning |
 |---------|---------|---------|
 | `log_paths` | `["/var/log/falco/falco.json"]` | Falco JSON alert files to tail; point Falco's `file_output` at the first |
-| `poll_interval_sec` | `60` | How often the runner wakes the sense |
+| `poll_interval_sec` | `60` | The cadence to run the pass on; advisory, the runner never runs sense code |
 | `episode_cooldown_sec` | `3600` | An episode refiles after this long, and clears after this long quiet |
 
 Run one pass:
@@ -98,8 +98,7 @@ to turn this example into your own package — is in
 
 ## Light mode
 
-For a Pi Light install, tune it down with the tunables the
-code actually implements: raise `poll_interval_sec` from 60
+For a Pi Light install, tune it down with its tunables: raise `poll_interval_sec` from 60
 to 600, and raise `episode_cooldown_sec` — at 86400, an
 episode that keeps firing files at most once a day. The
 sense itself is a file tailer and a JSON parser; its own

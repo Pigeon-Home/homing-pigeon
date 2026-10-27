@@ -104,10 +104,10 @@ logged.
 | `version` | yes | string | The extension's own version, semver-shaped (`0.3.0`, suffixes like `-rc.1` allowed). Yours to rev. |
 | `api_version` | yes | integer | The extension API the manifest was written against. Must be a whole number, 1 or more. See the compatibility promise below. |
 | `kind` | yes | string | `"sense"` (this document) or `"transport"` (docs/extend/transports.md). |
-| `signals` | yes | list | 1 to 64 entries, each an object with `name` and `description`. Names unique within the manifest. This list is the contract; see "Signals are the contract". |
+| `signals` | yes (sense) | list | 1 to 64 entries, each an object with `name` and `description`. Names unique within the manifest. This list is the contract; see "Signals are the contract". |
 | `description` | no | string | One line, at most 200 characters: what the extension is, for humans reading the logs and docs. |
 | `tunables` | no | object | Your knobs, carried through unread by the agent. Your daemon reads them from its own manifest. The sense's ingest gates (severity floor, cooldown, caps) are separate: those live in the sensor's `profile` in `config.json`, as for every sense. |
-| `upstream` | no | object | The files of another project this extension's reading depends on, pinned to one commit: `repo` (an `https://github.com/<owner>/<name>` URL), `ref` (the branch or tag the nightly bump follows), `pin` (the 40-hex commit the files were taken from), `paths` (1 to 32 plain relative paths in that repository). The agent validates the shape and never fetches. See "Upstream: carrying the format you parse". |
+| `upstream` | no | object | The files of another project this extension's reading depends on, pinned to one commit: `repo` (an `https://github.com/<owner>/<name>` URL), `ref` (the branch or tag the nightly bump follows), `pin` (the 40-hex commit the files were taken from), `paths` (1 to 32 plain relative paths in that repository), and optionally `license` (one line, at most 100 characters, an SPDX expression). The agent validates the shape and never fetches. See "Upstream: carrying the format you parse". |
 | `capabilities` | no | list | What the code does beyond reading files and filing signals, from a closed vocabulary: `network` (it opens connections), `listen` (it accepts them), `subprocess` (it runs programs), `native` (it loads native code). Absent means none. The review holds the code to this list before the extension is loaded; see "The review: code held to the manifest". |
 
 Validation is strict in both directions. A missing required
@@ -224,7 +224,9 @@ The loader's rule:
   loads.
 - `api_version` **newer** than the agent provides: refused, with
   a log line saying the extension requires a newer agent.
-- `api_version` **older**: accepted.
+- `api_version` **older**: accepted for a sense. The transport
+  loader is strict: anything other than its own version is refused
+  (unobservable while both are 1).
 
 The third line is a promise about how the API evolves: fields
 may be added, never removed or reinterpreted, so a manifest
@@ -452,7 +454,7 @@ without it (a refused drop-in transport is absent; the shipped one
 it shadowed does not step in for it). `advisory` loads everything
 and logs what it found. `off` skips the review. A value outside
 those three is a config error at startup, like any other security
-mode. Every verdict is written to `<base_dir>/extension-review.json`
+mode (`true` and `false` are read as `enforce` and `off`). Every verdict is written to `<base_dir>/extension-review.json`
 (mode, time, each extension's findings and the capabilities it
 declared and the review observed), and `homing-pigeon --inspect
 review` reads the folders now and prints the same.
@@ -469,7 +471,7 @@ Extensions fail closed and fail quiet:
 
 - At startup the agent logs one line per loaded extension
   (`extension loaded: lab_results v0.3.0 (extension API v1,
-  kind sense, 3 declared signal(s)) from ...`) and one warning
+  kind sense, 3 declared signal(s), capabilities: none) from ...`) and one warning
   per refusal, with the reason (`extensions: extension folder
   'future': refused: extension requires extension API v99 ...`).
 - A refused extension changes nothing else: the agent starts,
@@ -559,10 +561,10 @@ extension and never reads it.
 | `sources_version` | Required; `1`. Newer than the agent reads: refused. Older: accepted. The manifest's promise, kept the same way. |
 | `oracle` | Optional, top level: `"provide"` or `"withhold"`, the author's line for the whole extension in the disclosure rule below. |
 | `sources` | Up to 16 entries. |
-| `id` | Required. Letters, digits, `.`, `_`, `-`; unique without regard to case (it becomes a folder); `installed` is reserved. |
+| `id` | Required. Letters, digits, `.`, `_`, `-`; unique without regard to case (it becomes a folder); `installed` and `pinned` are reserved. |
 | `role` | Required: `self`, `upstream`, `spec`, `schema`, `rules`, or `docs`. Context for the Oracle. |
 | `description`, `license` | Optional, one line each (at most 200 and 100 characters). |
-| `github` / `url` / `project` | Exactly one location: a GitHub repository (`owner/repo`); one https URL; or paths inside Homing Pigeon's own tree (for the extensions that ship with it). |
+| `github` / `url` / `project` / `upstream` | Exactly one location: a GitHub repository (`owner/repo`); one https URL; paths inside Homing Pigeon's own tree (for the extensions that ship with it); or `"upstream": true`, the files the manifest's `upstream` block pins. |
 | `ref` | GitHub only. `"latest"` (the default, below), or a tag, a branch, or a commit. |
 | `tag_match`, `asset_match` | `"latest"` only. A regular expression the release tag must match; one that picks a release asset as the archive (a release tarball carries what GitHub's own archive does not, such as submodules). |
 | `files` | GitHub only. Up to 32 repository paths, each fetched alone at the pinned commit. |
@@ -712,9 +714,9 @@ dns scripts, osquery's table specs, Falco's default config and
 rules, Sysmon's event manifest, and the code that writes the
 record for AIDE's report, Wazuh's alerts, and softflowd's flows;
 the softflowd adapter adds NetFlow version 9 (RFC 3954) and IPFIX
-(RFC 7011). The four
-shipped transports declare their own code in the project tree and
-the specifications they speak: IMAP4rev1, SMTP, STARTTLS, and the
+(RFC 7011). All five
+shipped transports declare their own code in the project tree, and
+three declare the specifications they speak as well: IMAP4rev1, SMTP, STARTTLS, and the
 message format for email; DTLS 1.3, TLS 1.3, HKDF, and X25519 for
 dtls; the NATS client protocol for nats. Any extension can do the
 same with one file.
@@ -957,20 +959,23 @@ twenty-five. `lab-results`, `pi-health`, and `sky-watcher` are
 standalone examples outside the pinned table, and `airwaves`
 appears both as a full section above and as a row below.
 
-Seventeen more working senses, each one a small diffing
+Sixteen more working senses (the table has seventeen rows;
+`airwaves` repeats from above), each one a small diffing
 watcher in the same shape as the four above — a manifest, a
 boring producer with one platform-reading function and a
-pure `decide()`, a state file, and a README. Thirteen are
-rooted in trades their author practiced: fuzzing, PKI,
-network engineering, penetration testing, kernel work,
-code signing, operations; the last four watch the machine's
-resource trends, the runner's own job history,
-machine-learning training runs, and the neighborhood of
-the jobs themselves.
+pure `decide()`, a state file, and a README. Thirteen watch
+what a trade watches: fuzzing, PKI, network engineering,
+penetration testing, kernel work, code signing, operations;
+the last four watch the machine's resource trends, the
+runner's own job history, machine-learning training runs,
+and the neighborhood of the jobs themselves.
 Powerful-desktop senses are the center of
 gravity; every one also declares how it tunes down for a Pi
 Light install (its README's Light mode section has the
-detail — only knobs the code implements).
+detail). `poll_interval_sec` there is the one advisory knob:
+it names the cadence to run the pass on (a timer, cron, or the
+installer's collector unit); the runner never runs sense code
+and nothing in the extension API reads it.
 
 Eight more adapters follow the same producer shape over a
 different kind of source: the output artifact of a real IDS
@@ -1000,7 +1005,7 @@ quoting a number it cannot stand behind.
 | `job-watcher` | The runner's retained job history: the same job failing repeatedly (medium), a job alternating pass/fail (info), a run far beyond the job's own duration baseline (medium, and never before a baseline exists), many distinct jobs failing at once (high) | Cadence to 900s; history does not move fast |
 | `training-watch` | An ML training run: its log tail, checkpoint directory, and GPU — a checkpoint that has stopped changing (info), a log quiet past the stall limit or flat parsed losses (medium), crash markers: Traceback, CUDA out of memory, NCCL error, RuntimeError (high), GPU overheating (high), GPU memory pressure (medium) | Cadence to 900s; `tail_bytes` down; the parser half needs no GPU |
 | `job-fuzz` | The runner's retained jobs, fuzzed: grammar-shaped mutations of real jobs run through the core's validation and confined execution (`--run-variant`) on idle cycles only — a variant that hangs or breaks the run (high), a variant whose outcome class diverges from the seed job's recorded class (medium), a first-seen (mutator, stage, class) combination (info) | Cadence to 900s; `max_variants_per_pass` down; the campaign spends idle cycles only |
-| `falco-feed` | Falco's JSON alert file: Emergency/Alert/Critical rules (high); Warning/Notice rules (medium). No footprint claimed for Falco itself: it did not run in the measurement sandbox (the host denied BPF) — on a normal box the modern-eBPF driver is the zero-build path | Cadence up; the episode cooldown is the volume knob |
+| `falco-feed` | Falco's JSON alert file: Emergency/Alert/Critical/Error rules (high); Warning/Notice rules (medium). No footprint claimed for Falco itself: it did not run in the measurement sandbox (the host denied BPF) — on a normal box the modern-eBPF driver is the zero-build path | Cadence up; the episode cooldown is the volume knob |
 | `suricata-feed` | Suricata's eve.json: alert signatures at the source's own severity (1 high, 2 medium, 3 info); protocol anomalies (medium). ~52 MB with a minimal ruleset in the measurement container — a production ruleset is several hundred MB; the rules are the weight | A trimmed ruleset is the real light mode; cadence up |
 | `zeek-feed` | Zeek's conn.log and dns.log: a burst of first-seen external peers (medium); DNS anomalies — long queries, odd qtypes, many labels (medium). ~230 MB idle measured: Zeek is never a default | Cadence up; conn.log only |
 | `osquery-feed` | osqueryd's results log for the installer's light pack: users and listening ports added (medium), processes added (info), removals (info). ~27 MB and ~0.1% CPU measured — why osquery is the default collector | Cadence up; the pack is already three queries |

@@ -46,7 +46,9 @@ about a missing POSIX ACL too.
 
 **3. Cage the workspace.** `workspace_root` and `protected_paths`
 are a snapshot today: the Oracle *notices* a write outside the
-workspace after the fact. An ACL — or bwrap where it exists — makes
+workspace after the fact, and remediation (default
+`deterministic`) quarantines the job's outputs, refers and pages on
+that finding; the write itself has happened. An ACL — or bwrap where it exists — makes
 the write *fail*. On Linux, bwrap (`security.modes.confinement`) is
 the better tool and should stay the confinement backend. ACLs matter
 for the default (confinement off) and for macOS, FreeBSD, and
@@ -83,11 +85,13 @@ where each one stands. Items marked absent are listed in docs/project/future.md.
   every redaction rule (those only cover what comes *back* in the
   result email). Only bwrap in enforce mode (Linux, off by default)
   blocks it. Status: mechanism exists, default-off.
-- **Audit log integrity.** `security-events.jsonl` is not even
-  append-only in the runner's own hands: past 5000 lines the runner
-  rewrites it to the last 5000. The watched principal can edit or
-  truncate it. No append-only flag (`chattr +a`), no hash chain,
-  no remote copy. Status: absent.
+- **Audit log integrity.** Neither log is append-only in the
+  runner's own hands: past 5,000 lines `security-events.jsonl` is
+  rewritten to its last 5,000 (by atomic replace), and
+  `security-audit.jsonl` rolls to `.1` at 20,000
+  (`security.audit_max_lines`). The watched principal can edit or
+  truncate either. No append-only flag (`chattr +a`), no hash
+  chain, no remote copy. Status: absent.
 - **Supply chain.** Releases ship `SHA384SUMS`, but nothing in the
   install path verifies them; the installer itself runs `curl | sh`
   for Ollama. PyPI trusted publishing is the one solid link.

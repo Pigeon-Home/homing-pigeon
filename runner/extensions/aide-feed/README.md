@@ -94,8 +94,7 @@ into your own package — is in
 This sense is already the light shape: between passes it
 does not exist, and a pass is one stat per report path
 plus, when a report is new, one read of a small text
-file. Tune it with the knobs the code actually
-implements: raise `poll_interval_sec` if hourly checks
+file. Tune it with its knobs: raise `poll_interval_sec` if hourly checks
 are more often than the owner's scan schedule produces
 reports, and keep `report_paths` to the one report the
 schedule writes. The real light-mode decision is not

@@ -8,8 +8,8 @@ campaign's documented-default hunt (the report
 that closed the campaign). The decision at the end is the owner's, made 2026-10-23 and
 recorded there in full; the rest is the two policies the code
 already carries, what each costs, and the recommendation the
-decision adopted. Nothing here changes what the runner does
-until the rule below is applied in code.
+decision adopted. The rule below is applied in code; "Applied
+in" at the end says where.
 
 ## The question
 

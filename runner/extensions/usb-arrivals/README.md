@@ -1,8 +1,8 @@
 # USB Arrivals — an example Homing Pigeon extension
 
-A sense for the plug-and-check habit: the hardware lab testbed
-years, when a bench of GPIB instruments and serial gear changed
-shape every time someone swapped a cable. It watches the
+A sense for the plug-and-check habit of a bench whose
+instruments and serial gear change shape every time someone
+swaps a cable. It watches the
 machine's USB bus and serial ports, learns what is plugged in
 on its first pass, and tells the Oracle when something new
 arrives.

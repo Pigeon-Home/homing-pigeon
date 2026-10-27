@@ -2,9 +2,9 @@
 """USB Arrivals: a Homing Pigeon user extension (example sense).
 
 Notices devices arriving on the machine's buses -- the plug-
-and-check habit from the hardware lab testbed years, where a
-bench of GPIB instruments and serial gear changed shape every
-time someone swapped a cable. It watches the USB bus and the
+and-check habit of a bench whose instruments and serial gear
+change shape every time someone swaps a cable. It watches the
+USB bus and the
 serial ports, learns what is plugged in on its first pass, and
 files each later arrival as a sensor alert for the Oracle.
 

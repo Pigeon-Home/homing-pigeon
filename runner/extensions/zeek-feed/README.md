@@ -42,7 +42,7 @@ the `allowlist` tunable (exact addresses or CIDR networks).
 | Tunable | Default | Means |
 |---------|---------|-------|
 | `log_paths` | `/opt/zeek/logs/current/conn.log`, `/opt/zeek/logs/current/dns.log` | The Zeek logs to tail; point it at wherever this install actually writes them |
-| `poll_interval_sec` | 60 | How often the runner wakes this sense |
+| `poll_interval_sec` | 60 | The cadence to run the pass on; advisory, the runner never runs sense code |
 | `window_sec` | 600 | The trailing window first sightings accumulate in |
 | `new_peer_threshold` | 10 | Distinct first-seen external responders inside the window that file |
 | `query_length_threshold` | 50 | DNS query length that counts as anomalous |
@@ -92,7 +92,7 @@ opt-in and NEVER a default — ~230 MB next to the local
 model on a small Pi is the difference between headroom and
 swap, and no producer tunable shrinks the Zeek daemon
 itself. If an operator deliberately runs Zeek beside a Pi
-anyway, the knobs the code implements still trim the
+anyway, its knobs still trim the
 producer's own wakefulness: raise `poll_interval_sec` from
 60 to 600, point `log_paths` at the single log actually
 kept (for example just `conn.log`), and raise

@@ -42,7 +42,7 @@ installer configures (the `log_paths` tunable, default
 | Tunable | Default | Means |
 |---------|---------|-------|
 | `log_paths` | `/var/log/osquery/osqueryd.results.log` | The osqueryd results log to tail |
-| `poll_interval_sec` | 60 | How often the runner wakes this sense; there is little point polling faster than the pack's query schedule |
+| `poll_interval_sec` | 60 | The cadence to run the pass on (advisory; the runner never runs sense code); there is little point polling faster than the pack's query schedule |
 | `filed_cap` | 10000 | Bound on remembered filed episodes; the oldest entries are evicted first |
 
 Run one pass:
@@ -81,10 +81,10 @@ nothing of its own.
 ## Light mode
 
 This feed is already the light mode story: osquery is the
-default collector a Pi Light install ships, and its
+collector a full install ships by default (a Pi Light install
+adds one only with `--collector osquery`), and its
 scheduled-query mode needs no kernel privileges and no
-local model. To tune it down further with the knobs the
-code actually implements, raise `poll_interval_sec` from
+local model. To tune it down further with its knobs, raise `poll_interval_sec` from
 60 to 300 — the pack's queries run on their own schedule
 regardless, and the results log keeps every change until
 the next pass reads it, so a slower poll loses nothing.

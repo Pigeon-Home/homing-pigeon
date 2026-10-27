@@ -161,8 +161,8 @@ filed once. Unreadable stays unreadable and does not overwrite
 the last good reading. The rule-hash diff and the cage check
 below are listed in docs/project/future.md.
 
-Listed in docs/project/future.md. This is the ruleset hash, not the
-posture line above. The collector would snapshot the rule set and
+**1b. Rule changes (future).** Listed in docs/project/future.md.
+This is the ruleset hash, not the posture line above. The collector would snapshot the rule set and
 file an alert on a new allow rule, never on every dropped packet:
 
 - **Windows:** `Get-NetFirewallProfile` (Domain/Private/Public
@@ -270,7 +270,9 @@ Pair each sense key with a least-privilege entry in `key_policies`:
 }
 ```
 
-Keys without a policy entry are unrestricted, so write the entry.
+Keys without a policy entry are unrestricted (unless
+`key_policies_default_deny` is set, which refuses them), so write
+the entry.
 
 ## Alert format
 

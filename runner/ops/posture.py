@@ -113,7 +113,7 @@ def _check_confinement_backend(results):
         else:
             results.append(("WARN", "confinement",
                             "bwrap not installed (confinement in enforce "
-                            "mode would run unsandboxed)"))
+                            "mode would refuse to start)"))
     else:
         results.append(("OK", "confinement",
                         "bwrap is Linux-only; not applicable on %s"

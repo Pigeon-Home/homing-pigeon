@@ -150,8 +150,11 @@ sense makes. With the GPU source silent the parser half
 still watches the log and the checkpoints at full
 strength; nothing about the sense needs a GPU to be
 useful. On Pi Light it pairs naturally with the
-deterministic Oracle: the alert already names the marker,
-the silent seconds, and the loss window it judged.
+deterministic Oracle: `run_crashed` and `gpu_overheating`
+(high) wake it, and those alerts already name the run and
+the reading; a stall (`training_stalled`, medium, the silent
+seconds and the loss window) is filed for the next brief,
+never a wake.
 
 The full extension walkthrough — manifest fields, the
 versioning contract, sensor binding, and how to turn this

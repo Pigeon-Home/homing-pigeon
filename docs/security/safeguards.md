@@ -67,8 +67,11 @@ Defense in depth, cheapest first:
   `workspace_root` and the Oracle attests that the job stayed inside
   it. That one is a snapshot, not a sandbox. See PROTOCOL.md §9.4.
   On Linux, `security.modes.confinement` set to `enforce` runs the
-  job inside bubblewrap. Off by default. If `bwrap` is missing, the
-  job runs normally and the audit log says so. Inside the sandbox
+  job inside bubblewrap. Off by default. Under `enforce` a sandbox
+  that cannot engage (no `bwrap`, user namespaces blocked, not
+  Linux) refuses to start the runner; a sandbox that breaks after a
+  good start falls back loudly and the audit log says `fallback`.
+  Inside the sandbox
   the job sees `/usr`, its own workdir, and nothing else; when the
   interpreter lives outside `/usr` (pyenv, a venv, `/opt`), its own
   install prefix is bound read-only too, and that bind is written
@@ -167,8 +170,8 @@ and see it whole. Tighten in this order, when you have a reason:
 - **One key per worker** (`additional_secrets` + a `key_policies`
   entry), so a leaked worker secret is revoked alone.
 
-Watch it with `homing-pigeon --inspect board` (state counts; no
-mailbox needed).
+Watch it with `homing-pigeon --inspect board` (state counts and the
+task list; no mailbox needed).
 
 ## 7. If something goes wrong
 

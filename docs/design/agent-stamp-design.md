@@ -1,7 +1,10 @@
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 # Agent-Stamp: tracing work back to the agent chat that did it
 
-Status: draft / idea capture. Not yet enforced anywhere.
+Status: the record is enforced by `runner/tests/test_agent_stamps.py`
+(every stamp in the tree is on `docs/archive/RESEARCHER_IDENT.md`,
+every recycled stamp names an active carrier); the spelling lint is
+not built. The rest is the design as captured.
 
 ## Problem
 
@@ -37,10 +40,8 @@ git grep -n 'Agent-Stamp: 40000e00'
 
 The canonical spelling is `Agent-Stamp`. Variants seen so far:
 
-- `# agent-ident: ...` in `vendor_upstreams.py` and
-  `runner/tests/test_vendor_upstreams.py` (both files since retired with
-  the provenance bundles; the upstream is declared once, in the
-  manifest)
+- `# agent-ident: ...` in two files since retired with the provenance
+  bundles (the upstream is declared once, in the manifest)
 - an `Agent-Chat-Stamp:` trailer and file header, the spelling the
   questions desk (`50000c8e`) uses on its own commits and files; the
   record check below reads both spellings

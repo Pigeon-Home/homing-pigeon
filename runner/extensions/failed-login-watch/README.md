@@ -1,8 +1,7 @@
 # Failed Login Watch — an example Homing Pigeon extension
 
-A sense from the penetration-testing and DISA STIG side of
-the house. It watches the authentication logs for the shape a
-brute-force run leaves behind — a burst of failures from one
+A sense for the shape a brute-force run leaves behind. It
+watches the authentication logs for that shape — a burst of failures from one
 source — and, the finding that matters, for a successful
 login that follows one. A burst alone might be a forgotten
 password or a scanner passing in the night; a burst and then
@@ -68,8 +67,7 @@ to turn this example into your own package — is in
 
 ## Light mode
 
-For a Pi Light install, tune it down with the tunables the code
-actually implements: raise `poll_interval_sec` from 60 to 600,
+For a Pi Light install, tune it down with its tunables: raise `poll_interval_sec` from 60 to 600,
 point `log_paths` at the single log the Pi actually keeps
 (for example just `/var/log/auth.log`), and raise
 `burst_count` — at 10, only bigger bursts file, and the small

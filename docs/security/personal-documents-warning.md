@@ -39,9 +39,9 @@ if it has not matched. It does not follow symlinks.
 - It does not walk the whole disk, other users' homes, or hidden
   folders.
 - It does not remember the name that matched, print it, write it
-  down, or send it. The banner is fixed text. It always says
-  legal, tax, or medical, even when only one of those matched,
-  so the screen does not reveal which.
+  down, or send it. The banner is fixed text: "this computer looks
+  like it holds important documents". It never names the category
+  that matched, so the screen does not reveal which.
 - The log line, when there is one, is the same idea: the check
   tripped, and no name was recorded.
 

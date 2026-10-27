@@ -71,8 +71,7 @@ to turn this example into your own package — is in
 
 ## Light mode
 
-For a Pi Light install, tune it down with the tunables the code
-actually implements: raise `poll_interval_sec` from 60 to 600
+For a Pi Light install, tune it down with its tunables: raise `poll_interval_sec` from 60 to 600
 (a slower cadence also means fewer latency samples are taken),
 and leave `targets` empty with `include_gateway` true, so the
 only probe each pass is the gateway check — one small TCP

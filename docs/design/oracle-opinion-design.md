@@ -7,8 +7,9 @@ first build, raised 2026-10-19 at the owner's direction;
 prediction and
 repair behavior under `oracle_opinion_predict` /
 `oracle_opinion_repair` / `oracle_opinion_model`). DRU's
-proposal (2026-10-15), elaborated 2026-10-18; recorded in
-docs/project/future.md under "Before a job runs". This document remains the
+proposal (2026-10-15), elaborated 2026-10-18; built, and recorded
+as finished in docs/archive/future-finished-2026-10-25.md (A4). This
+document remains the
 design record the build started from.
 
 ## Why repair is the default

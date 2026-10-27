@@ -108,9 +108,11 @@ quarter-hour's delay on a flakiness call costs nothing.
 Lower `max_history_runs` (30 is plenty of baseline) and
 `max_records_per_pass` to bound a single pass over a large
 retained store. On Pi Light it pairs naturally with the
-deterministic Oracle: the brief it wakes is assembled from
-the alert alone, and the alert already names the job, the
-dominant exit code, and the baseline it broke.
+deterministic Oracle: the one signal that wakes it is
+`failure_cluster` (high), and that alert already names how
+many distinct jobs failed inside the window; the medium
+signals (the repeat failures, the flapping, the long run and
+its baseline) are filed for the next brief, never a wake.
 
 The full extension walkthrough — manifest fields, the
 versioning contract, sensor binding, and how to turn this

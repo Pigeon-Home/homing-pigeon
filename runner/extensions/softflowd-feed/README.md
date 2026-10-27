@@ -128,7 +128,7 @@ and a 10-second listen per pass.
 
 This feed is already the light option — it is the Pi Light
 network sense's natural supplier. For a Pi Light install,
-tune it down with the tunables the code actually implements:
+tune it down with its tunables:
 raise `poll_interval_sec` from 60 to 600 and lengthen
 `collect_window_sec` only if the Pi's exporter is chatty
 enough to need it, and raise `high_volume_bytes` so only

@@ -22,8 +22,9 @@ Every push to main started four workflows.
 | platform-matrix | A small portable proof, core tier, 11 legs | Did not finish. Queued. |
 | minimal-userland | Repair when bash is absent, x86_64 and arm64 | About 20 seconds |
 
-Docker publish and the release mutation job run on a tag, not
-on a push. The seeded mutation run is weekly. CodeQL is weekly.
+Docker publish runs on a tag, not on a push. The mutation job runs
+only on a manual dispatch of a branch, never on a tag or a push. The
+seeded mutation run is hourly, at :17. CodeQL is weekly.
 None of those belong on the push path, and they are not moved.
 
 `build-windows` was the long pole of the build, 5.6 minutes,
@@ -92,8 +93,9 @@ leg does not need a new rule and a new label.
 
 The nightly is the frequent full pass. It is one copy, not
 one copy per commit. A new push cancels the previous push's
-matrix and the previous push's build. It does not cancel the
-nightly, and nothing cancels a tag.
+matrix; the build is never cancelled, the newest push queues
+behind the one running. It does not cancel the nightly, and
+nothing cancels a tag.
 
 ## What this does not do
 
@@ -102,8 +104,8 @@ nightly, and nothing cancels a tag.
   matrix proof assumes a normal userland. The point of that
   workflow is that bash is gone.
 - It does not run mutation on a push. Seventeen minutes, and
-  it is a signal. The tag already runs it, and Monday's
-  seeded run walks a different seed.
+  it is a signal. A manual dispatch runs it, and the hourly
+  seeded run walks a fresh seed each time.
 - It does not try to shard the Ubuntu suite across jobs.
   Four minutes is not the queue. Splitting it would make
   the annotation and the skip guard apply to a fragment.
@@ -147,6 +149,6 @@ Put it in `.github/platform-legs.json`.
   `runner/tests/test_platform_proof.py`. A skipped proof is a
   failure (`--no-skips --require-ok`). Do not add the whole
   suite to the leg.
-- The leg's name has to appear in the README's Proven
-  platforms table. `runner/tests/test_build_config.py` pins that,
+- The leg's name has to appear in the Proven platforms table
+  in `docs/use/platforms.md`. `runner/tests/test_build_config.py` pins that,
   the tier size, and the push filter.

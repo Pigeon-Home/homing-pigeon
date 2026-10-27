@@ -26,7 +26,8 @@ PrivateDevices=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
-RestrictNamespaces=true
+# bwrap (security.modes.confinement) needs these five; see README.md.
+RestrictNamespaces=user ipc net uts mnt
 LockPersonality=true
 RestrictRealtime=true
 RestrictSUIDSGID=true

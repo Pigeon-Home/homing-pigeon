@@ -29,5 +29,19 @@ Files:
   itself (not for jobs; jobs get bwrap via the `confinement`
   feature). Load with `apparmor_parser -r`.
 - `selinux/homing_pigeon.te` — SELinux type-enforcement module named
-  `homing_pigeon`. Build with `checkmodule`/`semodule_package` and
-  load with `semodule -i`.
+  `homing_pigeon`. It uses reference-policy interfaces
+  (`policy_module`, `manage_dirs_pattern`, `corenet_*`), so build it
+  with the reference policy's Makefile, `make -f
+  /usr/share/selinux/devel/Makefile homing_pigeon.pp`, and load with
+  `semodule -i homing_pigeon.pp`.
+
+Confinement under these templates: bwrap needs user, IPC, net, UTS
+and mount namespaces. The systemd unit allows exactly those
+(`RestrictNamespaces=user ipc net uts mnt`); narrow it to `true`
+only on a box that runs `confinement` as `audit` or `off`, since
+under `enforce` a sandbox that cannot engage refuses to start the
+runner. The AppArmor profile confines the daemon and runs bwrap
+under the same profile (`ix`) without mount, `pivot_root` or
+`userns` rules, so under that profile keep confinement at `audit`
+or `off`, or extend the profile from your own `aa-logprof` run. The
+SELinux module carries the transitional capability line bwrap needs.
