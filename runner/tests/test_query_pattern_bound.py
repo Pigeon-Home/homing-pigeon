@@ -57,7 +57,14 @@ ACCEPTED = (
 class RegexBacktracksTest(unittest.TestCase):
     def test_the_exponential_shapes_are_named(self):
         for pattern, shape in REFUSED.items():
-            re.compile(pattern)   # every one compiles: the engine would run it
+            try:
+                re.compile(pattern)   # every one compiles: the engine would run it
+            except re.error:
+                # an atomic group or possessive repeat is 3.11+ syntax;
+                # an older engine never runs it, and the compile step
+                # before the check refuses it on its own
+                self.assertLess(sys.version_info[:2], (3, 11), pattern)
+                continue
             self.assertEqual(SEC.regex_backtracks(pattern), shape, pattern)
 
     def test_plain_repeats_pass(self):
