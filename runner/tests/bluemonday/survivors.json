@@ -1,0 +1,1356 @@
+{
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "alarm": true,
+ "bluemonday": 1,
+ "head": "9eb315ab6de5",
+ "kind": "survivors",
+ "limit": null,
+ "modules": {
+  "board": {
+   "broken": 0,
+   "entries": 52,
+   "file": "runner/wire/board.py",
+   "killed": 232,
+   "mutants": 257,
+   "reached_lines": 237,
+   "survived": 25,
+   "survivors": [
+    {
+     "index": 0,
+     "line": 67,
+     "op": "compare",
+     "text": "if _LOGGER is not None:",
+     "verdict": "survived"
+    },
+    {
+     "index": 8,
+     "line": 91,
+     "op": "boolop",
+     "text": "if not isinstance(path, str) or not path:",
+     "verdict": "survived"
+    },
+    {
+     "index": 58,
+     "line": 55,
+     "op": "boolop",
+     "text": "_LOGGER = (log_fn or _noop, vlog_fn or _noop) if log_fn else None",
+     "verdict": "survived"
+    },
+    {
+     "index": 60,
+     "line": 78,
+     "op": "int+1",
+     "text": "_runner_logger()[0](msg, level)",
+     "verdict": "survived"
+    },
+    {
+     "index": 61,
+     "line": 78,
+     "op": "int-1",
+     "text": "_runner_logger()[0](msg, level)",
+     "verdict": "survived"
+    },
+    {
+     "index": 63,
+     "line": 82,
+     "op": "int-1",
+     "text": "_runner_logger()[1](msg, level)",
+     "verdict": "survived"
+    },
+    {
+     "index": 91,
+     "line": 238,
+     "op": "str-empty",
+     "text": "dag_mode = cfg.get(\"dag_mode\") or \"off\"",
+     "verdict": "survived"
+    },
+    {
+     "index": 100,
+     "line": 288,
+     "op": "boolop",
+     "text": "if not isinstance(priority, (int, float)) or isinstance(priority, bool):",
+     "verdict": "survived"
+    },
+    {
+     "index": 136,
+     "line": 146,
+     "op": "str-empty",
+     "text": "return False, \"priority must be a finite number\"",
+     "verdict": "survived"
+    },
+    {
+     "index": 138,
+     "line": 148,
+     "op": "str-empty",
+     "text": "return False, \"priority must be a finite number\"",
+     "verdict": "survived"
+    },
+    {
+     "index": 167,
+     "line": 287,
+     "op": "int+1",
+     "text": "priority = task.get(\"priority\", 0)",
+     "verdict": "survived"
+    },
+    {
+     "index": 168,
+     "line": 287,
+     "op": "int-1",
+     "text": "priority = task.get(\"priority\", 0)",
+     "verdict": "survived"
+    },
+    {
+     "index": 170,
+     "line": 289,
+     "op": "int+1",
+     "text": "priority = 0",
+     "verdict": "survived"
+    },
+    {
+     "index": 171,
+     "line": 289,
+     "op": "int-1",
+     "text": "priority = 0",
+     "verdict": "survived"
+    },
+    {
+     "index": 174,
+     "line": 306,
+     "op": "str-empty",
+     "text": "elif \"dag_warning\" in chosen:",
+     "verdict": "survived"
+    },
+    {
+     "index": 197,
+     "line": 378,
+     "op": "int-1",
+     "text": "task_timeout = _confval.number(task_timeout, 86400, lo=0)",
+     "verdict": "survived"
+    },
+    {
+     "index": 199,
+     "line": 118,
+     "op": "str-empty",
+     "text": "if task.get(\"task_id\") != key:",
+     "verdict": "survived"
+    },
+    {
+     "index": 201,
+     "line": 128,
+     "op": "int+1",
+     "text": "indent=2, allow_nan=False)",
+     "verdict": "survived"
+    },
+    {
+     "index": 202,
+     "line": 128,
+     "op": "int-1",
+     "text": "indent=2, allow_nan=False)",
+     "verdict": "survived"
+    },
+    {
+     "index": 203,
+     "line": 128,
+     "op": "bool",
+     "text": "indent=2, allow_nan=False)",
+     "verdict": "survived"
+    },
+    {
+     "index": 215,
+     "line": 156,
+     "op": "int+1",
+     "text": "\"priority\": task.get(\"priority\", 0),",
+     "verdict": "survived"
+    },
+    {
+     "index": 216,
+     "line": 156,
+     "op": "int-1",
+     "text": "\"priority\": task.get(\"priority\", 0),",
+     "verdict": "survived"
+    },
+    {
+     "index": 232,
+     "line": 388,
+     "op": "compare",
+     "text": "if (now - claimed).total_seconds() > task_timeout:",
+     "verdict": "survived"
+    },
+    {
+     "index": 244,
+     "line": 293,
+     "op": "str-empty",
+     "text": "return (-priority, _as_str(task.get(\"submitted_at\")))",
+     "verdict": "survived"
+    },
+    {
+     "index": 254,
+     "line": 391,
+     "op": "str-empty",
+     "text": "t.pop(\"claimed_at\", None)",
+     "verdict": "survived"
+    }
+   ],
+   "targets": [
+    "board",
+    "board_ops"
+   ],
+   "timeout": 0
+  },
+  "dtlsproto": {
+   "broken": 0,
+   "entries": 20,
+   "file": "runner/wire/dtlsproto.py",
+   "killed": 513,
+   "mutants": 513,
+   "reached_lines": 250,
+   "survived": 0,
+   "survivors": [],
+   "targets": [
+    "dtls"
+   ],
+   "timeout": 0
+  },
+  "extensions": {
+   "broken": 0,
+   "entries": 65,
+   "file": "runner/ops/extensions.py",
+   "killed": 220,
+   "mutants": 241,
+   "reached_lines": 179,
+   "survived": 21,
+   "survivors": [
+    {
+     "index": 71,
+     "line": 146,
+     "op": "compare",
+     "text": "if isinstance(signals, list) and len(signals) > MAX_SIGNALS:",
+     "verdict": "survived"
+    },
+    {
+     "index": 115,
+     "line": 257,
+     "op": "compare",
+     "text": "if not isinstance(license_, str) or len(license_) > 100 \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 124,
+     "line": 266,
+     "op": "compare",
+     "text": "if not isinstance(ref, str) or not ref or len(ref) > 128 \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 131,
+     "line": 274,
+     "op": "compare",
+     "text": "or len(paths) > MAX_UPSTREAM_PATHS:",
+     "verdict": "survived"
+    },
+    {
+     "index": 168,
+     "line": 172,
+     "op": "compare",
+     "text": "or len(sdesc) > MAX_DESCRIPTION_CHARS \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 175,
+     "line": 185,
+     "op": "compare",
+     "text": "if not isinstance(entry, list) or not entry or len(entry) > 16:",
+     "verdict": "survived"
+    },
+    {
+     "index": 180,
+     "line": 195,
+     "op": "compare",
+     "text": "or len(publisher) > MAX_DESCRIPTION_CHARS \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 191,
+     "line": 257,
+     "op": "int+1",
+     "text": "if not isinstance(license_, str) or len(license_) > 100 \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 192,
+     "line": 257,
+     "op": "int-1",
+     "text": "if not isinstance(license_, str) or len(license_) > 100 \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 195,
+     "line": 266,
+     "op": "int+1",
+     "text": "if not isinstance(ref, str) or not ref or len(ref) > 128 \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 196,
+     "line": 266,
+     "op": "int-1",
+     "text": "if not isinstance(ref, str) or not ref or len(ref) > 128 \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 200,
+     "line": 279,
+     "op": "compare",
+     "text": "if not isinstance(p, str) or not p or len(p) > 240 \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 209,
+     "line": 185,
+     "op": "int+1",
+     "text": "if not isinstance(entry, list) or not entry or len(entry) > 16:",
+     "verdict": "survived"
+    },
+    {
+     "index": 210,
+     "line": 185,
+     "op": "int-1",
+     "text": "if not isinstance(entry, list) or not entry or len(entry) > 16:",
+     "verdict": "survived"
+    },
+    {
+     "index": 214,
+     "line": 190,
+     "op": "compare",
+     "text": "or len(part) > 500:",
+     "verdict": "survived"
+    },
+    {
+     "index": 222,
+     "line": 279,
+     "op": "int+1",
+     "text": "if not isinstance(p, str) or not p or len(p) > 240 \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 223,
+     "line": 279,
+     "op": "int-1",
+     "text": "if not isinstance(p, str) or not p or len(p) > 240 \\",
+     "verdict": "survived"
+    },
+    {
+     "index": 231,
+     "line": 190,
+     "op": "int+1",
+     "text": "or len(part) > 500:",
+     "verdict": "survived"
+    },
+    {
+     "index": 232,
+     "line": 190,
+     "op": "int-1",
+     "text": "or len(part) > 500:",
+     "verdict": "survived"
+    },
+    {
+     "index": 234,
+     "line": 202,
+     "op": "int-1",
+     "text": "or not 0 <= startup_settle_ms <= 5000:",
+     "verdict": "survived"
+    },
+    {
+     "index": 238,
+     "line": 282,
+     "op": "str-empty",
+     "text": "or any(part in (\"\", \".\", \"..\") for part in p.split(\"/\")):",
+     "verdict": "survived"
+    }
+   ],
+   "targets": [
+    "manifest"
+   ],
+   "timeout": 0
+  },
+  "jobcrypto": {
+   "broken": 0,
+   "entries": 21,
+   "file": "runner/wire/jobcrypto.py",
+   "killed": 336,
+   "mutants": 370,
+   "reached_lines": 164,
+   "survived": 34,
+   "survivors": [
+    {
+     "index": 9,
+     "line": 69,
+     "op": "compare",
+     "text": "if length > 255 * digest_size:",
+     "verdict": "survived"
+    },
+    {
+     "index": 13,
+     "line": 77,
+     "op": "compare",
+     "text": "while len(okm) < length:",
+     "verdict": "survived"
+    },
+    {
+     "index": 27,
+     "line": 268,
+     "op": "boolop",
+     "text": "if len(key) != _KEY_LEN or len(nonce) != _NONCE_LEN:",
+     "verdict": "survived"
+    },
+    {
+     "index": 28,
+     "line": 270,
+     "op": "compare",
+     "text": "if len(ct_and_tag) < _TAG_LEN:",
+     "verdict": "survived"
+    },
+    {
+     "index": 35,
+     "line": 301,
+     "op": "return-none",
+     "text": "return False",
+     "verdict": "survived"
+    },
+    {
+     "index": 37,
+     "line": 303,
+     "op": "return-none",
+     "text": "return False",
+     "verdict": "survived"
+    },
+    {
+     "index": 38,
+     "line": 304,
+     "op": "compare",
+     "text": "return set(payload) <= {\"hp_enc\", \"key_id\", \"sig\"}",
+     "verdict": "survived"
+    },
+    {
+     "index": 48,
+     "line": 357,
+     "op": "compare",
+     "text": "if len(ct) < _TAG_LEN:",
+     "verdict": "survived"
+    },
+    {
+     "index": 51,
+     "line": 81,
+     "op": "int+1",
+     "text": "counter += 1",
+     "verdict": "survived"
+    },
+    {
+     "index": 52,
+     "line": 81,
+     "op": "int-1",
+     "text": "counter += 1",
+     "verdict": "survived"
+    },
+    {
+     "index": 59,
+     "line": 146,
+     "op": "int+1",
+     "text": "for i in range(8, 60):",
+     "verdict": "survived"
+    },
+    {
+     "index": 92,
+     "line": 69,
+     "op": "int+1",
+     "text": "if length > 255 * digest_size:",
+     "verdict": "survived"
+    },
+    {
+     "index": 93,
+     "line": 69,
+     "op": "int-1",
+     "text": "if length > 255 * digest_size:",
+     "verdict": "survived"
+    },
+    {
+     "index": 101,
+     "line": 138,
+     "op": "int-1",
+     "text": "return (((a << 1) ^ 0x1b) & 0xff) if (a & 0x80) else ((a << 1) & 0xff)",
+     "verdict": "survived"
+    },
+    {
+     "index": 143,
+     "line": 213,
+     "op": "int+1",
+     "text": "for i in range(128):",
+     "verdict": "survived"
+    },
+    {
+     "index": 146,
+     "line": 225,
+     "op": "int+1",
+     "text": "for bit in range(128):",
+     "verdict": "survived"
+    },
+    {
+     "index": 151,
+     "line": 274,
+     "op": "int+1",
+     "text": "h = _aes_encrypt_block(b\"\\x00\"*16, rk)",
+     "verdict": "survived"
+    },
+    {
+     "index": 163,
+     "line": 304,
+     "op": "str-empty",
+     "text": "return set(payload) <= {\"hp_enc\", \"key_id\", \"sig\"}",
+     "verdict": "survived"
+    },
+    {
+     "index": 175,
+     "line": 145,
+     "op": "int-1",
+     "text": "w = [int.from_bytes(key[i:i+4], \"big\") for i in range(0, 32, 4)]",
+     "verdict": "survived"
+    },
+    {
+     "index": 189,
+     "line": 163,
+     "op": "int-1",
+     "text": "for i in range(0, 60, 4)]",
+     "verdict": "survived"
+    },
+    {
+     "index": 227,
+     "line": 237,
+     "op": "int+1",
+     "text": "n = int.from_bytes(block[12:], \"big\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 228,
+     "line": 237,
+     "op": "int-1",
+     "text": "n = int.from_bytes(block[12:], \"big\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 231,
+     "line": 278,
+     "op": "int+1",
+     "text": "return d if r == 0 else d + b\"\\x00\"*(16-r)",
+     "verdict": "survived"
+    },
+    {
+     "index": 232,
+     "line": 278,
+     "op": "int-1",
+     "text": "return d if r == 0 else d + b\"\\x00\"*(16-r)",
+     "verdict": "survived"
+    },
+    {
+     "index": 234,
+     "line": 280,
+     "op": "int-1",
+     "text": "+ (len(aad)*8).to_bytes(8, \"big\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 277,
+     "line": 290,
+     "op": "int+1",
+     "text": "chunk = ct[off:off+16]",
+     "verdict": "survived"
+    },
+    {
+     "index": 303,
+     "line": 231,
+     "op": "int+1",
+     "text": "v = (v << 1) & ((1<<128)-1)",
+     "verdict": "survived"
+    },
+    {
+     "index": 330,
+     "line": 229,
+     "op": "int+1",
+     "text": "v = ((v << 1) & ((1<<128)-1)) ^ 0x87",
+     "verdict": "survived"
+    },
+    {
+     "index": 332,
+     "line": 231,
+     "op": "int+1",
+     "text": "v = (v << 1) & ((1<<128)-1)",
+     "verdict": "survived"
+    },
+    {
+     "index": 333,
+     "line": 231,
+     "op": "int-1",
+     "text": "v = (v << 1) & ((1<<128)-1)",
+     "verdict": "survived"
+    },
+    {
+     "index": 334,
+     "line": 231,
+     "op": "int+1",
+     "text": "v = (v << 1) & ((1<<128)-1)",
+     "verdict": "survived"
+    },
+    {
+     "index": 344,
+     "line": 229,
+     "op": "int+1",
+     "text": "v = ((v << 1) & ((1<<128)-1)) ^ 0x87",
+     "verdict": "survived"
+    },
+    {
+     "index": 345,
+     "line": 229,
+     "op": "int-1",
+     "text": "v = ((v << 1) & ((1<<128)-1)) ^ 0x87",
+     "verdict": "survived"
+    },
+    {
+     "index": 346,
+     "line": 229,
+     "op": "int+1",
+     "text": "v = ((v << 1) & ((1<<128)-1)) ^ 0x87",
+     "verdict": "survived"
+    }
+   ],
+   "targets": [
+    "crypto"
+   ],
+   "timeout": 0
+  },
+  "mailbox": {
+   "broken": 0,
+   "entries": 115,
+   "file": "runner/wire/mailbox.py",
+   "killed": 7,
+   "mutants": 19,
+   "reached_lines": 17,
+   "survived": 12,
+   "survivors": [
+    {
+     "index": 0,
+     "line": 379,
+     "op": "return-none",
+     "text": "return rt",
+     "verdict": "survived"
+    },
+    {
+     "index": 4,
+     "line": 377,
+     "op": "compare",
+     "text": "if len(rt) > 254 or not _REPLY_TO_RE.match(rt):",
+     "verdict": "survived"
+    },
+    {
+     "index": 6,
+     "line": 352,
+     "op": "str-empty",
+     "text": "msg[\"From\"] = str(cfg.get(\"mailbox_user\") or \"\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 7,
+     "line": 352,
+     "op": "boolop",
+     "text": "msg[\"From\"] = str(cfg.get(\"mailbox_user\") or \"\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 9,
+     "line": 354,
+     "op": "str-empty",
+     "text": "msg[\"Subject\"] = \" \".join(str(subject or \"\").splitlines())",
+     "verdict": "survived"
+    },
+    {
+     "index": 10,
+     "line": 373,
+     "op": "str-empty",
+     "text": "rt = job.get(\"reply_to\") if isinstance(job, dict) else None",
+     "verdict": "survived"
+    },
+    {
+     "index": 11,
+     "line": 377,
+     "op": "int+1",
+     "text": "if len(rt) > 254 or not _REPLY_TO_RE.match(rt):",
+     "verdict": "survived"
+    },
+    {
+     "index": 12,
+     "line": 377,
+     "op": "int-1",
+     "text": "if len(rt) > 254 or not _REPLY_TO_RE.match(rt):",
+     "verdict": "survived"
+    },
+    {
+     "index": 14,
+     "line": 354,
+     "op": "str-empty",
+     "text": "msg[\"Subject\"] = \" \".join(str(subject or \"\").splitlines())",
+     "verdict": "survived"
+    },
+    {
+     "index": 15,
+     "line": 355,
+     "op": "compare",
+     "text": "msg.set_content(\"\" if body is None else str(body))",
+     "verdict": "survived"
+    },
+    {
+     "index": 16,
+     "line": 352,
+     "op": "str-empty",
+     "text": "msg[\"From\"] = str(cfg.get(\"mailbox_user\") or \"\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 18,
+     "line": 354,
+     "op": "boolop",
+     "text": "msg[\"Subject\"] = \" \".join(str(subject or \"\").splitlines())",
+     "verdict": "survived"
+    }
+   ],
+   "targets": [
+    "wire",
+    "cloud"
+   ],
+   "timeout": 0
+  },
+  "protocol_v2": {
+   "broken": 0,
+   "entries": 56,
+   "file": "runner/wire/protocol_v2.py",
+   "killed": 89,
+   "mutants": 92,
+   "reached_lines": 50,
+   "survived": 3,
+   "survivors": [
+    {
+     "index": 0,
+     "line": 95,
+     "op": "return-none",
+     "text": "return value",
+     "verdict": "survived"
+    },
+    {
+     "index": 20,
+     "line": 282,
+     "op": "str-empty",
+     "text": "_safe_id(obj.get(\"msg_id\"), \"msg_id\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 70,
+     "line": 314,
+     "op": "str-empty",
+     "text": "_safe_id(obj.get(\"question_id\"), \"question_id\")",
+     "verdict": "survived"
+    }
+   ],
+   "targets": [
+    "v2"
+   ],
+   "timeout": 0
+  },
+  "send_job": {
+   "broken": 0,
+   "entries": 57,
+   "file": "runner/cloud/send_job.py",
+   "killed": 102,
+   "mutants": 131,
+   "reached_lines": 94,
+   "survived": 29,
+   "survivors": [
+    {
+     "index": 7,
+     "line": 107,
+     "op": "boolop",
+     "text": "if not isinstance(secret, str) or not secret:",
+     "verdict": "survived"
+    },
+    {
+     "index": 8,
+     "line": 110,
+     "op": "compare",
+     "text": "if alphabet <= 1:",
+     "verdict": "survived"
+    },
+    {
+     "index": 12,
+     "line": 144,
+     "op": "compare",
+     "text": "if bits < 128:",
+     "verdict": "survived"
+    },
+    {
+     "index": 17,
+     "line": 173,
+     "op": "compare",
+     "text": "if i < 0:",
+     "verdict": "survived"
+    },
+    {
+     "index": 19,
+     "line": 176,
+     "op": "boolop",
+     "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
+     "verdict": "survived"
+    },
+    {
+     "index": 22,
+     "line": 218,
+     "op": "return-none",
+     "text": "return first_walk",
+     "verdict": "survived"
+    },
+    {
+     "index": 32,
+     "line": 98,
+     "op": "str-empty",
+     "text": "return text.replace(\"\\r\\n\", \"\\n\").replace(\"\\r\", \"\\n\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 35,
+     "line": 110,
+     "op": "int+1",
+     "text": "if alphabet <= 1:",
+     "verdict": "survived"
+    },
+    {
+     "index": 36,
+     "line": 110,
+     "op": "int-1",
+     "text": "if alphabet <= 1:",
+     "verdict": "survived"
+    },
+    {
+     "index": 41,
+     "line": 125,
+     "op": "int+1",
+     "text": "for period in range(1, n // 2 + 1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 43,
+     "line": 125,
+     "op": "add-sub",
+     "text": "for period in range(1, n // 2 + 1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 45,
+     "line": 144,
+     "op": "int+1",
+     "text": "if bits < 128:",
+     "verdict": "survived"
+    },
+    {
+     "index": 46,
+     "line": 144,
+     "op": "int-1",
+     "text": "if bits < 128:",
+     "verdict": "survived"
+    },
+    {
+     "index": 49,
+     "line": 173,
+     "op": "int+1",
+     "text": "if i < 0:",
+     "verdict": "survived"
+    },
+    {
+     "index": 55,
+     "line": 201,
+     "op": "add-sub",
+     "text": "for start in range(sig_at - 1, -1, -1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 64,
+     "line": 125,
+     "op": "int+1",
+     "text": "for period in range(1, n // 2 + 1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 65,
+     "line": 125,
+     "op": "int-1",
+     "text": "for period in range(1, n // 2 + 1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 69,
+     "line": 176,
+     "op": "int-1",
+     "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
+     "verdict": "survived"
+    },
+    {
+     "index": 75,
+     "line": 201,
+     "op": "int-1",
+     "text": "for start in range(sig_at - 1, -1, -1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 76,
+     "line": 201,
+     "op": "int+1",
+     "text": "for start in range(sig_at - 1, -1, -1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 88,
+     "line": 125,
+     "op": "int+1",
+     "text": "for period in range(1, n // 2 + 1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 90,
+     "line": 157,
+     "op": "bool",
+     "text": "body = normalize(json.dumps(payload, separators=(\",\", \":\"), ensure_ascii=False))",
+     "verdict": "survived"
+    },
+    {
+     "index": 100,
+     "line": 127,
+     "op": "add-sub",
+     "text": "if secret == (unit * ((n // period) + 1))[:n]:",
+     "verdict": "survived"
+    },
+    {
+     "index": 117,
+     "line": 243,
+     "op": "return-none",
+     "text": "return False",
+     "verdict": "survived"
+    },
+    {
+     "index": 120,
+     "line": 127,
+     "op": "int+1",
+     "text": "if secret == (unit * ((n // period) + 1))[:n]:",
+     "verdict": "survived"
+    },
+    {
+     "index": 121,
+     "line": 127,
+     "op": "int-1",
+     "text": "if secret == (unit * ((n // period) + 1))[:n]:",
+     "verdict": "survived"
+    },
+    {
+     "index": 125,
+     "line": 242,
+     "op": "int-1",
+     "text": "if depth == 0:",
+     "verdict": "survived"
+    },
+    {
+     "index": 126,
+     "line": 243,
+     "op": "bool",
+     "text": "return False",
+     "verdict": "survived"
+    },
+    {
+     "index": 130,
+     "line": 176,
+     "op": "int-1",
+     "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
+     "verdict": "survived"
+    }
+   ],
+   "targets": [
+    "cloud"
+   ],
+   "timeout": 0
+  },
+  "transports": {
+   "broken": 0,
+   "entries": 33,
+   "file": "runner/wire/transports.py",
+   "killed": 82,
+   "mutants": 112,
+   "reached_lines": 164,
+   "survived": 30,
+   "survivors": [
+    {
+     "index": 5,
+     "line": 400,
+     "op": "return-none",
+     "text": "return path",
+     "verdict": "survived"
+    },
+    {
+     "index": 22,
+     "line": 330,
+     "op": "str-empty",
+     "text": "return os.path.join(base_dir, \"transport-extensions\", name)",
+     "verdict": "survived"
+    },
+    {
+     "index": 23,
+     "line": 336,
+     "op": "str-empty",
+     "text": "\"root\": root,",
+     "verdict": "survived"
+    },
+    {
+     "index": 33,
+     "line": 382,
+     "op": "str-empty",
+     "text": "rid = re.sub(r\"[^A-Za-z0-9._-]\", \"_\", rid)",
+     "verdict": "survived"
+    },
+    {
+     "index": 34,
+     "line": 388,
+     "op": "int+1",
+     "text": "n += 1",
+     "verdict": "survived"
+    },
+    {
+     "index": 35,
+     "line": 388,
+     "op": "int-1",
+     "text": "n += 1",
+     "verdict": "survived"
+    },
+    {
+     "index": 36,
+     "line": 390,
+     "op": "not",
+     "text": "if body and not body.endswith(\"\\n\"):",
+     "verdict": "survived"
+    },
+    {
+     "index": 37,
+     "line": 391,
+     "op": "str-empty",
+     "text": "text += \"\\n\"",
+     "verdict": "survived"
+    },
+    {
+     "index": 44,
+     "line": 478,
+     "op": "compare",
+     "text": "if len(again) > FILE_MAX_BYTES:",
+     "verdict": "survived"
+    },
+    {
+     "index": 46,
+     "line": 515,
+     "op": "return-none",
+     "text": "return True",
+     "verdict": "survived"
+    },
+    {
+     "index": 48,
+     "line": 585,
+     "op": "boolop",
+     "text": "if not consume and callable(requeue):",
+     "verdict": "survived"
+    },
+    {
+     "index": 53,
+     "line": 339,
+     "op": "str-empty",
+     "text": "\"outbox\": os.path.join(root, \"outbox\"),",
+     "verdict": "survived"
+    },
+    {
+     "index": 54,
+     "line": 340,
+     "op": "str-empty",
+     "text": "\"outbox_done\": os.path.join(root, \"outbox\", \"done\"),",
+     "verdict": "survived"
+    },
+    {
+     "index": 55,
+     "line": 340,
+     "op": "str-empty",
+     "text": "\"outbox_done\": os.path.join(root, \"outbox\", \"done\"),",
+     "verdict": "survived"
+    },
+    {
+     "index": 59,
+     "line": 441,
+     "op": "str-empty",
+     "text": "if fname == \"done\":",
+     "verdict": "survived"
+    },
+    {
+     "index": 63,
+     "line": 515,
+     "op": "bool",
+     "text": "return True",
+     "verdict": "survived"
+    },
+    {
+     "index": 68,
+     "line": 592,
+     "op": "bool",
+     "text": "acked = True",
+     "verdict": "survived"
+    },
+    {
+     "index": 69,
+     "line": 599,
+     "op": "boolop",
+     "text": "if acked is False and callable(rollback):",
+     "verdict": "survived"
+    },
+    {
+     "index": 74,
+     "line": 390,
+     "op": "str-empty",
+     "text": "if body and not body.endswith(\"\\n\"):",
+     "verdict": "survived"
+    },
+    {
+     "index": 82,
+     "line": 568,
+     "op": "str-empty",
+     "text": "rollback = getattr(replies, \"rollback\", None)",
+     "verdict": "survived"
+    },
+    {
+     "index": 83,
+     "line": 599,
+     "op": "compare",
+     "text": "if acked is False and callable(rollback):",
+     "verdict": "survived"
+    },
+    {
+     "index": 86,
+     "line": 463,
+     "op": "str-empty",
+     "text": "out.append(refuse(\"symlink job files are not read\"))",
+     "verdict": "survived"
+    },
+    {
+     "index": 89,
+     "line": 489,
+     "op": "str-empty",
+     "text": "out.append(refuse(\"malformed envelope (no blank line \"",
+     "verdict": "survived"
+    },
+    {
+     "index": 94,
+     "line": 599,
+     "op": "bool",
+     "text": "if acked is False and callable(rollback):",
+     "verdict": "survived"
+    },
+    {
+     "index": 95,
+     "line": 479,
+     "op": "str-empty",
+     "text": "out.append(refuse(f\"{len(again)} bytes exceeds the \"",
+     "verdict": "survived"
+    },
+    {
+     "index": 96,
+     "line": 480,
+     "op": "str-empty",
+     "text": "f\"{FILE_MAX_BYTES}-byte cap\"))",
+     "verdict": "survived"
+    },
+    {
+     "index": 98,
+     "line": 573,
+     "op": "compare",
+     "text": "target = reply[2] if len(reply) > 2 else None",
+     "verdict": "survived"
+    },
+    {
+     "index": 101,
+     "line": 485,
+     "op": "str-empty",
+     "text": "out.append(refuse(f\"cannot read as UTF-8: {e}\"))",
+     "verdict": "survived"
+    },
+    {
+     "index": 106,
+     "line": 572,
+     "op": "int+1",
+     "text": "rsubject, rbody = reply[0], reply[1]",
+     "verdict": "survived"
+    },
+    {
+     "index": 109,
+     "line": 573,
+     "op": "int-1",
+     "text": "target = reply[2] if len(reply) > 2 else None",
+     "verdict": "survived"
+    }
+   ],
+   "targets": [
+    "channels",
+    "inbox"
+   ],
+   "timeout": 0
+  },
+  "verify": {
+   "broken": 0,
+   "entries": 58,
+   "file": "runner/wire/verify.py",
+   "killed": 125,
+   "mutants": 142,
+   "reached_lines": 119,
+   "survived": 17,
+   "survivors": [
+    {
+     "index": 15,
+     "line": 88,
+     "op": "compare",
+     "text": "if i < 0:",
+     "verdict": "survived"
+    },
+    {
+     "index": 17,
+     "line": 91,
+     "op": "boolop",
+     "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
+     "verdict": "survived"
+    },
+    {
+     "index": 20,
+     "line": 143,
+     "op": "return-none",
+     "text": "return first_walk",
+     "verdict": "survived"
+    },
+    {
+     "index": 36,
+     "line": 58,
+     "op": "str-empty",
+     "text": "return text.replace(\"\\r\\n\", \"\\n\").replace(\"\\r\", \"\\n\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 39,
+     "line": 88,
+     "op": "int+1",
+     "text": "if i < 0:",
+     "verdict": "survived"
+    },
+    {
+     "index": 45,
+     "line": 120,
+     "op": "add-sub",
+     "text": "for start in range(sig_at - 1, -1, -1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 63,
+     "line": 71,
+     "op": "str-empty",
+     "text": "if not body.endswith(\"}\"):",
+     "verdict": "survived"
+    },
+    {
+     "index": 67,
+     "line": 91,
+     "op": "int-1",
+     "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
+     "verdict": "survived"
+    },
+    {
+     "index": 73,
+     "line": 120,
+     "op": "int-1",
+     "text": "for start in range(sig_at - 1, -1, -1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 74,
+     "line": 120,
+     "op": "int+1",
+     "text": "for start in range(sig_at - 1, -1, -1):",
+     "verdict": "survived"
+    },
+    {
+     "index": 93,
+     "line": 67,
+     "op": "bool",
+     "text": "ensure_ascii=False, allow_nan=False))",
+     "verdict": "survived"
+    },
+    {
+     "index": 94,
+     "line": 67,
+     "op": "bool",
+     "text": "ensure_ascii=False, allow_nan=False))",
+     "verdict": "survived"
+    },
+    {
+     "index": 121,
+     "line": 168,
+     "op": "return-none",
+     "text": "return False",
+     "verdict": "survived"
+    },
+    {
+     "index": 129,
+     "line": 167,
+     "op": "int-1",
+     "text": "if depth == 0:",
+     "verdict": "survived"
+    },
+    {
+     "index": 132,
+     "line": 180,
+     "op": "int-1",
+     "text": "return \"\".join(c for c in text if ord(c) >= 32 or c in \"\\t\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 133,
+     "line": 180,
+     "op": "str-empty",
+     "text": "return \"\".join(c for c in text if ord(c) >= 32 or c in \"\\t\")",
+     "verdict": "survived"
+    },
+    {
+     "index": 141,
+     "line": 91,
+     "op": "int-1",
+     "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
+     "verdict": "survived"
+    }
+   ],
+   "targets": [
+    "wire"
+   ],
+   "timeout": 0
+  }
+ },
+ "platform": "Linux-x86_64",
+ "python": "3.13.16",
+ "seconds": 91.8,
+ "seed": 0,
+ "through_agent": [
+  "local",
+  "local_inbox",
+  "mail",
+  "stash"
+ ],
+ "timeout": 20,
+ "when": "2026-10-27T00:59:46Z"
+}

@@ -284,7 +284,14 @@ not a verdict on the reader, and the response is in this order:
 5. Only when every target is saturated under every contract and
    the grammar vocabulary: the mutation survivors (D4) as the
    instrument, on the readers, with the corpus as the test that
-   must kill them.
+   must kill them. That instrument is
+   `runner/tools/bluemonday_survivors.py` (landed 2026-10-26): it
+   mutates each reader on the lines the corpus reaches and replays
+   the corpus against every mutant, outcomes and notes alike; the
+   survivors in `runner/tests/bluemonday/survivors.json` are the
+   lines the corpus cannot yet tell from a wrong reader, and each
+   one names the seed to write next. The first run: 1,877 mutants,
+   171 survivors; the DTLS reader lost none of 513.
 
 The grow never idles: a saturated target still runs its share
 while the desk brings the next step, since a grow that keeps

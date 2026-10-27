@@ -169,6 +169,21 @@ on both, and the examples seed `wire`, `cloud` and `v2`. It is
 rebuilt by the desk when the drafts change or the corpus has grown;
 the test holds it to its shape, not to the drafts' current text.
 
+`survivors.json` is the last run of
+`runner/tools/bluemonday_survivors.py`, the instrument for after
+saturation (the plan's section 8, step 5): every reader the corpus
+holds directly is mutated one small change at a time, on the lines
+the arc maps say the corpus reaches, and the corpus of every target
+that reads through that module is replayed against the mutant. A
+mutant whose replay answers the same for every entry -- the same
+accepted, refused or crash, and the same notes (the key a reader
+chose, a digest of what it returned, each operation's answer, the
+refusal's reason) -- has survived, and its line is what the next
+seeds are for. Each run adds a line of kind `survivors` to
+`runs.jsonl`. The targets that read through the agent module
+(`local`, `stash`, `mail`, `local_inbox`) are outside the kill set
+and the report says so.
+
 A grow is steered: it reads the last grows' records for the target
 and chooses mutators by their keep rate, a saturated one keeping a
 floor share of the best one's (saturation is per mutator, and

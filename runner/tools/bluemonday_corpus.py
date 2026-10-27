@@ -274,6 +274,9 @@ def _expect_refusal(exc, allowed, what):
     if not isinstance(exc, allowed):
         raise Crash("exception", f"{what} raised {type(exc).__name__}: "
                     f"{_short(exc)}")
+    # Which refusal, not only that one came: two readers that refuse
+    # the same entry for different reasons are told apart.
+    note("refusal", what, type(exc).__name__, str(exc)[:80])
 
 
 def _short(exc):
@@ -402,6 +405,10 @@ def _verify_text(text):
               and isinstance(keyed[1], str)):
         raise Crash("shape", "verify_body_keyed returned "
                     f"{type(keyed).__name__}")
+    if exc is None:
+        note("dict", _digest(got))
+    if kexc is None:
+        note("key", keyed[1], _digest(keyed[0]))
     if exc is None and got.get("key_id", "") == "":
         # Trusted under the default secret by one reader: the keyed
         # reader selects the same secret and must trust it too.
@@ -432,6 +439,8 @@ def _cloud_text(text):
     if aexc is not None:
         _expect_refusal(aexc, ValueError, "verify_body")
     _differential(text, agent, aexc)
+    if exc is None:
+        note("dict", _digest(got))
     return "accepted" if exc is None else "refused"
 
 
@@ -531,6 +540,7 @@ def check_crypto(entry):
         return "refused"
     if not isinstance(got, str):
         raise Crash("shape", f"decrypt_body returned {type(got).__name__}")
+    note("plain", _digest(got))
     if spec.get("expect") is not None and got != spec["expect"]:
         raise Crash("roundtrip", "decrypt_body returned a body other "
                     "than the one encrypt_body sealed")
@@ -898,6 +908,20 @@ def check_board_ops(entry):
         return _board_sequence(spec)
 
 
+_BOARD_CLOCKS = ("submitted_at", "claimed_at", "completed_at")
+
+
+def _timeless(value):
+    """A board value with the clock fields taken out, so a note
+    about it is the same on every run."""
+    if isinstance(value, dict):
+        return {k: _timeless(v) for k, v in value.items()
+                if k not in _BOARD_CLOCKS}
+    if isinstance(value, (list, tuple)):
+        return [_timeless(v) for v in value]
+    return value
+
+
 def _board_sequence(spec):
     base = tempfile.mkdtemp(prefix="hp-bluemonday-board-")
     try:
@@ -995,6 +1019,7 @@ def _board_sequence(spec):
                         or got < 0:
                     raise Crash("shape", "reoffer_expired returned "
                                 f"{got!r}"[:200])
+            note(name, _digest(_timeless(got)), _digest(_timeless(board.tasks)))
             again, exc = _call(BD.Board, path)
             if exc is not None:
                 raise Crash("exception", "the board file no longer loads "
@@ -1164,6 +1189,7 @@ def _channel_sequence(spec):
                     and isinstance(msg.body, str)):
                 raise Crash("shape", f"{msg.ident}: subject or body is "
                             "not a string")
+            note("msg", msg.ident, _digest([msg.subject, msg.body]))
             raw = expected.get(msg.ident)
             want = None
             if raw is not None and len(raw) <= TR.FILE_MAX_BYTES:
@@ -1233,6 +1259,7 @@ def _channel_sequence(spec):
                 if fh.read() != _RESULT_TARGET + "\n":
                     raise Crash("provenance", f"the sidecar {fname} does not "
                                 "carry the reply target it was given")
+        note("after", mode, _digest([left, sorted(done), outbox, served]))
         for fname in results:
             with open(os.path.join(paths["outbox"], fname),
                       encoding="utf-8") as fh:
@@ -1359,6 +1386,8 @@ def _local_inbox_sequence(spec):
         if [r.get("title") for r in stored] != [r.get("title") for r in filed]:
             raise Crash("contract", f"the store holds {len(stored)} records "
                         f"and the ingests filed {len(filed)}")
+        note("scan", count, _digest([c[0] for c in calls]),
+             _digest([r.get("title") for r in filed]), _digest(sorted(left)))
         return "accepted" if len(filed) > 1 else "refused"
     finally:
         shutil.rmtree(base, ignore_errors=True)
@@ -1589,6 +1618,50 @@ def seeds_v2():
     out += [("v1", {"v": 1, "type": "answer"}), ("empty", {}),
             ("list", []), ("string", "answer"), ("none", None),
             ("number", 2)]
+    # The boundaries the survivors named (section 8, step 5): each
+    # cap at itself and one past it, the floor at itself and one
+    # below, so a reader off by one at any of them is told apart.
+    for n in (-1, 0, P2._DEADLINE_CAP + 1):
+        q = _v2("question")
+        q["deadline_sec"] = n
+        out.append((f"deadline_{n}", q))
+    for n in (P2._TEXT_CAP, P2._TEXT_CAP + 1):
+        q = _v2("question")
+        q["question"] = "q" * n
+        out.append((f"question_{n}", q))
+        a = _v2("answer")
+        a["answer"] = "a" * n
+        out.append((f"answer_{n}", a))
+        q = _v2("question")
+        q["context"] = [{"text": "c" * n}]
+        out.append((f"segment_{n}", q))
+    for n in (64, 65):
+        q = _v2("question")
+        q["local_default"] = "d" * n
+        out.append((f"default_{n}", q))
+    q = _v2("question")
+    q["context"] = [{"text": "l%d" % i} for i in range(9)]
+    out.append(("context_over", q))
+    q = _v2("question")
+    q["context"] = []
+    out.append(("context_empty", q))
+    for name, v in (("v_true", True), ("v_text", "2"), ("v_float", 2.0),
+                    ("v_one", 1)):
+        q = _v2("question")
+        q["v"] = v
+        out.append((name, q))
+    q = _v2("question")
+    q["type"] = "job"
+    out.append(("type_job", q))
+    a = _v2("answer")
+    a["type"] = "result"
+    out.append(("type_result_answer_shape", a))
+    q = _v2("question")
+    q["issued_at"] = "2026-10-26T12:00:00+00:00"
+    out.append(("issued_offset", q))
+    d = _v2("determination")
+    d["clean_pass"] = True
+    out.append(("clean_pass_sent", d))
     out += _draft_examples("draft-homing-pigeon-v2-00.md")
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
@@ -2640,6 +2713,7 @@ def check_manifest(entry):
         raise Crash("shape", "parse_manifest returned "
                     f"{type(got).__name__}")
     _manifest_clean(entry["data"], got)
+    note("clean", _digest(got))
     return "accepted"
 
 
@@ -3848,9 +3922,33 @@ def save(path, target, entries):
     os.replace(tmp, path)
 
 
+NOTES = []
+
+
+def note(*parts):
+    """What a checker saw beyond accepted or refused -- the key a
+    reader chose, a digest of what it returned, an operation's
+    answer -- for the instruments that compare one reader with
+    another (the survivors tool): two readers that differ in a note
+    are told apart even when both accept."""
+    NOTES.append(":".join(str(p) for p in parts))
+
+
+def _digest(value):
+    """A short digest of a JSON value, for a note."""
+    try:
+        text = json.dumps(value, sort_keys=True, ensure_ascii=True,
+                          default=str)
+    except (TypeError, ValueError):
+        text = repr(value)
+    return hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()[:16]
+
+
 def check(target, entry):
     """Run one entry against its target's contract: "accepted" or
-    "refused" when the contract held, or a Crash."""
+    "refused" when the contract held, or a Crash. NOTES holds what
+    the checker saw on the way."""
+    del NOTES[:]
     return TARGETS[target]["check"](entry)
 
 

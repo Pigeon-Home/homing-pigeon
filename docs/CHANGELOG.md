@@ -4,29 +4,44 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.53 - 2026-10-26
+## 3.13.54 - 2026-10-26
 
+- **blueMonday's survivors: the instrument for after saturation.**
+  `runner/tools/bluemonday_survivors.py` mutates every reader the
+  corpus holds directly -- a comparison flipped, an `and` for an
+  `or`, a `not` dropped, a constant moved by one, a literal
+  emptied, a return made `None`, a raise made `pass`, a plus made
+  minus -- on the lines the arc maps say the corpus reaches, and
+  replays the corpus of every target that reads through that
+  module against each mutant, under an alarm. A mutant the replay
+  cannot tell from the reader has survived, and its line is the
+  next seed to write; the checkers now note what they see beyond
+  accepted or refused (the key chosen, a digest of what the reader
+  returned, each board operation's answer, the refusal's reason),
+  so a mutant that accepts the same entries but reads them
+  differently is killed too. `survivors.json` holds the last run
+  and `runs.jsonl` the line of every run. First run: 1,877
+  mutants over nine readers, 171 survivors, the DTLS reader losing
+  none of 513. Twenty `v2` seeds came out of it at once: the
+  deadline floor and each cap at itself and one past it, the
+  version in every wrong type, a sent clean pass, a non-UTC
+  `issued_at`.
 - **blueMonday's live mutators, one grow (Q75).** A steered grow
   of 20,000 rounds on the four mutators `stats` still called
   live. `dtls` kept two (`d_random_byte`, arcs 290 to 295).
   `local` kept one (`t_case`). `board_ops` and `manifest` kept
   nothing. No crashes. `t_sig_tamper`, `t_case`, `d_random_byte`,
   `board_arg` and `p_replace` are still live.
+- **blueMonday's live shape, rebuilt (Q74).** The posted capture
+  sends a subject line and a sealed envelope. That shape is now
+  a seed on `wire`, `cloud`, and `local`, rebuilt under the
+  corpus secret with invented ids and a fixed nonce. Not the
+  capture's own ciphertexts or job ids. Both verifiers accept
+  the job and the result. `local` refuses the job. A short grow
+  filed no crash and kept nothing past the seeds.
 - **Where the blueMonday targets are.**
   `docs/project/bluemonday-where.md` names the commit for Q65
   through Q74. The capture's own bytes are not among them.
-- **blueMonday's grammar dictionary (phase 4).** `python
-  runner/tools/bluemonday_corpus.py dictionary` builds
-  `runner/tests/bluemonday/grammar.json` from the drafts in
-  `docs/ietf/`: every backticked token without a space (member
-  names, literals, enumerated values, patterns), every number the
-  text states with its neighbours on both sides, and every JSON
-  example with `sig` removed. Two mutators use it on every
-  target: a word of the drafts dropped into a text or in place of
-  a quoted string, and a draft member set on an object, a number
-  moved to a boundary, or a key respelled as a draft member. The
-  drafts' examples seed `wire`, `cloud` and `v2`. The desk rebuilds
-  the dictionary when the drafts change.
 - **blueMonday steers, archives and learns (Muse's four, from the
   grow seat).** Saturation is per mutator: `stats` names each
   target's live and saturated mutators from the last grows'
@@ -50,6 +65,22 @@ facts a reader may need to cite. Git history carries the rest.
   terminal (the install wizard behind an unpatched module copy)
   fails in the open instead of waiting on an inherited stdin that
   never delivers.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.53 - 2026-10-26
+
+- **blueMonday's grammar dictionary (phase 4).** `python
+  runner/tools/bluemonday_corpus.py dictionary` builds
+  `runner/tests/bluemonday/grammar.json` from the drafts in
+  `docs/ietf/`: every backticked token without a space (member
+  names, literals, enumerated values, patterns), every number the
+  text states with its neighbours on both sides, and every JSON
+  example with `sig` removed. Two mutators use it on every
+  target: a word of the drafts dropped into a text or in place of
+  a quoted string, and a draft member set on an object, a number
+  moved to a boundary, or a key respelled as a draft member. The
+  drafts' examples seed `wire`, `cloud` and `v2`. The desk rebuilds
+  the dictionary when the drafts change.
 - **blueMonday's channel inbox, under the sequence contract.**
   `inbox` holds an extension's whole inbox as a peer or a crash
   may have left it -- files, symlinks and directories, in the
@@ -134,13 +165,6 @@ facts a reader may need to cite. Git history carries the rest.
   `p_replace`, `t_sig_tamper`), not from a draft token. No
   crashes. The mail dictionary also inserts the draft's
   decoration word `TEST`.
-- **blueMonday's live shape, rebuilt (Q74).** The posted capture
-  sends a subject line and a sealed envelope. That shape is now
-  a seed on `wire`, `cloud`, and `local`, rebuilt under the
-  corpus secret with invented ids and a fixed nonce. Not the
-  capture's own ciphertexts or job ids. Both verifiers accept
-  the job and the result. `local` refuses the job. A short grow
-  filed no crash and kept nothing past the seeds.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.52 - 2026-10-26

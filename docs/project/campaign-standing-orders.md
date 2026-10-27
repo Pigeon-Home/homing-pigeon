@@ -439,10 +439,18 @@ The loop:
    one gzip JSON-lines file per grow, and the run record carries
    the file's name, size, SHA-384 and count, so the tree says
    where the rest of the proof is; the archive is never committed.
+   Once per rules refresh, after the grow cycle and before the
+   next one starts, `python runner/tools/bluemonday_survivors.py`
+   (about two minutes): it rewrites `survivors.json` and adds its
+   line to `runs.jsonl`, and the ledger line names the survivor
+   count per reader. The survivors are the desk's to turn into
+   seeds; a survivor the campaign thinks it can reach by growing
+   is a Q to the desk naming the line.
    The commit is the proof of the work, every
    time: the corpus files that changed, `runs.jsonl` (the tool
    appends one line per seed or grow: head, seed, rounds, what was
-   tried, what was kept, what crashed, where the archive is) and the `<target>.arcs.json`
+   tried, what was kept, what crashed, where the archive is; and
+   one per survivors run) and the `<target>.arcs.json`
    maps it rewrote, with the ledger line. A grow that kept nothing
    is still committed, because its line in `runs.jsonl` is the
    record that those rounds were run (the conductor's standing

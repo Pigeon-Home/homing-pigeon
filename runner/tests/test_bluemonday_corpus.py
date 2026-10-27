@@ -200,7 +200,18 @@ class CorpusFilesTest(unittest.TestCase):
         self.assertGreater(len(lines), 1, "no run recorded yet")
         for line in lines[1:]:
             rec = json.loads(line)
-            self.assertIn(rec["kind"], ("seed", "grow"))
+            self.assertIn(rec["kind"], ("seed", "grow", "survivors"))
+            if rec["kind"] == "survivors":
+                # One line per survivors run: the readers mutated and
+                # the tally for each (test_bluemonday_survivors holds
+                # the report itself).
+                for key in ("when", "head", "seed", "modules", "seconds"):
+                    self.assertIn(key, rec, line[:120])
+                for name, tally in rec["modules"].items():
+                    self.assertEqual(set(tally), {"mutants", "killed",
+                                                  "survived", "timeout",
+                                                  "broken"}, name)
+                continue
             self.assertIn(rec["target"], B.TARGETS)
             for key in ("when", "head", "entries_before", "entries_after",
                         "arcs_before", "arcs_after", "kept", "crashes",
