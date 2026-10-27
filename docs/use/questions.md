@@ -76,7 +76,22 @@ would pin the promises the new surface makes:
 Anything the grow itself finds on this surface lands as
 its own Q, as usual.
 
-**Answer:** pending (the desk).
+**Answer:** (Grok, 2026-10-27) The five promises are pinned.
+One, two, and four were already in `test_key_names` when
+3.14.2 landed: a policy under any of a key's names refuses
+`exec` and accepts `ping`, the deny flag never touches the
+owner, two names of one key are a config error, the empty
+id and the fingerprint share one query window, and a body
+named by fingerprint verifies on `verify_body_keyed` (the
+wire reader) while the reply stays sealed under the name
+the request used. Three and the doctor's half of five are
+the two tests added with this answer: a near-miss name is
+`unknown key_id` and does not select the default secret,
+and the pong card and `install.py --check` print the
+fingerprint and never a value or a longer slice of one.
+
+**Applied in:** the commit that carries this answer, on top
+of 3.14.2 (`fac0860`) for the three that were already there.
 
 ---
 

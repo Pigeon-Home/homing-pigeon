@@ -767,5 +767,73 @@ class InstallerTest(unittest.TestCase):
             self.assertEqual(seen["args"], expect)
 
 
+class NearMissNamesTest(unittest.TestCase):
+    """Q96.3. A name that is almost a fingerprint is an unknown key.
+    It does not select the default secret."""
+
+    def test_a_near_miss_is_unknown_and_not_the_default(self):
+        fp = security.key_fingerprint(SECRET)
+        digits = fp[2:]
+        misses = (
+            "k-" + digits[:7],
+            "k-" + digits + "a",
+            "k-" + digits.upper(),
+            "k-zzzzzzzz",
+            security.key_fingerprint(OTHER),
+        )
+        for name in misses:
+            body = send_job.sign_payload(
+                {"v": 1, "type": "job", "job_id": "k-n-miss",
+                 "kind": "ping", "key_id": name}, SECRET)
+            with self.assertRaisesRegex(ValueError, "unknown key_id"):
+                V.verify_body_keyed(body, {"": SECRET})
+        for name in (fp, None):
+            payload = {"v": 1, "type": "job", "job_id": "k-n-ok",
+                       "kind": "ping"}
+            if name:
+                payload["key_id"] = name
+            body = send_job.sign_payload(payload, SECRET)
+            got, key_id = V.verify_body_keyed(body, {"": SECRET})
+            self.assertEqual(got["kind"], "ping", name)
+            self.assertEqual(key_id, name or "")
+
+
+class NamesStayPublicTest(_MailTest):
+    """Q96.5. The card and the doctor name keys. Neither prints a
+    value, nor a slice of one longer than the fingerprint."""
+
+    def _no_value(self, text, *values):
+        for value in values:
+            self.assertNotIn(value, text)
+            self.assertNotIn(value[:16], text)
+
+    def test_the_card_and_the_doctor_print_names_only(self):
+        self.cfg["additional_secrets"] = {"ops": OTHER}
+        result = self._send(TR.job_payload(str(uuid.uuid4())))
+        text = json.dumps(result)
+        self.assertIn(security.key_fingerprint(SECRET), text)
+        self._no_value(text, SECRET, OTHER)
+        with tempfile.TemporaryDirectory() as root:
+            home = os.path.join(root, "home")
+            bind = os.path.join(home, "bin")
+            os.makedirs(bind)
+            cfg = os.path.join(home, "config.json")
+            with open(cfg, "w", encoding="utf-8") as fh:
+                json.dump({"shared_secret": SECRET,
+                           "additional_secrets": {"ops": OTHER}}, fh)
+            with open(os.path.join(home, "install-receipt.json"), "w",
+                      encoding="utf-8") as fh:
+                fh.write('{"version": "3"}\n')
+            out = io.StringIO()
+            with mock.patch.object(inst, "collector_health_rows",
+                                   return_value=[]), \
+                    contextlib.redirect_stdout(out):
+                inst.do_check(home, bind, cfg, os.path.join(home, "state"))
+            doctor = out.getvalue()
+        self.assertIn(security.key_fingerprint(SECRET), doctor)
+        self.assertIn("ops", doctor)
+        self._no_value(doctor, SECRET, OTHER)
+
+
 if __name__ == "__main__":
     unittest.main()
