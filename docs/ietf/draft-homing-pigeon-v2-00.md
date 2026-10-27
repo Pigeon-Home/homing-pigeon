@@ -281,13 +281,13 @@ Every version 2 message names the job it concerns (`job_id`) and
 its own identifier (`msg_id`), and carries `issued_at` as in
 version 1. Replay handling follows the seen-set discipline of
 version 1: an identifier is recorded once the message has been
-acted on, and a duplicate is dropped silently.
-
-*Implementation status (2026-10-26): the reference receiver does
-not yet keep a version 2 seen-set or a freshness window on
-`issued_at` beyond its form; a duplicate copy is held off by the
-binding's seen flag, and a second answer to one question by
-first-answer-wins at the answer store (docs/use/questions.md, Q86).*
+acted on, and a duplicate is dropped silently. A receiver MUST
+hold `issued_at` to the same window as a version 1 job (its past
+window, and at most five minutes into the future) and MUST drop a
+message outside it. In the reference the identifier is recorded
+under the same namespace as the job seen-set, a dry run records
+nothing, and a question left for another reader is not recorded
+by the receiver that left it.
 
 ---
 
