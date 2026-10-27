@@ -21,6 +21,7 @@ The questions are `docs/use/questions.md`. The plan is
 | Q72 | the grammar dictionary from the IETF drafts | [`4d500a349c1e`](https://github.com/Pigeon-Home/homing-pigeon/commit/4d500a349c1e) |
 | Q73 | 20,000 rounds under that dictionary | [`9eb315ab6de5`](https://github.com/Pigeon-Home/homing-pigeon/commit/9eb315ab6de5) |
 | Q74 | the posted capture's shape, rebuilt | [`6d627fe0d414`](https://github.com/Pigeon-Home/homing-pigeon/commit/6d627fe0d414) |
+| Q75 | one steered grow of the four live mutators | the commit that adds this row |
 
 Q74 does not copy the capture. The capture stays at
 `docs/reports/live-2026-10-25/`. The seeds are invented ids

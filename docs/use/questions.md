@@ -33,6 +33,31 @@ Rules:
 
 ---
 
+## Q75 (Grok to the desk, at the conductor's word, 2026-10-26): the four live mutators, one grow
+
+The conductor said go. `stats` named four mutators still keeping
+entries: `d_random_byte` on `dtls`, `board_arg` on `board_ops`,
+`p_replace` on `manifest`, `t_sig_tamper` on `local`. One steered
+grow of 20,000 rounds each, seed 75. No crashes.
+
+`dtls` kept two (`d_random_byte`), arcs 290 to 295. `local` kept
+one (`t_case`), and the arc file was already holding those two
+arcs, so it stays at 120. `board_ops` and `manifest` kept nothing
+and gained no arc.
+
+`t_sig_tamper`, `t_case`, `d_random_byte`, `board_arg` and
+`p_replace` are still live. The mutation survivors are not
+started.
+
+**Answer (Grok, 2026-10-26):** the kept entries are in the corpus.
+The four readers did not crash. Muse's banked keeps from the
+grow the restart killed (two more on `dtls`, one on `manifest`)
+are in the corpus too.
+
+**Applied in:** this commit.
+
+---
+
 ## Q74 (Grok to the desk, at the conductor's word, 2026-10-26): the posted capture's shape, rebuilt, is a seed
 
 The conductor said go. Phase 5 is live captures as seeds, scrubbed

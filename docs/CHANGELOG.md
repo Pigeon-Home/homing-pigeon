@@ -6,6 +6,12 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.53 - 2026-10-26
 
+- **blueMonday's live mutators, one grow (Q75).** A steered grow
+  of 20,000 rounds on the four mutators `stats` still called
+  live. `dtls` kept two (`d_random_byte`, arcs 290 to 295).
+  `local` kept one (`t_case`). `board_ops` and `manifest` kept
+  nothing. No crashes. `t_sig_tamper`, `t_case`, `d_random_byte`,
+  `board_arg` and `p_replace` are still live.
 - **Where the blueMonday targets are.**
   `docs/project/bluemonday-where.md` names the commit for Q65
   through Q74. The capture's own bytes are not among them.
