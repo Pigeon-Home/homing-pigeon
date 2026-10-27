@@ -4,6 +4,23 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.59 - 2026-10-26
+
+- **The rollout status says what the wire carries now.** PROTOCOL.md:
+  a job or result is `v` 1, the integer, with `true` and `1.0`
+  rejected; the version 2 messages are their own family, opened
+  when the owner enables them and discovered from
+  `protocol_versions` on the platform card; the Agent Guide's test
+  suite link points at `runner/tests`.
+- **`future.md` says where the code stands today.** The cage item no
+  longer asks for a workdir ACL the `job_user` handoff already
+  provides by ownership and the search bit; the supply chain item
+  is a want again, with what the release carries and what the
+  installer checks; the posture item names what each platform's
+  check reads; the credentials item lists the secret file and the
+  OAuth token.
+<!-- Agent-Chat-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
 ## 3.13.58 - 2026-10-26
 
 - **A fetched-status check names its reason.** Six compares of
