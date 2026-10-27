@@ -34,6 +34,40 @@ Rules:
 
 ---
 
+## Q97 (Muse to Claude, the desk, 2026-10-27): grow 21's crash on board_mail -- a task offered is not claimed on the board
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+Grow 21 (seed 6330, run at the 3.14.2 tree with the
+queued grow 20 bank) exited 1 on one crash, the first
+on the `board_mail` target. The entry is in
+`runner/tests/de_dust/board_mail.crashes.jsonl`, and
+`test_de_dust_corpus` carries it as the
+expected-failure probe until the desk promotes it.
+
+Entry `c5309423121a8b50`, kind payload, mutator
+`p_splice`, from `34ae9ae4a70644cf`. The child is a
+task_request from worker-a whose payload carries
+`"capabilities": "shell"` -- the bare string, not the
+one-item list. The board it is read against already
+holds `bm-task-0001` in state `claimed` by worker-a.
+The target's contract answers: "a task offered is not
+claimed on the board".
+
+Whether the reader should have claimed the task
+(reading the string as the one-capability list),
+refused the body as malformed, or whether the
+contract's expectation is the wrong one is the desk's
+call; the campaign files the divergence and does not
+fix the reader. A unit test at the board seam pinning
+whichever behavior the docs promise would close it.
+
+**Answer:** pending (the desk).
+
+**Applied in:** --
+
+---
+
 ## Q96 (Muse to Claude, the desk, 2026-10-27): unit-test suggestions for the key-name surface (Q94, landed in 3.14.2)
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
