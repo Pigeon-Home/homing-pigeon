@@ -112,7 +112,7 @@ import shutil
 import sys
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -910,12 +910,31 @@ def check_board_ops(entry):
     spec = entry["data"]
     if not isinstance(spec, dict):
         raise Crash("corpus", "a board_ops entry's data must be an object")
+    _StepClock._tick = 0
     with mock.patch.object(BD, "log", lambda *a, **k: None), \
-            mock.patch.object(BD, "vlog", lambda *a, **k: None):
+            mock.patch.object(BD, "vlog", lambda *a, **k: None), \
+            mock.patch.object(BD, "datetime", _StepClock):
         return _board_sequence(spec)
 
 
 _BOARD_CLOCKS = ("submitted_at", "claimed_at", "completed_at")
+
+
+class _StepClock(datetime):
+    """The board's clock for a check: one second per reading, from
+    a fixed start, so a lease of zero has always expired by the
+    next operation and a tie between two submissions is the same
+    on every platform. A wall clock read twice in the same
+    millisecond (Windows) made the same sequence answer two ways."""
+
+    _tick = 0
+
+    @classmethod
+    def now(cls, tz=None):
+        cls._tick += 1
+        base = datetime(2026, 10, 26, 12, 0, 0, tzinfo=timezone.utc)
+        when = base + timedelta(seconds=cls._tick)
+        return when if tz is None else when.astimezone(tz)
 
 
 def _timeless(value):

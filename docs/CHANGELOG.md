@@ -62,6 +62,14 @@ facts a reader may need to cite. Git history carries the rest.
   sixth shape, the reply as a pair without a target. Third
   survivors run: 131 of 1,928; the board keeps 19, the channel
   readers 20.
+- **The board checks run on a stepping clock.** A board sequence
+  in the corpus is checked with the board's clock replaced by one
+  that moves one second per reading from a fixed start, so a lease
+  of zero has always expired by the next operation and a tie
+  between two submissions falls the same way on every platform; a
+  wall clock read twice within one tick (Windows) made the same
+  sequence answer two ways, and the survivors' replay-twice test
+  said so on the v3.13.54 tag build.
 - **blueMonday's live mutators, one grow (Q75).** A steered grow
   of 20,000 rounds on the four mutators `stats` still called
   live. `dtls` kept two (`d_random_byte`, arcs 290 to 295).
