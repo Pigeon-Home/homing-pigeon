@@ -10,20 +10,30 @@
 
 - **A cage off Linux.** Only bwrap stops a job; macOS, FreeBSD and
   Windows detect a bad write after it happens. Needed: `sandbox-exec`, a
-  jail, a job object with a restricted token, and in the meantime a POSIX
-  ACL set when the workdir is handed to `job_user`.
+  jail, a job object with a restricted token. The `job_user` handoff
+  already chowns the workdir to that user and opens only the search bit
+  on the path above it, so the job reaches its workdir without listing
+  the runner's state; what is missing is the cage, not the handoff.
 
 - **Egress control.** A job can `curl` secrets out unless bwrap is in
   enforce mode on Linux. Per-job egress rules, and anything off Linux, do
   not exist. `docs/use/networking.md`.
 
-- **Supply chain.** Installer verifies `SHA384SUMS` and Sigstore attestation
+- **Supply chain.** The installer verifies `SHA384SUMS` and the Sigstore
+  attestation itself. Today the release carries both and
+  `docs/security/verification.md` gives a person the commands;
+  `install.py` checks nothing it downloads, and fetches Ollama with
+  `curl | sh`.
 
-- **POSIX ACL warning.** `--posture` warns when a Windows ACL is
-  missing but not when a POSIX one is.
+- **POSIX ACL warning.** `--posture` reads the Windows DACL and warns
+  when Everyone, Users or Guests can read a secret file. On POSIX it
+  checks only the mode bits (0600 or a warning) and never reads a POSIX
+  ACL, so a `+` entry granting another user read passes as 0600.
 
-- **Credentials encrypted at rest.** `config.json` holds the shared
-  secret and the mailbox credential in the clear.
+- **Credentials encrypted at rest.** `config.json`, or the
+  `shared_secret_file` it points at, holds the shared secret in the
+  clear, and the mailbox app password or the OAuth refresh token and
+  client secret sit beside it the same way.
 
 - **A signing key for the Oracle**, so its opinion can be a signed
   statement from an authenticated party. `docs/oracle/job-review.md`.
