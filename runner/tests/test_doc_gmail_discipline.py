@@ -10,8 +10,10 @@ where a reader who needs them finds them. His manual passes kept
 being stepped on by later edits, so this guard is the sift: any
 live doc that reintroduces the term fails the build.
 
-Dated records are exempt by design and stay exempt: CHANGELOG.md
-and docs/archive/ describe what was true when they were written.
+Dated records are exempt by design and stay exempt: CHANGELOG.md,
+docs/archive/ and docs/reports/ (AGENTS.md rule 6) describe what
+was true when they were written, and a report may name this test
+by its file name.
 """
 
 import os
@@ -36,7 +38,7 @@ def _live_docs():
         if ".git" in parts or "__pycache__" in parts:
             dirnames[:] = []
             continue
-        if "archive" in parts and "docs" in parts:
+        if ("archive" in parts or "reports" in parts) and "docs" in parts:
             dirnames[:] = []
             continue
         for name in filenames:

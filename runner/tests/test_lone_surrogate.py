@@ -44,21 +44,21 @@ PAIRED = _signed('{"v":1,"type":"job","job_id":"bm-s-0004","kind":"exec",'
 
 class HasLoneSurrogateTest(unittest.TestCase):
     def test_walks_strings_keys_lists_and_nests(self):
-        self.assertTrue(TU.has_lone_surrogate("\ud800"))
-        self.assertTrue(TU.has_lone_surrogate({"a": {"b": ["\udfff"]}}))
-        self.assertTrue(TU.has_lone_surrogate({"\ud800": 1}))
-        self.assertTrue(TU.has_lone_surrogate(("x", ("\ud800",))))
-        self.assertFalse(TU.has_lone_surrogate({"a": "café \U0001f426",
+        self.assertTrue(TU._lone_surrogate("\ud800"))
+        self.assertTrue(TU._lone_surrogate({"a": {"b": ["\udfff"]}}))
+        self.assertTrue(TU._lone_surrogate({"\ud800": 1}))
+        self.assertTrue(TU._lone_surrogate(("x", ("\ud800",))))
+        self.assertFalse(TU._lone_surrogate({"a": "café \U0001f426",
                                                 "b": [1, None, True, 2.5]}))
-        self.assertFalse(TU.has_lone_surrogate(7))
-        self.assertFalse(TU.has_lone_surrogate(b"\xed\xa0\x80"))
+        self.assertFalse(TU._lone_surrogate(7))
+        self.assertFalse(TU._lone_surrogate(b"\xed\xa0\x80"))
 
-    def test_a_cycle_is_walked_once(self):
+    def test_a_cycle_ends_at_the_depth_cap(self):
         cycle = {"a": []}
         cycle["a"].append(cycle)
-        self.assertFalse(TU.has_lone_surrogate(cycle))
+        self.assertFalse(TU._lone_surrogate(cycle))
         cycle["a"].append("\ud800")
-        self.assertTrue(TU.has_lone_surrogate(cycle))
+        self.assertTrue(TU._lone_surrogate(cycle))
 
 
 class VerifiersRefuseTest(unittest.TestCase):
@@ -66,10 +66,10 @@ class VerifiersRefuseTest(unittest.TestCase):
         for body in (ESCAPED, NESTED, IN_KEY):
             for name, verify in (("verify_body", V.verify_body),
                                  ("send_job.verify_body", SJ.verify_body)):
-                with self.assertRaisesRegex(ValueError, "lone surrogate",
+                with self.assertRaisesRegex(ValueError, "unpaired UTF-16 surrogate",
                                             msg=f"{name}: {body[:60]}"):
                     verify(body, SECRET)
-            with self.assertRaisesRegex(ValueError, "lone surrogate"):
+            with self.assertRaisesRegex(ValueError, "unpaired UTF-16 surrogate"):
                 V.verify_body_keyed(body, {"": SECRET})
 
     def test_a_surrogate_pair_and_non_ascii_text_still_verify(self):
@@ -92,7 +92,7 @@ class SignersRefuseTest(unittest.TestCase):
     def test_the_runner_signer_names_it_and_the_other_raises_in_step(self):
         payload = {"v": 1, "type": "result", "job_id": "bm-s-0006",
                    "kind": "\ud800"}
-        with self.assertRaisesRegex(ValueError, "lone surrogate"):
+        with self.assertRaisesRegex(ValueError, "unpaired UTF-16 surrogate"):
             V.sign_payload(payload, SECRET)
         with self.assertRaises(ValueError):      # UnicodeEncodeError is one
             SJ.sign_payload(payload, SECRET)

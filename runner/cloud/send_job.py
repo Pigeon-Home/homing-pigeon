@@ -264,7 +264,7 @@ def verify_body(body: str, secret: str) -> dict:
     # not UTF-8 text. The runner's verifier refuses it (Q85); this
     # one does the same, in step.
     if _has_lone_surrogate(job):
-        raise ValueError("signed body carries a lone surrogate")
+        raise ValueError("signed body carries an unpaired UTF-16 surrogate")
     return job
 
 

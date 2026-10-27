@@ -37,9 +37,9 @@ try:
 except ImportError:
     from wire.platformcard import platform_interpreter  # type: ignore
 try:
-    from runner.guard.textutil import _json_safe, has_lone_surrogate
+    from runner.guard.textutil import _json_safe, _lone_surrogate
 except ImportError:
-    from guard.textutil import _json_safe, has_lone_surrogate  # type: ignore
+    from guard.textutil import _json_safe, _lone_surrogate  # type: ignore
 try:
     from runner.guard import confval as _confval
 except ImportError:
@@ -66,8 +66,8 @@ def sign_payload(payload: dict, secret: str) -> str:
     # The body is UTF-8 text; a lone surrogate in the payload would
     # make the encode below raise, so it is named here instead (the
     # other signer refuses the same, as its encode raises).
-    if has_lone_surrogate(payload):
-        raise ValueError("payload carries a lone surrogate")
+    if _lone_surrogate(payload):
+        raise ValueError("payload carries an unpaired UTF-16 surrogate")
     body = _normalize(json.dumps(_json_safe(payload), separators=(",", ":"),
                                  ensure_ascii=False, allow_nan=False))
     # The one signer with a transformation between the payload and
@@ -212,8 +212,8 @@ def verify_body(body: str, secret: str) -> dict:
     # not UTF-8 text. A body that carries one is refused here, so no
     # text of the sender's that the runner echoes (the job's kind on
     # every result) can leave the runner unable to sign its answer.
-    if has_lone_surrogate(job):
-        raise ValueError("signed body carries a lone surrogate")
+    if _lone_surrogate(job):
+        raise ValueError("signed body carries an unpaired UTF-16 surrogate")
     return job
 
 
@@ -728,8 +728,9 @@ def verify_body_keyed(body_text: str, secrets: dict):
             continue
         if not isinstance(payload, dict):
             raise ValueError("signed body must be a JSON object")
-        if has_lone_surrogate(payload):
-            raise ValueError("signed body carries a lone surrogate")
+        if _lone_surrogate(payload):
+            raise ValueError("signed body carries an unpaired UTF-16 "
+                             "surrogate")
         # Key selection follows the draft (Section 10) exactly:
         # absent selects the default secret; a present key_id
         # must be a string in the map (the empty string names

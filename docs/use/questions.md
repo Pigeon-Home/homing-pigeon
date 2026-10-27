@@ -53,15 +53,20 @@ rejection of the unknown kind could not be signed
 back. The same text through `verify_body_keyed` and the
 front-end's `send_job.verify_body` was accepted the same way.
 
-**The desk's answer, landed:** `has_lone_surrogate` in
-`runner/guard/textutil.py` walks a JSON value for a string that
-does not encode; `verify_body`, `verify_body_keyed` and the
-front-end's `verify_body` refuse a signed body that carries one
-anywhere ("signed body carries a lone surrogate", `ValueError`
-like every refusal of theirs, the front-end with its own copy of
-the walk since it runs by path), and the runner's `sign_payload`
-names it before its encode would (the other signer's encode
-already raised a `ValueError`, so the two stay in step). A
+**The desk's answer, landed:** the walk the tree already had,
+`_lone_surrogate` in `runner/guard/textutil.py` (stamp 40000e00's,
+which the mail path ran on a job after its signature and audience
+checks), now runs at the door: `verify_body`, `verify_body_keyed`
+and the front-end's `verify_body` refuse a signed body that
+carries one anywhere ("signed body carries an unpaired UTF-16
+surrogate", `ValueError` like every refusal of theirs, the
+front-end with its own copy of the walk since it runs by path),
+so every reader behind the verifiers -- the job path, the version
+2 messages, the board and query messages, the local and DTLS
+envelopes -- is covered by the one check, and the runner's
+`sign_payload` names it before its encode would (the other
+signer's encode already raised a `ValueError`, so the two stay in
+step). A
 surrogate pair -- an emoji, any character past the BMP -- and
 non-ASCII text verify as before, and a lone surrogate in the text
 around the object is the preamble's, ignored as before. PROTOCOL.md

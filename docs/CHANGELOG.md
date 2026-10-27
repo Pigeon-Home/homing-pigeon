@@ -32,9 +32,11 @@ facts a reader may need to cite. Git history carries the rest.
   verifiers accepted a job whose `kind` was one, and the result that
   echoed it -- the rejection included -- could not be signed, so
   the sender never heard back. `verify_body`, `verify_body_keyed`
-  and the front-end's verifier refuse it anywhere in the object
-  (PROTOCOL.md section 3; Q85), and the runner's signer names it
-  before its encode would. `runner/tests/test_lone_surrogate.py`.
+  and the front-end's verifier refuse it anywhere in the object,
+  with the walk the mail path already ran on a job after its
+  signature (PROTOCOL.md section 3; Q85), and the runner's signer
+  names it before its encode would.
+  `runner/tests/test_lone_surrogate.py`.
 - **blueMonday's fourteenth target, `queries`.** A job's
   `result_policy` and its own output through `apply_result_policy`
   and `answer_queries` under every ceiling the owner can set: the

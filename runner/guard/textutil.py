@@ -11,44 +11,6 @@ import re
 from datetime import datetime
 
 
-def has_lone_surrogate(value, _seen=None) -> bool:
-    """True when a string anywhere in a JSON value cannot be encoded
-    as UTF-8: a lone surrogate, which a JSON reader accepts as the
-    escape \\ud800 and no UTF-8 text can carry. A signed body that
-    carried one was accepted by the verifier, and the result that
-    echoed its text could not be signed, so the sender never heard
-    back; the verifiers refuse it at the door instead (Q85)."""
-    if isinstance(value, str):
-        try:
-            value.encode("utf-8")
-            return False
-        except UnicodeEncodeError:
-            return True
-    if isinstance(value, dict):
-        if _seen is None:
-            _seen = set()
-        if id(value) in _seen:
-            return False
-        _seen.add(id(value))
-        try:
-            return any(has_lone_surrogate(k, _seen)
-                       or has_lone_surrogate(v, _seen)
-                       for k, v in value.items())
-        finally:
-            _seen.discard(id(value))
-    if isinstance(value, (list, tuple)):
-        if _seen is None:
-            _seen = set()
-        if id(value) in _seen:
-            return False
-        _seen.add(id(value))
-        try:
-            return any(has_lone_surrogate(v, _seen) for v in value)
-        finally:
-            _seen.discard(id(value))
-    return False
-
-
 def _json_safe(value, _seen=None):
     """Replace NaN and Infinity. json.dumps emits them, and they are not JSON.
 

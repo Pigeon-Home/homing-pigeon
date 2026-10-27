@@ -1708,7 +1708,7 @@ def check_queries(entry):
         policy, out, err = data, "", ""
     if len(out) + len(err) > QUERIES_MAX_TEXT:
         raise Crash("corpus", "a queries entry's output is over the cap")
-    if TU.has_lone_surrogate(policy):
+    if TU._lone_surrogate(policy):
         # The verifier refuses a body with a lone surrogate (Q85), so
         # a policy carrying one never reaches these readers.
         note("gate", "lone surrogate")
