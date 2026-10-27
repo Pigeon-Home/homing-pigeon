@@ -2210,6 +2210,19 @@ def check_query(entry):
         shutil.rmtree(base, ignore_errors=True)
 
 
+def _query_carriable(text):
+    """The checker's own rule for a retained stream on the wire: text
+    or nothing, a lone surrogate the replacement character."""
+    if not isinstance(text, str):
+        return ""
+    try:
+        text.encode("utf-8")
+        return text
+    except UnicodeEncodeError:
+        return text.encode("utf-16", "surrogatepass").decode("utf-16",
+                                                             "replace")
+
+
 def _query_reply_answers(payload, record, reply, before, after):
     """A reply with answers against the retained record it read."""
     if not isinstance(before, dict):
@@ -2222,10 +2235,12 @@ def _query_reply_answers(payload, record, reply, before, after):
     view = before.get("view") or "full"
     if not isinstance(view, str) or view not in R.VIEW_ORDER:
         view = "full"
-    # A stream is text or nothing (Q90): the record a crash left may
-    # hold a list or a number where the executor wrote text.
-    out = before.get("stdout") if isinstance(before.get("stdout"), str) else ""
-    err = before.get("stderr") if isinstance(before.get("stderr"), str) else ""
+    # A stream is text the wire can carry, or nothing (Q90, Q93): the
+    # record a crash left may hold a list or a number where the
+    # executor wrote text, or a lone surrogate no signer accepts,
+    # which is the replacement character on the wire.
+    out = _query_carriable(before.get("stdout"))
+    err = _query_carriable(before.get("stderr"))
     text_lines = (out + err).splitlines()
     try:
         budget = int(before.get("budget"))
@@ -2471,15 +2486,97 @@ _V2_CFG = {
 
 
 def _v2_answer_file(base, question_id):
-    try:
-        folder, path = P2._answer_path(base, question_id)
-    except ValueError:
+    """The filed answer's text, by the checker's own idea of where it
+    goes (the draft: v2/answers/<question id>.json under the base),
+    or None when nothing is filed."""
+    if not isinstance(question_id, str) or not P2._ID.match(question_id):
         return None
+    path = os.path.join(base, "v2", "answers", question_id + ".json")
     try:
         with open(path, encoding="utf-8") as fh:
             return fh.read()
     except OSError:
         return None
+
+
+def _v2_more_file(base, question_id):
+    path = os.path.join(base, "v2", "answers", question_id + ".json.more.jsonl")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    except OSError:
+        return None
+
+
+def _v2_leaving_is_moot(payload, ident, kind, key_id, cfg, data):
+    """A question the process would leave for another reader is
+    still refused -- and marked -- when it fails a check before
+    that point: the seal (a cleartext form, a key the object names
+    that is not the seal's), the answerer list, the validation, the
+    subject against the body, the freshness window. The checker's
+    own reading of those checks."""
+    if data.get("cleartext") is True:
+        return True
+    named = payload.get("key_id")
+    if "key_id" in payload and named != (key_id or ""):
+        return True
+    if "v2_answerers" in cfg:
+        allowed = cfg["v2_answerers"]
+        if not isinstance(allowed, list) or (key_id or "") not in allowed \
+                or not all(isinstance(x, str) for x in allowed):
+            return True
+    try:
+        P2.validate(payload)
+    except Exception:
+        return True
+    if payload.get("type") != kind or payload.get("msg_id") != ident:
+        return True
+    ok, _why = R._issued_at_ok(payload.get("issued_at"), _V2_CFG)
+    return not ok
+
+
+def _v2_local_text(question):
+    """The draft's rule for the laptop's answer with no model: the
+    question's local_default, stripped, or proceed."""
+    default = question.get("local_default") if isinstance(question, dict) \
+        else None
+    if isinstance(default, str) and default.strip():
+        return default.strip()[:64]
+    return "proceed"
+
+
+def _v2_answer_id(question_id):
+    """The draft's rule for an answer's id: a.<question id> when that
+    is an id, else a.<head>.<digest> within the 128."""
+    ident = "a." + question_id
+    if len(ident) <= 128 and P2._ID.match(ident):
+        return ident
+    digest = hashlib.sha256(question_id.encode("utf-8")).hexdigest()[:16]
+    return "a." + question_id[:max(1, 128 - 2 - 1 - len(digest))] + "." + digest
+
+
+def _v2_filed_record(text, answer_obj):
+    """A filed answer against the draft: one JSON object on one line
+    ending in a newline, received_at a number, the answer the
+    message as sent (its sig aside); the digest of what is fixed."""
+    if not isinstance(text, str) or not text.endswith("\n") \
+            or text.count("\n") != 1:
+        raise Crash("shape", "the filed answer is not one JSON line")
+    try:
+        rec = json.loads(text)
+    except ValueError:
+        raise Crash("shape", "the filed answer does not parse")
+    if not isinstance(rec, dict) or set(rec) != {"received_at", "answer"} \
+            or not isinstance(rec["received_at"], (int, float)) \
+            or isinstance(rec["received_at"], bool):
+        raise Crash("shape", "the filed answer's record is not "
+                    "{received_at, answer}")
+    filed = rec["answer"]
+    sent = {k: v for k, v in answer_obj.items() if k != "sig"}
+    if not isinstance(filed, dict) \
+            or {k: v for k, v in filed.items() if k != "sig"} != sent:
+        raise Crash("contract", "the filed answer is not the answer sent")
+    return _digest(sent)
 
 
 def check_v2_mail(entry):
@@ -2524,6 +2621,17 @@ def check_v2_mail(entry):
                             "model": "bm-model", "timeout_sec": 2}
     if isinstance(data.get("mode"), str):
         cfg["oracle_mode"] = data["mode"]
+    # The two switches (the draft's section 2): the Pi emits with
+    # protocol_v2, the laptop answers with answer_only; a process
+    # with neither ignores a version 2 message, and one that emits
+    # but does not answer leaves a question for another reader.
+    if "v2" in data:
+        cfg["protocol_v2"] = data["v2"]
+    if "answer_only" in data:
+        cfg["answer_only"] = data["answer_only"]
+    receiving = cfg.get("protocol_v2") is True or cfg.get("answer_only") is True
+    leaves = receiving and kind == "question" \
+        and cfg.get("answer_only") is not True
     if TU._lone_surrogate(payload):
         note("gate", "lone surrogate")
         return "refused"
@@ -2540,10 +2648,15 @@ def check_v2_mail(entry):
         seen = {}
         outs = []
         logbook = _MailLog(base)
+        left = []
         for attempt in (1, 2):
             imap, smtp = _FakeImap(), _FakeSmtp()
+            left.append(0)
             with mock.patch.object(R, "log", logbook.log), \
-                    mock.patch.object(R, "vlog", logbook.vlog):
+                    mock.patch.object(R, "vlog", logbook.vlog), \
+                    mock.patch.object(R, "_v2_leave_unseen",
+                                      lambda *_a: left.__setitem__(
+                                          -1, left[-1] + 1)):
                 got, exc = _call(HA.handle_v2_mail, cfg, imap, smtp, attempt,
                                  raw, subject, secrets, opts, base, seen)
             if exc is not None:
@@ -2552,19 +2665,36 @@ def check_v2_mail(entry):
             if got is not True:
                 raise Crash("contract", f"handle_v2_mail answered {got!r} "
                             "for a version 2 subject")
-            if len(imap.marked) != (0 if opts.dry_run else 1):
+            # A question this process leaves for another reader (it
+            # emits, it does not answer) stays unseen, unanswered and
+            # unrecorded; it is left only under that switch, and a
+            # question that passes every check before that point is
+            # left for sure. One refused before that point is marked.
+            if left[-1] and not leaves:
+                raise Crash("contract", "a question was left for another "
+                            "reader by a process that answers")
+            if leaves and not left[-1] and not _v2_leaving_is_moot(
+                    payload, ident, kind, key_id, cfg, data):
+                raise Crash("contract", "a question the process does not "
+                            "answer was not left for another reader")
+            marks = 0 if opts.dry_run or left[-1] else 1
+            if len(imap.marked) != marks:
                 raise Crash("contract", "the message was marked "
                             f"{len(imap.marked)} times under dry "
-                            f"{opts.dry_run}")
+                            f"{opts.dry_run}, left {bool(left[-1])}")
             if len(smtp.sent) > 1:
                 raise Crash("contract", f"{len(smtp.sent)} replies went out")
-            if smtp.sent and (opts.dry_run or opts.no_send):
-                raise Crash("contract", "a reply went out under dry or "
-                            "no_send")
+            if smtp.sent and (opts.dry_run or opts.no_send or not receiving
+                              or left[-1]):
+                raise Crash("contract", "a reply went out under dry, "
+                            "no_send, the switches off or a question "
+                            "left")
             outs.append(smtp.sent[0] if smtp.sent else None)
         logbook.note()
         if opts.dry_run and seen:
             raise Crash("contract", "a dry run recorded the message")
+        if (not receiving or any(left)) and seen:
+            raise Crash("contract", "a message ignored or left was recorded")
         first, again = outs
         if again is not None:
             raise Crash("contract", "a copy of the message was answered "
@@ -2607,7 +2737,13 @@ def check_v2_mail(entry):
                     or answer.get("job_id") != payload.get("job_id"):
                 raise Crash("contract", "the answer does not name the "
                             "question it answers")
-            if answer.get("answer") != P2.local_answer_text(payload):
+            if answer.get("msg_id") != _v2_answer_id(ident):
+                raise Crash("contract", "the answer's id is not the "
+                            f"draft's: {answer.get('msg_id')!r}")
+            if answer.get("v") != 2 or not isinstance(answer.get("issued_at"),
+                                                      str):
+                raise Crash("shape", "the answer's version or issued_at")
+            if answer.get("answer") != _v2_local_text(payload):
                 raise Crash("contract", "the answer is not the question's "
                             "local default")
             note("answer", _digest({k: v for k, v in answer.items()
@@ -2616,22 +2752,51 @@ def check_v2_mail(entry):
         elif kind == "answer" and seen:
             if filed is None:
                 raise Crash("contract", "an answer acted on was not filed")
+            sent = dict(payload, key_id=key_id) \
+                if key_id and "key_id" not in payload else payload
+            note("filed", _v2_filed_record(filed, sent))
             # A second answer to the same question, under another
-            # msg_id, does not replace the first.
-            other = dict(payload, msg_id=ident + "-2", answer="the other")
-            other_raw = _sealed_mail(f"[HOMING-PIGEON] answer {ident}-2",
-                                     ident + "-2", other, key_id)
-            imap, smtp = _FakeImap(), _FakeSmtp()
-            with mock.patch.object(R, "log", lambda *a, **k: None), \
-                    mock.patch.object(R, "vlog", lambda *a, **k: None):
-                _got, exc = _call(HA.handle_v2_mail, cfg, imap, smtp, 3,
-                                  other_raw, f"[HOMING-PIGEON] answer "
-                                  f"{ident}-2", secrets, opts, base, seen)
-            if exc is not None:
-                raise Crash("exception", "handle_v2_mail raised on the "
-                            f"other answer: {_short(exc)}")
-            if _v2_answer_file(base, payload.get("question_id")) != filed:
+            # msg_id, does not replace the first; it is kept beside
+            # it, the same text once, the file stopping at eight.
+            qid = payload.get("question_id")
+            texts = []
+            for n in range(1, 11):
+                text = "the other" if n == 10 else f"the other {n}"
+                other = dict(payload, msg_id=f"{ident}-{n}", answer=text)
+                other_raw = _sealed_mail(f"[HOMING-PIGEON] answer {ident}-{n}",
+                                         f"{ident}-{n}", other, key_id)
+                imap, smtp = _FakeImap(), _FakeSmtp()
+                with mock.patch.object(R, "log", lambda *a, **k: None), \
+                        mock.patch.object(R, "vlog", lambda *a, **k: None):
+                    _got, exc = _call(HA.handle_v2_mail, cfg, imap, smtp,
+                                      2 + n, other_raw,
+                                      f"[HOMING-PIGEON] answer {ident}-{n}",
+                                      secrets, opts, base, seen)
+                if exc is not None:
+                    raise Crash("exception", "handle_v2_mail raised on "
+                                f"another answer: {_short(exc)}")
+                if smtp.sent:
+                    raise Crash("contract", "an answer got a reply")
+                texts.append(text)
+            if _v2_answer_file(base, qid) != filed:
                 raise Crash("contract", "a second answer replaced the first")
+            more = _v2_more_file(base, qid)
+            kept = []
+            for line in (more or "").splitlines():
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    raise Crash("shape", "a late answer's line does not parse")
+                if not isinstance(rec, dict) \
+                        or set(rec) != {"received_at", "answer"} \
+                        or not isinstance(rec["answer"], str):
+                    raise Crash("shape", "a late answer's record is not "
+                                "{received_at, answer}")
+                kept.append(rec["answer"])
+            if kept != texts[:8]:
+                raise Crash("contract", "the late answers kept are not the "
+                            f"first eight distinct ones: {kept!r}"[:200])
+            note("more", _digest(kept))
             accepted = True
         elif filed is not None:
             raise Crash("contract", "an answer was filed without being "
@@ -4907,6 +5072,18 @@ def seeds_query():
               q=query(queries=[tail])),
         entry("record_streams_not_text", rec=retained(stdout=["a"], stderr={"b": 1}),
               q=query(queries=[tail, grep, attest])),
+        # A lone surrogate in a retained stream (Q93): the escape a
+        # record a crash left can hold, which no signer accepts; on
+        # the wire it is the replacement character, in every op.
+        entry("record_stderr_surrogate", rec=retained(stderr="\ud800"),
+              q=query(queries=[attest, grep, tail])),
+        entry("record_stdout_surrogate_line", rec=retained(
+            stdout="ok\nbad \udfff line\nERROR one\n"),
+            q=query(queries=[tail, grep, {"op": "attest",
+                                          "predicate": "output_digest"}])),
+        entry("record_stdout_surrogate_pair", rec=retained(
+            stdout="ok\n\ud83d\udc26 bird\n"),
+            q=query(queries=[{"op": "tail", "lines": 1}])),
         entry("record_pattern_overflow", rec=retained(
             view="redacted", patterns={"x": "a{99999999999}"}),
             q=query(queries=[tail, {"op": "grep", "pattern": "ERROR"}])),
@@ -5337,6 +5514,45 @@ def seeds_v2_mail():
               model_down=True, mode="chatty"),
         entry("answer_model_down", "answer", "a.q.bm-job-0001", a(),
               model_down=True),
+        # The two switches: a process with neither ignores the
+        # message (marked, nothing else); one that emits but does not
+        # answer leaves a question for another reader, unseen, and
+        # still files an answer and reads a determination; a question
+        # it would refuse before that point is refused as before.
+        entry("question_v2_off", "question", "q.bm-job-0001", q(),
+              v2=False, answer_only=False),
+        entry("question_answer_only_off", "question", "q.bm-job-0001", q(),
+              answer_only=False),
+        entry("question_answer_only_off_keyed", "question", "q.bm-job-0001",
+              q(), answer_only=False, key_id="ops"),
+        entry("question_answer_only_off_stale", "question", "q.bm-job-0001",
+              q(issued_at="2020-01-01T00:00:00Z"), answer_only=False),
+        entry("question_answer_only_off_other_answerer", "question",
+              "q.bm-job-0001", q(), answer_only=False, answerers=["ops"]),
+        entry("question_answer_only_off_cleartext", "question",
+              "q.bm-job-0001", q(), answer_only=False, cleartext=True),
+        entry("question_answer_only_off_dry", "question", "q.bm-job-0001",
+              q(), answer_only=False, dry=True),
+        entry("question_switches_junk", "question", "q.bm-job-0001", q(),
+              v2="yes", answer_only=1),
+        entry("answer_answer_only_off", "answer", "a.q.bm-job-0001", a(),
+              answer_only=False),
+        entry("answer_v2_off", "answer", "a.q.bm-job-0001", a(),
+              v2=False, answer_only=False),
+        entry("determination_answer_only_off", "determination",
+              "d.bm-job-0001", d(), answer_only=False),
+        entry("determination_v2_off", "determination", "d.bm-job-0001", d(),
+              v2=False, answer_only=False),
+        # The answer's id at the bound: a.<question id> while that
+        # fits the 128, the digest form past it.
+        entry("question_id_126", "question", "q" * 126, q(msg_id="q" * 126)),
+        entry("question_id_127", "question", "q" * 127, q(msg_id="q" * 127)),
+        entry("question_id_128", "question", "q" * 128, q(msg_id="q" * 128)),
+        # The filed record and the late answers: an answer whose text
+        # is the cap, and one with every member the draft allows.
+        entry("answer_at_cap", "answer", "a.q.bm-job-0001", a(answer="x" * 500)),
+        entry("answer_unicode", "answer", "a.q.bm-job-0001",
+              a(answer="the left \u2014 caf\u00e9 \U0001f426")),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 

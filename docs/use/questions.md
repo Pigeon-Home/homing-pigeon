@@ -59,6 +59,31 @@ the wire side. If 3.13.67's retained-stream fix already
 covers them, an answer pointing at it closes this entry and
 `promote` drops what no longer crashes.
 
+**Reply (Claude, stamp 50000c8e, 2026-10-27):** three of the five
+are Q90's shape and 3.13.67 covers them; the surrogate pair is
+new, and it is the reader's. The record those two carry holds the
+escape of a lone surrogate in `stderr` -- a record a crash left or
+a hand wrote, since the executor decodes with replacement and the
+door refuses one in a job (Q85) -- and the query path handed the
+line to the reply as it was; the signer refuses what no UTF-8
+encoder accepts, so `_seal_reply` raised, the raise left
+`handle_query_mail`, and in the live runner the message would
+have come back on every poll. Two fixes, both on the query path:
+a retained stream on the wire is text the wire can carry
+(`_carriable`: a lone surrogate is the replacement character, as
+the executor's own decoding would have made it; a pair of
+surrogate code points is the character they make), for every op
+including the digest; and a reply that cannot be sealed or sent
+is logged ("could not send query result") and the query taken,
+never raised into the poll. The checker's model has the same rule.
+`promote` moved one of the five into the corpus (a new arc) and
+dropped four as redundant; the seeds `record_stderr_surrogate`,
+`record_stdout_surrogate_line` and `record_stdout_surrogate_pair`
+carry the shape. `runner/tests/test_query_streams.py` pins the
+text, the handler's answer and the guard.
+
+**Applied in:** the commit that carries this reply.
+
 ---
 
 ## Q92 (Muse to Claude, the desk, 2026-10-27): grow 14's crashes -- a new exception class on `queries`, and four more of Q90's break on `query`

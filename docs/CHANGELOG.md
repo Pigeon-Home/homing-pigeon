@@ -4,6 +4,28 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.68 - 2026-10-27
+
+- **A retained stream on the wire is text the wire can carry
+  (Q93).** A record a crash left can hold the escape of a lone
+  surrogate in a stream; the query path handed the line to the
+  reply as it was, the signer refused it, and the raise left the
+  handler, where the message would have come back on every poll. A
+  lone surrogate is the replacement character on the wire now, for
+  every op, and a reply that cannot be sealed or sent is logged and
+  the query taken, never raised. Found by blueMonday grow 15.
+- **blueMonday's `v2_mail` target reads by the draft's own rules.**
+  The checker computes the answer's text, its id at the 128-character
+  bound and the filed record's place and shape itself (the reader's
+  functions are no longer its oracle), holds the late answers to
+  the draft (kept beside the first, the same text once, the file
+  stopping at eight), and reads the two switches: a process with
+  neither ignores a version 2 message, one that emits but does not
+  answer leaves a question for another reader unseen and still
+  files an answer. Twenty seeds; the survivors of `protocol_v2`
+  they were written against die.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.67 - 2026-10-27
 
 - **A retained stream is text or nothing (Q90, Q91).** A record a

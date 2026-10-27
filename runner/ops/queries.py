@@ -36,9 +36,16 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         if reply is not None and secret and opts is not None and (opts.dry_run or getattr(opts, "no_send", False)):
             reply = None
         if reply is not None and secret:
-            _runner().send_mail(smtp, cfg, f"[HOMING-PIGEON] qresult {query_id}",
-                      _runner()._seal_reply(reply, secret, query_id, key_id,
-                                  encrypted))
+            # A reply that cannot be sealed or sent (Q93: the signer
+            # refusing what a record a crash left put in it) is logged
+            # and the query taken, never raised into the poll, where
+            # the message would come back on every pass.
+            try:
+                _runner().send_mail(smtp, cfg, f"[HOMING-PIGEON] qresult {query_id}",
+                          _runner()._seal_reply(reply, secret, query_id, key_id,
+                                      encrypted))
+            except Exception as e:
+                R.log(f"could not send query result {query_id}: {e}", "ERROR")
         if isinstance(seen, dict) and (opts is None or not opts.dry_run):
             with R._MAIL_LOCK:
                 seen[seen_key] = True
@@ -179,20 +186,34 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     return True
 
 
+def _carriable(text):
+    """Text the wire can carry: a stream that is not text is nothing
+    (Q90), and a lone surrogate in one -- the escape a record a crash
+    left can hold, which no UTF-8 encoder and so no signer accepts
+    (Q93) -- is the replacement character, as the executor's own
+    decoding would have made it."""
+    if not isinstance(text, str):
+        return ""
+    try:
+        text.encode("utf-8")
+        return text
+    except UnicodeEncodeError:
+        return text.encode("utf-16", "surrogatepass").decode("utf-16",
+                                                             "replace")
+
+
 def _stream_text(exec_result):
-    """The output the queries read: stdout then stderr, each text or
-    nothing (Q90). The executor writes text; a stream of any other
-    type is a record a crash left or a hand wrote, and the text
-    form of a list or a number is not output -- tail handed it back
-    as the output's last line. The Oracle's own reading of a record
-    (_output_blob) keeps the text form, since the owner is shown
-    what the record holds."""
+    """The output the queries read: stdout then stderr, each text the
+    wire can carry or nothing (Q90, Q93). The executor writes text;
+    a stream of any other type is a record a crash left or a hand
+    wrote, and the text form of a list or a number is not output --
+    tail handed it back as the output's last line. The Oracle's own
+    reading of a record (_output_blob) keeps the text form, since
+    the owner is shown what the record holds."""
     if not isinstance(exec_result, dict):
         return ""
-    out = exec_result.get("stdout")
-    err = exec_result.get("stderr")
-    return (out if isinstance(out, str) else "") \
-        + (err if isinstance(err, str) else "")
+    return _carriable(exec_result.get("stdout")) \
+        + _carriable(exec_result.get("stderr"))
 
 
 def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full",

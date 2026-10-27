@@ -16,16 +16,27 @@ instead of the bad_pattern refusal every other unusable pattern
 gets. Whatever the engine refuses is a bad pattern now."""
 
 import os
+import shutil
 import sys
+import tempfile
+import time
 import unittest
+from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from runner.ops.queries import _stream_text, answer_queries  # noqa: E402
-from runner.runner import _output_blob  # noqa: E402
+from runner import runner  # noqa: E402
+from runner.ops.queries import (  # noqa: E402
+    _carriable, _stream_text, answer_queries, handle_query_mail)
+from runner.runner import _output_blob, load_retained, save_retained  # noqa: E402
+from runner.tests.security_parity import (  # noqa: E402
+    SECRET, FakeIMAP, FakeSMTP, base_config)
+from runner.tests.test_cli_options import _captured_log  # noqa: E402
+from runner.tests.test_dry_run_changes_nothing import (  # noqa: E402
+    _Opts, _mail, _now, _sealed)
 
 OUT = "one\ntwo\nthree\n"
 
@@ -75,6 +86,73 @@ class StreamIsTextOrNothingTest(unittest.TestCase):
         self.assertEqual(answers[0]["matches"], ["two", "three"])
         self.assertEqual(answers[1]["digest"], _answers(
             [{"op": "attest", "predicate": "output_digest"}])[0]["digest"])
+
+
+class SurrogateInARecordTest(unittest.TestCase):
+    """Q93: a retained record a crash left can hold the escape of a
+    lone surrogate in a stream; no UTF-8 encoder and so no signer
+    accepts it, and the query's reply could not be sealed, so the
+    handler raised into the poll and the message came back on every
+    pass. On the wire the character is the replacement character,
+    and a reply that cannot be sealed is logged, never raised."""
+
+    def test_the_wire_text_replaces_a_lone_surrogate(self):
+        self.assertEqual(_carriable("a\ud800b"), "a\ufffdb")
+        self.assertEqual(_carriable("\udfff"), "\ufffd")
+        # A pair of surrogate code points is the character they make.
+        self.assertEqual(_carriable("\ud83d\udc26 caf\u00e9"),
+                         "\U0001f426 caf\u00e9")
+        self.assertEqual(_carriable("\U0001f426 caf\u00e9"),
+                         "\U0001f426 caf\u00e9")
+        self.assertEqual(_carriable("plain"), "plain")
+        self.assertEqual(_stream_text({"stdout": "ok\n", "stderr": "\ud800"}),
+                         "ok\n\ufffd")
+        answers = _answers([{"op": "tail", "lines": 1},
+                            {"op": "attest", "predicate": "output_digest"}],
+                           stderr="bad \ud800 line\n")
+        self.assertEqual(answers[0]["lines"], ["bad \ufffd line"])
+        self.assertEqual(len(answers[1]["digest"]), 96)
+
+    def _take(self, cfg, d, record, opts=None):
+        save_retained(d, "bm-s-job", record)
+        obj = {"v": 1, "type": "query", "query_id": "bm-s-q", "job_id": "bm-s-job",
+               "issued_at": _now(), "queries": [{"op": "tail", "lines": 2}]}
+        subject = "[HOMING-PIGEON] query bm-s-q"
+        imap, smtp = FakeIMAP([]), FakeSMTP()
+        with _captured_log() as buf:
+            handled = handle_query_mail(
+                cfg, imap, smtp, b"1", _mail(subject, _sealed(obj, "bm-s-q")),
+                subject, runner.build_secrets(cfg), opts or _Opts(), d, {})
+        return handled, imap, smtp, buf.getvalue()
+
+    def test_the_handler_answers_a_record_with_a_surrogate(self):
+        d = tempfile.mkdtemp(prefix="hp-q93-")
+        self.addCleanup(shutil.rmtree, d, True)
+        cfg = base_config(d)
+        handled, imap, smtp, out = self._take(cfg, d, {
+            "stdout": "one\ntwo\n", "stderr": "\ud800", "exit_code": 0,
+            "budget": 8, "spent": 0, "view": "full", "saved_at": time.time()})
+        self.assertTrue(handled)
+        self.assertEqual(len(smtp.sent), 1)
+        self.assertEqual(imap.flagged, [b"1"])
+        self.assertNotIn("could not send", out)
+        self.assertNotIn("rejected", out)
+        self.assertEqual(load_retained(d, "bm-s-job")["spent"], 1)
+
+    def test_a_reply_that_cannot_be_sealed_is_logged_not_raised(self):
+        d = tempfile.mkdtemp(prefix="hp-q93-")
+        self.addCleanup(shutil.rmtree, d, True)
+        cfg = base_config(d)
+        with mock.patch.object(runner, "_seal_reply",
+                               side_effect=ValueError("payload refused")):
+            handled, imap, smtp, out = self._take(cfg, d, {
+                "stdout": "one\n", "stderr": "", "exit_code": 0,
+                "budget": 8, "spent": 0, "view": "full",
+                "saved_at": time.time()})
+        self.assertTrue(handled)
+        self.assertEqual(smtp.sent, [])
+        self.assertEqual(imap.flagged, [b"1"])
+        self.assertIn("could not send query result bm-s-q: payload refused", out)
 
 
 class PatternTheEngineRefusesTest(unittest.TestCase):
