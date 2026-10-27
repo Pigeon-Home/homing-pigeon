@@ -263,6 +263,16 @@ def _stop_worker(proc):
                 pass
 
 
+def _drop_worker():
+    """The worker is one process for a batch of greps, not a child
+    a job left behind. A cycle that ends with it still running is
+    a process the soak reports as not reaped."""
+    global _worker
+    proc = _worker
+    _worker = None
+    _stop_worker(proc)
+
+
 def _start_worker():
     env = dict(os.environ)
     # A child that inherits mutmut's stats variable takes the stats
@@ -630,6 +640,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
         else:
             answers.append({"rejected": "unknown_op"})
         spent += 1
+    _drop_worker()
     return answers, spent
 
 

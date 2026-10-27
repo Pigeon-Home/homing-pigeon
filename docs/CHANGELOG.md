@@ -11,8 +11,10 @@ facts a reader may need to cite. Git history carries the rest.
   pattern the shape check cannot name runs in a worker the
   runner starts once, and a late reply is `{"op": "grep",
   "rejected": "timeout"}`. The next query starts the worker
-  again. Q54 and Q57 are answered: extractions go through
-  the repair tool, and this seat does not create a release.
+  again. The worker is reaped when the batch ends, so a cycle
+  does not leave a child. Q54 and Q57 are answered: extractions
+  go through the repair tool, and this seat does not create a
+  release.
 
 ## 3.14.0 - 2026-10-27
 
