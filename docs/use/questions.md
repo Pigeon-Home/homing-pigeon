@@ -61,7 +61,10 @@ an overflow ("signed body carries a number that is not finite");
 the front-end carries the same two hooks. A body is then measured
 without recursion (`_nests_deeper_than`, a stack) and refused whole
 past 200 levels, the object itself the first ("signed body nests
-deeper than 200 levels"), so the walks that follow -- the
+deeper than 200 levels"); a body the parser itself gives up on
+(the Windows build's C recursion limit is the lower one) is
+refused with the same words, never with the parser's
+`RecursionError`; so the walks that follow -- the
 surrogate's, the signer's -- never meet a body they cannot finish,
 and the three doors refuse the same bodies with the same words.
 The largest finite double, a subnormal, a big integer and the text

@@ -108,9 +108,16 @@ def loads_signed(text):
     """json.loads for the text of a signed body: the literals NaN and
     Infinity and a number that overflows a float are refused with a
     ValueError that names them, so a body trusts nothing a JSON
-    reader elsewhere would not read the same way (Q89)."""
-    return json.loads(text, parse_constant=_no_constant,
-                      parse_float=_finite_float)
+    reader elsewhere would not read the same way (Q89). A body the
+    parser cannot finish is refused as nested past the bound."""
+    try:
+        return json.loads(text, parse_constant=_no_constant,
+                          parse_float=_finite_float)
+    except RecursionError:
+        # The parser gave up before the measure below could run: a
+        # body it cannot finish is past the bound by any count.
+        raise ValueError(f"signed body nests deeper than {NESTING_LIMIT} "
+                         "levels") from None
 
 
 def _nests_deeper_than(value, limit=NESTING_LIMIT):

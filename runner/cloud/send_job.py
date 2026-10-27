@@ -255,8 +255,12 @@ def verify_body(body: str, secret: str) -> dict:
         raise ValueError("signature mismatch")
     # NaN, Infinity and a number that overflows a float are refused
     # by the parse itself; the runner's verifier does the same (Q89).
-    job = json.loads(raw, parse_constant=_no_constant,
-                     parse_float=_finite_float)
+    try:
+        job = json.loads(raw, parse_constant=_no_constant,
+                         parse_float=_finite_float)
+    except RecursionError:
+        raise ValueError(f"signed body nests deeper than {NESTING_LIMIT} "
+                         "levels") from None
     # _extract_signed returns text rooted at the "{" of a root object,
     # so json.loads here yields a dict or raises. The verifier keeps
     # its own shape check regardless of the extractor: it is the last

@@ -14,7 +14,9 @@ facts a reader may need to cite. Git history carries the rest.
   front-end's refused it or raised a `RecursionError`. The parse
   refuses the literals and the overflow by name; a body is measured
   without recursion and refused whole past 200 levels, the object
-  itself the first; the three doors agree. PROTOCOL.md section 3.
+  itself the first, and one the parser itself cannot finish (the
+  Windows build's lower C recursion limit) is refused with the same
+  words; the three doors agree. PROTOCOL.md section 3.
   `runner/tests/test_signed_body_bounds.py`.
 - **blueMonday: the wire, cloud and crypto survivors read.** The
   `wire` and `cloud` seeds carry the literals, the overflow, the

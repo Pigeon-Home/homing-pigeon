@@ -733,18 +733,17 @@ def verify_body_keyed(body_text: str, secrets: dict):
         candidates.append(cleaned)
     last_err = None
     for cand in candidates:
+        # The same door as verify_body (Q85, Q89): the literals and
+        # numbers JSON does not have, a body nested past the walks'
+        # bound, and a lone surrogate are refused before any key is
+        # chosen.
         try:
-            payload = json.loads(cand)
+            payload = loads_signed(cand)
         except Exception as e:
             last_err = e
             continue
         if not isinstance(payload, dict):
             raise ValueError("signed body must be a JSON object")
-        # The same door as verify_body (Q85, Q89): the literals and
-        # numbers JSON does not have, a body nested past the walks'
-        # bound, and a lone surrogate are refused before any key is
-        # chosen.
-        payload = loads_signed(cand)
         if _nests_deeper_than(payload, NESTING_LIMIT):
             raise ValueError(f"signed body nests deeper than "
                              f"{NESTING_LIMIT} levels")

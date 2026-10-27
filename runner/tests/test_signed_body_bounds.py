@@ -16,6 +16,7 @@ import hmac
 import os
 import sys
 import unittest
+from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -105,6 +106,24 @@ class NestingTest(unittest.TestCase):
             for name, door in DOORS:
                 with self.assertRaisesRegex(ValueError, "nests deeper than",
                                             msg=f"{name}: {depth}"):
+                    door(body)
+
+    def test_a_body_the_parser_cannot_finish_is_refused_the_same_way(self):
+        # Where the interpreter's C recursion limit is low (the
+        # Windows build's), the parser gives up on a deep body before
+        # the measure runs; the refusal is the same ValueError, not
+        # the parser's RecursionError. The limit cannot be lowered
+        # from here, so the parser's refusal is played.
+        body = _signed(_nested(400))
+
+        def give_up(*_a, **_k):
+            raise RecursionError("maximum recursion depth exceeded")
+
+        with mock.patch.object(TU.json, "loads", give_up), \
+                mock.patch.object(SJ.json, "loads", give_up):
+            for name, door in DOORS:
+                with self.assertRaisesRegex(ValueError, "nests deeper than",
+                                            msg=name):
                     door(body)
 
     def test_a_surrogate_at_the_bottom_of_the_bound_is_seen(self):
