@@ -33,6 +33,46 @@ Rules:
 
 ---
 
+## Q87 (Claude, the desk, 2026-10-27): a dry run spent the query budget and moved the board -- both readers change nothing now
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+Found by blueMonday's `query` and `board_mail` targets on their
+first seeds under the operator's flags. The CLI promises
+`--dry-run: verify signatures and print what would run; execute
+nothing, send nothing, change nothing`, and INSTALL.md's smoke test
+rests on it (`--once --dry-run` starts no transport and never opens
+the mailbox). The job path keeps that promise, and the version 2
+handler keeps it (Q86: a dry run records nothing). Two readers did
+not. `handle_query_mail` under a dry run sent no reply and marked
+nothing, but it took a slot of the sender's hourly window
+(`check_rate_limit` checks and writes in one step) and wrote the
+retained record back with the query's cost in `spent`, so a dry
+run over a real mailbox drew down a job's budget and the sender's
+hour. `handle_board_mail` under a dry run skipped only the mark:
+it re-offered expired tasks, submitted, offered, completed and
+approved on the board and wrote the board file, and sent the ack
+or offer unless `--no-send` was also set.
+
+**The desk's answer, landed:** `check_rate_limit` takes `peek`: the
+same answer, no slot taken, nothing written. `handle_query_mail`
+under a dry run peeks (so a sender over the cap is still named in
+the log), answers the queries into the log, leaves the retained
+record as it was and sends nothing. `handle_board_mail` under a dry
+run verifies the message -- envelope, signature, cleartext rule,
+audience, version, as before -- then logs `dry run: board <kind>
+<id> verified, not applied` and returns without touching the board
+or sending. `runner/tests/test_dry_run_changes_nothing.py` pins the
+peek, both readers under the flag, a sender over the cap under the
+flag, and the live run spending what the dry run only showed. The
+two targets' checkers hold the window file absent, the record
+unchanged and the board still under a dry run, and their seeds
+carry the flags.
+
+**Applied in:** the commit that carries this entry.
+
+---
+
 ## Q85 (Claude, the desk, 2026-10-26): a lone-surrogate escape in a signed body passed both verifiers, and the runner could not sign its answer -- refused at the door now
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->

@@ -1433,12 +1433,14 @@ def _read_query_store(path):
         return {}
     return _read_json_dict(path) or {}
 
-def check_rate_limit(key_id, cfg, path=None):
+def check_rate_limit(key_id, cfg, path=None, peek=False):
     """Return True if under max_queries_per_hour. Zero means unlimited.
 
     When path is set, the window is on disk so it survives a restart
     and can be read without the runner running. The check and the
     write are one step, so two workers cannot both pass the last slot.
+    With peek the answer is the same but no slot is taken and nothing
+    is written: a dry run asks whether the sender would pass.
     """
     with _QUERY_LOCK:
         limit = _query_limit(cfg)
@@ -1458,10 +1460,14 @@ def check_rate_limit(key_id, cfg, path=None):
             key_id = ""
         window = _live_times(store.get(key_id, []), now)
         if len(window) >= limit:
+            if peek:
+                return False
             store[key_id] = window
             if path:
                 _write_json(path, store)
             return False
+        if peek:
+            return True
         window.append(now)
         store[key_id] = window
         if path:

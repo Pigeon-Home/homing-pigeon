@@ -37,6 +37,8 @@ if ROOT not in sys.path:
 
 from runner.tools import bluemonday_corpus as B  # noqa: E402
 
+_FILE_SUFFIXES = {"txt", "json", "jsonl", "log", "tmp", "bak", "exe",
+                  "dll", "ps1", "bat", "cmd"}
 _MAILBOX = re.compile(r"[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})")
 
 
@@ -287,10 +289,14 @@ class CorpusFilesTest(unittest.TestCase):
                     # RFC 2606's reserved names only; a mutated entry
                     # may carry a broken form of one (the seeds are
                     # invented, the mutators are blind), so the test
-                    # is that the reserved name is still in it.
+                    # is that the reserved name is still in it. A
+                    # file name with an @ in it (the names seeds try
+                    # one) is not a mailbox: its last label is a
+                    # file suffix no registry sells.
                     self.assertTrue(
                         "example" in domain.lower()
-                        or domain.lower().endswith((".invalid", ".test")),
+                        or domain.lower().endswith((".invalid", ".test"))
+                        or domain.lower().rsplit(".", 1)[-1] in _FILE_SUFFIXES,
                         f"{target}: a mailbox at {domain}")
 
 

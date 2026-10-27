@@ -136,6 +136,12 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
     if not _runner()._version_ok(payload.get("v")):
         reject("unsupported version")
         return True
+    if opts is not None and getattr(opts, "dry_run", False):
+        # A dry run verifies and says what it would do: the board is
+        # not touched, no reply goes out, the message stays unseen
+        # (--dry-run: execute nothing, send nothing, change nothing).
+        R.log(f"dry run: board {kind} {ident} verified, not applied")
+        return True
     try:
         with R._BOARD_LOCK:
             board.reoffer_expired(cfg.get("task_timeout", 86400))

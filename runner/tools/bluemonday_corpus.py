@@ -1931,6 +1931,68 @@ def _query_open_reply(msg, subject_id, key_id):
     return reply
 
 
+def _mail_opts(data):
+    """The operator's flags an entry names: dry (the handler acks
+    nothing and acts on nothing) and no_send (acts, sends nothing)."""
+    return types.SimpleNamespace(dry_run=data.get("dry") is True,
+                                 no_send=data.get("no_send") is True)
+
+
+def _mail_form(subject, ident, payload, key_id, data):
+    """The message as the entry sends it: sealed, or -- under the
+    cleartext flag -- signed only, which the handlers refuse."""
+    if data.get("cleartext") is True:
+        import email.message as _em
+        secret = SECRETS.get(key_id, SECRET) if isinstance(key_id, str) \
+            else SECRET
+        if key_id and isinstance(payload, dict) and "key_id" not in payload:
+            payload = dict(payload, key_id=key_id)
+        msg = _em.EmailMessage()
+        msg["From"] = "si@example.com"
+        msg["To"] = "runner@example.com"
+        msg["Subject"] = subject
+        msg.set_content(V.sign_payload(payload, secret))
+        return msg.as_bytes()
+    return _sealed_mail(subject, ident, payload, key_id)
+
+
+class _MailLog:
+    """What a handler logs and records: the log lines (the scratch
+    path scrubbed), and the reason and feature of every security
+    event it files, so a handler that says or files something else
+    is told apart."""
+
+    def __init__(self, base):
+        self.base = base
+        self.lines = []
+
+    def log(self, msg, level="INFO", *a, **k):
+        self.lines.append("%s:%s" % (level, str(msg).replace(self.base, "<base>")))
+
+    def vlog(self, msg, *a, **k):
+        self.lines.append("v:" + str(msg).replace(self.base, "<base>"))
+
+    def events(self):
+        out = []
+        try:
+            with open(os.path.join(self.base, "security-events.jsonl"),
+                      encoding="utf-8") as fh:
+                for line in fh:
+                    try:
+                        ev = json.loads(line)
+                    except ValueError:
+                        out.append("unreadable")
+                        continue
+                    out.append((ev.get("type"), ev.get("reason"),
+                                ev.get("feature")))
+        except OSError:
+            pass
+        return out
+
+    def note(self):
+        note("log", _digest(self.lines), _digest(self.events()))
+
+
 def check_query(entry):
     """query: one query message -- the subject's id, the signed and
     sealed object a sender chose (its type, version, ids, issued_at
@@ -1970,13 +2032,15 @@ def check_query(entry):
     if TU._lone_surrogate(payload):
         note("gate", "lone surrogate")
         return "refused"
+    subject = "[HOMING-PIGEON] query " + subject_id
     try:
-        raw = _query_mail(subject_id, payload, key_id)
+        raw = _mail_form(subject, subject_id, payload, key_id, data)
     except ValueError as e:
         # The sender's own signer refuses the object; the runner
         # never sees it.
         note("gate", "unsignable", _short(e))
         return "refused"
+    opts = _mail_opts(data)
     base = tempfile.mkdtemp(prefix="hp-bluemonday-query-")
     try:
         job_id = payload.get("job_id")
@@ -1986,15 +2050,14 @@ def check_query(entry):
             else None
         cfg = dict(_QUERY_CFG)
         secrets = R.build_secrets(cfg)
-        opts = types.SimpleNamespace(dry_run=False, no_send=False)
         seen = {}
-        subject = "[HOMING-PIGEON] query " + subject_id
         outs = []
+        logbook = _MailLog(base)
         for attempt in (1, 2):
             imap, smtp = _FakeImap(), _FakeSmtp()
-            with mock.patch.object(R, "log", lambda *a, **k: None), \
-                    mock.patch.object(R, "vlog", lambda *a, **k: None):
-                got, exc = _call(R.handle_query_mail, cfg, imap, smtp,
+            with mock.patch.object(R, "log", logbook.log), \
+                    mock.patch.object(R, "vlog", logbook.vlog):
+                got, exc = _call(QU.handle_query_mail, cfg, imap, smtp,
                                  attempt, raw, subject, secrets, opts,
                                  base, seen)
             if exc is not None:
@@ -2003,12 +2066,26 @@ def check_query(entry):
             if got is not True:
                 raise Crash("contract", f"handle_query_mail answered {got!r} "
                             "for a query subject")
-            if len(imap.marked) != 1:
+            if len(imap.marked) != (0 if opts.dry_run else 1):
                 raise Crash("contract", f"the message was marked "
-                            f"{len(imap.marked)} times")
+                            f"{len(imap.marked)} times under dry "
+                            f"{opts.dry_run}")
             if len(smtp.sent) > 1:
                 raise Crash("contract", f"{len(smtp.sent)} replies went out")
+            if smtp.sent and (opts.dry_run or opts.no_send):
+                raise Crash("contract", "a reply went out under dry or "
+                            "no_send")
             outs.append(smtp.sent)
+        logbook.note()
+        if opts.dry_run and seen:
+            raise Crash("contract", "a dry run recorded the query")
+        if opts.dry_run and os.path.exists(os.path.join(base, "query_times.json")):
+            raise Crash("contract", "a dry run took a slot of the hourly "
+                        "window (Q87)")
+        if opts.dry_run and isinstance(job_id, str) \
+                and R.load_retained(base, job_id) != before:
+            raise Crash("contract", "a dry run spent the retained record's "
+                        "budget (Q87)")
         first, again = outs
         if again:
             raise Crash("contract", "a copy of the query was answered again")
@@ -2016,7 +2093,7 @@ def check_query(entry):
             note("reply", "none", sorted(seen))
             after = R.load_retained(base, job_id) if isinstance(job_id, str) \
                 else None
-            if after != before:
+            if after != before and not opts.no_send:
                 raise Crash("contract", "a query that got no reply changed "
                             "the retained record")
             return "refused"
@@ -2166,10 +2243,11 @@ def check_board_mail(entry):
         return "refused"
     subject = f"[HOMING-PIGEON] {kind} {ident}"
     try:
-        raw = _sealed_mail(subject, ident, payload, key_id)
+        raw = _mail_form(subject, ident, payload, key_id, data)
     except ValueError as e:
         note("gate", "unsignable", _short(e))
         return "refused"
+    opts = _mail_opts(data)
     base = tempfile.mkdtemp(prefix="hp-bluemonday-bmail-")
     _StepClock._tick = 0
     try:
@@ -2184,12 +2262,13 @@ def check_board_mail(entry):
                 raise Crash("exception", f"Board() raised {type(exc).__name__}: "
                             f"{_short(exc)}")
             secrets = R.build_secrets(cfg)
-            opts = types.SimpleNamespace(dry_run=False, no_send=False)
             replies = []
+            logbook = _MailLog(base)
+            start = _digest(board.tasks)
             for attempt in (1, 2):
                 imap, smtp = _FakeImap(), _FakeSmtp()
-                with mock.patch.object(R, "log", lambda *a, **k: None), \
-                        mock.patch.object(R, "vlog", lambda *a, **k: None), \
+                with mock.patch.object(R, "log", logbook.log), \
+                        mock.patch.object(R, "vlog", logbook.vlog), \
                         mock.patch.object(BD, "log", lambda *a, **k: None), \
                         mock.patch.object(BD, "vlog", lambda *a, **k: None):
                     got, exc = _call(ST.handle_board_mail, cfg, imap, smtp,
@@ -2201,11 +2280,17 @@ def check_board_mail(entry):
                 if got is not True:
                     raise Crash("contract", f"handle_board_mail answered "
                                 f"{got!r} for a board subject")
-                if len(imap.marked) != 1:
+                if len(imap.marked) != (0 if opts.dry_run else 1):
                     raise Crash("contract", "the message was marked "
-                                f"{len(imap.marked)} times")
+                                f"{len(imap.marked)} times under dry "
+                                f"{opts.dry_run}")
                 if len(smtp.sent) > 1:
                     raise Crash("contract", f"{len(smtp.sent)} replies went out")
+                if smtp.sent and (opts.dry_run or opts.no_send):
+                    raise Crash("contract", "a reply went out under dry or "
+                                "no_send")
+                if opts.dry_run and _digest(board.tasks) != start:
+                    raise Crash("contract", "a dry run moved the board (Q87)")
                 replies.append(smtp.sent[0] if smtp.sent else None)
                 again, exc = _call(BD.Board, path)
                 if exc is not None:
@@ -2220,6 +2305,7 @@ def check_board_mail(entry):
                         and TU._json_safe(board.tasks) != again.tasks:
                     raise Crash("roundtrip", "the board file does not read "
                                 "back as the board in memory")
+            logbook.note()
             outcome = "refused"
             for i, msg in enumerate(replies):
                 if msg is None:
@@ -2349,20 +2435,21 @@ def check_v2_mail(entry):
         return "refused"
     subject = f"[HOMING-PIGEON] {kind} {ident}"
     try:
-        raw = _sealed_mail(subject, ident, payload, key_id)
+        raw = _mail_form(subject, ident, payload, key_id, data)
     except ValueError as e:
         note("gate", "unsignable", _short(e))
         return "refused"
+    opts = _mail_opts(data)
     base = tempfile.mkdtemp(prefix="hp-bluemonday-v2-")
     try:
         secrets = R.build_secrets(cfg)
-        opts = types.SimpleNamespace(dry_run=False, no_send=False)
         seen = {}
         outs = []
+        logbook = _MailLog(base)
         for attempt in (1, 2):
             imap, smtp = _FakeImap(), _FakeSmtp()
-            with mock.patch.object(R, "log", lambda *a, **k: None), \
-                    mock.patch.object(R, "vlog", lambda *a, **k: None):
+            with mock.patch.object(R, "log", logbook.log), \
+                    mock.patch.object(R, "vlog", logbook.vlog):
                 got, exc = _call(HA.handle_v2_mail, cfg, imap, smtp, attempt,
                                  raw, subject, secrets, opts, base, seen)
             if exc is not None:
@@ -2371,12 +2458,19 @@ def check_v2_mail(entry):
             if got is not True:
                 raise Crash("contract", f"handle_v2_mail answered {got!r} "
                             "for a version 2 subject")
-            if len(imap.marked) != 1:
+            if len(imap.marked) != (0 if opts.dry_run else 1):
                 raise Crash("contract", "the message was marked "
-                            f"{len(imap.marked)} times")
+                            f"{len(imap.marked)} times under dry "
+                            f"{opts.dry_run}")
             if len(smtp.sent) > 1:
                 raise Crash("contract", f"{len(smtp.sent)} replies went out")
+            if smtp.sent and (opts.dry_run or opts.no_send):
+                raise Crash("contract", "a reply went out under dry or "
+                            "no_send")
             outs.append(smtp.sent[0] if smtp.sent else None)
+        logbook.note()
+        if opts.dry_run and seen:
+            raise Crash("contract", "a dry run recorded the message")
         first, again = outs
         if again is not None:
             raise Crash("contract", "a copy of the message was answered "
@@ -4701,6 +4795,15 @@ def seeds_query():
         entry("key_id_in_body", q=query(key_id="ops")),
         entry("key_id_mismatch", q=query(key_id="ops"), key_id="canary-key"),
         entry("runner_id_in_body", q=query(runner_id="bm-runner")),
+        # The operator's flags and the message's form: a dry run acks
+        # nothing and records nothing; no_send acts and sends nothing;
+        # a signed but unsealed query is refused as cleartext.
+        entry("dry_run", dry=True),
+        entry("no_send", no_send=True),
+        entry("dry_no_send", dry=True, no_send=True),
+        entry("cleartext", cleartext=True),
+        entry("cleartext_keyed", cleartext=True, key_id="ops"),
+        entry("dry_no_record", rec=None, dry=True),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
@@ -4853,6 +4956,20 @@ def seeds_board_mail():
               submit(key_id="ops"), key_id="canary-key"),
         entry("sig_member", "task_submit", "bm-task-0001",
               submit(sig="0" * 96)),
+        # The operator's flags and the message's form.
+        entry("submit_dry", "task_submit", "bm-task-0001", submit(), dry=True),
+        entry("submit_no_send", "task_submit", "bm-task-0001", submit(),
+              no_send=True),
+        entry("request_dry", "task_request", "worker-a", request(),
+              file=_board_file(open_task), dry=True),
+        entry("request_no_send", "task_request", "worker-a", request(),
+              file=_board_file(open_task), no_send=True),
+        entry("result_no_send", "task_result", "bm-task-0001", result(),
+              file=_board_file(claimed), no_send=True),
+        entry("submit_cleartext", "task_submit", "bm-task-0001", submit(),
+              cleartext=True),
+        entry("request_cleartext", "task_request", "worker-a", request(),
+              file=_board_file(open_task), cleartext=True),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
@@ -4959,6 +5076,17 @@ def seeds_v2_mail():
         entry("payload_empty", "question", "q.bm-job-0001", {}),
         entry("ident_long", "question", "q" * 200, q(msg_id="q" * 200)),
         entry("ident_dot", "question", ".", q(msg_id=".")),
+        # The operator's flags and the message's form.
+        entry("question_dry", "question", "q.bm-job-0001", q(), dry=True),
+        entry("question_no_send", "question", "q.bm-job-0001", q(),
+              no_send=True),
+        entry("answer_dry", "answer", "a.q.bm-job-0001", a(), dry=True),
+        entry("determination_dry", "determination", "d.bm-job-0001", d(),
+              dry=True),
+        entry("question_cleartext", "question", "q.bm-job-0001", q(),
+              cleartext=True),
+        entry("answer_cleartext", "answer", "a.q.bm-job-0001", a(),
+              cleartext=True),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 

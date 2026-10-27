@@ -4,6 +4,35 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.64 - 2026-10-27
+
+- **A dry run spends nothing and moves nothing (Q87).** The CLI
+  promises `--dry-run` executes nothing, sends nothing and changes
+  nothing; the job path and the version 2 handler kept it, two
+  readers did not. A query under a dry run took a slot of the
+  sender's hourly window and wrote the query's cost into the
+  retained record; a board message under a dry run re-offered,
+  submitted, offered, completed and approved on the board, wrote
+  the board file and sent its ack or offer. `check_rate_limit`
+  takes `peek` (the same answer, no slot taken, nothing written);
+  `handle_query_mail` under a dry run peeks, answers into the log
+  and leaves the record as it was; `handle_board_mail` under a dry
+  run verifies the message, logs what it would do and returns
+  without touching the board or sending. Found by blueMonday's
+  `query` and `board_mail` targets on their first seeds under the
+  operator's flags. `runner/tests/test_dry_run_changes_nothing.py`.
+- **The three mail targets read the operator's flags and the
+  message's form.** A `query`, `board_mail` or `v2_mail` entry may
+  name `dry`, `no_send` and `cleartext` (a signed body with no
+  envelope); the checkers hold a dry run to no reply, no mark,
+  nothing recorded, the window file absent, the record unchanged
+  and the board still, and a `no_send` run to no reply; the log
+  lines of a run and the security events it wrote are recorded
+  with the entry's notes, so a mutant of a log text or a flag
+  branch is a detection, not a survivor. Each target carries the
+  flag and form seeds.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.63 - 2026-10-26
 
 - **blueMonday's seventeenth target, `board_mail`.** One board

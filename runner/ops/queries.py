@@ -93,10 +93,16 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
             with R._MAIL_LOCK:
                 seen[seen_key] = True
         return True
+    # A dry run verifies and answers in the log only: it takes no
+    # slot of the hourly window and spends no budget of the retained
+    # record (--dry-run: execute nothing, send nothing, change
+    # nothing). It still says when the sender would be over the cap.
+    dry = bool(opts is not None and getattr(opts, "dry_run", False))
     # "" is the default secret. Do not replace it with query_id or each
     # query gets its own bucket and the cap never trips. PROTOCOL section 11
     # is per sender.
-    if not _runner().check_rate_limit(key_id, cfg, os.path.join(base_dir, "query_times.json")):
+    if not _runner().check_rate_limit(
+            key_id, cfg, os.path.join(base_dir, "query_times.json"), peek=dry):
         R.log(f"query rate limit exceeded seq {seq}", "WARN")
         finish({
             "v": _runner().PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
@@ -157,9 +163,10 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                     "job_id": job_id, "rejected": "query_error", "answers": [],
                 }
             else:
-                retained["spent"] = spent
-                retained["saved_at"] = retained.get("saved_at") or time.time()
-                _runner().save_retained(base_dir, job_id, retained)
+                if not dry:
+                    retained["spent"] = spent
+                    retained["saved_at"] = retained.get("saved_at") or time.time()
+                    _runner().save_retained(base_dir, job_id, retained)
                 remaining = budget - spent
                 if remaining < 0:
                     remaining = 0
