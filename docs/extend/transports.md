@@ -216,6 +216,13 @@ Runner config:
                      "token_env": "HP_RUNNER_TOKEN"}
 ```
 
+`token_env` is for a runner started from a shell that exports the
+variable. A runner installed as a system service gets no such
+environment, so it carries the token itself as `"token": "..."` in
+the same block (the config file is 0600 and already holds the
+shared secret). When both are set, a non-empty `token_env` variable
+wins and an empty one falls back to `token`.
+
 Why it fits so well it feels designed for this (the notes that led
 here; what ships is the contract above, and where a note below
 says "queue", the shipped pipe is the Worker's Durable Object):

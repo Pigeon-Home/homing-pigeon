@@ -35,9 +35,15 @@ command; the design is `docs/project/hosting.md`.
   ```json
   {"transports": ["queues"],
    "transport_queues": {"url": "https://hp.example.workers.dev/t/you",
-                        "token_env": "HP_RUNNER_TOKEN"},
+                        "token": "the runner token"},
    "workspace_root": "/data/work"}
   ```
+
+  The runner token goes in the blob as `token`. The machine runs
+  the runner as a system service, which sets no environment of
+  its own, so `token_env` would name a variable that is empty
+  there. The blob is written 0600 and already carries the shared
+  secret, so the token sits with the other secret it travels with.
 
   Leave `shared_secret` out and one is generated and printed once.
   A blob may carry only the keys in `install.CONFIG_BLOB_KEYS`:
