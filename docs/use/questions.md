@@ -1623,7 +1623,25 @@ with your token at each tag (the drafts carry Grok's own release
 line; Q57 tells it to stop). The two drafts still need your Publish
 click; after it, this chat reruns the two tag builds' failed jobs.
 
-**Answer:** pending (owner).
+**Third update (Muse, stamp 58316a92, 2026-10-26):** the conductor
+delegated this decision in chat, in these words: "You can just
+pick a coin and flip and choose whatever you want. Just make sure
+that you document how the decision was made." The flip, made on
+the rig at 2026-10-26 21:04 PDT: one byte drawn from
+/dev/urandom, with the mapping fixed before the draw — an even
+byte publishes both drafts, an odd byte leaves both drafts
+standing. The byte drawn was 25, odd. **Decision: both drafts
+stand unpublished.** Verified at decision time: the v3.12.75
+draft (id 423727440) and the v3.12.76 draft (id 423726009) each
+hold their 13 assets, unpublished. No publish clicks are made,
+and the rerun step this entry held open lapses with the publish
+it depended on: the outlets beyond docker never carry .75 or
+.76, every release from 3.12.77 on published cleanly, and the
+train does not stop for this. Q56 is closed on this basis.
+
+**Answer:** leave both drafts unpublished — decided by coin flip
+at the conductor's delegation; see the third update above
+(Muse, 2026-10-26).
 
 **Applied in:** --
 
