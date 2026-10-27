@@ -76,6 +76,14 @@ homing-pigeon-host up --provider digitalocean --token-env DO_TOKEN \
 prints the machine key, its address and the shared secret. Hand the
 secret to your SI the way you always have.
 
+With the hosted queue, the SI sends and reads through it:
+
+```bash
+export HP_SI_TOKEN=...   # the SI token, never on the command line
+python3 runner/cloud/send_job.py new --kind ping --to-queue https://hp.example.workers.dev/t/you
+python3 runner/cloud/send_job.py results --from-queue https://hp.example.workers.dev/t/you --ack
+```
+
 ## Afterwards
 
 ```bash

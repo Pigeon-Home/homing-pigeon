@@ -14,6 +14,12 @@ facts a reader may need to cite. Git history carries the rest.
   Oracle's action log exists.
 - **The v2 draft states its replay rule as built:** the
   receiver holds `issued_at` to the job window.
+- **The SI reads its results from the hosted queue.** `send_job.py
+  results --from-queue URL` verifies each waiting result, opens an
+  encrypted one under the job id in its subject, prints one JSON line
+  per result, and with `--ack` removes only what verified. The
+  own-cloud page shows the send and the read, and says where a
+  system-service runner keeps its queue token.
 
 ## 3.14.3 - 2026-10-27
 

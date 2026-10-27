@@ -182,6 +182,12 @@ one we'd recommend to anyone who winces at the word "email."
 - `send_job.py new --to-queue <url>` — the SI side. The SI token is
   read from `HP_SI_TOKEN` (or `--queue-token-env NAME`), never from
   the command line.
+- `send_job.py results --from-queue <url>` — the SI reads its results
+  back: one JSON line per result, verified and, when encrypted, opened
+  under the job id in its subject. `--ack` removes a result only after
+  it verified; one that does not verify stays on the queue. Exit 0 when
+  every result verified or none was waiting, 1 when any did not, 2 when
+  the queue refused the read.
 
 **The contract** (every route under `/t/<tenant>/`, every call with
 `Authorization: Bearer <token>`; the envelope is the file transport's
@@ -252,7 +258,8 @@ says "queue", the shipped pipe is the Worker's Durable Object):
 The shape of it: one Durable Object per tenant with a `/jobs` side
 and a `/results` side. The SI's `send_job --to-queue` posts a
 signed envelope to `/jobs`. The runner leases it, executes, posts
-the signed result to `/results`. The SI polls that. Everything
+the signed result to `/results`. The SI reads it with
+`send_job results --from-queue`. Everything
 else — the JSON, the signatures, the Oracle, the two-phase
 exchange — is byte-identical. You could run email and the queue
 *side by side* during migration and the protocol wouldn't notice.

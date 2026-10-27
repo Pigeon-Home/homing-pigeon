@@ -10,6 +10,7 @@ import http.server
 import json
 import os
 import sys
+import secrets
 import tempfile
 import threading
 import unittest
@@ -33,6 +34,7 @@ class FakeWorkerState:
         self.leased = set()
         self.acked = []
         self.results = {}
+        self.results_acked = []
         self.calls = []
         self.fail_results = 0  # next N result posts answer 503
 
@@ -58,6 +60,8 @@ def make_handler(state):
 
         def do_GET(self):
             state.calls.append(("GET", self.path))
+            if self.path.startswith("/t/alice/results"):
+                return self._si_results()
             if not self.path.startswith("/t/alice/jobs"):
                 return self._send(404)
             if not self._auth(RUNNER_TOKEN):
@@ -71,6 +75,15 @@ def make_handler(state):
                 state.leased.add(i)
                 out.append({"id": i, "envelope": e})
             return self._send(200, json.dumps({"jobs": out}).encode())
+
+        def _si_results(self):
+            if not self._auth(SI_TOKEN):
+                return self._send(401)
+            if not state.results:
+                return self._send(204)
+            out = [{"id": i, "envelope": e}
+                   for i, e in list(state.results.items())[:20]]
+            return self._send(200, json.dumps({"results": out}).encode())
 
         def do_POST(self):
             n = int(self.headers.get("Content-Length") or 0)
@@ -93,6 +106,14 @@ def make_handler(state):
                 had = state.jobs.pop(jid, None)
                 state.leased.discard(jid)
                 state.acked.append(jid)
+                return self._send(204 if had else 404)
+            if self.path.startswith("/t/alice/results/") and \
+                    self.path.endswith("/ack"):
+                if not self._auth(SI_TOKEN):
+                    return self._send(401)
+                rid = self.path.split("/")[4]
+                had = state.results.pop(rid, None)
+                state.results_acked.append(rid)
                 return self._send(204 if had else 404)
             if self.path == "/t/alice/results":
                 if not self._auth(RUNNER_TOKEN):
@@ -316,6 +337,99 @@ class SendJobToQueueTest(unittest.TestCase):
             jid, env = next(iter(w.state.jobs.items()))
             self.assertIn(f"[HOMING-PIGEON] job {jid}", env)
             self.assertIn('"hp_enc"', env)
+
+
+
+class SendJobResultsTest(unittest.TestCase):
+    """`send_job.py results`: the SI's half of the loop, read back."""
+
+    SECRET = secrets.token_hex(32)
+
+    def _signed_result(self, job_id, secret=None, encrypt=True):
+        secret = secret or self.SECRET
+        payload = {"v": 1, "type": "result", "job_id": job_id,
+                   "exit_code": 0, "stdout": "pong\n"}
+        body = send_job.sign_payload(payload, secret)
+        if encrypt:
+            body = send_job.jobcrypto.encrypt_body(
+                body, secret, job_id=job_id, key_id="",
+                sign=send_job.sign_payload)
+        return f"[HOMING-PIGEON] result {job_id}\n\n{body}\n"
+
+    def _run(self, w, *extra):
+        import io
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest import mock
+        out, err = io.StringIO(), io.StringIO()
+        argv = ["send_job", "results", "--from-queue", w.url,
+                "--secret", self.SECRET] + list(extra)
+        os.environ["HP_SI_TOKEN"] = SI_TOKEN
+        try:
+            with mock.patch.object(sys, "argv", argv), \
+                    redirect_stdout(out), redirect_stderr(err):
+                rc = send_job.main()
+        finally:
+            del os.environ["HP_SI_TOKEN"]
+        lines = [json.loads(l) for l in out.getvalue().splitlines() if l]
+        return rc, lines, err.getvalue()
+
+    def test_an_encrypted_result_is_opened_under_its_subject_job_id(self):
+        with FakeWorker() as w:
+            w.state.results["j1"] = self._signed_result("j1")
+            rc, lines, err = self._run(w)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lines), 1)
+        self.assertTrue(lines[0]["ok"])
+        self.assertEqual(lines[0]["job_id"], "j1")
+        self.assertEqual(lines[0]["payload"]["stdout"], "pong\n")
+        self.assertNotIn("acked", lines[0])
+        self.assertIn("j1", w.state.results)   # no --ack, still queued
+
+    def test_ack_removes_only_what_verified(self):
+        with FakeWorker() as w:
+            w.state.results["good"] = self._signed_result("good")
+            w.state.results["bad"] = self._signed_result("bad",
+                                                         secret=secrets.token_hex(32))
+            rc, lines, _err = self._run(w, "--ack")
+        self.assertEqual(rc, 1)
+        by = {l["id"]: l for l in lines}
+        self.assertTrue(by["good"]["ok"])
+        self.assertTrue(by["good"]["acked"])
+        self.assertFalse(by["bad"]["ok"])
+        self.assertNotIn("acked", by["bad"])
+        self.assertEqual(w.state.results_acked, ["good"])
+        self.assertIn("bad", w.state.results)
+
+    def test_a_cleartext_result_verifies_and_an_empty_queue_is_zero(self):
+        with FakeWorker() as w:
+            rc, lines, err = self._run(w)
+            self.assertEqual((rc, lines), (0, []))
+            self.assertIn("no results waiting", err)
+            w.state.results["c1"] = self._signed_result("c1", encrypt=False)
+            rc, lines, _err = self._run(w)
+        self.assertEqual(rc, 0)
+        self.assertEqual(lines[0]["payload"]["exit_code"], 0)
+
+    def test_a_refused_read_is_two_and_the_token_never_leaves_the_env(self):
+        with FakeWorker() as w:
+            import io
+            from contextlib import redirect_stderr, redirect_stdout
+            from unittest import mock
+            argv = ["send_job", "results", "--from-queue", w.url,
+                    "--secret", self.SECRET, "--queue-token-env", "HP_WRONG"]
+            os.environ["HP_WRONG"] = "not-the-token"
+            try:
+                with mock.patch.object(sys, "argv", argv), \
+                        redirect_stdout(io.StringIO()), \
+                        redirect_stderr(io.StringIO()):
+                    rc = send_job.main()
+            finally:
+                del os.environ["HP_WRONG"]
+        self.assertEqual(rc, 2)
+        os.environ.pop("HP_SI_TOKEN", None)
+        with self.assertRaises(SystemExit):
+            send_job._queue_call("https://q.example.test/t/a", "GET",
+                                 "/results")
 
 
 if __name__ == "__main__":

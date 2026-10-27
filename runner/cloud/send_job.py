@@ -632,37 +632,43 @@ def _named_key_in(text: str):
     return kid if isinstance(kid, str) else None
 
 
-def cmd_verify(args) -> int:
-    text = open(args.file, encoding="utf-8").read() if args.file else sys.stdin.read()
-    if not args.secret:
-        # The body names its key; the keyring supplies the secret.
+def _open_body(text, args, job_id=None):
+    """Verify one signed body and, when it is an encryption envelope,
+    decrypt it under `job_id` and verify the inside. Returns the
+    payload; raises ValueError naming what failed. With no --secret
+    the keyring supplies the secret for the key the body names."""
+    secret = args.secret
+    if not secret:
         kid = args.key_id if args.key_id is not None else _named_key_in(text)
         if kid is None:
-            print("INVALID: no --secret given and the body names no key_id "
-                  "to look up in the keyring", file=sys.stderr)
-            return 1
+            raise ValueError("no --secret given and the body names no "
+                             "key_id to look up in the keyring")
+        saved = args.key_id
         try:
             args.key_id = kid
-            args.secret = secret_for(args)
-        except ValueError as e:
-            print(f"INVALID: {e}", file=sys.stderr)
-            return 1
+            secret = secret_for(args)
+        finally:
+            args.key_id = saved
+    payload = verify_body(text, secret)
+    if jobcrypto.is_envelope(payload):
+        # The envelope's signature has just verified. Decryption
+        # needs the job_id, which lives in the message subject, not
+        # the envelope.
+        if not job_id:
+            raise ValueError("body is an encryption envelope; pass "
+                             "--job-id <id> (from the subject) to "
+                             "decrypt it")
+        inner = jobcrypto.decrypt_body(
+            payload, secret, job_id=job_id,
+            key_id=payload.get("key_id") or "")
+        payload = verify_body(inner, secret)
+    return payload
+
+
+def cmd_verify(args) -> int:
+    text = open(args.file, encoding="utf-8").read() if args.file else sys.stdin.read()
     try:
-        payload = verify_body(text, args.secret)
-        if jobcrypto.is_envelope(payload):
-            # An encrypted result (or job): the envelope's
-            # signature has just verified. Decryption needs the
-            # job_id, which lives in the message subject, not the
-            # envelope -- hence --job-id.
-            if not args.job_id:
-                print("INVALID: body is an encryption envelope; "
-                      "pass --job-id <id> (from the subject) to "
-                      "decrypt it", file=sys.stderr)
-                return 1
-            inner = jobcrypto.decrypt_body(
-                payload, args.secret, job_id=args.job_id,
-                key_id=payload.get("key_id") or "")
-            payload = verify_body(inner, args.secret)
+        payload = _open_body(text, args, args.job_id)
     except ValueError as e:
         print(f"INVALID: {e}", file=sys.stderr)
         return 1
@@ -671,6 +677,100 @@ def cmd_verify(args) -> int:
         print(line, file=sys.stderr)
     print(json.dumps(payload, indent=2, ensure_ascii=False))
     return 0
+
+
+def _queue_call(url, method, path, token_env=None, opener=None):
+    """One SI call to a tenant's hosted queue: (status, text). The SI
+    token comes from the environment, never the command line."""
+    import os as _os
+    import urllib.error
+    import urllib.request
+    name = token_env or "HP_SI_TOKEN"
+    token = _os.environ.get(name)
+    if not token:
+        raise SystemExit(f"error: the queue needs the SI token in "
+                         f"environment variable {name}")
+    if not isinstance(url, str) or not (
+            url.startswith("https://") or url.startswith("http://127.0.0.1")
+            or url.startswith("http://localhost")):
+        raise SystemExit("error: the queue URL must be https "
+                         "(loopback http is allowed for tests)")
+    req = urllib.request.Request(
+        url.rstrip("/") + path, method=method,
+        data=b"" if method == "POST" else None,
+        headers={"Authorization": f"Bearer {token}",
+                 "User-Agent": "homing-pigeon-send-job"})
+    opener = opener or urllib.request.urlopen
+    try:
+        with opener(req, timeout=30) as resp:
+            return resp.status, resp.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        try:
+            text = e.read().decode("utf-8", "replace")
+        except Exception:
+            text = ""
+        return e.code, text
+
+
+def _result_job_id(subject):
+    """The job id a result subject names: the word after `result`
+    (or `qresult`), as the Worker reads it. None otherwise."""
+    words = subject.split() if isinstance(subject, str) else []
+    for i, w in enumerate(words[:-1]):
+        if w in ("result", "qresult"):
+            return words[i + 1]
+    return None
+
+
+def cmd_results(args, opener=None) -> int:
+    """Read results from a hosted queue: one JSON line per result on
+    stdout, verified (and decrypted under the job id in its subject).
+    --ack removes a result from the queue only after it verified; a
+    result that does not verify stays, so it can be looked at again.
+    Exit 0 when every result verified (or none was waiting), 1 when
+    any did not, 2 when the queue refused the read."""
+    max_n = max(1, min(int(args.max or 20), 100))
+    status, text = _queue_call(args.from_queue, "GET",
+                               f"/results?max={max_n}",
+                               args.queue_token_env, opener)
+    if status == 204:
+        print("no results waiting", file=sys.stderr)
+        return 0
+    if status != 200:
+        print(f"error: the queue answered {status}: {text[:200]}",
+              file=sys.stderr)
+        return 2
+    try:
+        items = json.loads(text).get("results") or []
+    except (ValueError, AttributeError):
+        print("error: the queue's answer is not a results list",
+              file=sys.stderr)
+        return 2
+    bad = 0
+    for item in items:
+        rid = item.get("id") if isinstance(item, dict) else None
+        envelope = item.get("envelope") if isinstance(item, dict) else None
+        line = {"id": rid}
+        try:
+            if not isinstance(envelope, str):
+                raise ValueError("the result carries no envelope")
+            subject, _, body = normalize(envelope).partition("\n\n")
+            line["job_id"] = _result_job_id(subject)
+            payload = _open_body(body, args, line["job_id"])
+            line["ok"] = True
+            line["payload"] = payload
+        except ValueError as e:
+            bad += 1
+            line["ok"] = False
+            line["error"] = str(e)
+        if line["ok"] and args.ack and isinstance(rid, str):
+            from urllib.parse import quote
+            st, _t = _queue_call(args.from_queue, "POST",
+                                 f"/results/{quote(rid, safe='')}/ack",
+                                 args.queue_token_env, opener)
+            line["acked"] = st in (200, 204, 404)
+        print(json.dumps(line, ensure_ascii=False))
+    return 1 if bad else 0
 
 
 
@@ -891,6 +991,30 @@ def main() -> int:
     v.add_argument("file", nargs="?", default=None, metavar="PATH",
                    help="file to read (default: stdin)")
     v.set_defaults(func=cmd_verify)
+
+    rs = sub.add_parser(
+        "results", help="read and verify results from a hosted queue",
+        description="Read the results waiting on a hosted queue, verify "
+                    "each (decrypting under the job id in its subject), "
+                    "and print one JSON line per result. The SI token "
+                    "is read from the environment.")
+    rs.add_argument("--from-queue", required=True, metavar="URL",
+                    help="the tenant's queue base, e.g. "
+                         "https://hp.example.workers.dev/t/you")
+    rs.add_argument("--queue-token-env", default=None, metavar="NAME",
+                    help="environment variable holding the SI token "
+                         "(default HP_SI_TOKEN)")
+    rs.add_argument("--max", type=int, default=20, metavar="N",
+                    help="results to read in one call (1 to 100)")
+    rs.add_argument("--ack", action="store_true",
+                    help="remove each result from the queue once it "
+                         "verified")
+    rs.add_argument("--secret", default=None, metavar="SECRET",
+                    help="the shared secret (default: the keyring entry "
+                         "each body's key_id names)")
+    rs.add_argument("--key-id", default=None, metavar="KEY_ID")
+    rs.add_argument("--keyring", default=None, metavar="PATH")
+    rs.set_defaults(func=cmd_results)
 
     k = sub.add_parser(
         "key-id", help="print the name a secret carries by default",
