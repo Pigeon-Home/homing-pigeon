@@ -4,6 +4,32 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.5 - 2026-10-27
+
+- **Files in the job and files back in the result.** A `files[]`
+  entry may carry its bytes inline (`content_b64`, strict base64,
+  covered by the signature, counted against `max_job_bytes`), so a
+  patch ships with the job that applies it. `outputs` names up to 8
+  files under the workdir that come home once the script finishes,
+  under one `max_output_file_bytes` budget (default 1 MiB): the bytes
+  under the `full` view, name, size and SHA-384 under `redacted` and
+  `summary`, nothing under `attested`. A symlink out of the workdir,
+  a directory or a file swapped while read is named, never followed.
+  `send_job.py new --inline-file NAME=PATH --output NAME`; `verify
+  --outputs-dir DIR` writes them out, each checked against its digest
+  (PROTOCOL.md sections 3.1, 3.2 and 6; `runner/tests/test_job_files.py`).
+- **The stamp audit.** `runner/tools/stamp_audit.py` and the
+  `stamp-audit` workflow hold every commit's stamp to
+  `docs/archive/RESEARCHER_IDENT.md` over the whole history: from
+  2026-10-27T23:00Z one stamp signs from one session, a session signs
+  as one stamp, and a recycled or unregistered stamp signs nothing
+  (AGENTS.md rule 10; baseline in `docs/reports/stamp-audit/`).
+- **A running job's queue lease is renewed each pass**, so a long job
+  is no longer dead-lettered while it runs.
+- **Claims audits** of the README, SECURITY.md, INSTALL.md and
+  PROTOCOL.md against the code; Q98 carries the code-side findings.
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
 ## 3.14.4 - 2026-10-27
 
 - **Docs match the code again.** `send_job.py --keyring` and the
