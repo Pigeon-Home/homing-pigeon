@@ -8,19 +8,25 @@ name: coverage
 # coverage-gaps.md, docs/use/questions.md Q11 on). Signal, not a gate:
 # it never blocks a build or a release. The gaps report is uploaded
 # per platform and its ten largest gaps are annotated on the run.
+#
+# On a schedule, not on push (the conductor, 2026-10-27): with a
+# push landing every few minutes, the one run GitHub keeps pending
+# per group was replaced before it started, and the map completed
+# on about one commit in five. Every quarter hour it measures the
+# tip of main as it stands, and a dispatch measures it now.
 on:
-  push:
-    branches: [main]
+  schedule:
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions: {}
 
-# One run at a time per ref, the newest push waiting behind it (as
-# build.yml). Without a group every push queued its own run: with
-# the campaign pushing a test a minute, 20 of these sat queued on
-# 2026-10-25 and held the runner slots cut-release needed.
+# One run at a time, the next tick waiting behind it. Without a
+# group every push queued its own run: with the campaign pushing a
+# test a minute, 20 of these sat queued on 2026-10-25 and held the
+# runner slots cut-release needed.
 concurrency:
-  group: coverage-${{ github.ref }}
+  group: coverage
   cancel-in-progress: false
 
 jobs:

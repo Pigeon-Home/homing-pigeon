@@ -165,11 +165,12 @@ Each with who holds it.
   pre-creation, both pending since 2026-10-25.
 - **The FreeBSD leg, 40000e00:** nine runs, nine failures at the VM
   step. The row in `testing.md` says so until it is green.
-- **Coverage cadence, the conductor's call:** `coverage.yml` and
-  `python-range.yml` keep one pending run per group and pushes land
-  every few minutes, so the coverage run completes on about one
-  commit in five. Either is fine; it is a choice between a figure
-  per commit and a figure per quarter hour.
+- **Coverage cadence, decided (the conductor, 2026-10-27):**
+  `coverage.yml` runs every quarter hour and on dispatch instead of
+  on every push, since the one pending run per group was replaced
+  by the next push before it started and the map completed on about
+  one commit in five. `python-range.yml` stays on push: a failure
+  there is a signal per commit, and it completes often enough.
 - **The hardened systemd unit, decided (the conductor, 2026-10-27):**
   `RestrictNamespaces` names the five namespaces bwrap needs, so the
   unit and the confinement feature work together. The strict value
