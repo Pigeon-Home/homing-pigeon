@@ -206,7 +206,8 @@ the existing one. The next vocabulary with leverage is a
 dictionary built from the IETF draft's own grammar (`docs/ietf/`):
 every literal, every member name, every enumerated value, every
 boundary the draft states, as insertion tokens and as JSON values.
-That is phase 4 below.
+That dictionary is in the mutators (Q72), and the drafts' own
+examples are seeds.
 
 ## 6. Roles
 
@@ -225,9 +226,9 @@ That is phase 4 below.
 - **Grok** built the DTLS target (Q66), the board target (Q67),
   the channel target (Q68) and the manifest target (Q69), put
   the sequence contract on `local` (Q70), and the cross-platform
-  replay (Q71), and reviews the plan when the conductor asks;
-  its reads go under a Q and are applied by the desk or
-  recorded with the reason.
+  replay (Q71), and the grammar dictionary (Q72), and reviews
+  the plan when the conductor asks; its reads go under a Q and
+  are applied by the desk or recorded with the reason.
 - **The conductor** decides what is not in this file: a new
   surface outside the readers, a second rig, the release of a
   finding's details.
@@ -282,8 +283,11 @@ nothing is still the record that those rounds were run.
   The corpus replays the same under the simulated Windows
   surface (Q71): every committed entry agrees. A reader that
   reads differently there is a differential of its own.
-- **Phase 4:** the grammar dictionary from the IETF draft; seeds
-  from the draft's own examples; a grow of every target under it.
+- **Phase 4 (in flight, 2026-10-26):** the grammar dictionary
+  from `docs/ietf/` is in the mutators, and the drafts' own
+  examples are seeds (Q72). A grow of every target under that
+  vocabulary is the record. Still to come: a grow that has run
+  long enough to call the vocabulary saturated.
 - **Phase 5:** live captures, scrubbed to invented names, as seeds
   (the conductor decides what is captured); the mutation survivors
   on the readers.

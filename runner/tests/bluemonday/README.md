@@ -8,7 +8,9 @@ One JSON-lines file per target, grown by
 `docs/use/questions.md`; section M of the standing orders).
 `platform` reads every entry again under the simulated Windows
 surface; a changed answer is a differential (Q71). The surface
-does not swap in `ntpath`.
+does not swap in `ntpath`. The mutators also insert the IETF
+drafts' own member names and boundaries, and the drafts'
+examples are seeds (Q72).
 
 | file           | reader held to its contract                                   |
 |----------------|---------------------------------------------------------------|

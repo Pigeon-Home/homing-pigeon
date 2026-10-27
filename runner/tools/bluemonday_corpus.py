@@ -1443,6 +1443,17 @@ def _payload_seeds():
         ("reply_to_unicode", _job(reply_to="öps@example.com")),
         ("reply_to_not_text", _job(reply_to=["ops@example.com"])),
         ("reply_to_mailbox", _job(reply_to="runner@example.com")),
+        # The version 1 draft's job (Section 11), invented ids, and
+        # the identifier boundaries its ABNF states: 128, 129, ".", "..".
+        ("draft_exec", _job(
+            job_id="bm-draft-0001", script="date\n", timeout_sec=60,
+            key_id="", reply_to="submitter@example.com",
+            runner_id="bm-runner",
+            script_sha384="f" * 96)),
+        ("draft_job_id_cap", _job(job_id="d" * 128)),
+        ("draft_job_id_over", _job(job_id="d" * 129)),
+        ("draft_job_id_dot", _job(job_id=".")),
+        ("draft_job_id_dotdot", _job(job_id="..")),
     ]
 
 
@@ -1485,6 +1496,11 @@ def _text_bodies():
         ("empty", ""),
         ("bom", "﻿" + exec_body),
         ("wrong_secret", V.sign_payload(_job(), WRONG)),
+        # The draft's subject: a decoration word, then job, then the id.
+        ("draft_subject",
+         "[HOMING-PIGEON] TEST job bm-draft-0001\n\n"
+         + V.sign_payload(_job(job_id="bm-draft-0001", script="date\n"),
+                          SECRET)),
     ]
     return out
 
@@ -1515,6 +1531,31 @@ def seeds_v2():
     d = _v2("determination")
     d["expect"] = "unknown"
     out.append(("expect_unknown", d))
+    # The version 2 draft's own examples and the caps it states:
+    # why 500, deadline 30, local_default 64.
+    d = _v2("determination")
+    d.update({"job_id": "bm-draft-0017", "msg_id": "d.bm-draft-0017",
+              "expect": "fail",
+              "why": "the script references /srv/example/missing"})
+    out.append(("draft_determination", d))
+    d = _v2("determination")
+    d["why"] = "w" * 500
+    out.append(("draft_why_cap", d))
+    d = _v2("determination")
+    d["why"] = "w" * 501
+    out.append(("draft_why_over", d))
+    q = _v2("question")
+    q.update({"job_id": "bm-draft-0017", "msg_id": "q.bm-draft-0017",
+              "deadline_sec": 15,
+              "question": "Would this job succeed on this host?",
+              "local_default": "proceed"})
+    out.append(("draft_question", q))
+    q = _v2("question")
+    q["deadline_sec"] = 31
+    out.append(("draft_deadline_over", q))
+    q = _v2("question")
+    q["local_default"] = "p" * 65
+    out.append(("draft_default_over", q))
     out += [("v1", {"v": 1, "type": "answer"}), ("empty", {}),
             ("list", []), ("string", "answer"), ("none", None),
             ("number", 2)]
@@ -2746,6 +2787,16 @@ _DICT = ['"sig":"', ',"sig":"', '"key_id":', '"hp_enc":', '"v":', '"type":',
          '\ud800', '́', 'Z', '"2026-10-26T12:00:00Z"', '"sensor":',
          '"canary"', '"canary-key"', '"ops"', '"severity":', '"high"',
          '"title":', '"script":', '"expect":', '"question":', '"answer":']
+# The IETF drafts' own literals (docs/ietf/, Q72): member names,
+# enumerated values, and the subject marker, as insertion tokens.
+# A token already in the list above is not repeated.
+_DICT.extend([
+    '"reply_to":', '"runner_id":', '"timeout_sec":', '"script_url":',
+    '"script_sha384":', '"stdout":', '"stderr":', '"exit_code":',
+    '"kind":"ping"', '"kind":"exec"', '"type":"result"',
+    '"type":"determination"', "[HOMING-PIGEON] TEST job ",
+    "[HOMING-PIGEON] result ",
+])
 _HEX = "0123456789abcdef"
 _SIG_TAIL = 98
 
@@ -3137,14 +3188,24 @@ _VALUES = [None, True, False, 0, -1, 1, 2 ** 31, 2 ** 63, 2 ** 64, -2 ** 63,
            "proceed", "2026-10-26T12:00:00Z", "2026-10-26T12:00:00",
            "2026-13-01T00:00:00Z", "\u0000", "\ud800", "﻿", " ",
            "a" * 65, "a" * 129, "b" * 4000, "../x", ".", "..", "x/y",
-           [], {}, [None], {"": ""}, [[]], {"a": {"b": {"c": []}}}, "@now"]
+           [], {}, [None], {"": ""}, [[]], {"a": {"b": {"c": []}}}, "@now",
+           # Draft enumerations and the boundaries the drafts state:
+           # job-id 128, sig and script_sha384 96 hex, why 500, deadline 30.
+           "exec", "ping", "result", "fail", "unknown", "determination",
+           "submitter@example.com", "d" * 128, "f" * 96, "f" * 95,
+           "w" * 500, "w" * 501, 30, 31, 60]
 _KEYS = ["v", "type", "job_id", "msg_id", "issued_at", "kind", "key_id",
          "sig", "hp_enc", "alg", "nonce", "ct", "sensor", "severity",
          "title", "signal", "detail", "observed_at", "api_version",
          "script", "shell", "expect", "why", "clean_pass", "question",
          "deadline_sec", "local_default", "context", "question_id",
          "answer", "text", "", " ", "Key_Id", "KEY_ID", "kéy",
-         "\u0000", "a" * 200]
+         "\u0000", "a" * 200,
+         "reply_to", "runner_id", "timeout_sec", "script_url",
+         "script_sha384", "stdout", "stderr", "exit_code", "timed_out",
+         "completed_at", "duration_sec", "stdout_truncated",
+         "stderr_truncated", "interpreter", "args", "env", "files",
+         "sha384", "url", "name", "runner", "oracle_opinion"]
 
 
 def _depth(value, d=0):

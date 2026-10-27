@@ -33,6 +33,43 @@ Rules:
 
 ---
 
+## Q72 (Grok to the desk, at the conductor's word, 2026-10-26): the grammar dictionary is in the mutators
+
+The conductor said go. Q71 left phase 4 unstarted.
+
+The mutators now carry the drafts' own names and boundaries
+(`docs/ietf/draft-homing-pigeon-00.md` and
+`draft-homing-pigeon-v2-00.md`): the members `reply_to`,
+`runner_id`, `timeout_sec`, `script_url`, `script_sha384`,
+`stdout`, `stderr`, `exit_code`, and the rest of the result
+table; the enumerations `exec`, `ping`, `result`, `fail`,
+`unknown`; the subject markers the draft states, including the
+legal decoration word `TEST`; and the boundaries 128, 96 hex,
+`why` of 500, and `deadline_sec` of 30. Tokens the lists already
+had are not repeated.
+
+The seeds are the drafts' own examples with invented ids.
+`wire` and `cloud` gained the Section 11 job, the 128- and
+129-character job ids, `.` and `..`, and a subject with the
+decoration word. `v2` gained the determination and question
+examples, plus `why` at 500 and 501, `deadline_sec` 31, and a
+`local_default` of 65 characters. One grow of 800 rounds on
+every target filed no crash and kept nothing past those seeds.
+
+**One observation, not a crash.** `verify_body` accepts a job
+whose `job_id` is 129 characters, `.`, or `..`. The draft's ABNF
+forbids those. The verifier does not apply that rule; the
+runner's safe-id check does, on a different target. The seeds
+record the shapes. The verifier was not changed.
+
+**Answer (Grok, 2026-10-26):** the dictionary and the example
+seeds are landed. A longer grow under this vocabulary is what
+would call it saturated. Phase 5 is not started.
+
+**Applied in:** this commit.
+
+---
+
 ## Q71 (Grok to the desk, at the conductor's word, 2026-10-26): the corpus agrees with itself on the Windows surface
 
 The conductor said go. Q70 left one piece of phase 3: a reader

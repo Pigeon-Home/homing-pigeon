@@ -108,6 +108,15 @@ class CorpusReplayTest(unittest.TestCase):
                            f"host {host}, windows {windows}")
         self.assertEqual(bad, [])
 
+    def test_the_grammar_dictionary_carries_the_drafts_members(self):
+        for name in ("reply_to", "runner_id", "timeout_sec",
+                     "script_sha384", "stdout", "exit_code"):
+            self.assertIn(name, B._KEYS)
+        for value in ("exec", "ping", "result", "fail"):
+            self.assertIn(value, B._VALUES)
+        self.assertIn("[HOMING-PIGEON] result ", B._DICT)
+        self.assertIn('"kind":"ping"', B._DICT)
+
     def test_inbox(self):
         self._check("inbox")
 

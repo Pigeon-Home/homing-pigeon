@@ -131,6 +131,20 @@ facts a reader may need to cite. Git history carries the rest.
   is a differential. The first replay agreed on all fourteen
   targets. `platform` runs it; the suite replays it on the
   Linux leg.
+- **blueMonday's grammar dictionary (Q72).** The mutators now
+  insert the IETF drafts' own member names, enumerated values,
+  and boundaries (`docs/ietf/`): `reply_to`, `runner_id`,
+  `timeout_sec`, `script_sha384`, `stdout`, `exit_code`, `exec`,
+  `ping`, `result`, a 128-character job id, 96 hex digits, a
+  500-character `why`, deadline 30 and 31, and the subject
+  markers `[HOMING-PIGEON] TEST job` and `[HOMING-PIGEON] result`.
+  The drafts' own examples are seeds, with invented ids: six on
+  `wire` and `cloud`, six on `v2`. One grow of 800 rounds on
+  every target filed no crash and kept nothing past those seeds.
+  The verifier accepts a 129-character job id and `.` and `..`;
+  the draft's identifier rule is the runner's safe-id check, not
+  this verifier's refusal, so those seeds are recorded as
+  accepted and the verifier was not changed.
 - **A repeated object is written twice.** `_json_safe` (the signer's
   and the board's JSON walk) treated an object that merely appears
   twice -- under two keys, or twice in a list -- as a cycle and
