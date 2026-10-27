@@ -20,6 +20,10 @@ facts a reader may need to cite. Git history carries the rest.
   per result, and with `--ack` removes only what verified. The
   own-cloud page shows the send and the read, and says where a
   system-service runner keeps its queue token.
+- **A long job keeps its queue lease.** The runner renews the lease
+  of every job it is still running on each pass (`POST
+  /jobs/<id>/lease`), so a build longer than the 5-minute lease is
+  neither offered again nor dead-lettered after five lease lengths.
 
 ## 3.14.3 - 2026-10-27
 

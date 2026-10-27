@@ -32,6 +32,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(
@@ -122,6 +123,14 @@ class QueueClient:
         status, _ = self._request("POST", f"/jobs/{ident}/ack")
         return status in (200, 204, 404)
 
+    def renew(self, ident):
+        """Renew the lease on a job this runner is still running. True
+        when the queue renewed it; False when it no longer holds the
+        job under a lease (acked, or the lease already lapsed)."""
+        status, _ = self._request(
+            "POST", f"/jobs/{urllib.parse.quote(ident, safe='')}/lease")
+        return status in (200, 204)
+
     def post_result(self, envelope_text):
         status, payload = self._request(
             "POST", "/results", envelope_text.encode("utf-8"),
@@ -161,6 +170,18 @@ class QueuePipe:
         # A malformed envelope will never verify; take it off the
         # queue so it does not come back every lease.
         self.client.ack(ident)
+
+    def renew_leases(self):
+        """A job still running keeps its lease, so a build longer than
+        the lease is neither offered again nor dead-lettered."""
+        for ident in list(self._pending):
+            try:
+                if not self.client.renew(ident):
+                    ch.log(f"queues transport: {ident}: lease not renewed "
+                           f"(the queue no longer holds it leased)", "WARN")
+            except (RuntimeError, OSError) as e:
+                ch.log(f"queues transport: {ident}: lease renewal failed: "
+                       f"{e}", "WARN")
 
     def pull_jobs(self):
         for ident, text in self.client.pull(self.max_jobs):
@@ -235,6 +256,7 @@ def main(argv=None, opener=None, passes=None):
     done = 0
     while passes is None or done < passes:
         try:
+            pipe.renew_leases()
             pipe.pull_jobs()
             pipe.push_results()
         except Exception as e:  # the pipe must not die on one pass

@@ -35,6 +35,7 @@ class FakeWorkerState:
         self.acked = []
         self.results = {}
         self.results_acked = []
+        self.renewed = []
         self.calls = []
         self.fail_results = 0  # next N result posts answer 503
 
@@ -98,6 +99,13 @@ def make_handler(state):
                 jid = q._job_id(parsed[0])
                 state.jobs[jid] = body
                 return self._send(202, json.dumps({"id": jid}).encode())
+            if self.path.startswith("/t/alice/jobs/") and \
+                    self.path.endswith("/lease"):
+                if not self._auth(RUNNER_TOKEN):
+                    return self._send(401)
+                jid = self.path.split("/")[4]
+                state.renewed.append(jid)
+                return self._send(204 if jid in state.leased else 404)
             if self.path.startswith("/t/alice/jobs/") and \
                     self.path.endswith("/ack"):
                 if not self._auth(RUNNER_TOKEN):
@@ -226,6 +234,33 @@ class QueuePipeTest(unittest.TestCase):
             self.assertEqual(sorted(os.listdir(
                 ch.dirs(self.channel)["inbox"])),
                 ["done", "j2.job.txt"])
+
+    def test_a_running_job_keeps_its_lease_until_its_result_is_in(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.renew_leases()               # nothing held yet
+            self.assertEqual(w.state.renewed, [])
+            pipe.pull_jobs()
+            pipe.renew_leases()               # running: renewed
+            pipe.renew_leases()
+            self.assertEqual(w.state.renewed, ["j1", "j1"])
+            self._core_answers("j1", "j1")
+            pipe.push_results()
+            pipe.renew_leases()               # finished: no renewal
+            self.assertEqual(w.state.renewed, ["j1", "j1"])
+            self.assertEqual(w.state.acked, ["j1"])
+
+    def test_a_lease_the_queue_no_longer_holds_is_logged_not_fatal(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            w.state.leased.discard("j1")     # the lease lapsed
+            pipe.renew_leases()
+            self.assertEqual(w.state.renewed, ["j1"])
 
     def test_a_rejected_job_is_acked_without_a_result(self):
         with FakeWorker() as w:

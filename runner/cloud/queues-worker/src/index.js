@@ -5,6 +5,7 @@
 // Roles and routes (every route is /t/<tenant>/...):
 //   SI      POST /jobs            signed job envelope in  (Bearer SI token)
 //   runner  GET  /jobs?max=N      lease up to N jobs      (Bearer runner token)
+//   runner  POST /jobs/<id>/lease renew a lease it holds   (a long job)
 //   runner  POST /jobs/<id>/ack   job finished
 //   runner  POST /results         result envelope in
 //   SI      GET  /results?max=N   results out
@@ -125,14 +126,23 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/health") return json(200, { ok: true });
-    const m = url.pathname.match(/^\/t\/([^/]+)\/(jobs|results)(?:\/([^/]+)\/ack)?\/?$/);
+    const m = url.pathname.match(/^\/t\/([^/]+)\/(jobs|results)(?:\/([^/]+)\/(ack|lease))?\/?$/);
     if (!m) return json(404, { error: "no such route" });
-    const [, slug, kind, ackId] = m;
+    const [, slug, kind, itemId, verb] = m;
+    const ackId = verb === "ack" ? itemId : undefined;
+    const leaseId = verb === "lease" ? itemId : undefined;
+    if (leaseId && kind !== "jobs") return json(404, { error: "no such route" });
     const tenant = await loadTenant(env, slug);
     if (!tenant) return json(404, { error: "unknown tenant" });
     const stub = env.TENANT_QUEUE.get(env.TENANT_QUEUE.idFromName(slug));
     const forward = (path, init) => stub.fetch(new Request("https://do" + path, init));
 
+    if (kind === "jobs" && request.method === "POST" && leaseId) {
+      // The runner still holds a job it is running: renew its lease
+      // so a long job is not offered again or dead-lettered.
+      if (!(await bearerMatches(request, tenant.runner_token_sha256))) return json(401, { error: "runner token" });
+      return forward(`/renew?id=${encodeURIComponent(leaseId)}`, { method: "POST" });
+    }
     if (kind === "jobs" && request.method === "POST" && !ackId) {
       // SI submits a job.
       if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
@@ -243,6 +253,15 @@ export class TenantQueue {
         out.push({ id: job.id, envelope: job.envelope, attempt: job.attempts });
       }
       return out.length ? json(200, { jobs: out }) : new Response(null, { status: 204 });
+    }
+    if (url.pathname === "/renew") {
+      const id = url.searchParams.get("id");
+      const job = await s.get(`job:${id}`);
+      if (!job || !(job.leased_until > now)) return new Response(null, { status: 404 });
+      const lease = parseInt(this.env.LEASE_MS || "", 10) || LEASE_MS_DEFAULT;
+      job.leased_until = now + lease;
+      await s.put(`job:${id}`, job);
+      return new Response(null, { status: 204 });
     }
     if (url.pathname === "/ack") {
       const id = url.searchParams.get("id");

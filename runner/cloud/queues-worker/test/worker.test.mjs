@@ -226,3 +226,30 @@ test("single-tenant env fallback works without KV", async () => {
   assert.equal((await worker.fetch(req("/t/solo/jobs", { method: "POST", token: SI, body: await signedJob("j1") }), env)).status, 202);
   assert.equal((await worker.fetch(req("/t/other/jobs", { method: "POST", token: SI, body: await signedJob("j1") }), env)).status, 404);
 });
+
+test("a running job's lease is renewed: never re-offered, never dead-lettered", async () => {
+  let now = 1_000_000;
+  const env = makeEnv({ lease: 1000, clock: () => now });
+  await addTenant(env);
+  await worker.fetch(req("/t/alice/jobs", { method: "POST", token: SI, body: await signedJob("long") }), env);
+  let r = await worker.fetch(req("/t/alice/jobs", { token: RUNNER }), env);
+  assert.equal(r.status, 200);
+  // Ten lease lengths of running, renewed each half lease.
+  for (let i = 0; i < 20; i++) {
+    now += 500;
+    r = await worker.fetch(req("/t/alice/jobs/long/lease", { method: "POST", token: RUNNER }), env);
+    assert.equal(r.status, 204, `renewal ${i}`);
+    r = await worker.fetch(req("/t/alice/jobs", { token: RUNNER }), env);
+    assert.equal(r.status, 204, `offered again at renewal ${i}`);
+  }
+  const storage = env.objects.get("alice").state.storage;
+  assert.equal(storage.map.get("job:long").attempts, 1);
+  assert.ok(!storage.map.has("dlq:long"));
+  // The SI token cannot renew; a lapsed or unknown lease is 404.
+  assert.equal((await worker.fetch(req("/t/alice/jobs/long/lease", { method: "POST", token: SI }), env)).status, 401);
+  assert.equal((await worker.fetch(req("/t/alice/jobs/nope/lease", { method: "POST", token: RUNNER }), env)).status, 404);
+  now += 5000;
+  assert.equal((await worker.fetch(req("/t/alice/jobs/long/lease", { method: "POST", token: RUNNER }), env)).status, 404);
+  // Results have no lease route.
+  assert.equal((await worker.fetch(req("/t/alice/results/long/lease", { method: "POST", token: RUNNER }), env)).status, 404);
+});
