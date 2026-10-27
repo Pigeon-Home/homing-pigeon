@@ -30,6 +30,7 @@ too (Q74). The capture's own bytes are not.
 | `manifest.jsonl` | `runner/ops/extensions.py` (Q69): `parse_manifest` on one extension.json object. `ValueError` is the refusal. A manifest it accepts is read back with the defaults filled, and the caller's objects are left alone |
 | `inbox.jsonl`  | `runner/wire/transports.py`, the sequence kind: a whole inbox as a peer or a crash left it (files, links, directories, in their names) read by `fetch_channel_messages` and serviced by `service_channel` with the core's side in one of five shapes, a known-good envelope beside them |
 | `local_inbox.jsonl` | `runner/runner.py`, the sequence kind: the local signal inbox as a peer or a crash left it, scanned once by `_scan_local_inbox`; each `.json` entry handled once and removed either way, the store holding exactly what the ingests filed, a known-good alert beside them |
+| `secret.jsonl` | `runner/cloud/send_job.py` and `runner/guard/security.py`: one candidate shared secret before the sender's `require_signable_secret` and the runner's `validate_shared_secret`, the two held in step (both refuse naming the same fault, or both accept; one entropy estimate) |
 
 The first line of each file is a header; every other line is one
 entry: `id` (a hash of the kind and the data), `kind` (`text`, a
@@ -207,4 +208,6 @@ nothing. The manifest reader refuses with `ValueError` and
 nothing else; the channel reader and the service pass never
 raise. A raise of any other type, or a `ValueError` escaping
 `local`, `stash`, `mail`, `dtls`, `board`, `board_ops`,
-`channels`, `inbox` or `local_inbox`, is a crash.
+`channels`, `inbox` or `local_inbox`, is a crash. The secret rules
+refuse with `ValueError` (the sender's) and `RuntimeError` (the
+runner's), and a disagreement between the two is a crash.

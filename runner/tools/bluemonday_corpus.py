@@ -49,6 +49,10 @@ delivered body and the agent's trust in it:
                                          inbox of files, links and dirs
                                          as a peer left them, the core's
                                          side in five shapes
+    secret   runner/cloud/send_job.py    require_signable_secret and
+             runner/guard/security.py    validate_shared_secret on one
+                                         candidate secret: the sender's
+                                         rule and the runner's agree
     local_inbox  runner/runner.py        _scan_local_inbox over a whole
                                          local inbox as a peer left it:
                                          each .json read once, filed or
@@ -117,6 +121,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from runner.cloud import send_job as SJ  # noqa: E402
+from runner.guard import security as SEC  # noqa: E402
 from runner.guard import textutil as TU  # noqa: E402
 from runner.ops import extensions as EX  # noqa: E402
 from runner.ops.extensions import build_sensor_alert  # noqa: E402
@@ -369,6 +374,8 @@ def _provenance(job):
         raise Crash("provenance", f"the result is addressed to {msg['To']!r}")
     if len(str(msg["Subject"]).splitlines()) > 1:
         raise Crash("provenance", "the result subject spans lines")
+    note("reply_to", target, msg["From"], msg["To"], msg["Subject"],
+         _digest(msg.get_content()))
     # Any text in the subject slot, the unsafe id included, is sent
     # on one line rather than dropped.
     smtp = _FakeSmtp()
@@ -1393,6 +1400,47 @@ def _local_inbox_sequence(spec):
         shutil.rmtree(base, ignore_errors=True)
 
 
+def check_secret(entry):
+    """secret: one candidate shared secret, as text, before the two
+    strength rules that must stay in step (send_job.py's comment):
+    the sender's require_signable_secret refuses with ValueError and
+    nothing else, the runner's validate_shared_secret with
+    RuntimeError and nothing else, and the two agree -- both refuse,
+    naming the same fault, or both accept; the two entropy estimates
+    are one number."""
+    secret = entry["data"]
+    sender, sexc = _call(SJ.require_signable_secret, secret)
+    if sexc is not None:
+        _expect_refusal(sexc, ValueError, "require_signable_secret")
+    runner_, rexc = _call(SEC.validate_shared_secret, secret)
+    if rexc is not None:
+        _expect_refusal(rexc, RuntimeError, "validate_shared_secret")
+    if (sexc is None) != (rexc is None):
+        raise Crash("agreement", "the sender and the runner disagree on "
+                    f"the secret: {_short(sexc or rexc)}")
+    if sexc is not None:
+        fault = [_fault(str(sexc)), _fault(str(rexc))]
+        if fault[0] != fault[1]:
+            raise Crash("agreement", "the sender and the runner refuse the "
+                        f"secret for different faults: {fault}")
+    bits = (_call(SJ._estimate_secret_entropy, secret)[0],
+            _call(SEC._estimate_secret_entropy, secret)[0])
+    if bits[0] != bits[1]:
+        raise Crash("agreement", f"the two entropy estimates differ: {bits}")
+    note("bits", round(bits[0] or 0.0, 3))
+    return "accepted" if sexc is None else "refused"
+
+
+def _fault(message):
+    """The fault a refusal names, without the hint that follows it:
+    'placeholder', 'repeats', 'bits', or 'required'."""
+    text = message.lower()
+    for word in ("placeholder", "repeats", "bits", "required"):
+        if word in text:
+            return word
+    return text[:60]
+
+
 # ------------------------------------------------------------------
 # Seeds: suite-style fixtures, invented names only
 # ------------------------------------------------------------------
@@ -1469,6 +1517,8 @@ def _payload_seeds():
         ("reply_to_header_line", _job(reply_to="ops@example.com\nBcc: x@example.com")),
         ("reply_to_no_tld", _job(reply_to="ops@example")),
         ("reply_to_long", _job(reply_to="o" * 250 + "@example.com")),
+        ("reply_to_254", _job(reply_to="o" * 242 + "@example.com")),
+        ("reply_to_255", _job(reply_to="o" * 243 + "@example.com")),
         ("reply_to_unicode", _job(reply_to="öps@example.com")),
         ("reply_to_not_text", _job(reply_to=["ops@example.com"])),
         ("reply_to_mailbox", _job(reply_to="runner@example.com")),
@@ -1535,6 +1585,30 @@ def _text_bodies():
         ("short_tail", exec_body[:-10] + "\"}"),
         ("pretty", json.dumps(_job(), indent=2)),
         ("empty", ""),
+        # The survivors' lines (section 8, step 5): the marker at
+        # the very start, the tail one short and one long, a tail
+        # closed by the wrong character, a sig of 95 hex and one
+        # with a non-hex digit, an empty object signed (the opener
+        # is the character before the marker), a brace-balanced
+        # candidate that is not JSON (the walk's first candidate
+        # is handed on), an object closed twice, a nested object
+        # before the marker, a tab in a string, a control
+        # character in a string.
+        ("marker_first", ',"sig":"' + "0" * 96 + '"}'),
+        ("tail_97", exec_body[:-1]),
+        ("tail_99", exec_body + "}"),
+        ("tail_bracket", exec_body[:-1] + "]"),
+        ("sig_95", exec_body[:-98] + exec_body[-97:]),
+        ("sig_not_hex", exec_body[:-98] + "g" + exec_body[-97:]),
+        ("empty_object_signed", V.sign_payload({}, SECRET)),
+        ("one_member_signed", V.sign_payload({"x": 1}, SECRET)),
+        ("walk_not_json", '{"v": 1, "x": ,"sig":"' + "0" * 96 + '"}'),
+        ("closed_twice", exec_body[:-98] + "}" + exec_body[-98:]),
+        ("nested_before_marker",
+         V.sign_payload(_job(detail={"inner": {"deep": {}}}), SECRET)),
+        ("tab_in_string", V.sign_payload(_job(script="a\tb"), SECRET)),
+        ("control_in_string",
+         exec_body.replace('"script"', '"scr\x01ipt"', 1)),
         ("bom", "﻿" + exec_body),
         ("wrong_secret", V.sign_payload(_job(), WRONG)),
         # The draft's subject: a decoration word, then job, then the id.
@@ -2906,6 +2980,41 @@ def seeds_local_inbox():
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
+def seeds_secret():
+    hexes = "0123456789abcdef"
+    out = [
+        ("hex_64", SECRET),
+        ("hex_32", SECRET[:32]),              # 128 bits by the estimate
+        ("hex_31", SECRET[:31]),              # just under
+        ("hex_33", SECRET[:33]),
+        ("one_char", "a"),
+        ("two_chars", "ab"),
+        ("repeat_unit", "abcd" * 16),
+        ("repeat_unit_cut", ("abcd" * 17)[:66]),
+        ("almost_repeat", "abcd" * 15 + "abce"),
+        ("placeholder", "please-generate-a-real-secret-here-0123456789"),
+        ("placeholder_case", "CHANGEME" + hexes * 4),
+        ("todo_inside", hexes * 2 + "todo" + hexes * 2),
+        ("xxx_inside", hexes * 2 + "xxx" + hexes * 2),
+        ("empty", ""),
+        ("spaces", " " * 64),
+        ("mixed_64", "Aa0!" * 16),
+        ("unicode_32", "\u00e9\u00e8\u00ea\u00eb" * 8),
+        ("single_alphabet", "a" * 200),
+        ("binary_alphabet", "ab" * 64),
+        ("long_low_alphabet", "abc" * 100),
+        ("hex_upper", SECRET.upper()),
+        ("with_newline", SECRET[:40] + "\n" + SECRET[40:]),
+        ("tab_and_space", SECRET[:20] + "\t " + SECRET[22:]),
+        ("palindrome", "abcdefgh" + "hgfedcba" + "abcdefgh" + "hgfedcba"),
+        # 30 characters over 19 symbols: 127.4 bits by the estimate,
+        # the one value between the floor and the floor less one.
+        ("bits_127", "abcdefghijklmnopqrs" + "kjihgfedcba"),
+        ("bits_128_mixed", "abcdefghijklmnopqrstuvwxyz0123456"),
+    ]
+    return [make_entry("text", t, "seed:" + n, "seed") for n, t in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -3883,6 +3992,9 @@ TARGETS = {
     "local_inbox": {"files": [_src("runner.py"), _src("ops", "policy.py"),
                               _src("oracle", "senses.py")],
                     "check": check_local_inbox, "seeds": seeds_local_inbox},
+    "secret": {"files": [_src("cloud", "send_job.py"),
+                         _src("guard", "security.py")],
+               "check": check_secret, "seeds": seeds_secret},
 }
 
 

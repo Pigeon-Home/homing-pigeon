@@ -123,6 +123,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_local_inbox(self):
         self._check("local_inbox")
 
+    def test_secret(self):
+        self._check("secret")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes
@@ -333,6 +336,7 @@ class ToolTest(unittest.TestCase):
                               ("channels", B.seeds_channels()),
                               ("inbox", B.seeds_inbox()),
                               ("local_inbox", B.seeds_local_inbox()),
+                              ("secret", B.seeds_secret()),
                               ("manifest", B.seeds_manifest())):
             for _ in range(150):
                 parent = rng.choice(seeds)

@@ -31,6 +31,26 @@ facts a reader may need to cite. Git history carries the rest.
   deadline floor and each cap at itself and one past it, the
   version in every wrong type, a sent clean pass, a non-UTC
   `issued_at`.
+- **The survivors' first seeds, and a thirteenth target.** The
+  verifier's survivors named their seeds and got them: the marker
+  at the very start of a body, the tail one short and one long, a
+  tail closed by the wrong character, a 95-digit signature and one
+  with a non-hex digit, an empty object signed, a one-member
+  object signed, a brace-balanced candidate that is not JSON, an
+  object closed twice, a tab and a control character inside a
+  string; `reply_to` at exactly 254 and 255 characters; and the
+  provenance arm notes the message it sends (from, to, subject,
+  content). The signer's secret-strength rule was reached but
+  never exercised, so `secret` is a target of its own: one
+  candidate secret before the sender's `require_signable_secret`
+  and the runner's `validate_shared_secret`, the two held in step
+  as `send_job.py`'s own comment asks -- both refuse naming the
+  same fault or both accept, and the two entropy estimates are one
+  number -- with seeds at the 128-bit floor, one just under it
+  (30 characters over 19 symbols), the repeating units, the
+  placeholders, and the alphabets of one and two. Second survivors
+  run: 1,928 mutants over ten readers, 147 survivors (171 before);
+  the mailbox reader keeps one, the verifier fourteen.
 - **blueMonday's live mutators, one grow (Q75).** A steered grow
   of 20,000 rounds on the four mutators `stats` still called
   live. `dtls` kept two (`d_random_byte`, arcs 290 to 295).
