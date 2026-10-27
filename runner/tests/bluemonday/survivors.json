@@ -2,108 +2,24 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "alarm": true,
  "bluemonday": 1,
- "head": "2642bb025923",
+ "head": "a94dfbd3a6b7",
  "kind": "survivors",
  "limit": null,
  "modules": {
   "board": {
    "broken": 0,
-   "entries": 62,
+   "entries": 71,
    "file": "runner/wire/board.py",
-   "killed": 256,
-   "mutants": 274,
-   "reached_lines": 254,
-   "survived": 18,
+   "killed": 270,
+   "mutants": 275,
+   "reached_lines": 255,
+   "survived": 5,
    "survivors": [
-    {
-     "index": 1,
-     "line": 67,
-     "op": "compare",
-     "text": "if _LOGGER is not None:",
-     "verdict": "survived"
-    },
     {
      "index": 13,
      "line": 105,
      "op": "boolop",
      "text": "if not isinstance(path, str) or not path:",
-     "verdict": "survived"
-    },
-    {
-     "index": 63,
-     "line": 55,
-     "op": "boolop",
-     "text": "_LOGGER = (log_fn or _noop, vlog_fn or _noop) if log_fn else None",
-     "verdict": "survived"
-    },
-    {
-     "index": 65,
-     "line": 78,
-     "op": "int+1",
-     "text": "_runner_logger()[0](msg, level)",
-     "verdict": "survived"
-    },
-    {
-     "index": 66,
-     "line": 78,
-     "op": "int-1",
-     "text": "_runner_logger()[0](msg, level)",
-     "verdict": "survived"
-    },
-    {
-     "index": 68,
-     "line": 82,
-     "op": "int-1",
-     "text": "_runner_logger()[1](msg, level)",
-     "verdict": "survived"
-    },
-    {
-     "index": 99,
-     "line": 262,
-     "op": "str-empty",
-     "text": "dag_mode = cfg.get(\"dag_mode\") or \"off\"",
-     "verdict": "survived"
-    },
-    {
-     "index": 162,
-     "line": 208,
-     "op": "bool",
-     "text": "blocked = True",
-     "verdict": "survived"
-    },
-    {
-     "index": 178,
-     "line": 311,
-     "op": "int+1",
-     "text": "priority = task.get(\"priority\", 0)",
-     "verdict": "survived"
-    },
-    {
-     "index": 179,
-     "line": 311,
-     "op": "int-1",
-     "text": "priority = task.get(\"priority\", 0)",
-     "verdict": "survived"
-    },
-    {
-     "index": 182,
-     "line": 313,
-     "op": "int-1",
-     "text": "priority = 0",
-     "verdict": "survived"
-    },
-    {
-     "index": 185,
-     "line": 330,
-     "op": "str-empty",
-     "text": "elif \"dag_warning\" in chosen:",
-     "verdict": "survived"
-    },
-    {
-     "index": 208,
-     "line": 402,
-     "op": "int-1",
-     "text": "task_timeout = _confval.number(task_timeout, 86400, lo=0)",
      "verdict": "survived"
     },
     {
@@ -132,13 +48,6 @@
      "line": 152,
      "op": "bool",
      "text": "indent=2, allow_nan=False)",
-     "verdict": "survived"
-    },
-    {
-     "index": 259,
-     "line": 317,
-     "op": "str-empty",
-     "text": "return (-priority, _as_str(task.get(\"submitted_at\")))",
      "verdict": "survived"
     }
    ],
@@ -389,7 +298,7 @@
   },
   "mailbox": {
    "broken": 0,
-   "entries": 155,
+   "entries": 165,
    "file": "runner/wire/mailbox.py",
    "killed": 18,
    "mutants": 19,
@@ -412,32 +321,18 @@
   },
   "protocol_v2": {
    "broken": 0,
-   "entries": 56,
+   "entries": 68,
    "file": "runner/wire/protocol_v2.py",
-   "killed": 89,
+   "killed": 91,
    "mutants": 92,
    "reached_lines": 50,
-   "survived": 3,
+   "survived": 1,
    "survivors": [
     {
      "index": 0,
      "line": 95,
      "op": "return-none",
      "text": "return value",
-     "verdict": "survived"
-    },
-    {
-     "index": 20,
-     "line": 282,
-     "op": "str-empty",
-     "text": "_safe_id(obj.get(\"msg_id\"), \"msg_id\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 70,
-     "line": 314,
-     "op": "str-empty",
-     "text": "_safe_id(obj.get(\"question_id\"), \"question_id\")",
      "verdict": "survived"
     }
    ],
@@ -457,28 +352,28 @@
    "survivors": [
     {
      "index": 1,
-     "line": 120,
+     "line": 121,
      "op": "boolop",
      "text": "if not isinstance(secret, str) or not secret:",
      "verdict": "survived"
     },
     {
      "index": 3,
-     "line": 123,
+     "line": 124,
      "op": "compare",
      "text": "if alphabet <= 1:",
      "verdict": "survived"
     },
     {
      "index": 16,
-     "line": 123,
+     "line": 124,
      "op": "int-1",
      "text": "if alphabet <= 1:",
      "verdict": "survived"
     },
     {
      "index": 37,
-     "line": 148,
+     "line": 149,
      "op": "int+1",
      "text": "if secret == (unit * ((n // period) + 1))[:n]:",
      "verdict": "survived"
@@ -491,12 +386,12 @@
   },
   "send_job": {
    "broken": 0,
-   "entries": 103,
+   "entries": 108,
    "file": "runner/cloud/send_job.py",
-   "killed": 127,
+   "killed": 131,
    "mutants": 141,
    "reached_lines": 104,
-   "survived": 14,
+   "survived": 10,
    "survivors": [
     {
      "index": 7,
@@ -510,20 +405,6 @@
      "line": 110,
      "op": "compare",
      "text": "if alphabet <= 1:",
-     "verdict": "survived"
-    },
-    {
-     "index": 28,
-     "line": 218,
-     "op": "return-none",
-     "text": "return first_walk",
-     "verdict": "survived"
-    },
-    {
-     "index": 38,
-     "line": 98,
-     "op": "str-empty",
-     "text": "return text.replace(\"\\r\\n\", \"\\n\").replace(\"\\r\", \"\\n\")",
      "verdict": "survived"
     },
     {
@@ -581,20 +462,6 @@
      "op": "int-1",
      "text": "if depth == 0:",
      "verdict": "survived"
-    },
-    {
-     "index": 136,
-     "line": 243,
-     "op": "bool",
-     "text": "return False",
-     "verdict": "survived"
-    },
-    {
-     "index": 140,
-     "line": 176,
-     "op": "int-1",
-     "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
-     "verdict": "survived"
     }
    ],
    "targets": [
@@ -605,12 +472,12 @@
   },
   "transports": {
    "broken": 0,
-   "entries": 35,
+   "entries": 40,
    "file": "runner/wire/transports.py",
-   "killed": 94,
-   "mutants": 112,
-   "reached_lines": 162,
-   "survived": 18,
+   "killed": 106,
+   "mutants": 114,
+   "reached_lines": 167,
+   "survived": 7,
    "survivors": [
     {
      "index": 5,
@@ -627,45 +494,17 @@
      "verdict": "survived"
     },
     {
-     "index": 33,
-     "line": 382,
-     "op": "str-empty",
-     "text": "rid = re.sub(r\"[^A-Za-z0-9._-]\", \"_\", rid)",
-     "verdict": "survived"
-    },
-    {
-     "index": 34,
-     "line": 388,
-     "op": "int+1",
-     "text": "n += 1",
-     "verdict": "survived"
-    },
-    {
      "index": 35,
      "line": 388,
      "op": "int-1",
      "text": "n += 1",
-     "verdict": "survived"
-    },
-    {
-     "index": 37,
-     "line": 391,
-     "op": "str-empty",
-     "text": "text += \"\\n\"",
-     "verdict": "survived"
+     "verdict": "timeout"
     },
     {
      "index": 46,
      "line": 515,
      "op": "return-none",
      "text": "return True",
-     "verdict": "survived"
-    },
-    {
-     "index": 48,
-     "line": 585,
-     "op": "boolop",
-     "text": "if not consume and callable(requeue):",
      "verdict": "survived"
     },
     {
@@ -690,52 +529,10 @@
      "verdict": "survived"
     },
     {
-     "index": 63,
-     "line": 515,
-     "op": "bool",
-     "text": "return True",
-     "verdict": "survived"
-    },
-    {
-     "index": 68,
+     "index": 69,
      "line": 592,
      "op": "bool",
      "text": "acked = True",
-     "verdict": "survived"
-    },
-    {
-     "index": 69,
-     "line": 599,
-     "op": "boolop",
-     "text": "if acked is False and callable(rollback):",
-     "verdict": "survived"
-    },
-    {
-     "index": 74,
-     "line": 390,
-     "op": "str-empty",
-     "text": "if body and not body.endswith(\"\\n\"):",
-     "verdict": "survived"
-    },
-    {
-     "index": 82,
-     "line": 568,
-     "op": "str-empty",
-     "text": "rollback = getattr(replies, \"rollback\", None)",
-     "verdict": "survived"
-    },
-    {
-     "index": 83,
-     "line": 599,
-     "op": "compare",
-     "text": "if acked is False and callable(rollback):",
-     "verdict": "survived"
-    },
-    {
-     "index": 94,
-     "line": 599,
-     "op": "bool",
-     "text": "if acked is False and callable(rollback):",
      "verdict": "survived"
     }
    ],
@@ -743,31 +540,17 @@
     "channels",
     "inbox"
    ],
-   "timeout": 0
+   "timeout": 1
   },
   "verify": {
    "broken": 0,
-   "entries": 78,
+   "entries": 83,
    "file": "runner/wire/verify.py",
-   "killed": 131,
+   "killed": 134,
    "mutants": 142,
    "reached_lines": 119,
-   "survived": 11,
+   "survived": 8,
    "survivors": [
-    {
-     "index": 20,
-     "line": 143,
-     "op": "return-none",
-     "text": "return first_walk",
-     "verdict": "survived"
-    },
-    {
-     "index": 36,
-     "line": 58,
-     "op": "str-empty",
-     "text": "return text.replace(\"\\r\\n\", \"\\n\").replace(\"\\r\", \"\\n\")",
-     "verdict": "survived"
-    },
     {
      "index": 45,
      "line": 120,
@@ -823,13 +606,6 @@
      "op": "int-1",
      "text": "if depth == 0:",
      "verdict": "survived"
-    },
-    {
-     "index": 141,
-     "line": 91,
-     "op": "int-1",
-     "text": "if len(tail) < 98 or tail[96:98] != '\"}' or tail[:96].lower().strip(\"0123456789abcdef\") != \"\":",
-     "verdict": "survived"
     }
    ],
    "targets": [
@@ -840,7 +616,7 @@
  },
  "platform": "Linux-x86_64",
  "python": "3.12.3",
- "seconds": 121.6,
+ "seconds": 148.8,
  "seed": 0,
  "through_agent": [
   "local",
@@ -849,5 +625,5 @@
   "stash"
  ],
  "timeout": 20,
- "when": "2026-10-27T04:45:16Z"
+ "when": "2026-10-27T06:42:23Z"
 }

@@ -4263,3 +4263,38 @@ when done, the proving commit or run. Newest first.
   0, extensions 0, jobcrypto 28,
   mailbox 1, protocol_v2 3, security 4,
   send_job 14, transports 18, verify 11.
+- rules refreshed 2026-10-26 23:45 PDT
+  (standing orders incl. section M as
+  the only effort, the blueMonday plan;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules).
+  blueMonday 11: 689 entries, 2698 arcs, 0 crashes filed. A
+  full steered run on fifteen targets
+  (seed 6230, cycles to 6234, the
+  archive recording), resources on
+  target (box cpu 80%, wall 56m27s):
+  +39 entries and +20 arcs. The grow's
+  first cycle merged the desk's
+  survivor seeds into the corpora, and
+  that merge is most of the rise:
+  cloud +5, v2 +12, wire +5, board_ops
+  +9, inbox +5, local +3 entries (two
+  of local's three the grow kept
+  itself); the arcs came on board_ops
+  (+11) and inbox (+9). 915,549
+  children tried over its 60 run
+  records, all of them in the archive.
+  On the dtls arc map from grow 10's
+  bank: the rebase union restored the
+  312-arc file, and this grow's records
+  carry dtls at 309 arcs again, the
+  count the tool computes at this head.
+  The survivors run after it counts 65
+  of 1,970 mutants not killed over 10
+  readers (64 survived, 1 timeout):
+  board 5, dtlsproto 0, extensions 0,
+  jobcrypto 28, mailbox 1, protocol_v2
+  1, security 4, send_job 10,
+  transports 7 (and the timeout),
+  verify 8.
