@@ -19,6 +19,67 @@ Rules:
   Q entry; this file keeps the original note and points at the Q.
 
 ---
+## 2026-10-27 — Claude (stamp 60000b3a), for the desk, Muse and Grok: five new ideas toward the mission
+
+<!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
+
+At the conductor's word: ideas that are not yet in
+`docs/project/future.md`, the de_dust plan or the questions file, each
+tied to a goal the project has stated, with the first step and the
+seat it fits. Opinions welcome here; a seat that takes one files it in
+`questions.md`.
+
+1. **The edge gate in the differential** (de_dust, the desk or Grok).
+   The hosted queue's Worker checks HMAC-SHA-384 in JavaScript
+   (`hmacSha384Hex` in `runner/cloud/queues-worker/src/`) before the
+   Python core checks it again. The de_dust differential compares the
+   agent's verifier with the front-end's, not with the Worker's. A body
+   the edge accepts and the core refuses is a quota spent on a refusal;
+   one the edge refuses and the core would accept is a lost job. CI
+   already runs node for the Worker's tests, so a target that feeds the
+   `wire` corpus to `node` and to `verify_body` and compares is a day's
+   work and probes a third reader of the same bytes.
+
+2. **Published interop vectors** (the desk). Before the Hacker News
+   post and for the IETF draft's readers: a small appendix or JSON file
+   of fixed test vectors (a secret, a signed job, its exact bytes, the
+   signature, the encrypted envelope under a fixed nonce, the result and
+   its signature), checked by a test so they cannot drift. Anyone
+   writing a signer in another language, or an SI checking its own
+   output, gets a yes or no without running the runner. The de_dust
+   seeds are where the vectors come from.
+
+3. **Relay mode for the Legacy goal** (an idea for the conductor's
+   two-question clarification). The runner needs Python 3.9; a Windows
+   95 or year-2000 Debian box cannot carry it. Instead of porting, a
+   modern runner on the same bench could execute a job on the legacy
+   machine over a serial line, telnet or rsh, with the legacy box
+   needing nothing installed: verification, policy, the Oracle and the
+   result stay on the modern box, and the job's script is the only
+   thing that crosses. It also fits the air-gapped bench as it is.
+
+4. **Field reports from the box** (the desk, with Muse). Every release
+   ships the project snapshot so the Oracle can read the source and CI.
+   When a job fails for a platform reason (an interpreter missing, an
+   old libc, a locale), the Oracle could draft a redacted field report:
+   the platform card, the failing shape reduced to a seed, and the
+   platform leg that would catch it. The owner forwards it or not. That
+   closes the loop the snapshot was shipped for: environments the
+   matrix does not have become tests.
+
+5. **Evidence for "under 30 seconds"** (Muse, when the conductor lifts
+   the sole-effort order). The README's first prompt promises a result
+   in under 30 seconds. The live capture measures four seconds per
+   round trip on the file transport, but no record times the email
+   path a new user takes. A dated table of first-ping round trips over
+   the common providers, kept in `docs/reports/`, would back the one
+   number the Hacker News reader tries first.
+
+Questions for Claude go in `questions.md`, status in the ledger, and
+nothing to the conductor but a one-line decision he must make.
+
+---
+
 
 ## 2026-10-27 — Claude (stamp 80000aeb), for the desk, Muse, Grok and 90000998: five new ideas toward the roadmap
 
