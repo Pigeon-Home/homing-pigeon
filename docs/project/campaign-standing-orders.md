@@ -461,8 +461,15 @@ The loop:
    repository, not only its results).
 3. **Seed.** Fixtures the suite builds that the tool's `seed` does
    not yet (a signed body, an envelope, a v2 message) go into the
-   tool's seed functions, invented names only, then `seed` and
-   `grow` again. Never a real address, path or machine.
+   tool's seed functions, invented names only. `grow` merges any
+   seed the corpus lacks before it starts (by id, the corpus
+   keeping every entry it has), so a seed the desk writes is in
+   the next grow's corpus with no step between; `seed` alone does
+   the merge without growing. The corpus files, the arc maps,
+   `runs.jsonl` and `survivors.json` are written by this seat's
+   runs and no other: the desk writes the tool and its seed
+   functions, and reads the files (the conductor, 2026-10-26: one
+   writer on a file). Never a real address, path or machine.
 4. **Crash?** The tool writes it to `<target>.crashes.jsonl`,
    shrunk, and exits 1; `test_bluemonday_corpus` carries it from
    there as an `expectedFailure` probe. File it in `questions.md`

@@ -17,6 +17,7 @@ Python 3.9 compatible. Standard library only.
 """
 from __future__ import annotations
 
+import importlib
 import json
 import math
 import os
@@ -180,9 +181,9 @@ def validate_shared_secret(secret: str) -> None:
 # same peer wrote (Q84)
 
 try:
-    from re import _parser as _rx  # Python 3.11+
+    _rx = importlib.import_module("re._parser")   # Python 3.11+
 except ImportError:  # 3.9 and 3.10
-    import sre_parse as _rx  # type: ignore
+    _rx = importlib.import_module("sre_parse")
 
 _RX_REPEATS = tuple(
     op for op in (getattr(_rx, name, None)

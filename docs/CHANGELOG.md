@@ -15,12 +15,38 @@ facts a reader may need to cite. Git history carries the rest.
   Q84 carries the measurements and the worker-process question).
   `regex_backtracks` in `runner/guard/security.py`;
   `runner/tests/test_query_pattern_bound.py`.
+- **blueMonday: thirty-six survivors are seeds, and the grow merges
+  the seeds itself.** The seed functions gained the lines the
+  survivors report named (a signed text that is not JSON, a pretty
+  body with lone-CR line ends, a sig whose last digit is not hex,
+  the v2 message and question ids, three more shapes of the core's
+  side of a channel with its rollback counted, the board's log read
+  through its own seam, its ranking defaults, lease default and
+  stale warning); `grow` merges any seed the corpus lacks before it
+  starts, so the campaign's next run carries them. 65 of 1,970 on
+  the desk's run over the merged seeds, the rest named kind by kind
+  in the corpus README; the plan's section 6 carries the conductor's
+  split of the campaign's work.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 - **The DRI page's closing line names where the context is.** The
   page, `security-audit.jsonl` and `runner.log`, the three places
   that exist; the playbook's example and its note follow.
 - **The agent-stamp design's lint section describes the check as
   built.**
+- **An allowlisted key refuses `script_url` outright; `send_dtls`
+  encrypts by default; the wheel leaves tools and senses behind.**
+  `check_key_policy` under `allowed_script_sha384` passed a job that
+  carried an allowlisted script and a `script_url` the executor
+  stages first; any `script_url` is refused now, as PROTOCOL.md
+  section 14 says. `send_dtls.py`'s bare invocation sent cleartext;
+  its default is encrypt. `pyproject` excludes `runner.tools` and
+  the sense extensions from the wheel, as AGENTS.md states.
+- **Project review, four batches: the docs say what the code does.**
+  The security, design and extension docs; the root manuals,
+  `docs/use` and `docs/oracle`; the project docs and the CI
+  registry; PROTOCOL.md and the drafts -- each claim held to the
+  code it describes, dead pointers redirected, the defaults
+  registry's anchors following the lines.
 <!-- Agent-Chat-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 
 ## 3.13.59 - 2026-10-26

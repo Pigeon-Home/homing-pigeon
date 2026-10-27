@@ -28,7 +28,7 @@ too (Q74). The capture's own bytes are not.
 | `board_ops.jsonl` | `runner/wire/board.py`, the sequence kind: a board file as a peer or a crash left it, then `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order on a throwaway path, the contract held after every step |
 | `channels.jsonl` | `runner/wire/transports.py` (Q68): `fetch_channel_messages` over a throwaway directory. The entry is a pair of inbox files. A file that is not an envelope is an ack-only refusal and stores nothing; the known-good neighbor in the same directory is still a job |
 | `manifest.jsonl` | `runner/ops/extensions.py` (Q69): `parse_manifest` on one extension.json object. `ValueError` is the refusal. A manifest it accepts is read back with the defaults filled, and the caller's objects are left alone |
-| `inbox.jsonl`  | `runner/wire/transports.py`, the sequence kind: a whole inbox as a peer or a crash left it (files, links, directories, in their names) read by `fetch_channel_messages` and serviced by `service_channel` with the core's side in one of five shapes, a known-good envelope beside them |
+| `inbox.jsonl`  | `runner/wire/transports.py`, the sequence kind: a whole inbox as a peer or a crash left it (files, links, directories, in their names) read by `fetch_channel_messages` and serviced by `service_channel` with the core's side in one of nine shapes, a known-good envelope beside them |
 | `local_inbox.jsonl` | `runner/runner.py`, the sequence kind: the local signal inbox as a peer or a crash left it, scanned once by `_scan_local_inbox`; each `.json` entry handled once and removed either way, the store holding exactly what the ingests filed, a known-good alert beside them |
 | `secret.jsonl` | `runner/cloud/send_job.py` and `runner/guard/security.py`: one candidate shared secret before the sender's `require_signable_secret` and the runner's `validate_shared_secret`, the two held in step (both refuse naming the same fault, or both accept; one entropy estimate) |
 
@@ -185,21 +185,35 @@ seeds are for. Each run adds a line of kind `survivors` to
 (`local`, `stash`, `mail`, `local_inbox`) are outside the kill set
 and the report says so.
 
-What remains in `survivors.json` after the seeds the first runs
-named (101 of 1,950 at the sixth run) is, reader by reader, the
-kind of mutant no input tells apart: in the cipher, the masking
-slack of GHASH and the key schedule (a mask one bit wider, a
-shift the reflection ignores) and the HKDF counter that one block
-never reaches; in the verifiers, the walk's first candidate handed
-on where the slice from the start parses the same, the tail cap
-one short where the next check refuses anyway, and the
-serializer's flags over bodies the dictionary reads back alike;
-in the board and the channel readers, the logging plumbing, a
-return nothing reads, a guard a validated value never fails, and
-the default of an argument every caller passes. A line in that
-file is still a claim to check when a reader changes: a survivor
-that was equivalent can stop being so, and the run after the
-change says which.
+The survivors are turned into seeds by the desk, one line at a
+time (the seed functions name them: `pretty_cr`, `sig_last_not_hex`,
+`signed_not_json`, the `msg_id_*` and `question_id_*` shapes, the
+`core_bare`, `core_two` and `core_touch` inbox shapes, the
+`rank_*` and `lease_default_edge` board sequences), and the board
+sequence now records what the board logs through its own seam, so
+a line that only logs is a line the corpus reads. What remains
+after that round (the desk's own run over the seeded corpora: 65 of
+1,970, one of them a hang the replay detects as a timeout) is,
+reader by reader, the kind of mutant no input tells apart: in the
+cipher, the masking slack of GHASH and the key schedule (a mask
+one bit wider, a length field one byte shorter whose integer is
+the same, a range end past the words used, a counter byte the
+short messages never reach) and the HKDF counter that one block
+never reaches; in the verifiers, the opener search's loop bounds
+(two more starts that are never a brace), the tail cap one short
+where the next check refuses anyway, a shape check on a body the
+signer built, the serializer's flags over bodies the safe form
+already cleaned, a `False` returned as `None`, and the secret
+rules' arithmetic (`log2(1)` is zero either way, one more repeat
+of a unit that already covers the string); in the board and the
+channel readers, a return nothing reads, the key names of a paths
+table the readers here never index, the directory name the inbox
+cannot hold as a file, a flag the next line overwrites, and the
+file's indentation. A line in that file is still a claim to
+check when a reader changes: a survivor that was equivalent can
+stop being so, and the run after the change says which. The
+committed report is the campaign's last run; the campaign's next
+run over the merged seeds carries the new count.
 
 A grow is steered: it reads the last grows' records for the target
 and chooses mutators by their keep rate, a saturated one keeping a

@@ -102,7 +102,7 @@ peer on the wire reaches first.
 | 9 | `board` | `runner/wire/board.py`: `submit`, `offer`, `complete`, `approve`, `reoffer_expired` | in the corpus (Q67) |
 | 9b | `board_ops` | `runner/wire/board.py` under the sequence contract: a board file and `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order over it | in the corpus |
 | 10 | `channels` | `runner/wire/transports.py`: `fetch_channel_messages` over a throwaway directory; the entry is the pair | in the corpus (Q68) |
-| 10b | `inbox` | `runner/wire/transports.py` under the sequence contract: a whole inbox of files, links and directories through `fetch_channel_messages` and `service_channel`, the core's side in five shapes | in the corpus |
+| 10b | `inbox` | `runner/wire/transports.py` under the sequence contract: a whole inbox of files, links and directories through `fetch_channel_messages` and `service_channel`, the core's side in nine shapes | in the corpus |
 | 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | in the corpus (Q69) |
 | 12 | `local_inbox` | `runner/runner.py` under the sequence contract: the local signal inbox scanned once by `_scan_local_inbox`, the store held to the ingests | in the corpus |
 | 13 | `secret` | `runner/cloud/send_job.py` `require_signable_secret` and `runner/guard/security.py` `validate_shared_secret`: the sender's and the runner's strength rules on one candidate secret, held in step (a differential the code itself asks for) | in the corpus |
@@ -246,10 +246,19 @@ the search as well as preceding it (Muse, 2026-10-26).
   the sequence contract on `local` (Q70), and the cross-platform
   replay (Q71), and the grammar dictionary (Q72), and reviews
   the plan when the conductor asks; its reads go under a Q and
-  are applied by the desk or recorded with the reason.
+  are applied by the desk or recorded with the reason. Grok does
+  not grow, and fixes a crash only when the conductor names it
+  (the conductor, 2026-10-26).
 - **The conductor** decides what is not in this file: a new
   surface outside the readers, a second rig, the release of a
   finding's details.
+- **The split, in one line (the conductor, 2026-10-26):** Muse
+  grows and files crashes as questions; the desk fixes the reader
+  and turns survivors into seeds; one writer on a file (the
+  campaign writes the corpus files, the arc maps, `runs.jsonl`
+  and `survivors.json`; the desk writes the tool, the seed
+  functions and the readers); Muse's daily note is the top of
+  `docs/use/.com.chat`.
 
 ## 7. Cadence and records
 
@@ -303,7 +312,20 @@ not a verdict on the reader, and the response is in this order:
    re-offer, load and approve, the mailbox's subject, and the
    board's non-finite priorities (Grok, Q78 and Q79), each found
    by a seed the survivors named, a grow that moved it, and a
-   contract that caught the reader.
+   contract that caught the reader. The sixth batch (the desk,
+   2026-10-26, at the conductor's word that survivors become
+   seeds): thirty-six more lines read -- a signed text that is
+   not JSON, a pretty body with lone-CR line ends, a sig whose
+   last digit is not hex, the v2 message and question ids, three
+   more shapes of the core's side of a channel (a bare reply, two
+   replies, a rewrite under the core's hands) and the channel's
+   rollback counted, the board's log read through its own seam
+   and its ranking defaults, lease default and stale warning --
+   65 of 1,970 on the desk's run over the merged seeds, one of
+   them a hang the replay detects. The grow merges the seeds the
+   corpus lacks before it starts, so the desk's seeds reach the
+   campaign's next run with no step between; the campaign's
+   survivors run after it carries the count.
 
 The grow never idles: a saturated target still runs its share
 while the desk brings the next step, since a grow that keeps

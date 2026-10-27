@@ -59,6 +59,11 @@ Those values live on the runner host. They do not travel through the SI chat.
    question Muse files is Claude's to implement, and Muse does not
    land a code fix for its own question. Both pull before every
    change and every push, so two agents never land the same fix.
+   The conductor's split for the campaigns (2026-10-26): Muse grows
+   and files crashes as questions; the desk (`50000c8e`) fixes the
+   reader and turns survivors into seeds; one writer on a file;
+   Grok does not grow, and does not fix unless the conductor names
+   the crash; Muse's daily note is the top of `docs/use/.com.chat`.
 10. **Agent stamps (2026-10-26).** Each agent chat signs its commits
    and new files with its own stamp (`docs/archive/RESEARCHER_IDENT.md`).
    Researchers one, two and three (`10000c2a`, `200003d4`, `30000f1a`)

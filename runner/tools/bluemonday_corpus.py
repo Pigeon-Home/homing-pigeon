@@ -48,7 +48,7 @@ delivered body and the agent's trust in it:
                                          service_channel over a whole
                                          inbox of files, links and dirs
                                          as a peer left them, the core's
-                                         side in five shapes
+                                         side in nine shapes
     secret   runner/cloud/send_job.py    require_signable_secret and
              runner/guard/security.py    validate_shared_secret on one
                                          candidate secret: the sender's
@@ -921,9 +921,7 @@ def check_board_ops(entry):
     if not isinstance(spec, dict):
         raise Crash("corpus", "a board_ops entry's data must be an object")
     _StepClock._tick = 0
-    with mock.patch.object(BD, "log", lambda *a, **k: None), \
-            mock.patch.object(BD, "vlog", lambda *a, **k: None), \
-            mock.patch.object(BD, "datetime", _StepClock):
+    with mock.patch.object(BD, "datetime", _StepClock):
         return _board_sequence(spec)
 
 
@@ -946,6 +944,19 @@ class _StepClock(datetime):
 
 def _board_sequence(spec):
     base = tempfile.mkdtemp(prefix="hp-bluemonday-board-")
+    # What the board logs is part of what the sequence pins: the
+    # host's log and vlog are handed in (the board's own seam), each
+    # line recorded with the channel it took, the scratch path
+    # scrubbed so two runs read the same.
+    lines = []
+
+    def _log(msg, level="INFO"):
+        lines.append("log:%s:%s" % (level, str(msg).replace(base, "<base>")))
+
+    def _vlog(msg, level=2):
+        lines.append("vlog:%s:%s" % (level, str(msg).replace(base, "<base>")))
+
+    BD.set_logger(_log, _vlog)
     try:
         path = os.path.join(base, "board.json")
         text = spec.get("file")
@@ -1054,13 +1065,18 @@ def _board_sequence(spec):
                 # what load reads back.
                 raise Crash("roundtrip", f"the board file after {name} "
                             "does not read back as the board in memory")
+        note("log", _digest(lines))
         return "accepted" if accepted else "refused"
     finally:
+        BD.set_logger(None)
         shutil.rmtree(base, ignore_errors=True)
 
 
 _CHANNEL = "bm-chan"
-_CHANNEL_NAME_RE = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
+# The names the checker will write on every platform: a space and
+# the portable punctuation inside, so the result id's own cleaning
+# (every other character to `_`) is reached.
+_CHANNEL_NAME_RE = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._ +=@-]{0,63}\Z")
 _NEIGHBOR = "zz-neighbor.job.txt"
 _NEIGHBOR_SUBJECT = "[HOMING-PIGEON] job bm-neighbor-0001"
 _NEIGHBOR_BODY = '{"job_id": "bm-neighbor-0001", "type": "ping"}\n'
@@ -1087,55 +1103,82 @@ def check_inbox(entry):
     return _channel_sequence(spec)
 
 
-_CHANNEL_MODES = ("reply", "reply2", "raise", "none", "hold", "badreply")
+_CHANNEL_MODES = ("reply", "reply2", "raise", "none", "hold", "badreply",
+                  "bare", "two", "touch")
 
 
 class _Replies(list):
     """A processor's replies as the core returns them: a sequence
-    with `consume` and a `requeue` the channel runs when the
-    envelope is to stay for the next cycle."""
+    with `consume`, a `requeue` the channel runs when the envelope
+    is to stay for the next cycle, and a `rollback` it runs when
+    the ack fails after the replies landed (Q25). Each call is
+    counted, so a run that happens where it must not is seen."""
 
     consume = True
 
-    def __init__(self, calls, replies=()):
+    def __init__(self, calls, replies=(), rollbacks=None):
         super().__init__(replies)
         self.calls = calls
+        self.rollbacks = rollbacks if rollbacks is not None else []
 
     def requeue(self):
         self.calls.append(1)
+
+    def rollback(self):
+        self.rollbacks.append(1)
 
 
 class _Held(_Replies):
     consume = False
 
 
-def _channel_processor(mode, served, calls):
-    """The core's side of service_channel, in one of six shapes:
-    reply (a result per parsed envelope, with its target), reply2
-    (the same reply as a pair, no target), raise (every callback
-    fails), none (no replies), hold (consume off), badreply (a
-    reply whose write raises)."""
+def _channel_processor(mode, served, calls, rollbacks=None, inbox=None):
+    """The core's side of service_channel, in one of nine shapes:
+    reply (a result per parsed envelope, with its target, as the
+    core's sequence), reply2 (the same reply as a pair in a plain
+    list, no target), raise (every callback fails), none (no
+    replies), hold (consume off), badreply (a reply whose write
+    raises), bare (a reply whose body has no final newline, the
+    writer's to add), two (two replies per envelope, the second
+    without a target), touch (every inbox file is rewritten while
+    the core holds it, so every ack finds the bytes changed and
+    the channel rolls back)."""
 
     def process(subject, body):
         served.append((subject, body))
+        if mode == "touch" and inbox is not None:
+            for fname in sorted(os.listdir(inbox)):
+                path = os.path.join(inbox, fname)
+                if os.path.isfile(path) and not os.path.islink(path):
+                    with open(path, "ab") as fh:
+                        fh.write(b"\n")
         if mode == "raise":
             raise RuntimeError("the processor failed")
         if mode == "none":
             return None
         if mode == "hold":
-            return _Held(calls)
+            return _Held(calls, rollbacks=rollbacks)
         if subject == "":
             return []
         if mode == "badreply":
             # A body that is not text: the outbox writer raises on
             # it, which is the reply-did-not-land path.
-            return _Replies(calls, [(_RESULT_SUBJECT, 123)])
+            return _Replies(calls, [(_RESULT_SUBJECT, 123)], rollbacks)
         if mode == "reply2":
             return [(_RESULT_SUBJECT, _RESULT_BODY)]
+        if mode == "bare":
+            return _Replies(calls, [(_RESULT_SUBJECT,
+                                     _RESULT_BODY.rstrip("\n"))], rollbacks)
+        if mode == "two":
+            return _Replies(calls, [(_RESULT_SUBJECT, _RESULT_BODY,
+                                     _RESULT_TARGET),
+                                    (_RESULT_SUBJECT, _RESULT_BODY)],
+                            rollbacks)
         # The reply carries the job's validated reply_to as the
         # core would pass it; the channel writes it beside the
         # result and derives none of its own (provenance).
-        return [(_RESULT_SUBJECT, _RESULT_BODY, _RESULT_TARGET)]
+        return _Replies(calls, [(_RESULT_SUBJECT, _RESULT_BODY,
+                                 _RESULT_TARGET)], rollbacks)
 
     return process
 
@@ -1248,9 +1291,10 @@ def _channel_sequence(spec):
         mode = spec.get("mode")
         if mode not in _CHANNEL_MODES:
             mode = "reply"
-        served, calls = [], []
+        served, calls, rollbacks = [], [], []
         count, exc = _call(TR.service_channel, base, _CHANNEL,
-                           _channel_processor(mode, served, calls), record)
+                           _channel_processor(mode, served, calls,
+                                              rollbacks, inbox), record)
         if exc is not None:
             raise Crash("exception", "service_channel raised "
                         f"{type(exc).__name__}: {_short(exc)}")
@@ -1262,11 +1306,11 @@ def _channel_sequence(spec):
         parsed = {m.ident for m in msgs if m.subject != ""}
         if mode == "hold":
             stay = set(expected)
-        elif mode == "badreply":
+        elif mode in ("badreply", "touch"):
             stay = parsed
         else:
             stay = set()
-        replying = mode in ("reply", "reply2")
+        replying = mode in ("reply", "reply2", "bare", "two", "touch")
         left = sorted(os.listdir(inbox))
         if left != sorted(set(dirs) | stay):
             raise Crash("contract", f"after {mode}, the inbox holds "
@@ -1275,15 +1319,24 @@ def _channel_sequence(spec):
         if done != set(expected) - stay:
             raise Crash("contract", f"after {mode}, done holds "
                         f"{sorted(done)!r}"[:300])
-        if len(calls) != len(stay):
+        # A held envelope is re-queued; one whose ack found the bytes
+        # changed is rolled back; neither runs for an envelope that
+        # was consumed and acked.
+        want_requeues = 0 if mode == "touch" else len(stay)
+        if len(calls) != want_requeues:
             raise Crash("contract", f"after {mode}, requeue ran "
-                        f"{len(calls)} times for {len(stay)} held envelopes")
+                        f"{len(calls)} times for {want_requeues} held "
+                        "envelopes")
+        want_rollbacks = len(parsed) if mode == "touch" else 0
+        if len(rollbacks) != want_rollbacks:
+            raise Crash("contract", f"after {mode}, rollback ran "
+                        f"{len(rollbacks)} times, not {want_rollbacks}")
         outbox = sorted(f for f in os.listdir(paths["outbox"])
                         if f.endswith(".txt"))
         targets = [f for f in outbox if f.endswith(".target.txt")]
         results = [f for f in outbox if f not in targets]
-        want = len(parsed) if replying else 0
-        want_targets = len(parsed) if mode == "reply" else 0
+        want = len(parsed) * (2 if mode == "two" else 1) if replying else 0
+        want_targets = len(parsed) if mode in ("reply", "two", "touch") else 0
         if len(results) != want or len(targets) != want_targets:
             raise Crash("contract", f"after {mode}, {want} result files "
                         f"with {want_targets} target sidecars expected and "
@@ -1585,6 +1638,18 @@ def _draft_examples(name):
     return out
 
 
+def _hmac_signed_text(text):
+    """A text signed exactly as a body is -- the HMAC over the whole
+    of it, then the sig tail in place of its last character --
+    whatever the text is: the receiver must still refuse what is
+    not a JSON object."""
+    import hashlib as _h
+    import hmac as _hmac
+    sig = _hmac.new(SECRET.encode("utf-8"), text.encode("utf-8"),
+                    _h.sha384).hexdigest()
+    return text[:-1] + ',"sig":"' + sig + '"}'
+
+
 def _pretty_signed(payload):
     """A body signed in its pretty-printed form: the newlines are
     inside the signature, so both verifiers take it raw."""
@@ -1651,6 +1716,21 @@ def _text_bodies():
         ("raw_tab", exec_body[:40] + "\t" + exec_body[40:]),
         ("raw_unit_separator", exec_body[:40] + "\x1f" + exec_body[40:]),
         ("raw_space_run", exec_body[:40] + "  " + exec_body[40:]),
+        # The survivors' lines, second round: a pretty-printed body
+        # whose line ends are a lone CR (normalized to the LF that
+        # was signed) and CRLF; a sig whose last digit is not hex; a
+        # body whose signed text is not JSON (the HMAC is right, the
+        # opener search hands on its newest whole-object candidate,
+        # and the real fault is named); a closed object before an
+        # object the walk refuses in-string at the marker.
+        ("pretty_cr", _pretty_signed(_job(script="echo cr")).replace(
+            "\n", "\r")),
+        ("pretty_crlf", _pretty_signed(_job(script="echo crlf")).replace(
+            "\n", "\r\n")),
+        ("sig_last_not_hex", exec_body[:-3] + "g" + exec_body[-2:]),
+        ("signed_not_json", _hmac_signed_text('{"a":{"b":}')),
+        ("closed_then_in_string",
+         '{"a":1}{"b":"x,"sig":"' + "0" * 96 + '"}'),
         ("bom", "﻿" + exec_body),
         ("wrong_secret", V.sign_payload(_job(), WRONG)),
         # The draft's subject: a decoration word, then job, then the id.
@@ -1778,6 +1858,18 @@ def seeds_v2():
     d = _v2("determination")
     d["clean_pass"] = True
     out.append(("clean_pass_sent", d))
+    # The identifier checks after job_id's: a message id, and an
+    # answer's question id, missing or not a safe id, each named in
+    # the refusal (the survivors' lines).
+    for field, kind in (("msg_id", "question"), ("question_id", "answer")):
+        for word, bad in (("dotdot", "../x"), ("empty", ""), ("number", 7),
+                          ("null", None), ("over", "m" * 129)):
+            o = _v2(kind)
+            o[field] = bad
+            out.append((f"{field}_{word}", o))
+        o = _v2(kind)
+        del o[field]
+        out.append((f"no_{field}", o))
     out += _draft_examples("draft-homing-pigeon-v2-00.md")
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
@@ -2336,6 +2428,84 @@ def seeds_board_ops():
             ["submit", _task()],
             ["offer", "worker-a", ["shell"], "ops", cfg],
             ["complete", "bm-task-0001", {"exit_code": 0}]]}),
+        # The ranking's defaults, each against an explicit zero
+        # submitted on the other side of the tie: a task without a
+        # priority, a boolean priority, a text one. The earlier
+        # submission wins a tie, so the order of each pair says what
+        # the default is.
+        ("rank_absent_then_zero", {"file": None, "ops": [
+            ["submit", {"task_id": "bm-task-a", "capabilities": []}],
+            ["submit", _task("bm-task-b", priority=0)],
+            ["offer", "worker-a", ["shell"], "", {}]]}),
+        ("rank_zero_then_absent", {"file": None, "ops": [
+            ["submit", _task("bm-task-a", priority=0)],
+            ["submit", {"task_id": "bm-task-b", "capabilities": []}],
+            ["offer", "worker-a", ["shell"], "", {}]]}),
+        ("rank_bool_then_zero", {"file": None, "ops": [
+            ["submit", _task("bm-task-a", priority=True)],
+            ["submit", _task("bm-task-b", priority=0)],
+            ["offer", "worker-a", ["shell"], "", {}]]}),
+        ("rank_text_on_disk", {"file": json.dumps({
+            "bm-task-a": dict(_task("bm-task-a", priority="high"),
+                              state="open",
+                              submitted_at="2026-10-26T10:00:01+00:00"),
+            "bm-task-b": dict(_task("bm-task-b", priority=0), state="open",
+                              submitted_at="2026-10-26T10:00:02+00:00"),
+        }), "ops": [["offer", "worker-a", ["shell"], "", {}]]}),
+        # The same file-borne shapes handed to workers that can take
+        # every task: the one without a priority is ranked against
+        # the explicit ones, and the order of the hand-outs says
+        # what it reads as.
+        ("file_priorities_ranked", {"file": json.dumps({
+            "bm-task-a": {"task_id": "bm-task-a", "state": "open",
+                          "capabilities": ["shell"],
+                          "submitted_at": "2026-10-26T10:00:01+00:00"},
+            "bm-task-b": dict(_task("bm-task-b", priority=0.5), state="open",
+                              submitted_at="2026-10-26T10:00:02+00:00"),
+            "bm-task-d": dict(_task("bm-task-d", priority=-0.5), state="open",
+                              submitted_at="2026-10-26T10:00:04+00:00"),
+            "bm-task-e": dict(_task("bm-task-e"), state="open",
+                              submitted_at="2026-10-26T10:00:00+00:00"),
+        }), "ops": [["offer", w, ["shell"], "", {}] for w in
+                    ("worker-a", "worker-b", "worker-c", "worker-d")]}),
+        # Two tasks of one priority whose order in the file is not
+        # their order of submission: the earlier submission is handed
+        # out first, whatever the file's order.
+        ("rank_tie_by_time_not_order", {"file": json.dumps({
+            "bm-task-a": dict(_task("bm-task-a", priority=0), state="open",
+                              submitted_at="2026-10-26T10:00:01+00:00"),
+            "bm-task-z": dict(_task("bm-task-z", priority=0), state="open",
+                              submitted_at="2026-10-26T10:00:00+00:00"),
+        }), "ops": [["offer", "worker-a", ["shell"], "", {}],
+                    ["offer", "worker-b", ["shell"], "", {}]]}),
+        # A lease claimed one default lease length before the clock's
+        # first reading: not expired under the default (the elapsed
+        # time is exactly the default, not over it), expired under
+        # any shorter length; a fresh claim and a length of -1, which
+        # is not a length, so the default holds it.
+        ("lease_default_edge", {"file": _board_file(dict(
+            claimed, claimed_at="2026-10-25T12:00:01+00:00")), "ops": [
+            ["reoffer", None], ["offer", "worker-b", ["shell"], "", {}],
+            ["reoffer", 86399], ["offer", "worker-b", ["shell"], "", {}],
+            ["reoffer", -1], ["offer", "worker-a", ["shell"], "", {}]]}),
+        # An advisory hand-out carries its warning on the board
+        # record; when the lease lapses, the dependency is finished
+        # and the task goes out again, the warning is gone.
+        ("dag_warning_cleared", {"file": None, "ops": [
+            ["submit", _task("bm-task-a", requires=["bm-task-b"])],
+            ["offer", "worker-a", ["shell"], "", dict(cfg, dag_mode="advisory")],
+            ["reoffer", 0],
+            ["submit", _task("bm-task-b")],
+            ["offer", "worker-b", ["shell"], "", {}],
+            ["complete", "bm-task-b", {"exit_code": 0}],
+            ["offer", "worker-a", ["shell"], "", dict(cfg, dag_mode="advisory")]]}),
+        # A requirement that is not text, on disk: unreadable, so the
+        # task is withheld under enforce and warned under advisory.
+        ("file_requires_number", {"file": _board_file(dict(
+            _task(requires=[7]), state="open",
+            submitted_at="2026-10-26T10:00:00+00:00")), "ops": [
+            ["offer", "worker-a", ["shell"], "", dict(cfg, dag_mode="enforce")],
+            ["offer", "worker-b", ["shell"], "", dict(cfg, dag_mode="advisory")]]}),
         ("empty", {"file": None, "ops": []}),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
@@ -3104,6 +3274,11 @@ def seeds_inbox():
                                  _chan("x" * 64, good),
                                  _chan("bm.job.txt.job.txt", good),
                                  _chan("done.job.txt", good)]}),
+        # Names the result id cleans: a space, the portable
+        # punctuation, and two that clean to one id.
+        ("cleaned_names", {"files": [_chan("bm 0024.job.txt", good),
+                                     _chan("a+b=c@d.job.txt", good),
+                                     _chan("bm_0024.job.txt", good)]}),
         ("same_stem", {"files": [_chan("bm-0021", good),
                                  _chan("bm-0021.job.txt", good)]}),
         ("empty_inbox", {"files": []}),
@@ -3115,6 +3290,12 @@ def seeds_inbox():
     out.append(("core_reply2_same_stem", {"files": [
         _chan("bm-0022", good), _chan("bm-0022.job.txt", good)],
         "mode": "reply2"}))
+    # Two replies per envelope over two envelopes of one stem: four
+    # result files of one name, so the third and fourth carry the
+    # counter past its first step.
+    out.append(("core_two_same_stem", {"files": [
+        _chan("bm-0023", good), _chan("bm-0023.job.txt", good)],
+        "mode": "two"}))
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
@@ -4514,21 +4695,30 @@ def _record_crashes(target, session, out):
     return fresh
 
 
+def merge_seeds(session):
+    """The seeds a session's corpus lacks, added by id, and returned.
+    An existing corpus keeps every entry it has (so a new seed
+    function never discards what the grows found), and a seed whose
+    shape changed under a name the corpus already holds is added
+    beside the old one; the seeds are deterministic, so the same
+    shape is never added twice. `seed` and `grow` both call this,
+    so a seed the desk writes reaches the corpus on the campaign's
+    next grow, with no step between."""
+    fresh = [e for e in TARGETS[session.target]["seeds"]()
+             if e["id"] not in session.ids]
+    for e in fresh:
+        session.entries.append(e)
+        session.ids.add(e["id"])
+    return fresh
+
+
 def cmd_seed(args, out=print):
-    """Write the seeds. An existing corpus keeps every entry it has;
-    seeds it lacks are added by id (so a new seed function never
-    discards what the grows found, and a seed whose shape changed
-    under a name the corpus already holds is added beside the old
-    one: the seeds are deterministic, so the same shape is never
-    added twice)."""
+    """Write the seeds (merge_seeds), with the corpus's baseline run
+    and recorded."""
     for target in _targets(args.target):
         existing = load(corpus_path(target))
         session = Session(target, existing)
-        fresh = [e for e in TARGETS[target]["seeds"]()
-                 if e["id"] not in session.ids]
-        for e in fresh:
-            session.entries.append(e)
-            session.ids.add(e["id"])
+        fresh = merge_seeds(session)
         t0 = time.perf_counter()
         _with_rig(session.baseline)
         for e in fresh:
@@ -4683,6 +4873,9 @@ def cmd_grow(args, out=print):
             status = 2
             continue
         session = Session(target, entries)
+        fresh = merge_seeds(session)
+        for e in fresh:
+            e["arcs"] = 0
         t0 = time.perf_counter()
         no_steer = getattr(args, "no_steer", False)
         where = getattr(args, "archive", None)
@@ -4700,7 +4893,7 @@ def cmd_grow(args, out=print):
             before, added = _with_rig(work)
         finally:
             archived = archive.close() if archive else None
-        if added:
+        if added or fresh:
             save(corpus_path(target), target, session.entries)
         write_arcs(target, session.tracer.arcs)
         extra = {}
@@ -4708,6 +4901,8 @@ def cmd_grow(args, out=print):
             extra["archive"] = archived
         if history is not None:
             extra["steered"] = True
+        if fresh:
+            extra["seeds_added"] = len(fresh)
         record_run(_run_record(
             "grow", target, session,
             {"entries": len(entries), "arcs": before}, added,
