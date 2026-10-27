@@ -33,7 +33,7 @@ a chat message that reports progress, confirms an order was heard,
 announces a start or a finish, repeats a finding that is already in
 a commit or a Q entry, or relays a question that belongs in
 `docs/use/questions.md`. A reminder of this section posted in
-`docs/use/misc.md` by Claude means the pattern was seen; the next
+`docs/use/.com.chat` by Claude means the pattern was seen; the next
 rule refresh re-reads this section and says so in the ledger.
 
 ## Rule refresh, every hour
