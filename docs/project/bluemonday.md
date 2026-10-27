@@ -109,6 +109,7 @@ peer on the wire reaches first.
 | 14 | `queries` | `runner/ops/policy.py` `apply_result_policy` and `runner/ops/queries.py` `answer_queries` (with `runner/ops/attest.py` and the pattern bound in `runner/guard/security.py`): a job's `result_policy` -- the view it asks for, its queries, its budget -- and the job's own output, under every ceiling the owner can set (Q84) | in the corpus |
 | 15 | `names` | `runner/guard/filenames.py` `validate_file_name` and `runner/runner.py` `_safe_job_id`: one name a sender chose, before the six file-name rules (the same on every platform) and the job-id rule; an accepted file name is staged under a scratch work directory on the host (`_staged_dest`) | in the corpus |
 | 16 | `query` | `runner/ops/queries.py` `handle_query_mail` through the mail rig: one query message (its subject id, the sealed object a sender chose, under a key) over the retained record of a job as the runner saved it or as a crash left it; the reply opened and held to the queries contract, the record held to spent and saved_at, a copy taken without a second reply | in the corpus |
+| 17 | `board_mail` | `runner/ops/startup.py` `handle_board_mail` through the mail rig: one board message (`task_submit`, `task_request`, `task_result`, `task_approve`; its subject id, the sealed object, the key) over a board file as the runner saved it or as a crash left it; the ack or offer opened and held to section 13's shapes, the reply routed by the signed body's `reply_to` or to the mailbox, the board file read back, a copy taken | in the corpus |
 
 Not targets, and why: the Oracle's reading of its model's replies
 (`runner/ops/oracle_tools.py`), the config loader and the platform
@@ -230,6 +231,17 @@ never files a refusal as a crash.
   advanced by the queries and saved_at kept, and a rejected query
   leaves it as it was; a copy of the message is taken without a
   second reply.
+- **The board message** (`board_mail`). The handler takes the
+  message and never raises; the message is marked seen exactly
+  once; at most one reply goes out, to a single plain address from
+  inside the signed body or to the mailbox (provenance), sealed
+  under its own subject's last word and opening under the key; the
+  reply is section 13's ack (the subject's task id, ok and reason,
+  or a known status and reason) or offer (a task whose id is the
+  reply subject's, claimed on the board, or empty under the empty
+  subject); the board file reads back as a dict of dict tasks
+  after the message and as the board in memory; a copy of the
+  message is taken without raising.
 
 A contract added later replays over every entry already kept; an
 old entry that fails a new contract is a crash file and a Q, never

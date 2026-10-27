@@ -61,7 +61,7 @@ MODULES = {
     "jobcrypto": "JC", "transports": "TR", "board": "BD",
     "mailbox": "MB", "dtlsproto": "DT", "extensions": "EX",
     "security": "SEC", "policy": "PO", "queries": "QU",
-    "filenames": "FN",
+    "filenames": "FN", "startup": "ST",
 }
 # Targets whose checker reads through the agent module. The rebinding
 # in kill() puts a mutant where the agent module holds the reader

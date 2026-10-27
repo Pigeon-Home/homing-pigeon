@@ -69,6 +69,9 @@ delivered body and the agent's trust in it:
     query    runner/ops/queries.py       handle_query_mail on one
                                          query message over a retained
                                          record, through the mail rig
+    board_mail runner/ops/startup.py     handle_board_mail on one board
+                                         message over a board file,
+                                         through the mail rig
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -141,6 +144,7 @@ from runner.guard import textutil as TU  # noqa: E402
 from runner.ops import extensions as EX  # noqa: E402
 from runner.ops import policy as PO  # noqa: E402
 from runner.ops import queries as QU  # noqa: E402
+from runner.ops import startup as ST  # noqa: E402
 from runner.ops.extensions import build_sensor_alert  # noqa: E402
 from runner.wire import jobcrypto as JC  # noqa: E402
 from runner.wire import protocol_v2 as P2  # noqa: E402
@@ -1873,26 +1877,30 @@ def _query_retained(record):
     return record
 
 
-def _query_mail(subject_id, payload, key_id):
-    """A query message as the sender seals it: the signed object,
-    encrypted under the subject's id, the envelope signed."""
+def _sealed_mail(subject, ident, payload, key_id):
+    """A message as the sender seals it: the signed object, encrypted
+    under the subject's id, the envelope signed."""
     import email.message as _em
     secret = SECRETS.get(key_id, SECRET) if isinstance(key_id, str) \
         else SECRET
     body = V.sign_payload(payload, secret)
-    body = JC.encrypt_body(body, secret, subject_id, key_id or "",
-                           V.sign_payload)
+    body = JC.encrypt_body(body, secret, ident, key_id or "", V.sign_payload)
     msg = _em.EmailMessage()
     msg["From"] = "si@example.com"
     msg["To"] = "runner@example.com"
-    msg["Subject"] = "[HOMING-PIGEON] query " + subject_id
+    msg["Subject"] = subject
     msg.set_content(body)
     return msg.as_bytes()
 
 
+def _query_mail(subject_id, payload, key_id):
+    return _sealed_mail("[HOMING-PIGEON] query " + subject_id, subject_id,
+                        payload, key_id)
+
+
 def _query_open_reply(msg, subject_id, key_id):
-    """The qresult inside a sent reply: verified, decrypted under the
-    subject's id, verified again."""
+    """The object inside a sent reply: verified, decrypted under the
+    id the reply was sealed under, verified again."""
     secret = SECRETS.get(key_id, SECRET) if isinstance(key_id, str) \
         else SECRET
     text = msg.get_content()
@@ -2089,6 +2097,181 @@ def _query_reply_answers(payload, record, reply, before, after):
     if kept != was:
         raise Crash("contract", "an answered query changed the retained "
                     "record beyond spent and saved_at")
+
+
+# ------------------------------------------------------------------
+# board_mail: the board message handler over a board file
+# ------------------------------------------------------------------
+
+_BOARD_MAIL_KINDS = ("task_submit", "task_request", "task_result",
+                     "task_approve")
+_BOARD_MAIL_CFG = {
+    "shared_secret": SECRET,
+    "additional_secrets": {"canary-key": SENSE, "ops": OPS},
+    "mailbox_user": "runner@example.com",
+    "max_job_age_sec": 3600,
+    "worker_allowlist": ["worker-a", "worker-b"],
+    "worker_compartments": {"worker-a": ["blue"]},
+    "dag_mode": "enforce",
+    "task_timeout": 86400,
+}
+
+
+def check_board_mail(entry):
+    """board_mail: one board message -- its kind and subject id, the
+    sealed object a sender chose, the key -- over a board file as the
+    runner saved it or as a crash left it, through handle_board_mail
+    with the mail rig, twice. Contract: the handler takes the message
+    (True) and never raises; the message is marked seen exactly
+    once; at most one reply goes out, addressed to a single plain
+    address from inside the signed body or to the mailbox, sealed
+    under its own subject's last word and opening under the key; the
+    reply is the ack or offer section 13 describes for the kind (an
+    ack naming the subject's id with ok and reason, or status and
+    reason; an offer carrying a task whose id is the reply subject's,
+    or empty under the empty subject); the board file reads back as a
+    dict of dict tasks after the message, a task offered claimed on
+    it under the id it carries; a second copy of the message is taken
+    without raising. Accepted when the reply says ok, done,
+    pending_review or carries a task."""
+    data = entry["data"]
+    if not isinstance(data, dict):
+        data = {"payload": data}
+    kind = data.get("kind")
+    if kind not in _BOARD_MAIL_KINDS:
+        kind = "task_submit"
+    ident = data.get("ident")
+    if not isinstance(ident, str) or not ident \
+            or any(c.isspace() for c in ident):
+        ident = "bm-task-0001"
+    payload = data.get("payload")
+    if not isinstance(payload, dict):
+        payload = {"v": 1, "type": kind, "task_id": ident, "result": payload}
+    key_id = data.get("key_id") if isinstance(data.get("key_id"), str) \
+        and data.get("key_id") in SECRETS else ""
+    cfg = dict(_BOARD_MAIL_CFG)
+    if data.get("review") is True:
+        cfg["require_review"] = True
+    if TU._lone_surrogate(payload):
+        note("gate", "lone surrogate")
+        return "refused"
+    subject = f"[HOMING-PIGEON] {kind} {ident}"
+    try:
+        raw = _sealed_mail(subject, ident, payload, key_id)
+    except ValueError as e:
+        note("gate", "unsignable", _short(e))
+        return "refused"
+    base = tempfile.mkdtemp(prefix="hp-bluemonday-bmail-")
+    _StepClock._tick = 0
+    try:
+        path = os.path.join(base, "board.json")
+        text = data.get("file")
+        if isinstance(text, str):
+            with open(path, "wb") as fh:
+                fh.write(text.encode("utf-8", "surrogatepass"))
+        with mock.patch.object(BD, "datetime", _StepClock):
+            board, exc = _call(BD.Board, path)
+            if exc is not None:
+                raise Crash("exception", f"Board() raised {type(exc).__name__}: "
+                            f"{_short(exc)}")
+            secrets = R.build_secrets(cfg)
+            opts = types.SimpleNamespace(dry_run=False, no_send=False)
+            replies = []
+            for attempt in (1, 2):
+                imap, smtp = _FakeImap(), _FakeSmtp()
+                with mock.patch.object(R, "log", lambda *a, **k: None), \
+                        mock.patch.object(R, "vlog", lambda *a, **k: None), \
+                        mock.patch.object(BD, "log", lambda *a, **k: None), \
+                        mock.patch.object(BD, "vlog", lambda *a, **k: None):
+                    got, exc = _call(ST.handle_board_mail, cfg, imap, smtp,
+                                     attempt, raw, subject, board, secrets,
+                                     opts, base)
+                if exc is not None:
+                    raise Crash("exception", "handle_board_mail raised "
+                                f"{type(exc).__name__}: {_short(exc)}")
+                if got is not True:
+                    raise Crash("contract", f"handle_board_mail answered "
+                                f"{got!r} for a board subject")
+                if len(imap.marked) != 1:
+                    raise Crash("contract", "the message was marked "
+                                f"{len(imap.marked)} times")
+                if len(smtp.sent) > 1:
+                    raise Crash("contract", f"{len(smtp.sent)} replies went out")
+                replies.append(smtp.sent[0] if smtp.sent else None)
+                again, exc = _call(BD.Board, path)
+                if exc is not None:
+                    raise Crash("exception", "the board file no longer loads: "
+                                f"{type(exc).__name__}: {_short(exc)}")
+                if not isinstance(again.tasks, dict) or not all(
+                        isinstance(k, str) and isinstance(v, dict)
+                        for k, v in again.tasks.items()):
+                    raise Crash("shape", "the board file reads back as "
+                                "something other than a dict of dict tasks")
+                if os.path.exists(path) \
+                        and TU._json_safe(board.tasks) != again.tasks:
+                    raise Crash("roundtrip", "the board file does not read "
+                                "back as the board in memory")
+            outcome = "refused"
+            for i, msg in enumerate(replies):
+                if msg is None:
+                    note("reply", i, "none")
+                    continue
+                target = MB._valid_reply_to(payload)
+                if msg["To"] != (target or cfg["mailbox_user"]):
+                    raise Crash("provenance", f"the reply is addressed to "
+                                f"{msg['To']!r}")
+                rsubject = str(msg["Subject"])
+                words = rsubject.split()
+                if len(words) != 3 or words[0] != "[HOMING-PIGEON]" \
+                        or words[1] not in ("task_ack", "task_offer"):
+                    raise Crash("contract", f"the reply's subject is "
+                                f"{rsubject[:60]!r}")
+                reply = _query_open_reply(msg, words[2], key_id)
+                if not isinstance(reply, dict) or reply.get("v") != 1 \
+                        or reply.get("type") != words[1]:
+                    raise Crash("shape", f"the reply is {_short(reply)}"[:200])
+                if words[1] == "task_ack":
+                    if reply.get("task_id") != ident or words[2] != ident:
+                        raise Crash("contract", "the ack names a task other "
+                                    "than the subject's")
+                    if not isinstance(reply.get("reason"), str):
+                        raise Crash("shape", "the ack's reason is not text")
+                    if "ok" in reply:
+                        if not isinstance(reply["ok"], bool):
+                            raise Crash("shape", "the ack's ok is not a bool")
+                        good = reply["ok"]
+                    else:
+                        if reply.get("status") not in ("done", "pending_review",
+                                                       "duplicate", "not_claimed",
+                                                       "not_found"):
+                            raise Crash("contract", "the ack's status is "
+                                        f"{reply.get('status')!r}")
+                        good = reply["status"] in ("done", "pending_review")
+                else:
+                    task = reply.get("task")
+                    if reply.get("empty") is True:
+                        if words[2] != "empty" or task is not None:
+                            raise Crash("contract", "an empty offer under "
+                                        f"subject {rsubject!r}")
+                        good = False
+                    else:
+                        if not isinstance(task, dict) \
+                                or task.get("task_id") != words[2]:
+                            raise Crash("contract", "the offer's task is not "
+                                        "the one its subject names")
+                        on_board = board.tasks.get(task["task_id"])
+                        if not isinstance(on_board, dict) \
+                                or on_board.get("state") != "claimed":
+                            raise Crash("contract", "a task offered is not "
+                                        "claimed on the board")
+                        good = True
+                if i == 0 and good:
+                    outcome = "accepted"
+                note("reply", i, words[1], _digest(reply))
+            note("board", _digest(board.tasks))
+            return outcome
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
 
 
 # ------------------------------------------------------------------
@@ -4350,6 +4533,158 @@ def seeds_query():
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
+def seeds_board_mail():
+    claimed = dict(_task(), state="claimed", claimed_by="worker-a",
+                   submitted_at="2026-10-26T12:00:00+00:00",
+                   claimed_at="2026-10-26T12:00:01+00:00")
+    done = dict(_task("bm-task-0000"), state="done",
+                submitted_at="2026-10-26T11:00:00+00:00")
+    open_task = dict(_task(), state="open",
+                     submitted_at="2026-10-26T12:00:00+00:00")
+
+    def submit(tid="bm-task-0001", **extra):
+        p = {"v": 1, "type": "task_submit"}
+        p.update(_task(tid))
+        p.update(extra)
+        return p
+
+    def request(worker="worker-a", caps=("shell",), **extra):
+        p = {"v": 1, "type": "task_request", "worker_id": worker,
+             "capabilities": list(caps)}
+        p.update(extra)
+        return p
+
+    def result(tid="bm-task-0001", res=None, **extra):
+        p = {"v": 1, "type": "task_result", "task_id": tid,
+             "result": {"exit_code": 0, "stdout": "task"} if res is None
+             else res}
+        p.update(extra)
+        return p
+
+    def approve(tid="bm-task-0001", **extra):
+        p = {"v": 1, "type": "task_approve", "task_id": tid}
+        p.update(extra)
+        return p
+
+    def entry(name, kind, ident, payload, file=None, **top):
+        d = {"kind": kind, "ident": ident, "payload": payload, "file": file}
+        d.update(top)
+        return (name, d)
+
+    out = [
+        entry("submit", "task_submit", "bm-task-0001", submit()),
+        entry("submit_keyed", "task_submit", "bm-task-0001", submit(),
+              key_id="ops"),
+        entry("submit_reply_to", "task_submit", "bm-task-0001",
+              submit(reply_to="worker@example.com")),
+        entry("submit_reply_to_header_only", "task_submit", "bm-task-0001",
+              submit(reply_to="not an address")),
+        entry("submit_reply_to_long", "task_submit", "bm-task-0001",
+              submit(reply_to="w" * 250 + "@example.com")),
+        entry("submit_duplicate", "task_submit", "bm-task-0001", submit(),
+              file=_board_file(open_task)),
+        entry("submit_other_id", "task_submit", "bm-task-0002", submit()),
+        entry("submit_bad_id", "task_submit", "bm-task-0001", submit("../x")),
+        entry("submit_no_v", "task_submit", "bm-task-0001",
+              {k: v for k, v in submit().items() if k != "v"}),
+        entry("submit_v2", "task_submit", "bm-task-0001", submit(v=2)),
+        entry("submit_priority_nan", "task_submit", "bm-task-0001",
+              submit(priority=float("nan"))),
+        entry("submit_priority_text", "task_submit", "bm-task-0001",
+              submit(priority="high")),
+        entry("submit_requires_number", "task_submit", "bm-task-0001",
+              submit(requires=[7])),
+        entry("submit_huge_payload", "task_submit", "bm-task-0001",
+              submit(payload={"script": "x" * 4000})),
+        entry("submit_type_job", "task_submit", "bm-task-0001",
+              submit(type="job")),
+        entry("submit_runner_id", "task_submit", "bm-task-0001",
+              submit(runner_id="bm-runner")),
+        entry("request_open", "task_request", "worker-a", request(),
+              file=_board_file(open_task)),
+        entry("request_empty_board", "task_request", "worker-a", request()),
+        entry("request_not_allowed", "task_request", "nobody", request("nobody"),
+              file=_board_file(open_task)),
+        entry("request_no_caps", "task_request", "worker-a", request(caps=()),
+              file=_board_file(open_task)),
+        entry("request_caps_text", "task_request", "worker-a",
+              request(capabilities="shell"), file=_board_file(open_task)),
+        entry("request_caps_junk", "task_request", "worker-a",
+              request(capabilities=[7, None, "shell"]),
+              file=_board_file(open_task)),
+        entry("request_compartment", "task_request", "worker-a", request(),
+              file=_board_file(dict(open_task, compartments=["red"]))),
+        entry("request_dag_withheld", "task_request", "worker-b",
+              request("worker-b"),
+              file=_board_file(dict(open_task, requires=["bm-task-0009"]))),
+        entry("request_dag_done", "task_request", "worker-b",
+              request("worker-b"),
+              file=_board_file(done, dict(open_task, requires=["bm-task-0000"]))),
+        entry("request_own_claim", "task_request", "worker-a", request(),
+              file=_board_file(claimed)),
+        entry("request_keyed", "task_request", "worker-a", request(),
+              file=_board_file(open_task), key_id="ops"),
+        entry("request_reply_to", "task_request", "worker-a",
+              request(reply_to="worker@example.com"),
+              file=_board_file(open_task)),
+        entry("request_subject_mismatch", "task_request", "worker-b",
+              request("worker-a"), file=_board_file(open_task)),
+        entry("result_done", "task_result", "bm-task-0001", result(),
+              file=_board_file(claimed)),
+        entry("result_review", "task_result", "bm-task-0001", result(),
+              file=_board_file(claimed), review=True),
+        entry("result_not_claimed", "task_result", "bm-task-0001", result(),
+              file=_board_file(open_task)),
+        entry("result_unknown", "task_result", "bm-task-0009", result("bm-task-0009"),
+              file=_board_file(claimed)),
+        entry("result_text", "task_result", "bm-task-0001",
+              result(res="a string result"), file=_board_file(claimed)),
+        entry("result_null", "task_result", "bm-task-0001",
+              {"v": 1, "type": "task_result", "task_id": "bm-task-0001",
+               "result": None}, file=_board_file(claimed)),
+        entry("result_no_member", "task_result", "bm-task-0001",
+              {"v": 1, "type": "task_result", "task_id": "bm-task-0001"},
+              file=_board_file(claimed)),
+        entry("result_huge", "task_result", "bm-task-0001",
+              result(res={"stdout": "o" * 8000}), file=_board_file(claimed)),
+        entry("result_nested", "task_result", "bm-task-0001",
+              result(res={"a": {"b": {"c": [1, {"d": None}]}}}),
+              file=_board_file(claimed)),
+        entry("result_nan", "task_result", "bm-task-0001",
+              result(res={"score": float("nan")}), file=_board_file(claimed)),
+        entry("result_bad_id", "task_result", "../x", result("../x"),
+              file=_board_file(claimed)),
+        entry("approve_pending", "task_approve", "bm-task-0001", approve(),
+              file=_board_file(dict(claimed, state="pending_review"))),
+        entry("approve_done", "task_approve", "bm-task-0001", approve(),
+              file=_board_file(dict(claimed, state="done"))),
+        entry("approve_unknown", "task_approve", "bm-task-0009",
+              approve("bm-task-0009")),
+        entry("approve_bad_id", "task_approve", "../x", approve("../x")),
+        entry("file_garbage", "task_submit", "bm-task-0001", submit(),
+              file="{not json"),
+        entry("file_list", "task_request", "worker-a", request(),
+              file="[1, 2]"),
+        entry("file_task_not_dict", "task_request", "worker-a", request(),
+              file=json.dumps({"bm-task-0001": 7})),
+        entry("file_nonfinite", "task_request", "worker-a", request(),
+              file=_board_file(dict(open_task, priority=float("inf")))),
+        entry("file_lease_old", "task_request", "worker-b", request("worker-b"),
+              file=_board_file(dict(claimed,
+                                    claimed_at="2020-01-01T00:00:00+00:00"))),
+        entry("payload_list", "task_submit", "bm-task-0001", [1, 2]),
+        entry("payload_text", "task_result", "bm-task-0001", "done",
+              file=_board_file(claimed)),
+        entry("ident_long", "task_submit", "t" * 200, submit("t" * 200)),
+        entry("ident_dot", "task_approve", ".", approve(".")),
+        entry("key_mismatch", "task_submit", "bm-task-0001",
+              submit(key_id="ops"), key_id="canary-key"),
+        entry("sig_member", "task_submit", "bm-task-0001",
+              submit(sig="0" * 96)),
+    ]
+    return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -5343,6 +5678,9 @@ TARGETS = {
     "query": {"files": [_src("ops", "queries.py"), _src("runner.py"),
                         _src("ops", "policy.py"), _src("ops", "attest.py")],
               "check": check_query, "seeds": seeds_query},
+    "board_mail": {"files": [_src("ops", "startup.py"), _src("wire", "board.py"),
+                             _src("runner.py"), _src("wire", "mailbox.py")],
+                   "check": check_board_mail, "seeds": seeds_board_mail},
 }
 
 

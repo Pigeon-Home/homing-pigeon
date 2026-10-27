@@ -4,8 +4,17 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.62 - 2026-10-26
+## 3.13.63 - 2026-10-26
 
+- **blueMonday's seventeenth target, `board_mail`.** One board
+  message -- `task_submit`, `task_request`, `task_result` or
+  `task_approve`, its subject id, the sealed object, the key -- over
+  a board file as the runner saved it or as a crash left it, through
+  `handle_board_mail` with the mail rig: the ack or offer opened and
+  held to section 13's shapes, routed by the signed body's
+  `reply_to` or to the mailbox, the board file read back, a copy
+  taken; fifty-five seeds.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 - **A coverage measurement of main at 13d4aac.** Statements
   99.5% (143 missed of 30412), branches 97.4% (311 of 12026),
   on Python 3.10 with the CI coverage settings, extensions
@@ -13,6 +22,9 @@ facts a reader may need to cite. Git history carries the rest.
   both 93.8%. `send_dtls.py`, the old floor, is 100%. The
   report is `docs/reports/v3.13.62/`. Two failures in that
   run are commands this box does not have, not a red main.
+
+## 3.13.62 - 2026-10-26
+
 - **blueMonday's survivors instrument reaches every reader.** A
   mutant is put where every reader holds the module -- the tool's
   own alias, every module that imported the reader under its own
