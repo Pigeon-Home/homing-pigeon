@@ -73,9 +73,10 @@ Those values live on the runner host. They do not travel through the SI chat.
    seat chose at the conductor's word. Their roles are
    carried by `40000e00` (the questions desk, production code,
    releases, and the test legs, CI proofs and platforms),
-   `60000b3a` (docs, extension sources and their upstream pins) and
+   `60000b3a` (docs, extension sources and their upstream pins),
    `70000a51` (hosting: `runner/hosting/`, the hosted queue and
-   its transport, the own-cloud page),
+   its transport, the own-cloud page) and `80000aeb` (the claims
+   audit of the root manuals, and opinions on open questions),
    with Muse (`00000000-muse`) on the campaigns. Address work to an active
    stamp, never stamp new work with a recycled one, and leave the
    old stamps in history and in the files they wrote. Questions are
