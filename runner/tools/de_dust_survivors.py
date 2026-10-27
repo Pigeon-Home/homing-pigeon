@@ -381,7 +381,26 @@ def kill(alias, text, targets, corpora, baseline, timeout=20):
         _disarm(old)
         setattr(B, alias, real)
         unbind(undo)
+        _stop_helper(mod)
     return "killed" if got != baseline else "survived"
+
+
+def _stop_helper(mod):
+    """A reader that keeps a helper process (the grep worker of
+    runner/ops/queries.py, Q84) is asked to stop it when its mutant
+    is done, so a run over hundreds of mutants leaves no child
+    behind; the real module's helper is stopped the same way at the
+    end of the run."""
+    stop = getattr(mod, "_stop_worker", None)
+    if callable(stop):
+        try:
+            stop(getattr(mod, "_worker", None))
+        except Exception:
+            pass
+        try:
+            mod._worker = None
+        except Exception:
+            pass
 
 
 def reached_lines(name, targets):
@@ -459,6 +478,8 @@ def run(modules, limit=None, seed=0, timeout=20, out=print):
         for s in survivors[:40]:
             out(f"  survivor {s['op']:12s} line {s['line']:5d}  {s['text']}")
     report["seconds"] = round(time.perf_counter() - t0, 1)
+    for name in modules:
+        _stop_helper(getattr(B, MODULES[name]))
     return report
 
 

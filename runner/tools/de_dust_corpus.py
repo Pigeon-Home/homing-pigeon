@@ -609,6 +609,15 @@ class _LocalRig:
             mock.patch.object(R, "_maybe_wake_oracle",
                               lambda *a, **k: False),
         ]
+        # The grep worker (Q84) is one process the runner drops at the
+        # end of every query batch, a lifetime the soak holds it to;
+        # the corpus holds the reader to its answers, so the rig keeps
+        # the one worker for its whole run and drops it on the way out
+        # (a replay of thousands of batches would otherwise start a
+        # process for each).
+        if hasattr(QU, "_drop_worker"):
+            self._patches.append(
+                mock.patch.object(QU, "_drop_worker", lambda: None))
 
     def __enter__(self):
         for p in self._patches:
@@ -618,6 +627,12 @@ class _LocalRig:
     def __exit__(self, *exc):
         for p in reversed(self._patches):
             p.stop()
+        drop = getattr(QU, "_drop_worker", None)
+        if callable(drop):
+            try:
+                drop()
+            except Exception:
+                pass
         shutil.rmtree(self.dir, ignore_errors=True)
         return False
 

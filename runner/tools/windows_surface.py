@@ -102,6 +102,7 @@ import ctypes
 import os
 import platform
 import ssl
+import subprocess
 import sys
 
 _IDENTITY = {
@@ -230,6 +231,12 @@ def apply_surface():
             _set(platform, func_name, (lambda r: lambda *a, **k: r)(result))
         for attr in _ABSENT:
             _del(os, attr)
+        # subprocess decided at import whether it may use
+        # os.posix_spawn; with the function gone from the surface
+        # it takes the fork-and-exec path, as it does on a host
+        # without the function, instead of raising at the call.
+        if hasattr(subprocess, "_USE_POSIX_SPAWN"):
+            _set(subprocess, "_USE_POSIX_SPAWN", False)
         # Unconditional. A `hasattr` guard left the real windll
         # in place on Windows, so IsUserAnAdmin() returned 1 on
         # the elevated build-windows runner and the neutral-fake
