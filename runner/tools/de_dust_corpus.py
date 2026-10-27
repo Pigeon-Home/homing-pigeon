@@ -2572,6 +2572,13 @@ def check_board_mail(entry):
     payload = data.get("payload")
     if not isinstance(payload, dict):
         payload = {"v": 1, "type": kind, "task_id": ident, "result": payload}
+    # A board message is fresh as a job is (Q98 item 12): an entry
+    # written before that rule carries no issued_at and reads as sent
+    # now; an entry that names one, stale, malformed or the NOW token,
+    # keeps it, so those shapes still reach the door.
+    if "issued_at" not in payload:
+        payload = dict(payload, issued_at=NOW)
+    payload = _stamp_issued_at(payload)
     key_id = data.get("key_id") if isinstance(data.get("key_id"), str) \
         and data.get("key_id") in SECRETS else ""
     cfg = dict(_BOARD_MAIL_CFG)

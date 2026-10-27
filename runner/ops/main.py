@@ -224,8 +224,14 @@ def main() -> int:
     # enough entropy to resist offline brute force. It is separate from
     # the mailbox password (which is only a Gmail credential now).
     # Mailbox auth itself was gated (or set up) before the model work.
+    # build_secrets is the whole rule (SECURITY.md, "Secret files
+    # (M8)"): an inline secret or shared_secret_file, never both, a
+    # file that exists and is not empty, every additional secret
+    # through the same gate. Checking only the inline value refused a
+    # file-only config and let a broken file through to every poll
+    # (Q98 item 1).
     try:
-        R.validate_shared_secret(cfg.get("shared_secret") or "")
+        R.build_secrets(cfg)
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return 2

@@ -36,6 +36,19 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         # Dry-run is fully non-mutating: observe, change nothing.
         _runner()._mark(imap, seq, opts)
 
+    # Hardening M1b: bound the raw mail before any signature work,
+    # for every protocol message the door takes -- queries, board and
+    # version 2 mail as well as jobs (Q98 item 2). Mail that is not
+    # ours is left to the dispatcher, untouched.
+    try:
+        max_job_bytes = int(cfg.get("max_job_bytes", 4194304))
+    except (TypeError, ValueError, OverflowError):
+        max_job_bytes = 4194304
+    if max_job_bytes and len(raw) > max_job_bytes \
+            and "[HOMING-PIGEON]" in subject.upper():
+        reject(f"mail exceeds max_job_bytes ({len(raw)} > {max_job_bytes})")
+        return
+
     dispatched = _runner()._early_dispatch(
         cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir, seen)
     if dispatched is None:
@@ -49,14 +62,6 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     R.log(f"seq {seq}: job {job_id} submitted by {from_addr or '(no sender)'} "
         f"subject={subject!r}")
 
-    # Hardening M1b: bound the raw mail before any signature work.
-    try:
-        max_job_bytes = int(cfg.get("max_job_bytes", 4194304))
-    except (TypeError, ValueError, OverflowError):
-        max_job_bytes = 4194304
-    if max_job_bytes and len(raw) > max_job_bytes:
-        reject(f"mail exceeds max_job_bytes ({len(raw)} > {max_job_bytes})")
-        return
 
     try:
         job, key_id, secret, job_was_encrypted = _runner()._verify_and_decrypt(msg, secrets, job_id)
@@ -572,6 +577,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "view": result.get("view") or "full",
                     "budget": _runner().query_budget(cfg, job),
                     "spent": spent,
+                    # The key the job verified under, by its count name:
+                    # only that key may spend this record's budget
+                    # (PROTOCOL.md section 11; Q98 item 14).
+                    "key": _runner().canonical_key_id(secrets, key_id),
                     "patterns": patterns,
                     "confined": confined,
                     "digest": digest,

@@ -190,6 +190,8 @@ class BoardDryRunTest(_ReaderTest):
     def _take(self, opts, kind="task_approve", ident="t1", obj=None,
               secret=SECRET):
         obj = obj or {"v": 1, "type": kind}
+        # A board message is fresh as a job is (PROTOCOL.md 13.7).
+        obj = dict(obj, issued_at=obj.get("issued_at") or _now())
         subject = f"[HOMING-PIGEON] {kind} {ident}"
         imap, smtp = FakeIMAP([]), FakeSMTP()
         with _captured_log() as buf:

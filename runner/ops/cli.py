@@ -274,8 +274,10 @@ def build_parser():
     g.add_argument("--transports", type=_transports_arg, default=None,
                    metavar="LIST",
                    help="job transports for this process, "
-                        "comma-separated: email, file, nats "
-                        "(default: email)")
+                        "comma-separated: " + ", ".join(
+                            getattr(_transports, "FIRST_PARTY_TRANSPORTS",
+                                    ("email",)) if _transports else ("email",))
+                        + " (default: email)")
     g = ap.add_argument_group(
         "debug: cleartext",
         "Off unless you pass the flag. A cleartext job is still "

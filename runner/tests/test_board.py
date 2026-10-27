@@ -236,10 +236,12 @@ class BoardE2ETest(unittest.TestCase):
             }),
             _board_mail("[HOMING-PIGEON] task_request w1", {
                 "v": 1, "type": "task_request", "issued_at": issued,
+                "worker_id": "w1",
                 "capabilities": ["py"],
             }),
             _board_mail("[HOMING-PIGEON] task_result t-e2e", {
                 "v": 1, "type": "task_result", "issued_at": issued,
+                "task_id": "t-e2e",
                 "result": {"ok": True},
             }),
         ]
@@ -270,11 +272,13 @@ class BoardE2ETest(unittest.TestCase):
             }),
             _board_mail("[HOMING-PIGEON] task_request w-rt", {
                 "v": 1, "type": "task_request", "issued_at": issued,
+                "worker_id": "w-rt",
                 "capabilities": ["py"],
                 "reply_to": "worker@example.com",
             }),
             _board_mail("[HOMING-PIGEON] task_result t-rt", {
                 "v": 1, "type": "task_result", "issued_at": issued,
+                "task_id": "t-rt",
                 "result": {"ok": True},
                 "reply_to": "not an address, and a comma,",
             }),

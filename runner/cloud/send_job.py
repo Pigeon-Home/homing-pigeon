@@ -8,8 +8,8 @@ exact same signature scheme as runner/runner.py:
     body = payload_json with the trailing "}" replaced by ',"sig":"<sig>"}'
 
 The --secret is the shared secret string, used directly (UTF-8) as the
-HMAC-SHA-384 key. In this deployment it is the runner's Gmail app password
-itself (user's explicit choice: dedicated throwaway account). This helper
+HMAC-SHA-384 key. It is a dedicated high-entropy string, never the
+mailbox's app password (PROTOCOL.md section 4). This helper
 is SI-agnostic: anything that can run it and send the resulting email as
 the runner's Gmail account — any SI, a cron job — can drive
 the runner. Keep the secret out of logs and files; pass it only when needed.
@@ -853,6 +853,10 @@ def _board_body(payload, ident, args) -> str:
     key_id = resolve_key_id(args)
     if key_id:
         payload["key_id"] = key_id
+    # A board message is fresh as a job is (PROTOCOL.md section 13.7):
+    # the runner refuses one with no issued_at, or outside the window.
+    payload.setdefault("issued_at", datetime.now(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"))
     body = sign_payload(payload, args.secret)
     if not getattr(args, "cleartext", False):
         body = jobcrypto.encrypt_body(

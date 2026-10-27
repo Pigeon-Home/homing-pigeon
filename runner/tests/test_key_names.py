@@ -110,7 +110,31 @@ class SecretsMapTest(unittest.TestCase):
         self.assertEqual(secrets, {"": SECRET, name: SECRET})
         with_more = V.build_secrets({"shared_secret": SECRET,
                                      "additional_secrets": {"ops": OTHER}})
-        self.assertEqual(with_more, {"": SECRET, name: SECRET, "ops": OTHER})
+        # Every secret answers to its fingerprint (section 14.2; Q98
+        # item 15): a sender handed only OTHER names it the one way
+        # it can, by computing the name.
+        self.assertEqual(with_more, {"": SECRET, name: SECRET, "ops": OTHER,
+                                     security.key_fingerprint(OTHER): OTHER})
+
+    def test_an_additional_secret_answers_to_its_fingerprint(self):
+        secrets = V.build_secrets({"shared_secret": SECRET,
+                                   "additional_secrets": {"ops": OTHER}})
+        fp = security.key_fingerprint(OTHER)
+        self.assertEqual(V.secret_named(secrets, fp), OTHER)
+        # The owner's name stays the count name: windows and retained
+        # records keyed under "ops" do not move.
+        self.assertEqual(V.canonical_key_id(secrets, fp), "ops")
+        pols = V.build_key_policies({"shared_secret": SECRET,
+                                     "additional_secrets": {"ops": OTHER},
+                                     "key_policies": {"ops": {"allowed_kinds": ["ping"]}}})
+        self.assertEqual(V.policy_for(pols, secrets, fp), {"allowed_kinds": ["ping"]})
+
+    def test_a_name_that_is_another_secrets_fingerprint_is_refused(self):
+        with self.assertRaisesRegex(RuntimeError, "names another secret"):
+            V.build_secrets({"shared_secret": SECRET,
+                             "additional_secrets": {
+                                 "ops": OTHER,
+                                 security.key_fingerprint(OTHER): CANARY}})
 
     def test_another_secret_cannot_take_the_default_keys_name(self):
         name = security.key_fingerprint(SECRET)
@@ -247,7 +271,8 @@ class PongListsTheKeyIdsTest(_MailTest):
         result = self._send(TR.job_payload(str(uuid.uuid4())))
         card = result["platform"]
         self.assertEqual(card["key_ids"], sorted(
-            [security.key_fingerprint(SECRET), "canary-key", "ops"]))
+            [security.key_fingerprint(SECRET), "canary-key", "ops",
+             security.key_fingerprint(OTHER), security.key_fingerprint(CANARY)]))
         self.assertNotIn("", card["key_ids"])
         text = json.dumps(result)
         for value in (SECRET, OTHER, CANARY):
@@ -294,8 +319,11 @@ class OneKeyManyNamesTest(unittest.TestCase):
                          (self.fp, "", "prod-1"))
         self.assertEqual(V.key_names(self.secrets, "prod-1"),
                          ("prod-1", "", self.fp))
-        self.assertEqual(V.key_names(self.secrets, "ops"), ("ops", "ops-too"))
-        self.assertEqual(V.key_names(self.secrets, "ops-too"), ("ops-too", "ops"))
+        fo = security.key_fingerprint(OTHER)
+        self.assertEqual(V.key_names(self.secrets, "ops"),
+                         ("ops",) + tuple(sorted([fo, "ops-too"])))
+        self.assertEqual(V.key_names(self.secrets, "ops-too"),
+                         ("ops-too",) + tuple(sorted([fo, "ops"])))
         self.assertEqual(V.key_names(self.secrets, "nobody"), ("nobody",))
         self.assertEqual(V.key_names(self.secrets, None), (None,))
         self.assertEqual(V.key_names("not a map", "ops"), ("ops",))

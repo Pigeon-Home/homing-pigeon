@@ -90,6 +90,17 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 seen[seen_key] = True
         return True
 
+    # Q98 item 13: the key's policy and the deny flag hold at the
+    # query door as at the job's (PROTOCOL.md section 14.1).
+    door = _runner()._verify.check_door_policy(cfg, secrets, key_id, "query")
+    if door:
+        R.log(f"query rejected seq {seq}: key policy: {door}", "WARN")
+        finish({
+            "v": _runner().PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
+            "rejected": "policy", "answers": [],
+        }, secret, encrypted, key_id)
+        return True
+
     if not _runner()._version_ok(payload.get("v")) or payload.get("type") != "query":
         R.log(f"query rejected (bad type) seq {seq}", "WARN")
         finish({
@@ -128,6 +139,13 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     reply = None
     with R._RETAINED_LOCK:
         retained = _runner().load_retained(base_dir, job_id)
+        owner = retained.get("key") if isinstance(retained, dict) else None
+        if isinstance(owner, str) and \
+                _runner().canonical_key_id(secrets, key_id) != owner:
+            # Another key's job: its budget is not this key's to spend,
+            # and the answer is the one an unknown job gets, so a key
+            # learns nothing about which job ids another key ran.
+            retained = None
         if retained is None or _runner().retained_expired(retained, cfg):
             reason = "expired" if retained is not None else "unknown_job"
             R.log(f"query rejected seq {seq}: {reason} {job_id!r}", "WARN")

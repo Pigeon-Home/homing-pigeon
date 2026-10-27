@@ -311,7 +311,17 @@ def canonical_key_id(secrets, key_id):
     names = key_names(secrets, key_id)
     if "" in names:
         return ""
-    return min(names, key=lambda n: (not isinstance(n, str), str(n)))
+    # The owner's name for a key (its additional_secrets id) is its
+    # count name; the fingerprint every secret also answers to is the
+    # fallback, so registering fingerprints (Q98 item 15) did not move
+    # an existing key's window or retained records to a new name.
+    secret = secret_named(secrets, key_id)
+    try:
+        fp = _key_fingerprint(secret) if isinstance(secret, str) else None
+    except Exception:
+        fp = None
+    owned = [n for n in names if n != fp]
+    return min(owned or names, key=lambda n: (not isinstance(n, str), str(n)))
 
 
 def policy_for(policies, secrets, key_id):
@@ -388,6 +398,21 @@ def build_secrets(cfg) -> dict:
                                "carry it")
         validate_shared_secret(sec)
         secrets[kid] = sec
+    # Every secret answers to its fingerprint (PROTOCOL.md section
+    # 14.2), not the default key alone: a sender handed a bare
+    # additional secret names it the only way it can, by computing
+    # that name (Q98 item 15). A fingerprint already naming another
+    # secret is a collision the config cannot carry.
+    for kid, sec in list(secrets.items()):
+        if kid == "" or sec == default:
+            continue
+        fp = _key_fingerprint(sec)
+        held = secrets.get(fp)
+        if held is not None and held != sec:
+            raise RuntimeError(f"config error: key id {fp} names another "
+                               "secret; it is the fingerprint of the "
+                               f"secret under {kid!r}")
+        secrets[fp] = sec
     return secrets
 
 
@@ -564,6 +589,46 @@ def unrestricted_extra_keys(cfg) -> list:
                   if isinstance(k, str) and k
                   and not is_default_key(secrets, k)
                   and policy_for(policies, secrets, k) is None)
+
+
+DOORS = ("query", "board", "v2")
+
+
+def check_door_policy(cfg, secrets, key_id, door):
+    """None when a key may use a door other than the job's, else why.
+
+    Queries, board messages and version 2 messages are signed by a
+    key as jobs are, and a key's policy and the deny flag hold there
+    too (Q98 item 13; PROTOCOL.md section 14.1): an additional key
+    with no entry is refused when key_policies_default_deny is set,
+    and a policy that lists `allowed_kinds` admits a door only when it
+    lists the door's name (`query`, `board`, `v2`). A policy without
+    `allowed_kinds`, and the owner's key under any name, pass.
+    """
+    if door not in DOORS:
+        return "unknown door"
+    if not isinstance(cfg, dict):
+        cfg = {}
+    if not isinstance(key_id, str):
+        return "invalid key id"
+    names = key_names(secrets, key_id) if isinstance(secrets, dict) else (key_id,)
+    if "" in names:
+        return None
+    try:
+        policies = build_key_policies(cfg)
+    except Exception as e:
+        return f"key policies unreadable: {e}"
+    pol = policy_for(policies, secrets, key_id) if isinstance(secrets, dict) \
+        else policies.get(key_id)
+    if not pol:
+        if cfg.get("key_policies_default_deny"):
+            return ("no key policy entry for this key "
+                    "(key_policies_default_deny)")
+        return None
+    kinds = pol.get("allowed_kinds")
+    if isinstance(kinds, list) and door not in kinds:
+        return f"{door} is not in this key's allowed_kinds"
+    return None
 
 
 def check_key_policy(policies: dict, key_id: str, cfg, job, secrets=None):

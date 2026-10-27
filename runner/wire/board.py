@@ -157,8 +157,10 @@ class Board:
         if not isinstance(task, dict):
             return False, "invalid task"
         tid = task.get("task_id")
+        # The job_id grammar (PROTOCOL.md sections 2 and 13.1): the
+        # dot names are not ids (Q98 item 19).
         if not isinstance(tid, str) or not re.fullmatch(
-                r"[A-Za-z0-9._-]{1,128}", tid):
+                r"[A-Za-z0-9._-]{1,128}", tid) or tid in (".", ".."):
             return False, "invalid task_id"
         for field in ("requires", "capabilities", "compartments"):
             v = task.get(field)
@@ -342,11 +344,13 @@ class Board:
         self.save()
         return copy.deepcopy(chosen)
 
-    def complete(self, task_id, result, require_review=False):
+    def complete(self, task_id, result, require_review=False, holder=None):
         with BOARD_LOCK:
-            return self._complete_unlocked(task_id, result, require_review)
+            return self._complete_unlocked(task_id, result, require_review,
+                                           holder)
 
-    def _complete_unlocked(self, task_id, result, require_review=False):
+    def _complete_unlocked(self, task_id, result, require_review=False,
+                           holder=None):
         # A dict id raises TypeError on get. That rejected the message.
         if not isinstance(task_id, str):
             return "not_found", "not found"
@@ -357,6 +361,15 @@ class Board:
             return "duplicate", "already done"
         if t.get("state") != "claimed":
             return "not_claimed", "not claimed"
+        # A claim is exclusive (PROTOCOL.md section 13.5, rule 1): the
+        # key that holds it completes it. A worker whose lease lapsed
+        # and whose task was dealt again is answered not_claimed
+        # (Q98 item 17). A claim recorded without a key (a board file
+        # from before keys were recorded) is completed by any key.
+        claimed = t.get("claimed_key_id")
+        if holder is not None and isinstance(claimed, str) \
+                and claimed != holder:
+            return "not_claimed", "claimed by another key"
         if require_review:
             t["state"] = "pending_review"
             t["result"] = _json_safe(result)

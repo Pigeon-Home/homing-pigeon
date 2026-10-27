@@ -4,6 +4,7 @@ Extracted from runner.py.
 """
 import email
 import json
+import os
 import re
 
 
@@ -136,6 +137,37 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
     if not _runner()._version_ok(payload.get("v")):
         reject("unsupported version")
         return True
+    # Q98 items 12, 13, 16: a board message is held to a job's
+    # authorization (PROTOCOL.md section 13.7). Its type is the one
+    # the subject announces, its identifier is the subject's, its
+    # key may use the board, it is fresh, and the same signed
+    # message is acted on once.
+    if payload.get("type") != kind:
+        reject("board message type does not match the subject")
+        return True
+    id_field = "worker_id" if kind == "task_request" else "task_id"
+    if id_field in payload and payload.get(id_field) != ident:
+        reject(f"board {id_field} does not match the subject")
+        return True
+    why = _runner()._verify.check_door_policy(cfg, secrets, key_id, "board")
+    if why:
+        reject(f"key policy: {why}")
+        _runner()._auth_reject_event(base_dir, "security_policy", feature="board")
+        return True
+    fresh, why = _runner()._issued_at_ok(payload.get("issued_at"), cfg)
+    if not fresh:
+        reject(why)
+        return True
+    seen_path = os.path.join(base_dir, "seen.json") \
+        if isinstance(base_dir, str) and base_dir else ""
+    seen = _runner().load_seen(seen_path) if seen_path else {}
+    sig = payload.get("sig") if isinstance(payload.get("sig"), str) else ""
+    skey = _runner()._seen_key(cfg, f"board:{kind}:{ident}:{sig[:32]}")
+    if seen.get(skey):
+        R.log(f"board {kind} {ident}: the same signed message again; skipped")
+        _runner()._mark(imap, seq, opts)
+        return True
+    holder = _runner().canonical_key_id(secrets, key_id)
     if opts is not None and getattr(opts, "dry_run", False):
         # A dry run verifies and says what it would do: the board is
         # not touched, no reply goes out, the message stays unseen
@@ -151,7 +183,7 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
             reply_body = {"v": _runner().PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "ok": ok, "reason": reason}
         elif kind == "task_request":
             caps = payload.get("capabilities") or []
-            offered = board.offer(ident, caps, key_id, cfg)
+            offered = board.offer(ident, caps, holder, cfg)
             tid = offered.get("task_id") if isinstance(offered, dict) else None
             if offered and tid:
                 reply_subj = f"[HOMING-PIGEON] task_offer {tid}"
@@ -161,7 +193,8 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
                 reply_body = {"v": _runner().PROTOCOL_VERSION, "type": "task_offer", "empty": True}
         elif kind == "task_result":
             require_review = cfg.get("require_review", False)
-            status, reason = board.complete(ident, payload.get("result"), require_review)
+            status, reason = board.complete(ident, payload.get("result"),
+                                            require_review, holder=holder)
             reply_subj = f"[HOMING-PIGEON] task_ack {ident}"
             reply_body = {"v": _runner().PROTOCOL_VERSION, "type": "task_ack", "task_id": ident, "status": status, "reason": reason}
         elif kind == "task_approve":
@@ -171,6 +204,9 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         else:
             reject("unknown board kind")
             return True
+        if seen_path:
+            seen[skey] = True
+            _runner().save_seen(seen_path, seen)
     except Exception as e:
         # Bad board data must reject this message, not fail the cycle.
         R.log(f"board failed seq {seq}: {e}", "WARN")

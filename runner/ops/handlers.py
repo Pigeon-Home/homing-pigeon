@@ -177,6 +177,10 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     if not encrypted and not R._cleartext_jobs_allowed():
         reject("cleartext version 2 message refused")
         return True
+    door = R._verify.check_door_policy(cfg, secrets, key_id, "v2")
+    if door:
+        reject(f"key policy: {door}")
+        return True
     # The answerer list names keys; a key answers under any of its
     # names (Q94: the default key's fingerprint is the default key).
     if not any(R._protocol_v2.answerer_allowed(cfg, name)

@@ -8,6 +8,7 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from email.message import EmailMessage
 from unittest import mock
 
@@ -232,7 +233,9 @@ class BoardTailTest(unittest.TestCase):
 
             def _approve(task_id):
                 signed = sign_payload(
-                    {"v": 1, "type": "task_approve"}, SECRET)
+                    {"v": 1, "type": "task_approve",
+                     "issued_at": datetime.now(timezone.utc).strftime(
+                         "%Y-%m-%dT%H:%M:%SZ")}, SECRET)
                 return jobcrypto.encrypt_body(
                     signed, SECRET, job_id=task_id, key_id="",
                     sign=sign_payload)
@@ -305,7 +308,9 @@ class BoardMailRejectionsTest(unittest.TestCase):
         from runner.cloud.send_job import sign_payload
         with tempfile.TemporaryDirectory() as d:
             signed = sign_payload(
-                {"v": 1, "type": "task_approve"}, SECRET)
+                {"v": 1, "type": "task_approve",
+                     "issued_at": datetime.now(timezone.utc).strftime(
+                         "%Y-%m-%dT%H:%M:%SZ")}, SECRET)
             # Sealed for a different task id: the envelope
             # verifies, the AEAD binding does not.
             body = jobcrypto.encrypt_body(

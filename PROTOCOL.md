@@ -979,8 +979,11 @@ Defenses, in order of importance:
    Accounting is per job: the spend is kept with the job's retained
    output, so one job's queries cannot draw down another job's
    budget, and since a job is signed by one key, no key can spend a
-   budget it did not sign for. (Rate limiting, item 3, is the per-key
-   control; see section 14.)
+   budget it did not sign for: the retained record names the key the
+   job verified under, and a query signed by any other key is answered
+   `unknown_job` and spends nothing, so a key also learns nothing of
+   which job ids another key ran. (Rate limiting, item 3, is the
+   per-key control; see section 14.)
    Each answered or policy-rejected query spends 1; past the budget
    every remaining declared query is answered `{"rejected": "budget"}`
    and nothing else -- the `answers[]` array keeps one entry per
@@ -1177,9 +1180,11 @@ three rules.
    pending_review, or done. Dealing moves open to claimed; a
    `task_result` for a claimed task moves claimed to done, or to
    pending_review when `require_review` is on (section 13.4), from
-   which the owner's approval moves it to done — completion checks
-   the task's state, not which worker claimed it. No two workers
-   ever hold the same task.
+   which the owner's approval moves it to done. Completion checks
+   the task's state and the key that holds the claim: a result
+   signed by another key, such as a worker whose lease lapsed and
+   whose task was dealt again, is answered `not_claimed`. No two
+   workers ever hold the same task.
 2. **Claims are leases, not locks.** A claim lapses after `task_timeout`
    (config, default 24h) with no result, and the task returns to open.
    A crashed worker cannot wedge the board; it can only delay a task
@@ -1200,7 +1205,18 @@ not a distributed Oracle.
 
 Three more board messages ride the same signed, encrypted form and
 the same authorization as a job. Their subjects follow the board
-pattern: `[HOMING-PIGEON] <type> <id>`.
+pattern: `[HOMING-PIGEON] <type> <id>`. Every board message (these
+three and `task_request`) is held to the job's door: its `type` is
+the one the subject announces; its body identifier (`worker_id` for
+a request, `task_id` for the rest), when the body carries one,
+equals the subject's, and the subject's is the one acted on; it carries
+`issued_at` within the job window (`max_job_age_sec` past, 300
+seconds future); its key passes the key's policy at the `board` door
+(section 14.1); and the same signed message is acted on once (the
+seen-set holds it under its kind, its id and its signature, so a
+fresh request from the same worker is a new message and a replayed
+one is not). A message that fails any of these is refused and
+marked seen; nothing on the board moves.
 
 - `task_submit` (subject id: the `task_id`) opens a task on the
   board. The body is the task of section 13.1 — `task_id`, and
@@ -1284,7 +1300,13 @@ the test suite cannot be repurposed to run arbitrary shell.
 
 Every field is optional; every specified constraint must hold:
 
-- `allowed_kinds`: the job's `kind` must be listed.
+- `allowed_kinds`: the job's `kind` must be listed. The same list
+  governs the other doors a key's messages come through: `query` (the
+  two-phase exchange, section 10), `board` (section 13) and `v2` (the
+  version 2 messages). A policy that lists `allowed_kinds` admits a
+  door only when it names it; a policy without `allowed_kinds` admits
+  every door. `key_policies_default_deny` refuses an additional key
+  with no entry at every door, not only the job's.
 - `allowed_interpreters`: the job's effective interpreter (its own, or
   the configured default) must exactly match one of the listed lists.
 - `max_timeout_sec`: the job's effective timeout must not exceed it.
@@ -1363,7 +1385,11 @@ the secret it generates, and the doctor prints it for the key in
 `config.json`. The runner's default key answers to its fingerprint
 exactly as it answers to the empty key id: both are the same key,
 and a message may name it either way. An additional key keeps the
-name the operator gave it (`additional_secrets`), and a chosen name
+name the operator gave it (`additional_secrets`) and answers to its
+own fingerprint as well, so a sender handed only the secret names it
+the one way it can; a name that is the fingerprint of a different
+secret is a startup error. The operator's name stays the one the
+key is counted under. A chosen name
 for the runner's own key (`install --key-id <name>`) is stored as an
 additional entry carrying the same secret, so that key then has
 three names. Every rule that knows a key by name -- its policy
