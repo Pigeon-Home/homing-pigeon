@@ -100,6 +100,22 @@ facts a reader may need to cite. Git history carries the rest.
   as handled, logged as failed and left in place on every scan,
   once a second for as long as the runner ran; it is left alone
   like any non-`.json` entry. Twenty-one entries over 376 arcs.
+- **blueMonday's provenance contract on the verifiers.** Every
+  body `wire` or `cloud` trusts is now held to where its result
+  would go: `_valid_reply_to` on the signed dict alone answers
+  `None` or a single plain address the dict carries under
+  `reply_to`, and `send_mail` addresses the result there or to the
+  runner's own mailbox with the subject on one line. Ten seeds in
+  the reply_to shapes (padded, a display name, two addresses, a
+  header line folded in, no TLD, over the length cap, non-ASCII,
+  not text, the mailbox itself); `mailbox.py` joins the two arc
+  maps. In `inbox` the reply carries the target the core would
+  pass and the `.target.txt` sidecar must carry exactly that. One
+  finding, fixed and pinned: a result subject with a form feed, a
+  vertical tab, a 0x1c-0x1e separator, U+0085, U+2028 or U+2029
+  in it raised from the header and the result was dropped unsent;
+  the subject is one line by the header's own rule, which is
+  Python's `splitlines` set, not CR and LF alone.
 - **A repeated object is written twice.** `_json_safe` (the signer's
   and the board's JSON walk) treated an object that merely appears
   twice -- under two keys, or twice in a list -- as a cycle and

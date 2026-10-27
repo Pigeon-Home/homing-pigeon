@@ -342,13 +342,16 @@ def mark_seen(imap, seq):
 def send_mail(smtp, cfg, subject: str, body: str, to: str | None = None):
     # SMTP connections are not thread-safe. Always serialize, even if
     # the caller already holds the lock (it is an RLock).
-    # A newline in a header raises ValueError. That must not retry
-    # the job forever.
+    # A line break in a header raises ValueError, and the header's
+    # idea of a line break is Python's (splitlines: a form feed, a
+    # vertical tab, the separators at 0x1c-0x1e, U+0085, U+2028 and
+    # U+2029 as much as CR and LF). That must not retry the job
+    # forever, so the subject is one line by that rule.
     msg = EmailMessage()
     try:
         msg["From"] = str(cfg.get("mailbox_user") or "")
         msg["To"] = to or str(cfg.get("mailbox_user") or "")
-        msg["Subject"] = str(subject or "").replace("\r", " ").replace("\n", " ")
+        msg["Subject"] = " ".join(str(subject or "").splitlines())
         msg.set_content("" if body is None else str(body))
     except Exception as e:
         log(f"result message not built: {e}", "WARN")

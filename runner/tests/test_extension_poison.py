@@ -1348,6 +1348,27 @@ class SnapshotAndSubjectFaultTest(unittest.TestCase):
         self.assertNotIn("\n", sent["subject"])
         self.assertNotIn("\r", sent["subject"])
 
+    def test_other_line_breaks_in_subject_do_not_drop_the_result(self):
+        # Project blueMonday, provenance: the header's line-break
+        # rule is Python's splitlines set, and a form feed or a
+        # U+2028 in a subject raised the same ValueError, which
+        # dropped the result unsent. The subject is one line.
+        from runner.runner import send_mail
+
+        class S:
+            def __init__(self):
+                self.sent = []
+
+            def send_message(self, msg):
+                self.sent.append(msg)
+
+        for sep in ("\f", "\v", "\x1c", "\x85", "\u2028"):
+            smtp = S()
+            send_mail(smtp, {"mailbox_user": "a@b.c"},
+                      "result" + sep + "bad", "body")
+            self.assertEqual(len(smtp.sent), 1, repr(sep))
+            self.assertEqual(smtp.sent[0]["Subject"], "result bad")
+
 
 class OAuthShapeFaultTest(unittest.TestCase):
     """Finding: a non-object token response crashed the refresh.

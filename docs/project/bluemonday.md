@@ -145,9 +145,14 @@ never files a refusal as a crash.
   when a control character in the signed object explains it; the
   keyed reader and the plain one; the core's mail extraction and
   the email extension's.
-- **Provenance.** A reply target is the mailbox or a single plain
-  address from inside the signed body, never anything a header
-  said.
+- **Provenance** (`mail`, `wire`, `cloud`, `inbox` now). A reply
+  target is the mailbox or a single plain address from inside the
+  signed body, never anything a header said: the email extension's
+  `reply_target` on the raw message, the core's `_valid_reply_to`
+  and `send_mail` on every body the verifiers trust (the subject
+  on one line by the header's own rule, the result never dropped
+  over it), and the channel's `.target.txt` sidecar carrying
+  exactly what the core passed.
 - **Sequence.** The entry is the file as it was left plus the
   operations in order, and the contract holds after every step.
   `board_ops` is that for the board: every operation answers its
@@ -263,9 +268,9 @@ nothing is still the record that those rounds were run.
   contract), the manifest reader (Q69).
 - **Phase 3 (in flight):** the sequence contract on `local`
   (`local_inbox`, landed); the provenance contract on every reader
-  that names a destination; cross-platform replay findings (a
-  reader that reads differently on Windows is a differential of
-  its own).
+  that names a destination (landed on `wire`, `cloud` and `inbox`,
+  beside `mail`'s); cross-platform replay findings (a reader that
+  reads differently on Windows is a differential of its own).
 - **Phase 4:** the grammar dictionary from the IETF draft; seeds
   from the draft's own examples; a grow of every target under it.
 - **Phase 5:** live captures, scrubbed to invented names, as seeds

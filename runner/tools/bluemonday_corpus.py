@@ -14,7 +14,9 @@ A coverage-guided seed corpus, kept under runner/tests/bluemonday/
 as replayable fixtures, against the readers that stand between a
 delivered body and the agent's trust in it:
 
-    wire    runner/wire/verify.py        verify_body, verify_body_keyed
+    wire    runner/wire/verify.py        verify_body, verify_body_keyed;
+            runner/wire/mailbox.py       _valid_reply_to and send_mail on
+                                         every trusted body (provenance)
     cloud   runner/cloud/send_job.py     verify_body (the front-end's copy)
     v2      runner/wire/protocol_v2.py   validate
     crypto  runner/wire/jobcrypto.py     decrypt_body
@@ -316,16 +318,81 @@ def _differential(text, agent, aexc):
                     f"refuses: {_short(aexc)}")
 
 
+class _FakeSmtp:
+    """An SMTP connection that keeps what it was given to send."""
+
+    def __init__(self):
+        self.sent = []
+
+    def send_message(self, msg):
+        self.sent.append(msg)
+
+
+def _provenance(job):
+    """Provenance: where a trusted job's result goes is decided by
+    _valid_reply_to on the signed dict alone -- None, or a single
+    plain address the dict itself carries under reply_to, stripped,
+    no longer than 254 characters, matching the one pattern -- and
+    send_mail addresses the result there or to the runner's own
+    mailbox, with the subject on one line, never raising on what
+    _valid_reply_to chose."""
+    target, exc = _call(MB._valid_reply_to, job)
+    if exc is not None:
+        raise Crash("exception", "_valid_reply_to raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if target is not None:
+        raw = job.get("reply_to")
+        if (not isinstance(target, str) or not isinstance(raw, str)
+                or target != raw.strip() or len(target) > 254
+                or not MB._REPLY_TO_RE.match(target)):
+            raise Crash("provenance", f"_valid_reply_to chose {target!r}, "
+                        "not a single plain address from the signed body")
+    smtp = _FakeSmtp()
+    # The subject the core would build: a job_id that failed the
+    # safe-id check never reaches a result, so the token stands in.
+    job_id = job.get("job_id")
+    if not isinstance(job_id, str) or not R._SAFE_JOB_ID.match(job_id):
+        job_id = "bm-unsafe-id"
+    subject = "[HOMING-PIGEON] result " + job_id
+    _r, exc = _call(MB.send_mail, smtp, LOCAL_CFG, subject, "{}", target)
+    if exc is not None:
+        raise Crash("exception", "send_mail raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    if len(smtp.sent) != 1:
+        raise Crash("provenance", f"send_mail sent {len(smtp.sent)} messages")
+    msg = smtp.sent[0]
+    if msg["To"] != (target or LOCAL_CFG["mailbox_user"]):
+        raise Crash("provenance", f"the result is addressed to {msg['To']!r}")
+    if len(str(msg["Subject"]).splitlines()) > 1:
+        raise Crash("provenance", "the result subject spans lines")
+    # Any text in the subject slot, the unsafe id included, is sent
+    # on one line rather than dropped.
+    smtp = _FakeSmtp()
+    raw_id = job.get("job_id")
+    if isinstance(raw_id, str) and raw_id != job_id:
+        _r, exc = _call(MB.send_mail, smtp, LOCAL_CFG,
+                        "[HOMING-PIGEON] result " + raw_id, "{}", target)
+        if exc is not None:
+            raise Crash("exception", "send_mail raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        if len(smtp.sent) != 1:
+            raise Crash("provenance", "send_mail dropped a result over "
+                        "its subject text")
+
+
 def _verify_text(text):
     """wire: both readers of runner/wire/verify.py on one received
     body, each to its contract, the two in agreement, and the
-    front-end's verifier in agreement with them (the differential)."""
+    front-end's verifier in agreement with them (the differential);
+    a trusted body's reply target is held to provenance."""
     got, exc = _call(V.verify_body, text, SECRET)
     if exc is not None:
         _expect_refusal(exc, ValueError, "verify_body")
     elif not isinstance(got, dict):
         raise Crash("shape", f"verify_body returned {type(got).__name__}")
     _differential(text, got, exc)
+    if exc is None:
+        _provenance(got)
     keyed, kexc = _call(V.verify_body_keyed, text, SECRETS)
     if kexc is not None:
         _expect_refusal(kexc, ValueError, "verify_body_keyed")
@@ -412,6 +479,8 @@ def _signed_payload(payload, signer, who):
         if _unsigned(got) != _unsigned(expect):
             raise Crash("roundtrip", "verify_body_keyed reads back a "
                         f"payload {who} did not sign")
+    if isinstance(expect, dict):
+        _provenance(expect)
     return "accepted"
 
 
@@ -896,6 +965,7 @@ _NEIGHBOR_SUBJECT = "[HOMING-PIGEON] job bm-neighbor-0001"
 _NEIGHBOR_BODY = '{"job_id": "bm-neighbor-0001", "type": "ping"}\n'
 _RESULT_SUBJECT = "[HOMING-PIGEON] result bm-result-0001"
 _RESULT_BODY = '{"job_id": "bm-result-0001", "exit_code": 0}\n'
+_RESULT_TARGET = "ops@example.com"
 
 
 def check_inbox(entry):
@@ -958,7 +1028,10 @@ def _channel_processor(mode, served, calls):
             # A body that is not text: the outbox writer raises on
             # it, which is the reply-did-not-land path.
             return _Replies(calls, [(_RESULT_SUBJECT, 123)])
-        return [(_RESULT_SUBJECT, _RESULT_BODY)]
+        # The reply carries the job's validated reply_to as the
+        # core would pass it; the channel writes it beside the
+        # result and derives none of its own (provenance).
+        return [(_RESULT_SUBJECT, _RESULT_BODY, _RESULT_TARGET)]
 
     return process
 
@@ -1094,12 +1167,21 @@ def _channel_sequence(spec):
         if len(calls) != len(stay):
             raise Crash("contract", f"after {mode}, requeue ran "
                         f"{len(calls)} times for {len(stay)} held envelopes")
-        results = sorted(f for f in os.listdir(paths["outbox"])
-                         if f.endswith(".txt"))
+        outbox = sorted(f for f in os.listdir(paths["outbox"])
+                        if f.endswith(".txt"))
+        targets = [f for f in outbox if f.endswith(".target.txt")]
+        results = [f for f in outbox if f not in targets]
         want = len(parsed) if mode == "reply" else 0
-        if len(results) != want:
+        if len(results) != want or len(targets) != want:
             raise Crash("contract", f"after {mode}, {want} result files "
-                        f"expected and {len(results)} in the outbox")
+                        f"with their target sidecars expected and "
+                        f"{len(results)} + {len(targets)} in the outbox")
+        for fname in targets:
+            with open(os.path.join(paths["outbox"], fname),
+                      encoding="utf-8") as fh:
+                if fh.read() != _RESULT_TARGET + "\n":
+                    raise Crash("provenance", f"the sidecar {fname} does not "
+                                "carry the reply target it was given")
         for fname in results:
             with open(os.path.join(paths["outbox"], fname),
                       encoding="utf-8") as fh:
@@ -1298,6 +1380,18 @@ def _payload_seeds():
         ("brace_key_at_top", {"v": 1, "type": "job", "{": "x", "\"}": "{",
                               "job_id": "bm-brace-0001",
                               "issued_at": FIXED_AT, "kind": "exec"}),
+        # Provenance: where the result goes is read from the signed
+        # body alone, one plain address or nothing.
+        ("reply_to", _job(reply_to="ops@example.com")),
+        ("reply_to_padded", _job(reply_to="  ops@example.com\t")),
+        ("reply_to_named", _job(reply_to="Ops <ops@example.com>")),
+        ("reply_to_two", _job(reply_to="a@example.com, b@example.com")),
+        ("reply_to_header_line", _job(reply_to="ops@example.com\nBcc: x@example.com")),
+        ("reply_to_no_tld", _job(reply_to="ops@example")),
+        ("reply_to_long", _job(reply_to="o" * 250 + "@example.com")),
+        ("reply_to_unicode", _job(reply_to="öps@example.com")),
+        ("reply_to_not_text", _job(reply_to=["ops@example.com"])),
+        ("reply_to_mailbox", _job(reply_to="runner@example.com")),
     ]
 
 
@@ -3350,10 +3444,11 @@ def _src(*parts):
 
 
 TARGETS = {
-    "wire": {"files": [_src("wire", "verify.py")], "check": check_wire,
-             "seeds": seeds_wire},
-    "cloud": {"files": [_src("cloud", "send_job.py")], "check": check_cloud,
-              "seeds": seeds_cloud},
+    "wire": {"files": [_src("wire", "verify.py"), _src("wire", "mailbox.py")],
+             "check": check_wire, "seeds": seeds_wire},
+    "cloud": {"files": [_src("cloud", "send_job.py"),
+                        _src("wire", "mailbox.py")],
+              "check": check_cloud, "seeds": seeds_cloud},
     "v2": {"files": [_src("wire", "protocol_v2.py")], "check": check_v2,
            "seeds": seeds_v2},
     "crypto": {"files": [_src("wire", "jobcrypto.py")],

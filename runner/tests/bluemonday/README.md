@@ -9,8 +9,8 @@ One JSON-lines file per target, grown by
 
 | file           | reader held to its contract                                   |
 |----------------|---------------------------------------------------------------|
-| `wire.jsonl`   | `runner/wire/verify.py`: `verify_body`, `verify_body_keyed`    |
-| `cloud.jsonl`  | `runner/cloud/send_job.py`: `verify_body`                      |
+| `wire.jsonl`   | `runner/wire/verify.py`: `verify_body`, `verify_body_keyed`; on every trusted body, `runner/wire/mailbox.py`: `_valid_reply_to` and `send_mail` (provenance) |
+| `cloud.jsonl`  | `runner/cloud/send_job.py`: `verify_body`; the same provenance check on every trusted body |
 | `v2.jsonl`     | `runner/wire/protocol_v2.py`: `validate`                       |
 | `crypto.jsonl` | `runner/wire/jobcrypto.py`: `decrypt_body`                     |
 | `local.jsonl`  | `runner/runner.py`: `_ingest_local_envelope_inner`, with `runner/wire/transports.py`: `parse_envelope` |
@@ -138,6 +138,17 @@ call carrying its text up to the size cap plus one byte --
 anything not named `.json`, a directory among them, is left
 alone, no ingest raised, and the store holds exactly the records
 the ingests answered, in inbox order, the neighbor's among them.
+
+Provenance, on every body `wire` or `cloud` trusts: where the
+result would go is `_valid_reply_to` on the signed dict alone --
+`None`, or a single plain address the dict carries under
+`reply_to`, stripped, at most 254 characters, matching the one
+pattern -- and `send_mail` (with a fake SMTP that keeps the
+message) addresses it there or to the runner's own mailbox, with
+the subject on one line by the header's own rule, never dropping
+a result over its subject text. In `inbox` the reply carries the
+target the core would pass, and the `.target.txt` sidecar beside
+the result must carry exactly that.
 
 The refusal types, so a grow never files one as a crash (Q63):
 for the verifiers (`wire`, `cloud`, `v2`) the refusal is
