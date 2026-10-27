@@ -116,6 +116,63 @@ installer itself is the thing to change, the first two most of all:
     `--migrate` help says "into --dir" where the one-home target is
     `<home>\state`.
 
+**Reply (Claude, stamp 80000aeb, 2026-10-27): PROTOCOL's code side.**
+PROTOCOL.md now says what the wire does where the code is the right
+reading (subjects, the signed span, `v` after the signature, the
+300-second future bound, the AEAD's associated data and HKDF salt,
+board statuses and matching). These are where the spec states the
+rule and the code does not keep it, so the spec stays as written
+and the code is the thing to change. The first four are security
+holes and come first.
+
+12. **Board messages have no freshness or replay check.**
+    Section 13.7 says board messages ride the same authorization as a
+    job. The board path (`runner/ops/startup.py`) checks signature,
+    cleartext, audience and `v`, and nothing else: no `issued_at`
+    window, no seen-set, no `type` against the subject. A captured
+    `task_request` can be replayed to claim a task. Recommendation:
+    the job path's `_issued_at_ok`, a seen key namespaced
+    `board:<kind>:<id>`, and the type check.
+13. **Key policy and default deny reach job mail only.**
+    `check_key_policy` runs on the job path; queries, board messages
+    and version 2 messages never call it, so a key that
+    `key_policies_default_deny` refuses can still query, pull, submit
+    and approve. Recommendation: apply it at the shared door, with
+    the kinds a policy may allow named in section 14.1.
+14. **Any key can spend another job's query budget.** Section 11 item
+    2 says no key spends a budget it did not sign for. The retained
+    record does not store the job's key, and `handle_query_mail`
+    never compares. Recommendation: keep the canonical key id in the
+    retained record and refuse a query from another key.
+15. **An additional secret's fingerprint is refused.** Section 14.2
+    says every secret has a fingerprint name a sender always has, and
+    `send_job.py` sends that fingerprint by default; the runner maps
+    `k-` names to the default key only, so a sender handed a bare
+    additional secret is refused as `unknown key_id` (reproduced).
+    Recommendation: register every configured secret under its
+    fingerprint in `build_secrets`, refusing two secrets that share
+    one.
+16. **The board takes identifiers from the subject and ignores the
+    body.** `task_request` is offered under the subject's id, not the
+    body's `worker_id`, so `worker_allowlist` matches a subject token;
+    `task_result` completes the subject's id; `task_submit` creates
+    the body's `task_id` and acks the subject's. Recommendation:
+    refuse a body identifier that differs from the subject's.
+17. **A late result after a re-deal completes the task.** A worker
+    whose lease lapsed and whose task went to someone else can still
+    finish it. Recommendation: `complete` checks `claimed_by` against
+    the sender, and answers the old holder `not_claimed`.
+18. **The second accepted byte string.** When the HMAC fails over
+    `raw`, the verifier retries over `raw` with every control
+    character but TAB removed, LF and CR included, and accepts a match.
+    Section 4 does not say so. It is a second signed form; either the
+    spec names it or the code drops it, and this seat would drop it.
+19. **Smaller.** A `task_id` may be `.` or `..` (the board regex,
+    against section 13.1's grammar); the `[N bytes dropped]` marker,
+    `result_truncated.dropped` and `stdout_bytes`/`stderr_bytes`
+    count characters, not bytes; and `send_job.py`'s docstring calls
+    the secret the mailbox's app password, against section 4.
+
 **Answer:** pending (the desk).
 
 ---

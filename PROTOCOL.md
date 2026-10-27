@@ -60,7 +60,13 @@ The reference default is email only: `transports` absent means
 - Subject lines (exact prefixes):
   - Job: contains `[HOMING-PIGEON]` then `job <job_id>` (a word like `TEST` or a `Re:` prefix is fine)
   - Result: `[HOMING-PIGEON] result <job_id>`
-  - Query: `[HOMING-PIGEON] query <query_id>` (section 10.1)
+  - Query: `[HOMING-PIGEON] query <query_id>` (section 10.1), answered
+    under `[HOMING-PIGEON] qresult <query_id>`
+  - Board (section 13.7): `task_submit`, `task_request`, `task_result`
+    and `task_approve`, each followed by an identifier, answered under
+    `task_ack <id>`, `task_offer <task_id>` or `task_offer empty`
+  - Version 2 (`docs/ietf/draft-homing-pigeon-v2-00.md`):
+    `determination`, `question` and `answer <msg_id>`
   - `<job_id>` is 1–128 characters from `[A-Za-z0-9._-]`, and it
     must not be `.` or `..`. A UUID is recommended, not required.
 
@@ -140,7 +146,8 @@ The reference default is email only: `transports` absent means
 - For `exec`, at least one of `script` / `script_url` is required.
   A job carrying both is accepted and `script_url` wins; the inline
   `script` is ignored.
-- `timeout_sec`: default 300, maximum 3600.
+- `timeout_sec`: default the runner's `default_timeout_sec` (300);
+  a value above 3600 runs at 3600.
 - `interpreter`: optional list whose first element is the executable and
   the rest are its arguments, e.g. `["pwsh", "-File"]` or `["bash"]`. The
   script is written into the workdir under a name taken from
@@ -243,8 +250,8 @@ The reference default is email only: `transports` absent means
 - `delivery_note`: OPTIONAL. Present only on a stub sent in place of
   a result the mail server refused for good (a 5xx such as 552): the
   stub keeps `v`, `type`, `job_id`, `kind`, `completed_at`,
-  `exit_code`, `timed_out`, `duration_sec`, `runner`, `review` and
-  `judgment`, carries empty streams with both `*_truncated` flags
+  `exit_code`, `timed_out`, `duration_sec`, `runner`, `key_id`,
+  `review` (present only on a -2 rejection result) and `judgment`, carries empty streams with both `*_truncated` flags
   set, and says in this member what was refused and that the full
   output is under `work/<job_id>/` on the runner. It is signed and
   encrypted like any result. A 4xx, a socket or a TLS error is not a
@@ -338,7 +345,8 @@ Verification:
 2. Find the **last** occurrence of `,"sig":"`. The 96 characters after
    it must be hex (either case) and be followed by `"}`; otherwise
    reject. Text after that `"}` (a trailer) is ignored.
-3. `raw = <everything before the marker> + "}"`.
+3. `raw` = the text from the `{` that opens the signed object up to
+   the marker, plus `"}"`. Text before that `{` is not signed.
 4. Recompute `HEX(HMAC_SHA384(secret, raw))` and compare with the
    presented signature using a constant-time comparison.
 
@@ -386,24 +394,30 @@ Authorization then runs in this order, and all of it must pass:
    jobs, queries (including the `ask` op), board messages, and sensor
    alerts.
 3. The signed script is bounded by `max_script_bytes`.
-4. `v == 1`; `type` is the message type the subject announces; and
+4. `v == 1` (checked once the signature has verified, before
+   anything else in the body is acted on); `type` is the message type the subject announces; and
    for a job the body's `job_id` equals the subject's (a query or a
    task message is routed by its subject, and its body identifier
    is read from the body).
-5. `issued_at` parses, carries a timezone, and is within
-   `max_job_age_sec` (default 3600) of the runner's clock
-   (replay / stale protection).
+5. `issued_at` parses, carries a timezone, is no older than
+   `max_job_age_sec` (default 3600) and no more than 300 seconds
+   ahead of the runner's clock (replay / stale protection).
 6. *(Seen-set.)* The `job_id` seen-set lookup is a routing check and
    has already run, before any signature work (see the opening of
    this section). It is listed here only so the replay story reads
    in one place: a repeated `job_id` never reaches this list. The
    seen-set key is namespaced by `runner_id` when one is configured.
-7. **Job-shape validation** (job messages): `kind` is `exec` or
-   `ping`; `script_sha384`, when present, matches the script — for
+7. **Job-shape validation** (job messages): `kind` is `exec`,
+   `ping` or `sensor_alert`; `script_sha384`, when present, matches the script — for
    `script_url`, the downloaded bytes, checked before anything
    runs; and every `files[]` name passes the rules of section 6
    and stays inside the workdir.
    Failures here produce the -2 rejection result of section 3.2.
+
+Two more gates sit in that order: a cleartext body is refused right
+after the signature verifies, unless cleartext acceptance is enabled
+(section 8), and the key policy (section 14.1) is applied after the
+freshness check.
 
 Failures are logged, the mail is marked seen, and the job is **never**
 executed. **A verified job is executed at most once per runner state
@@ -499,21 +513,27 @@ The object protocol uses three cryptographic primitives:
   identity asserted by the transport (for email, the From header)
   carries no weight.
 - **Hashing:** SHA-384, used for file and script integrity checks.
-- **Payload encryption:** AES-256-GCM (AEAD), keyed per job by
-  HKDF-SHA-384 from the shared secret. A signed body SHOULD be
-  sent as an encrypted envelope — an `hp_enc` member carrying the
-  algorithm (`aes-256-gcm/hkdf-sha384`), a 12-byte nonce, and
-  the ciphertext — and the envelope is itself signed as
+- **Payload encryption:** AES-256-GCM (AEAD), keyed per message by
+  HKDF-SHA-384 over the shared secret, with the nonce as salt and
+  `homing-pigeon job-encryption v1` as info. A signed body SHOULD be
+  sent as an encrypted envelope — an `hp_enc` member carrying
+  `alg` (`aes-256-gcm/hkdf-sha384`), `nonce` (12 bytes) and `ct`
+  (the ciphertext), both base64, with only `key_id` and `sig` beside
+  it — and the envelope is itself signed as
   transmitted; the receiver verifies the envelope's signature
-  before decrypting. The envelope's `key_id` member is bound into
-  the AEAD's associated data as the sender wrote it (`""` for the
-  unnamed default, else the name, the default key's fingerprint
+  before decrypting. The associated data is the subject's
+  identifier (the `job_id`, `query_id`, `msg_id`, task id or worker
+  id; for a `task_offer` reply, the offered `task_id` or `empty`), a
+  NUL byte, the envelope's `key_id` as the sender wrote it, a NUL
+  byte, and the algorithm string. The key id there is `""` for the
+  unnamed default, else the name (the default key's fingerprint
   included), and a reply is sealed under the name its request
   used; a receiver takes the key id from the envelope, never from
   a guess. A receiver MUST accept the encrypted form, and MUST NOT execute a job received in cleartext unless the operator has explicitly enabled cleartext acceptance; in the reference software that enable is the `--allow-cleartext` command-line parameter, deliberately not a configuration setting. The reference receiver applies that same refusal to a query and to a board message, and an encrypted query or board message is answered in the same form.
   A result mirrors the form of the job it answers unless
-  `job_encryption` says otherwise: an explicit true encrypts
-  every result, and the literal false encrypts none. A real
+  `job_encryption` says otherwise: any present value other than
+  the literal false encrypts every result, and the literal false
+  encrypts none. A real
   job/result pair in this form, as it sat in a transport, is
   quoted in `docs/use/live-examples.md`.
 
@@ -644,9 +664,12 @@ user's box decides what leaves it.
   stdout+stderr, each stream already cut to `max_output_bytes`).
 - `attested`: the common members (`exit_code`, `timed_out`,
   `duration_sec`, `output_digest`), an `attestations` array, and
-  `stdout` and `stderr` as empty strings — and nothing else: no
-  byte counts, no `result_class`. No output bytes cross the
-  boundary at all.
+  `stdout` and `stderr` as empty strings — and nothing else derived
+  from the output streams: no byte counts, no `result_class`. No
+  output bytes cross the boundary at all. (`full` carries `view`
+  and `output_digest` too. Members the owner's configuration adds,
+  such as `judgment`, `remediation` or detection results, may ride
+  on any view.)
 
 Every view keeps the result's identity members (`v`, `type`,
 `job_id`, `kind`, `completed_at`, `runner`, `view`) and `key_id`,
@@ -1023,7 +1046,7 @@ A task is a job the Oracle has not assigned yet:
   queue.
 - `capabilities[]`: free-form tags (`code`, `review`, `prose`) describing
   what the work needs. Workers claim capabilities when they pull;
-  matching is by tag equality.
+  a worker matches when it claims every tag the task requires.
 - `priority`: higher first. Ties break by arrival order.
 - `payload`: the work itself, usually a job body or a declared query
   set.
@@ -1067,7 +1090,9 @@ additionally partition work so no single worker holds the whole picture:
 one worker gets the database task, another gets the UI task, the Oracle
 aggregates. This is opt-in per task via `compartments[]` labels, matched
 against a `worker_compartments` map in config. Tasks without labels are
-fully visible to any pulling worker.
+fully visible to any pulling worker, and so is a labeled task to a
+worker that has no entry in `worker_compartments`. A worker that
+pulls while it holds a claim is handed its claimed task again.
 
 Two bounds apply regardless. The privacy budget (section 11)
 limits what a worker can extract across repeated pulls, and the
@@ -1123,9 +1148,10 @@ three rules.
    by one timeout.
 3. **Results are idempotent.** Every `task_result` carries its `task_id`.
    Duplicates — from retries, redelivery, or a worker that finished
-   after its lease lapsed — are deduped. The first result wins; the
-   Oracle answers the late one with `duplicate` so the worker stands
-   down.
+   after its lease lapsed — are deduped. The first result wins; a result for a task already
+   done is answered `duplicate` so the worker stands down, and one
+   for a task that is open or `pending_review` is answered
+   `not_claimed`.
 
 Throughput is bounded by a single machine dealing from a local queue.
 That is the design, not a limitation to fix later. If the board ever
@@ -1404,8 +1430,9 @@ board and dispatch (section 13). Then the privacy-preserving results
 ship with each piece, not after.
 
 *Status: implemented. A job or result carries `"v": 1`, the integer:
-any other value, JSON `true` and `1.0` included, is rejected before
-the signature is checked. The version 2 messages (determination,
+any other value, JSON `true` and `1.0` included, is rejected once
+the signature has verified, before anything else in the body is
+acted on. The version 2 messages (determination,
 question, answer: `docs/ietf/draft-homing-pigeon-v2-00.md`) are a
 second family with `"v": 2`, opened only when the owner enables them,
 and a sender learns whether a runner opens them from
