@@ -4,6 +4,17 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.4 - 2026-10-27
+
+- **Docs match the code again.** `send_job.py --keyring` and the
+  runner's `--oracle-cli` are documented; the networking page
+  lists TLS inspection and a WAF as planned sensor extensions;
+  the senses page names `port_watch` as the shipped
+  listening-sockets sense; the industry map records that the
+  Oracle's action log exists.
+- **The v2 draft states its replay rule as built:** the
+  receiver holds `issued_at` to the job window.
+
 ## 3.14.3 - 2026-10-27
 
 - **Ships the board-mail checker fix (Q97, `260f9bc`).** A
