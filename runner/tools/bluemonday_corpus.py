@@ -7,6 +7,7 @@
                                                     [--seed S] [--jobs J]
                                                     [--minutes M]
     python runner/tools/bluemonday_corpus.py replay [--target T]
+    python runner/tools/bluemonday_corpus.py platform [--target T]
     python runner/tools/bluemonday_corpus.py promote [--target T]
     python runner/tools/bluemonday_corpus.py stats  [--target T]
 
@@ -3984,6 +3985,69 @@ def cmd_replay(args, out=print):
     return status
 
 
+def _one_outcome(target, entry):
+    """accepted, refused, or crash:<kind>. An unexpected exception
+    is its type, so a surface that breaks the checker is visible."""
+    try:
+        return check(target, entry)
+    except Crash as exc:
+        return "crash:" + exc.kind
+    except Exception as exc:
+        return "error:" + type(exc).__name__
+
+
+def platform_disagreements(target):
+    """Entries whose answer changes under the simulated Windows
+    surface (Q71). Empty means the reader agrees with itself.
+
+    The surface is the host identity and the APIs Windows lacks
+    (runner/tools/windows_surface.py). It does not swap in
+    ntpath, so this is not a path-separator proof. When the
+    surface is already on, the second pass is the same surface
+    and this reports nothing new."""
+    from runner.tools.windows_surface import apply_surface
+    entries = load(corpus_path(target))
+    host = {}
+
+    def host_pass():
+        for entry in entries:
+            host[entry["id"]] = _one_outcome(target, entry)
+
+    _with_rig(host_pass)
+    windows = {}
+    restore = apply_surface()
+    try:
+        def windows_pass():
+            for entry in entries:
+                windows[entry["id"]] = _one_outcome(target, entry)
+
+        _with_rig(windows_pass)
+    finally:
+        restore()
+    out = []
+    for entry in entries:
+        if host[entry["id"]] != windows[entry["id"]]:
+            out.append((entry, host[entry["id"]], windows[entry["id"]]))
+    return out
+
+
+def cmd_platform(args, out=print):
+    """Replay every committed entry on the host and again under
+    the simulated Windows surface. A changed answer is a
+    differential and a non-zero status."""
+    status = 0
+    for target in _targets(args.target):
+        bad = platform_disagreements(target)
+        entries = load(corpus_path(target))
+        out(f"{target}: {len(entries)} entries, "
+            f"{len(bad)} disagreements")
+        for entry, host, windows in bad:
+            out(f"  DIFFER {entry['id']} ({entry['from']}, "
+                f"{entry['mutator']}): host {host}, windows {windows}")
+            status = 1
+    return status
+
+
 def cmd_promote(args, out=print):
     """After a fix: a crash on file that now meets its contract and
     reaches an arc the corpus did not (the refusal the fix added)
@@ -4092,7 +4156,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name, fn in (("seed", cmd_seed), ("grow", cmd_grow),
-                     ("replay", cmd_replay), ("promote", cmd_promote),
+                     ("replay", cmd_replay), ("platform", cmd_platform),
+                     ("promote", cmd_promote),
                      ("stats", cmd_stats)):
         p = sub.add_parser(name)
         p.add_argument("--target", default="all",

@@ -124,6 +124,13 @@ facts a reader may need to cite. Git history carries the rest.
   `local_inbox` on the scanner. The existing 52 entries still
   meet it. One grow of 20,000 rounds filed no crash and kept
   one: 53 entries, 120 arcs.
+- **blueMonday's cross-platform replay (Q71).** Every committed
+  entry is read again under the simulated Windows surface (the
+  host identity and the APIs Windows lacks; not `ntpath`). The
+  answer must be the same accepted or refused. A changed answer
+  is a differential. The first replay agreed on all fourteen
+  targets. `platform` runs it; the suite replays it on the
+  Linux leg.
 - **A repeated object is written twice.** `_json_safe` (the signer's
   and the board's JSON walk) treated an object that merely appears
   twice -- under two keys, or twice in a list -- as a cycle and

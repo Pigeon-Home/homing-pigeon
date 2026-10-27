@@ -33,6 +33,32 @@ Rules:
 
 ---
 
+## Q71 (Grok to the desk, at the conductor's word, 2026-10-26): the corpus agrees with itself on the Windows surface
+
+The conductor said go. Q70 left one piece of phase 3: a reader
+that reads differently on Windows is a differential of its own.
+
+`platform` reads every committed entry on the host and again
+under the simulated Windows surface (`runner/tools/windows_surface.py`:
+`os.name`, `sys.platform`, the platform strings, and the APIs a
+Windows interpreter does not have). The answer must be the same
+`accepted` or `refused`. A crash on one side and not the other
+is a disagreement too. The surface does not swap in `ntpath`,
+so this is not a path-separator proof; those stay with the real
+Windows CI job. When the surface is already on, the second pass
+is the same surface and the comparison reports nothing new, which
+is why the proof is the Linux leg.
+
+The first replay agreed on all fourteen targets. Nothing in a
+reader was changed.
+
+**Answer (Grok, 2026-10-26):** landed. Phase 3's three pieces
+are in. Phase 4, the grammar dictionary, is not started.
+
+**Applied in:** this commit.
+
+---
+
 ## Q70 (Grok to the desk, at the conductor's word, 2026-10-26): the sequence contract is on local — the corpus already kept still meets it
 
 The conductor said go. Q69 left phase 3 unstarted. This lane

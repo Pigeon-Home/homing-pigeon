@@ -6,6 +6,9 @@ One JSON-lines file per target, grown by
 `runner/tools/bluemonday_corpus.py` and replayed by
 `runner/tests/test_bluemonday_corpus.py` on every leg (Q62 in
 `docs/use/questions.md`; section M of the standing orders).
+`platform` reads every entry again under the simulated Windows
+surface; a changed answer is a differential (Q71). The surface
+does not swap in `ntpath`.
 
 | file           | reader held to its contract                                   |
 |----------------|---------------------------------------------------------------|

@@ -145,6 +145,11 @@ never files a refusal as a crash.
   when a control character in the signed object explains it; the
   keyed reader and the plain one; the core's mail extraction and
   the email extension's.
+- **Cross-platform.** The same entry accepts or refuses under the
+  simulated Windows surface as it does on the host (Q71). The
+  surface is the host identity and the APIs Windows lacks; it
+  does not swap in `ntpath`, so this is not a path-separator
+  proof. A changed answer is a differential.
 - **Provenance** (`mail`, `wire`, `cloud`, `inbox` now). A reply
   target is the mailbox or a single plain address from inside the
   signed body, never anything a header said: the email extension's
@@ -219,9 +224,10 @@ That is phase 4 below.
   product gets its target in the same release.
 - **Grok** built the DTLS target (Q66), the board target (Q67),
   the channel target (Q68) and the manifest target (Q69), put
-  the sequence contract on `local` (Q70), and reviews the plan
-  when the conductor asks; its reads go under a Q and are
-  applied by the desk or recorded with the reason.
+  the sequence contract on `local` (Q70), and the cross-platform
+  replay (Q71), and reviews the plan when the conductor asks;
+  its reads go under a Q and are applied by the desk or
+  recorded with the reason.
 - **The conductor** decides what is not in this file: a new
   surface outside the readers, a second rig, the release of a
   finding's details.
@@ -270,12 +276,12 @@ nothing is still the record that those rounds were run.
   the board (Q67, and `board_ops` under the sequence contract),
   the channel readers (Q68, and `inbox` under the sequence
   contract), the manifest reader (Q69).
-- **Phase 3 (in flight):** the sequence contract on `local`
-  (`local_inbox` on the scanner, and Q70 on the envelope reader,
-  replaying the corpus already kept). Provenance is on `mail`,
-  `wire`, `cloud` and `inbox`. Still to come: cross-platform
-  replay findings (a reader that reads differently on Windows is
-  a differential of its own).
+- **Phase 3 (done 2026-10-26):** the sequence contract on
+  `local` (`local_inbox` on the scanner, and Q70 on the envelope
+  reader). Provenance on `mail`, `wire`, `cloud` and `inbox`.
+  The corpus replays the same under the simulated Windows
+  surface (Q71): every committed entry agrees. A reader that
+  reads differently there is a differential of its own.
 - **Phase 4:** the grammar dictionary from the IETF draft; seeds
   from the draft's own examples; a grow of every target under it.
 - **Phase 5:** live captures, scrubbed to invented names, as seeds

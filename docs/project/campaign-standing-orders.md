@@ -403,8 +403,9 @@ are the tool's own list, `stats` prints them with their saturation;
 and `dtls` as of Q66, `board` as of Q67, `board_ops` in the same
 release, `channels` as of Q68, `manifest` as of Q69, `inbox`
 and `local_inbox` in the same release; the readers on the plan
-are in the corpus, and the sequence contract is on `local` as
-of Q70), and
+are in the corpus, the sequence contract is on `local` as of
+Q70, and the corpus is replayed under the simulated Windows
+surface as of Q71), and
 `runner/tests/test_bluemonday_corpus.py` replays it on every leg.
 The loop:
 

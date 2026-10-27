@@ -100,6 +100,14 @@ class CorpusReplayTest(unittest.TestCase):
     def test_manifest(self):
         self._check("manifest")
 
+    def test_the_corpus_agrees_with_itself_on_the_windows_surface(self):
+        bad = []
+        for target in B.TARGETS:
+            for entry, host, windows in B.platform_disagreements(target):
+                bad.append(f"{target} {entry['id']} ({entry['from']}): "
+                           f"host {host}, windows {windows}")
+        self.assertEqual(bad, [])
+
     def test_inbox(self):
         self._check("inbox")
 
