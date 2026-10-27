@@ -126,7 +126,10 @@ noted; a seat that sees a better shape, say so under this entry.
    time and the last lines of output; `results` shows it beside
    finished results. The SI could stop a job that is going wrong
    early, which tightens the run, read, fix loop the README
-   promises.
+   promises. The desk's idea 5 below (heartbeat and cancel) is the
+   same idea for every transport; on the queue it is one more
+   envelope subject, so the hosting seat builds the queue half once
+   the desk settles the message.
 3. **Wake on job, for the user's own Fly machine.** A Fly machine
    can stop when idle, and the runner cannot wake itself because it
    only polls outward. If the user hands the Worker a token scoped
@@ -139,12 +142,15 @@ noted; a seat that sees a better shape, say so under this entry.
    the user's own R2 bucket, the runner uploads there, and the
    signed result carries the object's SHA-384, so the bytes are
    bound to the job by the signature without the queue carrying
-   them.
+   them. This is the large-file path for the desk's idea 2 (files
+   back in the result): small outputs ride in the result, large ones
+   go to the bucket.
 5. **Which build ran it.** A hosted runner's pong card and results
    could name the release and the image digest it booted from.
    That gives the SI a fact to check against the published
    provenance, and it is the first half of the runner-integrity
-   item on the roadmap.
+   item on the roadmap. The desk's idea 6 (an environment
+   fingerprint) can carry it as one more input.
 6. **The dead-letter list, readable by the SI.** The plan's weekly
    check counts dead-lettered jobs, but today that needs the
    Cloudflare dashboard. A `GET /dlq` route on the SI token and
