@@ -19,6 +19,29 @@ A new `key_id` does not inherit `key_policies`. If
 unrestricted. If true, a new id with no policy is refused — copy the policy
 entry onto the new id.
 
+## Naming the first secret
+
+The conductor decided on 2026-10-27 (Q94) that a secret the
+installer generates is named. When that lands:
+
+- The first secret is `main` unless `--key-id` says otherwise.
+  It is stored under `additional_secrets` and also copied to
+  `shared_secret`, so a sender that still omits `key_id` keeps
+  verifying.
+- A sender that was given a named key sends that `key_id` on
+  every body. `--key-id ""` is how it asks for the unnamed slot.
+- The empty key id stays a legacy alias of that first key
+  through the next line of releases. A later release may refuse
+  an unnamed body. That is a separate question.
+- A planned rotation names the new key. The old one stays until
+  every sender has moved. A leak is not a planned rotation:
+  `docs/security/safeguards.md` §7 replaces the secret now.
+
+The installer does not do this yet. It still generates one
+unnamed secret, whose key id is the empty string.
+`install.py --check` prints the key ids a runner holds and
+never the values: the default key, then any additional ids.
+
 ## Planned rotation
 
 1. Generate a 256-bit secret:

@@ -1148,6 +1148,13 @@ keeps working. This is backward compatible by construction — the
 single-secret default never moves. Operators adding secrets keep the
 original secret as `shared_secret` so keyless senders keep verifying.
 
+The conductor decided (Q94, 2026-10-27) that a secret the
+installer generates will be named, and that an empty `key_id`
+stays the way a sender selects that first secret through the
+next line of releases. The installer does not do this yet. Until
+it does, an absent `key_id` selects `shared_secret`, and the
+first secret it generates has no name.
+
 Key IDs are labels, not secrets. They may appear in logs and error
 messages. Unknown key IDs are rejected before any cryptographic work,
 and a message naming a key ID it cannot satisfy verifies against

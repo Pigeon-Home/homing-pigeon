@@ -109,11 +109,12 @@ mitigation:
 - **Keep the runner updated.** New releases fix real bugs — including
   security-relevant ones. Check the releases page when you think of
   it.
-- **Rotate the shared secret periodically.** Generate a new one
-  (`openssl rand -hex 32`) → update `shared_secret` in `config.json` →
-  paste the new string to your SI. Two minutes, and it invalidates every
-  copy of the old
-  one floating around in chat histories.
+- **Rotate the shared secret every 90 days.** Add a new named
+  key and leave the old one in place until every sender has
+  moved. The steps are `docs/use/secret-rotation.md`. Do not
+  overwrite `shared_secret` in place for a calendar rotation;
+  that cuts off every sender at once. A leak is different:
+  replace the secret now (§7).
 - **Prune the mailbox.** The runner marks processed mail seen, but
   the job messages remain. Delete them periodically — they're signed,
   but they still describe what you asked your machine to do.

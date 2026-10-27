@@ -217,4 +217,10 @@ loop, with the helper:
 (PROTOCOL.md section 14) sets `--key-id <id>` on every job and signs
 with that secret; the runner then applies that key's `key_policies`
 entry. A worker whose key policy allows only `sensor_alert` cannot
-pull tasks or run scripts. Omit `--key-id` to use the default secret.
+pull tasks or run scripts. Omit `--key-id` for the default secret.
+The installer still generates that secret unnamed (key id `""`);
+`install.py --check` prints the ids a runner holds and never the
+values. The conductor decided (Q94) that a generated secret is
+named and a sender sends that id by default. `send_job.py` does
+not do that yet, so do not invent a `key_id` the config does not
+have.

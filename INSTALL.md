@@ -343,8 +343,13 @@ and that board does not need Python either.
    one-home install edit `config.json` by hand); then write a
    `key_policies` entry for it by hand, since a key without one is
    unrestricted and the runner says so at startup. The signer then
-   passes `--key-id grok-4` to `send_job.py`. Rotation and the policy
-   details: `docs/use/secret-rotation.md`, PROTOCOL.md section 14.
+   passes `--key-id grok-4` to `send_job.py`. The secret the
+   installer generates for you is still unnamed (key id `""`).
+   The conductor decided it will be named (Q94); that is not
+   what this installer does yet. `install.py --check` prints the
+   key ids this runner holds and never the values. Rotation and
+   the policy details: `docs/use/secret-rotation.md`, PROTOCOL.md
+   section 14.
 
 **From source** (needs Python 3.9+):
 
