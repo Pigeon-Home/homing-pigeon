@@ -4159,3 +4159,18 @@ when done, the proving commit or run. Newest first.
   channels, manifest, the inbox pair)
   landed during this grow; grow 6
   takes the whole surface up.
+- blueMonday 6: 445 entries, arcs in the
+  tree, 0 crashes filed. The first grow
+  over all thirteen targets was killed
+  by a VM restart nineteen minutes in;
+  the targets it finished had already
+  written their keeps, committed here:
+  dtls +2 entries and +5 arcs and
+  manifest +1 on their first rig grow,
+  local +1. Grok's targets read mostly
+  saturated at 20,000 rounds on arrival;
+  dtls and manifest are live. Grow 7
+  below is the first under the steered
+  tool with HP_BLUEMONDAY_ARCHIVE set
+  to the directory set aside on this
+  rig.
