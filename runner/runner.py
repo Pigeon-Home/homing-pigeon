@@ -3175,6 +3175,16 @@ def _log_job_output(job_id, kind, stdout, stderr, cfg):
 _MAIL_LOCK = threading.RLock()
 _IN_FLIGHT: set = set()
 
+def _file_label(f):
+    """A files[] entry for the Oracle's description: the URL it is
+    fetched from, or the inline name and size (the bytes stay out)."""
+    if "content_b64" in f:
+        raw = f.get("content_b64")
+        size = (len(raw) * 3) // 4 if isinstance(raw, str) else 0
+        return "inline:" + _as_str(f.get("name", "?")) + f" (~{size} bytes)"
+    return _as_str(f.get("url", "?"))
+
+
 def _describe_job(job: dict) -> str:
     """One-line summary of what a job would do (for --dry-run)."""
     if not isinstance(job, dict):
@@ -3192,7 +3202,7 @@ def _describe_job(job: dict) -> str:
     files = job.get("files") or []
     if isinstance(files, list) and files:
         parts.append(f"{len(files)} file(s): " +
-                     ", ".join(_as_str(f.get("url", "?")) for f in files
+                     ", ".join(_file_label(f) for f in files
                                if isinstance(f, dict)))
     if job.get("args"):
         args = job["args"]

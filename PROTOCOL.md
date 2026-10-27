@@ -90,8 +90,10 @@ The reference default is email only: `transports` absent means
   "script_sha384": "<hex, optional>",
   "interpreter": ["<executable + args, optional>"],
   "files": [
-    {"name": "input.csv", "url": "https://...", "sha384": "<hex, optional>"}
+    {"name": "input.csv", "url": "https://...", "sha384": "<hex, optional>"},
+    {"name": "fix.diff", "content_b64": "<strict base64>", "sha384": "<hex, optional>"}
   ],
+  "outputs": ["reports/junit.xml"],
   "args": ["--flag", "value"],
   "env": {"MY_VAR": "value"},
   "timeout_sec": 300,
@@ -231,6 +233,8 @@ The reference default is email only: `transports` absent means
   failure: unknown kind, SHA384 mismatch, unsafe file name...); details in
   `stderr`. Rejected jobs do not retry — the mail is marked seen
   (section 5).
+- `outputs[]`: present when the job named `outputs` (section 6),
+  shaped by the view (section 9).
 - `answers[]` / `attestations[]`: `answers` is present when the job
   declared a `result_policy` with queries — the answers to its
   declared questions (section 10); `attestations` (section 9.2)
@@ -468,6 +472,32 @@ secret, in which case the runner refuses to start and names it
   directories made inside the work dir; the staged path's real path
   must still lie inside it (a planted symlink is refused). `sha384`
   is verified when present.
+- A `files[]` entry carries exactly one source: `url` (fetched as
+  above) or `content_b64`, the file's bytes in the job itself, as
+  strict base64 (RFC 4648 section 4: padding, no line breaks, no
+  other characters). An inline file is covered by the job's
+  signature and counted against `max_job_bytes` (the base64 is about
+  four thirds of the bytes), costs no fetch, and keeps the same name
+  rules and the optional `sha384`. A name staged twice is refused.
+  This is how a sender carries a patch with the job that applies it.
+- `outputs` (optional): up to 8 distinct names, by the same name
+  rules, of files under the work dir the result brings home once
+  the script has finished. A file is read only if its real path is
+  inside the work dir and it is a regular file (a symlink out, a
+  directory, a file swapped while read: each is named, never
+  followed); one budget covers them all, `max_output_file_bytes`
+  (default 1 MiB). Each `outputs[]` entry in the result names the
+  file and carries its `size`, `sha384` and `content_b64`, or an
+  `omitted` reason (`missing`, `too_large` with its `size`,
+  `outside the workdir`, `not a regular file`, `unreadable`,
+  `changed while read`). What of it leaves the box is the result
+  view's (section 9): the bytes under `full`; the name, size and
+  SHA-384 under `redacted` and `summary`, a commitment the sender
+  can check later, since no redaction pattern can scrub arbitrary
+  bytes; nothing under `attested`. `send_job.py verify
+  --outputs-dir DIR` writes the files out, each checked against its
+  digest; `send_job.py new --inline-file NAME=PATH --output NAME`
+  builds both members.
 - The script runs as `<interpreter...> script <args...>` (see section
   3.1) with stdout/stderr captured, `env` merged into the process
   environment, and the work dir as cwd.

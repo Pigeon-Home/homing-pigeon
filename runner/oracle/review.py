@@ -181,7 +181,8 @@ def _metadata_notes(job):
             name = f.get("name")
             if isinstance(name, str):
                 staged.add(name)
-                if not f.get("sha384"):
+                # An inline file is covered by the job's own signature.
+                if not f.get("sha384") and "content_b64" not in f:
                     notes.append(_note(
                         "file_no_integrity", "metadata", "info",
                         f"file {name!r} without sha384: "

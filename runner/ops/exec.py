@@ -2,10 +2,13 @@
 
 Extracted from runner.py.
 """
+import base64
+import binascii
 import hashlib
 import json
 import os
 import shutil
+import stat
 import subprocess
 import time
 try:
@@ -222,6 +225,127 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     return {"op": "ask", "rejected": "tool_budget"}
 
 
+def _decode_inline(f):
+    """The bytes of an inline file (`content_b64`), or JobRejected.
+
+    Strict base64 (RFC 4648 section 4, padding required, no line
+    breaks or other characters), so one encoding is the only
+    encoding: the bytes staged are the bytes the sender signed.
+    """
+    raw = f.get("content_b64")
+    if not isinstance(raw, str):
+        raise _runner().JobRejected("file 'content_b64' must be a string")
+    try:
+        return base64.b64decode(raw.encode("ascii"), validate=True)
+    except (ValueError, UnicodeEncodeError, binascii.Error):
+        raise _runner().JobRejected(
+            f"file {f.get('name')!r}: content_b64 is not strict base64")
+
+
+MAX_OUTPUTS = 8
+DEFAULT_MAX_OUTPUT_FILE_BYTES = 1024 * 1024
+
+
+def _validate_outputs(raw):
+    """The job's `outputs`: up to MAX_OUTPUTS distinct file names under
+    the workdir, by the files[] name rules. Absent is none."""
+    if raw is None:
+        return []
+    if not isinstance(raw, list) or len(raw) > MAX_OUTPUTS:
+        raise _runner().JobRejected(
+            f"outputs must be a list of at most {MAX_OUTPUTS} names")
+    names = []
+    for name in raw:
+        if not isinstance(name, str):
+            raise _runner().JobRejected("each output must be a string name")
+        name = _runner().validate_file_name(name)
+        if name in names:
+            raise _runner().JobRejected(f"output {name!r} is named twice")
+        names.append(name)
+    return names
+
+
+def _max_output_file_bytes(cfg):
+    raw = (cfg or {}).get("max_output_file_bytes")
+    if raw is None or isinstance(raw, bool) or not isinstance(raw, int) \
+            or raw < 0:
+        return DEFAULT_MAX_OUTPUT_FILE_BYTES
+    return raw
+
+
+def _read_output(work, root, name, limit):
+    """(bytes or None, size, reason). A regular file whose real path
+    stays under the workdir, opened without following a final
+    symlink and matched to the path checked; anything else is a
+    reason, never an exception."""
+    lexical = os.path.join(work, *name.split("/"))
+    try:
+        real = os.path.realpath(lexical)
+    except (OSError, ValueError):
+        return None, 0, "unreadable"
+    if not real.startswith(root + os.sep):
+        return None, 0, "outside the workdir"
+    try:
+        st = os.lstat(real)
+    except FileNotFoundError:
+        return None, 0, "missing"
+    except OSError:
+        return None, 0, "unreadable"
+    if not stat.S_ISREG(st.st_mode):
+        return None, 0, "not a regular file"
+    if st.st_size > limit:
+        return None, st.st_size, "too_large"
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+    try:
+        fd = os.open(real, flags)
+    except OSError:
+        return None, 0, "unreadable"
+    try:
+        fst = os.fstat(fd)
+        if (fst.st_dev, fst.st_ino) != (st.st_dev, st.st_ino) \
+                or not stat.S_ISREG(fst.st_mode):
+            return None, 0, "changed while read"
+        chunks, total = [], 0
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > limit:
+                return None, total, "too_large"
+            chunks.append(chunk)
+        return b"".join(chunks), total, None
+    finally:
+        os.close(fd)
+
+
+def _collect_outputs(work, names, cfg):
+    """The files the job asked to bring home, in its order, within one
+    byte budget for them all (max_output_file_bytes, default 1 MiB).
+    Each entry names the file; a file read carries its size, SHA-384
+    and bytes (strict base64); a file not read carries why. The result
+    view decides later what of this leaves the box."""
+    budget = _max_output_file_bytes(cfg)
+    try:
+        root = os.path.realpath(work)
+    except (OSError, ValueError):
+        return [{"name": n, "omitted": "unreadable"} for n in names]
+    out = []
+    for name in names:
+        data, size, reason = _read_output(work, root, name, budget)
+        if data is None:
+            entry = {"name": name, "omitted": reason}
+            if reason == "too_large":
+                entry["size"] = size
+            out.append(entry)
+            continue
+        budget -= len(data)
+        out.append({"name": name, "size": len(data),
+                    "sha384": hashlib.sha384(data).hexdigest(),
+                    "content_b64": base64.b64encode(data).decode("ascii")})
+    return out
+
+
 def execute_job(cfg, job: dict, base_dir: str) -> dict:
     R = _runner()
     if not isinstance(job, dict):
@@ -268,15 +392,30 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     if not isinstance(files, list):
         raise _runner().JobRejected("files must be a list")
     staged_names = []
+    inline = []
     for f in files:
-        if not isinstance(f, dict) or not isinstance(f.get("name"), str) \
-                or not isinstance(f.get("url"), str):
-            raise _runner().JobRejected("each file needs string 'name' and 'url'")
+        if not isinstance(f, dict) or not isinstance(f.get("name"), str):
+            raise _runner().JobRejected("each file needs a string 'name'")
+        # A file is fetched (`url`) or carried in the job itself
+        # (`content_b64`, covered by the job's signature and counted
+        # against max_job_bytes): exactly one of the two.
+        has_url = "url" in f
+        has_inline = "content_b64" in f
+        if has_url == has_inline:
+            raise _runner().JobRejected(
+                "each file needs exactly one of 'url' or 'content_b64'")
+        if has_url and not isinstance(f["url"], str):
+            raise _runner().JobRejected("file 'url' must be a string")
         if "sha384" in f and not isinstance(f["sha384"], str):
             raise _runner().JobRejected("file 'sha384' must be a string")
+        if has_inline:
+            inline.append(_decode_inline(f))
+        else:
+            inline.append(None)
         # One rule set on every platform (runner/guard/filenames.py),
         # before any download: a bad name is poison and costs no fetch.
         staged_names.append(_runner().validate_file_name(f["name"]))
+    output_names = _validate_outputs(job.get("outputs"))
     args = job.get("args") or []
     if not isinstance(args, list):
         raise _runner().JobRejected("args must be a list")
@@ -299,8 +438,22 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     timeout = min(max(timeout, 1), 3600)
 
     # --- stage input files
-    for f, staged_name in zip(files, staged_names):
+    for f, staged_name, data in zip(files, staged_names, inline):
         dest = _runner()._staged_dest(work, staged_name, root=root)
+        if data is not None:
+            try:
+                with open(dest, "xb") as fh:
+                    fh.write(data)
+            except FileExistsError:
+                raise _runner().JobRejected(
+                    f"file {f['name']!r} is named twice")
+            except OSError as e:
+                raise _runner().JobRejected(
+                    f"cannot stage {f['name']!r}: {e}")
+            if f.get("sha384") and hashlib.sha384(data).hexdigest() \
+                    != f["sha384"].lower():
+                raise _runner().JobRejected(f"SHA384 mismatch for {f['name']}")
+            continue
         R.log(f"downloading {f['url']}")
         try:
             _runner().download(f["url"], dest)
@@ -500,6 +653,8 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
               "artifact_scan": findings}
     if rem_member is not None:
         result["remediation"] = rem_member
+    if output_names:
+        result["outputs"] = _collect_outputs(work, output_names, cfg)
     return result
 
 

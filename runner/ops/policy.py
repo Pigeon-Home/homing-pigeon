@@ -81,6 +81,8 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
             "stdout_truncated": exec_result.get("stdout_truncated", False),
             "stderr_truncated": exec_result.get("stderr_truncated", False),
         })
+        if isinstance(exec_result.get("outputs"), list):
+            base["outputs"] = exec_result["outputs"]
     elif effective == "redacted":
         out = full_out
         families = []
@@ -95,6 +97,7 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
             except re.error:
                 continue
         base.update({"stdout": out, "stderr": "", "redacted_families": families})
+        _output_digests(base, exec_result)
     elif effective == "summary":
         try:
             ok_exit = exec_result.get("exit_code") == 0
@@ -105,6 +108,7 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
             "stderr_bytes": len(R._as_text(exec_result.get("stderr"))),
             "result_class": "ok" if ok_exit else "fail",
         })
+        _output_digests(base, exec_result)
     else:  # attested
         base["attestations"] = R.build_attestations(
             (policy.get("queries") or []),
@@ -114,6 +118,17 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
         base["stdout"] = ""
         base["stderr"] = ""
     return base, retain
+
+
+def _output_digests(base, exec_result):
+    """Below the full view a file's bytes stay home: its name, size
+    and SHA-384 leave, a commitment the SI can check later, never
+    the content (no redaction pattern can scrub arbitrary bytes)."""
+    outs = exec_result.get("outputs")
+    if not isinstance(outs, list):
+        return
+    base["outputs"] = [{k: v for k, v in o.items() if k != "content_b64"}
+                       for o in outs if isinstance(o, dict)]
 
 
 def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None,

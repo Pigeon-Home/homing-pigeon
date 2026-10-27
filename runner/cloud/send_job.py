@@ -34,6 +34,7 @@ who later learns it can read every recorded envelope.
 """
 
 import argparse
+import base64
 import hashlib
 import hmac
 import json
@@ -496,8 +497,8 @@ def cmd_new(args) -> int:
         if not payload.get("script") and not payload.get("script_url"):
             print("exec jobs need --script-file or --script-url", file=sys.stderr)
             return 2
+        files = []
         if args.file:
-            files = []
             for spec in args.file:
                 name, _, url = spec.partition("=")
                 if not url:
@@ -512,7 +513,33 @@ def cmd_new(args) -> int:
                     print(f"bad --file name {name!r}: {e}", file=sys.stderr)
                     return 2
                 files.append({"name": name, "url": url})
+        for spec in getattr(args, "inline_file", None) or []:
+            name, _, path = spec.partition("=")
+            if not path:
+                print(f"bad --inline-file spec (want name=path): {spec}",
+                      file=sys.stderr)
+                return 2
+            try:
+                name = _filenames.validate_file_name(name)
+            except ValueError as e:
+                print(f"bad --inline-file name {name!r}: {e}", file=sys.stderr)
+                return 2
+            try:
+                with open(path, "rb") as fh:
+                    data = fh.read()
+            except OSError as e:
+                print(f"cannot read --inline-file {path}: {e}", file=sys.stderr)
+                return 2
+            # The bytes ride in the signed job (PROTOCOL.md section 6):
+            # strict base64, and their digest so the runner checks the
+            # staged file against what was read here.
+            files.append({"name": name,
+                          "content_b64": base64.b64encode(data).decode("ascii"),
+                          "sha384": hashlib.sha384(data).hexdigest()})
+        if files:
             payload["files"] = files
+        if getattr(args, "outputs", None):
+            payload["outputs"] = list(args.outputs)
         if args.arg:
             payload["args"] = args.arg
         if args.env:
@@ -675,8 +702,49 @@ def cmd_verify(args) -> int:
     line = repair_line(payload)
     if line:
         print(line, file=sys.stderr)
+    if getattr(args, "outputs_dir", None):
+        rc = write_outputs(payload, args.outputs_dir)
+        if rc:
+            return rc
     print(json.dumps(payload, indent=2, ensure_ascii=False))
     return 0
+
+
+def write_outputs(payload, dest):
+    """Write a verified result's `outputs` under dest, each checked
+    against the SHA-384 the result carries. Names keep the runner's
+    own rules, so nothing lands outside dest. Returns 0, or 1 when an
+    entry's bytes do not match its digest (nothing is written for
+    it). The printed result drops the bytes it wrote."""
+    outs = payload.get("outputs")
+    if not isinstance(outs, list):
+        return 0
+    rc = 0
+    os.makedirs(dest, exist_ok=True)
+    for o in outs:
+        if not isinstance(o, dict) or "content_b64" not in o:
+            continue
+        try:
+            name = _filenames.validate_file_name(o.get("name"))
+            data = base64.b64decode(str(o["content_b64"]).encode("ascii"),
+                                    validate=True)
+        except (ValueError, TypeError, UnicodeEncodeError) as e:
+            print(f"output {o.get('name')!r} refused: {e}", file=sys.stderr)
+            rc = 1
+            continue
+        if hashlib.sha384(data).hexdigest() != str(o.get("sha384", "")).lower():
+            print(f"output {name!r}: bytes do not match their sha384",
+                  file=sys.stderr)
+            rc = 1
+            continue
+        path = os.path.join(dest, *name.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as fh:
+            fh.write(data)
+        o.pop("content_b64", None)
+        o["written"] = path
+        print(f"wrote {path} ({len(data)} bytes)", file=sys.stderr)
+    return rc
 
 
 def _queue_call(url, method, path, token_env=None, opener=None):
@@ -876,6 +944,16 @@ def main() -> int:
     g.add_argument("--file", action="append", default=[],
                    metavar="NAME=URL",
                    help="input file as name=url, repeatable")
+    g.add_argument("--output", action="append", default=[],
+                   metavar="NAME", dest="outputs",
+                   help="a file under the job's workdir to bring home "
+                        "in the result (at most 8; the bytes only under "
+                        "the full view), repeatable")
+    g.add_argument("--inline-file", action="append", default=[],
+                   metavar="NAME=PATH",
+                   help="input file carried in the signed job itself "
+                        "(base64; counted against the runner's "
+                        "max_job_bytes), repeatable")
     g.add_argument("--arg", action="append", default=[],
                    metavar="ARG",
                    help="script argument, repeatable")
@@ -988,6 +1066,9 @@ def main() -> int:
     v.add_argument("--job-id", default=None, metavar="ID",
                    help="job id from the message subject; "
                         "required to decrypt an encrypted body")
+    v.add_argument("--outputs-dir", default=None, metavar="DIR",
+                   help="write the result's output files here, each "
+                        "checked against its sha384")
     v.add_argument("file", nargs="?", default=None, metavar="PATH",
                    help="file to read (default: stdin)")
     v.set_defaults(func=cmd_verify)

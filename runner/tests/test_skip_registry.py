@@ -78,6 +78,9 @@ REGISTERED = {
     "POSIX-shaped fixture (/bin tools, LF offsets, /proc)":
         "test_doc_default_divergences hunt fixtures; run on POSIX",
     "Unix mode bits": "run on ubuntu and macOS",
+    "POSIX symlink fixture": "test_job_files; an output symlinked out of the "
+                             "workdir is built with os.symlink, which Windows "
+                             "refuses without a privilege; runs on ubuntu and macOS",
     "entry kinds need POSIX links and fifos":
         "test_platinum_runner's workspace sweep plants symlinks and a "
         "fifo; run on ubuntu and macOS",
