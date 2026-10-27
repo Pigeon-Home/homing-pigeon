@@ -4185,3 +4185,19 @@ when done, the proving commit or run. Newest first.
   tool with HP_BLUEMONDAY_ARCHIVE set
   to the directory set aside on this
   rig.
+- rules refreshed 2026-10-26 18:56 PDT
+  (standing orders incl. section M as
+  the only effort, the blueMonday plan;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules).
+  blueMonday 7: 493 entries, 2569 arcs, 0 crashes filed. The
+  first steered grow and the first with
+  the archive drive recording (seed
+  6207, the full hour): +4 entries
+  banked (manifest +1, dtls +1, local
+  +2) and +18 arcs, dtls +13 of them;
+  982,375 children tried over its run
+  records, all of them in the archive.
+  The four live mutators carried the
+  yield, as the steering intends.
