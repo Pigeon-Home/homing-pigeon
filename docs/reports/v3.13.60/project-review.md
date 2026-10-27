@@ -170,11 +170,11 @@ Each with who holds it.
   every few minutes, so the coverage run completes on about one
   commit in five. Either is fine; it is a choice between a figure
   per commit and a figure per quarter hour.
-- **The hardened systemd unit, for the conductor's veto:** this
-  review relaxed `RestrictNamespaces=true` to the five namespaces
-  bwrap needs, so the unit and the confinement feature work
-  together. The strict value is one line to restore for a box that
-  runs confinement at `audit` or `off`; the README says which.
+- **The hardened systemd unit, decided (the conductor, 2026-10-27):**
+  `RestrictNamespaces` names the five namespaces bwrap needs, so the
+  unit and the confinement feature work together. The strict value
+  is one line to restore for a box that runs confinement at `audit`
+  or `off`; the README says which.
 - **The AppArmor profile, documented, not fixed:** it runs bwrap
   under the daemon's profile with no mount, `pivot_root` or `userns`
   rules, so confinement cannot engage under it. Extending it needs
