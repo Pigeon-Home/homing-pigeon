@@ -399,9 +399,8 @@ class _Edge:
     proc = None
     skip = False
     lock = threading.Lock()
-    script = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          "..", "cloud", "queues-worker", "src",
-                          "edge_stdio.mjs")
+    script = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "cloud/queues-worker/src/edge_stdio.mjs")
 
     @classmethod
     def verdict(cls, text, secret):
