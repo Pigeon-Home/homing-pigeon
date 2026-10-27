@@ -41,7 +41,9 @@ The canonical spelling is `Agent-Stamp`. Variants seen so far:
   `runner/tests/test_vendor_upstreams.py` (both files since retired with
   the provenance bundles; the upstream is declared once, in the
   manifest)
-- an `Agent-Chat-Stamp:` commit trailer (one commit)
+- an `Agent-Chat-Stamp:` trailer and file header, the spelling the
+  questions desk (`50000c8e`) uses on its own commits and files; the
+  record check below reads both spellings
 
 Proposal: rewrite the two file headers to `Agent-Stamp`. Leave history
 alone, and have the search tooling accept the old spellings.
@@ -67,15 +69,18 @@ Questions to settle before any of this goes into `PROTOCOL.md`:
   Proposed answer: log as given, cap the length, and strip control
   characters.
 
-## Idea: lint
+## The lint, as built
 
-A small `runner/tools/stamp_check.py`, run in CI, that:
-
-- lists every stamp in the tree and in recent history
-- flags spellings other than `Agent-Stamp`
-- flags stamps that are missing from `RESEARCHER_IDENT.md`
-
-It should report only, never fail the build, so it can't add friction.
+`runner/tests/test_agent_stamps.py` (2026-10-26) lists every stamp
+written after a stamp label anywhere in the tree and fails when one
+is missing from `RESEARCHER_IDENT.md`, when a listed stamp has no
+status row, or when a recycled stamp names no active carrier. It
+runs with the suite, so a stamp the record does not know fails the
+build; the original idea of a report-only `stamp_check.py` was
+dropped for that, since a stamp outside the record is the one thing
+the record exists to catch. It does not flag spellings: both
+`Agent-Stamp` and `Agent-Chat-Stamp` are read, and history is not
+scanned.
 
 ## Recycled stamps (2026-10-26)
 
