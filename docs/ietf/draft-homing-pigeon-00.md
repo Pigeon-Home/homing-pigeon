@@ -262,6 +262,24 @@ Selection, before the MAC:
 
 How keys are stored is LOCAL. Two values MUST NOT be assigned to one `key_id`. The default identifier has one slot.
 
+### 10.1. Fingerprint names
+
+A secret MAY be named by its fingerprint. The reference software does so. The fingerprint is `k-` followed by the first eight lowercase hexadecimal digits of SHA-384 over the UTF-8 octets of the label `homing-pigeon key id v1\n` and then the secret's UTF-8 octets:
+
+```
+key_id = "k-" || hex(SHA-384("homing-pigeon key id v1\n" || secret))[:8]
+```
+
+The reference receiver puts that identifier in the map of Section 10, pointing at the same secret the empty identifier names. An operator-chosen name, when one was configured, is a further identifier for that same secret. One `key_id` still names one secret. One secret MAY have several identifiers. Two secrets MUST NOT share one.
+
+The reference sender includes `key_id` on every message it signs. The value is the fingerprint, unless the sender was told to use a chosen name. The empty identifier is how a sender asks for the unnamed form. A receiver that has not registered the fingerprint MUST reject that message as an unknown `key_id` (step 3). An absent `key_id` still selects the default secret.
+
+A fingerprint that is not in the map is an unknown `key_id`. So is a near-miss: a different length, a different case, or the fingerprint of a secret the receiver does not hold. The receiver MUST NOT select the default secret for any of those.
+
+The name is a label. It is 32 bits of a one-way function over a secret of at least 128 bits of entropy (Section 17.3). It is not invertible. As an oracle for a guessed secret it is weaker than the HMAC on any captured message, which already tests a guess in full. The label keeps this hash apart from that HMAC and from the HKDF that derives a job key, so a name cannot be confused with a signature or turned into one. Publishing the name discloses nothing a signed message does not already disclose.
+
+The DTLS PSK identity (Section 3) is a different label. `homing-pigeon` names the default secret. `homing-pigeon:` followed by a configured `key_id` names an additional secret. The fingerprint is not a PSK identity unless the operator stored that string as a `key_id`.
+
 ## 11. Job Message
 
 `type` is `job`.
@@ -357,7 +375,7 @@ A job rejected before the MAC verifies produces no result. See Section 14.
 
 ## 13. Result Message
 
-The result is signed with the same secret that verified the job. `key_id` on the result, if the sender includes it, MUST name that secret.
+The result is signed with the same secret that verified the job. `key_id` on the result, when present, MUST name that secret. The reference sender includes it (Section 10.1): the identifier the job carried, or, when the job carried none, the default secret's fingerprint.
 
 `type` is `result`. The subject is the result pattern in Section 6.
 
@@ -514,7 +532,7 @@ The floor is normative for this protocol: the shared secret MUST carry at least 
 
 ### 17.5. Unknown key identifiers
 
-Failing closed before the MAC stops a message from verifying under the default secret because of a typo, and it avoids using MAC time as a probe of which identifiers exist.
+Failing closed before the MAC stops a message from verifying under the default secret because of a typo, and it avoids using MAC time as a probe of which identifiers exist. A near-miss fingerprint is this case (Section 10.1): it is not the default secret under another spelling.
 
 ### 17.6. Replay
 

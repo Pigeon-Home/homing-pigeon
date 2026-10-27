@@ -513,7 +513,10 @@ is the identity.
 
 `v2_answerers`, when absent, means every key the runner already
 trusts. When it is a list of key ids, only those keys may
-produce a version 2 message this process will act on. Any other
+produce a version 2 message this process will act on. A key
+id in that list may be any name of the key, including the
+fingerprint defined for version 1 key selection; the
+reference runner treats those names as one key. Any other
 shape fails closed: nobody.
 
 `v2_answer_deadline_sec` is the question's deadline. Values

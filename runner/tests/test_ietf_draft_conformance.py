@@ -104,6 +104,14 @@ class DraftConformanceTest(unittest.TestCase):
             "The session's authentication of its peer does not "
             "substitute for the object signature", sec194)
 
+    def test_section_10_names_a_secret_by_fingerprint(self):
+        sec = self.sec["### 10.1. Fingerprint names"]
+        self.assertIn("homing-pigeon key id v1", sec)
+        self.assertIn("MUST NOT select the default secret", sec)
+        self.assertIn("not a PSK identity", sec)
+        result = self.sec["## 13. Result Message"]
+        self.assertIn("default secret's fingerprint", result)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
