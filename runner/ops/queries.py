@@ -179,6 +179,22 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     return True
 
 
+def _stream_text(exec_result):
+    """The output the queries read: stdout then stderr, each text or
+    nothing (Q90). The executor writes text; a stream of any other
+    type is a record a crash left or a hand wrote, and the text
+    form of a list or a number is not output -- tail handed it back
+    as the output's last line. The Oracle's own reading of a record
+    (_output_blob) keeps the text form, since the owner is shown
+    what the record holds."""
+    if not isinstance(exec_result, dict):
+        return ""
+    out = exec_result.get("stdout")
+    err = exec_result.get("stderr")
+    return (out if isinstance(out, str) else "") \
+        + (err if isinstance(err, str) else "")
+
+
 def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full",
                    already_spent=0, base_dir=None):
     """Answer declared queries. Every query spends 1, answered or rejected."""
@@ -198,7 +214,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
         budget = 8
     if budget < 0:
         budget = 0
-    text = _runner()._output_blob(exec_result)
+    text = _stream_text(exec_result)
     inf = _runner().inference_config(cfg) if cfg else None
     # A non-list (or non-iterable) from a poisoned job/extension must
     # not raise. Treat it as no queries.

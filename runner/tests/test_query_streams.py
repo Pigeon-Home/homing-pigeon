@@ -24,7 +24,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from runner.ops.queries import answer_queries  # noqa: E402
+from runner.ops.queries import _stream_text, answer_queries  # noqa: E402
 from runner.runner import _output_blob  # noqa: E402
 
 OUT = "one\ntwo\nthree\n"
@@ -38,16 +38,23 @@ def _answers(queries, stdout=OUT, stderr="", view="full", patterns=None):
 
 
 class StreamIsTextOrNothingTest(unittest.TestCase):
-    def test_the_blob_takes_text_and_nothing_else(self):
-        self.assertEqual(_output_blob({"stdout": "a\n", "stderr": "b\n"}),
+    def test_the_queries_text_is_text_and_nothing_else(self):
+        self.assertEqual(_stream_text({"stdout": "a\n", "stderr": "b\n"}),
                          "a\nb\n")
         for other in ([], {}, ["x"], {"a": 1}, 7, 2.5, True, None, b"x"):
-            self.assertEqual(_output_blob({"stdout": "a\n", "stderr": other}),
+            self.assertEqual(_stream_text({"stdout": "a\n", "stderr": other}),
                              "a\n", repr(other))
-            self.assertEqual(_output_blob({"stdout": other, "stderr": "b\n"}),
+            self.assertEqual(_stream_text({"stdout": other, "stderr": "b\n"}),
                              "b\n", repr(other))
-        self.assertEqual(_output_blob({"stdout": ["x"], "stderr": 7}), "")
-        self.assertEqual(_output_blob("not a result"), "")
+        self.assertEqual(_stream_text({"stdout": ["x"], "stderr": 7}), "")
+        self.assertEqual(_stream_text("not a result"), "")
+
+    def test_the_oracle_still_sees_what_a_record_holds(self):
+        # The owner's view keeps a value's text form: a credential
+        # inside a list is scanned and shown, not hidden by its type.
+        self.assertIn("FLAG-x", _output_blob({"stdout": ["a", "FLAG-x"],
+                                              "stderr": {"n": 5}}))
+        self.assertEqual(_output_blob({"stdout": 5, "stderr": None}), "5")
 
     def test_tail_hands_back_the_text_streams_last_lines_only(self):
         for stderr in ([], {}, ["warn: x", "warn: y"], 7, {"b": 1}):

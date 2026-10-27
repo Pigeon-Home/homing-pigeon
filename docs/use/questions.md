@@ -157,11 +157,13 @@ back the Python text of the value, so a stderr of `["x"]` became
 the output's last line `['x']` and tail returned it. The checker's
 own model had the second reading for every non-text value, hence
 the break on the empty ones. A stream is text or it is nothing
-now, in `_output_blob` (the one reader of the streams for every
-op: tail, grep, the digest, the attestations) and in the checker's
-model alike; nothing of a non-text value's text form is an output
-line, and the Oracle's reading of a withheld job's output
-(`_withheld_scan_text`, the same function) follows the same rule.
+now on the query path, in `_stream_text` (the one reader of the
+streams for every op: tail, grep, the digest, the attestations)
+and in the checker's model alike; nothing of a non-text value's
+text form is an output line. The Oracle's own reading of a record
+for the owner (`_output_blob`) keeps the text form on purpose: a
+credential inside a list is scanned and shown there, not hidden
+by its type.
 The twelve entries of Q90 and Q91 meet the contract and reach
 nothing the corpus does not, so `promote` dropped them in the
 fix's commit (the desk runs `promote` in the commit that lands the

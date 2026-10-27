@@ -11,8 +11,9 @@ facts a reader may need to cite. Git history carries the rest.
   where the executor wrote text; the query path read an empty
   container as nothing and a list or a number as the Python text of
   the value, which tail handed back as the output's last line.
-  `_output_blob` takes text and nothing else now, for every op and
-  for the Oracle's reading of a withheld job's output. Found by
+  The queries read text and nothing else now, for every op; the
+  Oracle's own reading of a record for the owner keeps a value's
+  text form, so a credential inside a list is still scanned. Found by
   blueMonday grows 12 to 14, twelve spellings of one shape;
   promoted, the seeds carry it. `runner/tests/test_query_streams.py`.
 - **A repetition count the engine cannot hold is a bad pattern

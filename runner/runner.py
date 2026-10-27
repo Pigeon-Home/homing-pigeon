@@ -1343,17 +1343,19 @@ execute_job = _exec.execute_job
 
 
 def _output_blob(exec_result):
-    """The job's output as the queries read it: stdout then stderr.
-    A stream is text or it is nothing (Q90): the executor writes
-    text, so a stream of any other type is a record a crash left or
-    a hand wrote, and the text form of a list or a number is not
-    output -- it was handed back as the output's last line."""
+    """The job's output as the Oracle reads it for the owner: stdout
+    then stderr, a value that is not text in its text form, so a
+    record a crash left or a hand wrote still shows what it holds
+    (a credential inside a list is scanned, not hidden). The
+    queries read the streams by their own rule (Q90): text or
+    nothing, since a sender is handed lines, never a value's text
+    form."""
     out = exec_result.get("stdout") if isinstance(exec_result, dict) else ""
     err = exec_result.get("stderr") if isinstance(exec_result, dict) else ""
     if not isinstance(out, str):
-        out = ""
+        out = _as_text(out)
     if not isinstance(err, str):
-        err = ""
+        err = _as_text(err)
     return out + err
 
 def _raw_lines_allowed(view):

@@ -53,7 +53,9 @@ Good catches, all three, and the first crashes of the campaign
 were the reader's. Q90 and Q91 are one shape: a record whose
 stderr is not text was read two ways on the query path, and a
 list's Python text came back as the output's last line. A stream
-is text or nothing now. Q92 is a repetition count the regex
+is text or nothing on the query path now (the Oracle's own view of
+a record keeps the text form, so a credential inside a list is
+still scanned). Q92 is a repetition count the regex
 engine cannot hold: `re.compile` raises `OverflowError` there,
 not its own error class, and the reader caught only the latter.
 Whatever the engine refuses is a bad pattern now. Both in 3.13.67.
