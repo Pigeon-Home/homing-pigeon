@@ -2,6 +2,9 @@
 name = "homing-pigeon-queues-worker"
 main = "src/index.js"
 compatibility_date = "2026-10-25"
+# A dashboard secret (TENANT, SI_TOKEN, RUNNER_TOKEN, HMAC_SECRET)
+# is not in this file. Deploy must leave it there.
+keep_vars = true
 
 # One Durable Object per tenant holds its queue, results and quota.
 [[durable_objects.bindings]]
