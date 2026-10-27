@@ -10,9 +10,6 @@ facts a reader may need to cite. Git history carries the rest.
   `runner/_version.py`, and the installer agree on `3.14.0`.
   No behavior change in this commit. The tag waits until the
   build on this commit is green.
-
-## 3.13.68 - 2026-10-27
-
 - **A retained stream on the wire is text the wire can carry
   (Q93).** A record a crash left can hold the escape of a lone
   surrogate in a stream; the query path handed the line to the
@@ -31,6 +28,15 @@ facts a reader may need to cite. Git history carries the rest.
   answer leaves a question for another reader unseen and still
   files an answer. Twenty seeds; the survivors of `protocol_v2`
   they were written against die.
+- **blueMonday's `query` target reads the senses store.** A `query`
+  entry plants alerts through the local ingest as the runner would
+  have stored them, and the `senses` op's filters -- the sensor,
+  the severity floor, the window, the limit -- are held to
+  `docs/extend/senses.md` by the checker's own rules: never more
+  than the limit or than were stored, each from the sensor asked,
+  none below the floor, highest score first, every member the
+  Oracle reads present. Seventeen seeds; the `queries` survivors in
+  the senses branch die.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.67 - 2026-10-27

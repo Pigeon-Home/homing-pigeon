@@ -2089,6 +2089,9 @@ def check_query(entry):
     opts = _mail_opts(data)
     base = tempfile.mkdtemp(prefix="hp-bluemonday-query-")
     try:
+        planted = _query_plant_senses(base, data.get("senses"))
+        if planted:
+            note("senses", planted)
         job_id = payload.get("job_id")
         if record is not None and isinstance(job_id, str):
             R.save_retained(base, job_id, record)
@@ -2200,6 +2203,9 @@ def check_query(entry):
             else None
         if rejected is None:
             _query_reply_answers(payload, record, reply, before, after)
+            declared = payload.get("queries") \
+                if isinstance(payload.get("queries"), list) else []
+            _query_senses_rules(declared, reply["answers"], planted)
         elif after != before:
             raise Crash("contract", f"a query rejected as {rejected} changed "
                         "the retained record")
@@ -2208,6 +2214,90 @@ def check_query(entry):
         return "refused" if rejected is not None else "accepted"
     finally:
         shutil.rmtree(base, ignore_errors=True)
+
+
+_SENSE_SCORES = {"critical": 4.0, "high": 3.0, "medium": 2.0, "low": 1.0,
+                 "info": 0.5}
+
+
+def _query_plant_senses(base, specs):
+    """The senses store as the runner left it: the alerts the entry
+    names, each through the local ingest under the rig's sensor
+    config (what the ingest refuses is not stored); how many were
+    stored."""
+    if not isinstance(specs, list):
+        return 0
+    stored = 0
+    for n, spec in enumerate(specs[:8]):
+        if not isinstance(spec, dict):
+            continue
+        extra = {k: v for k, v in spec.items() if isinstance(k, str)}
+        extra.setdefault("title", f"bm-sense-{n}")
+        extra.setdefault("job_id", f"bm-sense-{n:04d}")
+        try:
+            payload = _stamp_issued_at(_alert(**extra))
+        except TypeError:
+            continue
+        body, exc = _call(V.sign_payload, payload, SENSE)
+        if exc is not None:
+            continue
+        got, exc = _call(R._ingest_local_envelope_inner, LOCAL_CFG, base,
+                         body, f"bluemonday-sense-{n}")
+        if exc is not None:
+            raise Crash("exception", "the senses ingest raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        if isinstance(got, dict):
+            stored += 1
+    return stored
+
+
+def _query_senses_rules(declared, answers, planted):
+    """A senses answer against the query that asked it, by the
+    checker's own reading of docs/extend/senses.md: never more
+    alerts than the limit (20 unasked) or than were stored, each
+    from the sensor asked, none below the floor asked (a missing
+    severity is info), the list scored highest first, every alert
+    carrying the members the Oracle reads."""
+    for q, a in zip(declared, answers):
+        if not isinstance(q, dict) or q.get("op") != "senses" \
+                or not isinstance(a, dict) or "alerts" not in a:
+            continue
+        alerts = a["alerts"]
+        limit = q.get("limit")
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit < 0:
+            limit = 20
+        if len(alerts) > min(limit, planted):
+            raise Crash("contract", f"senses handed back {len(alerts)} "
+                        f"alerts over a limit of {limit} with {planted} "
+                        "stored")
+        want = q.get("sensor") if isinstance(q.get("sensor"), str) else None
+        floor = q.get("severity_floor") \
+            if isinstance(q.get("severity_floor"), str) else None
+        floor_score = _SENSE_SCORES.get(floor, 0.0) if floor else 0.0
+        last = None
+        for it in alerts:
+            if not isinstance(it, dict):
+                raise Crash("shape", "a senses alert is not an object")
+            for member in ("sensor", "severity", "title", "detail",
+                           "observed_at", "received_at", "weight", "score"):
+                if member not in it:
+                    raise Crash("shape", f"a senses alert lacks {member}")
+            if want is not None and it["sensor"] != want:
+                raise Crash("contract", "senses handed back an alert of "
+                            f"sensor {it['sensor']!r}, asked {want!r}")
+            sev = it["severity"] if it["severity"] in _SENSE_SCORES \
+                else "info"
+            if _SENSE_SCORES[sev] < floor_score:
+                raise Crash("contract", f"senses handed back severity {sev} "
+                            f"under the floor {floor}")
+            score = it["score"]
+            if not isinstance(score, (int, float)) or isinstance(score, bool) \
+                    or score != score:
+                raise Crash("shape", f"a senses alert's score is {score!r}")
+            if last is not None and score > last:
+                raise Crash("contract", "senses alerts are not highest "
+                            "first")
+            last = score
 
 
 def _query_carriable(text):
@@ -5035,6 +5125,19 @@ def seeds_query():
         data.update(top)
         return (name, data)
 
+    sense_set = [
+        {"severity": "critical", "title": "bm-sense-crit",
+         "observed_at": "2026-10-26T09:00:00Z"},
+        {"severity": "high", "title": "bm-sense-high",
+         "observed_at": "2026-10-26T10:00:00Z"},
+        {"severity": "medium", "title": "bm-sense-med",
+         "observed_at": "2026-10-26T11:00:00Z"},
+        {"severity": "low", "title": "bm-sense-low",
+         "observed_at": "2026-10-26T12:00:00Z",
+         "detail": {"path": "/srv/example/low.txt", "count": 2}},
+        {"severity": "info", "title": "bm-sense-info"},
+    ]
+
     out = [
         entry("happy"),
         entry("keyed", key_id="ops"),
@@ -5072,6 +5175,51 @@ def seeds_query():
               q=query(queries=[tail])),
         entry("record_streams_not_text", rec=retained(stdout=["a"], stderr={"b": 1}),
               q=query(queries=[tail, grep, attest])),
+        # The senses store as the runner left it (docs/extend/senses.md):
+        # alerts planted through the local ingest, then the senses op
+        # with its filters -- the sensor, the severity floor, the
+        # window, the limit -- and the answer's own shape.
+        entry("senses_all", senses=sense_set, q=query(queries=[
+            {"op": "senses"}])),
+        entry("senses_canary", senses=sense_set, q=query(queries=[
+            {"op": "senses", "sensor": "canary"}])),
+        entry("senses_other_sensor", senses=sense_set, q=query(queries=[
+            {"op": "senses", "sensor": "other"}])),
+        entry("senses_floor_medium", senses=sense_set, q=query(queries=[
+            {"op": "senses", "severity_floor": "medium"}])),
+        entry("senses_floor_critical", senses=sense_set, q=query(queries=[
+            {"op": "senses", "severity_floor": "critical"}])),
+        entry("senses_floor_unknown", senses=sense_set, q=query(queries=[
+            {"op": "senses", "severity_floor": "loud"}])),
+        entry("senses_since", senses=sense_set, q=query(queries=[
+            {"op": "senses", "since": "2026-10-26T10:30:00Z"}])),
+        entry("senses_until", senses=sense_set, q=query(queries=[
+            {"op": "senses", "until": "2026-10-26T10:30:00Z"}])),
+        entry("senses_window", senses=sense_set, q=query(queries=[
+            {"op": "senses", "since": "2026-10-26T09:30:00Z",
+             "until": "2026-10-26T10:30:00Z"}])),
+        entry("senses_since_junk", senses=sense_set, q=query(queries=[
+            {"op": "senses", "since": "yesterday", "until": 7}])),
+        entry("senses_limit_one", senses=sense_set, q=query(queries=[
+            {"op": "senses", "limit": 1}])),
+        entry("senses_limit_zero", senses=sense_set, q=query(queries=[
+            {"op": "senses", "limit": 0}])),
+        entry("senses_limit_junk", senses=sense_set, q=query(queries=[
+            {"op": "senses", "limit": "many", "sensor": 7,
+             "severity_floor": None}])),
+        entry("senses_redacted", senses=sense_set, rec=retained(view="redacted"),
+              q=query(queries=[{"op": "senses"}])),
+        entry("senses_none_stored", senses=[{"sensor": "other"}, 7, None,
+                                            {"detail": "a line"}],
+              q=query(queries=[{"op": "senses"}])),
+        entry("senses_no_severity", senses=[{"severity": None},
+                                            {"severity": "loud"}],
+              q=query(queries=[{"op": "senses", "severity_floor": "info"},
+                               {"op": "senses", "severity_floor": "low"}])),
+        entry("senses_many", senses=[{"severity": "low",
+                                      "title": f"bm-s-{n}"} for n in range(8)],
+              q=query(queries=[{"op": "senses", "limit": 5},
+                               {"op": "senses"}])),
         # A lone surrogate in a retained stream (Q93): the escape a
         # record a crash left can hold, which no signer accepts; on
         # the wire it is the replacement character, in every op.
