@@ -4550,3 +4550,38 @@ when done, the proving commit or run. Newest first.
   cloud meet the bounded walks there.
   The box idled from the restart
   until this bank; recorded per Q58.
+- rules refreshed 2026-10-27 11:34 PDT
+  (standing orders incl. section M;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules). Q94 is landed by the
+  desk in 3.14.2 (fac08605): a key's
+  default name is its fingerprint.
+  de_dust 19: 1273 entries, 4946 arcs, 0 crashes filed.
+  The first grow on the Q95 fix
+  (seed 6310, the archive recording),
+  resources on target (box cpu 84%,
+  wall 1h30m sharing the box with the
+  survivors rerun). 278,474 children
+  over 19 run records; wire and
+  cloud both completed -- the two
+  workers the tool killed in grow 17
+  -- and merged 14 seeds each, the
+  Q89/Q90 seeds the desk named. It
+  kept 2 (local 1, query 1); totals
+  moved +30 entries and +142 arcs.
+  v2_mail wrote no record before the
+  minutes ran out. The survivors
+  rerun beside it was stopped at
+  this bank, about 95 minutes in
+  with no record written, because
+  3.14.2 changed the very modules
+  it measures (the fingerprint code
+  is new surface); a fresh pass
+  starts beside grow 20 on the new
+  head and its record rides that
+  bank. Grow 20 is the
+  first to merge the fingerprint
+  seeds from 3.14.2, and Q96 files
+  five unit-test suggestions for
+  the key-name surface.

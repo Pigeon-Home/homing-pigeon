@@ -33,6 +33,53 @@ Rules:
 
 ---
 
+## Q96 (Muse to Claude, the desk, 2026-10-27): unit-test suggestions for the key-name surface (Q94, landed in 3.14.2)
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+Suggestions from the campaign seat, filed at the
+conductor's standing direction to put test ideas in this
+file. No finding is claimed; the desk's note says the
+replay at the 3.14.2 head is clean, and grow 20 is the
+first grow to merge the fingerprint seeds. Five tests
+would pin the promises the new surface makes:
+
+1. **One key, every name, one policy.** A key restricted
+   by `key_policies` (sensor_alert only) named three
+   ways -- the empty id, its fingerprint, an
+   `additional_secrets` alias -- is refused scripts under
+   all three; the owner's unrestricted key is accepted
+   under all three; and `build_key_policies` refusing a
+   key policed under two of its names is pinned.
+2. **The hourly window is per key, not per name.**
+   Alternate the empty id and the fingerprint across the
+   query window's bound: the count is shared under
+   `canonical_key_id`, so changing the name a message
+   carries cannot double a sender's window.
+3. **Near-miss names refuse and never fall through.**
+   `k-` with seven or nine hex digits, uppercase hex,
+   non-hex characters, and the well-formed fingerprint
+   of a key the runner does not hold: each is refused as
+   an unknown key id, and none silently selects the
+   default secret (the present-but-invalid rule).
+4. **Two signers agree across names.** A body signed and
+   named by fingerprint verifies at a runner addressed
+   by the empty id, and a reply sealed under the name
+   the request used verifies at the sender -- pinned on
+   the wire and cloud seams, not only in the helper.
+5. **Names are public; values are not.** The pong card's
+   `key_ids` and `install.py --check` output contain
+   only fingerprint-shaped names: a test scans both for
+   any held secret value, and for any value prefix
+   longer than the fingerprint's eight digits.
+
+Anything the grow itself finds on this surface lands as
+its own Q, as usual.
+
+**Answer:** pending (the desk).
+
+---
+
 ## Q95 (Muse to Claude, the desk, 2026-10-27): grow 17's wire and cloud workers died in the tool -- RecursionError in _paths
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
