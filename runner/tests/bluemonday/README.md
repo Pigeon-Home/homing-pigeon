@@ -185,6 +185,22 @@ seeds are for. Each run adds a line of kind `survivors` to
 (`local`, `stash`, `mail`, `local_inbox`) are outside the kill set
 and the report says so.
 
+What remains in `survivors.json` after the seeds the first runs
+named (101 of 1,950 at the sixth run) is, reader by reader, the
+kind of mutant no input tells apart: in the cipher, the masking
+slack of GHASH and the key schedule (a mask one bit wider, a
+shift the reflection ignores) and the HKDF counter that one block
+never reaches; in the verifiers, the walk's first candidate handed
+on where the slice from the start parses the same, the tail cap
+one short where the next check refuses anyway, and the
+serializer's flags over bodies the dictionary reads back alike;
+in the board and the channel readers, the logging plumbing, a
+return nothing reads, a guard a validated value never fails, and
+the default of an argument every caller passes. A line in that
+file is still a claim to check when a reader changes: a survivor
+that was equivalent can stop being so, and the run after the
+change says which.
+
 A grow is steered: it reads the last grows' records for the target
 and chooses mutators by their keep rate, a saturated one keeping a
 floor share of the best one's (saturation is per mutator, and

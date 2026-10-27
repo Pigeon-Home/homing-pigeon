@@ -292,7 +292,15 @@ not a verdict on the reader, and the response is in this order:
    survivors in `runner/tests/bluemonday/survivors.json` are the
    lines the corpus cannot yet tell from a wrong reader, and each
    one names the seed to write next. The first run: 1,877 mutants,
-   171 survivors; the DTLS reader lost none of 513.
+   171 survivors; the DTLS reader lost none of 513. Five seed
+   batches later (2026-10-26): 101 of 1,950, the manifest reader
+   losing all 241 and the DTLS reader all 516, and what remains is
+   the kind no input tells apart (the corpus README names the
+   kinds). Three readers were fixed on the way: the board's
+   re-offer, load and approve, the mailbox's subject, and the
+   board's non-finite priorities (Grok, Q78 and Q79), each found
+   by a seed the survivors named, a grow that moved it, and a
+   contract that caught the reader.
 
 The grow never idles: a saturated target still runs its share
 while the desk brings the next step, since a grow that keeps
