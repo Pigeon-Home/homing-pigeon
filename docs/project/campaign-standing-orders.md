@@ -4298,3 +4298,38 @@ when done, the proving commit or run. Newest first.
   1, security 4, send_job 10,
   transports 7 (and the timeout),
   verify 8.
+- rules refreshed 2026-10-27 01:33 PDT
+  (standing orders incl. section M as
+  the only effort, the blueMonday plan;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules).
+  blueMonday 12: 1042 entries, 4379 arcs, 4 crashes filed.
+  A steered run on twenty targets
+  (seed 6240, one full pass, the
+  archive recording), resources on
+  target (box cpu 82%, wall 1h05m),
+  ended by the crash exit: the `query`
+  target's checker broke its contract
+  four times -- a `tail` answer whose
+  lines are not the output's last
+  lines, entries 62ae63868b862653,
+  96f5bd62c49159c2, beaa8087f3aaab6f
+  and c7d23c58c352c1ee, all by
+  p_replace, written shrunk to
+  query.crashes.jsonl and filed as
+  Q90 to the desk. +353 entries and
+  +1,681 arcs: five targets the desk
+  added since grow 11 (queries, names,
+  query, board_mail, v2_mail) brought
+  322 seeded entries between them,
+  seed merges on the older targets
+  added 8, and the grow kept 23
+  (query 8, v2_mail 7, board_mail 6,
+  wire 1, local 1). 312,143 children
+  tried over its 20 run records, all
+  of them in the archive. The survivors
+  run after it was still running at
+  this bank -- the module set has
+  outgrown the two-minute measure --
+  so its record rides grow 13's bank.
