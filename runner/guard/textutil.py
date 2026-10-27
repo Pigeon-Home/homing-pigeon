@@ -6,6 +6,7 @@ Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 Stdlib only, no runner imports: runner.py and runner/wire/board.py both
 import from here, and neither may import the other.
 """
+import json
 import math
 import re
 from datetime import datetime
@@ -83,6 +84,58 @@ def _fromiso(value):
     return datetime.fromisoformat(text)
 
 
+NESTING_LIMIT = 200
+
+
+def _no_constant(name):
+    """json.loads' parse_constant for a signed body: NaN, Infinity
+    and -Infinity are Python's extensions, not JSON (RFC 8259), and
+    a number the reader cannot carry."""
+    raise ValueError(f"signed body carries {name}, which is not JSON")
+
+
+def _finite_float(text):
+    """json.loads' parse_float for a signed body: a number too large
+    for a float (1e400 is valid syntax) reads as infinity, which the
+    reader cannot carry."""
+    value = float(text)
+    if value != value or value in (float("inf"), float("-inf")):
+        raise ValueError("signed body carries a number that is not finite")
+    return value
+
+
+def loads_signed(text):
+    """json.loads for the text of a signed body: the literals NaN and
+    Infinity and a number that overflows a float are refused with a
+    ValueError that names them, so a body trusts nothing a JSON
+    reader elsewhere would not read the same way (Q89)."""
+    return json.loads(text, parse_constant=_no_constant,
+                      parse_float=_finite_float)
+
+
+def _nests_deeper_than(value, limit=NESTING_LIMIT):
+    """True when a parsed JSON value holds a container more than
+    `limit` levels down (the root object is level 1). Counted with
+    a stack, not recursion, so a body of any depth is measured
+    without a RecursionError; the walks that follow (the lone
+    surrogate's, the signer's) are bounded by the same limit."""
+    stack = [(value, 1)]
+    while stack:
+        item, depth = stack.pop()
+        if isinstance(item, dict):
+            kids = item.values()
+        elif isinstance(item, (list, tuple)):
+            kids = item
+        else:
+            continue
+        if depth > limit:
+            return True
+        for kid in kids:
+            if isinstance(kid, (dict, list, tuple)):
+                stack.append((kid, depth + 1))
+    return False
+
+
 def _lone_surrogate(value, _depth=0):
     """True when a parsed JSON value holds an unpaired UTF-16 surrogate.
 
@@ -93,7 +146,7 @@ def _lone_surrogate(value, _depth=0):
     instead of failing (and being retried) on every poll.
     (Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab)
     """
-    if _depth > 200:
+    if _depth > NESTING_LIMIT:
         return False
     if isinstance(value, str):
         try:

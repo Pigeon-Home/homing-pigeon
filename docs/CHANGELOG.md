@@ -4,6 +4,32 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.66 - 2026-10-27
+
+- **A signed body is JSON and no more (Q89).** The literals `NaN`,
+  `Infinity` and `-Infinity`, and a number too large for a double,
+  were read into a job by both verifiers and the front-end's; a
+  body nested past the lone-surrogate walk's 200 levels passed the
+  runner's verifier with a surrogate below that, while the
+  front-end's refused it or raised a `RecursionError`. The parse
+  refuses the literals and the overflow by name; a body is measured
+  without recursion and refused whole past 200 levels, the object
+  itself the first; the three doors agree. PROTOCOL.md section 3.
+  `runner/tests/test_signed_body_bounds.py`.
+- **blueMonday: the wire, cloud and crypto survivors read.** The
+  `wire` and `cloud` seeds carry the literals, the overflow, the
+  bound from both sides and a body far past it, and an id with the
+  header's line breaks in it, which the result's subject folds onto
+  one line (now a contract). The survivors the committed report
+  still lists in `jobcrypto`, `security`, `send_job`, `board`,
+  `protocol_v2` and `transports` are equivalent mutants -- the
+  GHASH mask bits above the field, the HKDF counter a single block
+  never reaches, the entropy estimate's two refusals of one
+  secret, a board key the loader rewrites either way, a return
+  value no caller reads -- and `docs/project/bluemonday.md`
+  section 8 lists them so the next reading starts there.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.65 - 2026-10-27
 
 - **Only the last hour's slots count in the query window (Q88).** A

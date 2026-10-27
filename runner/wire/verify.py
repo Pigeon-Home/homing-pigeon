@@ -37,9 +37,13 @@ try:
 except ImportError:
     from wire.platformcard import platform_interpreter  # type: ignore
 try:
-    from runner.guard.textutil import _json_safe, _lone_surrogate
+    from runner.guard.textutil import (
+        NESTING_LIMIT, _json_safe, _lone_surrogate, _nests_deeper_than,
+        loads_signed)
 except ImportError:
-    from guard.textutil import _json_safe, _lone_surrogate  # type: ignore
+    from guard.textutil import (  # type: ignore
+        NESTING_LIMIT, _json_safe, _lone_surrogate, _nests_deeper_than,
+        loads_signed)
 try:
     from runner.guard import confval as _confval
 except ImportError:
@@ -201,13 +205,21 @@ def verify_body(body: str, secret: str) -> dict:
         if not hmac.compare_digest(expect, sig.lower()):
             raise ValueError("signature mismatch")
         raw = cleaned
-    job = json.loads(raw)
+    # NaN, Infinity and a number that overflows a float are refused
+    # by the parse itself (Q89): they are not JSON, and a reader
+    # elsewhere would not read them the same way.
+    job = loads_signed(raw)
     # _extract_signed returns text rooted at the "{" of a root object,
     # so json.loads here yields a dict or raises. The verifier keeps
     # its own shape check regardless of the extractor: it is the last
     # word before the body is trusted (Q48).
     if not isinstance(job, dict):
         raise ValueError("signed body is not a JSON object")
+    # The walks below are bounded; a body nested past the bound is
+    # refused whole rather than walked in part (Q89).
+    if _nests_deeper_than(job, NESTING_LIMIT):
+        raise ValueError(f"signed body nests deeper than {NESTING_LIMIT} "
+                         "levels")
     # A \\ud800 escape reads as a lone surrogate: valid JSON syntax,
     # not UTF-8 text. A body that carries one is refused here, so no
     # text of the sender's that the runner echoes (the job's kind on
@@ -728,6 +740,14 @@ def verify_body_keyed(body_text: str, secrets: dict):
             continue
         if not isinstance(payload, dict):
             raise ValueError("signed body must be a JSON object")
+        # The same door as verify_body (Q85, Q89): the literals and
+        # numbers JSON does not have, a body nested past the walks'
+        # bound, and a lone surrogate are refused before any key is
+        # chosen.
+        payload = loads_signed(cand)
+        if _nests_deeper_than(payload, NESTING_LIMIT):
+            raise ValueError(f"signed body nests deeper than "
+                             f"{NESTING_LIMIT} levels")
         if _lone_surrogate(payload):
             raise ValueError("signed body carries an unpaired UTF-16 "
                              "surrogate")

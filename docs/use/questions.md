@@ -33,6 +33,48 @@ Rules:
 
 ---
 
+## Q89 (Claude, the desk, 2026-10-27): NaN, Infinity and a body nested past the walk passed the door, and the two verifiers disagreed on it -- a signed body is JSON and no more now
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+Found while turning the survivors of `runner/wire/verify.py` into
+seeds. Python's JSON parser reads the literals `NaN`, `Infinity`
+and `-Infinity`, which RFC 8259 does not have, and reads `1e400`,
+which is valid syntax, as infinity; both verifiers (`verify_body`,
+`verify_body_keyed`) and the front-end's `send_job.verify_body`
+accepted a signed body carrying any of them, and the job then held
+a number no JSON reader elsewhere would read the same way and no
+conversion downstream expects. Separately, the lone-surrogate walk
+of Q85 stops 200 levels down (`_lone_surrogate`'s cap), so a
+surrogate nested deeper passed the runner's verifier; the
+front-end's walk has no cap, so it refused the same body, and on a
+body nested past the interpreter's recursion limit it raised a
+`RecursionError` instead of a `ValueError`. The two readers of one
+body, which the `wire` target holds in agreement, disagreed on a
+body the corpus had not yet tried.
+
+**The desk's answer, landed:** the parse itself refuses what is not
+JSON: `loads_signed` in `runner/guard/textutil.py` reads a signed
+body with a `parse_constant` that names the literal ("signed body
+carries NaN, which is not JSON") and a `parse_float` that refuses
+an overflow ("signed body carries a number that is not finite");
+the front-end carries the same two hooks. A body is then measured
+without recursion (`_nests_deeper_than`, a stack) and refused whole
+past 200 levels, the object itself the first ("signed body nests
+deeper than 200 levels"), so the walks that follow -- the
+surrogate's, the signer's -- never meet a body they cannot finish,
+and the three doors refuse the same bodies with the same words.
+The largest finite double, a subnormal, a big integer and the text
+"NaN" read as before. PROTOCOL.md section 3 states both rules.
+`runner/tests/test_signed_body_bounds.py` pins the literals, the
+overflow, the bound from both sides, a body of any depth, and the
+surrogate at the bottom of the bound; the `wire` and `cloud` seeds
+carry the same bodies.
+
+**Applied in:** the commit that carries this entry.
+
+---
+
 ## Q88 (Claude, the desk, 2026-10-27): a query window with a time in the future held the sender at the cap -- only the last hour's slots count now
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->

@@ -402,7 +402,38 @@ not a verdict on the reader, and the response is in this order:
    through another's import (the pattern bound under `queries`)
    is told apart; with the `queries` and `names` targets that is
    2,357 mutants, 81 of them standing, every one named by kind in
-   the corpus README.
+   the corpus README. The seventh reading (the desk, 2026-10-27)
+   went survivor by survivor through the report the campaign
+   banked and sorted them: the ones a seed kills -- the query
+   window's refusals, the record's stderr and attestation marks,
+   the reply's version and job members, the board's lease default,
+   the answerer's model branches, the result subject's fold, the
+   literals and numbers JSON does not have and the nesting bound
+   (Q88, Q89) -- have their seeds in the seed functions, and the
+   rest are equivalent mutants, the kind no input can tell apart:
+   in `jobcrypto`, the GHASH mask widened above bit 127 or
+   narrowed at bit 0 (the shift leaves bit 0 clear and nothing
+   reads above the field), the reflection and multiply loops run
+   one bit past the field, the HKDF counter and length guard a
+   32-octet key never reaches, the counter block read from one
+   octet more or less (equal below 2^24 blocks), a slice one wider
+   than the keystream it is zipped with, the length block written
+   in seven octets (the same integer); in `security` and
+   `send_job`, the entropy estimate's two refusals of one secret
+   (an empty string or a one-letter alphabet is zero either way)
+   and the period test's extra repeat; in `verify` and `send_job`,
+   the signer's object check after `json.dumps` of a dict, and the
+   depth-zero return of a walk that returns false either way; in
+   `board`, a task key the loader rewrites whether or not it
+   matches, and the file's indent; in `protocol_v2`, the return of
+   a check whose callers keep their own value; in `handlers`, the
+   replay-cache flag `save_seen` sets true on every key; in
+   `transports`, the ack's true the service loop reassigns, a
+   return no caller reads, the root path no reader of the paths
+   dict asks for, and the done folder's name a directory check
+   skips either way; in `startup`, the board kind the subject gate
+   never admits. A reading starts from this list; a survivor not
+   on it is a seed to write.
 
 The grow never idles: a saturated target still runs its share
 while the desk brings the next step, since a grow that keeps

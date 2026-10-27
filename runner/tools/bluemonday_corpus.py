@@ -414,6 +414,15 @@ def _provenance(job):
         if len(smtp.sent) != 1:
             raise Crash("provenance", "send_mail dropped a result over "
                         "its subject text")
+        # The subject is the text asked for, its line breaks (by the
+        # header's rule, Python's splitlines) folded to single
+        # spaces; nothing else of it is changed.
+        folded = " ".join(("[HOMING-PIGEON] result " + raw_id).splitlines())
+        if str(smtp.sent[0]["Subject"]) != folded:
+            raise Crash("provenance", "the result subject is not the text "
+                        "asked for with its line breaks folded: "
+                        f"{str(smtp.sent[0]['Subject'])[:60]!r}")
+        note("subject", _digest(folded))
 
 
 def _verify_text(text):
@@ -2774,6 +2783,10 @@ def _payload_seeds():
         ("own_sig_member", _job(sig="0" * 96)),
         ("unicode", _job(title="café — 中文 \U0001f426")),
         ("escapes", _job(note="a\"quote\\slash\nnewline\ttab")),
+        # Ids with the header's line breaks in them: the result's
+        # subject carries the text folded onto one line.
+        ("id_with_newline", _job(job_id="bm-nl\n0001")),
+        ("id_with_separators", _job(job_id="bm-\u2028sep\x0b\x0c\x85\r\n1")),
         ("nested", _job(detail={"a": [1, 2.5, None, True, {"b": []}]})),
         ("nested_sig", _job(detail={"v": 1, "key_id": "ops",
                                     "sig": "0" * 96})),
@@ -2934,6 +2947,42 @@ def _text_bodies():
         ("surrogate_pair", _hmac_signed_text(
             '{"v":1,"type":"job","job_id":"bm-s-0004","kind":"exec",'
             '"note":"\\ud83d\\udc26 caf\\u00e9"}')),
+        # The numbers and literals JSON does not have (Q89): NaN and
+        # Infinity are the parser's extensions, 1e400 is syntax that
+        # overflows; the largest finite number is a number. A body
+        # nested past the walks' bound is refused whole; one at the
+        # bound is read, and a lone surrogate at the bottom of it is
+        # seen.
+        ("nan_member", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-n-0001","kind":"exec",'
+            '"x":NaN}')),
+        ("infinity_member", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-n-0002","kind":"exec",'
+            '"x":Infinity}')),
+        ("negative_infinity_member", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-n-0003","kind":"exec",'
+            '"x":[-Infinity]}')),
+        ("overflow_number", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-n-0004","kind":"exec",'
+            '"timeout_sec":1e400}')),
+        ("largest_finite_number", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-n-0005","kind":"exec",'
+            '"x":1.7976931348623157e308,"y":-1e308,"z":5e-324}')),
+        ("nested_at_the_bound", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-d-0001","kind":"exec",'
+            '"deep":' + "[" * 199 + "1" + "]" * 199 + "}")),
+        ("nested_past_the_bound", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-d-0002","kind":"exec",'
+            '"deep":' + "[" * 200 + "1" + "]" * 200 + "}")),
+        ("nested_objects_past_the_bound", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-d-0003","kind":"exec",'
+            '"deep":' + '{"a":' * 200 + "1" + "}" * 200 + "}")),
+        ("surrogate_at_the_bound", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-d-0004","kind":"exec",'
+            '"deep":' + "[" * 199 + '"\\ud800"' + "]" * 199 + "}")),
+        ("nested_far_past_the_bound", _hmac_signed_text(
+            '{"v":1,"type":"job","job_id":"bm-d-0005","kind":"exec",'
+            '"deep":' + "[" * 1500 + '"\\ud800"' + "]" * 1500 + "}")),
         ("bom", "﻿" + exec_body),
         ("wrong_secret", V.sign_payload(_job(), WRONG)),
         # The draft's subject: a decoration word, then job, then the id.

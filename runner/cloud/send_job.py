@@ -253,19 +253,62 @@ def verify_body(body: str, secret: str) -> dict:
                       hashlib.sha384).hexdigest()
     if not hmac.compare_digest(expect, sig.lower()):
         raise ValueError("signature mismatch")
-    job = json.loads(raw)
+    # NaN, Infinity and a number that overflows a float are refused
+    # by the parse itself; the runner's verifier does the same (Q89).
+    job = json.loads(raw, parse_constant=_no_constant,
+                     parse_float=_finite_float)
     # _extract_signed returns text rooted at the "{" of a root object,
     # so json.loads here yields a dict or raises. The verifier keeps
     # its own shape check regardless of the extractor: it is the last
     # word before the body is trusted (Q48).
     if not isinstance(job, dict):
         raise ValueError("signed body is not a JSON object")
+    # A body nested past the walks' bound is refused whole, as the
+    # runner's verifier refuses it (Q89), measured without recursion.
+    if _nests_deeper_than(job, NESTING_LIMIT):
+        raise ValueError(f"signed body nests deeper than {NESTING_LIMIT} "
+                         "levels")
     # A \\ud800 escape reads as a lone surrogate: valid JSON syntax,
     # not UTF-8 text. The runner's verifier refuses it (Q85); this
     # one does the same, in step.
     if _has_lone_surrogate(job):
         raise ValueError("signed body carries an unpaired UTF-16 surrogate")
     return job
+
+
+NESTING_LIMIT = 200
+
+
+def _no_constant(name):
+    raise ValueError(f"signed body carries {name}, which is not JSON")
+
+
+def _finite_float(text):
+    value = float(text)
+    if value != value or value in (float("inf"), float("-inf")):
+        raise ValueError("signed body carries a number that is not finite")
+    return value
+
+
+def _nests_deeper_than(value, limit=NESTING_LIMIT) -> bool:
+    """True when a container sits more than `limit` levels down (the
+    root object is level 1); a stack, not recursion, so any depth is
+    measured (runner/guard/textutil.py has the runner's copy)."""
+    stack = [(value, 1)]
+    while stack:
+        item, depth = stack.pop()
+        if isinstance(item, dict):
+            kids = item.values()
+        elif isinstance(item, (list, tuple)):
+            kids = item
+        else:
+            continue
+        if depth > limit:
+            return True
+        for kid in kids:
+            if isinstance(kid, (dict, list, tuple)):
+                stack.append((kid, depth + 1))
+    return False
 
 
 def _has_lone_surrogate(value, _seen=None) -> bool:

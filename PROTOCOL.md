@@ -66,7 +66,7 @@ The reference default is email only: `transports` absent means
 
 ## 3. Message format
 
-- Body is UTF-8 plain text. It must contain one signed JSON object. Surrounding text (a note, a signature block) is ignored; only the object ending in the signature is verified. Every string in that object is UTF-8 text: the escape of a lone surrogate (`\ud800`) is JSON syntax that no UTF-8 text can carry, and a body that holds one anywhere is refused.
+- Body is UTF-8 plain text. It must contain one signed JSON object. Surrounding text (a note, a signature block) is ignored; only the object ending in the signature is verified. Every string in that object is UTF-8 text: the escape of a lone surrogate (`\ud800`) is JSON syntax that no UTF-8 text can carry, and a body that holds one anywhere is refused. Every number in it is a finite number: the literals `NaN`, `Infinity` and `-Infinity` are a parser's extensions, not JSON, and a number too large for a double (`1e400`) is refused with them. The object nests at most 200 levels deep, the object itself being the first; a body nested deeper is refused whole.
 - Every message ends with a `sig` field holding a hex HMAC-SHA-384
   signature (see section 4).
 
