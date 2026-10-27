@@ -2,18 +2,18 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "alarm": true,
  "bluemonday": 1,
- "head": "38795e529851",
+ "head": "b0524bfbc9f3",
  "kind": "survivors",
  "limit": null,
  "modules": {
   "board": {
    "broken": 0,
-   "entries": 52,
+   "entries": 55,
    "file": "runner/wire/board.py",
-   "killed": 232,
+   "killed": 238,
    "mutants": 257,
    "reached_lines": 237,
-   "survived": 25,
+   "survived": 19,
    "survivors": [
     {
      "index": 0,
@@ -65,27 +65,6 @@
      "verdict": "survived"
     },
     {
-     "index": 100,
-     "line": 288,
-     "op": "boolop",
-     "text": "if not isinstance(priority, (int, float)) or isinstance(priority, bool):",
-     "verdict": "survived"
-    },
-    {
-     "index": 136,
-     "line": 146,
-     "op": "str-empty",
-     "text": "return False, \"priority must be a finite number\"",
-     "verdict": "survived"
-    },
-    {
-     "index": 138,
-     "line": 148,
-     "op": "str-empty",
-     "text": "return False, \"priority must be a finite number\"",
-     "verdict": "survived"
-    },
-    {
      "index": 167,
      "line": 287,
      "op": "int+1",
@@ -97,13 +76,6 @@
      "line": 287,
      "op": "int-1",
      "text": "priority = task.get(\"priority\", 0)",
-     "verdict": "survived"
-    },
-    {
-     "index": 170,
-     "line": 289,
-     "op": "int+1",
-     "text": "priority = 0",
      "verdict": "survived"
     },
     {
@@ -153,20 +125,6 @@
      "line": 128,
      "op": "bool",
      "text": "indent=2, allow_nan=False)",
-     "verdict": "survived"
-    },
-    {
-     "index": 215,
-     "line": 156,
-     "op": "int+1",
-     "text": "\"priority\": task.get(\"priority\", 0),",
-     "verdict": "survived"
-    },
-    {
-     "index": 216,
-     "line": 156,
-     "op": "int-1",
-     "text": "\"priority\": task.get(\"priority\", 0),",
      "verdict": "survived"
     },
     {
@@ -851,12 +809,12 @@
   },
   "transports": {
    "broken": 0,
-   "entries": 33,
+   "entries": 35,
    "file": "runner/wire/transports.py",
-   "killed": 82,
+   "killed": 92,
    "mutants": 112,
-   "reached_lines": 164,
-   "survived": 30,
+   "reached_lines": 162,
+   "survived": 20,
    "survivors": [
     {
      "index": 5,
@@ -901,24 +859,10 @@
      "verdict": "survived"
     },
     {
-     "index": 36,
-     "line": 390,
-     "op": "not",
-     "text": "if body and not body.endswith(\"\\n\"):",
-     "verdict": "survived"
-    },
-    {
      "index": 37,
      "line": 391,
      "op": "str-empty",
      "text": "text += \"\\n\"",
-     "verdict": "survived"
-    },
-    {
-     "index": 44,
-     "line": 478,
-     "op": "compare",
-     "text": "if len(again) > FILE_MAX_BYTES:",
      "verdict": "survived"
     },
     {
@@ -1006,66 +950,10 @@
      "verdict": "survived"
     },
     {
-     "index": 86,
-     "line": 463,
-     "op": "str-empty",
-     "text": "out.append(refuse(\"symlink job files are not read\"))",
-     "verdict": "survived"
-    },
-    {
-     "index": 89,
-     "line": 489,
-     "op": "str-empty",
-     "text": "out.append(refuse(\"malformed envelope (no blank line \"",
-     "verdict": "survived"
-    },
-    {
      "index": 94,
      "line": 599,
      "op": "bool",
      "text": "if acked is False and callable(rollback):",
-     "verdict": "survived"
-    },
-    {
-     "index": 95,
-     "line": 479,
-     "op": "str-empty",
-     "text": "out.append(refuse(f\"{len(again)} bytes exceeds the \"",
-     "verdict": "survived"
-    },
-    {
-     "index": 96,
-     "line": 480,
-     "op": "str-empty",
-     "text": "f\"{FILE_MAX_BYTES}-byte cap\"))",
-     "verdict": "survived"
-    },
-    {
-     "index": 98,
-     "line": 573,
-     "op": "compare",
-     "text": "target = reply[2] if len(reply) > 2 else None",
-     "verdict": "survived"
-    },
-    {
-     "index": 101,
-     "line": 485,
-     "op": "str-empty",
-     "text": "out.append(refuse(f\"cannot read as UTF-8: {e}\"))",
-     "verdict": "survived"
-    },
-    {
-     "index": 106,
-     "line": 572,
-     "op": "int+1",
-     "text": "rsubject, rbody = reply[0], reply[1]",
-     "verdict": "survived"
-    },
-    {
-     "index": 109,
-     "line": 573,
-     "op": "int-1",
-     "text": "target = reply[2] if len(reply) > 2 else None",
      "verdict": "survived"
     }
    ],
@@ -1191,7 +1079,7 @@
  },
  "platform": "Linux-x86_64",
  "python": "3.13.16",
- "seconds": 84.6,
+ "seconds": 86.8,
  "seed": 0,
  "through_agent": [
   "local",
@@ -1200,5 +1088,5 @@
   "stash"
  ],
  "timeout": 20,
- "when": "2026-10-27T01:12:40Z"
+ "when": "2026-10-27T01:18:09Z"
 }

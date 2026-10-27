@@ -1069,7 +1069,7 @@ def check_inbox(entry):
     return _channel_sequence(spec)
 
 
-_CHANNEL_MODES = ("reply", "raise", "none", "hold", "badreply")
+_CHANNEL_MODES = ("reply", "reply2", "raise", "none", "hold", "badreply")
 
 
 class _Replies(list):
@@ -1092,8 +1092,9 @@ class _Held(_Replies):
 
 
 def _channel_processor(mode, served, calls):
-    """The core's side of service_channel, in one of five shapes:
-    reply (a result per parsed envelope), raise (every callback
+    """The core's side of service_channel, in one of six shapes:
+    reply (a result per parsed envelope, with its target), reply2
+    (the same reply as a pair, no target), raise (every callback
     fails), none (no replies), hold (consume off), badreply (a
     reply whose write raises)."""
 
@@ -1111,6 +1112,8 @@ def _channel_processor(mode, served, calls):
             # A body that is not text: the outbox writer raises on
             # it, which is the reply-did-not-land path.
             return _Replies(calls, [(_RESULT_SUBJECT, 123)])
+        if mode == "reply2":
+            return [(_RESULT_SUBJECT, _RESULT_BODY)]
         # The reply carries the job's validated reply_to as the
         # core would pass it; the channel writes it beside the
         # result and derives none of its own (provenance).
@@ -1178,7 +1181,12 @@ def _channel_sequence(spec):
             fh.write(TR.format_envelope(_NEIGHBOR_SUBJECT,
                                         _NEIGHBOR_BODY).encode("utf-8"))
         expected[_NEIGHBOR] = None
-        msgs, exc = _call(TR.fetch_channel_messages, base, _CHANNEL)
+        logged = []
+
+        def record(message, level="INFO"):
+            logged.append(f"{level}:{message}")
+
+        msgs, exc = _call(TR.fetch_channel_messages, base, _CHANNEL, record)
         if exc is not None:
             raise Crash("exception", "fetch_channel_messages raised "
                         f"{type(exc).__name__}: {_short(exc)}")
@@ -1224,7 +1232,7 @@ def _channel_sequence(spec):
             mode = "reply"
         served, calls = [], []
         count, exc = _call(TR.service_channel, base, _CHANNEL,
-                           _channel_processor(mode, served, calls))
+                           _channel_processor(mode, served, calls), record)
         if exc is not None:
             raise Crash("exception", "service_channel raised "
                         f"{type(exc).__name__}: {_short(exc)}")
@@ -1240,6 +1248,7 @@ def _channel_sequence(spec):
             stay = parsed
         else:
             stay = set()
+        replying = mode in ("reply", "reply2")
         left = sorted(os.listdir(inbox))
         if left != sorted(set(dirs) | stay):
             raise Crash("contract", f"after {mode}, the inbox holds "
@@ -1255,10 +1264,11 @@ def _channel_sequence(spec):
                         if f.endswith(".txt"))
         targets = [f for f in outbox if f.endswith(".target.txt")]
         results = [f for f in outbox if f not in targets]
-        want = len(parsed) if mode == "reply" else 0
-        if len(results) != want or len(targets) != want:
+        want = len(parsed) if replying else 0
+        want_targets = len(parsed) if mode == "reply" else 0
+        if len(results) != want or len(targets) != want_targets:
             raise Crash("contract", f"after {mode}, {want} result files "
-                        f"with their target sidecars expected and "
+                        f"with {want_targets} target sidecars expected and "
                         f"{len(results)} + {len(targets)} in the outbox")
         for fname in targets:
             with open(os.path.join(paths["outbox"], fname),
@@ -1267,13 +1277,18 @@ def _channel_sequence(spec):
                     raise Crash("provenance", f"the sidecar {fname} does not "
                                 "carry the reply target it was given")
         note("after", mode, _digest([left, sorted(done), outbox, served]))
+        texts = []
         for fname in results:
             with open(os.path.join(paths["outbox"], fname),
                       encoding="utf-8") as fh:
-                back = TR.parse_envelope(fh.read())
+                text = fh.read()
+            texts.append(text)
+            back = TR.parse_envelope(text)
             if back is None or back[0] != _RESULT_SUBJECT:
                 raise Crash("roundtrip", f"the result file {fname} does "
                             "not read back as the reply")
+        note("log", _digest(logged))
+        note("results", _digest(texts))
         return "accepted" if accepted else "refused"
     finally:
         shutil.rmtree(base, ignore_errors=True)
@@ -2123,16 +2138,40 @@ def seeds_board_ops():
         ("capability_gap", {"file": None, "ops": [
             ["submit", _task(capabilities=["gpu"])],
             ["offer", "worker-a", ["shell"], "", cfg]]}),
+        # The second offer is another worker's: the first worker
+        # would only be handed its outstanding claim again.
         ("compartment", {"file": None, "ops": [
             ["submit", _task(compartments=["blue"])],
             ["submit", _task("bm-task-0002", compartments=["red"])],
             ["offer", "worker-a", ["shell"], "", cfg],
+            ["offer", "worker-b", ["shell"], "", cfg],
             ["offer", "worker-a", ["shell"], "", cfg]]}),
         ("dag_enforce", {"file": _board_file(done), "ops": [
             ["submit", _task(requires=["bm-task-0000"])],
             ["submit", _task("bm-task-0002", requires=["bm-task-0009"])],
             ["offer", "worker-a", ["shell"], "", cfg],
-            ["offer", "worker-a", ["shell"], "", cfg]]}),
+            ["offer", "worker-b", ["shell"], "", cfg],
+            ["complete", "bm-task-0001", {"exit_code": 0}],
+            ["offer", "worker-b", ["shell"], "", dict(cfg, dag_mode="advisory")]]}),
+        ("dag_withheld_then_done", {"file": None, "ops": [
+            ["submit", _task("bm-task-0002", requires=["bm-task-0001"])],
+            ["offer", "worker-a", ["shell"], "", cfg],
+            ["submit", _task()],
+            ["offer", "worker-a", ["shell"], "", cfg],
+            ["complete", "bm-task-0001", {"exit_code": 0}],
+            ["offer", "worker-b", ["shell"], "", cfg]]}),
+        ("priority_shapes", {"file": None, "ops": [
+            ["submit", {"task_id": "bm-task-p0", "capabilities": []}],
+            ["submit", _task("bm-task-p1", priority=0)],
+            ["submit", _task("bm-task-p2", priority=0.5)],
+            ["submit", _task("bm-task-p3", priority=float("nan"))],
+            ["submit", _task("bm-task-p4", priority=float("inf"))],
+            ["submit", _task("bm-task-p5", priority=-float("inf"))],
+            ["submit", _task("bm-task-p6", priority=True)],
+            ["submit", _task("bm-task-p7", priority=2 ** 63)],
+            ["offer", "worker-a", ["shell"], "", {}],
+            ["offer", "worker-b", ["shell"], "", {}],
+            ["offer", "worker-c", ["shell"], "", {}]]}),
         ("dag_advisory", {"file": None, "ops": [
             ["submit", _task(requires=["bm-task-0009"])],
             ["offer", "worker-a", ["shell"], "", dict(cfg, dag_mode="advisory")]]}),
@@ -2926,6 +2965,9 @@ def seeds_inbox():
             _chan("bm-0020-b.job.txt", good)]
     for mode in _CHANNEL_MODES[1:]:
         out.append(("core_" + mode, {"files": pair, "mode": mode}))
+    out.append(("core_reply2_same_stem", {"files": [
+        _chan("bm-0022", good), _chan("bm-0022.job.txt", good)],
+        "mode": "reply2"}))
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 

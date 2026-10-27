@@ -51,6 +51,17 @@ facts a reader may need to cite. Git history carries the rest.
   placeholders, and the alphabets of one and two. Second survivors
   run: 1,928 mutants over ten readers, 147 survivors (171 before);
   the mailbox reader keeps one, the verifier fourteen.
+- **The survivors' second seeds.** The board's second offer in a
+  sequence is another worker's, since the first would only be
+  handed its outstanding claim again, so enforce now withholds and
+  advisory hands out with the warning in the corpus; a task
+  withheld, its requirement done, then offered; every priority
+  shape (absent, zero, a fraction, NaN, the infinities, a boolean,
+  2^63). The channel inbox checker notes the channel's own log
+  lines and the result files' text, and the core's side has a
+  sixth shape, the reply as a pair without a target. Third
+  survivors run: 131 of 1,928; the board keeps 19, the channel
+  readers 20.
 - **blueMonday's live mutators, one grow (Q75).** A steered grow
   of 20,000 rounds on the four mutators `stats` still called
   live. `dtls` kept two (`d_random_byte`, arcs 290 to 295).
