@@ -17,7 +17,7 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--pdb` | Drop into pdb on unhandled exceptions |
 | `--no-send` | Execute, but log results instead of emailing them |
 | `--once` | Single poll cycle, then exit |
-| `--inspect {board,budget,job,redact,sources}` | Read local Oracle state and exit; no mailbox |
+| `--inspect {board,budget,job,outbox,redact,review,sources}` | Read local Oracle state and exit; no mailbox |
 | `--audit-report [--since 14d|48h] [--feature NAME] [--key KEY_ID]` | Summarize the security audit log and exit; no mailbox, read-only. `--feature` narrows it to one control's entries, `--key` to one key's |
 | `--posture` | Report the runner's security posture (exit 0/1/2) and exit; no mailbox |
 | `--run-variant FILE` | Run one locally supplied fuzz variant job from FILE through validation and confined execution, print its outcome as JSON, and exit; no mailbox. The job-fuzz sense's execution door: variants are unsigned local artifacts, admitted only here, never through the job path |
@@ -47,8 +47,9 @@ End-to-end without your SI:
 3. On the target machine: `python3 runner/runner.py --config config.json --once`.
 4. A result message should arrive in the mailbox (or at the job's
    `reply_to` address, if you set one). It arrives as an encrypted
-   envelope; decrypt it with `verify --job-id` (above) and the
-   result inside says `stdout: "pong"`.
+   envelope; decrypt it with `send_job.py verify --job-id`
+   (`docs/use/sending.md`) and the result inside says
+   `stdout: "pong"`.
 
 ## Where the suite runs, and what each platform proves
 
@@ -56,14 +57,16 @@ The runner ships for Linux (x86_64, ARM64, the Pi light build),
 macOS (Apple Silicon and Intel) and Windows, and installs on
 FreeBSD from the sdist. Every platform that ships is tested on a
 real kernel of that platform; the table is what each one proves
-and how often.
+and how often. The FreeBSD leg is the one without a green run
+yet: its VM step has failed on every run so far, so its row is
+the proof it is built to give, not one given.
 
 | Platform | Suite | Switch proofs (the roster) | Built binaries | When |
 |---|---|---|---|---|
-| Linux (ubuntu-latest) | `test` job, in-process under the wall clock | `linux` leg (bwrap) and `root` leg (a second user): every control | smoked | every push to main, every tag |
-| Windows (windows-latest) | `build-windows` job, sharded over 4 cores | `windows` leg: the platform-neutral controls | smoked | every push, every tag |
-| macOS (macos-14) | `test-macos` job, sharded over 3 cores | `macos` leg and `macos-root` leg (a second user): the POSIX controls, the drop included | smoked (both macOS builds) | every push, every tag |
-| FreeBSD 14 (a VM inside a Linux runner) | as an ordinary user, under the wall clock | as root with a second user: the POSIX controls | not built (sdist install) | weekly, on dispatch, and when `freebsd.yml` changes |
+| Linux (ubuntu-latest) | `test` job, in-process under the wall clock | `linux` leg (bwrap) and `root` leg (a second user): every control | smoked | suite and binaries on every push to main and every tag; the switch proofs on a push that touches `runner/**`, SECURITY.md, the hardening templates or `switch-proofs.yml`, and nightly, never on a tag |
+| Windows (windows-latest) | `build-windows` job, sharded over 4 cores | `windows` leg: the platform-neutral controls | smoked | as Linux |
+| macOS (macos-14) | `test-macos` job, sharded over 3 cores | `macos` leg and `macos-root` leg (a second user): the POSIX controls, the drop included | smoked (both macOS builds) | as Linux |
+| FreeBSD 15 (a VM inside a Linux runner) | as an ordinary user, under the wall clock | as root with a second user: the POSIX controls | not built (sdist install) | weekly, on dispatch, and when `freebsd.yml` changes; no green run yet |
 
 The roster (`runner/tests/switch_roster.py`) says, per control, what
 a leg must provide: `posix` (any of the three kernels), `linux`,

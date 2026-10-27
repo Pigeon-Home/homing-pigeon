@@ -213,8 +213,8 @@ Ring 1 is anything already inside the process. The generator
 builds messy Python values, not just JSON. The property is:
 return a reason or `None`, and never raise. This is where
 those `TypeError`s came from. The functions whose docstring says
-"never raises" are the list. About fifty of them live under
-`runner/`.
+"never raises" (or "never raise") are the list. Some ninety of
+them live under `runner/`, tests aside.
 
 Ring 2 starts from a message the runner would accept and
 changes one thing: a flipped byte in `sig`, a swapped
@@ -285,7 +285,8 @@ Promote those readers into the one persistent corpus. Do not
 write a third fuzzer, and do not lengthen the in-suite
 rounds.
 
-Next targets, in order:
+The targets that followed, in order, all in the blueMonday corpus
+now (`docs/project/bluemonday.md`, rows 7 to 11):
 
 1. Mail extraction (`mailbox.py`, `get_text_body`, subject
    parsing, and the email extension's `_subject_body` and

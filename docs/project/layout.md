@@ -12,12 +12,18 @@
   to do when something goes wrong.
 - `docs/` — the long shelf: the threat model and security gaps,
   configuring the Oracle, the extensions walkthrough, fuzzing
-  (`docs/project/fuzzing.md`), and the four manuals above. Beneath it:
-  `docs/design/` (design records: opinions and self-learning,
-  remediation, the approval gate, asymmetric signing),
-  `docs/ietf/` (the Internet-Drafts), `docs/reports/` (dated
-  coverage and mutation reports), and `docs/archive/`
-  (historical notes, kept for the record; not current guidance).
+  (`docs/project/fuzzing.md`), and the four manuals above. Beneath it,
+  grouped by reader: `docs/use/` (running it), `docs/oracle/` (the
+  Oracle), `docs/extend/` (extensions, senses, transports),
+  `docs/security/` (threat model, safeguards, the hardening
+  templates), `docs/project/` (this page, testing, fuzzing, the
+  campaigns, the roadmap), `docs/design/` (design records: opinions
+  and self-learning, remediation, the approval gate, asymmetric
+  signing), `docs/ietf/` (the Internet-Drafts), `docs/reports/`
+  (dated coverage and mutation reports), `docs/specimens/` (recorded
+  results the tests read), `docs/archive/` (historical notes, kept
+  for the record; not current guidance), and `docs/CHANGELOG.md`
+  and `docs/CONTRIBUTING.md`.
 - `runner/runner.py` — the agent. Polls, verifies, executes,
   replies. No dependencies beyond the Python 3.9+ standard library.
   Its modules live in four role folders beside it: `runner/oracle/`
@@ -88,8 +94,14 @@
   node.
 - `runner/cloud/send_job.py` — cloud-side helper: builds signed job messages,
   verifies result messages. (Your SI uses this logic when dispatching jobs.)
+  `runner/cloud/send_dtls.py` is the same for the DTLS binding.
 - `runner/tests/` — the suite: the real runner driven against fake
-  IMAP/SMTP servers and a fake NATS broker.
+  IMAP/SMTP servers and a fake NATS broker. Beside it, outside
+  discovery: `runner/tests/archive/` (the campaigns' recorded cycles,
+  one test each), `runner/tests/airgap/` (the air-gapped batches) and
+  `runner/tests/bluemonday/` (the fuzz corpus and its arc maps).
+- `runner/__init__.py` and `runner/_version.py` — the package and the
+  one version constant every entry point reports.
 - `docs/use/runbook.md` — step-by-step instructions (written for a 5-year-old):
   cloning, pushing, cutting a release, installing, sending a job.
 - `runner/tools/make_snapshot.py` — packs the whole project into every
@@ -112,3 +124,8 @@
 - `.github/` — CI: the workflows, the container images in
   `.github/docker/`, and the CI pins in `.github/requirements-ci.txt`.
   The build and CI scripts are in `runner/tools/`.
+- The root otherwise: `README.md`, `INSTALL.md`, `SECURITY.md`,
+  `FAQ.md`, `AGENTS.md` (the agents' rules and the layout map),
+  `ENTERPRISE.md` (a placeholder, kept as is), `LICENSE`,
+  `pyproject.toml` (the package, the wheel's exclusions, the mutmut
+  scope) and `assets/` (images).

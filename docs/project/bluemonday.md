@@ -66,7 +66,10 @@ secret that is real.
   cycle), `replay` (every entry against its contract, no tracer,
   what the test does), `promote` (after a fix, crashes that now
   refuse properly and reach something new move into the corpus),
-  `stats` (sizes and the saturation mark).
+  `stats` (sizes and the saturation mark), `platform` (every
+  committed entry replayed on the host and again under the
+  simulated Windows surface; a changed answer is a differential),
+  and `dictionary` (rebuilds `grammar.json` from the drafts).
 - **Records**: `runs.jsonl` gets one line per seed or grow (the
   head, the interpreter and platform, the seed, the rounds, what
   was tried and by which mutator, what was kept, what crashed, how
@@ -100,9 +103,9 @@ peer on the wire reaches first.
 | 9b | `board_ops` | `runner/wire/board.py` under the sequence contract: a board file and `submit`, `offer`, `complete`, `approve`, `reoffer_expired` in order over it | in the corpus |
 | 10 | `channels` | `runner/wire/transports.py`: `fetch_channel_messages` over a throwaway directory; the entry is the pair | in the corpus (Q68) |
 | 10b | `inbox` | `runner/wire/transports.py` under the sequence contract: a whole inbox of files, links and directories through `fetch_channel_messages` and `service_channel`, the core's side in five shapes | in the corpus |
+| 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | in the corpus (Q69) |
 | 12 | `local_inbox` | `runner/runner.py` under the sequence contract: the local signal inbox scanned once by `_scan_local_inbox`, the store held to the ingests | in the corpus |
 | 13 | `secret` | `runner/cloud/send_job.py` `require_signable_secret` and `runner/guard/security.py` `validate_shared_secret`: the sender's and the runner's strength rules on one candidate secret, held in step (a differential the code itself asks for) | in the corpus |
-| 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | in the corpus (Q69) |
 
 Not targets, and why: the Oracle's reading of its model's replies
 (`runner/ops/oracle_tools.py`), the config loader and the platform

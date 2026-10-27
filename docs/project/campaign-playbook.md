@@ -4,7 +4,11 @@ How to run a Homing Pigeon testing campaign: the rig, the loop, the
 hunts, and the rules that turn executions into the permanent test
 record. Written after the first campaign (2026-10-22/23, frozen at
 the `campaign-1-record` tag) so that a second run can start from
-this document alone.
+this document alone. It is the record of campaigns one and two;
+the campaign runs today from `docs/project/campaign-standing-orders.md`,
+whose queues P (coverage-guided fuzzing) and M (blueMonday)
+supersede the hard rules below where they differ, and the desk
+fixes every crash the corpus finds (`docs/project/bluemonday.md`).
 
 The campaign's product is not findings. It is committed unit tests.
 The proof-of-work rule governs everything below: every test
@@ -36,7 +40,9 @@ variation tests is desired, not scope creep.
 
 ## The loop
 
-The driver (`campaign_loop.py`) cycles eight basic job variants,
+The driver (`campaign_loop.py`, rig-side and never committed; the
+cycles it recorded are the tests under `runner/tests/archive/`)
+cycles eight basic job variants,
 one execution per cycle, at a fixed spacing that never stretches
 on mail health (the tuned campaign ran a 3 s spacing, a sustained
 15 executions/minute; the cycle period floor is the file
@@ -149,7 +155,9 @@ current code, with a four-part docstring:
 Verify the test fails for the stated reason before landing it.
 Main is therefore red in CI by design while divergences are open;
 that is accepted and is not a reason to soften, skip, or xfail a
-finding. A new instance of a known root-cause family is recorded
+finding, and it stops the release train for as long as it lasts
+(`cut-release.yml` tags nothing unless the suite and every build
+concluded green). A new instance of a known root-cause family is recorded
 the same way, quietly; only a genuinely new root cause is worth
 interrupting the owner for.
 
@@ -190,7 +198,7 @@ No email in any loop, no standing trickle, no per-cycle sends.
 The binding constraint on sends is the mail connector's send
 quota on the sending side, not volume through the address.
 
-## Hard rules
+## Hard rules (campaigns one and two; see the banner above)
 
 - The campaign does NOT fix bugs and does NOT change production
   code. Findings are recorded as tests only. Bug fixing belongs

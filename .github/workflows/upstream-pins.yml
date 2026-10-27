@@ -21,8 +21,7 @@ on:
     - cron: "41 7 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: write
+permissions: {}
 
 concurrency:
   group: upstream-pins
@@ -31,6 +30,10 @@ concurrency:
 jobs:
   bump:
     runs-on: ubuntu-latest
+    # The one job that writes: the refreshed pins it commits to main.
+    # Granted here, exact, not at the top (test_build_config, lift 5).
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

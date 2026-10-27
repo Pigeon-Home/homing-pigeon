@@ -106,7 +106,10 @@ personal runner, not a platform.
 
 ## Honest gaps the industry just named
 
-The two candidates are listed in docs/project/future.md.
+The two candidates, an Oracle action log the owner can replay and
+a policy for which tool calls the Oracle may make on its own, are
+not built and not yet listed in docs/project/future.md; this page
+is their record until they are.
 
 1. **Nobody watches the Oracle.** The industry's newest category is
    agent-behavior baselining — watching the watchers. Our Oracle calls tools

@@ -26,9 +26,7 @@ on:
         required: false
         default: ""
 
-permissions:
-  contents: write
-  actions: write
+permissions: {}
 
 concurrency:
   group: cut-release
@@ -37,6 +35,12 @@ concurrency:
 jobs:
   cut:
     runs-on: ubuntu-latest
+    # The one job that writes: the tag it pushes (contents) and the
+    # tag build it dispatches (actions). Granted here, exact, not at
+    # the top (test_build_config, lift 5).
+    permissions:
+      contents: write
+      actions: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

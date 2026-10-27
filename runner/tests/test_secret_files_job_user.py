@@ -317,7 +317,8 @@ class JobUserTest(unittest.TestCase):
 
 
 class JobUserGroupsProbe(unittest.TestCase):
-    """FAILING BY DESIGN -- the Q18 finding (docs/use/questions.md).
+    """The Q18 finding (docs/use/questions.md), fixed in _demote and
+    pinned here; it failed by design until the fix landed.
 
     (a) Claim: SECURITY.md, "Running jobs as another user
     (M8)": with job_user enforce "each exec job runs as that

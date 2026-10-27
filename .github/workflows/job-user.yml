@@ -8,10 +8,10 @@ name: job-user
 # pattern. It also runs the credential canary module, whose
 # other-uid counterpart lives in the job_user tests.
 #
-# The corpus includes one failing-by-design probe (Q18): a
-# failed initgroups must not leave the runner's groups on the
-# job. This workflow is red on that probe until the fix lands;
-# that is the signal working, not a broken build.
+# The corpus includes the Q18 probe: a failed initgroups must not
+# leave the runner's groups on the job. It was red by design until
+# _demote fell back to the user's primary group alone (Q18's
+# answer); it is green now, and would go red again on a regression.
 on:
   push:
     branches: [main]
