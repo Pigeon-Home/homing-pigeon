@@ -4491,3 +4491,34 @@ when done, the proving commit or run. Newest first.
   from the restart until this bank;
   that gap is the restart's, recorded
   here per Q58.
+- rules refreshed 2026-10-27 09:32 PDT
+  (standing orders incl. section M;
+  AGENTS.md rules 7-11; the questions
+  file's open entries, Q94 to the
+  conductor and Q95 to the desk among
+  them; the playbook's hard rules).
+  de_dust 17: 1243 entries, 4804 arcs, 0 crashes filed.
+  The first grow under the new name
+  and command (seed 6290, the archive
+  recording under HP_DE_DUST_ARCHIVE),
+  resources on target (box cpu 80%,
+  wall 1h06m). 259,687 children over
+  18 run records; it kept 9 (query 8,
+  local 1) and merged 134 of the
+  desk's seeds across six targets
+  (manifest 35, crypto 26, query 26,
+  v2_mail 17, stash 9, local 1).
+  Query's arcs re-measured 757 on the
+  fixed reader and the grow added 17
+  more there. The wire and cloud
+  workers died in the tool itself --
+  RecursionError in _paths, no run
+  record for either target -- filed
+  as Q95; the readers crashed zero
+  times. The survivors rerun goes
+  beside grow 18 and its record rides
+  that bank. The box idled from the
+  grow's landing (09:02 PDT) until
+  this bank while the conductor's
+  questions were answered; recorded
+  per Q58.
