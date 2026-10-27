@@ -7,4 +7,4 @@ test (runner/tests/test_version.py) fails the build if the two drift. Bump
 both together — see docs/CONTRIBUTING.md "bump before tag".
 """
 
-__version__ = "3.13.64"
+__version__ = "3.13.65"

@@ -1931,6 +1931,43 @@ def _query_open_reply(msg, subject_id, key_id):
     return reply
 
 
+def _query_window(path, spec, key_id):
+    """The hourly window as the runner left it before the query, from
+    the entry's `window`: a count n writes n live slots under the
+    message's key (the sender's own bucket, PROTOCOL section 11);
+    text is written as it is (its NOW tokens stamped), a window file
+    as a crash left it; anything else leaves no file."""
+    if isinstance(spec, bool) or spec is None:
+        return
+    if isinstance(spec, int):
+        n = max(0, min(spec, 64))
+        text = json.dumps({key_id or "": [time.time() - 1] * n})
+    elif isinstance(spec, str):
+        # The NOW token in the text is a slot taken a second ago.
+        text = spec.replace(NOW, repr(time.time() - 1))
+    else:
+        return
+    with open(path, "wb") as fh:
+        fh.write(text.encode("utf-8", "surrogatepass"))
+
+
+def _query_live(path, key_id):
+    """How many live slots the window holds for the key, read as
+    check_rate_limit reads it."""
+    store = R._read_query_store(path)
+    if not isinstance(store, dict):
+        return 0
+    return len(R._live_times(store.get(key_id or "", []), time.time()))
+
+
+def _file_text(path):
+    try:
+        with open(path, "rb") as fh:
+            return fh.read()
+    except OSError:
+        return None
+
+
 def _mail_opts(data):
     """The operator's flags an entry names: dry (the handler acks
     nothing and acts on nothing) and no_send (acts, sends nothing)."""
@@ -2050,6 +2087,10 @@ def check_query(entry):
             else None
         cfg = dict(_QUERY_CFG)
         secrets = R.build_secrets(cfg)
+        window = os.path.join(base, "query_times.json")
+        _query_window(window, data.get("window"), key_id)
+        window_before = _file_text(window)
+        live_before = _query_live(window, key_id)
         seen = {}
         outs = []
         logbook = _MailLog(base)
@@ -2079,13 +2120,15 @@ def check_query(entry):
         logbook.note()
         if opts.dry_run and seen:
             raise Crash("contract", "a dry run recorded the query")
-        if opts.dry_run and os.path.exists(os.path.join(base, "query_times.json")):
-            raise Crash("contract", "a dry run took a slot of the hourly "
-                        "window (Q87)")
+        if opts.dry_run and _file_text(window) != window_before:
+            raise Crash("contract", "a dry run touched the hourly window "
+                        "(Q87)")
         if opts.dry_run and isinstance(job_id, str) \
                 and R.load_retained(base, job_id) != before:
             raise Crash("contract", "a dry run spent the retained record's "
                         "budget (Q87)")
+        live_after = _query_live(window, key_id)
+        note("window", live_before, live_after)
         first, again = outs
         if again:
             raise Crash("contract", "a copy of the query was answered again")
@@ -2111,6 +2154,34 @@ def check_query(entry):
         rejected = reply.get("rejected")
         if rejected is not None and rejected not in _QUERY_REJECTIONS:
             raise Crash("contract", f"the reply names rejection {rejected!r}")
+        if reply.get("v") != R.PROTOCOL_VERSION:
+            raise Crash("shape", f"the reply's version is {reply.get('v')!r}")
+        if rejected not in ("unsupported", "rate_limit") \
+                and "job_id" not in reply:
+            raise Crash("shape", "the reply does not name the job")
+        if "job_id" in reply and isinstance(job_id, str) \
+                and reply["job_id"] != job_id:
+            raise Crash("contract", "the reply names a job other than the "
+                        "query's")
+        # PROTOCOL section 11: the hourly window is per sender. A
+        # query refused before the window is read (unsupported) takes
+        # no slot; one refused at the window took none and finds the
+        # window full; every other query took exactly one.
+        if rejected == "unsupported":
+            if live_after != live_before:
+                raise Crash("contract", "an unsupported query took a slot "
+                            "of the hourly window")
+        elif rejected == "rate_limit":
+            if live_after > live_before \
+                    or live_after < _QUERY_CFG["max_queries_per_hour"]:
+                raise Crash("contract", "a query refused at the window "
+                            f"left it at {live_after} live of "
+                            f"{live_before} (cap "
+                            f"{_QUERY_CFG['max_queries_per_hour']})")
+        elif live_after != live_before + 1:
+            raise Crash("contract", "a query that reached the record took "
+                        f"{live_after - live_before} slot(s) of the hourly "
+                        "window")
         remaining = reply.get("budget_remaining")
         if remaining is not None and (not isinstance(remaining, int)
                                       or isinstance(remaining, bool)
@@ -2238,6 +2309,10 @@ def check_board_mail(entry):
     cfg = dict(_BOARD_MAIL_CFG)
     if data.get("review") is True:
         cfg["require_review"] = True
+    if "timeout" in data:
+        # The lease length as the owner wrote it, whatever that is:
+        # the handler reads it through the board's own guard.
+        cfg["task_timeout"] = data["timeout"]
     if TU._lone_surrogate(payload):
         note("gate", "lone surrogate")
         return "refused"
@@ -2430,6 +2505,14 @@ def check_v2_mail(entry):
     cfg = dict(_V2_CFG)
     if isinstance(data.get("answerers"), list):
         cfg["v2_answerers"] = data["answerers"]
+    if data.get("model_down") is True:
+        # An answerer whose model is configured and not there: the
+        # endpoint is a loopback port nothing listens on, so the
+        # call fails at once and the local default answers.
+        cfg["inference"] = {"endpoint": "http://127.0.0.1:1",
+                            "model": "bm-model", "timeout_sec": 2}
+    if isinstance(data.get("mode"), str):
+        cfg["oracle_mode"] = data["mode"]
     if TU._lone_surrogate(payload):
         note("gate", "lone surrogate")
         return "refused"
@@ -2478,6 +2561,14 @@ def check_v2_mail(entry):
         recorded = sorted(seen)
         if seen and recorded != ["v2:" + ident]:
             raise Crash("contract", f"the replay cache holds {recorded!r}")
+        on_disk = R.load_seen(os.path.join(base, "seen.json"))
+        if seen and not (isinstance(on_disk, dict)
+                         and on_disk.get("v2:" + ident)):
+            raise Crash("contract", "a message acted on is not in the "
+                        "replay cache on disk")
+        if not seen and on_disk:
+            raise Crash("contract", "the replay cache on disk holds "
+                        f"{sorted(on_disk)!r} for a message not acted on")
         filed = _v2_answer_file(base, payload.get("question_id")
                                 if kind == "answer" else None)
         accepted = False
@@ -4804,6 +4895,43 @@ def seeds_query():
         entry("cleartext", cleartext=True),
         entry("cleartext_keyed", cleartext=True, key_id="ops"),
         entry("dry_no_record", rec=None, dry=True),
+        # The hourly window (PROTOCOL section 11) as the runner left
+        # it: full for this sender, one under the cap, full for another
+        # sender, stale, and as a crash left the file.
+        entry("rate_limited", window=4),
+        entry("rate_limited_keyed", window=4, key_id="ops"),
+        entry("rate_limited_dry", window=4, dry=True),
+        entry("rate_limited_unsupported", window=4, q=query(type="job")),
+        entry("window_one_under_cap", window=3),
+        entry("window_over_cap", window=9),
+        entry("window_other_sender", key_id="ops",
+              window=json.dumps({"": [NOW] * 4})),
+        entry("window_stale", window=json.dumps({"": [1.0] * 4})),
+        entry("window_mixed", window=json.dumps({"": [1.0, NOW, "x", None,
+                                                       NOW, 1e400]})),
+        entry("window_future", window=json.dumps({"": [4102444800.0] * 4})),
+        entry("window_infinite", window=json.dumps({"": [1e400] * 4})),
+        entry("window_not_json", window="not json"),
+        entry("window_list", window="[1, 2, 3]"),
+        entry("window_times_not_list", window=json.dumps({"": "NOW"})),
+        entry("window_empty_file", window=""),
+        # The record's streams and marks under the queries that read
+        # them: stderr lines through tail and grep, the attestations
+        # of the digest, the confinement and the exit.
+        entry("record_stderr_tail", rec=retained(stderr="warn: a\nwarn: b\n"),
+              q=query(queries=[{"op": "tail", "lines": 2}])),
+        entry("record_stderr_grep", rec=retained(stderr="ERROR three\n"),
+              q=query(queries=[grep])),
+        entry("attest_digest", q=query(queries=[
+            {"op": "attest", "predicate": "output_digest"}])),
+        entry("attest_confined", q=query(queries=[
+            {"op": "attest", "predicate": "confined_to_workspace"}])),
+        entry("attest_unconfined", rec=retained(confined=None), q=query(
+            queries=[{"op": "attest", "predicate": "confined_to_workspace"}])),
+        entry("attest_no_secrets", q=query(queries=[
+            {"op": "attest", "predicate": "no_secrets"}])),
+        entry("attest_exit_nonzero", rec=retained(exit_code=3),
+              q=query(queries=[attest])),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
@@ -4816,6 +4944,7 @@ def seeds_board_mail():
                 submitted_at="2026-10-26T11:00:00+00:00")
     open_task = dict(_task(), state="open",
                      submitted_at="2026-10-26T12:00:00+00:00")
+    stale_claim = dict(claimed, claimed_at="2026-10-26T11:00:00+00:00")
 
     def submit(tid="bm-task-0001", **extra):
         p = {"v": 1, "type": "task_submit"}
@@ -4970,6 +5099,38 @@ def seeds_board_mail():
               cleartext=True),
         entry("request_cleartext", "task_request", "worker-a", request(),
               file=_board_file(open_task), cleartext=True),
+        # The lease (task_timeout) as the owner wrote it, over a claim
+        # an hour old on the board's clock: a short lease hands the
+        # task to the next worker, the default keeps the claim, and a
+        # lease that is not a number is the default.
+        entry("request_lease_expired", "task_request", "worker-b",
+              request("worker-b"), file=_board_file(stale_claim), timeout=60),
+        entry("request_lease_default", "task_request", "worker-b",
+              request("worker-b"), file=_board_file(stale_claim)),
+        entry("request_lease_zero", "task_request", "worker-b",
+              request("worker-b"), file=_board_file(claimed), timeout=0),
+        entry("request_lease_null", "task_request", "worker-b",
+              request("worker-b"), file=_board_file(stale_claim), timeout=None),
+        entry("request_lease_text", "task_request", "worker-b",
+              request("worker-b"), file=_board_file(stale_claim),
+              timeout="soon"),
+        entry("request_lease_bool", "task_request", "worker-b",
+              request("worker-b"), file=_board_file(stale_claim), timeout=True),
+        entry("request_lease_negative", "task_request", "worker-b",
+              request("worker-b"), file=_board_file(stale_claim), timeout=-5),
+        entry("request_lease_float", "task_request", "worker-b",
+              request("worker-b"), file=_board_file(stale_claim), timeout=0.5),
+        entry("request_claim_time_junk", "task_request", "worker-b",
+              request("worker-b"),
+              file=_board_file(dict(claimed, claimed_at="yesterday")),
+              timeout=60),
+        # A capabilities member the board cannot read as a list: the
+        # board's own error is the reader's rejection, not its crash.
+        entry("request_caps_number", "task_request", "worker-a",
+              request(capabilities=5), file=_board_file(open_task)),
+        entry("request_caps_object", "task_request", "worker-a",
+              request(capabilities={"shell": True}),
+              file=_board_file(open_task)),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
@@ -5087,6 +5248,17 @@ def seeds_v2_mail():
               cleartext=True),
         entry("answer_cleartext", "answer", "a.q.bm-job-0001", a(),
               cleartext=True),
+        # The answerer's model: configured and down (the local default
+        # answers, the call logged), configured under the deterministic
+        # Oracle (never called), and a mode that is not a mode.
+        entry("question_model_down", "question", "q.bm-job-0001", q(),
+              model_down=True),
+        entry("question_model_down_deterministic", "question",
+              "q.bm-job-0001", q(), model_down=True, mode="deterministic"),
+        entry("question_mode_unknown", "question", "q.bm-job-0001", q(),
+              model_down=True, mode="chatty"),
+        entry("answer_model_down", "answer", "a.q.bm-job-0001", a(),
+              model_down=True),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 

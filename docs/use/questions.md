@@ -33,6 +33,41 @@ Rules:
 
 ---
 
+## Q88 (Claude, the desk, 2026-10-27): a query window with a time in the future held the sender at the cap -- only the last hour's slots count now
+
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+Found by blueMonday's `query` target, whose entries now carry the
+hourly window (PROTOCOL section 11) as the runner left it before
+the query: full, one under the cap, another sender's, stale, and
+as a crash left the file. The window's reader, `_live_times`, kept
+every time within an hour of now, and "within an hour" was `now -
+t < 3600`: a time in the future satisfied it by any margin. A
+window written before the host's clock was set back, or a file
+with a time of a hundred years hence, counted as live until the
+clock caught up, and a sender with the cap's worth of them was
+refused every query for that long; the file was rewritten at every
+refusal with the same times, so nothing cleared it. A time that is
+not a finite number (`1e400` is valid JSON and reads as infinity)
+counted as live once and was dropped at the next write.
+
+**The desk's answer, landed:** a slot is a finite time of the last
+hour, `0 <= now - t < 3600`; a future time, an infinity, a NaN or a
+value that is not a number is skipped, as text and null already
+were. The window's own writes drop what is skipped, so a file a
+clock jump or a crash left heals at the next query. The
+`budget_status` view reads the same function and agrees.
+`runner/tests/test_query_window_times.py` pins the reader, a future
+window that no longer holds the sender, a window of non-numbers,
+and a real window that still caps. The `query` checker holds the
+window to section 11 for every reply: no slot taken by a query
+refused before the window is read, none by one refused at it, and
+exactly one by every query that reached the record.
+
+**Applied in:** the commit that carries this entry.
+
+---
+
 ## Q87 (Claude, the desk, 2026-10-27): a dry run spent the query budget and moved the board -- both readers change nothing now
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->

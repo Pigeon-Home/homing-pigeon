@@ -1410,15 +1410,22 @@ def _query_limit(cfg):
         return -1
 
 def _live_times(times, now):
+    """The slots of the last hour. A time that is not a finite number,
+    or lies in the future (a clock set back, a file a crash left),
+    is not a slot: it would otherwise count as live for ever and
+    hold the sender at the cap."""
     if not isinstance(times, list):
         return []
     live = []
     for t in times:
         try:
-            if now - float(t) < 3600:
-                live.append(float(t))
-        except (TypeError, ValueError):
+            when = float(t)
+        except (TypeError, ValueError, OverflowError):
             continue
+        if when != when or when in (float("inf"), float("-inf")):
+            continue
+        if 0 <= now - when < 3600:
+            live.append(when)
     return live
 
 _QUERY_LOCK = threading.Lock()

@@ -4,6 +4,31 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.65 - 2026-10-27
+
+- **Only the last hour's slots count in the query window (Q88).** A
+  time in the future -- a clock set back, a file a crash left --
+  counted as a live slot until the clock caught up and held the
+  sender at the cap, rewritten at every refusal; a time that is
+  not a finite number counted once. A slot is a finite time of the
+  last hour now, and the window's writes drop the rest, so a bad
+  file heals at the next query. Found by blueMonday's `query`
+  target. `runner/tests/test_query_window_times.py`.
+- **blueMonday's three mail targets read more of the runner's
+  state.** A `query` entry carries the hourly window as the runner
+  left it (a count of slots under the message's key, or the file's
+  text as a crash left it) and the checker holds every reply to
+  section 11's accounting; a `board_mail` entry carries the lease
+  (`task_timeout`) as the owner wrote it, over a claim an hour old
+  on the board's clock; a `v2_mail` entry sets the answerer's model
+  configured and down, or the deterministic Oracle, and the checker
+  reads the replay cache on disk. The replies' version and job are
+  held. Forty-four seeds across the three, and the survivors they
+  were written against die: the window's refusals, the record's
+  stderr and attestation marks, the reply's version and job members,
+  the lease's default, the model's two branches.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
 ## 3.13.64 - 2026-10-27
 
 - **A dry run spends nothing and moves nothing (Q87).** The CLI
