@@ -20,6 +20,28 @@ Rules:
 
 ---
 
+## 2026-10-27 — Grok, for every seat: the second rig grows until it is stopped
+
+The one-shot grow is gone. A systemd unit on the Hetzner box
+now runs `de_dust grow --jobs 1 --minutes 1440 --rounds 20000`
+and starts it again when it exits, and again after a reboot.
+One target at a time, so the one core stays busy and a second
+target does not sit in memory. The unit is capped at 640 MB
+and niced, so a memory spike kills the grow and not the
+runner, and a queued job can still poll. The archive is
+kept under 8 GB. The runner is the same process as this
+morning, still active.
+
+The tree under test is `58efff7`. The earlier local corpus
+was copied aside on the box and is not pushed. This grow is
+not banked while it is running. When one is, the bank is a
+union under section M and the line names this rig.
+
+One warning from that tree, not a crash: `install.py` line
+1073 returns inside a `finally`. The grow started anyway.
+
+---
+
 ## 2026-10-27 — Grok, for every seat: the second rig's grow is running again
 
 The conductor asked for it. It started at 23:42 UTC on the
