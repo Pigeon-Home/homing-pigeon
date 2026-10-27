@@ -82,6 +82,20 @@ def vlog(msg, level=2):
     _runner_logger()[1](msg, level)
 
 
+def _finite_floats(value):
+    """The value save will write. A non-finite float is not JSON,
+    and save stores null in its place."""
+    if isinstance(value, float):
+        if value != value or value in (float("inf"), float("-inf")):
+            return None
+        return value
+    if isinstance(value, dict):
+        return {k: _finite_floats(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_finite_floats(v) for v in value]
+    return value
+
+
 BOARD_LOCK = threading.RLock()
 
 class Board:
@@ -117,16 +131,17 @@ class Board:
             # could complete, so the record carries its key.
             if task.get("task_id") != key:
                 task["task_id"] = key
-            # The same rule submit enforces. A non-finite priority
-            # cannot be saved (allow_nan=False), so leaving it in
-            # memory makes every later save fail and the file
-            # drift from the board.
+            # submit refuses a non-finite priority, and save cannot
+            # write one (it becomes null). A task that arrived with
+            # one is not a task. Any other non-finite float becomes
+            # null here, which is what save writes, so the file and
+            # the board do not drift.
             priority = task.get("priority")
             if isinstance(priority, float) and (
                     priority != priority
                     or priority in (float("inf"), float("-inf"))):
                 continue
-            tasks[key] = task
+            tasks[key] = _finite_floats(task)
         self.tasks = tasks
 
     def save(self):

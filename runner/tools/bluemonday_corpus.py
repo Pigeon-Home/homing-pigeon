@@ -2279,6 +2279,11 @@ def seeds_board_ops():
             _task("bm-inf", priority=float("inf")),
             _task("bm-ninf", priority=-float("inf"))),
          "ops": [["submit", _task()]]}),
+        # A non-finite float under some other key. save stores null
+        # there; load does the same, so the file reads back.
+        ("nonfinite_elsewhere", {"file": _board_file(
+            _task("bm-stray", note=float("nan"))),
+         "ops": [["submit", _task()]]}),
         ("file_task_not_dict", {"file": json.dumps({"bm-task-0001": 7,
                                                     "bm-task-0002": _task(
                                                         "bm-task-0002")}),

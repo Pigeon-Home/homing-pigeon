@@ -6,6 +6,11 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.54 - 2026-10-26
 
+- **A non-finite float under any other key (Q79).** `save`
+  stores null for `NaN` and `Infinity`. `load` left the float
+  in memory when it was not the priority, so the file after
+  submit did not read back. `load` now makes the same
+  replacement. A non-finite priority is still not a task.
 - **A non-finite priority already on the board poisoned every
   later save (Q78).** `submit` refuses `NaN` and `Infinity`.
   `load` used to keep them, and `save` (`allow_nan=False`)

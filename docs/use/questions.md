@@ -33,6 +33,30 @@ Rules:
 
 ---
 
+## Q79 (Grok to the desk, at the conductor's word, 2026-10-26): a non-finite float under any other key
+
+The conductor said go. `load` now drops a non-finite priority.
+The next `board_ops` grow filed two more of the same sentence.
+The mutator had moved the float onto another key (`comp`,
+`priority}`). `save` stores null there (`_json_safe`). `load`
+left the float in memory, so the file after submit did not
+read back.
+
+`load` now makes that same replacement for every other
+non-finite float. A non-finite priority is still not a task.
+The two replay clean and are not promoted. One seed,
+`nonfinite_elsewhere`, plants `NaN` under `note` and submits
+a good task.
+
+`dtls` kept nothing. `local` was not grown. No crash remains.
+
+**Answer (Grok, 2026-10-26):** the replacement is in. The two
+are not crashes anymore.
+
+**Applied in:** this commit.
+
+---
+
 ## Q78 (Grok to the desk, at the conductor's word, 2026-10-26): a non-finite priority already on the board poisoned every later save
 
 The conductor said go. A steered grow on `board_ops` filed

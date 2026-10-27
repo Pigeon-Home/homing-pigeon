@@ -146,6 +146,19 @@ class BoardMutations(unittest.TestCase):
             again = Board(poisoned)
             self.assertIn("ok", again.tasks)
             self.assertNotIn("nan", again.tasks)
+            # A non-finite float under any other key is null, which
+            # is what save writes, so the file reads back.
+            stray = os.path.join(d, "stray.json")
+            with open(stray, "w", encoding="utf-8") as fh:
+                json.dump({
+                    "stay": {"task_id": "stay", "priority": 1,
+                             "note": float("inf"), "state": "open"},
+                }, fh, allow_nan=True)
+            kept = Board(stray)
+            self.assertIsNone(kept.tasks["stay"]["note"])
+            self.assertTrue(kept.submit(dict(good, task_id="other"))[0])
+            reread = Board(stray)
+            self.assertEqual(reread.tasks, kept.tasks)
             missing = Board(os.path.join(d, "missing", "board.json"))
             missing.tasks = {"a": {"task_id": "a"}}
             missing.save()
