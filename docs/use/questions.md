@@ -62,6 +62,20 @@ call; the campaign files the divergence and does not
 fix the reader. A unit test at the board seam pinning
 whichever behavior the docs promise would close it.
 
+Replayed `c5309423121a8b50`. The string is not what
+fails. `offer` keeps `capabilities` only when it is a
+list, so `"shell"` becomes no capabilities, and a
+worker who already holds a claim is re-offered that
+claim before the capability filter runs. The first
+copy answers `task_offer bm-task-0001` while the task
+is claimed. `task_timeout` on the entry is 0, which
+reoffers a lease at once, so the second copy answers
+`task_offer empty` and leaves the board `open`. The
+checker then scores the first reply against that
+later board. The reader did what the lease says. The
+check wants each reply judged against the board as it
+was when that reply was sent.
+
 **Answer:** pending (the desk).
 
 **Applied in:** --
