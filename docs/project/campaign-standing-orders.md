@@ -4522,3 +4522,31 @@ when done, the proving commit or run. Newest first.
   this bank while the conductor's
   questions were answered; recorded
   per Q58.
+- rules refreshed 2026-10-27 09:57 PDT
+  (standing orders incl. section M;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules). Q95 is answered and
+  fixed by the desk in 33547a42: the
+  walks use a stack, a child past the
+  bound is not a child, a raising
+  mutator is counted, never a worker
+  death.
+  de_dust 18: 1243 entries, 4804 arcs, 0 crashes filed.
+  Grow 18 (seed 6300, the archive
+  recording) was killed by a VM
+  restart at 09:51 PDT about 25
+  minutes in: 12 of 20 targets
+  recorded, 175,371 children, no
+  keeps, totals unchanged. wire,
+  cloud, local, queries, names,
+  query, board_mail and v2_mail were
+  unrecorded when it died. The
+  survivors rerun beside it died in
+  the same restart with no record;
+  it goes beside grow 19 instead.
+  Grow 19 (seed 6310) is the first
+  grow on the Q95 fix, so wire and
+  cloud meet the bounded walks there.
+  The box idled from the restart
+  until this bank; recorded per Q58.
