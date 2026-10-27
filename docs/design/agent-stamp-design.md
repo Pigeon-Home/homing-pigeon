@@ -43,7 +43,8 @@ The canonical spelling is `Agent-Stamp`. Variants seen so far:
 - `# agent-ident: ...` in two files since retired with the provenance
   bundles (the upstream is declared once, in the manifest)
 - an `Agent-Chat-Stamp:` trailer and file header, the spelling the
-  questions desk (`50000c8e`) uses on its own commits and files; the
+  questions desk used under its recycled stamp (`50000c8e`) on its
+  commits and files; the active desk (`40000e00`) signs `Agent-Stamp`; the
   record check below reads both spellings
 
 Proposal: rewrite the two file headers to `Agent-Stamp`. Leave history

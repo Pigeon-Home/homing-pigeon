@@ -56,7 +56,7 @@ Concrete uses:
 - **Physical peripherals.** Plug a sensor or servo board into a
   Raspberry Pi, point your SI at it, and let it write the control
   code and debug the hardware into motion. You do the soldering,
-  it does the head-scratching. Let SI build a robot.
+  it does the head-scratching. Let the SI build a robot.
 
 Send a job from your phone, let the big machine run the tests, crunch
 the data, or grind through the refactor, and read the results when they
