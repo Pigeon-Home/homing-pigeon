@@ -113,9 +113,9 @@ you. You start them by making a **release**. All point and click:
 8. When they finish, go back to **Releases**. Your version is there
    with files to download (each file and folder name carries that
    same number):
-   - `homing-pigeon-windows-x86_64-<version>.zip` — for Windows computers
-   - `homing-pigeon-linux-x86_64-<version>.tar.gz` — for Linux computers
-   - `homing-pigeon-macos-arm64-<version>.tar.gz` — for Mac computers
+   - `homing-pigeon-windows-x86_64-<version>.zip` and `-windows-arm64-` — for Windows computers
+   - `homing-pigeon-linux-x86_64-<version>.tar.gz` and `-linux-arm64-` — for Linux computers
+   - `homing-pigeon-macos-arm64-<version>.tar.gz` and `-macos-x86_64-` — for Mac computers
    - `homing-pigeon-pi-light-arm64-<version>.tar.gz` — for Raspberry Pi (Pi Light)
 
    The release also carries the Python wheel and source
@@ -371,7 +371,7 @@ paged, and no model is called. There is no flag that deletes the Oracle.
 
 ### Platform notes for scripts (especially clock / hello-world tests)
 
-- **Do not force `["sh"]` or `["bash"]` on Windows.** The runner rejects the job with `cannot start interpreter: [WinError 2] The system cannot find the file specified` because those binaries are not present by default.
+- **Do not force `["sh"]` or `["bash"]` on Windows.** At the default `repair` latitude the runner swaps in the platform default when the script's shape fits it and says so in the result's `oracle_opinion`; below `repair`, under `oracle_opinion_repair: refuse`, or for a bash-shaped script it rejects the job with `cannot start interpreter: [WinError 2] The system cannot find the file specified`. Either way you did not get what you asked for.
 - Prefer **omitting `--interpreter`** so the runner uses its platform default: PowerShell on Windows, `sh` elsewhere. For a simple clock check on Windows use a script that contains `Get-Date` (or `date` if you know the default shell supports it).
 - If you must specify an interpreter, use one that exists on the target machine (e.g. `["powershell", "-File"]` or `["pwsh", "-File"]` on Windows).
 - A shared test job must not require a marker or binary that only one platform has.

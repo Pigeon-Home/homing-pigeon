@@ -96,7 +96,7 @@ names it.*
 - `extension_poll_interval_sec` — inside any `transport_<name>` block: seconds between the extension's passes over its channel. Default 2; a usable number is clamped to 0.2 through 60, and a boolean, infinity, NaN or non-number reads as the default. The block is handed to the extension, so this sets one transport's cadence; the core's own `poll_interval_sec` is separate.
 - `transport_queues` — the hosted queue, handed to the queues extension (`docs/extend/transports.md`, "Queues"): `url` (the tenant's queue base, `https://<worker>/t/<tenant>`), `token_env` (the name of the environment variable holding the runner token; preferred), `token` (the token itself, accepted but then it sits in `config.json`), and `max_jobs` (jobs leased per pass, default 8). The lease length is the Worker's `LEASE_MS`, not a runner key.
 
-Keys documented elsewhere: the mailbox keys (`mailbox_user`, `mailbox_password`, `imap_host`/`imap_port`, `smtp_host`/`smtp_port`, `auth`, the OAuth keys) in INSTALL.md; `shared_secret`, `additional_secrets`, `key_policies`, `key_policies_default_deny` in PROTOCOL.md §14 and `docs/use/secret-rotation.md`; `security` in SECURITY.md; `sensors` in `docs/extend/senses.md`; `extensions_dir`, `local_signals`, `local_signal_port`, `local_wake_cooldown_sec` in `docs/extend/extensions.md`; `dri` in `docs/oracle/dri-playbook.md`; `review_patterns_extra` in `docs/oracle/job-review.md`; `base_dir`, `poll_interval_sec`, `default_timeout_sec`, `max_output_bytes`, `max_job_age_sec`, `max_job_bytes`, `max_script_bytes`, `default_interpreter`, `runner_id` in README.md and PROTOCOL.md.
+Keys documented elsewhere: the mailbox keys (`mailbox_user`, `mailbox_password`, `auth`, the OAuth keys) in INSTALL.md, with `imap_host`/`imap_port` and `smtp_host`/`smtp_port` in `runner/config.example.json`; `shared_secret`, `additional_secrets`, `key_policies`, `key_policies_default_deny` in PROTOCOL.md §14 and `docs/use/secret-rotation.md`; `security` in SECURITY.md; `sensors` in `docs/extend/senses.md`; `extensions_dir`, `local_signals`, `local_signal_port`, `local_wake_cooldown_sec` in `docs/extend/extensions.md`; `dri` in `docs/oracle/dri-playbook.md`; `review_patterns_extra` in `docs/oracle/job-review.md`; `base_dir`, `poll_interval_sec`, `default_timeout_sec`, `max_output_bytes`, `max_job_age_sec` in INSTALL.md and FAQ.md; `max_job_bytes`, `max_script_bytes`, `default_interpreter`, `runner_id` in PROTOCOL.md.
 
 ## Command-line overrides
 
@@ -127,6 +127,9 @@ Every flag below replaces one config value for that process only. `config.json` 
 | `--oracle-log` / `--no-oracle-log` | `oracle_log` |
 | `--oracle-log-max-bytes BYTES` | `oracle_log_max_bytes` |
 | `--oracle-log-backups COUNT` | `oracle_log_backups` |
+| `--oracle-opinion MODE` | `oracle_opinion_mode` |
+| `--remediation-mode MODE` | `remediation_mode` |
+| `--transports LIST` | `transports` |
 | `-v` / `--quiet` | `verbose` |
 
 `--workers COUNT` and `--faster` are the two older one-process switches of the same kind: workers is read from the command line first, and `--faster` swaps the inference model for the process without touching the file.
@@ -171,7 +174,7 @@ Built-in profiles:
 - `password-only` — treats password hashes and `password=` style assignments as secrets, watches `/etc/shadow`, sets `max_result_view` to `attested`. Inference stays on the default model, `qwen3:1.7b`.
 - `pi-light` — same password-hash watch, plus `/home/pi/docs/manuals` as a protected path. This is the Pi-specific install: the device tree or `/proc/cpuinfo` selects it automatically. It is the light package — it sets `oracle_mode` to `deterministic` and installs no model at all: no Ollama, no download. Naming `--inference-model` or `--faster` by hand overrides that and installs a model as usual. (`raspberry-pi-home` is this profile's former name and still works.)
 
-A profile JSON file uses the same keys. Extra redact patterns and worker compartments are merged with what is already in the file. A profile entry wins when the name clashes. Beyond the merged dicts, only a fixed whitelist of keys is copied from a profile (`protected_paths`, `max_result_view`, `judge`, `workspace_root`, `max_query_budget`, `output_retention_days`, `worker_allowlist`, `dag_mode`, `require_review`, `oracle_mode`); any other profile key is ignored, not applied. Mailbox credentials and `shared_secret` are never written by a profile. The runner already honors `redact_patterns_extra`, `protected_paths`, and `max_result_view` from `config.json`, so the profile takes effect on the next start. `owner_instructions` and `inference` are re-read when the file changes, without a restart.
+A profile JSON file uses the same keys. Extra redact patterns and worker compartments are merged with what is already in the file. A profile entry wins when the name clashes. Beyond the merged dicts, only a fixed whitelist of keys is copied from a profile (`protected_paths`, `max_result_view`, `judge`, `workspace_root`, `max_query_budget`, `output_retention_days`, `worker_allowlist`, `dag_mode`, `require_review`, `oracle_mode`, `local_signals`), plus `security.modes`, merged one mode at a time; any other profile key is ignored, not applied. Mailbox credentials and `shared_secret` are never written by a profile. The runner already honors `redact_patterns_extra`, `protected_paths`, and `max_result_view` from `config.json`, so the profile takes effect on the next start. `owner_instructions` and `inference` are re-read when the file changes, without a restart.
 
 ## Owner instructions
 

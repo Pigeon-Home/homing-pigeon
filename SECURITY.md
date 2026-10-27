@@ -128,8 +128,10 @@ as it always has. Every control has three modes:
 ```
 
 **Changing a mode requires a restart.** Poll interval, workers,
-timeouts, output limits, and max job age reload when `config.json`
-changes. The `security` block does not.
+timeouts, output limits, max job age, the result stash's retention
+and resend backoff, and the live keys (`owner_instructions`,
+`inference`, `oracle_mode`, `verbose`, `extension_sources`) reload
+when `config.json` changes. The `security` block does not.
 
 **A malformed security block stops startup** with an error naming the
 key and the bad value. It never silently falls back to `off`.
@@ -151,7 +153,8 @@ its 19,227 jobs are worth knowing before loosening a real box:
 - At view `full` the SI receives what the script printed. The run's
   `flagread` job printed a planted fake credential file;
   `runner.log` redacted the key, the result carried it verbatim.
-  The default ceiling is `attested` for that reason.
+  The installer's profiles set the ceiling to `attested` for that
+  reason; the bare config default is `full`.
 - A job running as root read `/etc/shadow` and returned it. Only
   confinement and `job_user` stop that; a signature does not.
 - `--posture` names every one of those choices as a warning, and

@@ -70,7 +70,8 @@ Use it while developing the Oracle:
 1. Run `--local-test`.
 2. Ask something. Read the answer.
 3. Edit `owner_instructions` or the hard system prompt.
-4. The runner hot-reloads config; re-ask and compare.
+4. Restart `--local-test` (it holds the config it started with;
+   only the polling runner hot-reloads), re-ask and compare.
 5. Repeat.
 
 The point is a tight loop between "what the SI would ask" and "what
@@ -95,11 +96,13 @@ The mock SI reads the same `config.json` as the runner.
 
 - **In-process** — the default. The question is handed to the Oracle
   path directly. No email, no socket. Fastest for a single chat.
-- **Email** — `send_via_email` in code
+- **Email** — `send_via_email` in `runner/ops/local_test.py`, a
+  helper the suite drives (no REPL command or flag reaches it),
   builds a signed job and sends it with the runner's SMTP settings
   (`smtp_host`, `smtp_port`, `mailbox_user`, password or OAuth). The
-  runner must be polling that mailbox to pick it up. This is the real
-  Transport #1 path.
+  runner must be polling that mailbox to pick it up, and since the
+  helper sends the plain signed body, running `--allow-cleartext`.
+  This is the real Transport #1 path.
 
 A loopback-socket option (`127.0.0.1:8766`) was specified in an
 earlier revision but never implemented; it was cut. In-process

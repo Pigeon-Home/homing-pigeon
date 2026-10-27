@@ -51,8 +51,9 @@ extension (`docs/extend/extensions.md`) that declares signals such as
 with the Oracle. Only the labels and a digest leave the box; when a
 frame is a toss-up, your SI sends one more job for just that frame
 instead of pulling the whole card. A runner that asks the cloud its
-own free-form question ("lynx or bobcat?") is the Mirror idea in
-`docs/project/future.md`, not built yet.
+own free-form question ("lynx or bobcat?") is the Mirror idea, not
+built and not listed; the answer-only path below is the nearest
+thing that is.
 
 And for the box that cannot decide on its own: with protocol version
 2 turned on, a Pi Light runner can send the question it would have
@@ -122,9 +123,9 @@ model. The base rhythm is polling: nothing interrupts the runner,
 and the model is not running all the time. The deterministic code
 around the model does the watching on the runner's poll cycle --
 every 20 seconds by default (`poll_interval_sec`). The model
-itself only runs when it is asked a question, when a configured
-trigger decides a human gets paged, or when a local signal passes
-the wake gate described below.
+itself only runs when it is asked a question or when a local
+signal passes the wake gate described below; paging a human
+involves no model at all.
 
 How it works, in order:
 

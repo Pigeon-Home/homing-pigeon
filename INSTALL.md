@@ -331,8 +331,8 @@ and that board does not need Python either.
      "Publish app" (status "In production"). Left in "Testing", Google
      expires the refresh token after 7 days and the runner dies weekly.
      No verification needed — the app stays unverified with the usual
-     first-consent warning.
-   (your explicit choice for this throwaway account).
+     first-consent warning (your explicit choice for this throwaway
+     account).
 5. When you want an SI to send jobs, make sure `shared_secret` in
    config.json matches the string you pasted to the SI in chat
    (the wizard shows you a fresh one; `openssl rand -hex 32` works too).
@@ -340,8 +340,9 @@ and that board does not need Python either.
    the one secret: `python3 runner/ops/install.py --additional-secret
    grok-4` generates a 256-bit secret under `additional_secrets`
    with that key ID (on a fresh install; on an existing Windows
-   one-home install edit `config.json` by hand), and a matching
-   `key_policies` entry limits what that key may do. The signer then
+   one-home install edit `config.json` by hand); then write a
+   `key_policies` entry for it by hand, since a key without one is
+   unrestricted and the runner says so at startup. The signer then
    passes `--key-id grok-4` to `send_job.py`. Rotation and the policy
    details: `docs/use/secret-rotation.md`, PROTOCOL.md section 14.
 
@@ -357,10 +358,10 @@ and that board does not need Python either.
    and `mailbox_password` as above. Replace the `shared_secret`
    placeholder with a generated secret (`openssl rand -hex 32`) — this is
    the HMAC key your SI signs jobs with, separate from the mailbox
-   password. (`python3 install.py` generates one for you if the
+   password. (`python3 ops/install.py` generates one for you if the
    placeholder is still there.)
 5. Test one cycle: `python3 runner.py --config config.json --once`.
-6. `python3 install.py` registers the boot-start service for your
+6. `python3 ops/install.py` registers the boot-start service for your
    platform (see below).
 
 ### Per-platform install
@@ -427,6 +428,9 @@ you're live.
 
 > **Note:** the runner re-reads `config.json` every poll cycle and
 > picks up changes to `poll_interval_sec`, `workers`,
-> `default_timeout_sec`, `max_output_bytes`, and `max_job_age_sec`
-> automatically — no restart needed. Changing the mailbox credentials
-> or the shared secret still requires a restart.
+> `default_timeout_sec`, `max_output_bytes`, `max_job_age_sec`,
+> `result_stash_retention_sec` and `result_resend_backoff_sec`, and
+> the live keys `owner_instructions`, `inference`, `oracle_mode`,
+> `verbose` and `extension_sources`, automatically — no restart
+> needed. Changing the mailbox credentials, the shared secret or a
+> `security` mode still requires a restart.

@@ -198,15 +198,20 @@ on each pass:
 
 ## Posture
 
-`runner.py --posture` from the current tree (3.12.70) against a
-staging copy of the rig's config and state, on 2026-10-25. Every
-warning here is the rig's open setup, named:
+`runner.py --posture` from the tree at capture time (3.12.70)
+against a staging copy of the rig's config and state, on
+2026-10-25. Every warning here is the rig's open setup, named (the
+OK lines for the config file, the service, the base dir and the
+feature switches are left out):
 
 <!-- source: posture.txt -->
 ```
 [OK  ] privileges     running as root (uid 0)
 [WARN] workspace      workspace_root unset (confinement attestations off)
 [WARN] security modes audience is off (recommended: audit or enforce)
+[WARN] security modes policy_env is off (recommended: audit or enforce)
+[WARN] security modes policy_files is off (recommended: audit or enforce)
+[WARN] security modes policy_args is off (recommended: audit or enforce)
 [WARN] confinement    bwrap not installed (confinement in enforce mode would run unsandboxed)
 [OK  ] secrets        shared_secret: strong
 [OK  ] audit log      no audit entries yet (nothing to protect)

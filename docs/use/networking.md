@@ -88,9 +88,10 @@ Listed in docs/project/future.md.
   under its state directory (`passwords.txt`, `backup-codes.txt`,
   `api-keys.txt`). A read that changes one, or a delete, is filed
   once and stays reported until the file is restored. Canary
-  credentials (a token that phones home when used) are listed in
-  docs/project/future.md.
-- **FIM proper** — file integrity monitoring. The roadmap's
-  "snapshot eyes" gestures at it; no design yet.
+  credentials (a token that phones home when used) are not built
+  and not planned.
+- **FIM proper** — file integrity monitoring ships as two senses:
+  `tripwire` (a tree's SHA-384 baseline) and `aide-feed` (AIDE's
+  own report), both in `runner/extensions/`.
 - **Out of scope:** TLS inspection, WAF (there is no inbound
   HTTP service to protect — the Oracle page is loopback-only).

@@ -15,8 +15,9 @@ failure, fix, repeat, from your phone or anywhere.
 
 It works like a GitHub self-hosted runner. A small program on hardware
 you own picks up signed jobs from a mailbox you control and runs them.
-Nothing listens on the network: the runner only polls outward, so it
-works behind NAT with no open ports.
+By default nothing listens on the network: the runner only polls
+outward, so it works behind NAT with no open ports (the DTLS
+binding, off unless enabled, is the one listener).
 
 Setup walks you through connecting a dedicated email account. The
 recommended path is a browser sign-in, so the account password never
@@ -99,8 +100,8 @@ on day one: reachable from anywhere, outbound-only polling (no inbound
 ports — NAT-proof), at-least-once delivery, and
 zero infrastructure to operate. The protocol does not care about the
 pipe — every transport is an extension the runner supervises (a
-watched folder, core NATS, and a direct DTLS session binding
-ship alongside email) — but email
+watched folder, core NATS, a direct DTLS session binding and the
+hosted HTTPS queue ship alongside email) — but email
 stays the default; a credentialed transport adds
 its own required gate beside the signature, which makes it the
 more secure option even though it is not the default. (A
@@ -274,10 +275,12 @@ of thing:
   the log records the cap being hit. The key is `workspace_root`.
 - **The sandbox** (Linux only) actually walls the job in:
   bubblewrap runs it with `/usr` read-only, no network, and only
-  the job workdir writable. It is off by default; if `bwrap` is
-  missing, or the machine is not Linux, the job runs normally
-  and the audit log records the fallback. The key is
-  `security.modes.confinement` set to `enforce`. See SECURITY.md.
+  the job workdir writable. It is off by default. Under `enforce`
+  a sandbox that cannot engage (no `bwrap`, user namespaces
+  blocked, not Linux) refuses to start the runner; one that
+  breaks after a good start falls back loudly and the audit log
+  records the fallback. The key is `security.modes.confinement`
+  set to `enforce`. See SECURITY.md.
 
 **Local inference.** Point the Oracle at a model running on your
 own box and the SI can `ask` questions in plain English — *"why
@@ -416,9 +419,9 @@ The runner is fully inspectable, so audit what it would do before it does it, an
 - Jobs are also encrypted by default: `send_job.py` wraps the
   signed body in an AES-256-GCM envelope keyed from the
   shared secret.
-- Options, e.g. "--cleartext" allow you to accept the plain
-  HMAC-signed body. The shared secret is still required. The
-  runner refuses a cleartext job without that flag. One honest
+- `send_job.py --cleartext` sends the plain HMAC-signed body
+  instead, and the runner refuses it unless started with
+  `--allow-cleartext`. The shared secret is still required. One honest
   limit, stated wherever this is described: there is **no
   forward secrecy** unless it is provided by the transport layer.
 - Execution is at-most-once, delivery at-least-once: a result is
@@ -438,8 +441,8 @@ The [FAQ](FAQ.md) is where the odd corners get answered.
 Does the Oracle poll or get woken by a signal? Can a hostile job
 talk its way into a repair? Why email, and why not PGP or public-key
 signatures? Is one shared secret really safe for both signing and
-encryption? What would you actually use this for? The hard ones are
-at the top: isn't this just remote code execution by email, why not
+encryption? What would you actually use this for? The hard ones come
+right after the first two: isn't this just remote code execution by email, why not
 SSH, what if the secret leaks, and is it safe on your main machine
 (no, and it says why). Read it before you design around the protocol; the reasoning is more interesting than
 the rules.
@@ -469,8 +472,11 @@ What a real box writes, and what 19,227 jobs on the campaign rig
 came to, is in [docs/use/live-examples.md](docs/use/live-examples.md).
 
 Current-state facts worth knowing: `config.json` hot-reloads poll
-interval, workers, timeouts, output limits, and max job age (a
-`security` mode change still needs a restart). A Thunderbird-style
+interval, workers, timeouts, output limits, max job age, the
+result stash's retention and resend backoff, and the live keys
+(`owner_instructions`, `inference`, `oracle_mode`, `verbose`,
+`extension_sources`); a `security` mode change still needs a
+restart. A Thunderbird-style
 OAuth sign-in is shipped for the mailbox. PowerShell jobs stage
 as `script.ps1`. Release files carry Sigstore build provenance
 (`docs/security/verification.md`).

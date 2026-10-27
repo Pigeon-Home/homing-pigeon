@@ -23,7 +23,7 @@ welcome but held to a high bar. Here's how to do it well.
 2. **Cross-platform or it doesn't ship.** Every change must work on
    Linux, macOS, FreeBSD, and Windows. Use `os.name` / `sys.platform`
    branches, and think about what each branch does on the other three.
-3. **Tests or it didn't happen.** `python -m unittest discover -s runner/tests`
+3. **Tests or it didn't happen.** `python -m unittest discover -s runner/tests -t .`
    must pass. New behavior gets a new test with the fake IMAP/SMTP
    harness in `runner/tests/test_runner.py`.
 4. **No secrets in the repo.** Not in code, not in tests, not in docs,
@@ -36,7 +36,7 @@ welcome but held to a high bar. Here's how to do it well.
    (`fix-timeout-race`, `add-heartbeat`, ...).
 2. Make your change, add tests, update docs (README, PROTOCOL.md,
    docs/use/runbook.md — whichever your change affects).
-3. Run the full suite: `python -m unittest discover -s runner/tests -v`.
+3. Run the full suite: `python -m unittest discover -s runner/tests -t . -v`.
 4. Open a pull request against `main`. Describe **what** changed,
    **why**, and **what you tested**. If it touches anything listed
    under "Before you write code," flag it in the description.
@@ -177,7 +177,8 @@ buttons, no config form, no board.
 
 ## What the process actually does
 
-Entry point is `main()` in `runner/runner.py`.
+Entry point is `main()` in `runner/ops/main.py` (`runner/runner.py`
+re-exports it).
 
 1. Parse `--oracle` and `--oracle-port`.
 2. Load `config.json`.

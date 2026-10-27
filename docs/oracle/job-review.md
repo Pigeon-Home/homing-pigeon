@@ -49,14 +49,17 @@ outside the result envelope (e.g., to the DRI playbook channel).
 | shebang_platform_mismatch | metadata | warn | `#!/bin/bash` on Windows, etc. |
 | timeout_clamped | metadata | info | `timeout_sec` > 3600 (will be clamped) |
 | dangling_file_ref | content | warn | script names a file not in `files[]` |
+| review_scan_truncated | metadata | info | script longer than `review_scan_bytes`; the filename scan covered the first part only |
+| review_config_error | metadata | warn | an operator pattern in `review_patterns_extra` did not compile |
 
 Operator patterns go in `review_patterns_extra` (see
 `docs/archive/known-failures.md` for the format and the filing process).
 
 ## The learning loop
 
-Every diagnosed recurring failure gets filed in
-`docs/archive/known-failures.md` with its pattern. Filing alone
+Every diagnosed recurring failure gets its pattern written into
+`review_patterns_extra` in `config.json` (`docs/archive/known-failures.md`
+is the archived record of the first batch and shows the format). Filing alone
 changes no matching: the reviewer matches new jobs only against
 patterns supplied via `review_patterns_extra` in config — an
 operator copies a filed pattern there to arm it. The Oracle gets smarter the way

@@ -42,8 +42,9 @@ not code, and every trigger can be disabled.
   without touching ingest.
 - **Confinement violation.** A job wrote outside `workspace_root`
   (the Oracle already detects this; see PROTOCOL.md). Pages on
-  every occurrence: this is the one signal that means the
-  attested boundary broke.
+  every occurrence the runner retained, which is any job below the
+  `full` view or one that declared queries: this is the one signal
+  that means the attested boundary broke.
 - **Judge block.** The judge refused a job in enforce mode. Page;
   include the reasons.
 - **Key probing.** Repeated key-policy or signature rejections from
@@ -70,14 +71,14 @@ evaluate_page_triggers(cfg, base_dir) -> list[PageEvent]
 ## Channels
 
 Telegram is the only channel the runner accepts. Signal and
-WhatsApp are listed in docs/project/future.md. Do not set `dri.channel` to
-anything but `"telegram"`.
+WhatsApp are spec-only names the runner refuses, not planned. Do
+not set `dri.channel` to anything but `"telegram"`.
 
 - **Telegram.** This is the channel the runner implements. Bot API
   over HTTPS: one token, one chat id. A page is a single POST.
   `dri.channel` must be `"telegram"`.
-- **Signal.** The runner rejects it. See docs/project/future.md.
-- **WhatsApp.** The runner rejects it. See docs/project/future.md.
+- **Signal.** The runner rejects it.
+- **WhatsApp.** The runner rejects it.
 
 **Out of scope, by owner decision: SMS.** No text messaging. No
 Twilio-style provider, no per-message cost, no carrier metadata.

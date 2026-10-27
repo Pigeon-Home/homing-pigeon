@@ -42,8 +42,9 @@ command; the design is `docs/project/hosting.md`.
   Leave `shared_secret` out and one is generated and printed once.
   A blob may carry only the keys in `install.CONFIG_BLOB_KEYS`:
   secrets, the transport, `runner_id`, `workspace_root`,
-  `owner_instructions`. Security modes and the result view are the
-  profile's and are refused in a blob.
+  `owner_instructions`, `base_dir`, `poll_interval_sec`,
+  `inference`, `oracle_mode` and `pong_platform`. Security modes
+  and the result view are the profile's and are refused in a blob.
 
 ## The command
 
@@ -73,8 +74,8 @@ secret to your SI the way you always have.
 
 ```bash
 homing-pigeon-host status                              # the inventory
-homing-pigeon-host redeploy fly:<id> --version <new> --blob @blob.json
-homing-pigeon-host rotate   fly:<id> --blob @blob.json  # new secret, printed once
+homing-pigeon-host redeploy fly:<id> --version <new> --blob @blob.json --token-env FLY_API_TOKEN
+homing-pigeon-host rotate   fly:<id> --blob @blob.json --token-env FLY_API_TOKEN  # new secret, printed once
 homing-pigeon-host destroy  fly:<id> --token-env FLY_API_TOKEN
 ```
 

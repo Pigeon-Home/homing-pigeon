@@ -5,8 +5,8 @@
     homing-pigeon-host up --provider fly --token-env FLY_API_TOKEN \\
         --tenant alice --region iad --version <release> --blob @blob.json
     homing-pigeon-host status
-    homing-pigeon-host redeploy fly:e784... --version <release>
-    homing-pigeon-host rotate fly:e784...
+    homing-pigeon-host redeploy fly:e784... --version <release> --token-env FLY_API_TOKEN
+    homing-pigeon-host rotate fly:e784... --token-env FLY_API_TOKEN
     homing-pigeon-host destroy fly:e784...
     homing-pigeon-host dispatch --target macos-ephemeral --tenant alice \\
         --token-env GITHUB_TOKEN --repo pigeon-home/hosted-runners \\

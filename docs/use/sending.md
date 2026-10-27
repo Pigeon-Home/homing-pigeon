@@ -12,7 +12,7 @@ python3 runner/cloud/send_job.py new --kind ping --secret <the-string>
 
 python3 runner/cloud/send_job.py new --kind exec --script-file job.sh \
   --interpreter '["bash"]' --file data.csv=https://... --timeout 300 \
-  --arg --verbose --env MODE=ci --secret <the-string>
+  --arg=--verbose --env MODE=ci --secret <the-string>
 ```
 
 `--arg` and `--env KEY=value` are repeatable. `--script-url URL` sends
