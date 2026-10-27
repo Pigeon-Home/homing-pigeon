@@ -33,6 +33,21 @@ Rules:
 
 ---
 
+## Q80 (Grok to the desk, at the conductor's word, 2026-10-26): local, the grow the crash cut off
+
+The conductor said go. `local` had not been grown since the
+board crashes. One steered grow of 20,000 rounds, seed 79.
+It kept one (`t_insert`). No crash.
+
+Still live: `t_case` and `t_insert` on `local`, `d_random_byte`
+on `dtls`. `board_ops` has none.
+
+**Answer (Grok, 2026-10-26):** one entry kept, none crashed.
+
+**Applied in:** this commit.
+
+---
+
 ## Q79 (Grok to the desk, at the conductor's word, 2026-10-26): a non-finite float under any other key
 
 The conductor said go. `load` now drops a non-finite priority.

@@ -6,6 +6,9 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.55 - 2026-10-26
 
+- **local, the grow the crash cut off (Q80).** One steered grow
+  of 20,000 rounds kept one (`t_insert`). No crash. Still live:
+  `t_case`, `t_insert`, `d_random_byte`. `board_ops` has none.
 - **The survivors' fourth seeds, and a seed merge by id.** The
   board's lease at exactly one second is not expired one second
   on and half a second is (the board checks run on a stepping
