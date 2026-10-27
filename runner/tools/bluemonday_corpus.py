@@ -538,6 +538,15 @@ def check_crypto(entry):
         raise Crash("corpus", "a crypto entry's data must be an object")
     args = (spec.get("envelope"), SECRET, spec.get("job_id"),
             spec.get("key_id"))
+    # The envelope test the readers apply before decrypting: a
+    # bool, never a raise, and part of what the entry pins.
+    is_env, eexc = _call(JC.is_envelope, spec.get("envelope"))
+    if eexc is not None:
+        raise Crash("exception", "is_envelope raised "
+                    f"{type(eexc).__name__}: {_short(eexc)}")
+    if not isinstance(is_env, bool):
+        raise Crash("shape", f"is_envelope returned {type(is_env).__name__}")
+    note("envelope", is_env)
     got, exc = _call(JC.decrypt_body, *args)
     if exc is not None:
         _expect_refusal(exc, JC.JobCryptoError, "decrypt_body")
@@ -1849,6 +1858,56 @@ def _seeds_crypto():
     enc["hp_enc"] = dict(sealed["hp_enc"], ct="AAAA")
     out.append(("short_ct", {"envelope": enc, "job_id": "bm-exec-0001",
                              "key_id": ""}))
+    # The survivors' lines: a ciphertext of exactly the tag and one
+    # byte short of it, the real tag over an empty plaintext, a
+    # nonce of 11 and 13 octets, each hp_enc member missing in
+    # turn, a member that is not text, base64 that does not
+    # validate, and the envelope's own member set one wider.
+    import base64 as _b64
+    for n, name in ((16, "ct_tag_only"), (15, "ct_15"), (17, "ct_17")):
+        enc = dict(sealed)
+        enc["hp_enc"] = dict(sealed["hp_enc"],
+                             ct=_b64.b64encode(b"\x00" * n).decode("ascii"))
+        out.append((name, {"envelope": enc, "job_id": "bm-exec-0001",
+                           "key_id": ""}))
+    nonce = _b64.b64decode(sealed["hp_enc"]["nonce"])
+    empty_ct = JC.aead_encrypt(JC._job_key(SECRET, nonce), nonce, b"",
+                               JC._aad("bm-exec-0001", ""))
+    enc = dict(sealed)
+    enc["hp_enc"] = dict(sealed["hp_enc"],
+                         ct=_b64.b64encode(empty_ct).decode("ascii"))
+    out.append(("empty_plaintext", {"envelope": enc, "job_id": "bm-exec-0001",
+                                    "key_id": "", "expect": ""}))
+    for n, name in ((11, "nonce_11"), (13, "nonce_13")):
+        enc = dict(sealed)
+        enc["hp_enc"] = dict(sealed["hp_enc"],
+                             nonce=_b64.b64encode(b"\x01" * n).decode("ascii"))
+        out.append((name, {"envelope": enc, "job_id": "bm-exec-0001",
+                           "key_id": ""}))
+    for member in ("alg", "nonce", "ct"):
+        enc = dict(sealed)
+        enc["hp_enc"] = {k: v for k, v in sealed["hp_enc"].items()
+                         if k != member}
+        out.append(("no_" + member, {"envelope": enc, "job_id": "bm-exec-0001",
+                                     "key_id": ""}))
+        enc = dict(sealed)
+        enc["hp_enc"] = dict(sealed["hp_enc"], **{member: 7})
+        out.append((member + "_not_text", {"envelope": enc,
+                                           "job_id": "bm-exec-0001",
+                                           "key_id": ""}))
+    enc = dict(sealed)
+    enc["hp_enc"] = dict(sealed["hp_enc"], ct=sealed["hp_enc"]["ct"] + "!")
+    out.append(("ct_not_base64", {"envelope": enc, "job_id": "bm-exec-0001",
+                                  "key_id": ""}))
+    enc = dict(sealed)
+    enc["hp_enc"] = dict(sealed["hp_enc"], extra="x")
+    out.append(("hp_enc_extra", {"envelope": enc, "job_id": "bm-exec-0001",
+                                 "key_id": ""}))
+    out.append(("key_id_only", {"envelope": {"hp_enc": sealed["hp_enc"],
+                                             "key_id": ""},
+                                "job_id": "bm-exec-0001", "key_id": ""}))
+    out.append(("hp_enc_not_object", {"envelope": {"hp_enc": "sealed"},
+                                      "job_id": "bm-exec-0001", "key_id": ""}))
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
@@ -2920,6 +2979,41 @@ def seeds_manifest():
         ("upstream_path", _sense(upstream=dict(
             upstream, paths=["../secret"]))),
     ]
+    # The survivors' lines: every cap at itself and one past it.
+    sig = {"name": "bm_sig", "description": "A declared signal."}
+    for n in (EX.MAX_SIGNALS, EX.MAX_SIGNALS + 1):
+        out.append((f"signals_{n}", _sense(signals=[
+            dict(sig, name=f"bm_sig_{i}") for i in range(n)])))
+    for n in (EX.MAX_DESCRIPTION_CHARS, EX.MAX_DESCRIPTION_CHARS + 1):
+        out.append((f"signal_description_{n}", _sense(signals=[
+            dict(sig, description="d" * n)])))
+        out.append((f"description_{n}", _sense(description="d" * n)))
+        out.append((f"publisher_{n}", _transport(publisher="p" * n)))
+    for n in (100, 101):
+        out.append((f"license_{n}", _sense(upstream=dict(
+            upstream, license="L" * n))))
+    for n in (128, 129):
+        out.append((f"ref_{n}", _sense(upstream=dict(upstream, ref="r" * n))))
+    for n in (EX.MAX_UPSTREAM_PATHS, EX.MAX_UPSTREAM_PATHS + 1):
+        out.append((f"paths_{n}", _sense(upstream=dict(
+            upstream, paths=[f"schema/p{i}.json" for i in range(n)]))))
+    for n in (240, 241):
+        out.append((f"path_{n}", _sense(upstream=dict(
+            upstream, paths=["schema/" + "p" * (n - 7)]))))
+    for n in (16, 17):
+        out.append((f"entry_{n}", _transport(entry=["bm-pipe"] + [
+            f"--flag{i}" for i in range(n - 1)])))
+    for n in (500, 501):
+        out.append((f"entry_part_{n}", _transport(entry=["bm-pipe", "x" * n])))
+    for n in (-1, 0, 5000, 5001):
+        out.append((f"settle_{n}", _transport(startup_settle_ms=n)))
+    out.append(("settle_bool", _transport(startup_settle_ms=True)))
+    out.append(("path_empty_part", _sense(upstream=dict(
+        upstream, paths=["schema//record.json"]))))
+    out.append(("path_dot_part", _sense(upstream=dict(
+        upstream, paths=["schema/./record.json"]))))
+    out.append(("entry_nul", _transport(entry=["bm-pipe", "a\x00b"])))
+    out.append(("publisher_two_lines", _transport(publisher="a\nb")))
     return [make_entry("payload", manifest, "seed:" + name, "seed")
             for name, manifest in out]
 def _chan(name, text):

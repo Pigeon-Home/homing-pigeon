@@ -2,7 +2,7 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "alarm": true,
  "bluemonday": 1,
- "head": "b0524bfbc9f3",
+ "head": "f5113b67772c",
  "kind": "survivors",
  "limit": null,
  "modules": {
@@ -157,11 +157,11 @@
   },
   "dtlsproto": {
    "broken": 0,
-   "entries": 24,
+   "entries": 25,
    "file": "runner/wire/dtlsproto.py",
-   "killed": 515,
-   "mutants": 515,
-   "reached_lines": 254,
+   "killed": 516,
+   "mutants": 516,
+   "reached_lines": 255,
    "survived": 0,
    "survivors": [],
    "targets": [
@@ -171,161 +171,13 @@
   },
   "extensions": {
    "broken": 0,
-   "entries": 66,
+   "entries": 89,
    "file": "runner/ops/extensions.py",
-   "killed": 220,
+   "killed": 241,
    "mutants": 241,
    "reached_lines": 179,
-   "survived": 21,
-   "survivors": [
-    {
-     "index": 71,
-     "line": 146,
-     "op": "compare",
-     "text": "if isinstance(signals, list) and len(signals) > MAX_SIGNALS:",
-     "verdict": "survived"
-    },
-    {
-     "index": 115,
-     "line": 257,
-     "op": "compare",
-     "text": "if not isinstance(license_, str) or len(license_) > 100 \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 124,
-     "line": 266,
-     "op": "compare",
-     "text": "if not isinstance(ref, str) or not ref or len(ref) > 128 \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 131,
-     "line": 274,
-     "op": "compare",
-     "text": "or len(paths) > MAX_UPSTREAM_PATHS:",
-     "verdict": "survived"
-    },
-    {
-     "index": 168,
-     "line": 172,
-     "op": "compare",
-     "text": "or len(sdesc) > MAX_DESCRIPTION_CHARS \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 175,
-     "line": 185,
-     "op": "compare",
-     "text": "if not isinstance(entry, list) or not entry or len(entry) > 16:",
-     "verdict": "survived"
-    },
-    {
-     "index": 180,
-     "line": 195,
-     "op": "compare",
-     "text": "or len(publisher) > MAX_DESCRIPTION_CHARS \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 191,
-     "line": 257,
-     "op": "int+1",
-     "text": "if not isinstance(license_, str) or len(license_) > 100 \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 192,
-     "line": 257,
-     "op": "int-1",
-     "text": "if not isinstance(license_, str) or len(license_) > 100 \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 195,
-     "line": 266,
-     "op": "int+1",
-     "text": "if not isinstance(ref, str) or not ref or len(ref) > 128 \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 196,
-     "line": 266,
-     "op": "int-1",
-     "text": "if not isinstance(ref, str) or not ref or len(ref) > 128 \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 200,
-     "line": 279,
-     "op": "compare",
-     "text": "if not isinstance(p, str) or not p or len(p) > 240 \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 209,
-     "line": 185,
-     "op": "int+1",
-     "text": "if not isinstance(entry, list) or not entry or len(entry) > 16:",
-     "verdict": "survived"
-    },
-    {
-     "index": 210,
-     "line": 185,
-     "op": "int-1",
-     "text": "if not isinstance(entry, list) or not entry or len(entry) > 16:",
-     "verdict": "survived"
-    },
-    {
-     "index": 214,
-     "line": 190,
-     "op": "compare",
-     "text": "or len(part) > 500:",
-     "verdict": "survived"
-    },
-    {
-     "index": 222,
-     "line": 279,
-     "op": "int+1",
-     "text": "if not isinstance(p, str) or not p or len(p) > 240 \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 223,
-     "line": 279,
-     "op": "int-1",
-     "text": "if not isinstance(p, str) or not p or len(p) > 240 \\",
-     "verdict": "survived"
-    },
-    {
-     "index": 231,
-     "line": 190,
-     "op": "int+1",
-     "text": "or len(part) > 500:",
-     "verdict": "survived"
-    },
-    {
-     "index": 232,
-     "line": 190,
-     "op": "int-1",
-     "text": "or len(part) > 500:",
-     "verdict": "survived"
-    },
-    {
-     "index": 234,
-     "line": 202,
-     "op": "int-1",
-     "text": "or not 0 <= startup_settle_ms <= 5000:",
-     "verdict": "survived"
-    },
-    {
-     "index": 238,
-     "line": 282,
-     "op": "str-empty",
-     "text": "or any(part in (\"\", \".\", \"..\") for part in p.split(\"/\")):",
-     "verdict": "survived"
-    }
-   ],
+   "survived": 0,
+   "survivors": [],
    "targets": [
     "manifest"
    ],
@@ -333,12 +185,12 @@
   },
   "jobcrypto": {
    "broken": 0,
-   "entries": 21,
+   "entries": 37,
    "file": "runner/wire/jobcrypto.py",
-   "killed": 336,
+   "killed": 342,
    "mutants": 370,
    "reached_lines": 164,
-   "survived": 34,
+   "survived": 28,
    "survivors": [
     {
      "index": 9,
@@ -362,38 +214,10 @@
      "verdict": "survived"
     },
     {
-     "index": 28,
-     "line": 270,
-     "op": "compare",
-     "text": "if len(ct_and_tag) < _TAG_LEN:",
-     "verdict": "survived"
-    },
-    {
-     "index": 35,
-     "line": 301,
-     "op": "return-none",
-     "text": "return False",
-     "verdict": "survived"
-    },
-    {
-     "index": 37,
-     "line": 303,
-     "op": "return-none",
-     "text": "return False",
-     "verdict": "survived"
-    },
-    {
      "index": 38,
      "line": 304,
      "op": "compare",
      "text": "return set(payload) <= {\"hp_enc\", \"key_id\", \"sig\"}",
-     "verdict": "survived"
-    },
-    {
-     "index": 48,
-     "line": 357,
-     "op": "compare",
-     "text": "if len(ct) < _TAG_LEN:",
      "verdict": "survived"
     },
     {
@@ -492,20 +316,6 @@
      "line": 237,
      "op": "int-1",
      "text": "n = int.from_bytes(block[12:], \"big\")",
-     "verdict": "survived"
-    },
-    {
-     "index": 231,
-     "line": 278,
-     "op": "int+1",
-     "text": "return d if r == 0 else d + b\"\\x00\"*(16-r)",
-     "verdict": "survived"
-    },
-    {
-     "index": 232,
-     "line": 278,
-     "op": "int-1",
-     "text": "return d if r == 0 else d + b\"\\x00\"*(16-r)",
      "verdict": "survived"
     },
     {
@@ -1079,7 +889,7 @@
  },
  "platform": "Linux-x86_64",
  "python": "3.13.16",
- "seconds": 86.8,
+ "seconds": 93.3,
  "seed": 0,
  "through_agent": [
   "local",
@@ -1088,5 +898,5 @@
   "stash"
  ],
  "timeout": 20,
- "when": "2026-10-27T01:18:09Z"
+ "when": "2026-10-27T01:33:18Z"
 }

@@ -68,6 +68,20 @@ facts a reader may need to cite. Git history carries the rest.
   sixth shape, the reply as a pair without a target. Third
   survivors run: 131 of 1,928; the board keeps 19, the channel
   readers 20.
+- **The survivors' third seeds: the envelope and the manifest.**
+  `crypto` gained a ciphertext of exactly the tag and one byte
+  short of it, the real tag over an empty plaintext, a nonce of 11
+  and 13 octets, each `hp_enc` member missing in turn and each
+  given a number, base64 that does not validate, the envelope's
+  member set one wider and one narrower, and `is_envelope` joins
+  its contract (a bool, never a raise, noted). `manifest` gained
+  every cap at itself and one past it (signals, descriptions, the
+  publisher, the license, the ref, the upstream paths by count
+  and by length, the entry by count and by part, the settle time
+  at both ends and as a boolean), the empty and dot path parts, a
+  NUL in an entry part, a two-line publisher: the manifest reader
+  now loses every one of its 241 mutants. Fourth survivors run:
+  104 of 1,929.
 - **The board checks run on a stepping clock.** A board sequence
   in the corpus is checked with the board's clock replaced by one
   that moves one second per reading from a fixed start, so a lease
