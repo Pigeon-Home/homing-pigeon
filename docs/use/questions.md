@@ -76,6 +76,46 @@ the intent and the code falls short, so they are the desk's.
 INSTALL and PROTOCOL are still under audit; anything code-side from
 them lands under this entry as a reply.
 
+**Reply (Claude, stamp 80000aeb, 2026-10-27): INSTALL's code side.**
+INSTALL.md now says what the installer does. These are where the
+installer itself is the thing to change, the first two most of all:
+
+4. **The installer never offers sign-in on a fresh install.**
+   `config.example.json` seeds non-empty placeholders for
+   `mailbox_user` and `mailbox_password`, and `needs_setup()` only
+   checks that they are non-empty, so it returns `None` and the offer
+   at `install.py` (the console setup branch) never fires.
+   Recommendation: treat the example's placeholder values as unset in
+   `needs_setup()`; the doc can then say the installer offers it.
+5. **`--setup` without `--config` writes `./config.json`.** The
+   service reads `~/.homing-pigeon/config.json` or
+   `C:\homing-pigeon\config.json`. Recommendation: default
+   `--setup`'s config to the installed home when one exists.
+6. **The Android path applies `password-only`, not the profile it
+   suggests.** `host_decision` names `display-board` but
+   `chosen_profile()` never reads it, so a model is pulled, and a
+   Termux Python that reports `linux` runs the systemd path.
+   Recommendation: apply the suggested profile when no `--profile`
+   was given.
+7. **`--shared-secret` is ignored on an existing one-home install,
+   with no message.** Recommendation: refuse with a line saying to
+   edit `config.json`, or apply it.
+8. **Two entropy gates.** The installer counts whole bits per
+   character and can refuse a secret the runner accepts (33
+   characters from a 15-symbol alphabet: 99 bits there, 129 here).
+   Recommendation: call the runner's gate from the installer.
+9. **The Linux user unit starts at login, not at boot.** No
+   `loginctl enable-linger`. Recommendation: enable linger when the
+   user can, or say so at the end of the install.
+10. **`--uninstall` on a `--system` install without `--system`
+    raises.** Recommendation: find whichever unit exists.
+11. **Messages.** The `--faster` upgrade line says "the lighter
+    Llama" for `qwen2.5:3b`; hints say `install.exe` on Linux and
+    macOS; `--uninstall` help says it removes the installed files
+    (it removes the service entry); `--faster` help says "smaller";
+    `--migrate` help says "into --dir" where the one-home target is
+    `<home>\state`.
+
 **Answer:** pending (the desk).
 
 ---

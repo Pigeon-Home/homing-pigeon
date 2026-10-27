@@ -32,7 +32,7 @@ The runner needs Python 3.9 or newer (`requires-python` in
 ship a system `python3` of 3.6 and carry a supported interpreter as
 a separate package -- `zypper install python311` or `dnf install
 python3.11` -- so run the installer with that interpreter
-(`python3.11 install.py`). Rocky/Alma 9, Debian 11+, Ubuntu 22.04+,
+(`python3.11 runner/ops/install.py` in a checkout). Rocky/Alma 9, Debian 11+, Ubuntu 22.04+,
 Fedora, Amazon Linux 2023 and Alpine 3 ship 3.9 or newer already.
 The platform matrix runs the proof on openSUSE Leap 15 and
 AlmaLinux 8 (with the separate interpreter), Rocky 9, Debian 12
@@ -79,10 +79,13 @@ pip3 install pigeon-home-runner
 
 ```bash
 homing-pigeon-install
+# the installer starts the service; stop it while you configure and test
+systemctl --user stop homing-pigeon
 # edit ~/.homing-pigeon/config.json — add your mailbox address + app password
 # (the installer generates a shared_secret for you and prints its key id,
 #  k-<8 hex>; give your SI the pair, the key id and the secret)
 homing-pigeon --config ~/.homing-pigeon/config.json --once
+systemctl --user start homing-pigeon
 ```
 
 ### Raspberry Pi: Pi Light
@@ -125,10 +128,11 @@ Android -- Android TV, Google TV, Fire TV, Shield -- is the one
 television family where a shell is obtainable: a sideloaded
 terminal environment gives this program a real Python, and the
 runner only needs outbound mail. There the installer proceeds
-and states the limits before copying files: no service is
-registered (keep the terminal environment running, or use its
-boot hook), no model is installed, and there is no sandbox, so
-jobs run unsandboxed as the terminal app's user. An Android
+and states the limits before copying files. Pass `--profile
+display-board` so no model is installed; keep the terminal
+environment running, or use its boot hook, since no service there
+starts the runner; and expect no sandbox, so jobs run unsandboxed as
+the terminal app's user. An Android
 environment with no shell (a signed TV app) is refused like any
 other set.
 
@@ -156,7 +160,7 @@ can live side by side.
 
 Linux (curl is always there):
 ```bash
-ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p')
 curl -sL -o pigeon.tar.gz "https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-linux-x86_64-$ver.tar.gz"
 tar xzf pigeon.tar.gz
 cd "homing-pigeon-linux-x86_64-$ver"
@@ -165,7 +169,7 @@ cd "homing-pigeon-linux-x86_64-$ver"
 Raspberry Pi (Pi Light — its own archive, ARM64 like the Pi, with
 the light profile as its baked-in default):
 ```bash
-ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p')
 curl -sL -o pigeon.tar.gz "https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-pi-light-arm64-$ver.tar.gz"
 tar xzf pigeon.tar.gz
 cd "homing-pigeon-pi-light-arm64-$ver"
@@ -179,7 +183,7 @@ the ordinary defaults.
 
 macOS (same):
 ```bash
-ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p')
 curl -sL -o pigeon.tar.gz "https://github.com/Pigeon-Home/homing-pigeon/releases/latest/download/homing-pigeon-macos-arm64-$ver.tar.gz"
 tar xzf pigeon.tar.gz
 cd "homing-pigeon-macos-arm64-$ver"
@@ -206,31 +210,37 @@ cd "homing-pigeon-windows-x86_64-$ver"
   for the account's password; service accounts like
   `NT AUTHORITY\Network Service` and gMSA names ending in `$` need
   none). A named account runs at `LIMITED` run level instead of
-  `HIGHEST`. The service, a terminal run, and `--oracle` all use the
+  `HIGHEST`. The service, `install.exe --console`, and `--oracle` all use the
   same `C:\homing-pigeon\config.json`, so there is one state dir and
   no more SYSTEM-vs-user split. Re-running `install.exe` is safe: it
-  upgrades the binaries in place and never touches `config.json` or
-  `state/`. Five commands to learn (from `C:\homing-pigeon\bin`):
+  upgrades the binaries and the project snapshot in `state/project/`
+  in place and leaves `config.json` and the rest of `state/` alone (a
+  re-run with `--faster` also rewrites the `inference` block). Six
+  commands to learn (from `C:\homing-pigeon\bin`):
   `install.exe --check` (doctor: verifies the home, the receipt, the
   task, the config, and the inference endpoint, and says what's wrong
   in plain language), `install.exe --console` (stops the task, runs
   the agent in your terminal with live logs, restarts the task on
   Ctrl+C), `install.exe --oracle` (the Oracle chat), `install.exe
-  --logs [--follow]` (tail or watch the runner log), and `install.exe
+  --logs [--follow]` (tail or watch the runner log), `install.exe
   --wipe` (backs everything up into one zip, then removes the home,
-  the task, and every scattered state dir). The less common flags:
-  `--home DIR` picks a different one-home root; `--migrate` copies
+  the task, and every scattered state dir), and `install.exe
+  --faster` (switches the local model to `qwen2.5:3b`). The less common flags:
+  `--home DIR` picks a different one-home root (`--dir` without
+  `--home` gives the legacy layout, with no receipt and no doctor); `--migrate` copies
   state found in older install locations into the one home;
   `--backup-dir DIR` and `--no-backup` steer or skip the zip that
-  `--wipe` writes; `--lines N` sets how much `--logs` prints; and
-  `--shared-secret SECRET` writes that secret into `config.json`
-  (replacing whatever is there) instead of generating one; it must
-  pass the same 128-bit entropy gate the runner applies at startup.
+  `--wipe` writes; `--lines N` sets how much `--logs` prints; and,
+  on a fresh install, `--shared-secret SECRET` writes that secret into
+  `config.json` instead of generating one (on an existing one-home
+  install, edit `config.json`); it must pass a 128-bit entropy gate at
+  least as strict as the runner's startup check.
 - **Linux:** run `./install` — registers a systemd service.
 - **macOS:** run `./install` — registers a launchd agent.
 
-Then sign in: run the app once with `homing-pigeon --setup` (or let
-`install` offer it) — Thunderbird-style browser sign-in, a fresh
+Then sign in: run the app once with `homing-pigeon --setup --config
+<the installed config.json>` (`~/.homing-pigeon/config.json`, or
+`C:\homing-pigeon\config.json` on Windows) — Thunderbird-style browser sign-in, a fresh
 shared secret shown once for you to give to your cloud SI, config
 written. No hand-edited JSON needed. If you'd rather wire it by hand,
 edit `config.json` (add your mailbox address + app password) instead, then send
@@ -299,18 +309,21 @@ and that board does not need Python either.
    reads it with no network.
 2. Run `install` (or `install.exe` on Windows, from an elevated
    PowerShell). It copies the runner binary, registers the boot-start
-   service (systemd / launchd / cron @reboot / Scheduled Task), and —
-   on a console — offers the Thunderbird-style setup: browser sign-in,
-   a fresh shared secret shown once for you to give your SI, config
-   written. No hand-edited JSON needed. On Windows everything lives in
+   service (systemd / launchd / cron @reboot / Scheduled Task), and
+   generates a shared secret, printing it with its key id. Sign-in is
+   the next step. On Windows everything lives in
    one home, `C:\homing-pigeon` (`bin/`, `config.json`, `state/`,
    `install-receipt.json`); re-running `install.exe` upgrades the
-   binaries in place without touching your config or state. The
+   binaries and the project snapshot in place and leaves your config
+   alone. The
    day-to-day commands live there too: `install.exe --check` (doctor),
    `install.exe --console` (run the agent in your terminal),
    `install.exe --oracle` (the chat), `install.exe --logs` (the log).
-3. If you skipped it (or run headless), do it later with
-   `homing-pigeon --setup`. On an existing config `--setup` offers
+3. Run the Thunderbird-style setup against the installed config:
+   `homing-pigeon --setup --config ~/.homing-pigeon/config.json`
+   (Windows: `--config C:\homing-pigeon\config.json`). Browser
+   sign-in, a fresh shared secret shown once for you to give your SI,
+   config written; no hand-edited JSON needed. On an existing config `--setup` offers
    re-login and shared-secret rotation.
 4. Prefer to wire it by hand? Edit `config.json` instead. Two ways to
    sign in:
@@ -324,8 +337,10 @@ and that board does not need Python either.
      `config.json` set `"auth": "oauth"`, put the client id in
      `oauth_client_id` (and `oauth_client_secret` if Google gave you one),
      and set `shared_secret` to a random string — that's the HMAC key your
-     SI uses to sign jobs. Then run `homing-pigeon-auth` (or
-     `python runner/wire/oauth.py --config config.json` from source): a browser
+     SI uses to sign jobs. Add `http://127.0.0.1:8765/` as a redirect URI on the client. Then
+     run `homing-pigeon --setup --config <config.json>` (pip installs
+     also have `homing-pigeon-auth`; from source, `python
+     runner/wire/oauth.py --config config.json`): a browser
      opens, you sign in and grant access, and the refresh token is stored.
      IMAP and SMTP then use XOAUTH2. Tested end to end on Windows 11.
      One gotcha: in the Cloud Console, set the OAuth consent screen to
@@ -340,8 +355,8 @@ and that board does not need Python either.
    Every secret has a name, its key id `k-<8 hex>` (PROTOCOL.md
    section 14.2): the installer prints it beside the secret it
    generates (`key id k-6ed528bf -- give your cloud SI the pair`),
-   `install --check` (the doctor) prints it for the key in
-   `config.json`, and `python3 runner/cloud/send_job.py key-id
+   on Windows `install.exe --check` (the doctor) prints it for the
+   key in `config.json`, and `python3 runner/cloud/send_job.py key-id
    --secret <secret>` recovers it from a bare secret. Hand the SI
    both; it keeps them together (`send_job.py keyring add --secret
    <secret> --runner <the runner's mailbox>`) and then signs with
@@ -359,8 +374,9 @@ and that board does not need Python either.
    unrestricted and the runner says so at startup. The signer then
    passes `--key-id grok-4` to `send_job.py`. The secret the
    installer generates for you is named too, by its fingerprint
-   (step 5 above; Q94), and `install.py --check` prints the key ids
-   this runner holds and never the values. Rotation and the policy
+   (step 5 above; Q94), and on Windows `install.exe --check` prints the key
+   ids this runner holds and never the values (elsewhere,
+   `send_job.py key-id --secret <secret>`). Rotation and the policy
    details: `docs/use/secret-rotation.md`, PROTOCOL.md section 14.
 
 **From source** (needs Python 3.9+):
@@ -375,24 +391,27 @@ and that board does not need Python either.
    and `mailbox_password` as above. Replace the `shared_secret`
    placeholder with a generated secret (`openssl rand -hex 32`) — this is
    the HMAC key your SI signs jobs with, separate from the mailbox
-   password. (`python3 ops/install.py` generates one for you if the
-   placeholder is still there.)
+   password. (The installer generates one into the config it installs
+   against if the placeholder is still there.)
 5. Test one cycle: `python3 runner.py --config config.json --once`.
-6. `python3 ops/install.py` registers the boot-start service for your
-   platform (see below).
+6. `python3 ops/install.py --config "$PWD/config.json"` registers the
+   boot-start service for your platform against the config you just
+   tested (see below). Without `--config` it installs against
+   `~/.homing-pigeon/config.json`.
 
 ### Per-platform install
 
 | Platform | Mechanism | Notes |
 |----------|-----------|-------|
-| Linux | systemd user unit (`--system` for system-wide) | `systemctl --user enable --now homing-pigeon` |
+| Linux | systemd user unit (`--system` for system-wide) | starts at login; for start at boot with no login, `loginctl enable-linger $USER` or `--system` |
 | macOS | launchd agent | `~/Library/LaunchAgents/com.homing-pigeon.runner.plist` |
 | FreeBSD | cron `@reboot` | simple; wrap in rc.d if you prefer |
 | Windows | Scheduled Task | runs at startup as SYSTEM |
 
 `install.py --dir DIR` chooses the install location (default
 `~/.homing-pigeon`; on Windows the one-home default is
-`C:\homing-pigeon`); `install.py --uninstall` removes the service.
+`C:\homing-pigeon`); `install.py --uninstall` removes the service (a `--system`
+install: `--uninstall --system`).
 
 ## Run it in a VM
 
