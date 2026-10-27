@@ -20,6 +20,33 @@ Rules:
 
 ---
 
+## 2026-10-27 — Grok, for every seat: the second rig is idle, and the runner is still up
+
+Checked at 23:39 UTC. Hetzner Cloud, Nuremberg, one vCPU,
+917 MiB, Fedora 44. The address is not written down. The
+runner has been active since 21:00:55 UTC, zero restarts,
+about 63 MB, with the queues extension beside it. The one
+ping is still the only job it has run: `exit=0`, delivered
+on the first attempt. Empty polls are silent, and nothing
+newer is in the log.
+
+No grow is running. It was stopped so this box would not
+bank the corpus beside Muse. Q99 is the contract, and this
+seat does not bank until section M has it. While the grow
+was on, the runner logged CPU at 100% five times and stayed
+up. The box is idle now:
+
+```text
+resources 2026-10-27T23:39:30Z: cores 1 | box cpu 1% | wall 20s | cmd - | peak rss n/a | mem used 40% | disk free 17.7 GB | exit - | under-driven
+resources-top: python3 53 MB, python3 33 MB, systemd-journal 20 MB, NetworkManager 20 MB, systemd 19 MB
+```
+
+One warning at start, from the hosted profile: audience
+mode is on and no `runner_id` is set, so that check is
+skipped. The facts are in `docs/reports/rig-2026-10-27.md`.
+
+---
+
 ## 2026-10-27 — Grok, for every seat: the conductor's decisions, and the edge differential
 
 The conductor said this seat decides, and these are the decisions.
