@@ -72,6 +72,9 @@ delivered body and the agent's trust in it:
     board_mail runner/ops/startup.py     handle_board_mail on one board
                                          message over a board file,
                                          through the mail rig
+    v2_mail  runner/ops/handlers.py      handle_v2_mail on one version 2
+                                         message, through the mail rig,
+                                         the process set to answer
 
 The contract each target is held to is the one its docstrings
 state, never its implementation: a bad body is refused with the
@@ -142,6 +145,7 @@ from runner.guard import filenames as FN  # noqa: E402
 from runner.guard import security as SEC  # noqa: E402
 from runner.guard import textutil as TU  # noqa: E402
 from runner.ops import extensions as EX  # noqa: E402
+from runner.ops import handlers as HA  # noqa: E402
 from runner.ops import policy as PO  # noqa: E402
 from runner.ops import queries as QU  # noqa: E402
 from runner.ops import startup as ST  # noqa: E402
@@ -1879,10 +1883,15 @@ def _query_retained(record):
 
 def _sealed_mail(subject, ident, payload, key_id):
     """A message as the sender seals it: the signed object, encrypted
-    under the subject's id, the envelope signed."""
+    under the subject's id, the envelope signed. A sender signing
+    under an additional key names it in the object (send_job.py's
+    --key-id does), so an object without a key_id member gets the
+    key's name; one that carries its own keeps it, mismatch and all."""
     import email.message as _em
     secret = SECRETS.get(key_id, SECRET) if isinstance(key_id, str) \
         else SECRET
+    if key_id and isinstance(payload, dict) and "key_id" not in payload:
+        payload = dict(payload, key_id=key_id)
     body = V.sign_payload(payload, secret)
     body = JC.encrypt_body(body, secret, ident, key_id or "", V.sign_payload)
     msg = _em.EmailMessage()
@@ -2270,6 +2279,169 @@ def check_board_mail(entry):
                 note("reply", i, words[1], _digest(reply))
             note("board", _digest(board.tasks))
             return outcome
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
+
+# ------------------------------------------------------------------
+# v2_mail: the version 2 message handler (Q86's cache and window)
+# ------------------------------------------------------------------
+
+_V2_KINDS = ("determination", "question", "answer")
+_V2_CFG = {
+    "shared_secret": SECRET,
+    "additional_secrets": {"canary-key": SENSE, "ops": OPS},
+    "mailbox_user": "runner@example.com",
+    "max_job_age_sec": 3600,
+    "protocol_v2": True,
+    "answer_only": True,
+}
+
+
+def _v2_answer_file(base, question_id):
+    try:
+        folder, path = P2._answer_path(base, question_id)
+    except ValueError:
+        return None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    except OSError:
+        return None
+
+
+def check_v2_mail(entry):
+    """v2_mail: one version 2 message -- its kind and subject id, the
+    sealed object a sender chose, the key -- through handle_v2_mail
+    with the mail rig, twice, the process set to answer. Contract:
+    the handler takes the message (True) and never raises; a
+    message it acts on or refuses is marked seen exactly once, and
+    the copy is marked once and acted on no further (Q86: recorded
+    under v2:<msg_id> in the replay cache once acted on, a stale
+    or future issued_at refused unread); at most one reply goes
+    out, only to a question, addressed to the mailbox, sealed under
+    the answer's own msg_id and opening under the key as a valid
+    answer to that question's msg_id, carrying the question's
+    local default; an answer message is filed once under its
+    question id, and a second answer to the same question does not
+    replace it; a determination sends nothing and files nothing.
+    Accepted when the message was acted on (recorded)."""
+    data = entry["data"]
+    if not isinstance(data, dict):
+        data = {"payload": data}
+    kind = data.get("kind")
+    if kind not in _V2_KINDS:
+        kind = "question"
+    ident = data.get("ident")
+    if not isinstance(ident, str) or not ident \
+            or any(c.isspace() for c in ident):
+        ident = "q.bm-job-0001"
+    payload = _stamp_issued_at(data.get("payload"))
+    if not isinstance(payload, dict):
+        payload = dict(_v2(kind), msg_id=ident, question=payload)
+    key_id = data.get("key_id") if isinstance(data.get("key_id"), str) \
+        and data.get("key_id") in SECRETS else ""
+    cfg = dict(_V2_CFG)
+    if isinstance(data.get("answerers"), list):
+        cfg["v2_answerers"] = data["answerers"]
+    if TU._lone_surrogate(payload):
+        note("gate", "lone surrogate")
+        return "refused"
+    subject = f"[HOMING-PIGEON] {kind} {ident}"
+    try:
+        raw = _sealed_mail(subject, ident, payload, key_id)
+    except ValueError as e:
+        note("gate", "unsignable", _short(e))
+        return "refused"
+    base = tempfile.mkdtemp(prefix="hp-bluemonday-v2-")
+    try:
+        secrets = R.build_secrets(cfg)
+        opts = types.SimpleNamespace(dry_run=False, no_send=False)
+        seen = {}
+        outs = []
+        for attempt in (1, 2):
+            imap, smtp = _FakeImap(), _FakeSmtp()
+            with mock.patch.object(R, "log", lambda *a, **k: None), \
+                    mock.patch.object(R, "vlog", lambda *a, **k: None):
+                got, exc = _call(HA.handle_v2_mail, cfg, imap, smtp, attempt,
+                                 raw, subject, secrets, opts, base, seen)
+            if exc is not None:
+                raise Crash("exception", "handle_v2_mail raised "
+                            f"{type(exc).__name__}: {_short(exc)}")
+            if got is not True:
+                raise Crash("contract", f"handle_v2_mail answered {got!r} "
+                            "for a version 2 subject")
+            if len(imap.marked) != 1:
+                raise Crash("contract", "the message was marked "
+                            f"{len(imap.marked)} times")
+            if len(smtp.sent) > 1:
+                raise Crash("contract", f"{len(smtp.sent)} replies went out")
+            outs.append(smtp.sent[0] if smtp.sent else None)
+        first, again = outs
+        if again is not None:
+            raise Crash("contract", "a copy of the message was answered "
+                        "again")
+        recorded = sorted(seen)
+        if seen and recorded != ["v2:" + ident]:
+            raise Crash("contract", f"the replay cache holds {recorded!r}")
+        filed = _v2_answer_file(base, payload.get("question_id")
+                                if kind == "answer" else None)
+        accepted = False
+        if first is not None:
+            if kind != "question":
+                raise Crash("contract", f"a {kind} got a reply")
+            if not seen:
+                raise Crash("contract", "a question was answered and not "
+                            "recorded")
+            if first["To"] != cfg["mailbox_user"]:
+                raise Crash("provenance", f"the answer is addressed to "
+                            f"{first['To']!r}")
+            words = str(first["Subject"]).split()
+            if len(words) != 3 or words[:2] != ["[HOMING-PIGEON]", "answer"]:
+                raise Crash("contract", f"the answer's subject is "
+                            f"{str(first['Subject'])[:60]!r}")
+            answer = _query_open_reply(first, words[2], key_id)
+            valid, exc = _call(P2.validate, answer)
+            if exc is not None:
+                raise Crash("contract", "the answer sent does not validate: "
+                            f"{_short(exc)}")
+            if answer.get("type") != "answer" \
+                    or answer.get("msg_id") != words[2] \
+                    or answer.get("question_id") != ident \
+                    or answer.get("job_id") != payload.get("job_id"):
+                raise Crash("contract", "the answer does not name the "
+                            "question it answers")
+            if answer.get("answer") != P2.local_answer_text(payload):
+                raise Crash("contract", "the answer is not the question's "
+                            "local default")
+            note("answer", _digest({k: v for k, v in answer.items()
+                                    if k != "issued_at"}))
+            accepted = True
+        elif kind == "answer" and seen:
+            if filed is None:
+                raise Crash("contract", "an answer acted on was not filed")
+            # A second answer to the same question, under another
+            # msg_id, does not replace the first.
+            other = dict(payload, msg_id=ident + "-2", answer="the other")
+            other_raw = _sealed_mail(f"[HOMING-PIGEON] answer {ident}-2",
+                                     ident + "-2", other, key_id)
+            imap, smtp = _FakeImap(), _FakeSmtp()
+            with mock.patch.object(R, "log", lambda *a, **k: None), \
+                    mock.patch.object(R, "vlog", lambda *a, **k: None):
+                _got, exc = _call(HA.handle_v2_mail, cfg, imap, smtp, 3,
+                                  other_raw, f"[HOMING-PIGEON] answer "
+                                  f"{ident}-2", secrets, opts, base, seen)
+            if exc is not None:
+                raise Crash("exception", "handle_v2_mail raised on the "
+                            f"other answer: {_short(exc)}")
+            if _v2_answer_file(base, payload.get("question_id")) != filed:
+                raise Crash("contract", "a second answer replaced the first")
+            accepted = True
+        elif filed is not None:
+            raise Crash("contract", "an answer was filed without being "
+                        "acted on")
+        note("seen", recorded, "filed" if filed else "none")
+        return "accepted" if accepted or seen else "refused"
     finally:
         shutil.rmtree(base, ignore_errors=True)
 
@@ -4685,6 +4857,112 @@ def seeds_board_mail():
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
+def seeds_v2_mail():
+    def q(**extra):
+        o = {"v": 2, "type": "question", "job_id": "bm-job-0001",
+             "msg_id": "q.bm-job-0001", "issued_at": NOW,
+             "question": "Would this job succeed on this host?",
+             "deadline_sec": 5, "local_default": "proceed",
+             "context": [{"text": "a line of context"}]}
+        o.update(extra)
+        return o
+
+    def a(**extra):
+        o = {"v": 2, "type": "answer", "job_id": "bm-job-0001",
+             "msg_id": "a.q.bm-job-0001", "question_id": "q.bm-job-0001",
+             "issued_at": NOW, "answer": "the left"}
+        o.update(extra)
+        return o
+
+    def d(**extra):
+        o = {"v": 2, "type": "determination", "job_id": "bm-job-0001",
+             "msg_id": "d.bm-job-0001", "issued_at": NOW,
+             "clean_pass": False, "expect": "fail",
+             "why": "the script references a missing path"}
+        o.update(extra)
+        return o
+
+    def entry(name, kind, ident, payload, **top):
+        data = {"kind": kind, "ident": ident, "payload": payload}
+        data.update(top)
+        return (name, data)
+
+    out = [
+        entry("question", "question", "q.bm-job-0001", q()),
+        entry("question_keyed", "question", "q.bm-job-0001", q(), key_id="ops"),
+        entry("question_canary_key", "question", "q.bm-job-0001", q(),
+              key_id="canary-key"),
+        entry("question_answerer_listed", "question", "q.bm-job-0001", q(),
+              key_id="ops", answerers=["ops"]),
+        entry("question_answerer_other", "question", "q.bm-job-0001", q(),
+              answerers=["ops"]),
+        entry("question_answerers_junk", "question", "q.bm-job-0001", q(),
+              answerers=[7, None]),
+        entry("question_default_long", "question", "q.bm-job-0001",
+              q(local_default="d" * 64)),
+        entry("question_default_spaces", "question", "q.bm-job-0001",
+              q(local_default="   hold   ")),
+        entry("question_no_context", "question", "q.bm-job-0001",
+              {k: v for k, v in q().items() if k != "context"}),
+        entry("question_stale", "question", "q.bm-job-0001",
+              q(issued_at="2020-01-01T00:00:00Z")),
+        entry("question_future", "question", "q.bm-job-0001",
+              q(issued_at="2099-01-01T00:00:00Z")),
+        entry("question_offset", "question", "q.bm-job-0001",
+              q(issued_at="2026-10-26T12:00:00+00:00")),
+        entry("question_subject_other", "question", "q.bm-job-0002", q()),
+        entry("question_type_answer", "question", "q.bm-job-0001",
+              q(type="answer")),
+        entry("question_v1", "question", "q.bm-job-0001", q(v=1)),
+        entry("question_deadline_over", "question", "q.bm-job-0001",
+              q(deadline_sec=99)),
+        entry("question_long", "question", "q.bm-job-0001",
+              q(question="w" * 501)),
+        entry("question_id_unsafe", "question", "q.bm-job-0001",
+              q(msg_id="../x")),
+        entry("question_job_unsafe", "question", "q.bm-job-0001",
+              q(job_id="../x")),
+        entry("question_extra", "question", "q.bm-job-0001",
+              q(note="x", nested={"a": [1]})),
+        entry("question_sig", "question", "q.bm-job-0001", q(sig="0" * 96)),
+        entry("question_key_mismatch", "question", "q.bm-job-0001",
+              q(key_id="ops"), key_id="canary-key"),
+        entry("answer", "answer", "a.q.bm-job-0001", a()),
+        entry("answer_keyed", "answer", "a.q.bm-job-0001", a(), key_id="ops"),
+        entry("answer_long", "answer", "a.q.bm-job-0001", a(answer="a" * 500)),
+        entry("answer_over", "answer", "a.q.bm-job-0001", a(answer="a" * 501)),
+        entry("answer_empty", "answer", "a.q.bm-job-0001", a(answer="   ")),
+        entry("answer_question_unsafe", "answer", "a.q.bm-job-0001",
+              a(question_id="../x")),
+        entry("answer_no_question", "answer", "a.q.bm-job-0001",
+              {k: v for k, v in a().items() if k != "question_id"}),
+        entry("answer_stale", "answer", "a.q.bm-job-0001",
+              a(issued_at="2020-01-01T00:00:00Z")),
+        entry("answer_subject_other", "answer", "a.q.bm-job-0009", a()),
+        entry("answer_type_question", "answer", "a.q.bm-job-0001",
+              a(type="question")),
+        entry("determination", "determination", "d.bm-job-0001", d()),
+        entry("determination_unknown", "determination", "d.bm-job-0001",
+              d(expect="unknown")),
+        entry("determination_proceed", "determination", "d.bm-job-0001",
+              d(expect="proceed")),
+        entry("determination_clean", "determination", "d.bm-job-0001",
+              d(clean_pass=True)),
+        entry("determination_why_over", "determination", "d.bm-job-0001",
+              d(why="w" * 501)),
+        entry("determination_stale", "determination", "d.bm-job-0001",
+              d(issued_at="2020-01-01T00:00:00Z")),
+        entry("determination_subject_other", "determination", "d.bm-job-0002",
+              d()),
+        entry("payload_list", "question", "q.bm-job-0001", [1, 2]),
+        entry("payload_text", "question", "q.bm-job-0001", "which path"),
+        entry("payload_empty", "question", "q.bm-job-0001", {}),
+        entry("ident_long", "question", "q" * 200, q(msg_id="q" * 200)),
+        entry("ident_dot", "question", ".", q(msg_id=".")),
+    ]
+    return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
+
+
 # ------------------------------------------------------------------
 # Mutators: the job-fuzz vocabulary, on text and on JSON values
 # ------------------------------------------------------------------
@@ -5681,6 +5959,9 @@ TARGETS = {
     "board_mail": {"files": [_src("ops", "startup.py"), _src("wire", "board.py"),
                              _src("runner.py"), _src("wire", "mailbox.py")],
                    "check": check_board_mail, "seeds": seeds_board_mail},
+    "v2_mail": {"files": [_src("ops", "handlers.py"),
+                          _src("wire", "protocol_v2.py"), _src("runner.py")],
+                "check": check_v2_mail, "seeds": seeds_v2_mail},
 }
 
 

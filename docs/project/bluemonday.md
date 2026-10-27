@@ -110,6 +110,7 @@ peer on the wire reaches first.
 | 15 | `names` | `runner/guard/filenames.py` `validate_file_name` and `runner/runner.py` `_safe_job_id`: one name a sender chose, before the six file-name rules (the same on every platform) and the job-id rule; an accepted file name is staged under a scratch work directory on the host (`_staged_dest`) | in the corpus |
 | 16 | `query` | `runner/ops/queries.py` `handle_query_mail` through the mail rig: one query message (its subject id, the sealed object a sender chose, under a key) over the retained record of a job as the runner saved it or as a crash left it; the reply opened and held to the queries contract, the record held to spent and saved_at, a copy taken without a second reply | in the corpus |
 | 17 | `board_mail` | `runner/ops/startup.py` `handle_board_mail` through the mail rig: one board message (`task_submit`, `task_request`, `task_result`, `task_approve`; its subject id, the sealed object, the key) over a board file as the runner saved it or as a crash left it; the ack or offer opened and held to section 13's shapes, the reply routed by the signed body's `reply_to` or to the mailbox, the board file read back, a copy taken | in the corpus |
+| 18 | `v2_mail` | `runner/ops/handlers.py` `handle_v2_mail` through the mail rig, the process set to answer: one version 2 message (determination, question or answer; its subject id, the sealed object, the key); the answer sent opened and validated against the question, the answer filed once, the copy dropped by the replay cache and a stale message refused unread (Q86) | in the corpus |
 
 Not targets, and why: the Oracle's reading of its model's replies
 (`runner/ops/oracle_tools.py`), the config loader and the platform
@@ -242,6 +243,17 @@ never files a refusal as a crash.
   subject); the board file reads back as a dict of dict tasks
   after the message and as the board in memory; a copy of the
   message is taken without raising.
+- **The version 2 message** (`v2_mail`). The handler takes the
+  message and never raises; a message acted on or refused is
+  marked seen exactly once, and its copy is marked once and acted
+  on no further (the replay cache under `v2:<msg_id>`, a stale or
+  future `issued_at` refused unread: Q86); at most one reply goes
+  out, only to a question, to the mailbox, sealed under the
+  answer's own msg_id and opening under the key as a valid answer
+  naming the question's msg_id and job, carrying the question's
+  local default; an answer message is filed once under its
+  question id and a second answer to the same question does not
+  replace it; a determination sends nothing and files nothing.
 
 A contract added later replays over every entry already kept; an
 old entry that fails a new contract is a crash file and a Q, never

@@ -14,6 +14,16 @@ facts a reader may need to cite. Git history carries the rest.
   held to section 13's shapes, routed by the signed body's
   `reply_to` or to the mailbox, the board file read back, a copy
   taken; fifty-five seeds.
+- **blueMonday's eighteenth target, `v2_mail`.** One version 2
+  message -- determination, question or answer, its subject id, the
+  sealed object, the key -- through `handle_v2_mail` with the mail
+  rig, the process set to answer: the answer sent opened and
+  validated against the question, the answer filed once and not
+  replaced by a second, the copy dropped by the replay cache, a
+  stale message refused unread (Q86 under the instrument); a sender
+  signing under an additional key names it in the object, as the
+  sender does, so the keyed seeds of the three mail targets reach
+  their readers. Forty-four seeds.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 - **A coverage measurement of main at 13d4aac.** Statements
   99.5% (143 missed of 30412), branches 97.4% (311 of 12026),
