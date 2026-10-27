@@ -4,11 +4,24 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.55 - 2026-10-26
+## 3.13.56 - 2026-10-26
 
 - **local, the grow the crash cut off (Q80).** One steered grow
   of 20,000 rounds kept one (`t_insert`). No crash. Still live:
   `t_case`, `t_insert`, `d_random_byte`. `board_ops` has none.
+- **The survivors' fifth seeds.** A raw tab, a unit separator and
+  a run of spaces dropped into a signed body (the strip keeps the
+  tab and drops the rest below 32); the signers' bodies are noted,
+  so a flag of the serializer is a reader of its own; the board
+  notes carry the clocks now that the clock steps, so a claim's
+  stamp left behind by a re-offer is seen; the channel inbox
+  checker notes every file written under the channel root, so a
+  path the module spells differently is seen. Sixth survivors
+  run: 101 of 1,950.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.55 - 2026-10-26
+
 - **The survivors' fourth seeds, and a seed merge by id.** The
   board's lease at exactly one second is not expired one second
   on and half a second is (the board checks run on a stepping
@@ -21,15 +34,6 @@ facts a reader may need to cite. Git history carries the rest.
   name, so a seed whose shape changed under a name the corpus
   already holds is added beside the old one. Fifth survivors run:
   103 of 1,929.
-- **The survivors' fifth seeds.** A raw tab, a unit separator and
-  a run of spaces dropped into a signed body (the strip keeps the
-  tab and drops the rest below 32); the signers' bodies are noted,
-  so a flag of the serializer is a reader of its own; the board
-  notes carry the clocks now that the clock steps, so a claim's
-  stamp left behind by a re-offer is seen; the channel inbox
-  checker notes every file written under the channel root, so a
-  path the module spells differently is seen. Sixth survivors
-  run: 101 of 1,950.
 - **v3.13.54's tag build was red on build-windows before the
   stepping clock landed; its rerun published the release from the
   same head.**
