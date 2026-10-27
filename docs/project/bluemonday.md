@@ -316,9 +316,12 @@ record says where.
   `manifest`, and `local`, from those targets' own mutators.
   No crashes. The continuous grow carries the dictionary from
   here.
-- **Phase 5:** live captures, scrubbed to invented names, as seeds
-  (the conductor decides what is captured); the mutation survivors
-  on the readers.
+- **Phase 5 (in flight, 2026-10-26):** the posted capture's
+  shape, not its bytes, is a seed (Q74): a subject line and a
+  sealed envelope, rebuilt under the corpus secret with invented
+  ids. Both verifiers accept it. `local` refuses the job, which
+  is a sensor inbox. The capture's own ciphertexts stay where
+  they were posted. The mutation survivors are not started.
 - **Then:** every reader the product adds, in the release that adds
   it; the plan revised at each phase's close with what the corpus
   taught.

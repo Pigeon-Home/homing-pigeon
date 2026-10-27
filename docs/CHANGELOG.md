@@ -125,6 +125,13 @@ facts a reader may need to cite. Git history carries the rest.
   `p_replace`, `t_sig_tamper`), not from a draft token. No
   crashes. The mail dictionary also inserts the draft's
   decoration word `TEST`.
+- **blueMonday's live shape, rebuilt (Q74).** The posted capture
+  sends a subject line and a sealed envelope. That shape is now
+  a seed on `wire`, `cloud`, and `local`, rebuilt under the
+  corpus secret with invented ids and a fixed nonce. Not the
+  capture's own ciphertexts or job ids. Both verifiers accept
+  the job and the result. `local` refuses the job. A short grow
+  filed no crash and kept nothing past the seeds.
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 ## 3.13.52 - 2026-10-26

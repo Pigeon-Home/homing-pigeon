@@ -33,6 +33,30 @@ Rules:
 
 ---
 
+## Q74 (Grok to the desk, at the conductor's word, 2026-10-26): the posted capture's shape, rebuilt, is a seed
+
+The conductor said go. Phase 5 is live captures as seeds, scrubbed
+to invented names. The capture already posted under
+`docs/reports/live-2026-10-25/` is a subject line and a sealed
+`hp_enc` envelope, a job and a result. Its ciphertexts were made
+under the rig's secret, and its job ids are the campaign's own.
+Neither goes into the corpus.
+
+The seeds are that shape rebuilt: `[HOMING-PIGEON] job bm-live-0001`
+and the result subject, a sealed body under the corpus secret, the
+nonce fixed so the id does not move. `wire` and `cloud` each gained
+both, and both accept them. `local` gained the job and refuses it:
+that inbox is sensor alerts, not jobs. A grow of 4,000 rounds on
+`wire` and `cloud`, and 2,000 on `local`, filed no crash and kept
+nothing past the seeds. No new arc.
+
+**Answer (Grok, 2026-10-26):** the shape is in. The capture's
+bytes are not. The mutation survivors are not started.
+
+**Applied in:** this commit.
+
+---
+
 ## Q73 (Grok to the desk, at the conductor's word, 2026-10-26): 20,000 rounds under the grammar kept four entries and no crashes
 
 The conductor said go. Q72 left a longer grow as what would call

@@ -407,7 +407,8 @@ are in the corpus, the sequence contract is on `local` as of
 Q70, the corpus is replayed under the simulated Windows surface
 as of Q71, and the mutators carry the IETF drafts' grammar as
 of Q72, saturated at 20,000 rounds on the readers it inserts
-into as of Q73), and
+into as of Q73, and the posted capture's shape is a seed,
+rebuilt, as of Q74), and
 `runner/tests/test_bluemonday_corpus.py` replays it on every leg.
 The loop:
 

@@ -1514,6 +1514,24 @@ def _text_bodies():
          + V.sign_payload(_job(job_id="bm-draft-0001", script="date\n"),
                           SECRET)),
     ]
+    # The live capture's shape (docs/reports/live-2026-10-25/),
+    # rebuilt. Invented ids, the corpus secret, a fixed nonce.
+    # Not the capture's own bytes: those were sealed under the
+    # rig's secret.
+    with _FixedNonces():
+        job_inner = V.sign_payload(
+            _job(job_id="bm-live-0001", script="true"), SECRET)
+        result_inner = V.sign_payload(
+            {"v": 1, "type": "result", "job_id": "bm-live-0001",
+             "kind": "exec", "exit_code": 0}, SECRET)
+        out.append(("live_job", TR.format_envelope(
+            "[HOMING-PIGEON] job bm-live-0001",
+            JC.encrypt_body(job_inner, SECRET, "bm-live-0001", "",
+                            V.sign_payload))))
+        out.append(("live_result", TR.format_envelope(
+            "[HOMING-PIGEON] result bm-live-0001",
+            JC.encrypt_body(result_inner, SECRET, "bm-live-0001", "",
+                            V.sign_payload))))
     return out
 
 
@@ -1670,6 +1688,13 @@ def seeds_local():
         ("spaces", "   \n\t"),
         ("not_json", "hello pigeon"),
     ]
+    with _FixedNonces():
+        job_inner = V.sign_payload(
+            _job(job_id="bm-live-0001", script="true"), SECRET)
+        texts.append(("live_job", TR.format_envelope(
+            "[HOMING-PIGEON] job bm-live-0001",
+            JC.encrypt_body(job_inner, SECRET, "bm-live-0001", "",
+                            V.sign_payload))))
     payloads = [
         ("alert_now", alert),
         ("alert_low", dict(alert, severity="low")),

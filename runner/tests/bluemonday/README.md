@@ -10,7 +10,9 @@ One JSON-lines file per target, grown by
 surface; a changed answer is a differential (Q71). The surface
 does not swap in `ntpath`. The mutators also insert the IETF
 drafts' own member names and boundaries, and the drafts'
-examples are seeds (Q72).
+examples are seeds (Q72). The posted capture's shape, a subject
+and a sealed envelope rebuilt under the corpus secret, is a seed
+too (Q74). The capture's own bytes are not.
 
 | file           | reader held to its contract                                   |
 |----------------|---------------------------------------------------------------|
