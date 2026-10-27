@@ -202,6 +202,11 @@ tenant's dead-letter list. Tenant records live in the `TENANTS` KV
 namespace (`si_token_sha256`, `runner_token_sha256`, `hmac_secret`,
 `quota`), or in the four secrets `TENANT`, `SI_TOKEN`,
 `RUNNER_TOKEN`, `HMAC_SECRET` for a one-tenant deployment.
+A one-tenant deployment of this contract was run on
+2026-10-27: a stranger gets 401 on the configured tenant and
+404 on any other, and a signed ping came back exit 0 with an
+encrypted result. The record, tokens left out, is
+`docs/reports/queues-2026-10-27.md`.
 
 Runner config:
 
