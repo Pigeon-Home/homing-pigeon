@@ -56,7 +56,7 @@
   
 - **Other** A distributed ledger for file flow and boards, answers,
   onion, or BitTorrent and/or blockchain execution broker with embed
-  wallet.
+  wallet link key_id.
   
 - **An Oracle dashboard** on loopback, to "watch" it think
 
