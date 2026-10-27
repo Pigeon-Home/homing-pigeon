@@ -27,7 +27,8 @@ The questions are `docs/use/questions.md`. The plan is
 | Q78 | a non-finite priority on disk poisoned save | [`880071d`](https://github.com/Pigeon-Home/homing-pigeon/commit/880071d) |
 | Q79 | a non-finite float under any other key | [`94c99d9`](https://github.com/Pigeon-Home/homing-pigeon/commit/94c99d9) |
 | Q80 | local, the grow the crash cut off | [`f2388fb`](https://github.com/Pigeon-Home/homing-pigeon/commit/f2388fb) |
-| Q81 | the two that were still live | the commit that adds this row |
+| Q81 | the two that were still live | [`303ab27`](https://github.com/Pigeon-Home/homing-pigeon/commit/303ab27) |
+| Q82 | local, again | the commit that adds this row |
 
 Q74 does not copy the capture. The capture stays at
 `docs/reports/live-2026-10-25/`. The seeds are invented ids
