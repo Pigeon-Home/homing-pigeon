@@ -4,11 +4,21 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.57 - 2026-10-26
+## 3.13.58 - 2026-10-26
 
+- **A fetched-status check names its reason.** Six compares of
+  `(status, pinned_by)` against `fetched` in the extension-sources
+  tests go through `assertFetched` first, so a loaded runner's
+  refused write reports its detail, problems and log lines instead
+  of `'partial' != 'fetched'` (the v3.13.57 tag build's
+  build-windows leg, green on its rerun).
 - **local, a third time (Q83).** One steered grow of 20,000
   rounds kept one (`t_brace`). No crash. `t_brace` and
   `t_insert` are still live.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.57 - 2026-10-26
+
 - **local, again (Q82).** The only target still live. One
   steered grow of 20,000 rounds kept one (`t_insert`). No
   crash. `t_brace` and `t_insert` are still live.
