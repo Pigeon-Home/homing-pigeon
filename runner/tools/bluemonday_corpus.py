@@ -2271,6 +2271,14 @@ def seeds_board_ops():
         ("file_is_a_list", {"file": "[1, 2, 3]", "ops": [["submit", _task()]]}),
         ("file_is_garbage", {"file": "{not json", "ops": [
             ["submit", _task()], ["offer", "worker-a", ["shell"], "", {}]]}),
+        # A non-finite priority already on disk used to stay in
+        # memory, and the next save then failed, so the file and
+        # the board drifted.
+        ("nonfinite_on_disk", {"file": _board_file(
+            _task("bm-nan", priority=float("nan")),
+            _task("bm-inf", priority=float("inf")),
+            _task("bm-ninf", priority=-float("inf"))),
+         "ops": [["submit", _task()]]}),
         ("file_task_not_dict", {"file": json.dumps({"bm-task-0001": 7,
                                                     "bm-task-0002": _task(
                                                         "bm-task-0002")}),

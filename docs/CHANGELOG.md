@@ -6,6 +6,13 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.54 - 2026-10-26
 
+- **A non-finite priority already on the board poisoned every
+  later save (Q78).** `submit` refuses `NaN` and `Infinity`.
+  `load` used to keep them, and `save` (`allow_nan=False`)
+  then failed, so a good submit beside a poisoned task never
+  reached disk. `load` now drops a task whose priority is not
+  finite. A `board_ops` seed plants the three and submits a
+  good task.
 - **blueMonday's live mutators, a third grow (Q77).** Another
   steered grow of 20,000 rounds. `dtls` kept one
   (`d_random_byte`, one new arc). `local` kept one (`t_insert`).

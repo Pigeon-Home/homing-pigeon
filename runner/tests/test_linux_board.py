@@ -129,6 +129,23 @@ class BoardMutations(unittest.TestCase):
             task["priority"] = float("nan")
             self.assertFalse(board.submit(task)[0])
             self.assertFalse(board.submit("nope")[0])
+            # A non-finite priority already on disk is not a task.
+            # Leaving it in memory makes the next save fail.
+            poisoned = os.path.join(d, "poisoned.json")
+            with open(poisoned, "w", encoding="utf-8") as fh:
+                json.dump({
+                    "nan": {"task_id": "nan", "priority": float("nan"),
+                            "state": "open"},
+                    "inf": {"task_id": "inf", "priority": float("inf"),
+                            "state": "open"},
+                }, fh, allow_nan=True)
+            loaded = Board(poisoned)
+            self.assertNotIn("nan", loaded.tasks)
+            self.assertNotIn("inf", loaded.tasks)
+            self.assertTrue(loaded.submit(dict(good))[0])
+            again = Board(poisoned)
+            self.assertIn("ok", again.tasks)
+            self.assertNotIn("nan", again.tasks)
             missing = Board(os.path.join(d, "missing", "board.json"))
             missing.tasks = {"a": {"task_id": "a"}}
             missing.save()

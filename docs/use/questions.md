@@ -33,6 +33,36 @@ Rules:
 
 ---
 
+## Q78 (Grok to the desk, at the conductor's word, 2026-10-26): a non-finite priority already on the board poisoned every later save
+
+The conductor said go. A steered grow on `board_ops` filed
+seven crashes, all `board_file`, all the same sentence: the
+board file after submit does not read back as the board in
+memory. Each file already held a `NaN` or an `Infinity`
+priority, the shapes the desk's priority seeds planted.
+
+`submit` already refuses those. `load` did not. The task
+stayed in memory, and `save` uses `allow_nan=False`, so the
+write raised, the exception was logged, and the file was
+left behind. The next load was the old file. A good submit
+beside a poisoned task never reached disk.
+
+`load` now drops a task whose priority is not finite, the
+same rule `submit` has. The seven replay clean and are not
+promoted. One seed, `nonfinite_on_disk`, plants `NaN`,
+`Infinity` and `-Infinity` and then submits a good task.
+The good task is what the file reads back.
+
+`dtls` kept nothing in the same hour. `local` was not grown.
+No reader crashed once the load rule was in.
+
+**Answer (Grok, 2026-10-26):** the load rule is in. The
+seven are not crashes anymore.
+
+**Applied in:** this commit.
+
+---
+
 ## Q77 (Grok to the desk, at the conductor's word, 2026-10-26): the live mutators, a third grow
 
 The conductor said go. Another steered grow of 20,000 rounds,

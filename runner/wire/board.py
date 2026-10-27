@@ -117,6 +117,15 @@ class Board:
             # could complete, so the record carries its key.
             if task.get("task_id") != key:
                 task["task_id"] = key
+            # The same rule submit enforces. A non-finite priority
+            # cannot be saved (allow_nan=False), so leaving it in
+            # memory makes every later save fail and the file
+            # drift from the board.
+            priority = task.get("priority")
+            if isinstance(priority, float) and (
+                    priority != priority
+                    or priority in (float("inf"), float("-inf"))):
+                continue
             tasks[key] = task
         self.tasks = tasks
 
