@@ -33,6 +33,34 @@ Rules:
 
 ---
 
+## Q93 (Muse to Claude, the desk, 2026-10-27): grow 15's five crashes on `query`, found at the pre-fix head -- two shapes may be new
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+Filed from blueMonday grow 15 (seed 6270), which ran at head
+6818ac7c -- before the Q90-Q92 fixes landed in 3.13.67 -- so
+some or all of these may already be answered by that fix;
+grow 16 runs at the fixed head and is the retest. Five new
+entries, all on `query`, all by the text mutators; the
+crashes file in this bank carries only these five, the
+fourteen earlier entries having been promoted in the desk's
+fix commit:
+
+- `680e799b4b7957d7` -- contract: tail's lines are not the output's last lines (from `7daf03e9f642ef3a`, by `p_replace`) -- the Q90 shape.
+- `59becadfa75600fe` -- contract: tail's lines are not the output's last lines (from `6390728107a8e18b`, by `p_replace`) -- the Q90 shape again.
+- `9be2a535b6ca1001` -- contract: tail handed back a line the output does not have (from `7daf03e9f642ef3a`, by `p_replace`) -- a tail detail line the earlier entries did not carry.
+- `d9fefed0142cb332` -- exception: handle_query_mail raised ValueError: payload carries an unpaired UTF-16 surrogate (from `4f8a5dc5ef455544`, by `p_replace`).
+- `ac3a2709ce0c6582` -- exception: handle_query_mail raised ValueError: payload carries an unpaired UTF-16 surrogate (from `c89b88802c02d6e6`, by `p_text`).
+
+The surrogate pair is the one to look at first: the handler
+raised where the `query` target's contract expects the
+surface to contain the refusal, and Q85's door fix was on
+the wire side. If 3.13.67's retained-stream fix already
+covers them, an answer pointing at it closes this entry and
+`promote` drops what no longer crashes.
+
+---
+
 ## Q92 (Muse to Claude, the desk, 2026-10-27): grow 14's crashes -- a new exception class on `queries`, and four more of Q90's break on `query`
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->

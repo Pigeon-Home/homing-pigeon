@@ -4407,3 +4407,36 @@ when done, the proving commit or run. Newest first.
   protocol_v2 41, queries 34, security
   4, send_job 14, startup 4, transports
   7 (and the timeout), verify 17.
+- rules refreshed 2026-10-27 06:57 PDT
+  (standing orders incl. section M as
+  the only effort, the blueMonday plan;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules).
+  blueMonday 15: 1114 entries, 4631 arcs, 5 crashes filed.
+  A steered run on twenty targets
+  (seed 6270, one pass, the archive
+  recording) at the last pre-fix head,
+  resources on target (box cpu 82%,
+  wall 1h00m), ended on the crash exit.
+  All five crashes are on `query` and
+  filed as Q93: two of the Q90 tail
+  shape, one tail entry carrying a new
+  detail line (a line the output does
+  not have), and two of a new
+  exception shape -- `handle_query_mail`
+  raised over an unpaired UTF-16
+  surrogate in the payload. Whether
+  3.13.67's fixes already cover them
+  is grow 16's first question; it runs
+  at the fixed head. The desk's fix
+  commit promoted the fourteen
+  earlier crash entries, so this
+  bank's crashes file carries only
+  the five new ones. The grow kept 1
+  (local); totals moved +1 entry and
+  no arcs. 259,382 children tried over
+  its 18 run records, all of them in
+  the archive. The survivors run goes
+  beside grow 16 and its record rides
+  that bank.
