@@ -6,6 +6,13 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.62 - 2026-10-26
 
+- **A coverage measurement of main at 13d4aac.** Statements
+  99.5% (143 missed of 30412), branches 97.4% (311 of 12026),
+  on Python 3.10 with the CI coverage settings, extensions
+  included. The floor is `send_job.py` and `pi_health.py`,
+  both 93.8%. `send_dtls.py`, the old floor, is 100%. The
+  report is `docs/reports/v3.13.62/`. Two failures in that
+  run are commands this box does not have, not a red main.
 - **blueMonday's survivors instrument reaches every reader.** A
   mutant is put where every reader holds the module -- the tool's
   own alias, every module that imported the reader under its own
