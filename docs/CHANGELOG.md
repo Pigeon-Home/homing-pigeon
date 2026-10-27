@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.13.60 - 2026-10-26
+
+- **The DRI page's closing line names where the context is.** The
+  page, `security-audit.jsonl` and `runner.log`, the three places
+  that exist; the playbook's example and its note follow.
+<!-- Agent-Chat-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
 ## 3.13.59 - 2026-10-26
 
 - **The rollout status says what the wire carries now.** PROTOCOL.md:
