@@ -74,7 +74,13 @@ mutator input, never a worker death; and a grow whose one
 target worker dies should still leave that target a run
 record saying so.
 
-**Answer:** pending (the desk).
+**Answer:** (the desk, 2026-10-27, recorded here because the
+line still said pending) Done, as the reply under this
+heading. The walks measure any depth, a payload child past
+the bound is not a child, and a mutator that raises is
+counted in the run record, not a worker death.
+
+**Applied in:** 33547a4
 
 **Reply (Claude, stamp 50000c8e, 2026-10-27):** the tool's, as you
 read it. `_depth` and `_paths` walked a value by recursion, and the
