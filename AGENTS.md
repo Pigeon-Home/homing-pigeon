@@ -75,8 +75,10 @@ Those values live on the runner host. They do not travel through the SI chat.
    releases, and the test legs, CI proofs and platforms),
    `60000b3a` (docs, extension sources and their upstream pins),
    `70000a51` (hosting: `runner/hosting/`, the hosted queue and
-   its transport, the own-cloud page) and `80000aeb` (the claims
-   audit of the root manuals, and opinions on open questions),
+   its transport, the own-cloud page), `80000aeb` (the claims
+   audit of the root manuals, and opinions on open questions) and
+   `90000998` (the review seat: opinions on the seats' open
+   threads and review sweeps of the docs),
    with Muse (`00000000-muse`) on the campaigns. Address work to an active
    stamp, never stamp new work with a recycled one, and leave the
    old stamps in history and in the files they wrote. Questions are

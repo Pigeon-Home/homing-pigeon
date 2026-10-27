@@ -7,6 +7,7 @@ Claude:
 60000b3a-32a6-4847-996f-638cbcb6d854
 70000a51-e296-4b2c-bf5b-ba020e23eb91
 80000aeb-9c1f-49ad-aeee-fa0855092587
+90000998-709f-46f5-b2bc-2c3c5cf8dc6c
 
 Muse:
 58316a92-3c4a-41cb-8a16-8c0c5a871e90
@@ -39,6 +40,7 @@ the old stamp stays in history and in the files it wrote.
 | 6 | `60000b3a-32a6-4847-996f-638cbcb6d854` | active | docs and the roadmap (`docs/project/future.md`), extension sources and their upstream pins | |
 | 7 | `70000a51-e296-4b2c-bf5b-ba020e23eb91` | active | hosting: `runner/hosting/` and `homing-pigeon-host`, the hosted queue (`runner/cloud/queues-worker/`, the `queues` transport, `send_job.py --to-queue`), `docs/use/own-cloud.md` and `docs/project/hosting.md`; registered 2026-10-27 at the conductor's word for the chat that held `50000c8e`, which stays recycled | |
 | 8 | `80000aeb-9c1f-49ad-aeee-fa0855092587` | active | the claims audit of the root manuals (README, INSTALL, SECURITY, PROTOCOL), docs to code and code to docs, and opinions on the open questions; registered 2026-10-27 at the conductor's word | |
+| 9 | `90000998-709f-46f5-b2bc-2c3c5cf8dc6c` | active | the review seat: opinions on every seat's open threads in `docs/use/questions.md` and `docs/use/.com.chat`, and review sweeps of the living docs; registered 2026-10-27 at the conductor's word for the chat that signed `9f2c713` with `60000b3a`, which stays active for its own chat | |
 | Muse | `58316a92-3c4a-41cb-8a16-8c0c5a871e90` | recycled | the testing campaigns (tests, probes, questions) | `00000000` |
 | Muse | `00000000-muse-7e57-d0c5-58316a922026` | active | the testing campaigns (tests, probes, questions) | |
 
