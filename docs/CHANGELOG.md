@@ -29,6 +29,10 @@ facts a reader may need to cite. Git history carries the rest.
 - **Claims audits** of the README, SECURITY.md, INSTALL.md and
   PROTOCOL.md against the code; Q98 carries the code-side findings.
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+- **One command from nothing to a hosted pipe.** `homing-pigeon-host
+  up --queue URL` writes the queues transport into the blob with the
+  runner token from the environment, and `--secret-env` passes the
+  shared secret the Worker already holds; no hand-written blob.
 
 ## 3.14.4 - 2026-10-27
 

@@ -20,8 +20,10 @@ command; the design is `docs/project/hosting.md`.
   write) or DigitalOcean (API, Personal access token, write scope).
 - The token in an environment variable. It is read from there and
   never written anywhere: `export FLY_API_TOKEN=...`.
-- A blob file: the runner's configuration in one JSON object. The
-  minimum is a transport. With a mailbox:
+- A transport. With the hosted queue (`docs/extend/transports.md`,
+  "Queues") there is nothing to write: `--queue` below sets it up.
+  With a mailbox, a blob file, the runner's configuration in one
+  JSON object:
 
   ```json
   {"mailbox_user": "runner@example.test",
@@ -29,21 +31,6 @@ command; the design is `docs/project/hosting.md`.
    "imap_host": "imap.example.test", "smtp_host": "smtp.example.test",
    "workspace_root": "/data/work"}
   ```
-
-  With the hosted queue (`docs/extend/transports.md`, "Queues"):
-
-  ```json
-  {"transports": ["queues"],
-   "transport_queues": {"url": "https://hp.example.workers.dev/t/you",
-                        "token": "the runner token"},
-   "workspace_root": "/data/work"}
-  ```
-
-  The runner token goes in the blob as `token`. The machine runs
-  the runner as a system service, which sets no environment of
-  its own, so `token_env` would name a variable that is empty
-  there. The blob is written 0600 and already carries the shared
-  secret, so the token sits with the other secret it travels with.
 
   Leave `shared_secret` out and one is generated and printed once.
   A blob may carry only the keys in `install.CONFIG_BLOB_KEYS`:
@@ -53,6 +40,30 @@ command; the design is `docs/project/hosting.md`.
   and the result view are the profile's and are refused in a blob.
 
 ## The command
+
+With the hosted queue, the runner, the Worker URL and the token
+arrive together:
+
+```bash
+export FLY_API_TOKEN=...  HP_RUNNER_TOKEN=...  HP_SECRET=...
+homing-pigeon-host up --provider fly --token-env FLY_API_TOKEN \
+    --tenant you --region iad --version <release> \
+    --queue https://hp.example.workers.dev/t/you --secret-env HP_SECRET
+```
+
+`--queue` writes `transports: ["queues"]` and the queue block into
+the blob, with the runner token read from `HP_RUNNER_TOKEN` (or
+`--queue-token-env NAME`). The token goes into the blob itself: the
+machine runs the runner as a system service, which has no
+environment of its own, and the blob is written 0600 beside the
+shared secret. `--secret-env` names the shared secret the Worker
+already holds as `HMAC_SECRET`; the two must be the same value, or
+the Worker refuses every job the runner would accept. Leave it out
+and a secret is generated, printed once, and the command reminds
+you to give the Worker the same one. `--queue` also works on
+`redeploy` and `rotate`, and on top of a `--blob`.
+
+With a mailbox:
 
 ```bash
 homing-pigeon-host up --provider fly --token-env FLY_API_TOKEN \

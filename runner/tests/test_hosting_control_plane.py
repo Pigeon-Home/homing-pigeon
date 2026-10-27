@@ -353,6 +353,80 @@ class CliTest(unittest.TestCase):
         self.assertEqual(len(sent["shared_secret"]), 64)
         self.assertIn(sent["shared_secret"], out.getvalue())
 
+    def test_up_queue_writes_the_transport_into_the_blob(self):
+        with open(self.blob, "w", encoding="utf-8") as fh:
+            json.dump({}, fh)
+        os.environ["HP_TEST_RUNNER_TOKEN"] = "runner-token-alice"
+        os.environ["HP_TEST_SECRET"] = "e" * 16 + "f" * 48
+        try:
+            http = Player("fly", ["create-app-ok", "create-machine-ok"])
+            import io
+            from contextlib import redirect_stdout
+            out = io.StringIO()
+            with redirect_stdout(out):
+                rc = cli.cmd_up(self._args(
+                    no_wait=True,
+                    queue="https://hp.example.workers.dev/t/alice/",
+                    queue_token_env="HP_TEST_RUNNER_TOKEN",
+                    secret_env="HP_TEST_SECRET"), http=http)
+        finally:
+            os.environ.pop("HP_TEST_RUNNER_TOKEN", None)
+            os.environ.pop("HP_TEST_SECRET", None)
+        self.assertEqual(rc, 0)
+        sent = json.loads(
+            http.calls[1]["body"]["config"]["env"]["HP_CONFIG_BLOB"])
+        self.assertEqual(sent["transports"], ["queues"])
+        self.assertEqual(sent["transport_queues"], {
+            "url": "https://hp.example.workers.dev/t/alice",
+            "token": "runner-token-alice"})
+        self.assertEqual(sent["shared_secret"], "e" * 16 + "f" * 48)
+        self.assertEqual(sent["workspace_root"], "/data/work")
+        self.assertIn('"queue": "https://hp.example.workers.dev/t/alice"',
+                      out.getvalue())
+        self.assertNotIn("runner-token-alice", out.getvalue())
+
+    def test_up_queue_keeps_other_transports_and_refuses_bad_input(self):
+        blob = {"transports": ["email"],
+                "transport_queues": {"token_env": "X", "max_jobs": 4}}
+        os.environ["HP_TEST_RUNNER_TOKEN"] = "rt"
+        try:
+            args = types.SimpleNamespace(
+                queue="https://w.example/t/a",
+                queue_token_env="HP_TEST_RUNNER_TOKEN")
+            self.assertTrue(cli._apply_queue(blob, args))
+            self.assertEqual(blob["transports"], ["email", "queues"])
+            self.assertEqual(blob["transport_queues"],
+                             {"url": "https://w.example/t/a", "token": "rt",
+                              "max_jobs": 4})
+            for bad in ("http://w.example/t/a", "https://w.example/jobs"):
+                with self.assertRaises(SystemExit):
+                    cli._apply_queue({}, types.SimpleNamespace(
+                        queue=bad, queue_token_env="HP_TEST_RUNNER_TOKEN"))
+        finally:
+            os.environ.pop("HP_TEST_RUNNER_TOKEN", None)
+        with self.assertRaises(SystemExit):
+            cli._apply_queue({}, types.SimpleNamespace(
+                queue="https://w.example/t/a",
+                queue_token_env="HP_UNSET_TOKEN_XYZ"))
+        self.assertFalse(cli._apply_queue({}, types.SimpleNamespace()))
+
+    def test_up_queue_with_a_generated_secret_says_where_it_goes(self):
+        with open(self.blob, "w", encoding="utf-8") as fh:
+            json.dump({}, fh)
+        os.environ["HP_TEST_RUNNER_TOKEN"] = "rt"
+        try:
+            http = Player("fly", ["create-app-ok", "create-machine-ok"])
+            import io
+            from contextlib import redirect_stdout
+            out = io.StringIO()
+            with redirect_stdout(out):
+                cli.cmd_up(self._args(
+                    no_wait=True, queue="https://w.example/t/alice",
+                    queue_token_env="HP_TEST_RUNNER_TOKEN"), http=http)
+        finally:
+            os.environ.pop("HP_TEST_RUNNER_TOKEN", None)
+        self.assertIn("HMAC_SECRET", out.getvalue())
+
     def test_redeploy_replaces_then_destroys_the_old_machine(self):
         inv = inventory.Inventory(self.inv)
         old = machine(mid="old1", tenant="alice", state="running")

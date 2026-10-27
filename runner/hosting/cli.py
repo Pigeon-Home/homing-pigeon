@@ -4,6 +4,9 @@
 
     homing-pigeon-host up --provider fly --token-env FLY_API_TOKEN \\
         --tenant alice --region iad --version <release> --blob @blob.json
+    homing-pigeon-host up --provider fly --token-env FLY_API_TOKEN \\
+        --tenant alice --region iad --version <release> \\
+        --queue https://hp.example.workers.dev/t/alice
     homing-pigeon-host status
     homing-pigeon-host redeploy fly:e784... --version <release> --token-env FLY_API_TOKEN
     homing-pigeon-host rotate fly:e784... --token-env FLY_API_TOKEN
@@ -80,12 +83,58 @@ def _split_key(key):
     return prov, mid
 
 
+def _apply_queue(blob, args):
+    """--queue URL: the hosted queue as the runner's transport, so a
+    runner and its pipe arrive in one command with no hand-written
+    blob. The runner token comes from --queue-token-env (never argv)
+    and is written into the blob, which the machine keeps 0600 beside
+    the shared secret: a system service has no environment of its own
+    to read a token_env from. Returns True when the queue was set."""
+    url = getattr(args, "queue", None)
+    if not url:
+        return False
+    url = url.strip().rstrip("/")
+    if not url.startswith("https://") or "/t/" not in url:
+        raise SystemExit("error: --queue is the tenant's queue base, "
+                         "https://<worker>/t/<tenant>")
+    name = getattr(args, "queue_token_env", None) or "HP_RUNNER_TOKEN"
+    tok = os.environ.get(name)
+    if not tok:
+        raise SystemExit(f"error: --queue needs the runner token in "
+                         f"environment variable {name}")
+    transports = blob.get("transports")
+    transports = list(transports) if isinstance(transports, list) else []
+    if "queues" not in transports:
+        transports.append("queues")
+    blob["transports"] = transports
+    block = blob.get("transport_queues")
+    block = dict(block) if isinstance(block, dict) else {}
+    block["url"] = url
+    block["token"] = tok
+    block.pop("token_env", None)
+    blob["transport_queues"] = block
+    blob.setdefault("workspace_root", "/data/work")
+    return True
+
+
 def cmd_up(args, http=None, sleep=None):
     token = _token(args.token_env)
     blob = read_config_blob(args.blob)
+    queued = _apply_queue(blob, args)
+    secret_env = getattr(args, "secret_env", None)
+    if secret_env:
+        value = os.environ.get(secret_env)
+        if not value:
+            raise SystemExit(f"error: environment variable {secret_env} "
+                             f"is empty")
+        blob["shared_secret"] = value
     if "shared_secret" not in blob:
         blob["shared_secret"] = _secrets.token_hex(32)
         print("blob: no shared_secret given; one was generated (see below)")
+        if queued:
+            print("queue: set the same value as the Worker's HMAC_SECRET "
+                  "(wrangler secret put HMAC_SECRET), or the Worker "
+                  "refuses every job this runner would accept")
     blob.setdefault("runner_id", f"{args.tenant}-{_secrets.token_hex(4)}")
     spec = base.MachineSpec(args.tenant, args.region,
                             args.size or DEFAULT_SIZE.get(args.provider),
@@ -105,11 +154,13 @@ def cmd_up(args, http=None, sleep=None):
         machine = provider.wait_running(machine.id, timeout=args.wait, **kw)
         inv.update(machine)
         inv.save()
-    print(json.dumps({"machine": _inv.Inventory.key(machine.provider,
-                                                     machine.id),
-                      "state": machine.state, "region": machine.region,
-                      "ip": machine.ip, "tenant": rec["tenant"],
-                      "shared_secret": blob["shared_secret"]}, indent=2))
+    shown = {"machine": _inv.Inventory.key(machine.provider, machine.id),
+             "state": machine.state, "region": machine.region,
+             "ip": machine.ip, "tenant": rec["tenant"],
+             "shared_secret": blob["shared_secret"]}
+    if queued:
+        shown["queue"] = blob["transport_queues"]["url"]
+    print(json.dumps(shown, indent=2))
     return 0
 
 
@@ -157,6 +208,7 @@ def cmd_redeploy(args, http=None, sleep=None, new_secret=None):
     if rec is None:
         raise SystemExit(f"error: {args.machine} is not in the inventory")
     blob = read_config_blob(args.blob) if args.blob else {}
+    _apply_queue(blob, args)
     if new_secret:
         blob["shared_secret"] = new_secret
     if "shared_secret" not in blob:
@@ -234,6 +286,14 @@ def build_parser():
         p.add_argument("--no-wait", action="store_true",
                        help="return as soon as the request is accepted")
 
+    def queue_args(p):
+        p.add_argument("--queue", default=None, metavar="URL",
+                       help="the hosted queue as the transport: the "
+                            "tenant's base, https://<worker>/t/<tenant>")
+        p.add_argument("--queue-token-env", default=None, metavar="NAME",
+                       help="environment variable holding the runner "
+                            "token for --queue (default HP_RUNNER_TOKEN)")
+
     up = sub.add_parser("up", help="provision one resident runner")
     up.add_argument("--provider", required=True, choices=sorted(PROVIDERS))
     up.add_argument("--tenant", required=True)
@@ -245,6 +305,10 @@ def build_parser():
     up.add_argument("--size", default=None)
     up.add_argument("--image", default=None, help="container image (fly)")
     up.add_argument("--profile", default="hosted")
+    up.add_argument("--secret-env", default=None, metavar="NAME",
+                    help="environment variable holding the shared secret "
+                         "to use (with --queue: the Worker's HMAC_SECRET)")
+    queue_args(up)
     common(up)
 
     st = sub.add_parser("status", help="list the inventory")
@@ -258,6 +322,7 @@ def build_parser():
         p.add_argument("--size", default=None)
         p.add_argument("--image", default=None)
         p.add_argument("--profile", default="hosted")
+        queue_args(p)
         common(p)
 
     de = sub.add_parser("destroy", help="destroy a machine and forget it")
