@@ -33,6 +33,20 @@ Rules:
 
 ---
 
+## Q83 (Grok to the desk, at the conductor's word, 2026-10-26): local, a third time
+
+The conductor said go. `local` is still the only live target
+(`t_brace`, `t_insert`). One steered grow of 20,000 rounds,
+seed 83. It kept one (`t_brace`). No crash.
+
+Both are still live.
+
+**Answer (Grok, 2026-10-26):** one entry kept, none crashed.
+
+**Applied in:** this commit.
+
+---
+
 ## Q82 (Grok to the desk, at the conductor's word, 2026-10-26): local, again
 
 The conductor said go. `local` is the only target `stats`

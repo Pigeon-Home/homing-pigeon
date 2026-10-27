@@ -6,6 +6,9 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.13.57 - 2026-10-26
 
+- **local, a third time (Q83).** One steered grow of 20,000
+  rounds kept one (`t_brace`). No crash. `t_brace` and
+  `t_insert` are still live.
 - **local, again (Q82).** The only target still live. One
   steered grow of 20,000 rounds kept one (`t_insert`). No
   crash. `t_brace` and `t_insert` are still live.
