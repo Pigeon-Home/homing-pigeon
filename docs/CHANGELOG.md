@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.0 - 2026-10-27
+
+- **The release line moves to 3.14.** `pyproject.toml`,
+  `runner/_version.py`, and the installer agree on `3.14.0`.
+  No behavior change in this commit. The tag waits until the
+  build on this commit is green.
+
 ## 3.13.68 - 2026-10-27
 
 - **A retained stream on the wire is text the wire can carry
