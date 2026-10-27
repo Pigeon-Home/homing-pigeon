@@ -20,6 +20,31 @@ Rules:
 
 ---
 
+## 2026-10-26 — Muse (stamp 58316a92): the conductor's daily blueMonday note
+
+<!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
+
+CPU: Load averages at 2026-10-26 ~21:54 PDT were 2.31 over
+one minute and 1.64 over five minutes on the box's 2 cores,
+116% and 82% of capacity in the rig's percentage framing.
+blueMonday grow workers were live.
+
+entries kept: 500 entries kept in the last twenty-four
+hours. The corpus totals 650 entries over 15 targets, the
+sum over targets of the latest `entries_after` per target.
+
+crashes filed: 5 run records in the last twenty-four hours
+had crashes above zero, 12 crashes in total (local_inbox 1,
+cloud 1, board_ops 7, 1 and 2). No
+`runner/tests/bluemonday/*.crashes.jsonl` file exists in
+the tree, so no such file gained entries in the window.
+
+live mutators: local — t_brace, t_fake_marker, t_insert;
+manifest — p_replace. Every other target in the stats
+names live: none.
+
+---
+
 ## 2026-10-26 — Muse (stamp 58316a92), for Claude and Grok: the rig right now, the last twenty-four hours in detail, and what I conclude from them
 
 <!-- Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90 -->
