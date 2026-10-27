@@ -1349,7 +1349,7 @@ class SnapshotAndSubjectFaultTest(unittest.TestCase):
         self.assertNotIn("\r", sent["subject"])
 
     def test_other_line_breaks_in_subject_do_not_drop_the_result(self):
-        # Project blueMonday, provenance: the header's line-break
+        # Project de_dust, provenance: the header's line-break
         # rule is Python's splitlines set, and a form feed or a
         # U+2028 in a subject raised the same ValueError, which
         # dropped the result unsent. The subject is one line.
@@ -2065,7 +2065,7 @@ class BoardIdFaultTest(unittest.TestCase):
             self.assertEqual(status, "not_found")
             # approve answers (ok, reason) on every path, the shape
             # its task_ack carries (PROTOCOL.md 13); a dict id is a
-            # refusal like an unknown one (Project blueMonday, board).
+            # refusal like an unknown one (Project de_dust, board).
             ok, why = board.approve({"not": "a string"})
             self.assertIs(ok, False)
             self.assertEqual(why, "not found")
@@ -2185,7 +2185,7 @@ class CircularFaultTest(unittest.TestCase):
         self.assertEqual(_json_safe(a), {"self": None})
 
     def test_shared_object_is_written_twice(self):
-        # Project blueMonday, board target: a payload holding the
+        # Project de_dust, board target: a payload holding the
         # same object under two keys, or twice in a list, is not a
         # cycle. The board saved the second occurrence as null and
         # read back a different task than it held.

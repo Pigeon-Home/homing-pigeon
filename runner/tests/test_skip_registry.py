@@ -43,7 +43,7 @@ REGISTERED = {
         "test_regression_guard's temporary-repository tests; git is on "
         "every CI leg's PATH, so they run in every job",
     "no SIGALRM on this platform":
-        "test_bluemonday_survivors' timeout verdict rides on SIGALRM, "
+        "test_de_dust_survivors' timeout verdict rides on SIGALRM, "
         "which Windows does not have; the Linux and macOS legs run it",
     # ---- platform splits: each side runs in its own CI job ----------
     "Linux-only suite: it pins POSIX modes, nofollow opens, signals, "

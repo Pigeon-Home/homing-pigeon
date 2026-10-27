@@ -1,7 +1,7 @@
 # Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """A dry run verifies and says what it would do, and changes nothing
 (--dry-run: execute nothing, send nothing, change nothing). Two
-readers changed things under it (Q87, found by blueMonday's query
+readers changed things under it (Q87, found by de_dust's query
 and board_mail targets): a query answered under a dry run took a
 slot of the sender's hourly window and spent the retained record's
 budget, and a board message moved the board. Now the window is only

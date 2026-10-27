@@ -76,9 +76,9 @@ waiting is not testing.
   `python -m coverage run --rcfile=.github/coveragerc
   runner/tools/run_tests_parallel.py --jobs <cores>` and then
   `coverage combine` exactly as before; one shard per core, the same
-  numbers, half the wall. A blueMonday grow runs as
-  `python runner/tools/bluemonday_corpus.py grow --jobs <cores>
-  --rounds <large>` (`HP_BLUEMONDAY_JOBS`, `HP_BLUEMONDAY_ROUNDS`):
+  numbers, half the wall. A de_dust grow runs as
+  `python runner/tools/de_dust_corpus.py grow --jobs <cores>
+  --rounds <large>` (`HP_DE_DUST_JOBS`, `HP_DE_DUST_ROUNDS`):
   the targets grow one per core, and a grow that finishes in
   seconds is not a measurement, so rounds go up until the grow
   fills the gap to the next item. The regression pass takes
@@ -133,7 +133,7 @@ re-verifies when the question is answered.
 The hourly regression pass (owner, 2026-10-26; Claude, stamp
 50000c8e) -- suspended by the conductor's order of 2026-10-26
 (see "The queue"): until he lifts it, the rig runs no pass, and
-blueMonday is the only effort. The paragraph stands for the day it
+de_dust is the only effort. The paragraph stands for the day it
 resumes. When it runs: once an hour, beside whatever campaign is
 running, the rig runs `python runner/tools/rig_resources.py -- python
 runner/tools/regression_pass.py --pull --jobs <cores>`. It runs the
@@ -205,7 +205,7 @@ queue below does not run out (queue D refills it).
 ## The queue, in order
 
 **The conductor's order of 2026-10-26, which overrides the order of
-this queue until he lifts it: Project blueMonday (section M) is
+this queue until he lifts it: Project de_dust (section M) is
 the campaign's only effort. No hourly regression pass, no Platinum
 cycle, no other item from this queue; the rig fuzzes, and the CPU
 is pegged.** Everything below M stands as written for the day he
@@ -387,17 +387,32 @@ the check. The owner's Q62 decision replaces the "not a stop" line
 above: when the trigger in Q62 fires, section M is next, and D4's
 survivors come after it.
 
-### M. Project blueMonday: the fuzz corpus against the verifiers (owner, 2026-10-26)
+### M. Project de_dust: the fuzz corpus against the verifiers (owner, 2026-10-26)
 
 <!-- Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
-The plan is `docs/project/bluemonday.md` (the conductor's
+The conductor renamed the campaign de_dust on 2026-10-27 (it was
+blueMonday from its naming on 2026-10-26 to then; the ledger lines,
+the CHANGELOG and the answered questions keep the name they were
+written with). Everything moved with it: the tool is
+`runner/tools/de_dust_corpus.py`, the instrument
+`runner/tools/de_dust_survivors.py`, the corpus
+`runner/tests/de_dust/`, the tests `test_de_dust_corpus` and
+`test_de_dust_survivors`, the plan `docs/project/de_dust.md`, the
+archive directory's environment name `HP_DE_DUST_ARCHIVE`, and the
+header key of every corpus, arc, run and survivors file
+(`"de_dust": 1`). The grow in flight at the rename finishes on the
+old tool in memory; it banks at the new paths (git's rename
+detection carries its changed files across), and the next grow
+starts with the command below.
+
+The plan is `docs/project/de_dust.md` (the conductor's
 campaign, to run indefinitely: the surface, the contracts, the
 seeds and vocabulary, the roles, the saturation rule and the
 phases); the hand-off and the fixed rules are Q62 in
 `docs/use/questions.md`; the owner named the campaign on
-2026-10-26. The tool is `runner/tools/bluemonday_corpus.py`, the
-corpus is `runner/tests/bluemonday/<target>.jsonl` (the targets
+2026-10-26. The tool is `runner/tools/de_dust_corpus.py`, the
+corpus is `runner/tests/de_dust/<target>.jsonl` (the targets
 are the tool's own list, `stats` prints them with their saturation;
 `wire`, `cloud`, `v2`, `crypto`, `local`, `stash`, `mail` as of Q65,
 and `dtls` as of Q66, `board` as of Q67, `board_ops` in the same
@@ -409,7 +424,7 @@ as of Q71, and the mutators carry the IETF drafts' grammar as
 of Q72, saturated at 20,000 rounds on the readers it inserts
 into as of Q73, and the posted capture's shape is a seed,
 rebuilt, as of Q74), and
-`runner/tests/test_bluemonday_corpus.py` replays it on every leg.
+`runner/tests/test_de_dust_corpus.py` replays it on every leg.
 The loop:
 
 1. **Trigger.** Started by the conductor on 2026-10-26, and the
@@ -421,9 +436,9 @@ The loop:
    target or over, and anything lower is a serial step to name in
    the ledger. The campaign never idles between grows and stops
    only on the conductor's word.
-2. **Grow.** `HP_BLUEMONDAY_ARCHIVE=<the archive directory> python
+2. **Grow.** `HP_DE_DUST_ARCHIVE=<the archive directory> python
    runner/tools/rig_resources.py -- python
-   runner/tools/bluemonday_corpus.py grow --rounds 20000
+   runner/tools/de_dust_corpus.py grow --rounds 20000
    --minutes 55`, started again at every rules refresh (`--jobs`
    defaults to the box's core count; name it only to use fewer): the targets cycle, `--jobs` at a time, the next
    starting the moment any one finishes, each cycle with the seed
@@ -440,7 +455,7 @@ The loop:
    the file's name, size, SHA-384 and count, so the tree says
    where the rest of the proof is; the archive is never committed.
    Once per rules refresh, after the grow cycle and before the
-   next one starts, `python runner/tools/bluemonday_survivors.py`
+   next one starts, `python runner/tools/de_dust_survivors.py`
    (about three minutes; every target is in its kill set, the
    agent module's readers included): it rewrites `survivors.json`
    and adds its line to `runs.jsonl`, and the ledger line names
@@ -472,17 +487,17 @@ The loop:
    functions, and reads the files (the conductor, 2026-10-26: one
    writer on a file). Never a real address, path or machine.
 4. **Crash?** The tool writes it to `<target>.crashes.jsonl`,
-   shrunk, and exits 1; `test_bluemonday_corpus` carries it from
+   shrunk, and exits 1; `test_de_dust_corpus` carries it from
    there as an `expectedFailure` probe. File it in `questions.md`
    as a Q to Claude with the entry id and the detail line. The fix
    is Claude's lane, and the desk runs `python
-   runner/tools/bluemonday_corpus.py promote` in the commit that
+   runner/tools/de_dust_corpus.py promote` in the commit that
    lands it (the one step the desk takes on the crash file, so the
    probe never stands red between the fix and the next bank): an
    entry that now meets its contract and reaches a new arc moves
    into the corpus, one reaching nothing new is dropped, one still
    crashing stays, and the probe disappears with the entry.
-5. **Ledger.** `blueMonday <n>: <k> entries, <a> arcs, <m> crashes
+5. **Ledger.** `de_dust <n>: <k> entries, <a> arcs, <m> crashes
    filed, <resources line>`, from `stats` and the grow summary.
 6. **Stop?** When a grow of the rig's full depth adds no arcs on any
    target for two cycles, D4's mutation survivors are next.

@@ -230,7 +230,7 @@ the channel.
 
 Ring 3 is the parsers the coverage report already named.
 `dtlsproto.py` wants mutated valid flights, not only random
-datagrams. blueMonday's `dtls` target is that flight (Q66):
+datagrams. de_dust's `dtls` target is that flight (Q66):
 a sealed ClientHello, ServerHello and Finished under invented
 keys, the two-fragment pair, and the record mutators, replayed
 with the rest of the corpus. Then the email, file, and NATS
@@ -267,7 +267,7 @@ order. The full read is the answer to Q65 in
 What follows is the part that would change this document.
 
 In-memory fuzzing is the right tool, and it is already on the
-right code. The six blueMonday targets are saturated: at
+right code. The six de_dust targets are saturated: at
 3.13.50 they hold 171 entries and 653 arcs, two grows of
 2,000 rounds added none, and there is no crash file. More
 rounds there will not find the next bug. Ring 1 already
@@ -280,13 +280,13 @@ hunting it on the `python-range` leg.
 The bounded campaigns (`test_fuzz_surfaces`,
 `test_fuzz_guided`, `test_fuzz_parsers`, `test_dtls_fuzz`,
 `test_transport_log_relay_fuzz`) already touch the readers
-blueMonday does not. Their corpora die with the process.
+de_dust does not. Their corpora die with the process.
 Promote those readers into the one persistent corpus. Do not
 write a third fuzzer, and do not lengthen the in-suite
 rounds.
 
-The targets that followed, in order, all in the blueMonday corpus
-now (`docs/project/bluemonday.md`, rows 7 to 11):
+The targets that followed, in order, all in the de_dust corpus
+now (`docs/project/de_dust.md`, rows 7 to 11):
 
 1. Mail extraction (`mailbox.py`, `get_text_body`, subject
    parsing, and the email extension's `_subject_body` and
@@ -327,7 +327,7 @@ failure in one full-depth grow is saturated; point the next
 grow at the next reader. Section M's stop, two empty cycles
 then D4, is right only after mail extraction and the DTLS
 opener are targets. D4 should not take the rig before that.
-The order that blueMonday is the only effort and the CPU
+The order that de_dust is the only effort and the CPU
 stays pegged still holds: peg it on an unsaturated target, or
 on those two contracts, not on another 20,000 rounds of the
 six. No live socket until the new readers stop crashing on

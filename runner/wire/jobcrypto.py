@@ -92,7 +92,7 @@ def _aad(job_id, key_id):
     # The AAD binds the envelope to its job and key. Both names must
     # be text: a caller that hands over a stash record's missing
     # job_id, or a number, gets the module's refusal, not an
-    # AttributeError (the blueMonday corpus's first finding).
+    # AttributeError (the de_dust corpus's first finding).
     if not isinstance(job_id, str):
         raise JobCryptoError("job_id must be a string")
     if key_id is None:

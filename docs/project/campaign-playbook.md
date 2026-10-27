@@ -6,9 +6,9 @@ record. Written after the first campaign (2026-10-22/23, frozen at
 the `campaign-1-record` tag) so that a second run can start from
 this document alone. It is the record of campaigns one and two;
 the campaign runs today from `docs/project/campaign-standing-orders.md`,
-whose queues P (coverage-guided fuzzing) and M (blueMonday)
+whose queues P (coverage-guided fuzzing) and M (de_dust)
 supersede the hard rules below where they differ, and the desk
-fixes every crash the corpus finds (`docs/project/bluemonday.md`).
+fixes every crash the corpus finds (`docs/project/de_dust.md`).
 
 The campaign's product is not findings. It is committed unit tests.
 The proof-of-work rule governs everything below: every test

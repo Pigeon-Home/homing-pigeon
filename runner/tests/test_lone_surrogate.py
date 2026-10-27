@@ -3,7 +3,7 @@
 and not UTF-8 text. A signed body carrying one passed both
 verifiers, and the result that echoed its text (the job's kind on
 every result, rejections included) could not be signed, so the
-sender never heard back (Q85, found by blueMonday's queries
+sender never heard back (Q85, found by de_dust's queries
 target). Both verifiers refuse it at the door now, the keyed one
 too, and the runner's signer names it before its encode would."""
 

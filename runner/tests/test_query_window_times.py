@@ -1,6 +1,6 @@
 # Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """The hourly query window (PROTOCOL section 11) counts the slots of
-the last hour and nothing else (Q88, found by blueMonday's query
+the last hour and nothing else (Q88, found by de_dust's query
 target with a window file as a crash left it): a time in the
 future -- a clock set back, a poisoned file -- counted as live for
 as long as it stayed ahead of the clock and held the sender at the

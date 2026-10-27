@@ -99,7 +99,7 @@
   IMAP/SMTP servers and a fake NATS broker. Beside it, outside
   discovery: `runner/tests/archive/` (the campaigns' recorded cycles,
   one test each), `runner/tests/airgap/` (the air-gapped batches) and
-  `runner/tests/bluemonday/` (the fuzz corpus and its arc maps).
+  `runner/tests/de_dust/` (the fuzz corpus and its arc maps).
 - `runner/__init__.py` and `runner/_version.py` — the package and the
   one version constant every entry point reports.
 - `docs/use/runbook.md` — step-by-step instructions (written for a 5-year-old):

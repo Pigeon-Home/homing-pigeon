@@ -299,7 +299,7 @@ class InboxMechanicsTest(LocalFixture):
         self.assertTrue(os.path.exists(keep))
 
     def test_directory_named_json_is_not_handled(self):
-        # Project blueMonday, local_inbox: a directory whose name
+        # Project de_dust, local_inbox: a directory whose name
         # ends in .json is not an envelope. It was counted as
         # handled, logged as failed and left in place on every
         # scan; it is left alone like any non-.json entry, and the

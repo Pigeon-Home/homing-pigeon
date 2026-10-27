@@ -1,5 +1,5 @@
 # Agent-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
-"""Two findings of blueMonday's grows on the queries (Q90, Q92).
+"""Two findings of de_dust's grows on the queries (Q90, Q92).
 
 A retained record's stream is text or it is nothing. The executor
 writes text; a record a crash left or a hand wrote may hold a list,

@@ -10,6 +10,14 @@ facts a reader may need to cite. Git history carries the rest.
   `runner/_version.py`, and the installer agree on `3.14.0`.
   No behavior change in this commit. The tag waits until the
   build on this commit is green.
+- **The campaign is de_dust.** The conductor renamed Project
+  blueMonday on 2026-10-27, and everything moved with the name: the
+  tool `runner/tools/de_dust_corpus.py`, the instrument
+  `runner/tools/de_dust_survivors.py`, the corpus
+  `runner/tests/de_dust/`, the tests, the plan
+  `docs/project/de_dust.md`, the archive's environment name
+  `HP_DE_DUST_ARCHIVE` and the header key of the data files. The
+  dated records keep the name they were written with.
 - **A retained stream on the wire is text the wire can carry
   (Q93).** A record a crash left can hold the escape of a lone
   surrogate in a stream; the query path handed the line to the
