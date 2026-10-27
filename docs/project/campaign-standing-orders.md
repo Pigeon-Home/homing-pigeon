@@ -4613,3 +4613,29 @@ when done, the proving commit or run. Newest first.
   The same box polls the one-tenant
   Cloudflare Worker. The facts are
   docs/reports/rig-2026-10-27.md.
+- rules refreshed 2026-10-27 12:16 PDT
+  (standing orders incl. section M;
+  AGENTS.md rules 7-11; the questions
+  file's open entries; the playbook's
+  hard rules). The desk is 40000e00
+  from today (50000c8e recycled), and
+  Q96's five key-name promises are
+  pinned in 191d41a6.
+  de_dust 20: 1285 entries, 4956 arcs, 0 crashes filed.
+  Grow 20 (seed 6320, the archive
+  recording), the first grow on the
+  3.14.2 tree and the first to merge
+  the fingerprint seeds, was killed
+  by a VM restart at 11:51 PDT about
+  18 minutes in: 9 of 20 targets
+  recorded, 145,985 children. It
+  merged 12 seeds (cloud 2, wire 2,
+  crypto 3, stash 5) and kept none
+  of its own; totals moved +12
+  entries and +10 arcs. The fresh
+  survivors pass beside it died in
+  the same restart with no record;
+  it restarts beside grow 21. The
+  box idled from the restart until
+  this bank; recorded per Q58.
+  Grow 21 (seed 6330) follows.
