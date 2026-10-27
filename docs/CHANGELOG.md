@@ -4,7 +4,7 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.13.56 - 2026-10-26
+## 3.13.57 - 2026-10-26
 
 - **local, again (Q82).** The only target still live. One
   steered grow of 20,000 rounds kept one (`t_insert`). No
@@ -13,6 +13,10 @@ facts a reader may need to cite. Git history carries the rest.
   20,000 rounds. `local` kept one (`t_brace`). `dtls` kept
   nothing. No crashes. Still live: `t_brace`, `t_insert`.
   `dtls` has none.
+<!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
+
+## 3.13.56 - 2026-10-26
+
 - **local, the grow the crash cut off (Q80).** One steered grow
   of 20,000 rounds kept one (`t_insert`). No crash. Still live:
   `t_case`, `t_insert`, `d_random_byte`. `board_ops` has none.
