@@ -623,7 +623,9 @@ secret, in which case the runner refuses to start and names it
 - A `files[]` entry carries exactly one source: `url` (fetched as
   above) or `content_b64`, the file's bytes in the job itself, as
   strict base64 (RFC 4648 section 4: padding, no line breaks, no
-  other characters). An inline file is covered by the job's
+  other characters) in its canonical form: the trailing bits a
+  decoder may ignore are zero (section 3.5), so `QQ==` is the byte
+  `A` and `QR==` is refused. An inline file is covered by the job's
   signature and counted against `max_job_bytes` (the base64 is about
   four thirds of the bytes), costs no fetch, and keeps the same name
   rules and the optional `sha384`. A name staged twice is refused.

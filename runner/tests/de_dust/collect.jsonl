@@ -1,0 +1,16 @@
+{"de_dust": 1, "target": "collect", "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"}
+{"arcs": 0, "data": {"layout": [{"kind": "file", "name": "reports/junit.xml", "size": 5}], "names": ["reports/junit.xml"]}, "from": "seed:one", "id": "1f17e58d7cded5e1", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"layout": [], "names": ["gone"]}, "from": "seed:missing", "id": "341c10dcf06af813", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"layout": [{"kind": "dir", "name": "d", "size": 5}], "names": ["d"]}, "from": "seed:dir", "id": "013dbc37dba8797e", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"layout": [{"kind": "link_in", "name": "l", "size": 5}], "names": ["l"]}, "from": "seed:link_in", "id": "0298ce95cb4e5d24", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"layout": [{"kind": "link_out", "name": "x", "size": 5}], "names": ["x"]}, "from": "seed:link_out", "id": "e8dbb9fd4d88ad13", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"layout": [{"kind": "fifo", "name": "p", "size": 5}], "names": ["p"]}, "from": "seed:fifo", "id": "e9ffb83cb32f7b12", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"budget": 100, "layout": [{"kind": "file", "name": "big", "size": 200}], "names": ["big"]}, "from": "seed:too_large", "id": "a81cb135506ad9c8", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"budget": 100, "layout": [{"kind": "file", "name": "a", "size": 60}, {"kind": "file", "name": "b", "size": 60}], "names": ["a", "b"]}, "from": "seed:budget_shared", "id": "bb7048ce3d742898", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"budget": 0, "layout": [{"kind": "file", "name": "a", "size": 5}], "names": ["a"]}, "from": "seed:budget_zero", "id": "ba2541f8ec463a53", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"budget": "lots", "layout": [{"kind": "file", "name": "a", "size": 5}], "names": ["a"]}, "from": "seed:budget_not_a_number", "id": "0df69ad9a8af1ef6", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"budget": -1, "layout": [{"kind": "file", "name": "a", "size": 5}], "names": ["a"]}, "from": "seed:budget_negative", "id": "0c7c339f248932d9", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"layout": [{"kind": "file", "name": "a/b/c.txt", "size": 5}], "names": ["a/b/c.txt"]}, "from": "seed:nested", "id": "2a03a6f10ad2b917", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"layout": [{"kind": "file", "name": "b", "size": 5}, {"kind": "file", "name": "a", "size": 5}], "names": ["b", "gone", "a"]}, "from": "seed:order", "id": "776891790d9c9544", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"layout": [{"kind": "file", "name": "z", "size": 0}], "names": ["z"]}, "from": "seed:empty_file", "id": "69b9aff4a2574eb1", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"layout": [{"kind": "file", "name": "o0", "size": 5}, {"kind": "file", "name": "o1", "size": 5}, {"kind": "file", "name": "o2", "size": 5}, {"kind": "file", "name": "o3", "size": 5}, {"kind": "file", "name": "o4", "size": 5}, {"kind": "file", "name": "o5", "size": 5}, {"kind": "file", "name": "o6", "size": 5}, {"kind": "file", "name": "o7", "size": 5}], "names": ["o0", "o1", "o2", "o3", "o4", "o5", "o6", "o7"]}, "from": "seed:eight", "id": "46d58ca10b51232f", "kind": "payload", "mutator": "seed"}

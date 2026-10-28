@@ -236,10 +236,18 @@ def _decode_inline(f):
     if not isinstance(raw, str):
         raise _runner().JobRejected("file 'content_b64' must be a string")
     try:
-        return base64.b64decode(raw.encode("ascii"), validate=True)
+        data = base64.b64decode(raw.encode("ascii"), validate=True)
     except (ValueError, UnicodeEncodeError, binascii.Error):
         raise _runner().JobRejected(
             f"file {f.get('name')!r}: content_b64 is not strict base64")
+    # The decoder takes non-canonical trailing bits (`QR==` is `A`
+    # as `QQ==` is); RFC 4648 section 3.5 lets a decoder refuse them,
+    # and this one does, so a second reader of the member never
+    # disagrees on which string stood for the bytes (Q101).
+    if base64.b64encode(data).decode("ascii") != raw:
+        raise _runner().JobRejected(
+            f"file {f.get('name')!r}: content_b64 is not canonical base64")
+    return data
 
 
 MAX_OUTPUTS = 8

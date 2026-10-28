@@ -120,6 +120,7 @@ so every run is in the history and replayable from its seed.
 """
 import argparse
 import copy
+import base64
 import hashlib
 import json
 import ntpath
@@ -147,6 +148,7 @@ from runner.guard import filenames as FN  # noqa: E402
 from runner.guard import security as SEC  # noqa: E402
 from runner.guard import textutil as TU  # noqa: E402
 from runner.ops import extensions as EX  # noqa: E402
+from runner.ops import exec as EXE  # noqa: E402
 from runner.ops import handlers as HA  # noqa: E402
 from runner.ops import policy as PO  # noqa: E402
 from runner.ops import queries as QU  # noqa: E402
@@ -1718,6 +1720,8 @@ def _fault(message):
 # ------------------------------------------------------------------
 
 _QUERY_PATTERNS = {"canary": r"SECRET-[0-9]+"}
+# A member that is absent, told apart from one that is None.
+_MISSING = object()
 _QUERY_EXEC = {"exit_code": 0, "timed_out": False, "duration_sec": 0.5,
                "runner": "bm-runner", "completed_at": FIXED_AT,
                "stdout_truncated": False, "stderr_truncated": False}
@@ -1889,6 +1893,37 @@ def _query_answers(declared, answers, spent, budget, view, text_lines):
     return handed, refused
 
 
+def _query_outputs_view(view, outputs, result):
+    """PROTOCOL section 6 on `outputs[]` (Q101): under `full` the
+    entries come back as the exec result gave them; under `redacted`
+    and `summary` each object entry keeps everything but its bytes
+    (`content_b64`), a commitment the sender can check later; under
+    `attested`, and whenever the exec result's member is not a list,
+    there is no `outputs` at all."""
+    got = result.get("outputs", _MISSING)
+    if view == "attested" or not isinstance(outputs, list):
+        if got is not _MISSING:
+            raise Crash("leak" if view == "attested" else "contract",
+                        f"a {view} result carries outputs it was not "
+                        "given as a list" if view != "attested" else
+                        "an attested result carries outputs")
+        return
+    if view == "full":
+        if got != outputs:
+            raise Crash("contract", "a full result's outputs are not the "
+                        "exec result's")
+        note("outputs", view, len(outputs))
+        return
+    want = [{k: v for k, v in o.items() if k != "content_b64"}
+            for o in outputs if isinstance(o, dict)]
+    if got != want:
+        raise Crash("contract", f"a {view} result's outputs are not the "
+                    "entries without their bytes")
+    if any(isinstance(o, dict) and "content_b64" in o for o in got):
+        raise Crash("leak", f"a {view} result carries an output's bytes")
+    note("outputs", view, len(got))
+
+
 def check_queries(entry):
     """queries: a job's result_policy -- the view it asks for, its
     queries, its query budget -- and the job's own output, read by
@@ -1905,10 +1940,15 @@ def check_queries(entry):
     a body. Accepted when every query under the full ceiling was
     answered, refused when one was rejected."""
     data = entry["data"]
+    outputs = None
     if isinstance(data, dict):
         policy = data.get("policy")
         out = _query_text(data.get("output"))
         err = _query_text(data.get("stderr"))
+        if "outputs" in data:
+            # Q101: the files a job brought home ride the exec result
+            # into every view (PROTOCOL section 6).
+            outputs = data.get("outputs")
     else:
         policy, out, err = data, "", ""
     if len(out) + len(err) > QUERIES_MAX_TEXT:
@@ -1927,6 +1967,8 @@ def check_queries(entry):
         note("gate", "hostile pattern, lines cut")
     job = {"job_id": "bm-q-0001", "kind": "exec", "result_policy": policy}
     exe = dict(_QUERY_EXEC, stdout=out, stderr=err)
+    if outputs is not None:
+        exe["outputs"] = outputs
     pieces = _query_pieces(out, err)
     policy_text = json.dumps(policy, sort_keys=True, default=str)
     text_lines = (out + err).splitlines()
@@ -1961,6 +2003,7 @@ def check_queries(entry):
                 raise Crash("shape", "attested without an attestation list")
         if view == "summary" and "stdout" in result:
             raise Crash("leak", "a summary result carries stdout")
+        _query_outputs_view(view, outputs, result)
         _query_no_leak("result", view, result, pieces, policy_text)
         _query_no_canary("result", view, [result.get("stdout")])
         budget = R.query_budget(cfg, job)
@@ -3272,6 +3315,31 @@ def _payload_seeds():
         ("draft_job_id_over", _job(job_id="d" * 129)),
         ("draft_job_id_dot", _job(job_id=".")),
         ("draft_job_id_dotdot", _job(job_id="..")),
+        # Q101: a file carried in the job (`content_b64`, strict
+        # base64) and the files it asks home (`outputs`), in bodies
+        # the verifiers trust, so the mutators reach those members.
+        ("inline_file", _job(script="git apply fix.diff",
+                             files=[{"name": "fix.diff",
+                                     "content_b64": "LS0tIGEKKysrIGIK"}],
+                             outputs=["reports/junit.xml"])),
+        ("inline_file_empty", _job(files=[{"name": "e", "content_b64": ""}])),
+        ("inline_file_no_padding", _job(files=[{"name": "p",
+                                                "content_b64": "QQ"}])),
+        ("inline_file_line_break", _job(files=[{"name": "l",
+                                                "content_b64": "QQ==\n"}])),
+        ("inline_file_non_ascii", _job(files=[{"name": "u",
+                                               "content_b64": "Q\u00e9=="}])),
+        ("inline_file_noncanonical_bits", _job(files=[{
+            "name": "n", "content_b64": "QR=="}])),
+        ("inline_file_and_url", _job(files=[{
+            "name": "both", "content_b64": "QQ==",
+            "url": "https://example.com/x"}])),
+        ("inline_file_digest", _job(files=[{
+            "name": "d", "content_b64": "QQ==",
+            "sha384": hashlib.sha384(b"A").hexdigest()}])),
+        ("outputs_nine", _job(outputs=[f"o{i}" for i in range(9)])),
+        ("outputs_twice", _job(outputs=["a.txt", "a.txt"])),
+        ("outputs_not_names", _job(outputs=["ok", 7, None, ["x"]])),
     ] + _draft_examples("draft-homing-pigeon-00.md")
 
 
@@ -5258,6 +5326,36 @@ def seeds_queries():
         entry("policy_carries_output", {"view": "summary", "queries": [
             {"op": "attest", "predicate": canary.strip()}]}),
     ]
+    # Q101: the files a job brought home (`outputs[]`, PROTOCOL
+    # section 6), under every view the entry asks for.
+    hello = {"name": "reports/junit.xml", "size": 5,
+             "sha384": hashlib.sha384(b"hello").hexdigest(),
+             "content_b64": "aGVsbG8="}
+    blob = bytes(range(256))
+    binary = {"name": "out/blob.bin", "size": len(blob),
+              "sha384": hashlib.sha384(blob).hexdigest(),
+              "content_b64": base64.b64encode(blob).decode("ascii")}
+    omitted = [{"name": "gone.txt", "omitted": "missing"},
+               {"name": "big.log", "omitted": "too_large", "size": 2 << 20},
+               {"name": "esc", "omitted": "outside the workdir"},
+               {"name": "dir", "omitted": "not a regular file"},
+               {"name": "locked", "omitted": "unreadable"},
+               {"name": "moving", "omitted": "changed while read"}]
+    for view in ("full", "redacted", "summary", "attested"):
+        out.append(entry(f"outputs_one_{view}", {"view": view, "queries": [tail]}))
+        out[-1][1]["outputs"] = [hello]
+    for name, outs in (
+            ("outputs_every_reason", omitted),
+            ("outputs_binary", [binary]),
+            ("outputs_eight", [dict(hello, name=f"r/{i}.xml") for i in range(8)]),
+            ("outputs_not_objects", [hello, "stray", 7, None, ["x"]]),
+            ("outputs_empty", []),
+            ("outputs_not_a_list", {"name": "x"}),
+            ("outputs_null", None),
+            ("outputs_extra_member", [dict(hello, note="kept below full")])):
+        for view in ("full", "summary"):
+            out.append(entry(f"{name}_{view}", {"view": view}))
+            out[-1][1]["outputs"] = outs
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
 
 
@@ -5296,6 +5394,9 @@ def seeds_names():
         ("name_cap_bytes", "/".join(["r" * 127] * 8)),
         ("name_over_bytes", "/".join(["r" * 127] * 8) + "r"),
         ("job_id_cap", "j" * 128), ("job_id_over", "j" * 129),
+        # Q101: an `outputs[]` name is read by the same rules.
+        ("output_report", "reports/junit.xml"), ("output_up", "../x"),
+        ("output_device", "CON.txt"), ("output_255", "o" * 255),
         # Refused names whose shown form sits at the cut of the
         # rejection's text (sixty characters of repr).
         ("shown_57", "-" + "s" * 56), ("shown_58", "-" + "s" * 57),
@@ -6937,6 +7038,223 @@ def _src(*parts):
     return os.path.join(ROOT, "runner", *parts)
 
 
+
+# ------------------------------------------------------------------
+# stage and collect: a job's inline files and the files it asks home
+# (Q101, PROTOCOL section 6)
+# ------------------------------------------------------------------
+
+def check_stage(entry):
+    """stage: one job's `files[]` and `outputs` before anything is
+    staged -- _decode_inline over each inline file and
+    _validate_outputs over the output names, the checks execute_job
+    runs first. Contract: a bad member is refused with JobRejected
+    and nothing else; an inline file that is accepted is canonical
+    (its bytes re-encode to the very string the sender signed); an
+    accepted output list is at most eight distinct names, each one a
+    second pass of the name rules accepts unchanged. Accepted when
+    every inline file and the output list are."""
+    data = entry["data"]
+    if not isinstance(data, dict):
+        data = {"files": data}
+    files = data.get("files")
+    accepted = True
+    for f in files if isinstance(files, list) else []:
+        if not isinstance(f, dict) or "content_b64" not in f:
+            continue
+        got, exc = _call(EXE._decode_inline, f)
+        if exc is not None:
+            _expect_refusal(exc, R.JobRejected, "_decode_inline")
+            accepted = False
+            continue
+        if not isinstance(got, bytes):
+            raise Crash("shape", f"_decode_inline answered {type(got).__name__}")
+        if base64.b64encode(got).decode("ascii") != f["content_b64"]:
+            raise Crash("contract", "an accepted inline file is not the "
+                        "canonical encoding of its bytes")
+        note("inline", len(got))
+    if "outputs" in data:
+        got, exc = _call(EXE._validate_outputs, data.get("outputs"))
+        if exc is not None:
+            _expect_refusal(exc, R.JobRejected, "_validate_outputs")
+            return "refused"
+        if not isinstance(got, list) or len(got) > EXE.MAX_OUTPUTS \
+                or len(set(got)) != len(got):
+            raise Crash("contract", f"_validate_outputs answered {got!r}"[:200])
+        for name in got:
+            again, exc2 = _call(FN.validate_file_name, name)
+            if exc2 is not None or again != name:
+                raise Crash("contract", f"an accepted output name is not "
+                            f"stable under the name rules: {name!r}"[:200])
+        note("outputs", len(got))
+    return "accepted" if accepted else "refused"
+
+
+_COLLECT_KINDS = ("file", "dir", "link_in", "link_out", "fifo", "nothing")
+
+
+def _lay_out(work, outside, item):
+    """One item of a collect entry's work dir; False when this host
+    cannot make it (no symlinks or FIFOs here)."""
+    name = item.get("name")
+    if not isinstance(name, str):
+        return True
+    try:
+        name = FN.validate_file_name(name)
+    except Exception:
+        return True
+    path = os.path.join(work, *name.split("/"))
+    kind = item.get("kind")
+    size = item.get("size")
+    size = size if isinstance(size, int) and 0 <= size <= 1 << 20 else 5
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    try:
+        if kind == "dir":
+            os.makedirs(path, exist_ok=True)
+        elif kind == "link_in":
+            target = os.path.join(work, "_target")
+            with open(target, "wb") as fh:
+                fh.write(b"t" * size)
+            os.symlink(target, path)
+        elif kind == "link_out":
+            os.symlink(outside, path)
+        elif kind == "fifo":
+            os.mkfifo(path)
+        elif kind == "file":
+            with open(path, "wb") as fh:
+                fh.write(bytes((i * 7) & 0xFF for i in range(size)))
+    except (OSError, NotImplementedError, AttributeError):
+        return False
+    return True
+
+
+def check_collect(entry):
+    """collect: _collect_outputs over a throwaway work dir the entry
+    lays out (files, directories, a symlink inside, a symlink out, a
+    FIFO), the names the job asked for, and the byte budget.
+    Contract: it never raises; one entry per name, in the job's
+    order, each naming it; a read entry's sha384 is the digest of its
+    decoded content_b64 and its size that length; an entry not read
+    names one of the six reasons and carries no bytes; the bytes read
+    sum to at most max_output_file_bytes; nothing outside the work
+    dir is read (its marker never appears)."""
+    data = entry["data"]
+    if not isinstance(data, dict):
+        data = {"names": data}
+    layout = data.get("layout")
+    names = data.get("names")
+    if not isinstance(names, list) or not all(isinstance(n, str) for n in names):
+        return "refused"
+    budget = data.get("budget")
+    cfg = {"max_output_file_bytes": budget} if budget is not None else {}
+    limit = EXE._max_output_file_bytes(cfg)
+    base = tempfile.mkdtemp(prefix="hp-de_dust-collect-")
+    try:
+        work = os.path.join(base, "work")
+        os.makedirs(work)
+        outside = os.path.join(base, "outside")
+        with open(outside, "wb") as fh:
+            fh.write(b"OUTSIDE-MARKER")
+        for item in layout if isinstance(layout, list) else []:
+            if isinstance(item, dict) and not _lay_out(work, outside, item):
+                note("host", "cannot make", item.get("kind"))
+        got, exc = _call(EXE._collect_outputs, work, names, cfg)
+        if exc is not None:
+            raise Crash("exception", "_collect_outputs raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        if not isinstance(got, list) or len(got) != len(names):
+            raise Crash("shape", "_collect_outputs answered "
+                        f"{type(got).__name__} of {len(got) if isinstance(got, list) else '?'}")
+        total = 0
+        for name, out in zip(names, got):
+            if not isinstance(out, dict) or out.get("name") != name:
+                raise Crash("contract", f"the entry for {name!r} is {out!r}"[:200])
+            if "omitted" in out:
+                if out["omitted"] not in ("missing", "too_large",
+                                          "outside the workdir",
+                                          "not a regular file", "unreadable",
+                                          "changed while read"):
+                    raise Crash("contract", f"an unknown reason {out['omitted']!r}")
+                if "content_b64" in out:
+                    raise Crash("contract", "an omitted entry carries bytes")
+                note("omitted", out["omitted"])
+                continue
+            raw = base64.b64decode(out.get("content_b64", ""), validate=True)
+            if b"OUTSIDE-MARKER" in raw:
+                raise Crash("leak", f"{name!r} read the file outside the work dir")
+            if out.get("size") != len(raw) \
+                    or out.get("sha384") != hashlib.sha384(raw).hexdigest():
+                raise Crash("contract", f"{name!r}: size or sha384 is not "
+                            "its bytes'")
+            total += len(raw)
+            note("read", len(raw))
+        if total > limit:
+            raise Crash("contract", f"{total} bytes read over the {limit} budget")
+        return "accepted" if any("content_b64" in o for o in got) else "refused"
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
+
+def seeds_stage():
+    def f(name, b64, **kw):
+        return dict({"name": name, "content_b64": b64}, **kw)
+    out = [
+        ("one", {"files": [f("fix.diff", "LS0tIGEKKysrIGIK")],
+                 "outputs": ["reports/junit.xml"]}),
+        ("empty", {"files": [f("e", "")]}),
+        ("canonical", {"files": [f("a", "QQ==")]}),
+        ("noncanonical", {"files": [f("a", "QR==")]}),
+        ("canonical_two", {"files": [f("a", "QUI=")], "outputs": []}),
+        ("noncanonical_two_bits", {"files": [f("a", "QUJ=")]}),
+        ("no_padding", {"files": [f("a", "QQ")]}),
+        ("line_break", {"files": [f("a", "QQ==\n")]}),
+        ("space", {"files": [f("a", "QQ ==")]}),
+        ("urlsafe", {"files": [f("a", "-_8=")]}),
+        ("non_ascii", {"files": [f("a", "Q\u00e9==")]}),
+        ("not_text", {"files": [f("a", 7)]}),
+        ("null", {"files": [f("a", None)]}),
+        ("binary", {"files": [f("b", base64.b64encode(bytes(range(256))).decode())]}),
+        ("outputs_eight", {"outputs": [f"o{i}" for i in range(8)]}),
+        ("outputs_nine", {"outputs": [f"o{i}" for i in range(9)]}),
+        ("outputs_twice", {"outputs": ["a", "a"]}),
+        ("outputs_normalize_twice", {"outputs": ["a/b", "a//b"]}),
+        ("outputs_up", {"outputs": ["../x"]}),
+        ("outputs_device", {"outputs": ["CON"]}),
+        ("outputs_not_names", {"outputs": ["ok", 7]}),
+        ("outputs_not_a_list", {"outputs": "a"}),
+        ("outputs_null", {"outputs": None}),
+    ]
+    return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
+
+
+def seeds_collect():
+    def it(name, kind="file", size=5):
+        return {"name": name, "kind": kind, "size": size}
+    out = [
+        ("one", {"layout": [it("reports/junit.xml")],
+                 "names": ["reports/junit.xml"]}),
+        ("missing", {"layout": [], "names": ["gone"]}),
+        ("dir", {"layout": [it("d", "dir")], "names": ["d"]}),
+        ("link_in", {"layout": [it("l", "link_in")], "names": ["l"]}),
+        ("link_out", {"layout": [it("x", "link_out")], "names": ["x"]}),
+        ("fifo", {"layout": [it("p", "fifo")], "names": ["p"]}),
+        ("too_large", {"layout": [it("big", size=200)], "names": ["big"],
+                       "budget": 100}),
+        ("budget_shared", {"layout": [it("a", size=60), it("b", size=60)],
+                           "names": ["a", "b"], "budget": 100}),
+        ("budget_zero", {"layout": [it("a")], "names": ["a"], "budget": 0}),
+        ("budget_not_a_number", {"layout": [it("a")], "names": ["a"],
+                                 "budget": "lots"}),
+        ("budget_negative", {"layout": [it("a")], "names": ["a"],
+                             "budget": -1}),
+        ("nested", {"layout": [it("a/b/c.txt")], "names": ["a/b/c.txt"]}),
+        ("order", {"layout": [it("b"), it("a")], "names": ["b", "gone", "a"]}),
+        ("empty_file", {"layout": [it("z", size=0)], "names": ["z"]}),
+        ("eight", {"layout": [it(f"o{i}") for i in range(8)],
+                   "names": [f"o{i}" for i in range(8)]}),
+    ]
+    return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
+
 TARGETS = {
     "wire": {"files": [_src("wire", "verify.py"), _src("wire", "mailbox.py")],
              "check": check_wire, "seeds": seeds_wire},
@@ -6988,6 +7306,10 @@ TARGETS = {
     "v2_mail": {"files": [_src("ops", "handlers.py"),
                           _src("wire", "protocol_v2.py"), _src("runner.py")],
                 "check": check_v2_mail, "seeds": seeds_v2_mail},
+    "stage": {"files": [_src("ops", "exec.py"), _src("guard", "filenames.py")],
+              "check": check_stage, "seeds": seeds_stage},
+    "collect": {"files": [_src("ops", "exec.py")],
+                "check": check_collect, "seeds": seeds_collect},
 }
 
 

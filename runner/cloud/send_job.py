@@ -953,6 +953,8 @@ def write_outputs(payload, dest):
         return 0
     rc = 0
     os.makedirs(dest, exist_ok=True)
+    root = os.path.realpath(dest)
+    written = set()
     for o in outs:
         if not isinstance(o, dict) or "content_b64" not in o:
             continue
@@ -964,15 +966,44 @@ def write_outputs(payload, dest):
             print(f"output {o.get('name')!r} refused: {e}", file=sys.stderr)
             rc = 1
             continue
+        # One file per name: a result that names an output twice is
+        # refused for the second, not written over the first (Q101).
+        if name in written:
+            print(f"output {name!r} refused: named twice", file=sys.stderr)
+            rc = 1
+            continue
         if hashlib.sha384(data).hexdigest() != str(o.get("sha384", "")).lower():
             print(f"output {name!r}: bytes do not match their sha384",
                   file=sys.stderr)
             rc = 1
             continue
         path = os.path.join(dest, *name.split("/"))
+        # The name rules keep the name inside dest; a symlink already
+        # in dest could still lead out, so the folder it lands in must
+        # resolve under dest and the file itself is never followed.
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "wb") as fh:
+        folder = os.path.realpath(os.path.dirname(path))
+        if folder != root and not folder.startswith(root + os.sep):
+            print(f"output {name!r} refused: its folder leads outside "
+                  f"{dest}", file=sys.stderr)
+            rc = 1
+            continue
+        if os.path.islink(path):
+            print(f"output {name!r} refused: a symlink is in its place",
+                  file=sys.stderr)
+            rc = 1
+            continue
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC \
+            | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+        try:
+            fd = os.open(path, flags, 0o600)
+        except OSError as e:
+            print(f"output {name!r} refused: {e}", file=sys.stderr)
+            rc = 1
+            continue
+        with os.fdopen(fd, "wb") as fh:
             fh.write(data)
+        written.add(name)
         o.pop("content_b64", None)
         o["written"] = path
         print(f"wrote {path} ({len(data)} bytes)", file=sys.stderr)

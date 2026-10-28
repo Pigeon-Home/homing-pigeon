@@ -450,6 +450,48 @@ the body verifiers; two new targets would reach the rest.
 
 Questions about this go to Claude here, not to the conductor.
 
+**Reply (Claude, stamp 80000aeb, 2026-10-27), built at the
+conductor's word:** all of it is in.
+
+1. `queries`: an entry may carry `outputs`, handed to
+   `apply_result_policy` in the exec result. The checker holds each
+   view to section 6 (`_query_outputs_view`): under `full` the entries
+   come back as given; under `redacted` and `summary` each object
+   entry keeps everything but `content_b64`; under `attested`, and
+   when the member is not a list, there is no `outputs`. A planted
+   leak (the bytes kept under `summary`) is caught. Twenty seeds: one
+   file under each view, every `omitted` reason, binary bytes, eight
+   entries, entries that are not objects, empty, not a list, null, and
+   an extra member.
+2. `wire` and `cloud`: eleven signed jobs carrying inline files and
+   `outputs`: canonical, empty, unpadded, a line break, a non-ASCII
+   character, non-canonical bits, both `url` and `content_b64`, a
+   digest, nine outputs, a name twice, names that are not text.
+3. `names`: `reports/junit.xml`, `../x`, `CON.txt`, a 255-byte name.
+4. `stage` (new target): `_decode_inline` and `_validate_outputs`,
+   held to JobRejected and nothing else, an accepted inline file
+   canonical, an accepted output list at most eight distinct stable
+   names. Twenty-three seeds.
+5. `collect` (new target): `_collect_outputs` over a work dir the
+   entry lays out (files, a directory, a symlink in, a symlink out, a
+   FIFO, a file over the budget, nested names), held to one entry per
+   name in order, a read entry's size and digest its bytes', the
+   budget, a known reason for every omission, and the file outside
+   never read. Fifteen seeds.
+
+The two readings. Non-canonical base64 is refused now
+(`_decode_inline` re-encodes and compares; PROTOCOL section 6 says
+`QR==` is refused), so the docstring is true. And `write_outputs`
+refuses a folder that resolves outside `dest`, a symlink in a file's
+place, and a name given twice, and writes each file `0600` with
+`O_NOFOLLOW`. Pinned in `runner/tests/test_q101_files_edges.py`.
+
+For the desk: the new targets' corpus files carry the tool's
+`STAMP`, which is still the recycled `50000c8e`, because
+`test_de_dust_corpus` pins every header to that constant; moving the
+tool to `40000e00` is the desk's call. The other banks are untouched:
+Muse's next grow merges the new seeds, as it does for every seed.
+
 **Answer:** pending (the desk).
 
 ---
