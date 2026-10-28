@@ -6,6 +6,12 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.14.7 - 2026-10-27
 
+- **The change kind.** `kind: "change"` names an owner's repository
+  (`change_repos`), a commit, a diff and a recipe: the runner clones
+  the repository into the workdir, checks out the commit, applies the
+  diff, runs the recipe there and sends the tree's resulting diff home
+  as `change.diff`. `send_job.py new --kind change --repo NAME
+  --diff-file PATH --recipe NAME` builds one.
 - **A signed cancel.** `[HOMING-PIGEON] cancel <job_id>` from the key
   that sent the job kills it while it runs, refuses it if it has not
   arrived yet, and leaves a finished one alone; a `cancel_ack` says

@@ -708,7 +708,7 @@ def check_key_policy(policies: dict, key_id: str, cfg, job, secrets=None):
             return "invalid key policy: allowed_kinds"
         if kind not in kinds:
             return f"job kind {kind!r} is not allowed for this key"
-    if "allowed_recipes" in pol and kind == "recipe":
+    if "allowed_recipes" in pol and kind in ("recipe", "change"):
         names_ok = pol["allowed_recipes"]
         if not isinstance(names_ok, (list, tuple, set)):
             return "invalid key policy: allowed_recipes"
@@ -716,7 +716,7 @@ def check_key_policy(policies: dict, key_id: str, cfg, job, secrets=None):
             return f"recipe {job.get('recipe')!r} is not allowed for this key"
     interpreter = job.get("interpreter") or cfg.get("default_interpreter") \
         or platform_interpreter()
-    if "allowed_interpreters" in pol and kind != "recipe":
+    if "allowed_interpreters" in pol and kind not in ("recipe", "change"):
         # A recipe's interpreter is the owner's, written in the config
         # beside this policy; the key brings none.
         allowed = pol["allowed_interpreters"]

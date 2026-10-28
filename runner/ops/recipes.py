@@ -14,7 +14,7 @@ pattern:
     }
 
 A job names one, `{"kind": "recipe", "recipe": "tests", "args":
-["runner/tests/test_x.py"]}`, and the runner runs the owner's script
+["test_app.py"]}`, and the runner runs the owner's script
 with those arguments exactly as it would run an exec job carrying it,
 confinement, timeout and the result's view included. A job can add
 `files` (inline or fetched) and `outputs`; it cannot bring a script,

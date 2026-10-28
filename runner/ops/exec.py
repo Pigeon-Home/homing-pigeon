@@ -382,6 +382,13 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
             out["platform"] = card
         return out
 
+    change = None
+    if kind == "change":
+        # A change (PROTOCOL 3.5): the owner's repository, the job's
+        # diff, the owner's recipe; staged below, run in work/src.
+        job, change = _runner()._changes.prepare(
+            cfg, job, _runner().JobRejected, _runner()._recipes.expand)
+        kind = "exec"
     if kind == "recipe":
         # A named recipe (PROTOCOL 3.3) is the owner's script under the
         # job's checked arguments: from here on it is that exec job.
@@ -512,6 +519,11 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
             fh.write(script)
     else:
         raise _runner().JobRejected("exec job requires script or script_url")
+    change_sha = None
+    run_dir = work
+    if change is not None:
+        change_sha = _runner()._changes.stage(work, change, _runner().JobRejected)
+        run_dir = os.path.join(work, _runner()._changes.SRC)
     # Post-stage sweep: everything under work is a regular file or
     # directory with its real path under root, no symlink anywhere. A
     # violation is a rejection and the work directory is removed before
@@ -576,7 +588,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     try:
         proc = subprocess.Popen(
             c_argv,
-            cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            cwd=run_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             env=env if use_host_env else None,
             start_new_session=(os.name != "nt"),
             preexec_fn=preexec,
@@ -675,6 +687,9 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
                             + "job cancelled by its sender")
     if rem_member is not None:
         result["remediation"] = rem_member
+    if change_sha is not None:
+        _runner()._changes.write_result_diff(work, change_sha)
+        result["change"] = {"repo": change["repo"], "commit": change_sha}
     if output_names:
         result["outputs"] = _collect_outputs(work, output_names, cfg)
     return result

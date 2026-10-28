@@ -380,7 +380,7 @@ the arguments a job may pass held to a pattern:
 ```
 
 A job names one: `{"kind": "recipe", "recipe": "tests", "args":
-["runner/tests/test_x.py"]}`. The runner runs the owner's `script`
+["test_app.py"]}`. The runner runs the owner's `script`
 under the owner's `interpreter` (the platform default when the recipe
 names none) with the job's `args`, exactly as it runs an `exec` job
 carrying that script: confinement, the timeout, the result's view and
@@ -431,6 +431,40 @@ transport's messages one at a time, so there a cancel is read between
 jobs: it stops a job still queued behind it, and a job already running
 only where messages are served by more than one worker (`workers`).
 `send_job.py cancel --job-id ID` builds the message.
+
+### 3.5 Change
+
+A change is the loop of checking out a commit, applying a diff,
+running the tests and reading what came of it, in one message:
+
+```json
+{"kind": "change", "repo": "app", "commit": "4f2a9c1",
+ "diff_b64": "<strict base64 of a unified diff>",
+ "recipe": "tests", "args": ["test_app.py"]}
+```
+
+`repo` names an entry of the owner's `change_repos` (name -> the
+absolute path of a git repository on the box); the job never names a
+path. The runner clones that repository into the job's workdir as
+`src/` without sharing its object files, checks out `commit` (a hex
+object name or a plain ref; the repository's HEAD when absent),
+applies the diff with `git apply`, and runs the named recipe (section
+3.3) with `src/` as its working directory. The job carries no script,
+interpreter or environment, exactly as a recipe job. The result
+carries `change: {"repo": ..., "commit": <the full object name>}`,
+and the tree's diff against that commit after the run (the job's
+diff and whatever the run changed, new files included) comes home as
+the output `change.diff`, shaped by the view like every output
+(section 6). The job's own `outputs` name files under `src/` and come
+home as `src/<name>`; with `change.diff` they count against the eight
+an output list may hold. A runner without git, a repository that
+does not clone, a commit that is not there and a diff that does not
+apply are each a rejection (`exit_code` -2) naming git's reason, and
+nothing runs; a repository whose tree holds a symlink is refused by
+the workspace sweep, as any staged symlink is. A key policy's
+`allowed_recipes` binds the recipe a change runs. `send_job.py new
+--kind change --repo NAME --commit REF --diff-file PATH --recipe NAME`
+builds one.
 
 ## 4. Signatures (no canonicalization needed)
 
@@ -1446,8 +1480,8 @@ Every field is optional; every specified constraint must hold:
 - `allowed_interpreters`: the job's effective interpreter (its own, or
   the configured default) must exactly match one of the listed lists.
 - `max_timeout_sec`: the job's effective timeout must not exceed it.
-- `allowed_recipes`: a `recipe` job's `recipe` must be listed (section
-  3.3). With `allowed_kinds: ["recipe"]` the key runs the named
+- `allowed_recipes`: a `recipe` or `change` job's `recipe` must be
+  listed (sections 3.3 and 3.5). With `allowed_kinds: ["recipe"]` the key runs the named
   recipes and nothing else. `allowed_interpreters` does not bind a
   recipe job, whose interpreter is the owner's.
 - `allowed_script_sha384`: for `exec` jobs, the inline `script`'s SHA-384

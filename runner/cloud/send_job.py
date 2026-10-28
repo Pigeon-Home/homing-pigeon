@@ -558,7 +558,19 @@ def cmd_new(args) -> int:
         payload["aud"] = args.aud
     if args.reply_to:
         payload["reply_to"] = args.reply_to
-    if args.kind == "recipe":
+    if args.kind == "change":
+        # A change (PROTOCOL.md section 3.5): the owner's repository,
+        # this diff, the owner's recipe run in the checked-out tree.
+        if not getattr(args, "repo", None):
+            print("change jobs need --repo NAME", file=sys.stderr)
+            return 2
+        payload["repo"] = args.repo
+        if getattr(args, "commit", None):
+            payload["commit"] = args.commit
+        if getattr(args, "diff_file", None):
+            with open(args.diff_file, "rb") as fh:
+                payload["diff_b64"] = base64.b64encode(fh.read()).decode("ascii")
+    if args.kind in ("recipe", "change"):
         # A named recipe (PROTOCOL.md section 3.3): the script, the
         # interpreter and the environment are the runner owner's.
         brought = [flag for flag, v in (
@@ -566,14 +578,14 @@ def cmd_new(args) -> int:
             ("--script-sha384", args.script_sha384),
             ("--interpreter", args.interpreter), ("--env", args.env)) if v]
         if brought:
-            print(f"a recipe job brings no {', '.join(brought)}: the recipe "
-                  "is the runner owner's", file=sys.stderr)
+            print(f"a {args.kind} job brings no {', '.join(brought)}: the "
+                  "recipe is the runner owner's", file=sys.stderr)
             return 2
         if not getattr(args, "recipe", None):
-            print("recipe jobs need --recipe NAME", file=sys.stderr)
+            print(f"{args.kind} jobs need --recipe NAME", file=sys.stderr)
             return 2
         payload["recipe"] = args.recipe
-    if args.kind in ("exec", "recipe"):
+    if args.kind in ("exec", "recipe", "change"):
         if args.kind == "exec":
             if args.script_url:
                 payload["script_url"] = args.script_url
@@ -1220,9 +1232,20 @@ def main() -> int:
                     "signed body.",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     g = n.add_argument_group("the job")
-    g.add_argument("--kind", choices=["exec", "ping", "recipe"], default="exec",
+    g.add_argument("--kind", choices=["exec", "ping", "recipe", "change"],
+                   default="exec",
                    help="job kind (default: exec); recipe runs a script "
-                        "the runner owner named in its config")
+                        "the runner owner named in its config; change "
+                        "checks out an owner's repository, applies "
+                        "--diff-file and runs --recipe in it")
+    g.add_argument("--repo", default=None, metavar="NAME",
+                   help="the owner's change repository a --kind change "
+                        "job runs in")
+    g.add_argument("--commit", default=None, metavar="REF",
+                   help="the commit a change checks out (default: the "
+                        "repository's HEAD)")
+    g.add_argument("--diff-file", default=None, metavar="PATH",
+                   help="the unified diff a change applies")
     g.add_argument("--recipe", default=None, metavar="NAME",
                    help="the recipe a --kind recipe job runs; --arg "
                         "passes its arguments")

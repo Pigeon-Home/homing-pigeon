@@ -459,6 +459,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             if r.get("cancelled"):
                 # Not output: the view does not shape it (PROTOCOL 3.4).
                 result["cancelled"] = True
+            if isinstance(r.get("change"), dict):
+                # The repository and the commit a change ran on
+                # (PROTOCOL 3.5): names, not output.
+                result["change"] = r["change"]
             scan = r.get("artifact_scan")
             if isinstance(scan, list) and scan:
                 result["artifact_scan"] = [str(item)[:200] for item in scan[:20]]

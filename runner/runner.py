@@ -1355,6 +1355,7 @@ def _oracle_instruction_kind(text):
 
 _recipes = _required_load_mod("runner.ops.recipes", "ops.recipes")
 _cancel = _required_load_mod("runner.ops.cancel", "ops.cancel")
+_changes = _required_load_mod("runner.ops.changes", "ops.changes")
 _exec = _required_load_mod("runner.ops.exec", "ops.exec")
 ask_model_agent = _exec.ask_model_agent
 execute_job = _exec.execute_job
@@ -4638,7 +4639,7 @@ def _validate_size_caps(cfg):
         _mode, problem = _extreview.mode_of(cfg)
         if problem:
             return problem
-    problem = _recipes.validate_recipes(cfg)
+    problem = _recipes.validate_recipes(cfg) or _changes.validate_repos(cfg)
     if problem:
         return problem
     return None
