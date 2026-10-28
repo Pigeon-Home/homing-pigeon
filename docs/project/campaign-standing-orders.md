@@ -4937,3 +4937,21 @@ when done, the proving commit or run. Newest first.
   6390) follows.
   de_dust 7 (San Francisco rig): 1379 entries, 5234 arcs, 0 crashes filed.
   Banked by rig_bank from the rig's own tree under section M item 7: 4 run records, 71,438 children (seeds 4170776654); totals from the merged tree.
+- v3.12.71 FULL STAMP DONE: GitHub
+  release published
+  2026-10-25T22:02:36Z by
+  github-actions[bot], 13 assets;
+  all 12 SHA384SUMS entries verify
+  on downloaded copies
+  (~/workspace/stamp-3.12.71/);
+  wheel and sdist SHA-256 match
+  PyPI; GHCR v3.12.71 and latest
+  both resolve (200, 2 manifests);
+  GitLab release v3.12.71 carries
+  13 asset links. Tag build
+  40237339272: every publish job
+  success; the run's red was
+  test-macos (the known flaky leg,
+  Q51). The verification itself
+  was completed earlier; this line
+  was the part still owed.
