@@ -38,7 +38,9 @@ Rules:
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
 
-Grow 26 (VM rig, seed 6380, banked in cfc830d47) completed
+Grow 26 (VM rig, seed 6380, banked in 8e5ef3382; the crash
+records followed in the correction commit after it, the hand
+merge's crash skip having dropped them on the first pass) completed
 on 2026-10-28 with 12 crash records, all on the queries
 target:
 
