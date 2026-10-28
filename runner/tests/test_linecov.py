@@ -185,6 +185,18 @@ class LinecovTest(unittest.TestCase):
         self.assertEqual(sorted(linecov.statements(src)),
                          [1, 2, 4, 5, 7, 8, 9, 10])
 
+    def test_report_keys_use_forward_slashes_on_every_box(self):
+        # Windows writes lcpkg\\mod.py; a report keyed that way reads
+        # differently from the same report made on Linux. The separator
+        # is played here, so the Linux leg holds the Windows behavior.
+        from unittest import mock
+        mod = os.path.join(self.td.name, "lcpkg", "mod.py")
+        with mock.patch.object(linecov.os, "sep", "\\"), \
+                mock.patch.object(linecov.os.path, "relpath",
+                                  return_value="lcpkg\\mod.py"):
+            rep = linecov.report([mod], {mod: {4}}, self.td.name)
+        self.assertEqual(list(rep["files"]), ["lcpkg/mod.py"])
+
     def test_no_tests_or_an_old_python_is_exit_two(self):
         err = io.StringIO()
         with redirect_stderr(err):
