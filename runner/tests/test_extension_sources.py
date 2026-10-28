@@ -1263,6 +1263,27 @@ class ProvisionTest(_Base):
         self.assertEqual(code["project"]["items"]["runner/wire/mailbox.py"],
                          "project/runner/wire/mailbox.py")
 
+    def test_a_denied_directory_rename_still_publishes_the_tree(self):
+        # Windows refuses os.replace of a directory it just filled
+        # (WinError 5). The tree still has to land.
+        root = tempfile.mkdtemp(prefix="hp-extsrc-swap-")
+        self.addCleanup(shutil.rmtree, root, True)
+        new = os.path.join(root, "new")
+        os.makedirs(new)
+        with open(os.path.join(new, "a.txt"), "w", encoding="utf-8") as fh:
+            fh.write("x")
+        final = os.path.join(root, "dest", "files")
+
+        def deny(src, dst):
+            raise PermissionError(5, "Access is denied", src, 5, dst)
+
+        with mock.patch.object(X.os, "replace", side_effect=deny), \
+                mock.patch.object(X.os, "name", "nt"):
+            X._swap_dir(new, final)
+        with open(os.path.join(final, "a.txt"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "x")
+        self.assertFalse(os.path.exists(new))
+
     def test_a_pi_light_box_fetches_nothing_under_the_default(self):
         # No model reads the material on a deterministic box, so the
         # default ("auto") makes no request there. The owner's `true`

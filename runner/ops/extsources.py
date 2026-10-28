@@ -1256,14 +1256,30 @@ def _copy_files(items, dest):
     return total
 
 
+def _replace_path(src, dst):
+    """Move src onto dst. A directory rename that Windows denies
+    (a scanner still holds a file in the tree just written) is
+    copied instead: the bytes are what land, the rename is only
+    how."""
+    try:
+        os.replace(src, dst)
+        return
+    except PermissionError:
+        if os.name != "nt" or os.path.islink(src) or not os.path.isdir(src) \
+                or os.path.lexists(dst):
+            raise
+    shutil.copytree(src, dst)
+    shutil.rmtree(src, ignore_errors=True)
+
+
 def _swap_dir(new, final):
     """Put new where final was; the old tree is removed after."""
     old = None
     if os.path.lexists(final):
         old = "%s.old-%s" % (final, uuid.uuid4().hex[:8])
-        os.replace(final, old)
+        _replace_path(final, old)
     os.makedirs(os.path.dirname(final), exist_ok=True)
-    os.replace(new, final)
+    _replace_path(new, final)
     if old:
         shutil.rmtree(old, ignore_errors=True)
 
