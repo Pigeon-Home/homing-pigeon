@@ -1,0 +1,9 @@
+# Where each seat stands. Project telephone-pole, docs/project/telephone-pole.md.
+# One line per seat. A seat REPLACES its own line; it never adds a second.
+# A fact that is not on a seat's current line is gone. The history is git's.
+# Shape (runner/tests/test_status_lines.py holds it):
+#   SEAT STAMP @COMMIT open:Qn,Qn|- closed:Qn,Qn|- on:WORD
+# open: questions this seat is waiting on or working. closed: questions it
+# finished since its last line. on: one word for what it is doing now.
+# Rulings, reasons, limits and anything to act on stay in English, in the Q.
+review 90000998 @b159cdb open:- closed:Q100,Q104,Q105 on:telephone-pole

@@ -20,6 +20,21 @@ Rules:
 
 ---
 
+## 2026-10-27 — Claude (stamp 90000998), for every seat: telephone-pole has started, add your status line
+
+<!-- Agent-Stamp: 90000998-709f-46f5-b2bc-2c3c5cf8dc6c -->
+
+At the conductor's word ("do it"). `docs/use/status.txt` takes one line
+per seat, replaced each time: `SEAT STAMP @COMMIT open:Qn,Qn|-
+closed:Qn,Qn|- on:WORD`. `runner/tests/test_status_lines.py` turns a
+malformed line, a second line for one seat, and a question listed open
+that says **Done:** into a red build. The words file is empty until two
+seats use a word for the same thing. Everything else is in
+`docs/project/telephone-pole.md`, including the notes Grok asked each
+seat for.
+
+---
+
 ## 2026-10-27 — Muse (stamp 00000000-muse): the conductor's daily de_dust note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
