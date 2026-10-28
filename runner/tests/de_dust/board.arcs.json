@@ -1,1227 +1,2122 @@
 {
-"de_dust":1,
-"target":"board",
-"Agent-Stamp":"50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
-"arcs":[
-[
-"runner/wire/board.py",
-0,
-44
-],
-[
-"runner/wire/board.py",
-0,
-45
-],
-[
-"runner/wire/board.py",
-0,
-51
-],
-[
-"runner/wire/board.py",
-0,
-55
-],
-[
-"runner/wire/board.py",
-0,
-58
-],
-[
-"runner/wire/board.py",
-0,
-67
-],
-[
-"runner/wire/board.py",
-0,
-77
-],
-[
-"runner/wire/board.py",
-0,
-78
-],
-[
-"runner/wire/board.py",
-0,
-81
-],
-[
-"runner/wire/board.py",
-0,
-82
-],
-[
-"runner/wire/board.py",
-0,
-104
-],
-[
-"runner/wire/board.py",
-0,
-105
-],
-[
-"runner/wire/board.py",
-0,
-111
-],
-[
-"runner/wire/board.py",
-0,
-112
-],
-[
-"runner/wire/board.py",
-0,
-147
-],
-[
-"runner/wire/board.py",
-0,
-150
-],
-[
-"runner/wire/board.py",
-0,
-156
-],
-[
-"runner/wire/board.py",
-0,
-157
-],
-[
-"runner/wire/board.py",
-0,
-165
-],
-[
-"runner/wire/board.py",
-0,
-189
-],
-[
-"runner/wire/board.py",
-0,
-199
-],
-[
-"runner/wire/board.py",
-0,
-217
-],
-[
-"runner/wire/board.py",
-0,
-218
-],
-[
-"runner/wire/board.py",
-0,
-221
-],
-[
-"runner/wire/board.py",
-0,
-222
-],
-[
-"runner/wire/board.py",
-0,
-245
-],
-[
-"runner/wire/board.py",
-0,
-246
-],
-[
-"runner/wire/board.py",
-0,
-310
-],
-[
-"runner/wire/board.py",
-0,
-311
-],
-[
-"runner/wire/board.py",
-0,
-345
-],
-[
-"runner/wire/board.py",
-0,
-346
-],
-[
-"runner/wire/board.py",
-0,
-349
-],
-[
-"runner/wire/board.py",
-0,
-351
-],
-[
-"runner/wire/board.py",
-0,
-373
-],
-[
-"runner/wire/board.py",
-0,
-374
-],
-[
-"runner/wire/board.py",
-0,
-377
-],
-[
-"runner/wire/board.py",
-0,
-379
-],
-[
-"runner/wire/board.py",
-0,
-391
-],
-[
-"runner/wire/board.py",
-0,
-392
-],
-[
-"runner/wire/board.py",
-0,
-395
-],
-[
-"runner/wire/board.py",
-0,
-402
-],
-[
-"runner/wire/board.py",
-67,
-68
-],
-[
-"runner/wire/board.py",
-105,
-107
-],
-[
-"runner/wire/board.py",
-107,
-108
-],
-[
-"runner/wire/board.py",
-108,
-109
-],
-[
-"runner/wire/board.py",
-112,
-113
-],
-[
-"runner/wire/board.py",
-113,
-114
-],
-[
-"runner/wire/board.py",
-150,
-151
-],
-[
-"runner/wire/board.py",
-151,
-152
-],
-[
-"runner/wire/board.py",
-152,
-151
-],
-[
-"runner/wire/board.py",
-157,
-158
-],
-[
-"runner/wire/board.py",
-157,
-159
-],
-[
-"runner/wire/board.py",
-159,
-160
-],
-[
-"runner/wire/board.py",
-160,
-161
-],
-[
-"runner/wire/board.py",
-160,
-162
-],
-[
-"runner/wire/board.py",
-160,
-163
-],
-[
-"runner/wire/board.py",
-161,
-160
-],
-[
-"runner/wire/board.py",
-163,
-164
-],
-[
-"runner/wire/board.py",
-163,
-167
-],
-[
-"runner/wire/board.py",
-164,
-165
-],
-[
-"runner/wire/board.py",
-165,
-163
-],
-[
-"runner/wire/board.py",
-165,
-166
-],
-[
-"runner/wire/board.py",
-167,
-168
-],
-[
-"runner/wire/board.py",
-167,
-169
-],
-[
-"runner/wire/board.py",
-169,
-170
-],
-[
-"runner/wire/board.py",
-169,
-171
-],
-[
-"runner/wire/board.py",
-171,
-172
-],
-[
-"runner/wire/board.py",
-171,
-173
-],
-[
-"runner/wire/board.py",
-173,
-174
-],
-[
-"runner/wire/board.py",
-173,
-187
-],
-[
-"runner/wire/board.py",
-174,
-175
-],
-[
-"runner/wire/board.py",
-174,
-177
-],
-[
-"runner/wire/board.py",
-175,
-173
-],
-[
-"runner/wire/board.py",
-176,
-186
-],
-[
-"runner/wire/board.py",
-177,
-178
-],
-[
-"runner/wire/board.py",
-178,
-179
-],
-[
-"runner/wire/board.py",
-179,
-180
-],
-[
-"runner/wire/board.py",
-180,
-181
-],
-[
-"runner/wire/board.py",
-181,
-182
-],
-[
-"runner/wire/board.py",
-182,
-183
-],
-[
-"runner/wire/board.py",
-183,
-184
-],
-[
-"runner/wire/board.py",
-184,
-176
-],
-[
-"runner/wire/board.py",
-186,
-173
-],
-[
-"runner/wire/board.py",
-199,
-200
-],
-[
-"runner/wire/board.py",
-200,
-202
-],
-[
-"runner/wire/board.py",
-202,
-203
-],
-[
-"runner/wire/board.py",
-203,
-204
-],
-[
-"runner/wire/board.py",
-204,
-207
-],
-[
-"runner/wire/board.py",
-204,
-215
-],
-[
-"runner/wire/board.py",
-207,
-210
-],
-[
-"runner/wire/board.py",
-210,
-211
-],
-[
-"runner/wire/board.py",
-211,
-212
-],
-[
-"runner/wire/board.py",
-212,
-213
-],
-[
-"runner/wire/board.py",
-213,
-214
-],
-[
-"runner/wire/board.py",
-214,
-204
-],
-[
-"runner/wire/board.py",
-218,
-219
-],
-[
-"runner/wire/board.py",
-219,
-218
-],
-[
-"runner/wire/board.py",
-222,
-224
-],
-[
-"runner/wire/board.py",
-224,
-225
-],
-[
-"runner/wire/board.py",
-225,
-227
-],
-[
-"runner/wire/board.py",
-227,
-228
-],
-[
-"runner/wire/board.py",
-227,
-234
-],
-[
-"runner/wire/board.py",
-228,
-229
-],
-[
-"runner/wire/board.py",
-229,
-232
-],
-[
-"runner/wire/board.py",
-232,
-233
-],
-[
-"runner/wire/board.py",
-232,
-234
-],
-[
-"runner/wire/board.py",
-234,
-235
-],
-[
-"runner/wire/board.py",
-235,
-235
-],
-[
-"runner/wire/board.py",
-235,
-236
-],
-[
-"runner/wire/board.py",
-236,
-237
-],
-[
-"runner/wire/board.py",
-237,
-241
-],
-[
-"runner/wire/board.py",
-241,
-242
-],
-[
-"runner/wire/board.py",
-242,
-245
-],
-[
-"runner/wire/board.py",
-245,
-246
-],
-[
-"runner/wire/board.py",
-245,
-247
-],
-[
-"runner/wire/board.py",
-245,
-249
-],
-[
-"runner/wire/board.py",
-246,
-245
-],
-[
-"runner/wire/board.py",
-247,
-249
-],
-[
-"runner/wire/board.py",
-249,
-250
-],
-[
-"runner/wire/board.py",
-249,
-262
-],
-[
-"runner/wire/board.py",
-250,
-252
-],
-[
-"runner/wire/board.py",
-252,
-249
-],
-[
-"runner/wire/board.py",
-262,
-263
-],
-[
-"runner/wire/board.py",
-263,
-264
-],
-[
-"runner/wire/board.py",
-264,
-265
-],
-[
-"runner/wire/board.py",
-265,
-266
-],
-[
-"runner/wire/board.py",
-265,
-306
-],
-[
-"runner/wire/board.py",
-266,
-267
-],
-[
-"runner/wire/board.py",
-266,
-268
-],
-[
-"runner/wire/board.py",
-267,
-265
-],
-[
-"runner/wire/board.py",
-268,
-271
-],
-[
-"runner/wire/board.py",
-271,
-272
-],
-[
-"runner/wire/board.py",
-272,
-274
-],
-[
-"runner/wire/board.py",
-274,
-275
-],
-[
-"runner/wire/board.py",
-274,
-284
-],
-[
-"runner/wire/board.py",
-275,
-276
-],
-[
-"runner/wire/board.py",
-275,
-279
-],
-[
-"runner/wire/board.py",
-276,
-284
-],
-[
-"runner/wire/board.py",
-279,
-279
-],
-[
-"runner/wire/board.py",
-279,
-280
-],
-[
-"runner/wire/board.py",
-280,
-280
-],
-[
-"runner/wire/board.py",
-280,
-281
-],
-[
-"runner/wire/board.py",
-281,
-282
-],
-[
-"runner/wire/board.py",
-281,
-284
-],
-[
-"runner/wire/board.py",
-282,
-265
-],
-[
-"runner/wire/board.py",
-284,
-285
-],
-[
-"runner/wire/board.py",
-285,
-287
-],
-[
-"runner/wire/board.py",
-287,
-287
-],
-[
-"runner/wire/board.py",
-287,
-288
-],
-[
-"runner/wire/board.py",
-288,
-294
-],
-[
-"runner/wire/board.py",
-294,
-295
-],
-[
-"runner/wire/board.py",
-294,
-305
-],
-[
-"runner/wire/board.py",
-295,
-296
-],
-[
-"runner/wire/board.py",
-296,
-297
-],
-[
-"runner/wire/board.py",
-297,
-298
-],
-[
-"runner/wire/board.py",
-297,
-304
-],
-[
-"runner/wire/board.py",
-298,
-299
-],
-[
-"runner/wire/board.py",
-298,
-303
-],
-[
-"runner/wire/board.py",
-299,
-302
-],
-[
-"runner/wire/board.py",
-302,
-298
-],
-[
-"runner/wire/board.py",
-303,
-265
-],
-[
-"runner/wire/board.py",
-304,
-305
-],
-[
-"runner/wire/board.py",
-305,
-265
-],
-[
-"runner/wire/board.py",
-306,
-307
-],
-[
-"runner/wire/board.py",
-306,
-310
-],
-[
-"runner/wire/board.py",
-307,
-308
-],
-[
-"runner/wire/board.py",
-307,
-309
-],
-[
-"runner/wire/board.py",
-308,
-307
-],
-[
-"runner/wire/board.py",
-310,
-318
-],
-[
-"runner/wire/board.py",
-311,
-312
-],
-[
-"runner/wire/board.py",
-312,
-313
-],
-[
-"runner/wire/board.py",
-312,
-315
-],
-[
-"runner/wire/board.py",
-313,
-315
-],
-[
-"runner/wire/board.py",
-315,
-317
-],
-[
-"runner/wire/board.py",
-318,
-319
-],
-[
-"runner/wire/board.py",
-319,
-320
-],
-[
-"runner/wire/board.py",
-320,
-321
-],
-[
-"runner/wire/board.py",
-321,
-325
-],
-[
-"runner/wire/board.py",
-321,
-330
-],
-[
-"runner/wire/board.py",
-325,
-326
-],
-[
-"runner/wire/board.py",
-326,
-328
-],
-[
-"runner/wire/board.py",
-326,
-329
-],
-[
-"runner/wire/board.py",
-326,
-334
-],
-[
-"runner/wire/board.py",
-328,
-326
-],
-[
-"runner/wire/board.py",
-329,
-326
-],
-[
-"runner/wire/board.py",
-330,
-334
-],
-[
-"runner/wire/board.py",
-334,
-335
-],
-[
-"runner/wire/board.py",
-335,
-336
-],
-[
-"runner/wire/board.py",
-336,
-337
-],
-[
-"runner/wire/board.py",
-337,
-338
-],
-[
-"runner/wire/board.py",
-337,
-340
-],
-[
-"runner/wire/board.py",
-338,
-339
-],
-[
-"runner/wire/board.py",
-339,
-337
-],
-[
-"runner/wire/board.py",
-340,
-341
-],
-[
-"runner/wire/board.py",
-341,
-342
-],
-[
-"runner/wire/board.py",
-342,
-343
-],
-[
-"runner/wire/board.py",
-346,
-347
-],
-[
-"runner/wire/board.py",
-347,
-346
-],
-[
-"runner/wire/board.py",
-351,
-353
-],
-[
-"runner/wire/board.py",
-353,
-354
-],
-[
-"runner/wire/board.py",
-354,
-355
-],
-[
-"runner/wire/board.py",
-354,
-356
-],
-[
-"runner/wire/board.py",
-356,
-357
-],
-[
-"runner/wire/board.py",
-356,
-358
-],
-[
-"runner/wire/board.py",
-358,
-360
-],
-[
-"runner/wire/board.py",
-360,
-361
-],
-[
-"runner/wire/board.py",
-360,
-365
-],
-[
-"runner/wire/board.py",
-361,
-362
-],
-[
-"runner/wire/board.py",
-362,
-363
-],
-[
-"runner/wire/board.py",
-363,
-364
-],
-[
-"runner/wire/board.py",
-365,
-368
-],
-[
-"runner/wire/board.py",
-368,
-369
-],
-[
-"runner/wire/board.py",
-369,
-370
-],
-[
-"runner/wire/board.py",
-370,
-371
-],
-[
-"runner/wire/board.py",
-374,
-375
-],
-[
-"runner/wire/board.py",
-375,
-374
-],
-[
-"runner/wire/board.py",
-379,
-381
-],
-[
-"runner/wire/board.py",
-381,
-382
-],
-[
-"runner/wire/board.py",
-382,
-384
-],
-[
-"runner/wire/board.py",
-384,
-386
-],
-[
-"runner/wire/board.py",
-386,
-387
-],
-[
-"runner/wire/board.py",
-387,
-388
-],
-[
-"runner/wire/board.py",
-388,
-389
-],
-[
-"runner/wire/board.py",
-392,
-393
-],
-[
-"runner/wire/board.py",
-393,
-392
-],
-[
-"runner/wire/board.py",
-402,
-403
-],
-[
-"runner/wire/board.py",
-403,
-404
-],
-[
-"runner/wire/board.py",
-404,
-405
-],
-[
-"runner/wire/board.py",
-405,
-406
-],
-[
-"runner/wire/board.py",
-406,
-407
-],
-[
-"runner/wire/board.py",
-406,
-420
-],
-[
-"runner/wire/board.py",
-407,
-409
-],
-[
-"runner/wire/board.py",
-409,
-406
-],
-[
-"runner/wire/board.py",
-409,
-410
-],
-[
-"runner/wire/board.py",
-410,
-411
-],
-[
-"runner/wire/board.py",
-411,
-412
-],
-[
-"runner/wire/board.py",
-412,
-413
-],
-[
-"runner/wire/board.py",
-413,
-414
-],
-[
-"runner/wire/board.py",
-414,
-415
-],
-[
-"runner/wire/board.py",
-415,
-416
-],
-[
-"runner/wire/board.py",
-416,
-417
-],
-[
-"runner/wire/board.py",
-417,
-406
-],
-[
-"runner/wire/board.py",
-420,
-421
-],
-[
-"runner/wire/board.py",
-421,
-422
-]
-]
+ "de_dust": 1,
+ "target": "board",
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "arcs": [
+  [
+   "runner/wire/board.py",
+   0,
+   44
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   45
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   51
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   55
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   58
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   67
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   77
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   78
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   81
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   82
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   104
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   105
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   111
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   112
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   147
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   150
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   156
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   157
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   165
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   167
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   189
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   191
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   199
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   201
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   217
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   218
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   219
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   220
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   221
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   222
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   223
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   224
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   245
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   246
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   247
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   248
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   310
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   311
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   312
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   313
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   345
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   346
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   347
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   348
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   349
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   351
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   352
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   355
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   373
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   374
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   377
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   379
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   386
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   387
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   390
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   391
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   392
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   395
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   402
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   404
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   405
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   408
+  ],
+  [
+   "runner/wire/board.py",
+   0,
+   415
+  ],
+  [
+   "runner/wire/board.py",
+   67,
+   68
+  ],
+  [
+   "runner/wire/board.py",
+   105,
+   107
+  ],
+  [
+   "runner/wire/board.py",
+   107,
+   108
+  ],
+  [
+   "runner/wire/board.py",
+   108,
+   109
+  ],
+  [
+   "runner/wire/board.py",
+   112,
+   113
+  ],
+  [
+   "runner/wire/board.py",
+   113,
+   114
+  ],
+  [
+   "runner/wire/board.py",
+   150,
+   151
+  ],
+  [
+   "runner/wire/board.py",
+   151,
+   152
+  ],
+  [
+   "runner/wire/board.py",
+   152,
+   151
+  ],
+  [
+   "runner/wire/board.py",
+   157,
+   158
+  ],
+  [
+   "runner/wire/board.py",
+   157,
+   159
+  ],
+  [
+   "runner/wire/board.py",
+   159,
+   160
+  ],
+  [
+   "runner/wire/board.py",
+   159,
+   162
+  ],
+  [
+   "runner/wire/board.py",
+   160,
+   161
+  ],
+  [
+   "runner/wire/board.py",
+   160,
+   162
+  ],
+  [
+   "runner/wire/board.py",
+   160,
+   163
+  ],
+  [
+   "runner/wire/board.py",
+   161,
+   160
+  ],
+  [
+   "runner/wire/board.py",
+   162,
+   163
+  ],
+  [
+   "runner/wire/board.py",
+   162,
+   164
+  ],
+  [
+   "runner/wire/board.py",
+   163,
+   162
+  ],
+  [
+   "runner/wire/board.py",
+   163,
+   164
+  ],
+  [
+   "runner/wire/board.py",
+   163,
+   165
+  ],
+  [
+   "runner/wire/board.py",
+   163,
+   167
+  ],
+  [
+   "runner/wire/board.py",
+   164,
+   165
+  ],
+  [
+   "runner/wire/board.py",
+   165,
+   163
+  ],
+  [
+   "runner/wire/board.py",
+   165,
+   166
+  ],
+  [
+   "runner/wire/board.py",
+   165,
+   169
+  ],
+  [
+   "runner/wire/board.py",
+   166,
+   167
+  ],
+  [
+   "runner/wire/board.py",
+   167,
+   165
+  ],
+  [
+   "runner/wire/board.py",
+   167,
+   167
+  ],
+  [
+   "runner/wire/board.py",
+   167,
+   168
+  ],
+  [
+   "runner/wire/board.py",
+   167,
+   169
+  ],
+  [
+   "runner/wire/board.py",
+   169,
+   170
+  ],
+  [
+   "runner/wire/board.py",
+   169,
+   171
+  ],
+  [
+   "runner/wire/board.py",
+   171,
+   172
+  ],
+  [
+   "runner/wire/board.py",
+   171,
+   173
+  ],
+  [
+   "runner/wire/board.py",
+   173,
+   174
+  ],
+  [
+   "runner/wire/board.py",
+   173,
+   175
+  ],
+  [
+   "runner/wire/board.py",
+   173,
+   187
+  ],
+  [
+   "runner/wire/board.py",
+   174,
+   175
+  ],
+  [
+   "runner/wire/board.py",
+   174,
+   177
+  ],
+  [
+   "runner/wire/board.py",
+   175,
+   173
+  ],
+  [
+   "runner/wire/board.py",
+   175,
+   176
+  ],
+  [
+   "runner/wire/board.py",
+   175,
+   189
+  ],
+  [
+   "runner/wire/board.py",
+   176,
+   177
+  ],
+  [
+   "runner/wire/board.py",
+   176,
+   179
+  ],
+  [
+   "runner/wire/board.py",
+   176,
+   186
+  ],
+  [
+   "runner/wire/board.py",
+   177,
+   175
+  ],
+  [
+   "runner/wire/board.py",
+   177,
+   178
+  ],
+  [
+   "runner/wire/board.py",
+   178,
+   179
+  ],
+  [
+   "runner/wire/board.py",
+   178,
+   188
+  ],
+  [
+   "runner/wire/board.py",
+   179,
+   180
+  ],
+  [
+   "runner/wire/board.py",
+   180,
+   181
+  ],
+  [
+   "runner/wire/board.py",
+   181,
+   182
+  ],
+  [
+   "runner/wire/board.py",
+   182,
+   183
+  ],
+  [
+   "runner/wire/board.py",
+   183,
+   184
+  ],
+  [
+   "runner/wire/board.py",
+   184,
+   176
+  ],
+  [
+   "runner/wire/board.py",
+   184,
+   185
+  ],
+  [
+   "runner/wire/board.py",
+   185,
+   186
+  ],
+  [
+   "runner/wire/board.py",
+   186,
+   173
+  ],
+  [
+   "runner/wire/board.py",
+   186,
+   178
+  ],
+  [
+   "runner/wire/board.py",
+   188,
+   175
+  ],
+  [
+   "runner/wire/board.py",
+   199,
+   200
+  ],
+  [
+   "runner/wire/board.py",
+   200,
+   202
+  ],
+  [
+   "runner/wire/board.py",
+   201,
+   202
+  ],
+  [
+   "runner/wire/board.py",
+   202,
+   203
+  ],
+  [
+   "runner/wire/board.py",
+   202,
+   204
+  ],
+  [
+   "runner/wire/board.py",
+   203,
+   204
+  ],
+  [
+   "runner/wire/board.py",
+   204,
+   205
+  ],
+  [
+   "runner/wire/board.py",
+   204,
+   207
+  ],
+  [
+   "runner/wire/board.py",
+   204,
+   215
+  ],
+  [
+   "runner/wire/board.py",
+   205,
+   206
+  ],
+  [
+   "runner/wire/board.py",
+   206,
+   209
+  ],
+  [
+   "runner/wire/board.py",
+   206,
+   217
+  ],
+  [
+   "runner/wire/board.py",
+   207,
+   210
+  ],
+  [
+   "runner/wire/board.py",
+   209,
+   212
+  ],
+  [
+   "runner/wire/board.py",
+   210,
+   211
+  ],
+  [
+   "runner/wire/board.py",
+   211,
+   212
+  ],
+  [
+   "runner/wire/board.py",
+   212,
+   213
+  ],
+  [
+   "runner/wire/board.py",
+   213,
+   214
+  ],
+  [
+   "runner/wire/board.py",
+   214,
+   204
+  ],
+  [
+   "runner/wire/board.py",
+   214,
+   215
+  ],
+  [
+   "runner/wire/board.py",
+   215,
+   216
+  ],
+  [
+   "runner/wire/board.py",
+   216,
+   206
+  ],
+  [
+   "runner/wire/board.py",
+   218,
+   219
+  ],
+  [
+   "runner/wire/board.py",
+   219,
+   218
+  ],
+  [
+   "runner/wire/board.py",
+   220,
+   221
+  ],
+  [
+   "runner/wire/board.py",
+   221,
+   220
+  ],
+  [
+   "runner/wire/board.py",
+   222,
+   224
+  ],
+  [
+   "runner/wire/board.py",
+   224,
+   225
+  ],
+  [
+   "runner/wire/board.py",
+   224,
+   226
+  ],
+  [
+   "runner/wire/board.py",
+   225,
+   227
+  ],
+  [
+   "runner/wire/board.py",
+   226,
+   227
+  ],
+  [
+   "runner/wire/board.py",
+   227,
+   228
+  ],
+  [
+   "runner/wire/board.py",
+   227,
+   229
+  ],
+  [
+   "runner/wire/board.py",
+   227,
+   234
+  ],
+  [
+   "runner/wire/board.py",
+   228,
+   229
+  ],
+  [
+   "runner/wire/board.py",
+   229,
+   230
+  ],
+  [
+   "runner/wire/board.py",
+   229,
+   232
+  ],
+  [
+   "runner/wire/board.py",
+   229,
+   236
+  ],
+  [
+   "runner/wire/board.py",
+   230,
+   231
+  ],
+  [
+   "runner/wire/board.py",
+   231,
+   234
+  ],
+  [
+   "runner/wire/board.py",
+   232,
+   233
+  ],
+  [
+   "runner/wire/board.py",
+   232,
+   234
+  ],
+  [
+   "runner/wire/board.py",
+   234,
+   235
+  ],
+  [
+   "runner/wire/board.py",
+   234,
+   236
+  ],
+  [
+   "runner/wire/board.py",
+   235,
+   235
+  ],
+  [
+   "runner/wire/board.py",
+   235,
+   236
+  ],
+  [
+   "runner/wire/board.py",
+   236,
+   237
+  ],
+  [
+   "runner/wire/board.py",
+   237,
+   237
+  ],
+  [
+   "runner/wire/board.py",
+   237,
+   238
+  ],
+  [
+   "runner/wire/board.py",
+   237,
+   241
+  ],
+  [
+   "runner/wire/board.py",
+   238,
+   239
+  ],
+  [
+   "runner/wire/board.py",
+   239,
+   243
+  ],
+  [
+   "runner/wire/board.py",
+   241,
+   242
+  ],
+  [
+   "runner/wire/board.py",
+   242,
+   245
+  ],
+  [
+   "runner/wire/board.py",
+   243,
+   244
+  ],
+  [
+   "runner/wire/board.py",
+   244,
+   247
+  ],
+  [
+   "runner/wire/board.py",
+   245,
+   246
+  ],
+  [
+   "runner/wire/board.py",
+   245,
+   247
+  ],
+  [
+   "runner/wire/board.py",
+   245,
+   249
+  ],
+  [
+   "runner/wire/board.py",
+   246,
+   245
+  ],
+  [
+   "runner/wire/board.py",
+   247,
+   247
+  ],
+  [
+   "runner/wire/board.py",
+   247,
+   248
+  ],
+  [
+   "runner/wire/board.py",
+   247,
+   249
+  ],
+  [
+   "runner/wire/board.py",
+   247,
+   251
+  ],
+  [
+   "runner/wire/board.py",
+   248,
+   247
+  ],
+  [
+   "runner/wire/board.py",
+   249,
+   250
+  ],
+  [
+   "runner/wire/board.py",
+   249,
+   251
+  ],
+  [
+   "runner/wire/board.py",
+   249,
+   262
+  ],
+  [
+   "runner/wire/board.py",
+   250,
+   252
+  ],
+  [
+   "runner/wire/board.py",
+   251,
+   252
+  ],
+  [
+   "runner/wire/board.py",
+   251,
+   264
+  ],
+  [
+   "runner/wire/board.py",
+   252,
+   249
+  ],
+  [
+   "runner/wire/board.py",
+   252,
+   254
+  ],
+  [
+   "runner/wire/board.py",
+   254,
+   251
+  ],
+  [
+   "runner/wire/board.py",
+   262,
+   263
+  ],
+  [
+   "runner/wire/board.py",
+   263,
+   264
+  ],
+  [
+   "runner/wire/board.py",
+   264,
+   265
+  ],
+  [
+   "runner/wire/board.py",
+   265,
+   266
+  ],
+  [
+   "runner/wire/board.py",
+   265,
+   306
+  ],
+  [
+   "runner/wire/board.py",
+   266,
+   267
+  ],
+  [
+   "runner/wire/board.py",
+   266,
+   268
+  ],
+  [
+   "runner/wire/board.py",
+   267,
+   265
+  ],
+  [
+   "runner/wire/board.py",
+   267,
+   268
+  ],
+  [
+   "runner/wire/board.py",
+   267,
+   308
+  ],
+  [
+   "runner/wire/board.py",
+   268,
+   269
+  ],
+  [
+   "runner/wire/board.py",
+   268,
+   270
+  ],
+  [
+   "runner/wire/board.py",
+   268,
+   271
+  ],
+  [
+   "runner/wire/board.py",
+   269,
+   267
+  ],
+  [
+   "runner/wire/board.py",
+   270,
+   273
+  ],
+  [
+   "runner/wire/board.py",
+   271,
+   272
+  ],
+  [
+   "runner/wire/board.py",
+   272,
+   274
+  ],
+  [
+   "runner/wire/board.py",
+   273,
+   274
+  ],
+  [
+   "runner/wire/board.py",
+   274,
+   275
+  ],
+  [
+   "runner/wire/board.py",
+   274,
+   276
+  ],
+  [
+   "runner/wire/board.py",
+   274,
+   284
+  ],
+  [
+   "runner/wire/board.py",
+   275,
+   276
+  ],
+  [
+   "runner/wire/board.py",
+   275,
+   279
+  ],
+  [
+   "runner/wire/board.py",
+   276,
+   277
+  ],
+  [
+   "runner/wire/board.py",
+   276,
+   284
+  ],
+  [
+   "runner/wire/board.py",
+   276,
+   286
+  ],
+  [
+   "runner/wire/board.py",
+   277,
+   278
+  ],
+  [
+   "runner/wire/board.py",
+   277,
+   281
+  ],
+  [
+   "runner/wire/board.py",
+   278,
+   286
+  ],
+  [
+   "runner/wire/board.py",
+   279,
+   279
+  ],
+  [
+   "runner/wire/board.py",
+   279,
+   280
+  ],
+  [
+   "runner/wire/board.py",
+   280,
+   280
+  ],
+  [
+   "runner/wire/board.py",
+   280,
+   281
+  ],
+  [
+   "runner/wire/board.py",
+   281,
+   281
+  ],
+  [
+   "runner/wire/board.py",
+   281,
+   282
+  ],
+  [
+   "runner/wire/board.py",
+   281,
+   284
+  ],
+  [
+   "runner/wire/board.py",
+   282,
+   265
+  ],
+  [
+   "runner/wire/board.py",
+   282,
+   282
+  ],
+  [
+   "runner/wire/board.py",
+   282,
+   283
+  ],
+  [
+   "runner/wire/board.py",
+   283,
+   284
+  ],
+  [
+   "runner/wire/board.py",
+   283,
+   286
+  ],
+  [
+   "runner/wire/board.py",
+   284,
+   267
+  ],
+  [
+   "runner/wire/board.py",
+   284,
+   285
+  ],
+  [
+   "runner/wire/board.py",
+   285,
+   287
+  ],
+  [
+   "runner/wire/board.py",
+   286,
+   287
+  ],
+  [
+   "runner/wire/board.py",
+   287,
+   287
+  ],
+  [
+   "runner/wire/board.py",
+   287,
+   288
+  ],
+  [
+   "runner/wire/board.py",
+   287,
+   289
+  ],
+  [
+   "runner/wire/board.py",
+   288,
+   294
+  ],
+  [
+   "runner/wire/board.py",
+   289,
+   289
+  ],
+  [
+   "runner/wire/board.py",
+   289,
+   290
+  ],
+  [
+   "runner/wire/board.py",
+   290,
+   296
+  ],
+  [
+   "runner/wire/board.py",
+   294,
+   295
+  ],
+  [
+   "runner/wire/board.py",
+   294,
+   305
+  ],
+  [
+   "runner/wire/board.py",
+   295,
+   296
+  ],
+  [
+   "runner/wire/board.py",
+   296,
+   297
+  ],
+  [
+   "runner/wire/board.py",
+   296,
+   307
+  ],
+  [
+   "runner/wire/board.py",
+   297,
+   298
+  ],
+  [
+   "runner/wire/board.py",
+   297,
+   304
+  ],
+  [
+   "runner/wire/board.py",
+   298,
+   299
+  ],
+  [
+   "runner/wire/board.py",
+   298,
+   303
+  ],
+  [
+   "runner/wire/board.py",
+   299,
+   300
+  ],
+  [
+   "runner/wire/board.py",
+   299,
+   302
+  ],
+  [
+   "runner/wire/board.py",
+   299,
+   306
+  ],
+  [
+   "runner/wire/board.py",
+   300,
+   301
+  ],
+  [
+   "runner/wire/board.py",
+   300,
+   305
+  ],
+  [
+   "runner/wire/board.py",
+   301,
+   304
+  ],
+  [
+   "runner/wire/board.py",
+   302,
+   298
+  ],
+  [
+   "runner/wire/board.py",
+   303,
+   265
+  ],
+  [
+   "runner/wire/board.py",
+   304,
+   300
+  ],
+  [
+   "runner/wire/board.py",
+   304,
+   305
+  ],
+  [
+   "runner/wire/board.py",
+   305,
+   265
+  ],
+  [
+   "runner/wire/board.py",
+   305,
+   267
+  ],
+  [
+   "runner/wire/board.py",
+   306,
+   307
+  ],
+  [
+   "runner/wire/board.py",
+   306,
+   310
+  ],
+  [
+   "runner/wire/board.py",
+   307,
+   267
+  ],
+  [
+   "runner/wire/board.py",
+   307,
+   308
+  ],
+  [
+   "runner/wire/board.py",
+   307,
+   309
+  ],
+  [
+   "runner/wire/board.py",
+   308,
+   307
+  ],
+  [
+   "runner/wire/board.py",
+   308,
+   309
+  ],
+  [
+   "runner/wire/board.py",
+   308,
+   312
+  ],
+  [
+   "runner/wire/board.py",
+   309,
+   310
+  ],
+  [
+   "runner/wire/board.py",
+   309,
+   311
+  ],
+  [
+   "runner/wire/board.py",
+   310,
+   309
+  ],
+  [
+   "runner/wire/board.py",
+   310,
+   318
+  ],
+  [
+   "runner/wire/board.py",
+   311,
+   312
+  ],
+  [
+   "runner/wire/board.py",
+   312,
+   313
+  ],
+  [
+   "runner/wire/board.py",
+   312,
+   315
+  ],
+  [
+   "runner/wire/board.py",
+   312,
+   320
+  ],
+  [
+   "runner/wire/board.py",
+   313,
+   314
+  ],
+  [
+   "runner/wire/board.py",
+   313,
+   315
+  ],
+  [
+   "runner/wire/board.py",
+   314,
+   315
+  ],
+  [
+   "runner/wire/board.py",
+   314,
+   317
+  ],
+  [
+   "runner/wire/board.py",
+   315,
+   317
+  ],
+  [
+   "runner/wire/board.py",
+   317,
+   319
+  ],
+  [
+   "runner/wire/board.py",
+   318,
+   319
+  ],
+  [
+   "runner/wire/board.py",
+   319,
+   320
+  ],
+  [
+   "runner/wire/board.py",
+   320,
+   321
+  ],
+  [
+   "runner/wire/board.py",
+   321,
+   322
+  ],
+  [
+   "runner/wire/board.py",
+   321,
+   325
+  ],
+  [
+   "runner/wire/board.py",
+   321,
+   330
+  ],
+  [
+   "runner/wire/board.py",
+   322,
+   323
+  ],
+  [
+   "runner/wire/board.py",
+   323,
+   327
+  ],
+  [
+   "runner/wire/board.py",
+   323,
+   332
+  ],
+  [
+   "runner/wire/board.py",
+   325,
+   326
+  ],
+  [
+   "runner/wire/board.py",
+   326,
+   328
+  ],
+  [
+   "runner/wire/board.py",
+   326,
+   329
+  ],
+  [
+   "runner/wire/board.py",
+   326,
+   334
+  ],
+  [
+   "runner/wire/board.py",
+   327,
+   328
+  ],
+  [
+   "runner/wire/board.py",
+   328,
+   326
+  ],
+  [
+   "runner/wire/board.py",
+   328,
+   330
+  ],
+  [
+   "runner/wire/board.py",
+   328,
+   331
+  ],
+  [
+   "runner/wire/board.py",
+   328,
+   336
+  ],
+  [
+   "runner/wire/board.py",
+   329,
+   326
+  ],
+  [
+   "runner/wire/board.py",
+   330,
+   328
+  ],
+  [
+   "runner/wire/board.py",
+   330,
+   334
+  ],
+  [
+   "runner/wire/board.py",
+   331,
+   328
+  ],
+  [
+   "runner/wire/board.py",
+   332,
+   336
+  ],
+  [
+   "runner/wire/board.py",
+   334,
+   335
+  ],
+  [
+   "runner/wire/board.py",
+   335,
+   336
+  ],
+  [
+   "runner/wire/board.py",
+   336,
+   337
+  ],
+  [
+   "runner/wire/board.py",
+   337,
+   338
+  ],
+  [
+   "runner/wire/board.py",
+   337,
+   340
+  ],
+  [
+   "runner/wire/board.py",
+   338,
+   339
+  ],
+  [
+   "runner/wire/board.py",
+   339,
+   337
+  ],
+  [
+   "runner/wire/board.py",
+   339,
+   340
+  ],
+  [
+   "runner/wire/board.py",
+   339,
+   342
+  ],
+  [
+   "runner/wire/board.py",
+   340,
+   341
+  ],
+  [
+   "runner/wire/board.py",
+   341,
+   339
+  ],
+  [
+   "runner/wire/board.py",
+   341,
+   342
+  ],
+  [
+   "runner/wire/board.py",
+   342,
+   343
+  ],
+  [
+   "runner/wire/board.py",
+   343,
+   344
+  ],
+  [
+   "runner/wire/board.py",
+   344,
+   345
+  ],
+  [
+   "runner/wire/board.py",
+   346,
+   347
+  ],
+  [
+   "runner/wire/board.py",
+   347,
+   346
+  ],
+  [
+   "runner/wire/board.py",
+   348,
+   349
+  ],
+  [
+   "runner/wire/board.py",
+   349,
+   348
+  ],
+  [
+   "runner/wire/board.py",
+   349,
+   350
+  ],
+  [
+   "runner/wire/board.py",
+   350,
+   349
+  ],
+  [
+   "runner/wire/board.py",
+   351,
+   353
+  ],
+  [
+   "runner/wire/board.py",
+   353,
+   354
+  ],
+  [
+   "runner/wire/board.py",
+   354,
+   355
+  ],
+  [
+   "runner/wire/board.py",
+   354,
+   356
+  ],
+  [
+   "runner/wire/board.py",
+   355,
+   357
+  ],
+  [
+   "runner/wire/board.py",
+   356,
+   357
+  ],
+  [
+   "runner/wire/board.py",
+   356,
+   358
+  ],
+  [
+   "runner/wire/board.py",
+   357,
+   358
+  ],
+  [
+   "runner/wire/board.py",
+   358,
+   359
+  ],
+  [
+   "runner/wire/board.py",
+   358,
+   360
+  ],
+  [
+   "runner/wire/board.py",
+   360,
+   361
+  ],
+  [
+   "runner/wire/board.py",
+   360,
+   362
+  ],
+  [
+   "runner/wire/board.py",
+   360,
+   365
+  ],
+  [
+   "runner/wire/board.py",
+   361,
+   362
+  ],
+  [
+   "runner/wire/board.py",
+   362,
+   363
+  ],
+  [
+   "runner/wire/board.py",
+   362,
+   369
+  ],
+  [
+   "runner/wire/board.py",
+   363,
+   364
+  ],
+  [
+   "runner/wire/board.py",
+   365,
+   368
+  ],
+  [
+   "runner/wire/board.py",
+   368,
+   369
+  ],
+  [
+   "runner/wire/board.py",
+   369,
+   370
+  ],
+  [
+   "runner/wire/board.py",
+   370,
+   371
+  ],
+  [
+   "runner/wire/board.py",
+   370,
+   373
+  ],
+  [
+   "runner/wire/board.py",
+   373,
+   374
+  ],
+  [
+   "runner/wire/board.py",
+   373,
+   378
+  ],
+  [
+   "runner/wire/board.py",
+   374,
+   375
+  ],
+  [
+   "runner/wire/board.py",
+   375,
+   374
+  ],
+  [
+   "runner/wire/board.py",
+   375,
+   376
+  ],
+  [
+   "runner/wire/board.py",
+   376,
+   377
+  ],
+  [
+   "runner/wire/board.py",
+   378,
+   381
+  ],
+  [
+   "runner/wire/board.py",
+   379,
+   381
+  ],
+  [
+   "runner/wire/board.py",
+   381,
+   382
+  ],
+  [
+   "runner/wire/board.py",
+   382,
+   383
+  ],
+  [
+   "runner/wire/board.py",
+   382,
+   384
+  ],
+  [
+   "runner/wire/board.py",
+   383,
+   384
+  ],
+  [
+   "runner/wire/board.py",
+   384,
+   386
+  ],
+  [
+   "runner/wire/board.py",
+   386,
+   387
+  ],
+  [
+   "runner/wire/board.py",
+   387,
+   388
+  ],
+  [
+   "runner/wire/board.py",
+   388,
+   387
+  ],
+  [
+   "runner/wire/board.py",
+   388,
+   389
+  ],
+  [
+   "runner/wire/board.py",
+   392,
+   393
+  ],
+  [
+   "runner/wire/board.py",
+   392,
+   394
+  ],
+  [
+   "runner/wire/board.py",
+   393,
+   392
+  ],
+  [
+   "runner/wire/board.py",
+   394,
+   395
+  ],
+  [
+   "runner/wire/board.py",
+   395,
+   397
+  ],
+  [
+   "runner/wire/board.py",
+   397,
+   399
+  ],
+  [
+   "runner/wire/board.py",
+   399,
+   400
+  ],
+  [
+   "runner/wire/board.py",
+   400,
+   401
+  ],
+  [
+   "runner/wire/board.py",
+   401,
+   402
+  ],
+  [
+   "runner/wire/board.py",
+   402,
+   403
+  ],
+  [
+   "runner/wire/board.py",
+   403,
+   404
+  ],
+  [
+   "runner/wire/board.py",
+   404,
+   405
+  ],
+  [
+   "runner/wire/board.py",
+   405,
+   406
+  ],
+  [
+   "runner/wire/board.py",
+   406,
+   405
+  ],
+  [
+   "runner/wire/board.py",
+   406,
+   407
+  ],
+  [
+   "runner/wire/board.py",
+   406,
+   420
+  ],
+  [
+   "runner/wire/board.py",
+   407,
+   409
+  ],
+  [
+   "runner/wire/board.py",
+   409,
+   406
+  ],
+  [
+   "runner/wire/board.py",
+   409,
+   410
+  ],
+  [
+   "runner/wire/board.py",
+   410,
+   411
+  ],
+  [
+   "runner/wire/board.py",
+   411,
+   412
+  ],
+  [
+   "runner/wire/board.py",
+   412,
+   413
+  ],
+  [
+   "runner/wire/board.py",
+   413,
+   414
+  ],
+  [
+   "runner/wire/board.py",
+   414,
+   415
+  ],
+  [
+   "runner/wire/board.py",
+   415,
+   416
+  ],
+  [
+   "runner/wire/board.py",
+   416,
+   417
+  ],
+  [
+   "runner/wire/board.py",
+   417,
+   406
+  ],
+  [
+   "runner/wire/board.py",
+   417,
+   418
+  ],
+  [
+   "runner/wire/board.py",
+   418,
+   419
+  ],
+  [
+   "runner/wire/board.py",
+   419,
+   420
+  ],
+  [
+   "runner/wire/board.py",
+   419,
+   433
+  ],
+  [
+   "runner/wire/board.py",
+   420,
+   421
+  ],
+  [
+   "runner/wire/board.py",
+   420,
+   422
+  ],
+  [
+   "runner/wire/board.py",
+   421,
+   422
+  ],
+  [
+   "runner/wire/board.py",
+   422,
+   419
+  ],
+  [
+   "runner/wire/board.py",
+   422,
+   423
+  ],
+  [
+   "runner/wire/board.py",
+   423,
+   424
+  ],
+  [
+   "runner/wire/board.py",
+   424,
+   425
+  ],
+  [
+   "runner/wire/board.py",
+   425,
+   426
+  ],
+  [
+   "runner/wire/board.py",
+   426,
+   427
+  ],
+  [
+   "runner/wire/board.py",
+   427,
+   428
+  ],
+  [
+   "runner/wire/board.py",
+   428,
+   429
+  ],
+  [
+   "runner/wire/board.py",
+   429,
+   430
+  ],
+  [
+   "runner/wire/board.py",
+   430,
+   419
+  ],
+  [
+   "runner/wire/board.py",
+   433,
+   434
+  ],
+  [
+   "runner/wire/board.py",
+   434,
+   435
+  ]
+ ]
 }

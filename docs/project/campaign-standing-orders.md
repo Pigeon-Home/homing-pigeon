@@ -4772,6 +4772,8 @@ when done, the proving commit or run. Newest first.
   Grow 24 (seed 6360) follows.
   de_dust 1 (Germany rig): 1318 entries, 4977 arcs, 0 crashes filed.
   Banked by rig_bank from the rig's own tree under section M item 7: 4 run records, 71,355 children (seeds 325569674); totals from the merged tree.
+  de_dust 2 (Germany rig): 1322 entries, 4993 arcs, 0 crashes filed.
+  Banked by rig_bank from the rig's own tree under section M item 7: 9 run records, 139,626 children (seeds 325569674); totals from the merged tree.
 - rules refreshed 2026-10-27 22:02 PDT
   (standing orders incl. section M;
   AGENTS.md rules 7-11; the

@@ -23,3 +23,4 @@
 {"arcs": 0, "data": {"capabilities": ["code"], "compartments": [], "payload": {"script": "echo board"}, "priority": NaN, "requires": [], "task_id": "bm-task-0015"}, "from": "seed:nan_priority", "id": "a1897b043c891a3e", "kind": "payload", "mutator": "seed"}
 {"arcs": 0, "data": {"capabilities": ["code"], "compartments": [], "payload": {"script": "echo board"}, "priority": Infinity, "requires": [], "task_id": "bm-task-0016"}, "from": "seed:inf_priority", "id": "affcc8b00c8c5379", "kind": "payload", "mutator": "seed"}
 {"arcs": 0, "data": {"capabilities": ["code"], "compartments": [], "payload": {"a": {"b": [1, null, true]}}, "priority": 1, "requires": [], "task_id": "bm-task-0017"}, "from": "seed:nested_payload", "id": "60158f5a4d97f066", "kind": "payload", "mutator": "seed"}
+{"arcs": 1, "data": {"task_id": "."}, "from": "26785f4ee980d19b", "id": "58aa073660e26fd8", "kind": "payload", "mutator": "p_replace"}
