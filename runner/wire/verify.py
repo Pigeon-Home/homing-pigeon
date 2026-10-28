@@ -488,6 +488,14 @@ def build_key_policies(cfg) -> dict:
                     f"config error: key_policies[{kid!r}].max_timeout_sec "
                     "must be >= 1")
             clean["max_timeout_sec"] = mt
+        if "allowed_recipes" in pol:
+            rnames = pol["allowed_recipes"]
+            if not isinstance(rnames, list) or not rnames or \
+                    not all(isinstance(r, str) for r in rnames):
+                raise RuntimeError(
+                    f"config error: key_policies[{kid!r}].allowed_recipes "
+                    "must be a non-empty list of strings")
+            clean["allowed_recipes"] = rnames
         if "allowed_script_sha384" in pol:
             hashes = pol["allowed_script_sha384"]
             if not isinstance(hashes, list) or not hashes or \
@@ -695,9 +703,17 @@ def check_key_policy(policies: dict, key_id: str, cfg, job, secrets=None):
             return "invalid key policy: allowed_kinds"
         if kind not in kinds:
             return f"job kind {kind!r} is not allowed for this key"
+    if "allowed_recipes" in pol and kind == "recipe":
+        names_ok = pol["allowed_recipes"]
+        if not isinstance(names_ok, (list, tuple, set)):
+            return "invalid key policy: allowed_recipes"
+        if job.get("recipe") not in names_ok:
+            return f"recipe {job.get('recipe')!r} is not allowed for this key"
     interpreter = job.get("interpreter") or cfg.get("default_interpreter") \
         or platform_interpreter()
-    if "allowed_interpreters" in pol:
+    if "allowed_interpreters" in pol and kind != "recipe":
+        # A recipe's interpreter is the owner's, written in the config
+        # beside this policy; the key brings none.
         allowed = pol["allowed_interpreters"]
         if not isinstance(allowed, (list, tuple)) or not isinstance(interpreter, list) \
                 or interpreter not in allowed:

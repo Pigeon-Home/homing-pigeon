@@ -558,17 +558,33 @@ def cmd_new(args) -> int:
         payload["aud"] = args.aud
     if args.reply_to:
         payload["reply_to"] = args.reply_to
-    if args.kind == "exec":
-        if args.script_url:
-            payload["script_url"] = args.script_url
-        if args.script_sha384:
-            payload["script_sha384"] = args.script_sha384
-        if args.script_file:
-            with open(args.script_file, encoding="utf-8") as f:
-                payload["script"] = f.read()
-        if not payload.get("script") and not payload.get("script_url"):
-            print("exec jobs need --script-file or --script-url", file=sys.stderr)
+    if args.kind == "recipe":
+        # A named recipe (PROTOCOL.md section 3.3): the script, the
+        # interpreter and the environment are the runner owner's.
+        brought = [flag for flag, v in (
+            ("--script-file", args.script_file), ("--script-url", args.script_url),
+            ("--script-sha384", args.script_sha384),
+            ("--interpreter", args.interpreter), ("--env", args.env)) if v]
+        if brought:
+            print(f"a recipe job brings no {', '.join(brought)}: the recipe "
+                  "is the runner owner's", file=sys.stderr)
             return 2
+        if not getattr(args, "recipe", None):
+            print("recipe jobs need --recipe NAME", file=sys.stderr)
+            return 2
+        payload["recipe"] = args.recipe
+    if args.kind in ("exec", "recipe"):
+        if args.kind == "exec":
+            if args.script_url:
+                payload["script_url"] = args.script_url
+            if args.script_sha384:
+                payload["script_sha384"] = args.script_sha384
+            if args.script_file:
+                with open(args.script_file, encoding="utf-8") as f:
+                    payload["script"] = f.read()
+            if not payload.get("script") and not payload.get("script_url"):
+                print("exec jobs need --script-file or --script-url", file=sys.stderr)
+                return 2
         files = []
         if args.file:
             for spec in args.file:
@@ -1188,8 +1204,12 @@ def main() -> int:
                     "signed body.",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     g = n.add_argument_group("the job")
-    g.add_argument("--kind", choices=["exec", "ping"], default="exec",
-                   help="job kind (default: exec)")
+    g.add_argument("--kind", choices=["exec", "ping", "recipe"], default="exec",
+                   help="job kind (default: exec); recipe runs a script "
+                        "the runner owner named in its config")
+    g.add_argument("--recipe", default=None, metavar="NAME",
+                   help="the recipe a --kind recipe job runs; --arg "
+                        "passes its arguments")
     g.add_argument("--job-id", default=None, metavar="ID",
                    help="job id (default: a fresh UUID)")
     g.add_argument("--script-file", default=None, metavar="PATH",

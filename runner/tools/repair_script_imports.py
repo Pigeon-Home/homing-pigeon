@@ -104,6 +104,14 @@ def rewrite_module(path):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    unknown = [a for a in argv if a != "--check"]
+    if unknown:
+        # The tool writes in place; a flag it does not know (--help
+        # included) must not be read as "go ahead".
+        print(__doc__.split("\n\n")[1] if "\n\n" in __doc__ else __doc__,
+              file=sys.stderr)
+        print(f"unknown argument(s): {' '.join(unknown)}", file=sys.stderr)
+        return 2
     check = "--check" in argv
     with open(RUNNER, encoding="utf-8") as fh:
         src = fh.read()

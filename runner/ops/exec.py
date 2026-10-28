@@ -382,6 +382,11 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
             out["platform"] = card
         return out
 
+    if kind == "recipe":
+        # A named recipe (PROTOCOL 3.3) is the owner's script under the
+        # job's checked arguments: from here on it is that exec job.
+        job = _runner()._recipes.expand(cfg, job, _runner().JobRejected)
+        kind = "exec"
     if kind != "exec":
         raise _runner().JobRejected(f"unknown kind: {kind}")
 

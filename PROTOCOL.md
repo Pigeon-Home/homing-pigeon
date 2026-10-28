@@ -365,6 +365,38 @@ The reference default is email only: `transports` absent means
   same name has no meaning, and a sender cannot request, widen,
   narrow, or appeal it.
 
+### 3.3 Named recipes
+
+A recipe is a script the runner owner writes in `config.json`, with
+the arguments a job may pass held to a pattern:
+
+```json
+"recipes": {
+  "tests": {"script": "python3 -m pytest -q \"$@\"",
+            "interpreter": ["sh"],
+            "args_pattern": "[A-Za-z0-9_./:-]{1,200}",
+            "max_args": 8, "max_timeout_sec": 900}
+}
+```
+
+A job names one: `{"kind": "recipe", "recipe": "tests", "args":
+["runner/tests/test_x.py"]}`. The runner runs the owner's `script`
+under the owner's `interpreter` (the platform default when the recipe
+names none) with the job's `args`, exactly as it runs an `exec` job
+carrying that script: confinement, the timeout, the result's view and
+the result's `kind` (which stays `recipe`). A recipe job may carry
+`files` and `outputs` (section 6) and `timeout_sec`, which
+`max_timeout_sec` caps. It MUST NOT carry `script`, `script_url`,
+`script_sha384`, `interpreter` or `env`, since each would be code the
+owner did not write; a job that does is rejected (`exit_code` -2), as
+is one naming a recipe the runner does not have. Each argument must
+fully match `args_pattern` and be at most 1024 characters, and there
+may be at most `max_args` of them (default 16 with a pattern; a recipe
+with no pattern takes no arguments). The runner refuses to start with
+a recipe that is malformed or whose pattern could backtrack
+exponentially on a sender's text. A key policy's `allowed_recipes`
+(section 14.1) names the recipes a key may run.
+
 ## 4. Signatures (no canonicalization needed)
 
 Appending the signature last avoids cross-language JSON
@@ -1379,6 +1411,10 @@ Every field is optional; every specified constraint must hold:
 - `allowed_interpreters`: the job's effective interpreter (its own, or
   the configured default) must exactly match one of the listed lists.
 - `max_timeout_sec`: the job's effective timeout must not exceed it.
+- `allowed_recipes`: a `recipe` job's `recipe` must be listed (section
+  3.3). With `allowed_kinds: ["recipe"]` the key runs the named
+  recipes and nothing else. `allowed_interpreters` does not bind a
+  recipe job, whose interpreter is the owner's.
 - `allowed_script_sha384`: for `exec` jobs, the inline `script`'s SHA-384
   must be listed. `script_url` jobs are rejected under such a policy
   (the content cannot be checked before download); `ping` jobs have no

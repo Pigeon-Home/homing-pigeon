@@ -482,5 +482,14 @@ class DtlsRecordTruncationTest(unittest.TestCase):
                 self.sealer.open(3, rec)
 
 
+class RepairToolFlagsTest(unittest.TestCase):
+    def test_an_unknown_flag_writes_nothing(self):
+        from runner.tools import repair_script_imports as RS
+        with mock.patch("builtins.open", side_effect=AssertionError("opened")), \
+                redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(RS.main(["--help"]), 2)
+        self.assertIn("unknown argument", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -459,6 +459,7 @@ def _redact_patterns(cfg):
 _policy = _required_load_mod("runner.ops.policy", "ops.policy")
 apply_result_policy = _policy.apply_result_policy
 _sensor_alert_core = _policy._sensor_alert_core
+_output_digests = _policy._output_digests
 
 
 _attest = _required_load_mod("runner.ops.attest", "ops.attest")
@@ -1352,9 +1353,17 @@ def _oracle_instruction_kind(text):
             return "action"
     return "question"
 
+_recipes = _required_load_mod("runner.ops.recipes", "ops.recipes")
 _exec = _required_load_mod("runner.ops.exec", "ops.exec")
 ask_model_agent = _exec.ask_model_agent
 execute_job = _exec.execute_job
+_decode_inline = _exec._decode_inline
+MAX_OUTPUTS = _exec.MAX_OUTPUTS
+DEFAULT_MAX_OUTPUT_FILE_BYTES = _exec.DEFAULT_MAX_OUTPUT_FILE_BYTES
+_validate_outputs = _exec._validate_outputs
+_max_output_file_bytes = _exec._max_output_file_bytes
+_read_output = _exec._read_output
+_collect_outputs = _exec._collect_outputs
 
 
 def _output_blob(exec_result):
@@ -1387,6 +1396,19 @@ def _raw_lines_allowed(view):
 _queries = _required_load_mod("runner.ops.queries", "ops.queries")
 answer_queries = _queries.answer_queries
 handle_query_mail = _queries.handle_query_mail
+query_seen_key = _queries.query_seen_key
+_carriable = _queries._carriable
+_stream_text = _queries._stream_text
+_GREP_DEADLINE = _queries._GREP_DEADLINE
+_worker = _queries._worker
+_worker_lock = _queries._worker_lock
+_query_worker_argv = _queries._query_worker_argv
+_stop_worker = _queries._stop_worker
+_drop_worker = _queries._drop_worker
+_start_worker = _queries._start_worker
+_read_line = _queries._read_line
+grep_matches = _queries.grep_matches
+worker_main = _queries.worker_main
 
 
 _QUERY_TIMES = {}  # key_id -> list of timestamps
@@ -3355,6 +3377,11 @@ def _describe_job(job: dict) -> str:
     kind = job.get("kind")
     if kind == "ping":
         return "kind=ping (would reply pong)"
+    if kind == "recipe":
+        args = job.get("args")
+        shown = [_as_str(a) for a in args] if isinstance(args, list) else []
+        return (f"kind=recipe recipe={_as_str(job.get('recipe'))} "
+                f"args={shown}")
     parts = ["kind=exec"]
     if job.get("script"):
         parts.append(f"inline script ({len(_as_str(job['script']))} chars)")
@@ -4607,6 +4634,9 @@ def _validate_size_caps(cfg):
         _mode, problem = _extreview.mode_of(cfg)
         if problem:
             return problem
+    problem = _recipes.validate_recipes(cfg)
+    if problem:
+        return problem
     return None
 
 def load_config(path: str) -> dict:
@@ -6372,6 +6402,8 @@ def _warm_oracle_model(inf):
 
 _main = _required_load_mod("runner.ops.main", "ops.main")
 main = _main.main
+_config_given = _main._config_given
+_installed_config = _main._installed_config
 
 
 def _run() -> "NoReturn":
