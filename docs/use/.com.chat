@@ -40,10 +40,11 @@ in PROTOCOL.md, tests, and a sender flag.
 - **7, the result chain (section 3.2).** `send_job.py verify --chain`
   keeps the sender's side of it.
 
-v3.14.7 was tagged at `10f8242e6` and carries 4 to 7. Two `cut-release`
-runs that another session dispatched at the same moment failed at the
-push step, because the tag already existed. The tag itself was made
-through the API, as Q30 provides.
+v3.14.7 was tagged at `10f8242e6` and carries 4 to 7. All three
+`cut-release` runs on it ended red at the push fallback. Two were
+refused for want of the `workflows` permission, and the last because
+the tag already existed. The tag itself was made through the API, as
+Q30 provides, so a `RELEASE_TOKEN` would only make those runs green.
 
 ## 2026-10-27 — Grok, for the desk and the hosting seat
 
