@@ -275,6 +275,19 @@ def merge_corpus(tree_dir, bank_dir):
     return report
 
 
+def tree_head(corpus_dir):
+    """The short head of the tree the rig banks from, so the ledger
+    says which rig_bank and which readers the rig ran; None when the
+    corpus dir is not inside a git tree."""
+    try:
+        proc = subprocess.run(["git", "-C", corpus_dir, "rev-parse", "--short=12", "HEAD"],
+                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    head = proc.stdout.decode("ascii", "replace").strip() if proc.returncode == 0 else ""
+    return head or None
+
+
 def settle_crashes(clone, report, run=subprocess.run, timeout=900):
     """Replay the crash records this bank merged at main's own head,
     inside the clone, with the tool's `promote`: a record that still
@@ -325,6 +338,8 @@ def ledger_block(rig, grow_no, report, new_records, resources=None):
     )
     if resources:
         body += f" Resources: {resources}."
+    if report.get("rig_head"):
+        body += f" The rig's tree at {report['rig_head']}."
     settled = report.get("settled") or {}
     if settled:
         body += " Crash records replayed at main's head: " + "; ".join(
@@ -421,6 +436,7 @@ def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
         return 0
     if report["crashes"]:
         report["settled"] = settle_crashes(clone, report)
+    report["rig_head"] = tree_head(corpus_dir)
     block = ledger_block(rig, grow_no, report, fresh, resources)
     with open(orders_path, "w", encoding="utf-8") as fh:
         fh.write(insert_ledger(orders_text, block))
@@ -456,6 +472,7 @@ def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
                      if json.dumps(o, sort_keys=True) in snap_keys]
             if report["crashes"]:
                 report["settled"] = settle_crashes(clone, report)
+            report["rig_head"] = tree_head(corpus_dir)
             block = ledger_block(rig, grow_no, report, fresh, resources)
             with open(orders_path, "w", encoding="utf-8") as fh:
                 fh.write(insert_ledger(orders_text, block))

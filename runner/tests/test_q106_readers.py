@@ -455,3 +455,18 @@ class AncestryRuleTest(unittest.TestCase):
         rec = B.load(B.corpus_path("wire", crashes=True))[0]
         self.assertEqual("f" * 12, rec["head"])
         self.assertRegex(rec["found"], r"^\d{4}-\d{2}-\d{2}$")
+
+
+class LedgerNamesTheRigsTreeTest(unittest.TestCase):
+
+    def test_the_block_carries_the_rigs_head_when_known(self):
+        block = RB.ledger_block("Test rig", 3, {"totals": (1, 2), "rig_head": "abcdef123456"}, [], None)
+        self.assertIn("The rig's tree at abcdef123456.", block)
+        self.assertNotIn("rig's tree", RB.ledger_block("Test rig", 3, {"totals": (1, 2)}, [], None))
+
+    def test_tree_head_reads_the_tree_or_says_none(self):
+        here = os.path.dirname(os.path.abspath(B.__file__))
+        head = RB.tree_head(here)
+        self.assertTrue(head is None or (len(head) == 12 and all(c in "0123456789abcdef" for c in head)))
+        with tempfile.TemporaryDirectory() as td:
+            self.assertIsNone(RB.tree_head(td))
