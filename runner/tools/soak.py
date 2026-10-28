@@ -305,6 +305,11 @@ def run(minutes=None, cycles=None, jobs_per_cycle=3, base=None,
     R._LOG_BACKUPS = LOG_BACKUPS
     seen_path = os.path.join(base, "seen.json")
     seen = R.load_seen(seen_path)
+    from runner.ops.queries import _drop_worker
+    _drop_worker()
+    # A previous test in this process may have left a child. The
+    # soak reports the ones it did not reap, not that one.
+    baseline = _children()
     samples = []
     t0 = time.monotonic()
     deadline = t0 + minutes * 60 if minutes else None
@@ -324,7 +329,9 @@ def run(minutes=None, cycles=None, jobs_per_cycle=3, base=None,
         replay = mails[0]
         jobs_done += jobs_per_cycle
         cycle += 1
-        samples.append(sample(base, cycle, jobs_done, t0, len(box.sent)))
+        row = sample(base, cycle, jobs_done, t0, len(box.sent))
+        row["children"] = max(0, row["children"] - baseline)
+        samples.append(row)
     growth = 0.0
     if len(samples) > 1 and samples[-1]["jobs"] > samples[0]["jobs"]:
         growth = ((samples[-1]["state_bytes"] - samples[0]["state_bytes"])

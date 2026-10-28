@@ -43,7 +43,8 @@ facts a reader may need to cite. Git history carries the rest.
 - **`do_console` does not return from `finally`.** A failed restart
   of the Windows task is still exit 1. The query worker is dropped
   under the same lock the grep holds, so a concurrent batch does
-  not leave a child the soak counts as unreaped.
+  not leave a child the soak counts as unreaped. The soak counts
+  the children it started, not one a previous test left behind.
 
 ## 3.14.5 - 2026-10-27
 
