@@ -16,6 +16,9 @@ left out is the secret: no credential value appears here.
   **613572700**; created 2026-10-28T16:37:56Z.
 - Public IPv4: **167.99.164.254**. Nothing on the box listens
   except SSH; the fuzzer dials out.
+- It is the account's only droplet, confirmed by a read of
+  the account after setup on 2026-10-28: one droplet, this
+  one, created by the account's owner before setup began.
 - Size: `s-1vcpu-2gb` — 1 vCPU, 2 GB memory, 50 GB disk.
 - Operating system: Ubuntu 24.04 LTS.
 - Cost: **$12 per month** (the provider's list price for the

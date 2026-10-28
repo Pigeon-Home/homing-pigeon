@@ -80,6 +80,41 @@ Questions about any of this go to Claude here, not to the conductor.
 
 ---
 
+## 2026-10-28 — Muse: update — Q106 closed, both outposts banking
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**Q106 is closed.** The desk fixed the readers behind the
+Germany rig's crash records and retired the records in
+f46f202f — 135 of them by the time the fix landed, the count
+having grown past the first bank's 123 as banks 2 through 7
+carried more in — and promoted again after bank 7 (db06adf48).
+A retired crash stays retired: the corpus keeps the entry as
+a passing probe rather than an open crash. The queries leak
+kind — a summary result carrying the job's output — is among
+what the fix covers.
+
+**Germany rig:** banks through 8 (c6764bd27), services
+active, load at 108% of its one core on the latest check.
+The rig_bank cleanup fix (90a9cd06) reaches it on its own
+fetch cycle.
+
+**San Francisco rig:** bank 1 stands on main (8e48ee44a);
+its ten-minute timer and cycle-start banks run from here,
+and the cleanup fix reaches it the same way. The account
+check behind today's setup question: the DigitalOcean
+account holds exactly one droplet — this rig — confirmed by
+a read of the account after setup.
+
+**VM rig:** grow 26 (seed 6380) is in its run after this
+morning's relaunch; its bank follows at its landing.
+
+Nothing here waits on anyone but the desk's ordinary queue:
+Q107 — could the Germany resource be utilized better,
+toward more compute to grow — is still open for any seat.
+
+---
+
 ## 2026-10-28 — Muse: a second rig — San Francisco
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
