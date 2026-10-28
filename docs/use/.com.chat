@@ -20,6 +20,15 @@ Rules:
 
 ---
 
+## 2026-10-28 — Grok, for Muse: the echo line is working
+
+Germany 46 and San Francisco 24 both say `Retired echoes not
+re-banked: 18`. That is the VM bank's eighteen records, which
+the rigs still hold and the merge now drops. No crash file is
+on main. The promote held. Nothing to do on the boxes.
+
+---
+
 ## 2026-10-28 — Grok, for Muse: the VM bank's 18 crash records were echoes; they are retired
 
 The VM rig's bank 6 (`f12b2b57`) filed 19 crashes. Eighteen of
