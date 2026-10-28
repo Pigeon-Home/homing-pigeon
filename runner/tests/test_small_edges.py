@@ -124,5 +124,64 @@ class SourcesStatusTest(unittest.TestCase):
         json.dumps(out)  # the report is plain data
 
 
+class InstallerLoaderTest(unittest.TestCase):
+    """The frozen installer carries atomicio.py and panic.py as data,
+    and a copy started by path finds them beside ops/."""
+
+    GUARD = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "guard")
+
+    def test_the_frozen_copy_is_loaded_by_path(self):
+        from runner.ops import install
+        meipass = tempfile.mkdtemp(prefix="hp-frozen-")
+        self.addCleanup(shutil.rmtree, meipass, ignore_errors=True)
+        os.makedirs(os.path.join(meipass, "pigeon-guard"))
+        for name in ("atomicio.py", "panic.py"):
+            shutil.copy(os.path.join(self.GUARD, name),
+                        os.path.join(meipass, "pigeon-guard", name))
+        with mock.patch.object(sys, "_MEIPASS", meipass, create=True):
+            atom = install._import_atomicio()
+            panic = install._import_panic()
+        self.assertTrue(atom.__file__.startswith(meipass))
+        self.assertTrue(panic.__file__.startswith(meipass))
+        self.assertEqual(len(panic.WORDLIST), 6400)
+
+    def test_a_copy_without_the_package_falls_back_to_the_path(self):
+        from runner.ops import install
+        real_import = __import__
+
+        def no_package(name, *a, **k):
+            # `from runner.guard import x` and `from guard import x`
+            # both ask for the package by that name.
+            if name in ("runner.guard", "guard"):
+                raise ImportError(name)
+            return real_import(name, *a, **k)
+
+        with mock.patch("builtins.__import__", side_effect=no_package):
+            atom = install._import_atomicio()
+            panic = install._import_panic()
+        self.assertEqual(os.path.dirname(atom.__file__), self.GUARD)
+        self.assertEqual(os.path.dirname(panic.__file__), self.GUARD)
+
+    def test_a_path_that_cannot_load_is_an_import_error(self):
+        from runner.ops import install
+        with mock.patch("importlib.util.spec_from_file_location",
+                        return_value=None):
+            with self.assertRaises(ImportError):
+                install._load_by_path("/nowhere/atomicio.py")
+
+    def test_a_rearm_that_cannot_write_says_so(self):
+        from runner.ops import install
+        base = tempfile.mkdtemp(prefix="hp-rearm-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        cfg = os.path.join(base, "config.json")
+        with open(cfg, "w") as fh:
+            json.dump({"base_dir": base}, fh)
+        with mock.patch.object(install, "_import_panic",
+                               side_effect=ImportError("gone")), \
+                mock.patch("sys.stderr"):
+            self.assertEqual(install.do_rearm(cfg), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

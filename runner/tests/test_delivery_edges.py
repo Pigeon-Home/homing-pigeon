@@ -11,6 +11,7 @@ the cases it names instead of raising.
 import json
 import os
 import shutil
+import smtplib
 import stat
 import sys
 import tempfile
@@ -239,6 +240,92 @@ class ReadOutputTest(unittest.TestCase):
                                real_read(fd, n) * 4):
             got = self.read("grow", limit=10)
         self.assertEqual((got[0], got[2]), (None, "too_large"))
+
+
+class StashRecordTest(_Base):
+    def stash(self, job_id, **extra):
+        skey = R._seen_key(self.cfg, job_id)
+        rec = {"job_id": job_id, "subject": R.SUBJECT_RESULT + job_id,
+               "body": "{}", "key_id": "", **extra}
+        os.makedirs(R._outbox_dir(self.base), exist_ok=True)
+        R._atomicio.write_json(R._stash_path(self.base, skey), rec)
+        return skey
+
+    def refuse(self, *a):
+        raise smtplib.SMTPDataError(552, b"too large")
+
+    def test_a_stub_refused_too_is_given_up(self):
+        skey = self.stash("j-twice", stubbed=True)
+        with mock.patch.object(R, "_stash_fail") as gave_up:
+            self.assertFalse(R.deliver_stash(self.base, skey, self.refuse,
+                                             self.cfg))
+        self.assertIn("stub was refused too", gave_up.call_args.args[3])
+
+    def test_a_refusal_with_no_stub_is_given_up(self):
+        skey = self.stash("j-nokey")
+        with mock.patch.object(R, "_stub_body", return_value=None), \
+                mock.patch.object(R, "_stash_fail") as gave_up:
+            self.assertFalse(R.deliver_stash(self.base, skey, self.refuse,
+                                             self.cfg))
+        self.assertIn("no stub could be signed", gave_up.call_args.args[3])
+
+    def test_a_rewrite_that_fails_is_logged_not_raised(self):
+        with mock.patch.object(R._atomicio, "write_json",
+                               side_effect=OSError("read-only")):
+            R._stash_rewrite(self.base, "k", {"job_id": "j"})
+
+    def test_the_delivery_audit_never_raises(self):
+        with mock.patch.object(R, "_security", None):
+            R._delivery_audit(self.base, "failed", "why", "j")
+        with mock.patch.object(R._security, "write_audit_entry",
+                               side_effect=OSError("full")):
+            R._delivery_audit(self.base, "failed", "why", "j")
+
+    def test_an_ack_rollback_only_logs(self):
+        out = R.process_transport_message(
+            self.cfg, self.base, {}, {}, None, "[HOMING-PIGEON] other",
+            "{}", None, transport="file")
+        with mock.patch.object(R, "log") as log:
+            out.rollback(["k1", "k2"])
+        self.assertEqual(log.call_count, 2)
+
+
+class WorkspaceTest(unittest.TestCase):
+    def setUp(self):
+        self.work = os.path.realpath(tempfile.mkdtemp(prefix="hp-ws-"))
+        self.addCleanup(shutil.rmtree, self.work, ignore_errors=True)
+
+    def sweep(self):
+        R._sweep_workspace(self.work, self.work, "after staging")
+
+    def test_an_entry_that_cannot_be_read_is_refused(self):
+        open(os.path.join(self.work, "f"), "w").close()
+        with mock.patch.object(R.os, "lstat",
+                               side_effect=PermissionError("denied")):
+            with self.assertRaisesRegex(R.JobRejected, "cannot be read"):
+                self.sweep()
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "no FIFOs here")
+    def test_a_fifo_is_not_a_regular_file(self):
+        os.mkfifo(os.path.join(self.work, "pipe"))
+        with self.assertRaisesRegex(R.JobRejected,
+                                    "not a regular file or directory"):
+            self.sweep()
+
+    def test_an_entry_resolving_outside_is_refused(self):
+        open(os.path.join(self.work, "f"), "w").close()
+        with mock.patch.object(R.os.path, "realpath",
+                               return_value=os.path.sep + "elsewhere"):
+            with self.assertRaisesRegex(R.JobRejected,
+                                        "resolves outside"):
+                self.sweep()
+
+    def test_a_parent_that_cannot_be_made_is_refused(self):
+        with mock.patch.object(R.os, "makedirs",
+                               side_effect=OSError("read-only")):
+            with self.assertRaisesRegex(R.JobRejected,
+                                        "cannot create the directory"):
+                R._staged_dest(self.work, "a/b.txt", self.work)
 
 
 if __name__ == "__main__":
