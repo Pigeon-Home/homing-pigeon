@@ -1,0 +1,965 @@
+{
+ "Agent-Stamp": "90000998-709f-46f5-b2bc-2c3c5cf8dc6c",
+ "coverage": 1,
+ "files_with_gaps": {
+  "runner/cloud/send_dtls.py": {
+   "lines": [
+    49,
+    72,
+    115,
+    214,
+    248,
+    249,
+    250,
+    251,
+    252,
+    261
+   ],
+   "missed": 10,
+   "statements": 193
+  },
+  "runner/cloud/send_job.py": {
+   "lines": [
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    90,
+    91,
+    92,
+    93,
+    94,
+    98,
+    99,
+    100,
+    101,
+    102,
+    103,
+    104,
+    282,
+    322,
+    345,
+    573,
+    574,
+    575,
+    706,
+    707,
+    708,
+    721,
+    1210
+   ],
+   "missed": 50,
+   "statements": 832
+  },
+  "runner/extensions/aide-feed/aide_feed.py": {
+   "lines": [
+    460
+   ],
+   "missed": 1,
+   "statements": 287
+  },
+  "runner/extensions/airwaves/airwaves.py": {
+   "lines": [
+    821
+   ],
+   "missed": 1,
+   "statements": 553
+  },
+  "runner/extensions/backup-freshness/backup_freshness.py": {
+   "lines": [
+    380
+   ],
+   "missed": 1,
+   "statements": 240
+  },
+  "runner/extensions/cert-sentinel/cert_sentinel.py": {
+   "lines": [
+    492
+   ],
+   "missed": 1,
+   "statements": 323
+  },
+  "runner/extensions/crash-watch/crash_watch.py": {
+   "lines": [
+    413
+   ],
+   "missed": 1,
+   "statements": 257
+  },
+  "runner/extensions/failed-login-watch/failed_login_watch.py": {
+   "lines": [
+    507
+   ],
+   "missed": 1,
+   "statements": 346
+  },
+  "runner/extensions/falco-feed/falco_feed.py": {
+   "lines": [
+    538
+   ],
+   "missed": 1,
+   "statements": 347
+  },
+  "runner/extensions/job-fuzz/job_fuzz.py": {
+   "lines": [
+    391,
+    430,
+    847,
+    1285,
+    1520
+   ],
+   "missed": 5,
+   "statements": 1053
+  },
+  "runner/extensions/job-watcher/job_watcher.py": {
+   "lines": [
+    771
+   ],
+   "missed": 1,
+   "statements": 507
+  },
+  "runner/extensions/lab-results/lab_results.py": {
+   "lines": [
+    306
+   ],
+   "missed": 1,
+   "statements": 212
+  },
+  "runner/extensions/latency-post/latency_post.py": {
+   "lines": [
+    424
+   ],
+   "missed": 1,
+   "statements": 278
+  },
+  "runner/extensions/log-sentinel/log_sentinel.py": {
+   "lines": [
+    481,
+    513
+   ],
+   "missed": 2,
+   "statements": 333
+  },
+  "runner/extensions/osquery-feed/osquery_feed.py": {
+   "lines": [
+    337,
+    610
+   ],
+   "missed": 2,
+   "statements": 381
+  },
+  "runner/extensions/pi-health/pi_health.py": {
+   "lines": [
+    203,
+    204,
+    581
+   ],
+   "missed": 3,
+   "statements": 351
+  },
+  "runner/extensions/port-watch/port_watch.py": {
+   "lines": [
+    421
+   ],
+   "missed": 1,
+   "statements": 263
+  },
+  "runner/extensions/release-drop/release_drop.py": {
+   "lines": [
+    405
+   ],
+   "missed": 1,
+   "statements": 249
+  },
+  "runner/extensions/resource-sentinel/resource_sentinel.py": {
+   "lines": [
+    518
+   ],
+   "missed": 1,
+   "statements": 335
+  },
+  "runner/extensions/service-watch/service_watch.py": {
+   "lines": [
+    449
+   ],
+   "missed": 1,
+   "statements": 306
+  },
+  "runner/extensions/sky-watcher/sky_watcher.py": {
+   "lines": [
+    231,
+    686
+   ],
+   "missed": 2,
+   "statements": 434
+  },
+  "runner/extensions/softflowd-feed/softflowd_feed.py": {
+   "lines": [
+    401,
+    402,
+    852
+   ],
+   "missed": 3,
+   "statements": 570
+  },
+  "runner/extensions/suricata-feed/suricata_feed.py": {
+   "lines": [
+    580
+   ],
+   "missed": 1,
+   "statements": 388
+  },
+  "runner/extensions/sysmon-feed/sysmon_feed.py": {
+   "lines": [
+    631
+   ],
+   "missed": 1,
+   "statements": 415
+  },
+  "runner/extensions/training-watch/training_watch.py": {
+   "lines": [
+    611,
+    612,
+    837,
+    869
+   ],
+   "missed": 4,
+   "statements": 556
+  },
+  "runner/extensions/tripwire/tripwire.py": {
+   "lines": [
+    426
+   ],
+   "missed": 1,
+   "statements": 282
+  },
+  "runner/extensions/usb-arrivals/usb_arrivals.py": {
+   "lines": [
+    454
+   ],
+   "missed": 1,
+   "statements": 299
+  },
+  "runner/extensions/wazuh-feed/wazuh_feed.py": {
+   "lines": [
+    535
+   ],
+   "missed": 1,
+   "statements": 341
+  },
+  "runner/extensions/wire-arrivals/wire_arrivals.py": {
+   "lines": [
+    441
+   ],
+   "missed": 1,
+   "statements": 287
+  },
+  "runner/extensions/zeek-feed/zeek_feed.py": {
+   "lines": [
+    702
+   ],
+   "missed": 1,
+   "statements": 452
+  },
+  "runner/guard/extreview.py": {
+   "lines": [
+    82,
+    83,
+    395,
+    396,
+    408,
+    414,
+    612,
+    613
+   ],
+   "missed": 8,
+   "statements": 468
+  },
+  "runner/guard/sandbox.py": {
+   "lines": [
+    73,
+    74
+   ],
+   "missed": 2,
+   "statements": 163
+  },
+  "runner/guard/security.py": {
+   "lines": [
+    30,
+    31,
+    208,
+    209,
+    226,
+    228,
+    253,
+    516
+   ],
+   "missed": 8,
+   "statements": 318
+  },
+  "runner/hosting/billing.py": {
+   "lines": [
+    221
+   ],
+   "missed": 1,
+   "statements": 194
+  },
+  "runner/hosting/cli.py": {
+   "lines": [
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    192,
+    471,
+    475
+   ],
+   "missed": 10,
+   "statements": 364
+  },
+  "runner/hosting/fly.py": {
+   "lines": [
+    57,
+    66,
+    68
+   ],
+   "missed": 3,
+   "statements": 95
+  },
+  "runner/hosting/hetzner.py": {
+   "lines": [
+    55
+   ],
+   "missed": 1,
+   "statements": 75
+  },
+  "runner/ops/attest.py": {
+   "lines": [
+    12,
+    13
+   ],
+   "missed": 2,
+   "statements": 131
+  },
+  "runner/ops/av.py": {
+   "lines": [
+    12,
+    13
+   ],
+   "missed": 2,
+   "statements": 64
+  },
+  "runner/ops/cli.py": {
+   "lines": [
+    9,
+    10,
+    11,
+    12,
+    13,
+    16,
+    17,
+    18,
+    19,
+    20,
+    39
+   ],
+   "missed": 11,
+   "statements": 225
+  },
+  "runner/ops/context.py": {
+   "lines": [
+    10,
+    11
+   ],
+   "missed": 2,
+   "statements": 94
+  },
+  "runner/ops/exec.py": {
+   "lines": [
+    16,
+    17,
+    22,
+    23,
+    69,
+    408,
+    450,
+    451,
+    452,
+    499
+   ],
+   "missed": 10,
+   "statements": 506
+  },
+  "runner/ops/extensions.py": {
+   "lines": [
+    51,
+    52,
+    304,
+    305,
+    392,
+    393
+   ],
+   "missed": 6,
+   "statements": 361
+  },
+  "runner/ops/extsources.py": {
+   "lines": [
+    102,
+    103,
+    151,
+    152,
+    153,
+    289,
+    647
+   ],
+   "missed": 7,
+   "statements": 1717
+  },
+  "runner/ops/firewall.py": {
+   "lines": [
+    12,
+    13
+   ],
+   "missed": 2,
+   "statements": 82
+  },
+  "runner/ops/handlers.py": {
+   "lines": [
+    15,
+    16,
+    202,
+    203
+   ],
+   "missed": 4,
+   "statements": 285
+  },
+  "runner/ops/helpers.py": {
+   "lines": [
+    9,
+    10
+   ],
+   "missed": 2,
+   "statements": 108
+  },
+  "runner/ops/install.py": {
+   "lines": [
+    72,
+    124,
+    125,
+    336,
+    337,
+    338,
+    1037,
+    1038,
+    1055,
+    1056,
+    1286,
+    1378,
+    1379,
+    1381,
+    1894,
+    1895,
+    1897,
+    3046,
+    3608,
+    3667
+   ],
+   "missed": 20,
+   "statements": 2414
+  },
+  "runner/ops/live.py": {
+   "lines": [
+    22,
+    23
+   ],
+   "missed": 2,
+   "statements": 10
+  },
+  "runner/ops/mail.py": {
+   "lines": [
+    14,
+    15,
+    23,
+    24,
+    141,
+    143,
+    374,
+    376,
+    693,
+    694
+   ],
+   "missed": 10,
+   "statements": 517
+  },
+  "runner/ops/main.py": {
+   "lines": [
+    13,
+    14,
+    26,
+    27,
+    46,
+    56,
+    61,
+    335,
+    336,
+    337
+   ],
+   "missed": 10,
+   "statements": 269
+  },
+  "runner/ops/misc.py": {
+   "lines": [
+    16,
+    17
+   ],
+   "missed": 2,
+   "statements": 246
+  },
+  "runner/ops/oracle_ops.py": {
+   "lines": [
+    12,
+    13
+   ],
+   "missed": 2,
+   "statements": 199
+  },
+  "runner/ops/oracle_page.py": {
+   "lines": [
+    9
+   ],
+   "missed": 1,
+   "statements": 19
+  },
+  "runner/ops/oracle_server.py": {
+   "lines": [
+    15,
+    16,
+    184,
+    185
+   ],
+   "missed": 4,
+   "statements": 167
+  },
+  "runner/ops/paths.py": {
+   "lines": [
+    10,
+    11
+   ],
+   "missed": 2,
+   "statements": 67
+  },
+  "runner/ops/policy.py": {
+   "lines": [
+    15,
+    16,
+    180
+   ],
+   "missed": 3,
+   "statements": 175
+  },
+  "runner/ops/poll.py": {
+   "lines": [
+    11,
+    12,
+    32,
+    33
+   ],
+   "missed": 4,
+   "statements": 111
+  },
+  "runner/ops/queries.py": {
+   "lines": [
+    18,
+    19,
+    20,
+    25,
+    26,
+    336,
+    337,
+    521,
+    653,
+    677
+   ],
+   "missed": 10,
+   "statements": 517
+  },
+  "runner/ops/remediation_ops.py": {
+   "lines": [
+    12,
+    13
+   ],
+   "missed": 2,
+   "statements": 240
+  },
+  "runner/ops/sensors.py": {
+   "lines": [
+    16,
+    17
+   ],
+   "missed": 2,
+   "statements": 206
+  },
+  "runner/ops/startup.py": {
+   "lines": [
+    13,
+    14,
+    207,
+    208
+   ],
+   "missed": 4,
+   "statements": 172
+  },
+  "runner/ops/watch.py": {
+   "lines": [
+    14,
+    15
+   ],
+   "missed": 2,
+   "statements": 215
+  },
+  "runner/ops/windows.py": {
+   "lines": [
+    11,
+    12
+   ],
+   "missed": 2,
+   "statements": 61
+  },
+  "runner/oracle/detection.py": {
+   "lines": [
+    22,
+    23,
+    26,
+    27
+   ],
+   "missed": 4,
+   "statements": 174
+  },
+  "runner/oracle/dri.py": {
+   "lines": [
+    26,
+    27,
+    30,
+    31,
+    32,
+    33,
+    34,
+    486,
+    487
+   ],
+   "missed": 9,
+   "statements": 459
+  },
+  "runner/oracle/learning.py": {
+   "lines": [
+    74,
+    75,
+    78,
+    79,
+    173,
+    178,
+    184
+   ],
+   "missed": 7,
+   "statements": 459
+  },
+  "runner/oracle/remediation.py": {
+   "lines": [
+    44,
+    45,
+    470,
+    483,
+    499,
+    558
+   ],
+   "missed": 6,
+   "statements": 1049
+  },
+  "runner/oracle/resources.py": {
+   "lines": [
+    26,
+    27,
+    30,
+    31
+   ],
+   "missed": 4,
+   "statements": 180
+  },
+  "runner/oracle/review.py": {
+   "lines": [
+    38,
+    39,
+    296,
+    297
+   ],
+   "missed": 4,
+   "statements": 184
+  },
+  "runner/oracle/senses.py": {
+   "lines": [
+    426,
+    427
+   ],
+   "missed": 2,
+   "statements": 333
+  },
+  "runner/runner.py": {
+   "lines": [
+    106,
+    107,
+    164,
+    789,
+    1345,
+    1765,
+    1777,
+    1853,
+    1913,
+    2012,
+    2120,
+    2121,
+    2131,
+    2153,
+    2232,
+    2690,
+    3269,
+    3304,
+    3383,
+    3489,
+    4312,
+    4351,
+    4352,
+    4376,
+    4377,
+    4651,
+    5069,
+    5139,
+    5140,
+    5365,
+    5645,
+    6175,
+    6179,
+    6180,
+    6183,
+    6188,
+    6189,
+    6190,
+    6191,
+    6194
+   ],
+   "missed": 40,
+   "statements": 4192
+  },
+  "runner/transport_extensions/channel.py": {
+   "lines": [
+    32,
+    33,
+    170,
+    171
+   ],
+   "missed": 4,
+   "statements": 127
+  },
+  "runner/transport_extensions/dtls/__main__.py": {
+   "lines": [
+    334
+   ],
+   "missed": 1,
+   "statements": 212
+  },
+  "runner/transport_extensions/email/__main__.py": {
+   "lines": [
+    61,
+    257
+   ],
+   "missed": 2,
+   "statements": 168
+  },
+  "runner/transport_extensions/file/__main__.py": {
+   "lines": [
+    221
+   ],
+   "missed": 1,
+   "statements": 163
+  },
+  "runner/transport_extensions/nats/__main__.py": {
+   "lines": [
+    399
+   ],
+   "missed": 1,
+   "statements": 272
+  },
+  "runner/transport_extensions/queues/__main__.py": {
+   "lines": [
+    272
+   ],
+   "missed": 1,
+   "statements": 200
+  },
+  "runner/wire/board.py": {
+   "lines": [
+    31,
+    32,
+    35,
+    36,
+    40,
+    41,
+    271
+   ],
+   "missed": 7,
+   "statements": 317
+  },
+  "runner/wire/dtlsproto.py": {
+   "lines": [
+    62,
+    63,
+    64,
+    65,
+    66,
+    186,
+    187,
+    446,
+    450,
+    454,
+    455,
+    456,
+    457,
+    460,
+    464,
+    467,
+    730,
+    1002,
+    1401
+   ],
+   "missed": 19,
+   "statements": 1256
+  },
+  "runner/wire/mailbox.py": {
+   "lines": [
+    301
+   ],
+   "missed": 1,
+   "statements": 206
+  },
+  "runner/wire/oauth.py": {
+   "lines": [
+    47,
+    48,
+    350
+   ],
+   "missed": 3,
+   "statements": 234
+  },
+  "runner/wire/protocol_v2.py": {
+   "lines": [
+    34,
+    35,
+    201
+   ],
+   "missed": 3,
+   "statements": 418
+  },
+  "runner/wire/transports.py": {
+   "lines": [
+    67,
+    68,
+    69,
+    70,
+    71,
+    74,
+    75,
+    76,
+    77,
+    78,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88
+   ],
+   "missed": 18,
+   "statements": 688
+  },
+  "runner/wire/verify.py": {
+   "lines": [
+    23,
+    24,
+    25,
+    26,
+    27,
+    30,
+    31,
+    32,
+    33,
+    34,
+    37,
+    38,
+    43,
+    44,
+    49,
+    50,
+    147,
+    217,
+    263,
+    264,
+    290,
+    291,
+    321,
+    322,
+    636,
+    669,
+    747,
+    748,
+    750,
+    751,
+    753,
+    754,
+    756,
+    757,
+    912,
+    957,
+    986
+   ],
+   "missed": 37,
+   "statements": 658
+  }
+ },
+ "head": "981f0fbd",
+ "tool": "stdlib sys.monitoring line trace, whole suite in one process",
+ "totals": {
+  "covered_lines": 37618,
+  "missing_branches": 0,
+  "missing_lines": 439,
+  "num_branches": 0,
+  "num_statements": 38057,
+  "percent_covered": 98.84646714139318
+ }
+}
