@@ -216,5 +216,34 @@ class LedgerTest(unittest.TestCase):
         self.assertTrue(out.endswith("crashes filed.\n"))
 
 
+class BankCleanupTest(unittest.TestCase):
+    """A bank leaves no throwaway trees behind, on any path out.
+
+    The rigs run the bank on a timer; temp clones that survive a
+    run fill the disk a tick at a time (seen on both rigs,
+    2026-10-28: 10 clones on one, 26 on the other).
+    """
+
+    def test_tempdirs_removed_when_the_bank_raises(self):
+        with tempfile.TemporaryDirectory() as td:
+            corpus = os.path.join(td, "corpus")
+            os.makedirs(corpus)  # no runs.jsonl: the read raises
+            pat = os.path.join(td, "pat")
+            with open(pat, "w", encoding="utf-8") as fh:
+                fh.write("x")
+            scratch = os.path.join(td, "tmp")
+            os.makedirs(scratch)
+            old = tempfile.tempdir
+            tempfile.tempdir = scratch
+            try:
+                with self.assertRaises(FileNotFoundError):
+                    rig_bank.bank("Test rig", corpus, pat)
+            finally:
+                tempfile.tempdir = old
+            left = [d for d in os.listdir(scratch)
+                    if d.startswith("rig-bank")]
+            self.assertEqual([], left)
+
+
 if __name__ == "__main__":
     unittest.main()

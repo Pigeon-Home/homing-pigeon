@@ -316,12 +316,24 @@ def bank(rig, corpus_dir, pat_file, resources=None, dry_run=False):
     # Snapshot the rig's corpus first: the bank then reads a still
     # copy even if the rig's grow resets its tree mid-bank.
     snap = tempfile.mkdtemp(prefix="rig-bank-snap-")
+    work = tempfile.mkdtemp(prefix="rig-bank-")
+    try:
+        return _bank_inner(rig, corpus_dir, pat, snap, work,
+                           resources, dry_run)
+    finally:
+        # A bank that leaves its throwaway clones behind fills the
+        # rig's disk a timer tick at a time; both temp trees go on
+        # every path out, banked, refused or dry.
+        shutil.rmtree(snap, ignore_errors=True)
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
     snap_corpus = os.path.join(snap, "de_dust")
     shutil.copytree(corpus_dir, snap_corpus)
     _, snap_runs = read_jsonl(os.path.join(snap_corpus, "runs.jsonl"))
     snap_keys = {json.dumps(o, sort_keys=True) for o in snap_runs}
 
-    work = tempfile.mkdtemp(prefix="rig-bank-")
     clone = os.path.join(work, "clone")
     _git(["clone", "-q", REPO_URL, clone], cwd=work, pat=pat)
     orders_path = os.path.join(clone, ORDERS_REL)
