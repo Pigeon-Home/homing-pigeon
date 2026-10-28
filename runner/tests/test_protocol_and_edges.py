@@ -17,6 +17,7 @@ import sys
 import tempfile
 import unittest
 import uuid
+from unittest import mock
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
@@ -419,10 +420,14 @@ class ExecutionEdgeTests(unittest.TestCase):
 
 class SeenAndHelpersTests(unittest.TestCase):
     def test_seen_cap_keeps_newest(self):
-        with tempfile.TemporaryDirectory() as d:
+        # Past the ceiling (a backstop since Q102), the oldest go first.
+        import runner.runner as rr
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(rr, "SEEN_CAP", 2000):
             path = os.path.join(d, "seen.json")
-            seen = {f"id-{i:04d}": True for i in range(2500)}
-            save_seen(path, seen)
+            seen = {f"id-{i:04d}": 1_800_000_000 + i for i in range(2500)}
+            with mock.patch.object(rr.time, "time", return_value=1_800_003_000):
+                save_seen(path, seen, keep_sec=86400)
             loaded = load_seen(path)
             self.assertEqual(len(loaded), 2000)
             self.assertIn("id-2499", loaded)

@@ -217,7 +217,7 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
         if dry:
             return
         seen[skey] = True
-        R.save_seen(seen_path, seen)
+        R.save_seen(seen_path, seen, keep_sec=R.seen_keep_sec(cfg))
 
     if kind == "answer":
         if not dry:

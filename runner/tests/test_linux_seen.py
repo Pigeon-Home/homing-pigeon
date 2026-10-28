@@ -248,7 +248,8 @@ class SeenFuzzTest(unittest.TestCase):
                         break
                     with open(path, encoding="utf-8") as fh:
                         raw = json.loads(fh.read())
-                    if not isinstance(raw, list):
+                    # {key: recorded_at} since Q102.
+                    if not isinstance(raw, dict):
                         crashes.append(type(raw).__name__)
                         break
             link = _tmp_for(path)

@@ -301,7 +301,8 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                         encrypted=encrypt_result, meta=meta):
                     raise RuntimeError("result not stashed; will retry")
                 seen[skey] = True
-                _runner().save_seen(os.path.join(base_dir, "seen.json"), seen)
+                _runner().save_seen(os.path.join(base_dir, "seen.json"), seen,
+                                    keep_sec=_runner().seen_keep_sec(cfg))
                 _runner().mark_seen(imap, seq)
                 _runner().deliver_stash(base_dir, skey, maybe_send, cfg=cfg)
 

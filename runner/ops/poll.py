@@ -109,11 +109,9 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
                     def resend(subject, body, to):
                         _runner().send_mail(smtp, cfg, subject, body, to=to)
                     _runner().resend_stashed(base_dir, cfg, resend)
-                if len(seen) > _runner().SEEN_CAP:
-                    # _runner().save_seen caps the disk copy; keep memory in step.
-                    for k in list(seen.keys())[:-_runner().SEEN_CAP]:
-                        del seen[k]
-                _runner().save_seen(seen_path, seen)
+                # Entries leave by age, on disk and in memory (Q102).
+                _runner().save_seen(seen_path, seen,
+                                    keep_sec=_runner().seen_keep_sec(cfg))
                 _runner().vlog(f"poll: {len(mails)} message(s) handled by "
                      f"{workers} worker(s) in "
                      f"{time.monotonic() - t0:.1f}s; "

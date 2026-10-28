@@ -4537,12 +4537,11 @@ def _with_seen_file(path, mutator):
                 import msvcrt
                 msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
                 kind = "msvcrt"
-            disk = load_seen(path)
+            disk = load_seen(path, stamped=True)
             updated = mutator(disk if isinstance(disk, dict) else {})
             if not isinstance(updated, dict):
                 updated = disk
-            _write_seen_unlocked(path, updated)
-            return updated
+            return _write_seen_unlocked(path, updated)
         except OSError:
             return load_seen(path) if isinstance(path, str) else {}
         finally:
@@ -4558,20 +4557,63 @@ def _with_seen_file(path, mutator):
                     pass
                 _close_quiet(fd)
 
-def _write_seen_unlocked(path, seen):
-    keys = []
-    for key in list(seen.keys())[-SEEN_CAP:]:
+# How long a replay-cache entry is kept, in seconds (Q102). Set from
+# the config by save_seen's callers; the claim writers that share the
+# file use the last value set.
+SEEN_KEEP_FLOOR = 86400
+_SEEN_KEEP = [SEEN_KEEP_FLOOR]
+
+
+def seen_keep_sec(cfg):
+    """The age past which a replay-cache entry can never match a
+    message the door would take: the freshness window plus the
+    300-second future bound, and a day at least."""
+    window = _confval.integer((cfg or {}).get("max_job_age_sec")
+                              if isinstance(cfg, dict) else None,
+                              3600, lo=1)
+    return max(window + 300, SEEN_KEEP_FLOOR)
+
+
+def _seen_stamp(value):
+    """The time a cache entry was recorded, or None when it carries
+    none (a bare True from an older release or from memory)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    # A plausible epoch time only; a small number is a flag, not a time.
+    return float(value) if value > 1_000_000_000 else None
+
+
+def _write_seen_unlocked(path, seen, now=None):
+    """Write the cache as {key: recorded_at}. An entry older than the
+    keep horizon is dropped; one with no time is stamped now. Returns
+    what was written."""
+    now = time.time() if now is None else now
+    keep = _SEEN_KEEP[0]
+    kept = {}
+    for key, value in list(seen.items()):
         try:
             text = key if isinstance(key, str) else str(key)
         except Exception:
             continue
         if "\x00" in text:
             continue
-        keys.append(text)
+        stamp = _seen_stamp(value)
+        if stamp is None:
+            stamp = now
+        if now - stamp > keep:
+            continue
+        kept[text] = stamp
+    if len(kept) > SEEN_CAP:
+        log(f"replay cache holds {len(kept)} entries inside the freshness "
+            f"window, over the {SEEN_CAP} ceiling; the oldest are dropped",
+            "WARN")
+        newest = sorted(kept.items(), key=lambda kv: kv[1])[-SEEN_CAP:]
+        kept = dict(newest)
     try:
-        _atomicio.write_json(path, keys)
+        _atomicio.write_json(path, kept)
     except (OSError, TypeError, ValueError):
         pass
+    return kept
 
 
 def _disk_release(base_dir, skey):
@@ -4616,7 +4658,7 @@ def _release_saved_claims(seen_path, seen):
         if key and isinstance(seen, dict) and seen.get(key):
             _unlink_quiet(path)
 
-def load_seen(path: str) -> dict:
+def load_seen(path: str, stamped=False) -> dict:
     """Replay cache. A symlink is not followed.
 
     A missing or unreadable file is an empty cache. Never raises.
@@ -4629,32 +4671,47 @@ def load_seen(path: str) -> dict:
         if isinstance(data, list):
             return {str(x): True for x in data}
         if isinstance(data, dict):
+            if stamped:
+                # The time each entry was recorded (Q102); an entry
+                # without one reads as a bare True.
+                return {str(k): (_seen_stamp(v) or True)
+                        for k, v in data.items()}
             return {str(k): True for k in data}
         return {}
     except Exception:
         return {}
 
-def save_seen(path: str, seen: dict):
+def save_seen(path: str, seen: dict, keep_sec=None):
     """Write the replay cache, merged with whatever is already there.
 
     Two runners used to each replace the file with only the keys
     they held in memory, so one wiped the other's. The merge is
-    under the same lock as the claim.
+    under the same lock as the claim. An entry keeps the time it was
+    first recorded, and one older than keep_sec (seen_keep_sec(cfg))
+    leaves both the file and this process's copy (Q102).
     """
     if not isinstance(path, str) or not path:
         return
     if not isinstance(seen, dict):
         seen = {}
+    if isinstance(keep_sec, (int, float)) and not isinstance(keep_sec, bool) \
+            and keep_sec > 0:
+        _SEEN_KEEP[0] = max(int(keep_sec), 1)
 
     def merge(disk):
         if not isinstance(disk, dict):
             disk = {}
-        disk.update({k: True for k in seen})
-        for key in disk:
-            seen[key] = True
+        for key, value in seen.items():
+            if _seen_stamp(disk.get(key)) is None:
+                disk[key] = value
         return disk
 
-    _with_seen_file(path, merge)
+    written = _with_seen_file(path, merge)
+    if isinstance(written, dict) and written:
+        for key in [k for k in seen if k not in written]:
+            seen.pop(key, None)
+        for key in written:
+            seen[key] = True
     _release_saved_claims(path, seen)
 
 
@@ -4983,10 +5040,7 @@ def _service_transports(cfg, base_dir, seen, seen_path, names,
     if not dry_run:
         resend_stashed(base_dir, cfg, None)
         _sweep_channel_refusals(base_dir, cfg, names)
-    if len(seen) > SEEN_CAP:
-        for k in list(seen.keys())[:-SEEN_CAP]:
-            del seen[k]
-    save_seen(seen_path, seen)
+    save_seen(seen_path, seen, keep_sec=seen_keep_sec(cfg))
 
 _poll = _required_load_mod("runner.ops.poll", "ops.poll")
 poll_once = _poll.poll_once

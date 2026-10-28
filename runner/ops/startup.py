@@ -208,7 +208,8 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
             return True
         if seen_path:
             seen[skey] = True
-            _runner().save_seen(seen_path, seen)
+            _runner().save_seen(seen_path, seen,
+                                    keep_sec=_runner().seen_keep_sec(cfg))
     except Exception as e:
         # Bad board data must reject this message, not fail the cycle.
         R.log(f"board failed seq {seq}: {e}", "WARN")

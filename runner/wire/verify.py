@@ -52,7 +52,13 @@ except ImportError:
 PROTOCOL_VERSION = 1
 
 
-SEEN_CAP = 2000
+# The replay cache's hard ceiling, a backstop only. Entries leave the
+# cache by age (runner.seen_keep_sec: the freshness window plus the
+# 300-second future bound, a day at least), so a key is never dropped
+# while a message carrying it could still pass the freshness check
+# (Q102). The ceiling is reached only if the window itself holds more
+# messages than this, and then the oldest go first, logged.
+SEEN_CAP = 200_000
 
 
 # ---------------------------------------------------------------- crypto
