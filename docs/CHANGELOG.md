@@ -6,6 +6,12 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.14.7 - 2026-10-27
 
+- **Named recipes.** The owner writes a script in config under
+  `recipes`, with the arguments a job may pass held to a pattern; a
+  `kind: "recipe"` job names one and brings no script, interpreter or
+  environment of its own. A key policy's `allowed_recipes` makes a key
+  that runs the tests and nothing else. `send_job.py new --kind recipe
+  --recipe NAME` builds one.
 - **The result chain.** Every result carries `result_seq` and, from
   the second on, `prev_result_sha384`, per key, so a sender proves it
   saw every run in order; `send_job.py verify --chain FILE` keeps the
