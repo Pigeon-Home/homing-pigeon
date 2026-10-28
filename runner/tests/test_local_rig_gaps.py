@@ -323,8 +323,16 @@ class ReadOutputReasonsTest(unittest.TestCase):
             self.assertEqual(self._read(), (None, 0, "unreadable"))
 
     def test_an_lstat_refusal_other_than_missing_is_unreadable(self):
-        with mock.patch.object(self.ex.os, "lstat",
-                               side_effect=PermissionError("denied")):
+        # Refuse only the output's own lstat: realpath lstats every
+        # component on its way (/var -> /private/var on macOS).
+        real_lstat = os.lstat
+
+        def refuse(p, *a, **k):
+            if os.fspath(p) == self.path:
+                raise PermissionError("denied")
+            return real_lstat(p, *a, **k)
+
+        with mock.patch.object(self.ex.os, "lstat", side_effect=refuse):
             self.assertEqual(self._read(), (None, 0, "unreadable"))
 
     def test_an_open_refusal_is_unreadable(self):

@@ -48,7 +48,8 @@ class DigestTest(unittest.TestCase):
     def test_a_tool_upgraded_in_place_moves_it(self):
         d = tempfile.mkdtemp(prefix="hp-envfp-")
         self.addCleanup(shutil.rmtree, d, True)
-        tool = os.path.join(d, "git")
+        # Windows finds a tool on PATH by its PATHEXT suffix.
+        tool = os.path.join(d, "git.exe" if os.name == "nt" else "git")
         with open(tool, "w") as fh:
             fh.write("#!/bin/sh\n")
         os.chmod(tool, stat.S_IRWXU)
