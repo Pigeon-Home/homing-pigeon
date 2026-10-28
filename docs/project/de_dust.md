@@ -82,7 +82,10 @@ secret that is real.
   a retired record returned would be a probe that passes, which is
   a red build): `grow` drops such a copy from the rig's own file
   first, and `rig_bank` skips one unless its `found` date is later
-  than the retirement, the crash found again after the fix.
+  than the retirement, the crash found again after the fix; a bank
+  also replays the crash records it merges at main's head and
+  promotes or retires the ones that pass there, so a grow on a stale
+  tree never reddens main with a probe that passes.
   Everything is committed with the ledger
   line, a grow that kept nothing included: the data from the
   fuzzing is in the repository, not only its results.

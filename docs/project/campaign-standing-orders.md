@@ -524,6 +524,12 @@ The loop:
    retirement, is a rig's stale copy and is not re-added; `grow`
    drops such a copy from the rig's file before it runs, so a crash
    found again after a fix files under a later date and is banked.
+   And a bank replays the crash records it merged at main's own head
+   (`promote`, in the clone) before it commits (Q108, 2026-10-28): a
+   record that still crashes lands as a crash, and one a grow found
+   on a tree older than the fix is promoted or retired on the spot,
+   never landing as a probe that passes. The ledger line says what
+   was replayed.
 
 Hard rules, as Q62: no new CI legs, no `continue-on-error`, every
 skip registered, nothing about any machine in the tree, the

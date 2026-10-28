@@ -164,7 +164,10 @@ from runner.wire import mailbox as MB  # noqa: E402
 import runner.runner as R  # noqa: E402
 
 STAMP = "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"
-CORPUS_DIR = os.path.join(ROOT, "runner", "tests", "de_dust")
+# The corpus lives in the tree; HP_DE_DUST_CORPUS_DIR points the tool
+# at another copy (a test's scratch tree, a rig's working copy).
+CORPUS_DIR = os.environ.get("HP_DE_DUST_CORPUS_DIR") or os.path.join(
+    ROOT, "runner", "tests", "de_dust")
 DEFAULT_ROUNDS = 400
 MAX_TEXT = 16 * 1024          # bytes of a text entry after mutation
 MAX_PAYLOAD = 16 * 1024       # bytes of a payload entry's JSON

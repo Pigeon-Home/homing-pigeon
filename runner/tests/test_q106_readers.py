@@ -298,3 +298,75 @@ class RetiredListsInTheTreeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BankSettlesCrashesTest(unittest.TestCase):
+    """A bank replays the crash records it merged at main's head (Q108)."""
+
+    def test_promote_runs_once_per_target_with_new_crash_records(self):
+        calls = []
+
+        def fake_run(cmd, **kw):
+            calls.append((cmd, kw.get("cwd")))
+            target = cmd[-1]
+            return mock.Mock(returncode=1, stdout=(
+                f"noise\n{target}: 1 promoted, 2 redundant (fixed, reaching "
+                f"nothing new), 1 still crash\n").encode())
+
+        report = {"crashes": {"queries.crashes.jsonl": ["a", "b"],
+                              "wire.crashes.jsonl": ["c"]}}
+        got = RB.settle_crashes("/clone", report, run=fake_run)
+        self.assertEqual(["queries", "wire"], [c[0][-1] for c in calls])
+        self.assertEqual({"/clone"}, {c[1] for c in calls})
+        self.assertTrue(all(c[0][-3:-1] == ["promote", "--target"] for c in calls))
+        self.assertEqual("wire: 1 promoted, 2 redundant (fixed, reaching nothing "
+                         "new), 1 still crash", got["wire"])
+
+    def test_a_promote_that_cannot_run_leaves_the_merge(self):
+        def boom(cmd, **kw):
+            raise OSError("no python")
+        got = RB.settle_crashes("/clone", {"crashes": {"queries.crashes.jsonl": ["a"]}},
+                                run=boom)
+        self.assertEqual({"queries": "queries: promote did not run (OSError)"}, got)
+        self.assertEqual({}, RB.settle_crashes("/clone", {"crashes": {}}, run=boom))
+
+    def test_the_ledger_block_names_the_settlement(self):
+        report = {"totals": (10, 20), "settled": {"queries": "queries: 0 promoted, "
+                                                              "11 redundant, 0 still crash"}}
+        block = RB.ledger_block("Test rig", 3, report, [], None)
+        self.assertIn("Crash records replayed at main's head: queries: 0 promoted, "
+                      "11 redundant, 0 still crash.", block)
+        self.assertNotIn("replayed", RB.ledger_block("Test rig", 3,
+                                                     {"totals": (1, 1)}, [], None))
+
+    def test_a_real_promote_in_a_scratch_tree_retires_what_passes(self):
+        # A clone is the tree itself; the corpus dir is pointed at a
+        # scratch copy, so nothing in the repository moves.
+        td = tempfile.TemporaryDirectory()
+        self.addCleanup(td.cleanup)
+        scratch = os.path.join(td.name, "de_dust")
+        os.makedirs(scratch)
+        # one wire entry that passes (a stale-tree echo) and one that
+        # the reader refuses properly today, as a crash file
+        good = B.make_entry("text", "not a signed body at all", "seed:x", "p_text")
+        record = dict(good, crash="exception", detail="old", found="2026-10-01")
+        B.save(os.path.join(scratch, "wire.crashes.jsonl"), "wire", [record])
+        B.save(os.path.join(scratch, "wire.jsonl"), "wire", [])
+        env = dict(os.environ, HP_DE_DUST_CORPUS_DIR=scratch)
+        proc = subprocess.run([sys.executable, "runner/tools/de_dust_corpus.py",
+                               "promote", "--target", "wire"],
+                              cwd=os.path.dirname(os.path.dirname(os.path.dirname(
+                                  os.path.abspath(B.__file__)))),
+                              env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              timeout=600)
+        text = proc.stdout.decode()
+        if "HP_DE_DUST_CORPUS_DIR" not in open(B.__file__, encoding="utf-8").read():
+            self.skipTest("the tool reads no corpus dir override")
+        self.assertIn("wire: ", text)
+        self.assertFalse(os.path.exists(os.path.join(scratch, "wire.crashes.jsonl")), text)
+        with open(os.path.join(scratch, "wire.retired.json"), encoding="utf-8") as fh:
+            self.assertIn(record["id"], json.load(fh)["retired"])
+
+
+import subprocess  # noqa: E402
+import sys  # noqa: E402

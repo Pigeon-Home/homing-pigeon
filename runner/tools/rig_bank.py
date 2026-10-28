@@ -242,6 +242,33 @@ def merge_corpus(tree_dir, bank_dir):
     return report
 
 
+def settle_crashes(clone, report, run=subprocess.run, timeout=900):
+    """Replay the crash records this bank merged at main's own head,
+    inside the clone, with the tool's `promote`: a record that still
+    crashes stays a crash (the suite carries it as an expectedFailure
+    probe that fails, as it should); one that passes was found by a
+    grow on a tree older than the fix, and `promote` moves it into the
+    corpus or retires it, so it never lands on main as a probe that
+    passes and reddens the build (Q108). Returns {target: summary}.
+    A promote that cannot run leaves the merge as it was: the bank
+    still lands, and the suite says what promote would have."""
+    out = {}
+    for name in sorted(report.get("crashes") or {}):
+        target = name[: -len(".crashes.jsonl")]
+        try:
+            proc = run([sys.executable, os.path.join("runner", "tools", "de_dust_corpus.py"),
+                        "promote", "--target", target],
+                       cwd=clone, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                       timeout=timeout, check=False)
+            text = proc.stdout.decode("utf-8", "replace") if isinstance(
+                proc.stdout, bytes) else str(proc.stdout or "")
+            line = [ln for ln in text.strip().splitlines() if ln.startswith(target + ":")]
+            out[target] = line[-1] if line else f"{target}: promote exit {proc.returncode}"
+        except (OSError, subprocess.SubprocessError) as e:
+            out[target] = f"{target}: promote did not run ({type(e).__name__})"
+    return out
+
+
 def banked_records(run_objs, known_keys):
     """Run records in the merged list that were not in the tree before."""
     return [
@@ -265,6 +292,10 @@ def ledger_block(rig, grow_no, report, new_records, resources=None):
     )
     if resources:
         body += f" Resources: {resources}."
+    settled = report.get("settled") or {}
+    if settled:
+        body += " Crash records replayed at main's head: " + "; ".join(
+            settled[k] for k in sorted(settled)) + "."
     return head + "\n" + body + "\n"
 
 
@@ -352,6 +383,8 @@ def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
     if not changed:
         print("rig_bank: nothing new to bank")
         return 0
+    if report["crashes"]:
+        report["settled"] = settle_crashes(clone, report)
     block = ledger_block(rig, grow_no, report, fresh, resources)
     with open(orders_path, "w", encoding="utf-8") as fh:
         fh.write(insert_ledger(orders_text, block))
@@ -385,6 +418,8 @@ def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
             new_records = banked_records(report["run_objs"], tree_keys)
             fresh = [o for o in new_records
                      if json.dumps(o, sort_keys=True) in snap_keys]
+            if report["crashes"]:
+                report["settled"] = settle_crashes(clone, report)
             block = ledger_block(rig, grow_no, report, fresh, resources)
             with open(orders_path, "w", encoding="utf-8") as fh:
                 fh.write(insert_ledger(orders_text, block))
