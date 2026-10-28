@@ -1,0 +1,940 @@
+{
+"Agent-Stamp": "60000b3a-32a6-4847-996f-638cbcb6d854",
+"files": {
+"runner/__init__.py": {
+"covered": 2,
+"missing": [],
+"statements": 2
+},
+"runner/_version.py": {
+"covered": 1,
+"missing": [],
+"statements": 1
+},
+"runner/cloud/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/cloud/send_dtls.py": {
+"covered": 148,
+"missing": [],
+"statements": 148
+},
+"runner/cloud/send_job.py": {
+"covered": 642,
+"missing": [
+60,
+72,
+84,
+104,
+282,
+322,
+345,
+519,
+521,
+525,
+526,
+531,
+532,
+573,
+575,
+706,
+707,
+708,
+721
+],
+"statements": 661
+},
+"runner/extensions/aide-feed/aide_feed.py": {
+"covered": 223,
+"missing": [
+460
+],
+"statements": 224
+},
+"runner/extensions/airwaves/airwaves.py": {
+"covered": 417,
+"missing": [
+821
+],
+"statements": 418
+},
+"runner/extensions/backup-freshness/backup_freshness.py": {
+"covered": 184,
+"missing": [
+380
+],
+"statements": 185
+},
+"runner/extensions/cert-sentinel/cert_sentinel.py": {
+"covered": 224,
+"missing": [
+492
+],
+"statements": 225
+},
+"runner/extensions/crash-watch/crash_watch.py": {
+"covered": 204,
+"missing": [
+413
+],
+"statements": 205
+},
+"runner/extensions/failed-login-watch/failed_login_watch.py": {
+"covered": 260,
+"missing": [
+507
+],
+"statements": 261
+},
+"runner/extensions/falco-feed/falco_feed.py": {
+"covered": 265,
+"missing": [
+538
+],
+"statements": 266
+},
+"runner/extensions/job-fuzz/job_fuzz.py": {
+"covered": 784,
+"missing": [
+391,
+1520
+],
+"statements": 786
+},
+"runner/extensions/job-watcher/job_watcher.py": {
+"covered": 383,
+"missing": [
+771
+],
+"statements": 384
+},
+"runner/extensions/lab-results/lab_results.py": {
+"covered": 157,
+"missing": [
+306
+],
+"statements": 158
+},
+"runner/extensions/latency-post/latency_post.py": {
+"covered": 215,
+"missing": [
+424
+],
+"statements": 216
+},
+"runner/extensions/log-sentinel/log_sentinel.py": {
+"covered": 273,
+"missing": [
+513
+],
+"statements": 274
+},
+"runner/extensions/osquery-feed/osquery_feed.py": {
+"covered": 279,
+"missing": [
+610
+],
+"statements": 280
+},
+"runner/extensions/pi-health/pi_health.py": {
+"covered": 258,
+"missing": [
+204,
+581
+],
+"statements": 260
+},
+"runner/extensions/port-watch/port_watch.py": {
+"covered": 211,
+"missing": [
+421
+],
+"statements": 212
+},
+"runner/extensions/release-drop/release_drop.py": {
+"covered": 193,
+"missing": [
+405
+],
+"statements": 194
+},
+"runner/extensions/resource-sentinel/resource_sentinel.py": {
+"covered": 236,
+"missing": [
+518
+],
+"statements": 237
+},
+"runner/extensions/service-watch/service_watch.py": {
+"covered": 237,
+"missing": [
+449
+],
+"statements": 238
+},
+"runner/extensions/sky-watcher/sky_watcher.py": {
+"covered": 328,
+"missing": [
+231,
+686
+],
+"statements": 330
+},
+"runner/extensions/softflowd-feed/softflowd_feed.py": {
+"covered": 456,
+"missing": [
+402
+],
+"statements": 457
+},
+"runner/extensions/suricata-feed/suricata_feed.py": {
+"covered": 280,
+"missing": [
+580
+],
+"statements": 281
+},
+"runner/extensions/sysmon-feed/sysmon_feed.py": {
+"covered": 328,
+"missing": [
+631
+],
+"statements": 329
+},
+"runner/extensions/training-watch/training_watch.py": {
+"covered": 394,
+"missing": [
+612,
+869
+],
+"statements": 396
+},
+"runner/extensions/tripwire/tripwire.py": {
+"covered": 221,
+"missing": [
+426
+],
+"statements": 222
+},
+"runner/extensions/usb-arrivals/usb_arrivals.py": {
+"covered": 215,
+"missing": [
+454
+],
+"statements": 216
+},
+"runner/extensions/wazuh-feed/wazuh_feed.py": {
+"covered": 259,
+"missing": [
+535
+],
+"statements": 260
+},
+"runner/extensions/wire-arrivals/wire_arrivals.py": {
+"covered": 228,
+"missing": [
+441
+],
+"statements": 229
+},
+"runner/extensions/zeek-feed/zeek_feed.py": {
+"covered": 341,
+"missing": [
+702
+],
+"statements": 342
+},
+"runner/guard/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/guard/atomicio.py": {
+"covered": 48,
+"missing": [],
+"statements": 48
+},
+"runner/guard/confval.py": {
+"covered": 47,
+"missing": [],
+"statements": 47
+},
+"runner/guard/defaulted.py": {
+"covered": 52,
+"missing": [],
+"statements": 52
+},
+"runner/guard/extreview.py": {
+"covered": 352,
+"missing": [
+396,
+408,
+414,
+612,
+613
+],
+"statements": 357
+},
+"runner/guard/filenames.py": {
+"covered": 59,
+"missing": [],
+"statements": 59
+},
+"runner/guard/panic.py": {
+"covered": 174,
+"missing": [],
+"statements": 174
+},
+"runner/guard/sandbox.py": {
+"covered": 135,
+"missing": [
+73
+],
+"statements": 136
+},
+"runner/guard/security.py": {
+"covered": 252,
+"missing": [
+209,
+226,
+228,
+253,
+516
+],
+"statements": 257
+},
+"runner/guard/textutil.py": {
+"covered": 88,
+"missing": [],
+"statements": 88
+},
+"runner/hosting/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/hosting/base.py": {
+"covered": 78,
+"missing": [],
+"statements": 78
+},
+"runner/hosting/billing.py": {
+"covered": 166,
+"missing": [],
+"statements": 166
+},
+"runner/hosting/bootstrap.py": {
+"covered": 43,
+"missing": [],
+"statements": 43
+},
+"runner/hosting/cli.py": {
+"covered": 240,
+"missing": [
+40,
+42,
+43,
+44,
+45,
+381,
+385
+],
+"statements": 247
+},
+"runner/hosting/digitalocean.py": {
+"covered": 54,
+"missing": [],
+"statements": 54
+},
+"runner/hosting/fly.py": {
+"covered": 59,
+"missing": [
+57
+],
+"statements": 60
+},
+"runner/hosting/github_actions.py": {
+"covered": 107,
+"missing": [],
+"statements": 107
+},
+"runner/hosting/hetzner.py": {
+"covered": 47,
+"missing": [],
+"statements": 47
+},
+"runner/hosting/httpdoor.py": {
+"covered": 47,
+"missing": [],
+"statements": 47
+},
+"runner/hosting/inventory.py": {
+"covered": 75,
+"missing": [],
+"statements": 75
+},
+"runner/ops/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/ops/attest.py": {
+"covered": 114,
+"missing": [],
+"statements": 114
+},
+"runner/ops/auditreport.py": {
+"covered": 223,
+"missing": [],
+"statements": 223
+},
+"runner/ops/av.py": {
+"covered": 57,
+"missing": [],
+"statements": 57
+},
+"runner/ops/cli.py": {
+"covered": 91,
+"missing": [
+13,
+20,
+34,
+35,
+39
+],
+"statements": 96
+},
+"runner/ops/context.py": {
+"covered": 83,
+"missing": [],
+"statements": 83
+},
+"runner/ops/exec.py": {
+"covered": 388,
+"missing": [
+285,
+293,
+302,
+307,
+315,
+332,
+408,
+451,
+499
+],
+"statements": 397
+},
+"runner/ops/extensions.py": {
+"covered": 266,
+"missing": [
+305,
+392,
+393
+],
+"statements": 269
+},
+"runner/ops/extsources.py": {
+"covered": 1363,
+"missing": [
+152,
+153,
+289,
+2212,
+2217,
+2219
+],
+"statements": 1369
+},
+"runner/ops/firewall.py": {
+"covered": 74,
+"missing": [],
+"statements": 74
+},
+"runner/ops/handlers.py": {
+"covered": 213,
+"missing": [
+182,
+183
+],
+"statements": 215
+},
+"runner/ops/harness.py": {
+"covered": 444,
+"missing": [],
+"statements": 444
+},
+"runner/ops/helpers.py": {
+"covered": 94,
+"missing": [],
+"statements": 94
+},
+"runner/ops/install.py": {
+"covered": 1944,
+"missing": [
+41,
+60,
+61,
+62,
+86,
+87,
+88,
+125,
+137,
+138,
+336,
+338,
+1038,
+1056,
+1286,
+1378,
+1895,
+1897,
+3608,
+3667
+],
+"statements": 1964
+},
+"runner/ops/live.py": {
+"covered": 7,
+"missing": [
+22,
+23
+],
+"statements": 9
+},
+"runner/ops/local_test.py": {
+"covered": 170,
+"missing": [],
+"statements": 170
+},
+"runner/ops/mail.py": {
+"covered": 347,
+"missing": [
+141,
+143,
+692
+],
+"statements": 350
+},
+"runner/ops/main.py": {
+"covered": 214,
+"missing": [
+26,
+27,
+46,
+61,
+335
+],
+"statements": 219
+},
+"runner/ops/misc.py": {
+"covered": 206,
+"missing": [],
+"statements": 206
+},
+"runner/ops/oracle_ops.py": {
+"covered": 148,
+"missing": [],
+"statements": 148
+},
+"runner/ops/oracle_page.py": {
+"covered": 13,
+"missing": [
+9
+],
+"statements": 14
+},
+"runner/ops/oracle_server.py": {
+"covered": 144,
+"missing": [
+185
+],
+"statements": 145
+},
+"runner/ops/oracle_tools.py": {
+"covered": 9,
+"missing": [],
+"statements": 9
+},
+"runner/ops/paths.py": {
+"covered": 55,
+"missing": [],
+"statements": 55
+},
+"runner/ops/policy.py": {
+"covered": 129,
+"missing": [],
+"statements": 129
+},
+"runner/ops/poll.py": {
+"covered": 90,
+"missing": [
+33
+],
+"statements": 91
+},
+"runner/ops/posture.py": {
+"covered": 226,
+"missing": [],
+"statements": 226
+},
+"runner/ops/queries.py": {
+"covered": 409,
+"missing": [
+329,
+513,
+645,
+669
+],
+"statements": 413
+},
+"runner/ops/remediation_ops.py": {
+"covered": 176,
+"missing": [],
+"statements": 176
+},
+"runner/ops/sensors.py": {
+"covered": 176,
+"missing": [],
+"statements": 176
+},
+"runner/ops/setup.py": {
+"covered": 198,
+"missing": [],
+"statements": 198
+},
+"runner/ops/startup.py": {
+"covered": 148,
+"missing": [
+205,
+206
+],
+"statements": 150
+},
+"runner/ops/tables.py": {
+"covered": 2,
+"missing": [],
+"statements": 2
+},
+"runner/ops/watch.py": {
+"covered": 192,
+"missing": [],
+"statements": 192
+},
+"runner/ops/windows.py": {
+"covered": 52,
+"missing": [],
+"statements": 52
+},
+"runner/ops/winlog.py": {
+"covered": 32,
+"missing": [],
+"statements": 32
+},
+"runner/oracle/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/oracle/detection.py": {
+"covered": 143,
+"missing": [],
+"statements": 143
+},
+"runner/oracle/dri.py": {
+"covered": 353,
+"missing": [
+34,
+487
+],
+"statements": 355
+},
+"runner/oracle/learning.py": {
+"covered": 368,
+"missing": [
+173,
+178,
+184
+],
+"statements": 371
+},
+"runner/oracle/opinion.py": {
+"covered": 306,
+"missing": [],
+"statements": 306
+},
+"runner/oracle/personal_docs.py": {
+"covered": 166,
+"missing": [],
+"statements": 166
+},
+"runner/oracle/remediation.py": {
+"covered": 850,
+"missing": [
+470,
+483,
+499,
+558
+],
+"statements": 854
+},
+"runner/oracle/resources.py": {
+"covered": 157,
+"missing": [],
+"statements": 157
+},
+"runner/oracle/review.py": {
+"covered": 149,
+"missing": [
+297
+],
+"statements": 150
+},
+"runner/oracle/senses.py": {
+"covered": 290,
+"missing": [
+427
+],
+"statements": 291
+},
+"runner/runner.py": {
+"covered": 3493,
+"missing": [
+106,
+164,
+789,
+1345,
+1582,
+1638,
+1649,
+1651,
+1655,
+1660,
+1701,
+1704,
+1730,
+1734,
+1746,
+1747,
+1765,
+1777,
+1853,
+1913,
+1991,
+1994,
+2002,
+2003,
+2012,
+2028,
+2034,
+2054,
+2055,
+2082,
+2084,
+2086,
+2094,
+2104,
+2121,
+2131,
+2232,
+2566,
+2603,
+2613,
+3269,
+3304,
+4312,
+4351,
+4377,
+4651,
+4947,
+4948,
+5069,
+5139,
+5140,
+5365,
+5645,
+6176,
+6177,
+6185,
+6186,
+6187,
+6188
+],
+"statements": 3552
+},
+"runner/transport_extensions/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/transport_extensions/channel.py": {
+"covered": 104,
+"missing": [
+171
+],
+"statements": 105
+},
+"runner/transport_extensions/dtls/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/transport_extensions/dtls/__main__.py": {
+"covered": 170,
+"missing": [
+330
+],
+"statements": 171
+},
+"runner/transport_extensions/email/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/transport_extensions/email/__main__.py": {
+"covered": 133,
+"missing": [
+61,
+69,
+71
+],
+"statements": 136
+},
+"runner/transport_extensions/file/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/transport_extensions/file/__main__.py": {
+"covered": 134,
+"missing": [
+217,
+221
+],
+"statements": 136
+},
+"runner/transport_extensions/nats/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/transport_extensions/nats/__main__.py": {
+"covered": 214,
+"missing": [],
+"statements": 214
+},
+"runner/transport_extensions/queues/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/transport_extensions/queues/__main__.py": {
+"covered": 168,
+"missing": [
+272
+],
+"statements": 169
+},
+"runner/wire/__init__.py": {
+"covered": 0,
+"missing": [],
+"statements": 0
+},
+"runner/wire/board.py": {
+"covered": 282,
+"missing": [
+271
+],
+"statements": 283
+},
+"runner/wire/dtlsproto.py": {
+"covered": 1067,
+"missing": [
+63,
+64,
+66,
+186,
+187,
+446,
+450,
+454,
+455,
+456,
+457,
+460,
+464,
+467,
+1002,
+1401
+],
+"statements": 1083
+},
+"runner/wire/jobcrypto.py": {
+"covered": 185,
+"missing": [],
+"statements": 185
+},
+"runner/wire/mailbox.py": {
+"covered": 182,
+"missing": [],
+"statements": 182
+},
+"runner/wire/oauth.py": {
+"covered": 191,
+"missing": [
+48,
+350
+],
+"statements": 193
+},
+"runner/wire/platformcard.py": {
+"covered": 44,
+"missing": [],
+"statements": 44
+},
+"runner/wire/protocol_v2.py": {
+"covered": 356,
+"missing": [
+201
+],
+"statements": 357
+},
+"runner/wire/transports.py": {
+"covered": 548,
+"missing": [
+88,
+285,
+290
+],
+"statements": 551
+},
+"runner/wire/verify.py": {
+"covered": 550,
+"missing": [
+27,
+34,
+147,
+217,
+264,
+291,
+322,
+666,
+744,
+745,
+747,
+748,
+750,
+751,
+753,
+754,
+909,
+954,
+983
+],
+"statements": 569
+}
+},
+"tracer": "sys.monitoring line events, global statements excluded"
+}
