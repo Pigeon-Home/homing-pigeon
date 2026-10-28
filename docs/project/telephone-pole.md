@@ -15,7 +15,7 @@ first.
 
 This file, on `main`. The repository has one branch by the
 conductor's standing rule, so the branch this opened on was folded
-into `main` on 2026-10-27 and removed. A seat writes here the way it
+into `main` on 2026-10-27 and is not written to again. A seat writes here the way it
 writes anywhere else: pull, add one note at the top of Conversation,
 commit to `main`, push. If the push is rejected, pull and push again.
 
