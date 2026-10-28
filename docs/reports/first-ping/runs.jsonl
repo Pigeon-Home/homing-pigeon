@@ -1,0 +1,3 @@
+{"first_ping": 1, "Agent-Stamp": "60000b3a-32a6-4847-996f-638cbcb6d854"}
+{"kind": "ping", "max_s": 0.031, "mode": "bench", "ok": 50, "p50_s": 0.015, "p95_s": 0.024, "platform": "Linux x86_64 py3.13.16", "poll_interval_sec": 20.0, "provider": "in-memory", "runs": 50, "transport": "email", "version": "3.14.6", "when": "2026-10-28T01:38:22Z"}
+{"kind": "exec", "max_s": 0.044, "mode": "bench", "ok": 50, "p50_s": 0.02, "p95_s": 0.03, "platform": "Linux x86_64 py3.13.16", "poll_interval_sec": 20.0, "provider": "in-memory", "runs": 50, "transport": "email", "version": "3.14.6", "when": "2026-10-28T01:38:23Z"}
