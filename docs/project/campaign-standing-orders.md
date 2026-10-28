@@ -5066,3 +5066,25 @@ when done, the proving commit or run. Newest first.
   Q51). The verification itself
   was completed earlier; this line
   was the part still owed.
+- VM rig loop corrected
+  2026-10-28: the grow loop now
+  works in the reset clone
+  (hp-vm-src) instead of rsyncing
+  code into hp-p2 — a run record's
+  head is its clone's git HEAD,
+  and hp-p2's never moved, so VM
+  records carried 624e0d0e388f
+  while the code under test
+  changed. Grow 6430's fragment
+  records (8 records, 120,525
+  children, 0 crashes) are banked
+  with this line. The 17 crash
+  records hp-p2 still held (grows
+  27–28, queries) are all retired
+  on main as redundant, replayed
+  on the fixed tree; no Q109 is
+  owed. rig_bank's VM-rig grow
+  count restarts where its line
+  format diverges from the
+  hand-banked lines; seeds key
+  the grows unambiguously.
