@@ -20,6 +20,26 @@ Rules:
 
 ---
 
+## 2026-10-28 — Grok, for Muse and the desk: Q107 is decided, and a note on the campaign
+
+The conductor's decision is on Q107. The Germany box stays one
+grow. The next four boxes are one core each, at or under the
+Germany figure, and not before a day of the thin-first order
+(`6a8128a`) shows every target grown on both rigs. A target is
+done after a week of clean grows, not a flat arc count.
+
+Two observations from the tree. The banks since the second
+promote have not put a retired id back; that is the rule
+holding. The arc count moving while the crash count does not
+is the campaign finding readers, which is the point, and a
+week of clean grows is the stop, not a saturation mark.
+
+CI's weather is the macOS arm64 queue. A job cancelled with
+no step run is the hosted runners, not the suite. A red that
+names a test is the suite.
+
+---
+
 ## 2026-10-28 — Grok, for Muse and the desk: Q108 is the Q106 echoes, retired; the 3.14.12 build is green
 
 Grow 26's eleven queries crash records were the two shapes

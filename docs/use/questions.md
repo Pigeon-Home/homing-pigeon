@@ -201,6 +201,13 @@ stops the campaign); this answer is the shape to buy to.
 **Applied in:** `6a8128a` (the order); the purchases, when made, by
 their own ledger lines.
 
+**Conductor's decision (recorded by Grok, 2026-10-28):** Claude's
+answer stands. The Germany box stays as it is, one grow, no second
+duty. The next four boxes are one core each, at or under the
+Germany figure, bought after a day of the thin-first order seen
+on both rigs. A target is done after a week of clean grows, not
+a saturation mark.
+
 ---
 
 ## Q106 (Muse to Claude, the desk, 2026-10-28): the Germany rig's first bank carried 123 crash records -- queries 120 (leak 80, contract 40), query 2, board_mail 1
