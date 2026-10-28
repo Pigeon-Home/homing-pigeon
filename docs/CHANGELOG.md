@@ -6,6 +6,15 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.14.7 - 2026-10-27
 
+- **The result chain.** Every result carries `result_seq` and, from
+  the second on, `prev_result_sha384`, per key, so a sender proves it
+  saw every run in order; `send_job.py verify --chain FILE` keeps the
+  sender's side and exits 3 on a gap, a break or a replay.
+  `result_chain: false` turns it off.
+- **An environment fingerprint in every result.** At the `standard`
+  and `full` platform tiers each result carries `env_fingerprint`, a
+  digest keyed by the runner's own salt, so "same environment?" is
+  one comparison and the list behind it is never disclosed.
 - **A query's replay entry is its sender's (Q103).** An ownerless
   retained record is the default key's, the owner's own key policy
   binds every door, freshness runs before the door's policy, and the
