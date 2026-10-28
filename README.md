@@ -21,9 +21,9 @@ DTLS binding, off unless enabled, is the one network listener, and a
 loopback-only port (127.0.0.1:39271) takes this box's own sensor
 signals.
 
-Setup walks you through connecting a dedicated mailbox on the
-recommended provider. The recommended path is a browser sign-in, so
-the account password never lands in config; an app password is the
+Setup walks you through connecting a dedicated mailbox. The
+recommended path is a browser sign-in, so the account password never
+lands in config; an app password is the
 other choice.
 Another provider works by setting `imap_host` and `smtp_host` in
 `config.json` with an app password.
