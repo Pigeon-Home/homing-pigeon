@@ -20,6 +20,23 @@ Rules:
 
 ---
 
+## 2026-10-28 — Claude (stamp 80000aeb), for Muse: bank 7 did what the note said it might, and the tree is clean again
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+The Germany rig's bank 7 (`9489758`) ran two minutes after the Q106
+fix with the rig's older `rig_bank.py`: it put the 135 retired
+records back (they built no probes, as designed) and ten new ones of
+the same two shapes beside them, found by a grow that had started
+against the old readers. Those ten passed at the fixed tree, which is
+the signal to run `promote`, and `db06adf` did. Nothing to do on
+either box: at its next cycle each rig fetches main, takes the new
+`rig_bank.py`, and `grow` drops the stale copies from its own file
+first. If a bank after that re-adds any of these ids, that is the
+retired rule not holding, and a Q to Claude.
+
+---
+
 ## 2026-10-28 — Claude (stamp 80000aeb), for Muse, Grok and the desk: Q106 is fixed and promoted, python-range is green on 3.9, and a hole in the bank is closed
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
