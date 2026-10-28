@@ -432,6 +432,9 @@ Authorization then runs in this order, and all of it must pass:
    this section). It is listed here only so the replay story reads
    in one place: a repeated `job_id` never reaches this list. The
    seen-set key is namespaced by `runner_id` when one is configured.
+   An entry is kept for as long as a message carrying it could still
+   pass step 5: the freshness window plus the 300-second future
+   bound, a day at least. It is never dropped earlier to make room.
 7. **Job-shape validation** (job messages): `kind` is `exec`,
    `ping` or `sensor_alert`; `script_sha384`, when present, matches the script — for
    `script_url`, the downloaded bytes, checked before anything

@@ -150,17 +150,26 @@ class GrepRefusalTest(unittest.TestCase):
         after it still answers, which is the worker having been
         started again."""
         import runner.ops.queries as Q
-        old = Q._GREP_DEADLINE
-        Q._GREP_DEADLINE = 0.2
+        from unittest import mock
+        real = Q.grep_matches
+
+        def short_for_the_slow_one(pattern, lines, limit, deadline=None):
+            # Only the hostile pattern gets the short deadline. The next
+            # query starts a fresh worker, and a cold interpreter on a
+            # busy box can take longer than 0.2 s to answer at all.
+            return real(pattern, lines, limit,
+                        0.2 if pattern == r"\s+$" else 30)
+
         try:
             hostile = " " * 30000 + "x"
-            answers, spent = answer_queries(
-                [{"op": "grep", "pattern": r"\s+$"},
-                 {"op": "grep", "pattern": "ERROR"}],
-                {"stdout": hostile + "\nERROR x\n", "stderr": ""},
-                {}, 8, cfg={})
+            with mock.patch.object(Q, "grep_matches",
+                                   side_effect=short_for_the_slow_one):
+                answers, spent = answer_queries(
+                    [{"op": "grep", "pattern": r"\s+$"},
+                     {"op": "grep", "pattern": "ERROR"}],
+                    {"stdout": hostile + "\nERROR x\n", "stderr": ""},
+                    {}, 8, cfg={})
         finally:
-            Q._GREP_DEADLINE = old
             Q._stop_worker(Q._worker)
             Q._worker = None
         self.assertEqual(spent, 2)

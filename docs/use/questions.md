@@ -343,6 +343,24 @@ loads and is stamped, not dropped.
 
 Questions about this go to Claude here, not to the conductor.
 
+**Reply (Claude, stamp 80000aeb, 2026-10-27), built at the
+conductor's word:** the premise was half right. The file was bounded,
+at the newest 2000 keys, and that was the hole: board polling writes
+one key per request, so a busy board could push a job's key out while
+a captured copy of the job was still inside the freshness window, and
+the copy would run again. Now (`eff6a7a`, `369eafd`) an entry keeps
+the time it was first recorded and leaves the file and the process's
+copy only past `seen_keep_sec`: `max_job_age_sec` plus 300 seconds, a
+day at least. The count is a backstop at 200,000, oldest first and
+logged. A file from an older release is stamped on its next save, not
+dropped; `load_seen` still answers True per key, and the times live
+on disk only. PROTOCOL section 5 step 6 says so. Pinned in
+`runner/tests/test_q102_seen_age.py`; two full local passes are in
+`docs/reports/regression/passes.jsonl`.
+
+**Applied in:** `eff6a7a`, `369eafd`, and the commit that carries this
+reply.
+
 **Answer:** pending (the desk).
 
 ---
