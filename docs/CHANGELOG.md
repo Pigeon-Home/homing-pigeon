@@ -4,6 +4,45 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.6 - 2026-10-27
+
+- **The panic word (Q100).** The installer prints six words once and
+  keeps only their salted SHA-384. A message on any transport with the
+  subject `[HOMING-PIGEON] panic <word>` stops the box before any
+  signature work and with no secret: running jobs are killed, nothing
+  is polled or sent, every key is refused, and the stop survives a
+  restart until `install.py --rearm` is run on the box. A dry run
+  fires nothing. The doctor says whether jobs can reach the word's
+  file (PROTOCOL.md section 14.3; SECURITY.md; `runner/guard/panic.py`;
+  `runner/tests/test_panic.py`).
+- **The doors (Q98).** A board message is held to the job's freshness
+  window, acted on once, and its type is the subject's. Key policy
+  and default deny apply at the query, board and version 2 doors. A
+  query from another key spends nothing. Every additional secret
+  answers to its fingerprint. A body id that differs from the subject
+  is refused, and a late result after a re-deal does not complete the
+  task. A file-only secret starts the runner; a conflict, a missing
+  file or an empty file exits 2. `max_job_bytes` caps every protocol
+  mail before dispatch. `--transports` lists what ships
+  (`runner/tests/test_q98_doors.py`).
+- **The installer matches its manual.** A fresh install offers
+  sign-in. `--setup` writes the installed home. The installer and the
+  runner share one entropy rule. `--uninstall` finds the unit that
+  exists. The suggested profile is applied, a dropped
+  `--shared-secret` is said, linger is enabled when it can be, and
+  the hints name this platform (`runner/tests/test_q98_installer.py`).
+- **The Worker gate matches the core.** The edge runs the core's
+  extractor. The eight wire seeds agree again and are back in the
+  corpus. Section 4 names the second signed form: on a mismatch,
+  every character below U+0020 except TAB is removed and the HMAC is
+  compared again.
+- **One command from nothing to a hosted pipe.**
+  `homing-pigeon-host up --queue URL` writes the queues transport
+  into the blob with the runner token from the environment, and
+  `--secret-env` passes the shared secret the Worker already holds.
+- **`do_console` does not return from `finally`.** A failed restart
+  of the Windows task is still exit 1.
+
 ## 3.14.5 - 2026-10-27
 
 - **Files in the job and files back in the result.** A `files[]`
@@ -29,24 +68,12 @@ facts a reader may need to cite. Git history carries the rest.
 - **Claims audits** of the README, SECURITY.md, INSTALL.md and
   PROTOCOL.md against the code; Q98 carries the code-side findings.
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
-- **One command from nothing to a hosted pipe.** `homing-pigeon-host
-  up --queue URL` writes the queues transport into the blob with the
-  runner token from the environment, and `--secret-env` passes the
-  shared secret the Worker already holds; no hand-written blob.
 - **The SI reads its results from the hosted queue.** `send_job.py
   results --from-queue URL` verifies each waiting result, opens an
   encrypted one under the job id in its subject, prints one JSON line
   per result, and with `--ack` removes only what verified. The
   own-cloud page shows the send and the read, and says where a
   system-service runner keeps its queue token.
-- **The panic word (Q100).** The installer prints six words once and
-  keeps only their salted SHA-384. A message on any transport with the
-  subject `[HOMING-PIGEON] panic <word>` stops the box before any
-  signature work and with no secret: running jobs are killed, nothing
-  is polled or sent, every key is refused, and the stop survives a
-  restart until `install.py --rearm` is run on the box. The doctor
-  says whether jobs can reach the word's file (PROTOCOL.md section
-  14.3; SECURITY.md; `runner/guard/panic.py`; `runner/tests/test_panic.py`).
 
 ## 3.14.4 - 2026-10-27
 
