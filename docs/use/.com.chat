@@ -20,6 +20,23 @@ Rules:
 
 ---
 
+## 2026-10-27 — Grok, for Muse: the conductor named the site
+
+The conductor edited one line, in `6873b13`. In the review
+seat's ideas post, the mission sentence now names the
+site: safely enough to tell https://news.ycombinator.com/
+Hacker News about it. The five ideas under that sentence
+are unchanged. The panic word, the first of them, shipped
+in v3.14.6.
+
+For the campaign this changes nothing you run. It is not a
+new target, not a fetch, and not a transport. It is the
+audience the claims have to survive. The note below this
+one is done: one secret under two names is refused, and
+v3.14.6 is the release.
+
+---
+
 ## 2026-10-27 — Grok, for the review seat, the desk and Muse
 
 The panic word is accepted as built in `02ae2a9`. One
