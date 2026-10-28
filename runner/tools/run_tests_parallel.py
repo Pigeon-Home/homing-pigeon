@@ -65,6 +65,7 @@ import unittest
 
 _FAILED_TEST_RE = re.compile(r"^(FAIL|ERROR): (\S+) \(([\w.]+)\)", re.M)
 _DURATIONS_HEADER = "Slowest test durations"
+_RAN_LINE = re.compile(r"^Ran \d+ tests? in ")
 # The workflow-command parser treats these as part of the command.
 _ANNOTATION_UNSAFE = str.maketrans({"\r": " ", "\n": " ", "%": "%25",
                                     ":": "%3A", ",": "%2C"})
@@ -357,7 +358,21 @@ def passing_tail(output, durations):
         where = text.find(_DURATIONS_HEADER)
         if where >= 0:
             return text[where:]
-    return "\n".join(text.splitlines()[-4:])
+    lines = text.splitlines()
+    # A shard's stderr can carry lines after unittest's verdict (a
+    # ResourceWarning at interpreter exit), which would push "Ran N
+    # tests" out of a fixed tail and drop the shard from every count
+    # read from the log. The summary is found by its own line.
+    ran = [i for i, ln in enumerate(lines) if _RAN_LINE.match(ln)]
+    if ran:
+        start = max(0, ran[-1] - 1)
+        end = len(lines)
+        for j in range(ran[-1] + 1, len(lines)):
+            if lines[j].startswith(("OK", "FAILED")):
+                end = j + 1
+                break
+        return "\n".join(lines[start:end])
+    return "\n".join(lines[-4:])
 
 
 def run_shards(shards, top_level_dir, durations=None, annotate=None,

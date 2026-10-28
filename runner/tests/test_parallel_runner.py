@@ -419,6 +419,14 @@ class ReadableFromTheRunPageTest(_OutsideActions):
         self.assertEqual(rtp.passing_tail("----\nRan 1 test\n\nOK\n", True)
                          .splitlines()[-1], "OK")
 
+    def test_passing_tail_finds_the_summary_past_trailing_stderr(self):
+        output = ("..\n----\nRan 12 tests in 0.5s\n\nOK (skipped=2)\n"
+                  "sys:1: ResourceWarning: unclosed file <x>\n"
+                  "<sys>:0: ResourceWarning: unclosed file <y>\n")
+        tail = rtp.passing_tail(output, False)
+        self.assertEqual(tail.splitlines(),
+                         ["----", "Ran 12 tests in 0.5s", "", "OK (skipped=2)"])
+
     def test_a_passing_shard_reports_its_wall_time_and_durations(self):
         fake = io.StringIO()
         with tempfile.TemporaryDirectory() as d:
