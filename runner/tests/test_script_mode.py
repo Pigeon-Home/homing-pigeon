@@ -40,7 +40,7 @@ from runner import _version  # noqa: E402
 from runner import runner as R  # noqa: E402
 
 # The bare names a by-path run imports runner/'s folders under.
-_BARE = ("ops", "guard", "wire", "oracle", "hosting", "cloud",
+_BARE = ("ops", "guard", "wire", "oracle", "hosting",
          "transport_extensions", "_version")
 
 
