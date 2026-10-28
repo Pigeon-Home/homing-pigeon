@@ -166,6 +166,25 @@ class LinecovTest(unittest.TestCase):
         self.assertEqual([r for _t, r in result.skipped], ["not here"])
         self.assertTrue(result.wasSuccessful())
 
+    def test_declarations_that_compile_to_nothing_are_not_statements(self):
+        # `global` and `nonlocal` emit no instruction, so no line event
+        # can name them; counted, they read as unrun inside a function
+        # the test ran.
+        src = os.path.join(self.td.name, "lcpkg", "decl.py")
+        with open(src, "w", encoding="utf-8") as fh:
+            fh.write("G = 0\n"            # 1
+                     "def bump():\n"      # 2
+                     "    global G\n"     # 3
+                     "    n = 1\n"        # 4
+                     "    def inner():\n"  # 5
+                     "        nonlocal n\n"  # 6
+                     "        n += 1\n"   # 7
+                     "    inner()\n"      # 8
+                     "    G += n\n"       # 9
+                     "    return G\n")    # 10
+        self.assertEqual(sorted(linecov.statements(src)),
+                         [1, 2, 4, 5, 7, 8, 9, 10])
+
     def test_no_tests_or_an_old_python_is_exit_two(self):
         err = io.StringIO()
         with redirect_stderr(err):

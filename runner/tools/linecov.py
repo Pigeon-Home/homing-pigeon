@@ -15,8 +15,9 @@ writes a report in the shape coverage.py's `json` command writes
 `totals`), so `runner/tools/coverage_gaps.py` reads it unchanged.
 
 Statements are counted from the AST: every statement node, with
-docstrings left out and a `def` or `class` counted on its first line
-(it runs at import). It does not measure branches. Child processes are
+docstrings and `global`/`nonlocal` declarations (they compile to no
+instruction) left out, and a `def` or `class` counted on its first
+line (it runs at import). It does not measure branches. Child processes are
 not measured. The exit code is the test run's: 0 when every test
 passed.
 """
@@ -38,6 +39,11 @@ def statements(path):
             continue
         if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) \
                 and isinstance(node.value.value, str):
+            continue
+        # A `global` or `nonlocal` declaration compiles to no
+        # instruction, so no line event ever names it: counted, it
+        # would read as never executed inside a function that ran.
+        if isinstance(node, (ast.Global, ast.Nonlocal)):
             continue
         lines.add(node.lineno)
     return lines
