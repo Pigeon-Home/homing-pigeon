@@ -1295,7 +1295,8 @@ class RunnerResidualLegsTest(unittest.TestCase):
             seen = {"job1": True}
             rr.save_seen(path, seen)
             with open(path, encoding="utf-8") as fh:
-                self.assertEqual(json.load(fh),
+                # {key: recorded_at} since Q102.
+                self.assertEqual(sorted(json.load(fh)),
                                  ["1", "2", "job1"])
             self.assertEqual(
                 seen, {"job1": True, "1": True, "2": True})

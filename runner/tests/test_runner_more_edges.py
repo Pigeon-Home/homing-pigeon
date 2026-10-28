@@ -279,13 +279,13 @@ class LogAndSeenTest(unittest.TestCase):
         rr.save_seen("", {1: True})
         rr.save_seen(path, {Bad(): True, "a\x00b": True, "ok": True})
         with open(path, encoding="utf-8") as fh:
-            self.assertEqual(json.load(fh), ["ok"])
+            self.assertEqual(sorted(json.load(fh)), ["ok"])  # {key: time}, Q102
         with mock.patch.object(rr.os, "chmod", side_effect=OSError("mode")):
             rr.save_seen(path, {"ok": True})
         with mock.patch.object(rr.os, "replace", side_effect=OSError("ro")):
             rr.save_seen(path, {"ok": True, "two": True})
         with open(path, encoding="utf-8") as fh:
-            self.assertEqual(json.load(fh), ["ok"])
+            self.assertEqual(sorted(json.load(fh)), ["ok"])  # {key: time}, Q102
 
     def test_a_transport_name_is_checked_at_startup(self):
         import argparse

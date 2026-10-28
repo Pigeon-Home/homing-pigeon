@@ -4601,7 +4601,9 @@ def _with_seen_file(path, mutator):
             updated = mutator(disk if isinstance(disk, dict) else {})
             if not isinstance(updated, dict):
                 updated = disk
-            return _write_seen_unlocked(path, updated)
+            kept = _write_seen_kept(path, updated)
+            # Callers see the keys, as before; the times stay on disk.
+            return {k: True for k in kept}
         except OSError:
             return load_seen(path) if isinstance(path, str) else {}
         finally:
@@ -4644,6 +4646,11 @@ def _seen_stamp(value):
 
 
 def _write_seen_unlocked(path, seen, now=None):
+    """Write the cache as {key: recorded_at} (see _write_seen_kept)."""
+    _write_seen_kept(path, seen, now)
+
+
+def _write_seen_kept(path, seen, now=None):
     """Write the cache as {key: recorded_at}. An entry older than the
     keep horizon is dropped; one with no time is stamped now. Returns
     what was written."""
