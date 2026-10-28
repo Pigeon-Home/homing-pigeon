@@ -45,6 +45,10 @@ facts a reader may need to cite. Git history carries the rest.
 - **The query door (Q103).** A record with no owner is the owner's, the
   owner's key policy reaches every door, and freshness is checked
   before policy.
+- **An upstream pin carries the same digests on every platform.**
+  `fetch_upstream.py` checks out upstream files with line-ending
+  conversion off, so a Windows box with `core.autocrlf` on lands the
+  upstream bytes the pin's SHA-384s were taken over.
 - **Broader tests:** refusal edges across the sender, staging, the
   extension loader, the installer, the readers in guard, wire and oracle,
   DTLS records, the stamp audit and the CI tools; the property and fuzz

@@ -84,8 +84,15 @@ def _sha384(path):
     return h.hexdigest()
 
 
+# The upstream bytes, never the platform's line endings: a checkout on
+# a Windows box with core.autocrlf on would write CRLF, and the same pin
+# would carry different digests on Windows and Linux.
+_GIT_BYTES = ["-c", "core.autocrlf=false", "-c", "core.eol=lf"]
+
+
 def _git(args, cwd=None, timeout=600):
-    proc = subprocess.run(["git"] + args, cwd=cwd, capture_output=True,
+    proc = subprocess.run(["git"] + _GIT_BYTES + args, cwd=cwd,
+                          capture_output=True,
                           text=True, timeout=timeout)
     if proc.returncode != 0:
         raise UpstreamError(

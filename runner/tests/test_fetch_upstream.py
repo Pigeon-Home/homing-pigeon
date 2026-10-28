@@ -49,7 +49,7 @@ class _Upstream(unittest.TestCase):
                           ("LICENSE", "a license\n"),
                           ("not-carried.txt", "x" * 4000)):
             with open(os.path.join(self.src, *rel.split("/")), "w",
-                      encoding="utf-8") as fh:
+                      encoding="utf-8", newline="\n") as fh:
                 fh.write(text)
         _git(self.src, "add", "-A")
         _git(self.src, "commit", "-q", "-m", "one")
@@ -87,6 +87,22 @@ class FetchTest(_Upstream):
         self.assertEqual(log, ["  fetched 2 file(s), 23 bytes, from %s@%s"
                                % (self.src, self.sha[:12])])
         self.assertEqual(FU.current_state(self.ext, self.block()), (True, []))
+
+    def test_the_bytes_are_upstream_s_whatever_autocrlf_says(self):
+        # A Windows box with core.autocrlf on: the checkout still lands
+        # the LF bytes the pin's digests were taken over.
+        home = os.path.join(self.td, "home")
+        os.makedirs(home)
+        cfg = os.path.join(home, ".gitconfig")
+        with open(cfg, "w", encoding="utf-8") as fh:
+            fh.write("[core]\n\tautocrlf = true\n\teol = crlf\n")
+        with mock.patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": cfg,
+                                          "HOME": home}):
+            pin, _log = self.fetch()
+        up = os.path.join(self.ext, FU.UPSTREAM_DIR)
+        with open(os.path.join(up, "LICENSE"), "rb") as fh:
+            self.assertEqual(fh.read(), b"a license\n")
+        self.assertEqual(pin["bytes"], 13 + 10)
 
     def test_a_refetch_leaves_nothing_stale(self):
         self.fetch()
