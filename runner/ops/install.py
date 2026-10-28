@@ -223,6 +223,17 @@ def run(cmd, **kw):
     subprocess.run(cmd, check=True, **kw)
 
 
+def _installer_cmd():
+    """How this box runs the installer, for a hint (Q98 item 11): the
+    frozen binary the release archive carries (install.exe on
+    Windows, ./install elsewhere), or the script by path from source."""
+    if getattr(sys, "frozen", False):
+        return "install.exe" if sys.platform == "win32" else "./install"
+    if sys.platform == "win32":
+        return "python runner\\ops\\install.py"
+    return "python3 runner/ops/install.py"
+
+
 def _looks_like_placeholder(secret: str) -> bool:
     """Mirror of the runner's placeholder check (install.py is standalone,
     so the logic is duplicated here rather than imported)."""
@@ -743,7 +754,7 @@ def do_migrate(target_dir):
     print(f"migrate: done. {total_copied} file(s) consolidated into {target}; "
           f"{total_skipped} skipped.")
     print("migrate: sources left in place. Verify, then "
-          "'install.exe --wipe' removes the old locations.")
+          f"'{_installer_cmd()} --wipe' removes the old locations.")
     return 0
 
 
@@ -1074,7 +1085,7 @@ def do_check(home, bin_dir, cfg_path, state_dir) -> int:
     elif not url:
         rec("WARN", "inference",
             "not configured; the Oracle chat stays off "
-            "(install.exe --inference-only to set it up)")
+            f"({_installer_cmd()} --inference-only to set it up)")
     else:
         host, port = _split_host_port(url)
         if host in ("127.0.0.1", "localhost", "::1"):
@@ -1361,6 +1372,13 @@ def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
             print(f"install: one home already installed (v{prev_version}); "
                   "upgrading binaries in place -- config.json and state/ "
                   "are untouched")
+        if getattr(args, "shared_secret", None):
+            # An upgrade never rewrites config.json, so a secret given
+            # here would be dropped without a word (Q98 item 7).
+            print("install: --shared-secret is not applied to an existing "
+                  f"install; edit shared_secret in {cfg_path} (or "
+                  "shared_secret_file) and restart the task",
+                  file=sys.stderr)
         _stop_task_for_upgrade()
     if not install_files(src_dir, bin_dir, cfg_path):
         return 1
@@ -1450,7 +1468,24 @@ WantedBy={"multi-user.target" if system else "default.target"}
         _write_text(path, unit)
         run(["systemctl", "--user", "daemon-reload"])
         run(["systemctl", "--user", "enable", "--now", "homing-pigeon.service"])
+        _enable_linger()
     print(f"installed: systemd unit at {path}")
+
+
+def _enable_linger():
+    """A user unit starts at login unless the user lingers (Q98 item 9).
+    Ask logind for it; a box that will not grant it is told what that
+    means instead of being left to find out at the next reboot."""
+    user = os.environ.get("USER") or os.environ.get("LOGNAME") or ""
+    try:
+        # Through run(), the installer's one command seam, so a test
+        # that fakes the service manager fakes this too.
+        run(["loginctl", "enable-linger"] + ([user] if user else []))
+        print("installed: lingering enabled, so the runner starts at boot")
+    except (OSError, subprocess.CalledProcessError):
+        print("note: the user unit starts at login, not at boot; run "
+              "'loginctl enable-linger' (as root if asked) for boot start, "
+              "or install with --system")
 
 
 SYSTEM_UNIT = "/etc/systemd/system/homing-pigeon.service"
@@ -2248,6 +2283,11 @@ def detect_default_profile() -> str:
     case (only the password matters) is the default. --no-profile
     disables this.
     """
+    # An Android-class box gets the profile the host check suggests for
+    # it, display-board, not password-only and a pulled model (Q98
+    # item 6); the same environment test gather_host_facts uses.
+    if os.environ.get("ANDROID_ROOT") or os.environ.get("ANDROID_DATA"):
+        return "display-board"
     # Pi detection: device-tree model or the classic cpuinfo hardware line.
     for path in ("/proc/device-tree/model", "/proc/cpuinfo"):
         try:

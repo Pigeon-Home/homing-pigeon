@@ -50,10 +50,13 @@ class UnitFileTest(unittest.TestCase):
         self.assertIn(shlex.quote("/cfg/a b.json"), start)
         self.assertIn("--workers", start)
         self.assertIn("WantedBy=default.target", unit)
-        self.assertEqual(calls, [
+        self.assertEqual(calls[:2], [
             ["systemctl", "--user", "daemon-reload"],
             ["systemctl", "--user", "enable", "--now", "homing-pigeon.service"],
         ])
+        # then lingering, so the user unit starts at boot (Q98 item 9)
+        self.assertEqual(calls[2][:2], ["loginctl", "enable-linger"])
+        self.assertEqual(len(calls), 3)
         self.assertTrue(all(isinstance(part, str) for call in calls for part in call))
 
     def test_a_symlink_is_not_followed_and_systemctl_is_not_called(self):

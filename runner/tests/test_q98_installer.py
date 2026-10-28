@@ -119,5 +119,45 @@ class InstallerEntropyGateTest(unittest.TestCase):
         self.assertEqual(refused, patterned)
 
 
+
+class TheHostsProfileIsAppliedTest(unittest.TestCase):
+    def test_an_android_host_gets_display_board_when_none_is_named(self):
+        from runner.ops import install as inst
+        self.assertEqual(inst.host_decision(
+            {"platform": "linux-android", "can_exec": True}).get("profile"),
+            "display-board")
+        with mock.patch.dict(os.environ, {"ANDROID_ROOT": "/system"}), \
+                mock.patch.object(inst, "_bundled_default_profile", return_value=None):
+            self.assertEqual(inst.chosen_profile(None, False), "display-board")
+            self.assertEqual(inst.chosen_profile("password-only", False), "password-only")
+            self.assertIsNone(inst.chosen_profile(None, True))
+
+
+class TheHintNamesThisInstallerTest(unittest.TestCase):
+    def test_the_hint_follows_the_platform(self):
+        from runner.ops import install as inst
+        with mock.patch.object(inst.sys, "platform", "linux"):
+            self.assertEqual(inst._installer_cmd(), "python3 runner/ops/install.py")
+        with mock.patch.object(inst.sys, "platform", "linux"), \
+                mock.patch.object(inst.sys, "frozen", True, create=True):
+            self.assertEqual(inst._installer_cmd(), "./install")
+        with mock.patch.object(inst.sys, "platform", "win32"), \
+                mock.patch.object(inst.sys, "frozen", True, create=True):
+            self.assertEqual(inst._installer_cmd(), "install.exe")
+
+
+class LingerTest(unittest.TestCase):
+    def test_a_refused_linger_is_explained(self):
+        from runner.ops import install as inst
+        import io
+        import subprocess
+        out = io.StringIO()
+        with mock.patch.object(inst, "run",
+                               side_effect=subprocess.CalledProcessError(1, "loginctl")), \
+                mock.patch("sys.stdout", out):
+            inst._enable_linger()
+        self.assertIn("starts at login, not at boot", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

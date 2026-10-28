@@ -222,10 +222,13 @@ class SystemdUnitTest(unittest.TestCase):
         self.assertIn(shlex.quote("/opt/homing pigeon/runner.py"), start)
         self.assertIn(shlex.quote("has space"), start)
         self.assertNotIn("|", start)
-        self.assertEqual(calls, [
+        self.assertEqual(calls[:2], [
             ["systemctl", "--user", "daemon-reload"],
             ["systemctl", "--user", "enable", "--now", "homing-pigeon.service"],
         ])
+        # then lingering, so the user unit starts at boot (Q98 item 9)
+        self.assertEqual(calls[2][:2], ["loginctl", "enable-linger"])
+        self.assertEqual(len(calls), 3)
 
     def test_system_unit_targets_multi_user_and_does_not_touch_the_disk(self):
         written = {}
