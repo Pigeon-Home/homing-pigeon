@@ -443,7 +443,12 @@ The loop:
    defaults to the box's core count; name it only to use fewer): the targets cycle, `--jobs` at a time, the next
    starting the moment any one finishes, each cycle with the seed
    moved on, until the minutes are up; that is the continuous grow,
-   and its resource line reads on target. `--seed` makes a run
+   and its resource line reads on target. The cycle starts at the
+   target least recently grown in the merged `runs.jsonl` and goes
+   on from the thinnest (Q107, 2026-10-28; `--order fixed` is the
+   list's own order), so a one-core rig with a short cycle reaches
+   every target over its day and two rigs reading the same ledger
+   pick different targets as soon as one of them banks. `--seed` makes a run
    repeatable, `--verbose` prints each keeper. The grow is steered:
    it reads the last grows' records and leans on the mutators still
    finding arcs, a saturated one keeping a floor share (`--no-steer`

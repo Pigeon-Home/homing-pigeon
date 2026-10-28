@@ -63,7 +63,7 @@ secret that is real.
   discarding what grows found; sealed seeds draw a counter nonce so
   their ids are stable), `grow` (`--jobs` at the core count,
   `--minutes` to cycle the targets with the seed moved on each
-  cycle), `replay` (every entry against its contract, no tracer,
+  cycle, least recently grown first unless `--order fixed`), `replay` (every entry against its contract, no tracer,
   what the test does), `promote` (after a fix, crashes that now
   refuse properly and reach something new move into the corpus),
   `stats` (sizes and the saturation mark), `platform` (every

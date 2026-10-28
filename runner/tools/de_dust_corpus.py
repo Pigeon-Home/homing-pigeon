@@ -7918,6 +7918,10 @@ def _cmd_grow(args, out=print):
         int.from_bytes(os.urandom(4), "big")
     targets = _targets(args.target)
     minutes = getattr(args, "minutes", 0) or 0
+    if minutes and len(targets) > 1 and getattr(args, "order", "stale") != "fixed":
+        targets = stale_order(targets)
+        out("de_dust grow: targets by staleness, least recently grown "
+            "first: " + ", ".join(targets[:4]) + (", ..." if len(targets) > 4 else ""))
     if (args.jobs > 1 and len(targets) > 1) or minutes:
         # Each target owns its corpus file, so the targets grow in
         # parallel processes: on the rig that is the difference
@@ -8141,6 +8145,29 @@ def last_grow(target):
     return last
 
 
+def stale_order(targets, runs=None):
+    """The targets least recently grown first (Q107). A cycling grow
+    on a rig (`--minutes`) used to start every cycle at the head of
+    the list, so a one-core box with a thirty-minute cycle grew the
+    first five targets over and over and the rest never; and two rigs
+    on the same list spent the hour on the same targets. Ordering by
+    the newest run record (seed or grow) across the merged
+    `runs.jsonl` makes every cycle continue where the campaign is
+    thinnest, and two rigs that read the same ledger pick apart as
+    soon as one of them banks. A target never run comes first; ties
+    keep the list's order."""
+    if runs is None:
+        runs = load_runs()
+    newest = {}
+    for record in runs:
+        target = record.get("target")
+        when = str(record.get("when", ""))
+        if target in targets and when > newest.get(target, ""):
+            newest[target] = when
+    return sorted(targets, key=lambda tg: (newest.get(tg, ""),
+                                           list(targets).index(tg)))
+
+
 def load_runs():
     path = runs_path()
     if not os.path.exists(path):
@@ -8297,6 +8324,14 @@ def main(argv=None):
                            help="choose mutators uniformly instead of "
                                 "steering toward the ones still finding "
                                 "arcs in the last grows")
+            p.add_argument("--order", choices=("stale", "fixed"),
+                           default="stale",
+                           help="with --minutes: the order the targets "
+                                "cycle in. stale (default) starts at the "
+                                "target least recently grown in runs.jsonl, "
+                                "so a short cycle reaches every target "
+                                "over time and two rigs pick apart; fixed "
+                                "is the list's own order")
     args = ap.parse_args(argv)
     try:
         return args.fn(args)
