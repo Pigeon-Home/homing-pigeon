@@ -34,8 +34,9 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         return False
     query_id = m.group(1)
     # Hardening M5: the replay-cache key is namespaced by runner_id
-    # when one is configured.
-    seen_key = _runner()._seen_key(cfg, "query:" + query_id)
+    # when one is configured. It is set once the signature names the
+    # sender (Q103 item 4): two keys may pick the same query id.
+    seen_key = None
 
     def finish(reply, secret, encrypted=False, key_id=""):
         if reply is not None and secret and opts is not None and (opts.dry_run or getattr(opts, "no_send", False)):
@@ -56,10 +57,6 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 seen[seen_key] = True
         _runner()._mark(imap, seq, opts)
 
-    if seen is not None and seen.get(seen_key):
-        _runner()._mark(imap, seq, opts)
-        return True
-
     try:
         body = _runner().get_text_body(email.message_from_bytes(raw))
         payload, key_id, secret, encrypted = _runner()._admit_object(
@@ -70,6 +67,10 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
         return True
     except Exception as e:
         R.log(f"query bad signature seq {seq}: {e}", "WARN")
+        _runner()._mark(imap, seq, opts)
+        return True
+    seen_key = query_seen_key(cfg, secrets, key_id, query_id)
+    if seen is not None and seen.get(seen_key):
         _runner()._mark(imap, seq, opts)
         return True
     if not encrypted and not _runner()._cleartext_jobs_allowed():
@@ -217,6 +218,17 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 }
     finish(reply, secret, encrypted, key_id)
     return True
+
+
+def query_seen_key(cfg, secrets, key_id, query_id):
+    """The replay-cache entry for a query, by its sender (Q103 item
+    4). The owner's key keeps the plain `query:<id>`, so entries
+    written before this rule still hold; any other key's id is its
+    own, so key A's query id never silences key B's."""
+    owner = _runner().canonical_key_id(secrets, key_id)
+    name = "query:" + query_id if owner == "" else \
+        "query:%s:%s" % (owner, query_id)
+    return _runner()._seen_key(cfg, name)
 
 
 def _carriable(text):

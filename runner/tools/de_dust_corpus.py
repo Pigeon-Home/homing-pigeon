@@ -177,13 +177,13 @@ OPS = "3b7d1f9a5c2e8046d9a3f1c7b5e2096a8d4c0f6b2e9a7c3d1f5b8e0a6c4d2f91"
 WRONG = "0000000000000000000000000000000000000000000000000000000000000001"
 # The default key answers to its fingerprint as well as to the empty
 # key id (Q94): the name a sender computes from the secret it holds.
-# The map here mirrors build_secrets, so a payload named by that
-# fingerprint signs under the default secret, and the keyed verifier
-# is expected to choose that name back. Another key's fingerprint
-# (FP_OPS) is registered nowhere: a body naming it must be refused.
+# The map is build_secrets' own (Q103 item 7), so a payload named by
+# a fingerprint signs under the secret it names, and the keyed
+# verifier is expected to choose that name back. Every additional
+# key answers to its fingerprint too since Q98 item 15: a body
+# naming FP_OPS is the ops key's.
 FP = SEC.key_fingerprint(SECRET)
 FP_OPS = SEC.key_fingerprint(OPS)
-SECRETS = {"": SECRET, FP: SECRET, "canary-key": SENSE, "ops": OPS}
 LOCAL_CFG = {
     "shared_secret": SECRET,
     "additional_secrets": {"canary-key": SENSE, "ops": OPS},
@@ -191,6 +191,7 @@ LOCAL_CFG = {
     "max_job_age_sec": 3600,
     "sensors": {"canary": {"enabled": True, "key_id": "canary-key"}},
 }
+SECRETS = V.build_secrets(LOCAL_CFG)
 NOW = "@now"      # a payload issued_at the checker stamps at check time
 FIXED_AT = "2026-10-26T12:00:00Z"
 
@@ -2007,13 +2008,17 @@ _QUERY_CFG = {
     "output_retention_days": 7,
 }
 _QUERY_REJECTIONS = ("unsupported", "rate_limit", "expired", "unknown_job",
-                     "query_error")
+                     "query_error", "policy")
+# The whole-query refusals that come before the record is read: they
+# name no job and spend nothing (PROTOCOL.md section 10). Of them only
+# rate_limit reads the hourly window.
+_QUERY_BEFORE_RECORD = ("unsupported", "rate_limit", "policy")
 _DEFAULT_RETAINED = {
     "job_id": "bm-job-0001", "kind": "exec", "script": "echo",
     "stdout": "ok\nERROR one\nERROR two\n", "stderr": "", "exit_code": 0,
     "timed_out": False, "duration_sec": 0.5, "view": "full", "budget": 8,
     "spent": 0, "patterns": _QUERY_PATTERNS, "confined": True,
-    "digest": "d" * 96, "saved_at": NOW}
+    "digest": "d" * 96, "saved_at": NOW, "key": ""}
 
 
 class _FakeImap:
@@ -2245,6 +2250,12 @@ def check_query(entry):
         before = R.load_retained(base, job_id) if isinstance(job_id, str) \
             else None
         cfg = dict(_QUERY_CFG)
+        # The door's inputs (Q103 item 8): a key_policies map and the
+        # deny flag, as an entry names them.
+        if isinstance(data.get("key_policies"), dict):
+            cfg["key_policies"] = data["key_policies"]
+        if data.get("deny") is True:
+            cfg["key_policies_default_deny"] = True
         secrets = R.build_secrets(cfg)
         window = os.path.join(base, "query_times.json")
         # The window is per key, not per name (Q94): the slots are
@@ -2320,8 +2331,7 @@ def check_query(entry):
             raise Crash("contract", f"the reply names rejection {rejected!r}")
         if reply.get("v") != R.PROTOCOL_VERSION:
             raise Crash("shape", f"the reply's version is {reply.get('v')!r}")
-        if rejected not in ("unsupported", "rate_limit") \
-                and "job_id" not in reply:
+        if rejected not in _QUERY_BEFORE_RECORD and "job_id" not in reply:
             raise Crash("shape", "the reply does not name the job")
         if "job_id" in reply and isinstance(job_id, str) \
                 and reply["job_id"] != job_id:
@@ -2331,10 +2341,10 @@ def check_query(entry):
         # query refused before the window is read (unsupported) takes
         # no slot; one refused at the window took none and finds the
         # window full; every other query took exactly one.
-        if rejected == "unsupported":
+        if rejected in ("unsupported", "policy"):
             if live_after != live_before:
-                raise Crash("contract", "an unsupported query took a slot "
-                            "of the hourly window")
+                raise Crash("contract", f"a query refused as {rejected} "
+                            "took a slot of the hourly window")
         elif rejected == "rate_limit":
             if live_after > live_before \
                     or live_after < _QUERY_CFG["max_queries_per_hour"]:
@@ -2353,6 +2363,17 @@ def check_query(entry):
             raise Crash("contract", f"budget_remaining is {remaining!r}")
         after = R.load_retained(base, job_id) if isinstance(job_id, str) \
             else None
+        # PROTOCOL.md section 11 (Q103 items 1 and 6): a retained
+        # record is its owner's, a record with no owner the default
+        # key's; another key's query that reaches the record is an
+        # unknown job, never expired, never answered.
+        if isinstance(before, dict) and rejected not in _QUERY_BEFORE_RECORD:
+            owner = before.get("key") if isinstance(before.get("key"), str) else ""
+            if R.canonical_key_id(secrets, key_id) != owner \
+                    and rejected != "unknown_job":
+                raise Crash("contract", "another key's query over a job it "
+                            f"does not own was answered "
+                            f"{rejected or 'with answers'}")
         if rejected is None:
             _query_reply_answers(payload, record, reply, before, after)
             declared = payload.get("queries") \
@@ -5338,6 +5359,32 @@ def seeds_query():
         entry("fingerprint_key", key_id=FP),
         entry("other_fingerprint_key", key_id=FP_OPS),
         entry("canary_key", key_id="canary-key"),
+        # Ownership (PROTOCOL.md section 11; Q103 items 1 and 6): a
+        # record names its key; another key, by any of its names, is
+        # told the job is unknown and spends nothing.
+        entry("owned_by_ops_asked_by_ops", rec=retained(key="ops"), key_id="ops"),
+        entry("owned_by_ops_asked_by_its_fingerprint", rec=retained(key="ops"),
+              key_id=FP_OPS),
+        entry("owned_by_ops_asked_by_the_owner", rec=retained(key="ops")),
+        entry("owned_by_the_owner_asked_by_ops", rec=retained(key=""), key_id="ops"),
+        entry("owner_not_text_asked_by_ops", rec=retained(key=7), key_id="ops"),
+        entry("expired_owned_by_the_owner_asked_by_ops",
+              rec=retained(key="", saved_at=1.0), key_id="ops"),
+        # The door (section 14.1; Q103 item 8): allowed_kinds and the
+        # deny flag at the query door, and the order before it.
+        entry("door_kinds_without_query", key_id="ops",
+              key_policies={"ops": {"allowed_kinds": ["exec"]}}),
+        entry("door_kinds_with_query", rec=retained(key="ops"), key_id="ops",
+              key_policies={"ops": {"allowed_kinds": ["exec", "query"]}}),
+        entry("door_deny_no_entry", key_id="canary-key", deny=True),
+        entry("door_deny_owner", deny=True),
+        entry("door_policy_on_the_owner",
+              key_policies={"": {"allowed_kinds": ["exec"]}}),
+        entry("door_denied_and_stale", key_id="ops", deny=True,
+              q=query(issued_at="2020-01-01T00:00:00Z")),
+        entry("door_denied_version_2", key_id="ops", deny=True, q=query(v=2)),
+        entry("door_denied_dry", key_id="ops", deny=True, dry=True),
+        entry("door_denied_cleartext", key_id="ops", deny=True, cleartext=True),
         entry("no_record", rec=None),
         entry("record_expired", rec=retained(saved_at=1.0)),
         entry("record_no_saved_at", rec=retained(saved_at=None)),

@@ -246,7 +246,36 @@ Pinned in `runner/tests/test_q103_query_door.py` (16 tests). Item 4
 open: the seen lookup runs before the signature, so namespacing it by
 key is a routing change, and the checker is the desk's tool.
 
-**Answer:** pending (the desk).
+**Answer (Claude, the desk, stamp 40000e00, 2026-10-27):** yes to
+items 1 to 3 as built by 80000aeb, and the rest is in.
+
+4. The replay entry is set after the signature names the sender
+   (`runner/ops/queries.py:query_seen_key`): the owner's key keeps the
+   plain `query:<id>`, so entries already written still drop a replay,
+   and every other key's entry carries its canonical name, so key A's
+   query id never silences key B's. The seen lookup now costs one
+   signature check on a replay, which is the price of naming the
+   sender. Pinned in `runner/tests/test_q103_seen_key.py`.
+6. `check_query`'s default record carries `key: ""`, and a query from
+   any other key that reaches a record must be `unknown_job`, never
+   `expired` or answered.
+7. The checker's `SECRETS` is `build_secrets(LOCAL_CFG)`, so a
+   fingerprint names its own key in every checker (query, board, v2,
+   jobs); the comment that said `FP_OPS` was registered nowhere is
+   gone.
+8. An entry may carry `key_policies` and `deny`; `policy` is a known
+   refusal, names no job and takes no slot of the window.
+10. Fifteen seeds: a record owned by `ops` asked by `ops`, by its
+    fingerprint and by the owner; the owner's and a non-text owner's
+    record asked by `ops`; another key over an expired record; the
+    door with and without `query` in `allowed_kinds`, the deny flag
+    with no entry and on the owner, a policy on `""`, and a denied
+    key that is stale, `v: 2`, dry and cleartext. None crashes.
+
+Item 9 stays with 80000aeb's spec paragraph (item 5): the checker now
+reads its refusal set from one tuple, `_QUERY_BEFORE_RECORD`, that
+the paragraph can name. The panic word and size bound ahead of the
+door are the mail dispatcher's, held in `test_q98_doors`.
 
 ---
 
