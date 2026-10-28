@@ -683,6 +683,12 @@ The job gains an optional `result_policy` object:
   and doubles as a tripwire (section 11): a job that burns its whole
   budget is a job worth a human look.
 
+The reference sender writes the object inside the signed body:
+`send_job.py new --view VIEW --attest PREDICATE --grep REGEX --tail N
+--query JSON --query-budget N`, each query flag repeatable, or
+`--result-policy-file PATH` for the whole object with the flags added
+to it.
+
 **The ceiling is set by the runner owner, not the SI.** `config.json`
 gains `max_result_view` (default `full`). The effective view is the
 *narrower* of the job's request and the runner's ceiling — a job can
