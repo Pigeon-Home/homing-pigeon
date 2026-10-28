@@ -470,7 +470,6 @@ def cmd_keyring(args) -> int:
     return 0
 
 
-<<<<<<< Updated upstream
 _VIEWS = ("full", "redacted", "summary", "attested")
 
 
@@ -541,59 +540,6 @@ def result_policy(args):
               "grep and tail queries (PROTOCOL.md section 10); attest "
               "answers", file=sys.stderr)
     return policy
-=======
-VIEWS = ("full", "redacted", "summary", "attested")
-QUERY_OPS = ("attest", "grep", "tail", "ask", "senses")
-
-
-def build_result_policy(args):
-    """The job's result_policy (PROTOCOL.md sections 9 and 10) from
-    --result-policy-file, then --view, --query-budget and the queries
-    (--query JSON, --attest, --grep, --tail, in that order after the
-    file's own). None when nothing was asked. Raises ValueError naming
-    what is wrong; the runner holds every bound again, so this only
-    keeps a sender from signing a job it did not mean."""
-    policy = {}
-    path = getattr(args, "result_policy_file", None)
-    if path:
-        try:
-            with open(path, encoding="utf-8") as fh:
-                policy = json.load(fh)
-        except (OSError, ValueError) as e:
-            raise ValueError(f"--result-policy-file {path}: {e}")
-        if not isinstance(policy, dict):
-            raise ValueError("--result-policy-file must hold a JSON object")
-    queries = list(policy.get("queries") or [])
-    for raw in getattr(args, "query", None) or []:
-        try:
-            q = json.loads(raw)
-        except ValueError as e:
-            raise ValueError(f"--query {raw!r} is not JSON: {e}")
-        queries.append(q)
-    for pred in getattr(args, "attest", None) or []:
-        queries.append({"op": "attest", "predicate": pred})
-    for pat in getattr(args, "grep", None) or []:
-        queries.append({"op": "grep", "pattern": pat})
-    if getattr(args, "tail", None) is not None:
-        queries.append({"op": "tail", "lines": args.tail})
-    for q in queries:
-        if not isinstance(q, dict) or q.get("op") not in QUERY_OPS:
-            raise ValueError(f"a query must be an object whose op is one of "
-                             f"{', '.join(QUERY_OPS)}: {json.dumps(q)[:120]}")
-    if queries:
-        policy["queries"] = queries
-    if getattr(args, "view", None):
-        policy["view"] = args.view
-    if policy.get("view") is not None and policy["view"] not in VIEWS:
-        raise ValueError(f"view must be one of {', '.join(VIEWS)}")
-    if getattr(args, "query_budget", None) is not None:
-        policy["query_budget"] = args.query_budget
-    budget = policy.get("query_budget")
-    if budget is not None and (isinstance(budget, bool)
-                               or not isinstance(budget, int) or budget < 0):
-        raise ValueError("query_budget must be a whole number, 0 or more")
-    return policy or None
->>>>>>> Stashed changes
 
 
 def cmd_new(args) -> int:
@@ -678,19 +624,11 @@ def cmd_new(args) -> int:
             payload["interpreter"] = json.loads(args.interpreter)
         payload["timeout_sec"] = args.timeout
     try:
-<<<<<<< Updated upstream
         policy = result_policy(args)
     except (ValueError, OSError) as e:
         print(f"bad result policy: {e}", file=sys.stderr)
         return 2
     if policy is not None:
-=======
-        policy = build_result_policy(args)
-    except ValueError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 2
-    if policy:
->>>>>>> Stashed changes
         payload["result_policy"] = policy
     body = sign_payload(payload, args.secret)
     if not getattr(args, "cleartext", False):
@@ -1229,7 +1167,6 @@ def main() -> int:
                    help="environment entry as KEY=value, "
                         "repeatable")
     g = n.add_argument_group(
-<<<<<<< Updated upstream
         "result policy (PROTOCOL.md sections 9 and 10)",
         "What the result may carry and the questions about the output\n"
         "it answers. The runner's max_result_view caps the view.")
@@ -1248,35 +1185,6 @@ def main() -> int:
     g.add_argument("--result-policy", default=None, metavar="JSON|@FILE",
                    help="a whole result_policy object; --view, --query "
                         "and --query-budget add to it")
-=======
-        "result policy",
-        "What may leave the runner (PROTOCOL.md sections 9 and 10). The "
-        "runner's max_result_view narrows the view whatever is asked; "
-        "the queries are every question this job will ever be asked, "
-        "answered in the result under the effective view.")
-    g.add_argument("--view", choices=VIEWS, default=None,
-                   help="the view asked for (default: the runner's "
-                        "default, full)")
-    g.add_argument("--query", action="append", default=[], metavar="JSON",
-                   help='a declared query as a JSON object, e.g. '
-                        '\'{"op": "grep", "pattern": "ERROR", '
-                        '"max_matches": 5}\', repeatable')
-    g.add_argument("--attest", action="append", default=[],
-                   metavar="PREDICATE",
-                   help="declare an attest query (exit_zero, no_secrets, "
-                        "output_digest, confined_to_workspace), "
-                        "repeatable")
-    g.add_argument("--grep", action="append", default=[], metavar="REGEX",
-                   help="declare a grep query over the output, repeatable")
-    g.add_argument("--tail", type=int, default=None, metavar="N",
-                   help="declare a tail query for the last N lines")
-    g.add_argument("--query-budget", type=int, default=None, metavar="N",
-                   help="queries answerable for this job (the runner "
-                        "caps it with max_query_budget)")
-    g.add_argument("--result-policy-file", default=None, metavar="PATH",
-                   help="a JSON result_policy object; the flags above "
-                        "add to it")
->>>>>>> Stashed changes
     g = n.add_argument_group("addressing and signing")
     g.add_argument("--key-id", default=None, metavar="KEY_ID",
                    help="the key id the job carries (default: the "
