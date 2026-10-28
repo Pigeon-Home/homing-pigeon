@@ -73,6 +73,9 @@ class WindowsSimTest(unittest.TestCase):
             with mock.patch.dict(os.environ, {}), \
                     contextlib.redirect_stdout(out), \
                     contextlib.redirect_stderr(err):
+                # A host that sets TMPDIR (macOS always does) must not
+                # read as a scratch this run made.
+                os.environ.pop("TMPDIR", None)
                 rc = WS.main(argv)
                 scratch = os.environ.get("TMPDIR")
         finally:
