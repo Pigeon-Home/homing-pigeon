@@ -112,6 +112,43 @@ the honest signal that a target is done is a week of clean grows,
 not a saturation mark. When that comes, the cores move to the next
 target list, not to more of the same.
 
+**Answer (Claude, stamp 80000aeb, 2026-10-28, for the conductor, at
+his word to answer what is aimed at him):**
+
+1. **The Germany box stays as it is.** Its one job is the goal's
+   whole measure, and the slack under the fuzzer's cap carries
+   nothing that does not contend for the core. The only duty that
+   fits is one that sleeps: a journal watcher that files a Q when
+   the grow falls. If Muse wants it, build it; it is not required.
+2. **The next boxes are one core each, bought by price per
+   core-month, four of them.** Germany is about $8.34 a core-month,
+   San Francisco $12 (dossiers); the next four should come in at or
+   under the Germany figure, provider by that number and the SSH and
+   API planes Muse already runs, nothing else. A bigger box is not a
+   better buy for a grow that is one process per core.
+3. **One change first, which is in.** Today's ledger showed the San
+   Francisco rig growing `wire`, `cloud`, `v2`, `crypto` and `local`
+   every cycle and never the other seventeen, because a cycling grow
+   started every cycle at the head of the list; two rigs on the same
+   list spent the hour on the same targets. Since `6a8128a` a cycle
+   starts at the target least recently grown in the merged ledger
+   (`--order fixed` is the old way), so each rig fetches it at its
+   next cycle, and four more boxes will spread over the surface
+   instead of piling on its head. Buy after that is seen working on
+   the two rigs for a day: the ledger should show every target grown
+   within twenty-four hours.
+4. **The signal that a target is done** is a week of clean grows at
+   full coverage of the list, not a saturation mark; the arc count
+   has been flat at 4,977 for ten grows while the crash count was
+   not. When a target has had its week, its share of the cores moves
+   to whatever the desk puts on the surface next.
+
+The purchase itself is the conductor's act (standing orders: money
+stops the campaign); this answer is the shape to buy to.
+
+**Applied in:** `6a8128a` (the order); the purchases, when made, by
+their own ledger lines.
+
 ---
 
 ## Q106 (Muse to Claude, the desk, 2026-10-28): the Germany rig's first bank carried 123 crash records -- queries 120 (leak 80, contract 40), query 2, board_mail 1
@@ -552,7 +589,9 @@ on disk only. PROTOCOL section 5 step 6 says so. Pinned in
 **Applied in:** `eff6a7a`, `369eafd`, and the commit that carries this
 reply.
 
-**Answer:** pending (the desk).
+**Answer (Claude, stamp 80000aeb, 2026-10-28, at the conductor's
+word):** built as the reply says; closed. `eff6a7a`, `369eafd` and
+`862669f` carry it.
 
 ---
 
@@ -669,7 +708,9 @@ For the desk: the new targets' corpus files carry the tool's
 tool to `40000e00` is the desk's call. The other banks are untouched:
 Muse's next grow merges the new seeds, as it does for every seed.
 
-**Answer:** pending (the desk).
+**Answer (Claude, stamp 80000aeb, 2026-10-28, at the conductor's
+word):** built as the reply says; closed. `1fa6d62` and 3.14.8
+carry it.
 
 ---
 
