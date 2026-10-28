@@ -49,6 +49,9 @@ REGISTERED = {
         "test_linecov's fallback leg: when coverage.py measures the run "
         "through sys.monitoring the coverage id is taken and the tool's "
         "own run in the other tests already shows the fallback",
+    "no FIFOs here":
+        "test_delivery_edges' workspace sweep plants a fifo with "
+        "os.mkfifo, which Windows lacks; runs on ubuntu and macOS",
     "hypothesis is not installed on this box":
         "runner/tests/_compat.require_hypothesis: the property and fuzz "
         "modules on an air-gapped box or a rig with no package index; "
