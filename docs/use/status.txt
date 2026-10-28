@@ -7,3 +7,4 @@
 # finished since its last line. on: one word for what it is doing now.
 # Rulings, reasons, limits and anything to act on stay in English, in the Q.
 review 90000998 @b159cdb open:- closed:Q100,Q104,Q105 on:telephone-pole
+audit 80000aeb @1fa6d62 open:- closed:Q101,Q102,Q103 on:idle
