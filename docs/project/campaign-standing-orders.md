@@ -5038,6 +5038,8 @@ when done, the proving commit or run. Newest first.
   Banked by rig_bank from the rig's own tree under section M item 7: 3 run records, 54,410 children (seeds 2856575849); totals from the merged tree.
   de_dust 23 (San Francisco rig): 1457 entries, 5438 arcs, 0 crashes filed.
   Banked by rig_bank from the rig's own tree under section M item 7: 1 run records, 15,706 children (seeds 987217947); totals from the merged tree.
+  de_dust 45 (Germany rig): 1457 entries, 5441 arcs, 0 crashes filed.
+  Banked by rig_bank from the rig's own tree under section M item 7: 13 run records, 185,008 children (seeds 2856575849); totals from the merged tree.
 - v3.12.71 FULL STAMP DONE: GitHub
   release published
   2026-10-25T22:02:36Z by
