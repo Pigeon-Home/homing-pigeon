@@ -5,6 +5,11 @@
   "5e94b87bc1be6e32": {
    "on": "2026-10-28",
    "why": "promoted"
+  },
+  "c5309423121a8b50": {
+   "head": "26fcbe8206a8",
+   "on": "2026-10-28",
+   "why": "redundant"
   }
  },
  "target": "board_mail"
