@@ -79,3 +79,7 @@
 {"arcs": 0, "data": ["a"], "from": "seed:not_text_list", "id": "2e7057f2dc2dd47e", "kind": "payload", "mutator": "seed"}
 {"arcs": 0, "data": null, "from": "seed:not_text_null", "id": "92d71a926951fbfd", "kind": "payload", "mutator": "seed"}
 {"arcs": 0, "data": {"name": "a"}, "from": "seed:not_text_object", "id": "a5def34681fae59d", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "reports/junit.xml", "from": "seed:output_report", "id": "8dd7fb32f18577e3", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "../x", "from": "seed:output_up", "id": "e6dc19c5571413e4", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "CON.txt", "from": "seed:output_device", "id": "1c86ccba1af098b0", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo", "from": "seed:output_255", "id": "0aeaa2c36ccff0b0", "kind": "text", "mutator": "seed"}

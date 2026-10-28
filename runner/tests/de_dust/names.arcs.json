@@ -1,452 +1,587 @@
 {
-"de_dust":1,
-"target":"names",
-"Agent-Stamp":"50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
-"arcs":[
-[
-"runner/guard/filenames.py",
-0,
-70
-],
-[
-"runner/guard/filenames.py",
-0,
-72
-],
-[
-"runner/guard/filenames.py",
-0,
-81
-],
-[
-"runner/guard/filenames.py",
-0,
-82
-],
-[
-"runner/guard/filenames.py",
-0,
-89
-],
-[
-"runner/guard/filenames.py",
-0,
-93
-],
-[
-"runner/guard/filenames.py",
-0,
-101
-],
-[
-"runner/guard/filenames.py",
-0,
-104
-],
-[
-"runner/guard/filenames.py",
-72,
-73
-],
-[
-"runner/guard/filenames.py",
-72,
-74
-],
-[
-"runner/guard/filenames.py",
-74,
-75
-],
-[
-"runner/guard/filenames.py",
-82,
-83
-],
-[
-"runner/guard/filenames.py",
-83,
-84
-],
-[
-"runner/guard/filenames.py",
-84,
-85
-],
-[
-"runner/guard/filenames.py",
-85,
-86
-],
-[
-"runner/guard/filenames.py",
-86,
-85
-],
-[
-"runner/guard/filenames.py",
-93,
-95
-],
-[
-"runner/guard/filenames.py",
-95,
-96
-],
-[
-"runner/guard/filenames.py",
-96,
-97
-],
-[
-"runner/guard/filenames.py",
-96,
-98
-],
-[
-"runner/guard/filenames.py",
-104,
-105
-],
-[
-"runner/guard/filenames.py",
-104,
-106
-],
-[
-"runner/guard/filenames.py",
-106,
-107
-],
-[
-"runner/guard/filenames.py",
-106,
-108
-],
-[
-"runner/guard/filenames.py",
-108,
-109
-],
-[
-"runner/guard/filenames.py",
-109,
-110
-],
-[
-"runner/guard/filenames.py",
-109,
-112
-],
-[
-"runner/guard/filenames.py",
-110,
-111
-],
-[
-"runner/guard/filenames.py",
-112,
-113
-],
-[
-"runner/guard/filenames.py",
-112,
-114
-],
-[
-"runner/guard/filenames.py",
-114,
-115
-],
-[
-"runner/guard/filenames.py",
-114,
-116
-],
-[
-"runner/guard/filenames.py",
-116,
-117
-],
-[
-"runner/guard/filenames.py",
-116,
-118
-],
-[
-"runner/guard/filenames.py",
-117,
-119
-],
-[
-"runner/guard/filenames.py",
-119,
-120
-],
-[
-"runner/guard/filenames.py",
-120,
-121
-],
-[
-"runner/guard/filenames.py",
-120,
-122
-],
-[
-"runner/guard/filenames.py",
-122,
-123
-],
-[
-"runner/guard/filenames.py",
-122,
-141
-],
-[
-"runner/guard/filenames.py",
-123,
-124
-],
-[
-"runner/guard/filenames.py",
-123,
-126
-],
-[
-"runner/guard/filenames.py",
-124,
-125
-],
-[
-"runner/guard/filenames.py",
-125,
-124
-],
-[
-"runner/guard/filenames.py",
-126,
-127
-],
-[
-"runner/guard/filenames.py",
-126,
-128
-],
-[
-"runner/guard/filenames.py",
-128,
-129
-],
-[
-"runner/guard/filenames.py",
-128,
-131
-],
-[
-"runner/guard/filenames.py",
-129,
-130
-],
-[
-"runner/guard/filenames.py",
-130,
-129
-],
-[
-"runner/guard/filenames.py",
-131,
-132
-],
-[
-"runner/guard/filenames.py",
-131,
-134
-],
-[
-"runner/guard/filenames.py",
-132,
-133
-],
-[
-"runner/guard/filenames.py",
-133,
-132
-],
-[
-"runner/guard/filenames.py",
-134,
-135
-],
-[
-"runner/guard/filenames.py",
-134,
-137
-],
-[
-"runner/guard/filenames.py",
-135,
-136
-],
-[
-"runner/guard/filenames.py",
-136,
-135
-],
-[
-"runner/guard/filenames.py",
-137,
-138
-],
-[
-"runner/guard/filenames.py",
-137,
-139
-],
-[
-"runner/guard/filenames.py",
-139,
-122
-],
-[
-"runner/guard/filenames.py",
-139,
-140
-],
-[
-"runner/runner.py",
-0,
-2490
-],
-[
-"runner/runner.py",
-0,
-2492
-],
-[
-"runner/runner.py",
-0,
-2517
-],
-[
-"runner/runner.py",
-0,
-2527
-],
-[
-"runner/runner.py",
-2492,
-2493
-],
-[
-"runner/runner.py",
-2492,
-2497
-],
-[
-"runner/runner.py",
-2493,
-2494
-],
-[
-"runner/runner.py",
-2494,
-2493
-],
-[
-"runner/runner.py",
-2497,
-2501
-],
-[
-"runner/runner.py",
-2497,
-2502
-],
-[
-"runner/runner.py",
-2527,
-2529
-],
-[
-"runner/runner.py",
-2529,
-2530
-],
-[
-"runner/runner.py",
-2530,
-2532
-],
-[
-"runner/runner.py",
-2532,
-2535
-],
-[
-"runner/runner.py",
-2535,
-2536
-],
-[
-"runner/runner.py",
-2536,
-2542
-],
-[
-"runner/runner.py",
-2542,
-2543
-],
-[
-"runner/runner.py",
-2543,
-2544
-],
-[
-"runner/runner.py",
-2544,
-2545
-],
-[
-"runner/runner.py",
-2544,
-2549
-],
-[
-"runner/runner.py",
-2545,
-2546
-],
-[
-"runner/runner.py",
-2546,
-2544
-],
-[
-"runner/runner.py",
-2549,
-2550
-],
-[
-"runner/runner.py",
-2550,
-2551
-],
-[
-"runner/runner.py",
-2550,
-2556
-],
-[
-"runner/runner.py",
-2551,
-2552
-],
-[
-"runner/runner.py",
-2552,
-2556
-]
-]
+ "de_dust": 1,
+ "target": "names",
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "arcs": [
+  [
+   "runner/guard/filenames.py",
+   0,
+   70
+  ],
+  [
+   "runner/guard/filenames.py",
+   0,
+   72
+  ],
+  [
+   "runner/guard/filenames.py",
+   0,
+   81
+  ],
+  [
+   "runner/guard/filenames.py",
+   0,
+   82
+  ],
+  [
+   "runner/guard/filenames.py",
+   0,
+   89
+  ],
+  [
+   "runner/guard/filenames.py",
+   0,
+   93
+  ],
+  [
+   "runner/guard/filenames.py",
+   0,
+   101
+  ],
+  [
+   "runner/guard/filenames.py",
+   0,
+   104
+  ],
+  [
+   "runner/guard/filenames.py",
+   72,
+   73
+  ],
+  [
+   "runner/guard/filenames.py",
+   72,
+   74
+  ],
+  [
+   "runner/guard/filenames.py",
+   74,
+   75
+  ],
+  [
+   "runner/guard/filenames.py",
+   82,
+   83
+  ],
+  [
+   "runner/guard/filenames.py",
+   83,
+   84
+  ],
+  [
+   "runner/guard/filenames.py",
+   84,
+   85
+  ],
+  [
+   "runner/guard/filenames.py",
+   85,
+   86
+  ],
+  [
+   "runner/guard/filenames.py",
+   86,
+   85
+  ],
+  [
+   "runner/guard/filenames.py",
+   93,
+   95
+  ],
+  [
+   "runner/guard/filenames.py",
+   95,
+   96
+  ],
+  [
+   "runner/guard/filenames.py",
+   96,
+   97
+  ],
+  [
+   "runner/guard/filenames.py",
+   96,
+   98
+  ],
+  [
+   "runner/guard/filenames.py",
+   104,
+   105
+  ],
+  [
+   "runner/guard/filenames.py",
+   104,
+   106
+  ],
+  [
+   "runner/guard/filenames.py",
+   106,
+   107
+  ],
+  [
+   "runner/guard/filenames.py",
+   106,
+   108
+  ],
+  [
+   "runner/guard/filenames.py",
+   108,
+   109
+  ],
+  [
+   "runner/guard/filenames.py",
+   109,
+   110
+  ],
+  [
+   "runner/guard/filenames.py",
+   109,
+   112
+  ],
+  [
+   "runner/guard/filenames.py",
+   110,
+   111
+  ],
+  [
+   "runner/guard/filenames.py",
+   112,
+   113
+  ],
+  [
+   "runner/guard/filenames.py",
+   112,
+   114
+  ],
+  [
+   "runner/guard/filenames.py",
+   114,
+   115
+  ],
+  [
+   "runner/guard/filenames.py",
+   114,
+   116
+  ],
+  [
+   "runner/guard/filenames.py",
+   116,
+   117
+  ],
+  [
+   "runner/guard/filenames.py",
+   116,
+   118
+  ],
+  [
+   "runner/guard/filenames.py",
+   117,
+   119
+  ],
+  [
+   "runner/guard/filenames.py",
+   119,
+   120
+  ],
+  [
+   "runner/guard/filenames.py",
+   120,
+   121
+  ],
+  [
+   "runner/guard/filenames.py",
+   120,
+   122
+  ],
+  [
+   "runner/guard/filenames.py",
+   122,
+   123
+  ],
+  [
+   "runner/guard/filenames.py",
+   122,
+   141
+  ],
+  [
+   "runner/guard/filenames.py",
+   123,
+   124
+  ],
+  [
+   "runner/guard/filenames.py",
+   123,
+   126
+  ],
+  [
+   "runner/guard/filenames.py",
+   124,
+   125
+  ],
+  [
+   "runner/guard/filenames.py",
+   125,
+   124
+  ],
+  [
+   "runner/guard/filenames.py",
+   126,
+   127
+  ],
+  [
+   "runner/guard/filenames.py",
+   126,
+   128
+  ],
+  [
+   "runner/guard/filenames.py",
+   128,
+   129
+  ],
+  [
+   "runner/guard/filenames.py",
+   128,
+   131
+  ],
+  [
+   "runner/guard/filenames.py",
+   129,
+   130
+  ],
+  [
+   "runner/guard/filenames.py",
+   130,
+   129
+  ],
+  [
+   "runner/guard/filenames.py",
+   131,
+   132
+  ],
+  [
+   "runner/guard/filenames.py",
+   131,
+   134
+  ],
+  [
+   "runner/guard/filenames.py",
+   132,
+   133
+  ],
+  [
+   "runner/guard/filenames.py",
+   133,
+   132
+  ],
+  [
+   "runner/guard/filenames.py",
+   134,
+   135
+  ],
+  [
+   "runner/guard/filenames.py",
+   134,
+   137
+  ],
+  [
+   "runner/guard/filenames.py",
+   135,
+   136
+  ],
+  [
+   "runner/guard/filenames.py",
+   136,
+   135
+  ],
+  [
+   "runner/guard/filenames.py",
+   137,
+   138
+  ],
+  [
+   "runner/guard/filenames.py",
+   137,
+   139
+  ],
+  [
+   "runner/guard/filenames.py",
+   139,
+   122
+  ],
+  [
+   "runner/guard/filenames.py",
+   139,
+   140
+  ],
+  [
+   "runner/runner.py",
+   0,
+   2490
+  ],
+  [
+   "runner/runner.py",
+   0,
+   2492
+  ],
+  [
+   "runner/runner.py",
+   0,
+   2517
+  ],
+  [
+   "runner/runner.py",
+   0,
+   2527
+  ],
+  [
+   "runner/runner.py",
+   0,
+   2677
+  ],
+  [
+   "runner/runner.py",
+   0,
+   2679
+  ],
+  [
+   "runner/runner.py",
+   0,
+   2704
+  ],
+  [
+   "runner/runner.py",
+   0,
+   2714
+  ],
+  [
+   "runner/runner.py",
+   2492,
+   2493
+  ],
+  [
+   "runner/runner.py",
+   2492,
+   2497
+  ],
+  [
+   "runner/runner.py",
+   2493,
+   2494
+  ],
+  [
+   "runner/runner.py",
+   2494,
+   2493
+  ],
+  [
+   "runner/runner.py",
+   2497,
+   2501
+  ],
+  [
+   "runner/runner.py",
+   2497,
+   2502
+  ],
+  [
+   "runner/runner.py",
+   2527,
+   2529
+  ],
+  [
+   "runner/runner.py",
+   2529,
+   2530
+  ],
+  [
+   "runner/runner.py",
+   2530,
+   2532
+  ],
+  [
+   "runner/runner.py",
+   2532,
+   2535
+  ],
+  [
+   "runner/runner.py",
+   2535,
+   2536
+  ],
+  [
+   "runner/runner.py",
+   2536,
+   2542
+  ],
+  [
+   "runner/runner.py",
+   2542,
+   2543
+  ],
+  [
+   "runner/runner.py",
+   2543,
+   2544
+  ],
+  [
+   "runner/runner.py",
+   2544,
+   2545
+  ],
+  [
+   "runner/runner.py",
+   2544,
+   2549
+  ],
+  [
+   "runner/runner.py",
+   2545,
+   2546
+  ],
+  [
+   "runner/runner.py",
+   2546,
+   2544
+  ],
+  [
+   "runner/runner.py",
+   2549,
+   2550
+  ],
+  [
+   "runner/runner.py",
+   2550,
+   2551
+  ],
+  [
+   "runner/runner.py",
+   2550,
+   2556
+  ],
+  [
+   "runner/runner.py",
+   2551,
+   2552
+  ],
+  [
+   "runner/runner.py",
+   2552,
+   2556
+  ],
+  [
+   "runner/runner.py",
+   2679,
+   2680
+  ],
+  [
+   "runner/runner.py",
+   2679,
+   2684
+  ],
+  [
+   "runner/runner.py",
+   2680,
+   2681
+  ],
+  [
+   "runner/runner.py",
+   2681,
+   2680
+  ],
+  [
+   "runner/runner.py",
+   2684,
+   2688
+  ],
+  [
+   "runner/runner.py",
+   2684,
+   2689
+  ],
+  [
+   "runner/runner.py",
+   2714,
+   2716
+  ],
+  [
+   "runner/runner.py",
+   2716,
+   2717
+  ],
+  [
+   "runner/runner.py",
+   2717,
+   2719
+  ],
+  [
+   "runner/runner.py",
+   2719,
+   2722
+  ],
+  [
+   "runner/runner.py",
+   2722,
+   2723
+  ],
+  [
+   "runner/runner.py",
+   2723,
+   2729
+  ],
+  [
+   "runner/runner.py",
+   2729,
+   2730
+  ],
+  [
+   "runner/runner.py",
+   2730,
+   2731
+  ],
+  [
+   "runner/runner.py",
+   2731,
+   2732
+  ],
+  [
+   "runner/runner.py",
+   2731,
+   2736
+  ],
+  [
+   "runner/runner.py",
+   2732,
+   2733
+  ],
+  [
+   "runner/runner.py",
+   2733,
+   2731
+  ],
+  [
+   "runner/runner.py",
+   2736,
+   2737
+  ],
+  [
+   "runner/runner.py",
+   2737,
+   2738
+  ],
+  [
+   "runner/runner.py",
+   2737,
+   2743
+  ],
+  [
+   "runner/runner.py",
+   2738,
+   2739
+  ],
+  [
+   "runner/runner.py",
+   2739,
+   2743
+  ]
+ ]
 }
