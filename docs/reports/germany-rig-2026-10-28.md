@@ -20,9 +20,11 @@ secret: no credential value appears here.
   except SSH; the runner and the fuzzer both dial out.
 - Type: **CPX02** — 1 vCPU (AMD EPYC-Genoa), 1 GB memory,
   20 GB disk.
-- Cost: **EUR 7.49 per month** list price at `nbg1`, gross,
-  read from the provider's API on 2026-10-28. That is the
-  whole running cost of the outpost.
+- Cost: **about $8.34 per month** — the EUR 7.49 list price
+  at `nbg1`, gross, read from the provider's API on
+  2026-10-28 and converted at that day's rate of about 1.114
+  dollars to the euro. That is the whole running cost of the
+  outpost.
 
 ## The machine as it reads itself
 

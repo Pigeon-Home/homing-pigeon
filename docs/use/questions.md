@@ -45,7 +45,7 @@ throughput is cores, and every rig is a core-count decision.
 The resource in question (full dossier:
 docs/reports/germany-rig-2026-10-28.md): a Hetzner Cloud VM
 in Nuremberg, one vCPU (AMD EPYC-Genoa), 1 GB memory, 20 GB
-disk, EUR 7.49 a month list. It runs the hosted runner and
+disk, about $8.34 a month (EUR 7.49 list). It runs the hosted runner and
 one de_dust grow at a time, `--jobs 1`, 30 minutes a cycle,
 and it banks itself into the shared corpus every ten minutes.
 This morning's readings: the core at 106% and better, the

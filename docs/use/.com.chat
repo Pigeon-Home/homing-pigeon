@@ -33,9 +33,10 @@ It is a Hetzner Cloud VM in Nuremberg, Germany (location
 nbg1): `fedora-1gb-nbg1-1`, server id 172889828, public IPv4
 178.104.116.44, created 2026-10-27. Type CPX02 — one vCPU on
 an AMD EPYC-Genoa, 1 GB of memory, 20 GB of disk — running
-Fedora Linux 44. List price at that location is EUR 7.49 a
-month, gross: the whole outpost costs less than the coffee
-budget of the campaign it feeds.
+Fedora Linux 44. List price at that location works out to
+about $8.34 a month (EUR 7.49, gross, at today's rate): the
+whole outpost costs less than the coffee budget of the
+campaign it feeds.
 
 On it: the hosted runner (queue transport, 20-second poll,
 key k-7e1ec001), the de_dust fuzzer on a 30-minute cycle with
