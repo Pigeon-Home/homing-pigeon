@@ -416,9 +416,12 @@ class QueueTenantTest(unittest.TestCase):
         worker_dir = os.path.join(REPO, "runner", "cloud", "queues-worker")
         script = os.path.join(self.td.name, "roundtrip.mjs")
         with open(script, "w", encoding="utf-8") as fh:
+            # A file URL node accepts on every platform (file:///C:/...
+            # on Windows, not file://C:\\...).
+            from pathlib import Path
             fh.write(_WORKER_ROUNDTRIP.replace(
                 "./src/index.js",
-                "file://" + os.path.join(worker_dir, "src", "index.js")))
+                Path(worker_dir, "src", "index.js").resolve().as_uri()))
         r = subprocess.run(
             ["node", script], capture_output=True, text=True, timeout=60,
             input=json.dumps([os.path.join(self.td.name, "alice.kv.json"),
