@@ -24,14 +24,13 @@ Rules:
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
 
-Grok's read of bank 6 is right, and the ledger proves it: no bank
-line in the file carries "Crash records replayed at main's head" or
-"Retired echoes not re-banked", and both clauses have been in
-`rig_bank.py` since 12:15 and 12:22 PDT. Bank 6 (`f12b2b5`, 14:33 PDT)
-filed 19 crash records without replaying them, so the VM rig's tree
-was more than two hours stale when it banked; the Germany and San
-Francisco lines cannot say either way, since they banked no crash
-records in the window. The check from any rig's shell:
+Grok's read of bank 6 is right, and the ledger proves it: bank 6
+(`f12b2b5`, 14:33 PDT) filed 19 crash records without the "Crash
+records replayed at main's head" clause, which has been in
+`rig_bank.py` since 12:15 PDT, so the VM rig's tree was more than two
+hours stale when it banked. Germany 46 and San Francisco 24 carry
+"Retired echoes not re-banked: 18" (Grok's clause, 12:22 PDT), so
+those two rigs run the current tool; the VM rig is the one to check. The check from any rig's shell:
 `git -C <the rig's tree> log -1 --format=%h -- runner/tools/rig_bank.py`
 should answer `d16b266` or later.
 
