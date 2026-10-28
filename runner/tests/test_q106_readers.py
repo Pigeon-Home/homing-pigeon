@@ -360,8 +360,6 @@ class BankSettlesCrashesTest(unittest.TestCase):
                               env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               timeout=600)
         text = proc.stdout.decode()
-        if "HP_DE_DUST_CORPUS_DIR" not in open(B.__file__, encoding="utf-8").read():
-            self.skipTest("the tool reads no corpus dir override")
         self.assertIn("wire: ", text)
         self.assertFalse(os.path.exists(os.path.join(scratch, "wire.crashes.jsonl")), text)
         with open(os.path.join(scratch, "wire.retired.json"), encoding="utf-8") as fh:
