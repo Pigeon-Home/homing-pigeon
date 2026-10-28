@@ -4770,3 +4770,39 @@ when done, the proving commit or run. Newest first.
   conductor's Germany-box
   handover; recorded per Q58.
   Grow 24 (seed 6360) follows.
+- rules refreshed 2026-10-27 22:02 PDT
+  (standing orders incl. section M;
+  AGENTS.md rules 7-11; the
+  questions file's open entries).
+  de_dust 24 (VM rig): 1295
+  entries, 4978 arcs, 0 crashes
+  filed. Grow 24 (seed 6360, in
+  three fragments: the 18:54 PDT
+  restart killed the first
+  minutes in, a brief
+  improvised-seed relaunch died
+  with its session, and the
+  disciplined relaunch under
+  seed 6360 at 20:01 PDT ran to
+  completion) ran on target (box
+  cpu 84%, wall 1h32m30s):
+  278,328 children over 19 run
+  records; it kept 1 (local,
+  54ba8989fb9c75e1), whose arcs
+  the merged tree already
+  covered, as in grows 22 and
+  23. v2_mail wrote no record,
+  the fifth grow in a row at
+  the end of the rotation. The
+  survivors pass beside it left
+  no record: the 21:39 PDT
+  restart killed it before it
+  wrote, and survivors.json is
+  unchanged; the pass runs
+  beside grow 25. After the
+  grow completed (21:32 PDT)
+  the box stood idle through
+  the restart and this bank
+  until grow 25's launch at
+  this bank; recorded per Q58.
+  Grow 25 (seed 6370) follows.
