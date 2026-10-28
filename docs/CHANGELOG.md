@@ -39,6 +39,14 @@ facts a reader may need to cite. Git history carries the rest.
   per result, and with `--ack` removes only what verified. The
   own-cloud page shows the send and the read, and says where a
   system-service runner keeps its queue token.
+- **The panic word (Q100).** The installer prints six words once and
+  keeps only their salted SHA-384. A message on any transport with the
+  subject `[HOMING-PIGEON] panic <word>` stops the box before any
+  signature work and with no secret: running jobs are killed, nothing
+  is polled or sent, every key is refused, and the stop survives a
+  restart until `install.py --rearm` is run on the box. The doctor
+  says whether jobs can reach the word's file (PROTOCOL.md section
+  14.3; SECURITY.md; `runner/guard/panic.py`; `runner/tests/test_panic.py`).
 
 ## 3.14.4 - 2026-10-27
 

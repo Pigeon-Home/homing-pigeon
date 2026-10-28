@@ -159,6 +159,7 @@ _defaulted = _load_mod("runner.guard.defaulted", "guard.defaulted")
 # 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f): runner/guard/atomicio.py.
 _atomicio = _required_load_mod("runner.guard.atomicio", "guard.atomicio")
 _filenames = _required_load_mod("runner.guard.filenames", "guard.filenames")
+_panic = _required_load_mod("runner.guard.panic", "guard.panic")
 if _textutil is None:
     raise ImportError("runner/guard/textutil.py is missing")
 _as_str = _textutil._as_str
@@ -180,7 +181,15 @@ if _mailbox_lib is not None:
     connect_smtp = _mailbox_lib.connect_smtp
     fetch_job_mails = _mailbox_lib.fetch_job_mails
     mark_seen = _mailbox_lib.mark_seen
-    send_mail = _mailbox_lib.send_mail
+    _send_mail_raw = _mailbox_lib.send_mail
+
+    def send_mail(smtp, cfg, subject, body, to=None):
+        """Every message the runner sends. A box the panic word stopped
+        sends nothing (Q100): not a result, not an ack, not a resend."""
+        if _panic.fired():
+            log("panic: send dropped, the box is stopped", "WARN")
+            return
+        return _send_mail_raw(smtp, cfg, subject, body, to=to)
     _valid_reply_to = _mailbox_lib._valid_reply_to
 
 _SECURITY_EVENTS_LOCK = threading.Lock()
@@ -2372,6 +2381,8 @@ def kill_tree(proc: subprocess.Popen, extra_pids=None):
                     os.kill(int(pid), signal.SIGKILL)
             except Exception:
                 pass
+
+_panic.set_kill(kill_tree)
 
 MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024  # 100 MiB
 

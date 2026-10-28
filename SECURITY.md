@@ -261,6 +261,26 @@ empty file. File secrets pass the same entropy gate.
   the output is correct; review (`require_review`, the human gate)
   is the correctness anchor.
 
+### The panic word (Q100)
+
+The worst case in this file is the shared secret in the wrong hands.
+Revoking the mailbox and rotating the key both need a laptop and
+time. The panic word is the stop that needs neither: the installer
+prints six words once, and a message to the runner's mailbox with the
+subject `[HOMING-PIGEON] panic <the six words>` stops the box. It is
+checked before any signature work and needs no secret, so it works
+from a phone, and holding the secret does not let anyone answer it or
+undo it: only `install.py --rearm`, run on the box, releases a stopped
+runner (PROTOCOL.md section 14.3).
+
+What it does not do, stated plainly: if jobs run as the runner's own
+user, a holder of the secret can send a job that deletes the word's
+file or patches the check before the owner ever sends the word. The
+word is real protection only where jobs cannot write to the runner's
+state or code, which today means `security.job_user` in `enforce`
+(M8, above) on a POSIX box. `install.py --check` prints which case a
+box is in. Keep the word off the machine it protects.
+
 ### Key names are public (Q94)
 
 Every secret has a name, its fingerprint `k-<8 hex>` (PROTOCOL.md

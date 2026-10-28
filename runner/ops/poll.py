@@ -17,6 +17,21 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
     R = _runner()
     if not isinstance(seen, dict):
         seen = {}
+    if R._panic.fired(base_dir):
+        # The panic word fired (Q100): nothing is polled, the
+        # transports are stopped, and the box stays this way across a
+        # restart until the owner re-arms it on the box.
+        if R._panic.announce_once():
+            info = R._panic.flag(base_dir) or {}
+            R.log(f"panic: the box was stopped at {info.get('fired_at', '?')}; "
+                  "nothing is polled until install.py --rearm is run here",
+                  "ERROR")
+        if R._transports is not None:
+            try:
+                R._transports.stop_supervisors(base_dir)
+            except Exception:
+                pass
+        return
     t0 = time.monotonic()
     # The HMAC shared secret is always the dedicated shared_secret field,
     # separate from the mailbox password. Both sides use its UTF-8 bytes

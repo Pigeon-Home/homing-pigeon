@@ -78,6 +78,70 @@ def _import_atomicio():
 
 _atomicio = _import_atomicio()
 
+
+def _import_panic():
+    """runner/guard/panic.py (Q100), the same four ways as atomicio."""
+    frozen = getattr(sys, "_MEIPASS", None)
+    if frozen:
+        cand = os.path.join(frozen, "pigeon-guard", "panic.py")
+        if os.path.isfile(cand):
+            return _load_by_path(cand)
+    try:
+        from runner.guard import panic
+        return panic
+    except ImportError:
+        pass
+    try:
+        from guard import panic  # type: ignore
+        return panic
+    except ImportError:
+        pass
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return _load_by_path(os.path.join(here, "guard", "panic.py"))
+
+
+def _print_panic_word(word: str) -> None:
+    print("panic word (shown once, keep it off this machine): " + word)
+    print("  to stop this box from any phone, send the runner's mailbox a "
+          "message with the subject")
+    print(f"  [HOMING-PIGEON] panic {word}")
+    print("  it needs no secret; the box stays stopped until "
+          "install.py --rearm is run here")
+
+
+def ensure_panic_word(cfg_path: str) -> None:
+    """Arm the panic word on a fresh install, or say it is armed (Q100).
+    The word is printed once and never stored; only its salted digest
+    is kept, in panic.json in the runner's state dir."""
+    base = _cfg_base_dir(cfg_path)
+    try:
+        panic = _import_panic()
+        os.makedirs(base, exist_ok=True)
+        if panic.state(base) != "not armed":
+            print("panic word: armed (install.py --rearm prints a new one)")
+            return
+        _print_panic_word(panic.arm(base))
+    except Exception as e:
+        print(f"panic word: not armed ({e}); run install.py --rearm")
+
+
+def do_rearm(cfg_path: str) -> int:
+    """Clear a fired panic and print a new word. Only on the box."""
+    base = _cfg_base_dir(cfg_path)
+    try:
+        panic = _import_panic()
+        os.makedirs(base, exist_ok=True)
+        was = panic.state(base)
+        word = panic.arm(base)
+    except Exception as e:
+        print(f"error: the panic word was not re-armed: {e}", file=sys.stderr)
+        return 1
+    if was == "fired":
+        print("the stopped box is released; restart the runner (or its "
+              "service) and it polls again")
+    _print_panic_word(word)
+    return 0
+
 # Frozen binaries cannot import the package the same way a live run can.
 # The constant is the source of truth for --version; runner/tests/test_version.py
 # fails the build if it drifts from pyproject.toml.
@@ -966,6 +1030,19 @@ def do_check(home, bin_dir, cfg_path, state_dir) -> int:
                 "default, key id \"\", is the same key)"
                 + (f"; additional key ids: {', '.join(names)}"
                    if names else "; no additional key ids"))
+        try:
+            panic = _import_panic()
+            pbase = _cfg_base_dir(cfg_path)
+            pstate = panic.state(pbase)
+            rec({"armed": "PASS", "fired": "FAIL"}.get(pstate, "WARN"),
+                "panic word",
+                {"armed": "armed",
+                 "fired": "fired: the box is stopped; install.py --rearm "
+                          "releases it",
+                 }.get(pstate, "not armed: install.py --rearm arms it")
+                + "; " + panic.protection(cfg))
+        except Exception as e:
+            rec("WARN", "panic word", f"not read: {e}")
         bd = cfg.get("base_dir")
         if (bd and os.path.normcase(os.path.abspath(bd))
                 != os.path.normcase(os.path.abspath(state_dir))):
@@ -1200,6 +1277,7 @@ def _setup_fresh_config(args, cfg_path):
     ensure_shared_secret(cfg_path, args.shared_secret,
                          first_key_id if isinstance(first_key_id, str)
                          else None)
+    ensure_panic_word(cfg_path)
     # Mailbox auth is the one thing install cannot invent. On a TTY,
     # offer the same Thunderbird-style wizard the runner uses, so a
     # fresh install ends with a working service and no hand-edited
@@ -3277,6 +3355,9 @@ def main() -> int:
     g = ap.add_argument_group(
         "instead of installing",
         "Do one of these and exit; nothing is installed.")
+    g.add_argument("--rearm", action="store_true",
+                   help="arm the panic word, or release a box it "
+                        "stopped, and print a new word (Q100)")
     g.add_argument("--check", action="store_true",
                    help="doctor: verify the one-home layout, "
                         "receipt, service task, config, and "
@@ -3443,7 +3524,7 @@ def main() -> int:
                         "too")
     args = ap.parse_args()
 
-    if not (args.uninstall or args.check or args.logs
+    if not (args.uninstall or args.check or args.logs or args.rearm
             or args.ignore_personal_documents):
         _warn_personal_documents()
 
@@ -3483,6 +3564,8 @@ def main() -> int:
     info = _resolve_home(args)
     if info is not None:
         home, bin_dir, cfg_path, state_dir = info
+        if args.rearm:
+            return do_rearm(cfg_path)
         if args.check:
             return do_check(home, bin_dir, cfg_path, state_dir)
         if args.console:
@@ -3540,6 +3623,8 @@ def main() -> int:
                else os.path.expanduser("~/.homing-pigeon"))
     cfg_path = os.path.abspath(args.config) if args.config \
         else os.path.join(dst_dir, "config.json")
+    if args.rearm:
+        return do_rearm(cfg_path)
     if args.logs:
         return do_logs(cfg_path, follow=args.follow, lines=args.lines)
     if args.inference_only:

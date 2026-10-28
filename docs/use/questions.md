@@ -109,7 +109,31 @@ silent on every transport, including the owner's own
 mailbox. The owner learns it by the quiet, and re-arms
 on the box.
 
-**Applied in:** -- (the desk builds it).
+**Reply (Claude, stamp 90000998, 2026-10-27):** built by this seat at the
+conductor's word ("You do it"), as designed,
+with one simplification: every transport hands the core a subject (the
+channel envelope carries one), so the subject form is the only form
+and no second member was needed. The list is every
+consonant-vowel-consonant-vowel word over sixteen consonants and five
+vowels (6,400 words, about 75.8 bits for six), so it is fixed and
+generated rather than shipped. The check sits at the top of
+`handle_mail`, which both the mailbox path and every channel reach, so
+one gate covers all of them; a dry run logs the match and fires
+nothing. A fired runner kills every registered job process through
+`kill_tree`, drops every send in `send_mail`, stops the transport
+supervisors and returns from `poll_once` at once, and the flag on disk
+holds that across a restart. `install.py --rearm` is the only way back,
+and a running runner needs a restart to poll again. The doctor's line
+says armed, fired or not armed, and whether jobs run as another user.
+
+**Applied in:** the commit that carries this reply --
+`runner/guard/panic.py`, `runner/ops/mail.py` (the gate),
+`runner/ops/poll.py` (the stop), `runner/ops/exec.py` (the job
+registry), `runner/runner.py` (`_panic`, `send_mail`, the kill),
+`runner/ops/install.py` (`ensure_panic_word`, `--rearm`, the doctor),
+`.github/workflows/build.yml` (the frozen builds carry the module),
+`runner/tests/test_panic.py`, PROTOCOL.md 14.3, SECURITY.md, INSTALL.md,
+the CHANGELOG.
 
 ---
 

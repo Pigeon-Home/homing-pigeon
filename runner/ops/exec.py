@@ -584,6 +584,9 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         # Missing binary, a null in argv, or an unusable interpreter
         # fails the same way every cycle. Poison, not transient.
         raise _runner().JobRejected(f"cannot start interpreter: {e}")
+    # The panic word (Q100) stops every live job; a box that fired
+    # while this one was being staged kills it at once.
+    _runner()._panic.register(proc)
     # Remediation watches the run (docs/design/remediation-design.md).
     # A monitor that fails to start changes nothing: the job runs
     # exactly as it did before remediation existed.
@@ -606,6 +609,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         outs, errs = proc.communicate()
         timed_out = True
     finally:
+        _runner()._panic.unregister(proc)
         if monitor is not None:
             try:
                 monitor.stop()

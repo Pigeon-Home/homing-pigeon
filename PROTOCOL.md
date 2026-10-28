@@ -1429,6 +1429,57 @@ result names and verifies with that entry. `--key-id ""` sends the
 unnamed form senders used before keys had names; the runner accepts
 it as it always has.
 
+### 14.3 The panic word
+
+A runner may hold a **panic word**: six words from a fixed list of
+6,400 (every consonant-vowel-consonant-vowel word over the consonants
+`bdfghjklmnprstvz` and the vowels `aeiou`, about 75.8 bits), generated
+by the installer and printed once. The runner keeps only
+
+```
+sha384 = SHA-384("homing-pigeon panic v1\n" || salt || word)
+```
+
+with a 32-octet random salt, in `panic.json` in its state directory;
+the word itself is never stored. `word` is the six words in lower
+case joined by single spaces.
+
+A message on any transport whose subject is exactly
+
+```
+[HOMING-PIGEON] panic <word>
+```
+
+fires it. The prefix and the verb are matched without regard to
+case; hyphens, underscores, commas and runs of white space between
+the words are read as single spaces, since those are what a phone's
+keyboard changes. A subject with anything before the prefix (`Re:`,
+`Fwd:`) is not a panic. The check is made on intake, before the
+seen-set and before any signature work, and reads nothing but the
+subject: no key, no body, no MAC. It therefore works when the shared
+secret is in the wrong hands, and from a device that holds no secret
+at all.
+
+When it fires, the runner stops every running job, stops polling
+every transport, refuses every message on every transport and every
+key, writes one `panic_fired` security event, and writes
+`panicked.json`, which it reads at start and on every cycle, so a
+restart does not resume. It sends nothing: no reply to the panic, no
+result for a job it stopped, no resend. The word is spent once sent,
+since anyone who can read that mail can repeat it, and a repeat only
+stops a box that is already stopped. A dry run logs the match and
+fires nothing.
+
+No message re-arms a runner. The owner runs `install.py --rearm` on
+the box, which clears the flag, generates a new word and prints it;
+the runner polls again when restarted.
+
+The word protects only where a job cannot write to `panic.json`,
+`panicked.json` or the runner itself. Where jobs run as the runner's
+own user, a holder of the secret can send a job that removes the word
+before the owner sends it. `install.py --check` says which case a box
+is in (SECURITY.md, "The panic word").
+
 ## 15. Rollout plan
 
 This section was the work plan. The boxes below shipped. It is kept

@@ -36,6 +36,26 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         # Dry-run is fully non-mutating: observe, change nothing.
         _runner()._mark(imap, seq, opts)
 
+    # The panic word (Q100): before any MAC work and before the
+    # seen-set. Only the subject is read, so it works when the secret
+    # is in the wrong hands and from a phone that holds none.
+    if R._panic.matches(base_dir, subject):
+        if opts is not None and getattr(opts, "dry_run", False):
+            R.log(f"seq {seq}: the panic word matched (dry run: not fired)",
+                  "WARN")
+            return
+        R._panic.fire(
+            base_dir, transport="channel" if seq == "transport" else "mail",
+            event_sink=lambda ev: R._append_security_event(base_dir, ev))
+        R.log("panic: the word matched; every job is stopped, nothing is "
+              "polled or sent, and every key is refused until the owner "
+              "runs install.py --rearm on this box", "ERROR")
+        _runner()._mark(imap, seq, opts)
+        return
+    if R._panic.fired(base_dir):
+        R.vlog(f"ingest: seq {seq}: the box is stopped (panic); left as it is")
+        return
+
     # Hardening M1b: bound the raw mail before any signature work,
     # for every protocol message the door takes -- queries, board and
     # version 2 mail as well as jobs (Q98 item 2). Mail that is not

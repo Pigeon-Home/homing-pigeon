@@ -365,6 +365,13 @@ and that board does not need Python either.
    stores it beside the fingerprint; both name the same key. The name
    is public and safe to share (SECURITY.md, "Key names are public");
    the secret is not.
+   The installer also prints a **panic word**, six words shown once:
+   write it down somewhere other than this machine. A message to the
+   runner's mailbox with the subject `[HOMING-PIGEON] panic <the six
+   words>` stops the box from any phone, no secret needed, until
+   `install.py --rearm` is run on it (PROTOCOL.md section 14.3;
+   SECURITY.md, "The panic word"). An install from before the word
+   existed arms one with `install.py --rearm`.
 6. **More than one signer?** Give each its own key instead of sharing
    the one secret: `python3 runner/ops/install.py --additional-secret
    grok-4` generates a 256-bit secret under `additional_secrets`
