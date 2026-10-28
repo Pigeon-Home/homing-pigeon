@@ -124,6 +124,31 @@ class LinecovTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(rep["files"]["lcpkg/mod.py"]["missing_lines"], [8])
 
+    def test_a_source_that_does_not_parse_is_named_not_fatal(self):
+        # A measured folder can hold a .py that is not Python (a sample
+        # or fixture). The run still writes its report: the file is
+        # named under meta.unparsed and left out of the totals.
+        bad = os.path.join(self.td.name, "lcpkg", "sample.py")
+        with open(bad, "w", encoding="utf-8") as fh:
+            fh.write("def f():\n    pass\n        def g(self): pass\n")
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = linecov.main(["--out", self.out, "--root", self.td.name,
+                               "--source", "lcpkg",
+                               "--", "lcpkg.test_mod"])
+        self.assertEqual(rc, 0)
+        with open(self.out, encoding="utf-8") as fh:
+            rep = json.load(fh)
+        self.assertNotIn("lcpkg/sample.py", rep["files"])
+        self.assertEqual([u["path"] for u in rep["meta"]["unparsed"]],
+                         ["lcpkg/sample.py"])
+        self.assertIn("IndentationError", rep["meta"]["unparsed"][0]["error"])
+        self.assertEqual(rep["files"]["lcpkg/mod.py"]["missing_lines"], [8])
+        self.assertEqual(rep["totals"]["num_statements"],
+                         sum(f["summary"]["num_statements"]
+                             for f in rep["files"].values()))
+        self.assertIn("does not parse: lcpkg/sample.py", err.getvalue())
+
     def test_no_tests_or_an_old_python_is_exit_two(self):
         err = io.StringIO()
         with redirect_stderr(err):

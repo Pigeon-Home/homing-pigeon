@@ -62,8 +62,19 @@ def report(files, hits, root):
     rep = {"meta": {"tool": "runner/tools/linecov.py", "branches": False},
            "files": {}, "totals": {}}
     total_s = total_m = 0
+    unparsed = []
     for f in files:
-        stmts = statements(f)
+        # A file under a measured folder that is not Python source (a
+        # sample kept as .py, a fixture written in another dialect)
+        # has no statements to count. It is named in the report and
+        # left out of the totals, so one such file never costs the
+        # whole run its report.
+        try:
+            stmts = statements(f)
+        except (SyntaxError, ValueError, UnicodeDecodeError) as exc:
+            unparsed.append({"path": os.path.relpath(f, root),
+                             "error": "%s: %s" % (type(exc).__name__, exc)})
+            continue
         ran = hits.get(f, set()) & stmts
         missing = sorted(stmts - ran)
         n, m = len(stmts), len(missing)
@@ -76,6 +87,7 @@ def report(files, hits, root):
                         "covered_lines": n - m,
                         "percent_covered": round(100.0 * (n - m) / n, 2)
                         if n else 100.0}}
+    rep["meta"]["unparsed"] = unparsed
     rep["totals"] = {"num_statements": total_s, "missing_lines": total_m,
                      "covered_lines": total_s - total_m,
                      "num_branches": 0, "missing_branches": 0,
@@ -166,6 +178,9 @@ def main(argv=None):
         s = info["summary"]
         print(f"{s['percent_covered']:6.1f}%  {s['num_statements']:5d} "
               f"stmts  {s['missing_lines']:4d} miss  {rel}")
+    for skipped in rep["meta"]["unparsed"]:
+        print("linecov.py: not measured, does not parse: %s (%s)"
+              % (skipped["path"], skipped["error"]), file=sys.stderr)
     t = rep["totals"]
     print(f"{t['percent_covered']:6.1f}%  {t['num_statements']:5d} stmts  "
           f"{t['missing_lines']:4d} miss  total ({result.testsRun} tests)")
