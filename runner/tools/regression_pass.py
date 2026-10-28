@@ -89,13 +89,20 @@ def run_python(args, cwd=None, timeout=7200):
 def failing_ids(output):
     """The unittest ids that failed or errored in a run's output, in
     order of first appearance; a module that failed to import is
-    reported as its runner.tests module name."""
+    reported as its runner.tests module name. Every suite id lives
+    under runner.tests, so a FAIL line naming anything else is a
+    fixture's own output echoed by a test that runs a throwaway suite
+    (test_parallel_runner's test_gamma), never a red in this suite:
+    a lone re-run of it can only fail to import, which would read as
+    deterministic."""
     seen = []
     for _kind, name, dotted in _RED.findall(output):
         if dotted.startswith(_LOADER):
             ident = "runner.tests." + name
         else:
             ident = dotted
+        if not ident.startswith("runner.tests."):
+            continue
         if ident not in seen:
             seen.append(ident)
     return seen

@@ -64,6 +64,18 @@ class ReaderTest(unittest.TestCase):
         self.assertIsNone(P.missing_dependency("AssertionError"))
         self.assertIsNone(P.missing_dependency(None))
 
+    def test_a_fixture_suites_echoed_fail_is_not_a_suite_red(self):
+        # A test that runs a throwaway suite (test_parallel_runner's
+        # test_gamma) may echo its FAIL line into the real output; it
+        # names no runner.tests id, and a lone re-run of it can only
+        # fail to import, so it must never reach the ledger.
+        echoed = ("FAIL: test_bad (test_gamma.T.test_bad)\n"
+                  "ERROR: test_x (helper_mod.H.test_x)\n" + SHARD_OUTPUT)
+        self.assertEqual(P.failing_ids(echoed),
+                         ["runner.tests.test_one.OneTest.test_a",
+                          "runner.tests.test_one.OneTest.test_b",
+                          "runner.tests.test_two"])
+
     def test_tests_ran_sums_the_shards(self):
         self.assertEqual(P.tests_ran(SHARD_OUTPUT), 160)
         self.assertEqual(P.tests_ran("nothing"), 0)

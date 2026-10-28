@@ -10,9 +10,10 @@ import re
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from runner.tests._compat import require_hypothesis  # noqa: E402
-require_hypothesis()
-from hypothesis import assume, given, strategies as st
+try:
+    from hypothesis import assume, given, strategies as st
+except ImportError:  # test-only dep: runner/tests/_hypothesis_shim.py
+    from runner.tests._hypothesis_shim import assume, given, strategies as st
 
 from runner.runner import (
     BUILTIN_REDACT_PATTERNS,

@@ -294,8 +294,12 @@ class MainContractTest(_OutsideActions):
         with tempfile.TemporaryDirectory() as d:
             _write(d, "test_alpha.py", _PASS)
             _write(d, "test_gamma.py", _FAIL)
-            rc = rtp.main(["--jobs", "2", "--top-level-dir", d,
-                           "test_alpha", "test_gamma"])
+            # The fixture's FAIL line stays in this buffer: on the real
+            # stdout it reads as a red in the suite to anything that
+            # parses the suite's output (regression_pass.failing_ids).
+            with contextlib.redirect_stdout(io.StringIO()):
+                rc = rtp.main(["--jobs", "2", "--top-level-dir", d,
+                               "test_alpha", "test_gamma"])
         self.assertEqual(rc, 1)
 
 

@@ -107,7 +107,7 @@ jobs:
       # sandbox diagnosis read a red probe as green.
       - name: no silent skips of must-run proofs
         if: always()
-        run: python runner/tools/skip_guard.py test-output.log --forbid "bwrap not available" --annotate
+        run: python runner/tools/skip_guard.py test-output.log --forbid "bwrap not available" --forbid "hypothesis not installed" --annotate
       # The release ships a snapshot of the whole project, and the
       # snapshot carries this run's test results (runner/tools/make_snapshot.py).
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

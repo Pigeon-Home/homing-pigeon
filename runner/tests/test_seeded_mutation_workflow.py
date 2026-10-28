@@ -17,6 +17,7 @@ runner/tests/test_build_config.py: the CI test environment installs only
 the pinned tools in .github/requirements-ci.txt, which carries no YAML
 library, and a test that cannot run in CI pins nothing.
 """
+import importlib.util
 import os
 import re
 import subprocess
@@ -100,6 +101,8 @@ class SeededWorkflowShapeTests(unittest.TestCase):
         self.assertNotIn("contents: write", text)
 
 
+@unittest.skipUnless(importlib.util.find_spec("hypothesis"),
+                     "hypothesis not installed")
 class ConftestSeedHookTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

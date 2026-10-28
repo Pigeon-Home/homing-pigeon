@@ -16,9 +16,10 @@ import os
 import smtplib
 import unittest
 
-from runner.tests._compat import require_hypothesis  # noqa: E402
-require_hypothesis()
-from hypothesis import given, settings, strategies as st
+try:
+    from hypothesis import given, settings, strategies as st
+except ImportError:  # test-only dep: runner/tests/_hypothesis_shim.py
+    from runner.tests._hypothesis_shim import given, settings, strategies as st
 
 from runner.transport_extensions import channel as ch
 from runner.transport_extensions.email import __main__ as email_ext

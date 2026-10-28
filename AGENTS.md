@@ -79,8 +79,10 @@ Those values live on the runner host. They do not travel through the SI chat.
    audit of the root manuals, and opinions on open questions),
    `90000998` (the review seat: opinions on the seats' open
    threads and review sweeps of the docs), `a0000997` (local
-   regression passes and line coverage) and `b000092f` (line
-   coverage in `runner/guard/`, `runner/wire/` and `runner/oracle/`),
+   regression passes and line coverage), `b000092f` (line
+   coverage in `runner/guard/`, `runner/wire/` and `runner/oracle/`)
+   and `c0000327` (the local rig: whole-suite regression and
+   coverage on a box with no PyPI),
    with Muse (`00000000-muse`) on the campaigns. Address work to an active
    stamp, never stamp new work with a recycled one, and leave the
    old stamps in history and in the files they wrote. Questions are

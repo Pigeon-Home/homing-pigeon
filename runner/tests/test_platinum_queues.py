@@ -28,9 +28,10 @@ import unittest
 import urllib.error
 from unittest import mock
 
-from runner.tests._compat import require_hypothesis  # noqa: E402
-require_hypothesis()
-from hypothesis import given, settings, strategies as st
+try:
+    from hypothesis import given, settings, strategies as st
+except ImportError:  # test-only dep: runner/tests/_hypothesis_shim.py
+    from runner.tests._hypothesis_shim import given, settings, strategies as st
 
 from runner.transport_extensions.queues import __main__ as q
 

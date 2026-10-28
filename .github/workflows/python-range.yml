@@ -59,4 +59,4 @@ jobs:
       # are not. A bare OK is impossible on a non-root hosted box.
       - name: the sandbox proofs ran
         if: always()
-        run: python runner/tools/skip_guard.py test-output.log --forbid "bwrap not available" --annotate
+        run: python runner/tools/skip_guard.py test-output.log --forbid "bwrap not available" --forbid "hypothesis not installed" --annotate

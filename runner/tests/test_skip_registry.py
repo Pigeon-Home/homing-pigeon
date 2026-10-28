@@ -167,6 +167,16 @@ REGISTERED = {
     # ---- interpreter version floors ---------------------------------
     "sys.monitoring needs 3.12+": "run on the 3.12 CI interpreter",
     "threading.gettrace needs 3.10+": "run on the 3.12 CI interpreter",
+    # ---- the local rig (test_local_rig_tools, _hypothesis_shim) -----
+    "hypothesis not installed":
+        "a box with no PyPI; build.yml and python-range.yml install it "
+        "and forbid this skip with skip_guard.py, so it runs there",
+    "the suite is being measured by stdlib_coverage":
+        "the tracer's own recorder cannot start inside a measured run; "
+        "runs in every plain suite run",
+    "a fixture for ReportShapeTest":
+        "a case stdlib_coverage drives in a child run, never expected "
+        "to run as a test on its own",
     "the Linux and macOS source install; Windows installs from the release binaries": "the Windows install is the binary one, proven by build.yml's windows smoke; run on every POSIX leg",
     "exec jobs run sh; the soak's own leg is Linux": "the soak drives sh exec jobs; soak.yml and every POSIX leg run it",
     "make_sbom runs on the build Python (tomllib, 3.11+)": "a release tool, never on a runner box; run on the 3.12 CI interpreter",

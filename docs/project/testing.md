@@ -130,7 +130,23 @@ python3 runner/tools/switch_proofs.py --have posix,linux,bwrap --out proofs.md
 sudo python3 runner/tools/switch_proofs.py --have posix,linux,bwrap --root --out proofs-root.md   # needs a user named pigeon-test
 # the fixture shapes that pass here and fail on Windows
 python3 -m unittest runner.tests.test_windows_portability
+# one regression pass with its ledger line (the rig's hourly pass)
+python3 runner/tools/regression_pass.py --jobs 4 --no-bisect
+# line coverage with the standard library alone (Python 3.12+), child
+# Pythons included, in coverage.py's JSON shape
+python3 runner/tools/stdlib_coverage.py --subprocess --jobs 4 --out coverage.json
+python3 runner/tools/coverage_gaps.py coverage.json --out gaps.md
 ```
+
+A box with no PyPI runs all of it. hypothesis is a test-only
+dependency: without it every property module still loads through
+`runner/tests/_hypothesis_shim.py`, its `@given` tests skip with the
+reason `hypothesis not installed`, and its deterministic tests run.
+The CI legs that install hypothesis forbid that skip
+(`skip_guard.py --forbid`), so it never hides a property test there.
+`stdlib_coverage.py` counts statements, not branches, and only child
+Pythons that inherit the suite's environment, so on the same tree it
+reads at or below the coverage.py number in the release reports.
 
 Adding a platform leg: copy the nearest job in
 `.github/workflows/switch-proofs.yml` (`macos` for a kernel with a
