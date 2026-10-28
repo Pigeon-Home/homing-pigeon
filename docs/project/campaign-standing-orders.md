@@ -4797,6 +4797,8 @@ when done, the proving commit or run. Newest first.
   Banked by rig_bank from the rig's own tree under section M item 7: 3 run records, 53,231 children (seeds 596442135); totals from the merged tree.
   de_dust 9 (Germany rig): 1370 entries, 5188 arcs, 0 crashes filed.
   Banked by rig_bank from the rig's own tree under section M item 7: 8 run records, 121,436 children (seeds 2990799610); totals from the merged tree.
+  de_dust 10 (Germany rig): 1372 entries, 5214 arcs, 0 crashes filed.
+  Banked by rig_bank from the rig's own tree under section M item 7: 5 run records, 51,749 children (seeds 2990799610); totals from the merged tree.
 - rules refreshed 2026-10-27 22:02 PDT
   (standing orders incl. section M;
   AGENTS.md rules 7-11; the
