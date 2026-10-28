@@ -7788,8 +7788,19 @@ def _record_crashes(target, session, out):
         out(f"  CRASH {target} {record['id']}: {crash}")
     if fresh:
         save(path, target, existing)
-        out(f"  {fresh} crash(es) written to {os.path.relpath(path, ROOT)}")
+        out(f"  {fresh} crash(es) written to {_shown(path)}")
     return fresh
+
+
+def _shown(path):
+    """A path for a progress line: relative to the repo when it can
+    be, else as given. On Windows a corpus on another drive than the
+    checkout (a temp dir on C: under a D: workspace) has no relative
+    path, and os.path.relpath raises ValueError rather than print."""
+    try:
+        return os.path.relpath(path, ROOT)
+    except ValueError:
+        return path
 
 
 def merge_seeds(session):

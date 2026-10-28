@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.13 - 2026-10-28
+
+- **Crash grows run on any Windows drive.** The grow's progress line
+  printed the crash corpus relative to the checkout, and on a Windows
+  runner with the checkout on D: and the temp corpus on C:
+  `os.path.relpath` raised instead, failing build-windows on main.
+  The line now falls back to the full path.
+
 ## 3.14.12 - 2026-10-28
 
 - **Fixed crash records retire.** The eleven queries crash records

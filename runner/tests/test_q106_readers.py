@@ -419,6 +419,28 @@ class AncestryRuleTest(unittest.TestCase):
         self.assertIsNone(B.is_ancestor("abc", self.heads[0], cwd=self.repo))
         self.assertIsNone(B.is_ancestor(self.heads[0], self.heads[1], cwd=self.td.name + "/none"))
 
+    def test_the_grow_reports_a_corpus_on_another_drive(self):
+        # Windows: a corpus under C:\\...\\Temp with the checkout on D:
+        # has no relative path; the progress line must not crash the grow.
+        corpus = mock.patch.object(B, "CORPUS_DIR", os.path.join(self.repo, "c"))
+        corpus.start()
+        self.addCleanup(corpus.stop)
+        session = mock.Mock()
+        entry = B.make_entry("text", "x", "seed:x", "p_text")
+        session.crashes = [(entry, B.Crash("contract", "d"))]
+        session.shrink = lambda e, c: e
+        lines = []
+
+        def cross_drive(path, start=None):
+            raise ValueError("path is on mount 'C:', start on mount 'D:'")
+
+        with mock.patch.object(B, "head_sha", return_value="f" * 40), \
+                mock.patch.object(B.os.path, "relpath", cross_drive):
+            self.assertEqual(1, B._record_crashes("wire", session, lines.append))
+        path = B.corpus_path("wire", crashes=True)
+        self.assertIn(f"1 crash(es) written to {path}", "\n".join(map(str, lines)))
+        self.assertEqual(1, len(B.load(path)))
+
     def test_the_grow_writes_the_head_into_a_crash_record(self):
         corpus = mock.patch.object(B, "CORPUS_DIR", os.path.join(self.repo, "c"))
         corpus.start()
