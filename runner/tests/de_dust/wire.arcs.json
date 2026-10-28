@@ -1206,6 +1206,21 @@
   [
    "runner/wire/verify.py",
    265,
+   266
+  ],
+  [
+   "runner/wire/verify.py",
+   265,
+   271
+  ],
+  [
+   "runner/wire/verify.py",
+   266,
+   267
+  ],
+  [
+   "runner/wire/verify.py",
+   267,
    271
   ],
   [
