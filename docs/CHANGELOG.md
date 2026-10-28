@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.10 - 2026-10-28
+
+- **Release attestation retries.** The tag build retries the build
+  provenance attestation once when Sigstore's transparency log times
+  out, so a network blip no longer stops a release before it
+  publishes.
+
 ## 3.14.9 - 2026-10-28
 
 - **Windows directory renames.** When Windows denies a directory
