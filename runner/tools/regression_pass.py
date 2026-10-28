@@ -48,7 +48,9 @@ STAMP = "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"
 RECORD = os.path.join("docs", "reports", "regression", "passes.jsonl")
 _RAN = re.compile(r"^Ran (\d+) tests? in", re.M)
 _RED = re.compile(r"^(FAIL|ERROR): (\S+) \(([^)]+)\)", re.M)
-_MISSING = re.compile(r"No module named '([A-Za-z_][\w.]*)'")
+# The quotes may arrive escaped, when a test's assertion message
+# prints a child's stderr through repr().
+_MISSING = re.compile(r"No module named \\?'([A-Za-z_][\w.]*)\\?'")
 _LOADER = "unittest.loader._FailedTest."
 
 

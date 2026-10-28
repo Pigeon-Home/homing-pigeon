@@ -58,6 +58,9 @@ class ReaderTest(unittest.TestCase):
             "No module named 'yaml.loader'"), "yaml")
         self.assertIsNone(P.missing_dependency(
             "No module named 'runner.ops.gone'"))
+        self.assertEqual(P.missing_dependency(
+            "AssertionError: 'ValueError' not found in 'ModuleNotFoundError:"
+            " No module named \\'hypothesis\\'\\n'"), "hypothesis")
         self.assertIsNone(P.missing_dependency("AssertionError"))
         self.assertIsNone(P.missing_dependency(None))
 

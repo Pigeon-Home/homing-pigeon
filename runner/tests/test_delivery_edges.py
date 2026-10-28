@@ -305,7 +305,7 @@ class WorkspaceTest(unittest.TestCase):
             with self.assertRaisesRegex(R.JobRejected, "cannot be read"):
                 self.sweep()
 
-    @unittest.skipUnless(hasattr(os, "mkfifo"), "no FIFOs here")
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "POSIX only")
     def test_a_fifo_is_not_a_regular_file(self):
         os.mkfifo(os.path.join(self.work, "pipe"))
         with self.assertRaisesRegex(R.JobRejected,
