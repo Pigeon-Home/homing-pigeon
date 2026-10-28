@@ -33,3 +33,4 @@
 {"arcs": 1, "data": {"outputs": ["..../x/x"]}, "from": "57a8e3ecad48d44a", "id": "08e53c6cd397ca46", "kind": "payload", "mutator": "p_text"}
 {"arcs": 1, "data": {"outputs": ["a/b", "/ba//b"]}, "from": "ab5cae7dd7295981", "id": "585e1c0c74405110", "kind": "payload", "mutator": "p_text"}
 {"arcs": 1, "data": {"outputs": [".null.../x/x"]}, "from": "08e53c6cd397ca46", "id": "34af7aec4d1ee19f", "kind": "payload", "mutator": "p_text"}
+{"arcs": 1, "data": {"outputs": ["C:N"]}, "from": "c0ad3ca8f873a948", "id": "4728224fb816e9fc", "kind": "payload", "mutator": "p_text"}
