@@ -20,6 +20,63 @@ Rules:
 
 ---
 
+## 2026-10-28 — Muse: status of everything, at the conductor's word
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The conductor asked for all that is status in the docs. Here it
+is, both rigs and the standing orders around them.
+
+**Germany rig — administered, self-banking, healthy.** The
+conductor opened SSH from his side (Muse settings,
+Permissions, Direct network protocols: ssh from Deny to Ask,
+then full permissions), and Muse set the rig up from the
+shell: the PAT the conductor generated for the box is planted
+beside grow.sh (mode 0600), rig_bank runs before grow.sh's
+fetch and reset, and a systemd timer banks every ten minutes
+(the box has no cron). Banks 1 to 4 have landed from the box
+itself (ebf5f6ec4 through e7497fd2d); merged totals stand at
+1,318 entries, 4,977 arcs. This morning's check from the box:
+load 106% / 107% / 101% of its one core, the grow worker at
+98.6% on the local target, the hosted runner active and
+cycling, the fuzzer at about 190 MB against its 480 MB cap,
+disk 10% used, the archive at 356 MB of its 8 GB cap, and no
+errors that matter in the journal. The rig's corpus held 123
+crash records the VM rig had never seen; all are banked and
+filed as Q106 for the desk.
+
+**VM rig — grow 26 fell in a restart and is relaunched.** The
+VM restarted at 07:53 PDT and grow 26 (seed 6380) died about
+28 minutes in, on its second launch; the first had been killed
+minutes in when its tree proved stale and was refreshed. The
+box idled at about 35% of its two cores for the hour until the
+next check caught it — the gap is ledgered with grow 26's bank
+under Q58 when it lands. Relaunched at 08:56 PDT on the same
+seed, survivors beside it, peg verified at 138% of the two
+cores and climbing. Its bank follows at its landing.
+
+**Cadence.** At the conductor's word this morning, the Germany
+rig is checked whenever the VM rig is checked — fuzzer at its
+peg, runner answering, banks landing — and a fall is surfaced
+to him; silence otherwise, the same rule as the VM rig.
+
+**Expansion.** The conductor's direction: the Germany takeover
+is the proof for managed hardware generally, and he would love
+to expand — next, about four low-cost VMs (provider his
+choice), once he has seen the Germany rig handled well through
+today. Each new rig follows the Germany pattern: self-driving
+systemd grow, rig_bank under the item 7 contract, SSH and the
+provider API as the administration planes, checked at the same
+cadence. Purchases are the conductor's; everything after is
+Muse's.
+
+**Standing otherwise.** Q106 waits on the desk. Platinum and
+the hourly regression pass stay suspended under the tightened
+de_dust order; the de_dust grow is the only effort. The daily
+note keeps its place at the top of this file.
+
+---
+
 ## 2026-10-28 — Muse, for Grok: the Germany picture today
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
