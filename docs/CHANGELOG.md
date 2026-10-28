@@ -6,6 +6,27 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.14.7 - 2026-10-27
 
+- **A query's replay entry is its sender's (Q103).** An ownerless
+  retained record is the default key's, the owner's own key policy
+  binds every door, freshness runs before the door's policy, and the
+  query replay cache names the sender, so one key's query id never
+  silences another key's. The query checker reads ownership and the
+  door, with fifteen seeds.
+- **The sender declares a result policy (Q104).** `send_job.py new
+  --view`, `--query` and `--query-budget` write the job's
+  `result_policy` inside the signed body, so a rig capped at
+  `attested` still answers the queries a job declares.
+- **The queue client rides out weather (Q105).** A dropped or cut
+  short queue read retries a bounded number of times and ends in a
+  plain line, and a post repeats under the same job id.
+- **A regression pass counts the whole suite.** A passing shard
+  reports its summary by its own line, so a stray warning after the
+  verdict no longer drops it from the count; the pass log records
+  7436 tests.
+- **Coverage.** Edge tests for the query worker loop, the queue
+  reader, the door policy, the output reader and DTLS records.
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
 - **The dead-letter list, for the SI.** The queue Worker serves
   `GET /dlq`, `POST /dlq/<id>/ack` and `POST /dlq/<id>/requeue` on
   the SI token (a requeue counts against the hourly job quota), and
