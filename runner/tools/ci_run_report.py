@@ -72,7 +72,9 @@ def _repo():
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          text=True)
     url = res.stdout.strip()
-    if url:
+    # Only a GitHub remote names the repo: any other URL split on a
+    # host it does not contain would come back whole, scheme included.
+    if "github.com" in url:
         tail = url.split("github.com", 1)[-1].lstrip(":/")
         if tail.endswith(".git"):
             tail = tail[:-4]
