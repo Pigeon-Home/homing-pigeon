@@ -134,10 +134,15 @@ def retired_stale(obj, retired):
 
 
 def merge_id_file(tree_path, bank_path):
-    """Union one entry or crash file by id. Returns ids added. A crash
-    record the tree retired (promote, after a fix) is not re-added
-    from a rig's stale copy: it would come back as an expectedFailure
-    probe that passes, and the build would go red (Q106)."""
+    """Union one entry or crash file by id. Returns (ids added, echoes).
+
+    A crash record the tree retired (promote, after a fix) is not
+    re-added from a rig's stale copy: it would come back as an
+    expectedFailure probe that passes, and the build would go red
+    (Q106). `echoes` is how many of the bank's records that rule
+    dropped, so a ledger line can say the rate (Muse, the echo
+    problem, item 3).
+    """
     b_header, b_objs = read_jsonl(bank_path)
     if os.path.exists(tree_path):
         t_header, t_objs = read_jsonl(tree_path)
@@ -148,14 +153,19 @@ def merge_id_file(tree_path, bank_path):
     for obj in t_objs:
         by_id[obj["id"]] = obj
     added = []
+    echoes = 0
     for obj in b_objs:
-        if obj["id"] not in by_id and not retired_stale(obj, retired):
-            by_id[obj["id"]] = obj
-            added.append(obj["id"])
+        if obj["id"] in by_id:
+            continue
+        if retired_stale(obj, retired):
+            echoes += 1
+            continue
+        by_id[obj["id"]] = obj
+        added.append(obj["id"])
     if added:
         write_jsonl(tree_path, t_header if t_header is not None else b_header,
                     list(by_id.values()))
-    return added
+    return added, echoes
 
 
 def merge_arcs(tree_path, bank_path):
@@ -227,11 +237,12 @@ def merge_corpus(tree_dir, bank_dir):
             report["runs_added"] = added
             report["run_objs"] = merged
         elif name.endswith(".crashes.jsonl"):
-            added = merge_id_file(tree_path, bank_path)
+            added, echoes = merge_id_file(tree_path, bank_path)
             if added:
                 report["crashes"][name] = added
+            report["echoes"] = report.get("echoes", 0) + echoes
         elif name.endswith(".jsonl"):
-            added = merge_id_file(tree_path, bank_path)
+            added, echoes = merge_id_file(tree_path, bank_path)
             if added:
                 report["entries"][name] = added
         elif name.endswith(".arcs.json"):
@@ -296,6 +307,9 @@ def ledger_block(rig, grow_no, report, new_records, resources=None):
     if settled:
         body += " Crash records replayed at main's head: " + "; ".join(
             settled[k] for k in sorted(settled)) + "."
+    echoes = report.get("echoes") or 0
+    if echoes:
+        body += f" Retired echoes not re-banked: {echoes}."
     return head + "\n" + body + "\n"
 
 

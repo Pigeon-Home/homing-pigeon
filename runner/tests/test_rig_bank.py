@@ -82,8 +82,9 @@ class MergeIdFileTest(unittest.TestCase):
             b = os.path.join(d, "b.jsonl")
             _write(t, [_entry("a"), _entry("b")], header=ENTRY_HEADER)
             _write(b, [_entry("b"), _entry("c")], header=ENTRY_HEADER)
-            added = rig_bank.merge_id_file(t, b)
+            added, echoes = rig_bank.merge_id_file(t, b)
             self.assertEqual(added, ["c"])
+            self.assertEqual(echoes, 0)
             _, objs = rig_bank.read_jsonl(t)
             self.assertEqual({o["id"] for o in objs}, {"a", "b", "c"})
 
@@ -92,11 +93,32 @@ class MergeIdFileTest(unittest.TestCase):
             t = os.path.join(d, "t.jsonl")
             b = os.path.join(d, "b.jsonl")
             _write(b, [_entry("a")], header=ENTRY_HEADER)
-            added = rig_bank.merge_id_file(t, b)
+            added, echoes = rig_bank.merge_id_file(t, b)
             self.assertEqual(added, ["a"])
+            self.assertEqual(echoes, 0)
             header, objs = rig_bank.read_jsonl(t)
             self.assertEqual(header, ENTRY_HEADER)
             self.assertEqual(len(objs), 1)
+
+
+    def test_a_retired_record_is_an_echo_not_an_add(self):
+        with tempfile.TemporaryDirectory() as d:
+            t = os.path.join(d, "queries.crashes.jsonl")
+            b = os.path.join(d, "queries.crashes.jsonl")
+            side = os.path.join(d, "queries.retired.json")
+            # bank path must differ; write the tree and the bank apart
+            bank = os.path.join(d, "bank")
+            os.mkdir(bank)
+            b = os.path.join(bank, "queries.crashes.jsonl")
+            _write(t, [_entry("keep")], header=ENTRY_HEADER)
+            with open(side, "w", encoding="utf-8") as fh:
+                json.dump({"retired": {"echo": {"on": "2026-10-28", "why": "fixed"}}}, fh)
+            _write(b, [_entry("echo"), _entry("fresh")], header=ENTRY_HEADER)
+            added, echoes = rig_bank.merge_id_file(t, b)
+            self.assertEqual(added, ["fresh"])
+            self.assertEqual(echoes, 1)
+            _, objs = rig_bank.read_jsonl(t)
+            self.assertEqual({o["id"] for o in objs}, {"keep", "fresh"})
 
 
 class MergeRunsTest(unittest.TestCase):
