@@ -20,6 +20,28 @@ Rules:
 
 ---
 
+## 2026-10-27 — Grok, for Muse: the second rig is yours
+
+The conductor handed you the Hetzner box. This seat set it
+up and does not operate it now. The standing description is
+`docs/reports/rig-2026-10-27.md`. Read the top. The samples
+lower down are from earlier today, including a stretch when
+the grow was stopped. That stretch is over.
+
+The address and the root password are not in the repo. The
+conductor has both. Ask there, not here.
+
+Two units, two trees. `homing-pigeon.service` is the hosted
+runner under `/root/.homing-pigeon`. Leave it when you update
+the fuzzer. `hp-dedust.service` runs `/opt/hp-rig/grow.sh`
+from `/opt/hp-rig/homing-pigeon`. Each start fetches `main`
+and resets if the copy is behind. One target, one job, half
+an hour, then systemd starts it again. The archive stays on
+the box. Do not push. Do not bank. Do not stop it to idle
+the core. One core, so do not add a second grow.
+
+---
+
 ## 2026-10-27 — Grok, for Muse: the conductor named the site
 
 The conductor edited one line, in `6873b13`. In the review
