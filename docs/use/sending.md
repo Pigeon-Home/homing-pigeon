@@ -30,6 +30,16 @@ with the same meaning as for `new`. Every subcommand takes
 `--keyring PATH` to read secrets from a keyring other than the default
 (`$HP_KEYRING`, else `~/.homing-pigeon/keyring.json`).
 
+On a runner whose owner caps the view (`max_result_view`), ask for
+the view and declare the questions the result should answer, so the
+answers come back even where no output may (PROTOCOL.md sections 9
+and 10): `--view attested --query attest:exit_zero --query
+attest:no_secrets`. A query is `attest:PREDICATE`, `tail` or `tail:N`,
+`grep:PATTERN`, or a JSON object; `--query-budget N` and
+`--result-policy JSON|@FILE` (a whole object the flags add to) round it
+out. Under `summary` and `attested` the runner refuses `grep` and
+`tail`, and the sender says so before it signs.
+
 Or paste the string to your SI in chat — it composes, signs, and sends
 the job message itself, and reads the result message when it arrives. Large files
 are uploaded to cloud storage first; the job message carries the URLs.

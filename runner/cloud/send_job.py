@@ -470,6 +470,78 @@ def cmd_keyring(args) -> int:
     return 0
 
 
+_VIEWS = ("full", "redacted", "summary", "attested")
+
+
+def _query_spec(spec):
+    """One --query: `attest:PREDICATE`, `tail` or `tail:N`,
+    `grep:PATTERN` (everything after the first colon is the pattern),
+    or a JSON object for anything else (PROTOCOL.md section 10)."""
+    if not isinstance(spec, str) or not spec.strip():
+        raise ValueError("an empty --query")
+    if spec.lstrip().startswith("{"):
+        q = json.loads(spec)
+        if not isinstance(q, dict) or not isinstance(q.get("op"), str):
+            raise ValueError(f"--query {spec!r}: a JSON query needs an op")
+        return q
+    op, sep, rest = spec.partition(":")
+    if op == "attest" and rest:
+        return {"op": "attest", "predicate": rest}
+    if op == "tail":
+        if not sep:
+            return {"op": "tail"}
+        if rest.isdigit():
+            return {"op": "tail", "lines": int(rest)}
+    if op == "grep" and rest:
+        return {"op": "grep", "pattern": rest}
+    raise ValueError(f"--query {spec!r}: want attest:PREDICATE, tail[:N], "
+                     "grep:PATTERN or a JSON object")
+
+
+def result_policy(args):
+    """The job's result_policy from --result-policy, --view, --query
+    and --query-budget (PROTOCOL.md section 9), or None when none was
+    given (Q104). --result-policy is the base; --view and
+    --query-budget replace its members and each --query is added to
+    its queries."""
+    base = getattr(args, "result_policy", None)
+    views = getattr(args, "view", None)
+    queries = getattr(args, "query", None) or []
+    budget = getattr(args, "query_budget", None)
+    if base is None and views is None and not queries and budget is None:
+        return None
+    policy = {}
+    if base is not None:
+        text = base
+        if base.startswith("@"):
+            with open(base[1:], encoding="utf-8") as fh:
+                text = fh.read()
+        policy = json.loads(text)
+        if not isinstance(policy, dict):
+            raise ValueError("--result-policy must be a JSON object")
+    if views is not None:
+        policy["view"] = views
+    if policy.get("view") is not None and policy["view"] not in _VIEWS:
+        raise ValueError(f"view {policy['view']!r}: want one of "
+                         + ", ".join(_VIEWS))
+    if queries:
+        listed = policy.get("queries", [])
+        if not isinstance(listed, list):
+            raise ValueError("result_policy queries must be a list")
+        policy["queries"] = listed + [_query_spec(s) for s in queries]
+    if budget is not None:
+        if budget < 0:
+            raise ValueError("--query-budget must be 0 or more")
+        policy["query_budget"] = budget
+    if policy.get("view") in ("summary", "attested") and any(
+            isinstance(q, dict) and q.get("op") in ("grep", "tail")
+            for q in policy.get("queries") or []):
+        print(f"note: under the {policy['view']} view the runner refuses "
+              "grep and tail queries (PROTOCOL.md section 10); attest "
+              "answers", file=sys.stderr)
+    return policy
+
+
 def cmd_new(args) -> int:
     args.secret = secret_for(args)
     key_id = resolve_key_id(args)
@@ -551,6 +623,13 @@ def cmd_new(args) -> int:
         if args.interpreter:
             payload["interpreter"] = json.loads(args.interpreter)
         payload["timeout_sec"] = args.timeout
+    try:
+        policy = result_policy(args)
+    except (ValueError, OSError) as e:
+        print(f"bad result policy: {e}", file=sys.stderr)
+        return 2
+    if policy is not None:
+        payload["result_policy"] = policy
     body = sign_payload(payload, args.secret)
     if not getattr(args, "cleartext", False):
         # Per-job encryption is the default: encrypt the signed
@@ -1087,6 +1166,25 @@ def main() -> int:
                    metavar="KEY=VALUE",
                    help="environment entry as KEY=value, "
                         "repeatable")
+    g = n.add_argument_group(
+        "result policy (PROTOCOL.md sections 9 and 10)",
+        "What the result may carry and the questions about the output\n"
+        "it answers. The runner's max_result_view caps the view.")
+    g.add_argument("--view", default=None, choices=_VIEWS,
+                   help="the view the result is asked for (default: "
+                        "full); the runner never widens it past its own "
+                        "ceiling")
+    g.add_argument("--query", action="append", default=[], metavar="SPEC",
+                   help="a question answered inside the result: "
+                        "attest:PREDICATE (exit_zero, no_secrets, "
+                        "output_digest, confined_to_workspace), tail[:N], "
+                        "grep:PATTERN, or a JSON object; repeatable")
+    g.add_argument("--query-budget", type=int, default=None, metavar="N",
+                   help="most queries answered for this job (the runner "
+                        "caps it with max_query_budget)")
+    g.add_argument("--result-policy", default=None, metavar="JSON|@FILE",
+                   help="a whole result_policy object; --view, --query "
+                        "and --query-budget add to it")
     g = n.add_argument_group("addressing and signing")
     g.add_argument("--key-id", default=None, metavar="KEY_ID",
                    help="the key id the job carries (default: the "
