@@ -301,9 +301,12 @@ class ReadOutputReasonsTest(unittest.TestCase):
         import tempfile
         from runner.ops import exec as ex
         self.ex = ex
-        self.work = tempfile.mkdtemp(prefix="hp-out-")
+        # Resolved up front: realpath itself calls lstat, so a test
+        # that patches lstat must not depend on realpath resolving a
+        # symlinked temp folder (macOS /var).
+        self.work = os.path.realpath(tempfile.mkdtemp(prefix="hp-out-"))
         self.addCleanup(lambda: __import__("shutil").rmtree(self.work, True))
-        self.root = os.path.realpath(self.work)
+        self.root = self.work
         self.path = os.path.join(self.root, "out.txt")
         with open(self.path, "wb") as fh:
             fh.write(b"x" * 100)
