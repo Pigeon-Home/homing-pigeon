@@ -12,6 +12,9 @@ facts a reader may need to cite. Git history carries the rest.
   diff, runs the recipe there and sends the tree's resulting diff home
   as `change.diff`. `send_job.py new --kind change --repo NAME
   --diff-file PATH --recipe NAME` builds one.
+- **Inline files, canonical (Q101).** An inline file that is not the
+  canonical encoding of its bytes is refused. The sender writes an
+  output only under its own folder.
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 
 ## 3.14.7 - 2026-10-27
