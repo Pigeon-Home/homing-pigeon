@@ -968,23 +968,30 @@ rejected and marked seen.
 
 A query refused as a whole is answered with a signed `qresult`
 whose `rejected` names why and whose `answers[]` is empty. None of
-these spends budget:
+these spends budget. They fall in two groups, by whether the
+retained record was read.
+
+Refused before the record is read. The reply names no job and takes
+no slot of the sender's hourly window:
 
 - `unsupported`: `v` or `type` is not a query's.
 - `policy`: the key's door policy (section 14.1) does not admit
-  `query`. The reply names no job and takes no slot of the hourly
-  window.
+  `query`.
 - `rate_limit`: the sender's key is over its hourly window (section
-  11). It takes no slot.
-- `unknown_job`: no retained record for the `job_id`, or one another
-  key owns (section 11). It carries `job_id` and `budget_remaining`
-  0, and takes a slot.
-- `expired`: the record is past `output_retention_days`. As
-  `unknown_job`, and only the record's owner ever sees it.
-- `query_error`: the record could not be read. As `unknown_job`.
+  11).
 
-A stale query, one that fails its signature, and one refused as
-cleartext get no reply at all.
+Refused once the record is looked up. The reply carries the query's
+`job_id` and `budget_remaining` 0, and takes a slot:
+
+- `unknown_job`: no retained record for the `job_id`, or one another
+  key owns (section 11).
+- `expired`: the record is past `output_retention_days`. Only the
+  record's owner ever sees it; any other key gets `unknown_job`.
+- `query_error`: the record could not be read.
+
+An answered `qresult` carries the query's `job_id` as well, and
+takes a slot. A stale query, one that fails its signature, and one
+refused as cleartext get no reply at all.
 
 ## 11. Probing resistance
 
