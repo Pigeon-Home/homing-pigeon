@@ -14,6 +14,26 @@ except ImportError:  # running from inside runner/ as __main__
     from ops.live import _runner  # type: ignore
 
 
+def _config_given(argv):
+    return any(a == "--config" or a.startswith("--config=") for a in argv)
+
+
+def _installed_config():
+    """The installed home's config.json when one exists, else None:
+    C:\\homing-pigeon\\config.json on Windows, ~/.homing-pigeon/config.json
+    elsewhere."""
+    if sys.platform == "win32":
+        drive = os.environ.get("SystemDrive", "C:")
+        cands = [os.path.join(drive + os.sep, "homing-pigeon", "config.json")]
+    else:
+        cands = [os.path.join(os.path.expanduser("~"), ".homing-pigeon",
+                              "config.json")]
+    for path in cands:
+        if os.path.isfile(path):
+            return path
+    return None
+
+
 def main() -> int:
     R = _runner()
     # --help is a document: the groups below are its chapters,
@@ -32,6 +52,13 @@ def main() -> int:
         return 2
 
     cfg_path = args.config
+    if args.setup and not _config_given(sys.argv[1:]) \
+            and not os.path.exists(cfg_path):
+        # The service reads the installed home's config; a wizard that
+        # wrote ./config.json instead set up a file nothing reads
+        # (Q98 item 5). With no --config, --setup writes there when an
+        # installed home exists.
+        cfg_path = _installed_config() or cfg_path
     if R._setup is not None and args.setup:
         cfg = R._setup.run_setup_wizard(cfg_path)
     elif not os.path.exists(cfg_path):

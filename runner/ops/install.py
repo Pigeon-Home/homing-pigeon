@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import math
 import threading
 import time
 import zipfile
@@ -220,9 +221,11 @@ def ensure_shared_secret(cfg_path: str, provided: str | None,
         return  # user-set real secret; leave it alone
     # Missing, empty, or still the example placeholder: (re)generate.
     secret = provided or secrets.token_hex(32)
-    # Light entropy gate (the runner does the full check at startup).
+    # The runner's own estimate (runner/guard/security.py,
+    # _estimate_secret_entropy: length x log2 of the alphabet), so the
+    # installer never refuses a secret the runner accepts (Q98 item 8).
     alphabet = len(set(secret))
-    bits = len(secret) * (alphabet.bit_length() - 1) if alphabet > 1 else 0
+    bits = len(secret) * math.log2(alphabet) if alphabet > 1 else 0
     if bits < 128 or _looks_like_placeholder(secret) or _looks_patterned(secret):
         print("error: --shared-secret is too weak (needs 128+ bits of real "
               "entropy, not a placeholder or repeating pattern)",
@@ -1275,7 +1278,7 @@ def do_install_home(args, home, bin_dir, cfg_path, state_dir, src_dir) -> int:
     else:
         if getattr(args, "faster", False) and not args.no_inference:
             print(f"install: one home already installed (v{prev_version}); "
-                  "upgrading binaries, and switching the model to the lighter Llama")
+                  "upgrading binaries, and switching the model to the faster qwen2.5:3b")
         else:
             print(f"install: one home already installed (v{prev_version}); "
                   "upgrading binaries in place -- config.json and state/ "
@@ -1372,15 +1375,30 @@ WantedBy={"multi-user.target" if system else "default.target"}
     print(f"installed: systemd unit at {path}")
 
 
+SYSTEM_UNIT = "/etc/systemd/system/homing-pigeon.service"
+USER_UNIT = "~/.config/systemd/user/homing-pigeon.service"
+
+
 def uninstall_linux(system: bool):
-    if system:
-        run(["systemctl", "disable", "--now", "homing-pigeon.service"])
-        os.remove("/etc/systemd/system/homing-pigeon.service")
-        run(["systemctl", "daemon-reload"])
-    else:
-        run(["systemctl", "--user", "disable", "--now", "homing-pigeon.service"])
-        os.remove(os.path.expanduser("~/.config/systemd/user/homing-pigeon.service"))
-        run(["systemctl", "--user", "daemon-reload"])
+    """Remove whichever unit is there: the one --system names first,
+    then the other, so an uninstall without --system still finds a
+    system install (Q98 item 10). Neither present is said, not raised."""
+    user_unit = os.path.expanduser(USER_UNIT)
+    order = [(True, SYSTEM_UNIT), (False, user_unit)]
+    if not system:
+        order.reverse()
+    removed = False
+    for is_system, path in order:
+        if not os.path.exists(path):
+            continue
+        scope = [] if is_system else ["--user"]
+        run(["systemctl", *scope, "disable", "--now", "homing-pigeon.service"])
+        os.remove(path)
+        run(["systemctl", *scope, "daemon-reload"])
+        removed = True
+    if not removed:
+        print("uninstall: no homing-pigeon systemd unit found "
+              f"({SYSTEM_UNIT} or {user_unit})")
 
 
 def _posix_uid() -> int:
@@ -3280,10 +3298,12 @@ def main() -> int:
                         "config")
     g.add_argument("--migrate", action="store_true",
                    help="copy state found in other locations into "
-                        "--dir (never overwrites) and report what "
-                        "moved")
+                        "the install's state folder (--dir, or "
+                        "<home>\\state on a Windows one-home install; "
+                        "never overwrites) and report what moved")
     g.add_argument("--uninstall", action="store_true",
-                   help="remove the service and the installed files")
+                   help="remove the service entry (the installed files "
+                        "and the state stay; --wipe removes those)")
     g.add_argument("--wipe", action="store_true",
                    help="back up every pigeon state dir on this box "
                         "into one zip, then delete the state dirs, "
@@ -3351,7 +3371,7 @@ def main() -> int:
                         "with --faster; the pi-light profile "
                         "installs no model at all)")
     g.add_argument("--faster", action="store_true",
-                   help="pull qwen2.5:3b, a smaller faster model. "
+                   help="pull qwen2.5:3b, the faster model. "
                         "Does not change protected paths. "
                         "--inference-model still wins.")
     g = ap.add_argument_group(

@@ -262,7 +262,10 @@ class SystemdUnitTest(unittest.TestCase):
              mock.patch("runner.ops.install.run",
                         side_effect=lambda cmd, **kw: order.append("run")), \
              mock.patch("runner.ops.install.os.remove",
-                        side_effect=lambda path: order.append("remove")):
+                        side_effect=lambda path: order.append("remove")), \
+             mock.patch("runner.ops.install.os.path.exists",
+                        side_effect=lambda p: p == "/tmp/hp-unit-not-real.service"):
+            # the uninstall removes only a unit that exists (Q98 item 10)
             uninstall_linux(False)
         self.assertEqual(order[0], "run")
         self.assertEqual(order[1], "remove")
@@ -513,7 +516,10 @@ class LinuxWipeTest(unittest.TestCase):
         with mock.patch("runner.ops.install.run",
                         side_effect=lambda cmd, **kw: order.append(("run", list(cmd)))), \
              mock.patch("runner.ops.install.os.remove",
-                        side_effect=lambda path: order.append(("remove", path))):
+                        side_effect=lambda path: order.append(("remove", path))), \
+             mock.patch("runner.ops.install.os.path.exists",
+                        side_effect=lambda p: p == "/etc/systemd/system/homing-pigeon.service"):
+            # the uninstall removes only a unit that exists (Q98 item 10)
             uninstall_linux(True)
         self.assertEqual(order, [
             ("run", ["systemctl", "disable", "--now", "homing-pigeon.service"]),

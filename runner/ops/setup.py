@@ -57,11 +57,25 @@ def _use_oauth(cfg: dict) -> bool:
     return str(cfg.get("auth") or "password").lower() == "oauth"
 
 
+# The values runner/config.example.json seeds. A config still holding
+# one was copied and never filled in: it is unset, so the installer
+# offers sign-in on a fresh install (Q98 item 4).
+EXAMPLE_PLACEHOLDERS = {
+    "mailbox_user": "homing-pigeon-runner@gmail.com",
+    "mailbox_password": "paste-app-password-here-in-plaintext",
+}
+
+
+def _set(cfg, key):
+    value = cfg.get(key)
+    return bool(value) and value != EXAMPLE_PLACEHOLDERS.get(key)
+
+
 def needs_setup(cfg: dict) -> str | None:
     """Reason mailbox auth cannot work, or None when it can."""
     if not isinstance(cfg, dict):
         return "config is not an object"
-    if not cfg.get("mailbox_user"):
+    if not _set(cfg, "mailbox_user"):
         return "mailbox_user is not set"
     if _use_oauth(cfg):
         if not cfg.get("oauth_client_id"):
@@ -69,7 +83,7 @@ def needs_setup(cfg: dict) -> str | None:
         if not cfg.get("oauth_refresh_token"):
             return "no OAuth refresh token (sign-in never completed)"
         return None
-    if not cfg.get("mailbox_password"):
+    if not _set(cfg, "mailbox_password"):
         return "mailbox_password is not set"
     return None
 

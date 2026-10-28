@@ -83,12 +83,17 @@ class ServiceEnvTest(unittest.TestCase):
     def test_linux_system_unit_is_the_multi_user_target(self):
         pkg = _Pkg()
         removed = []
+        path = "/etc/systemd/system/homing-pigeon.service"
+        # The unit is written through the fake, so the uninstall is told
+        # it is there; it removes only a unit that exists (Q98 item 10).
+        real_exists = os.path.exists
         with mock.patch.object(inst, "run", pkg.run), \
                 mock.patch.object(inst, "_write_text", pkg.write_text), \
-                mock.patch.object(os, "remove", removed.append):
+                mock.patch.object(os, "remove", removed.append), \
+                mock.patch.object(os.path, "exists",
+                                  lambda p: p == path or real_exists(p)):
             inst.install_linux("/opt/hp", "/opt/hp/c.json", True)
             inst.uninstall_linux(True)
-        path = "/etc/systemd/system/homing-pigeon.service"
         self.assertIn("multi-user.target", pkg.files[path][0])
         self.assertEqual(removed, [path])
         self.assertIn(
