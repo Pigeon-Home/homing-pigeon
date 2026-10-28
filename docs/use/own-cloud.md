@@ -41,8 +41,17 @@ command; the design is `docs/project/hosting.md`.
 
 ## The command
 
-With the hosted queue, the runner, the Worker URL and the token
-arrive together:
+With the hosted queue, first mint the tenant on your Worker
+(`runner/cloud/queues-worker/README.md` deploys it):
+
+```bash
+homing-pigeon-host queue-tenant --tenant you --worker https://hp.example.workers.dev
+```
+
+It writes the SI token, the runner token and the shared secret to a
+private file (`~/.homing-pigeon/tenants/you.env`) and the Worker's KV
+record beside it, prints none of them, and prints the next commands.
+Then the runner, the Worker URL and the token arrive together:
 
 ```bash
 export FLY_API_TOKEN=...  HP_RUNNER_TOKEN=...  HP_SECRET=...

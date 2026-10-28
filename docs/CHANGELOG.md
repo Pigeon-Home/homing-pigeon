@@ -10,6 +10,12 @@ facts a reader may need to cite. Git history carries the rest.
   `GET /dlq`, `POST /dlq/<id>/ack` and `POST /dlq/<id>/requeue` on
   the SI token (a requeue counts against the hourly job quota), and
   `send_job.py dlq --from-queue URL` lists, drops and requeues.
+- **A queue tenant in one command.** `homing-pigeon-host queue-tenant`
+  mints the SI token, the runner token and the shared secret into a
+  private file, writes the Worker's KV record beside it, prints none of
+  them, and prints the `wrangler` and `host up --queue` commands. A test
+  round-trips a job through the real Worker under node with the minted
+  record.
 - **Line coverage without a package index.** `runner/tools/linecov.py`
   measures lines under the standard library's `sys.monitoring` and
   writes coverage.py's JSON shape, so `coverage_gaps.py` reads it. Its

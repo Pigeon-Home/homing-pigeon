@@ -34,6 +34,13 @@ per slug: `{"si_token_sha256", "runner_token_sha256", "hmac_secret",
 "quota": {"jobs_per_hour", "bytes_per_day"}}`. Hashes are SHA-256 hex
 of the token.
 
+`homing-pigeon-host queue-tenant --tenant <slug> --worker <url>` mints
+one: it writes the tokens and the shared secret to
+`~/.homing-pigeon/tenants/<slug>.env` and the KV record to
+`<slug>.kv.json`, both 0600, prints nothing secret, and prints the
+`wrangler kv key put` and `homing-pigeon-host up --queue` commands
+that use them.
+
 ## Test
 
 ```bash

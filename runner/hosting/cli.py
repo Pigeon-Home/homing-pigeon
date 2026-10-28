@@ -267,6 +267,80 @@ def cmd_dispatch(args, http=None, sleep=None):
     return 0
 
 
+def _write_private(path, text):
+    """Create `path` 0600 with `text`; refuse to overwrite a file."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(text)
+
+
+def queue_tenant_record(si_token, runner_token, secret, jobs_per_hour,
+                        bytes_per_day):
+    """The TENANTS KV record the Worker reads for one tenant: the two
+    bearer tokens as SHA-256 hex, the shared secret for the HMAC gate,
+    and the quota."""
+    import hashlib
+    return {"si_token_sha256": hashlib.sha256(si_token.encode()).hexdigest(),
+            "runner_token_sha256":
+                hashlib.sha256(runner_token.encode()).hexdigest(),
+            "hmac_secret": secret,
+            "quota": {"jobs_per_hour": jobs_per_hour,
+                      "bytes_per_day": bytes_per_day}}
+
+
+def cmd_queue_tenant(args):
+    """Mint one hosted-queue tenant: an SI token, a runner token and
+    (unless --secret-env names one) a shared secret. Nothing secret is
+    printed or put on a command line: the three go to <dir>/<tenant>.env
+    and the Worker's KV record to <dir>/<tenant>.kv.json, both 0600 and
+    never overwritten. Stdout is the next commands."""
+    import re
+    slug = args.tenant
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", slug or ""):
+        raise SystemExit("error: --tenant is 1 to 64 of A-Z a-z 0-9 . _ - "
+                         "(the Worker's slug rule), starting alphanumeric")
+    if args.jobs_per_hour < 1 or args.bytes_per_day < 1:
+        raise SystemExit("error: the quota must allow at least one job "
+                         "and one byte")
+    secret = None
+    if args.secret_env:
+        secret = os.environ.get(args.secret_env)
+        if not secret:
+            raise SystemExit(f"error: environment variable "
+                             f"{args.secret_env} is empty")
+    secret = secret or _secrets.token_hex(32)
+    si, runner = _secrets.token_urlsafe(32), _secrets.token_urlsafe(32)
+    folder = os.path.expanduser(args.dir)
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    env_path = os.path.join(folder, f"{slug}.env")
+    kv_path = os.path.join(folder, f"{slug}.kv.json")
+    for p in (env_path, kv_path):
+        if os.path.exists(p):
+            raise SystemExit(f"error: {p} exists; a tenant is minted once "
+                             f"(move it away to mint again)")
+    record = queue_tenant_record(si, runner, secret, args.jobs_per_hour,
+                                 args.bytes_per_day)
+    _write_private(kv_path, json.dumps(record, indent=2) + "\n")
+    _write_private(env_path,
+                   f"# hosted queue tenant {slug}: keep this file private\n"
+                   f"HP_SI_TOKEN={si}\nHP_RUNNER_TOKEN={runner}\n"
+                   f"HP_SECRET={secret}\n")
+    base = (args.worker or "https://<worker>").rstrip("/")
+    print(json.dumps({"tenant": slug, "queue": f"{base}/t/{slug}",
+                      "secrets_file": env_path, "kv_record_file": kv_path},
+                     indent=2))
+    print(f"""
+Next:
+  wrangler kv key put --binding TENANTS {slug} --path {kv_path}
+  set -a; . {env_path}; set +a
+  homing-pigeon-host up --provider fly --token-env FLY_API_TOKEN \\
+      --tenant {slug} --region iad --version <release> \\
+      --queue {base}/t/{slug} --secret-env HP_SECRET
+The SI holds HP_SI_TOKEN and HP_SECRET; the runner gets HP_RUNNER_TOKEN
+through --queue. Delete {kv_path} once the KV put has run.""")
+    return 0
+
+
 def build_parser():
     ap = argparse.ArgumentParser(
         prog="homing-pigeon-host",
@@ -311,6 +385,20 @@ def build_parser():
     queue_args(up)
     common(up)
 
+    qt = sub.add_parser("queue-tenant",
+                        help="mint a hosted-queue tenant: tokens, secret, "
+                             "KV record")
+    qt.add_argument("--tenant", required=True)
+    qt.add_argument("--dir", default="~/.homing-pigeon/tenants",
+                    help="where the 0600 secrets and KV record files go")
+    qt.add_argument("--worker", default=None, metavar="URL",
+                    help="the Worker's base URL, for the printed commands")
+    qt.add_argument("--secret-env", default=None, metavar="NAME",
+                    help="environment variable holding an existing shared "
+                         "secret (default: a new one)")
+    qt.add_argument("--jobs-per-hour", type=int, default=600)
+    qt.add_argument("--bytes-per-day", type=int, default=256 * 1024 * 1024)
+
     st = sub.add_parser("status", help="list the inventory")
 
     for name, fn_help in (("redeploy", "recreate with a new version or blob"),
@@ -353,6 +441,8 @@ def main(argv=None):
     try:
         if args.cmd == "up":
             return cmd_up(args)
+        if args.cmd == "queue-tenant":
+            return cmd_queue_tenant(args)
         if args.cmd == "status":
             return cmd_status(args)
         if args.cmd == "destroy":

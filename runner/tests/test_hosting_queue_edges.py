@@ -309,5 +309,126 @@ class HostCliEdgesTest(unittest.TestCase):
         self.assertIn("bad blob", err.getvalue())
 
 
+
+_WORKER_ROUNDTRIP = r"""
+import worker, { TenantQueue } from "./src/index.js";
+import fs from "node:fs";
+const [recPath, slug, si, runner, envelope] = JSON.parse(fs.readFileSync(0, "utf8"));
+class Store { constructor() { this.m = new Map(); }
+  async get(k) { return this.m.has(k) ? structuredClone(this.m.get(k)) : undefined; }
+  async put(k, v) { this.m.set(k, structuredClone(v)); }
+  async delete(k) { return this.m.delete(k); }
+  async list({ prefix = "", limit = Infinity } = {}) { const o = new Map();
+    for (const k of [...this.m.keys()].sort()) { if (o.size >= limit) break;
+      if (k.startsWith(prefix)) o.set(k, structuredClone(this.m.get(k))); } return o; } }
+const objs = new Map();
+const env = { TENANTS: { async get(k) { return k === slug ? fs.readFileSync(recPath, "utf8") : null; } },
+  TENANT_QUEUE: { idFromName: (n) => n, get(id) { if (!objs.has(id)) objs.set(id, new TenantQueue({ storage: new Store() }, env)); return objs.get(id); } } };
+const call = (path, method, token, body) => worker.fetch(new Request("https://w.test" + path,
+  { method, body, headers: { authorization: "Bearer " + token } }), env);
+const out = [];
+out.push((await call(`/t/${slug}/jobs`, "POST", si, envelope)).status);
+out.push((await call(`/t/${slug}/jobs`, "POST", runner, envelope)).status);
+out.push((await call(`/t/${slug}/jobs`, "GET", runner)).status);
+console.log(JSON.stringify(out));
+"""
+
+
+class QueueTenantTest(unittest.TestCase):
+    """`homing-pigeon-host queue-tenant`: a tenant minted with nothing
+    secret on stdout, and a record the Worker itself accepts."""
+
+    def setUp(self):
+        self.td = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.td.cleanup()
+
+    def _mint(self, *extra):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            rc = host_cli.main(["queue-tenant", "--tenant", "alice",
+                                "--dir", self.td.name,
+                                "--worker", "https://w.example"] + list(extra))
+        return rc, out.getvalue()
+
+    def _env(self):
+        vals = {}
+        with open(os.path.join(self.td.name, "alice.env"),
+                  encoding="utf-8") as fh:
+            for line in fh:
+                if "=" in line and not line.startswith("#"):
+                    k, v = line.strip().split("=", 1)
+                    vals[k] = v
+        return vals
+
+    def test_the_files_are_private_and_stdout_holds_no_secret(self):
+        rc, shown = self._mint()
+        self.assertEqual(rc, 0)
+        vals = self._env()
+        self.assertEqual(set(vals), {"HP_SI_TOKEN", "HP_RUNNER_TOKEN",
+                                     "HP_SECRET"})
+        for v in vals.values():
+            self.assertNotIn(v, shown)
+        self.assertIn("https://w.example/t/alice", shown)
+        self.assertIn("wrangler kv key put --binding TENANTS alice", shown)
+        with open(os.path.join(self.td.name, "alice.kv.json"),
+                  encoding="utf-8") as fh:
+            rec = json.load(fh)
+        import hashlib
+        self.assertEqual(rec["si_token_sha256"], hashlib.sha256(
+            vals["HP_SI_TOKEN"].encode()).hexdigest())
+        self.assertEqual(rec["hmac_secret"], vals["HP_SECRET"])
+        self.assertEqual(rec["quota"], {"jobs_per_hour": 600,
+                                        "bytes_per_day": 256 * 1024 * 1024})
+        if os.name != "nt":
+            for name in ("alice.env", "alice.kv.json"):
+                mode = os.stat(os.path.join(self.td.name, name)).st_mode
+                self.assertEqual(mode & 0o777, 0o600, name)
+
+    def test_minted_once_a_given_secret_and_bad_input(self):
+        os.environ["HP_TEST_GIVEN"] = secrets.token_hex(32)
+        try:
+            self.assertEqual(self._mint("--secret-env", "HP_TEST_GIVEN")[0], 0)
+            self.assertEqual(self._env()["HP_SECRET"],
+                             os.environ["HP_TEST_GIVEN"])
+        finally:
+            os.environ.pop("HP_TEST_GIVEN", None)
+        with self.assertRaisesRegex(SystemExit, "minted once"):
+            self._mint()
+        for bad in (["--tenant", "-x"], ["--tenant", "a/b"],
+                    ["--tenant", "ok", "--jobs-per-hour", "0"],
+                    ["--tenant", "ok", "--secret-env", "HP_UNSET_XYZ"]):
+            with self.assertRaises(SystemExit), \
+                    redirect_stdout(io.StringIO()), \
+                    redirect_stderr(io.StringIO()):
+                host_cli.main(["queue-tenant", "--dir", self.td.name] + bad)
+
+    @unittest.skipIf(__import__("shutil").which("node") is None,
+                     "node is not installed")
+    def test_the_worker_accepts_the_minted_record(self):
+        import subprocess
+        self.assertEqual(self._mint()[0], 0)
+        vals = self._env()
+        body = send_job.sign_payload({"v": 1, "type": "job", "job_id": "j1",
+                                      "kind": "ping"}, vals["HP_SECRET"])
+        envelope = f"[HOMING-PIGEON] job j1\n\n{body}\n"
+        worker_dir = os.path.join(REPO, "runner", "cloud", "queues-worker")
+        script = os.path.join(self.td.name, "roundtrip.mjs")
+        with open(script, "w", encoding="utf-8") as fh:
+            fh.write(_WORKER_ROUNDTRIP.replace(
+                "./src/index.js",
+                "file://" + os.path.join(worker_dir, "src", "index.js")))
+        r = subprocess.run(
+            ["node", script], capture_output=True, text=True, timeout=60,
+            input=json.dumps([os.path.join(self.td.name, "alice.kv.json"),
+                              "alice", vals["HP_SI_TOKEN"],
+                              vals["HP_RUNNER_TOKEN"], envelope]))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # The SI submits (202), the runner token cannot (401), the
+        # runner pulls it (200).
+        self.assertEqual(json.loads(r.stdout), [202, 401, 200])
+
+
 if __name__ == "__main__":
     unittest.main()
