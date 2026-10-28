@@ -287,7 +287,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 return
             _runner().send_mail(smtp, cfg, subject, body, to=to or reply_to)
 
-        def commit_and_deliver(subject, body, meta=None):
+        # The result chain (PROTOCOL 3.2) runs per key: a key sees its
+        # own results in order, and learns nothing of another key's.
+        chain_owner = _runner().canonical_key_id(secrets, key_id)
+
+        def commit_and_deliver(subject, body, meta=None, chain=None):
             # The result, as it goes on the wire, is stashed in the
             # outbox and the job committed as seen -- on disk -- before
             # the first send; delivery is then its own retryable
@@ -300,6 +304,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                         transport=transport, key_id=key_id,
                         encrypted=encrypt_result, meta=meta):
                     raise RuntimeError("result not stashed; will retry")
+                if chain is not None:
+                    # The link is the stashed result's: a stash that
+                    # failed above left the chain where it was.
+                    _runner().chain_commit(base_dir, chain_owner, *chain)
                 seen[skey] = True
                 _runner().save_seen(os.path.join(base_dir, "seen.json"), seen,
                                     keep_sec=_runner().seen_keep_sec(cfg))
@@ -631,16 +639,19 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # Fit before signing (review item 4): a body over
             # max_result_bytes has its streams cut to head and tail,
             # marked, and is rebuilt; the signature covers what is sent.
-            result, out_body = _runner()._fit_result_body(
-                result, secret, encrypt_result, job_id, key_id,
-                _runner()._max_result_bytes(cfg))
-            if result.get("result_truncated"):
-                R.log(f"job {job_id}: result cut to fit max_result_bytes "
-                      f"({result['result_truncated']['dropped']} bytes "
-                      f"dropped)", "WARN")
-            R.log(f"job {job_id} done (exit={r['exit_code']})")
-            commit_and_deliver(out_subject, out_body,
-                               meta=_runner()._result_meta(result))
+            with R._CHAIN_LOCK:
+                chain_seq = _runner().chain_members(cfg, base_dir, chain_owner, result)
+                result, out_body = _runner()._fit_result_body(
+                    result, secret, encrypt_result, job_id, key_id,
+                    _runner()._max_result_bytes(cfg))
+                if result.get("result_truncated"):
+                    R.log(f"job {job_id}: result cut to fit max_result_bytes "
+                          f"({result['result_truncated']['dropped']} bytes "
+                          f"dropped)", "WARN")
+                R.log(f"job {job_id} done (exit={r['exit_code']})")
+                commit_and_deliver(out_subject, out_body,
+                                   meta=_runner()._result_meta(result),
+                                   chain=None if chain_seq is None else (chain_seq, result))
         except _runner().JobRejected as e:
             R.log(f"job {job_id} rejected: {e}", "WARN")
             try:
@@ -696,11 +707,15 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 # The same stash-then-deliver pair as a result: one
                 # code path, the same guarantee, and a rejection whose
                 # delivery fails is retried from the outbox too.
-                commit_and_deliver(
-                    f"{_runner().SUBJECT_RESULT}{job_id}",
-                    _runner()._outgoing_result_body(
-                        result, secret, encrypt_result, job_id, key_id),
-                    meta=_runner()._result_meta(result))
+                with R._CHAIN_LOCK:
+                    chain_seq = _runner().chain_members(cfg, base_dir,
+                                                        chain_owner, result)
+                    commit_and_deliver(
+                        f"{_runner().SUBJECT_RESULT}{job_id}",
+                        _runner()._outgoing_result_body(
+                            result, secret, encrypt_result, job_id, key_id),
+                        meta=_runner()._result_meta(result),
+                        chain=None if chain_seq is None else (chain_seq, result))
             except Exception as e2:
                 R.log(f"could not send rejection result: {e2}", "ERROR")
         except Exception as e:

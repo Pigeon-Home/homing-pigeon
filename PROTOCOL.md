@@ -233,6 +233,27 @@ The reference default is email only: `transports` absent means
   changed and never what. The view does not shape it, since it is
   not output, and no tier lets a receiver read the list back from
   it. A runner reinstalled with a new salt reads as changed.
+- `result_seq` and `prev_result_sha384`: the result chain. Every
+  result the runner signs carries `result_seq`, one more than the
+  last result it signed under the same key (section 14.2; the
+  default key under any of its names is one key), starting at 1, and
+  from the second on `prev_result_sha384`, the SHA-384 in lowercase
+  hex of that previous result's signed JSON: the text the signature
+  covers, which a receiver gets back by cutting the signature off,
+  or recomputes as the payload's compact JSON in its own order. A
+  receiver that keeps the chain proves it saw every run in order: a
+  jump in `result_seq` is a result that never reached it, and a
+  `prev_result_sha384` it did not see is a run it never heard of. The
+  chain is per key, so no key learns how many runs another key made.
+  A link is recorded once its result is stashed for delivery
+  (section 15), so a run whose stash failed and that runs again
+  takes the same number. A delivery stub (section 15) keeps the
+  `result_seq` and `prev_result_sha384` of the result it replaces
+  and adds `replaces_result_sha384`, that result's digest, which the
+  next link names. The owner turns the chain off with `result_chain:
+  false`; a runner whose chain file is lost starts again at 1, which
+  a receiver reads as a break. `send_job.py verify --chain FILE`
+  keeps the receiver's side and exits 3 on a gap or a break.
 - `key_id`: the name of the key that verified the job (section
   14.2): the `key_id` the job carried, or, for a job that carried
   none, the default key's fingerprint. A name, never a value. It

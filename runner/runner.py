@@ -1846,12 +1846,101 @@ def outbox_lines(base_dir):
 # never its streams.
 _STUB_KEYS = ("v", "type", "job_id", "kind", "key_id", "completed_at",
               "exit_code", "timed_out", "duration_sec", "runner", "review",
-              "judgment")
+              "judgment", "env_fingerprint", "result_seq",
+              "prev_result_sha384")
 
 def _result_meta(result):
     if not isinstance(result, dict):
         return {}
-    return {k: result[k] for k in _STUB_KEYS if k in result}
+    meta = {k: result[k] for k in _STUB_KEYS if k in result}
+    if "result_seq" in result:
+        # A stub that replaces this result names the link it replaces,
+        # so the sender's chain stays whole (PROTOCOL 3.2).
+        digest = result_digest(result)
+        if digest:
+            meta["result_sha384"] = digest
+    return meta
+
+
+# ---- the result chain (PROTOCOL 3.2): each key's results in order
+CHAIN_FILE = "result_chain.json"
+_CHAIN_LOCK = threading.RLock()
+
+
+def result_digest(result):
+    """SHA-384 over a result's signed JSON, the text the signature
+    covers: what a receiver gets back from the body by cutting the
+    signature off. None for what cannot be signed."""
+    try:
+        text = _normalize(json.dumps(_json_safe(result), separators=(",", ":"),
+                                     ensure_ascii=False, allow_nan=False))
+    except (TypeError, ValueError):
+        return None
+    return hashlib.sha384(text.encode("utf-8")).hexdigest()
+
+
+def _chain_state(base_dir):
+    path = os.path.join(base_dir, CHAIN_FILE)
+    try:
+        with open(path, encoding="utf-8") as fh:
+            state = json.load(fh)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError):
+        # A chain file that cannot be read starts a new chain from one,
+        # which a sender reads as a break, never as continuity.
+        log(f"{CHAIN_FILE} unreadable; the result chain starts again", "WARN")
+        return {}
+    return state if isinstance(state, dict) else {}
+
+
+def chain_link(base_dir, owner):
+    """(seq, prev) for the next result signed by `owner`'s key: one
+    more than the last sequence this runner committed for that key
+    and the digest of that result, or (1, None) for a key's first.
+    Call under _CHAIN_LOCK, through chain_commit."""
+    if not _valid_base(base_dir) or not isinstance(owner, str):
+        return None, None
+    entry = _chain_state(base_dir).get(owner)
+    if not isinstance(entry, dict):
+        return 1, None
+    seq = entry.get("seq")
+    last = entry.get("last")
+    if isinstance(seq, bool) or not isinstance(seq, int) or seq < 1 \
+            or not (isinstance(last, str) and len(last) == 96):
+        return 1, None
+    return seq + 1, last
+
+
+def chain_commit(base_dir, owner, seq, result):
+    """Record a result as the key's newest link, once it is stashed."""
+    if not _valid_base(base_dir) or not isinstance(owner, str) \
+            or not isinstance(seq, int):
+        return
+    digest = result_digest(result)
+    if digest is None:
+        return
+    state = _chain_state(base_dir)
+    state[owner] = {"seq": seq, "last": digest}
+    try:
+        _atomicio.write_json(os.path.join(base_dir, CHAIN_FILE), state)
+    except OSError as e:
+        log(f"result chain not recorded: {e}", "WARN")
+
+
+def chain_members(cfg, base_dir, owner, result):
+    """Set result_seq and prev_result_sha384 on a result about to be
+    signed; returns the seq to commit, or None when the chain is off
+    (result_chain: false) or cannot be read."""
+    if isinstance(cfg, dict) and cfg.get("result_chain") is False:
+        return None
+    seq, prev = chain_link(base_dir, owner)
+    if seq is None:
+        return None
+    result["result_seq"] = seq
+    if prev:
+        result["prev_result_sha384"] = prev
+    return seq
 
 # ---- the result's size, and what a permanent refusal gets instead
 MAX_RESULT_BYTES = 5 * 1024 * 1024   # 5 MiB on the wire; providers allow 10-25 for the whole message
@@ -1952,6 +2041,8 @@ def _stub_result(job_id, original, reason):
     stub.setdefault("v", PROTOCOL_VERSION)
     stub.setdefault("type", "result")
     stub["job_id"] = job_id
+    if isinstance(original, dict) and isinstance(original.get("result_sha384"), str):
+        stub["replaces_result_sha384"] = original["result_sha384"]
     stub["stdout"] = ""
     stub["stderr"] = ""
     stub["stdout_truncated"] = True

@@ -165,6 +165,10 @@ def normalize(text, tmpdir, job_id=None, extra_secrets=()):
     text = re.sub(
         r'"output_digest":"[0-9a-fA-F]+"',
         '"output_digest":"<DIGEST>"', text)
+    # The result chain's link is a digest over the previous result,
+    # durations and all, so it moves when they do.
+    text = re.sub(r'"(prev_result|replaces_result|result)_sha384":"[0-9a-f]{96}"',
+                  r'"\1_sha384":"<DIGEST>"', text)
     try:
         text = text.replace(socket.gethostname(), "<HOST>")
     except Exception:

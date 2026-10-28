@@ -848,8 +848,70 @@ def cmd_verify(args) -> int:
         rc = write_outputs(payload, args.outputs_dir)
         if rc:
             return rc
+    chain_rc = 0
+    if getattr(args, "chain", None):
+        chain_rc = check_chain(payload, args.chain)
     print(json.dumps(payload, indent=2, ensure_ascii=False))
-    return 0
+    return chain_rc
+
+
+def result_digest(payload):
+    """SHA-384 over a result's signed JSON, as the runner computes the
+    link (PROTOCOL.md section 3.2): the payload's own JSON, compact,
+    in the order it was signed."""
+    text = normalize(json.dumps(payload, separators=(",", ":"),
+                                ensure_ascii=False, allow_nan=False))
+    return hashlib.sha384(text.encode("utf-8")).hexdigest()
+
+
+def check_chain(payload, path):
+    """Hold a verified result against the chain this sender has seen,
+    per key, in the JSON file at `path`, then record it. 0 when it is
+    the next link (or the first this file has seen of its key), 3 on
+    a gap or a break; a line on stderr says which. A stub stands for
+    the result it replaced, so the link it records is that one's."""
+    seq = payload.get("result_seq")
+    if isinstance(seq, bool) or not isinstance(seq, int):
+        print("chain: the result carries no result_seq", file=sys.stderr)
+        return 0
+    key = payload.get("key_id") if isinstance(payload.get("key_id"), str) else ""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            state = json.load(fh)
+        if not isinstance(state, dict):
+            state = {}
+    except FileNotFoundError:
+        state = {}
+    except (OSError, ValueError) as e:
+        print(f"chain: {path} unreadable ({e}); starting it again",
+              file=sys.stderr)
+        state = {}
+    seen = state.get(key) if isinstance(state.get(key), dict) else None
+    rc = 0
+    prev = payload.get("prev_result_sha384")
+    if seen is None:
+        print(f"chain: first result seen for {key or 'the default key'} "
+              f"(seq {seq})", file=sys.stderr)
+    elif seq <= seen.get("seq", 0):
+        print(f"chain: seq {seq} is not after {seen.get('seq')} already "
+              "seen: a replay or an old copy", file=sys.stderr)
+        return 3
+    elif seq != seen.get("seq", 0) + 1:
+        print(f"chain: gap, seq {seen.get('seq', 0) + 1} to {seq - 1} "
+              "never reached this sender", file=sys.stderr)
+        rc = 3
+    elif prev != seen.get("last"):
+        print(f"chain: break, seq {seq} does not follow the result "
+              f"seen as seq {seen.get('seq')}", file=sys.stderr)
+        rc = 3
+    else:
+        print(f"chain: ok, seq {seq}", file=sys.stderr)
+    link = payload.get("replaces_result_sha384")
+    if not (isinstance(link, str) and len(link) == 96):
+        link = result_digest(payload)
+    state[key] = {"seq": seq, "last": link}
+    _atomicio.write_json(path, state)
+    return rc
 
 
 def write_outputs(payload, dest):
@@ -1293,6 +1355,10 @@ def main() -> int:
     v.add_argument("--outputs-dir", default=None, metavar="DIR",
                    help="write the result's output files here, each "
                         "checked against its sha384")
+    v.add_argument("--chain", default=None, metavar="PATH",
+                   help="hold the result against the result chain kept "
+                        "in this file, per key, and record it (exit 3 "
+                        "on a gap or a break)")
     v.add_argument("file", nargs="?", default=None, metavar="PATH",
                    help="file to read (default: stdin)")
     v.set_defaults(func=cmd_verify)
