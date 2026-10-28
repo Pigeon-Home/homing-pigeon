@@ -1749,8 +1749,13 @@ class RingTwoBoardTest(unittest.TestCase):
         self.assertEqual(task["state"], "pending_review")
         self.assertEqual(task["claimed_by"], "w-rev")
         self._send("review-ok", self._sealed("review-ok"))
+        # A second request in the same second is the same signature,
+        # and the seen-set skips a replay. A new second is a new request.
+        later = (datetime.now(timezone.utc) + timedelta(seconds=1)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
         self._send_kind("task_request", "w-other", self._kind(
-            "task_request", "w-other", capabilities=["py"]))
+            "task_request", "w-other", capabilities=["py"],
+            issued_at=later))
         self.assertEqual(self.board.tasks["review-ok"]["claimed_by"], "w-other")
         self.assertEqual(
             self.board.tasks["in-review"]["state"], "pending_review")

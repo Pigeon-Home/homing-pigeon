@@ -41,7 +41,9 @@ facts a reader may need to cite. Git history carries the rest.
   into the blob with the runner token from the environment, and
   `--secret-env` passes the shared secret the Worker already holds.
 - **`do_console` does not return from `finally`.** A failed restart
-  of the Windows task is still exit 1.
+  of the Windows task is still exit 1. The query worker is dropped
+  under the same lock the grep holds, so a concurrent batch does
+  not leave a child the soak counts as unreaped.
 
 ## 3.14.5 - 2026-10-27
 

@@ -288,8 +288,9 @@ def _drop_worker():
     a job left behind. A cycle that ends with it still running is
     a process the soak reports as not reaped."""
     global _worker
-    proc = _worker
-    _worker = None
+    with _worker_lock:
+        proc = _worker
+        _worker = None
     _stop_worker(proc)
 
 
