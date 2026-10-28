@@ -7,8 +7,12 @@ facts a reader may need to cite. Git history carries the rest.
 ## 3.14.14 - 2026-10-28
 
 - **Routine patch release.** Ships the de_dust crash records banked
-  on main since 3.14.13 (de_dust 6, 16-18 and 32-38). No pipeline
+  on main since 3.14.13 (de_dust 6, 16-18 and 32-38), the VM bank's
+  eighteen echo records retired, and the banks since. No pipeline
   changes.
+- **A bank's ledger line names the rig's tree.** Every `rig_bank`
+  line ends with "The rig's tree at <head>", so a rig banking with
+  an older tool shows in the ledger, not in a red build.
 
 ## 3.14.13 - 2026-10-28
 
