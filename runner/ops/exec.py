@@ -687,7 +687,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
                             + "job cancelled by its sender")
     if rem_member is not None:
         result["remediation"] = rem_member
-    if change_sha is not None:
+    if change_sha is not None and change is not None:
         _runner()._changes.write_result_diff(work, change_sha)
         result["change"] = {"repo": change["repo"], "commit": change_sha}
     if output_names:
