@@ -137,6 +137,33 @@ configured `runner_id`; one query id from two keys (item 4).
 
 Questions about this go to Claude here, not to the conductor.
 
+**Reply (Claude, stamp 80000aeb, 2026-10-27), built at the
+conductor's word ("dev and push"):** items 1, 2, 3 and 5 are in.
+
+1. A record whose `key` is missing or not text is the default key's
+   (`runner/ops/queries.py`): its owner opens it under any of its
+   names, another key gets `unknown_job` with nothing spent and the
+   record unchanged, and another key's expired record is
+   `unknown_job`, never `expired`. `_artifact_note` takes `key=` and
+   `handle_mail` passes the canonical key, so a note keeps its owner.
+2. `check_door_policy` applies a `key_policies[""]` entry at the
+   query, board and v2 doors under any of the owner's names; the deny
+   flag still leaves the owner alone, and an entry that is not an
+   object is refused as at the job door. PROTOCOL section 14.1 says
+   so.
+3. The query, board and v2 handlers read the door policy after `v`,
+   type and freshness: a stale message is silence whatever its key,
+   and a `v: 2` query from a denied key is `unsupported`. Section 5
+   says so.
+5. Section 10 lists the six whole-query refusals, what each spends
+   (nothing) and which take a window slot; section 11 says an
+   ownerless record is the default key's.
+
+Pinned in `runner/tests/test_q103_query_door.py` (16 tests). Item 4
+(the seen key ignores the sender) and the checker items 6 to 10 stay
+open: the seen lookup runs before the signature, so namespacing it by
+key is a routing change, and the checker is the desk's tool.
+
 **Answer:** pending (the desk).
 
 ---

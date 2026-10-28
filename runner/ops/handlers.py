@@ -177,10 +177,6 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     if not encrypted and not R._cleartext_jobs_allowed():
         reject("cleartext version 2 message refused")
         return True
-    door = R._verify.check_door_policy(cfg, secrets, key_id, "v2")
-    if door:
-        reject(f"key policy: {door}")
-        return True
     # The answerer list names keys; a key answers under any of its
     # names (Q94: the default key's fingerprint is the default key).
     if not any(R._protocol_v2.answerer_allowed(cfg, name)
@@ -198,6 +194,12 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     fresh, why = R._issued_at_ok(payload.get("issued_at"), cfg)
     if not fresh:
         reject(why)
+        return True
+    # The key's door policy after freshness, as section 5 orders a
+    # job's checks (Q103 item 3).
+    door = R._verify.check_door_policy(cfg, secrets, key_id, "v2")
+    if door:
+        reject(f"key policy: {door}")
         return True
     seen_path = os.path.join(base_dir, "seen.json") \
         if isinstance(base_dir, str) and base_dir else ""

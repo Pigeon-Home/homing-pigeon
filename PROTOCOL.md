@@ -430,7 +430,9 @@ Authorization then runs in this order, and all of it must pass:
 Two more gates sit in that order: a cleartext body is refused right
 after the signature verifies, unless cleartext acceptance is enabled
 (section 8), and the key policy (section 14.1) is applied after the
-freshness check.
+freshness check. A query, a board message and a version 2 message
+keep the same order: a stale message is refused before its key's
+door policy is read, so it is silence whatever key signed it.
 
 Failures are logged, the mail is marked seen, and the job is **never**
 executed. **A verified job is executed at most once per runner state
@@ -957,11 +959,32 @@ after.
 The `query` (`[HOMING-PIGEON] query <query_id>`) and `qresult`
 message types exist for exceptional follow-ups only. Every one
 passes the section-5 verification (signature, freshness,
-seen-set on `query_id`) **and** spends budget (section 11).
+seen-set on `query_id`), and every answered one spends budget
+(section 11).
 
 Outputs are retained per `output_retention_days` (runner config,
 default 7); queries against expired or unknown `job_id`s are
 rejected and marked seen.
+
+A query refused as a whole is answered with a signed `qresult`
+whose `rejected` names why and whose `answers[]` is empty. None of
+these spends budget:
+
+- `unsupported`: `v` or `type` is not a query's.
+- `policy`: the key's door policy (section 14.1) does not admit
+  `query`. The reply names no job and takes no slot of the hourly
+  window.
+- `rate_limit`: the sender's key is over its hourly window (section
+  11). It takes no slot.
+- `unknown_job`: no retained record for the `job_id`, or one another
+  key owns (section 11). It carries `job_id` and `budget_remaining`
+  0, and takes a slot.
+- `expired`: the record is past `output_retention_days`. As
+  `unknown_job`, and only the record's owner ever sees it.
+- `query_error`: the record could not be read. As `unknown_job`.
+
+A stale query, one that fails its signature, and one refused as
+cleartext get no reply at all.
 
 ## 11. Probing resistance
 
@@ -983,7 +1006,8 @@ Defenses, in order of importance:
    budget, and since a job is signed by one key, no key can spend a
    budget it did not sign for: the retained record names the key the
    job verified under, and a query signed by any other key is answered
-   `unknown_job` and spends nothing, so a key also learns nothing of
+   `unknown_job` and spends nothing (a record that names no owner, as
+   one saved before owners were kept, is the default key's), so a key also learns nothing of
    which job ids another key ran. (Rate limiting, item 3, is the
    per-key control; see section 14.)
    Each answered or policy-rejected query spends 1; past the budget
@@ -1353,8 +1377,11 @@ the gate shut). The test suite backs this: a pinned script smuggling
 (`runner/tests/test_policy_constraints.py`, PinnedScriptTest).
 
 A policy may also be attached to the default key under the empty-string
-key ID (`"": {...}`). Violations are rejected like any other bad job:
-logged, the mail marked seen, never retried. Keys without a policy entry behave
+key ID (`"": {...}`). It binds the default key at every door, under any
+of its names, as an additional key's entry does. Violations are
+rejected like any other bad job: logged, the mail marked seen, never
+retried. At the query door the sender also gets the signed `policy`
+refusal of section 10; the job, board and version 2 doors send none. Keys without a policy entry behave
 exactly as before — unrestricted.
 
 Two guards against a forgotten entry. At startup the runner logs a

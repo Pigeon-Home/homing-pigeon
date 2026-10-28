@@ -616,7 +616,9 @@ def check_door_policy(cfg, secrets, key_id, door):
     with no entry is refused when key_policies_default_deny is set,
     and a policy that lists `allowed_kinds` admits a door only when it
     lists the door's name (`query`, `board`, `v2`). A policy without
-    `allowed_kinds`, and the owner's key under any name, pass.
+    `allowed_kinds` passes. The owner's key, under any of its names,
+    is exempt from the deny flag only: a `key_policies[""]` entry
+    binds it at these doors as at the job's (Q103 item 2).
     """
     if door not in DOORS:
         return "unknown door"
@@ -625,8 +627,7 @@ def check_door_policy(cfg, secrets, key_id, door):
     if not isinstance(key_id, str):
         return "invalid key id"
     names = key_names(secrets, key_id) if isinstance(secrets, dict) else (key_id,)
-    if "" in names:
-        return None
+    owner = "" in names
     try:
         policies = build_key_policies(cfg)
     except Exception as e:
@@ -634,10 +635,12 @@ def check_door_policy(cfg, secrets, key_id, door):
     pol = policy_for(policies, secrets, key_id) if isinstance(secrets, dict) \
         else policies.get(key_id)
     if not pol:
-        if cfg.get("key_policies_default_deny"):
+        if not owner and cfg.get("key_policies_default_deny"):
             return ("no key policy entry for this key "
                     "(key_policies_default_deny)")
         return None
+    if not isinstance(pol, dict):
+        return "invalid key policy entry"
     kinds = pol.get("allowed_kinds")
     if isinstance(kinds, list) and door not in kinds:
         return f"{door} is not in this key's allowed_kinds"

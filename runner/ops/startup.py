@@ -149,14 +149,16 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
     if id_field in payload and payload.get(id_field) != ident:
         reject(f"board {id_field} does not match the subject")
         return True
+    fresh, why = _runner()._issued_at_ok(payload.get("issued_at"), cfg)
+    if not fresh:
+        reject(why)
+        return True
+    # Freshness before the key's door policy, as section 5 orders a
+    # job's checks (Q103 item 3).
     why = _runner()._verify.check_door_policy(cfg, secrets, key_id, "board")
     if why:
         reject(f"key policy: {why}")
         _runner()._auth_reject_event(base_dir, "security_policy", feature="board")
-        return True
-    fresh, why = _runner()._issued_at_ok(payload.get("issued_at"), cfg)
-    if not fresh:
-        reject(why)
         return True
     seen_path = os.path.join(base_dir, "seen.json") \
         if isinstance(base_dir, str) and base_dir else ""

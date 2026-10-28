@@ -90,17 +90,6 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 seen[seen_key] = True
         return True
 
-    # Q98 item 13: the key's policy and the deny flag hold at the
-    # query door as at the job's (PROTOCOL.md section 14.1).
-    door = _runner()._verify.check_door_policy(cfg, secrets, key_id, "query")
-    if door:
-        R.log(f"query rejected seq {seq}: key policy: {door}", "WARN")
-        finish({
-            "v": _runner().PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
-            "rejected": "policy", "answers": [],
-        }, secret, encrypted, key_id)
-        return True
-
     if not _runner()._version_ok(payload.get("v")) or payload.get("type") != "query":
         R.log(f"query rejected (bad type) seq {seq}", "WARN")
         finish({
@@ -116,6 +105,19 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
             with R._MAIL_LOCK:
                 seen[seen_key] = True
         return True
+    # Q98 item 13: the key's policy and the deny flag hold at the
+    # query door as at the job's (PROTOCOL.md section 14.1),
+    # after v, type and freshness, as section 5 orders a job's (Q103
+    # item 3): a stale query is silence whatever its key.
+    door = _runner()._verify.check_door_policy(cfg, secrets, key_id, "query")
+    if door:
+        R.log(f"query rejected seq {seq}: key policy: {door}", "WARN")
+        finish({
+            "v": _runner().PROTOCOL_VERSION, "type": "qresult", "query_id": query_id,
+            "rejected": "policy", "answers": [],
+        }, secret, encrypted, key_id)
+        return True
+
     # A dry run verifies and answers in the log only: it takes no
     # slot of the hourly window and spends no budget of the retained
     # record (--dry-run: execute nothing, send nothing, change
@@ -140,7 +142,13 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
     with R._RETAINED_LOCK:
         retained = _runner().load_retained(base_dir, job_id)
         owner = retained.get("key") if isinstance(retained, dict) else None
-        if isinstance(owner, str) and \
+        if not isinstance(owner, str):
+            # A record with no owner (written before the owner was
+            # kept, an artifact note, a record a crash cut short) is
+            # the default key's: the owner opens it, no one else
+            # (Q103 item 1).
+            owner = ""
+        if isinstance(retained, dict) and \
                 _runner().canonical_key_id(secrets, key_id) != owner:
             # Another key's job: its budget is not this key's to spend,
             # and the answer is the one an unknown job gets, so a key

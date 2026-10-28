@@ -5818,7 +5818,7 @@ def _yara_rules_text(cfg):
     return _YARA_RULES
 
 
-def _artifact_note(job_id, job, r):
+def _artifact_note(job_id, job, r, key=""):
     """A retained record that carries a scan hit and not the raw output.
 
     Full-view jobs are not retained. A hit still has to reach the local
@@ -5843,6 +5843,9 @@ def _artifact_note(job_id, job, r):
         "timed_out": bool(r.get("timed_out")),
         "artifact_scan": [str(item)[:200] for item in scan[:20]],
         "saved_at": time.time(),
+        # The key the job verified under, as a full record keeps it
+        # (Q103 item 1): only that key may query the note.
+        "key": key if isinstance(key, str) else "",
     }
 
 def _clam_hits(work, targets):

@@ -610,7 +610,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "remediation": result.get("remediation"),
                 })
             else:
-                note = _runner()._artifact_note(job_id, job, r)
+                note = _runner()._artifact_note(
+                    job_id, job, r,
+                    key=_runner().canonical_key_id(secrets, key_id))
                 if note:
                     _runner().save_retained(base_dir, job_id, note)
             if protected_changed:
