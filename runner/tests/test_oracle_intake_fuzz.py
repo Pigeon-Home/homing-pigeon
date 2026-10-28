@@ -22,6 +22,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from unittest import mock
 
+from runner.tests._compat import require_hypothesis  # noqa: E402
+require_hypothesis()
 from hypothesis import given, settings, strategies as st
 
 from runner.oracle.detection import baseline_anomaly

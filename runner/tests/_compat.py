@@ -57,3 +57,21 @@ def project_version():
     section = re.search(r"^\[project\]\s*$(.*?)(?=^\[|\Z)", text, re.M | re.S)
     m = re.search(r'^version\s*=\s*"([^"]+)"', section.group(1), re.M)
     return m.group(1)
+
+
+def require_hypothesis():
+    """Skip the calling module when hypothesis is absent off CI.
+
+    The property and fuzz modules need hypothesis, which every CI leg
+    installs from .github/requirements-ci.txt. An air-gapped box or a
+    rig with no package index cannot install it, and there the suite
+    should still finish green. Under CI (GITHUB_ACTIONS or CI set) the
+    import is left to fail loudly, so a leg that lost the pin goes red.
+    """
+    import importlib.util
+    import unittest
+    if importlib.util.find_spec("hypothesis") is not None:
+        return
+    if os.environ.get("GITHUB_ACTIONS") or os.environ.get("CI"):
+        return
+    raise unittest.SkipTest("hypothesis is not installed on this box")

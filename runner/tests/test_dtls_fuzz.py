@@ -9,6 +9,8 @@ raise anything else, and feed() may not raise at all.
 
 import unittest
 
+from runner.tests._compat import require_hypothesis  # noqa: E402
+require_hypothesis()
 from hypothesis import given, settings, strategies as st
 
 from runner.wire.jobcrypto import JobCryptoError

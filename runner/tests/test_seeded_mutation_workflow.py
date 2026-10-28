@@ -101,6 +101,11 @@ class SeededWorkflowShapeTests(unittest.TestCase):
 
 
 class ConftestSeedHookTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from runner.tests._compat import require_hypothesis
+        require_hypothesis()
+
     def _global_force_seed(self, env_extra):
         env = dict(os.environ)
         env.pop("HP_MUTATION_SEED", None)

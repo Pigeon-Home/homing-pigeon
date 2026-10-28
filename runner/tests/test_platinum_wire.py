@@ -45,6 +45,8 @@ queue P (docs/use/.com.chat, 2026-10-26).
 """
 import unittest
 
+from runner.tests._compat import require_hypothesis  # noqa: E402
+require_hypothesis()
 from hypothesis import given, settings, strategies as st
 
 from runner.wire.dtlsproto import (

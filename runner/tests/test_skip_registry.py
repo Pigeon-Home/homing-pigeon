@@ -49,6 +49,11 @@ REGISTERED = {
         "test_linecov's fallback leg: when coverage.py measures the run "
         "through sys.monitoring the coverage id is taken and the tool's "
         "own run in the other tests already shows the fallback",
+    "hypothesis is not installed on this box":
+        "runner/tests/_compat.require_hypothesis: the property and fuzz "
+        "modules on an air-gapped box or a rig with no package index; "
+        "never under CI, where every leg installs the pinned hypothesis "
+        "and a missing one fails at import",
     "no SIGALRM on this platform":
         "test_de_dust_survivors' timeout verdict rides on SIGALRM, "
         "which Windows does not have; the Linux and macOS legs run it",

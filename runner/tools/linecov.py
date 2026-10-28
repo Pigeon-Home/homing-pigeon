@@ -58,6 +58,29 @@ def sources(paths, root):
     return sorted(set(out))
 
 
+def load(names, loader=None):
+    """The suite for these test names. A module that skips itself at
+    import (unittest.SkipTest, as discovery honours it) becomes one
+    skipped case instead of ending the run."""
+    loader = loader or unittest.defaultTestLoader
+    suite = unittest.TestSuite()
+    for name in names:
+        try:
+            suite.addTest(loader.loadTestsFromName(name))
+        except unittest.SkipTest as exc:
+            suite.addTest(_skipped(name, str(exc)))
+    return suite
+
+
+def _skipped(name, reason):
+    @unittest.skip(reason)
+    def test_module_skipped(self):
+        pass  # pragma: no cover - never runs
+    return type(name, (unittest.TestCase,),
+                {"test_module_skipped": test_module_skipped}
+                )("test_module_skipped")
+
+
 def report(files, hits, root):
     rep = {"meta": {"tool": "runner/tools/linecov.py", "branches": False},
            "files": {}, "totals": {}}
@@ -132,7 +155,7 @@ def run(tests, files):
     try:
         mon.register_callback(tool, mon.events.LINE, on_line)
         mon.set_events(tool, mon.events.LINE)
-        suite = unittest.defaultTestLoader.loadTestsFromNames(tests)
+        suite = load(tests)
         result = unittest.TextTestRunner(stream=sys.stderr,
                                          verbosity=0).run(suite)
     finally:

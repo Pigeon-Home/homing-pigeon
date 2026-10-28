@@ -148,6 +148,23 @@ class LinecovTest(unittest.TestCase):
                          sum(f["summary"]["num_statements"]
                              for f in rep["files"].values()))
         self.assertIn("does not parse: lcpkg/sample.py", err.getvalue())
+    def test_a_module_that_skips_at_import_is_one_skip_not_a_crash(self):
+        # Discovery turns a module-level SkipTest into a skip; loading
+        # by name raised it out of the run (the hypothesis-less box).
+        skipper = os.path.join(self.td.name, "lcpkg", "test_skipper.py")
+        with open(skipper, "w", encoding="utf-8") as fh:
+            fh.write("import unittest\nraise unittest.SkipTest('not here')\n")
+        sys.path.insert(0, self.td.name)
+        try:
+            suite = linecov.load(["lcpkg.test_skipper"])
+            result = unittest.TestResult()
+            suite.run(result)
+        finally:
+            sys.path.remove(self.td.name)
+            sys.modules.pop("lcpkg.test_skipper", None)
+        self.assertEqual(suite.countTestCases(), 1)
+        self.assertEqual([r for _t, r in result.skipped], ["not here"])
+        self.assertTrue(result.wasSuccessful())
 
     def test_no_tests_or_an_old_python_is_exit_two(self):
         err = io.StringIO()
