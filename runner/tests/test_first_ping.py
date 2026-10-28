@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
-    os.path.abspath(__file__))), "cloud"))
+    os.path.dirname(os.path.abspath(__file__)))), "runner", "cloud"))
 
 from runner.tools import first_ping as fp  # noqa: E402
 import send_job  # noqa: E402
