@@ -75,7 +75,7 @@ class FitTest(unittest.TestCase):
         self.assertTrue(parsed["stdout_truncated"])
         self.assertTrue(parsed["stdout"].startswith("HHHH"))
         self.assertTrue(parsed["stdout"].endswith("TTTT"))
-        self.assertIn("bytes dropped to fit max_result_bytes", parsed["stdout"])
+        self.assertIn("characters dropped to fit max_result_bytes", parsed["stdout"])
         self.assertEqual(parsed["result_truncated"]["reason"],
                          "max_result_bytes")
         self.assertGreater(parsed["result_truncated"]["dropped"], 200000)

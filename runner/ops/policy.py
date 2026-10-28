@@ -104,8 +104,10 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
         except Exception:
             ok_exit = False
         base.update({
-            "stdout_bytes": len(R._as_text(exec_result.get("stdout"))),
-            "stderr_bytes": len(R._as_text(exec_result.get("stderr"))),
+            # The members say bytes, so they count UTF-8 octets, not
+            # characters (Q98 item 19).
+            "stdout_bytes": len(R._as_text(exec_result.get("stdout")).encode("utf-8", "replace")),
+            "stderr_bytes": len(R._as_text(exec_result.get("stderr")).encode("utf-8", "replace")),
             "result_class": "ok" if ok_exit else "fail",
         })
         _output_digests(base, exec_result)

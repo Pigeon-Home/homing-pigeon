@@ -246,9 +246,10 @@ The reference default is email only: `transports` absent means
   5 MiB; 0 means unlimited) before it is signed: when the serialized
   (and, when on, encrypted) body would be larger, `stdout` and
   `stderr` are cut to their head and tail in proportion with a
-  `... [N bytes dropped to fit max_result_bytes] ...` marker in the
-  middle, the `*_truncated` flags are set, and `result_truncated`
-  (`{"reason": "max_result_bytes", "dropped": N}`) is added; three
+  `... [N characters dropped to fit max_result_bytes] ...` marker in
+  the middle, the `*_truncated` flags are set, and `result_truncated`
+  (`{"reason": "max_result_bytes", "dropped": N}`, N in characters)
+  is added; three
   passes at most, the last keeping 2 KiB each side. The signature
   always covers what is sent.
 - `delivery_note`: OPTIONAL. Present only on a stub sent in place of
@@ -697,8 +698,9 @@ user's box decides what leaves it.
   matched. Like every non-`full` view it carries `output_digest`
   (section 12).
 - `summary`: no raw output. Contains `exit_code`, `timed_out`,
-  `duration_sec`, `stdout_bytes`, `stderr_bytes`, `result_class`
-  (`ok`/`fail`), and `output_digest` (SHA-384 of the retained
+  `duration_sec`, `stdout_bytes`, `stderr_bytes` (the UTF-8 octets of
+  each retained stream), `result_class` (`ok`/`fail`), and
+  `output_digest` (SHA-384 of the retained
   stdout+stderr, each stream already cut to `max_output_bytes`).
 - `attested`: the common members (`exit_code`, `timed_out`,
   `duration_sec`, `output_digest`), an `attestations` array, and

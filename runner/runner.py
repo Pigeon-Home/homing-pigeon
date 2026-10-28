@@ -1877,7 +1877,8 @@ def _shrink_stream(text, keep):
     head = keep // 2
     tail = keep - head
     dropped = len(text) - keep
-    marker = "\n... [%d bytes dropped to fit max_result_bytes] ...\n" % dropped
+    # A stream is text: the count is characters (Q98 item 19).
+    marker = "\n... [%d characters dropped to fit max_result_bytes] ...\n" % dropped
     return text[:head] + marker + (text[-tail:] if tail else ""), dropped
 
 def _fit_result_body(result, secret, encrypt, job_id, key_id, max_bytes):
