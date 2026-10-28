@@ -548,6 +548,21 @@ world is filed as a missing-seam question and marked done as filed.
 Stop working queue A for the day when the largest remaining gap on
 both platforms is under 10 lines; go to B.
 
+**Who works queue A (the conductor's word, 2026-10-27).** Two Claude
+seats, split by folder so no file has two writers:
+
+| Seat | Folders |
+|---|---|
+| `b000092f` | `runner/guard/`, `runner/wire/`, `runner/oracle/` |
+| `a0000997` | the rest of the shipped tree |
+
+`90000998` goes back to reviews and does not write coverage tests;
+`40000e00` lands a coverage test only for a gap it finds while fixing a
+question. A gap a seat finds outside its folders goes to the owning
+seat as a line in `docs/use/.com.chat`. Each pass commits its run data
+under `docs/reports/coverage/`, with every line it leaves unrun named
+and the reason no test is aimed at it.
+
 ### B. Environment axes
 
 Each setting below gets the env-axes treatment: the protection corpus
