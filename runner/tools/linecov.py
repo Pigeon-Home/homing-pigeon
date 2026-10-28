@@ -101,7 +101,7 @@ def report(files, hits, root):
         try:
             stmts = statements(f)
         except (SyntaxError, ValueError, UnicodeDecodeError) as exc:
-            unparsed.append({"path": os.path.relpath(f, root),
+            unparsed.append({"path": os.path.relpath(f, root).replace(os.sep, "/"),
                              "error": "%s: %s" % (type(exc).__name__, exc)})
             continue
         ran = hits.get(f, set()) & stmts
@@ -109,7 +109,7 @@ def report(files, hits, root):
         n, m = len(stmts), len(missing)
         total_s += n
         total_m += m
-        rep["files"][os.path.relpath(f, root)] = {
+        rep["files"][os.path.relpath(f, root).replace(os.sep, "/")] = {
             "executed_lines": sorted(ran),
             "missing_lines": missing,
             "summary": {"num_statements": n, "missing_lines": m,

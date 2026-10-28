@@ -43,8 +43,13 @@ class ReadOutputEdgesTest(unittest.TestCase):
             self.assertEqual(self.read("r.txt"), (None, 0, "unreadable"))
 
     def test_an_lstat_that_fails_is_unreadable(self):
-        with mock.patch.object(EX.os, "lstat",
-                               side_effect=PermissionError("denied")):
+        # realpath itself calls lstat; pin its answer so only the
+        # reader's own lstat fails (on macOS /var is a symlink, and an
+        # unresolved path would read as outside the workdir).
+        target = os.path.join(self.root, "r.txt")
+        with mock.patch.object(EX.os.path, "realpath", return_value=target), \
+                mock.patch.object(EX.os, "lstat",
+                                  side_effect=PermissionError("denied")):
             self.assertEqual(self.read("r.txt"), (None, 0, "unreadable"))
 
     def test_an_open_that_fails_is_unreadable(self):

@@ -162,7 +162,9 @@ class StopWorkerTest(unittest.TestCase):
     def test_a_live_child_is_killed_even_when_the_group_is_gone(self):
         child = _Child()
         child.wait = mock.Mock(side_effect=subprocess.TimeoutExpired("w", 2))
-        with mock.patch.object(Q.os, "killpg", side_effect=ProcessLookupError()), \
+        with mock.patch.object(Q.os, "killpg", side_effect=ProcessLookupError(),
+                                  create=True), \
+                mock.patch.object(Q.signal, "SIGKILL", 9, create=True), \
                 mock.patch.object(Q.os, "name", "posix"):
             Q._stop_worker(child)
         child.wait.assert_called_once()
