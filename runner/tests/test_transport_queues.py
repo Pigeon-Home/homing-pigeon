@@ -36,6 +36,7 @@ class FakeWorkerState:
         self.results = {}
         self.results_acked = []
         self.renewed = []
+        self.dead = []
         self.calls = []
         self.fail_results = 0  # next N result posts answer 503
 
@@ -63,6 +64,8 @@ def make_handler(state):
             state.calls.append(("GET", self.path))
             if self.path.startswith("/t/alice/results"):
                 return self._si_results()
+            if self.path.startswith("/t/alice/dlq"):
+                return self._si_dlq()
             if not self.path.startswith("/t/alice/jobs"):
                 return self._send(404)
             if not self._auth(RUNNER_TOKEN):
@@ -86,6 +89,15 @@ def make_handler(state):
                    for i, e in list(state.results.items())[:20]]
             return self._send(200, json.dumps({"results": out}).encode())
 
+        def _si_dlq(self):
+            if not self._auth(SI_TOKEN):
+                return self._send(401)
+            if not state.dead:
+                return self._send(204)
+            out = [{"id": i, "attempts": 5, "subject": f"[HOMING-PIGEON] job {i}"}
+                   for i in state.dead]
+            return self._send(200, json.dumps({"dead": out}).encode())
+
         def do_POST(self):
             n = int(self.headers.get("Content-Length") or 0)
             body = self.rfile.read(n).decode("utf-8") if n else ""
@@ -99,6 +111,17 @@ def make_handler(state):
                 jid = q._job_id(parsed[0])
                 state.jobs[jid] = body
                 return self._send(202, json.dumps({"id": jid}).encode())
+            if self.path.startswith("/t/alice/dlq/"):
+                if not self._auth(SI_TOKEN):
+                    return self._send(401)
+                _, _, _, _, did, verb = self.path.split("/")
+                if did not in state.dead:
+                    return self._send(404)
+                state.dead.remove(did)
+                if verb == "requeue":
+                    state.jobs[did] = envelope(did)
+                    return self._send(202, json.dumps({"id": did}).encode())
+                return self._send(204)
             if self.path.startswith("/t/alice/jobs/") and \
                     self.path.endswith("/lease"):
                 if not self._auth(RUNNER_TOKEN):
@@ -465,6 +488,46 @@ class SendJobResultsTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             send_job._queue_call("https://q.example.test/t/a", "GET",
                                  "/results")
+
+
+
+class SendJobDlqTest(unittest.TestCase):
+    """`send_job.py dlq`: the dead-letter list, read and handled."""
+
+    def _run(self, w, *extra):
+        import io
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest import mock
+        out, err = io.StringIO(), io.StringIO()
+        argv = ["send_job", "dlq", "--from-queue", w.url] + list(extra)
+        os.environ["HP_SI_TOKEN"] = SI_TOKEN
+        try:
+            with mock.patch.object(sys, "argv", argv), \
+                    redirect_stdout(out), redirect_stderr(err):
+                rc = send_job.main()
+        finally:
+            del os.environ["HP_SI_TOKEN"]
+        return rc, [json.loads(l) for l in out.getvalue().splitlines() if l], \
+            err.getvalue()
+
+    def test_list_drop_and_requeue(self):
+        with FakeWorker() as w:
+            rc, lines, err = self._run(w)
+            self.assertEqual((rc, lines), (0, []))
+            self.assertIn("empty", err)
+            w.state.dead = ["d1", "d2"]
+            rc, lines, _ = self._run(w)
+            self.assertEqual(rc, 0)
+            self.assertEqual([l["id"] for l in lines], ["d1", "d2"])
+            rc, lines, _ = self._run(w, "--drop", "d1")
+            self.assertEqual((rc, lines), (0, [{"id": "d1", "dropped": True}]))
+            rc, lines, _ = self._run(w, "--requeue", "d2")
+            self.assertEqual((rc, lines), (0, [{"id": "d2", "requeue": True}]))
+            self.assertIn("d2", w.state.jobs)
+            self.assertEqual(w.state.dead, [])
+            rc, _, err = self._run(w, "--drop", "d9")
+            self.assertEqual(rc, 1)
+            self.assertIn("not on the dead-letter list", err)
 
 
 if __name__ == "__main__":

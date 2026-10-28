@@ -10,6 +10,9 @@
 //   runner  POST /results         result envelope in
 //   SI      GET  /results?max=N   results out
 //   SI      POST /results/<id>/ack
+//   SI      GET  /dlq?max=N       the dead-letter list (ids, attempts, subjects)
+//   SI      POST /dlq/<id>/ack     drop a dead job
+//   SI      POST /dlq/<id>/requeue offer it again, attempts reset (hourly quota)
 //
 // Gates, in order: the tenant must exist; the bearer token must hash
 // to the role's stored hash; a job body must carry a valid HMAC-SHA-384
@@ -241,17 +244,37 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/health") return json(200, { ok: true });
-    const m = url.pathname.match(/^\/t\/([^/]+)\/(jobs|results)(?:\/([^/]+)\/(ack|lease))?\/?$/);
+    const m = url.pathname.match(/^\/t\/([^/]+)\/(jobs|results|dlq)(?:\/([^/]+)\/(ack|lease|requeue))?\/?$/);
     if (!m) return json(404, { error: "no such route" });
     const [, slug, kind, itemId, verb] = m;
     const ackId = verb === "ack" ? itemId : undefined;
     const leaseId = verb === "lease" ? itemId : undefined;
     if (leaseId && kind !== "jobs") return json(404, { error: "no such route" });
+    if (verb === "requeue" && kind !== "dlq") return json(404, { error: "no such route" });
     const tenant = await loadTenant(env, slug);
     if (!tenant) return json(404, { error: "unknown tenant" });
     const stub = env.TENANT_QUEUE.get(env.TENANT_QUEUE.idFromName(slug));
     const forward = (path, init) => stub.fetch(new Request("https://do" + path, init));
 
+    if (kind === "dlq") {
+      // The SI's view of the dead-letter list: jobs that ran out of
+      // attempts. Read it, drop one, or put one back with a fresh
+      // attempt count (counted against the hourly job quota).
+      if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
+      if (request.method === "GET" && !itemId) {
+        const max = Math.max(1, Math.min(100, parseInt(url.searchParams.get("max") || "20", 10) || 20));
+        return forward(`/dlq?max=${max}`, { method: "POST" });
+      }
+      if (request.method === "POST" && verb === "ack") {
+        return forward(`/dlq-ack?id=${encodeURIComponent(itemId)}`, { method: "POST" });
+      }
+      if (request.method === "POST" && verb === "requeue") {
+        return forward(`/dlq-requeue?id=${encodeURIComponent(itemId)}`, {
+          method: "POST", headers: { "x-hp-quota": JSON.stringify(tenant.quota || DEFAULT_QUOTA) },
+        });
+      }
+      return json(405, { error: "method not allowed" });
+    }
     if (kind === "jobs" && request.method === "POST" && leaseId) {
       // The runner still holds a job it is running: renew its lease
       // so a long job is not offered again or dead-lettered.
@@ -367,6 +390,42 @@ export class TenantQueue {
         out.push({ id: job.id, envelope: job.envelope, attempt: job.attempts });
       }
       return out.length ? json(200, { jobs: out }) : new Response(null, { status: 204 });
+    }
+    if (url.pathname === "/dlq") {
+      const max = parseInt(url.searchParams.get("max") || "20", 10);
+      const all = await s.list({ prefix: "dlq:", limit: max });
+      const out = [];
+      for (const [, d] of all) {
+        out.push({ id: d.id, attempts: d.attempts, size: d.size,
+                   enqueued_at: d.enqueued_at, dead_at: d.dead_at,
+                   subject: (parseEnvelope(d.envelope) || {}).subject || null });
+      }
+      return out.length ? json(200, { dead: out }) : new Response(null, { status: 204 });
+    }
+    if (url.pathname === "/dlq-ack") {
+      const id = url.searchParams.get("id");
+      const had = await s.get(`dlq:${id}`);
+      await s.delete(`dlq:${id}`);
+      return new Response(null, { status: had ? 204 : 404 });
+    }
+    if (url.pathname === "/dlq-requeue") {
+      const id = url.searchParams.get("id");
+      const dead = await s.get(`dlq:${id}`);
+      if (!dead) return new Response(null, { status: 404 });
+      if (await s.get(`job:${id}`)) return json(409, { error: "a job with this id is queued" });
+      const quota = JSON.parse(request.headers.get("x-hp-quota") || "{}");
+      const hourKey = `quota:hour:${Math.floor(now / 3_600_000)}`;
+      const jobs = (await s.get(hourKey)) || 0;
+      const jph = quota.jobs_per_hour ?? DEFAULT_QUOTA.jobs_per_hour;
+      if (jobs + 1 > jph) {
+        return json(429, { error: "tenant quota exceeded", jobs_this_hour: jobs },
+                    { "retry-after": String(3600 - Math.floor((now % 3_600_000) / 1000)) });
+      }
+      const { dead_at, ...job } = dead;
+      await s.put(`job:${id}`, { ...job, leased_until: 0, attempts: 0, requeued_at: now });
+      await s.delete(`dlq:${id}`);
+      await s.put(hourKey, jobs + 1);
+      return json(202, { id });
     }
     if (url.pathname === "/renew") {
       const id = url.searchParams.get("id");

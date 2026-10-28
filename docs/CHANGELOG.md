@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.7 - 2026-10-27
+
+- **The dead-letter list, for the SI.** The queue Worker serves
+  `GET /dlq`, `POST /dlq/<id>/ack` and `POST /dlq/<id>/requeue` on
+  the SI token (a requeue counts against the hourly job quota), and
+  `send_job.py dlq --from-queue URL` lists, drops and requeues.
+<!-- Agent-Stamp: 70000a51-e296-4b2c-bf5b-ba020e23eb91 -->
+
 ## 3.14.6 - 2026-10-27
 
 - **The panic word (Q100).** The installer prints six words once and

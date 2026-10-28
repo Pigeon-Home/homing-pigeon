@@ -95,6 +95,10 @@ python3 runner/cloud/send_job.py new --kind ping --to-queue https://hp.example.w
 python3 runner/cloud/send_job.py results --from-queue https://hp.example.workers.dev/t/you --ack
 ```
 
+A job that ran out of attempts without a result lands on the
+dead-letter list; `send_job.py dlq --from-queue URL` reads it, and
+`--drop ID` or `--requeue ID` handles one.
+
 ## Afterwards
 
 ```bash

@@ -842,6 +842,53 @@ def cmd_results(args, opener=None) -> int:
 
 
 
+def cmd_dlq(args, opener=None) -> int:
+    """The hosted queue's dead-letter list: jobs that ran out of
+    attempts without a result. Lists them (one JSON line each: id,
+    attempts, subject, times), or with --drop ID removes one, or with
+    --requeue ID offers it again with a fresh attempt count. A
+    requeued job is the same signed job: a runner that already saw
+    it, or that holds it past its freshness window, refuses it as it
+    would any replay; send a new job instead. Exit 0 on success, 1
+    when the id is not on the list, 2 when the queue refused."""
+    from urllib.parse import quote
+    for verb, ident in (("ack", args.drop), ("requeue", args.requeue)):
+        if ident:
+            st, text = _queue_call(args.from_queue, "POST",
+                                   f"/dlq/{quote(ident, safe='')}/{verb}",
+                                   args.queue_token_env, opener)
+            if st in (200, 202, 204):
+                print(json.dumps({"id": ident, verb if verb != "ack"
+                                  else "dropped": True}))
+                return 0
+            if st == 404:
+                print(f"error: {ident} is not on the dead-letter list",
+                      file=sys.stderr)
+                return 1
+            print(f"error: the queue answered {st}: {text[:200]}",
+                  file=sys.stderr)
+            return 2
+    max_n = max(1, min(int(args.max or 20), 100))
+    st, text = _queue_call(args.from_queue, "GET", f"/dlq?max={max_n}",
+                           args.queue_token_env, opener)
+    if st == 204:
+        print("the dead-letter list is empty", file=sys.stderr)
+        return 0
+    if st != 200:
+        print(f"error: the queue answered {st}: {text[:200]}",
+              file=sys.stderr)
+        return 2
+    try:
+        dead = json.loads(text).get("dead") or []
+    except (ValueError, AttributeError):
+        print("error: the queue's answer is not a dead-letter list",
+              file=sys.stderr)
+        return 2
+    for d in dead:
+        print(json.dumps(d, ensure_ascii=False))
+    return 0
+
+
 def _board_body(payload, ident, args) -> str:
     """Sign a board message and, unless --cleartext, wrap it in the
     per-job envelope exactly as `new` does for a job. The runner
@@ -1100,6 +1147,25 @@ def main() -> int:
     rs.add_argument("--key-id", default=None, metavar="KEY_ID")
     rs.add_argument("--keyring", default=None, metavar="PATH")
     rs.set_defaults(func=cmd_results)
+
+    dq = sub.add_parser(
+        "dlq", help="the hosted queue's dead-letter list",
+        description="List the jobs on a hosted queue's dead-letter list "
+                    "(out of attempts, no result), drop one, or requeue "
+                    "one with a fresh attempt count. The SI token is "
+                    "read from the environment.")
+    dq.add_argument("--from-queue", required=True, metavar="URL")
+    dq.add_argument("--queue-token-env", default=None, metavar="NAME",
+                    help="environment variable holding the SI token "
+                         "(default HP_SI_TOKEN)")
+    dq.add_argument("--max", type=int, default=20, metavar="N")
+    act = dq.add_mutually_exclusive_group()
+    act.add_argument("--drop", default=None, metavar="ID",
+                     help="remove this job from the list")
+    act.add_argument("--requeue", default=None, metavar="ID",
+                     help="offer this job again (counts against the "
+                          "hourly job quota)")
+    dq.set_defaults(func=cmd_dlq)
 
     k = sub.add_parser(
         "key-id", help="print the name a secret carries by default",

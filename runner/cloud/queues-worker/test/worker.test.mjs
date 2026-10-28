@@ -272,3 +272,50 @@ test("a running job's lease is renewed: never re-offered, never dead-lettered", 
   // Results have no lease route.
   assert.equal((await worker.fetch(req("/t/alice/results/long/lease", { method: "POST", token: RUNNER }), env)).status, 404);
 });
+
+test("the SI reads, drops and requeues the dead-letter list", async () => {
+  let now = 1_000_000;
+  const env = makeEnv({ lease: 1000, clock: () => now, quota: { jobs_per_hour: 3, bytes_per_day: 1_000_000 } });
+  await addTenant(env);
+  // Nothing dead yet.
+  assert.equal((await worker.fetch(req("/t/alice/dlq", { token: SI }), env)).status, 204);
+  for (const id of ["d1", "d2"]) {
+    await worker.fetch(req("/t/alice/jobs", { method: "POST", token: SI, body: await signedJob(id) }), env);
+  }
+  // Five lapsed leases each, then one more pull moves both to the list.
+  for (let i = 0; i < 6; i++) {
+    await worker.fetch(req("/t/alice/jobs", { token: RUNNER }), env);
+    now += 2000;
+  }
+  // The runner token cannot read it.
+  assert.equal((await worker.fetch(req("/t/alice/dlq", { token: RUNNER }), env)).status, 401);
+  let r = await worker.fetch(req("/t/alice/dlq", { token: SI }), env);
+  assert.equal(r.status, 200);
+  const dead = (await r.json()).dead;
+  assert.deepEqual(dead.map((d) => d.id).sort(), ["d1", "d2"]);
+  assert.equal(dead[0].attempts, 5);
+  assert.equal(dead[0].subject, `[HOMING-PIGEON] job ${dead[0].id}`);
+  assert.ok(!("envelope" in dead[0]));
+  // Drop one; it is gone, and a second drop is 404.
+  assert.equal((await worker.fetch(req("/t/alice/dlq/d1/ack", { method: "POST", token: SI }), env)).status, 204);
+  assert.equal((await worker.fetch(req("/t/alice/dlq/d1/ack", { method: "POST", token: SI }), env)).status, 404);
+  // Requeue the other: it is offered again with a fresh attempt count.
+  r = await worker.fetch(req("/t/alice/dlq/d2/requeue", { method: "POST", token: SI }), env);
+  assert.equal(r.status, 202);
+  r = await worker.fetch(req("/t/alice/jobs", { token: RUNNER }), env);
+  assert.equal(r.status, 200);
+  const pulled = (await r.json()).jobs;
+  assert.equal(pulled[0].id, "d2");
+  assert.equal(pulled[0].attempt, 1);
+  assert.equal((await worker.fetch(req("/t/alice/dlq", { token: SI }), env)).status, 204);
+  assert.equal((await worker.fetch(req("/t/alice/dlq/d2/requeue", { method: "POST", token: SI }), env)).status, 404);
+  // Requeue counts against the hourly job quota (3: two submits, one requeue).
+  const storage = env.objects.get("alice").state.storage;
+  storage.map.set("dlq:d3", { id: "d3", envelope: await signedJob("d3"), size: 10, attempts: 5, enqueued_at: now, dead_at: now });
+  r = await worker.fetch(req("/t/alice/dlq/d3/requeue", { method: "POST", token: SI }), env);
+  assert.equal(r.status, 429);
+  assert.ok(storage.map.has("dlq:d3"));
+  // Verbs stay on their own lists.
+  assert.equal((await worker.fetch(req("/t/alice/jobs/d2/requeue", { method: "POST", token: SI }), env)).status, 404);
+  assert.equal((await worker.fetch(req("/t/alice/dlq/d2/lease", { method: "POST", token: SI }), env)).status, 404);
+});

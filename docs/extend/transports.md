@@ -188,6 +188,11 @@ one we'd recommend to anyone who winces at the word "email."
   it verified; one that does not verify stays on the queue. Exit 0 when
   every result verified or none was waiting, 1 when any did not, 2 when
   the queue refused the read.
+- `send_job.py dlq --from-queue <url>` — the dead-letter list: one JSON
+  line per dead job, or `--drop ID`, or `--requeue ID`. A requeued job
+  is the same signed job, so a runner that already saw it, or holds it
+  past its freshness window, refuses it as any replay; send a new job
+  for anything older.
 
 **The contract** (every route under `/t/<tenant>/`, every call with
 `Authorization: Bearer <token>`; the envelope is the file transport's
@@ -202,6 +207,9 @@ shape, subject line, blank line, signed body):
 | runner | `POST /results` | a result envelope in; 202 |
 | SI | `GET /results?max=N` | results out; 200 `{"results": [...]}` or 204 |
 | SI | `POST /results/<id>/ack` | the SI has it; 204 |
+| SI | `GET /dlq?max=N` | the dead-letter list: id, attempts, subject and times, no envelope; 200 `{"dead": [...]}` or 204 |
+| SI | `POST /dlq/<id>/ack` | drop a dead job; 204, or 404 |
+| SI | `POST /dlq/<id>/requeue` | offer it again with a fresh attempt count, counted against the hourly job quota; 202, 404, 409 when a job with that id is queued, 429 over quota |
 
 A lease lasts `LEASE_MS` (default 300 s). The runner renews the lease
 of every job it is still running on each pass, so a long build keeps
