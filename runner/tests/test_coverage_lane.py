@@ -29,6 +29,8 @@ from unittest import mock
 
 from runner.cloud import send_job as SJ  # noqa: E402
 from runner.guard import extreview as XR  # noqa: E402
+from runner.ops import exec as EX  # noqa: E402
+from runner.wire import verify as V  # noqa: E402
 from runner.ops import queries as Q  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -376,6 +378,106 @@ class PiHealthReadersTest(unittest.TestCase):
     def test_off_windows_is_none(self):
         with mock.patch.object(self.mod.os, "name", "posix"):
             self.assertIsNone(self.mod._mem_avail_pct_windows())
+
+
+class DoorPolicyEdgesTest(unittest.TestCase):
+    """The arms of check_door_policy the door tests do not reach: each
+    malformed input is a reason (a refusal), never a pass."""
+
+    def test_an_unknown_door_or_a_bad_key_id_is_refused(self):
+        self.assertEqual(V.check_door_policy({}, {"": "s"}, "", "jobs"), "unknown door")
+        self.assertEqual(V.check_door_policy({}, {"": "s"}, 7, "query"), "invalid key id")
+
+    def test_a_config_that_is_not_an_object_reads_as_empty(self):
+        self.assertIsNone(V.check_door_policy(None, None, "ops", "board"))
+
+    def test_unreadable_policies_refuse(self):
+        why = V.check_door_policy({"key_policies": ["not", "a", "map"]}, None,
+                                  "ops", "v2")
+        self.assertTrue(why.startswith("key policies unreadable"), why)
+
+    def test_with_no_secrets_map_the_name_is_the_entry(self):
+        cfg = {"key_policies": {"ops": {"allowed_kinds": ["exec"]}}}
+        self.assertEqual(V.check_door_policy(cfg, None, "ops", "query"),
+                         "query is not in this key's allowed_kinds")
+        cfg["key_policies"]["ops"]["allowed_kinds"].append("query")
+        self.assertIsNone(V.check_door_policy(cfg, None, "ops", "query"))
+
+
+class ReadOutputEdgesTest(unittest.TestCase):
+    """_read_output names every failure; none of them raises."""
+
+    def setUp(self):
+        import tempfile
+        self.work = os.path.realpath(tempfile.mkdtemp(prefix="hp-readout-"))
+        self.addCleanup(__import__("shutil").rmtree, self.work, True)
+        with open(os.path.join(self.work, "f"), "wb") as fh:
+            fh.write(b"0123456789")
+
+    def read(self, limit=100):
+        return EX._read_output(self.work, self.work, "f", limit)
+
+    def test_a_plain_file_is_read(self):
+        self.assertEqual(self.read(), (b"0123456789", 10, None))
+
+    def test_a_path_that_cannot_resolve_is_unreadable(self):
+        with mock.patch.object(EX.os.path, "realpath", side_effect=ValueError("nul")):
+            self.assertEqual(self.read(), (None, 0, "unreadable"))
+
+    def test_a_stat_or_open_failure_is_unreadable(self):
+        with mock.patch.object(EX.os, "lstat", side_effect=PermissionError()):
+            self.assertEqual(self.read(), (None, 0, "unreadable"))
+        with mock.patch.object(EX.os, "open", side_effect=PermissionError()):
+            self.assertEqual(self.read(), (None, 0, "unreadable"))
+
+    def test_a_file_swapped_between_check_and_open_is_refused(self):
+        real = os.fstat
+
+        def other(fd):
+            st = real(fd)
+            return os.stat_result((st.st_mode, st.st_ino + 1) + tuple(st)[2:])
+        with mock.patch.object(EX.os, "fstat", other):
+            self.assertEqual(self.read(), (None, 0, "changed while read"))
+
+    def test_a_file_that_grows_past_the_limit_while_read_is_too_large(self):
+        real = os.lstat
+
+        def small(path):
+            st = real(path)
+            t = list(st)
+            t[6] = 1                        # st_size as checked
+            return os.stat_result(t)
+        with mock.patch.object(EX.os, "lstat", small):
+            self.assertEqual(self.read(limit=4), (None, 10, "too_large"))
+
+
+class DtlsRecordTruncationTest(unittest.TestCase):
+    """Every header form _RecordSealer.open reads, cut short, is a
+    DtlsError; a sealed record still opens."""
+
+    def setUp(self):
+        from runner.wire import dtlsproto
+        self.D = dtlsproto
+        self.sealer = dtlsproto._RecordSealer(b"\x11" * 48)
+
+    def test_a_sealed_record_opens(self):
+        rec = self.sealer.seal(3, 23, b"hello", b"\x01\x02")
+        opener = self.D._RecordSealer(b"\x11" * 48)
+        ctype, content, _seq = opener.open(3, rec)
+        self.assertEqual((ctype, content), (23, b"hello"))
+
+    def test_each_short_header_is_refused(self):
+        cid, seq16, length = 0x04, 0x10, 0x08
+        base = 0x20 | 3
+        for rec in (b"",
+                    bytes([base | cid]),                  # cid flag, no cid length
+                    bytes([base | seq16, 0]),             # 16-bit seq cut
+                    bytes([base]),                        # 8-bit seq missing
+                    bytes([base | length, 0, 0]),         # 8-bit seq, length cut
+                    bytes([base, 0]) + b"x" * 5,          # no length field, body short
+                    bytes([base | seq16 | length, 0, 0, 0, 40]) + b"x" * 20):
+            with self.subTest(rec=rec), self.assertRaises(self.D.DtlsError):
+                self.sealer.open(3, rec)
 
 
 if __name__ == "__main__":
