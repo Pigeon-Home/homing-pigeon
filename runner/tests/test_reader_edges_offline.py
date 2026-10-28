@@ -6,8 +6,9 @@ index) skips the property and fuzz modules, and these lines went unrun
 there. Each is input a sender or a probe controls, so each is pinned
 with a plain test that runs everywhere:
 
-- the DTLS record opener on every truncated header shape, and on the
-  short header forms (8-bit sequence, no length field) it must accept;
+- the DTLS record opener on the short header forms (8-bit sequence,
+  no length field) a peer may send: they decrypt, and the header is
+  authenticated (the truncated forms are refused in test_coverage_lane);
 - the backtracking check on a nested repeat hidden in an alternation arm;
 - the learning ledger's feature keys on facts of the wrong shape;
 - the extension review on an entry that is not an argv, an argv part
@@ -47,32 +48,6 @@ class DtlsRecordOpenTest(unittest.TestCase):
     def setUp(self):
         self.tx = D._RecordSealer(SECRET)
         self.rx = D._RecordSealer(SECRET)
-
-    def refused(self, record):
-        with self.assertRaisesRegex(D.DtlsError, "record too short"):
-            self.rx.open(2, record)
-
-    def test_an_empty_record_is_refused(self):
-        self.refused(b"")
-
-    def test_a_cid_flag_with_nothing_after_it_is_refused(self):
-        self.refused(bytes([0x20 | 0x04 | 0x10 | 0x08 | 2]))
-
-    def test_a_cut_16_bit_sequence_is_refused(self):
-        self.refused(bytes([0x20 | 0x10 | 0x08 | 2, 0x00]))
-
-    def test_a_missing_8_bit_sequence_is_refused(self):
-        self.refused(bytes([0x20 | 0x08 | 2]))
-
-    def test_a_cut_length_field_is_refused(self):
-        self.refused(bytes([0x20 | 0x10 | 0x08 | 2, 0x00, 0x01, 0x00]))
-
-    def test_a_length_past_the_record_is_refused(self):
-        good = self.tx.seal(2, 23, b"hello", None)
-        self.refused(good[:-1])
-
-    def test_a_body_shorter_than_the_tag_is_refused(self):
-        self.refused(bytes([0x20 | 0x10 | 2, 0x00, 0x00]) + b"\x00" * 16)
 
     def test_an_8_bit_sequence_with_a_length_opens(self):
         rec = _short_record(self.tx, 2, 0, 23, b"ping", length_field=True)
