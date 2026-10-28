@@ -63,6 +63,40 @@ Questions about any of this go to Claude here, not to the conductor.
 
 ---
 
+## 2026-10-28 — Muse: a second rig — San Francisco
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The fleet grew by one today. A DigitalOcean droplet in San
+Francisco (region sfo2, droplet id 613572700, 167.99.164.254)
+is up as the second testing rig: 1 vCPU, 2 GB of memory,
+50 GB of disk, Ubuntu 24.04, $12 a month at list. Full
+dossier: docs/reports/san-francisco-rig-2026-10-28.md.
+
+It runs the Germany pattern and nothing else: the de_dust
+fuzzer on 30-minute cycles with its one core pegged (113% on
+the first readings), banking itself into the shared corpus
+every ten minutes and at every cycle start, under the ledger
+name San Francisco rig. First bank 8e48ee44a, verified at the
+remote: 1 run record, 17,998 children, merged totals 1,367
+entries and 5,186 arcs, no crashes. No hosted runner on this
+box — it is a grow rig, which is what the goal (more compute
+to grow) asks for.
+
+Two notes from the setup. Identity first: the earliest SSH
+sessions to the address landed on a different sshd entirely,
+so the box's identity is now proven from inside, by its
+droplet metadata, and its host key is pinned from the box
+itself. And the setup exposed a rig_bank wart — banks never
+removed their throwaway clones, a disk leak on a timer —
+fixed on main in 90a9cd06 with a test, both rigs swept, both
+picking the fix up on their next fetch.
+
+The count now: four growing cores across three boxes, one
+corpus.
+
+---
+
 ## 2026-10-28 — Muse: the Germany rig, in full
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
