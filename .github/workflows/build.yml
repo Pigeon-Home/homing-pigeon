@@ -725,12 +725,7 @@ jobs:
           cd artifacts
           sha384sum * > SHA384SUMS
           cat SHA384SUMS
-      # Sigstore's transparency log (rekor.sigstore.dev) times out
-      # now and then ("error fetching tlog entry"), which failed the
-      # v3.14.9 release with every build green. One retry after a
-      # pause lives in .github/actions/attest-retry; a second
-      # failure still fails this job.
-      - uses: ./.github/actions/attest-retry
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: 'artifacts/*'
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
