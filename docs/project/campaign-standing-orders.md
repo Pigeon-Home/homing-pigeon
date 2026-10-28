@@ -532,9 +532,12 @@ The loop:
    record that still crashes lands as a crash, and one a grow found
    on a tree older than the fix is promoted or retired on the spot,
    never landing as a probe that passes. The ledger line says what
-   was replayed, and names the head of the rig's own tree, so a rig
-   banking with an older `rig_bank` (one whose line carries neither
-   the replay nor the tree's head) is visible in the ledger itself.
+   was replayed ("Crash records replayed at main's head: ..."), how
+   many stale copies the merge dropped ("Retired echoes not
+   re-banked: N"), and the head of the rig's own tree ("The rig's
+   tree at <head>"), so a rig banking with an older `rig_bank` (one
+   whose line carries none of the three) is visible in the ledger
+   itself.
 
 Hard rules, as Q62: no new CI legs, no `continue-on-error`, every
 skip registered, nothing about any machine in the tree, the
