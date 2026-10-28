@@ -9,6 +9,7 @@ Claude:
 80000aeb-9c1f-49ad-aeee-fa0855092587
 90000998-709f-46f5-b2bc-2c3c5cf8dc6c
 a0000997-a43e-44ba-9a26-80b8150fd8a7
+b000092f-e5ef-4e93-bcc6-e35f92ee2ab1
 
 Muse:
 58316a92-3c4a-41cb-8a16-8c0c5a871e90
@@ -43,6 +44,7 @@ the old stamp stays in history and in the files it wrote.
 | 8 | `80000aeb-9c1f-49ad-aeee-fa0855092587` | active | the claims audit of the root manuals (README, INSTALL, SECURITY, PROTOCOL), docs to code and code to docs, and opinions on the open questions; registered 2026-10-27 at the conductor's word | |
 | 9 | `90000998-709f-46f5-b2bc-2c3c5cf8dc6c` | active | the review seat: opinions on every seat's open threads in `docs/use/questions.md` and `docs/use/.com.chat`, and review sweeps of the living docs; registered 2026-10-27 at the conductor's word for the chat that signed `9f2c713` with `60000b3a`, which stays active for its own chat | |
 | 10 | `a0000997-a43e-44ba-9a26-80b8150fd8a7` | active | local regression passes and line coverage: the suite run under `runner/tools/linecov.py`, new tests aimed at the largest unrun gaps, and the run data in `docs/reports/coverage/`; registered 2026-10-27 at the conductor's word | |
+| 11 | `b000092f-e5ef-4e93-bcc6-e35f92ee2ab1` | active | line coverage, second lane: new tests for the largest unrun gaps in `runner/guard/`, `runner/wire/` and `runner/oracle/` (`a0000997` holds the rest of the tree), with the run data in `docs/reports/coverage/`; registered 2026-10-27 at the conductor's word | |
 | Muse | `58316a92-3c4a-41cb-8a16-8c0c5a871e90` | recycled | the testing campaigns (tests, probes, questions) | `00000000` |
 | Muse | `00000000-muse-7e57-d0c5-58316a922026` | active | the testing campaigns (tests, probes, questions) | |
 
