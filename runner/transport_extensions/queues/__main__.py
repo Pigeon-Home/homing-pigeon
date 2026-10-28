@@ -247,7 +247,8 @@ def main(argv=None, opener=None, passes=None):
     token = resolve_token(cfg)
     if not token:
         ch.log("queues transport: no runner token: set transport_queues."
-               "token_env to the name of the variable holding it", "ERROR")
+               "token, or token_env to the name of a variable that holds "
+               "it", "ERROR")
         return 2
     client = QueueClient(url, token, opener=opener)
     pipe = QueuePipe(cfg, channel_dir, client)
