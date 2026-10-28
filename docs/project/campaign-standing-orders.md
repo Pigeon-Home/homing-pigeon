@@ -5088,3 +5088,1241 @@ when done, the proving commit or run. Newest first.
   format diverges from the
   hand-banked lines; seeds key
   the grows unambiguously.
+- Stamp backlog batch,
+  2026-10-28: the grind's lines
+  for 81 releases, oldest first.
+  Every SHA384SUMS set verifies
+  and every PyPI digest matches;
+  GitLab lines marked recheck
+  were re-read after this VM's
+  truncated first reads.
+  v3.13.9's linux-arm64 entry
+  read BAD on a truncated
+  download and verifies on a
+  fresh one; its line carries
+  the note.
+- v3.12.48 FULL STAMP: GitHub
+  release published
+  2026-10-22T22:27:33Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.48.tar.gz
+  OK; GHCR v3.12.48 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 39862694402:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.12.49 FULL STAMP: GitHub
+  release published
+  2026-10-22T22:29:20Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.49.tar.gz
+  OK; GHCR v3.12.49 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 39862721340:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.12.50 FULL STAMP: GitHub
+  release published
+  2026-10-22T22:29:02Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.50.tar.gz
+  OK; GHCR v3.12.50 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 39862747983:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.12.51 FULL STAMP: GitHub
+  release published
+  2026-10-22T23:00:22Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.51.tar.gz
+  OK; GHCR v3.12.51 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 39868303814:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.12.53 FULL STAMP: GitHub
+  release published
+  2026-10-23T00:26:55Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.53.tar.gz
+  OK; GHCR v3.12.53 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 39877591090:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.12.54 FULL STAMP: GitHub
+  release published
+  2026-10-23T01:02:52Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.54.tar.gz
+  OK; GHCR v3.12.54 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 39881063666:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.12.56 FULL STAMP: GitHub
+  release published
+  2026-10-23T03:00:02Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.56.tar.gz
+  OK; GHCR v3.12.56 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 39891950752:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.12.58 FULL STAMP: GitHub
+  release published
+  2026-10-24T01:10:06Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.58.tar.gz
+  OK; GHCR v3.12.58 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40047875139:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed [].
+- v3.12.59 FULL STAMP: GitHub
+  release published
+  2026-10-24T02:49:14Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.59.tar.gz
+  OK; GHCR v3.12.59 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40055244822:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.12.60 FULL STAMP: GitHub
+  release published
+  2026-10-24T08:02:56Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.60.tar.gz
+  OK; GHCR v3.12.60 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40076033672:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.12.61 FULL STAMP: GitHub
+  release published
+  2026-10-24T08:34:17Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.61.tar.gz
+  OK; GHCR v3.12.61 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40078077256:
+  conclusion=success, publish jobs
+  {'gitlab': 'success', 'release':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.12.62 FULL STAMP: GitHub
+  release published
+  2026-10-24T19:07:47Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS unread on downloaded
+  copies; PyPI unread; GHCR
+  unread; GitLab unread.
+- v3.12.63 FULL STAMP: GitHub
+  release published
+  2026-10-24T19:42:55Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS unread on downloaded
+  copies; PyPI unread; GHCR
+  unread; GitLab unread.
+- v3.12.65 FULL STAMP: GitHub
+  release published
+  2026-10-24T23:43:58Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.65.tar.gz
+  OK; GHCR unread; GitLab unread.
+- v3.12.72 FULL STAMP: GitHub
+  release published
+  2026-10-25T22:07:07Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.72.tar.gz
+  OK; GHCR v3.12.72 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40238030310:
+  conclusion=failure, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed ['test-
+  macos'].
+- v3.12.77 FULL STAMP: GitHub
+  release published
+  2026-10-25T23:46:55Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.77.tar.gz
+  OK; GHCR v3.12.77 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40245877234:
+  conclusion=failure, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed
+  ['test-macos'].
+- v3.12.78 FULL STAMP: GitHub
+  release published
+  2026-10-26T00:05:09Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.12.78.tar.gz
+  OK; GHCR v3.12.78 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40246969438:
+  conclusion=failure, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed
+  ['test-macos'].
+- v3.13.0 FULL STAMP: GitHub
+  release published
+  2026-10-26T00:20:30Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.0.tar.gz
+  OK; GHCR v3.13.0 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40248156965:
+  conclusion=failure, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed ['test-
+  macos'].
+- v3.13.1 FULL STAMP: GitHub
+  release published
+  2026-10-26T00:30:03Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.1.tar.gz
+  OK; GHCR v3.13.1 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40248825201:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.13.2 FULL STAMP: GitHub
+  release published
+  2026-10-26T00:30:42Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.2.tar.gz
+  OK; GHCR v3.13.2 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40248857457:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.3 FULL STAMP: GitHub
+  release published
+  2026-10-26T02:19:20Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.3.tar.gz
+  OK; GHCR v3.13.3 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40257662056:
+  conclusion=failure, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success', 'pypi-publish':
+  'success'}, failed ['test-
+  macos'].
+- v3.13.4 FULL STAMP: GitHub
+  release published
+  2026-10-26T02:39:41Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.4.tar.gz
+  OK; GHCR v3.13.4 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40259406463:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.13.5 FULL STAMP: GitHub
+  release published
+  2026-10-26T03:11:42Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.5.tar.gz
+  OK; GHCR v3.13.5 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40262269280:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed [].
+- v3.13.6 FULL STAMP: GitHub
+  release published
+  2026-10-26T03:34:43Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.6.tar.gz
+  OK; GHCR v3.13.6 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40264039530:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.13.7 FULL STAMP: GitHub
+  release published
+  2026-10-26T03:54:04Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS unread on downloaded
+  copies; PyPI unread; GHCR
+  unread; GitLab unread.
+- v3.13.8 FULL STAMP: GitHub
+  release published
+  2026-10-26T04:23:31Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.8.tar.gz
+  OK; GHCR unread; GitLab unread.
+- v3.13.9 FULL STAMP: GitHub
+  release published
+  2026-10-26T04:47:16Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify (the linux-arm64 entry
+  read bad on the grind's
+  truncated download; re-verified
+  on a fresh 69,737,191-byte
+  download, sha384 matches the
+  sums entry) on downloaded
+  copies; PyPI any.whl OK,
+  3.13.9.tar.gz OK; GHCR unread;
+  GitLab unread.
+- v3.13.10 FULL STAMP: GitHub
+  release published
+  2026-10-26T05:19:22Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.10.tar.gz
+  OK; GHCR unread; GitLab unread.
+- v3.13.11 FULL STAMP: GitHub
+  release published
+  2026-10-26T05:42:41Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.11.tar.gz
+  OK; GHCR unread; GitLab unread.
+- v3.13.12 FULL STAMP: GitHub
+  release published
+  2026-10-26T06:04:49Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.12.tar.gz
+  OK; GHCR unread; GitLab unread.
+- v3.13.13 FULL STAMP: GitHub
+  release published
+  2026-10-26T06:26:16Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.13.tar.gz
+  OK; GHCR unread; GitLab unread.
+- v3.13.14 FULL STAMP: GitHub
+  release published
+  2026-10-26T06:59:15Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.14.tar.gz
+  OK; GHCR unread; GitLab unread.
+- v3.13.15 FULL STAMP: GitHub
+  release published
+  2026-10-26T07:24:22Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.15.tar.gz
+  OK; GHCR unread; GitLab unread.
+- v3.13.16 FULL STAMP: GitHub
+  release published
+  2026-10-26T08:05:36Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.16.tar.gz
+  OK; GHCR unread; GitLab unread.
+- v3.13.17 FULL STAMP: GitHub
+  release published
+  2026-10-26T08:26:04Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.17.tar.gz
+  OK; GHCR unread; GitLab unread.
+- v3.13.18 FULL STAMP: GitHub
+  release published
+  2026-10-26T08:47:56Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.18.tar.gz
+  OK; GHCR v3.13.18 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40293565737:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success', 'pypi-publish':
+  'success'}, failed [].
+- v3.13.19 FULL STAMP: GitHub
+  release published
+  2026-10-26T09:11:38Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.19.tar.gz
+  OK; GHCR v3.13.19 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40296167125:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.13.20 FULL STAMP: GitHub
+  release published
+  2026-10-26T09:33:44Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.20.tar.gz
+  OK; GHCR v3.13.20 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40299186281:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.21 FULL STAMP: GitHub
+  release published
+  2026-10-26T09:54:36Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.21.tar.gz
+  OK; GHCR v3.13.21 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40301970409:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success', 'pypi-publish':
+  'success'}, failed [].
+- v3.13.22 FULL STAMP: GitHub
+  release published
+  2026-10-26T10:53:51Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.22.tar.gz
+  OK; GHCR v3.13.22 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40309678332:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.13.23 FULL STAMP: GitHub
+  release published
+  2026-10-26T11:15:33Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.23.tar.gz
+  OK; GHCR v3.13.23 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40312408033:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success', 'pypi-publish':
+  'success'}, failed [].
+- v3.13.24 FULL STAMP: GitHub
+  release published
+  2026-10-26T11:34:30Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.24.tar.gz
+  OK; GHCR v3.13.24 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40314881144:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.25 FULL STAMP: GitHub
+  release published
+  2026-10-26T11:56:37Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.25.tar.gz
+  OK; GHCR v3.13.25 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40317570770:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.13.26 FULL STAMP: GitHub
+  release published
+  2026-10-26T12:19:07Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.26.tar.gz
+  OK; GHCR v3.13.26 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40320262516:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.27 FULL STAMP: GitHub
+  release published
+  2026-10-26T12:54:53Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.27.tar.gz
+  OK; GHCR v3.13.27 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40324472987:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.28 FULL STAMP: GitHub
+  release published
+  2026-10-26T13:17:03Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.28.tar.gz
+  OK; GHCR v3.13.28 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40327768700:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success', 'pypi-publish':
+  'success'}, failed [].
+- v3.13.29 FULL STAMP: GitHub
+  release published
+  2026-10-26T13:47:30Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.29.tar.gz
+  OK; GHCR v3.13.29 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40332212407:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.30 FULL STAMP: GitHub
+  release published
+  2026-10-26T14:11:39Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.30.tar.gz
+  OK; GHCR v3.13.30 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40335600649:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.13.31 FULL STAMP: GitHub
+  release published
+  2026-10-26T14:34:22Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.31.tar.gz
+  OK; GHCR v3.13.31 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40339290486:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed [].
+- v3.13.32 FULL STAMP: GitHub
+  release published
+  2026-10-26T14:58:05Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.32.tar.gz
+  OK; GHCR v3.13.32 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40342893714:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed [].
+- v3.13.33 FULL STAMP: GitHub
+  release published
+  2026-10-26T15:23:02Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.33.tar.gz
+  OK; GHCR v3.13.33 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40346969458:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.34 FULL STAMP: GitHub
+  release published
+  2026-10-26T16:18:51Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.34.tar.gz
+  OK; GHCR v3.13.34 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40354900506:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.13.35 FULL STAMP: GitHub
+  release published
+  2026-10-26T16:40:53Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.35.tar.gz
+  OK; GHCR v3.13.35 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40359842622:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.36 FULL STAMP: GitHub
+  release published
+  2026-10-26T17:03:12Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.36.tar.gz
+  OK; GHCR v3.13.36 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40363279669:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.13.37 FULL STAMP: GitHub
+  release published
+  2026-10-26T17:24:19Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.37.tar.gz
+  OK; GHCR v3.13.37 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40366643347:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed [].
+- v3.13.38 FULL STAMP: GitHub
+  release published
+  2026-10-26T17:47:30Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.38.tar.gz
+  OK; GHCR v3.13.38 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40370180762:
+  conclusion=failure, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed ['test-
+  macos'].
+- v3.13.39 FULL STAMP: GitHub
+  release published
+  2026-10-26T18:10:05Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.39.tar.gz
+  OK; GHCR v3.13.39 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40373725019:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed [].
+- v3.13.40 FULL STAMP: GitHub
+  release published
+  2026-10-26T18:34:19Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.40.tar.gz
+  OK; GHCR v3.13.40 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40377287713:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success', 'pypi-publish':
+  'success'}, failed [].
+- v3.13.41 FULL STAMP: GitHub
+  release published
+  2026-10-26T18:57:01Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.41.tar.gz
+  OK; GHCR v3.13.41 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40381111770:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.13.42 FULL STAMP: GitHub
+  release published
+  2026-10-26T19:33:58Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.42.tar.gz
+  OK; GHCR v3.13.42 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40386335802:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.13.43 FULL STAMP: GitHub
+  release published
+  2026-10-26T20:11:34Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.43.tar.gz
+  OK; GHCR v3.13.43 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40391756814:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed [].
+- v3.13.44 FULL STAMP: GitHub
+  release published
+  2026-10-26T20:36:11Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.44.tar.gz
+  OK; GHCR v3.13.44 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40395489494:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.45 FULL STAMP: GitHub
+  release published
+  2026-10-26T20:58:55Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.45.tar.gz
+  OK; GHCR v3.13.45 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40398886108:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.13.46 FULL STAMP: GitHub
+  release published
+  2026-10-26T21:20:00Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.46.tar.gz
+  OK; GHCR v3.13.46 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40401954040:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success', 'pypi-publish':
+  'success'}, failed [].
+- v3.13.47 FULL STAMP: GitHub
+  release published
+  2026-10-26T21:41:43Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.47.tar.gz
+  OK; GHCR v3.13.47 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40405180607:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.13.48 FULL STAMP: GitHub
+  release published
+  2026-10-26T22:04:35Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.48.tar.gz
+  OK; GHCR v3.13.48 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40408260811:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.13.49 FULL STAMP: GitHub
+  release published
+  2026-10-26T22:35:00Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.49.tar.gz
+  OK; GHCR v3.13.49 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40410990275:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.50 FULL STAMP: GitHub
+  release published
+  2026-10-26T22:57:32Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.50.tar.gz
+  OK; GHCR v3.13.50 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40415009921:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed [].
+- v3.13.51 FULL STAMP: GitHub
+  release published
+  2026-10-26T23:38:04Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.51.tar.gz
+  OK; GHCR v3.13.51 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40419948463:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.13.52 FULL STAMP: GitHub
+  release published
+  2026-10-27T00:02:48Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.52.tar.gz
+  OK; GHCR v3.13.52 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40422595692:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.13.53 FULL STAMP: GitHub
+  release published
+  2026-10-27T00:56:03Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.53.tar.gz
+  OK; GHCR v3.13.53 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40428480717:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.54 FULL STAMP: GitHub
+  release published
+  2026-10-27T01:34:40Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.54.tar.gz
+  OK; GHCR v3.13.54 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40431521910:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success', 'pypi-publish':
+  'success'}, failed [].
+- v3.13.55 FULL STAMP: GitHub
+  release published
+  2026-10-27T02:02:42Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.55.tar.gz
+  OK; GHCR v3.13.55 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40435187827:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.56 FULL STAMP: GitHub
+  release published
+  2026-10-27T02:31:52Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.56.tar.gz
+  OK; GHCR v3.13.56 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40438157426:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.57 FULL STAMP: GitHub
+  release published
+  2026-10-27T03:00:51Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.57.tar.gz
+  OK; GHCR v3.13.57 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40440120942:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.13.58 FULL STAMP: GitHub
+  release published
+  2026-10-27T03:22:29Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.58.tar.gz
+  OK; GHCR v3.13.58 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40443068629:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.13.59 FULL STAMP: GitHub
+  release published
+  2026-10-27T03:45:39Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.59.tar.gz
+  OK; GHCR v3.13.59 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40445016319:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.60 FULL STAMP: GitHub
+  release published
+  2026-10-27T05:30:37Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.60.tar.gz
+  OK; GHCR v3.13.60 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40454755060:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'pypi-publish':
+  'success', 'sourceforge':
+  'success'}, failed [].
+- v3.13.61 FULL STAMP: GitHub
+  release published
+  2026-10-27T05:54:07Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.61.tar.gz
+  OK; GHCR v3.13.61 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40456969193:
+  conclusion=success, publish jobs
+  {'release': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success', 'pypi-publish':
+  'success'}, failed [].
+- v3.13.62 FULL STAMP: GitHub
+  release published
+  2026-10-27T06:27:20Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.62.tar.gz
+  OK; GHCR v3.13.62 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40460057113:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success'}, failed [].
+- v3.13.63 FULL STAMP: GitHub
+  release published
+  2026-10-27T07:00:02Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.63.tar.gz
+  OK; GHCR v3.13.63 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40463318799:
+  conclusion=success, publish jobs
+  {'release': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success', 'pypi-
+  publish': 'success'}, failed [].
+- v3.13.64 FULL STAMP: GitHub
+  release published
+  2026-10-27T07:35:06Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.64.tar.gz
+  OK; GHCR v3.13.64 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40466912908:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed [].
+- v3.13.65 FULL STAMP: GitHub
+  release published
+  2026-10-27T07:58:41Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.13.65.tar.gz
+  OK; GHCR v3.13.65 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40469239359:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success', 'gitlab':
+  'success', 'sourceforge':
+  'success'}, failed [].
