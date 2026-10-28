@@ -427,7 +427,18 @@ class ReadOutputEdgesTest(unittest.TestCase):
             self.assertEqual(self.read(), (None, 0, "unreadable"))
 
     def test_a_stat_or_open_failure_is_unreadable(self):
-        with mock.patch.object(EX.os, "lstat", side_effect=PermissionError()):
+        # Only the file's own stat fails: realpath walks the parents
+        # with lstat too, and on a box whose temp dir sits behind a
+        # symlink (macOS's /var) a failing walk reads as "outside".
+        target = os.path.join(self.work, "f")
+        real_lstat = os.lstat
+
+        def lstat(path, *a, **k):
+            if os.fspath(path) == target:
+                raise PermissionError(path)
+            return real_lstat(path, *a, **k)
+        with mock.patch.object(EX.os.path, "realpath", lambda p: target), \
+                mock.patch.object(EX.os, "lstat", lstat):
             self.assertEqual(self.read(), (None, 0, "unreadable"))
         with mock.patch.object(EX.os, "open", side_effect=PermissionError()):
             self.assertEqual(self.read(), (None, 0, "unreadable"))
