@@ -259,24 +259,26 @@ class BankHonorsRetirementTest(unittest.TestCase):
         self._write(self.bank, "wire.crashes.jsonl", [
             self._crash("a1", "2026-10-27"), self._crash("b2", "2026-10-30"),
             self._crash("c3", "2026-10-27")])
-        added = RB.merge_id_file(os.path.join(self.tree, "wire.crashes.jsonl"),
-                                 os.path.join(self.bank, "wire.crashes.jsonl"))
-        self.assertEqual(["b2", "c3"], added)
+        added, echoes = RB.merge_id_file(
+            os.path.join(self.tree, "wire.crashes.jsonl"),
+            os.path.join(self.bank, "wire.crashes.jsonl"))
+        self.assertEqual((["b2", "c3"], 1), (added, echoes))
         _h, objs = RB.read_jsonl(os.path.join(self.tree, "wire.crashes.jsonl"))
         self.assertEqual({"b2", "c3"}, {o["id"] for o in objs})
 
     def test_an_entry_file_is_unioned_as_before(self):
         self._write(self.bank, "wire.jsonl", [{"id": "e1"}, {"id": "e2"}])
         self._write(self.tree, "wire.jsonl", [{"id": "e1"}])
-        added = RB.merge_id_file(os.path.join(self.tree, "wire.jsonl"),
-                                 os.path.join(self.bank, "wire.jsonl"))
-        self.assertEqual(["e2"], added)
+        added, echoes = RB.merge_id_file(os.path.join(self.tree, "wire.jsonl"),
+                                         os.path.join(self.bank, "wire.jsonl"))
+        self.assertEqual((["e2"], 0), (added, echoes))
 
     def test_no_retired_list_means_the_union_as_before(self):
         self._write(self.bank, "wire.crashes.jsonl", [self._crash("a1", "2026-10-27")])
-        added = RB.merge_id_file(os.path.join(self.tree, "wire.crashes.jsonl"),
-                                 os.path.join(self.bank, "wire.crashes.jsonl"))
-        self.assertEqual(["a1"], added)
+        added, echoes = RB.merge_id_file(
+            os.path.join(self.tree, "wire.crashes.jsonl"),
+            os.path.join(self.bank, "wire.crashes.jsonl"))
+        self.assertEqual((["a1"], 0), (added, echoes))
 
 
 class RetiredListsInTheTreeTest(unittest.TestCase):
