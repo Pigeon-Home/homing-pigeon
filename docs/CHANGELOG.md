@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.12 - 2026-10-28
+
+- **Fixed crash records retire.** The eleven queries crash records
+  banked from grow 26 (Q108) already meet their contract, so
+  `promote` retired them and the suite is green on every platform
+  again. 3.14.10 and 3.14.11 were never tagged.
+
 ## 3.14.11 - 2026-10-28
 
 - **Release stays a real gate.** The attestation retry that 3.14.10
