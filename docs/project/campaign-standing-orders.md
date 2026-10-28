@@ -4724,3 +4724,34 @@ when done, the proving commit or run. Newest first.
   conductor's doc work; recorded
   per Q58. Grow 23 (seed 6350)
   follows.
+- rules refreshed 2026-10-27 18:52 PDT
+  (standing orders incl. section M;
+  AGENTS.md rules 7-11; the
+  questions file's open entries).
+  de_dust 23 (VM rig): 1294 entries, 4978 arcs, 0 crashes filed.
+  Grow 23 (seed 6350, in two
+  fragments: the 16:46 restart
+  killed the first at five minutes
+  and the relaunch ran the seed
+  again) ran on target (box cpu
+  85%, wall 1h31m32s): 278,863
+  children over 19 run records; it
+  kept 1 (local,
+  b53ba7c18a8ca2fa), whose arcs
+  the merged tree already covered,
+  as in grow 22. v2_mail wrote no
+  record, the fourth grow in a row
+  at the end of the rotation. The
+  survivors pass beside it
+  completed: 87 of 2,985 mutants
+  not killed over 15 modules in
+  7,122s (per-module counts in
+  survivors.json). The box ran
+  that pass alone from this grow's
+  end (18:18) and stood idle from
+  its end (18:46) until grow 24's
+  launch at this bank, at this
+  seat's sequencing of the
+  conductor's Germany-box
+  handover; recorded per Q58.
+  Grow 24 (seed 6360) follows.

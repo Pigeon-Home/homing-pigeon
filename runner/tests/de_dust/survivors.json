@@ -2,13 +2,13 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "alarm": true,
  "de_dust": 1,
- "head": "b68eeae588e3",
+ "head": "624e0d0e388f",
  "kind": "survivors",
  "limit": null,
  "modules": {
   "board": {
    "broken": 0,
-   "entries": 152,
+   "entries": 155,
    "file": "runner/wire/board.py",
    "killed": 270,
    "mutants": 275,
@@ -363,7 +363,7 @@
   },
   "mailbox": {
    "broken": 0,
-   "entries": 313,
+   "entries": 316,
    "file": "runner/wire/mailbox.py",
    "killed": 19,
    "mutants": 22,
@@ -402,11 +402,11 @@
   },
   "policy": {
    "broken": 0,
-   "entries": 250,
+   "entries": 253,
    "file": "runner/ops/policy.py",
-   "killed": 163,
-   "mutants": 163,
-   "reached_lines": 135,
+   "killed": 149,
+   "mutants": 149,
+   "reached_lines": 112,
    "survived": 0,
    "survivors": [],
    "targets": [
@@ -433,50 +433,50 @@
   },
   "queries": {
    "broken": 0,
-   "entries": 228,
+   "entries": 231,
    "file": "runner/ops/queries.py",
-   "killed": 389,
-   "mutants": 395,
-   "reached_lines": 376,
+   "killed": 402,
+   "mutants": 408,
+   "reached_lines": 322,
    "survived": 0,
    "survivors": [
     {
-     "index": 3,
+     "index": 4,
      "line": 317,
      "op": "return-none",
      "text": "return box[0] if box else b\"\"",
      "verdict": "timeout"
     },
     {
-     "index": 55,
+     "index": 57,
      "line": 242,
      "op": "str-empty",
      "text": "return [sys.executable, \"-m\", \"runner.ops.queries\"]",
      "verdict": "timeout"
     },
     {
-     "index": 56,
+     "index": 58,
      "line": 242,
      "op": "str-empty",
      "text": "return [sys.executable, \"-m\", \"runner.ops.queries\"]",
      "verdict": "timeout"
     },
     {
-     "index": 110,
+     "index": 108,
      "line": 348,
      "op": "compare",
      "text": "if raw is None or (proc.poll() is not None and not raw):",
      "verdict": "timeout"
     },
     {
-     "index": 175,
+     "index": 177,
      "line": 328,
      "op": "str-empty",
      "text": "\"limit\": limit}) + \"\\n\").encode(\"utf-8\")",
      "verdict": "timeout"
     },
     {
-     "index": 177,
+     "index": 179,
      "line": 331,
      "op": "compare",
      "text": "if _worker is None or _worker.poll() is not None:",
@@ -642,7 +642,7 @@
   },
   "startup": {
    "broken": 0,
-   "entries": 81,
+   "entries": 84,
    "file": "runner/ops/startup.py",
    "killed": 90,
    "mutants": 94,
@@ -685,7 +685,7 @@
   },
   "transports": {
    "broken": 0,
-   "entries": 137,
+   "entries": 139,
    "file": "runner/wire/transports.py",
    "killed": 106,
    "mutants": 114,
@@ -851,9 +851,9 @@
  },
  "platform": "Linux-x86_64",
  "python": "3.12.3",
- "seconds": 7039.1,
+ "seconds": 7122.4,
  "seed": 0,
  "through_agent": [],
  "timeout": 20,
- "when": "2026-10-27T19:16:20Z"
+ "when": "2026-10-27T23:47:19Z"
 }
