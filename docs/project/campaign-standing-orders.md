@@ -4900,3 +4900,38 @@ when done, the proving commit or run. Newest first.
   hour, so the new targets grow
   from grow 26. Grow 26 (seed
   6380) follows.
+- rules refreshed 2026-10-28 11:19 PDT
+  de_dust 26 (VM rig): 1379 entries, 5237 arcs, 11 crashes filed.
+  Three fragments: the first launch
+  left from the stale tree and was
+  killed in minutes; the second, on
+  the refreshed tree, died in the
+  07:53 VM restart about 28 minutes
+  in; the third ran to completion
+  (exit 1, on target) at 10:33 PDT:
+  436,019 children over 29 records,
+  keeping queries 20, query 15,
+  wire 12, cloud 11, names 4,
+  board 1, board_ops 1, local 1.
+  Final fragment resources: box
+  cpu 90%, wall 1h37m59s. Twelve
+  crashes on queries (9 leak,
+  3 contract): eleven filed as
+  Q108; one, 2dbed86052899832, was
+  already retired by the desk and
+  is not re-banked — a retired
+  crash stays retired; Q108
+  carries the recurrence. The grow
+  ran on code from before the
+  desk's Q106 fix, which landed
+  while its last fragment ran.
+  Idle, per Q58: 07:53 to 08:56
+  (the restart, until the
+  relaunch), and 10:33 to grow
+  27's launch (completion, then
+  the 10:43 restart, then the
+  relaunch once the fall was
+  seen). The bank itself waited
+  on GitHub egress, down when
+  the seat woke. Grow 27 (seed
+  6390) follows.
