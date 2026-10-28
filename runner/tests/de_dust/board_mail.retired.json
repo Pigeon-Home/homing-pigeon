@@ -1,0 +1,11 @@
+{
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "de_dust": 1,
+ "retired": {
+  "5e94b87bc1be6e32": {
+   "on": "2026-10-28",
+   "why": "promoted"
+  }
+ },
+ "target": "board_mail"
+}

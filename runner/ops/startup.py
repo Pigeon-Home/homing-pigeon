@@ -220,9 +220,18 @@ def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, 
         # (PROTOCOL 3.1 / 13.7): a valid reply_to inside the signed
         # body receives the offer or ack; otherwise the runner's own
         # mailbox does. The From header never chooses.
-        _runner().send_mail(smtp, cfg, reply_subj, _runner()._seal_reply(
-            reply_body, secret, reply_subj.rsplit(" ", 1)[-1],
-            key_id, encrypted), to=_runner()._valid_reply_to(payload))
+        # A reply that cannot be sealed or sent (a board file a hand
+        # wrote or a crash left can hold text no signer accepts) is
+        # logged and the message taken, never raised into the poll,
+        # where it would come back on every pass (Q93's rule; Q106).
+        # The board's change stands: an offer the worker never saw
+        # lapses with its lease.
+        try:
+            _runner().send_mail(smtp, cfg, reply_subj, _runner()._seal_reply(
+                reply_body, secret, reply_subj.rsplit(" ", 1)[-1],
+                key_id, encrypted), to=_runner()._valid_reply_to(payload))
+        except Exception as e:
+            R.log(f"could not send board reply {reply_subj}: {e}", "ERROR")
     _runner()._mark(imap, seq, opts)
     return True
 

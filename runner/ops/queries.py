@@ -187,7 +187,12 @@ def handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts, base_di
                 "stderr": retained.get("stderr") or "",
                 "exit_code": retained.get("exit_code"),
                 "confined": retained.get("confined"),
-                "digest": retained.get("digest"),
+                # The record's digest only when it is one (96 hex
+                # characters, PROTOCOL.md section 12); anything else
+                # is a record a crash left, and the digest is
+                # recomputed from the retained streams, so the attest
+                # answer always seals (Q106).
+                "digest": _hex_digest(retained.get("digest")),
             }
             try:
                 answers, spent = _runner().answer_queries(
@@ -229,6 +234,14 @@ def query_seen_key(cfg, secrets, key_id, query_id):
     name = "query:" + query_id if owner == "" else \
         "query:%s:%s" % (owner, query_id)
     return _runner()._seen_key(cfg, name)
+
+
+def _hex_digest(value):
+    """A SHA-384 hex digest as a record carries it, or None."""
+    if isinstance(value, str) and len(value) == 96 \
+            and all(c in "0123456789abcdefABCDEF" for c in value):
+        return value.lower()
+    return None
 
 
 def _carriable(text):

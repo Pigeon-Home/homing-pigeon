@@ -1894,12 +1894,14 @@ def _query_answers(declared, answers, spent, budget, view, text_lines):
 
 
 def _query_outputs_view(view, outputs, result):
-    """PROTOCOL section 6 on `outputs[]` (Q101): under `full` the
-    entries come back as the exec result gave them; under `redacted`
-    and `summary` each object entry keeps everything but its bytes
-    (`content_b64`), a commitment the sender can check later; under
-    `attested`, and whenever the exec result's member is not a list,
-    there is no `outputs` at all."""
+    """PROTOCOL section 6 on `outputs[]` (Q101, Q106): under `full`
+    the entries come back as the exec result gave them; under
+    `redacted` and `summary` each object entry is projected onto the
+    commitment (`name`, `size`, `sha384`, `omitted`) and nothing else
+    of it leaves, so a member the collector never writes cannot carry
+    the job's output past the view; under `attested`, and whenever
+    the exec result's member is not a list, there is no `outputs` at
+    all."""
     got = result.get("outputs", _MISSING)
     if view == "attested" or not isinstance(outputs, list):
         if got is not _MISSING:
@@ -1914,14 +1916,35 @@ def _query_outputs_view(view, outputs, result):
                         "exec result's")
         note("outputs", view, len(outputs))
         return
-    want = [{k: v for k, v in o.items() if k != "content_b64"}
-            for o in outputs if isinstance(o, dict)]
+    want = [_output_commitment(o) for o in outputs if isinstance(o, dict)]
     if got != want:
         raise Crash("contract", f"a {view} result's outputs are not the "
-                    "entries without their bytes")
-    if any(isinstance(o, dict) and "content_b64" in o for o in got):
-        raise Crash("leak", f"a {view} result carries an output's bytes")
+                    "entries' commitment (name, size, sha384, omitted)")
     note("outputs", view, len(got))
+
+
+def _output_commitment(o):
+    """The checker's own reading of PROTOCOL section 6: what of an
+    output entry may leave below full, each member in its shape."""
+    want = {}
+    if isinstance(o.get("name"), str):
+        try:
+            if FN.validate_file_name(o["name"]) == o["name"]:
+                want["name"] = o["name"]
+        except Exception:
+            pass
+    if isinstance(o.get("size"), int) and not isinstance(o.get("size"), bool) \
+            and o["size"] >= 0:
+        want["size"] = o["size"]
+    d = o.get("sha384")
+    if isinstance(d, str) and len(d) == 96 and all(
+            c in "0123456789abcdef" for c in d.lower()):
+        want["sha384"] = d.lower()
+    if o.get("omitted") in ("missing", "too_large", "outside the workdir",
+                            "not a regular file", "unreadable",
+                            "changed while read"):
+        want["omitted"] = o["omitted"]
+    return want
 
 
 def check_queries(entry):
@@ -1953,9 +1976,12 @@ def check_queries(entry):
         policy, out, err = data, "", ""
     if len(out) + len(err) > QUERIES_MAX_TEXT:
         raise Crash("corpus", "a queries entry's output is over the cap")
-    if TU._lone_surrogate(policy):
+    if TU._lone_surrogate(policy) or TU._lone_surrogate(outputs):
         # The verifier refuses a body with a lone surrogate (Q85), so
-        # a policy carrying one never reaches these readers.
+        # a policy carrying one never reaches these readers; and the
+        # collector writes an output entry from a name the rules
+        # accepted (no surrogate) and bytes it encoded, so neither does
+        # an outputs list carrying one (Q106).
         note("gate", "lone surrogate")
         return "refused"
     declared = policy.get("queries") if isinstance(policy, dict) else None
@@ -1970,6 +1996,12 @@ def check_queries(entry):
     if outputs is not None:
         exe["outputs"] = outputs
     pieces = _query_pieces(out, err)
+    # An output's name is the sender's own text (the job named it), so
+    # a name that is also a line of the output leaving below full says
+    # nothing the sender did not know (Q106).
+    for o in outputs if isinstance(outputs, list) else []:
+        if isinstance(o, dict) and isinstance(o.get("name"), str):
+            pieces.discard(o["name"])
     policy_text = json.dumps(policy, sort_keys=True, default=str)
     text_lines = (out + err).splitlines()
     want = policy.get("view") if isinstance(policy, dict) else None
@@ -7322,6 +7354,77 @@ def header(target):
     return {"de_dust": 1, "target": target, "Agent-Stamp": STAMP}
 
 
+def retired_path(target):
+    """The sidecar naming every crash record `promote` retired from
+    <target>.crashes.jsonl: {id: {"on": date, "why": promoted or
+    redundant}}. A rig that banks by union (runner/tools/rig_bank.py)
+    reads it so a stale local copy of a fixed crash never comes back
+    to the tree as a probe that passes (Q106)."""
+    return os.path.join(CORPUS_DIR, target + ".retired.json")
+
+
+def load_retired(target):
+    path = retired_path(target)
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    retired = data.get("retired") if isinstance(data, dict) else None
+    return retired if isinstance(retired, dict) else {}
+
+
+def save_retired(target, retired):
+    path = retired_path(target)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    body = dict(header(target), retired=dict(sorted(retired.items())))
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(body, fh, ensure_ascii=True, indent=1, sort_keys=True)
+        fh.write("\n")
+    os.replace(tmp, path)
+
+
+def retired_stale(record, retired):
+    """True when a crash record is one `promote` retired and was found
+    no later than its retirement: a copy a rig kept, not the crash
+    found again after the fix (which carries a later `found`)."""
+    if not isinstance(record, dict):
+        return False
+    row = retired.get(record.get("id"))
+    if not isinstance(row, dict):
+        return False
+    found = record.get("found")
+    on = row.get("on")
+    if not isinstance(found, str) or not isinstance(on, str):
+        return True
+    return found <= on
+
+
+def prune_retired_crashes(target, out=print):
+    """Drop from <target>.crashes.jsonl the records the tree retired
+    and this copy kept (a rig's local file survives its resets). The
+    grow calls it first, so a crash found again after a fix files
+    under today's date and the bank takes it."""
+    retired = load_retired(target)
+    path = corpus_path(target, crashes=True)
+    if not retired or not os.path.exists(path):
+        return 0
+    records = load(path)
+    kept = [r for r in records if not retired_stale(r, retired)]
+    dropped = len(records) - len(kept)
+    if dropped:
+        if kept:
+            save(path, target, kept)
+        else:
+            os.remove(path)
+        out(f"{target}: {dropped} retired crash record(s) dropped from "
+            f"the local file")
+    return dropped
+
+
 def load(path):
     """The entries in a corpus file (the header line dropped)."""
     if not os.path.exists(path):
@@ -7802,6 +7905,12 @@ def _next_seed(cmd):
 
 
 def cmd_grow(args, out=print):
+    for target in _targets(args.target):
+        prune_retired_crashes(target, out)
+    return _cmd_grow(args, out)
+
+
+def _cmd_grow(args, out=print):
     rounds = args.rounds
     if rounds is None:
         rounds = int(os.environ.get("HP_DE_DUST_ROUNDS", DEFAULT_ROUNDS))
@@ -8005,6 +8114,14 @@ def cmd_promote(args, out=print):
             save(path, target, keep)
         else:
             os.remove(path)
+        if moved or redundant:
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            retired = load_retired(target)
+            for e in moved:
+                retired[e["id"]] = {"on": today, "why": "promoted"}
+            for e in redundant:
+                retired[e["id"]] = {"on": today, "why": "redundant"}
+            save_retired(target, retired)
         out(f"{target}: {len(moved)} promoted, {len(redundant)} redundant "
             f"(fixed, reaching nothing new), {len(keep)} still crash")
         if keep:

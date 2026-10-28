@@ -75,7 +75,15 @@ secret that is real.
   was tried and by which mutator, what was kept, what crashed, how
   long); `<target>.arcs.json` is the arc map the corpus reaches;
   `<target>.crashes.jsonl` holds inputs that broke a contract,
-  shrunk, until a fix lands. Everything is committed with the ledger
+  shrunk, until a fix lands; `<target>.retired.json` names every
+  crash record `promote` took off that file (promoted into the
+  corpus or dropped as reaching nothing new), with the date, so a
+  rig's stale copy is never banked back (a bank unions by id, and
+  a retired record returned would be a probe that passes, which is
+  a red build): `grow` drops such a copy from the rig's own file
+  first, and `rig_bank` skips one unless its `found` date is later
+  than the retirement, the crash found again after the fix.
+  Everything is committed with the ledger
   line, a grow that kept nothing included: the data from the
   fuzzing is in the repository, not only its results.
 - **Replay on every leg**: `runner/tests/test_de_dust_corpus.py`

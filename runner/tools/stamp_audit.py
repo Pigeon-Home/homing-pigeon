@@ -86,8 +86,12 @@ def parse_log(text):
         if len(parts) != 4:
             continue
         sha, when, author, body = parts
+        when = when.strip()
+        if when.endswith("Z"):
+            # RFC 3339's Z: fromisoformat reads it only from 3.11.
+            when = when[:-1] + "+00:00"
         try:
-            stamp_time = datetime.datetime.fromisoformat(when.strip())
+            stamp_time = datetime.datetime.fromisoformat(when)
         except ValueError:
             continue
         stamps = [t for t in TRAILER.findall(body)]

@@ -183,6 +183,28 @@ except ImportError:  # running from inside runner/ as __main__
 _STDLIB = set(getattr(sys, "stdlib_module_names", ()))
 
 
+def _is_stdlib(name):
+    """A top-level name the standard library provides. 3.10 on lists
+    them; before that, a module found under the interpreter's own
+    library directory (or built in) is one, and nothing else is."""
+    if _STDLIB:
+        return name in _STDLIB
+    import importlib.util
+    import sysconfig
+    try:
+        spec = importlib.util.find_spec(name)
+    except (ImportError, ValueError):
+        return False
+    if spec is None:
+        return False
+    if spec.origin in ("built-in", "frozen"):
+        return True
+    lib = sysconfig.get_paths().get("stdlib") or ""
+    origin = spec.origin or ""
+    return bool(lib) and origin.startswith(lib + os.sep) \
+        and (os.sep + "site-packages" + os.sep) not in origin
+
+
 def _undefined(tree):
     import ast
     import builtins
@@ -255,7 +277,7 @@ def finish_modules():
         for n in names:
             if n in ("datetime", "timezone", "timedelta"):
                 add_imports.append("from datetime import datetime, timezone, timedelta")
-            elif n in _STDLIB:
+            elif _is_stdlib(n):
                 add_imports.append("import " + n)
             elif hasattr(RR, n):
                 globs.append(n)

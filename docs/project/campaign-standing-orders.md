@@ -514,6 +514,11 @@ The loop:
    named whenever two rigs could read the same number two ways,
    and every ledger line names the rig that grew it. A bank that
    cannot meet the shape refuses and says so in its ledger line.
+   Crash files union by id with one exception (Q106, 2026-10-28):
+   a record `<target>.retired.json` names, found no later than its
+   retirement, is a rig's stale copy and is not re-added; `grow`
+   drops such a copy from the rig's file before it runs, so a crash
+   found again after a fix files under a later date and is banked.
 
 Hard rules, as Q62: no new CI legs, no `continue-on-error`, every
 skip registered, nothing about any machine in the tree, the

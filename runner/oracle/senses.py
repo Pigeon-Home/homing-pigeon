@@ -403,7 +403,10 @@ def load_alerts(base_dir: str, sensor=None, severity_floor=None,
             continue
         if not isinstance(rec, dict):
             continue
-        if sensor:
+        # A sensor named is the only sensor read; a name that matches
+        # none (the empty string among them) reads nothing. Only an
+        # absent name reads every sensor (Q106).
+        if sensor is not None:
             try:
                 same = rec.get("sensor") == sensor
             except Exception:

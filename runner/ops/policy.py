@@ -122,6 +122,47 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     return base, retain
 
 
+# What of an output entry leaves below the full view (PROTOCOL.md
+# section 6): the name, the size and the SHA-384 of a file read, or
+# the name and the reason (and the size, for too_large) of one not
+# read. Nothing else: an entry is projected onto these, never
+# filtered, so a member the collector never writes cannot carry the
+# job's output past the view (Q106).
+_OUTPUT_COMMITMENT = ("name", "size", "sha384", "omitted")
+_OUTPUT_REASONS = ("missing", "too_large", "outside the workdir",
+                   "not a regular file", "unreadable", "changed while read")
+
+
+def _is_hex_digest(value):
+    return isinstance(value, str) and len(value) == 96 \
+        and all(c in "0123456789abcdef" for c in value.lower())
+
+
+def output_commitment(entry):
+    """The members of one output entry that leave below the full
+    view, each only in its own shape: `name` text, `size` a count,
+    `sha384` a hex digest, `omitted` one of the collector's reasons.
+    A member in any other shape is not the collector's and stays."""
+    out = {}
+    name = entry.get("name")
+    if isinstance(name, str):
+        # A name the collector wrote passed the file-name rules as the
+        # job named it; one that would not is not a name (Q106).
+        try:
+            if _runner().validate_file_name(name) == name:
+                out["name"] = name
+        except Exception:
+            pass
+    size = entry.get("size")
+    if isinstance(size, int) and not isinstance(size, bool) and size >= 0:
+        out["size"] = size
+    if _is_hex_digest(entry.get("sha384")):
+        out["sha384"] = entry["sha384"].lower()
+    if entry.get("omitted") in _OUTPUT_REASONS:
+        out["omitted"] = entry["omitted"]
+    return out
+
+
 def _output_digests(base, exec_result):
     """Below the full view a file's bytes stay home: its name, size
     and SHA-384 leave, a commitment the SI can check later, never
@@ -129,8 +170,7 @@ def _output_digests(base, exec_result):
     outs = exec_result.get("outputs")
     if not isinstance(outs, list):
         return
-    base["outputs"] = [{k: v for k, v in o.items() if k != "content_b64"}
-                       for o in outs if isinstance(o, dict)]
+    base["outputs"] = [output_commitment(o) for o in outs if isinstance(o, dict)]
 
 
 def _sensor_alert_core(cfg, job, key_id, base_dir, dry=False, extra=None,

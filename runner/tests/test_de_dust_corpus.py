@@ -160,7 +160,13 @@ def _make_probe(target, record):
 
 
 for _target in B.TARGETS:
+    _retired = B.load_retired(_target)
     for _record in B.load(B.corpus_path(_target, crashes=True)):
+        if B.retired_stale(_record, _retired):
+            # A copy a rig banked back after `promote` retired it (Q106):
+            # no probe, so a fixed crash cannot pass unexpectedly; the
+            # next `promote` drops it again.
+            continue
         setattr(CrashProbesTest, f"test_{_target}_{_record['id']}",
                 _make_probe(_target, _record))
 

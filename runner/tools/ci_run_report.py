@@ -30,6 +30,7 @@ the `gh` CLI, which every CI runner and dev box here already has.
 import argparse
 import json
 import os
+import re
 import statistics
 import subprocess
 import sys
@@ -210,10 +211,20 @@ def _pct(lst, p):
 # report
 # --------------------------------------------------------------------------
 def _version(root):
+    """pyproject's project.version, read by tomllib where there is one
+    (3.11 on) and by the line's shape before that."""
+    path = os.path.join(root, "pyproject.toml")
     try:
         import tomllib
-        with open(os.path.join(root, "pyproject.toml"), "rb") as fh:
-            return tomllib.load(fh)["project"]["version"]
+    except ImportError:
+        tomllib = None
+    try:
+        if tomllib is not None:
+            with open(path, "rb") as fh:
+                return tomllib.load(fh)["project"]["version"]
+        with open(path, encoding="utf-8") as fh:
+            m = re.search(r'^version\s*=\s*"([^"]+)"', fh.read(), re.M)
+        return m.group(1) if m else "unknown"
     except Exception:
         return "unknown"
 

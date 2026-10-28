@@ -103,19 +103,53 @@ def write_jsonl(path, header, objs):
             fh.write(json.dumps(obj) + "\n")
 
 
+def retired_in_tree(tree_path):
+    """The tree's retired list beside a crash file (<target>.retired.json,
+    written by de_dust_corpus.py promote): id -> {"on", "why"}."""
+    if not tree_path.endswith(".crashes.jsonl"):
+        return {}
+    side = tree_path[: -len(".crashes.jsonl")] + ".retired.json"
+    if not os.path.exists(side):
+        return {}
+    try:
+        with open(side, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    rows = data.get("retired") if isinstance(data, dict) else None
+    return rows if isinstance(rows, dict) else {}
+
+
+def retired_stale(obj, retired):
+    """A crash record the tree retired, found no later than its
+    retirement: a rig's stale copy, not the crash found again after
+    the fix (that one carries a later `found` and is banked)."""
+    row = retired.get(obj.get("id"))
+    if not isinstance(row, dict):
+        return False
+    found, on = obj.get("found"), row.get("on")
+    if not isinstance(found, str) or not isinstance(on, str):
+        return True
+    return found <= on
+
+
 def merge_id_file(tree_path, bank_path):
-    """Union one entry or crash file by id. Returns ids added."""
+    """Union one entry or crash file by id. Returns ids added. A crash
+    record the tree retired (promote, after a fix) is not re-added
+    from a rig's stale copy: it would come back as an expectedFailure
+    probe that passes, and the build would go red (Q106)."""
     b_header, b_objs = read_jsonl(bank_path)
     if os.path.exists(tree_path):
         t_header, t_objs = read_jsonl(tree_path)
     else:
         t_header, t_objs = None, []
+    retired = retired_in_tree(tree_path)
     by_id = {}
     for obj in t_objs:
         by_id[obj["id"]] = obj
     added = []
     for obj in b_objs:
-        if obj["id"] not in by_id:
+        if obj["id"] not in by_id and not retired_stale(obj, retired):
             by_id[obj["id"]] = obj
             added.append(obj["id"])
     if added:

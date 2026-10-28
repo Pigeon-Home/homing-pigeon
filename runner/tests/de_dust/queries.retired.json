@@ -1,0 +1,535 @@
+{
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "de_dust": 1,
+ "retired": {
+  "02e4cdb793641bdf": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "0516d083acea5a5d": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "092ee964ae7d50ab": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "0b5f949c43b001ef": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "0ca209acb73ab32c": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "0d0d16be607f324e": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "0d8c321d2ca9cc3a": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "12caeb04687a6636": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "154f46fd178a104a": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "18a46415d8947721": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "1974dca58b791fd7": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "1b5cbf6c98e6e176": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "1e36c5b99ba1df8f": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "1ed5699833bf1bc5": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "1f063c639d502629": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "20e3635563f26a79": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "23c74f3db19edc84": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "2671cf146cc32a55": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "2a1907c9bd9de9c8": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "2dbed86052899832": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "2dfbca29b659aa22": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "2fc0f3ca115c33da": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "3348411f5db2148c": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "34516f7fb17ca983": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "355ff5695e9e7826": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "371afb4d784b411b": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "37959002f453ee51": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "389a4039411f4482": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "3966eb0697fa20d2": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "3a7cbbeee6b56c3f": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "3bb2e22fad044023": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "3fe902a1b025aa74": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "3ffad055a2d57820": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "4179bb188694d732": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "4890045a2641d75f": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "48d01157ed1e8086": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "49287f694323dd43": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "4c7bcd38391b9754": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "4dc06abe18467b21": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "4fefa90eca4a8c0c": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "527d98fb81961ec3": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "52ca52703a390b87": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "5417a2b35455547c": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "549326247fd81b1a": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "587014daac88747d": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "59d8341c5f88f47c": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "5a3eb43b6a13d9c7": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "5abf0b6d2d222f77": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "5b297fe13b19ed91": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "5d0454c931b73efa": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "5fe5b9f23902bf5d": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "61accedf5b68240e": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "67312e02a0735ec1": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "6897b715f2172c66": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "691cda06a4d10723": {
+   "on": "2026-10-28",
+   "why": "promoted"
+  },
+  "694b2018db8b9583": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "6bad289e6460609d": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "6d76cedef6bcd558": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "7054391504771899": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "71fb5a217216c90f": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "742b17379b2ffbcd": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "74a414a75c337d17": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "7a73f16846d45ce5": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "7acde9f846f8ee3d": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "7cb5bcee4fea0618": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "80517c2a086a8a0d": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "818fc0ecc0fb76c8": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "83448cea68ae67f0": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "8843d301a21f9062": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "888b2ef30dc9c6e3": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "89049bc141393321": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "8a11a976b83cc04b": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "8d82e255e150654f": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "8e1798a2018768f6": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "90d31cfe3c4cbb14": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "95c540d0e5fa7727": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "972d50eda6c9c3d8": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "9811fbfe90fb3744": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "9888cf8f992a8e23": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "9b0639243cf9128d": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "9be8526941fb0688": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "9debb14bcf5b10d8": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "a05a03f6cbe64140": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "a1b96b0e35025053": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "a367feefb560b635": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "a39e18e20fcc2833": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "a5230ff5e56f43bc": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "a5b2c6a88a582ee0": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "a954beb2c2daf750": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "a9f4aaad35328910": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "ac40ac3bcd5cd983": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "acca7b885066d87d": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "adeee4bfb21d05e7": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "afc3cc7962a1dd2c": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "afea1c7eadf8778f": {
+   "on": "2026-10-28",
+   "why": "promoted"
+  },
+  "b3836645202ddc6b": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "b4e9e2aa2a83c0ee": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "bbc7e3fbdf79a222": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "bf4ca1397f891ddc": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "bf57afe921942bdb": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "bfa5854322dacdf6": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "c0c898349363dade": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "c22e416753341e39": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "c372a2b71d02a5c0": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "c40e867cf49e6342": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "c51501d8e8364f40": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "c77da560befdd808": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "c8155d40922adc32": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "c838bf199de5002e": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "cad0fda3239f9401": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "cbe178660af247ba": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "cc8c6d9d19804abe": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "cfcbfd1536c82425": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "d0d752acef639de8": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "d24d55485108c82c": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "d3df3d5c903695a7": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "d7ebacbd936b2cbc": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "da9a36a521ef1e89": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "e484b0aa2a03fa5a": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "e9121e860ce3ffb1": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "ea086c2a21902d58": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "ec1020d2cd471789": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "ecb40bade5b8a15d": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "eceff4902aaabe51": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "edcdce60b3c52817": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "f07e07fa4dcbd1be": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "f1a25a4de5fa3b15": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "f1d591f417410ebc": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "f86716b9d5c65f4a": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "fb5933ebe45aa3fd": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "fe68ebcb79abfc9d": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  },
+  "feed0260eae2d171": {
+   "on": "2026-10-28",
+   "why": "redundant"
+  }
+ },
+ "target": "queries"
+}

@@ -324,7 +324,10 @@ stores nothing.
  "since": "2026-10-15T12:00:00Z", "until": "...", "limit": 20}
 ```
 
-Returns matching alerts ranked by **score = weight x severity**
+A `sensor` given reads that sensor alone, and a name no alert
+carries (the empty string among them) reads nothing; only an absent
+`sensor` reads every sensor. Returns matching alerts ranked by
+**score = weight x severity**
 (critical=4, high=3, medium=2, low=1, info=0.5), each carrying its
 `weight` and `score` so the reader sees exactly how much the Oracle
 weighed it. Titles and string details are redacted before the

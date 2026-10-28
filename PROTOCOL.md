@@ -642,9 +642,13 @@ secret, in which case the runner refuses to start and names it
   `outside the workdir`, `not a regular file`, `unreadable`,
   `changed while read`). What of it leaves the box is the result
   view's (section 9): the bytes under `full`; the name, size and
-  SHA-384 under `redacted` and `summary`, a commitment the sender
-  can check later, since no redaction pattern can scrub arbitrary
-  bytes; nothing under `attested`. `send_job.py verify
+  SHA-384 (or the name, the reason and, for `too_large`, the size
+  of a file not read) under `redacted` and `summary`, a commitment
+  the sender can check later, since no redaction pattern can scrub
+  arbitrary bytes, and each member only in its own shape (a name
+  the rules of this section accept, a count, a hex digest, one of
+  the six reasons): nothing else of an entry leaves below `full`;
+  nothing under `attested`. `send_job.py verify
   --outputs-dir DIR` writes the files out, each checked against its
   digest; `send_job.py new --inline-file NAME=PATH --output NAME`
   builds both members.
