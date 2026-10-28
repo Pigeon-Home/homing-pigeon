@@ -245,8 +245,9 @@ empty file. File secrets pass the same entropy gate.
   secret it names is the credential; guessing the label buys nothing.
 - **Every secret is root unless its policy says otherwise.** Keys
   without a `key_policies` entry are unrestricted by default. Give
-  every delegated key an entry (`allowed_kinds`, `max_timeout_sec`,
-  `allowed_script_sha384`, ...), or set `key_policies_default_deny`
+  every delegated key an entry (`allowed_kinds`, `allowed_recipes`,
+  `max_timeout_sec`, `allowed_script_sha384`, ...), or set
+  `key_policies_default_deny`
   so a new key with no entry is refused.
 - **Unknown key IDs are rejected before any MAC is computed**, and
   the runner never falls back to the default secret for them. An

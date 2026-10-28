@@ -141,10 +141,13 @@ The reference default is email only: `transports` absent means
   `k-<8 hex>` (section 14.2), and the reference sender names the
   key that way by default; the absent form stays accepted.
 
-- `kind`: `exec` or `ping`, or `sensor_alert` (a signed alert from a
-  sense, filed for the Oracle and answered with no result;
-  `docs/extend/senses.md`). A `ping` job carries no script; the
-  runner answers with a `pong` result (health check).
+- `kind`: `exec` or `ping`; `recipe` (the owner's named script
+  under the job's checked arguments, section 3.3); `change` (the
+  owner's repository, the job's diff, the owner's recipe, section
+  3.5); or `sensor_alert` (a signed alert from a sense, filed for
+  the Oracle and answered with no result; `docs/extend/senses.md`).
+  A `ping` job carries no script; the runner answers with a `pong`
+  result (health check).
 - For `exec`, at least one of `script` / `script_url` is required.
   A job carrying both is accepted and `script_url` wins; the inline
   `script` is ignored.
@@ -558,7 +561,10 @@ Authorization then runs in this order, and all of it must pass:
    pass step 5: the freshness window plus the 300-second future
    bound, a day at least. It is never dropped earlier to make room.
 7. **Job-shape validation** (job messages): `kind` is `exec`,
-   `ping` or `sensor_alert`; `script_sha384`, when present, matches the script — for
+   `ping`, `recipe`, `change` or `sensor_alert`, and a `recipe` or
+   `change` job names a recipe the owner wrote (section 3.3; a
+   `change` also a repository of `change_repos`, section 3.5);
+   `script_sha384`, when present, matches the script — for
    `script_url`, the downloaded bytes, checked before anything
    runs; and every `files[]` name passes the rules of section 6
    and stays inside the workdir.
