@@ -564,11 +564,26 @@ def cmd_new(args) -> int:
         envelope = f"[HOMING-PIGEON] job {payload['job_id']}\n\n{body}"
         if not envelope.endswith("\n"):
             envelope += "\n"
-        status, text = post_to_queue(args.to_queue, envelope,
-                                     getattr(args, "queue_token_env", None))
+        try:
+            status, text = post_to_queue(
+                args.to_queue, envelope,
+                getattr(args, "queue_token_env", None))
+        except QueueUnreachable as e:
+            print(f"error: could not reach the queue ({e}); job "
+                  f"{payload['job_id']} may or may not be queued. Send it "
+                  f"again with --job-id {payload['job_id']}: the queue "
+                  "answers a repeat of a queued job as a duplicate",
+                  file=sys.stderr)
+            return 2
         if status in (200, 202):
+            dup = ""
+            try:
+                if json.loads(text).get("duplicate") is True:
+                    dup = ", already queued"
+            except (ValueError, AttributeError):
+                pass
             print(f"queued job {payload['job_id']} at {args.to_queue} "
-                  f"(HTTP {status})", file=sys.stderr)
+                  f"(HTTP {status}{dup})", file=sys.stderr)
             return 0
         print(f"queue refused job {payload['job_id']}: HTTP {status}: "
               f"{text[:200]}", file=sys.stderr)
@@ -589,11 +604,68 @@ def cmd_new(args) -> int:
     return 0
 
 
+class QueueUnreachable(Exception):
+    """The hosted queue could not be read or written after the bounded
+    retries: a dropped connection, a truncated body, a timeout (Q105).
+    The command prints one plain line and exits 2, never a traceback."""
+
+
+# Seconds slept before the second and third attempt. A test sets the
+# sleeper to a no-op.
+_QUEUE_BACKOFF = (1.0, 3.0)
+_queue_sleep = None
+
+
+def _transient(exc):
+    """True for the weather a queue call rides out: the connection
+    dropped, the body arrived cut short, or the wait ran out. An HTTP
+    status is an answer, never weather."""
+    import http.client
+    import socket
+    import urllib.error
+    if isinstance(exc, urllib.error.HTTPError):
+        return False
+    if isinstance(exc, urllib.error.URLError):
+        exc = exc.reason if isinstance(exc.reason, BaseException) else exc
+    return isinstance(exc, (http.client.IncompleteRead,
+                            http.client.RemoteDisconnected,
+                            ConnectionError, socket.timeout, TimeoutError))
+
+
+def _send_with_retry(opener, req):
+    """(status, text) for one queue request, retried on transient
+    failures; QueueUnreachable when every attempt failed that way."""
+    import time as _time
+    import urllib.error
+    sleep = _queue_sleep or _time.sleep
+    last = None
+    for attempt in range(len(_QUEUE_BACKOFF) + 1):
+        if attempt:
+            sleep(_QUEUE_BACKOFF[attempt - 1])
+        try:
+            with opener(req, timeout=30) as resp:
+                return resp.status, resp.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            try:
+                text = e.read().decode("utf-8", "replace")
+            except Exception:
+                text = ""
+            return e.code, text
+        except Exception as e:  # noqa: BLE001 -- sorted by _transient
+            if not _transient(e):
+                raise
+            last = e
+    raise QueueUnreachable(f"{type(last).__name__}: {last}"[:200])
+
+
 def post_to_queue(url, envelope, token_env=None, opener=None):
     """POST an envelope to a tenant's hosted queue. The SI token is
     read from the environment variable named by `token_env`
     (default HP_SI_TOKEN); it is never taken from the command line.
-    Returns (status, response_text)."""
+    Returns (status, response_text). A dropped connection is retried
+    with the same envelope, which the Worker answers as a duplicate
+    when the first copy landed (Q105); QueueUnreachable when every
+    attempt failed that way."""
     import os as _os
     import urllib.error
     import urllib.request
@@ -613,16 +685,7 @@ def post_to_queue(url, envelope, token_env=None, opener=None):
         headers={"Authorization": f"Bearer {token}",
                  "Content-Type": "text/plain; charset=utf-8",
                  "User-Agent": "homing-pigeon-send-job"})
-    opener = opener or urllib.request.urlopen
-    try:
-        with opener(req, timeout=30) as resp:
-            return resp.status, resp.read().decode("utf-8", "replace")
-    except urllib.error.HTTPError as e:
-        try:
-            text = e.read().decode("utf-8", "replace")
-        except Exception:
-            text = ""
-        return e.code, text
+    return _send_with_retry(opener or urllib.request.urlopen, req)
 
 
 def repair_line(payload):
@@ -768,16 +831,7 @@ def _queue_call(url, method, path, token_env=None, opener=None):
         data=b"" if method == "POST" else None,
         headers={"Authorization": f"Bearer {token}",
                  "User-Agent": "homing-pigeon-send-job"})
-    opener = opener or urllib.request.urlopen
-    try:
-        with opener(req, timeout=30) as resp:
-            return resp.status, resp.read().decode("utf-8", "replace")
-    except urllib.error.HTTPError as e:
-        try:
-            text = e.read().decode("utf-8", "replace")
-        except Exception:
-            text = ""
-        return e.code, text
+    return _send_with_retry(opener or urllib.request.urlopen, req)
 
 
 def _result_job_id(subject):
@@ -790,6 +844,23 @@ def _result_job_id(subject):
     return None
 
 
+def _queue_plain(cmd):
+    """A queue command that could not reach the queue after its
+    retries prints one plain line and exits 2 (Q105)."""
+    import functools
+
+    @functools.wraps(cmd)
+    def wrapped(args, opener=None):
+        try:
+            return cmd(args, opener)
+        except QueueUnreachable as e:
+            print(f"error: could not reach the queue ({e}); run it "
+                  "again", file=sys.stderr)
+            return 2
+    return wrapped
+
+
+@_queue_plain
 def cmd_results(args, opener=None) -> int:
     """Read results from a hosted queue: one JSON line per result on
     stdout, verified (and decrypted under the job id in its subject).
@@ -833,15 +904,19 @@ def cmd_results(args, opener=None) -> int:
             line["error"] = str(e)
         if line["ok"] and args.ack and isinstance(rid, str):
             from urllib.parse import quote
-            st, _t = _queue_call(args.from_queue, "POST",
-                                 f"/results/{quote(rid, safe='')}/ack",
-                                 args.queue_token_env, opener)
+            try:
+                st, _t = _queue_call(args.from_queue, "POST",
+                                     f"/results/{quote(rid, safe='')}/ack",
+                                     args.queue_token_env, opener)
+            except QueueUnreachable:
+                st = None  # stays on the queue; the next read has it
             line["acked"] = st in (200, 204, 404)
         print(json.dumps(line, ensure_ascii=False))
     return 1 if bad else 0
 
 
 
+@_queue_plain
 def cmd_dlq(args, opener=None) -> int:
     """The hosted queue's dead-letter list: jobs that ran out of
     attempts without a result. Lists them (one JSON line each: id,

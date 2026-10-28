@@ -188,6 +188,15 @@ one we'd recommend to anyone who winces at the word "email."
   it verified; one that does not verify stays on the queue. Exit 0 when
   every result verified or none was waiting, 1 when any did not, 2 when
   the queue refused the read.
+- Both sides ride out the queue's weather (Q105). A read cut short, a
+  dropped connection or a timeout is tried again twice, after one and
+  three seconds; a read that still cannot finish exits 2 with one plain
+  line. A `new --to-queue` post that drops is sent again with the same
+  envelope, and the Worker answers a copy of a job it already holds as
+  a duplicate, which the sender reports as queued. When every attempt
+  drops, the sender says the job may or may not be queued and names
+  the `--job-id` to send it again with. An HTTP status is an answer and
+  is never retried.
 - `send_job.py dlq --from-queue <url>` — the dead-letter list: one JSON
   line per dead job, or `--drop ID`, or `--requeue ID`. A requeued job
   is the same signed job, so a runner that already saw it, or holds it
