@@ -1390,7 +1390,8 @@ and a message may name it either way. An additional key keeps the
 name the operator gave it (`additional_secrets`) and answers to its
 own fingerprint as well, so a sender handed only the secret names it
 the one way it can; a name that is the fingerprint of a different
-secret is a startup error. The operator's name stays the one the
+secret is a startup error, and so is one secret configured under two
+additional names (two keys would share one fingerprint). The operator's name stays the one the
 key is counted under. A chosen name
 for the runner's own key (`install --key-id <name>`) is stored as an
 additional entry carrying the same secret, so that key then has

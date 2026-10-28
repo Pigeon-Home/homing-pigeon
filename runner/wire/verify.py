@@ -398,6 +398,19 @@ def build_secrets(cfg) -> dict:
                                "carry it")
         validate_shared_secret(sec)
         secrets[kid] = sec
+    # One secret under two additional names is two keys that would
+    # share one fingerprint (Q98 item 15, the conductor's ruling):
+    # refused. The owner's own secret may carry one chosen name
+    # (install --key-id), its third name beside "" and its fingerprint.
+    held_by = {}
+    for kid, sec in secrets.items():
+        if kid in ("", named) or not isinstance(sec, str):
+            continue
+        if sec in held_by:
+            raise RuntimeError(
+                "config error: one secret is configured under two key ids "
+                f"({held_by[sec]!r} and {kid!r}); give each key its own secret")
+        held_by[sec] = kid
     # Every secret answers to its fingerprint (PROTOCOL.md section
     # 14.2), not the default key alone: a sender handed a bare
     # additional secret names it the only way it can, by computing

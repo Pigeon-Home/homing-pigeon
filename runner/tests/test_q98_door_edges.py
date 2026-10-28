@@ -17,13 +17,8 @@ keeps only the shapes that module does not pin:
   unrestricted under `key_policies_default_deny`
   (the desk pins the refusals);
 - item 15: an additional secret answers to its
-  fingerprint, and -- still open -- one secret under two
-  names is refused, as item 15's recommendation words it
-  ("refusing two secrets that share one"). The desk's fix
-  registers the fingerprint once and keeps both names, so
-  that test carries @unittest.expectedFailure until the
-  desk rules on it; the Q98 reply in the landing commit
-  names it.
+  fingerprint, and one secret under two names is refused
+  at startup (the conductor's ruling under Q98).
 """
 import json
 import os
@@ -151,7 +146,6 @@ class FingerprintNamesTest(unittest.TestCase):
         })
         self.assertEqual(secrets[key_fingerprint(SECRET2)], SECRET2)
 
-    @unittest.expectedFailure  # Q98 item 15: two names, one secret, no refusal yet
     def test_one_secret_under_two_names_is_refused(self):
         with self.assertRaises(RuntimeError):
             build_secrets({

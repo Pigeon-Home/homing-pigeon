@@ -263,9 +263,15 @@ def judge(samples, rss_mb=24.0, warmup=0.2, window=0.15, jobs_per_cycle=1):
     if short:
         failures.append("%d cycle(s) sent fewer results than they had "
                         "fresh jobs (first: cycle %d)" % (len(short), short[0]))
-    if max(r["children"] for r in last) > 0:
+    # Children the process already had are not the soak's: inside the
+    # suite a sibling test may hold one open (a reader's long-lived
+    # helper). Jobs are reaped within their cycle, so the fewest seen
+    # in any sample is the floor; a job left behind shows above it.
+    floor = min(r["children"] for r in samples)
+    if max(r["children"] for r in last) > floor:
         failures.append("a job's process was not reaped (%d children "
-                        "after the cycle)" % max(r["children"] for r in last))
+                        "after the cycle, %d before the soak's jobs)"
+                        % (max(r["children"] for r in last), floor))
     cap = LOG_CAP * (LOG_BACKUPS + 1) + 4096
     worst = max(r["log_bytes"] for r in samples)
     if worst > cap:

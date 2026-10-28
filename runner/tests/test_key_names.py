@@ -305,9 +305,12 @@ class OneKeyManyNamesTest(unittest.TestCase):
     fingerprint would have changed what the rules did -- the deny
     flag would have refused the owner's own jobs."""
 
+    # An additional key's second name is its fingerprint: one secret
+    # under two configured names is refused (Q98 item 15, the
+    # conductor's ruling), so no config gives it two of its own.
     CFG = {"shared_secret": SECRET,
-           "additional_secrets": {"ops": OTHER, "prod-1": SECRET,
-                                  "ops-too": OTHER}}
+           "additional_secrets": {"ops": OTHER, "prod-1": SECRET}}
+    FO = security.key_fingerprint(OTHER)
 
     def setUp(self):
         self.secrets = V.build_secrets(self.CFG)
@@ -319,11 +322,8 @@ class OneKeyManyNamesTest(unittest.TestCase):
                          (self.fp, "", "prod-1"))
         self.assertEqual(V.key_names(self.secrets, "prod-1"),
                          ("prod-1", "", self.fp))
-        fo = security.key_fingerprint(OTHER)
-        self.assertEqual(V.key_names(self.secrets, "ops"),
-                         ("ops",) + tuple(sorted([fo, "ops-too"])))
-        self.assertEqual(V.key_names(self.secrets, "ops-too"),
-                         ("ops-too",) + tuple(sorted([fo, "ops"])))
+        self.assertEqual(V.key_names(self.secrets, "ops"), ("ops", self.FO))
+        self.assertEqual(V.key_names(self.secrets, self.FO), (self.FO, "ops"))
         self.assertEqual(V.key_names(self.secrets, "nobody"), ("nobody",))
         self.assertEqual(V.key_names(self.secrets, None), (None,))
         self.assertEqual(V.key_names("not a map", "ops"), ("ops",))
@@ -332,7 +332,7 @@ class OneKeyManyNamesTest(unittest.TestCase):
         self.assertEqual(V.key_names({"": SECRET}, ""), ("", self.fp))
         for name in ("", self.fp, "prod-1"):
             self.assertTrue(V.is_default_key(self.secrets, name), name)
-        for name in ("ops", "ops-too", "nobody", None):
+        for name in ("ops", self.FO, "nobody", None):
             self.assertFalse(V.is_default_key(self.secrets, name), name)
         self.assertIs(R.key_names, V.key_names)
 
@@ -340,7 +340,7 @@ class OneKeyManyNamesTest(unittest.TestCase):
         for name in ("", self.fp, "prod-1"):
             self.assertEqual(V.canonical_key_id(self.secrets, name), "")
         self.assertEqual(V.canonical_key_id(self.secrets, "ops"), "ops")
-        self.assertEqual(V.canonical_key_id(self.secrets, "ops-too"), "ops")
+        self.assertEqual(V.canonical_key_id(self.secrets, self.FO), "ops")
         self.assertEqual(V.canonical_key_id(self.secrets, "nobody"), "nobody")
         self.assertEqual(V.canonical_key_id(self.secrets, None), None)
 
@@ -359,7 +359,7 @@ class OneKeyManyNamesTest(unittest.TestCase):
                     policies, name, self.CFG, {"kind": "ping"},
                     secrets=self.secrets), (under, name))
             self.assertIsNone(V.policy_for(policies, self.secrets, "ops"))
-        self.assertIs(V.policy_for({"ops": pol}, self.secrets, "ops-too"), pol)
+        self.assertIs(V.policy_for({"ops": pol}, self.secrets, self.FO), pol)
         self.assertIsNone(V.policy_for("junk", self.secrets, "ops"))
         # Without the map, the check reads the name alone, as before.
         self.assertIsNone(V.check_key_policy({"": pol}, self.fp, self.CFG,
@@ -370,7 +370,7 @@ class OneKeyManyNamesTest(unittest.TestCase):
         for name in ("", self.fp, "prod-1"):
             self.assertIsNone(V.check_key_policy({}, name, cfg, {"kind": "ping"},
                                                  secrets=self.secrets), name)
-        for name in ("ops", "ops-too", "nobody"):
+        for name in ("ops", self.FO, "nobody"):
             self.assertEqual(V.check_key_policy({}, name, cfg, {"kind": "ping"},
                                                 secrets=self.secrets),
                              "no key policy entry for this key "
@@ -379,12 +379,13 @@ class OneKeyManyNamesTest(unittest.TestCase):
     def test_a_key_policed_under_two_of_its_names_is_a_config_error(self):
         pol = {"allowed_kinds": ["ping"]}
         for pair in (("", self.fp), ("", "prod-1"), (self.fp, "prod-1"),
-                     ("ops", "ops-too")):
+                     ("ops", self.FO)):
             cfg = dict(self.CFG, key_policies={pair[0]: pol, pair[1]: pol})
             with self.assertRaisesRegex(RuntimeError,
                                         "names one key twice", msg=pair):
                 V.build_key_policies(cfg)
         cfg = dict(self.CFG, key_policies={self.fp: pol, "ops": pol})
+        # (the two pairs above are one key each; these are two keys)
         self.assertEqual(set(V.build_key_policies(cfg)), {self.fp, "ops"})
         # A config whose secrets do not build reports that elsewhere.
         self.assertEqual(V.build_key_policies({"key_policies": {"": pol,
@@ -392,14 +393,14 @@ class OneKeyManyNamesTest(unittest.TestCase):
                          {"": pol, "x": pol})
 
     def test_the_owners_names_are_never_warned_as_unrestricted(self):
-        self.assertEqual(V.unrestricted_extra_keys(self.CFG), ["ops", "ops-too"])
+        self.assertEqual(V.unrestricted_extra_keys(self.CFG), ["ops"])
         cfg = dict(self.CFG, key_policies={"ops": {"allowed_kinds": ["ping"]}})
         self.assertEqual(V.unrestricted_extra_keys(cfg), [])
 
     def test_a_sensor_bound_to_a_key_takes_it_under_any_name(self):
         sensors = {"canary": {"enabled": True, "key_id": "ops"},
                    "door": {"enabled": True, "key_id": ""}}
-        for name, want in (("ops", "canary"), ("ops-too", "canary"),
+        for name, want in (("ops", "canary"), (self.FO, "canary"),
                            ("", "door"), (self.fp, "door"), ("prod-1", "door"),
                            ("nobody", None)):
             bound = None
@@ -409,6 +410,11 @@ class OneKeyManyNamesTest(unittest.TestCase):
                     break
             self.assertEqual(bound, want, name)
 
+
+    def test_one_secret_under_two_configured_names_is_refused(self):
+        with self.assertRaisesRegex(RuntimeError, "under two key ids"):
+            V.build_secrets({"shared_secret": SECRET,
+                             "additional_secrets": {"ops": OTHER, "ops-too": OTHER}})
 
 class RulesReadTheKeyNotTheNameTest(unittest.TestCase):
     """The wired rules, end to end: one hourly window for the default
