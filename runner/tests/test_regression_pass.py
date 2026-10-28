@@ -50,6 +50,17 @@ class ReaderTest(unittest.TestCase):
                           "runner.tests.test_one.OneTest.test_b",
                           "runner.tests.test_two"])
 
+    def test_missing_dependency_names_third_party_only(self):
+        # Agent-Stamp: 90000998-709f-46f5-b2bc-2c3c5cf8dc6c
+        self.assertEqual(P.missing_dependency(
+            "ModuleNotFoundError: No module named 'hypothesis'"), "hypothesis")
+        self.assertEqual(P.missing_dependency(
+            "No module named 'yaml.loader'"), "yaml")
+        self.assertIsNone(P.missing_dependency(
+            "No module named 'runner.ops.gone'"))
+        self.assertIsNone(P.missing_dependency("AssertionError"))
+        self.assertIsNone(P.missing_dependency(None))
+
     def test_tests_ran_sums_the_shards(self):
         self.assertEqual(P.tests_ran(SHARD_OUTPUT), 160)
         self.assertEqual(P.tests_ran("nothing"), 0)
@@ -256,6 +267,56 @@ class PassFlowTest(unittest.TestCase):
         self.assertIn("1 deterministic: runner.tests.test_x.T.test_a", ledger)
         self.assertIn("1 flaky: runner.tests.test_x.T.test_b", ledger)
         self.assertTrue(any("for questions.md" in l for l in lines))
+
+    def test_a_missing_package_is_not_run_here_not_red(self):
+        # Agent-Stamp: 90000998-709f-46f5-b2bc-2c3c5cf8dc6c
+        tmp = tempfile.mkdtemp(prefix="hp-regress-flow-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        lines = []
+        red = ("ERROR: test_props (unittest.loader._FailedTest.test_props)\n"
+               "Ran 7 tests in 1s\n\nFAILED (errors=1)\n")
+        lone = ("ModuleNotFoundError: No module named 'hypothesis'\n"
+                "ERROR: test_props (unittest.loader._FailedTest.test_props)\n")
+
+        def rerun(ids, times, cwd=None, outputs=None):
+            outputs.update({i: lone for i in ids})
+            return {i: [False] * times for i in ids}
+
+        with mock.patch.object(P, "git", return_value="e" * 40), \
+                mock.patch.object(P, "run_suite", return_value=(1, red)), \
+                mock.patch.object(P, "rerun", side_effect=rerun):
+            status = P.regression_pass(self._args(tmp), out=lines.append)
+        self.assertEqual(status, 0)
+        self.assertEqual(P.State(tmp).last_green()["sha"], "e" * 40)
+        ledger = [l for l in lines if l.startswith("regression eeeeeeee")][0]
+        self.assertIn("7 tests green", ledger)
+        self.assertIn("1 not run here (missing hypothesis): "
+                      "runner.tests.test_props", ledger)
+
+    def test_a_missing_package_beside_a_real_red_stays_red(self):
+        # Agent-Stamp: 90000998-709f-46f5-b2bc-2c3c5cf8dc6c
+        tmp = tempfile.mkdtemp(prefix="hp-regress-flow-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        lines = []
+        red = ("ERROR: test_props (unittest.loader._FailedTest.test_props)\n"
+               "FAIL: test_a (runner.tests.test_x.T.test_a)\n"
+               "Ran 7 tests in 1s\n\nFAILED (errors=1)\n")
+        lone = {"runner.tests.test_props":
+                "ModuleNotFoundError: No module named 'hypothesis.strategies'",
+                "runner.tests.test_x.T.test_a": "AssertionError"}
+
+        def rerun(ids, times, cwd=None, outputs=None):
+            outputs.update(lone)
+            return {i: [False] * times for i in ids}
+
+        with mock.patch.object(P, "git", return_value="f" * 40), \
+                mock.patch.object(P, "run_suite", return_value=(1, red)), \
+                mock.patch.object(P, "rerun", side_effect=rerun):
+            status = P.regression_pass(self._args(tmp), out=lines.append)
+        self.assertEqual(status, 1)
+        ledger = [l for l in lines if l.startswith("regression ffffffff")][0]
+        self.assertIn("1 deterministic: runner.tests.test_x.T.test_a", ledger)
+        self.assertIn("1 not run here (missing hypothesis)", ledger)
 
     def test_each_pass_appends_one_line_to_the_tree_record(self):
         tmp = tempfile.mkdtemp(prefix="hp-regress-flow-")

@@ -182,6 +182,15 @@ class _OutsideActions(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         os.environ.pop("GITHUB_ACTIONS", None)
+        # The fake shards' reports stay out of the real run's output:
+        # a deliberately red fake shard printed "FAIL: test_bad
+        # (test_gamma.T.test_bad)" into the suite log, and the
+        # regression pass read it as a red of the real suite. A test
+        # that reads the output redirects stdout itself, inside this.
+        for redirect in (contextlib.redirect_stdout(io.StringIO()),
+                         contextlib.redirect_stderr(io.StringIO())):
+            redirect.__enter__()
+            self.addCleanup(redirect.__exit__, None, None, None)
 
 
 class ReporterRobustnessTest(_OutsideActions):

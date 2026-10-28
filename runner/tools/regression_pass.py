@@ -48,6 +48,7 @@ STAMP = "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"
 RECORD = os.path.join("docs", "reports", "regression", "passes.jsonl")
 _RAN = re.compile(r"^Ran (\d+) tests? in", re.M)
 _RED = re.compile(r"^(FAIL|ERROR): (\S+) \(([^)]+)\)", re.M)
+_MISSING = re.compile(r"No module named '([A-Za-z_][\w.]*)'")
 _LOADER = "unittest.loader._FailedTest."
 
 
@@ -96,6 +97,19 @@ def failing_ids(output):
         if ident not in seen:
             seen.append(ident)
     return seen
+
+
+def missing_dependency(output):
+    """The third-party module a run could not import, or None. A test
+    that cannot start because this box lacks a package the CI pins
+    (`hypothesis`, say) is not a regression of the code: the pass
+    names it as not run here instead of red. A missing `runner`
+    module is the code's own and stays red."""
+    for name in _MISSING.findall(output or ""):
+        top = name.split(".")[0]
+        if top != "runner":
+            return top
+    return None
 
 
 def tests_ran(output):
@@ -163,15 +177,18 @@ def run_suite(jobs, timeout):
     return run_python(args, timeout=timeout)
 
 
-def rerun(ids, times, cwd=None):
+def rerun(ids, times, cwd=None, outputs=None):
     """{id: [passed?, ...]} for `times` lone runs of the failing tests
-    (a module that failed to import is run as the module)."""
+    (a module that failed to import is run as the module). When
+    `outputs` is a dict, each test's last lone output lands in it."""
     results = {i: [] for i in ids}
     for _ in range(times):
         for ident in ids:
             rc, out = run_python(["-m", "unittest", ident], cwd=cwd,
                                  timeout=1800)
             results[ident].append(rc == 0 and not failing_ids(out))
+            if outputs is not None:
+                outputs[ident] = out
     return results
 
 
@@ -252,11 +269,21 @@ def bisect(good, bad, ids, log=None):
     return sha, git("log", "-1", "--format=%s", sha), steps
 
 
-def ledger_line(sha, tests, seconds, deterministic, flaky, culprits):
+def _unavailable_part(unavailable):
+    mods = sorted(set(unavailable.values()))
+    return (f"{len(unavailable)} not run here (missing "
+            f"{', '.join(mods)}): {', '.join(sorted(unavailable))}")
+
+
+def ledger_line(sha, tests, seconds, deterministic, flaky, culprits,
+                unavailable=None):
     mins, secs = divmod(int(seconds), 60)
     if not deterministic and not flaky:
-        return (f"regression {sha[:8]}: {tests} tests green in "
+        line = (f"regression {sha[:8]}: {tests} tests green in "
                 f"{mins}m{secs:02d}s")
+        if unavailable:
+            line += "; " + _unavailable_part(unavailable)
+        return line
     parts = []
     if deterministic:
         named = ", ".join(
@@ -265,6 +292,8 @@ def ledger_line(sha, tests, seconds, deterministic, flaky, culprits):
         parts.append(f"{len(deterministic)} deterministic: {named}")
     if flaky:
         parts.append(f"{len(flaky)} flaky: {', '.join(flaky)}")
+    if unavailable:
+        parts.append(_unavailable_part(unavailable))
     return (f"regression {sha[:8]}: RED, {tests} tests in "
             f"{mins}m{secs:02d}s; " + "; ".join(parts))
 
@@ -369,8 +398,28 @@ def regression_pass(args, out=print):
         out(output[-3000:])
         return 2
     out(f"{len(ids)} red: re-running each alone {args.repeat} time(s)")
-    results = rerun(ids, args.repeat)
+    outputs = {}
+    results = rerun(ids, args.repeat, outputs=outputs)
     deterministic, flaky = classify(results)
+    unavailable = {}
+    for ident in list(deterministic):
+        mod = missing_dependency(outputs.get(ident, ""))
+        if mod:
+            unavailable[ident] = mod
+            deterministic.remove(ident)
+    record["unavailable"] = unavailable
+    if not deterministic and not flaky:
+        # Every red was a package this box lacks: green for the code.
+        state.record_green(sha, tests)
+        line = ledger_line(sha, tests, seconds, [], [], {}, unavailable)
+        record["ledger"] = line
+        record["when"] = datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
+        state.record_run(record)
+        if args.record:
+            append_record(os.path.join(REPO, args.record), record)
+        out(line)
+        return 0
     culprits = {}
     last = state.last_green()
     if deterministic and not args.no_bisect and last:
@@ -391,7 +440,8 @@ def regression_pass(args, out=print):
         out("no last green head recorded on this rig; no bisect")
     record.update({"deterministic": deterministic, "flaky": flaky,
                    "culprits": {k: list(v) for k, v in culprits.items()}})
-    line = ledger_line(sha, tests, seconds, deterministic, flaky, culprits)
+    line = ledger_line(sha, tests, seconds, deterministic, flaky, culprits,
+                       unavailable)
     record["ledger"] = line
     record["when"] = datetime.now(timezone.utc).strftime(
         "%Y-%m-%dT%H:%M:%SZ")
