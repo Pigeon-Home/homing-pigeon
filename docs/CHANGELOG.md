@@ -16,6 +16,18 @@ facts a reader may need to cite. Git history carries the rest.
   them, and prints the `wrangler` and `host up --queue` commands. A test
   round-trips a job through the real Worker under node with the minted
   record.
+- **The SI's queue calls ride out the weather (Q105).** A dropped
+  connection or a cut-short read is retried; a read that still cannot
+  finish is one line and exit 2; a dropped post goes again with the same
+  envelope, which the Worker answers as a duplicate.
+- **`send_job.py new` declares a job's `result_policy` (Q104).**
+- **The query door (Q103).** A record with no owner is the owner's, the
+  owner's key policy reaches every door, and freshness is checked
+  before policy.
+- **Broader tests:** refusal edges across the sender, staging, the
+  extension loader, the installer, the readers in guard, wire and oracle,
+  DTLS records, the stamp audit and the CI tools; the property and fuzz
+  modules skip cleanly on a box without `hypothesis`.
 - **Line coverage without a package index.** `runner/tools/linecov.py`
   measures lines under the standard library's `sys.monitoring` and
   writes coverage.py's JSON shape, so `coverage_gaps.py` reads it. Its
