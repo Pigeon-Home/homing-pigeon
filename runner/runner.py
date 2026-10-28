@@ -2303,6 +2303,66 @@ def _key_name(key_id, secret):
         return ""
 
 
+ENV_SALT_FILE = "env_salt"
+
+
+def _env_salt(base_dir):
+    """The runner's own salt for env_fingerprint: 32 random bytes kept
+    in base_dir/env_salt (0600), made once. None when the base is not
+    usable; a salt that cannot be read is made again, which reads as
+    a changed environment, never as the same one."""
+    if not _valid_base(base_dir):
+        return None
+    path = os.path.join(base_dir, ENV_SALT_FILE)
+    for _attempt in (1, 2):
+        try:
+            with open(path, encoding="ascii") as fh:
+                salt = bytes.fromhex(fh.read().strip())
+            if len(salt) < 16:
+                raise ValueError("salt too short")
+            return salt
+        except FileNotFoundError:
+            pass
+        except (OSError, ValueError, UnicodeError):
+            try:
+                os.remove(path)
+            except OSError:
+                return None
+        try:
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            continue
+        except OSError:
+            return None
+        salt = os.urandom(32)
+        with os.fdopen(fd, "w", encoding="ascii") as fh:
+            fh.write(salt.hex() + "\n")
+        return salt
+    return None
+
+
+def env_fingerprint(cfg, base_dir):
+    """The env_fingerprint every result carries (PROTOCOL 3.2) when
+    the owner's pong_platform tier is standard or full, else None. A
+    digest, never the list: at standard it names nothing the card at
+    that tier does not, and at no tier can the list be read back."""
+    if _platformcard is None or not hasattr(_platformcard, "env_fingerprint"):
+        return None
+    tier, problem = _platformcard.tier_of(cfg, "pong_platform")
+    if problem or tier not in ("standard", "full"):
+        return None
+    salt = _env_salt(base_dir)
+    if salt is None:
+        return None
+    versions = [PROTOCOL_VERSION]
+    if _protocol_v2 is not None and _protocol_v2.enabled(cfg):
+        versions.append(2)
+    try:
+        return _platformcard.env_fingerprint(salt, cfg, versions, __version__)
+    except Exception:
+        return None
+
+
 def pong_platform(cfg):
     """The platform card a ping's result carries (PROTOCOL 3.2), at
     the owner's `pong_platform` tier, or None at `none` (or when the

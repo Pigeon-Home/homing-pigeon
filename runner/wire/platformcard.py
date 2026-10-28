@@ -30,6 +30,9 @@ unauthenticated peer harvests nothing.
 Stdlib only; no runner imports, so the DTLS program and the core
 can both load it.
 """
+import hashlib
+import hmac
+import json
 import os
 import platform
 import shutil
@@ -105,3 +108,41 @@ def build_card(tier, cfg=None, protocol_versions=None,
         card["path_tools"] = {name: bool(shutil.which(name))
                               for name in PATH_TOOLS}
     return card
+
+
+def _tool_identity(name):
+    """What a PATH tool is, without running it: the file it resolves
+    to, its size and its modification time. An upgrade changes at
+    least one of the three; a version string would cost a process."""
+    path = shutil.which(name)
+    if not path:
+        return None
+    try:
+        real = os.path.realpath(path)
+        st = os.stat(real)
+    except (OSError, ValueError):
+        return [path]
+    return [real, st.st_size, st.st_mtime_ns]
+
+
+def env_fingerprint(salt, cfg=None, protocol_versions=None,
+                    runner_version=None):
+    """`e-` and 24 hex digits: a keyed digest of everything the full
+    card says (each PATH tool by its file, size and mtime rather than
+    a bit) and the runner version. Two results with the same value
+    ran on the same environment; a different value says something
+    changed, never what. The salt is the runner's own, so the list
+    behind the digest cannot be guessed back from it by trying the
+    few hundred shapes a box can take. None without a salt."""
+    if not isinstance(salt, (bytes, bytearray)) or not salt:
+        return None
+    card = build_card("full", cfg, protocol_versions, runner_version) or {}
+    card.pop("disclosure", None)
+    card["os_release"] = platform.release()
+    card["python_version"] = platform.python_version()
+    card["python_executable"] = os.path.realpath(sys.executable or "")
+    card["runner_version"] = runner_version if isinstance(runner_version, str) else ""
+    card["path_tools"] = {name: _tool_identity(name) for name in PATH_TOOLS}
+    text = json.dumps(card, sort_keys=True, separators=(",", ":"))
+    mac = hmac.new(bytes(salt), text.encode("utf-8"), hashlib.sha384)
+    return "e-" + mac.hexdigest()[:24]

@@ -455,6 +455,13 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             card = r.get("platform")
             if job.get("kind") == "ping" and isinstance(card, dict):
                 result["platform"] = card
+            # The environment fingerprint (PROTOCOL 3.2): one keyed
+            # digest of the box's card, so "same environment?" is one
+            # comparison. Not output, so the view does not shape it;
+            # the owner's pong_platform tier gates it.
+            fp = _runner().env_fingerprint(cfg, base_dir)
+            if fp:
+                result["env_fingerprint"] = fp
             # Remediation (PROTOCOL 3.2): the member rides the
             # result when remediation acted on the job or its
             # outputs. A confinement escape the post-run snapshot
@@ -648,6 +655,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                     "duration_sec": 0.0, "runner": socket.gethostname(),
                     "review": review,
                 }
+                fp = _runner().env_fingerprint(cfg, base_dir)
+                if fp:
+                    result["env_fingerprint"] = fp
                 # A rejection is a failure the sender sees: a formed
                 # opinion rides it, and the diagnose latitude gets
                 # its say (an unstartable interpreter is the classic

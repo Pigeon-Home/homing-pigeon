@@ -221,6 +221,18 @@ The reference default is email only: `transports` absent means
   value, and never the empty key id. It is the identity hint of a
   TLS-PSK server: a sender whose ping verified already holds one of
   these keys and learns what to call it.
+- `env_fingerprint`: OPTIONAL. `e-` and 24 lowercase hex digits,
+  carried on every result (exec, ping and rejection alike) when the
+  owner's `pong_platform` tier is `standard` or `full`, and never
+  below. It is the first 96 bits of HMAC-SHA-384, keyed by a salt
+  the runner makes once and keeps to itself, over the full card's
+  content (each `path_tools` entry as the file it resolves to, that
+  file's size and modification time) plus the interpreter the runner
+  runs under and `runner_version`. Two results with the same value
+  ran on the same environment; a different value says something
+  changed and never what. The view does not shape it, since it is
+  not output, and no tier lets a receiver read the list back from
+  it. A runner reinstalled with a new salt reads as changed.
 - `key_id`: the name of the key that verified the job (section
   14.2): the `key_id` the job carried, or, for a job that carried
   none, the default key's fingerprint. A name, never a value. It
