@@ -81,8 +81,10 @@ secret that is real.
   rig's stale copy is never banked back (a bank unions by id, and
   a retired record returned would be a probe that passes, which is
   a red build): `grow` drops such a copy from the rig's own file
-  first, and `rig_bank` skips one unless its `found` date is later
-  than the retirement, the crash found again after the fix; a bank
+  first, and `rig_bank` skips one unless it was found on a tree
+  after the retirement (its `head` against the retirement's, by git
+  ancestry; the `found` date where git cannot compare), the crash
+  found again after the fix; a bank
   also replays the crash records it merges at main's head and
   promotes or retires the ones that pass there, so a grow on a stale
   tree never reddens main with a probe that passes.

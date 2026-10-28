@@ -7390,15 +7390,42 @@ def save_retired(target, retired):
     os.replace(tmp, path)
 
 
-def retired_stale(record, retired):
+def is_ancestor(older, newer, cwd=None):
+    """True, False, or None when git cannot say (no git, a shallow
+    tree without the commits, a bad name)."""
+    import subprocess
+    if not (isinstance(older, str) and isinstance(newer, str)
+            and 7 <= len(older) <= 40 and 7 <= len(newer) <= 40):
+        return None
+    try:
+        proc = subprocess.run(["git", "merge-base", "--is-ancestor", older, newer],
+                              cwd=cwd or ROOT, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode == 0:
+        return True
+    if proc.returncode == 1:
+        return False
+    return None
+
+
+def retired_stale(record, retired, cwd=None):
     """True when a crash record is one `promote` retired and was found
-    no later than its retirement: a copy a rig kept, not the crash
-    found again after the fix (which carries a later `found`)."""
+    on a tree at or before the retirement: a copy a rig kept, or the
+    same crash found again by a grow on an older tree (an echo), not
+    the crash found again after the fix (a regression, which stays a
+    crash). The record's `head` against the retirement's `head`
+    decides when git can compare them; otherwise the `found` date
+    against the retirement's date, a day at a time."""
     if not isinstance(record, dict):
         return False
     row = retired.get(record.get("id"))
     if not isinstance(row, dict):
         return False
+    verdict = is_ancestor(record.get("head"), row.get("head"), cwd)
+    if verdict is not None:
+        return verdict
     found = record.get("found")
     on = row.get("on")
     if not isinstance(found, str) or not isinstance(on, str):
@@ -7748,7 +7775,11 @@ def _record_crashes(target, session, out):
         record = dict(small)
         record.update({"crash": crash.kind, "detail": crash.detail,
                        "found": datetime.now(timezone.utc).strftime(
-                           "%Y-%m-%d")})
+                           "%Y-%m-%d"),
+                       # The tree the grow ran (Q108): a retired id
+                       # found again on a head at or before its fix is
+                       # an echo; on a head after it, a regression.
+                       "head": head_sha()[:12]})
         if record["id"] in known:
             continue
         known.add(record["id"])
@@ -8123,11 +8154,12 @@ def cmd_promote(args, out=print):
             os.remove(path)
         if moved or redundant:
             today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            head = head_sha()[:12]
             retired = load_retired(target)
             for e in moved:
-                retired[e["id"]] = {"on": today, "why": "promoted"}
+                retired[e["id"]] = {"on": today, "why": "promoted", "head": head}
             for e in redundant:
-                retired[e["id"]] = {"on": today, "why": "redundant"}
+                retired[e["id"]] = {"on": today, "why": "redundant", "head": head}
             save_retired(target, retired)
         out(f"{target}: {len(moved)} promoted, {len(redundant)} redundant "
             f"(fixed, reaching nothing new), {len(keep)} still crash")

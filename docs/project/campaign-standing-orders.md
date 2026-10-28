@@ -520,10 +520,13 @@ The loop:
    and every ledger line names the rig that grew it. A bank that
    cannot meet the shape refuses and says so in its ledger line.
    Crash files union by id with one exception (Q106, 2026-10-28):
-   a record `<target>.retired.json` names, found no later than its
-   retirement, is a rig's stale copy and is not re-added; `grow`
-   drops such a copy from the rig's file before it runs, so a crash
-   found again after a fix files under a later date and is banked.
+   a record `<target>.retired.json` names, found on a tree at or
+   before its retirement (the record's `head` against the
+   retirement's, by git ancestry; the `found` date against the
+   retirement's where git cannot compare them), is a rig's stale
+   copy or an echo and is not re-added; `grow` drops such a copy
+   from the rig's file before it runs, so a crash found again on a
+   tree after the fix is a regression and is banked.
    And a bank replays the crash records it merged at main's own head
    (`promote`, in the clone) before it commits (Q108, 2026-10-28): a
    record that still crashes lands as a crash, and one a grow found

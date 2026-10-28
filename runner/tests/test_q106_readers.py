@@ -370,3 +370,66 @@ class BankSettlesCrashesTest(unittest.TestCase):
 
 import subprocess  # noqa: E402
 import sys  # noqa: E402
+
+
+class AncestryRuleTest(unittest.TestCase):
+    """A re-found retired id is an echo on an older head, a regression
+    on a newer one; the date decides only when git cannot."""
+
+    def setUp(self):
+        self.td = tempfile.TemporaryDirectory()
+        self.addCleanup(self.td.cleanup)
+        self.repo = self.td.name
+        env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@x",
+                   GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@x")
+        self.heads = []
+        subprocess.run(["git", "init", "-q", self.repo], check=True, env=env)
+        for n in range(3):
+            with open(os.path.join(self.repo, "f"), "w") as fh:
+                fh.write(str(n))
+            subprocess.run(["git", "-C", self.repo, "add", "f"], check=True, env=env)
+            subprocess.run(["git", "-C", self.repo, "commit", "-q", "-m", str(n)],
+                           check=True, env=env)
+            self.heads.append(subprocess.run(
+                ["git", "-C", self.repo, "rev-parse", "HEAD"], check=True,
+                stdout=subprocess.PIPE, env=env).stdout.decode().strip()[:12])
+
+    def _retired(self, head):
+        return {"x1": {"on": "2026-10-28", "why": "redundant", "head": head}}
+
+    def test_an_older_head_is_an_echo_whatever_the_date(self):
+        old, fix, new = self.heads
+        rec = {"id": "x1", "found": "2026-10-30", "head": old}
+        self.assertTrue(B.retired_stale(rec, self._retired(fix), cwd=self.repo))
+        self.assertTrue(RB.retired_stale(rec, self._retired(fix), cwd=self.repo))
+        rec["head"] = fix
+        self.assertTrue(B.retired_stale(rec, self._retired(fix), cwd=self.repo))
+
+    def test_a_newer_head_is_a_regression_whatever_the_date(self):
+        old, fix, new = self.heads
+        rec = {"id": "x1", "found": "2026-10-01", "head": new}
+        self.assertFalse(B.retired_stale(rec, self._retired(fix), cwd=self.repo))
+        self.assertFalse(RB.retired_stale(rec, self._retired(fix), cwd=self.repo))
+
+    def test_without_a_head_or_a_git_the_date_decides(self):
+        rec = {"id": "x1", "found": "2026-10-28"}
+        self.assertTrue(B.retired_stale(rec, self._retired(self.heads[1]), cwd=self.repo))
+        rec = {"id": "x1", "found": "2026-10-29", "head": "notacommit1"}
+        self.assertFalse(B.retired_stale(rec, self._retired(self.heads[1]), cwd=self.repo))
+        self.assertIsNone(B.is_ancestor("abc", self.heads[0], cwd=self.repo))
+        self.assertIsNone(B.is_ancestor(self.heads[0], self.heads[1], cwd=self.td.name + "/none"))
+
+    def test_the_grow_writes_the_head_into_a_crash_record(self):
+        corpus = mock.patch.object(B, "CORPUS_DIR", os.path.join(self.repo, "c"))
+        corpus.start()
+        self.addCleanup(corpus.stop)
+        session = mock.Mock()
+        entry = B.make_entry("text", "x", "seed:x", "p_text")
+        crash = B.Crash("contract", "d")
+        session.crashes = [(entry, crash)]
+        session.shrink = lambda e, c: e
+        with mock.patch.object(B, "head_sha", return_value="f" * 40):
+            self.assertEqual(1, B._record_crashes("wire", session, lambda *a: None))
+        rec = B.load(B.corpus_path("wire", crashes=True))[0]
+        self.assertEqual("f" * 12, rec["head"])
+        self.assertRegex(rec["found"], r"^\d{4}-\d{2}-\d{2}$")

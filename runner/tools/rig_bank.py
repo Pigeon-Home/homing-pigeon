@@ -120,13 +120,33 @@ def retired_in_tree(tree_path):
     return rows if isinstance(rows, dict) else {}
 
 
-def retired_stale(obj, retired):
-    """A crash record the tree retired, found no later than its
-    retirement: a rig's stale copy, not the crash found again after
-    the fix (that one carries a later `found` and is banked)."""
+def _is_ancestor(older, newer, cwd):
+    """True, False, or None when git cannot say."""
+    if not (isinstance(older, str) and isinstance(newer, str)
+            and 7 <= len(older) <= 40 and 7 <= len(newer) <= 40):
+        return None
+    try:
+        proc = subprocess.run(["git", "merge-base", "--is-ancestor", older, newer],
+                              cwd=cwd, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return {0: True, 1: False}.get(proc.returncode)
+
+
+def retired_stale(obj, retired, cwd=None):
+    """A crash record the tree retired, found on a tree at or before
+    the retirement: a rig's stale copy or an echo from an older head,
+    not the crash found again after the fix (a regression, banked).
+    The record's `head` against the retirement's decides when git can
+    compare them (the clone is full); else the `found` date against
+    the retirement's, a day at a time."""
     row = retired.get(obj.get("id"))
     if not isinstance(row, dict):
         return False
+    verdict = _is_ancestor(obj.get("head"), row.get("head"), cwd)
+    if verdict is not None:
+        return verdict
     found, on = obj.get("found"), row.get("on")
     if not isinstance(found, str) or not isinstance(on, str):
         return True
@@ -157,7 +177,9 @@ def merge_id_file(tree_path, bank_path):
     for obj in b_objs:
         if obj["id"] in by_id:
             continue
-        if retired_stale(obj, retired):
+        # The tree path sits in the clone, whose git holds the full
+        # history the ancestry check needs.
+        if retired_stale(obj, retired, cwd=os.path.dirname(tree_path)):
             echoes += 1
             continue
         by_id[obj["id"]] = obj
