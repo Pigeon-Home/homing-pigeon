@@ -10,6 +10,12 @@ facts a reader may need to cite. Git history carries the rest.
   `GET /dlq`, `POST /dlq/<id>/ack` and `POST /dlq/<id>/requeue` on
   the SI token (a requeue counts against the hourly job quota), and
   `send_job.py dlq --from-queue URL` lists, drops and requeues.
+- **Line coverage without a package index.** `runner/tools/linecov.py`
+  measures lines under the standard library's `sys.monitoring` and
+  writes coverage.py's JSON shape, so `coverage_gaps.py` reads it. Its
+  first reports, in `docs/reports/coverage/`, put `runner/hosting/` at
+  99.1%, the queues transport at 98.8% and `send_job.py` at 93.0%,
+  after sixteen new edge tests for the hosted queue.
 <!-- Agent-Stamp: 70000a51-e296-4b2c-bf5b-ba020e23eb91 -->
 
 ## 3.14.6 - 2026-10-27

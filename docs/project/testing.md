@@ -110,6 +110,14 @@ the campaign rig. A change that would not read those files fails
 `test_live_capture`; `runner/tools/live_capture.py` prints what the
 run came to.
 
+A box with no package index can still measure lines:
+`runner/tools/linecov.py --out cov.json --source <path> -- <test names>`
+runs the tests under the standard library's `sys.monitoring` (Python
+3.12 and later) and writes a report in coverage.py's JSON shape, which
+`coverage_gaps.py` reads unchanged. It counts lines, not branches, and
+not child processes. `docs/reports/coverage/` keeps the reports it has
+made.
+
 Running the same proofs locally:
 
 ```bash

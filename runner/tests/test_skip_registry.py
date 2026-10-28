@@ -42,6 +42,13 @@ REGISTERED = {
     "git is not on PATH":
         "test_regression_guard's temporary-repository tests; git is on "
         "every CI leg's PATH, so they run in every job",
+    "sys.monitoring needs Python 3.12 or later":
+        "test_linecov: the stdlib line-coverage tool rides on "
+        "sys.monitoring; runs on every leg at 3.12 and later",
+    "the coverage id is already held by this run":
+        "test_linecov's fallback leg: when coverage.py measures the run "
+        "through sys.monitoring the coverage id is taken and the tool's "
+        "own run in the other tests already shows the fallback",
     "no SIGALRM on this platform":
         "test_de_dust_survivors' timeout verdict rides on SIGALRM, "
         "which Windows does not have; the Linux and macOS legs run it",
