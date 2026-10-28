@@ -37,10 +37,17 @@ class DoorPolicyEdgesTest(unittest.TestCase):
             why = V.check_door_policy({}, SECRETS, "ci", "v2")
         self.assertEqual(why, "key policies unreadable: bad regex")
 
-    def test_the_owner_key_passes_before_any_policy_is_read(self):
-        with mock.patch.object(V, "build_key_policies",
-                               side_effect=AssertionError("not read")):
-            self.assertIsNone(V.check_door_policy({}, SECRETS, "", "query"))
+    def test_the_owner_key_passes_when_no_entry_names_it(self):
+        self.assertIsNone(V.check_door_policy({}, SECRETS, "", "query"))
+        cfg = {"key_policies_default_deny": True,
+               "key_policies": {"ci": {"allowed_kinds": ["exec"]}}}
+        self.assertIsNone(V.check_door_policy(cfg, SECRETS, "", "board"))
+
+    def test_an_entry_on_the_owner_key_binds_it_at_the_doors(self):
+        # Q103 item 2: the owner's own entry is read, as at the job door.
+        cfg = {"key_policies": {"": {"allowed_kinds": ["exec"]}}}
+        self.assertEqual("query is not in this key's allowed_kinds",
+                         V.check_door_policy(cfg, SECRETS, "", "query"))
 
 
 if __name__ == "__main__":
