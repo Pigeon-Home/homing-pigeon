@@ -4,7 +4,7 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.14.7 - 2026-10-27
+## 3.14.8 - 2026-10-28
 
 - **The change kind.** `kind: "change"` names an owner's repository
   (`change_repos`), a commit, a diff and a recipe: the runner clones
@@ -12,6 +12,10 @@ facts a reader may need to cite. Git history carries the rest.
   diff, runs the recipe there and sends the tree's resulting diff home
   as `change.diff`. `send_job.py new --kind change --repo NAME
   --diff-file PATH --recipe NAME` builds one.
+<!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
+
+## 3.14.7 - 2026-10-27
+
 - **A signed cancel.** `[HOMING-PIGEON] cancel <job_id>` from the key
   that sent the job kills it while it runs, refuses it if it has not
   arrived yet, and leaves a finished one alone; a `cancel_ack` says
