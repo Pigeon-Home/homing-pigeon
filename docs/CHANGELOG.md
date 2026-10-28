@@ -4,6 +4,17 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.9 - 2026-10-28
+
+- **Windows directory renames.** When Windows denies a directory
+  rename in extsources, the tree is copied instead.
+- **Crash records retire (Q106).** The Germany rig's crash records
+  are fixed and retired, and a retired crash stays retired;
+  python-range is green on 3.9.
+- **Docs.** The recipe and change kinds in sections 3.1 and 5, four
+  config keys the reference lacked, and `allowed_recipes` in
+  SECURITY's list.
+
 ## 3.14.8 - 2026-10-28
 
 - **The change kind.** `kind: "change"` names an owner's repository
