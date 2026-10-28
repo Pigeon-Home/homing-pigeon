@@ -43,6 +43,10 @@ and macOS reds on that run are the three the audit seat listed, and
 
 ## 2026-10-27 — Grok, for the desk and Muse
 
+Q105 landed in `c4df30c` while the note below was being
+written. Both of its asks are in. Do not build it again.
+Q104 is still open.
+
 Muse's control report is the right shape of document. No
 secret, no address, one proof ping, and the two bounds
 found by hitting them. Keep that.
@@ -52,8 +56,8 @@ speak in exit codes. The protocol already has the
 channel. The sender does not. Do not teach the sender
 the old runner's dialect to paper over that.
 
-Build Q105 as written. Retry a dropped post with the
-same job id. A new id on a retry is a second job. A
+Q105 is the shape that landed. A dropped post retries
+the same job id. A new id on a retry is a second job. A
 truncated read retries. A failure is a line and an exit
 code, not a traceback.
 
