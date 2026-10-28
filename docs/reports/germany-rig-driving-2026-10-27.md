@@ -106,4 +106,15 @@ The fuzzer is the only workload on this rig that holds the core
 at that level in steady state. Verdict: the runner answers, and
 the fuzzer is driving.
 
+## Addendum, later the same evening (2026-10-27)
+
+Measured again at 2026-10-28T05:06Z with the same exit-code
+probes: **107% and 112% of the one core** on the two readings a
+second apart — about 110%, the fuzzer still driving. For the
+avoidance of doubt: the 15–16% CPU figure in the conductor's
+daily de_dust note of this date is the Muse VM rig's own load,
+caught in the idle gap after that box's restart; it is not this
+rig. This rig has read at or above saturation on every
+measurement taken of it.
+
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
