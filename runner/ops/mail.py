@@ -336,6 +336,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         learn_relevant = None
         learn_frozen = None
         try:
+            if _runner()._cancel.take_cancel(cfg, base_dir, chain_owner, job_id):
+                # Its own key cancelled it before it arrived (PROTOCOL 3.4).
+                raise _runner().JobRejected("cancelled by its sender before it ran")
             verdict, reasons = _runner().judge_job(cfg, job)
             _jmode = cfg.get("judge") or "off"
             if _jmode != "off":
@@ -453,6 +456,9 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # Oracle view
             patterns = _runner()._redact_patterns(cfg)
             result, retain_view = _runner().apply_result_policy(cfg, job, result, patterns, confined=confined)
+            if r.get("cancelled"):
+                # Not output: the view does not shape it (PROTOCOL 3.4).
+                result["cancelled"] = True
             scan = r.get("artifact_scan")
             if isinstance(scan, list) and scan:
                 result["artifact_scan"] = [str(item)[:200] for item in scan[:20]]

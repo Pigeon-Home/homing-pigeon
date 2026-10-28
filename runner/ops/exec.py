@@ -592,6 +592,13 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     # The panic word (Q100) stops every live job; a box that fired
     # while this one was being staged kills it at once.
     _runner()._panic.register(proc)
+    # A signed cancel from the job's own key (PROTOCOL 3.4) finds it here.
+    try:
+        owner = _runner().canonical_key_id(_runner().build_secrets(cfg),
+                                           job.get("key_id") or "")
+    except Exception:
+        owner = ""
+    _runner()._cancel.register(job_id, owner, proc)
     # Remediation watches the run (docs/design/remediation-design.md).
     # A monitor that fails to start changes nothing: the job runs
     # exactly as it did before remediation existed.
@@ -615,6 +622,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         timed_out = True
     finally:
         _runner()._panic.unregister(proc)
+        cancelled = _runner()._cancel.unregister(job_id)
         if monitor is not None:
             try:
                 monitor.stop()
@@ -660,6 +668,11 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
               "stdout_truncated": trunc_out, "stderr_truncated": trunc_err,
               "duration_sec": duration,
               "artifact_scan": findings}
+    if cancelled:
+        result["cancelled"] = True
+        result["exit_code"] = -1
+        result["stderr"] = (stderr + ("\n" if stderr else "")
+                            + "job cancelled by its sender")
     if rem_member is not None:
         result["remediation"] = rem_member
     if output_names:

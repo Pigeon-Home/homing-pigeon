@@ -1354,6 +1354,7 @@ def _oracle_instruction_kind(text):
     return "question"
 
 _recipes = _required_load_mod("runner.ops.recipes", "ops.recipes")
+_cancel = _required_load_mod("runner.ops.cancel", "ops.cancel")
 _exec = _required_load_mod("runner.ops.exec", "ops.exec")
 ask_model_agent = _exec.ask_model_agent
 execute_job = _exec.execute_job
@@ -4567,6 +4568,9 @@ def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
     execute, or None when the message was handled and the
     caller should return.
     """
+    if _cancel.handle_cancel_mail(cfg, imap, smtp, seq, raw, subject,
+                                  secrets, opts, base_dir, seen):
+        return None
     if handle_query_mail(cfg, imap, smtp, seq, raw, subject, secrets,
                          opts, base_dir, seen):
         return None

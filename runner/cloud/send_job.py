@@ -1144,6 +1144,22 @@ def _board_body(payload, ident, args) -> str:
     return body
 
 
+def cmd_cancel(args) -> int:
+    """A signed cancel for a job (PROTOCOL.md section 3.4), sealed under
+    the job id as the job was. Only the key that signed the job may
+    cancel it; the runner answers with a cancel_ack."""
+    if not re.match(r"^[A-Za-z0-9._-]{1,128}$", args.job_id or "") \
+            or args.job_id in (".", ".."):
+        print("error: --job-id is not a job id", file=sys.stderr)
+        return 2
+    payload = {"v": PROTOCOL_VERSION, "type": "cancel", "job_id": args.job_id}
+    body = _board_body(payload, args.job_id, args)
+    print(f"[HOMING-PIGEON] cancel {args.job_id}")
+    print()
+    print(body)
+    return 0
+
+
 def cmd_task_submit(args) -> int:
     payload = {"v": PROTOCOL_VERSION, "type": "task_submit", "task_id": args.task_id, "priority": args.priority}
     if getattr(args, "reply_to", None):
@@ -1358,6 +1374,24 @@ def main() -> int:
                          "body (the runner refuses it unless started "
                          "with --allow-cleartext)")
     tr.set_defaults(func=cmd_task_request)
+    c = sub.add_parser(
+        "cancel", help="build a signed cancel for a job",
+        description="Build a signed cancel email for a job this key "
+                    "sent. A running job is killed; one not yet run is "
+                    "refused when it arrives; a finished one is left "
+                    "as it is. The runner answers with a cancel_ack.")
+    c.add_argument("--job-id", required=True, metavar="ID")
+    c.add_argument("--secret", default=None, metavar="SECRET",
+                   help="the shared secret the job was signed with (or "
+                        "--key-id naming a keyring entry)")
+    c.add_argument("--key-id", default=None, metavar="KEY_ID",
+                   help="the key id the message carries (default: the "
+                        "secret's fingerprint)")
+    c.add_argument("--keyring", default=None, metavar="PATH")
+    c.add_argument("--cleartext", action="store_true",
+                   help="do NOT encrypt (the runner refuses it unless "
+                        "started with --allow-cleartext)")
+    c.set_defaults(func=cmd_cancel)
     v = sub.add_parser(
         "verify", help="verify a signed result body",
         description="Verify a signed result body and "

@@ -618,7 +618,7 @@ def unrestricted_extra_keys(cfg) -> list:
                   and policy_for(policies, secrets, k) is None)
 
 
-DOORS = ("query", "board", "v2")
+DOORS = ("query", "board", "v2", "cancel")
 
 
 def check_door_policy(cfg, secrets, key_id, door):
@@ -656,6 +656,11 @@ def check_door_policy(cfg, secrets, key_id, door):
     if not isinstance(pol, dict):
         return "invalid key policy entry"
     kinds = pol.get("allowed_kinds")
+    if door == "cancel":
+        # A key cancels only its own jobs (PROTOCOL.md section 3.4): a
+        # key that may run a job may stop it, so allowed_kinds does not
+        # name this door; the deny flag above still holds.
+        return None
     if isinstance(kinds, list) and door not in kinds:
         return f"{door} is not in this key's allowed_kinds"
     return None

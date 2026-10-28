@@ -397,6 +397,41 @@ a recipe that is malformed or whose pattern could backtrack
 exponentially on a sender's text. A key policy's `allowed_recipes`
 (section 14.1) names the recipes a key may run.
 
+### 3.4 Cancel
+
+A sender stops a job it sent with a signed cancel under the subject
+`[HOMING-PIGEON] cancel <job_id>`:
+
+```json
+{"v": 1, "type": "cancel", "job_id": "3f9a1c2e-...", "issued_at": "2026-10-27T12:00:00Z"}
+```
+
+It is signed, sealed under the job id and held to freshness, the
+audience and replay exactly as a query is (sections 10 and 11), and
+only the key that signed the job may cancel it, under any of its names
+(section 14.2). The deny flag holds at this door; `allowed_kinds`
+does not name it, since a key that may run a job may stop it.
+
+- A job running on the runner is killed the way a timeout kills it.
+  Its result carries `cancelled: true`, `exit_code` -1 and a line in
+  `stderr`; the view does not shape `cancelled`.
+- A job the runner has not seen is refused when it arrives, as a
+  rejection (`exit_code` -2) that never runs, if it arrives within
+  twice `max_job_age_sec` of the cancel. The runner keeps the cancel
+  that long and no longer.
+- A finished job is left as it is.
+
+The runner answers with a signed (and, as the cancel was, sealed)
+`{"type": "cancel_ack", "job_id": ..., "status": ...}` under
+`[HOMING-PIGEON] cancelled <job_id>`, where `status` is `killed`,
+`will_refuse` or `finished`. Another key's job, whether running, done
+or unseen, reads as `will_refuse` and is not touched, so no key learns
+which job ids another key ran. The reference runner serves a
+transport's messages one at a time, so there a cancel is read between
+jobs: it stops a job still queued behind it, and a job already running
+only where messages are served by more than one worker (`workers`).
+`send_job.py cancel --job-id ID` builds the message.
+
 ## 4. Signatures (no canonicalization needed)
 
 Appending the signature last avoids cross-language JSON
@@ -1404,7 +1439,7 @@ Every field is optional; every specified constraint must hold:
 - `allowed_kinds`: the job's `kind` must be listed. The same list
   governs the other doors a key's messages come through: `query` (the
   two-phase exchange, section 10), `board` (section 13) and `v2` (the
-  version 2 messages). A policy that lists `allowed_kinds` admits a
+  version 2 messages), but not `cancel` (section 3.4). A policy that lists `allowed_kinds` admits a
   door only when it names it; a policy without `allowed_kinds` admits
   every door. `key_policies_default_deny` refuses an additional key
   with no entry at every door, not only the job's.
