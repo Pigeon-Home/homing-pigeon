@@ -4935,3 +4935,5 @@ when done, the proving commit or run. Newest first.
   on GitHub egress, down when
   the seat woke. Grow 27 (seed
   6390) follows.
+  de_dust 7 (San Francisco rig): 1379 entries, 5234 arcs, 0 crashes filed.
+  Banked by rig_bank from the rig's own tree under section M item 7: 4 run records, 71,438 children (seeds 4170776654); totals from the merged tree.
