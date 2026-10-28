@@ -6,6 +6,10 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.14.7 - 2026-10-27
 
+- **A signed cancel.** `[HOMING-PIGEON] cancel <job_id>` from the key
+  that sent the job kills it while it runs, refuses it if it has not
+  arrived yet, and leaves a finished one alone; a `cancel_ack` says
+  which. `send_job.py cancel --job-id ID` builds one.
 - **Named recipes.** The owner writes a script in config under
   `recipes`, with the arguments a job may pass held to a pattern; a
   `kind: "recipe"` job names one and brings no script, interpreter or
