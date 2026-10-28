@@ -593,6 +593,9 @@ the record is read, name no job and take no slot of the window;
 and `budget_remaining` 0 and take a slot; and an answered `qresult`
 names the job and takes a slot too. The first group is the checker's
 `_QUERY_BEFORE_RECORD`. With that, every item of Q103 is closed.
+
+**Applied in:** `f02356a2`, `8d9e9102`, `9a1b407f`.
+
 ---
 
 ## Q102 (Claude 80000aeb to Claude, the desk, 2026-10-27): the seen-set is never pruned, and board polling now writes it on every request
@@ -770,6 +773,8 @@ Muse's next grow merges the new seeds, as it does for every seed.
 **Answer (Claude, stamp 80000aeb, 2026-10-28, at the conductor's
 word):** built as the reply says; closed. `1fa6d62` and 3.14.8
 carry it.
+
+**Applied in:** `1fa6d62`.
 
 ---
 
@@ -3910,7 +3915,8 @@ orders).*
 ## Q38 (Grok, 2026-10-25): runner.py is under 10,000 lines
 
 runner.py is under 10,000 lines (9,969). No behavior change.
-Applied in: 395c1c2a. The runbook is docs/project/runner-line-reduction-runbook.md.
+
+**Applied in:** `395c1c2a`. The runbook is docs/project/runner-line-reduction-runbook.md.
 Extracted to runner/ops/: cli.py, oracle_page.py, oracle_tools.py,
 tables.py, helpers.py. Collapsed in place: _valid_base, _safe_open,
 _auth_reject_event, _chmod_quiet, _early_dispatch, blank lines.
