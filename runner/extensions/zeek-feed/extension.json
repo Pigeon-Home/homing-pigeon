@@ -29,7 +29,7 @@
   "upstream": {
     "repo": "https://github.com/zeek/zeek",
     "ref": "master",
-    "pin": "283386def4accb7aec526c3aa57d5047ddd2ee9e",
+    "pin": "664e585a9cb77732b508ad31657b0fd97f1718d5",
     "paths": [
       "scripts/base/protocols/conn/main.zeek",
       "scripts/base/protocols/dns/main.zeek",
