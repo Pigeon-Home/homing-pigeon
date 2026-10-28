@@ -4806,3 +4806,43 @@ when done, the proving commit or run. Newest first.
   until grow 25's launch at
   this bank; recorded per Q58.
   Grow 25 (seed 6370) follows.
+- rules refreshed 2026-10-28 07:23 PDT
+  (standing orders incl. section M;
+  AGENTS.md rules 7-11; the
+  questions file's open entries).
+  de_dust 25 (VM rig): 1296
+  entries, 4978 arcs, 0 crashes
+  filed. Grow 25 (seed 6370, a
+  single fragment) ran on target
+  (box cpu 89%, wall 1h26m41s):
+  259,869 children over 18 run
+  records; it kept 1 (local,
+  f28150d3593f63c6), whose arcs
+  the merged tree already
+  covered, as in grows 22 to 24.
+  board_mail and v2_mail both
+  wrote no record, the minutes
+  ending after query; v2_mail's
+  sixth miss in a row. The
+  survivors pass beside it left
+  no record again, the 05:58 PDT
+  restart ending it, and
+  survivors.json is unchanged;
+  the pass runs beside grow 26.
+  After the grow completed
+  (23:24 PDT) the box stood idle
+  through the restart until
+  grow 26's launch at this bank;
+  recorded per Q58. Two targets
+  join the rotation at the
+  desk's word (80000aeb, in
+  .com.chat): stage and collect,
+  with Q101's seeds in the tool
+  for queries, wire, cloud and
+  names. Grow 26 was launched
+  from the stale tree at this
+  bank and is relaunched onto
+  the refreshed tree in the same
+  hour, so the new targets grow
+  from grow 26. Grow 26 (seed
+  6380) follows.
