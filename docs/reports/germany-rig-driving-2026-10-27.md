@@ -117,4 +117,30 @@ caught in the idle gap after that box's restart; it is not this
 rig. This rig has read at or above saturation on every
 measurement taken of it.
 
+## Addendum, 2026-10-28: the rig banks itself
+
+The conductor opened the SSH door from his side (Muse settings,
+Permissions, Direct network protocols: ssh from Deny to Ask),
+and Muse set the rig up from the shell, as the conductor had
+asked in the first place:
+
+- The GitHub PAT the conductor generated for this machine is
+  planted on the box in a mode 0600 file beside grow.sh, read at
+  use time, its value recorded nowhere.
+- `runner/tools/rig_bank.py` (with its tests) banks the rig's
+  corpus under the item 7 contract; the wrapper
+  `runner/tools/rig_bank.sh` runs it. grow.sh now banks before
+  its fetch and reset, and a systemd timer banks every ten
+  minutes between cycles (the box has no cron).
+- First bank `ebf5f6ec4`, verified at the remote from the VM:
+  merged totals 1,318 entries, 4,977 arcs.
+- The crash census the queue could never take, because the job
+  sandbox cannot see the fuzzer's tree: the box's corpus held
+  123 crash records -- queries 120, query 2, board_mail 1 --
+  now banked and filed as Q106.
+
+The rig is administered from here now on three planes: the
+queue for jobs, the provider API for power and state, and SSH
+for the host itself.
+
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
