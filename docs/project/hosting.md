@@ -17,11 +17,25 @@ outside the repository.
 | --- | --- | --- | --- |
 | 0 | the `hosted` install profile; the one-blob config (`homing-pigeon-install --config-json`); `--once --drain N --drain-seconds T` | `runner/ops/install.py`, `runner/ops/cli.py`, `runner/runner.py` (`DrainPlan`) | `runner/tests/test_hosting_phase0.py` |
 | 1 | the provider interface and adapters (Fly Machines, Hetzner Cloud, DigitalOcean), the machine bootstrap, the inventory, `homing-pigeon-host up / status / redeploy / rotate / destroy` | `runner/hosting/` | `runner/tests/test_hosting_providers.py`, `test_hosting_control_plane.py` against `runner/tests/hosting_fixtures/` |
-| 2 | the hosted queue: Worker plus one Durable Object per tenant (token gate, HMAC gate, quota), the runner's `queues` transport, `send_job.py --to-queue` | `runner/cloud/queues-worker/`, `runner/transport_extensions/queues/`, `runner/cloud/send_job.py` | `node --test runner/cloud/queues-worker/test/worker.test.mjs`, `runner/tests/test_transport_queues.py` |
+| 2 | the hosted queue: Worker plus one Durable Object per tenant (token gate, HMAC gate, quota, lease renewal, the dead-letter list), the runner's `queues` transport, `send_job.py --to-queue`, `results` and `dlq`, `homing-pigeon-host queue-tenant` and `up --queue` | `runner/cloud/queues-worker/`, `runner/transport_extensions/queues/`, `runner/cloud/send_job.py`, `runner/hosting/cli.py` | `node --test runner/cloud/queues-worker/test/worker.test.mjs`, `runner/tests/test_transport_queues.py`, `test_hosting_queue_edges.py`, `test_queue_weather.py` |
 | 3 | ephemeral targets on GitHub Actions: `homing-pigeon-host dispatch`, the workflow template, billable minutes | `runner/hosting/github_actions.py`, `runner/hosting/workflows/hp-ephemeral.yml` | `test_hosting_providers.py` (GitHubActionsTest) |
 | 4 | metering and prepaid billing: the price table, the ledger, the Stripe webhook that only adds credit | `runner/hosting/billing.py` | `test_hosting_control_plane.py` (Ledger, StripeWebhook) |
 
 Nothing in the runner core, the protocol or the signing changed.
+
+## What has run for real
+
+- **The hosted queue** since 2026-10-27: a one-tenant Worker on the
+  operator's own Cloudflare account. Its first ping is
+  `docs/reports/queues-2026-10-27.md`; since then it is the control
+  plane for the Germany rig (`docs/reports/germany-control-2026-10-27.md`).
+- **The `hosted` profile** on that rig, a one-core Hetzner VM: the
+  runner polls the queue, answers at the `attested` ceiling, and runs
+  jobs confined (a signed job could not write `/etc` or move the root
+  password). `docs/reports/germany-rig-2026-10-28.md`.
+- **Not yet live:** `homing-pigeon-host` itself. The Germany runner was
+  installed by hand, so every provider adapter is still proven against
+  recorded exchanges only.
 
 ## The pieces, in the order a tenant meets them
 
@@ -108,9 +122,10 @@ someone asks to pay.
 
 ## Not yet
 
-- Provider accounts. Every adapter is tested against recorded
+- A live `up`. Every provider adapter is tested against recorded
   exchanges only; the first live `up` against each provider will
-  re-record its fixtures.
+  re-record its fixtures. Hetzner is the natural first, since the
+  operator's account already runs a rig there.
 - Accounts and a usage page. The inventory and the ledger are JSON
   files for one operator; a database arrives with accounts.
 - Heartbeat over the transport. `host status` reads the inventory;
