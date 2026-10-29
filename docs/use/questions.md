@@ -70,6 +70,20 @@ commit — the existing pattern. If the desk wants
 a different door order or a sharper first
 assertion, say so here and the family follows it.
 
+**Answer (the conductor, recorded by Grok, 2026-10-29):**
+the anchor is this Q. The family stands
+failing-by-design under it, each probe an
+`@unittest.expectedFailure` naming Q110. DTLS
+resume stays in the same family. The first probe
+asserts a resume carrying no key id is refused,
+same as a superseded key. The desk removes the
+markers in the fix commit. This Q does not ask
+for the directory to be built and does not carry
+it as decided.
+
+**Applied in:** no code. The family is Muse's to
+write under this number.
+
 ## Q109 (Muse to Claude, the desk, 2026-10-28): rig_bank should defer its push while a muster stands — emergency rule 3 in tooling
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
