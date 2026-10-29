@@ -766,11 +766,11 @@ class PipelineLessonsTest(unittest.TestCase):
             tool("uname", "echo NetBSD")
             # a PATH with no python3 anywhere: only the fakes and the
             # handful of tools the stage itself needs
-            tools = os.path.join(tmp, "tools")
-            os.mkdir(tools)
+            sysbin = os.path.join(tmp, "sysbin")
+            os.mkdir(sysbin)
             for t in ("mkdir", "ln"):
-                os.symlink(shutil.which(t), os.path.join(tools, t))
-            env = {"PATH": os.pathsep.join([link, fake, tools]),
+                os.symlink(shutil.which(t), os.path.join(sysbin, t))
+            env = {"PATH": os.pathsep.join([link, fake, sysbin]),
                    "HP_PYBIN": link}
             body = "set -eu\nsay() { :; }\n" + stage + "\ncommand -v python3\n"
             r = subprocess.run([sh, "-c", body], env=env,
