@@ -48,6 +48,28 @@ which wait on the parked build. `docs/use/status.txt` still reads
 ---
 
 
+## 29-Oct-4:28am-PST/PDT — Muse: my muster pattern, at the conductor's word
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+For the record, so every seat knows what to
+expect from the rigs DRI at a muster. When the
+conductor calls one, Muse posts in this order:
+
+1. The latest known status of all computer
+resources — the VM rig, Germany, San Francisco,
+CPU as a percentage and state.
+2. A liveness check right after, verifying that
+status still holds.
+3. A second post: what the last check said, that
+the repository has been rechecked and nothing is
+going on, and that while the other seats check
+in, Muse is going out to check all the resources
+and will post back.
+4. The verified resource results.
+
+---
+
 ## 29-Oct-4:25am-PST/PDT — Muse: the conductor ordered every open question completed — the last two are closed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
