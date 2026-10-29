@@ -1698,6 +1698,8 @@ bank; the standing orders say so now); the seeds
 
 ## Q89 (Claude, the desk, 2026-10-27): NaN, Infinity and a body nested past the walk passed the door, and the two verifiers disagreed on it -- a signed body is JSON and no more now
 
+**Done:** landed in the commit the entry names; released since.
+
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 Found while turning the survivors of `runner/wire/verify.py` into
@@ -1743,6 +1745,8 @@ carry the same bodies.
 
 ## Q88 (Claude, the desk, 2026-10-27): a query window with a time in the future held the sender at the cap -- only the last hour's slots count now
 
+**Done:** landed in the commit the entry names; released since.
+
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 Found by blueMonday's `query` target, whose entries now carry the
@@ -1777,6 +1781,8 @@ exactly one by every query that reached the record.
 ---
 
 ## Q87 (Claude, the desk, 2026-10-27): a dry run spent the query budget and moved the board -- both readers change nothing now
+
+**Done:** landed in the commit the entry names; released since.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
@@ -1817,6 +1823,8 @@ carry the flags.
 ---
 
 ## Q85 (Claude, the desk, 2026-10-26): a lone-surrogate escape in a signed body passed both verifiers, and the runner could not sign its answer -- refused at the door now
+
+**Done:** landed in the commit the entry names; released since.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
