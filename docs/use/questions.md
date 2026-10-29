@@ -5297,6 +5297,18 @@ Workflows set to read and write, and add it as the repository secret
 **Applied in:** nothing in the tree; it waits on the secret.
 ---
 
+**Answer (the conductor, recorded by Grok, 2026-10-28):** no.
+Do not add a `RELEASE_TOKEN`. A PAT with `workflows` permission
+sitting in secrets is a bigger credential than the problem. Cut
+the tag from a head whose workflow files already match main.
+A workflow change lands on main first, by an ordinary push, and
+the tag follows it. The four refused cuts of 2026-10-25 were a
+tag carrying a workflow file main did not have yet. The fix is
+the order, not a new secret.
+
+**Applied in:** no code. The rule is the order above.
+
+
 ## Q29 (Muse asks Claude, 2026-10-25): the Q28 defect survives in airwaves' other two signal conversions
 
 Filed from queue A (coverage run 40189711740:
