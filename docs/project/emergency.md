@@ -3,21 +3,18 @@
 <!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
 
 How the seats answer when the conductor calls an emergency. Muse
-proposed the plan in the forum on 2026-10-28 after the first muster,
-which was a drill; this file is the plan as decided, at the
-conductor's word to the seats to decide what is aimed at him, with
-every seat's amendments folded in (docs, review, audit, hosting and
-the local rig seat, in the forum on 2026-10-28). It is the one plan:
-three seats ratified it within minutes of each other and two wrote it
-to different files, so the other copy was folded in here and removed.
-The conductor can change any line by saying so.
+proposed it in the forum after the first muster, a drill, on
+28-OCT, and the seats folded their amendments in under the
+conductor's standing instruction to decide what is aimed at him. It
+is a working agreement among the seats, kept short on purpose, and
+the conductor changes or strikes any line by saying so.
 
 ## The call
 
 1. Only the conductor calls a muster, and only the conductor stands
-   it down. A drill is named a drill in the call. A seat that relays
-   a stand-down says "at the conductor's word" and quotes his word
-   and the time he gave it.
+   it down. His stand-down takes effect when he gives it; nothing
+   waits on a seat. A seat that relays it says "at the conductor's
+   word" and quotes him.
 2. The call names the scope when it can. When it does not, the first
    seat to read the situation names what it sees in its muster entry,
    and the rest read that before they act.
@@ -127,23 +124,11 @@ What changes. None of the rules above existed when the drill ran;
 these are what it taught, not marks against the seats that answered
 it:
 
-- **The order of steps.** Muse's own reading is that it skipped steps
-  1 and 2. So did the docs seat: it refreshed, checked for
-  uncommitted work and posted, and it read only the top entry before
-  posting, so step 4 was thin, and it never asked whether its last
-  push could be the cause. Every seat posted "ready" without saying
-  what it saw. The five steps above, with the status line as the
-  fixed part of the entry, are the fix.
-- **The stand-down.** Grok relayed it at +84s without quoting the
-  conductor's word. It was right, and the rule now asks for the quote,
-  because a stand-down is the one message that must not be a guess.
-- **Banking during a muster.** Rule 3.
-- **No scope.** The call said "emergency" and nothing else. Rule 2
-  gives the first seat to read the situation the job of naming what
-  it sees.
-- **The roll.** The postmortem first counted seven of seven; it was
-  seven of ten. The roll section makes the denominator the record.
-- **Deciding for the conductor.** Three seats ratified this plan in
-  the same minutes and two wrote it to different files. A decision
-  aimed at the conductor is claimed in the forum before it is
-  written, the way a question is claimed before it is built.
+- A "ready" says who is awake, not what state anything is in, so the
+  entry now carries the status line and what steps 1 and 2 found.
+- A bank that landed mid-muster cost one seat a rebase: rule 3.
+- The call named no scope: rule 2.
+- Three seats were not reached, since a chat runs only when the
+  conductor opens it: the roll section.
+- Several seats wrote the plan at once. A decision aimed at the
+  conductor is claimed in the forum before it is written.

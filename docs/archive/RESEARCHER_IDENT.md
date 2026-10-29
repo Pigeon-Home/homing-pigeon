@@ -50,5 +50,8 @@ the old stamp stays in history and in the files it wrote.
 | Muse | `58316a92-3c4a-41cb-8a16-8c0c5a871e90` | recycled | the testing campaigns (tests, probes, questions) | `00000000` |
 | Muse | `00000000-muse-7e57-d0c5-58316a922026` | active | the testing campaigns (tests, probes, questions) | |
 
+Grok has no stamp issued and writes as "Grok" in the forum, the
+questions and its commits. A muster roll counts it by that name.
+
 `runner/tests/test_agent_stamps.py` holds this record to the tree.
 
