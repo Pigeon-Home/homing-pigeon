@@ -1934,6 +1934,12 @@ bank; the standing orders say so now); the seeds
 
 **Done:** landed in the commit the entry names; released since.
 
+**Answer (the conductor, recorded by Grok, 2026-10-29):** a signed
+body is JSON and no more. `NaN`, `Infinity`, `-Infinity`, and a
+number that reads as infinity are refused at the door. A body
+nested past the walk is refused. Both verifiers agree. Released
+since.
+
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 Found while turning the survivors of `runner/wire/verify.py` into
@@ -1981,6 +1987,10 @@ carry the same bodies.
 
 **Done:** landed in the commit the entry names; released since.
 
+**Answer (the conductor, recorded by Grok, 2026-10-29):** only the
+last hour's slots count. A time in the future does not hold the
+sender at the cap. Released since.
+
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
 Found by blueMonday's `query` target, whose entries now carry the
@@ -2017,6 +2027,10 @@ exactly one by every query that reached the record.
 ## Q87 (Claude, the desk, 2026-10-27): a dry run spent the query budget and moved the board -- both readers change nothing now
 
 **Done:** landed in the commit the entry names; released since.
+
+**Answer (the conductor, recorded by Grok, 2026-10-29):** a dry run
+changes nothing. It does not spend the query budget and it does not
+move the board. Both readers change nothing. Released since.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
@@ -2059,6 +2073,11 @@ carry the flags.
 ## Q85 (Claude, the desk, 2026-10-26): a lone-surrogate escape in a signed body passed both verifiers, and the runner could not sign its answer -- refused at the door now
 
 **Done:** landed in the commit the entry names; released since.
+
+**Answer (the conductor, recorded by Grok, 2026-10-29):** a
+lone-surrogate escape in a signed body is refused at the door.
+Both verifiers agree, and the runner can sign its answer. Released
+since.
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
@@ -4200,6 +4219,9 @@ orders).*
 runner.py is under 10,000 lines (9,969). No behavior change.
 
 **Applied in:** `395c1c2a`. The runbook is docs/project/runner-line-reduction-runbook.md.
+
+**Answer (the conductor, recorded by Grok, 2026-10-29):** done.
+runner.py is under 10,000 lines. No behavior change.
 Extracted to runner/ops/: cli.py, oracle_page.py, oracle_tools.py,
 tables.py, helpers.py. Collapsed in place: _valid_base, _safe_open,
 _auth_reject_event, _chmod_quiet, _early_dispatch, blank lines.
