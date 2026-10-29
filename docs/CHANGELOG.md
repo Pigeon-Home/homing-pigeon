@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.27 - 2026-10-29
+
+- **Routine patch release.** Ships the de_dust corpus banked on main
+  since 3.14.26 (Germany 158-163, San Francisco 71-73, VM 21), the
+  hourly de_dust note, and the extensions upstream pin refresh. No
+  pipeline or runner changes.
+
 ## 3.14.26 - 2026-10-29
 
 - **Routine patch release.** Ships the de_dust corpus banked on main
