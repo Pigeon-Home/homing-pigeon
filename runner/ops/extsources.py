@@ -285,8 +285,8 @@ def _clean_rel_path(value, where):
                 or _WINDOWS_RESERVED.match(part):
             raise ValueError(f"{where} has an unusable segment {part!r} "
                              f"in {value!r}")
-    if not parts:
-        raise ValueError(f"{where} names no path")
+    # Never empty here: an empty value, and "/" (the only other value
+    # that splits to nothing), are refused above.
     return "/".join(parts)
 
 

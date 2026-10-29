@@ -281,10 +281,10 @@ class OpsMainMissingCliTest(unittest.TestCase):
 class SmallGuardsTest(unittest.TestCase):
     """Cycle 5 targets, guard class, one refusal each:
     `ops/extsources.py:_clean_rel_path` -- a value with
-    an unusable segment is refused (its "names no path"
-    arm at 289 never fires: a split always yields a
-    segment for the loop to refuse; recorded in cycle
-    6's ledger); `ops/install.py:_load_by_path` (40) --
+    an unusable segment is refused (a split always
+    yields a segment for the loop to refuse, so the
+    function has no "names no path" arm);
+    `ops/install.py:_load_by_path` (40) --
     a file no loader claims is an ImportError; `ops/
     oracle_page.py:_text` (9) -- a non-string reads as
     empty text on the status page; `oracle/

@@ -444,6 +444,9 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         raise _runner().JobRejected("env must be an object")
     script = job.get("script")
     script_url = job.get("script_url")
+    # A number is truthy: written as a script, write() raised TypeError
+    # and the job was retried forever. A script that is not a string
+    # can never run, so it is refused here, before anything is staged.
     if script is not None and not isinstance(script, str):
         raise _runner().JobRejected("script must be a string")
     if script_url is not None and not isinstance(script_url, str):
@@ -513,10 +516,6 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
                 _runner().sha384_of(script_path).lower() != job["script_sha384"].lower():
             raise _runner().JobRejected("script SHA384 mismatch")
     elif script:
-        # A number is truthy. write() raises TypeError and the job
-        # retried forever. A script that is not a string can never run.
-        if not isinstance(script, str):
-            raise _runner().JobRejected("script must be a string")
         if job.get("script_sha384") and \
                 hashlib.sha384(script.encode("utf-8")).hexdigest() \
                 != job["script_sha384"].lower():
