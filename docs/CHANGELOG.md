@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.34 - 2026-10-29
+
+- **Q113: a mutated reply_to rendered as `<>`.** The mailbox's reply_to
+  check now rejects malformed domain labels (leading or trailing
+  hyphens, empty labels), so a mutated reply_to no longer produces a
+  result addressed to `<>`; tests added in the blackbox and
+  oracle-intake fuzz suites. Also ships the de_dust corpus banked since 3.14.33
+  (Germany 187-193, San Francisco 84-86, VM 25).
+
 ## 3.14.33 - 2026-10-29
 
 - **Fix-forward for 3.14.32.** The v3.14.32 tag build went red and
