@@ -621,6 +621,83 @@ def unrestricted_extra_keys(cfg) -> list:
 DOORS = ("query", "board", "v2", "cancel")
 
 
+KEY_STATES = ("ordered", "generated", "distributed", "in_use",
+              "superseded", "compromised", "destroyed")
+"""The directory's states, in order. in_use verifies. superseded
+verifies until its not_after. Everything else is refused at every
+door. compromised is refused at once (the state built first)."""
+
+
+def load_key_directory(cfg):
+    """The key directory a config names, or None when none is set.
+
+    `key_directory` is the map itself. `key_directory_file` is a path
+    to a JSON file of the same shape. The two are mutually exclusive.
+    An entry is {fingerprint, state, not_before, not_after}. Never the
+    secret. A missing file or a file that is not an object is a config
+    error, raised here so the caller can turn it into a refusal.
+    """
+    if not isinstance(cfg, dict):
+        return None
+    inline = cfg.get("key_directory")
+    path = cfg.get("key_directory_file")
+    if inline is not None and path:
+        raise RuntimeError("config error: key_directory and "
+                           "key_directory_file are mutually exclusive")
+    if path:
+        with open(path, encoding="utf-8") as fh:
+            inline = json.load(fh)
+    if inline is None:
+        return None
+    if not isinstance(inline, dict):
+        raise RuntimeError("config error: key_directory must be an object")
+    return inline
+
+
+def key_directory_verdict(directory, secrets, key_id, now):
+    """None when the directory admits the key, else why.
+
+    No directory configured is None (the caller skips the check).
+    A configured directory is the source of truth: a key with no
+    entry is refused, in_use is admitted, superseded is admitted
+    until its not_after, and every other state is refused.
+    compromised is refused at once, ahead of the window.
+    """
+    if directory is None:
+        return None
+    if not isinstance(key_id, str):
+        return "invalid key id"
+    names = key_names(secrets, key_id) if isinstance(secrets, dict) else (key_id,)
+    entry = None
+    for name in names:
+        if name in directory:
+            entry = directory[name]
+            break
+    if entry is None:
+        return "no key directory entry for this key"
+    if not isinstance(entry, dict):
+        return "invalid key directory entry"
+    state = entry.get("state")
+    if state == "compromised":
+        return "key is compromised"
+    if state == "in_use":
+        return None
+    if state == "superseded":
+        until = entry.get("not_after")
+        if until is None:
+            return None
+        try:
+            until = float(until)
+        except (TypeError, ValueError):
+            return "invalid key directory not_after"
+        if now > until:
+            return "key is superseded and its window has closed"
+        return None
+    if state in KEY_STATES:
+        return f"key is {state}"
+    return "invalid key directory state"
+
+
 def check_door_policy(cfg, secrets, key_id, door):
     """None when a key may use a door other than the job's, else why.
 
@@ -648,6 +725,13 @@ def check_door_policy(cfg, secrets, key_id, door):
         return f"key policies unreadable: {e}"
     pol = policy_for(policies, secrets, key_id) if isinstance(secrets, dict) \
         else policies.get(key_id)
+    try:
+        directory = load_key_directory(cfg)
+    except Exception as e:
+        return f"key directory unreadable: {e}"
+    verdict = key_directory_verdict(directory, secrets, key_id, time.time())
+    if verdict:
+        return verdict
     if not pol:
         if not owner and cfg.get("key_policies_default_deny"):
             return ("no key policy entry for this key "

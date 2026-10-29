@@ -95,7 +95,7 @@ since Q110's fix; the state check is the directory's). The proof
 is one parity test that walks every door (mailbox, the five
 channels, board, query, v2, the Worker, a DTLS resume) with a
 superseded key and expects the same refusal, green since that fix.
-Scheduled for the next release by the conductor, 29-OCT 11:14AM PST,
+Built in 3.14.32. Scheduled for the next release by the conductor, 29-OCT 11:14AM PST,
 asked yes or no by Muse: "Yes — put it in the next release." The
 desk and the hosting seat build it there. Distribution of the private half is the same
 unsolved problem as the Ed25519 migration in

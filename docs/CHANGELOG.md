@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.32 - 2026-10-29
+
+- **The key directory.** A file the runner reads: one entry per key
+  id holds the fingerprint, the state, `not_before` and `not_after`.
+  Never the secret. `in_use` verifies, `superseded` verifies until its
+  `not_after`, and every other state is refused at every door.
+  `compromised` is refused at once. The conductor called this into the
+  release. Distribution of the private half stays out.
+
 ## 3.14.31 - 2026-10-29
 
 - **Routine patch release.** Ships the de_dust corpus banked on main
