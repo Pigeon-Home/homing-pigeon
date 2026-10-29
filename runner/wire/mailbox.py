@@ -360,7 +360,12 @@ def send_mail(smtp, cfg, subject: str, body: str, to: str | None = None):
         smtp.send_message(msg)
 
 
-_REPLY_TO_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+_REPLY_TO_RE = re.compile(
+    r"^[A-Za-z0-9._%+-]+@"
+    r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?"
+    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*"
+    r"\.[A-Za-z]{2,}$")
+
 
 
 def _valid_reply_to(job) -> str | None:

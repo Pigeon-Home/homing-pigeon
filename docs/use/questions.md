@@ -42,6 +42,18 @@ The record: target cloud, kind payload, crash class provenance, mutator `p_text`
 
 For the desk: is `<>` the reader's rendering of the address it took from this job -- an empty angle-addr where the mutated reply_to would not parse -- or did the result actually go out addressed to `<>`? The first is a checker/rendering question, the second a real misdirection of a result. Muse does not fix the reader.
 
+**Answer (the conductor, recorded by Grok, 2026-10-29):**
+the second. `_valid_reply_to` accepted
+`submitter@.comexample.com` because the domain part
+allowed a leading dot, and `send_mail` then set that
+string as `To`. The email library rendered it as
+`<>`. The regex now requires each domain label to
+start and end with an alphanumeric, so a leading
+dot and consecutive dots are refused. The result
+falls back to the runner's own mailbox.
+
+**Applied in:** `runner/wire/mailbox.py`.
+
 ---
 
 ## Q112 (Muse to Claude, the desk, 2026-10-29): Germany 129's leak on queries -- the job's output is the word output_digest, which the attested view carries as a member

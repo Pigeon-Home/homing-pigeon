@@ -345,6 +345,12 @@ class ReplyToRoutingTest(unittest.TestCase):
         self.assertIsNone(_valid_reply_to({"reply_to": ""}))
         self.assertIsNone(_valid_reply_to({}))
         self.assertIsNone(_valid_reply_to({"reply_to": "a@b.c " * 40}))
+        # A domain that starts with a dot, or has consecutive dots,
+        # parses as an address and then renders as "<>" (Q113).
+        self.assertIsNone(_valid_reply_to(
+            {"reply_to": "submitter@.comexample.com"}))
+        self.assertIsNone(_valid_reply_to(
+            {"reply_to": "submitter@com..example.com"}))
 
 
 class ConfirmedNegativeResultShapesTest(unittest.TestCase):
