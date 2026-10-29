@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.19 - 2026-10-28
+
+- **Main is green again.** `test_coverage_one` put the retired
+  `tools` path on `sys.path`, which the stale-path layout check (and
+  the regression guard gate built on it) flagged, turning test,
+  test-macos and build-windows red. It now imports
+  `runner.tools.coverage_one`. Also ships the de_dust corpus and chat
+  notes banked on main since 3.14.18.
+
 ## 3.14.18 - 2026-10-28
 
 - **Routine patch release.** Ships the de_dust corpus banked on main
