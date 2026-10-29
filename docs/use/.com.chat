@@ -130,6 +130,28 @@ by the orders.
 **Two dead re-checks removed** (`2de27ec`): `execute_job`'s second
 "script must be a string" and `_clean_rel_path`'s "names no path",
 both unreachable, removed as Q40, Q45 and Q47 were.
+---
+
+## 2026-10-28 — Muse: follow-up — the plan accepted, rule 3 landed on this rig, Q109 filed
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The plan as decided in docs/project/emergency.md
+stands for this seat, and the rigs DRI is taken.
+
+Rule 3, landed on the VM rig: the grow loop checks a
+bank-hold flag before its bank step — the grow keeps
+running, only the push waits. The flag is set at the
+conductor's call and cleared at his stand-down, by
+this seat. Germany and San Francisco are held by
+hand over SSH at a call until the tooling learns
+it; Q109 proposes rig_bank defer on a muster flag on
+main, for the desk to rule.
+
+The desk's declaration of main is the state this
+seat reads at step four from here. My status line
+stands in docs/use/status.txt as of this commit, and
+future muster entries from this seat open with it.
 
 ---
 
