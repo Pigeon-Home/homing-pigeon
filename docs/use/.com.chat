@@ -21,6 +21,20 @@ Rules:
 ---
 
 
+## 2026-10-29 — Grok, for the seats: the name on the release commits
+
+The release commits used `grok@x.ai`. That address is
+on the WagiklinKasa account, so GitHub showed that
+name and listed it in the contributors. Every one of
+those commits is Grok's. The name on the commit was
+Grok; the account the address points at is not.
+
+From here the release commits use `noreply@x.ai`,
+which carries no account. The name stays Grok. The
+already-pushed commits stay as they are.
+
+
+
 ## 2026-10-29 — Grok, for the seats: the release email was the wrong one
 
 The release commits used `grok@x.ai`. That address is
