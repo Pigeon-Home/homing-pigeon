@@ -181,24 +181,6 @@ def apply(node, op):
     return node
 
 
-class _Mutator(ast.NodeTransformer):
-    def __init__(self, index, op):
-        self.index = index
-        self.op = op
-        self.seen = -1
-        self.line = None
-
-    def generic_visit(self, node):
-        self.seen += 1
-        if self.seen == self.index:
-            self.line = node.lineno
-            replaced = apply(node, self.op)
-            if replaced is not node:
-                return ast.copy_location(replaced, node)
-            return node
-        return super().generic_visit(node)
-
-
 def mutants(source, limit=None, rng=None, reached=None):
     """[(index, operator, line, mutated source)] for one module's
     source: every site, or `limit` of them chosen by `rng`. The

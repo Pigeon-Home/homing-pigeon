@@ -648,6 +648,24 @@ Then return to A: new code since the last pass has made new gaps.
 One line per item taken: queue, item, date taken, agent stamp, and
 when done, the proving commit or run. Newest first.
 
+- Queue A taken (a0000997, 2026-10-28): the NATS transport's loop.
+  A stop on another thread cleared the pipe's client, and close()
+  its socket, under the loop's reads; both escaped as AttributeError
+  (build 40781436856, red). A MSG size that is not a number escaped
+  as ValueError. Fixed and pinned, six tests that fail on the old
+  code: `36ed40d` (`test_nats_pipe_shutdown.py`).
+- Queue A dispositions (a0000997, 2026-10-28): `exec.execute_job`'s
+  second "script must be a string" and `extsources._clean_rel_path`'s
+  "names no path", both unreachable by construction, removed as Q40,
+  Q45 and Q47 were: `2de27ec`.
+- Queue A taken (a0000997, 2026-10-27): the rest of the shipped tree
+  in one whole-suite pass. Script mode and every entry point
+  (`test_script_mode.py`, `f527d9a`), refusal edges in the sender,
+  staging, the extension loader and install (`test_refusal_edges.py`,
+  `06888e0`). Shipped code 99.00 to 99.51 percent of lines; run data
+  and every line left unrun with its reason in
+  `docs/reports/coverage/local-regression-2026-10-27.md`.
+
 - rules refreshed 2026-10-25 06:37 PDT
   resources 2026-10-25T13:37:09Z: cores 2 | box cpu 65% | wall 0s | cmd cpu 0s = 0.7 cores busy | peak rss 29 MB | mem used 97% | disk free 166.4 GB | exit 0 | under-driven
   (scoped verification runs are short by

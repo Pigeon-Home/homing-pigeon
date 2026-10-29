@@ -124,6 +124,18 @@ unchanged; neither counts branches.
 the reports they have made. On the same tree both read at or below the
 coverage.py number in the release reports, never above it.
 
+`linecov.py` leaves out of a count what no run could mark: a `global`
+or `nonlocal` line (it compiles to no instruction), and a `.py` under
+a measured folder that does not parse, which it names under
+`meta.unparsed` instead of losing the report. Its keys use `/` on
+every box.
+
+A whole-suite pass takes about twelve minutes on two cores, and main
+moves faster than that: run it in a worktree pinned to one commit
+(`git worktree add --detach <dir> <sha>`, then the tool from inside
+it), so no pull or bank changes a file under the run, and name that
+commit in the report.
+
 Running the same proofs locally:
 
 ```bash
