@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.28 - 2026-10-29
+
+- **Routine patch release.** Ships the de_dust corpus banked on main
+  since 3.14.27 (Germany 164-172, San Francisco 74-77, VM 22), the
+  hourly de_dust notes, the platform-matrix vm-netbsd-10 python3.12
+  link fix, and the netbsd python-link test's fake PATH dir rename
+  off the retired "tools" path. No runner changes.
+
 ## 3.14.27 - 2026-10-29
 
 - **Routine patch release.** Ships the de_dust corpus banked on main
