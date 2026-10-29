@@ -332,8 +332,17 @@ def annotations_for(output, shard):
     the test id, the message saying which shard carries the dump.
     Actions keeps the first ten error annotations of a step; the
     full list is still in the log above them.
+
+    A shard that dies on WinError 10038 (Windows select on a
+    closed socket, a known flake under CI load) gets one named
+    line first, so the run page says what it is.
     """
     lines = []
+    if "WinError 10038" in output:
+        lines.append(
+            "::error title=shard %d::Windows socket flake "
+            "(WinError 10038: select on a closed socket); "
+            "the dump is in the log" % shard)
     reasons = failure_reasons(output)
     for test_id in failed_tests(output):
         title = test_id.translate(_ANNOTATION_UNSAFE)

@@ -522,5 +522,19 @@ class WallClockTest(_OutsideActions):
         self.assertEqual(cm.exception.code, 2)
 
 
+class AnnotationTest(unittest.TestCase):
+    def test_a_windows_socket_flake_is_named(self):
+        out = "Traceback\nOSError: [WinError 10038] not a socket\n"
+        lines = rtp.annotations_for(out, 1)
+        self.assertTrue(lines)
+        self.assertIn("WinError 10038", lines[0])
+        self.assertIn("shard 1", lines[0])
+
+    def test_a_clean_failure_is_not_called_a_socket_flake(self):
+        out = "FAIL: test_x (mod.Cls.test_x)\nAssertionError: 1 != 2\n"
+        lines = rtp.annotations_for(out, 2)
+        self.assertFalse(any("10038" in ln for ln in lines))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
