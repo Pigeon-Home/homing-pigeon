@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.31 - 2026-10-29
+
+- **Routine patch release.** Ships the de_dust corpus banked on main
+  since 3.14.30 (Germany 179-184, San Francisco 82) and Q110: a DTLS
+  resumption ticket now resumes only while its issuing key stands
+  (runner/wire/dtlsproto.py, with ticket-parity tests).
+
 ## 3.14.30 - 2026-10-29
 
 - **Routine patch release.** Ships the de_dust corpus banked on main
