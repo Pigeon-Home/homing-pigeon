@@ -108,6 +108,10 @@ Those values live on the runner host. They do not travel through the SI chat.
    for the conductor". The release train runs on his signal. Older
    entries keep the word they were written with; nothing is
    rewritten.
+12. **Claude seats read `docs/project/claude-intuitions.md` first.**
+   Eight lines on answering the size of the ask, deciding only what
+   already waits on the conductor, and not echoing another Claude
+   seat.
 
 
 ## Where things live
