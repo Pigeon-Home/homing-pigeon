@@ -105,6 +105,13 @@ The desk reads this file at the start of every turn that will push.
     could not. *Habit:* when the step is his, the question says "you
     would need to ..." and gives the steps.
 
+14. **Where the desk was confused (28-Oct):** it took "do it" as a yes
+    to a `RELEASE_TOKEN` and wrote that into Q30, when the conductor's
+    ruling is no token, because the fix is the order of commits.
+    *From here on:* the desk records a decision only from the
+    conductor's ruling as written in the Q, and when his words could be
+    read two ways it asks him before writing either reading.
+
 ## The one-line test
 
 Before any push, the desk asks itself four things. Has a seat already
