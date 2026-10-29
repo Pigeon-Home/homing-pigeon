@@ -5,8 +5,8 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
-import coverage_one
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+from runner.tools import coverage_one  # noqa: E402
 
 
 class OneLineTest(unittest.TestCase):
