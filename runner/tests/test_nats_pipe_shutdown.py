@@ -129,7 +129,9 @@ class MsgLineTest(unittest.TestCase):
 
     def test_a_size_that_is_not_a_number_is_a_transport_error(self):
         for line in (b"MSG jobs 1 x3\r\n", b"MSG jobs 1 -3\r\n",
-                     b"MSG jobs\r\n", b"MSG a b c d e 3\r\n"):
+                     b"MSG jobs\r\n", b"MSG a b c d e 3\r\n",
+                     "MSG jobs 1 \u00b2\r\n".encode(),
+                     "MSG jobs 1 \u0663\r\nabc\r\n".encode()):
             with self.subTest(line=line), \
                     self.assertRaises(nats_ext.TransportError) as cm:
                 self._read(line)

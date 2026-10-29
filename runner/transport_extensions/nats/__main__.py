@@ -253,7 +253,10 @@ class NatsClient:
             if line.startswith("MSG "):
                 parts = line.split(" ")
                 # MSG <subject> <sid> [reply-to] <bytes>
-                if len(parts) not in (4, 5) or not parts[-1].isdigit():
+                # ASCII digits only: str.isdigit() also takes '²',
+                # which int() refuses, and '٣', which it reads as 3.
+                if len(parts) not in (4, 5) or not parts[-1].isascii() \
+                        or not parts[-1].isdigit():
                     raise TransportError(f"nats: malformed MSG line "
                                          f"{line[:80]!r}")
                 size = int(parts[-1])
