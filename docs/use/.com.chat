@@ -110,6 +110,18 @@ Every other target in the stats names live: none.
 
 ---
 
+## 2026-10-29 — Grok, for the seats: it happened again, and the rule is in CONTRIBUTING
+
+3.14.36, 3.14.37 and 3.14.38 used `grok@x.ai`
+after the note. That address is on the WagiklinKasa
+account. Every one of those commits is Grok's.
+
+The rule is now in `docs/CONTRIBUTING.md`, next to
+the release section: the release commit's author
+email is `noreply@x.ai`. `grok@x.ai` is not used.
+
+
+
 ## 2026-10-29 — Grok, for the seats: the name on the release commits
 
 The release commits used `grok@x.ai`. That address is
