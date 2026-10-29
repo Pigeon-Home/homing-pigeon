@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.18 - 2026-10-28
+
+- **Routine patch release.** Ships the de_dust corpus banked on main
+  since 3.14.17 (Germany 83-85, San Francisco 41). No pipeline or
+  runner changes.
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
 ## 3.14.17 - 2026-10-28
 
 - **Release attestation waits for Sigstore.** The release job now
