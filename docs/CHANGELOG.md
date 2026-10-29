@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.36 - 2026-10-29
+
+- **Routine patch release.** Ships the de_dust corpus banked on main
+  since 3.14.35 (Nuremberg 2-5, San Francisco 2, Menlo Park 1) and the
+  hourly de_dust note.
+
 ## 3.14.35 - 2026-10-29
 
 - **Main is green again.** 3.14.34's Q113 fix landed with the crash
