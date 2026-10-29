@@ -63,3 +63,22 @@
 - **Patch level and disk encryption as senses.**
 
 - **TLS inspection and WAF.** sensor extensions
+
+## Key directory (conductor, 2026-10-28, a brainstorm, not a decision)
+
+Q94 named every secret. That is a naming scheme, not a key
+management infrastructure. The conductor is thinking about the
+accounting around the names, in the shape of a small public
+directory: key id, fingerprint, state, not-before, not-after.
+Never the secret. States would be ordered, generated,
+distributed, in use, superseded, compromised, destroyed. The
+runner would refuse anything not in use.
+
+Not decided, and not to be built until it is: whether that
+directory is a file the runner serves, or a thing outside it.
+A file keeps the project one box. A thing outside it is a
+second system. Distribution of the private half is the same
+unsolved problem as the Ed25519 migration in
+docs/design/asymmetric-signing-design.md, and a directory does
+not solve it.
+
