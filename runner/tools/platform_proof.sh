@@ -36,6 +36,19 @@ say() { printf '== %s\n' "$*"; }
 
 # ---- 1. python3 -------------------------------------------------------
 STAGE="install python3"
+# BSD packages install a versioned binary only (NetBSD's python312 is
+# /usr/pkg/bin/python3.12, no python3), and the workflow's prepare step
+# may already have installed one: link it before deciding to install.
+HP_PYBIN=${HP_PYBIN:-/usr/local/bin}
+_link_versioned_python3() {
+  command -v python3 >/dev/null 2>&1 && return 0
+  for cand in python3.13 python3.12 python3.11 python3.10 python3.9; do
+    c=$(command -v "$cand" 2>/dev/null) || continue
+    mkdir -p "$HP_PYBIN" && ln -sf "$c" "$HP_PYBIN/python3" && return 0
+  done
+  return 0
+}
+_link_versioned_python3
 if ! command -v python3 >/dev/null 2>&1; then
   say "installing python3"
   if   command -v apk      >/dev/null 2>&1; then apk add --no-cache python3
@@ -46,16 +59,13 @@ if ! command -v python3 >/dev/null 2>&1; then
   elif command -v zypper   >/dev/null 2>&1; then zypper -n -q install python3
   elif command -v pacman   >/dev/null 2>&1; then pacman -Sy --noconfirm --quiet python >/dev/null
   elif command -v pkg      >/dev/null 2>&1; then pkg install -y python3
+  elif command -v pkg_add  >/dev/null 2>&1 && [ "$(uname -s)" = NetBSD ]; then pkg_add -I python312 || pkg_add -I python311
   elif command -v pkg_add  >/dev/null 2>&1; then pkg_add -I python%3
   elif command -v pkgin    >/dev/null 2>&1; then pkgin -y install python312 || pkgin -y install python311
   else say "no package manager found and no python3"; exit 2; fi
 fi
 # BSD packages install a versioned binary; make python3 resolvable.
-if ! command -v python3 >/dev/null 2>&1; then
-  for cand in /usr/pkg/bin/python3.12 /usr/pkg/bin/python3.11 /usr/local/bin/python3.12 /usr/local/bin/python3.11; do
-    [ -x "$cand" ] && mkdir -p /usr/local/bin && ln -sf "$cand" /usr/local/bin/python3 && break
-  done
-fi
+_link_versioned_python3
 # ---- 1b. the floor: pyproject says >= 3.9. Leap 15 and EL8 ship a
 # system python3 of 3.6 and carry the supported interpreter as a
 # separate package; the matrix found both. Install it, then pick

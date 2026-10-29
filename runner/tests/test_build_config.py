@@ -729,6 +729,57 @@ class PipelineLessonsTest(unittest.TestCase):
                          "only; no per-platform skips")
         self.assertNotIn("skipIf", proof)
 
+    def test_platform_proof_finds_a_versioned_bsd_python(self):
+        # vm-netbsd-10 failed every nightly from 2026-10-24: the
+        # workflow's prepare step installs python312 (python3.12, no
+        # python3), the script saw no python3 and ran OpenBSD's
+        # `pkg_add -I python%3`, which NetBSD refuses. The script must
+        # link a versioned python3.X it can already see before it
+        # installs anything, and NetBSD's pkg_add must ask for python312.
+        import shutil
+        import subprocess
+        import tempfile
+        path = os.path.join(_root(), "runner", "tools", "platform_proof.sh")
+        with open(path, encoding="utf-8") as fh:
+            script = fh.read()
+        self.assertIn('[ "$(uname -s)" = NetBSD ]; then pkg_add -I python312', script)
+        start = script.index('STAGE="install python3"')
+        end = script.index("# ---- 1b.")
+        stage = script[start:end]
+        self.assertLess(stage.index("_link_versioned_python3\nif ! command -v python3"),
+                        stage.index('say "installing python3"'))
+        sh = shutil.which("sh")
+        if sh is None or os.name == "nt":
+            return  # the static checks above are the Windows half
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = os.path.join(tmp, "fakebin")
+            link = os.path.join(tmp, "link")
+            os.mkdir(fake)
+            log = os.path.join(tmp, "pkg_add.log")
+            def tool(name, body):
+                p = os.path.join(fake, name)
+                with open(p, "w", encoding="utf-8") as fh:
+                    fh.write("#!/bin/sh\n" + body + "\n")
+                os.chmod(p, 0o755)
+            tool("python3.12", "exit 0")
+            tool("pkg_add", 'echo "$*" >> %s; exit 1' % log)
+            tool("uname", "echo NetBSD")
+            # a PATH with no python3 anywhere: only the fakes and the
+            # handful of tools the stage itself needs
+            tools = os.path.join(tmp, "tools")
+            os.mkdir(tools)
+            for t in ("mkdir", "ln"):
+                os.symlink(shutil.which(t), os.path.join(tools, t))
+            env = {"PATH": os.pathsep.join([link, fake, tools]),
+                   "HP_PYBIN": link}
+            body = "set -eu\nsay() { :; }\n" + stage + "\ncommand -v python3\n"
+            r = subprocess.run([sh, "-c", body], env=env,
+                               capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(r.stdout.strip(), os.path.join(link, "python3"))
+            self.assertFalse(os.path.exists(log),
+                             "pkg_add ran although python3.12 was on PATH")
+
     def test_readme_lists_every_matrix_leg(self):
         # Claims track proof: every leg name in the matrix appears in
         # docs/use/platforms.md's Proven platforms table, and nothing in that
