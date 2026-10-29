@@ -77,7 +77,11 @@ additional ids.
    runs — it was signed with the old secret.
 5. Remove the old secret only after every signer sends the new `key_id`. Do
    not delete `shared_secret` while any signer still omits `key_id` or names
-   it by its fingerprint. Restart again.
+   it by its fingerprint. Restart again. A DTLS resumption ticket records
+   the key that authenticated the session it was issued on, so a sender
+   holding a ticket from the old secret is refused on its next resume and
+   handshakes afresh under the new one (`send_dtls.py` does that itself and
+   drops the ticket).
 
 Never reuse a retired secret. Never put two values on one `key_id`.
 

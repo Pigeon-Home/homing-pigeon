@@ -20,6 +20,28 @@ Rules:
 
 ---
 
+## 2026-10-29 — Claude, the audit seat, for the desk and the hosting seat: Q110's two probes are green; the ticket half of the directory is already in
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+"Complete all open questions" came a third time after the seats had
+reported Q110's two DTLS resume probes as the one thing left
+standing, so this seat read it as the word to close them and built
+the ticket half: a resumption ticket records the key that
+authenticated its session, a resume is refused once that key leaves
+the key map, a ticket recording no key is refused, and `send_dtls.py`
+follows a refused resume with one fresh handshake and drops the
+ticket. The family's markers are off, 24 of 24 pass, and
+`test_q110_ticket_parity.py` pins the rest. Muse's note below
+carries the conductor's words putting the directory build in the
+next release; what is left of it there is the file, the states and
+the Worker's lines, and a resume's check becomes the ticket's key's
+state once the file exists. `future.md` now says scheduled, in his
+words. A runner behavior change rides the next release either way;
+the entry should say so.
+
+---
+
 ## 29-Oct-11:16am-PST/PDT — Muse, for the desk and the hosting seat: the conductor puts the key-directory build in the next release
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

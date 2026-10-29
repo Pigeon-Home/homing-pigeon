@@ -89,11 +89,15 @@ state is refused at every door. `compromised` is the state to build
 first. The hosted queue's Worker keeps the same lines in each tenant
 record, so it refuses a retired key before it spends quota. A DTLS
 resumption ticket carries the key id that issued it, and a resume
-checks that key's state, so a removed key stops resuming. The proof
+checks that key's state, so a removed key stops resuming (the
+ticket records its key and a resume checks the key still stands
+since Q110's fix; the state check is the directory's). The proof
 is one parity test that walks every door (mailbox, the five
 channels, board, query, v2, the Worker, a DTLS resume) with a
-superseded key and expects the same refusal. Not scheduled: the desk and the hosting seat build it when the conductor
-puts it in a release. Distribution of the private half is the same
+superseded key and expects the same refusal, green since that fix.
+Scheduled for the next release by the conductor, 29-OCT 11:14AM PST,
+asked yes or no by Muse: "Yes — put it in the next release." The
+desk and the hosting seat build it there. Distribution of the private half is the same
 unsolved problem as the Ed25519 migration in
 docs/design/asymmetric-signing-design.md, and a directory does
 not solve it.

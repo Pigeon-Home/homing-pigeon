@@ -405,7 +405,12 @@ implemented as a bounded pure-Python profile
   proves the peer's address before the extension keeps any
   state, Connection IDs keep a session alive across a NAT
   rebinding, session resumption uses fresh tickets with
-  fresh DHE, and there is no 0-RTT, ever.
+  fresh DHE, and there is no 0-RTT, ever. A resumption ticket
+  records the key that authenticated the session it was
+  issued on, carried across a resume, and resumes only while
+  that key still stands in the runner's key map: a rotated-out
+  key is refused at a resume exactly as at a fresh handshake,
+  and a ticket that records no key does not resume (Q110).
 - **The greeting.** After the handshake authenticates — never
   before — the runner sends the session's first application
   message: a greeting carrying platform information tiered
@@ -436,7 +441,9 @@ implemented as a bounded pure-Python profile
   `--wait` is how many seconds to hold the session open for
   the result (default 120); `--ticket-file` stores the
   resumption ticket so the next run resumes (with a fresh
-  DHE share, as the profile requires).
+  DHE share, as the profile requires); a ticket the runner
+  refuses, as after a rotation, is followed by one fresh
+  handshake under the key itself, and the file is dropped.
 - **One supervisor deviation, stated plainly:** the dtls
   extension is the one pipe the supervisor hands the shared
   secret to — because this pipe terminates PSK

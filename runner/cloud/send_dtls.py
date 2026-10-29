@@ -55,6 +55,50 @@ from runner.wire import dtlsproto, jobcrypto  # noqa: E402
 DEFAULT_PORT = 20220
 
 
+def _open_session(args, secret, ticket, deadline, log):
+    """A connected UDP socket and an established client core, or
+    (None, None). A session first tries the saved resumption ticket;
+    the runner refuses a ticket whose issuing key no longer stands
+    (Q110), so a refused resume is followed by one fresh handshake
+    under the key itself, on a fresh socket, and the stale ticket is
+    forgotten."""
+    attempts = [ticket, None] if ticket is not None else [None]
+    for attempt in attempts:
+        client = dtlsproto.DtlsClientCore(
+            secret, key_id=args.key_id, ticket=attempt, log=log)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.connect((args.host, args.port))
+        try:
+            for dg in client.start(time.monotonic()):
+                sock.send(dg)
+            ok = _wait_for(sock, client,
+                           lambda: client.greeting is not None
+                           or client.app_messages,
+                           deadline)
+        except Exception:
+            sock.close()
+            raise
+        if ok and not client.dead:
+            return sock, client
+        sock.close()
+        if attempt is not None and client.dead:
+            log("the resumption ticket was refused; a fresh "
+                "handshake follows", "WARN")
+            _forget_ticket(args.ticket_file)
+            continue
+        break
+    return None, None
+
+
+def _forget_ticket(path):
+    if not path:
+        return
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 def _load_ticket(path):
     if not path:
         return None
@@ -208,21 +252,13 @@ def main(argv=None):
     job_id, envelope = built
 
     ticket = _load_ticket(args.ticket_file)
-    client = dtlsproto.DtlsClientCore(
-        secret, key_id=args.key_id, ticket=ticket,
-        log=lambda m, level="INFO": print(f"{level}: {m}",
-                                          file=sys.stderr))
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.connect((args.host, args.port))
+    log = lambda m, level="INFO": print(f"{level}: {m}",  # noqa: E731
+                                        file=sys.stderr)
     deadline = time.monotonic() + args.wait
+    sock = None
     try:
-        for dg in client.start(time.monotonic()):
-            sock.send(dg)
-        ok = _wait_for(sock, client,
-                       lambda: client.greeting is not None
-                       or client.app_messages,
-                       deadline)
-        if client.dead or not ok:
+        sock, client = _open_session(args, secret, ticket, deadline, log)
+        if client is None:
             print("the DTLS handshake failed or timed out",
                   file=sys.stderr)
             return 4
@@ -254,7 +290,8 @@ def main(argv=None):
         print(f"DTLS session failed: {e}", file=sys.stderr)
         return 4
     finally:
-        sock.close()
+        if sock is not None:
+            sock.close()
 
 
 if __name__ == "__main__":

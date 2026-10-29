@@ -655,6 +655,17 @@ def make_secret_lookup(default_secret, additional=None):
     return table.get
 
 
+def ticket_fields(entry):
+    """(psk, expiry, issuer) of a server ticket-table entry. The
+    issuer is the PSK identity of the key that authenticated the
+    session the ticket was issued on (carried forward across a
+    resume), and `None` for an entry that records none (Q110): such
+    a ticket does not resume."""
+    psk, expiry = entry[0], entry[1]
+    issuer = entry[2] if len(entry) > 2 else None
+    return psk, expiry, issuer
+
+
 # ------------------------------------------------------------------
 # Endpoint plumbing shared by both roles
 # ------------------------------------------------------------------
@@ -1186,6 +1197,7 @@ class _ServerSession(_Endpoint):
         self.core = core
         self.peer_addr = addr
         self.identity = None
+        self.issuer = None          # the key identity behind the session
         self.resumed = False
         self.established = False
         self.greeting_sent = False
@@ -1250,12 +1262,23 @@ class _ServerSession(_Endpoint):
         label = b"ext binder"
         ticket = self.core.tickets.get(identity)
         if ticket is not None:
-            stored_psk, expiry = ticket
+            stored_psk, expiry, issuer = ticket_fields(ticket)
             if now <= expiry:
+                del self.core.tickets[identity]   # one-shot
+                # Q110: a ticket resumes only while the key that
+                # issued it still stands in the runner's key map, the
+                # same refusal a superseded key meets at every other
+                # door; a ticket that records no issuing key is
+                # refused the same way.
+                if issuer is None or self.core.secret_for(issuer) is None:
+                    return refuse(ALERT_HANDSHAKE_FAILURE,
+                                  "dtls: resumption ticket's issuing "
+                                  "key no longer stands; handshake "
+                                  "refused")
                 psk = stored_psk
                 label = b"res binder"
                 self.resumed = True
-                del self.core.tickets[identity]   # one-shot
+                self.issuer = issuer
         if psk is None:
             secret = self.core.secret_for(identity)
             if secret is None:
@@ -1263,6 +1286,7 @@ class _ServerSession(_Endpoint):
                               "dtls: unknown PSK identity; "
                               "handshake refused")
             psk = secret.encode("utf-8")
+            self.issuer = identity
         binder = binders[0]
         if len(raw_ch) <= len(binder):
             return refuse(ALERT_DECRYPT_ERROR)
@@ -1450,7 +1474,8 @@ class _ServerSession(_Endpoint):
         ticket = self.core.rng(24)
         psk = _expand_label(res_master, b"resumption", nonce,
                             HASH_LEN)
-        self.core.tickets[ticket] = (psk, now + TICKET_LIFETIME)
+        self.core.tickets[ticket] = (psk, now + TICKET_LIFETIME,
+                                     self.issuer)
         nst_body = ((TICKET_LIFETIME).to_bytes(4, "big")
                     + self.core.rng(4)
                     + bytes([len(nonce)]) + nonce
@@ -1487,7 +1512,7 @@ class DtlsServerCore:
         self.cookie_secret = self.rng(32)
         self.sessions = {}         # our CID -> _ServerSession
         self.by_addr = {}          # peer addr -> _ServerSession
-        self.tickets = {}          # ticket bytes -> (psk, expiry)
+        self.tickets = {}          # ticket bytes -> (psk, expiry, issuer)
         self.events = []
         self.dropped_records = 0
 
@@ -1622,8 +1647,8 @@ class DtlsServerCore:
         for addr, session in list(self.by_addr.items()):
             if session.dead:
                 self.by_addr.pop(addr, None)
-        for ticket, (_psk, expiry) in list(self.tickets.items()):
-            if now > expiry:
+        for ticket, entry in list(self.tickets.items()):
+            if now > ticket_fields(entry)[1]:
                 del self.tickets[ticket]
         return out
 

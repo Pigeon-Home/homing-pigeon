@@ -22,19 +22,21 @@ Honest accounting of what fails today, and why:
   because admission runs through the one keyed verifier and the
   key is simply not in the map. Those probes pass unmarked; they
   are the parity the odd door is measured against.
-- The DTLS resumption ticket is the exception, and both resume
-  probes are @unittest.expectedFailure naming Q110. A ticket
-  records no key id at issue (the ticket table in
-  runner/wire/dtlsproto.py maps ticket bytes to (psk, expiry)
-  only), so a resume never consults the key map at all: a resume
-  carrying no key id is accepted, and a ticket issued by a key
-  that has since been superseded still resumes after that key
-  leaves the map. The body signature still refuses such a
-  session's jobs, so this is a parity gap, not a hole. When the
-  directory lands, the desk removes these two markers in the fix
-  commit; if the fix makes tickets carry their issuing key id,
-  the no-key-id probe is re-pointed at a ticket with no recorded
-  key in that commit.
+- The DTLS resumption ticket was the exception, and both resume
+  probes stood @unittest.expectedFailure naming Q110 until the
+  fix. A ticket then recorded no key id at issue (the ticket
+  table in runner/wire/dtlsproto.py mapped ticket bytes to (psk,
+  expiry) only), so a resume never consulted the key map: a
+  resume carrying no key id was accepted, and a ticket issued by
+  a key since superseded still resumed after that key left the
+  map. The body signature still refused such a session's jobs,
+  so it was a parity gap, not a hole. Since the fix a ticket
+  records the identity of the key that authenticated the session
+  it was issued on, a resume is refused when that key no longer
+  stands in the map, and a ticket that records no key is refused
+  the same way; the markers came off in the fix commit, and the
+  no-key-id probe was re-pointed at a ticket with no recorded
+  key, as this docstring said it would be.
 
 The controls prove the rig is not vacuous: the mailbox pair at
 the top (the current key is answered; the old key was answered
@@ -474,7 +476,7 @@ class DtlsResumeParityTest(unittest.TestCase):
     """Q110, the DTLS door. The baseline first: a fresh handshake
     naming the superseded key is refused by the ordinary secret
     lookup, exactly like every other door. The two resume probes
-    below it are the family's expected failures."""
+    below it were the family's expected failures until the fix."""
 
     def _established(self, server):
         client = dtlsproto.DtlsClientCore(OLD, key_id="old")
@@ -497,28 +499,29 @@ class DtlsResumeParityTest(unittest.TestCase):
                              for e in server.events))
 
     # Q110: a resume carrying no key id is refused, same as a
-    # superseded key. Today the ticket table hit comes first and
-    # the resume is accepted; the marker comes off in the fix
-    # commit that makes a resume check its issuing key.
-    @unittest.expectedFailure
+    # superseded key. A ticket records the key that issued it; one
+    # that records none (the shape the table held before the fix)
+    # names no key to check, and does not resume.
     def test_a_resume_carrying_no_key_id_is_refused(self):
         server = dtlsproto.DtlsServerCore(
             secret_lookup=dtlsproto.make_secret_lookup(
                 CURRENT, {"old": OLD}),
             greeting_for=lambda s: b'{"type":"greeting","v":1}')
         first = self._established(server)
-        before = len(server.events)
         # The resuming client presents only the ticket: it names
         # no key, and the ticket it carries records none either.
+        ticket_bytes, _psk = first.ticket
+        psk, expiry, _issuer = dtlsproto.ticket_fields(
+            server.tickets[ticket_bytes])
+        server.tickets[ticket_bytes] = (psk, expiry)
+        before = len(server.events)
         client = dtlsproto.DtlsClientCore(OLD, ticket=first.ticket)
         _pump(client, server)
         self.assertEqual(self._resumed_events(server, before), [])
+        self.assertNotEqual(client.state, "established")
 
     # Q110: a ticket issued by a key that has since been
     # superseded stops resuming once that key leaves the map.
-    # Today the ticket table never consults the map, so the
-    # resume below is accepted; expectedFailure until the fix.
-    @unittest.expectedFailure
     def test_a_resume_whose_issuing_key_was_superseded_is_refused(self):
         server = dtlsproto.DtlsServerCore(
             secret_lookup=dtlsproto.make_secret_lookup(
@@ -534,6 +537,7 @@ class DtlsResumeParityTest(unittest.TestCase):
         client = dtlsproto.DtlsClientCore(OLD, ticket=first.ticket)
         _pump(client, server)
         self.assertEqual(self._resumed_events(server, before), [])
+        self.assertNotEqual(client.state, "established")
 
 
 if __name__ == "__main__":
