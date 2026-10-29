@@ -1999,12 +1999,16 @@ def check_queries(entry):
     if outputs is not None:
         exe["outputs"] = outputs
     pieces = _query_pieces(out, err)
-    # An output's name is the sender's own text (the job named it), so
-    # a name that is also a line of the output leaving below full says
-    # nothing the sender did not know (Q106).
+    # An output's commitment leaves under every view by design
+    # (PROTOCOL section 6): the name the job gave the file (Q106), and
+    # the size and digest of the bytes the job wrote (Q111). A stream
+    # line that is also one of them says nothing the commitment does
+    # not, so the checker's own reading of the commitment is exempt.
     for o in outputs if isinstance(outputs, list) else []:
-        if isinstance(o, dict) and isinstance(o.get("name"), str):
-            pieces.discard(o["name"])
+        if isinstance(o, dict):
+            for member in _output_commitment(o).values():
+                pieces.discard(member if isinstance(member, str)
+                               else str(member))
     policy_text = json.dumps(policy, sort_keys=True, default=str)
     text_lines = (out + err).splitlines()
     want = policy.get("view") if isinstance(policy, dict) else None

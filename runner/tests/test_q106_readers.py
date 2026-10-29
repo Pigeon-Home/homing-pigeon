@@ -298,10 +298,6 @@ class RetiredListsInTheTreeTest(unittest.TestCase):
                 self.assertIn(row["why"], ("promoted", "redundant"))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class BankSettlesCrashesTest(unittest.TestCase):
     """A bank replays the crash records it merged at main's head (Q108)."""
 
@@ -470,3 +466,59 @@ class LedgerNamesTheRigsTreeTest(unittest.TestCase):
         self.assertTrue(head is None or (len(head) == 12 and all(c in "0123456789abcdef" for c in head)))
         with tempfile.TemporaryDirectory() as td:
             self.assertIsNone(RB.tree_head(td))
+
+
+class CommitmentInTheStreamTest(unittest.TestCase):
+    """Q111: a stream line that is also a member of an output's
+    commitment is not a leak below full. The commitment (name, size,
+    SHA-384) leaves under every view by design, so the checker exempts
+    its own reading of it, and nothing else."""
+
+    DIGEST = "59e1748777448c69de6b800d7a33bbfb9ff1b463e44354c3553bcdb9c666fa90125a3c79f90397bdf5f6a13de828684f"
+    LINE = "SECRET-12345 is the canary line of the output"
+
+    def _entry(self, stderr, outputs=None):
+        outs = outputs if outputs is not None else [
+            {"name": "reports/junit.xml", "size": 5, "sha384": self.DIGEST,
+             "content_b64": "aGVsbG8="}, "stray", 7, None, ["x"]]
+        return {"kind": "payload", "data": {
+            "output": "ok\n" + self.LINE + "\nERROR one\nERROR two\n",
+            "stderr": stderr, "policy": {"view": "summary"}, "outputs": outs}}
+
+    def test_the_digest_as_a_stream_line_is_the_commitments_own(self):
+        self.assertEqual("accepted", B.check_queries(self._entry(self.DIGEST)))
+        self.assertEqual("accepted", B.check_queries(self._entry(self.DIGEST + "\n")))
+
+    def test_the_name_and_the_size_are_too(self):
+        outs = [{"name": "a-long-file-name.txt", "size": 123456789012, "sha384": self.DIGEST}]
+        self.assertEqual("accepted", B.check_queries(
+            self._entry("a-long-file-name.txt\n123456789012\n", outs)))
+
+    def test_a_line_that_is_no_member_still_leaks(self):
+        real = PO.apply_result_policy
+
+        def leaky(*a, **k):
+            result, retain = real(*a, **k)
+            return dict(result, note=self.LINE), retain
+
+        with mock.patch.object(PO, "apply_result_policy", leaky):
+            with self.assertRaises(B.Crash) as ctx:
+                B.check_queries(self._entry(self.DIGEST))
+        self.assertIn("leak", str(ctx.exception))
+
+    def test_a_member_in_another_shape_is_no_exemption(self):
+        # A size written as text is not the collector's, so the reader
+        # does not project it; the checker exempts nothing for it, and
+        # the stream line it would match stays a piece. With nothing
+        # carrying it, the entry is still accepted; the point is the
+        # exemption's reach, read from the pieces the check builds.
+        outs = [{"name": "r.xml", "size": "123456789012", "sha384": self.DIGEST}]
+        entry = self._entry("123456789012\n", outs)
+        self.assertEqual("accepted", B.check_queries(entry))
+        want = B._output_commitment(outs[0])
+        self.assertNotIn("size", want)
+        self.assertEqual(self.DIGEST, want["sha384"])
+
+
+if __name__ == "__main__":
+    unittest.main()

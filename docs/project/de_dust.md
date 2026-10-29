@@ -210,7 +210,9 @@ never files a refusal as a crash.
   unknown or absent request reading as full; the retain flag
   follows the view; under summary and attested nothing of the
   output comes back (the sender's own text echoed from the policy
-  is not the output), and attested blanks the streams; under
+  is not the output, and neither is an output entry's commitment,
+  the name, size and digest that leave under every view by PROTOCOL
+  section 6, Q106 and Q111), and attested blanks the streams; under
   redacted no line handed back matches the owner's pattern; the
   answers are one per query in order, each query spending one,
   the budget's refusals after the budget, grep and tail refused as
