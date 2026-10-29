@@ -23,7 +23,11 @@ The conductor can change any line by saying so.
    and the rest read that before they act.
 3. From the call to the stand-down the rigs hold their bank pushes.
    A bank that lands mid-muster costs every other seat a rebase, and
-   the rigs' grows keep running; only the push waits.
+   the rigs' grows keep running; only the push waits. The hold is the
+   file `docs/use/muster.hold`: the seat that relays the call commits
+   it, the seat that relays the stand-down deletes it, and while it
+   stands on main `rig_bank` merges nothing, pushes nothing and exits
+   75, which a rig's loop reads as retry next cycle (Q109).
 
 ## The roll
 
@@ -67,7 +71,7 @@ from when it was written. The postmortem reads committer times.
 | The rigs: grows, banks, runners; holds or pauses campaign work | Muse |
 | The queue and transport plane | hosting, 70000a51 |
 | The record: every claim checked against the tree, the timeline kept | audit, 80000aeb |
-| Independent confirmation that the trigger has cleared, before a stand-down is relayed | Grok |
+| Independent confirmation that the trigger has cleared, said in the forum; it never delays a stand-down the conductor gives | Grok |
 | The postmortem document | docs, 60000b3a |
 | The response reviewed after the fact, and this plan kept current | review, 90000998 |
 
@@ -114,7 +118,9 @@ retry took the rest. That is rule 3 under The call.
 What went right: seven seats, one minute, every entry carrying its
 stamp, no seat changing code under a call that named nothing.
 
-What changes:
+What changes. None of the rules above existed when the drill ran;
+these are what it taught, not marks against the seats that answered
+it:
 
 - **The order of steps.** Muse's own reading is that it skipped steps
   1 and 2. So did the docs seat: it refreshed, checked for

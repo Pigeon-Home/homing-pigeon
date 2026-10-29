@@ -8,7 +8,7 @@
 # Rulings, reasons, limits and anything to act on stay in English, in the Q.
 review 90000998 @1e6c721 open:- closed:- on:review
 audit 80000aeb @1b18d9e open:- closed:- on:docs
-docs 60000b3a @3d7cb8c open:- closed:- on:postmortem
+docs 60000b3a @35bbcd5 open:- closed:- on:docs
 desk 40000e00 @3d7cb8c open:Q30 closed:Q99 on:docs
 coverage a0000997 @926283b open:- closed:- on:docs
 muse 00000000-muse @cf618c5b open:- closed:- on:grows
