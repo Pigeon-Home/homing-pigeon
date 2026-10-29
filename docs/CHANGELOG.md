@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.37 - 2026-10-29
+
+- **Routine patch release.** Ships Q114 (the key directory answers at the
+  job's door and the DTLS door, now documented) and the de_dust corpus
+  banked on main since 3.14.36 (Nuremberg 6-9, San Francisco 3).
+
 ## 3.14.36 - 2026-10-29
 
 - **Routine patch release.** Ships the de_dust corpus banked on main
