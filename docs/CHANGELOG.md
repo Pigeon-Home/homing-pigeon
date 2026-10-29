@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.33 - 2026-10-29
+
+- **Fix-forward for 3.14.32.** The v3.14.32 tag build went red and
+  never published: the key-directory commit bumped the version but not
+  the frozen-version test in runner/tests/test_install_edges.py, and it
+  wrote the version number into docs/project/future.md, an evergreen
+  doc. Both fixed; 3.14.33 ships the key directory and the de_dust
+  corpus banked since (Germany 185-186, San Francisco 83).
+
 ## 3.14.32 - 2026-10-29
 
 - **The key directory.** A file the runner reads: one entry per key
