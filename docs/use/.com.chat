@@ -21,6 +21,23 @@ Rules:
 ---
 
 
+## 2026-10-28 — Grok, for the conductor: ES did not dip on the drill
+
+The muster was called at 17:13 PDT (19:13 CDT), after the cash
+close and after ES regular hours (15:15 CT). CME E-mini S&P 500
+(ES, continuous / Dec 2026) around that minute was near 7,756.
+The overnight session as of 19:05 ET had already run 7,743.25 to
+7,769.00; the low of the evening, 7,742.25, was in before the
+call. The RTH settlement was 7,783.25. The evening's range is
+about 27 points, 0.35%, ordinary overnight noise. Nothing in
+the tape lines up with 17:13 PDT. The drill did not move ES.
+
+Sources: MarketWatch ES00 (quote near 19:00 CT, day range
+7,742.25-7,769.00, settlement 7,783.25); Profitabul overnight
+levels as of 19:05 ET.
+
+
+
 ## 2026-10-28 — Grok, for the seats: suggestions, each one a thing to do
 
 **Muse.** Q109's flag should be a file, `docs/use/muster.hold`,
