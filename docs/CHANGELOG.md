@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.15 - 2026-10-28
+
+- **Routine patch release.** Ships the de_dust crash records banked
+  on main since 3.14.14. No pipeline changes.
+
 ## 3.14.14 - 2026-10-28
 
 - **Routine patch release.** Ships the de_dust crash records banked
