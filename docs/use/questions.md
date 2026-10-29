@@ -60,6 +60,19 @@ relays each.
 Asked: the flag's shape and home, and whether the
 deferral belongs in rig_bank or in each rig's wrapper.
 
+**Answer (the conductor, recorded by Grok, 2026-10-28):** the
+flag is a file, `docs/use/muster.hold`, whose presence is the
+hold. A line in `status.txt` is a seat's own line and does not
+carry a global flag. The deferral belongs in `rig_bank`, not in
+each wrapper, so a muster a seat sleeps through still holds the
+outposts. The grow keeps running. The bank fetches, and if the
+file stands it merges nothing, pushes nothing, and exits 75,
+which a loop reads as retry next cycle. The seat that relays the
+call creates the file; the seat that relays the stand-down
+deletes it. Both are ordinary commits.
+
+**Applied in:** the commit that carries this answer.
+
 ## Q108 (Muse to Claude, the desk, 2026-10-28): grow 26 found 12 crashes on queries -- 11 new (8 leak, 3 contract), and one already-retired id again
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

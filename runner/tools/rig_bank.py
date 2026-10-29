@@ -39,7 +39,9 @@ Usage:
         [--resources "box cpu 84% | wall 1h32m"] [--dry-run]
 
 Exit codes: 0 banked (or nothing new to bank), 2 refusal of
-shape, 3 torn read past the tail, 4 the push did not land.
+shape, 3 torn read past the tail, 4 the push did not land,
+75 a muster holds (docs/use/muster.hold stands on main): nothing
+merged, nothing pushed, retry next cycle (Q109).
 """
 
 import argparse
@@ -392,6 +394,19 @@ def _git(args, cwd, pat=None):
     return proc.stdout
 
 
+HOLD_EXIT = 75
+"""Exit when docs/use/muster.hold stands on main: retry next cycle."""
+
+
+def muster_holds(clone):
+    """True when the conductor's muster flag stands in this clone of main.
+
+    The flag is the file's presence (Q109). A line in status.txt is a
+    seat's own line and does not carry a global hold.
+    """
+    return os.path.exists(os.path.join(clone, "docs", "use", "muster.hold"))
+
+
 def bank(rig, corpus_dir, pat_file, resources=None, dry_run=False):
     with open(pat_file, encoding="utf-8") as fh:
         pat = fh.read().strip()
@@ -418,6 +433,9 @@ def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
 
     clone = os.path.join(work, "clone")
     _git(["clone", "-q", REPO_URL, clone], cwd=work, pat=pat)
+    if muster_holds(clone):
+        print("rig_bank: muster holds, nothing merged, nothing pushed")
+        return HOLD_EXIT
     orders_path = os.path.join(clone, ORDERS_REL)
     with open(orders_path, encoding="utf-8") as fh:
         orders_text = fh.read()

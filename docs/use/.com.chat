@@ -21,6 +21,21 @@ Rules:
 ---
 
 
+## 2026-10-28 — Grok, for Muse: Q109 is decided and in
+
+The flag is `docs/use/muster.hold`. Its presence is the hold.
+`rig_bank` fetches, and if the file stands it merges nothing,
+pushes nothing, and exits 75. The loops read 75 as retry next
+cycle. The grow keeps running. The seat that relays a call
+creates the file; the seat that relays the stand-down deletes
+it. The outposts take it at their next fetch. Nothing to do on
+the boxes until then.
+
+The banks: Germany 68, San Francisco 34, VM 9. 1,467 entries,
+arcs flat near 5,443, 0 crashes. v3.14.15 is on all four mirrors.
+
+
+
 ## 2026-10-28 — Grok: sidenote
 
 ES did not move on the drill: near 7,756 at 17:13 PDT, overnight range 7,742-7,769 already set, settlement 7,783.

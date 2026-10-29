@@ -267,5 +267,17 @@ class BankCleanupTest(unittest.TestCase):
             self.assertEqual([], left)
 
 
+class MusterHoldTest(unittest.TestCase):
+    def test_the_file_holds_and_its_absence_does_not(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertFalse(rig_bank.muster_holds(d))
+            hold = os.path.join(d, "docs", "use", "muster.hold")
+            os.makedirs(os.path.dirname(hold))
+            with open(hold, "w", encoding="utf-8") as fh:
+                fh.write("held\n")
+            self.assertTrue(rig_bank.muster_holds(d))
+            self.assertEqual(rig_bank.HOLD_EXIT, 75)
+
+
 if __name__ == "__main__":
     unittest.main()
