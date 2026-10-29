@@ -237,6 +237,41 @@ class LedgerTest(unittest.TestCase):
         out = rig_bank.insert_ledger("## Ledger\n", "  de_dust 1 (Germany rig): 5 entries, 9 arcs, 0 crashes filed.\n")
         self.assertTrue(out.endswith("crashes filed.\n"))
 
+    def test_insert_ledger_anchors_on_a_city_named_rig(self):
+        # Fleet names are cities now; a ledger head whose rig name
+        # does not end in "rig" must still anchor the next block, or
+        # the block lands at the file's end, outside the ledger.
+        text = (
+            "## Ledger\n"
+            "  de_dust 8 (Nuremberg): 1500 entries, 5400 arcs, 0 crashes filed.\n"
+            "  Banked line one.\n"
+            "- a later section\n"
+        )
+        out = rig_bank.insert_ledger(text, "  de_dust 9 (Nuremberg): 1501 entries, 5401 arcs, 0 crashes filed.\n")
+        lines = out.splitlines()
+        idx = lines.index("  de_dust 9 (Nuremberg): 1501 entries, 5401 arcs, 0 crashes filed.")
+        self.assertEqual(lines[idx - 1], "  Banked line one.")
+        self.assertEqual(lines[idx + 1], "- a later section")
+
+    def test_commit_message_states_the_status(self):
+        report = {"totals": (1521, 5458), "rig_head": "418b67fb5d0e",
+                  "echoes": 1}
+        records = [_run("wire", "2026-10-29T02:00:00Z", 77, 2, 25,
+                        tried=17564, crashes=0)]
+        msg = rig_bank.commit_message("San Francisco", 6, report, records)
+        lines = msg.splitlines()
+        self.assertEqual(
+            lines[0],
+            "San Francisco bank 6: 1,521 entries, 0 crashes, 1 new runs")
+        self.assertIn("Status after this bank: 1,521 entries and 5,458 "
+                      "coverage edges", msg)
+        self.assertIn("New in this bank: 1 run records, 17,564 children "
+                      "tested.", msg)
+        self.assertIn("Crashes filed in this bank: 0.", msg)
+        self.assertIn("Retired echoes not re-banked: 1.", msg)
+        self.assertIn("The rig's git head: 418b67fb5d0e.", msg)
+        self.assertTrue(msg.endswith("Agent-Stamp: " + rig_bank.STAMP))
+
 
 class BankCleanupTest(unittest.TestCase):
     """A bank leaves no throwaway trees behind, on any path out.

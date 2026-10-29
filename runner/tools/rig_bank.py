@@ -352,6 +352,48 @@ def ledger_block(rig, grow_no, report, new_records, resources=None):
     return head + "\n" + body + "\n"
 
 
+def commit_message(rig, grow_no, report, new_records):
+    """The bank's commit message: the campaign's status, in plain words.
+
+    The subject is what the conductor reads in the commits list, so
+    it carries the status at a glance: which rig, how big the merged
+    corpus now stands, how many crashes this bank filed, and how
+    many new run records it brought. The body repeats the status in
+    sentences, with the merge's bookkeeping lines after.
+    """
+    entries, arcs = report["totals"]
+    crashes = sum(o.get("crashes", 0) for o in new_records)
+    tried = sum(o.get("tried", 0) for o in new_records)
+    subject = (
+        f"{rig} bank {grow_no}: {entries:,} entries, "
+        f"{crashes} crashes, {len(new_records)} new runs"
+    )
+    lines = [
+        subject,
+        "",
+        f"Corpus banked from the {rig} rig.",
+        "",
+        f"Status after this bank: {entries:,} entries and {arcs:,}"
+        " coverage edges in the merged corpus.",
+        f"New in this bank: {len(new_records)} run records,"
+        f" {tried:,} children tested.",
+        f"Crashes filed in this bank: {crashes}.",
+    ]
+    settled = report.get("settled") or {}
+    if settled:
+        lines.append(
+            "Crash records replayed at main's head: "
+            + "; ".join(settled[k] for k in sorted(settled)) + "."
+        )
+    echoes = report.get("echoes") or 0
+    if echoes:
+        lines.append(f"Retired echoes not re-banked: {echoes}.")
+    if report.get("rig_head"):
+        lines.append(f"The rig's git head: {report['rig_head']}.")
+    lines += ["", f"Agent-Stamp: {STAMP}"]
+    return "\n".join(lines)
+
+
 def next_grow_no(orders_text, rig):
     """Grow numbers are per rig: count this rig's ledger lines, add one."""
     marker = f"({rig}):"
@@ -370,7 +412,7 @@ def insert_ledger(orders_text, block):
     lines = orders_text.splitlines(keepends=True)
     anchor = None
     for i, ln in enumerate(lines):
-        if " entries, " in ln and " arcs, " in ln and " rig):" in ln:
+        if "de_dust" in ln and " entries, " in ln and " arcs, " in ln:
             anchor = i
     if anchor is None:
         return orders_text + block
@@ -466,9 +508,7 @@ def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
     _git(
         ["-c", "user.name=Muse", "-c", "user.email=muse@localhost",
          "commit", "-q", "-m",
-         f"de_dust {grow_no} ({rig}): banked by rig_bank\n\n"
-         f"Union merge under section M item 7; totals from the merged tree.\n\n"
-         f"Agent-Stamp: {STAMP}"],
+         commit_message(rig, grow_no, report, fresh)],
         cwd=clone,
     )
     for _ in range(4):
@@ -504,9 +544,7 @@ def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
             _git(
                 ["-c", "user.name=Muse", "-c", "user.email=muse@localhost",
                  "commit", "-q", "-m",
-                 f"de_dust {grow_no} ({rig}): banked by rig_bank\n\n"
-                 f"Union merge under section M item 7; totals from the merged tree.\n\n"
-                 f"Agent-Stamp: {STAMP}"],
+                 commit_message(rig, grow_no, report, fresh)],
                 cwd=clone,
             )
     else:
