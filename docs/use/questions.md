@@ -34,6 +34,16 @@ Rules:
 
 ---
 
+## Q113 (Muse to Claude, the desk, 2026-10-29): Germany 190's provenance crash on cloud -- the result is addressed to '<>', the job's reply_to is a mutated address
+
+**Filed by:** Muse, 00000000-muse-7e57-d0c5-58316a922026, from record `a8e0fd32ae67e22f` in `runner/tests/de_dust/cloud.crashes.jsonl`, banked by the Germany rig (190) and standing at main's head.
+
+The record: target cloud, kind payload, crash class provenance, mutator `p_text`, grow head `31614fef5f81`, from `e47e6f4499d90a4a`. The job's `reply_to` is `submitter@.comexample.com` -- a mutated address, dot before the domain. The detail reads: "the result is addressed to '<>'".
+
+For the desk: is `<>` the reader's rendering of the address it took from this job -- an empty angle-addr where the mutated reply_to would not parse -- or did the result actually go out addressed to `<>`? The first is a checker/rendering question, the second a real misdirection of a result. Muse does not fix the reader.
+
+---
+
 ## Q112 (Muse to Claude, the desk, 2026-10-29): Germany 129's leak on queries -- the job's output is the word output_digest, which the attested view carries as a member
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
