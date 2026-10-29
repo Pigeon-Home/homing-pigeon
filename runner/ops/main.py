@@ -257,8 +257,11 @@ def main() -> int:
     # through the same gate. Checking only the inline value refused a
     # file-only config and let a broken file through to every poll
     # (Q98 item 1).
+    # The key directory (PROTOCOL.md section 14.4) is checked whole
+    # here too: an entry that would refuse every key is a config
+    # error at start, not a surprise at the first message (Q114).
     try:
-        R.build_secrets(cfg)
+        _runner()._verify.validate_key_directory(cfg, R.build_secrets(cfg))
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return 2

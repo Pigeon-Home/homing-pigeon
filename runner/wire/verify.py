@@ -654,6 +654,49 @@ def load_key_directory(cfg):
     return inline
 
 
+def validate_key_directory(cfg, secrets=None):
+    """The directory a config names, checked whole at startup
+    (Q114): every entry an object with a state from KEY_STATES,
+    `not_before` and `not_after` numbers when present, and a
+    `fingerprint`, when present, the fingerprint of the key the entry
+    names, when that key is known. Returns the directory (None when
+    none is configured); raises RuntimeError naming the entry, so a
+    directory that would refuse every key is a config error at start
+    and not a surprise at the first message."""
+    directory = load_key_directory(cfg)
+    if directory is None:
+        return None
+    for name, entry in directory.items():
+        if not isinstance(name, str):
+            raise RuntimeError("config error: key_directory names a key "
+                               f"with {type(name).__name__}, not a string")
+        who = f"key_directory[{name!r}]"
+        if not isinstance(entry, dict):
+            raise RuntimeError(f"config error: {who} is not an object")
+        if entry.get("state") not in KEY_STATES:
+            raise RuntimeError(f"config error: {who}.state must be one of "
+                               f"{', '.join(KEY_STATES)}")
+        for bound in ("not_before", "not_after"):
+            value = entry.get(bound)
+            if value is None:
+                continue
+            if isinstance(value, bool):
+                raise RuntimeError(f"config error: {who}.{bound} is not a number")
+            try:
+                float(value)
+            except (TypeError, ValueError):
+                raise RuntimeError(f"config error: {who}.{bound} is not a number")
+        fp = entry.get("fingerprint")
+        if fp is not None:
+            if not isinstance(fp, str):
+                raise RuntimeError(f"config error: {who}.fingerprint is not a string")
+            secret = secret_named(secrets, name) if isinstance(secrets, dict) else None
+            if isinstance(secret, str) and fp != _key_fingerprint(secret):
+                raise RuntimeError(f"config error: {who}.fingerprint is not the "
+                                   f"fingerprint of the key named {name!r}")
+    return directory
+
+
 def key_directory_verdict(directory, secrets, key_id, now):
     """None when the directory admits the key, else why.
 
@@ -661,7 +704,11 @@ def key_directory_verdict(directory, secrets, key_id, now):
     A configured directory is the source of truth: a key with no
     entry is refused, in_use is admitted, superseded is admitted
     until its not_after, and every other state is refused.
-    compromised is refused at once, ahead of the window.
+    compromised is refused at once, ahead of the window. An entry
+    is read under any of the key's names (Q94). An entry that
+    carries a `fingerprint` must carry the key's own (section 14.2),
+    and an entry that carries a `not_before` admits nothing before
+    it (Q114).
     """
     if directory is None:
         return None
@@ -677,9 +724,23 @@ def key_directory_verdict(directory, secrets, key_id, now):
         return "no key directory entry for this key"
     if not isinstance(entry, dict):
         return "invalid key directory entry"
+    fp = entry.get("fingerprint")
+    if fp is not None:
+        secret = secret_named(secrets, key_id) if isinstance(secrets, dict) else None
+        if not isinstance(fp, str) or not isinstance(secret, str) \
+                or fp != _key_fingerprint(secret):
+            return "key directory fingerprint does not match this key"
     state = entry.get("state")
     if state == "compromised":
         return "key is compromised"
+    since = entry.get("not_before")
+    if since is not None:
+        try:
+            since = float(since)
+        except (TypeError, ValueError):
+            return "invalid key directory not_before"
+        if now < since:
+            return "key is not yet valid (not_before)"
     if state == "in_use":
         return None
     if state == "superseded":
@@ -772,6 +833,16 @@ def check_key_policy(policies: dict, key_id: str, cfg, job, secrets=None):
         return "invalid key id"
     if not isinstance(cfg, dict):
         cfg = {}
+    # The key directory speaks first at the job's door as at the
+    # others (Q114): a key the directory refuses runs nothing,
+    # whatever its policy says.
+    try:
+        directory = load_key_directory(cfg)
+    except Exception as e:
+        return f"key directory unreadable: {e}"
+    verdict = key_directory_verdict(directory, secrets, key_id, time.time())
+    if verdict:
+        return verdict
     if isinstance(secrets, dict):
         names = key_names(secrets, key_id)
         pol = policy_for(policies, secrets, key_id)

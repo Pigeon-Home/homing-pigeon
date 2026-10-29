@@ -64,6 +64,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(
 
 from runner.wire import dtlsproto  # noqa: E402
 from runner.wire import platformcard as _platformcard  # noqa: E402
+from runner.wire import verify as _verify  # noqa: E402
 from runner.guard import security as _security  # noqa: E402
 from runner.guard import confval as _confval  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
@@ -92,6 +93,45 @@ def build_greeting(tier, cfg=None):
         card.pop("disclosure", None)
         obj["platform"] = card
     return (json.dumps(obj, sort_keys=True) + "\n").encode("utf-8")
+
+
+def directory_lookup(cfg, lookup, log=None, now=time.time):
+    """The PSK lookup under the key directory (PROTOCOL.md section
+    14.3, Q114): an identity whose key the directory refuses answers
+    None, so the handshake fails as an unknown identity would, and a
+    resumption ticket issued under that key stops resuming by the
+    same lookup (Q110). No directory configured leaves the lookup as
+    it was. The directory is read at each lookup, so a state change
+    holds from the next handshake, no restart; one that cannot be
+    read admits nothing, and says so."""
+    secrets = {"": cfg.get("shared_secret") or ""}
+    for key_id, secret in (cfg.get("additional_secrets") or {}).items():
+        if isinstance(key_id, str) and isinstance(secret, str):
+            secrets[key_id] = secret
+    say = log or (lambda msg, level="INFO": None)
+
+    def look(identity):
+        secret = lookup(identity)
+        if secret is None:
+            return None
+        key_id = dtlsproto.key_id_for(identity)
+        if key_id is None:
+            return None
+        try:
+            directory = _verify.load_key_directory(cfg)
+        except Exception as e:
+            say(f"dtls: key directory unreadable: {e}; handshake refused",
+                "WARN")
+            return None
+        verdict = _verify.key_directory_verdict(directory, secrets, key_id,
+                                                now())
+        if verdict:
+            say(f"dtls: key {key_id or 'default'!s} refused by the key "
+                f"directory: {verdict}", "WARN")
+            return None
+        return secret
+
+    return look
 
 
 def _psk_floor_problem(cfg):
@@ -179,8 +219,9 @@ class DtlsPipe:
         self.tier = greeting_tier(cfg)
         self.port = listen_port(cfg)
         self.bind = bind_address(cfg)
-        lookup = dtlsproto.make_secret_lookup(
-            cfg.get("shared_secret"), cfg.get("additional_secrets"))
+        lookup = directory_lookup(cfg, dtlsproto.make_secret_lookup(
+            cfg.get("shared_secret"), cfg.get("additional_secrets")),
+            log=ch.log)
         self.core = dtlsproto.DtlsServerCore(
             secret_lookup=lookup,
             greeting_for=lambda session: build_greeting(self.tier,

@@ -85,6 +85,38 @@ additional ids.
 
 Never reuse a retired secret. Never put two values on one `key_id`.
 
+## The key directory
+
+With a directory configured (`key_directory` inline, or
+`key_directory_file` naming a JSON file; PROTOCOL.md section 14.4),
+the rotation above is written down instead of implied by which
+secrets are in the config: every key the runner holds has an entry
+under one of its names, with a `state`. The runner refuses any key
+whose entry does not admit it, at every door and on every transport,
+and reads the file on every check, so an edit holds from the next
+message with no restart. The steps with a directory:
+
+1. Add the new secret under its id as above, and give it an entry
+   `{"state": "in_use"}`. Restart for the secret (it is read at
+   startup; the directory is checked at startup and read again on
+   every message).
+2. Hand the new id and secret to the signer; confirm a job under it
+   runs.
+3. Mark the old key `{"state": "superseded", "not_after": <epoch
+   seconds>}`. It keeps verifying until that moment and is refused
+   after it; mail signed with it that is still in the inbox at that
+   moment is refused too.
+4. After the window, remove the old secret from the config and set its
+   entry to `destroyed` (or drop the entry; a key with no entry is
+   refused either way). Restart for the secret's removal.
+
+A leaked key is marked `{"state": "compromised"}` first and rotated
+second: the mark is refused at once, on every transport, including a
+DTLS session trying to resume under it. An entry may also carry the
+key's `fingerprint` (`send_job.py key-id --secret <secret>` prints it);
+a fingerprint that is not the key's own refuses the key, which catches
+an entry written against the wrong secret.
+
 ---
 *Side note: NIST SP 800-57 recommends an originator-usage period of
 under 2 years for symmetric authentication keys. Ninety days sits

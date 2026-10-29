@@ -643,6 +643,23 @@ def identity_for(key_id):
     return DEFAULT_IDENTITY.encode("utf-8")
 
 
+def key_id_for(identity):
+    """The key id a PSK identity names: the empty id for the default
+    identity, the id after the prefix for an additional key, None
+    for anything else (a resumption ticket among them)."""
+    if not isinstance(identity, (bytes, bytearray)):
+        return None
+    if bytes(identity) == DEFAULT_IDENTITY.encode("utf-8"):
+        return ""
+    prefix = IDENTITY_PREFIX.encode("utf-8")
+    if bytes(identity).startswith(prefix) and len(identity) > len(prefix):
+        try:
+            return bytes(identity)[len(prefix):].decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+    return None
+
+
 def make_secret_lookup(default_secret, additional=None):
     """identity bytes -> secret string or None, over the
     runner's shared_secret plus its additional_secrets."""

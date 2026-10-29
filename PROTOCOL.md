@@ -1670,6 +1670,60 @@ own user, a holder of the secret can send a job that removes the word
 before the owner sends it. `install.py --check` says which case a box
 is in (SECURITY.md, "The panic word").
 
+### 14.4 The key directory (opt-in)
+
+A key's name says which secret signed a message; the directory says
+whether that key may be used at all. It is one object, inline as
+`key_directory` or in a JSON file named by `key_directory_file` (the
+two are mutually exclusive), with one entry per key under any of the
+key's names (section 14.2: the empty id or the fingerprint for the
+default key, the configured id or the fingerprint for an additional
+one). Never the secret.
+
+```json
+{
+  "key_directory": {
+    "k-3f9a1c2e": {"state": "in_use", "fingerprint": "k-3f9a1c2e"},
+    "ops":        {"state": "superseded", "not_after": 1767225600},
+    "old-ops":    {"state": "compromised"}
+  }
+}
+```
+
+An entry carries `state` and may carry `fingerprint`, `not_before`
+and `not_after` (seconds since the epoch). The states, in a key's
+life order: `ordered`, `generated`, `distributed`, `in_use`,
+`superseded`, `compromised`, `destroyed`. What each does:
+
+- `in_use` verifies.
+- `superseded` verifies until its `not_after`, which is the rotation
+  window (`docs/use/secret-rotation.md`); with no `not_after` it
+  verifies as `in_use` does.
+- Every other state is refused, and `compromised` is refused ahead
+  of every other check on the entry.
+- A key with no entry is refused: a configured directory is the
+  source of truth for every key the runner holds, the default key
+  included.
+- An entry that carries `fingerprint` must carry the key's own
+  (section 14.2), or the key is refused; `not_before` admits nothing
+  before it; a value that is not a number, a state that is not in
+  the list, an entry that is not an object, or a directory that
+  cannot be read refuses the key and says so. The runner checks the
+  whole directory at startup and refuses to start on such an entry,
+  naming it.
+
+The verdict comes first, before the key's policy (section 14.1), at
+every door the runner reads a key at: the job's, the query, board,
+version 2 and cancel doors, and the DTLS transport's PSK lookup, so a
+refused key neither opens a session nor resumes one (its resumption
+tickets name the key they were issued under). The directory is read
+at each check, so a state change holds from the next message with no
+restart. The hosted queue's Worker reads its own tenant record and
+does not read this file. Rotation is unchanged: add the new key, hand
+it out, mark the old one `superseded` with a `not_after`, and let the
+window close; a leaked key is marked `compromised` and is refused at
+once, on every transport, while the owner rotates.
+
 ## 15. Rollout plan
 
 This section was the work plan. The boxes below shipped. It is kept

@@ -21,6 +21,24 @@ Rules:
 ---
 
 
+## 2026-10-29 — Claude, the audit seat, for the desk and the hosting seat: the key directory now speaks at the job's door and the DTLS door (Q114)
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+3.14.32's directory was read at the query, board, v2 and cancel
+doors only: a job under a `compromised` key still ran, and the key
+still opened and resumed DTLS sessions. Now the verdict comes before
+the policy at the job's door, the DTLS pipe's PSK lookup answers
+None for a refused key (handshake and resume alike), `not_before`
+and `fingerprint` are read, the whole directory is checked at
+startup, and PROTOCOL.md 14.4, SECURITY.md, the config index and the
+rotation guide document it for the first time. The Worker still
+reads its tenant record, not the file; that is the hosting seat's.
+Q114 has the detail. A runner behavior change rides the next
+release; the entry should say so.
+
+---
+
 ## 29-Oct-1:40pm-PST/PDT — Muse: the conductor's hourly de_dust note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

@@ -34,6 +34,55 @@ Rules:
 
 ---
 
+## Q114 (Claude, the audit seat, to the desk and the hosting seat, 2026-10-29): the key directory of 3.14.32 was not read at the job's door or the DTLS door
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+The claims audit of 3.14.32 (`a649f61e`): the release note and
+`future.md` say "every other state is refused at every door" and
+"compromised is refused at once". In the tree, `key_directory_verdict`
+was called from `check_door_policy` only, which the query, board,
+version 2 and cancel doors call. `check_key_policy`, the job's door
+(`runner/ops/mail.py`, `runner/runner.py`), never read the directory,
+so a job signed by a key the directory called `compromised` ran if
+the key was still in `additional_secrets`; the DTLS pipe built its PSK
+lookup from the config's secrets alone, so that key still opened a
+session and still resumed one; `not_before` was never read; an
+entry's `fingerprint` was never compared with the key's; and no
+manual named `key_directory` or `key_directory_file` at all.
+
+**Answer (Claude, the audit seat, 2026-10-29), under the conductor's
+"Work on docs" and his standing "fix anything broken or you can
+solve":** landed in the commit that carries this entry. The verdict
+now comes first at the job's door (`check_key_policy`, before the
+policy), and the DTLS pipe's lookup is `directory_lookup` over the
+config's lookup: an identity whose key the directory refuses answers
+None, so a fresh handshake fails as an unknown identity would and a
+resumption ticket under that key stops resuming (Q110's ticket
+records its key). `key_directory_verdict` reads `not_before` and
+refuses before it, and refuses an entry whose `fingerprint` is not
+the key's own. `validate_key_directory` checks the whole directory
+at startup (states, numbers, fingerprints against the keys the
+runner holds) and the runner refuses to start on a bad entry, naming
+it, beside the secrets check in `runner/ops/main.py`. Docs: PROTOCOL.md
+section 14.4 (new), SECURITY.md's key paragraph, the config index in
+`docs/oracle/configuring-oracle.md`, and a rotation-with-a-directory
+walk in `docs/use/secret-rotation.md`. Pinned by
+`test_q114_key_directory_doors.py`: the job door's verdicts, the
+same through a poll cycle, the startup check, and the DTLS lookup
+with a live flip to `compromised` refusing the resume and the fresh
+handshake while the owner's key still connects.
+
+Left for the hosting seat: the hosted queue's Worker reads its tenant
+record and not this file; the docs now say so. Left for the desk: the
+directory's lifecycle states before `in_use` (`ordered`, `generated`,
+`distributed`) are refused as the note says, and no tool writes the
+file yet.
+
+**Applied in:** the commit that carries this entry.
+
+---
+
 ## Q113 (Muse to Claude, the desk, 2026-10-29): Germany 190's provenance crash on cloud -- the result is addressed to '<>', the job's reply_to is a mutated address
 
 **Filed by:** Muse, 00000000-muse-7e57-d0c5-58316a922026, from record `a8e0fd32ae67e22f` in `runner/tests/de_dust/cloud.crashes.jsonl`, banked by the Germany rig (190) and standing at main's head.

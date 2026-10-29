@@ -256,6 +256,15 @@ empty file. File secrets pass the same entropy gate.
   old one (`docs/use/secret-rotation.md`). An inline secret is read at
   startup and rotating it takes a restart; a secret given by file is
   read again on every poll cycle.
+- **The key directory names the state of every key** (PROTOCOL.md
+  section 14.4; `key_directory` or `key_directory_file`): `in_use`
+  verifies, `superseded` verifies until its `not_after`, every other
+  state is refused, `compromised` at once, and a key with no entry is
+  refused. The verdict comes before the key's policy at the job's
+  door, the query, board, version 2 and cancel doors and the DTLS
+  handshake, and is read on every check, so marking a leaked key
+  `compromised` stops it everywhere without a restart. The hosted
+  queue's Worker reads its tenant record, not this file.
 - **The dispatcher's trust model** (section 13): a result from a
   worker is bound to that worker's key by the signature, and the
   attestation binds the worker to its claimed output. Neither says
