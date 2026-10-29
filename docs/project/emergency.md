@@ -29,7 +29,8 @@ the conductor changes or strikes any line by saying so.
    file `docs/use/muster.hold`: the seat that relays the call commits
    it, the seat that relays the stand-down deletes it, and while it
    stands on main `rig_bank` merges nothing, pushes nothing and exits
-   75, which a rig's loop reads as retry next cycle (Q109).
+   75, which a rig's loop reads as retry next cycle (Q109). That holds
+   when the file arrives in the very commit that refused a bank's push.
 
 ## The roll
 

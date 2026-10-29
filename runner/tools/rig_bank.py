@@ -478,6 +478,12 @@ def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
         except Refusal:
             _git(["fetch", "-q", REPO_URL, "main"], cwd=clone, pat=pat)
             _git(["reset", "--hard", "FETCH_HEAD", "-q"], cwd=clone)
+            # A muster called while this bank ran lands as the commit
+            # that refused the push: read the new head before merging
+            # on it, or the retry banks straight through the hold.
+            if muster_holds(clone):
+                print("rig_bank: muster holds, nothing merged, nothing pushed")
+                return HOLD_EXIT
             # The merge is idempotent; redo it on the new head.
             with open(orders_path, encoding="utf-8") as fh:
                 orders_text = fh.read()
