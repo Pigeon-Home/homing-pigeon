@@ -84,7 +84,7 @@ Status at this writing:
   DTLS resumption included, now refuse a superseded key, and the
   two by-design failing probes are green since the key directory
   shipped.
-- Releases stand at 3.14.37. Every release is stamped on all
+- Releases stand at the version in pyproject.toml. Every release is stamped on all
   outlets by Muse's stamp; the line is current through .23 and
   the .24–.37 stamps are the next grind.
 - The Menlo Park rig reads 240% of its 2 cores at this writing;

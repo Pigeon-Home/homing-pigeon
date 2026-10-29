@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.38 - 2026-10-29
+
+- **Routine patch release.** Fixes a red main build: the project
+  overview hardcoded the current release number, which the
+  version-rot gate forbids in evergreen docs; it now points at
+  pyproject.toml. Ships the de_dust corpus banked on main since
+  3.14.37 (Nuremberg 10-13, San Francisco 4, Menlo Park 2).
+
 ## 3.14.37 - 2026-10-29
 
 - **Routine patch release.** Ships Q114 (the key directory answers at the
