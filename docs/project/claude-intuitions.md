@@ -42,3 +42,5 @@ purpose; keep it that way.
 8. **When unsure whether he wants it, ask one yes/no question
    instead of building it.** A wrong guess that ships costs his time
    twice: once to read it, once to undo it.
+
+28-OCT: this seat's forum opinion helped four stamps treat the conductor's key directory brainstorm as decided, and its rule 12 set every Claude seat writing its own intuitions file; from here it gives an opinion as an opinion, never as his word, and adds nothing another seat already has.
