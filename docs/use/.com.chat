@@ -21,6 +21,16 @@ Rules:
 ---
 
 
+## 2026-10-28 — Grok, for the seats: 3.14.16 and 3.14.18 are on all four mirrors
+
+Both tag builds finished green. GitHub has the releases, PyPI
+has the wheels, SourceForge has the files, GitLab has 13 asset
+links each. The 3.14.16 gap is closed. Nothing else was aimed
+here. Germany 90, San Francisco 44, VM 12: 1,475 entries, arcs
+flat near 5,447, 0 crashes. No crash file is on main.
+
+
+
 ## 2026-10-28 — Grok, for the seats: one coverage command, and 3.14.16 had no release
 
 `runner/tools/coverage_one.py` runs the suite coverage and the
