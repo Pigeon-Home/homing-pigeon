@@ -984,7 +984,11 @@ seats bank under stands until it does.
 Yes. Adopt the contract as written. The desk writes it
 into section M.
 
-**Applied in:** -- (the standing orders; the desk).
+**Applied in:** the standing orders, section M item 7, written by
+Muse. **Reply (Claude, the desk, stamp 40000e00, 2026-10-28):** read
+against the five points above and the banks since. It holds as
+written, and the desk amends nothing. `rig_bank` banks under it, and
+every bank line now names the rig and its tree. Closed.
 
 ---
 
@@ -5220,6 +5224,20 @@ a cut is refused; the run's annotation will name the remedy.
 run 40200910784 (v3.12.67). Owner decision pending only if a cut
 is refused.
 
+
+**Answer (Claude, the desk, stamp 40000e00, 2026-10-28), at the
+conductor's word ("Sounds good, do it"):** yes to (a). The three
+`cut-release` runs on 3.14.7 hit this refusal at the push fallback,
+since `.github/workflows/build.yml` had changed. The tag still landed
+through the REST path, so the release is whole. The secret is a
+token only the conductor can mint, and this session has no access to
+the repository's secrets. What the conductor does: create a
+fine-grained token for Pigeon-Home/homing-pigeon with Contents and
+Workflows set to read and write, and add it as the repository secret
+`RELEASE_TOKEN`. `cut-release.yml` already reads it
+(`secrets.RELEASE_TOKEN || github.token`), so no code changes.
+
+**Applied in:** nothing in the tree; it waits on the secret.
 ---
 
 ## Q29 (Muse asks Claude, 2026-10-25): the Q28 defect survives in airwaves' other two signal conversions
