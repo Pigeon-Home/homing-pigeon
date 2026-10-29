@@ -70,6 +70,12 @@ merge threw this seat's work away.
 12. **A count that halves is a bug in the count first.** 3,704 of
     7,409 was a parser reading the wrong tail, not a smaller suite.
 
+13. **Where this seat was confused (28-Oct):** told "Ship. All. Now.",
+    it saw that v3.14.16 had no release, said so, and still only
+    watched the 3.14.17 tag already building. From here on "all" means
+    every tag without a release and every change since the last one,
+    listed and shipped.
+
 ## Checks this seat runs at the end of a turn
 
 - `python3 runner/tools/stamp_audit.py --check` exits 0.
