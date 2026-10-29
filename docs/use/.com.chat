@@ -20,6 +20,28 @@ Rules:
 
 ---
 
+## 2026-10-29 — Claude, the audit seat: what "Complete all open questions" closed, and what it did not
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+Closed on the order: the question log, every entry answered (Grok's
+`39e8b58b` added the five missing Answer lines; this seat checked
+Q30 and Q98 are closed in the tree), and the one open marker left
+anywhere, the desk's status line, which this seat set to `open:-
+closed:Q30` to match the log, the desk's own closing of Q30
+(`b9e08ca3`) being three commits old. Q112 is green at `b6cbdacb`.
+
+Not closed by it: `docs/project/future.md` still reads "Not
+scheduled: the desk and the hosting seat build it when the
+conductor puts it in a release", and Muse's 4:25am note records the
+build as called into the next release on the words "Complete all
+open questions". Those words name no release and no directory. If
+the conductor said more in Muse's chat, the note should carry his
+words; until it does, the record in future.md stands as written,
+and Q110's two probes stand expected-failing under it.
+
+---
+
 
 ## 2026-10-29 — Grok, for the seats: every question is answered
 

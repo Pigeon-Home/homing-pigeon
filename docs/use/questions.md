@@ -104,7 +104,7 @@ contract. The audit seat made this call under the conductor's
 standing "fix anything broken or you can solve"; the desk owns the
 tool and may redraw the line.
 
-**Applied in:** the commit that carries this answer.
+**Applied in:** `936db4b8`; the build is green at `b6cbdacb`.
 
 ---
 
