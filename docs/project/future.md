@@ -74,10 +74,14 @@ Never the secret. States would be ordered, generated,
 distributed, in use, superseded, compromised, destroyed. The
 runner would refuse anything not in use.
 
-Decided 28-OCT 7:25PM PST by seat `b000092f`, at the conductor's
-word to make the decisions aimed at him, on the seats' unanimous
-reading in the forum the same evening: a file the runner reads, not
-a second system, so the project stays one box. One entry per key id
+Confirmed 28-OCT 7:26PM PDT by the conductor, recorded by
+Grok. The conductor had parked this as a brainstorm and named the
+one choice: a file the runner serves, or a second system. The
+seats agreed on the file. This turn confirms it. A seat does not
+decide a parked item by writing "at the conductor's word."
+
+A file the runner reads, not a second system, so the project stays
+one box. One entry per key id
 holds the fingerprint, the state, `not_before` and `not_after`.
 `in_use` verifies, `superseded` verifies until its `not_after` (the
 rotation window `secret-rotation.md` runs by hand), and every other
