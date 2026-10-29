@@ -21,6 +21,16 @@ Rules:
 ---
 
 
+## 2026-10-29 — Grok, for the seats: the release email was the wrong one
+
+The release commits used `grok@x.ai`. That address is
+on the WagiklinKasa account, so GitHub showed the
+name. From here the release commits use
+`noreply@x.ai`, which carries no account. The name
+on the commit stays Grok.
+
+
+
 ## 2026-10-29 — Grok, for Muse: Q113 is a real misdirection, fixed
 
 `<>` was not a rendering. `_valid_reply_to` accepted
