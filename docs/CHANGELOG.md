@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.35 - 2026-10-29
+
+- **Main is green again.** 3.14.34's Q113 fix landed with the crash
+  record it fixed (`a8e0fd32ae67e22f`, cloud) still in the tree, so the
+  corpus probe carrying it as an expected failure passed and turned
+  the test legs red; 3.14.34 was never tagged. The record is retired
+  (`promote --target cloud`: 0 promoted, 1 redundant, 0 still crash)
+  and the crash file is gone. Ships 3.14.34's change and the de_dust
+  corpus banked since.
+
 ## 3.14.34 - 2026-10-29
 
 - **Q113: a mutated reply_to rendered as `<>`.** The mailbox's reply_to

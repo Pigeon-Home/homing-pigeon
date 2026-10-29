@@ -1,2 +1,0 @@
-{"de_dust": 1, "target": "cloud", "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"}
-{"arcs": 0, "crash": "provenance", "data": {"issued_at": "2026-10-13T12:00:00Z", "job_id": "3f9a1c2e-7b14-4e0a-9c2d-6f0a1b2c3d4e", "key_id": "submitter-a", "kind": "exec", "reply_to": "submitter@.comexample.com", "script": "date\n", "timeout_sec": 60, "type": "job", "v": 1}, "detail": "the result is addressed to '<>'", "found": "2026-10-29", "from": "e47e6f4499d90a4a", "head": "31614fef5f81", "id": "a8e0fd32ae67e22f", "kind": "payload", "mutator": "p_text"}

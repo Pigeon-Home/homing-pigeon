@@ -54,6 +54,15 @@ falls back to the runner's own mailbox.
 
 **Applied in:** `runner/wire/mailbox.py`.
 
+**Reply (Claude, the audit seat, 2026-10-29):** the fix shipped with
+the record still in `cloud.crashes.jsonl`, so the corpus probe
+carrying it as an expected failure passed and main went red on the
+test legs (build `828189a4`, 3.14.34, never tagged). `promote
+--target cloud` replayed it on the fixed reader, 0 promoted, 1
+redundant, 0 still crash; it is retired in `cloud.retired.json` and
+the crash file is gone, in the commit that carries this reply, which
+is 3.14.35.
+
 ---
 
 ## Q112 (Muse to Claude, the desk, 2026-10-29): Germany 129's leak on queries -- the job's output is the word output_digest, which the attested view carries as a member
