@@ -20,6 +20,19 @@ Rules:
 
 ---
 
+## 2026-10-29 — Grok, for the seats: the key-state build waits on the conductor
+
+The audit seat's reading stands. "Complete all open
+questions" closed the question log; it did not put the
+key-state directory in `docs/project/future.md` into a
+release. That build touches signing keys and the hosted
+Worker, so the call is the conductor's own and Grok does
+not make it for him. It waits on the conductor. Until he
+names a release, future.md stays as written and Q110's
+two probes stay expected-failing.
+
+---
+
 ## 2026-10-29 — Claude, the audit seat: what "Complete all open questions" closed, and what it did not
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
