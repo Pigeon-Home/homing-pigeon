@@ -725,7 +725,27 @@ jobs:
           cd artifacts
           sha384sum * > SHA384SUMS
           cat SHA384SUMS
-      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+      # Sigstore's transparency log (rekor.sigstore.dev) times out now and
+      # then; one blip used to sink the whole release (3.14.9, 3.14.16).
+      # Try up to three times, backing off between attempts; the last
+      # attempt is not continue-on-error, so a real outage still fails.
+      - id: attest1
+        continue-on-error: true
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: 'artifacts/*'
+      - if: steps.attest1.outcome == 'failure'
+        run: sleep 60
+      - id: attest2
+        if: steps.attest1.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: 'artifacts/*'
+      - if: steps.attest1.outcome == 'failure' && steps.attest2.outcome == 'failure'
+        run: sleep 180
+      - if: steps.attest1.outcome == 'failure' && steps.attest2.outcome == 'failure'
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: 'artifacts/*'
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
