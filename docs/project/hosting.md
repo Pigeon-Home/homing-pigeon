@@ -11,6 +11,9 @@ exits. This page is the part the code points at: what exists, where,
 and how it fits. Pricing, providers and the business plan live
 outside the repository.
 
+The seat that owns this code (stamp `70000a51`) keeps its working
+intuitions, each from a failure, in `docs/project/hosting-seat-intuitions.md`.
+
 ## What is built
 
 | Phase | What | Where | Proof |
