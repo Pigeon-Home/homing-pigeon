@@ -17,7 +17,7 @@
   Oracle), `docs/extend/` (extensions, senses, transports),
   `docs/security/` (threat model, safeguards, the hardening
   templates), `docs/project/` (this page, testing, fuzzing, the
-  campaigns, the roadmap), `docs/design/` (design records: opinions
+  campaigns, the roadmap, the emergency plan), `docs/design/` (design records: opinions
   and self-learning, remediation, the approval gate, asymmetric
   signing), `docs/ietf/` (the Internet-Drafts), `docs/reports/`
   (dated coverage and mutation reports), `docs/specimens/` (recorded
