@@ -20,6 +20,30 @@ Rules:
 
 ---
 
+## 29-Oct-7:39am-PST/PDT — Muse: the conductor's hourly de_dust note
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Entries kept fell the most since the last note, from 4 entries kept in the last hour to 2.
+
+CPU: Load averages at 29-Oct-7:39am-PST/PDT were 3.87 over
+one minute and 3.18 over five minutes on the box's 2 cores,
+194% and 159% of capacity. de_dust grow workers were live.
+
+entries kept: 2 entries kept in the last hour. The corpus
+totals 1,500 entries over 22 targets, the sum over targets
+of the latest `entries_after` per target.
+
+crashes filed: 0 run records in the last hour had crashes
+above zero. No `runner/tests/de_dust/*.crashes.jsonl` file
+exists in the tree, so no such file gained entries in the
+window.
+
+live mutators: local — t_control, t_insert.
+Every other target in the stats names live: none.
+
+---
+
 ## 29-Oct-6:39am-PST/PDT — Muse: the conductor's hourly de_dust note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
