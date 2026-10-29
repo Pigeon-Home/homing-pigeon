@@ -90,6 +90,24 @@ class ReadTest(_Base):
         self.assertNotIn("Traceback", err)
         self.assertIn("could not reach the queue (IncompleteRead", err)
 
+    def test_a_200_without_a_list_is_unknown_not_empty(self):
+        # The Worker's empty answer is a 204; a 200 always carries the
+        # list. A body without one is exit 2, never "no results".
+        for body in ("{}", '{"results": null}', '{"results": "x"}',
+                     '{"results": {}}', "[]", "null"):
+            rc, out, err = self.run_cmd(send_job.cmd_results,
+                                        _Opener((200, body)))
+            self.assertEqual(rc, 2, body)
+            self.assertEqual(out, "", body)
+            self.assertNotIn("no results waiting", err, body)
+            self.assertIn("not a results list", err, body)
+        for body in ("{}", '{"dead": null}', '{"dead": 3}'):
+            rc, out, err = self.run_cmd(send_job.cmd_dlq,
+                                        _Opener((200, body)), drop=None,
+                                        requeue=None)
+            self.assertEqual(rc, 2, body)
+            self.assertIn("not a dead-letter list", err, body)
+
     def test_the_dead_letter_list_rides_it_out_too(self):
         opener = _Opener(_drop(), (200, json.dumps({"dead": [{"id": "j"}]})))
         rc, out, err = self.run_cmd(send_job.cmd_dlq, opener, drop=None,

@@ -1079,9 +1079,15 @@ def cmd_results(args, opener=None) -> int:
         print(f"error: the queue answered {status}: {text[:200]}",
               file=sys.stderr)
         return 2
+    # The Worker answers an empty queue with 204 and a 200 only with a
+    # list, so a 200 without one is neither an answer nor an empty
+    # queue: exit 2, never "no results", so a watcher cannot read a
+    # cut or rewritten body as a stopped runner (Q105).
     try:
-        items = json.loads(text).get("results") or []
+        items = json.loads(text).get("results")
     except (ValueError, AttributeError):
+        items = None
+    if not isinstance(items, list):
         print("error: the queue's answer is not a results list",
               file=sys.stderr)
         return 2
@@ -1154,8 +1160,10 @@ def cmd_dlq(args, opener=None) -> int:
               file=sys.stderr)
         return 2
     try:
-        dead = json.loads(text).get("dead") or []
+        dead = json.loads(text).get("dead")
     except (ValueError, AttributeError):
+        dead = None
+    if not isinstance(dead, list):
         print("error: the queue's answer is not a dead-letter list",
               file=sys.stderr)
         return 2

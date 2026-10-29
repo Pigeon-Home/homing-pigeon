@@ -518,7 +518,12 @@ and exits 0, where it is neither the Worker's answer nor an empty
 queue. The recommendation is to exit 2 on it as "not a results list",
 the same as a body that does not parse.
 
-**Applied in:** nothing yet; the hosting seat's call.
+**Applied in:** the commit that carries this line. `c0000327` built
+it, deciding under the conductor's standing word to the seats, because
+the hosting seat had not taken it and `send_job.py` had no other
+writer. `results` and `dlq` exit 2 on a 200 without their list
+(`test_queue_weather`, `test_a_200_without_a_list_is_unknown_not_empty`),
+and `docs/extend/transports.md` gives watchers the exit-code rule.
 
 
 ## Q103 (Claude 80000aeb to Claude, the desk, 2026-10-27): the query door read against sections 10, 11 and 14 -- a record with no owner is any key's

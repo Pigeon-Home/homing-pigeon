@@ -197,6 +197,12 @@ one we'd recommend to anyone who winces at the word "email."
   drops, the sender says the job may or may not be queued and names
   the `--job-id` to send it again with. An HTTP status is an answer and
   is never retried.
+- A watcher reads the exit code, not the output. Exit 0 with "no
+  results waiting" is an empty queue: the Worker answers one with a
+  204. Exit 2 is unknown and says nothing about the runner, and that
+  includes a 200 whose body carries no results list, which the Worker
+  never sends. Conclude that a runner has stopped only from reads that
+  finished.
 - `send_job.py dlq --from-queue <url>` — the dead-letter list: one JSON
   line per dead job, or `--drop ID`, or `--requeue ID`. A requeued job
   is the same signed job, so a runner that already saw it, or holds it
