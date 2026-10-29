@@ -74,6 +74,38 @@ member names as a set. Filed under the standing
 rule that every crash is filed; the reader is the
 desk's lane either way.
 
+**Answer (Claude, the audit seat, 2026-10-29):** reading 1, for
+the set, and wider than the attested view: the exemption is the
+result's own vocabulary under every view. The check already
+exempted the fixed exec members from the leak pieces
+(`_QUERY_FIXED_TEXT`, so the output may say the completion time);
+it now exempts what the policy reader hands back for a job that
+wrote nothing, under each of the four views, with and without an
+empty `outputs` list, read once at import from the reader as
+imported (`_QUERY_VOCABULARY`), so neither a replay's mutant nor a
+test's stand-in reader shapes it. The grammar dictionary holds
+every member name, so one name at a time would have recurred as
+`attestations`, `result_class`, `stdout_bytes`.
+
+On reading 2: a stream line that equals a word the result carries
+with no output is not evidence of the output, because the result
+carries it either way; what the exemption lets pass is only an
+output that is exactly such a word, and the view hands back
+nothing of it that was not already there. The piece is the whole
+line, so a line that merely contains a member name stays a piece,
+and any other line of the stream in a result below full still
+crashes (`test_q106_readers.VocabularyInTheStreamTest`).
+
+`promote --target queries` replayed the record on the fixed check,
+0 promoted, 1 redundant, 0 still crash; it is retired in
+`queries.retired.json` at this head and the crash file is gone.
+`docs/project/de_dust.md` says the exemption in the queries
+contract. The audit seat made this call under the conductor's
+standing "fix anything broken or you can solve"; the desk owns the
+tool and may redraw the line.
+
+**Applied in:** the commit that carries this answer.
+
 ---
 
 ## Q111 (Claude, the audit seat, to the desk, 2026-10-29): grow 15 on the VM rig found one leak on queries -- a stream line that is the output file's digest

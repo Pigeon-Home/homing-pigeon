@@ -520,5 +520,52 @@ class CommitmentInTheStreamTest(unittest.TestCase):
         self.assertEqual(self.DIGEST, want["sha384"])
 
 
+class VocabularyInTheStreamTest(unittest.TestCase):
+    """Q112: a stream line that is also in the result's own vocabulary
+    (a member name such as `output_digest`, a fixed value) is not a
+    leak below full: the result says it with no output at all."""
+
+    LINE = "SECRET-12345 is the canary line of the output"
+
+    def _entry(self, output, view="summary"):
+        return {"kind": "payload", "data": {
+            "output": output, "outputs": [], "policy": {"view": view}}}
+
+    def test_the_vocabulary_is_read_at_import_from_an_empty_job(self):
+        vocab = B._QUERY_VOCABULARY
+        for word in ("output_digest", "attestations", "result_class",
+                     "stdout_bytes", "completed_at"):
+            self.assertIn(word, vocab)
+        self.assertNotIn(self.LINE, vocab)
+        self.assertEqual(vocab, B._query_vocabulary())
+        # A stand-in reader does not shape the vocabulary the checks use.
+        with mock.patch.object(PO, "apply_result_policy",
+                               lambda *a, **k: ({"note": self.LINE}, True)):
+            self.assertEqual(vocab, B._QUERY_VOCABULARY)
+            self.assertIn(self.LINE, B._query_vocabulary(PO.apply_result_policy))
+
+    def test_a_member_name_as_the_whole_output_is_accepted(self):
+        for word in ("output_digest", "attestations\n", "result_class\nstdout_bytes\n"):
+            self.assertEqual("accepted", B.check_queries(self._entry(word)), word)
+
+    def test_the_pieces_drop_the_vocabulary_and_keep_the_rest(self):
+        pieces = B._query_pieces("output_digest\n" + self.LINE + "\n", "attestations")
+        self.assertIn(self.LINE, pieces)
+        self.assertNotIn("output_digest", pieces)
+        self.assertNotIn("attestations", pieces)
+
+    def test_a_line_that_is_no_member_still_leaks(self):
+        real = PO.apply_result_policy
+
+        def leaky(*a, **k):
+            result, retain = real(*a, **k)
+            return dict(result, note=self.LINE), retain
+
+        with mock.patch.object(PO, "apply_result_policy", leaky):
+            with self.assertRaises(B.Crash) as ctx:
+                B.check_queries(self._entry("output_digest\n" + self.LINE + "\n"))
+        self.assertIn("leak", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

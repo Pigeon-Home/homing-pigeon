@@ -1779,11 +1779,37 @@ _QUERY_FIXED_TEXT = json.dumps(dict(_QUERY_EXEC, job_id="bm-q-0001",
                                     kind="exec"), sort_keys=True)
 
 
+def _query_vocabulary(apply=PO.apply_result_policy):
+    """The text a result carries when the job wrote nothing at all:
+    the fixed exec members and the result the policy reader shapes
+    from empty streams under every view (its member names,
+    `output_digest` and `attestations` among them, and its fixed
+    values). A stream line that is also in this text says nothing
+    of the output, since the result says it with no output (Q112).
+    Read once at import, from the reader as imported, so neither a
+    replay's mutant nor a test's stand-in shapes it."""
+    parts = [_QUERY_FIXED_TEXT]
+    for view in R.VIEW_ORDER:
+        job = {"job_id": "bm-q-0001", "kind": "exec",
+               "result_policy": {"view": view}}
+        for exe in (dict(_QUERY_EXEC, stdout="", stderr=""),
+                    dict(_QUERY_EXEC, stdout="", stderr="", outputs=[])):
+            try:
+                result, _retain = apply({}, job, exe, _QUERY_PATTERNS, True)
+                parts.append(json.dumps(result, sort_keys=True, default=str))
+            except Exception:
+                pass
+    return "\n".join(parts)
+
+
+_QUERY_VOCABULARY = _query_vocabulary()
+
+
 def _query_pieces(out, err):
     """The parts of the output a non-full view must not carry: the
     whole of each stream and every line of them long enough to be
-    recognized, less any that is also a fixed member of the result
-    (the output may say the completion time)."""
+    recognized, less any that is also in the result's own vocabulary
+    (the output may say the completion time, or name a member)."""
     pieces = set()
     for text in (out, err):
         if len(text) >= _LEAK_MIN:
@@ -1791,7 +1817,7 @@ def _query_pieces(out, err):
         for line in text.splitlines():
             if len(line) >= _LEAK_MIN:
                 pieces.add(line)
-    return {p for p in pieces if p not in _QUERY_FIXED_TEXT}
+    return {p for p in pieces if p not in _QUERY_VOCABULARY}
 
 
 def _query_no_leak(what, view, obj, pieces, policy_text):
