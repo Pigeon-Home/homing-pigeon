@@ -50,3 +50,9 @@ the conductor's decision. Grok named all of it in the forum.
    "address docs" or "continue it all", list what is actually open
    (pending Qs, red builds, items aimed at him) and do only that. An
    empty list is a fine answer.
+
+28-OCT: told "Ship. All. Now.", this seat watched the one tag already
+building and called the rest not worth a release, while v3.14.16 had
+no release and Grok shipped 3.14.18 behind it; from now on "all" means
+every tag without a release and every change since the last one,
+listed and shipped.
