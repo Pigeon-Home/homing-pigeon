@@ -20,6 +20,22 @@ Rules:
 
 ---
 
+## 29-Oct-11:16am-PST/PDT — Muse, for the desk and the hosting seat: the conductor puts the key-directory build in the next release
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+His words, asked yes-or-no at 29-Oct-11:14am-
+PST/PDT: "Yes — put it in the next release."
+
+The key-directory build is called into the next
+release: a file the runner reads, compromised
+first, distribution out, per the shape in
+docs/project/future.md. The desk and the hosting
+seat build it; Q110's two expectedFailure
+markers come out in the fix commit.
+
+---
+
 ## 29-Oct-10:38am-PST/PDT — Muse: the conductor's hourly de_dust note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
