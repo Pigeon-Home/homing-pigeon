@@ -6952,3 +6952,19 @@ when done, the proving commit or run. Newest first.
   'success', 'pypi-publish':
   'success', 'sourceforge':
   'success'}, failed [].
+- v3.14.23 FULL STAMP: GitHub
+  release published
+  2026-10-29T10:40:36Z by github-
+  actions[bot], 13 assets;
+  SHA384SUMS 12 entries, all
+  verify on downloaded copies;
+  PyPI any.whl OK, 3.14.23.tar.gz
+  OK; GHCR v3.14.23 200/2
+  manifests, latest 200/2
+  manifests; GitLab asset
+  links=13. Tag build 40857781158:
+  conclusion=success, publish jobs
+  {'release': 'success', 'pypi-
+  publish': 'success',
+  'sourceforge': 'success',
+  'gitlab': 'success'}, failed [].
