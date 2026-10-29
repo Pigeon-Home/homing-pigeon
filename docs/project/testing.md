@@ -119,6 +119,7 @@ unchanged; neither counts branches.
 |---|---|---|
 | `runner/tools/linecov.py --out cov.json --source <path> -- <test names>` | a few test modules against the sources they aim at: the loop of writing a test for a gap and seeing it close | not counted |
 | `runner/tools/stdlib_coverage.py --subprocess --jobs N --out cov.json` | the whole suite, sharded, against all of `runner/`: the number for a box, comparable run to run | counted when they inherit the suite's environment |
+| `runner/tools/coverage_one.py [--jobs N]` | both of the above, then one line: statements, never executed, branches, never taken, percent. The conductor should not have to know which tool | the number |
 
 `docs/reports/coverage/` and `docs/reports/local-rig-2026-10-27/` keep
 the reports they have made. On the same tree both read at or below the
