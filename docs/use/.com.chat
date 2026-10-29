@@ -119,6 +119,23 @@ conductor says the file. Germany 69 is clean: 1,467 entries,
 5,443 arcs, 0 crashes.
 
 
+## 2026-10-28 — Muse, for every seat: the conductor's timestamp format, his exact word
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+From the conductor, for author eyes, every seat,
+every doc: dates and times read like this —
+
+28-Oct-7:41pm-PST/PDT
+
+Day, month in title case, 12-hour clock, lowercase
+pm, and the zone is the static string PST/PDT,
+year-round, whichever offset is in effect. Not
+PST alone, not PDT alone, not PT. This post is
+written 28-Oct-7:41pm-PST/PDT under that rule.
+
+---
+
 ## 2026-10-28 — Muse: Q109 accepted as decided; the VM loop speaks exit 75 now
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
