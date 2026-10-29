@@ -36,9 +36,13 @@ Honest accounting of what fails today, and why:
   the no-key-id probe is re-pointed at a ticket with no recorded
   key in that commit.
 
-The two controls at the top prove the rig is not vacuous: the
-current key is answered at the mailbox, and the old key was
-answered while it still stood in the map.
+The controls prove the rig is not vacuous: the mailbox pair at
+the top (the current key is answered; the old key was answered
+while it still stood in the map), and a current-key control
+beside every other door's probe -- the same job by the same
+path, answered. Every silence a probe asserts is therefore a
+refusal, not a door that was never reached (the audit seat's
+check at f3bf51cc, carried into the file).
 """
 
 import hashlib
@@ -176,17 +180,21 @@ class MailboxParityTest(_Rig):
 
 class ChannelParityTest(_Rig):
     """Q110, the five channel doors: one envelope per transport
-    channel, serviced by the core exactly as a poll cycle does."""
+    channel, serviced by the core exactly as a poll cycle does.
+    Each probe stands beside its control: the same job signed
+    with the current key, answered in the outbox and seen."""
 
-    def _channel_refuses(self, name):
+    def _channel_run(self, name, secret, key_id, tag):
         base = tempfile.mkdtemp(prefix=f"hp-q110-{name}-")
         self.addCleanup(shutil.rmtree, base, True)
         cfg = _cfg(base, transports=[name])
         secrets = R.build_secrets(cfg)
         policies = R.build_key_policies(cfg)
         paths = transports.ensure_channel_dirs(base, name)
-        jid = f"q110-{name}-1"
-        body = _sealed(job_payload(jid, key_id="old"), jid, OLD, "old")
+        jid = f"q110-{name}-{tag}"
+        payload = job_payload(jid, key_id=key_id) if key_id \
+            else job_payload(jid)
+        body = _sealed(payload, jid, secret, key_id)
         with open(os.path.join(paths["inbox"], jid + ".job.txt"),
                   "w", encoding="utf-8") as fh:
             fh.write(f"[HOMING-PIGEON] job {jid}\n\n{body}\n")
@@ -196,23 +204,47 @@ class ChannelParityTest(_Rig):
                               secrets, policies, None)
         out = [f for f in os.listdir(paths["outbox"])
                if os.path.isfile(os.path.join(paths["outbox"], f))]
+        return out, seen, jid
+
+    def _channel_refuses(self, name):
+        out, seen, jid = self._channel_run(name, OLD, "old", "1")
         self.assertEqual(out, [], name)
         self.assertNotIn(jid, seen, name)
+
+    def _channel_answers(self, name):
+        out, seen, jid = self._channel_run(name, CURRENT, "", "control")
+        self.assertEqual(len(out), 1, name)
+        self.assertIn(jid, seen, name)
 
     def test_the_email_channel_refuses_the_superseded_key(self):
         self._channel_refuses("email")
 
+    def test_the_email_channel_answers_the_current_key(self):
+        self._channel_answers("email")
+
     def test_the_file_channel_refuses_the_superseded_key(self):
         self._channel_refuses("file")
+
+    def test_the_file_channel_answers_the_current_key(self):
+        self._channel_answers("file")
 
     def test_the_nats_channel_refuses_the_superseded_key(self):
         self._channel_refuses("nats")
 
+    def test_the_nats_channel_answers_the_current_key(self):
+        self._channel_answers("nats")
+
     def test_the_dtls_channel_refuses_the_superseded_key(self):
         self._channel_refuses("dtls")
 
+    def test_the_dtls_channel_answers_the_current_key(self):
+        self._channel_answers("dtls")
+
     def test_the_queues_channel_refuses_the_superseded_key(self):
         self._channel_refuses("queues")
+
+    def test_the_queues_channel_answers_the_current_key(self):
+        self._channel_answers("queues")
 
 
 class BoardParityTest(_Rig):
@@ -234,6 +266,19 @@ class BoardParityTest(_Rig):
             with open(board_path, encoding="utf-8") as fh:
                 tasks = json.load(fh)
         self.assertNotIn(tid, tasks)
+
+    def test_the_board_answers_the_current_key(self):
+        tid = "q110-task-control"
+        payload = {"v": 1, "type": "task_submit", "task_id": tid,
+                   "issued_at": _now(), "capabilities": []}
+        raw = _mail(f"[HOMING-PIGEON] task_submit {tid}",
+                    _sealed(payload, tid, CURRENT, ""))
+        _, smtp, _seen = self.cycle([raw])
+        self.assertEqual(len(smtp.sent), 1)
+        board_path = os.path.join(self.tmp, "board.json")
+        with open(board_path, encoding="utf-8") as fh:
+            tasks = json.load(fh)
+        self.assertIn(tid, tasks)
 
 
 class QueryParityTest(_Rig):
@@ -261,6 +306,26 @@ class QueryParityTest(_Rig):
         self.assertEqual(smtp.sent, [])
         self.assertEqual(R.load_retained(self.tmp, job_id)["spent"], 0)
 
+    def test_the_query_door_answers_the_current_key(self):
+        job_id, qid = "q110-job", "q110-query-control"
+        R.save_retained(self.tmp, job_id, {
+            "stdout": "one\ntwo\n", "stderr": "", "exit_code": 0,
+            "budget": 8, "spent": 0, "view": "full", "key": "",
+            "saved_at": time.time()})
+        payload = {"v": 1, "type": "query", "query_id": qid,
+                   "job_id": job_id, "issued_at": _now(),
+                   "queries": [{"op": "tail", "lines": 1}]}
+        smtp = FakeSMTP()
+        handled = R.handle_query_mail(
+            self.cfg, FakeIMAP([]), smtp, b"1",
+            _mail(f"[HOMING-PIGEON] query {qid}",
+                  _sealed(payload, qid, CURRENT, "")),
+            f"[HOMING-PIGEON] query {qid}",
+            R.build_secrets(self.cfg), _Opts(), self.tmp, {})
+        self.assertTrue(handled)
+        self.assertEqual(len(smtp.sent), 1)
+        self.assertGreater(R.load_retained(self.tmp, job_id)["spent"], 0)
+
 
 class V2ParityTest(_Rig):
     """Q110, the protocol v2 door: an answer signed by the
@@ -279,6 +344,21 @@ class V2ParityTest(_Rig):
         for root, _dirs, files in os.walk(os.path.join(self.tmp, "v2")):
             stored.extend(files)
         self.assertEqual(stored, [])
+
+    def test_the_v2_door_answers_the_current_key(self):
+        cfg = _cfg(self.tmp, protocol_v2=True, v2_answerers=[""])
+        question = v2.question_for(
+            {"protocol_v2": True, "oracle_mode": "deterministic"},
+            {"job_id": "q110-job", "kind": "exec", "script": "echo ok"})
+        ans = v2.answer_for(question, "proceed")
+        raw = _mail("[HOMING-PIGEON] answer " + ans["msg_id"],
+                    _sealed(ans, ans["msg_id"], CURRENT, ""))
+        self.cycle([raw], cfg=cfg)
+        stored = []
+        for root, _dirs, files in os.walk(
+                os.path.join(self.tmp, "v2", "answers")):
+            stored.extend(files)
+        self.assertTrue(stored)
 
 
 _WORKER_SCRIPT = r"""
@@ -321,11 +401,10 @@ class WorkerParityTest(_Rig):
     """Q110, the hosted queue's Worker: the tenant record has
     rotated to the current secret, so a job signed with the
     superseded one is refused at the edge (403) and nothing is
-    queued for the runner to pull (204)."""
+    queued for the runner to pull (204). The control beside it:
+    the current key's job is accepted (202) and pulled (200)."""
 
-    def test_the_worker_refuses_the_superseded_key(self):
-        if _node() is None:
-            self.skipTest("node is not installed")
+    def _worker_statuses(self, secret, jid):
         si, runner_token = "q110-si-token", "q110-runner-token"
         record = {
             "si_token_sha256": hashlib.sha256(
@@ -338,9 +417,8 @@ class WorkerParityTest(_Rig):
         rec_path = os.path.join(self.tmp, "alice.kv.json")
         with open(rec_path, "w", encoding="utf-8") as fh:
             json.dump(record, fh)
-        jid = "q110-worker-1"
         body = sign_payload(
-            {"v": 1, "type": "job", "job_id": jid, "kind": "ping"}, OLD)
+            {"v": 1, "type": "job", "job_id": jid, "kind": "ping"}, secret)
         envelope = f"[HOMING-PIGEON] job {jid}\n\n{body}\n"
         worker_dir = os.path.join(REPO, "runner", "cloud", "queues-worker")
         script = os.path.join(self.tmp, "q110-roundtrip.mjs")
@@ -353,7 +431,20 @@ class WorkerParityTest(_Rig):
             input=json.dumps([rec_path, "alice", si, runner_token,
                               envelope]))
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(json.loads(r.stdout), [403, 204])
+        return json.loads(r.stdout)
+
+    def test_the_worker_refuses_the_superseded_key(self):
+        if _node() is None:
+            self.skipTest("node is not installed")
+        self.assertEqual(
+            self._worker_statuses(OLD, "q110-worker-1"), [403, 204])
+
+    def test_the_worker_answers_the_current_key(self):
+        if _node() is None:
+            self.skipTest("node is not installed")
+        self.assertEqual(
+            self._worker_statuses(CURRENT, "q110-worker-control"),
+            [202, 200])
 
 
 # ------------------------------------------------------------------
