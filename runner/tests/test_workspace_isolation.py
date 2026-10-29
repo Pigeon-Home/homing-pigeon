@@ -49,7 +49,11 @@ LATE_STATE = {"security-events.jsonl", "security-audit.jsonl",
               "detection-baseline.json", "dri-state.json",
               "oracle-learning.jsonl", "runner.log", "board.json",
               "extension-review.json", "oracle-chat.jsonl",
-              "canary-watch.json", "canaries"}
+              "canary-watch.json", "canaries",
+              # The oracle's senses alert store (runner/oracle/senses.py,
+              # SENSES_FILE): a host signal ingested mid-poll writes it,
+              # which a loaded Windows runner did on 2026-10-28.
+              "senses.jsonl"}
 RECORD_PREFIXES = ("security-", "runner.log", "oracle-", "resources",
                    "detection-", "dri-", "board", "extension-",
                    "canary-watch")
