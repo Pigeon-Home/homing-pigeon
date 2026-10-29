@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.16 - 2026-10-28
+
+- **Routine patch release.** Ships the de_dust crash records and the
+  chat timestamp-format and seat-notes docs changes banked on main
+  since 3.14.15. No
+  pipeline changes.
+
 ## 3.14.15 - 2026-10-28
 
 - **Routine patch release.** Ships the de_dust crash records banked
