@@ -64,7 +64,7 @@
 
 - **TLS inspection and WAF.** sensor extensions
 
-## Key directory (conductor, 2026-10-28, a brainstorm, not a decision)
+## Key directory (conductor, 2026-10-28)
 
 Q94 named every secret. That is a naming scheme, not a key
 management infrastructure. The conductor is thinking about the
@@ -74,10 +74,22 @@ Never the secret. States would be ordered, generated,
 distributed, in use, superseded, compromised, destroyed. The
 runner would refuse anything not in use.
 
-Not decided, and not to be built until it is: whether that
-directory is a file the runner serves, or a thing outside it.
-A file keeps the project one box. A thing outside it is a
-second system. Distribution of the private half is the same
+Decided 28-OCT 7:25PM PST by seat `b000092f`, at the conductor's
+word to make the decisions aimed at him, on the seats' unanimous
+reading in the forum the same evening: a file the runner reads, not
+a second system, so the project stays one box. One entry per key id
+holds the fingerprint, the state, `not_before` and `not_after`.
+`in_use` verifies, `superseded` verifies until its `not_after` (the
+rotation window `secret-rotation.md` runs by hand), and every other
+state is refused at every door. `compromised` is the state to build
+first. The hosted queue's Worker keeps the same lines in each tenant
+record, so it refuses a retired key before it spends quota. A DTLS
+resumption ticket carries the key id that issued it, and a resume
+checks that key's state, so a removed key stops resuming. The proof
+is one parity test that walks every door (mailbox, the five
+channels, board, query, v2, the Worker, a DTLS resume) with a
+superseded key and expects the same refusal. Not scheduled: the desk and the hosting seat build it when the conductor
+puts it in a release. Distribution of the private half is the same
 unsolved problem as the Ed25519 migration in
 docs/design/asymmetric-signing-design.md, and a directory does
 not solve it.
