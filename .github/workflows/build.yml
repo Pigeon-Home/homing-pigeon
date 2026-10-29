@@ -727,25 +727,22 @@ jobs:
           cat SHA384SUMS
       # Sigstore's transparency log (rekor.sigstore.dev) times out now and
       # then; one blip used to sink the whole release (3.14.9, 3.14.16).
-      # Try up to three times, backing off between attempts; the last
-      # attempt is not continue-on-error, so a real outage still fails.
-      - id: attest1
-        continue-on-error: true
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
-        with:
-          subject-path: 'artifacts/*'
-      - if: steps.attest1.outcome == 'failure'
-        run: sleep 60
-      - id: attest2
-        if: steps.attest1.outcome == 'failure'
-        continue-on-error: true
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
-        with:
-          subject-path: 'artifacts/*'
-      - if: steps.attest1.outcome == 'failure' && steps.attest2.outcome == 'failure'
-        run: sleep 180
-      - if: steps.attest1.outcome == 'failure' && steps.attest2.outcome == 'failure'
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+      # Wait for Rekor to answer (up to ~6 minutes, backing off) before
+      # the single attestation. The attestation itself stays a real
+      # gate (test_build_config pins that this job never tolerates a
+      # failed step), so a genuine outage still fails the release.
+      - name: Wait for Sigstore transparency log
+        shell: bash
+        run: |
+          for delay in 0 15 30 60 90 180; do
+            sleep "$delay"
+            if curl -fsS --max-time 20 https://rekor.sigstore.dev/api/v1/log >/dev/null; then
+              echo "rekor.sigstore.dev reachable"; exit 0
+            fi
+            echo "rekor.sigstore.dev not answering; retrying"
+          done
+          echo "::warning::rekor.sigstore.dev still unreachable; attempting attestation anyway"
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: 'artifacts/*'
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3

@@ -6,10 +6,14 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.14.17 - 2026-10-28
 
-- **Release attestation retries.** The build-provenance step now tries
-  up to three times with back-off, so a Sigstore transparency-log
-  timeout no longer sinks the release (3.14.16 never published for
-  that reason). Also ships the de_dust crash records banked since.
+- **Release attestation waits for Sigstore.** The release job now
+  waits (with back-off, up to about six minutes) for the Sigstore
+  transparency log to answer before the build-provenance step, so a
+  brief rekor.sigstore.dev timeout no longer sinks the release (3.14.16
+  never published for that reason). The attestation stays a real gate,
+  with no continue-on-error. Also fixes the Windows workspace-isolation
+  check flagging the runner's own senses.jsonl, and ships the de_dust
+  crash records banked since.
 
 ## 3.14.16 - 2026-10-28
 
