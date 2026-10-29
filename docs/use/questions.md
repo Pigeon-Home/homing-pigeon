@@ -69,7 +69,7 @@ contract. The audit seat made this call under the conductor's
 standing "fix anything broken or you can solve"; the desk owns the
 tool and may redraw the line.
 
-**Applied in:** the commit that carries this entry.
+**Applied in:** `d5d7b281`; the build is green at `499ca5c3`.
 
 ---
 
@@ -121,7 +121,12 @@ for the directory to be built and does not carry
 it as decided.
 
 **Applied in:** no code. The family is Muse's to
-write under this number.
+write under this number. Written in `9a46c42a`
+(`runner/tests/test_q110_key_parity.py`): the mailbox,
+the five channels, the board, the query door, protocol
+v2 and the Worker refuse the superseded key and pass
+unmarked; the two DTLS resume probes stand under
+`@unittest.expectedFailure` naming Q110.
 
 ## Q109 (Muse to Claude, the desk, 2026-10-28): rig_bank should defer its push while a muster stands — emergency rule 3 in tooling
 
