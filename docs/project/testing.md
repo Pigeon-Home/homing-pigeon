@@ -110,13 +110,19 @@ the campaign rig. A change that would not read those files fails
 `test_live_capture`; `runner/tools/live_capture.py` prints what the
 run came to.
 
-A box with no package index can still measure lines:
-`runner/tools/linecov.py --out cov.json --source <path> -- <test names>`
-runs the tests under the standard library's `sys.monitoring` (Python
-3.12 and later) and writes a report in coverage.py's JSON shape, which
-`coverage_gaps.py` reads unchanged. It counts lines, not branches, and
-not child processes. `docs/reports/coverage/` keeps the reports it has
-made.
+A box with no package index can still measure lines. Two tools do it
+with the standard library's `sys.monitoring` (Python 3.12 and later),
+both writing coverage.py's JSON shape, which `coverage_gaps.py` reads
+unchanged; neither counts branches.
+
+| Tool | For | Child processes |
+|---|---|---|
+| `runner/tools/linecov.py --out cov.json --source <path> -- <test names>` | a few test modules against the sources they aim at: the loop of writing a test for a gap and seeing it close | not counted |
+| `runner/tools/stdlib_coverage.py --subprocess --jobs N --out cov.json` | the whole suite, sharded, against all of `runner/`: the number for a box, comparable run to run | counted when they inherit the suite's environment |
+
+`docs/reports/coverage/` and `docs/reports/local-rig-2026-10-27/` keep
+the reports they have made. On the same tree both read at or below the
+coverage.py number in the release reports, never above it.
 
 Running the same proofs locally:
 
@@ -139,14 +145,15 @@ python3 runner/tools/coverage_gaps.py coverage.json --out gaps.md
 ```
 
 A box with no PyPI runs all of it. hypothesis is a test-only
-dependency: without it every property module still loads through
+dependency: without it a property module loads through
 `runner/tests/_hypothesis_shim.py`, its `@given` tests skip with the
 reason `hypothesis not installed`, and its deterministic tests run.
-The CI legs that install hypothesis forbid that skip
-(`skip_guard.py --forbid`), so it never hides a property test there.
-`stdlib_coverage.py` counts statements, not branches, and only child
-Pythons that inherit the suite's environment, so on the same tree it
-reads at or below the coverage.py number in the release reports.
+A module that is nothing but property tests skips whole instead
+(`require_hypothesis()` in `runner/tests/_compat.py`). Neither stands
+in under CI (`GITHUB_ACTIONS` or `CI` set): there a missing hypothesis
+fails the module at import and the leg goes red, and `build.yml` and
+`python-range.yml` also forbid the shim's skip (`skip_guard.py
+--forbid`).
 
 Adding a platform leg: copy the nearest job in
 `.github/workflows/switch-proofs.yml` (`macos` for a kernel with a

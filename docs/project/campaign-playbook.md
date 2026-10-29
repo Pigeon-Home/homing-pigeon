@@ -60,8 +60,9 @@ extension's 2-second poll on both legs).
 | shadow    | read /etc/shadow, report the read's exit code            | the script's own report is in the output |
 
 Each completed cycle becomes ONE test method in
-`runner/tests/test_campaign_loop_cycles.py` (first campaign;
-`runner/tests/archive/campaign-1/` after the core cut), replaying the
+`runner/tests/archive/campaign-1/test_campaign_loop_cycles.py` (the
+first campaign's cycles, kept beside the suite since the core cut and
+outside its discovery), replaying the
 exact script its cycle sent — rebuilt from cycle number and
 variant exactly as the loop builds it — and asserting the recorded
 exit code and the deterministic marker. Non-deterministic output

@@ -70,6 +70,24 @@ class HypothesisShimTest(unittest.TestCase):
                           text, name)
             self.assertIn('--forbid "%s"' % shim.SKIP_REASON, text, name)
 
+    def test_under_ci_without_hypothesis_the_shim_refuses(self):
+        import subprocess
+        env = dict(os.environ, CI="true")
+        code = ("import importlib.util, sys\n"
+                "real = importlib.util.find_spec\n"
+                "importlib.util.find_spec = lambda n, *a: None "
+                "if n == 'hypothesis' else real(n, *a)\n"
+                "try:\n"
+                "    import runner.tests._hypothesis_shim\n"
+                "except ImportError as e:\n"
+                "    print('refused:', e); sys.exit(0)\n"
+                "sys.exit(1)\n")
+        proc = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              universal_newlines=True, timeout=60)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("required under CI", proc.stdout)
+
     def test_the_converted_modules_fall_back_to_the_shim(self):
         tests = os.path.join(ROOT, "runner", "tests")
         for name in sorted(os.listdir(tests)):

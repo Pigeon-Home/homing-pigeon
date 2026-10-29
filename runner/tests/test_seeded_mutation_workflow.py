@@ -101,8 +101,6 @@ class SeededWorkflowShapeTests(unittest.TestCase):
         self.assertNotIn("contents: write", text)
 
 
-@unittest.skipUnless(importlib.util.find_spec("hypothesis"),
-                     "hypothesis not installed")
 class ConftestSeedHookTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

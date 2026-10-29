@@ -18,9 +18,24 @@ into a skip whose reason is ``SKIP_REASON``. Every test without
 ``@given`` runs as before. A leg that installs hypothesis forbids that
 reason (``runner/tools/skip_guard.py --forbid``), so the shim never
 lets a property test go missing where it must run.
+
+Under CI (``GITHUB_ACTIONS`` or ``CI`` set) the shim refuses to stand
+in: importing it on a CI box without hypothesis raises ImportError, so
+the module that fell back to it fails to load and the leg goes red,
+the rule ``require_hypothesis()`` in runner/tests/_compat.py keeps for
+the modules that are all property tests. With hypothesis installed the
+shim imports anywhere, for its own tests.
 """
 import functools
+import importlib.util
+import os
 import unittest
+
+if (os.environ.get("GITHUB_ACTIONS") or os.environ.get("CI")) \
+        and importlib.util.find_spec("hypothesis") is None:
+    raise ImportError("hypothesis is required under CI "
+                      "(.github/requirements-ci.txt); the shim stands in "
+                      "only off CI")
 
 SKIP_REASON = "hypothesis not installed"
 
@@ -58,7 +73,8 @@ def given(*_args, **_kwargs):
     def wrap(fn):
         @functools.wraps(fn)
         def skipped(*a, **k):
-            raise unittest.SkipTest(SKIP_REASON)
+            # The literal, so test_skip_registry sees the reason.
+            raise unittest.SkipTest("hypothesis not installed")
         skipped.__unittest_skip__ = True
         skipped.__unittest_skip_why__ = SKIP_REASON
         return skipped
