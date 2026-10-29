@@ -141,9 +141,15 @@ class NatsClient:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise _Idle()
-        self.sock.settimeout(remaining)
+        # close() may run on another thread (the pipe's stop): the
+        # socket is read once, and a closed client is a closed
+        # connection, never an AttributeError out of the loop.
+        sock = self.sock
+        if sock is None:
+            raise TransportError("nats: the connection is closed")
         try:
-            chunk = self.sock.recv(65536)
+            sock.settimeout(remaining)
+            chunk = sock.recv(65536)
         except socket.timeout:
             raise _Idle()
         except OSError as e:
@@ -170,8 +176,11 @@ class NatsClient:
         return out
 
     def _send(self, data):
+        sock = self.sock
+        if sock is None:
+            raise TransportError("nats: the connection is closed")
         try:
-            self.sock.sendall(data)
+            sock.sendall(data)
         except OSError as e:
             raise TransportError(f"nats: send failed: {e}")
 
@@ -244,6 +253,9 @@ class NatsClient:
             if line.startswith("MSG "):
                 parts = line.split(" ")
                 # MSG <subject> <sid> [reply-to] <bytes>
+                if len(parts) not in (4, 5) or not parts[-1].isdigit():
+                    raise TransportError(f"nats: malformed MSG line "
+                                         f"{line[:80]!r}")
                 size = int(parts[-1])
                 raw = self._read_exact(size + 2, deadline)
                 return parts[1], raw[:size]
@@ -319,21 +331,24 @@ class NatsPipe:
         self.client.connect()
         self.client.subscribe(self.subject)
 
-    def _flush_results(self):
+    def _flush_results(self, client):
         for fname, subject, body in ch.pending_results(
                 self.channel):
             m = _RESULT_ID_RE.search(subject or "")
             job_id = m.group(1) if m else "unknown"
-            self.client.publish(
+            client.publish(
                 f"{self.result_prefix}.{job_id}",
                 ch.envelope(subject, body))
             ch.ack_result(self.channel, fname)
 
     def stop(self):
+        # Called from another thread. It closes the socket and leaves
+        # the client to the loop: the loop is the only one that drops
+        # it, so it never reads a client this thread just cleared.
         self._running = False
-        if self.client is not None:
-            self.client.close()
-            self.client = None
+        client = self.client
+        if client is not None:
+            client.close()
 
     def run(self):
         self._running = True
@@ -344,9 +359,10 @@ class NatsPipe:
                 backoff = 1.0
                 self.log(f"nats transport: subscribed to "
                        f"{self.subject} on {self.url}")
+                client = self.client
                 while self._running:
-                    self._flush_results()
-                    got = self.client.next_message(
+                    self._flush_results(client)
+                    got = client.next_message(
                         time.monotonic() + 0.5)
                     if got is None:
                         continue
@@ -370,11 +386,13 @@ class NatsPipe:
                                    ident or _subject, esubject,
                                    ebody)
             except TransportError as e:
-                self.log(f"nats transport: {e}; reconnecting in "
-                       f"{backoff:.0f}s", "WARN")
                 if self.client is not None:
                     self.client.close()
                     self.client = None
+                if not self._running:
+                    break     # stopped: the closed socket is the stop
+                self.log(f"nats transport: {e}; reconnecting in "
+                       f"{backoff:.0f}s", "WARN")
                 ch.nap(backoff)
                 backoff = min(30.0, backoff * 2)
 
