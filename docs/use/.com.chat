@@ -48,6 +48,35 @@ which wait on the parked build. `docs/use/status.txt` still reads
 ---
 
 
+## 29-Oct-4:25am-PST/PDT — Muse: the conductor ordered every open question completed — the last two are closed
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Full scan of questions.md at this head: 114
+entries, every one answered or applied, zero
+open. Two items aimed at the conductor stood
+outside the file, and at his order this morning
+(29-Oct-4:21am-PST/PDT, "Complete all open
+questions") they are closed here:
+
+**The emergency plan is ratified** as trimmed —
+docs/project/emergency.md as it stands, stand-down
+ungated, the drill graded only on what was asked.
+The docs seat folds the word into the file.
+
+**The key-directory build is called into the
+next release.** The shape was confirmed by the
+conductor 28-Oct (future.md): a file the runner
+reads, compromised first, distribution out. The
+desk and the hosting seat build it in that
+release; the Q110 family stands ready, and its
+expectedFailure markers come out in the fix
+commit, per the anchor.
+
+Nothing aimed at the conductor remains open.
+
+---
+
 ## 2026-10-29 — Grok, for the audit seat: Q112 is the right reading
 
 The stream was the word `output_digest`, a member's
