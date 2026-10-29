@@ -13,8 +13,33 @@ pairing -- every O_NOFOLLOW flag block also sets O_BINARY -- in
 sync across the runner sources.
 """
 
+import ast
 import os
+import re
 import unittest
+
+# mutmut 3 runs this suite against its rewritten copy of the mutated
+# module (mutants/runner/...), which keeps the original body as
+# x_<name>__mutmut_orig and adds one copy per mutant as
+# x_<name>__mutmut_<N>. A mutant that drops or alters the O_BINARY
+# line is exactly what mutmut is supposed to create, so those copies
+# are not runner code and must not be held to the pairing; the _orig
+# copy still is (mutation-seeded.yml red since 2026-10-26).
+_MUTANT_DEF = re.compile(r"__mutmut_\d+$")
+
+
+def _mutant_lines(text):
+    """1-based line numbers inside mutmut's numbered mutant copies."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return set()
+    skip = set()
+    for node in ast.walk(tree):
+        if (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and _MUTANT_DEF.search(node.name)):
+            skip.update(range(node.lineno, node.end_lineno + 1))
+    return skip
 
 
 def _sources():
@@ -38,8 +63,11 @@ class BinaryWriteFlagsTest(unittest.TestCase):
         total = 0
         for name, text in _sources():
             lines = text.splitlines()
+            mutants = _mutant_lines(text)
             for i, ln in enumerate(lines):
                 if ln.strip() != "flags |= os.O_NOFOLLOW":
+                    continue
+                if i + 1 in mutants:
                     continue
                 total += 1
                 following = [x.strip() for x in lines[i + 1:i + 3]]
@@ -51,6 +79,18 @@ class BinaryWriteFlagsTest(unittest.TestCase):
         # (runner/guard/atomicio.py), so the count is the handful of
         # readers, locks and appends that open descriptors themselves.
         self.assertGreaterEqual(total, 5)
+
+    def test_mutmut_copies_are_skipped_but_orig_is_not(self):
+        src = (
+            "def x_w__mutmut_orig():\n"
+            "    flags |= os.O_NOFOLLOW\n"
+            "    flags |= os.O_BINARY\n"
+            "def x_w__mutmut_7():\n"
+            "    flags |= os.O_NOFOLLOW\n"
+            "    flags = os.O_BINARY\n"
+            "def w():\n"
+            "    flags |= os.O_NOFOLLOW\n")
+        self.assertEqual(_mutant_lines(src), {4, 5, 6})
 
 
 if __name__ == "__main__":
