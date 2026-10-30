@@ -243,7 +243,7 @@ forum:
   query,local,board_mail,v2_mail --slice 1800`.
 - Menlo Park: two grow processes, each `--jobs 1`: one on every
   target but the new three, `--target wire,cloud,v2,crypto,local,stash,mail,board,board_ops,channels,manifest,inbox,local_inbox,secret,queries,names,query,board_mail,v2_mail,stage,collect --slice 120 --minutes 55`,
-  and one on `--target keydir,address,dtls,dtls_session,race_board,race_stash --slice 600 --minutes 55`
+  and one on `--target keydir,address,dtls,dtls_session,dtls_hostile,race_board,race_stash,race_state --slice 600 --minutes 55`
   (two processes never share a target, since each target owns its
   corpus file); `de_dust_survivors.py` once a day in a fixed slot;
   no other grow work beside them.
@@ -312,14 +312,43 @@ bank and the yield table are the same for all of them.
   the same way on every box. Finds state-machine faults the
   one-datagram target cannot reach: the resume path was unreached
   for two days until a session script walked it.
-- **Thread interleavings** (`race_board`): an entry is a set of
-  lanes, each a list of board operations, run as threads under a
-  short switch interval over one board. The invariants are the
-  lease rules: one holder at a time, one completion, the file on
-  disk is the board in memory. Not deterministic by nature, so the
+- **Stateful protocol scripts against a hostile peer** (`dtls_hostile`):
+  the client driven against a server that does not hold its key. The
+  script delivers the keyless server's datagrams and mutates them in
+  flight (flip, cut, dup, reorder, drop, inject, tick). The invariant
+  is the plain one and the sound one: no key, no session -- whatever
+  the server sends, the client never reaches established, never
+  surfaces a server message, and raises nothing but `DtlsError`.
+  (A byte-flip may be cosmetic or MAC-protected; which is the
+  server's to judge, so the target does not re-judge it from
+  outside -- it holds the one line that never moves.)
+- **Thread interleavings** (`race_board`, `race_stash`, `race_state`):
+  an entry is a set of lanes, each a list of operations, run as
+  threads under a short switch interval over one shared thing.
+  `race_board` runs the board (one completion per task, the file
+  equals memory, the counts add up, and no lease instant handed to
+  two workers). `race_stash` runs the outbox (a body stashed before
+  it is sent, one delivery per stash unless an undeliver sits
+  between, every record left behind reads back). `race_state` runs
+  the pool's other two files: the seen file (no lost update -- every
+  key a thread marked is in the file after the join) and the
+  retained store (no torn read -- a record reads back as exactly
+  what was written). Not deterministic by nature, so the race
   technique sits out the Windows-surface differential and the
   survivors' kill set; its proof is many schedules with no
   violation, logged run by run.
+
+Keeping the corpus fast: `distill` trims a target's corpus to a
+minimal set that still reaches every arc it reaches now (seeds
+pinned, then a greedy set cover over the grown entries, the smaller
+entry winning a tie). A dry run reports what it would drop and
+proves the kept set covers the same arcs; `--write` rewrites the
+file and logs a `distill` record. It is a maintenance pass for
+whoever owns a lane, not part of a grow, and it skips the race
+targets, whose arc sets are not deterministic. On the committed
+corpora today it reclaims a handful of entries each (dtls, eight);
+the value grows as early entries' arcs are later covered by several
+others, so the CI replay does not lengthen with every bank.
 
 Adding a technique is adding a target with a `technique` name and a
 check that holds its invariants. Adding a box is adding a lane: a

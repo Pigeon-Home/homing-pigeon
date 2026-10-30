@@ -2819,6 +2819,359 @@ def seeds_race_stash():
     return [make_entry("payload", spec, "seed:" + name, "seed") for name, spec in specs]
 
 
+# ------------------------------------------------------------------
+# race_state: threads over the pool's seen and retained files (de_dust2)
+# ------------------------------------------------------------------
+#
+# race_stash holds the outbox; this holds the worker pool's other two
+# shared files. The seen file is the replay cache and the claim
+# ledger: save_seen merges under a file lock so two runners on one
+# state directory cannot wipe each other's keys (the no-lost-update
+# rule the merge was written for). The retained store is one file per
+# job id, written O_EXCL to a temp name and renamed, so a reader sees
+# the whole record or none of it. This target runs mark, load, save
+# and prune from several threads over one base_dir under a short
+# switch interval, and holds both: every key a thread marked is in
+# the file after the join, and every record a thread saved reads back
+# as exactly what it wrote.
+
+
+def check_race_state(entry):
+    """race_state: up to four threads, each a list of operations over
+    one state directory's seen and retained files (mark a seen key,
+    load the seen cache, save a retained record, load one, prune),
+    interleaved under a short switch interval. Contract: no thread
+    raises; after the join the seen file holds every key any thread
+    marked (no lost update); every retained record a thread saved
+    loads back as exactly the payload it wrote (no torn read);
+    load_seen and load_retained always return their type. Accepted
+    when a key was marked or a record saved."""
+    spec = entry["data"]
+    if TU._lone_surrogate(spec):
+        note("gate", "lone surrogate")
+        return "refused"
+    lanes = _race_ops(spec)
+    if not lanes:
+        return "refused"
+    switch = spec.get("switch", 1e-5) if isinstance(spec, dict) else 1e-5
+    if isinstance(switch, bool) or not isinstance(switch, (int, float)) \
+            or switch != switch or not 1e-6 <= switch <= 1e-2:
+        switch = 1e-5
+    base = tempfile.mkdtemp(prefix="hp-de_dust-state-")
+    seen_path = os.path.join(base, "seen.json")
+    now = time.time()
+    marked = {}               # key -> thread that marked it
+    marked_lock = threading.Lock()
+    saved = {}                # job_id -> payload the thread wrote
+    saved_lock = threading.Lock()
+    errors = []
+
+    def run_lane(t, ops):
+        try:
+            for i, op in enumerate(ops):
+                name = op["op"]
+                if name == "mark":
+                    tag = op.get("key")
+                    key = tag if isinstance(tag, str) and tag else f"bm-seen-{t}-{i}"
+                    R.save_seen(seen_path, {key: True},
+                                keep_sec=R.seen_keep_sec({}))
+                    with marked_lock:
+                        marked[key] = t
+                elif name == "load_seen":
+                    got = R.load_seen(seen_path)
+                    if not isinstance(got, dict):
+                        errors.append(f"thread {t}: load_seen returned "
+                                      f"{type(got).__name__}, not a dict")
+                elif name == "save":
+                    raw = op.get("id")
+                    job_id = raw if isinstance(raw, str) and raw else f"bm-ret-{t}-{i}"
+                    payload = {"v": job_id, "t": t, "i": i,
+                               "saved_at": now, "body": "x" * (i % 7)}
+                    R.save_retained(base, job_id, payload)
+                    if R._SAFE_JOB_ID.match(job_id) and job_id not in (".", ".."):
+                        with saved_lock:
+                            saved[job_id] = payload
+                elif name == "load":
+                    raw = op.get("id")
+                    job_id = raw if isinstance(raw, str) and raw else f"bm-ret-{t}-{i}"
+                    got = R.load_retained(base, job_id)
+                    if got is not None and not isinstance(got, dict):
+                        errors.append(f"thread {t}: load_retained returned "
+                                      f"{type(got).__name__}")
+                    elif isinstance(got, dict) and got.get("v") not in (None, job_id):
+                        errors.append(f"thread {t}: load_retained({job_id}) "
+                                      f"returned record for {got.get('v')}")
+                elif name == "prune":
+                    R.load_seen(seen_path)
+                elif name == "yield":
+                    time.sleep(0)
+                time.sleep(0)
+        except Exception as e:  # the contract: nothing raises
+            errors.append(f"thread {t}: {type(e).__name__}: {_short(e)}")
+
+    previous = sys.getswitchinterval()
+    sys.setswitchinterval(float(switch))
+    try:
+        workers = [threading.Thread(target=run_lane, args=(t, ops), daemon=True)
+                   for t, ops in enumerate(lanes)]
+        for w in workers:
+            w.start()
+        for w in workers:
+            w.join(timeout=30)
+        if any(w.is_alive() for w in workers):
+            raise Crash("resource", "a state thread did not finish in 30 s")
+    finally:
+        sys.setswitchinterval(previous)
+    if errors:
+        raise Crash("exception", errors[0])
+    final = R.load_seen(seen_path)
+    if not isinstance(final, dict):
+        raise Crash("shape", "the seen file does not read back as a dict")
+    missing = [k for k in marked if k not in final]
+    if missing:
+        raise Crash("race", f"{len(missing)} seen key(s) a thread recorded "
+                    f"are not in the file after the join, e.g. {missing[0]} "
+                    f"(worker pool lost a claim)")
+    for job_id, payload in saved.items():
+        got = R.load_retained(base, job_id)
+        if got is None:
+            raise Crash("race", f"the retained record {job_id} a thread saved "
+                        "is absent after the join")
+        if got.get("v") != job_id or got.get("t") != payload["t"] \
+                or got.get("i") != payload["i"]:
+            raise Crash("race", f"the retained record {job_id} read back as "
+                        f"another thread's write ({got.get('v')}, t={got.get('t')})")
+    shutil.rmtree(base, ignore_errors=True)
+    note("race_state", len(lanes), "marked", len(marked), "saved", len(saved))
+    return "accepted" if (marked or saved) else "refused"
+
+
+def seeds_race_state():
+    M = lambda **kw: dict(op="mark", **kw)          # noqa: E731
+    LS = {"op": "load_seen"}
+    SV = lambda **kw: dict(op="save", **kw)         # noqa: E731
+    LD = lambda **kw: dict(op="load", **kw)         # noqa: E731
+    P = {"op": "prune"}
+    Y = {"op": "yield"}
+    specs = [
+        ("two_markers_one_key", {"threads": [
+            [M(key="bm-seen-shared"), LS],
+            [Y, M(key="bm-seen-shared"), LS]]}),
+        ("four_markers_distinct", {"switch": 1e-6, "threads": [
+            [M(), M(), M(), LS], [M(), LS, M(), M()],
+            [LS, M(), M(), M()], [M(), M(), LS, M()]]}),
+        ("mark_and_load_interleaved", {"threads": [
+            [M(key="bm-seen-a"), Y, M(key="bm-seen-b"), LS],
+            [LS, M(key="bm-seen-c"), LS, M(key="bm-seen-d")]]}),
+        ("save_and_load_same_id", {"threads": [
+            [SV(id="bm-ret-shared"), LD(id="bm-ret-shared")],
+            [Y, LD(id="bm-ret-shared"), SV(id="bm-ret-shared")]]}),
+        ("save_distinct_records", {"switch": 1e-6, "threads": [
+            [SV(), SV(), LD(), SV()], [SV(), LD(), SV(), SV()],
+            [LD(), SV(), SV(), LD()]]}),
+        ("seen_and_retained_together", {"threads": [
+            [M(key="bm-seen-x"), SV(id="bm-ret-x"), LS, LD(id="bm-ret-x")],
+            [SV(id="bm-ret-y"), M(key="bm-seen-y"), LD(id="bm-ret-y"), LS]]}),
+        ("load_before_write", {"threads": [
+            [LS, LD(id="bm-ret-absent")], [P, LD(id="bm-ret-missing")]]}),
+        ("unsafe_ids", {"threads": [
+            [SV(id=".."), SV(id="bad id with spaces"), SV(id="")],
+            [SV(id="bm-ret-ok"), LD(id="..")]]}),
+        ("marks_then_many_loads", {"threads": [
+            [M(), M()], [LS, LS, LS], [P, P, P], [LS, LS]]}),
+        ("unknown_ops", {"threads": [[{"op": "nope"}, 7, "mark", M()], "x"]}),
+        ("empty", {"threads": []}),
+        ("not_an_object", ["mark"]),
+    ]
+    return [make_entry("payload", spec, "seed:" + name, "seed") for name, spec in specs]
+
+
+# ------------------------------------------------------------------
+# dtls_hostile: the client against a server without the key (de_dust2)
+# ------------------------------------------------------------------
+#
+# dtls_session runs a keyed server; here the server does not hold the
+# client's PSK. That is the threat on the wire: a peer that never
+# shared the key, trying to be taken for the runner. The sound
+# invariant this target holds is the plain one -- a server that lacks
+# the key cannot establish the client and cannot make it surface a
+# message, whatever it sends. A script runs the client against such a
+# server and mutates the wire in flight: flips, cuts, duplicates,
+# reorders, drops, injects arbitrary bytes, moves the clock. The
+# client must never reach "established", never append a server
+# message, and raise nothing but DtlsError. (Whether a mutation is
+# cosmetic or MAC-protected is the server's to judge; this target
+# does not guess it -- it holds the one line that never moves: no
+# key, no session.)
+
+_HOSTILE_ADDR = ("192.0.2.5", 41000)
+_HOSTILE_SECRET = "bm-secret-0001"
+_HOSTILE_WRONG = "bm-secret-not-the-one-9"
+_HOSTILE_CRNG = b"\x44"
+_HOSTILE_MAX_STEPS = 64
+
+
+def _hostile_client():
+    return DT.DtlsClientCore(_HOSTILE_SECRET, rng=lambda n: _HOSTILE_CRNG * n)
+
+
+def _hostile_server():
+    return DT.DtlsServerCore(
+        secrets_map={DT.identity_for(""): _HOSTILE_WRONG},
+        rng=lambda n: b"\x5a" * n,
+        greeting_for=lambda s: b'{"type":"greeting","v":1}')
+
+
+def check_dtls_hostile(entry):
+    """dtls_hostile: a script running the client against a server that
+    does not hold its key, mutating the wire in flight (flip, cut,
+    dup, reorder, drop, inject, tick). Contract: the client raises
+    nothing but DtlsError, never reaches "established", and never
+    surfaces a server message -- no key, no session, whatever the
+    server sends. Accepted when the client engaged the handshake
+    (left idle) before refusing."""
+    script = entry["data"]
+    if TU._lone_surrogate(script):
+        note("gate", "lone surrogate")
+        return "refused"
+    steps = script if isinstance(script, list) else [script]
+    client = _hostile_client()
+    server = _hostile_server()
+    now = _DTLS_NOW
+    pending = []
+
+    def drive_client(fn, *args):
+        got, exc = _call(fn, *args)
+        if exc is not None:
+            if isinstance(exc, DT.DtlsError):
+                return []
+            raise Crash("exception", f"the client's {fn.__name__} raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        return got if isinstance(got, list) else []
+
+    def to_server(dg):
+        got, exc = _call(server.feed, dg, _HOSTILE_ADDR, now)
+        if exc is not None:
+            if isinstance(exc, DT.DtlsError):
+                return
+            raise Crash("exception", f"the server's feed raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        if isinstance(got, list):
+            pending.extend(bytes(x) for x in got if isinstance(x, (bytes, bytearray)))
+
+    def feed_client(dg):
+        before = len(client.app_messages)
+        for out in drive_client(client.feed, dg, now):
+            if isinstance(out, (bytes, bytearray)):
+                to_server(bytes(out))
+        if len(client.app_messages) > before:
+            raise Crash("auth", "the client surfaced a server message from a "
+                        "server that does not hold its key")
+        _assert_hostile(client)
+
+    for out in drive_client(client.start, now):
+        if isinstance(out, (bytes, bytearray)):
+            to_server(bytes(out))
+
+    engaged = False
+    for step in steps[:_HOSTILE_MAX_STEPS]:
+        if not isinstance(step, dict) or not isinstance(step.get("op"), str):
+            continue
+        op = step["op"]
+        if op == "deliver":
+            n = step.get("n", 1)
+            if isinstance(n, bool) or not isinstance(n, int) or n < 0:
+                n = 1
+            batch = pending[:min(n, 8, len(pending))]
+            del pending[:len(batch)]
+            if step.get("reverse"):
+                batch.reverse()
+            if step.get("drop"):
+                batch = []
+            dup = step.get("dup", 1)
+            if isinstance(dup, bool) or not isinstance(dup, int) or dup < 1:
+                dup = 1
+            for dg in batch:
+                dg = bytearray(dg)
+                ats = step.get("flip")
+                if isinstance(ats, list):
+                    for off in ats[:8]:
+                        if isinstance(off, int) and not isinstance(off, bool) and dg:
+                            dg[off % len(dg)] ^= 0x01
+                cut = step.get("cut")
+                if isinstance(cut, int) and not isinstance(cut, bool) and cut >= 0:
+                    dg = dg[:cut]
+                for _ in range(min(dup, 4)):
+                    feed_client(bytes(dg))
+        elif op == "inject":
+            raw = step.get("bytes")
+            data = None
+            if isinstance(raw, str):
+                try:
+                    data = bytes.fromhex(raw)
+                except ValueError:
+                    data = raw.encode("utf-8", "surrogatepass")
+            elif isinstance(raw, int) and not isinstance(raw, bool):
+                data = bytes([raw & 0xFF]) * (abs(raw) % 64)
+            if data is not None:
+                feed_client(data)
+        elif op == "tick":
+            dt = step.get("dt", 1.0)
+            if isinstance(dt, bool) or not isinstance(dt, (int, float)) \
+                    or dt != dt or dt < 0:
+                dt = 1.0
+            now += min(float(dt), 86400.0)
+            for out in drive_client(client.tick, now):
+                if isinstance(out, (bytes, bytearray)):
+                    to_server(bytes(out))
+            _assert_hostile(client)
+        elif op == "app":
+            drive_client(client.send_app, b"[HOMING-PIGEON] early\n")
+            _assert_hostile(client)
+        if client.state not in ("idle", "new"):
+            engaged = True
+
+    _assert_hostile(client)
+    note("hostile", "state", client.state, "engaged", engaged)
+    return "accepted" if engaged else "refused"
+
+
+def _assert_hostile(client):
+    if client.state == "established":
+        raise Crash("auth", "the client established with a server that does "
+                    "not hold its key")
+    if client.app_messages:
+        raise Crash("auth", "the client holds a server message from a server "
+                    "that does not hold its key")
+
+
+def seeds_dtls_hostile():
+    D = lambda **kw: dict(op="deliver", **kw)       # noqa: E731
+    I = lambda h: dict(op="inject", bytes=h)        # noqa: E731
+    run = [D(), D(), D(), D()]
+    specs = [
+        ("full_handshake", run),
+        ("deliver_all_at_once", [D(n=8)]),
+        ("flipped_flight", [D(flip=[6, 10]), D(flip=[6]), D(), D()]),
+        ("cut_flight", [D(cut=8), D(), D(), D()]),
+        ("duplicated_flight", [D(dup=3), D(dup=2), D(), D()]),
+        ("reordered_flight", [D(n=8, reverse=True)]),
+        ("dropped_first", [D(drop=True), D(), D(), D()]),
+        ("junk_then_handshake", [I("deadbeef"), I("00" * 40)] + run),
+        ("handshake_then_junk", run + [I("ff" * 50)]),
+        ("only_junk", [I("00"), I("414243"), I(""), I("ff" * 64)]),
+        ("app_midway", [D(), dict(op="app"), D(), D(), D()]),
+        ("tick_through", [D(), dict(op="tick", dt=1.0), D(),
+                          dict(op="tick", dt=61.0), D(), D()]),
+        ("give_up_then_more", [D(), dict(op="tick", dt=120.0)] + run),
+        ("empty", []),
+        ("not_a_list", {"op": "deliver"}),
+        ("junk_steps", [5, "deliver", None, {"op": "nope"}, {"op": "deliver", "n": -1}]),
+    ]
+    return [make_entry("payload", script, "seed:" + name, "seed")
+            for name, script in specs]
+
+
 def check_secret(entry):
     """secret: one candidate shared secret, as text, before the two
     strength rules that must stay in step (send_job.py's comment):
@@ -8691,6 +9044,12 @@ TARGETS = {
     "race_stash": {"files": [_src("runner.py")],
                    "check": check_race_stash, "seeds": seeds_race_stash,
                    "technique": "race"},
+    "race_state": {"files": [_src("runner.py")],
+                   "check": check_race_state, "seeds": seeds_race_state,
+                   "technique": "race"},
+    "dtls_hostile": {"files": [_src("wire", "dtlsproto.py")],
+                     "check": check_dtls_hostile, "seeds": seeds_dtls_hostile,
+                     "technique": "protocol"},
 }
 
 
@@ -9038,6 +9397,54 @@ class Session:
             times.sort()
             self.median = times[len(times) // 2]
             self.slow_bound = max(SLOW_FLOOR_SEC, SLOW_FACTOR * self.median)
+
+    def distill(self):
+        """A minimal corpus that reaches every arc the whole corpus
+        reaches (de_dust2). Greedy set cover: the seeds are pinned
+        (the readable baseline and the hand-written coverage), then
+        the grown entry covering the most still-uncovered arcs is
+        added until nothing new is covered, the smaller entry winning
+        a tie so the kept corpus is fast for CI to replay. Returns
+        (kept, dropped); call after baseline() so self.hits is
+        filled. The kept entries' arcs equal the whole corpus's, by
+        construction."""
+        full = set()
+        for e in self.entries:
+            full |= self.hits.get(e["id"], frozenset())
+        kept, covered = [], set()
+        for e in self.entries:
+            if e.get("mutator") == "seed":
+                kept.append(e)
+                covered |= self.hits.get(e["id"], frozenset())
+        pool = [e for e in self.entries if e.get("mutator") != "seed"]
+
+        def size(e):
+            return len(json.dumps(e.get("data"), ensure_ascii=True,
+                                  default=str))
+
+        while covered != full:
+            best, best_gain, best_size = None, 0, None
+            for e in pool:
+                gain = len(self.hits.get(e["id"], frozenset()) - covered)
+                if gain == 0:
+                    continue
+                esize = size(e)
+                if gain > best_gain or (gain == best_gain
+                                        and best_size is not None
+                                        and esize < best_size):
+                    best, best_gain, best_size = e, gain, esize
+            if best is None:
+                break
+            kept.append(best)
+            covered |= self.hits.get(best["id"], frozenset())
+            pool.remove(best)
+        order = {e["id"]: i for i, e in enumerate(self.entries)}
+        kept.sort(key=lambda e: order[e["id"]])
+        kept_ids = {e["id"] for e in kept}
+        dropped = [e for e in self.entries if e["id"] not in kept_ids]
+        self._distill_full = full
+        self._distill_covered = covered
+        return kept, dropped
 
     def accepted_share(self):
         """The share of the corpus the reader accepts, from the last
@@ -10180,6 +10587,56 @@ def last_plan(runs=None):
     return max(plans, key=lambda r: str(r.get("when", "")))
 
 
+def cmd_distill(args, out=print):
+    """Trim each corpus to a minimal set that still reaches every arc
+    it reaches now, so CI replays fewer entries as the corpus grows
+    (de_dust2). A dry run by default: it reports what it would drop
+    and proves the kept set covers the same arcs. With --write it
+    rewrites the corpus file. Race targets are skipped -- their arc
+    sets vary run to run, so a set cover over one replay is not
+    sound. Crash and slow files are left alone."""
+    status = 0
+    for target in _targets(args.target):
+        if TARGETS[target].get("technique") == "race":
+            out(f"{target}: skipped (a race target's arcs are not "
+                "deterministic)")
+            continue
+        entries = load(corpus_path(target))
+        if not entries:
+            out(f"{target}: empty")
+            continue
+        session = Session(target, entries)
+        kept = dropped = None
+
+        def work():
+            nonlocal kept, dropped
+            session.baseline()
+            kept, dropped = session.distill()
+        _with_rig(work)
+        if session._distill_covered != session._distill_full:
+            missing = len(session._distill_full - session._distill_covered)
+            out(f"{target}: DID NOT COVER ({missing} arc(s) unreachable "
+                "from the kept set); leaving it alone")
+            status = 1
+            continue
+        seeds = sum(1 for e in kept if e.get("mutator") == "seed")
+        out(f"{target}: {len(entries)} -> {len(kept)} entries "
+            f"({seeds} seeds pinned, {len(kept) - seeds} grown kept, "
+            f"{len(dropped)} dropped), {len(session._distill_full)} arcs held")
+        if args.write and dropped:
+            save(corpus_path(target), target, kept)
+            record_run({"kind": "distill", "target": target,
+                        "when": datetime.now(timezone.utc).strftime(
+                            "%Y-%m-%dT%H:%M:%SZ"),
+                        "head": head_sha()[:12],
+                        "entries_before": len(entries),
+                        "entries_after": len(kept),
+                        "arcs": len(session._distill_full),
+                        **({"rig": os.environ["HP_DE_DUST_RIG"]}
+                           if os.environ.get("HP_DE_DUST_RIG") else {})})
+    return status
+
+
 def cmd_stats(args, out=print):
     if getattr(args, "yield_table", False):
         hours = getattr(args, "hours", 48) or 48
@@ -10245,12 +10702,16 @@ def main(argv=None):
     p.set_defaults(fn=cmd_dictionary)
     for name, fn in (("seed", cmd_seed), ("grow", cmd_grow),
                      ("replay", cmd_replay), ("platform", cmd_platform),
-                     ("promote", cmd_promote),
+                     ("promote", cmd_promote), ("distill", cmd_distill),
                      ("stats", cmd_stats)):
         p = sub.add_parser(name)
         p.add_argument("--target", default="all",
                        help="one of %s, or all" % ", ".join(TARGETS))
         p.set_defaults(fn=fn)
+        if name == "distill":
+            p.add_argument("--write", action="store_true",
+                           help="rewrite the corpus to the minimal set; "
+                                "without it, only report what would drop")
         if name == "stats":
             p.add_argument("--yield", dest="yield_table", action="store_true",
                            help="the per-target yield table over the last "

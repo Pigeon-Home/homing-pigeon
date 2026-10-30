@@ -537,9 +537,52 @@ class TechniquesTest(unittest.TestCase):
 
     def test_the_targets_declare_their_technique(self):
         self.assertEqual("protocol", B.TARGETS["dtls_session"]["technique"])
+        self.assertEqual("protocol", B.TARGETS["dtls_hostile"]["technique"])
         self.assertEqual("race", B.TARGETS["race_board"]["technique"])
         self.assertEqual("race", B.TARGETS["race_stash"]["technique"])
+        self.assertEqual("race", B.TARGETS["race_state"]["technique"])
         self.assertNotIn("technique", B.TARGETS["wire"])
+
+    def test_race_state_holds_no_lost_update_and_record_integrity(self):
+        seeds = {e["from"]: e for e in B.seeds_race_state()}
+        for name in ("seed:four_markers_distinct", "seed:save_distinct_records",
+                     "seed:seen_and_retained_together", "seed:unknown_ops"):
+            self.assertIn(B._with_rig(lambda: B.check("race_state", seeds[name])),
+                          ("accepted", "refused"), name)
+
+    def test_a_hostile_server_never_establishes_the_client(self):
+        seeds = {e["from"]: e for e in B.seeds_dtls_hostile()}
+        for name, seed in seeds.items():
+            first = B._with_rig(lambda: B.check("dtls_hostile", seed))
+            self.assertEqual(first,
+                             B._with_rig(lambda: B.check("dtls_hostile", seed)), name)
+        self.assertEqual("accepted",
+                         B._with_rig(lambda: B.check("dtls_hostile",
+                                                     seeds["seed:full_handshake"])))
+
+    def test_a_mutated_hostile_step_never_breaks_the_client(self):
+        junk = [{"op": {"x": 1}}, {"op": "deliver", "n": "all", "flip": "x",
+                 "dup": -2, "cut": None, "reverse": 1}, {"op": "inject", "bytes": "zz"},
+                {"op": "inject", "bytes": 999}, {"op": "tick", "dt": float("nan")},
+                {"op": "app"}, 7, None]
+        entry = {"id": "x", "kind": "payload", "data": junk, "from": "", "mutator": "", "arcs": 0}
+        self.assertIn(B._with_rig(lambda: B.check("dtls_hostile", entry)),
+                      ("accepted", "refused"))
+
+    def test_distill_keeps_full_arc_coverage_and_drops_a_redundant_entry(self):
+        session = B.Session("dtls_hostile", [])
+        a1, a3, a2 = frozenset({1}), frozenset({1, 2, 3}), frozenset({1, 2})
+        session.entries = [
+            dict(B.make_entry("payload", 0, "seed:s", "seed"), id="s"),
+            dict(B.make_entry("payload", 0, "grown:a", "m"), id="a", mutator="m"),
+            dict(B.make_entry("payload", 0, "grown:b", "m"), id="b", mutator="m")]
+        session.hits = {"s": a1, "a": a3, "b": a2}
+        kept, dropped = session.distill()
+        self.assertEqual(session._distill_full, session._distill_covered)
+        kept_ids = {e["id"] for e in kept}
+        self.assertIn("s", kept_ids)   # seed pinned
+        self.assertIn("a", kept_ids)   # covers 1,2,3
+        self.assertEqual(["b"], [e["id"] for e in dropped])  # subset of a
 
     def test_a_session_script_replays_the_same_way_twice(self):
         seeds = {e["from"]: e for e in B.seeds_dtls_session()}
@@ -586,8 +629,10 @@ class TechniquesTest(unittest.TestCase):
     def test_race_targets_sit_out_the_surface_differential_and_the_kill_set(self):
         self.assertEqual([], B.platform_disagreements("race_board"))
         self.assertEqual([], B.platform_disagreements("race_stash"))
+        self.assertEqual([], B.platform_disagreements("race_state"))
         from runner.tools import de_dust_survivors as S
         self.assertNotIn("race_board", S.targets_for("board"))
+        self.assertNotIn("race_state", S.targets_for("runner"))
         self.assertIn("board", S.targets_for("board"))
 
     def test_the_tracer_follows_threads(self):

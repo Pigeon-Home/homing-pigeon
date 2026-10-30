@@ -155,6 +155,12 @@ class CorpusReplayTest(unittest.TestCase):
     def test_race_board(self):
         self._check("race_board")
 
+    def test_race_state(self):
+        self._check("race_state")
+
+    def test_dtls_hostile(self):
+        self._check("dtls_hostile")
+
     def test_race_stash(self):
         self._check("race_stash")
 
@@ -241,11 +247,19 @@ class CorpusFilesTest(unittest.TestCase):
         self.assertGreater(len(lines), 1, "no run recorded yet")
         for line in lines[1:]:
             rec = json.loads(line)
-            self.assertIn(rec["kind"], ("seed", "grow", "survivors", "plan"))
+            self.assertIn(rec["kind"], ("seed", "grow", "survivors", "plan",
+                                        "distill"))
             if rec["kind"] == "plan":
                 # One line per cycling grow: the slice each target was
                 # given and why (de_dust2).
                 for key in ("when", "head", "slice", "targets"):
+                    self.assertIn(key, rec, line[:120])
+                continue
+            if rec["kind"] == "distill":
+                # One line per --write distill: the trim and the arcs
+                # it still covers (de_dust2).
+                for key in ("when", "head", "target", "entries_before",
+                            "entries_after", "arcs"):
                     self.assertIn(key, rec, line[:120])
                 continue
             if rec["kind"] == "survivors":
