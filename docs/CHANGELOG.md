@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.39 - 2026-10-29
+
+- **Q115, Q116.** The key directory speaks at the job's door and the
+  DTLS door. de_dust2's first findings are fixed and retired. A slow
+  try is confirmed twice before it is filed.
+
+I don't know who's dropping the wheel over here, but the bugs are
+fixed so no one exploits the runner that's running right now.
+
 ## 3.14.38 - 2026-10-29
 
 - **Routine patch release.** Fixes a red main build: the project
