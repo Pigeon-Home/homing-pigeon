@@ -40,7 +40,7 @@
       "compat/netflow9.c",
       "LICENSE"
     ],
-    "pin": "b1d9248b7e0d4c33d8c9913c574b9ae16a223a6d",
+    "pin": "5b30eb82afce2c21eda2a4986849bc06dd425212",
     "ref": "master",
     "repo": "https://github.com/irino/softflowd"
   },
