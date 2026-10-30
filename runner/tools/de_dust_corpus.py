@@ -121,6 +121,7 @@ so every run is in the history and replayable from its seed.
 import argparse
 import copy
 import base64
+import errno
 import hashlib
 import json
 import ntpath
@@ -772,7 +773,7 @@ class _LocalRig:
     runner's log and the Oracle wake-up quiet for the run."""
 
     def __init__(self):
-        self.dir = tempfile.mkdtemp(prefix="hp-de_dust-")
+        self.dir = _tmpdir(prefix="hp-de_dust-")
         self._patches = [
             mock.patch.object(R, "log", lambda *a, **k: None),
             mock.patch.object(R, "_maybe_wake_oracle",
@@ -1226,7 +1227,7 @@ class _StepClock(datetime):
 
 
 def _board_sequence(spec):
-    base = tempfile.mkdtemp(prefix="hp-de_dust-board-")
+    base = _tmpdir(prefix="hp-de_dust-board-")
     # What the board logs is part of what the sequence pins: the
     # host's log and vlog are handed in (the board's own seam), each
     # line recorded with the channel it took, the scratch path
@@ -1493,7 +1494,7 @@ def _channel_files(spec, reserved=("done", _NEIGHBOR)):
 
 
 def _channel_sequence(spec):
-    base = tempfile.mkdtemp(prefix="hp-de_dust-chan-")
+    base = _tmpdir(prefix="hp-de_dust-chan-")
     try:
         paths = TR.ensure_channel_dirs(base, _CHANNEL)
         inbox = paths["inbox"]
@@ -1675,7 +1676,7 @@ def check_local_inbox(entry):
 
 
 def _local_inbox_sequence(spec):
-    base = tempfile.mkdtemp(prefix="hp-de_dust-lin-")
+    base = _tmpdir(prefix="hp-de_dust-lin-")
     try:
         inbox = os.path.join(base, R.LOCAL_INBOX_DIRNAME)
         os.makedirs(inbox)
@@ -2463,7 +2464,7 @@ def check_race_board(entry):
     if isinstance(switch, bool) or not isinstance(switch, (int, float)) \
             or switch != switch or not 1e-6 <= switch <= 1e-2:
         switch = 1e-5
-    base = tempfile.mkdtemp(prefix="hp-de_dust-race-")
+    base = _tmpdir(prefix="hp-de_dust-race-")
     path = os.path.join(base, "board.json")
     board = BD.Board(path)
     log = []                  # (thread, op, task, result) in completion order
@@ -2676,7 +2677,7 @@ def check_race_stash(entry):
     if isinstance(switch, bool) or not isinstance(switch, (int, float)) \
             or switch != switch or not 1e-6 <= switch <= 1e-2:
         switch = 1e-5
-    base = tempfile.mkdtemp(prefix="hp-de_dust-stash-")
+    base = _tmpdir(prefix="hp-de_dust-stash-")
     events = []
     lock = threading.Lock()
     errors = []
@@ -2862,7 +2863,7 @@ def check_race_state(entry):
     if isinstance(switch, bool) or not isinstance(switch, (int, float)) \
             or switch != switch or not 1e-6 <= switch <= 1e-2:
         switch = 1e-5
-    base = tempfile.mkdtemp(prefix="hp-de_dust-state-")
+    base = _tmpdir(prefix="hp-de_dust-state-")
     try:
         seen_path = os.path.join(base, "seen.json")
         now = time.time()
@@ -3981,7 +3982,7 @@ def check_query(entry):
         note("gate", "unsignable", _short(e))
         return "refused"
     opts = _mail_opts(data)
-    base = tempfile.mkdtemp(prefix="hp-de_dust-query-")
+    base = _tmpdir(prefix="hp-de_dust-query-")
     try:
         planted = _query_plant_senses(base, data.get("senses"))
         if planted:
@@ -4361,7 +4362,7 @@ def check_board_mail(entry):
         note("gate", "unsignable", _short(e))
         return "refused"
     opts = _mail_opts(data)
-    base = tempfile.mkdtemp(prefix="hp-de_dust-bmail-")
+    base = _tmpdir(prefix="hp-de_dust-bmail-")
     _StepClock._tick = 0
     try:
         path = os.path.join(base, "board.json")
@@ -4659,7 +4660,7 @@ def check_v2_mail(entry):
         note("gate", "unsignable", _short(e))
         return "refused"
     opts = _mail_opts(data)
-    base = tempfile.mkdtemp(prefix="hp-de_dust-v2-")
+    base = _tmpdir(prefix="hp-de_dust-v2-")
     try:
         secrets = R.build_secrets(cfg)
         seen = {}
@@ -4834,7 +4835,7 @@ def _stage_name(name):
     the relative path is the name itself. A refusal there (a
     directory the host will not create) is a refusal, not a crash:
     the rules are the first gate and the staging check the second."""
-    work = tempfile.mkdtemp(prefix="hp-de_dust-names-")
+    work = _tmpdir(prefix="hp-de_dust-names-")
     try:
         root = os.path.realpath(work)
         dest, exc = _call(R._staged_dest, work, name, root)
@@ -6200,7 +6201,7 @@ def check_board(entry):
     ids only; the board file is a private temp and does not
     outlive the check."""
     task = entry["data"]
-    directory = tempfile.mkdtemp(prefix="hp-bm-board-")
+    directory = _tmpdir(prefix="hp-bm-board-")
     previous = BD._LOGGER
     try:
         BD.set_logger(lambda *_a, **_k: None)
@@ -6416,7 +6417,7 @@ def check_channels(entry):
     data = entry["data"] if isinstance(entry["data"], dict) else {}
     poison = data.get("poison", entry["data"])
     other = data.get("other", "")
-    directory = tempfile.mkdtemp(prefix="hp-bm-channel-")
+    directory = _tmpdir(prefix="hp-bm-channel-")
     saved_cap = TR.FILE_MAX_BYTES
     try:
         paths = TR.ensure_channel_dirs(directory, _CHANNEL_NAME)
@@ -9003,7 +9004,7 @@ def check_collect(entry):
     budget = data.get("budget")
     cfg = {"max_output_file_bytes": budget} if budget is not None else {}
     limit = EXE._max_output_file_bytes(cfg)
-    base = tempfile.mkdtemp(prefix="hp-de_dust-collect-")
+    base = _tmpdir(prefix="hp-de_dust-collect-")
     try:
         work = os.path.join(base, "work")
         os.makedirs(work)
@@ -9321,7 +9322,40 @@ def load(path):
     return out
 
 
+# A write that a flickering disk refuses once is tried again (Menlo
+# Park, 30-OCT: "operation not permitted" at random on temp files,
+# the corpus and the ledger, landing on the next try). Five tries over
+# about three seconds; past that the fault is the machine's and the
+# OSError stands.
+_PATIENT_ERRNOS = {errno.EPERM, errno.EACCES, errno.ENOENT, errno.EIO,
+                   errno.EBUSY, errno.EAGAIN}
+_PATIENT_TRIES = 5
+_PATIENT_NAP = 0.1
+
+
+def _patient(fn, *args, **kwargs):
+    """fn(*args) with retries on the errnos a flaky disk answers."""
+    nap = _PATIENT_NAP
+    for attempt in range(_PATIENT_TRIES):
+        try:
+            return fn(*args, **kwargs)
+        except OSError as e:
+            if e.errno not in _PATIENT_ERRNOS or attempt == _PATIENT_TRIES - 1:
+                raise
+            time.sleep(nap)
+            nap *= 2
+
+
+def _tmpdir(prefix):
+    """tempfile.mkdtemp, patiently."""
+    return _patient(tempfile.mkdtemp, prefix=prefix)
+
+
 def save(path, target, entries):
+    _patient(_save_once, path, target, entries)
+
+
+def _save_once(path, target, entries):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
@@ -9387,6 +9421,10 @@ def write_arcs(target, arcs):
     line numbers move with every edit of the reader."""
     rows = sorted([os.path.relpath(f, ROOT).replace(os.sep, "/"), a, b]
                   for f, a, b in arcs)
+    _patient(_write_arcs_once, target, rows)
+
+
+def _write_arcs_once(target, rows):
     path = arcs_path(target)
     os.makedirs(CORPUS_DIR, exist_ok=True)
     tmp = path + ".tmp"
@@ -9402,6 +9440,10 @@ def record_run(record):
     """One line per seed or grow in runs.jsonl: what ran, with which
     seed, against which head, and what it found -- the proof of the
     work, replayable from the seed and the corpus before it."""
+    _patient(_record_run_once, record)
+
+
+def _record_run_once(record):
     path = runs_path()
     os.makedirs(CORPUS_DIR, exist_ok=True)
     new = not os.path.exists(path)
@@ -10813,6 +10855,42 @@ def cmd_distill(args, out=print):
     return status
 
 
+def cmd_disk(args, out=print):
+    """Put a number on a flickering disk: make, write, rename and
+    remove `--writes` small files under the corpus directory (or
+    --where), one try each, and report how many failed and with
+    what errno. A healthy disk answers zero. For a rig that reports
+    "operation not permitted" at random (Menlo Park, 30-OCT)."""
+    where = args.where or CORPUS_DIR
+    os.makedirs(where, exist_ok=True)
+    failed = {}
+    t0 = time.perf_counter()
+    for i in range(args.writes):
+        path = os.path.join(where, f".disk-probe-{os.getpid()}-{i}")
+        try:
+            with open(path + ".tmp", "w", encoding="utf-8") as fh:
+                fh.write("x" * 512)
+            os.replace(path + ".tmp", path)
+            with open(path, encoding="utf-8") as fh:
+                if len(fh.read()) != 512:
+                    failed["short-read"] = failed.get("short-read", 0) + 1
+            os.remove(path)
+        except OSError as e:
+            name = errno.errorcode.get(e.errno, str(e.errno))
+            failed[name] = failed.get(name, 0) + 1
+            for p in (path, path + ".tmp"):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+    bad = sum(failed.values())
+    out(f"disk probe at {where}: {args.writes} writes in "
+        f"{time.perf_counter() - t0:.1f} s, {bad} failed"
+        + (": " + ", ".join(f"{k} x{v}" for k, v in sorted(failed.items()))
+           if failed else ""))
+    return 1 if bad else 0
+
+
 def cmd_stats(args, out=print):
     if getattr(args, "yield_table", False):
         hours = getattr(args, "hours", 48) or 48
@@ -10876,6 +10954,11 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("dictionary")
     p.set_defaults(fn=cmd_dictionary)
+    p = sub.add_parser("disk", help="count failed writes on a flickering disk")
+    p.add_argument("--writes", type=int, default=200)
+    p.add_argument("--where", default=None,
+                   help="directory to probe (default: the corpus directory)")
+    p.set_defaults(fn=cmd_disk)
     for name, fn in (("seed", cmd_seed), ("grow", cmd_grow),
                      ("replay", cmd_replay), ("platform", cmd_platform),
                      ("promote", cmd_promote), ("distill", cmd_distill),

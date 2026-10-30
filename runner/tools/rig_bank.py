@@ -51,6 +51,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 STAMP = "00000000-muse-7e57-d0c5-58316a922026"
 REPO_URL = "https://github.com/Pigeon-Home/homing-pigeon.git"
@@ -433,12 +434,20 @@ def _git(args, cwd, pat=None):
     if pat:
         url = f"https://x-access-token:{pat}@github.com/Pigeon-Home/homing-pigeon.git"
     args = [a.replace(REPO_URL, url) for a in args]
-    proc = subprocess.run(
-        ["git"] + args, cwd=cwd, capture_output=True, text=True, timeout=300
-    )
-    if proc.returncode != 0:
-        raise Refusal(f"git {' '.join(args[:2])} failed (output withheld)")
-    return proc.stdout
+    # A rig whose disk refuses a write at random (Menlo Park, 30-OCT)
+    # sees git fail on an empty pack or a temp file and land on the
+    # next try; fetch, clone and push are safe to repeat. Three tries.
+    nap = 2.0
+    for attempt in range(3):
+        proc = subprocess.run(
+            ["git"] + args, cwd=cwd, capture_output=True, text=True, timeout=300
+        )
+        if proc.returncode == 0:
+            return proc.stdout
+        if attempt < 2:
+            time.sleep(nap)
+            nap *= 2
+    raise Refusal(f"git {' '.join(args[:2])} failed after 3 tries (output withheld)")
 
 
 HOLD_EXIT = 75
@@ -454,13 +463,27 @@ def muster_holds(clone):
     return os.path.exists(os.path.join(clone, "docs", "use", "muster.hold"))
 
 
+def _mkdtemp(prefix):
+    """tempfile.mkdtemp with retries: a flickering disk refuses the
+    directory once and makes it the next time (Menlo Park, 30-OCT)."""
+    nap = 0.2
+    for attempt in range(5):
+        try:
+            return tempfile.mkdtemp(prefix=prefix)
+        except OSError:
+            if attempt == 4:
+                raise
+            time.sleep(nap)
+            nap *= 2
+
+
 def bank(rig, corpus_dir, pat_file, resources=None, dry_run=False):
     with open(pat_file, encoding="utf-8") as fh:
         pat = fh.read().strip()
     # Snapshot the rig's corpus first: the bank then reads a still
     # copy even if the rig's grow resets its tree mid-bank.
-    snap = tempfile.mkdtemp(prefix="rig-bank-snap-")
-    work = tempfile.mkdtemp(prefix="rig-bank-")
+    snap = _mkdtemp("rig-bank-snap-")
+    work = _mkdtemp("rig-bank-")
     try:
         return _bank_inner(rig, corpus_dir, pat, snap, work,
                            resources, dry_run)

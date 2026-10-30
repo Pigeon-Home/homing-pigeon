@@ -16,6 +16,7 @@ prints the per-target table the review was built from.
 """
 import argparse
 import json
+import errno
 import os
 import shutil
 import random
@@ -724,6 +725,55 @@ class ParallelDrainTest(unittest.TestCase):
         status = B.run_parallel([("a", cmd), ("b", cmd)], 2, out=lines.append)
         self.assertEqual(0, status)
         self.assertEqual(2, lines.count("end"))
+
+
+class FlickeringDiskTest(unittest.TestCase):
+    """Menlo Park, 30-OCT: a write refused at random lands on the
+    next try. The tool's writes and temp dirs retry; the disk probe
+    counts what a disk refuses."""
+
+    def test_a_write_refused_twice_lands_on_the_third_try(self):
+        calls = []
+
+        def flaky(*a, **k):
+            calls.append(1)
+            if len(calls) < 3:
+                raise OSError(errno.EPERM, "Operation not permitted")
+            return "landed"
+        with mock.patch.object(B.time, "sleep", lambda s: None):
+            self.assertEqual("landed", B._patient(flaky))
+        self.assertEqual(3, len(calls))
+
+    def test_a_fault_that_is_not_the_disk_s_is_not_retried(self):
+        calls = []
+
+        def broken(*a, **k):
+            calls.append(1)
+            raise OSError(errno.ENOSPC, "No space left on device")
+        with self.assertRaises(OSError):
+            B._patient(broken)
+        self.assertEqual(1, len(calls))
+
+    def test_a_disk_that_never_answers_raises_after_five_tries(self):
+        calls = []
+
+        def dead(*a, **k):
+            calls.append(1)
+            raise OSError(errno.EPERM, "Operation not permitted")
+        with mock.patch.object(B.time, "sleep", lambda s: None), \
+                mock.patch.object(B.tempfile, "mkdtemp", dead), \
+                self.assertRaises(OSError):
+            B._tmpdir("x-")
+        self.assertEqual(5, len(calls))
+
+    def test_the_disk_probe_reads_zero_on_a_healthy_disk(self):
+        where = tempfile.mkdtemp(prefix="hp-probe-")
+        lines = []
+        status = B.cmd_disk(argparse.Namespace(writes=20, where=where), out=lines.append)
+        self.assertEqual(0, status)
+        self.assertIn("20 writes", lines[0])
+        self.assertIn("0 failed", lines[0])
+        self.assertEqual([], os.listdir(where))
 
 
 class LedgerTest(unittest.TestCase):
