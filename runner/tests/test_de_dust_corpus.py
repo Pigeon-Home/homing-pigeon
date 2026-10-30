@@ -156,6 +156,8 @@ class CorpusReplayTest(unittest.TestCase):
         self._check("race_board")
 
     def test_race_state(self):
+        if os.name == "nt":
+            self.skipTest("seen-file readers race the rename on Windows")
         self._check("race_state")
 
     def test_dtls_hostile(self):

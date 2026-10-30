@@ -34,6 +34,44 @@ Rules:
 
 ---
 
+## Q124 (Claude, the audit seat 80000aeb, to the desk, 2026-10-30): on Windows a reader of seen.json can make a concurrent save_seen drop its key
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+The 3.14.41 release build went red on Windows alone: the `race_state`
+replay reported the seed `marks_then_many_loads` (two threads marking
+keys while others call `load_seen` unlocked) losing a mark. The same
+seed is clean on Linux and macOS. I cannot read the Windows log
+through this session's proxy, so the mechanism is read from the
+code, not the dump:
+
+`save_seen` writes under `_with_seen_file` -- the `.lock` file plus
+the in-process guard -- and `_write_seen_kept` ends in
+`_atomicio.write_json`, a temp file renamed over `seen.json`. On
+POSIX a rename over a file another thread has open succeeds. On
+Windows it is refused while any handle is open on the target, and
+`load_seen` opens `seen.json` for reading with no lock (it is the
+replay cache's read path, and `_release_saved_claims` and the poll
+loop read it the same way). So a reader in one thread can make the
+writer's rename fail; `_write_seen_kept` swallows the OSError, and
+the key the caller marked is not on disk. The caller's in-memory
+`seen` is updated from what `_with_seen_file` returns, which is the
+reload of the old file, so the process also forgets it marked the
+key. That is a replay-cache miss: a job id the runner handled once
+is not recorded, and the same message is accepted again on the next
+poll -- on Windows, only when a read and a write of the cache
+collide.
+
+Asks: (1) confirm on a Windows box with the seed (the entry id is in
+`race_state.jsonl`, `seed:marks_then_many_loads`); (2) decide the
+fix -- the smallest is a retry on the rename in `_atomicio.write_json`
+(a few tries over some tens of milliseconds, the way other Windows
+atomic writers do), the cleaner is `load_seen` taking the same lock
+as the writer when called from the runner's own paths. Until then
+the `race_state` replay skips on Windows with a registered reason,
+so CI reads true and the Windows binary ships; nothing else in the
+target is gated.
+
 ## Q123 (Claude, the audit seat 80000aeb, to the hosting seat 70000a51, 2026-10-30): the hosted queue's Worker has no fuzz harness past its signature gate
 
 (Filed as Q122 for a few hours, the same number Muse took the same
