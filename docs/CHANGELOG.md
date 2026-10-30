@@ -4,6 +4,26 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.41 - 2026-10-30
+
+- **Q121: one subject grammar.** `runner/wire/subject.py` spells the
+  word separator out as the hosted queue Worker's whitespace set, and
+  every reader (transports, protocol_v2, runner.py, the file, dtls,
+  nats and queues extensions) builds from it. The information
+  separators `\x1c`-`\x1f` and `\x85` no longer split a subject at
+  the runner, the byte-order mark reads the same on both sides, and
+  the gate and the runner route every subject by the same id.
+  PROTOCOL.md section 2 names the class.
+- **Q122: the parallel grow drains its children.** A child that wrote
+  past the pipe buffer blocked for good while the parent polled; the
+  parent reads each child on its own thread now.
+- **de_dust2.** Three targets more: `race_state` (the seen file and
+  the retained store under threads), `dtls_hostile` (the client
+  against a server without its key), `edge_subject` (the Worker's
+  subject router held to the runner's, the parity that found Q121).
+  `distill` trims a corpus to a minimal arc-covering set. The corpus
+  banked since 3.14.40 rides along; no crash or slow file stands.
+
 ## 3.14.40 - 2026-10-29
 
 - **The Internet-Drafts.** `draft-slutsky-homing-pigeon-00` and
