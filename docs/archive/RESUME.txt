@@ -2,7 +2,7 @@ ANDREW SLUTSKY
 slutsky5544@gmail.com
 
 SUMMARY
-=======
+-------
 Security software engineer with over 15 years in cybersecurity: cryptographic
 interoperability and product certification, public key infrastructure, code
 signing, and fuzzing platforms. Built and evaluated the systems other

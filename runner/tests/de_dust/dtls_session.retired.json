@@ -1,0 +1,27 @@
+{
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "de_dust": 1,
+ "retired": {
+  "015bc3768713502f": {
+   "head": "83914909f1fc",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "0a8d5d93fa061942": {
+   "head": "83914909f1fc",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "65967d8cd7b16677": {
+   "head": "83914909f1fc",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "b81636e81fab2e7a": {
+   "head": "83914909f1fc",
+   "on": "2026-10-30",
+   "why": "redundant"
+  }
+ },
+ "target": "dtls_session"
+}

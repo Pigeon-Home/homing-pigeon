@@ -2060,6 +2060,7 @@ class _SessionRun:
         self.seen_events = 0
         self.established = set()    # client indexes that established
         self.begun = {}             # server cid -> (client index, key stood)
+        self.replaced = set()       # server cids whose client was restarted
         self.steps = 0
 
     # -- helpers ---------------------------------------------------------
@@ -2112,6 +2113,8 @@ class _SessionRun:
             if not isinstance(ev, tuple) or not ev:
                 raise Crash("shape", "a server event is not a tuple")
             if ev[0] == "established":
+                if ev[1] in self.replaced:
+                    continue
                 info = ev[2] if len(ev) > 2 and isinstance(ev[2], dict) else {}
                 i, c = self._client_at(info.get("addr"))
                 if c is None:
@@ -2195,6 +2198,20 @@ class _SessionRun:
                                  ticket=ticket, rng=lambda n, b=rng_byte: b * n)
         if key == "wrong":
             core._identity = DT.identity_for("")
+        if i in self.clients:
+            # A restart replaces the client at that index. What the
+            # old one left in flight is not the new one's, and a
+            # session the server already holds for the address was
+            # that client's: its events are not judged against the
+            # new core (de_dust2: the "established before Finished"
+            # echo was the old session's retransmitted Finished).
+            self.c2s = [(j, dg) for j, dg in self.c2s if j != i]
+            self.s2c = [(j, dg) for j, dg in self.s2c if j != i]
+            self._check_events()
+            for cid, sess in self.server.sessions.items():
+                if self._client_at(sess.peer_addr)[0] == i:
+                    self.begun[cid] = (i, None)
+                    self.replaced.add(cid)
         self.clients[i] = {"core": core, "addr": _SESSION_ADDRS[i], "key": key,
                            "ticket_ok": ticket_ok, "addrs": {_SESSION_ADDRS[i]}}
         out = self._client(core, core.start, self.now)

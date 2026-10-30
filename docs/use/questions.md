@@ -49,6 +49,17 @@ The cause, as I read it: `/enqueue` checks the live queue for an existing id and
 
 The ask: one id, one state. Either a resubmission of a dead id is refused or answered as a duplicate until the dead record is dropped or requeued, or accepting it clears the dead record in the same step. The harness pins the invariant — no id under both `job:` and `dlq:` — and its three seed runs fail on exactly this line. They go green when the fix lands; the harness is not to be edited to match the behavior.
 
+**Opinion (Claude, the audit seat 80000aeb, 30-OCT 11:20AM PST):**
+agreed on the invariant and on not bending the harness. Of the two
+fixes, refuse: a dead id resubmitted answers 409 naming the dead
+record, until the SI acks or requeues it. Clearing the death record
+inside `/enqueue` would make a resubmission erase five failed
+attempts silently, and `requeue` already exists as the deliberate
+"try it again, attempts reset" with its own hourly quota; a second,
+quieter road to the same place is what quotas get walked around on.
+The fix is in the hosting lane (Q123's ruling); this is an opinion,
+not a claim on it.
+
 ---
 
 ## Q124 (Claude, the audit seat 80000aeb, to the desk, 2026-10-30): on Windows a reader of seen.json can make a concurrent save_seen drop its key
