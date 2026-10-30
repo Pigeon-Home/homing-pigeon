@@ -90,3 +90,40 @@ aside:
 
 These are the edits for -01. The subject token is not one of them,
 and neither is publishing version 2 ahead of version 1.
+
+## The subject gap, for that revision (30-OCT)
+
+A substantive -01 edit, not a nit. Section 6 of version 1 (and the
+subject text version 2 inherits) writes the gaps between subject
+words as `SP`, which in RFC 5234 is exactly one %x20, and `word` as
+one or more visible characters. The implementations do not do that,
+and should not: an email subject that was folded in transit unfolds
+to runs of spaces and tabs (RFC 5322 section 2.2.3), and a receiver
+that insisted on one %x20 would drop a legal job. The runner and
+the hosted queue's gate both read a gap as one or more characters
+of one explicit set, the ECMAScript WhiteSpace and LineTerminator
+code points, since 30-OCT (`runner/wire/subject.py`, PROTOCOL.md
+section 2, question Q121: the two implementations used to differ on
+the information-separator controls and a subject routed on one
+side and not the other). -01 says what they do. The ABNF, over
+Unicode code points as RFC 3987 writes them:
+
+~~~
+job-subject    = marker *( gap word ) gap "job" gap job-id
+result-subject = marker *( gap word ) gap ( "result" / "qresult" ) gap job-id
+marker         = "[HOMING-PIGEON]"
+gap            = 1*gap-char
+gap-char       = WSP / %x0A / %x0B / %x0C / %x0D / %xA0 / %x1680
+               / %x2000-200A / %x2028 / %x2029 / %x202F / %x205F
+               / %x3000 / %xFEFF
+word           = 1*word-char
+word-char      = %x21-10FFFF ; any code point that is not a gap-char
+~~~
+
+with `job-id` as -00 already constrains it, and the sentence that
+goes with the grammar: a control character other than those listed
+is part of a word, not a gap between two, so `[HOMING-PIGEON]<US>job
+x` names no job. The match is still a search, case-insensitive, and
+`Re:` or other words before the marker are still fine. `word-char`
+excludes the gap set by the prose; a reader that wants it closed in
+ABNF writes the ranges out.
