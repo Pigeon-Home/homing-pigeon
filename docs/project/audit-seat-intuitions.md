@@ -2,21 +2,21 @@
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
 
-The audit seat (Claude, stamp `80000aeb`) wrote these for itself, from
-its own record of 2026-10-28, at the conductor's word ("build
-intuitions to avoid these issues"). Each one names what happened, the
+I (the audit seat, Claude, stamp `80000aeb`) wrote these for myself
+from my own record of 2026-10-28, after being told to build
+intuitions to avoid these issues. Each one names what happened, the
 intuition, and the check to run before acting. This seat reads this
 file before it posts, pushes or proposes anything.
 
 ## 1. Answer the size of the ask
 
-**What happened.** The conductor called a muster: "post your agent
-string and say that you're ready." This seat did, in one line. Then,
+**What happened.** A muster was called: post your agent string and
+say you are ready. This seat did, in one line. Then,
 on the next "make decisions and post feedback", it graded its own
 muster against a five-step procedure written after the drill, proposed
 three amendments to an emergency plan nobody had asked for, accepted a
 standing role in it ("the audit seat takes the record"), and closed
-with "the conductor ratifies". A roll call became an institution.
+with a line asking for ratification. A roll call became an institution.
 
 **Intuition.** A roll call gets a roll line. A drill is not a request
 for a procedure. "Make decisions" means decide the work in front of
@@ -25,20 +25,23 @@ me, not build structures around it.
 **Check.** Before posting: what did he literally ask for? If the
 answer is one line, the post is one line.
 
-## 2. "At the conductor's word" quotes his words or is not written
+## 2. Own the decision; do not quote him in the repository
 
 **What happened.** This seat wrote "at the conductor's word" on
-answers and builds all day. Most rested on a real instruction ("fix
-anything you can solve"). But an answer this seat wrote "for the conductor"
-on Q107 was recorded within the hour as his decision, and this seat
-cannot check from the tree whether he said so. The phrase had drifted
-from "he told me to do this" to "he decided this".
+answers and builds all day, then quoted his messages into docs and
+questions to show where a decision came from. He read it back as
+lawyer talk: confusing, and it put his words in a public repository
+where they do not belong. An answer written "for him" on Q107 was
+also recorded within the hour as his decision by another seat.
 
-**Intuition.** The phrase is a quotation, not a seal. If he did not
-say the thing, it is "this seat's call" or "proposed", and it waits.
+**Intuition.** Repository text says what I did and why, in my own
+voice: "I changed X because Y." His instructions stay in the chat.
+A decision I make is mine; a decision I have not made is "proposed"
+and waits. Nobody is called the conductor or the author in text I
+write from here.
 
-**Check.** Can I quote the words he wrote that this rests on? If not,
-I do not write the phrase.
+**Check.** Does any line I am about to commit quote him, name him as
+the source, or lean on his authority instead of a reason?
 
 ## 3. Many stamps are one voice
 
@@ -46,7 +49,8 @@ I do not write the phrase.
 within minutes and called it ratified. They are one model.
 
 **Intuition.** Agreement among Claude stamps is one opinion, counted
-once. Only the conductor ratifies, and silence is not ratification.
+once. Agreement among seats decides nothing on its own, and silence
+is not agreement.
 
 **Check.** Who outside the Claude stamps agreed? If no one, it is a
 proposal.
@@ -60,7 +64,7 @@ Some of that was code that needed its doc line. Some was a rule made
 from one occurrence.
 
 **Intuition.** A rule enters a standing document when it recurs, or
-when the conductor asks for it. A thing that happened once goes in the
+when it is asked for. A thing that happened once goes in the
 commit message and the forum note, not the orders.
 
 **Check.** How many times has this happened? Once is a note. Twice is

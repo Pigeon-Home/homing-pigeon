@@ -2,11 +2,10 @@
 
 <!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
 
-The campaign is **de_dust2** from 29-OCT 8:21PM PST (the conductor:
-"Change the name of the campaign to de_dust2"). Ledger lines, bank
-titles and the hourly note carry the new name from then; the tool,
-the corpus directory and the test keep their paths. The strategy
-under review is `docs/project/de_dust2.md`.
+The campaign is **de_dust2** from 29-OCT. Ledger lines, bank titles
+and the hourly note carry the new name from then; the tool, the
+corpus directory and the test keep their paths. The strategy is
+`docs/project/de_dust2.md`.
 
 The campaign runs continuously from this file. It does not wait for
 a new batch of questions. When one piece of work closes, the next
@@ -168,8 +167,7 @@ order, 2026-10-25, after a release was blocked twice in one hour):
   which is red: the fix commit removes the decorator. A red probe
   in the live suite blocks every release behind it; an expected
   failure blocks nothing and is just as much a proof.
-- A release on change, not on bank (de_dust2 P9, the conductor's
-  "OK, implement everything", 29-OCT 8:29PM PST): a release is cut
+- A release on change, not on bank (de_dust2 P9, 29-OCT): a release is cut
   when the runner changes, or once a day, never for a bank alone;
   the corpus rides whichever release comes next, and the FULL STAMP
   verification keeps pace with the train.
@@ -448,8 +446,7 @@ The loop:
    the ledger. The campaign never idles between grows and stops
    only on the conductor's word.
 2. **Grow.** Under de_dust2 (29-OCT, `docs/project/de_dust2.md`,
-   decided by the audit seat at the conductor's "OK, implement
-   everything"), each rig runs its lane, started again at every
+   the audit seat's decision), each rig runs its lane, started again at every
    rules refresh, `--jobs` at the box's core count and no other
    grow work beside it (the note, the banks and the liveness watch
    stay): Nuremberg `HP_DE_DUST_ARCHIVE=<the archive directory>
@@ -458,7 +455,7 @@ The loop:
    (all targets); San Francisco the same with `--target
    query,local,board_mail,v2_mail --slice 1800`; Menlo Park two
    grow processes, each `--jobs 1`, one on `--target wire,cloud,v2,crypto,local,stash,mail,board,board_ops,channels,manifest,inbox,local_inbox,secret,queries,names,query,board_mail,v2_mail,stage,collect
-   --slice 120` and one on `--target keydir,address,dtls --slice
+   --slice 120` and one on `--target keydir,address,dtls,dtls_session,race_board --slice
    600` (two processes never share a target, since each target owns
    its corpus file), with `runner/tools/de_dust_survivors.py` once a
    day in a fixed slot.

@@ -149,6 +149,12 @@ class CorpusReplayTest(unittest.TestCase):
     def test_address(self):
         self._check("address")
 
+    def test_dtls_session(self):
+        self._check("dtls_session")
+
+    def test_race_board(self):
+        self._check("race_board")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes
@@ -232,7 +238,13 @@ class CorpusFilesTest(unittest.TestCase):
         self.assertGreater(len(lines), 1, "no run recorded yet")
         for line in lines[1:]:
             rec = json.loads(line)
-            self.assertIn(rec["kind"], ("seed", "grow", "survivors"))
+            self.assertIn(rec["kind"], ("seed", "grow", "survivors", "plan"))
+            if rec["kind"] == "plan":
+                # One line per cycling grow: the slice each target was
+                # given and why (de_dust2).
+                for key in ("when", "head", "slice", "targets"):
+                    self.assertIn(key, rec, line[:120])
+                continue
             if rec["kind"] == "survivors":
                 # One line per survivors run: the readers mutated and
                 # the tally for each (test_de_dust_survivors holds

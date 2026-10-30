@@ -285,10 +285,13 @@ class ArcTracer:
         self.hit = set()
         previous = sys.gettrace()
         sys.settrace(self._global)
+        # Threads a check starts (the race targets) are traced too.
+        threading.settrace(self._global)
         try:
             return fn(*args)
         finally:
             sys.settrace(previous)
+            threading.settrace(None)
             self.new = len(self.arcs) - before
 
 
@@ -1957,6 +1960,623 @@ def check_address(entry):
                     f"{_short(exc)}")
     note("to", header)
     return "accepted"
+
+
+# ------------------------------------------------------------------
+# dtls_session: stateful, in-memory protocol fuzzing (de_dust2)
+# ------------------------------------------------------------------
+#
+# The dtls target feeds one datagram to a fresh core. This one runs
+# a whole conversation in memory: up to two clients and one server,
+# a script of steps that deliver, drop, duplicate, flip, cut and
+# reorder the datagrams in flight, advance the clock, rebind an
+# address, rotate a key, resume a ticket. No sockets, no threads, a
+# fixed rng on every core, so a script replays the same way every
+# time and a keeper is a keeper everywhere. The invariants hold on
+# whatever a script does, which is what makes mutated scripts a
+# fuzz and not a test: no core raises past its contract, nothing
+# establishes under a key the server does not hold, a resumed
+# session names a key still in the map, the server only holds a
+# session established after its client sent Finished, and after
+# the give-up and the ticket lifetime nothing half-open is left.
+
+_SESSION_SECRETS = {"": "bm-secret-0001", "old": "bm-secret-old"}
+_SESSION_WRONG = "bm-secret-wrong"
+_SESSION_MAX_STEPS = 64
+_SESSION_MAX_CLIENTS = 2
+_SESSION_MAX_DELIVER = 16
+_SESSION_MAX_DUP = 4
+_SESSION_ADDRS = (("192.0.2.10", 40001), ("192.0.2.11", 40002))
+_SESSION_RNGS = (b"\x33", b"\x44")
+_SESSION_TICKETS = {
+    "live": (b"\x7a" * 24, _DTLS_TICKET_PSK),
+    "gone": (b"\x7b" * 24, _DTLS_TICKET_PSK),
+    "unrecorded": (b"\x7c" * 24, _DTLS_TICKET_PSK),
+}
+
+
+def _session_server(secrets):
+    table = {DT.identity_for(k): v for k, v in secrets.items()}
+    server = DT.DtlsServerCore(secrets_map=table, rng=lambda n: b"\x5a" * n,
+                               greeting_for=lambda s: b'{"type":"greeting","v":1}')
+    server.tickets[b"\x7a" * 24] = (_DTLS_TICKET_PSK, _DTLS_NOW + 600,
+                                   DT.identity_for(""))
+    server.tickets[b"\x7b" * 24] = (_DTLS_TICKET_PSK, _DTLS_NOW + 600, b"bm-psk-gone")
+    server.tickets[b"\x7c" * 24] = (_DTLS_TICKET_PSK, _DTLS_NOW + 600)
+    return server
+
+
+class _SessionRun:
+    """One script, interpreted step by step."""
+
+    def __init__(self, script):
+        self.script = script
+        self.secrets = dict(_SESSION_SECRETS)
+        self.server = _session_server(self.secrets)
+        self.clients = {}           # index -> dict(core, addr, key, ticket)
+        self.c2s = []               # [(index, datagram)]
+        self.s2c = []               # [(index, datagram)]
+        self.now = _DTLS_NOW
+        self.seen_events = 0
+        self.established = set()    # client indexes that established
+        self.begun = {}             # server cid -> (client index, key stood)
+        self.steps = 0
+
+    # -- helpers ---------------------------------------------------------
+
+    def _client_at(self, addr):
+        for i, c in self.clients.items():
+            if addr in c["addrs"]:
+                return i, c
+        return None, None
+
+    def _note_sessions(self):
+        """A session the server began since the last look is tied to
+        its client, with whether the client's key stood at that
+        moment: that is when the server verified the binder, and what
+        the established event is judged against."""
+        for cid, sess in self.server.sessions.items():
+            if cid in self.begun:
+                continue
+            i, c = self._client_at(sess.peer_addr)
+            self.begun[cid] = (i, None if c is None else self._key_stands(c))
+
+    def _key_stands(self, c):
+        """Does the server hold the key this client signs with, now?"""
+        key = c["key"]
+        if key == "ticket":
+            return c.get("ticket_ok", False)
+        if key == "wrong":
+            return False
+        return key in self.secrets
+
+    def _server(self, fn, *args):
+        got, exc = _call(fn, *args)
+        if exc is not None:
+            raise Crash("exception", f"the server's {fn.__name__} raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        return got
+
+    def _client(self, core, fn, *args):
+        got, exc = _call(fn, *args)
+        if exc is not None:
+            if isinstance(exc, DT.DtlsError):
+                note("client", "DtlsError", str(exc)[:60])
+                return []
+            raise Crash("exception", f"the client's {fn.__name__} raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        return got
+
+    def _check_events(self):
+        for ev in self.server.events[self.seen_events:]:
+            if not isinstance(ev, tuple) or not ev:
+                raise Crash("shape", "a server event is not a tuple")
+            if ev[0] == "established":
+                info = ev[2] if len(ev) > 2 and isinstance(ev[2], dict) else {}
+                i, c = self._client_at(info.get("addr"))
+                if c is None:
+                    raise Crash("auth", "the server established a session "
+                                "for an address no client holds")
+                begun_i, stood = self.begun.get(ev[1], (i, None))
+                if stood is None:
+                    stood = self._key_stands(c)
+                if not stood:
+                    raise Crash("auth", f"the server established client {i} "
+                                f"under a key it did not hold when the "
+                                f"session began ({c['key']})")
+                if not c["core"].finished_sent:
+                    raise Crash("contract", f"the server established client {i} "
+                                "before the client sent Finished")
+                if info.get("resumed"):
+                    sess = self.server.sessions.get(ev[1])
+                    if sess is not None and (sess.issuer is None or
+                                             self.server.secret_for(sess.issuer) is None):
+                        raise Crash("contract", "a session resumed under a "
+                                    "ticket whose issuing key is not in the map")
+                note("established", i, bool(info.get("resumed")))
+            elif ev[0] == "app":
+                # The runner answers a job on its session; the script's
+                # peer gets a result back.
+                self.s2c.extend(self._deliverables(
+                    self._server(self.server.send_app, ev[1], b"result\n")))
+        self.seen_events = len(self.server.events)
+
+    def _deliverables(self, pairs):
+        out = []
+        if not isinstance(pairs, list):
+            raise Crash("shape", "the server returned no list of datagrams")
+        for item in pairs:
+            if not (isinstance(item, tuple) and len(item) == 2):
+                raise Crash("shape", "a server datagram is not (addr, bytes)")
+            addr, dg = item
+            if not isinstance(dg, (bytes, bytearray)):
+                raise Crash("shape", "a server datagram is not bytes")
+            i, _c = self._client_at(addr)
+            if i is not None:
+                out.append((i, bytes(dg)))
+        return out
+
+    # -- steps -----------------------------------------------------------
+
+    def op_start(self, step):
+        i = self._index(step)
+        if i is None:
+            return
+        key = step.get("key", "")
+        if not isinstance(key, str):
+            return
+        ticket = None
+        ticket_ok = False
+        if isinstance(step.get("ticket"), str):
+            name = step["ticket"]
+            if name in _SESSION_TICKETS:
+                ticket = _SESSION_TICKETS[name]
+                ticket_ok = name == "live"
+            elif name.startswith("own:"):
+                src = self.clients.get(int(name[4:]) if name[4:].isdigit() else -1)
+                if src is not None and src is self.clients.get(i):
+                    return
+                if src is None or src["core"].ticket is None:
+                    return
+                ticket = src["core"].ticket
+                ticket_ok = self._key_stands(src)
+            else:
+                return
+            secret = _SESSION_SECRETS[""]
+            key = "ticket"
+        elif key == "wrong":
+            secret = _SESSION_WRONG
+        elif key in _SESSION_SECRETS:
+            secret = _SESSION_SECRETS[key]
+        else:
+            return
+        rng_byte = _SESSION_RNGS[i]
+        core = DT.DtlsClientCore(secret, key_id=(key if key not in ("", "wrong", "ticket") else None),
+                                 ticket=ticket, rng=lambda n, b=rng_byte: b * n)
+        if key == "wrong":
+            core._identity = DT.identity_for("")
+        self.clients[i] = {"core": core, "addr": _SESSION_ADDRS[i], "key": key,
+                           "ticket_ok": ticket_ok, "addrs": {_SESSION_ADDRS[i]}}
+        out = self._client(core, core.start, self.now)
+        self.c2s.extend((i, bytes(dg)) for dg in out)
+
+    def op_deliver(self, step):
+        direction = step.get("dir")
+        queue = self.s2c if isinstance(direction, str) and direction == "s2c" else self.c2s
+        n = step.get("n", _SESSION_MAX_DELIVER)
+        if not isinstance(n, int) or isinstance(n, bool) or n < 0:
+            n = _SESSION_MAX_DELIVER
+        n = min(n, _SESSION_MAX_DELIVER, len(queue))
+        batch = queue[:n]
+        del queue[:n]
+        if step.get("reverse"):
+            batch.reverse()
+        if step.get("drop"):
+            note("deliver", "dropped", len(batch))
+            return
+        dup = step.get("dup", 1)
+        if not isinstance(dup, int) or isinstance(dup, bool) or dup < 1:
+            dup = 1
+        dup = min(dup, _SESSION_MAX_DUP)
+        flips = step.get("flip")
+        cut = step.get("cut")
+        for i, dg in batch:
+            dg = bytearray(dg)
+            if isinstance(flips, list):
+                for off in flips[:8]:
+                    if isinstance(off, int) and not isinstance(off, bool) and dg:
+                        dg[off % len(dg)] ^= 0x01
+            if isinstance(cut, int) and not isinstance(cut, bool) and cut >= 0:
+                dg = dg[:cut]
+            dg = bytes(dg)
+            for _ in range(dup):
+                self._feed(queue is self.c2s, i, dg)
+
+    def _feed(self, to_server, i, dg):
+        c = self.clients.get(i)
+        if c is None:
+            return
+        if to_server:
+            out = self._server(self.server.feed, dg, c["addr"], self.now)
+            if not isinstance(out, list) or not all(
+                    isinstance(x, (bytes, bytearray)) for x in out):
+                raise Crash("shape", "the server's feed returned no list of bytes")
+            self._note_sessions()
+            self.s2c.extend((i, bytes(x)) for x in out)
+        else:
+            out = self._client(c["core"], c["core"].feed, dg, self.now)
+            if not isinstance(out, list):
+                raise Crash("shape", "the client's feed returned no list")
+            self.c2s.extend((i, bytes(x)) for x in out)
+        self._check_events()
+
+    def op_tick(self, step):
+        dt = step.get("dt", 1.0)
+        if isinstance(dt, bool) or not isinstance(dt, (int, float)) or dt != dt or dt < 0:
+            dt = 1.0
+        self.now += min(float(dt), 86400.0)
+        self.s2c.extend(self._deliverables(self._server(self.server.tick, self.now)))
+        for i, c in self.clients.items():
+            out = self._client(c["core"], c["core"].tick, self.now)
+            self.c2s.extend((i, bytes(x)) for x in out)
+        self._check_events()
+
+    @staticmethod
+    def _index(step):
+        i = step.get("c", 0)
+        if isinstance(i, bool) or not isinstance(i, int) or not 0 <= i < _SESSION_MAX_CLIENTS:
+            return None
+        return i
+
+    def op_app(self, step):
+        i = self._index(step)
+        c = self.clients.get(i)
+        if c is None:
+            return
+        text = step.get("data", "[HOMING-PIGEON] job bm-s-0001\n\n{}\n")
+        data = (text if isinstance(text, str) else json.dumps(text, default=str))[:4096]
+        out = self._client(c["core"], c["core"].send_app, data.encode("utf-8"))
+        self.c2s.extend((i, bytes(x)) for x in out)
+
+    def op_rebind(self, step):
+        i = self._index(step)
+        c = self.clients.get(i)
+        if c is None:
+            return
+        host, port = c["addr"]
+        c["addr"] = (host, port + 1000)
+        c["addrs"].add(c["addr"])
+        note("rebind", i)
+
+    def op_rotate(self, step):
+        self.secrets.pop("old", None)
+        self.server._secret_lookup = DT.make_secret_lookup(
+            self.secrets[""], {k: v for k, v in self.secrets.items() if k})
+        note("rotate")
+
+    OPS = {"start": op_start, "deliver": op_deliver, "tick": op_tick,
+           "app": op_app, "rebind": op_rebind, "rotate": op_rotate}
+
+    # -- the run ---------------------------------------------------------
+
+    def run(self):
+        steps = self.script if isinstance(self.script, list) else [self.script]
+        for step in steps[:_SESSION_MAX_STEPS]:
+            if not isinstance(step, dict) or not isinstance(step.get("op"), str):
+                continue
+            fn = self.OPS.get(step["op"])
+            if fn is None:
+                continue
+            self.steps += 1
+            fn(self, step)
+            for i, c in self.clients.items():
+                if c["core"].state == "established":
+                    self.established.add(i)
+                if c["core"].app_messages and not c["core"].finished_sent:
+                    raise Crash("leak", f"client {i} holds application data "
+                                "before its Finished went out")
+        self._check_events()
+        # Housekeeping: after the give-up and the ticket lifetime,
+        # nothing half-open and nothing expired is left.
+        later = self.now + DT.RETRANSMIT_GIVE_UP + DT.TICKET_LIFETIME + 5
+        self._deliverables(self._server(self.server.tick, later))
+        for cid, sess in self.server.sessions.items():
+            if not sess.established:
+                raise Crash("resource", "a half-open session outlived the "
+                            "retransmit give-up")
+        for ticket, entry in self.server.tickets.items():
+            if later > DT.ticket_fields(entry)[1]:
+                raise Crash("resource", "an expired ticket outlived housekeeping")
+        for addr, sess in self.server.by_addr.items():
+            if sess.dead:
+                raise Crash("resource", "a dead session is still mapped by address")
+        note("steps", self.steps, "established", len(self.established))
+        return "accepted" if self.established else "refused"
+
+
+def check_dtls_session(entry):
+    """dtls_session: a script of steps over up to two clients and one
+    server, in memory (see the section note above). Contract: no core
+    raises past its contract (a client's DtlsError is a refusal); the
+    server's feed and tick return lists in their shapes; the server
+    establishes a session only for a client whose key it holds at
+    that moment, only after that client sent Finished, and a resumed
+    one only under a ticket whose issuing key is still in the map; a
+    client holds no application data before its Finished; and after
+    the give-up and the ticket lifetime no half-open session, no
+    expired ticket and no dead address mapping remains. Accepted when
+    a client established."""
+    data = entry["data"]
+    if TU._lone_surrogate(data):
+        note("gate", "lone surrogate")
+        return "refused"
+    return _SessionRun(data).run()
+
+
+def seeds_dtls_session():
+    D = lambda **kw: dict(op="deliver", **kw)  # noqa: E731
+    handshake = [dict(op="start", c=0), D(), D(dir="s2c"), D(), D(dir="s2c")]
+    scripts = [
+        ("handshake", handshake),
+        ("handshake_and_job", handshake + [dict(op="app", c=0), D(), D(dir="s2c")]),
+        ("two_clients_interleaved", [dict(op="start", c=0), dict(op="start", c=1, key="old"),
+                                     D(n=1), D(n=1), D(dir="s2c", n=1), D(dir="s2c", n=1),
+                                     D(), D(dir="s2c"), D(), D(dir="s2c")]),
+        ("resume_own", handshake + [dict(op="start", c=1, ticket="own:0"),
+                                    D(), D(dir="s2c"), D(), D(dir="s2c")]),
+        ("resume_live_ticket", [dict(op="start", c=0, ticket="live"), D(), D(dir="s2c"),
+                                D(), D(dir="s2c")]),
+        ("resume_gone_ticket", [dict(op="start", c=0, ticket="gone"), D(), D(dir="s2c"),
+                                D(), D(dir="s2c")]),
+        ("resume_unrecorded_ticket", [dict(op="start", c=0, ticket="unrecorded"), D(),
+                                      D(dir="s2c"), D(), D(dir="s2c")]),
+        ("rotate_then_resume_old", [dict(op="start", c=0, key="old"), D(), D(dir="s2c"),
+                                    D(), D(dir="s2c"), dict(op="rotate"),
+                                    dict(op="start", c=1, ticket="own:0"), D(),
+                                    D(dir="s2c"), D(), D(dir="s2c")]),
+        ("wrong_key", [dict(op="start", c=0, key="wrong"), D(), D(dir="s2c"), D(),
+                       D(dir="s2c")]),
+        ("hrr_lost_then_retransmit", [dict(op="start", c=0), D(), D(dir="s2c", drop=True),
+                                      dict(op="tick", dt=1.5), D(), D(dir="s2c"), D(),
+                                      D(dir="s2c")]),
+        ("server_flight_duplicated", [dict(op="start", c=0), D(), D(dir="s2c"), D(),
+                                      D(dir="s2c", dup=3), D(), D(dir="s2c")]),
+        ("client_hello_flipped", [dict(op="start", c=0), D(flip=[5, 20, 33]), D(dir="s2c"),
+                                  D(), D(dir="s2c")]),
+        ("finished_cut", [dict(op="start", c=0), D(), D(dir="s2c"), D(cut=40), D(dir="s2c"),
+                          dict(op="tick", dt=2.0), D(), D(dir="s2c")]),
+        ("reversed_flight", [dict(op="start", c=0), D(), D(dir="s2c", reverse=True), D(),
+                             D(dir="s2c")]),
+        ("rebind_mid_session", handshake + [dict(op="rebind", c=0), dict(op="app", c=0),
+                                            D(), D(dir="s2c")]),
+        ("give_up", [dict(op="start", c=0), D(), dict(op="tick", dt=61.0), D(), D(dir="s2c")]),
+        ("ticks_only", [dict(op="start", c=0), dict(op="tick", dt=1.0), dict(op="tick", dt=2.0),
+                        dict(op="tick", dt=4.0), D(), D(dir="s2c"), D(), D(dir="s2c")]),
+        ("app_before_handshake", [dict(op="start", c=0), dict(op="app", c=0, data="early"),
+                                  D(), D(dir="s2c")]),
+        ("empty", []),
+        ("not_a_list", {"op": "start"}),
+        ("junk_steps", [7, "start", None, {"op": "nope"}, {"op": "deliver", "n": -1}]),
+    ]
+    return [make_entry("payload", script, "seed:" + name, "seed")
+            for name, script in scripts]
+
+
+# ------------------------------------------------------------------
+# race_board: threads interleaved over one board (de_dust2)
+# ------------------------------------------------------------------
+#
+# The board's peers arrive one at a time through the mail core, but
+# the runner's workers finish jobs from a pool, the hosted queue's
+# results land whenever they land, and BOARD_LOCK is what keeps the
+# board one board. This target runs the board's operations from
+# several threads at once, with the interpreter's switch interval
+# forced small so the threads interleave inside every call, and
+# holds the lease rules on whatever order the box produced: a task
+# is held by one worker at a time, finished once, never handed to a
+# second worker while its holder's lease stands, and the file on
+# disk is the board in memory when the threads are done.
+
+_RACE_MAX_THREADS = 4
+_RACE_MAX_OPS = 32
+_RACE_TASKS = ("bm-race-0001", "bm-race-0002", "bm-race-0003")
+_RACE_WORKERS = ("worker-a", "worker-b", "worker-c", "worker-d")
+_RACE_CFG = {"worker_allowlist": list(_RACE_WORKERS)}
+
+
+def _race_ops(spec):
+    """The per-thread op lists a spec names, bounded and typed."""
+    threads = spec.get("threads") if isinstance(spec, dict) else None
+    if not isinstance(threads, list):
+        return []
+    out = []
+    for ops in threads[:_RACE_MAX_THREADS]:
+        if not isinstance(ops, list):
+            continue
+        clean = []
+        for op in ops[:_RACE_MAX_OPS]:
+            if isinstance(op, dict) and isinstance(op.get("op"), str):
+                clean.append(op)
+        out.append(clean)
+    return out
+
+
+def check_race_board(entry):
+    """race_board: up to four threads, each a list of board operations
+    (submit, offer, complete, approve, reoffer) over one Board on a
+    throwaway path, interleaved under a short switch interval.
+    Contract: no thread raises; every offer hands out a task no
+    other worker holds at that moment; a task completes as done or
+    pending_review exactly once, by its holder; approve moves only a
+    pending_review task; the board reloaded from its file after the
+    threads join equals the board in memory; and the counts add up
+    to the tasks on the board. Accepted when some task was done."""
+    spec = entry["data"]
+    if TU._lone_surrogate(spec):
+        note("gate", "lone surrogate")
+        return "refused"
+    lanes = _race_ops(spec)
+    if not lanes:
+        return "refused"
+    switch = spec.get("switch", 1e-5) if isinstance(spec, dict) else 1e-5
+    if isinstance(switch, bool) or not isinstance(switch, (int, float)) \
+            or switch != switch or not 1e-6 <= switch <= 1e-2:
+        switch = 1e-5
+    base = tempfile.mkdtemp(prefix="hp-de_dust-race-")
+    path = os.path.join(base, "board.json")
+    board = BD.Board(path)
+    log = []                  # (thread, op, task, result) in completion order
+    log_lock = threading.Lock()
+    errors = []
+    holders = {}              # task_id -> worker holding the lease
+    holders_lock = threading.Lock()
+    faults = []
+
+    def record(t, op, task, result):
+        with log_lock:
+            log.append((t, op, task, result))
+
+    def run_lane(t, ops):
+        try:
+            for op in ops:
+                name = op["op"]
+                task = op.get("task")
+                task = task if isinstance(task, str) else _RACE_TASKS[0]
+                worker = op.get("worker")
+                worker = worker if isinstance(worker, str) else _RACE_WORKERS[t % len(_RACE_WORKERS)]
+                if name == "submit":
+                    ok, why = board.submit(_task(task, priority=op.get("priority", 1)))
+                    record(t, name, task, "ok" if ok else why)
+                elif name == "offer":
+                    caps = op.get("capabilities", ["shell"])
+                    # The worker's name is also its key id: the board
+                    # binds a claim to the key it was offered under, and
+                    # a completion by another key is refused.
+                    got = board.offer(worker, caps, worker, _RACE_CFG)
+                    tid = got.get("task_id") if isinstance(got, dict) else None
+                    if tid is not None:
+                        with holders_lock:
+                            other = holders.get(tid)
+                            if other is not None and other != worker:
+                                faults.append(f"{tid} offered to {worker} while "
+                                              f"{other} held it")
+                            holders[tid] = worker
+                    record(t, name, tid, worker)
+                elif name == "complete":
+                    status, why = board.complete(task, {"ok": True},
+                                                 require_review=bool(op.get("review")),
+                                                 holder=worker)
+                    if status in ("done", "pending_review"):
+                        with holders_lock:
+                            if holders.get(task) not in (None, worker):
+                                faults.append(f"{task} completed by {worker}, "
+                                              f"held by {holders.get(task)}")
+                            holders.pop(task, None)
+                    record(t, name, task, status)
+                elif name == "approve":
+                    ok, why = board.approve(task)
+                    record(t, name, task, "ok" if ok else why)
+                elif name == "reoffer":
+                    timeout = op.get("timeout", 0)
+                    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+                        timeout = 0
+                    n = board.reoffer_expired(task_timeout=timeout)
+                    if n:
+                        with holders_lock:
+                            # The lease is the board's to end; the
+                            # holders it ended are free again.
+                            for tid, tk in list(board.tasks.items()):
+                                if isinstance(tk, dict) and tk.get("state") == "open":
+                                    holders.pop(tid, None)
+                    record(t, name, None, n)
+                elif name == "yield":
+                    time.sleep(0)
+                time.sleep(0)
+        except Exception as e:  # the contract: nothing raises
+            errors.append(f"thread {t}: {type(e).__name__}: {_short(e)}")
+
+    previous = sys.getswitchinterval()
+    sys.setswitchinterval(float(switch))
+    try:
+        workers = [threading.Thread(target=run_lane, args=(t, ops), daemon=True)
+                   for t, ops in enumerate(lanes)]
+        for w in workers:
+            w.start()
+        for w in workers:
+            w.join(timeout=30)
+        if any(w.is_alive() for w in workers):
+            raise Crash("resource", "a board thread did not finish in 30 s")
+    finally:
+        sys.setswitchinterval(previous)
+        shutil.rmtree(base, ignore_errors=True) if False else None
+    if errors:
+        raise Crash("exception", errors[0])
+    if faults:
+        raise Crash("contract", faults[0])
+    # One completion per task.
+    finished = {}
+    for t, op, task, result in log:
+        if op == "complete" and result in ("done", "pending_review"):
+            finished[task] = finished.get(task, 0) + 1
+    for task, n in finished.items():
+        if n > 1:
+            raise Crash("contract", f"{task} was completed {n} times")
+    # The file is the board.
+    again = BD.Board(path)
+    if again.tasks != board.tasks:
+        raise Crash("contract", "the board file does not read back as the "
+                    "board in memory after the threads joined")
+    counts = board.counts() if hasattr(board, "counts") else None
+    if isinstance(counts, dict) and sum(v for v in counts.values()
+                                        if isinstance(v, int)) != len(board.tasks):
+        raise Crash("contract", "the counts do not add up to the tasks")
+    shutil.rmtree(base, ignore_errors=True)
+    note("race", len(lanes), "ops", sum(len(l) for l in lanes), "done",
+         sum(1 for t in board.tasks.values()
+             if isinstance(t, dict) and t.get("state") == "done"))
+    return "accepted" if any(isinstance(t, dict) and t.get("state") == "done"
+                             for t in board.tasks.values()) else "refused"
+
+
+def seeds_race_board():
+    S = lambda task, **kw: dict(op="submit", task=task, **kw)  # noqa: E731
+    O = lambda worker, **kw: dict(op="offer", worker=worker, **kw)  # noqa: E731
+    C = lambda task, worker, **kw: dict(op="complete", task=task, worker=worker, **kw)  # noqa: E731
+    A = lambda task: dict(op="approve", task=task)  # noqa: E731
+    R = lambda **kw: dict(op="reoffer", **kw)  # noqa: E731
+    Y = {"op": "yield"}
+    t1, t2, t3 = _RACE_TASKS
+    specs = [
+        ("one_task_two_workers", {"threads": [
+            [S(t1), O("worker-a"), C(t1, "worker-a")],
+            [Y, O("worker-b"), C(t1, "worker-b")]]}),
+        ("three_tasks_three_workers", {"threads": [
+            [S(t1), S(t2), S(t3), O("worker-a"), C(t1, "worker-a")],
+            [Y, O("worker-b"), Y, C(t2, "worker-b"), O("worker-b")],
+            [Y, Y, O("worker-c"), C(t3, "worker-c"), O("worker-c")]]}),
+        ("reoffer_races_the_holder", {"threads": [
+            [S(t1), O("worker-a"), Y, Y, C(t1, "worker-a")],
+            [Y, R(timeout=0), O("worker-b"), C(t1, "worker-b")]]}),
+        ("review_then_approve", {"threads": [
+            [S(t1), O("worker-a"), C(t1, "worker-a", review=True)],
+            [Y, Y, A(t1), A(t1)]]}),
+        ("submit_twice", {"threads": [[S(t1), S(t1)], [S(t1), O("worker-b")]]}),
+        ("complete_what_you_do_not_hold", {"threads": [
+            [S(t1), O("worker-a")],
+            [Y, C(t1, "worker-b"), C(t1, "worker-b")]]}),
+        ("four_lanes_fast_switch", {"switch": 1e-6, "threads": [
+            [S(t1), O("worker-a"), C(t1, "worker-a"), S(t2)],
+            [O("worker-b"), C(t2, "worker-b"), O("worker-b")],
+            [R(timeout=0), O("worker-c"), C(t1, "worker-c")],
+            [S(t3), O("worker-d"), C(t3, "worker-d"), A(t3)]]}),
+        ("priorities", {"threads": [
+            [S(t1, priority=1), S(t2, priority=9), O("worker-a"), O("worker-a")],
+            [S(t3, priority=5), O("worker-b"), C(t2, "worker-b"), C(t3, "worker-b")]]}),
+        ("unknown_ops", {"threads": [[{"op": "nope"}, 7, "offer", S(t1)], "not a lane"]}),
+        ("empty", {"threads": []}),
+        ("not_an_object", ["submit"]),
+    ]
+    return [make_entry("payload", spec, "seed:" + name, "seed") for name, spec in specs]
 
 
 def check_secret(entry):
@@ -7819,6 +8439,14 @@ TARGETS = {
                "check": check_keydir, "seeds": seeds_keydir},
     "address": {"files": [_src("wire", "mailbox.py")],
                 "check": check_address, "seeds": seeds_address},
+    # de_dust2: stateful, in-memory protocol fuzzing (scripts, not bytes).
+    "dtls_session": {"files": [_src("wire", "dtlsproto.py")],
+                     "check": check_dtls_session, "seeds": seeds_dtls_session,
+                     "technique": "protocol"},
+    # de_dust2: threads interleaved over shared state.
+    "race_board": {"files": [_src("wire", "board.py")],
+                   "check": check_race_board, "seeds": seeds_race_board,
+                   "technique": "race"},
 }
 
 
@@ -8061,11 +8689,15 @@ def _run_record(kind, target, session, before, added, seconds, **extra):
         "kept": [e["id"] for e in added],
         "crashes": len(session.crashes),
         "slow": len(session.slow),
+        "technique": TARGETS.get(target, {}).get("technique", "mutation"),
         "outcomes": dict(session.outcomes),
         "slowest_ms": round(session.slowest[0] * 1000),
         "slowest": session.slowest[1],
         "seconds": round(seconds, 1),
     }
+    rig = os.environ.get("HP_DE_DUST_RIG")
+    if rig:
+        record["rig"] = rig
     record.update(extra)
     return record
 
@@ -8625,6 +9257,27 @@ def _cmd_grow(args, out=print):
                     f"{row['seconds']:.0f} s, {row['rounds']} rounds"
                     + (f" at {row['rate']:.0f}/s" if row["rate"] else
                        " (no rate on record)"))
+            # The decision, on the record: what each target was given
+            # at the start of this cycling grow and why, so the next
+            # reader of the ledger sees the schedule, not only its
+            # effects (de_dust2 P10).
+            plan_record = {
+                "kind": "plan", "slice": slice_sec, "minutes": minutes,
+                "jobs": min(args.jobs, len(targets)),
+                "when": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "head": head_sha()[:12],
+                "targets": {tg: {"tilt": round(plan[tg]["tilt"], 2),
+                                 "seconds": round(plan[tg]["seconds"]),
+                                 "rounds": plan[tg]["rounds"],
+                                 "rate": (round(plan[tg]["rate"], 1)
+                                          if plan[tg]["rate"] else None),
+                                 "yield": plan[tg]["yield"],
+                                 "technique": TARGETS[tg].get("technique", "mutation")}
+                            for tg in targets}}
+            rig = os.environ.get("HP_DE_DUST_RIG")
+            if rig:
+                plan_record["rig"] = rig
+            record_run(plan_record)
             rounds_for = lambda tg: plan[tg]["rounds"]  # noqa: E731
 
             def requeue(tg, cmd):
@@ -8751,6 +9404,11 @@ def platform_disagreements(target):
     surface is already on, the second pass is the same surface
     and this reports nothing new."""
     from runner.tools.windows_surface import apply_surface
+    if TARGETS[target].get("technique") == "race":
+        # A thread schedule is not a surface: the same entry can end
+        # two ways on one box, and that is the technique, not a
+        # disagreement.
+        return []
     entries = load(corpus_path(target))
     host = {}
 
@@ -9037,9 +9695,19 @@ def yield_table(hours=48, runs=None, now=None):
     out = []
     for target, row in sorted(rows.items(), key=lambda kv: -kv[1]["seconds"]):
         out.append(_yield_row(target, row))
-    fleet = {k: sum(r[k] for r in rows.values()) for k in
-             ("runs", "seconds", "tried", "kept", "arcs", "accepted",
-              "refused", "crashes", "slow")} if rows else None
+    keys = ("runs", "seconds", "tried", "kept", "arcs", "accepted",
+            "refused", "crashes", "slow")
+    # One row per technique, so the fleet's spread across mutation,
+    # protocol and race fuzzing is read in one line each.
+    by_technique = {}
+    for target, row in rows.items():
+        name = TARGETS.get(target, {}).get("technique", "mutation")
+        acc = by_technique.setdefault(name, {k: 0 for k in keys})
+        for k in keys:
+            acc[k] += row[k]
+    for name in sorted(by_technique):
+        out.append(_yield_row("~" + name, by_technique[name]))
+    fleet = {k: sum(r[k] for r in rows.values()) for k in keys} if rows else None
     if fleet:
         out.append(_yield_row("fleet", fleet))
     return out
@@ -9143,11 +9811,35 @@ def saturation(target):
             f"at {rec.get('rounds')} rounds")
 
 
+def last_plan(runs=None):
+    """The newest plan record in the ledger, or None."""
+    plans = [r for r in (load_runs() if runs is None else runs)
+             if r.get("kind") == "plan"]
+    if not plans:
+        return None
+    return max(plans, key=lambda r: str(r.get("when", "")))
+
+
 def cmd_stats(args, out=print):
     if getattr(args, "yield_table", False):
         hours = getattr(args, "hours", 48) or 48
         for line in format_yield(yield_table(hours), hours):
             out(line)
+        return 0
+    if getattr(args, "plan", False):
+        plan = last_plan()
+        if plan is None:
+            out("no plan on record")
+            return 0
+        out(f"de_dust2 plan at {plan.get('when')} on {plan.get('head')}"
+            + (f" ({plan['rig']})" if plan.get("rig") else "")
+            + f": slice {plan.get('slice')} s, {plan.get('minutes')} min, "
+            f"{plan.get('jobs')} at a time")
+        for tg, row in sorted((plan.get("targets") or {}).items(),
+                              key=lambda kv: -kv[1].get("seconds", 0)):
+            out(f"  {tg:14} {row.get('technique', 'mutation'):9} "
+                f"{row.get('tilt', 0):.2f}x {row.get('seconds', 0):6d} s "
+                f"{row.get('rounds', 0):6d} rounds  yield {row.get('yield', 0)}")
         return 0
     for target in _targets(args.target):
         entries = load(corpus_path(target))
@@ -9205,6 +9897,9 @@ def main(argv=None):
                                 "--hours of grows: CPU, rate, kept, arcs, "
                                 "accepted share, kept per CPU-hour")
             p.add_argument("--hours", type=float, default=48)
+            p.add_argument("--plan", action="store_true",
+                           help="the newest slice plan a cycling grow "
+                                "recorded: what each target was given and why")
         if name == "grow":
             p.add_argument("--rounds", type=int, default=None,
                            help="children to try per target "

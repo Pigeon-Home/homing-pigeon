@@ -410,6 +410,10 @@ def targets_for(name):
     for target, spec in B.TARGETS.items():
         if target in THROUGH_AGENT:
             continue
+        if spec.get("technique") == "race":
+            # A thread schedule can tell a mutant apart by luck; the
+            # kill set is the deterministic targets' (de_dust2).
+            continue
         if any(os.path.basename(f) == name + ".py" for f in spec["files"]):
             out.append(target)
     return out

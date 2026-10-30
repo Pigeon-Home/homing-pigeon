@@ -335,6 +335,114 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("contents: read", block("scope"))
 
 
+class TechniquesTest(unittest.TestCase):
+    """Two techniques beside mutation: stateful in-memory protocol
+    scripts (dtls_session) and thread interleavings (race_board)."""
+
+    def test_the_targets_declare_their_technique(self):
+        self.assertEqual("protocol", B.TARGETS["dtls_session"]["technique"])
+        self.assertEqual("race", B.TARGETS["race_board"]["technique"])
+        self.assertNotIn("technique", B.TARGETS["wire"])
+
+    def test_a_session_script_replays_the_same_way_twice(self):
+        seeds = {e["from"]: e for e in B.seeds_dtls_session()}
+        for name in ("seed:handshake_and_job", "seed:resume_own", "seed:wrong_key"):
+            first = B._with_rig(lambda: B.check("dtls_session", seeds[name]))
+            notes = list(B.NOTES)
+            second = B._with_rig(lambda: B.check("dtls_session", seeds[name]))
+            self.assertEqual((first, notes), (second, list(B.NOTES)), name)
+        self.assertEqual("accepted", B._with_rig(lambda: B.check("dtls_session", seeds["seed:handshake_and_job"])))
+        self.assertEqual("refused", B._with_rig(lambda: B.check("dtls_session", seeds["seed:wrong_key"])))
+
+    def test_a_session_script_holds_the_resume_invariant(self):
+        seeds = {e["from"]: e for e in B.seeds_dtls_session()}
+        self.assertEqual("refused", B._with_rig(lambda: B.check("dtls_session", seeds["seed:resume_gone_ticket"])))
+        self.assertEqual("accepted", B._with_rig(lambda: B.check("dtls_session", seeds["seed:resume_live_ticket"])))
+
+    def test_a_mutated_step_never_breaks_the_interpreter(self):
+        junk = [{"op": {"x": 1}}, {"op": "start", "c": {"a": 1}}, {"op": "start", "key": ["old"]},
+                {"op": "deliver", "dir": 7, "n": "all", "flip": "x", "dup": -3, "cut": None},
+                {"op": "tick", "dt": float("nan")}, {"op": "app", "c": 9}, {"op": "rebind", "c": None},
+                {"op": "start", "ticket": "own:zz"}, {"op": "start", "c": 0, "ticket": "own:0"}]
+        entry = {"id": "x", "kind": "payload", "data": junk, "from": "", "mutator": "", "arcs": 0}
+        self.assertEqual("refused", B._with_rig(lambda: B.check("dtls_session", entry)))
+
+    def test_a_race_spec_runs_its_lanes_and_keeps_the_lease_rules(self):
+        seeds = {e["from"]: e for e in B.seeds_race_board()}
+        for name in ("seed:one_task_two_workers", "seed:four_lanes_fast_switch",
+                     "seed:complete_what_you_do_not_hold", "seed:unknown_ops"):
+            self.assertIn(B._with_rig(lambda: B.check("race_board", seeds[name])),
+                          ("accepted", "refused"), name)
+
+    def test_race_targets_sit_out_the_surface_differential_and_the_kill_set(self):
+        self.assertEqual([], B.platform_disagreements("race_board"))
+        from runner.tools import de_dust_survivors as S
+        self.assertNotIn("race_board", S.targets_for("board"))
+        self.assertIn("board", S.targets_for("board"))
+
+    def test_the_tracer_follows_threads(self):
+        import threading
+        tracer = B.ArcTracer([B.__file__])
+        seen = []
+
+        def work():
+            seen.append(threading.current_thread().name)
+            return 1
+
+        def spawn():
+            t = threading.Thread(target=work)
+            t.start()
+            t.join()
+            return 0
+
+        tracer.run(spawn)
+        self.assertTrue(seen)
+        self.assertIsNone(threading._trace_hook if hasattr(threading, "_trace_hook") else None)
+
+
+class LedgerTest(unittest.TestCase):
+
+    def test_run_records_carry_the_technique_and_the_rig(self):
+        s = B.Session("race_board", [])
+        with mock.patch.dict(os.environ, {"HP_DE_DUST_RIG": "Menlo Park"}):
+            rec = B._run_record("grow", "race_board", s, {"entries": 0, "arcs": 0}, [], 1.0)
+        self.assertEqual(("race", "Menlo Park"), (rec["technique"], rec["rig"]))
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("HP_DE_DUST_RIG", None)
+            rec = B._run_record("grow", "wire", s, {"entries": 0, "arcs": 0}, [], 1.0)
+        self.assertEqual("mutation", rec["technique"])
+        self.assertNotIn("rig", rec)
+
+    def test_a_cycling_grow_records_its_plan(self):
+        args = argparse.Namespace(target="wire,race_board", rounds=None, seed=1, jobs=1,
+                                  minutes=1.0, verbose=False, archive=None,
+                                  no_steer=True, order="fixed", slice=60.0,
+                                  uniform_parents=False)
+        recorded = []
+        with mock.patch.object(B, "run_parallel", lambda *a, **k: 0), \
+                mock.patch.object(B, "record_run", recorded.append), \
+                mock.patch.object(B, "prune_retired_crashes", return_value=0):
+            B.cmd_grow(args, out=lambda *a: None)
+        self.assertEqual(1, len(recorded))
+        plan = recorded[0]
+        self.assertEqual("plan", plan["kind"])
+        self.assertEqual({"wire", "race_board"}, set(plan["targets"]))
+        self.assertEqual("race", plan["targets"]["race_board"]["technique"])
+        self.assertEqual(60.0, plan["slice"])
+        self.assertIs(plan, B.last_plan([plan, {"kind": "grow"}]))
+
+    def test_the_yield_table_sums_each_technique(self):
+        now = datetime(2026, 10, 30, 0, 0, tzinfo=timezone.utc)
+        runs = [_grow("wire", "2026-10-29T20:00:00Z", seconds=3600.0, kept=2),
+                _grow("race_board", "2026-10-29T21:00:00Z", seconds=1800.0, kept=1),
+                _grow("dtls_session", "2026-10-29T22:00:00Z", seconds=1800.0, kept=3)]
+        rows = {r["target"]: r for r in B.yield_table(48, runs, now=now)}
+        self.assertEqual({"wire", "race_board", "dtls_session", "~mutation", "~protocol",
+                          "~race", "fleet"}, set(rows))
+        self.assertEqual(3, rows["~protocol"]["kept"])
+        self.assertEqual(6, rows["fleet"]["kept"])
+
+
 class YieldTableTest(unittest.TestCase):
 
     def test_the_table_sums_the_window_and_sorts_by_cpu(self):
@@ -343,15 +451,15 @@ class YieldTableTest(unittest.TestCase):
                 _grow("b", "2026-10-29T23:00:00Z", tried=7200, seconds=1800.0, accepted=10, refused=90),
                 _grow("a", "2026-10-20T00:00:00Z", tried=1, seconds=99999.0, kept=50)]
         rows = B.yield_table(48, runs, now=now)
-        self.assertEqual(["a", "b", "fleet"], [r["target"] for r in rows])
-        a, b, fleet = rows
+        self.assertEqual(["a", "b", "~mutation", "fleet"], [r["target"] for r in rows])
+        a, b, _mutation, fleet = rows
         self.assertEqual((1.0, 0.1, 2, 4), (a["cpu_h"], a["tries_per_s"], a["kept"], a["arcs"]))
         self.assertAlmostEqual(2.0, a["kept_per_cpu_h"])
         self.assertAlmostEqual(0.1, b["accepted_share"])
         self.assertEqual(2, fleet["runs"])
         self.assertAlmostEqual(1.5, fleet["cpu_h"])
         lines = B.format_yield(rows, 48)
-        self.assertEqual(4, len(lines))
+        self.assertEqual(5, len(lines))
         self.assertIn("kept/cpu_h", lines[0])
 
     def test_stats_yield_prints_the_table(self):
