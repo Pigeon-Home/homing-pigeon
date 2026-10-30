@@ -813,6 +813,8 @@ class _LocalRig:
             except Exception:
                 pass
         shutil.rmtree(self.dir, ignore_errors=True)
+        if self.dir in _TMP_MADE:
+            _TMP_MADE.remove(self.dir)
         return False
 
 
@@ -9382,7 +9384,22 @@ def _tmpdir(prefix):
     A grow that is killed cannot run its own cleanup. The next grow
     removes a directory whose pid is gone (Q126). A directory a check
     finishes is still removed by that check."""
-    return _patient(tempfile.mkdtemp, prefix=prefix, dir=_grow_tmp_root())
+    path = _patient(tempfile.mkdtemp, prefix=prefix, dir=_grow_tmp_root())
+    # On the record, so check() removes what one try made when the
+    # try ends, kept or crashed: a leaked directory then lives for
+    # one try, not for the process, and a long slice on a crashing
+    # family cannot fill the volume from inside one grow.
+    _TMP_MADE.append(path)
+    return path
+
+
+_TMP_MADE = []
+
+
+def _drop_tmp_since(mark):
+    """Remove the temp directories made since `mark` entries stood."""
+    while len(_TMP_MADE) > mark:
+        shutil.rmtree(_TMP_MADE.pop(), ignore_errors=True)
 
 
 _own_tmp = None
@@ -9393,8 +9410,12 @@ def _grow_tmp_root():
     the pid so a later grow can tell a dead one's from a live one's."""
     global _own_tmp
     if _own_tmp is None:
+        # HP_DE_DUST_TMP names the volume to put it on: a rig whose
+        # /tmp is a small tmpfs (Nuremberg, 459 MB) points this at
+        # its root volume and the snapshots and checks stay off it.
         _own_tmp = _patient(tempfile.mkdtemp,
-                            prefix=f"hp-de_dust-{os.getpid()}-")
+                            prefix=f"hp-de_dust-{os.getpid()}-",
+                            dir=os.environ.get("HP_DE_DUST_TMP") or None)
         atexit.register(_remove_own_tmp)
     return _own_tmp
 
@@ -9423,7 +9444,7 @@ def sweep_dead_grow_temps(tmp=None, alive=None):
 
     Only `hp-de_dust-<pid>-*`. A flat `hp-de_dust-*` can belong to
     another lane still running, and this does not touch it."""
-    tmp = tmp or tempfile.gettempdir()
+    tmp = tmp or os.environ.get("HP_DE_DUST_TMP") or tempfile.gettempdir()
     alive = alive if alive is not None else _pid_alive
     removed = []
     try:
@@ -9506,7 +9527,11 @@ def check(target, entry):
     "refused" when the contract held, or a Crash. NOTES holds what
     the checker saw on the way."""
     del NOTES[:]
-    return TARGETS[target]["check"](entry)
+    mark = len(_TMP_MADE)
+    try:
+        return TARGETS[target]["check"](entry)
+    finally:
+        _drop_tmp_since(mark)
 
 
 def runs_path():

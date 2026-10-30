@@ -103,6 +103,17 @@ reader. That is renamed. The next generated note can run.
 
 **Applied in:** the commit that carries this answer.
 
+**Addendum (Claude, the audit seat 80000aeb, 30-OCT 3:45PM PST),
+applied in the commit that carries this line:** two things on top.
+Every temp directory the tool makes is on a record, and `check()`
+removes what one try made when the try ends, kept or crashed, so a
+leaked directory lives for one try and not for the process -- a
+two-hour slice on a crashing family cannot fill the volume from
+inside one grow. And `HP_DE_DUST_TMP` names the volume the process
+root goes on (the sweep looks there too): on Nuremberg,
+`HP_DE_DUST_TMP=/var/tmp` in the grow's environment keeps every
+temp off the 459 MB tmpfs.
+
 ---
 
 ## Q125 (Muse, to the desk, 2026-10-30): the hosted queue's Worker lets one job id be queued and dead at the same time

@@ -928,6 +928,56 @@ class CampaignNameTest(unittest.TestCase):
         self.assertEqual(B.CAMPAIGN, RB.CAMPAIGN)
 
 
+class TempDirsTest(unittest.TestCase):
+    """Q126: a try's temp directories go when the try ends, kept or
+    crashed, inside the process's own root; the root goes at exit."""
+
+    def test_a_crashing_check_leaves_no_directory(self):
+        made = []
+        real = B._tmpdir
+
+        def spy(prefix):
+            path = real(prefix)
+            made.append(path)
+            return path
+
+        def explode(entry):
+            B._tmpdir("hp-de_dust-test-")
+            B._tmpdir("hp-de_dust-test-")
+            raise B.Crash("contract", "boom")
+        with mock.patch.object(B, "_tmpdir", spy), \
+                mock.patch.dict(B.TARGETS, {"zz": {"check": explode, "files": [], "seeds": lambda: []}}):
+            with self.assertRaises(B.Crash):
+                B.check("zz", {"id": "x", "data": None})
+        self.assertEqual(2, len(made))
+        self.assertFalse(any(os.path.isdir(p) for p in made))
+        self.assertFalse(any(p in B._TMP_MADE for p in made))
+
+    def test_a_kept_check_leaves_nothing_on_the_record(self):
+        seeds = {e["from"]: e for e in B.seeds_race_state()}
+        mark = len(B._TMP_MADE)
+        B._with_rig(lambda: B.check("race_state", seeds["seed:save_distinct_records"]))
+        self.assertEqual(mark, len(B._TMP_MADE))
+
+    def test_the_root_goes_where_hp_de_dust_tmp_points(self):
+        import subprocess, sys
+        where = tempfile.mkdtemp(prefix="hp-tmpvol-")
+        code = ("import os, sys\n"
+                "sys.path.insert(0, %r)\n"
+                "from runner.tools import de_dust_corpus as B\n"
+                "root = B._grow_tmp_root()\n"
+                "d = B._tmpdir('hp-de_dust-x-')\n"
+                "assert d.startswith(root), (d, root)\n"
+                "print(root)\n" % B.ROOT)
+        out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                             timeout=60, env={**os.environ, "HP_DE_DUST_TMP": where})
+        self.assertEqual(0, out.returncode, out.stderr)
+        root = out.stdout.strip()
+        self.assertTrue(root.startswith(where), root)
+        self.assertFalse(os.path.exists(root))   # removed at exit
+        shutil.rmtree(where, ignore_errors=True)
+
+
 class LedgerTest(unittest.TestCase):
 
     def test_run_records_carry_the_technique_and_the_rig(self):
