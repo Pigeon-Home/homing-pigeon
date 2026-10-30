@@ -623,10 +623,12 @@ class TechniquesTest(unittest.TestCase):
         seeds = {e["from"]: e for e in B.seeds_race_state()}
         entry = seeds["seed:four_markers_distinct"]
         prefix = "hp-de_dust-state-"
-        tmp = tempfile.gettempdir()
 
         def leftover():
-            return {n for n in os.listdir(tmp) if n.startswith(prefix)}
+            root = B._own_tmp
+            if not root or not os.path.isdir(root):
+                return set()
+            return {n for n in os.listdir(root) if n.startswith(prefix)}
 
         before = leftover()
         with mock.patch.object(B.R, "save_seen", side_effect=RuntimeError("boom")):
@@ -841,7 +843,7 @@ class WatchTest(unittest.TestCase):
     def test_a_clean_box_reads_ok(self):
         now = datetime(2026, 10, 30, 21, 40, tzinfo=timezone.utc)
         lines, breaches = B.watch_readings(self._runs(), now=now, disk_used_pct=45.0,
-                                           mem_avail_mb=640, workers=2)
+                                           mem_avail_mb=640, workers=2, measure_temp=False)
         self.assertEqual([], breaches)
         self.assertEqual(3, len(lines))
         self.assertIn("stale past 60 min", lines[2])
@@ -849,7 +851,8 @@ class WatchTest(unittest.TestCase):
     def test_the_floors_breach(self):
         now = datetime(2026, 10, 30, 21, 40, tzinfo=timezone.utc)
         _l, breaches = B.watch_readings(self._runs(), now=now, disk_used_pct=91.0,
-                                        mem_avail_mb=188, mem_min_mb=256, workers=2)
+                                        mem_avail_mb=188, mem_min_mb=256, workers=2,
+                                        measure_temp=False)
         self.assertEqual(2, len(breaches))
         self.assertIn("disk 91% over the 90% line", breaches[0])
         self.assertIn("memory 188 MB under the 256 MB floor", breaches[1])
@@ -857,17 +860,46 @@ class WatchTest(unittest.TestCase):
     def test_no_workers_with_a_plan_standing_is_a_stall(self):
         now = datetime(2026, 10, 30, 21, 40, tzinfo=timezone.utc)
         _l, breaches = B.watch_readings(self._runs(), now=now, disk_used_pct=10.0,
-                                        mem_avail_mb=900, workers=0)
+                                        mem_avail_mb=900, workers=0, measure_temp=False)
         self.assertEqual(1, len(breaches))
         self.assertIn("0 grow worker(s) live, 1 expected", breaches[0])
 
     def test_workers_live_but_silent_past_the_slice_is_the_q122_shape(self):
         now = datetime(2026, 10, 30, 23, 0, tzinfo=timezone.utc)
         _l, breaches = B.watch_readings(self._runs(), now=now, disk_used_pct=10.0,
-                                        mem_avail_mb=900, workers=2)
+                                        mem_avail_mb=900, workers=2, measure_temp=False)
         self.assertEqual(1, len(breaches))
         self.assertIn("no run record in 90 min", breaches[0])
         self.assertIn("blocked on its pipe", breaches[0])
+
+    def test_a_full_temp_volume_is_a_breach_when_the_corpus_volume_is_not(self):
+        now = datetime(2026, 10, 30, 21, 40, tzinfo=timezone.utc)
+        lines, breaches = B.watch_readings(
+            self._runs(), now=now, disk_used_pct=25.0, temp_used_pct=93.0,
+            mem_avail_mb=900, workers=2, measure_temp=False)
+        self.assertEqual(["temp 93% over the 90% line"], breaches)
+        self.assertTrue(any(line.startswith("temp: 93%") for line in lines))
+        self.assertTrue(any("corpus volume" in line for line in lines))
+
+    def test_a_grow_removes_a_dead_process_temp_and_keeps_a_live_one(self):
+        tmp = tempfile.mkdtemp(prefix="hp-de_dust-sweep-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        os.mkdir(os.path.join(tmp, "hp-de_dust-999999-dead"))
+        os.mkdir(os.path.join(tmp, f"hp-de_dust-{os.getpid()}-ours"))
+        os.mkdir(os.path.join(tmp, "hp-de_dust-flat-other-lane"))
+        removed = B.sweep_dead_grow_temps(tmp, alive=lambda pid: pid == os.getpid())
+        self.assertEqual(["hp-de_dust-999999-dead"], removed)
+        self.assertFalse(os.path.exists(os.path.join(tmp, "hp-de_dust-999999-dead")))
+        self.assertTrue(os.path.isdir(os.path.join(tmp, f"hp-de_dust-{os.getpid()}-ours")))
+        self.assertTrue(os.path.isdir(os.path.join(tmp, "hp-de_dust-flat-other-lane")))
+
+    def test_a_check_temp_lives_under_this_process(self):
+        path = B._tmpdir(prefix="hp-de_dust-probe-")
+        self.addCleanup(shutil.rmtree, path, True)
+        root = B._grow_tmp_root()
+        self.assertTrue(os.path.isdir(path))
+        self.assertTrue(path.startswith(root + os.sep))
+        self.assertTrue(os.path.basename(root).startswith(f"hp-de_dust-{os.getpid()}-"))
 
     def test_the_rig_table_reads_the_ledger_and_git(self):
         now = datetime(2026, 10, 30, 22, 0, tzinfo=timezone.utc)

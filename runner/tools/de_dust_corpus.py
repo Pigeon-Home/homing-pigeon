@@ -119,6 +119,7 @@ and <target>.arcs.json is the arc map the corpus reaches after it,
 so every run is in the history and replayable from its seed.
 """
 import argparse
+import atexit
 import copy
 import base64
 import errno
@@ -131,6 +132,7 @@ import random
 import email.utils
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -2594,34 +2596,35 @@ def check_race_board(entry):
             raise Crash("resource", "a board thread did not finish in 30 s")
     finally:
         sys.setswitchinterval(previous)
-        shutil.rmtree(base, ignore_errors=True) if False else None
-    if errors:
-        raise Crash("exception", errors[0])
-    if faults:
-        raise Crash("contract", faults[0])
-    # One completion per task.
-    finished = {}
-    for t, op, task, result in log:
-        if op == "complete" and result in ("done", "pending_review"):
-            finished[task] = finished.get(task, 0) + 1
-    for task, n in finished.items():
-        if n > 1:
-            raise Crash("contract", f"{task} was completed {n} times")
-    # The file is the board.
-    again = BD.Board(path)
-    if again.tasks != board.tasks:
-        raise Crash("contract", "the board file does not read back as the "
-                    "board in memory after the threads joined")
-    counts = board.counts() if hasattr(board, "counts") else None
-    if isinstance(counts, dict) and sum(v for v in counts.values()
-                                        if isinstance(v, int)) != len(board.tasks):
-        raise Crash("contract", "the counts do not add up to the tasks")
-    shutil.rmtree(base, ignore_errors=True)
-    note("race", len(lanes), "ops", sum(len(l) for l in lanes), "done",
-         sum(1 for t in board.tasks.values()
-             if isinstance(t, dict) and t.get("state") == "done"))
-    return "accepted" if any(isinstance(t, dict) and t.get("state") == "done"
-                             for t in board.tasks.values()) else "refused"
+    try:
+        if errors:
+            raise Crash("exception", errors[0])
+        if faults:
+            raise Crash("contract", faults[0])
+        # One completion per task.
+        finished = {}
+        for t, op, task, result in log:
+            if op == "complete" and result in ("done", "pending_review"):
+                finished[task] = finished.get(task, 0) + 1
+        for task, n in finished.items():
+            if n > 1:
+                raise Crash("contract", f"{task} was completed {n} times")
+        # The file is the board.
+        again = BD.Board(path)
+        if again.tasks != board.tasks:
+            raise Crash("contract", "the board file does not read back as the "
+                        "board in memory after the threads joined")
+        counts = board.counts() if hasattr(board, "counts") else None
+        if isinstance(counts, dict) and sum(v for v in counts.values()
+                                            if isinstance(v, int)) != len(board.tasks):
+            raise Crash("contract", "the counts do not add up to the tasks")
+        note("race", len(lanes), "ops", sum(len(l) for l in lanes), "done",
+             sum(1 for t in board.tasks.values()
+                 if isinstance(t, dict) and t.get("state") == "done"))
+        return "accepted" if any(isinstance(t, dict) and t.get("state") == "done"
+                                 for t in board.tasks.values()) else "refused"
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
 
 
 def seeds_race_board():
@@ -2772,6 +2775,9 @@ def check_race_stash(entry):
             w.join(timeout=30)
         if any(w.is_alive() for w in workers):
             raise Crash("resource", "a stash thread did not finish in 30 s")
+    except Crash:
+        shutil.rmtree(base, ignore_errors=True)
+        raise
     finally:
         sys.setswitchinterval(previous)
     if errors:
@@ -9371,8 +9377,92 @@ def _patient(fn, *args, **kwargs):
 
 
 def _tmpdir(prefix):
-    """tempfile.mkdtemp, patiently."""
-    return _patient(tempfile.mkdtemp, prefix=prefix)
+    """tempfile.mkdtemp, patiently, under this process's own directory.
+
+    A grow that is killed cannot run its own cleanup. The next grow
+    removes a directory whose pid is gone (Q126). A directory a check
+    finishes is still removed by that check."""
+    return _patient(tempfile.mkdtemp, prefix=prefix, dir=_grow_tmp_root())
+
+
+_own_tmp = None
+
+
+def _grow_tmp_root():
+    """One directory for every temp this process opens, named with
+    the pid so a later grow can tell a dead one's from a live one's."""
+    global _own_tmp
+    if _own_tmp is None:
+        _own_tmp = _patient(tempfile.mkdtemp,
+                            prefix=f"hp-de_dust-{os.getpid()}-")
+        atexit.register(_remove_own_tmp)
+    return _own_tmp
+
+
+def _remove_own_tmp():
+    global _own_tmp
+    if _own_tmp:
+        shutil.rmtree(_own_tmp, ignore_errors=True)
+        _own_tmp = None
+
+
+def _pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def sweep_dead_grow_temps(tmp=None, alive=None):
+    """Remove grow temp directories whose process is gone.
+
+    Only `hp-de_dust-<pid>-*`. A flat `hp-de_dust-*` can belong to
+    another lane still running, and this does not touch it."""
+    tmp = tmp or tempfile.gettempdir()
+    alive = alive if alive is not None else _pid_alive
+    removed = []
+    try:
+        names = os.listdir(tmp)
+    except OSError:
+        return removed
+    me = os.getpid()
+    for name in names:
+        rest = name[len("hp-de_dust-"):] if name.startswith("hp-de_dust-") else ""
+        pid_text, sep, _suffix = rest.partition("-")
+        if not sep or not pid_text.isdigit():
+            continue
+        pid = int(pid_text)
+        if pid == me or alive(pid):
+            continue
+        path = os.path.join(tmp, name)
+        if not os.path.isdir(path):
+            continue
+        shutil.rmtree(path, ignore_errors=True)
+        removed.append(name)
+    return removed
+
+
+def _arm_term_cleanup():
+    """A SIGTERM, the way a cycle stops a grow, removes this
+    process's temp directory. A SIGKILL cannot; the next grow's
+    sweep does."""
+    if getattr(_arm_term_cleanup, "done", False) or os.name != "posix":
+        return
+    _arm_term_cleanup.done = True
+    prev = signal.getsignal(signal.SIGTERM)
+
+    def handler(signum, frame):
+        _remove_own_tmp()
+        if callable(prev) and prev not in (signal.SIG_DFL, signal.SIG_IGN):
+            return prev(signum, frame)
+        raise SystemExit(128 + signum)
+
+    signal.signal(signal.SIGTERM, handler)
 
 
 def save(path, target, entries):
@@ -10217,6 +10307,8 @@ def footprint_line(target, entries):
 
 
 def cmd_grow(args, out=print):
+    sweep_dead_grow_temps()
+    _arm_term_cleanup()
     for target in _targets(args.target):
         prune_retired_crashes(target, out)
     return _cmd_grow(args, out)
@@ -11019,17 +11111,17 @@ def hourly_note(runs=None, now=None, hours=24, rig=None, probe=True):
                    + (f" on {plan['rig']}" if plan.get("rig") else "")
                    + ", puts " + "; ".join(parts)
                    + f", {plan.get('jobs', 1)} at a time.")
-    load = None
+    loadavg = None
     try:
-        load = os.getloadavg()
+        loadavg = os.getloadavg()
     except (AttributeError, OSError):
         pass
     cores = os.cpu_count() or 1
     mem = memory_available_mb()
-    if load:
-        out.append(f"CPU: load averages {load[0]:.2f} over one minute and "
-                   f"{load[1]:.2f} over five on {cores} core(s), "
-                   f"{load[0] / cores * 100:.0f}% and {load[1] / cores * 100:.0f}% "
+    if loadavg:
+        out.append(f"CPU: load averages {loadavg[0]:.2f} over one minute and "
+                   f"{loadavg[1]:.2f} over five on {cores} core(s), "
+                   f"{loadavg[0] / cores * 100:.0f}% and {loadavg[1] / cores * 100:.0f}% "
                    f"of capacity" + (f"; {mem} MB available" if mem is not None else "") + ".")
     since = (now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
     hour = [r for r in runs if r.get("kind") == "grow" and str(r.get("when", "")) >= since
@@ -11091,6 +11183,21 @@ def memory_total_mb():
     return None
 
 
+def _temp_used_pct():
+    """How full the temp volume is, or None when it is the corpus
+    volume (one reading is enough) or it cannot be read."""
+    temp = tempfile.gettempdir()
+    try:
+        if os.stat(temp).st_dev == os.stat(CORPUS_DIR).st_dev:
+            return None
+        usage = shutil.disk_usage(temp)
+    except OSError:
+        return None
+    if not usage.total:
+        return None
+    return usage.used / usage.total * 100.0
+
+
 def grow_workers_live():
     """How many de_dust grow processes are running on this box, by
     their command lines (/proc; None where there is no /proc)."""
@@ -11115,13 +11222,16 @@ def grow_workers_live():
 
 def watch_readings(runs=None, now=None, rig=None, disk_max=90.0, mem_min_mb=None,
                    stale_min=None, expect_workers=None, disk_used_pct=None,
-                   mem_avail_mb=None, workers=None):
+                   mem_avail_mb=None, workers=None, temp_used_pct=None,
+                   measure_temp=True):
     """The ten-minute watch (the rig seat's floors, Q120, and the
     stall shape, Q122), as (lines, breaches). Every reading can be
     handed in, for a test or another box's numbers; otherwise it is
-    read here. The floors: disk used under `disk_max` percent;
-    available memory over `mem_min_mb` (256 on a box of 4 GB or more,
-    128 below, unless given); and, when a slice plan stands, grow
+    read here. The floors: disk used under `disk_max` percent, on
+    the corpus volume and, when it is a different device, on the
+    temp volume the bank and the grow write to (Q126); available
+    memory over `mem_min_mb` (256 on a box of 4 GB or more, 128
+    below, unless given); and, when a slice plan stands, grow
     workers live and a run record from this rig younger than
     `stale_min` (twice the plan's longest slice, 30 at least)."""
     runs = load_runs() if runs is None else runs
@@ -11138,6 +11248,13 @@ def watch_readings(runs=None, now=None, rig=None, disk_max=90.0, mem_min_mb=None
                      f"line at {disk_max:.0f}%")
         if disk_used_pct >= disk_max:
             breaches.append(f"disk {disk_used_pct:.0f}% over the {disk_max:.0f}% line")
+    if measure_temp and temp_used_pct is None:
+        temp_used_pct = _temp_used_pct()
+    if temp_used_pct is not None:
+        lines.append(f"temp: {temp_used_pct:.0f}% used of the temp volume, "
+                     f"line at {disk_max:.0f}%")
+        if temp_used_pct >= disk_max:
+            breaches.append(f"temp {temp_used_pct:.0f}% over the {disk_max:.0f}% line")
     if mem_avail_mb is None:
         mem_avail_mb = memory_available_mb()
     if mem_min_mb is None:

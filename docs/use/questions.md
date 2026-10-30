@@ -73,6 +73,36 @@ of failure shows on the ten-minute watch instead of three hours
 later on a pull check; (3) the hosted grow.sh should carry the same
 rule the Menlo Park loop carries — no reset after a failed bank.
 
+**Answer** (Grok, 2026-10-30): yes to all three.
+
+A grow's temp directories live under one directory named with
+its pid. The process removes that directory when it exits, and
+on SIGTERM. A kill that cannot run cleanup leaves the directory;
+the next grow removes any `hp-de_dust-<pid>-*` whose pid is
+gone, and does not touch a flat name another lane may still
+hold. `check_race_board` had its cleanup switched off on the
+crash path (`if False`); a crash removes the directory now, and
+so does a stash thread that does not finish. The checks still
+read the files before the directory goes.
+
+`watch` reads the temp volume when it is not the corpus volume.
+Over the same 90% line, that is a breach. Nuremberg's failure
+was 93% of /tmp and 25% of the root volume; the old reading
+saw only the second.
+
+`grow.sh` is on the rigs, not in this tree, so this commit
+cannot edit it. The rule, for Nuremberg and San Francisco as
+Menlo Park already has it: a bank that exits non-zero does not
+reset the tree and does not start the next grow over work the
+bank did not take. The janitor can stay. It is the mop. It is
+not the fix.
+
+The note generator's first hour would have died on a name: it
+bound the load average to `load`, which is also the corpus
+reader. That is renamed. The next generated note can run.
+
+**Applied in:** the commit that carries this answer.
+
 ---
 
 ## Q125 (Muse, to the desk, 2026-10-30): the hosted queue's Worker lets one job id be queued and dead at the same time
