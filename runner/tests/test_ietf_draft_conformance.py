@@ -45,7 +45,11 @@ class DraftConformanceTest(unittest.TestCase):
 
     def test_one_version_and_no_version_2(self):
         versions = self.sec["### Versions in this document"]
-        self.assertIn("there is no version 2", versions)
+        self.assertIn("one version of the protocol: version 1", versions)
+        self.assertIn("draft-slutsky-homing-pigeon-v2-00", versions)
+        self.assertIn("rejects any message `v` other than 1", versions)
+        self.assertNotIn("there is no version 2", versions)
+        self.assertNotIn("2026-10-17", versions)
 
     def test_section_5_conformance_no_mti_binding(self):
         sec5 = self.sec["## 5. Transport Binding"]

@@ -4,8 +4,9 @@ Homing Pigeon Message Protocol, Version 1
 
 Workgroup: Individual
 Intended status: Informational
-Expires: 19 April 2027
-Author: Pigeon-Home (editor)
+Expires: 3 May 2027
+Author: Andrew Slutsky
+Document: draft-slutsky-homing-pigeon-00
 
 ## Abstract
 
@@ -21,7 +22,7 @@ Internet-Drafts are working documents of the Internet Engineering Task Force (IE
 
 Internet-Drafts are draft documents valid for a maximum of six months and may be updated, replaced, or obsoleted by other documents at any time. It is inappropriate to use Internet-Drafts as reference material or to cite them other than as "work in progress."
 
-This Internet-Draft will expire on 19 April 2027.
+This Internet-Draft will expire on 3 May 2027.
 
 ## 1. Introduction
 
@@ -55,11 +56,11 @@ Two things are out of scope for this document and are established out of band: t
 
 ### Versions in this document
 
-This document specifies one version of the protocol: version 1. Its bindings are the email binding (Section 5), the file binding (Section 5.1), the NATS binding (Section 5.2), and the DTLS session binding (Section 19), which also carries the session greeting (Section 20). It consolidates this document's earlier text, which specified the email binding alone, with the DTLS binding text that was first drafted as a companion document. The companion draft that now carries the name draft-homing-pigeon-v2-00 is a different document: it specifies protocol version 2 (the determination, question, and answer exchange) and does not specify a binding.
+This document specifies one version of the protocol: version 1. Its bindings are the email binding (Section 5), the file binding (Section 5.1), the NATS binding (Section 5.2), and the DTLS session binding (Section 19), which also carries the session greeting (Section 20). It consolidates this document's earlier text, which specified the email binding alone, with the DTLS binding text that was first drafted as a companion document. The companion draft that now carries the name draft-slutsky-homing-pigeon-v2-00 is a different document: it specifies protocol version 2 (the determination, question, and answer exchange) and does not specify a binding.
 
-A binding does not version the messages. The job and result objects are the same objects on every binding, byte for byte; their `v` member is 1, and a receiver MUST NOT reject an object for carrying `v` = 1 on any binding. A receiver that does not offer a binding is not non-conformant; it simply does not offer that binding. An earlier framing treated the DTLS binding as a second version of the protocol. That framing is withdrawn: there is no version 2 of the job and result objects (the version 2 of draft-homing-pigeon-v2-00 is a different message family, carried beside them), and the protocol's version is 1 on every binding this document specifies.
+A binding does not version the messages. The job and result objects are the same objects on every binding, byte for byte; their `v` member is 1, and a receiver MUST NOT reject an object for carrying `v` = 1 on any binding. A receiver that does not offer a binding is not non-conformant; it simply does not offer that binding.
 
-The reference implementation speaks version 1, and it implements the bindings this document specifies, including the DTLS session binding of Section 19. On 2026-10-17 the implementation briefly required `v` = 2. That bump changed the integer only, and it was reverted the same day. A receiver following this document rejects any message `v` other than 1.
+The reference implementation speaks version 1, and it implements the bindings this document specifies, including the DTLS session binding of Section 19. A receiver following this document rejects any message `v` other than 1.
 
 The sender also requires the shared secret to meet a minimum-entropy floor (Section 17.3). That floor is not a protocol version; it is a requirement of this protocol, and it binds version 1 senders and runners today (Section 17.3). Nothing else in the exchange changes shape.
 

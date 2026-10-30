@@ -38,5 +38,27 @@ has gone to the Independent Submissions Editor (ISE).
 
 - Answer reviewer and ISE questions by email.
 - Rev to -01 as review asks, and before 3 May 2027 so the drafts stay
-  live.
+  live. The submitted -00 is what the datatracker has; this tree does
+  not silently diverge from it.
 - Update this file when any item above moves.
+
+## Known nits, for that revision
+
+idnits 3.3.0 was run offline on 2026-10-30 (`*.idnits.txt` beside
+the drafts). The downref and status errors are that run: the host
+could not reach the RFC editor. What is left when those are set
+aside:
+
+- The author `organization` element is empty. An independent author
+  is "Independent", or the element is left out.
+- Six em dashes in version 1 and four in version 2. idnits asks that
+  each one be needed. An ASCII hyphen is the dull fix.
+- `[HOMING-PIGEON]` is the subject token. idnits reads the brackets
+  as a missing reference. It is not one.
+- Version 2 references version 1 normatively. A document is not
+  published before a draft it cites that way, so version 1 is
+  published first and version 2's reference becomes that RFC's
+  number.
+- Each XML render carries one no-break space, from the tool.
+
+None of these is a reason to post -01 before a reviewer asks.

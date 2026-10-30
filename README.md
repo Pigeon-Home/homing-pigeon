@@ -36,7 +36,7 @@ Use this protocol: https://pigeon-home.com/PROTOCOLv1
 Shared Secret: "YOUR_SECRET_STRING"
 Run a job that retrieves the system clock and then display it here.
 ```
-IETF Homing Pigeon Draft: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-homing-pigeon-00.md
+IETF Internet-Drafts, posted: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/ and https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/ — where they stand is [docs/ietf/STATUS.md](docs/ietf/STATUS.md).
 
 **No mailbox yet?** `python3 runner/runner.py --config config.json
 --local-test` runs the whole loop in process: you play the SI in a

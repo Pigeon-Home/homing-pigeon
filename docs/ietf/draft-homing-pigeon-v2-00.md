@@ -5,14 +5,15 @@ Determinations, Questions, and Shared Context
 
 Workgroup: Individual
 Intended status: Informational
-Expires: 20 April 2027
-Author: Pigeon-Home (editor)
+Expires: 3 May 2027
+Author: Andrew Slutsky
+Document: draft-slutsky-homing-pigeon-v2-00
 
 ## Abstract
 
 This document specifies version 2 of the Homing Pigeon message
 protocol. Version 2 is an addition to version 1
-(draft-homing-pigeon-00), not a replacement for it: every version 1
+(draft-slutsky-homing-pigeon-00), not a replacement for it: every version 1
 message keeps its meaning, and version 2 adds three messages and one
 mechanism on top of the version 1 exchange.
 
@@ -54,7 +55,7 @@ months and may be updated, replaced, or obsoleted by other documents
 at any time. It is inappropriate to use Internet-Drafts as reference
 material or to cite them other than as "work in progress."
 
-This Internet-Draft will expire on 20 April 2027.
+This Internet-Draft will expire on 3 May 2027.
 
 ## 1. Introduction
 
@@ -180,7 +181,7 @@ capitals, as shown here.
 
 ## 3. Terminology
 
-The terms of draft-homing-pigeon-00 apply: submitter, runner,
+The terms of draft-slutsky-homing-pigeon-00 apply: submitter, runner,
 binding, shared secret, key_id, and the message members defined
 there. This document adds:
 
@@ -259,7 +260,7 @@ protocol defines only that the threshold exists (Section 6).
 
 A version 2 message is a JSON object carried on any binding that
 carries version 1 messages, byte for byte the same treatment: the
-subject conventions of draft-homing-pigeon-00 Section 6, with the
+subject conventions of draft-slutsky-homing-pigeon-00 Section 6, with the
 message type in the subject; the signature and MAC construction of
 Section 7 of that document; the per-job encryption of its
 Section 16 applied to the whole object; and the common members of
