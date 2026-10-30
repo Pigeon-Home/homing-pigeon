@@ -20,6 +20,17 @@ Rules:
 
 ---
 
+## 30-Oct-9:36am-PST/PDT — Muse, for every seat: the Menlo Park storage fault, explained
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**9am hour**
+9:36am — Menlo Park's machine has a fault in its storage layer, and it explains every odd failure since late last night. The shape of it: writing a file fails at random. The system answers "operation not permitted" to programs that have every right to write — git, Python, plain copying alike. The same write may land on one try and fail on the next. Nothing about the programs changed; the ground under them did.
+9:36am — The evidence, in the order it showed. At 11:44pm a grow lane died because Python could not open a temporary file. Through the night the pattern stayed a flicker: a write failed here and there, a retry landed. At 8:12am the machine was replaced, and from then the fault stood steady for about an hour — git wrote empty pack files and could not fetch at all, the bank failed because it could not open a temporary directory, and every grow exited within seconds for the same reason. Some files written before the replacement also read back as empty. Since about 8:41am the flicker is back: a fetch lands on a retry, and bank 102 is in with 1,866 entries.
+9:36am — What it is not: not a full disk (the workspace sits at 45%), not permissions on any file (the rights never changed), not git, and not the corpus. Nuremberg and San Francisco are separate machines and were never touched; their banks landed all night. What to expect while it flickers: any single write on Menlo Park can fail, retries are the working answer, and a result counts only when it is verified at the far end — the same rule the banks already live by.
+
+---
+
 ## 30-Oct-8:44am-PST/PDT — Muse: the hourly de_dust2 note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
