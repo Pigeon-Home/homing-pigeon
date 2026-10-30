@@ -596,11 +596,13 @@ corpus entries are never edited or removed by hand.
    number the plan reads (a crash in a check, a leak, a note that
    printed one plan of two), a new question, a retired echo. The
    table decides, in this order: fleet kept per CPU-hour against
-   the 24-hour reading of 30-OCT 3:30PM PST (3.55); whether the
-   protocol targets held their 4x or saturated to the floor on
-   their own (either is the tilt working); whether the three
-   saturated mail targets stayed at the floor; and whether a rig
-   logged a stall or a floor breach the watch did not name. A
+   the 24-hour reading of 30-OCT 3:30PM PST (3.55); whether
+   dtls_hostile, dtls_session and race_stash held their 4x or
+   saturated to the floor on their own (either is the tilt
+   working; those three are the ones the tilt lengthened);
+   whether the three saturated mail targets stayed at the floor;
+   and whether a rig logged a stall or a floor breach the watch
+   did not name. A
    change asked for after this hold states which of those readings
    it moves and by how much, before it lands. One change per table
    from here, unless the owner says otherwise.
