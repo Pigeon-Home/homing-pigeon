@@ -14,6 +14,12 @@ Dated records are exempt by design and stay exempt: CHANGELOG.md,
 docs/archive/ and docs/reports/ (AGENTS.md rule 6) describe what
 was true when they were written, and a report may name this test
 by its file name.
+
+One line is exempt by name: the author address in the front matter of
+the Internet-Draft sources (docs/ietf/draft-slutsky-*.md). An RFC
+prints its author's address, and the conductor chose this one for the
+drafts (29-OCT 10:00PM PDT: "I think Slutsky 5544@gmail.com will be
+best." / "No space."). It names an author, not a recommended provider.
 """
 
 import os
@@ -27,6 +33,8 @@ def _root():
 
 
 _TERM = re.compile(r"gmail", re.IGNORECASE)
+_AUTHOR_LINE = 'email: "slutsky5544@gmail.com"'
+
 
 
 def _live_docs():
@@ -48,9 +56,12 @@ def _live_docs():
 
 
 def _hits(path):
+    draft = (os.path.basename(os.path.dirname(path)) == "ietf"
+             and os.path.basename(path).startswith("draft-slutsky-"))
     with open(path, encoding="utf-8") as fh:
         return [ln.strip() for ln in fh.read().splitlines()
-                if _TERM.search(ln)]
+                if _TERM.search(ln)
+                and not (draft and ln.strip() == _AUTHOR_LINE)]
 
 
 class NoProviderNameInLiveDocsTest(unittest.TestCase):
