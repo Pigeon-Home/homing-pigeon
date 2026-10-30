@@ -4,6 +4,26 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.40 - 2026-10-29
+
+- **The Internet-Drafts.** `draft-slutsky-homing-pigeon-00` and
+  `draft-slutsky-homing-pigeon-v2-00` are in the tree under
+  `docs/ietf/` as kramdown-rfc sources with their rendered text, HTML
+  and XML and their idnits reports, posted on the IETF datatracker
+  and submitted to the Independent Submissions Editor for
+  publication as Informational RFCs; `docs/ietf/STATUS.md` tracks
+  them and PROTOCOL.md links both.
+- **Two more fuzzing techniques in de_dust2.** `dtls_session` runs
+  whole DTLS conversations in memory from scripts and holds the
+  state machine's invariants; `race_board` interleaves board
+  operations across threads and holds the lease rules. Run records
+  carry their technique and rig, a cycling grow records its slice
+  plan, and `stats --yield` and `stats --plan` read them back. A
+  sliced grow stops at its planned seconds and a slow parent loses
+  weight for the rest of the grow.
+- Ships the de_dust corpus banked since 3.14.39, with the echoes of
+  the fixed brace walk retired.
+
 ## 3.14.39 - 2026-10-29
 
 - **Q115, Q116.** The key directory speaks at the job's door and the
