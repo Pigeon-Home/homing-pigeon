@@ -2,8 +2,88 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "de_dust": 1,
  "retired": {
+  "0ff9ad6f4a31cce3": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "102f4f7004f72a44": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "2552a712c47b08e8": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "388bdf24069f37e3": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "4258998c3b37c815": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "438c8288f459eb81": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "585f05a6cd9a4a87": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "785ba483daa38aa4": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "817e481004ed7c8e": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "84d9a4054c30f78f": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "86164dceffa0bd9a": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "92cad5c95b117a9b": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "9f662b1471e68928": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
   "b54e293b9a6fca66": {
    "head": "4ab926d251ba",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "ba8c5e58553ea3f1": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "bdcdedee7683455b": {
+   "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "c549dc512d61345a": {
+   "head": "7f0bdc008dbe",
    "on": "2026-10-30",
    "why": "redundant"
   }

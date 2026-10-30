@@ -216,7 +216,17 @@
   [
    "runner/wire/board.py",
    88,
+   89
+  ],
+  [
+   "runner/wire/board.py",
+   88,
    92
+  ],
+  [
+   "runner/wire/board.py",
+   89,
+   91
   ],
   [
    "runner/wire/board.py",
@@ -336,6 +346,21 @@
   [
    "runner/wire/board.py",
    140,
+   141
+  ],
+  [
+   "runner/wire/board.py",
+   140,
+   144
+  ],
+  [
+   "runner/wire/board.py",
+   141,
+   142
+  ],
+  [
+   "runner/wire/board.py",
+   142,
    144
   ],
   [
@@ -386,6 +411,11 @@
   [
    "runner/wire/board.py",
    163,
+   164
+  ],
+  [
+   "runner/wire/board.py",
+   163,
    165
   ],
   [
@@ -422,6 +452,11 @@
    "runner/wire/board.py",
    171,
    173
+  ],
+  [
+   "runner/wire/board.py",
+   173,
+   174
   ],
   [
    "runner/wire/board.py",
@@ -726,7 +761,17 @@
   [
    "runner/wire/board.py",
    290,
+   291
+  ],
+  [
+   "runner/wire/board.py",
+   290,
    296
+  ],
+  [
+   "runner/wire/board.py",
+   291,
+   267
   ],
   [
    "runner/wire/board.py",
@@ -776,6 +821,16 @@
   [
    "runner/wire/board.py",
    314,
+   315
+  ],
+  [
+   "runner/wire/board.py",
+   314,
+   317
+  ],
+  [
+   "runner/wire/board.py",
+   315,
    317
   ],
   [

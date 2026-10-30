@@ -5848,6 +5848,8 @@ when done, the proving commit or run. Newest first.
   Banked by rig_bank from the rig's own tree under section M item 7: 7 run records, 30,632 children (seeds 6770); totals from the merged tree. The rig's tree at b1824506d6af. Crash records replayed at main's head: race_board: 0 promoted, 1 redundant (fixed, reaching nothing new), 0 still crash.
   de_dust2 37 (San Francisco): 1687 entries, 7473 arcs, 0 crashes filed.
   Banked by rig_bank from the rig's own tree under section M item 7: 1 run records, 4,091 children (seeds 3209445712); totals from the merged tree. The rig's tree at 0aeb095481f0.
+  de_dust2 42 (Menlo Park): 1693 entries, 7484 arcs, 17 crashes filed.
+  Banked by rig_bank from the rig's own tree under section M item 7: 8 run records, 157,285 children (seeds 6770, 6771, 6772); totals from the merged tree. The rig's tree at b1824506d6af. Crash records replayed at main's head: race_board: 0 promoted, 16 redundant (fixed, reaching nothing new), 1 still crash. Retired echoes not re-banked: 1.
 - v3.12.71 FULL STAMP DONE: GitHub
   release published
   2026-10-25T22:02:36Z by
