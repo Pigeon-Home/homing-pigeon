@@ -8,7 +8,10 @@ owed a full look. P3: parents are drawn by the rarity of the arcs
 they reach and, on a target the reader mostly refuses, by whether
 the reader took them. P4: a try far slower than the corpus replay's
 median is a `slow` finding, kept apart from the crash file so no
-timing ever becomes an expectedFailure probe. P10: `stats --yield`
+timing ever becomes an expectedFailure probe. A sliced grow also
+stops at the slice's planned seconds, a slow child discounts its
+parent for the rest of that grow, and the local neighbor log stays
+one line so the timer measures the reader. P10: `stats --yield`
 prints the per-target table the review was built from.
 """
 import argparse
@@ -77,6 +80,11 @@ class SlicePlanTest(unittest.TestCase):
         self.assertEqual("9", B._set_rounds(cmd, 9)[6])
         self.assertEqual("8", B._next_seed(cmd)[8])
         self.assertIn("--rounds", B._set_rounds(["python", "tool", "grow"], 3))
+        budged = B._set_budget(cmd, 30)
+        self.assertEqual("30", budged[budged.index("--budget-sec") + 1])
+        again = B._set_budget(budged, 12.5)
+        self.assertEqual("12.5", again[again.index("--budget-sec") + 1])
+        self.assertEqual(1, again.count("--budget-sec"))
 
     def test_comma_lists_name_a_lane(self):
         self.assertEqual(["query", "local"], B._targets("query, local"))
@@ -98,6 +106,7 @@ class CycleUsesSlicesTest(unittest.TestCase):
 
         def fake_parallel(commands, jobs, out=print, minutes=0.0, requeue=None, **kw):
             seen["rounds"] = {tg: int(cmd[cmd.index("--rounds") + 1]) for tg, cmd in commands}
+            seen["budget"] = {tg: float(cmd[cmd.index("--budget-sec") + 1]) for tg, cmd in commands}
             seen["requeue"] = requeue
             tg, cmd = commands[0]
             seen["requeued"] = requeue(tg, cmd) if requeue else None
@@ -111,8 +120,10 @@ class CycleUsesSlicesTest(unittest.TestCase):
                 mock.patch.object(B, "prune_retired_crashes", return_value=0):
             B.cmd_grow(args, out=lambda *a: None)
         self.assertEqual({tg: 777 for tg in B.TARGETS}, seen["rounds"])
+        self.assertEqual({tg: 60.0 for tg in B.TARGETS}, seen["budget"])
         self.assertIsNotNone(seen["requeue"])
         self.assertEqual("777", seen["requeued"][seen["requeued"].index("--rounds") + 1])
+        self.assertEqual("60", seen["requeued"][seen["requeued"].index("--budget-sec") + 1])
 
     def test_rounds_named_means_no_slices(self):
         args = argparse.Namespace(target="all", rounds=5, seed=1, jobs=1,
@@ -125,6 +136,7 @@ class CycleUsesSlicesTest(unittest.TestCase):
             seen["rounds"] = {int(cmd[cmd.index("--rounds") + 1]) for tg, cmd in commands}
             seen["requeue"] = requeue
             seen["uniform"] = all("--uniform-parents" in cmd for tg, cmd in commands)
+            seen["budget"] = any("--budget-sec" in cmd for tg, cmd in commands)
             return 0
 
         with mock.patch.object(B, "run_parallel", fake_parallel), \
@@ -133,6 +145,7 @@ class CycleUsesSlicesTest(unittest.TestCase):
         self.assertEqual({5}, seen["rounds"])
         self.assertIsNone(seen["requeue"])
         self.assertTrue(seen["uniform"])
+        self.assertFalse(seen["budget"])
 
 
 class ParentChoiceTest(unittest.TestCase):
@@ -183,6 +196,80 @@ class ParentChoiceTest(unittest.TestCase):
             pw.reset_mock()
             s.grow(random.Random(1), 3, uniform_parents=True)
             self.assertFalse(pw.called)
+
+    def test_a_slow_child_discounts_its_parent_until_the_next_grow(self):
+        s = self._session({"a": {1}, "b": {1}}, accepted={"a", "b"})
+        base = s.parent_weights()
+        s.slow_parents["a"] = B.SLOW_PARENT_DISCOUNT
+        w = s.parent_weights()
+        self.assertAlmostEqual(base[0] * B.SLOW_PARENT_DISCOUNT, w[0])
+        self.assertAlmostEqual(base[1], w[1])
+        fresh = self._session({"a": {1}, "b": {1}}, accepted={"a", "b"})
+        self.assertEqual(base, fresh.parent_weights())
+
+    def test_a_slow_try_cuts_that_parents_weight_before_the_next_draw(self):
+        s = self._session({"a": {1}, "b": {1}}, accepted={"a", "b"})
+        s.median, s.slow_bound = 0.001, 10.0
+        seen = []
+        n = {"i": 0}
+
+        class Rigged(random.Random):
+            def choices(self, population, weights=None, *, cum_weights=None, k=1):
+                seen.append(list(weights))
+                return [population[0]]
+
+        def mutate(rng, parent, entries, target, weights):
+            n["i"] += 1
+            return ({"n": n["i"]}, "p_test")
+
+        with mock.patch.object(B, "mutate", side_effect=mutate), \
+                mock.patch.object(s, "run", return_value=("slow", 0, 1.0)):
+            s.grow(Rigged(0), 2)
+        self.assertEqual(B.SLOW_PARENT_DISCOUNT ** 2, s.slow_parents.get("a"))
+        self.assertNotIn("b", s.slow_parents)
+        self.assertEqual(2, len(seen))
+        self.assertAlmostEqual(seen[1][0], seen[0][0] * B.SLOW_PARENT_DISCOUNT)
+        self.assertAlmostEqual(seen[1][1], seen[0][1])
+
+
+class SliceBudgetTest(unittest.TestCase):
+
+    def test_the_grow_stops_when_the_slice_budget_is_spent(self):
+        s = B.Session("names", [{"id": "a", "kind": "text", "data": "a",
+                                 "from": "", "mutator": "", "arcs": 0}])
+        s.median, s.slow_bound = 0.001, 10.0
+        n = {"i": 0}
+
+        def mutate(rng, parent, entries, target, weights):
+            n["i"] += 1
+            return ({"n": n["i"]}, "p_test")
+
+        def clock():
+            return 0.0 if s.tried == 0 else 50.0
+
+        with mock.patch.object(B, "mutate", side_effect=mutate), \
+                mock.patch.object(s, "run", return_value=("refused", 0, 0.001)):
+            added = s.grow(random.Random(1), 1000, budget_sec=30,
+                           clock=clock, uniform_parents=True)
+        self.assertEqual([], added)
+        self.assertEqual(1, s.tried)
+        self.assertEqual("budget", s.stopped)
+
+    def test_no_budget_runs_the_rounds(self):
+        s = B.Session("names", [{"id": "a", "kind": "text", "data": "a",
+                                 "from": "", "mutator": "", "arcs": 0}])
+        s.median, s.slow_bound = 0.001, 10.0
+        n = {"i": 0}
+
+        def mutate(rng, parent, entries, target, weights):
+            n["i"] += 1
+            return ({"n": n["i"]}, "p_test")
+
+        with mock.patch.object(B, "mutate", side_effect=mutate), \
+                mock.patch.object(s, "run", return_value=("refused", 0, 0.001)):
+            s.grow(random.Random(1), 5, uniform_parents=True)
+        self.assertEqual(5, s.tried)
+        self.assertIsNone(s.stopped)
 
 
 class SlowClassTest(unittest.TestCase):
@@ -267,6 +354,23 @@ class SlowClassTest(unittest.TestCase):
                 entry = {k: record[k] for k in ("id", "kind", "data", "from", "mutator", "arcs")}
                 outcome = B._with_rig(lambda: B.check(target, entry))
                 self.assertIn(outcome, ("accepted", "refused"), (target, record["id"]))
+
+    def test_the_local_neighbor_log_stays_one_line(self):
+        # Thirty tries used to leave thirty neighbors, and the next
+        # try read all of them. One prior neighbor is what a refusal
+        # has to leave untouched.
+        def run():
+            for i in range(30):
+                entry = {"id": "t%d" % i, "kind": "text", "data": "nope-%d" % i,
+                         "from": "", "mutator": "", "arcs": 0}
+                self.assertEqual("refused", B.check_local(entry))
+            path = os.path.join(B._RIG.dir, "senses.jsonl")
+            with open(path, encoding="utf-8") as fh:
+                lines = fh.readlines()
+            self.assertEqual(B._SENSES_KEEP, len(lines))
+            self.assertIn("bm-neighbor", lines[-1])
+            self.assertNotIn("nope-", lines[-1])
+        B._with_rig(run)
 
 
 class CiScopeTest(unittest.TestCase):

@@ -340,3 +340,31 @@ are: kept per CPU-hour per technique and per rig, whether the race
 lanes have logged a violation, whether the session target keeps
 finding arcs, and whether the slow column stays quiet from heads
 past the fix.
+
+## 8. The slice times the reader
+
+Written 29-OCT 11:10PM PST. Not a change to the lanes, to P7, or to
+section 7. The 48-hour yield number is still what says whether the
+tilt worked.
+
+A `local` grow on 30-OCT ran 50,000 rounds in 4,856 seconds: 113 ms
+a try, against a corpus median of 4.9 ms. Forty-four of those tries
+were filed slow, from a head before the brace-walk fix, and they
+are retired as echoes. The average is a different fact. A nest does
+not slow every try. `check_local` stores a neighbor on every try
+and reads the senses file whole, and on a quiet box that is 0.6 ms
+with an empty store and about 18 ms at 5,000 lines. The rig keeps
+one prior line after the neighbor check, enough for the next
+refusal to have a store it must not touch (Q70).
+
+A cycling grow passes the planned seconds as `--budget-sec`. Rounds
+stay the estimate. When the estimate was a lie the grow stops at
+the time P1 assigned. A fixed `--rounds` grow is unchanged, and the
+quarter-slice floor is unchanged: the budget is the tilted slice.
+
+A slow child discounts its parent by a quarter for the rest of that
+grow, on the next draw, stacked if the parent keeps producing slow
+children, and kept across the 200-try recount. The record is still
+filed. The next grow starts even. A stop after a count of dry tries
+is not in: it would cut the quarter slice on a fast target and
+would not fire on the slow ones.

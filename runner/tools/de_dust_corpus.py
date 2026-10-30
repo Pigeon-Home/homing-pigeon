@@ -182,6 +182,10 @@ ACCEPT_BOOST = 4.0            # by this much
 SLOW_FACTOR = 50.0
 SLOW_FLOOR_SEC = 0.5
 SLOW_PER_GROW = 5             # the slowest tries a grow files
+# A slow child discounts its parent for the rest of this grow, so
+# one expensive family does not spend the slice that was about to
+# file it. The record is still filed. The next grow starts even.
+SLOW_PARENT_DISCOUNT = 0.25
 # P1/P2: the time slice a cycling grow gives each target, and the
 # tilt by yield around it.
 DEFAULT_SLICE_SEC = 120
@@ -816,6 +820,34 @@ def _senses_bytes(base):
         return b""
 
 
+# One prior neighbor is the store a refusal must leave untouched
+# (Q70). Everything older is this grow's own log, and every later
+# try reads the file whole. A refused local entry is under a
+# millisecond on an empty store and about 18 ms at 5,000 lines, on
+# a quiet box; a grow that averaged 113 ms a try was timing the log.
+_SENSES_KEEP = 1
+
+
+def _trim_senses(base, keep=_SENSES_KEEP):
+    """Leave the last `keep` lines of the senses store. The rig's
+    directory only. A symlink is left alone, and a short file is."""
+    path = os.path.join(base, "senses.jsonl")
+    if not path or os.path.islink(path):
+        return
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read()
+    except OSError:
+        return
+    lines = data.splitlines(keepends=True)
+    if len(lines) <= keep:
+        return
+    tmp = path + ".trim"
+    with open(tmp, "wb") as fh:
+        fh.write(b"".join(lines[-keep:]))
+    os.replace(tmp, path)
+
+
 def _local_neighbor():
     """One known-good alert into the same directory the entry just
     used. It must be stored, whatever the entry did. The title is
@@ -887,6 +919,10 @@ def check_local(entry):
         else:
             outcome = _local_ingest(body)
     _local_neighbor()
+    # The neighbor has been checked. The lines before it are this
+    # grow's history, and the next try would time them.
+    if _RIG is not None:
+        _trim_senses(_RIG.dir)
     return outcome
 
 
@@ -8726,6 +8762,10 @@ class Session:
         self.accepted_ids = set()
         self.median = None
         self.slow_bound = None
+        # Parents that produced a slow child this grow, id -> factor.
+        # Applied in parent_weights, so the recount keeps it. The
+        # live weight list is cut in the same turn (de_dust2).
+        self.slow_parents = {}
 
     def run(self, entry, trace=True):
         """(outcome, new_arcs, seconds) of one entry; a Crash is
@@ -8828,10 +8868,14 @@ class Session:
             return None
         known.sort()
         fill = known[len(known) // 2]
-        return [fill if w is None else w for w in weights]
+        out = [fill if w is None else w for w in weights]
+        if self.slow_parents:
+            out = [w * self.slow_parents.get(e["id"], 1.0)
+                   for w, e in zip(out, self.entries)]
+        return out
 
     def grow(self, rng, rounds, log=None, history=None, archive=None,
-             uniform_parents=False):
+             uniform_parents=False, budget_sec=None, clock=None):
         """Mutate from the corpus for `rounds` children; keep each one
         that reaches a new arc. Returns the entries added. `history`
         is {name: (tried, kept)} from earlier grows of this target,
@@ -8839,9 +8883,14 @@ class Session:
         still finding arcs (Muse, 2026-10-26: saturation is per
         mutator). Parents are drawn by `parent_weights` (de_dust2,
         P3) unless `uniform_parents`. `archive`, when given, is called
-        with a record of every child tried, kept or not."""
+        with a record of every child tried, kept or not. `budget_sec`,
+        when given, is the slice's planned time: rounds are the
+        estimate, and the grow stops once that time is spent so a
+        rate that was a lie cannot hold the core past the slice. The
+        first completed try always runs."""
         added = []
         self.tried = 0
+        self.stopped = None
         self.mutators_tried = {}
         self.mutators_kept = {}
         if not self.entries:
@@ -8850,7 +8899,16 @@ class Session:
         weights = steering(history) if history else None
         parents = None if uniform_parents else self.parent_weights()
         self.mutator_errors = {}
+        clock = clock or time.perf_counter
+        started = clock()
         for n in range(rounds):
+            if (budget_sec is not None and self.tried > 0
+                    and clock() - started >= budget_sec):
+                self.stopped = "budget"
+                if log:
+                    log(f"  slice budget {budget_sec:g}s spent; "
+                        f"the grow stops")
+                break
             if parents is not None:
                 parent = rng.choices(self.entries, parents)[0]
             else:
@@ -8890,6 +8948,19 @@ class Session:
                     log(f"  crash at round {n}: {self.crashes[-1][1]}")
                 continue
             if outcome == "slow":
+                # One family for the rest of this grow. The factor
+                # sticks on the session so the 200-try recount, which
+                # rebuilds the list, keeps it. The live list is cut
+                # now: waiting out two hundred slow tries has already
+                # spent the slice.
+                self.slow_parents[parent["id"]] = (
+                    self.slow_parents.get(parent["id"], 1.0)
+                    * SLOW_PARENT_DISCOUNT)
+                if parents is not None:
+                    for i, held in enumerate(self.entries):
+                        if held is parent and i < len(parents):
+                            parents[i] *= SLOW_PARENT_DISCOUNT
+                            break
                 if log:
                     log(f"  slow at round {n}: {self.slow[-1][1]}")
                 continue
@@ -9096,16 +9167,23 @@ def cmd_seed(args, out=print):
 
 
 def grow_commands(targets, rounds, seed, verbose, archive=None,
-                  no_steer=False, rounds_for=None, uniform_parents=False):
+                  no_steer=False, rounds_for=None, uniform_parents=False,
+                  budget_for=None):
     """One `grow` subprocess command per target, for --jobs.
     `rounds_for(target)`, when given, names each target's rounds
-    (de_dust2 slices) in place of the one `rounds`."""
+    (de_dust2 slices) in place of the one `rounds`. `budget_for`
+    names the slice's seconds, which the child spends as a wall
+    budget rather than as a round count."""
     out = []
     for target in targets:
         n = rounds_for(target) if rounds_for else rounds
         cmd = [sys.executable, os.path.abspath(__file__), "grow",
                "--target", target, "--rounds", str(n),
                "--seed", str(seed), "--jobs", "1"]
+        if budget_for:
+            b = budget_for(target)
+            if b is not None:
+                cmd += ["--budget-sec", f"{float(b):.6g}"]
         if verbose:
             cmd.append("--verbose")
         if archive:
@@ -9217,6 +9295,18 @@ def _set_rounds(cmd, rounds):
     return cmd
 
 
+def _set_budget(cmd, seconds):
+    """The same command with its --budget-sec set to the slice's
+    planned seconds."""
+    cmd = list(cmd)
+    text = f"{float(seconds):.6g}"
+    if "--budget-sec" in cmd:
+        cmd[cmd.index("--budget-sec") + 1] = text
+    else:
+        cmd += ["--budget-sec", text]
+    return cmd
+
+
 def cmd_grow(args, out=print):
     for target in _targets(args.target):
         prune_retired_crashes(target, out)
@@ -9279,6 +9369,7 @@ def _cmd_grow(args, out=print):
                 plan_record["rig"] = rig
             record_run(plan_record)
             rounds_for = lambda tg: plan[tg]["rounds"]  # noqa: E731
+            budget_for = lambda tg: plan[tg]["seconds"]  # noqa: E731
 
             def requeue(tg, cmd):
                 # The ledger has this grow's record by now: the rate
@@ -9286,7 +9377,10 @@ def _cmd_grow(args, out=print):
                 row = slice_plan([tg], slice_sec)[tg]
                 out(f"de_dust2 slice: {tg} {row['tilt']:.2f}x -> "
                     f"{row['seconds']:.0f} s, {row['rounds']} rounds")
-                return _set_rounds(cmd, row["rounds"])
+                return _set_budget(_set_rounds(cmd, row["rounds"]),
+                                   row["seconds"])
+        else:
+            budget_for = None
         out(f"de_dust grow: {'time slices of %g s' % slice_sec if slice_sec else '%d rounds' % rounds}, "
             f"rng seed {seed}, {min(args.jobs, len(targets))} targets at a time"
             + (f", for {minutes:g} minutes" if minutes else ""))
@@ -9296,7 +9390,8 @@ def _cmd_grow(args, out=print):
                                           getattr(args, "no_steer", False),
                                           rounds_for=rounds_for,
                                           uniform_parents=getattr(
-                                              args, "uniform_parents", False)),
+                                              args, "uniform_parents", False),
+                                          budget_for=budget_for),
                             args.jobs, out=out, minutes=minutes,
                             requeue=requeue)
     out(f"de_dust grow: {rounds} rounds, rng seed {seed}")
@@ -9321,14 +9416,21 @@ def _cmd_grow(args, out=print):
         archive = Archive(where, target, seed) if where else None
 
         uniform = getattr(args, "uniform_parents", False)
+        budget = getattr(args, "budget_sec", None)
 
         def work():
             session.baseline()
+            # The slice's seconds cover the replay and the mutation.
+            # Rounds remain the estimate; the remainder is the budget.
+            remain = None
+            if budget is not None:
+                remain = budget - (time.perf_counter() - t0)
             before = len(session.tracer.arcs)
             added = session.grow(rng, rounds, log=out if args.verbose
                                  else None, history=history,
                                  archive=archive.add if archive else None,
-                                 uniform_parents=uniform)
+                                 uniform_parents=uniform,
+                                 budget_sec=remain)
             return before, added
         try:
             before, added = _with_rig(work)
@@ -9938,6 +10040,12 @@ def main(argv=None):
                                 "(HP_DE_DUST_SLICE, default %d; --rounds "
                                 "names a fixed count instead)"
                                 % DEFAULT_SLICE_SEC)
+            p.add_argument("--budget-sec", type=float, default=None,
+                           help="stop this grow once it has run this many "
+                                "seconds. A cycling grow sets it from the "
+                                "slice's planned time, so a rate that was "
+                                "a lie cannot hold the core past the slice. "
+                                "A fixed --rounds grow leaves it unset")
             p.add_argument("--uniform-parents", action="store_true",
                            help="draw parents uniformly instead of by "
                                 "rarity and acceptance")
