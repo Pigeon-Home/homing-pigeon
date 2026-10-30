@@ -1,0 +1,12 @@
+{
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "de_dust": 1,
+ "retired": {
+  "b54e293b9a6fca66": {
+   "head": "4ab926d251ba",
+   "on": "2026-10-30",
+   "why": "redundant"
+  }
+ },
+ "target": "race_board"
+}
