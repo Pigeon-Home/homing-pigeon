@@ -1,0 +1,2 @@
+{"de_dust": 1, "target": "keydir", "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"}
+{"arcs": 0, "crash": "contract", "data": {"directory": {"": "job", "canary-key": {"state": "in_use"}, "k-b28821b7": {"state": "in_use"}, "ops": {"state": "in_use"}}, "key_id": ""}, "detail": "the default key's verdict differs under its fingerprint: 'invalid key directory entry' vs None", "found": "2026-10-30", "from": "6d0db58e1482a76b", "head": "77415ada2914", "id": "7498b3b2639a93c6", "kind": "payload", "mutator": "p_add_key"}
