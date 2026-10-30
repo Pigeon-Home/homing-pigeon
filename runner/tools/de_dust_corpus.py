@@ -10986,6 +10986,185 @@ def hourly_note(runs=None, now=None, hours=24, rig=None, probe=True):
     return "\n\n".join(out)
 
 
+def memory_total_mb():
+    """MemTotal in MiB, or None off Linux."""
+    try:
+        fh = open("/proc/meminfo", encoding="ascii", errors="replace")
+    except OSError:
+        return None
+    with fh:
+        for line in fh:
+            if line.startswith("MemTotal:"):
+                parts = line.split()
+                if len(parts) >= 2 and parts[1].isdigit():
+                    return int(parts[1]) // 1024
+    return None
+
+
+def grow_workers_live():
+    """How many de_dust grow processes are running on this box, by
+    their command lines (/proc; None where there is no /proc)."""
+    try:
+        pids = [n for n in os.listdir("/proc") if n.isdigit()]
+    except OSError:
+        return None
+    me = str(os.getpid())
+    live = 0
+    for pid in pids:
+        if pid == me:
+            continue
+        try:
+            with open(os.path.join("/proc", pid, "cmdline"), "rb") as fh:
+                argv = fh.read().split(b"\0")
+        except OSError:
+            continue
+        if any(a.endswith(b"de_dust_corpus.py") for a in argv) and b"grow" in argv:
+            live += 1
+    return live
+
+
+def watch_readings(runs=None, now=None, rig=None, disk_max=90.0, mem_min_mb=None,
+                   stale_min=None, expect_workers=None, disk_used_pct=None,
+                   mem_avail_mb=None, workers=None):
+    """The ten-minute watch (the rig seat's floors, Q120, and the
+    stall shape, Q122), as (lines, breaches). Every reading can be
+    handed in, for a test or another box's numbers; otherwise it is
+    read here. The floors: disk used under `disk_max` percent;
+    available memory over `mem_min_mb` (256 on a box of 4 GB or more,
+    128 below, unless given); and, when a slice plan stands, grow
+    workers live and a run record from this rig younger than
+    `stale_min` (twice the plan's longest slice, 30 at least)."""
+    runs = load_runs() if runs is None else runs
+    now = now or datetime.now(timezone.utc)
+    lines, breaches = [], []
+    if disk_used_pct is None:
+        try:
+            usage = shutil.disk_usage(CORPUS_DIR)
+            disk_used_pct = usage.used / usage.total * 100.0 if usage.total else None
+        except OSError:
+            disk_used_pct = None
+    if disk_used_pct is not None:
+        lines.append(f"disk: {disk_used_pct:.0f}% used of the corpus volume, "
+                     f"line at {disk_max:.0f}%")
+        if disk_used_pct >= disk_max:
+            breaches.append(f"disk {disk_used_pct:.0f}% over the {disk_max:.0f}% line")
+    if mem_avail_mb is None:
+        mem_avail_mb = memory_available_mb()
+    if mem_min_mb is None:
+        total = memory_total_mb()
+        mem_min_mb = 256 if (total or 0) >= 4096 else 128
+    if mem_avail_mb is not None:
+        lines.append(f"memory: {mem_avail_mb} MB available, floor {mem_min_mb} MB")
+        if mem_avail_mb < mem_min_mb:
+            breaches.append(f"memory {mem_avail_mb} MB under the {mem_min_mb} MB floor")
+    plan = last_plan(runs)
+    if stale_min is None:
+        longest = max([row.get("seconds", 0) for row in (plan or {}).get("targets", {}).values()]
+                      or [0])
+        stale_min = max(30, int(2 * longest / 60)) if plan else 60
+    if expect_workers is None:
+        expect_workers = 1 if plan else 0
+    if workers is None:
+        workers = grow_workers_live()
+    mine = [r for r in runs if r.get("kind") in ("grow", "seed", "distill")
+            and (rig is None or r.get("rig") == rig)]
+    newest = max((str(r.get("when", "")) for r in mine), default="")
+    age_min = None
+    if newest:
+        try:
+            then = datetime.strptime(newest, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            age_min = int((now - then).total_seconds() // 60)
+        except ValueError:
+            pass
+    if workers is not None:
+        lines.append(f"workers: {workers} grow process(es) live"
+                     + (f", last run record {age_min} min ago" if age_min is not None
+                        else ", no run record" + (f" from {rig}" if rig else ""))
+                     + f", stale past {stale_min} min")
+    if expect_workers:
+        if workers is not None and workers < expect_workers:
+            breaches.append(f"stalled: {workers} grow worker(s) live, {expect_workers} "
+                            "expected (Q122 shape: stop the tree, relaunch, report)")
+        elif age_min is not None and age_min > stale_min:
+            breaches.append(f"stalled: workers live but no run record in {age_min} min "
+                            "(Q122 shape: a child blocked on its pipe; stop the tree, "
+                            "relaunch, report)")
+    return lines, breaches
+
+
+def cmd_watch(args, out=print):
+    """The ten-minute watch, one line per reading and a verdict; exit
+    1 on a breach so a timer can act on it."""
+    rig = args.rig or os.environ.get("HP_DE_DUST_RIG") or None
+    lines, breaches = watch_readings(rig=rig, disk_max=args.disk_max,
+                                     mem_min_mb=args.mem_min_mb,
+                                     stale_min=args.stale_min,
+                                     expect_workers=args.expect_workers)
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for line in lines:
+        out(f"watch {stamp}" + (f" {rig}" if rig else "") + f": {line}")
+    if breaches:
+        out(f"watch {stamp}" + (f" {rig}" if rig else "") + ": BREACH " + "; ".join(breaches))
+        return 1
+    out(f"watch {stamp}" + (f" {rig}" if rig else "") + ": ok")
+    return 0
+
+
+def rig_table(runs=None, now=None, past=None, git=None):
+    """One row per rig from the ledger (de_dust2, the rig seat's pull
+    check): the newest run's time, head and target, runs in the last
+    hour, and -- with `past`, a commit -- whether that head descends
+    from it, by git ancestry in this tree ("unknown" when the head is
+    not here)."""
+    runs = load_runs() if runs is None else runs
+    now = now or datetime.now(timezone.utc)
+    since = (now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rigs = {}
+    for r in runs:
+        if r.get("kind") not in ("grow", "seed", "distill") or not r.get("rig"):
+            continue
+        row = rigs.setdefault(r["rig"], {"rig": r["rig"], "when": "", "head": "",
+                                         "target": "", "last_hour": 0})
+        if str(r.get("when", "")) > row["when"]:
+            row.update(when=r["when"], head=str(r.get("head", "")), target=r.get("target", ""))
+        if str(r.get("when", "")) >= since:
+            row["last_hour"] += 1
+    git = git or (lambda args: subprocess.run(["git"] + args, cwd=ROOT, capture_output=True,
+                                              text=True, timeout=60).returncode)
+    for row in rigs.values():
+        try:
+            then = datetime.strptime(row["when"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            row["age_min"] = int((now - then).total_seconds() // 60)
+        except ValueError:
+            row["age_min"] = None
+        if past and row["head"]:
+            known = (git(["cat-file", "-e", row["head"] + "^{commit}"]) == 0
+                     and git(["cat-file", "-e", past + "^{commit}"]) == 0)
+            row["past"] = (git(["merge-base", "--is-ancestor", past, row["head"]]) == 0
+                           if known else None)
+    return sorted(rigs.values(), key=lambda r: r["rig"])
+
+
+def cmd_rigs(args, out=print):
+    rows = rig_table(past=args.past)
+    if not rows:
+        out("no run record names a rig (HP_DE_DUST_RIG is not set on the grows)")
+        return 0
+    status = 0
+    for row in rows:
+        verdict = ""
+        if args.past:
+            verdict = (" past " + args.past[:12] if row.get("past") is True else
+                       " NOT past " + args.past[:12] if row.get("past") is False else
+                       " (head not in this tree)")
+            if row.get("past") is False:
+                status = 1
+        out(f"{row['rig']:14} {row['head'][:12]:12} {row['when']} "
+            f"({row['age_min']} min ago, {row['target']}), {row['last_hour']} run(s) "
+            f"in the last hour{verdict}")
+    return status
+
+
 def cmd_stats(args, out=print):
     if getattr(args, "yield_table", False):
         hours = getattr(args, "hours", 48) or 48
@@ -11052,6 +11231,23 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("dictionary")
     p.set_defaults(fn=cmd_dictionary)
+    p = sub.add_parser("watch", help="the ten-minute watch: floors, workers, "
+                                     "stall; exit 1 on a breach")
+    p.add_argument("--rig", default=None, help="this rig's name (HP_DE_DUST_RIG)")
+    p.add_argument("--disk-max", type=float, default=90.0)
+    p.add_argument("--mem-min-mb", type=int, default=None,
+                   help="available-memory floor (default 256 on 4 GB+, else 128)")
+    p.add_argument("--stale-min", type=int, default=None,
+                   help="minutes without a run record that mean a stall "
+                        "(default twice the plan's longest slice, 30 at least)")
+    p.add_argument("--expect-workers", type=int, default=None,
+                   help="grow processes that should be live (default 1 when a "
+                        "plan stands)")
+    p.set_defaults(fn=cmd_watch)
+    p = sub.add_parser("rigs", help="one line per rig from the ledger; --past "
+                                    "checks every rig's head descends from a commit")
+    p.add_argument("--past", default=None, help="a commit every rig should have crossed")
+    p.set_defaults(fn=cmd_rigs)
     p = sub.add_parser("disk", help="count failed writes on a flickering disk")
     p.add_argument("--writes", type=int, default=200)
     p.add_argument("--where", default=None,

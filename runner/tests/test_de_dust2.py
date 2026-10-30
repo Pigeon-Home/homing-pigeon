@@ -803,6 +803,65 @@ class HourlyNoteTest(unittest.TestCase):
         self.assertIn("Disk probe at", lines[0])
 
 
+class WatchTest(unittest.TestCase):
+    """The ten-minute watch: the floors (Q120) and the stall shape
+    (Q122), with every reading handed in."""
+
+    def _runs(self, when="2026-10-30T21:30:00Z"):
+        return [_grow("wire", when, seconds=100.0, kept=1),
+                {"kind": "plan", "when": "2026-10-30T21:00:00Z", "slice": 600.0,
+                 "jobs": 1, "head": "abc", "targets": {"wire": {"seconds": 1800}}}]
+
+    def test_a_clean_box_reads_ok(self):
+        now = datetime(2026, 10, 30, 21, 40, tzinfo=timezone.utc)
+        lines, breaches = B.watch_readings(self._runs(), now=now, disk_used_pct=45.0,
+                                           mem_avail_mb=640, workers=2)
+        self.assertEqual([], breaches)
+        self.assertEqual(3, len(lines))
+        self.assertIn("stale past 60 min", lines[2])
+
+    def test_the_floors_breach(self):
+        now = datetime(2026, 10, 30, 21, 40, tzinfo=timezone.utc)
+        _l, breaches = B.watch_readings(self._runs(), now=now, disk_used_pct=91.0,
+                                        mem_avail_mb=188, mem_min_mb=256, workers=2)
+        self.assertEqual(2, len(breaches))
+        self.assertIn("disk 91% over the 90% line", breaches[0])
+        self.assertIn("memory 188 MB under the 256 MB floor", breaches[1])
+
+    def test_no_workers_with_a_plan_standing_is_a_stall(self):
+        now = datetime(2026, 10, 30, 21, 40, tzinfo=timezone.utc)
+        _l, breaches = B.watch_readings(self._runs(), now=now, disk_used_pct=10.0,
+                                        mem_avail_mb=900, workers=0)
+        self.assertEqual(1, len(breaches))
+        self.assertIn("0 grow worker(s) live, 1 expected", breaches[0])
+
+    def test_workers_live_but_silent_past_the_slice_is_the_q122_shape(self):
+        now = datetime(2026, 10, 30, 23, 0, tzinfo=timezone.utc)
+        _l, breaches = B.watch_readings(self._runs(), now=now, disk_used_pct=10.0,
+                                        mem_avail_mb=900, workers=2)
+        self.assertEqual(1, len(breaches))
+        self.assertIn("no run record in 90 min", breaches[0])
+        self.assertIn("blocked on its pipe", breaches[0])
+
+    def test_the_rig_table_reads_the_ledger_and_git(self):
+        now = datetime(2026, 10, 30, 22, 0, tzinfo=timezone.utc)
+        runs = [dict(_grow("wire", "2026-10-30T21:50:00Z"), rig="Nuremberg", head="aaaa"),
+                dict(_grow("dtls", "2026-10-30T20:00:00Z"), rig="Nuremberg", head="old0"),
+                dict(_grow("local", "2026-10-30T21:55:00Z"), rig="San Francisco", head="bbbb")]
+        seen = []
+
+        def git(args):
+            seen.append(args)
+            if args[0] == "cat-file":
+                return 0
+            return 0 if args[2:] == ["fix0", "aaaa"] else 1
+        rows = B.rig_table(runs, now=now, past="fix0", git=git)
+        self.assertEqual(["Nuremberg", "San Francisco"], [r["rig"] for r in rows])
+        self.assertEqual(("aaaa", 10, 1, True), (rows[0]["head"], rows[0]["age_min"],
+                                                 rows[0]["last_hour"], rows[0]["past"]))
+        self.assertEqual(False, rows[1]["past"])
+
+
 class LedgerTest(unittest.TestCase):
 
     def test_run_records_carry_the_technique_and_the_rig(self):
