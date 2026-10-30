@@ -583,6 +583,28 @@ skip registered, nothing about any machine in the tree, the
 contract asserted and never the implementation, and the existing
 corpus entries are never edited or removed by hand.
 
+8. **The measurement hold (audit seat, 30-OCT 3:55PM PST, lifts
+   31-OCT 7:00PM PST).** Four things changed what the rigs run in
+   one afternoon on 30-OCT: the bank cadence (hourly), the tilt (a
+   rate over an hour of the target's time), the lanes (the new
+   targets) and the campaign's name. One 48-hour table has to
+   judge them, and a table that measures four changes at once
+   gives a clean reading of none. So until the table on 31-OCT
+   evening: no lane list moves, no tilt constant moves, no cadence
+   or slice base moves, and no target is seeded or reseeded on a
+   rig. What may still land: a fix to the tool that changes no
+   number the plan reads (a crash in a check, a leak, a note that
+   printed one plan of two), a new question, a retired echo. The
+   table decides, in this order: fleet kept per CPU-hour against
+   the 24-hour reading of 30-OCT 3:30PM PST (3.55); whether the
+   protocol targets held their 4x or saturated to the floor on
+   their own (either is the tilt working); whether the three
+   saturated mail targets stayed at the floor; and whether a rig
+   logged a stall or a floor breach the watch did not name. A
+   change asked for after this hold states which of those readings
+   it moves and by how much, before it lands. One change per table
+   from here, unless the owner says otherwise.
+
 ### A. The coverage map, gap by gap (folded into P while P runs)
 
 Source: the latest `coverage` workflow run on main, its

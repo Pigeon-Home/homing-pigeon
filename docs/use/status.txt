@@ -7,7 +7,7 @@
 # finished since its last line. on: one word for what it is doing now.
 # Rulings, reasons, limits and anything to act on stay in English, in the Q.
 review 90000998 @35bbcd5 open:- closed:- on:review
-audit 80000aeb @b260d61 open:Q123 closed:Q124,Q126 on:de_aztec
+audit 80000aeb @1f63008 open:Q123 closed:Q126 on:hold
 docs 60000b3a @35bbcd5 open:- closed:- on:docs
 desk 40000e00 @3f2b970 open:- closed:Q30 on:review
 coverage a0000997 @1b32339 open:- closed:- on:review
