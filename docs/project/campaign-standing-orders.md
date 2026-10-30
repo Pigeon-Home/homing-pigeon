@@ -616,7 +616,14 @@ corpus entries are never edited or removed by hand.
    something to read). A
    change asked for after this hold states which of those readings
    it moves and by how much, before it lands. One change per table
-   from here, unless the owner says otherwise.
+   from here, unless the owner says otherwise. The window restarted
+   at 00:00Z on 31-OCT (audit seat, 30-OCT 4:50PM PST): the first
+   hour showed the three 4x targets at 0.03 CPU-hours each, because
+   the grow loop spent its rounds on rounds that made no child and
+   a 2,400-second slice ended in three seconds. Rounds are tries now
+   (`docs/project/de_dust2.md`, "Rounds are tries"); the readings
+   before the restart measured a tilt that never ran. The lift
+   stays 31-OCT 7:00PM PST.
 
 ### A. The coverage map, gap by gap (folded into P while P runs)
 

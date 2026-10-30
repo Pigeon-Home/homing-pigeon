@@ -1,2 +1,0 @@
-{"de_dust": 1, "target": "race_stash", "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"}
-{"arcs": 0, "crash": "contract", "data": {"threads": [[{"body": "alpha", "op": "stash", "skey": "bm-stash-0001"}, {"op": "yield"}, {"op": "deliver", "skey": "bm-stash-0001"}], [{"op": "yield"}, {"body": "beta", "op": "stash", "signal": "..", "skey": "bm-stash-0001"}]]}, "detail": "bm-stash-0001 delivered a body that was not stashed", "found": "2026-10-30", "from": "0359ed8c95f0c322", "head": "f1f14bb0e678", "id": "0fd9948793e9bf53", "kind": "payload", "mutator": "p_add_key"}

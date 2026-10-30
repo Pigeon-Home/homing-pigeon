@@ -2,6 +2,11 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "de_dust": 1,
  "retired": {
+  "0fd9948793e9bf53": {
+   "head": "1481a2e09cfe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
   "2501edaafe4f848d": {
    "head": "4052d3e773db",
    "on": "2026-10-30",

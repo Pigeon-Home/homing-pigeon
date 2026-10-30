@@ -20,6 +20,7 @@ import errno
 import os
 import shutil
 import random
+import time
 import subprocess
 import sys
 import tempfile
@@ -93,13 +94,13 @@ class SlicePlanTest(unittest.TestCase):
     def test_rounds_follow_the_slice_and_the_rate_clamped(self):
         runs = ([_grow("slow", "2026-10-29T1%d:00:00Z" % i, tried=100, seconds=10.0)
                  for i in range(5)]
-                + [_grow("fast", "2026-10-29T1%d:00:00Z" % i, tried=100000, seconds=10.0)
+                + [_grow("fast", "2026-10-29T1%d:00:00Z" % i, tried=10000000, seconds=10.0)
                    for i in range(5)]
                 + [_grow("rich", "2026-10-29T1%d:00:00Z" % i, tried=1000, seconds=10.0, kept=4)
                    for i in range(5)])
         plan = B.slice_plan(["slow", "fast", "rich", "new"], 120, runs)
         self.assertEqual(B.SLICE_MIN_ROUNDS, plan["slow"]["rounds"])      # 30 s x 10/s = 300 -> floor
-        self.assertEqual(B.SLICE_MAX_ROUNDS, plan["fast"]["rounds"])      # 30 s x 10k/s -> ceiling
+        self.assertEqual(B.SLICE_MAX_ROUNDS, plan["fast"]["rounds"])      # 30 s x 1M/s -> ceiling
         self.assertEqual(B.TILT_MAX, plan["rich"]["tilt"])                # 20 kept -> 4x
         self.assertEqual(int(480 * 100), plan["rich"]["rounds"])          # 480 s x 100/s
         self.assertEqual(B.SLICE_FIRST_ROUNDS, plan["new"]["rounds"])     # no rate yet
@@ -300,6 +301,64 @@ class SliceBudgetTest(unittest.TestCase):
             s.grow(random.Random(1), 5, uniform_parents=True)
         self.assertEqual(5, s.tried)
         self.assertIsNone(s.stopped)
+
+    def test_rounds_are_tries_so_a_missing_mutator_does_not_spend_them(self):
+        # Nine rounds in ten make nothing (a small script corpus
+        # hands back a duplicate on most rounds). The rounds count
+        # the children the reader ran, not the misses, so the grow
+        # still makes its five tries.
+        s = B.Session("names", [{"id": "a", "kind": "text", "data": "a",
+                                 "from": "", "mutator": "", "arcs": 0}])
+        s.median, s.slow_bound = 0.001, 10.0
+        n = {"i": 0}
+
+        def mutate(rng, parent, entries, target, weights):
+            n["i"] += 1
+            if n["i"] % 10:
+                return None
+            return ({"n": n["i"]}, "p_test")
+
+        with mock.patch.object(B, "mutate", side_effect=mutate), \
+                mock.patch.object(s, "run", return_value=("refused", 0, 0.001)):
+            s.grow(random.Random(1), 5, uniform_parents=True)
+        self.assertEqual(5, s.tried)
+        self.assertEqual(50, n["i"])
+        self.assertIsNone(s.stopped)
+
+    def test_a_corpus_the_mutators_cannot_grow_ends_the_grow_as_exhausted(self):
+        s = B.Session("names", [{"id": "a", "kind": "text", "data": "a",
+                                 "from": "", "mutator": "", "arcs": 0}])
+        s.median, s.slow_bound = 0.001, 10.0
+        n = {"i": 0}
+
+        def mutate(rng, parent, entries, target, weights):
+            n["i"] += 1
+            return None
+
+        with mock.patch.object(B, "MISS_STREAK", 25), \
+                mock.patch.object(B, "mutate", side_effect=mutate), \
+                mock.patch.object(s, "run", return_value=("refused", 0, 0.001)):
+            s.grow(random.Random(1), 5, uniform_parents=True)
+        self.assertEqual(0, s.tried)
+        self.assertEqual(25, n["i"])
+        self.assertEqual("exhausted", s.stopped)
+
+    def test_a_duplicate_child_is_a_miss_too(self):
+        s = B.Session("names", [B.make_entry("text", "a", "", "seed")])
+        s.median, s.slow_bound = 0.001, 10.0
+        n = {"i": 0}
+
+        def mutate(rng, parent, entries, target, weights):
+            n["i"] += 1
+            return ("a", "p_test")      # the parent itself, every time
+
+        with mock.patch.object(B, "MISS_STREAK", 7), \
+                mock.patch.object(B, "mutate", side_effect=mutate), \
+                mock.patch.object(s, "run", return_value=("refused", 0, 0.001)):
+            s.grow(random.Random(1), 5, uniform_parents=True)
+        self.assertEqual(0, s.tried)
+        self.assertEqual(7, n["i"])
+        self.assertEqual("exhausted", s.stopped)
 
 
 class FootprintTest(unittest.TestCase):
@@ -712,6 +771,33 @@ class TechniquesTest(unittest.TestCase):
                              B._with_rig(lambda: B.check("race_stash", seeds[name])),
                              name)
 
+    def test_a_stash_logged_after_its_delivery_is_not_a_fault(self):
+        # The event log takes each entry after its operation returns.
+        # A stash that writes, is read and delivered by the other
+        # lane, and only then returns, is logged after the delivery;
+        # the contract reads counts, not the log's order, so the
+        # delivery of a body that was stashed is not "a body that was
+        # not stashed" (the race_stash echo of 30-OCT).
+        real_stash, real_deliver = B.R.stash_result, B.R.deliver_stash
+
+        def slow_to_return(*a, **k):
+            ok = real_stash(*a, **k)
+            time.sleep(0.2)
+            return ok
+
+        def late_to_start(*a, **k):
+            time.sleep(0.05)
+            return real_deliver(*a, **k)
+
+        spec = {"threads": [[{"op": "deliver", "skey": "bm-stash-0001"}],
+                            [{"op": "stash", "skey": "bm-stash-0001",
+                              "body": "beta"}]]}
+        entry = B.make_entry("payload", spec, "x", "seed")
+        with mock.patch.object(B.R, "stash_result", slow_to_return), \
+                mock.patch.object(B.R, "deliver_stash", late_to_start):
+            self.assertEqual("accepted",
+                             B._with_rig(lambda: B.check("race_stash", entry)))
+
     def test_race_targets_sit_out_the_surface_differential_and_the_kill_set(self):
         self.assertEqual([], B.platform_disagreements("race_board"))
         self.assertEqual([], B.platform_disagreements("race_stash"))
@@ -1054,16 +1140,21 @@ class VerdictTest(unittest.TestCase):
         lines = B.verdict(runs, now=now, since="2026-10-30T22:55:00Z")
         self.assertIn("v2_mail: 1 plan(s), 0 above the floor", "\n".join(lines))
 
-    def test_the_default_window_keeps_the_tell_and_drops_the_old_tilt(self):
-        now = datetime(2026, 10, 30, 23, 9, tzinfo=timezone.utc)
+    def test_the_default_window_starts_at_the_restart_and_drops_the_nominal_tilt(self):
+        # The plans before 00:00Z on 31-OCT were made by a grow loop
+        # that spent its rounds on misses; the window starts with the
+        # first plans made with rounds as tries.
+        now = datetime(2026, 10, 31, 1, 9, tzinfo=timezone.utc)
         runs = [self._plan("2026-10-30T21:39:18Z", {"dtls_hostile": 0.25}),
-                self._plan("2026-10-30T22:17:14Z", {"dtls_hostile": 4.0,
+                self._plan("2026-10-30T22:17:14Z", {"dtls_hostile": 4.0}),
+                self._plan("2026-10-31T00:17:14Z", {"dtls_hostile": 4.0,
                                                    "dtls_session": 4.0,
                                                    "race_stash": 4.0})]
         text = "\n".join(B.verdict(runs, now=now))
         self.assertIn("dtls_hostile: 1 plan(s)", text)
         self.assertIn("held 4x", text)
         self.assertNotIn("first 0.25x", text)
+        self.assertEqual("2026-10-31T00:00:00Z", B.HOLD_SINCE)
 
     def test_the_watch_records_itself_when_asked(self):
         recorded = []

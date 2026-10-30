@@ -4,6 +4,19 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.43 - 2026-10-30
+
+- **The fuzz grow's rounds are tries.** A round whose mutator made
+  no child, raised, or repeated an entry no longer spends the round;
+  20,000 such rounds in a row end a grow as exhausted, and the run
+  record says why a grow ended. Before this, a long slice on a
+  script-shaped corpus ended in seconds with a few hundred tries, so
+  the slices the planner lengthened never ran. The ceiling on a
+  slice's rounds is 2,000,000.
+- **The stash race harness reads counts, not log order.** A stash
+  logged after the delivery it fed was read as a body nobody
+  stashed; the one echo on file was the harness and is retired.
+
 ## 3.14.42 - 2026-10-30
 
 - **Q124: the replay cache keeps its marks on Windows.** The atomic

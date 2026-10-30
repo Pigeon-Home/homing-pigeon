@@ -119,7 +119,7 @@ who lands it, and how the ledger will show whether it worked.
 (`--slice SECONDS`, default 120 under `--minutes`) and derives each
 target's rounds from its measured tries per second over its last
 five grows (`rounds = slice × tries_per_second`, clamped to
-[400, 50,000]); `--rounds` stays for a fixed grow. Every target then
+[400, 2,000,000]); `--rounds` stays for a fixed grow. Every target then
 gets the same wall time per cycle, and a 1-core rig's 55-minute
 cycle reaches all 22 targets once instead of holding on the four
 slow ones. *Who:* the tool (audit seat). *Measure:* CPU-hours per
@@ -426,6 +426,21 @@ A cycling grow passes the planned seconds as `--budget-sec`. Rounds
 stay the estimate. When the estimate was a lie the grow stops at
 the time P1 assigned. A fixed `--rounds` grow is unchanged, and the
 quarter-slice floor is unchanged: the budget is the tilted slice.
+
+Rounds are tries (30-OCT 4:50PM PST). A round whose mutator hands
+back nothing, raises, or makes a child the corpus already holds
+costs microseconds and does not count toward `--rounds`; 20,000
+such rounds in a row end the grow as `exhausted`, and the run
+record says why a grow ended (`stopped`: `budget`, `exhausted`, or
+null for the rounds). Before this, the misses spent the rounds: on
+a script-shaped corpus (dtls_hostile, dtls_session, race_stash)
+nine rounds in ten made nothing, 50,000 rounds were over in three
+seconds with 450 tries, and a 2,400-second slice ended before its
+budget was a tenth spent. The first hour's verdict read the three
+targets at 4x and 0.03 CPU-hours each; the tilt was nominal. The
+ceiling moved from 50,000 to 2,000,000 so a fast target's long
+slice is bounded by its seconds, not the ceiling. The hold's
+window restarts at the first plans made with this tool.
 
 A slow child discounts its parent by a quarter for the rest of that
 grow, on the next draw, stacked if the parent keeps producing slow

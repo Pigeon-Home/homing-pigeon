@@ -478,12 +478,17 @@ class ToolTest(unittest.TestCase):
         def boom(*_a, **_k):
             raise RecursionError("maximum recursion depth exceeded")
 
-        with mock.patch.object(B, "mutate", boom):
+        # A round that raises makes no child, so it does not spend a
+        # round (rounds are tries); a streak of them ends the grow as
+        # exhausted instead.
+        with mock.patch.object(B, "mutate", boom), \
+                mock.patch.object(B, "MISS_STREAK", 5):
             added = B._with_rig(lambda: (session.baseline(),
                                          session.grow(rng, 5))[1])
         self.assertEqual(added, [])
         self.assertEqual(session.mutator_errors, {"RecursionError": 5})
         self.assertEqual(session.tried, 0)
+        self.assertEqual(session.stopped, "exhausted")
 
     def test_seeds_are_the_same_on_every_run(self):
         # encrypt_body's nonce is drawn from a counter while seeding,

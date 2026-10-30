@@ -194,7 +194,8 @@ SLOW_PARENT_DISCOUNT = 0.25
 # tilt by yield around it.
 DEFAULT_SLICE_SEC = 120
 SLICE_MIN_ROUNDS = 400
-SLICE_MAX_ROUNDS = 50000
+SLICE_MAX_ROUNDS = 2000000   # tries; the slice's seconds are the real bound
+MISS_STREAK = 20000          # rounds in a row with no new child: exhausted
 SLICE_FIRST_ROUNDS = 2000     # a target with no rate on record yet
 # The campaign's name, as the ledger lines, the bank titles, the slice,
 # plan and yield lines and the hourly note say it. The tool, the corpus
@@ -2725,10 +2726,10 @@ def check_race_stash(entry):
                     subject = op.get("subject")
                     if not isinstance(subject, str):
                         subject = "[HOMING-PIGEON] result " + skey
-                    ok = R.stash_result(base, skey, {"job_id": skey, "kind": "exec"},
-                                        subject, body)
                     with lock:
-                        events.append(("stash", skey, body, bool(ok)))
+                        events.append(("stash", skey, body))
+                    R.stash_result(base, skey, {"job_id": skey, "kind": "exec"},
+                                   subject, body)
                 elif name == "deliver":
                     sent = []
 
@@ -2785,31 +2786,45 @@ def check_race_stash(entry):
     if errors:
         shutil.rmtree(base, ignore_errors=True)
         raise Crash("exception", errors[0])
+    # The log holds each event in the order its thread took the
+    # lock, after the operation returned, which is not the order the
+    # operations touched the outbox: a stash can finish its write,
+    # another thread deliver what it wrote, and the delivery be
+    # logged before the stash. So the contract is read as counts,
+    # not as a sequence: a delivered body must have been handed to
+    # a stash for that key at some point, and a body is delivered
+    # no more times than it was stashed plus the undelivers on its
+    # key (an undeliver puts the record back for another go).
     faults = []
-    stashed = {}
-    open_delivery = set()
+    stashed = {}            # (skey, body) -> stashes handed in
+    undelivers = {}         # skey -> count
+    delivers = {}           # (skey, body) -> deliveries
     delivered = 0
     for ev in events:
-        kind = ev[0]
-        if kind == "stash" and ev[3]:
-            stashed.setdefault(ev[1], set()).add(ev[2])
-            open_delivery.discard(ev[1])
-        elif kind == "undeliver":
-            open_delivery.discard(ev[1])
-        elif kind == "deliver":
-            skey, body = ev[1], ev[2]
-            delivered += 1
-            owners = [k for k, bodies in stashed.items() if body in bodies]
+        if ev[0] == "stash":
+            stashed[(ev[1], ev[2])] = stashed.get((ev[1], ev[2]), 0) + 1
+        elif ev[0] == "undeliver":
+            undelivers[ev[1]] = undelivers.get(ev[1], 0) + 1
+    for ev in events:
+        if ev[0] != "deliver":
+            continue
+        skey, body = ev[1], ev[2]
+        delivered += 1
+        if skey is None:
+            owners = [k for (k, b) in stashed if b == body]
+            if not owners:
+                faults.append("delivered a body nobody stashed")
+                continue
+            skey = owners[0] if len(set(owners)) == 1 else None
             if skey is None:
-                skey = owners[0] if len(owners) == 1 else None
-                if not owners:
-                    faults.append("delivered a body nobody stashed")
-            elif body not in stashed.get(skey, ()):
-                faults.append(f"{skey} delivered a body that was not stashed")
-            if skey is not None:
-                if skey in open_delivery:
-                    faults.append(f"{skey} delivered twice without an undeliver")
-                open_delivery.add(skey)
+                continue
+        elif (skey, body) not in stashed:
+            faults.append(f"{skey} delivered a body that was not stashed")
+            continue
+        delivers[(skey, body)] = delivers.get((skey, body), 0) + 1
+        if delivers[(skey, body)] > (stashed[(skey, body)]
+                                     + undelivers.get(skey, 0)):
+            faults.append(f"{skey} delivered twice without an undeliver")
     if faults:
         shutil.rmtree(base, ignore_errors=True)
         raise Crash("contract", faults[0])
@@ -9621,6 +9636,7 @@ def _run_record(kind, target, session, before, added, seconds, **extra):
         "slowest_ms": round(session.slowest[0] * 1000),
         "slowest": session.slowest[1],
         "seconds": round(seconds, 1),
+        "stopped": getattr(session, "stopped", None),
     }
     rig = os.environ.get("HP_DE_DUST_RIG")
     if rig:
@@ -9656,6 +9672,7 @@ class Session:
         self.slowest = (0.0, None)
         self.outcomes = {"accepted": 0, "refused": 0, "crash": 0, "slow": 0}
         self.tried = 0
+        self.stopped = None        # why the last grow ended, if early
         self.mutators_tried = {}
         self.mutator_errors = {}
         self.mutators_kept = {}
@@ -9858,13 +9875,32 @@ class Session:
         self.mutator_errors = {}
         clock = clock or time.perf_counter
         started = clock()
-        for n in range(rounds):
+        # `rounds` is tries: children the reader runs. A round whose
+        # mutator declines, raises, or hands back a child the corpus
+        # already holds costs microseconds and does not count, and a
+        # run of MISS_STREAK such rounds in a row ends the grow as
+        # "exhausted": the mutators cannot make anything new from
+        # this corpus (a small structured script hands back a
+        # duplicate on 99 rounds in 100). Counting misses as rounds
+        # let a 2,400-second slice end in three seconds with 400
+        # tries, and the tilt was never applied where it mattered.
+        n = 0
+        misses = 0
+        while self.tried < rounds:
+            n += 1
             if (budget_sec is not None and self.tried > 0
                     and clock() - started >= budget_sec):
                 self.stopped = "budget"
                 if log:
                     log(f"  slice budget {budget_sec:g}s spent; "
                         f"the grow stops")
+                break
+            if misses >= MISS_STREAK:
+                self.stopped = "exhausted"
+                if log:
+                    log(f"  {MISS_STREAK} rounds in a row made no new "
+                        f"child; the mutators are exhausted on this "
+                        f"corpus and the grow stops")
                 break
             if parents is not None:
                 parent = rng.choices(self.entries, parents)[0]
@@ -9883,13 +9919,17 @@ class Session:
                 if log:
                     log(f"  mutator raised at round {n}: {kind}: "
                         f"{_short(e)}")
+                misses += 1
                 continue
             if child is None:
+                misses += 1
                 continue
             data, name = child
             entry = make_entry(parent["kind"], data, parent["id"], name)
             if entry["id"] in self.ids:
+                misses += 1
                 continue
+            misses = 0
             self.tried += 1
             self.mutators_tried[name] = self.mutators_tried.get(name, 0) + 1
             # The tracer's hit set is still this child's until the next
@@ -11458,7 +11498,7 @@ def tilt_history(target, runs=None, hours=48, now=None):
     return sorted(out)
 
 
-HOLD_SINCE = "2026-10-30T22:00:00Z"   # after the old tilt's last plan (21:39Z); the 22:17Z tell is in
+HOLD_SINCE = "2026-10-31T00:00:00Z"   # the first plans made with rounds as tries (the window restarted)
 
 
 def verdict(runs=None, hours=None, baseline=3.55, now=None, since=HOLD_SINCE,
