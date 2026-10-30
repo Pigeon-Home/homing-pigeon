@@ -520,7 +520,11 @@ looked up in the seen-set, and the raw mail is bounded by
 and deduplicate; they authorize nothing, and the seen-set
 lookup cannot poison the set — an id is recorded only for a
 job that verified and ran, once its result is stashed in the
-outbox (section 6, "Execution at most once").
+outbox (section 6, "Execution at most once"). Everything that
+runs on the unauthenticated message, the routing checks and the
+search for the signed object's opening brace among them, is
+linear in the body: a verifier that walks once per brace hands
+any sender a quadratic hold on the loop before the MAC (Q116).
 Two senses of *seen* are kept apart throughout: *marking the
 mail seen* is the channel-level flag — the message will not
 be reprocessed — while *recording the id in the seen-set* is

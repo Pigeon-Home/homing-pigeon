@@ -266,3 +266,33 @@ than a fifth of their tries, the slow column should name the
 inputs the ledger already saw, and `keydir`, `address` and `dtls`
 should gain arcs on their first day. The hourly note's first line
 is the same number for the last 24 hours.
+
+## 6. What the first cycle taught
+
+Written 29-OCT 10:19PM PST, for the seats that come after.
+
+- **The switch paid in twenty minutes.** `dtls`, barren for 48
+  hours, kept 17 entries and 75 arcs in two hours once its core
+  held tickets; `keydir` crashed on its first grow (Q115, a real
+  parity bug in a reader landed that afternoon). A new reader is
+  the fuzzer's best hour.
+- **The slow class filed what the ledger had carried for two
+  days.** 28 records on three targets were one cause: the
+  signed-object search in both verifiers walked the brace walk
+  once per brace, quadratic in a nest, a day-long hold on the mail
+  loop from any unauthenticated 4 MB body (Q116). One backward pass
+  over suffix summaries replaced it with the same answers brace for
+  brace. A measurement no rule files is not a finding.
+- **Echoes come back, dated.** Rigs still on the pre-fix tree
+  re-banked 123 of the retired records within the hour. Their
+  `head` predates the fix, so they are echoes: `promote` retires a
+  slow record that replays fast, the bank keeps a retired id out,
+  nobody files one (Q108's rule, extended). A slow record from a
+  head past the fix is new and is a Q.
+- **Load wears a finding's clothes.** Two records banked at 190%
+  load replayed under 250 ms on a quiet box; a try over the bound is
+  now confirmed twice, untraced, before it is filed, and a grow
+  files its five slowest only.
+- **One family, one answer.** Q116, Q117 and Q118 took one fix;
+  the filing shape is one Q per target per shape with the family
+  named in the first and the others pointed at it.

@@ -489,9 +489,16 @@ The loop:
    Parents are drawn by the rarity of the arcs they reach and, on
    a target the reader accepts under a fifth of, four times more for
    accepted ones (`--uniform-parents` is the old draw); a try over
-   fifty times the corpus replay's median and over half a second is
-   a `slow` finding in `<target>.slow.jsonl`, filed as a Q like a
-   crash and never a probe. `stats --yield` prints the per-target
+   fifty times the corpus replay's median and over half a second,
+   confirmed twice more untraced, is a `slow` finding in
+   `<target>.slow.jsonl` (a grow files its five slowest), filed as a
+   Q like a crash and never a probe. The filing rule for both kinds
+   (Q108, Q116): one Q per target per shape, the family named in the
+   first filing and the others pointed at it; a record whose `head`
+   is an ancestor of the fix that retired its family is an echo,
+   which `promote` retires (a slow one as `fast` when a quiet replay
+   runs under half the floor) and the bank keeps out, and no one
+   files; a record from a head past the fix is new and is a Q. `stats --yield` prints the per-target
    yield table the hourly note leads with. On Menlo Park once a day,
    in its slot, `python runner/tools/de_dust_survivors.py`
    (about three minutes; every target is in its kill set, the

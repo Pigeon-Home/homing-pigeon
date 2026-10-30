@@ -10,6 +10,19 @@ and they load no model.
 One shape of crash, over and over: a value used as a dict key
 before anyone checked it was a string.
 
+Later, under de_dust2 (29-OCT), a shape no crash class could see: a
+walk that was correct and quadratic. `_object_start` in both
+signed-object extractors tried every `{` before the signature marker
+and ran the brace walk from each, so a body nested a few hundred
+levels cost braces times length, and a 4 MB body of braces from an
+unauthenticated sender would have held the mail loop for a day
+before any MAC was computed. The ledger had carried the symptom as
+`slowest_ms` for two days; a latency class (a try over fifty times
+the corpus median and over half a second) filed it within the hour
+of existing (Q116), and one backward pass over suffix summaries
+replaced the walk with the same answers brace for brace. A
+measurement without a filing rule finds nothing.
+
 - `check_key_policy` raised `TypeError` on a key id that was a
   list. A key id that is not a string is now a refusal.
 - `parse_sensors` raised `TypeError` when `severity_floor` was

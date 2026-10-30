@@ -45,7 +45,15 @@ over), `data`, `from` (the seed's name or the parent's id),
 `<target>.crashes.jsonl` beside them, when one exists, holds
 inputs that broke a contract and are waiting for a fix; the test
 carries each as an `expectedFailure` probe until `promote` moves
-it here.
+it here. `<target>.slow.jsonl`, when one exists, holds inputs a
+grow ran over fifty times the corpus median and over half a second
+(confirmed twice; de_dust2, Q116); a time is the box's, so the test
+replays them for correctness only and never as a probe, and
+`promote` retires one that runs under half the floor on a quiet box
+as `fast` in `<target>.retired.json`, beside the crashes it retired
+as `promoted` or `redundant`. A record on either file whose `head`
+predates the fix that retired its family is an echo the bank keeps
+out (Q108).
 
 The work is in the tree beside the corpus. `runs.jsonl` has one
 line per `seed` or `grow`: the head it ran against, the rng seed,

@@ -113,6 +113,50 @@ in the third paragraph.
 **Intuition.** The first sentence is the fact a stranger needs. One
 note per thing. If a reply needs headings, it is two replies.
 
+## 10. A number the ledger carries that nobody files is not a finding
+
+**What happened.** `runs.jsonl` recorded a `slowest_ms` of 11
+seconds on a 16 KB input for two days. Nobody read the column, so
+a quadratic walk in both signed-object extractors (one that let an
+unauthenticated 4 MB body of braces hold the mail loop for a day
+before any MAC) waited for the `slow` crash class to file it (Q116).
+
+**Intuition.** A measurement with no filing rule is decoration. If
+a column can name a bug, the tool files from it, or the column goes.
+
+**Check.** For every number a tool records: what files it, and
+where does it land as a Q?
+
+## 11. Cost per try decides the schedule, never a round count
+
+**What happened.** Every target ran the same 20,000 rounds at a
+two-hundredfold spread in cost per round, so four slow targets took
+75% of 130 CPU-hours for three kept entries while the three best
+yields got 1.5 hours (de_dust2).
+
+**Intuition.** Budget time, then tilt it to yield with a floor.
+Equal counts of anything whose unit cost varies are unequal budgets.
+
+## 12. New surface before more rounds on an old one
+
+**What happened.** `keydir`, built that day, crashed on its first
+grow, 28 minutes after the rigs switched; `dtls`, seeded with the
+resume path after two barren days, kept 17 entries and 75 arcs in
+two hours. The saturated targets kept nothing all day.
+
+**Intuition.** When yield per hour falls, the next hour belongs to
+code the fuzzer has never read, not to the corpus it has.
+
+## 13. An echo is dated by its head, for slow records as for crashes
+
+**What happened.** Rigs still on the pre-fix tree re-banked 123
+retired slow records within the hour, each carrying the old head.
+
+**Intuition.** A record's `head` against the fix's commit decides
+echo or regression (Q108); a time is the box's, so a slow record is
+retired by a quiet replay, never carried as a probe, and a try over
+the bound is confirmed twice before it is filed.
+
 ## Before every post or push
 
 1. What did he literally ask for, and is my output that size?
@@ -122,3 +166,4 @@ note per thing. If a reply needs headings, it is two replies.
 5. Is the whole suite green on this tree?
 6. Am I doing by hand something a tool should do?
 7. Does the first sentence say the fact?
+8. Is there a number in the ledger that should be a Q?

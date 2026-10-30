@@ -96,7 +96,11 @@ Those values live on the runner host. They do not travel through the SI chat.
    one.
 9. **The campaign runs from its standing orders.** What to test next
    is `docs/project/campaign-standing-orders.md`, a queue that does
-   not run out; the campaign never waits for a new batch from the
+   not run out; since 29-OCT the campaign is de_dust2
+   (`docs/project/de_dust2.md`: time slices by yield, a latency
+   class, new readers first), and a fuzz finding is filed once per
+   target per shape while a record whose head predates its fix is
+   an echo that `promote` retires (Q108, Q116); the campaign never waits for a new batch from the
    owner, and stops only for a secret, a machine, an owner decision
    or money. During a campaign it speaks to the owner in chat only to
    ask him something he must decide, and it re-reads its rules at

@@ -153,6 +153,21 @@ current code, with a four-part docstring:
    It passes only when the bug described above is fixed in the
    code."**
 
+Under de_dust2 (29-OCT, `docs/project/de_dust2.md`) the corpus
+campaign records three more kinds, each its own way: a crash record
+rides as an `expectedFailure` probe until `promote` retires it; a
+`slow` record (a try over fifty times the corpus median and over
+half a second, confirmed twice) rides in `<target>.slow.jsonl` and
+is never a probe, since a time is the box's, and `promote` retires
+it as `fast` when a quiet replay runs under half the floor; and a
+record whose `head` predates the fix that retired its family is an
+echo, retired and never filed (Q108, Q116). A finding is filed once
+per target per shape, the family named in the first filing and the
+others pointed at it: Q116, Q117 and Q118 were one cause and took
+one answer. Every number a tool records has a rule that files it,
+or the number is decoration: `slowest_ms` sat at 11 seconds for two
+days before the slow class existed.
+
 Verify the test fails for the stated reason before landing it.
 Main is therefore red in CI by design while divergences are open;
 that is accepted and is not a reason to soften, skip, or xfail a

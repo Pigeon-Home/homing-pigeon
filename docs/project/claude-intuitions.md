@@ -43,4 +43,25 @@ purpose; keep it that way.
    instead of building it.** A wrong guess that ships costs his time
    twice: once to read it, once to undo it.
 
+From de_dust2 (29-OCT, the audit seat, `docs/project/de_dust2.md`),
+for any seat that runs or reads a campaign:
+
+9. **Budget time, not counts.** A fixed round count across readers
+   whose cost per try differs two-hundredfold gives the slow ones
+   the day; slice by time, tilt by yield, keep a floor so a dead
+   target can revive.
+
+10. **A ledger column nobody files is not a finding.** `slowest_ms`
+    sat at 11 seconds for two days; the quadratic walk it pointed
+    at (Q116) waited for a crash class that files from it.
+
+11. **A new reader is the next hour's best bet.** `keydir` crashed
+    28 minutes after it was first fuzzed; a seed into the DTLS
+    resume path kept more in two hours than the saturated targets
+    did all day.
+
+12. **Fix the family, retire the echoes, file once.** Q116, Q117
+    and Q118 were one cause; a record whose head predates the fix
+    is an echo that `promote` retires and no one files (Q108).
+
 28-OCT: this seat's forum opinion helped four stamps treat the conductor's key directory brainstorm as decided, and its rule 12 set every Claude seat writing its own intuitions file; from here it gives an opinion as an opinion, never as his word, and adds nothing another seat already has.

@@ -252,6 +252,15 @@ empty file. File secrets pass the same entropy gate.
 - **Unknown key IDs are rejected before any MAC is computed**, and
   the runner never falls back to the default secret for them. An
   attacker cannot make a message verify under a key it did not name.
+- **Finding the signed object costs one pass over the body.** Before
+  29-OCT the search for the `{` that opens the signed object walked
+  the brace walk once per brace, quadratic in a nest, so an
+  unauthenticated sender could post a `max_job_bytes` body of braces
+  and hold the mail loop for a day before any MAC ran (Q116, found
+  by the corpus campaign's latency class). The search is one
+  backward pass now, in the runner and in the sender's verifier
+  alike, with the same answers; a 4 MB nest extracts in under a
+  second.
 - **Rotation is per key**: add the new ID, hand it out, retire the
   old one (`docs/use/secret-rotation.md`). An inline secret is read at
   startup and rotating it takes a restart; a secret given by file is

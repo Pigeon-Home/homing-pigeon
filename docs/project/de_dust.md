@@ -393,6 +393,17 @@ the conductor's call (offered 2026-10-26).
 
 ## 8. Saturation and what comes after it
 
+The fleet's own signature of saturation, read on 29-OCT from the
+run ledger (`docs/project/de_dust2.md`): entries kept per CPU-hour
+fell from 22 to 0.7 in four days while spend rose twentyfold, four
+slow targets took three quarters of the CPU under a fixed round
+count, and zero new crashes meant a plateau, not a clean reader.
+What paid the same day: time slices tilted by yield, parents drawn
+by rarity, a latency class filed from the `slowest_ms` column the
+ledger had carried unread, and new readers (`keydir` crashed on its
+first grow; the DTLS resume seeds kept more in two hours than the
+saturated targets did all day). `stats --yield` prints the table.
+
 A target whose full-depth grow keeps nothing and reaches no new
 arc is saturated; `stats` says so from the run records. Saturation
 is per mutator before it is per target (Muse, 2026-10-26): a
