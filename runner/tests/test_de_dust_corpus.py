@@ -251,7 +251,11 @@ class CorpusFilesTest(unittest.TestCase):
         for line in lines[1:]:
             rec = json.loads(line)
             self.assertIn(rec["kind"], ("seed", "grow", "survivors", "plan",
-                                        "distill"))
+                                        "distill", "watch"))
+            if rec["kind"] == "watch":
+                for key in ("when", "head", "readings", "breaches"):
+                    self.assertIn(key, rec, line[:120])
+                continue
             if rec["kind"] == "plan":
                 # One line per cycling grow: the slice each target was
                 # given and why (de_dust2).

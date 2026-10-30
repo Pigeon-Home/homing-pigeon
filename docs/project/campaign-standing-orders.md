@@ -602,7 +602,10 @@ corpus entries are never edited or removed by hand.
    working; those three are the ones the tilt lengthened);
    whether the three saturated mail targets stayed at the floor;
    and whether a rig logged a stall or a floor breach the watch
-   did not name. A
+   did not name (`stats --verdict` prints these four readings in
+   this order from the ledger, windowed from the hold's start;
+   `watch --record` puts a breach on the ledger so the fourth has
+   something to read). A
    change asked for after this hold states which of those readings
    it moves and by how much, before it lands. One change per table
    from here, unless the owner says otherwise.

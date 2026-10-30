@@ -11367,6 +11367,12 @@ def cmd_watch(args, out=print):
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for line in lines:
         out(f"watch {stamp}" + (f" {rig}" if rig else "") + f": {line}")
+    if getattr(args, "record", False):
+        # On the ledger, so a breach is proof of work the bank carries
+        # and the table's fourth reading has something to read.
+        record_run({"kind": "watch", "when": stamp, "head": head_sha()[:12],
+                    "readings": lines, "breaches": breaches,
+                    **({"rig": rig} if rig else {})})
     if breaches:
         out(f"watch {stamp}" + (f" {rig}" if rig else "") + ": BREACH " + "; ".join(breaches))
         return 1
@@ -11436,6 +11442,93 @@ def cmd_rigs(args, out=print):
     return status
 
 
+def tilt_history(target, runs=None, hours=48, now=None):
+    """[(when, tilt)] for a target from the plan records in the window,
+    oldest first."""
+    runs = load_runs() if runs is None else runs
+    now = now or datetime.now(timezone.utc)
+    since = (now - timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    out = []
+    for r in runs:
+        if r.get("kind") != "plan" or str(r.get("when", "")) < since:
+            continue
+        row = (r.get("targets") or {}).get(target)
+        if row is not None:
+            out.append((r["when"], float(row.get("tilt", 0))))
+    return sorted(out)
+
+
+HOLD_SINCE = "2026-10-30T22:55:00Z"   # standing order M.8: the hold's start
+
+
+def verdict(runs=None, hours=None, baseline=3.55, now=None, since=HOLD_SINCE,
+            lengthened=("dtls_hostile", "dtls_session", "race_stash"),
+            saturated=("v2_mail", "board_mail", "query")):
+    """The four readings of standing order M.8, in its order, from the
+    ledger: fleet kept per CPU-hour against the baseline; the three
+    targets the tilt lengthened, held or fallen on their own; the
+    saturated mail targets at the floor or not; and the watch's
+    breaches on the record. Written before the numbers were, so the
+    table reads the rule and not the mood. Returns lines of text."""
+    runs = load_runs() if runs is None else runs
+    now = now or datetime.now(timezone.utc)
+    if hours is None:
+        # The window is the hold: from its start to now, so this
+        # morning's plans under the old rule are not in the reading.
+        start = datetime.strptime(since, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        hours = max(0.1, (now - start).total_seconds() / 3600.0)
+    rows = {r["target"]: r for r in yield_table(hours, runs, now=now)}
+    lines = []
+    fleet = rows.get("fleet")
+    if fleet and fleet["cpu_h"]:
+        kph = fleet["kept_per_cpu_h"]
+        lines.append(f"1. fleet: {kph:.2f} kept per CPU-hour over {fleet['cpu_h']:.1f} "
+                     f"CPU-hours in the last {hours} h, against {baseline:.2f} -> "
+                     + ("held or better" if kph >= baseline else "below the baseline"))
+    else:
+        lines.append(f"1. fleet: no grow in the last {hours} h")
+    for name in lengthened:
+        hist = tilt_history(name, runs, hours, now)
+        row = rows.get(name)
+        if not hist:
+            lines.append(f"2. {name}: no plan in the window")
+            continue
+        first, last = hist[0][1], hist[-1][1]
+        peak = max(t for _w, t in hist)
+        state = ("held 4x" if last >= TILT_MAX - 1e-9 else
+                 "fell to the floor on its own" if last <= TILT_FLOOR + 1e-9 else
+                 f"settled at {last:.2f}x")
+        extra = (f"; {row['kept_per_cpu_h']:.1f} kept per CPU-hour on "
+                 f"{row['cpu_h']:.2f} CPU-hours" if row else "")
+        lines.append(f"2. {name}: {len(hist)} plan(s), first {first:.2f}x, peak {peak:.2f}x, "
+                     f"last {last:.2f}x -> {state}{extra}")
+    for name in saturated:
+        hist = tilt_history(name, runs, hours, now)
+        if not hist:
+            lines.append(f"3. {name}: no plan in the window")
+            continue
+        above = sum(1 for _w, t in hist if t > TILT_FLOOR + 1e-9)
+        row = rows.get(name)
+        lines.append(f"3. {name}: {len(hist)} plan(s), {above} above the floor, last "
+                     f"{hist[-1][1]:.2f}x -> " + ("at the floor" if above == 0 else
+                                                  "lifted off the floor")
+                     + (f"; {row['kept']} kept on {row['cpu_h']:.2f} CPU-hours" if row else ""))
+    since = (now - timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    watches = [r for r in runs if r.get("kind") == "watch" and str(r.get("when", "")) >= since]
+    breached = [r for r in watches if r.get("breaches")]
+    if not watches:
+        lines.append(f"4. watch: no watch record in the last {hours} h (run `watch --record`)")
+    else:
+        by_rig = {}
+        for r in breached:
+            by_rig.setdefault(r.get("rig") or "?", []).extend(r["breaches"])
+        lines.append(f"4. watch: {len(watches)} record(s), {len(breached)} with a breach"
+                     + ("; " + "; ".join(f"{rig}: {len(b)} ({b[-1][:60]})"
+                                         for rig, b in sorted(by_rig.items()))
+                        if by_rig else " -> none"))
+    return lines
+
+
 def cmd_stats(args, out=print):
     if getattr(args, "yield_table", False):
         hours = getattr(args, "hours", 48) or 48
@@ -11444,6 +11537,13 @@ def cmd_stats(args, out=print):
         return 0
     if getattr(args, "note", False):
         out(hourly_note(rig=os.environ.get("HP_DE_DUST_RIG") or None))
+        return 0
+    if getattr(args, "verdict", False):
+        hours = args.hours if args.hours_given else None
+        out(f"{CAMPAIGN} verdict, standing order M.8, "
+            + (f"last {hours:g} h:" if hours else f"since the hold ({HOLD_SINCE}):"))
+        for line in verdict(hours=hours, baseline=args.baseline):
+            out("  " + line)
         return 0
     if getattr(args, "plan", False):
         plans = newest_plans()
@@ -11515,6 +11615,9 @@ def main(argv=None):
     p.add_argument("--expect-workers", type=int, default=None,
                    help="grow processes that should be live (default 1 when a "
                         "plan stands)")
+    p.add_argument("--record", action="store_true",
+                   help="write the readings and any breach to the ledger as a "
+                        "watch record, so the bank carries it")
     p.set_defaults(fn=cmd_watch)
     p = sub.add_parser("rigs", help="one line per rig from the ledger; --past "
                                     "checks every rig's head descends from a commit")
@@ -11543,12 +11646,19 @@ def main(argv=None):
                                 "--hours of grows: CPU, rate, kept, arcs, "
                                 "accepted share, kept per CPU-hour")
             p.add_argument("--hours", type=float, default=48)
+            p.add_argument("--hours-given", action="store_true", help=argparse.SUPPRESS)
             p.add_argument("--note", action="store_true",
                            help="the hourly campaign note, in its shape, "
                                 "from the ledger, the box and the disk probe")
             p.add_argument("--plan", action="store_true",
                            help="the newest slice plan a cycling grow "
                                 "recorded: what each target was given and why")
+            p.add_argument("--verdict", action="store_true",
+                           help="the four readings of standing order M.8, in "
+                                "its order, from the ledger")
+            p.add_argument("--baseline", type=float, default=3.55,
+                           help="the fleet kept-per-CPU-hour the verdict "
+                                "reads against (M.8: 3.55)")
         if name == "grow":
             p.add_argument("--rounds", type=int, default=None,
                            help="children to try per target "
@@ -11605,6 +11715,9 @@ def main(argv=None):
                                 "over time and two rigs pick apart; fixed "
                                 "is the list's own order")
     args = ap.parse_args(argv)
+    if hasattr(args, "hours_given"):
+        args.hours_given = any(a == "--hours" or a.startswith("--hours=")
+                               for a in (argv if argv is not None else sys.argv[1:]))
     try:
         return args.fn(args)
     except KeyboardInterrupt:

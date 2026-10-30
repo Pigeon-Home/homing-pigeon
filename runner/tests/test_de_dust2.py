@@ -1014,6 +1014,60 @@ class TempDirsTest(unittest.TestCase):
         shutil.rmtree(where, ignore_errors=True)
 
 
+class VerdictTest(unittest.TestCase):
+    """Standing order M.8's four readings, from a synthetic ledger."""
+
+    def _plan(self, when, tilts):
+        return {"kind": "plan", "when": when, "slice": 600.0, "jobs": 1, "head": "abc",
+                "targets": {t: {"tilt": v, "seconds": 600 * v, "rounds": 1, "rate": 1.0,
+                                "yield": 0} for t, v in tilts.items()}}
+
+    def test_the_four_readings_in_order(self):
+        now = datetime(2026, 10, 31, 2, 0, tzinfo=timezone.utc)
+        runs = [_grow("dtls_hostile", "2026-10-31T00:00:00Z", seconds=3600.0, kept=8),
+                _grow("v2_mail", "2026-10-31T00:30:00Z", seconds=3600.0, kept=0),
+                self._plan("2026-10-30T23:00:00Z", {"dtls_hostile": 4.0, "dtls_session": 4.0,
+                                                   "race_stash": 4.0, "v2_mail": 0.25,
+                                                   "board_mail": 0.25, "query": 0.25}),
+                self._plan("2026-10-31T01:00:00Z", {"dtls_hostile": 4.0, "dtls_session": 0.25,
+                                                   "race_stash": 2.0, "v2_mail": 0.25,
+                                                   "board_mail": 1.5, "query": 0.25}),
+                {"kind": "watch", "when": "2026-10-31T01:30:00Z", "rig": "Nuremberg",
+                 "readings": ["disk: 93% used"], "breaches": ["temp volume 93% over the 90% line"]},
+                {"kind": "watch", "when": "2026-10-31T01:40:00Z", "rig": "Nuremberg",
+                 "readings": [], "breaches": []}]
+        lines = B.verdict(runs, now=now, since="2026-10-30T22:55:00Z", baseline=3.55)
+        self.assertEqual(8, len(lines))
+        self.assertTrue(lines[0].startswith("1. fleet: 4.00 kept per CPU-hour"))
+        self.assertIn("held or better", lines[0])
+        self.assertIn("dtls_hostile: 2 plan(s)", lines[1]); self.assertIn("held 4x", lines[1])
+        self.assertIn("fell to the floor on its own", lines[2])
+        self.assertIn("settled at 2.00x", lines[3])
+        self.assertIn("v2_mail: 2 plan(s), 0 above the floor", lines[4]); self.assertIn("at the floor", lines[4])
+        self.assertIn("lifted off the floor", lines[5])
+        self.assertIn("4. watch: 2 record(s), 1 with a breach; Nuremberg: 1", lines[7])
+
+    def test_the_window_starts_at_the_hold(self):
+        now = datetime(2026, 10, 31, 2, 0, tzinfo=timezone.utc)
+        runs = [self._plan("2026-10-30T12:00:00Z", {"v2_mail": 4.0}),      # before the hold
+                self._plan("2026-10-31T00:00:00Z", {"v2_mail": 0.25})]
+        lines = B.verdict(runs, now=now, since="2026-10-30T22:55:00Z")
+        self.assertIn("v2_mail: 1 plan(s), 0 above the floor", "\n".join(lines))
+
+    def test_the_watch_records_itself_when_asked(self):
+        recorded = []
+        with mock.patch.object(B, "record_run", recorded.append), \
+                mock.patch.object(B, "watch_readings",
+                                  return_value=(["disk: 10% used"], ["memory 100 MB under the 128 MB floor"])):
+            status = B.cmd_watch(argparse.Namespace(rig="Nuremberg", disk_max=90.0, mem_min_mb=None,
+                                                    stale_min=None, expect_workers=None, record=True),
+                                 out=lambda *a: None)
+        self.assertEqual(1, status)
+        self.assertEqual(1, len(recorded))
+        self.assertEqual(("watch", "Nuremberg"), (recorded[0]["kind"], recorded[0]["rig"]))
+        self.assertEqual(["memory 100 MB under the 128 MB floor"], recorded[0]["breaches"])
+
+
 class LedgerTest(unittest.TestCase):
 
     def test_run_records_carry_the_technique_and_the_rig(self):
