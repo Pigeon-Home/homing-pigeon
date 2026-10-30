@@ -47,11 +47,16 @@ merged, nothing pushed, retry next cycle (Q109).
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+
+# The campaign's name on the bank line; the same string as
+# de_dust_corpus.CAMPAIGN (test_de_dust2 holds the two together).
+CAMPAIGN = "de_aztec"
 
 STAMP = "00000000-muse-7e57-d0c5-58316a922026"
 REPO_URL = "https://github.com/Pigeon-Home/homing-pigeon.git"
@@ -337,7 +342,7 @@ def ledger_block(rig, grow_no, report, new_records, resources=None):
     crashes = sum(o.get("crashes", 0) for o in new_records)
     tried = sum(o.get("tried", 0) for o in new_records)
     seeds = sorted({o.get("seed") for o in new_records if o.get("seed") is not None})
-    head = f"  de_dust2 {grow_no} ({rig}): {entries} entries, {arcs} arcs, {crashes} crashes filed."
+    head = f"  {CAMPAIGN} {grow_no} ({rig}): {entries} entries, {arcs} arcs, {crashes} crashes filed."
     body = (
         f"  Banked by rig_bank from the rig's own tree under section M"
         f" item 7: {len(new_records)} run records, {tried:,} children"
@@ -400,10 +405,23 @@ def commit_message(rig, grow_no, report, new_records):
     return "\n".join(lines)
 
 
+# A ledger line: two spaces, the campaign's name at the time (de_dust,
+# de_dust2, de_aztec -- any one token), the grow number, the rig in
+# parentheses, then the totals. Keyed on the shape so a renamed
+# campaign's lines and the old ones count as one rig's.
+LEDGER_LINE = re.compile(r"^  (\S+) (\d+) \((.+?)\): \d[\d,]* entries, ")
+
+
+def ledger_line(ln):
+    """(campaign, grow_no, rig) for a ledger summary line, else None."""
+    m = LEDGER_LINE.match(ln)
+    return (m.group(1), int(m.group(2)), m.group(3)) if m else None
+
+
 def next_grow_no(orders_text, rig):
     """Grow numbers are per rig: count this rig's ledger lines, add one."""
-    marker = f"({rig}):"
-    count = sum(1 for ln in orders_text.splitlines() if marker in ln and "de_dust" in ln)
+    count = sum(1 for ln in orders_text.splitlines()
+                if (ledger_line(ln) or (None, None, None))[2] == rig)
     return count + 1
 
 
@@ -418,7 +436,7 @@ def insert_ledger(orders_text, block):
     lines = orders_text.splitlines(keepends=True)
     anchor = None
     for i, ln in enumerate(lines):
-        if "de_dust" in ln and " entries, " in ln and " arcs, " in ln:
+        if ledger_line(ln) and " arcs, " in ln:
             anchor = i
     if anchor is None:
         return orders_text + block

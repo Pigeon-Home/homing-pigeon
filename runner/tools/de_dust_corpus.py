@@ -194,6 +194,13 @@ DEFAULT_SLICE_SEC = 120
 SLICE_MIN_ROUNDS = 400
 SLICE_MAX_ROUNDS = 50000
 SLICE_FIRST_ROUNDS = 2000     # a target with no rate on record yet
+# The campaign's name, as the ledger lines, the bank titles, the slice,
+# plan and yield lines and the hourly note say it. The tool, the corpus
+# directory, the environment variables and the tests keep their
+# de_dust paths across a rename, as they did from de_dust to de_dust2
+# (29-OCT) and from de_dust2 to de_aztec (30-OCT).
+CAMPAIGN = "de_aztec"
+
 TILT_FLOOR = 0.25             # a target with no yield keeps this much
 TILT_MAX = 4.0                # the best target gets at most this much
 
@@ -9503,6 +9510,19 @@ def _run_record(kind, target, session, before, added, seconds, **extra):
     rig = os.environ.get("HP_DE_DUST_RIG")
     if rig:
         record["rig"] = rig
+    # The box's memory as the run ended, so the fleet's floors (Q120)
+    # read from the ledger: what was available, and this process's
+    # peak (ru_maxrss is KiB on Linux, bytes on macOS).
+    avail = memory_available_mb()
+    if avail is not None:
+        record["mem_available_mb"] = avail
+    try:
+        import resource
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        record["peak_rss_mb"] = int(peak / 1024) if sys.platform != "darwin" \
+            else int(peak / (1024 * 1024))
+    except (ImportError, AttributeError, OSError, ValueError):
+        pass
     record.update(extra)
     return record
 
@@ -10232,7 +10252,7 @@ def _cmd_grow(args, out=print):
             plan = slice_plan(targets, slice_sec)
             for tg in targets:
                 row = plan[tg]
-                out(f"de_dust2 slice: {tg} {row['tilt']:.2f}x -> "
+                out(f"{CAMPAIGN} slice: {tg} {row['tilt']:.2f}x -> "
                     f"{row['seconds']:.0f} s, {row['rounds']} rounds"
                     + (f" at {row['rate']:.0f}/s" if row["rate"] else
                        " (no rate on record)"))
@@ -10264,7 +10284,7 @@ def _cmd_grow(args, out=print):
                 # The ledger has this grow's record by now: the rate
                 # and the yield move the next slice.
                 row = slice_plan([tg], slice_sec)[tg]
-                out(f"de_dust2 slice: {tg} {row['tilt']:.2f}x -> "
+                out(f"{CAMPAIGN} slice: {tg} {row['tilt']:.2f}x -> "
                     f"{row['seconds']:.0f} s, {row['rounds']} rounds")
                 return _set_budget(_set_rounds(cmd, row["rounds"]),
                                    row["seconds"])
@@ -10745,6 +10765,25 @@ def yield_table(hours=48, runs=None, now=None):
             acc[k] += row[k]
     for name in sorted(by_technique):
         out.append(_yield_row("~" + name, by_technique[name]))
+    # One row per rig, from the records that name one, so compute
+    # from different places is read as the places it came from.
+    by_rig = {}
+    for r in runs:
+        if r.get("kind") != "grow" or str(r.get("when", "")) < since or not r.get("rig"):
+            continue
+        acc = by_rig.setdefault(r["rig"], {k: 0 for k in keys})
+        acc["runs"] += 1
+        acc["seconds"] += float(r.get("seconds") or 0)
+        acc["tried"] += int(r.get("tried") or 0)
+        acc["kept"] += len(r.get("kept") or [])
+        acc["arcs"] += max(0, int(r.get("arcs_after") or 0) - int(r.get("arcs_before") or 0))
+        o = r.get("outcomes") or {}
+        acc["accepted"] += int(o.get("accepted") or 0)
+        acc["refused"] += int(o.get("refused") or 0)
+        acc["crashes"] += int(o.get("crash") or 0)
+        acc["slow"] += int(o.get("slow") or 0)
+    for name in sorted(by_rig):
+        out.append(_yield_row("@" + name, by_rig[name]))
     fleet = {k: sum(r[k] for r in rows.values()) for k in keys} if rows else None
     if fleet:
         out.append(_yield_row("fleet", fleet))
@@ -10763,7 +10802,7 @@ def _yield_row(target, row):
 
 
 def format_yield(rows, hours):
-    lines = [f"de_dust2 yield, last {hours:g} h: {'target':12} {'runs':>4} "
+    lines = [f"{CAMPAIGN} yield, last {hours:g} h: {'target':12} {'runs':>4} "
              f"{'cpu_h':>6} {'tries/s':>7} {'kept':>4} {'arcs+':>5} "
              f"{'acc%':>4} {'crash':>5} {'slow':>4} {'kept/cpu_h':>10}"]
     for r in rows:
@@ -10950,7 +10989,7 @@ def cmd_disk(args, out=print):
 
 
 def hourly_note(runs=None, now=None, hours=24, rig=None, probe=True):
-    """The hourly de_dust2 note, as text, from the ledger and the box
+    """The hourly campaign note, as text, from the ledger and the box
     (de_dust2, for the rig seat): the 24-hour fleet line, the newest
     slice plan, the box's load and memory, what the last hour kept
     and filed, the mutators still finding arcs, and the disk probe.
@@ -11009,6 +11048,16 @@ def hourly_note(runs=None, now=None, hours=24, rig=None, probe=True):
                f"run record(s) in the last hour had crashes, on {', '.join(crashed)}."
                if crashed else "none in the last hour.")
                + (f" Slow findings on {', '.join(slowed)}." if slowed else " No slow finding."))
+    standing = []
+    for target in TARGETS:
+        for flag, label in ((True, "crash"), (False, "slow")):
+            path = corpus_path(target, crashes=flag, slow=not flag)
+            n = len(load(path)) if os.path.exists(path) else 0
+            if n:
+                standing.append(f"{target} {n} {label}")
+    out.append("Findings standing in the tree: " + (", ".join(standing) if standing
+               else "none (every crash and slow file is retired or empty)")
+               + ". The window counts above include records since retired.")
     live = {}
     for r in hour:
         for name, n in (r.get("mutators_kept") or {}).items():
@@ -11165,9 +11214,11 @@ def rig_table(runs=None, now=None, past=None, git=None):
         if r.get("kind") not in ("grow", "seed", "distill") or not r.get("rig"):
             continue
         row = rigs.setdefault(r["rig"], {"rig": r["rig"], "when": "", "head": "",
-                                         "target": "", "last_hour": 0})
+                                         "target": "", "last_hour": 0, "mem": None,
+                                         "peak": None})
         if str(r.get("when", "")) > row["when"]:
-            row.update(when=r["when"], head=str(r.get("head", "")), target=r.get("target", ""))
+            row.update(when=r["when"], head=str(r.get("head", "")), target=r.get("target", ""),
+                       mem=r.get("mem_available_mb"), peak=r.get("peak_rss_mb"))
         if str(r.get("when", "")) >= since:
             row["last_hour"] += 1
     git = git or (lambda args: subprocess.run(["git"] + args, cwd=ROOT, capture_output=True,
@@ -11200,9 +11251,14 @@ def cmd_rigs(args, out=print):
                        " (head not in this tree)")
             if row.get("past") is False:
                 status = 1
+        memory = ""
+        if row.get("mem") is not None:
+            memory = f", {row['mem']} MB available"
+            if row.get("peak") is not None:
+                memory += f" (grow peak {row['peak']} MB)"
         out(f"{row['rig']:14} {row['head'][:12]:12} {row['when']} "
             f"({row['age_min']} min ago, {row['target']}), {row['last_hour']} run(s) "
-            f"in the last hour{verdict}")
+            f"in the last hour{memory}{verdict}")
     return status
 
 
@@ -11220,7 +11276,7 @@ def cmd_stats(args, out=print):
         if plan is None:
             out("no plan on record")
             return 0
-        out(f"de_dust2 plan at {plan.get('when')} on {plan.get('head')}"
+        out(f"{CAMPAIGN} plan at {plan.get('when')} on {plan.get('head')}"
             + (f" ({plan['rig']})" if plan.get("rig") else "")
             + f": slice {plan.get('slice')} s, {plan.get('minutes')} min, "
             f"{plan.get('jobs')} at a time")
@@ -11313,7 +11369,7 @@ def main(argv=None):
                                 "accepted share, kept per CPU-hour")
             p.add_argument("--hours", type=float, default=48)
             p.add_argument("--note", action="store_true",
-                           help="the hourly de_dust2 note, in its shape, "
+                           help="the hourly campaign note, in its shape, "
                                 "from the ledger, the box and the disk probe")
             p.add_argument("--plan", action="store_true",
                            help="the newest slice plan a cycling grow "

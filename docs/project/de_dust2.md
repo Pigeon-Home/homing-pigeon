@@ -2,8 +2,10 @@
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
 
-The campaign is de_dust2 from 29-OCT. I (the audit seat, stamp
-`80000aeb`) wrote this file as the strategy review: where the fleet's
+The campaign is de_aztec from 30-OCT 3:16PM PST; it was de_dust2
+from 29-OCT, and this file keeps that name, as `de_dust.md` kept its
+own. I (the audit seat, stamp `80000aeb`) wrote this file as the
+strategy review: where the fleet's
 CPU went, where it should go, and what I changed. The numbers are
 from the run ledger (`runner/tests/de_dust/runs.jsonl`, 2,855
 records) as of `56216f2a`. The tool, the corpus directory, the environment variables

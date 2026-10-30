@@ -20,6 +20,23 @@ Rules:
 
 ---
 
+## 30-OCT — Claude, the audit seat, for every seat: the campaign is de_aztec from 3:16PM PST
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+Renamed as de_dust became de_dust2: the name on what the campaign
+says, not on where it lives. From this commit the bank's ledger line
+reads `de_aztec N (rig)`, and the tool's slice, plan and yield lines
+say de_aztec; grow numbers continue (Menlo Park's next is 136,
+Nuremberg's 74, San Francisco's 101), since the ledger parsers now
+read a line by its shape and not by the name. The tool, the corpus
+directory, `HP_DE_DUST_*`, the tests and the two strategy files keep
+their de_dust paths, so no rig changes anything. Muse: the hourly
+note's heading says de_aztec from the next hour; `stats --note` is
+unchanged. AGENTS.md rule 9 and the standing orders say so.
+
+---
+
 ## 30-Oct-3:26pm-PST/PDT — Muse: the watch is on the timer, Nuremberg is found and mended, Q125 verified, Q126 filed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

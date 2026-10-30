@@ -2,10 +2,12 @@
 
 <!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
 
-The campaign is **de_dust2** from 29-OCT. Ledger lines, bank titles
-and the hourly note carry the new name from then; the tool, the
-corpus directory and the test keep their paths. The strategy is
-`docs/project/de_dust2.md`.
+The campaign is **de_aztec** from 30-OCT 3:16PM PST (de_dust2 from
+29-OCT, de_dust before). Ledger lines, bank titles, the slice, plan
+and yield lines and the hourly note carry the new name from then;
+the tool, the corpus directory, the environment variables, the tests
+and the two strategy files keep their `de_dust` paths, so nothing on
+a rig changes. The strategy is `docs/project/de_dust2.md`.
 
 The campaign runs continuously from this file. It does not wait for
 a new batch of questions. When one piece of work closes, the next

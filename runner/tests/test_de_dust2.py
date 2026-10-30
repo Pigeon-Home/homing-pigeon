@@ -888,6 +888,14 @@ class WatchTest(unittest.TestCase):
         self.assertEqual(False, rows[1]["past"])
 
 
+class CampaignNameTest(unittest.TestCase):
+
+    def test_the_tool_and_the_bank_name_the_same_campaign(self):
+        from runner.tools import rig_bank as RB
+        self.assertEqual("de_aztec", B.CAMPAIGN)
+        self.assertEqual(B.CAMPAIGN, RB.CAMPAIGN)
+
+
 class LedgerTest(unittest.TestCase):
 
     def test_run_records_carry_the_technique_and_the_rig(self):
@@ -954,7 +962,7 @@ class YieldTableTest(unittest.TestCase):
         out = []
         args = argparse.Namespace(target="all", yield_table=True, hours=48)
         self.assertEqual(0, B.cmd_stats(args, out=out.append))
-        self.assertTrue(out and out[0].startswith("de_dust2 yield"))
+        self.assertTrue(out and out[0].startswith("de_aztec yield"))
 
 
 if __name__ == "__main__":

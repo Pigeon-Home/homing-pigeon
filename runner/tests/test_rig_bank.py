@@ -207,26 +207,30 @@ class LedgerTest(unittest.TestCase):
         # with rig_bank (the Germany rig) numbers from 1 correctly.
         self.assertEqual(rig_bank.next_grow_no(text, "VM rig"), 3)
 
-    def test_ledger_survives_the_de_dust2_rename(self):
-        # The campaign was renamed de_dust2 (29-OCT): new ledger
-        # lines carry the new name, historical lines keep the old
-        # one, and the counting and anchoring that read the ledger
-        # must treat both as the same rig's lines — the parsers key
-        # on the "de_dust" substring, which "de_dust2" contains.
+    def test_ledger_survives_a_campaign_rename(self):
+        # The campaign was renamed de_dust2 (29-OCT) and de_aztec
+        # (30-OCT): new ledger lines carry the new name, historical
+        # lines keep theirs, and the counting and anchoring that read
+        # the ledger treat them all as the same rig's lines -- the
+        # parsers key on the line's shape, not the name.
         text = (
-            "  de_dust 8 (Nuremberg): 1500 entries, 5400 arcs, 0 crashes filed.\n"
-            "  de_dust2 9 (Nuremberg): 1501 entries, 5401 arcs, 0 crashes filed.\n"
+            "  de_dust 7 (Nuremberg): 1499 entries, 5399 arcs, 0 crashes filed.\n"
+            "  de_dust2 8 (Nuremberg): 1500 entries, 5400 arcs, 0 crashes filed.\n"
+            "  de_aztec 9 (Nuremberg): 1501 entries, 5401 arcs, 0 crashes filed.\n"
         )
-        self.assertEqual(rig_bank.next_grow_no(text, "Nuremberg"), 3)
+        self.assertEqual(("de_dust2", 8, "Nuremberg"),
+                         rig_bank.ledger_line(text.splitlines()[1]))
+        self.assertIsNone(rig_bank.ledger_line("  Banked by rig_bank from the rig's tree"))
+        self.assertEqual(rig_bank.next_grow_no(text, "Nuremberg"), 4)
         out = rig_bank.insert_ledger(
             text,
-            "  de_dust2 10 (Nuremberg): 1502 entries, 5402 arcs, 0 crashes filed.\n")
+            "  de_aztec 10 (Nuremberg): 1502 entries, 5402 arcs, 0 crashes filed.\n")
         lines = out.splitlines()
         idx = lines.index(
-            "  de_dust2 10 (Nuremberg): 1502 entries, 5402 arcs, 0 crashes filed.")
+            "  de_aztec 10 (Nuremberg): 1502 entries, 5402 arcs, 0 crashes filed.")
         self.assertEqual(
             lines[idx - 1],
-            "  de_dust2 9 (Nuremberg): 1501 entries, 5401 arcs, 0 crashes filed.")
+            "  de_aztec 9 (Nuremberg): 1501 entries, 5401 arcs, 0 crashes filed.")
 
     def test_ledger_block_shape(self):
         report = {"totals": (1300, 5001)}
@@ -234,7 +238,7 @@ class LedgerTest(unittest.TestCase):
                         tried=1234, crashes=2)]
         block = rig_bank.ledger_block("Germany rig", 3, report, records,
                                       resources="box cpu 99%")
-        self.assertIn("de_dust2 3 (Germany rig): 1300 entries, 5001 arcs, "
+        self.assertIn("de_aztec 3 (Germany rig): 1300 entries, 5001 arcs, "
                       "2 crashes filed.", block)
         self.assertIn("1 run records, 1,234 children (seeds 77)", block)
         self.assertIn("Resources: box cpu 99%.", block)

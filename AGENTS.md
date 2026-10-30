@@ -100,9 +100,10 @@ Those values live on the runner host. They do not travel through the SI chat.
    audit reads every id on the row as that one chat (30-OCT).
 9. **The campaign runs from its standing orders.** What to test next
    is `docs/project/campaign-standing-orders.md`, a queue that does
-   not run out; since 29-OCT the campaign is de_dust2
-   (`docs/project/de_dust2.md`: time slices by yield, a latency
-   class, new readers first), and a fuzz finding is filed once per
+   not run out; since 30-OCT the campaign is de_aztec (de_dust2
+   from 29-OCT; its strategy stays in `docs/project/de_dust2.md`:
+   time slices by yield, a latency class, new readers first, the
+   techniques), and a fuzz finding is filed once per
    target per shape while a record whose head predates its fix is
    an echo that `promote` retires (Q108, Q116); the campaign never waits for a new batch from the
    owner, and stops only for a secret, a machine, an owner decision
