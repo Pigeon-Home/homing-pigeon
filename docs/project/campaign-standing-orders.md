@@ -2,6 +2,12 @@
 
 <!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
 
+The campaign is **de_dust2** from 29-OCT 8:21PM PST (the conductor:
+"Change the name of the campaign to de_dust2"). Ledger lines, bank
+titles and the hourly note carry the new name from then; the tool,
+the corpus directory and the test keep their paths. The strategy
+under review is `docs/project/de_dust2.md`.
+
 The campaign runs continuously from this file. It does not wait for
 a new batch of questions. When one piece of work closes, the next
 comes from the queue below, in order, without asking anyone. The
