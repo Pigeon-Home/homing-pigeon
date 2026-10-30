@@ -1466,7 +1466,17 @@
   [
    "runner/wire/dtlsproto.py",
    370,
+   371
+  ],
+  [
+   "runner/wire/dtlsproto.py",
+   370,
    372
+  ],
+  [
+   "runner/wire/dtlsproto.py",
+   371,
+   392
   ],
   [
    "runner/wire/dtlsproto.py",
@@ -1837,6 +1847,11 @@
    "runner/wire/dtlsproto.py",
    539,
    546
+  ],
+  [
+   "runner/wire/dtlsproto.py",
+   540,
+   541
   ],
   [
    "runner/wire/dtlsproto.py",
