@@ -233,6 +233,73 @@ class SlowClassTest(unittest.TestCase):
                 self.assertIn(outcome, ("accepted", "refused"), (target, record["id"]))
 
 
+class CiScopeTest(unittest.TestCase):
+    """P8: build.yml's scope job and the tool behind it."""
+
+    def test_corpus_only_means_every_path_is_corpus_or_ledger(self):
+        from runner.tools import ci_scope as C
+        self.assertTrue(C.corpus_only(["runner/tests/de_dust/query.jsonl",
+                                       "runner/tests/de_dust/runs.jsonl",
+                                       "runner/tests/de_dust/query.arcs.json",
+                                       "runner/tests/de_dust/query.retired.json",
+                                       "docs/project/campaign-standing-orders.md",
+                                       "docs/use/.com.chat", "docs/use/status.txt", ""]))
+        self.assertFalse(C.corpus_only(["runner/tests/de_dust/query.jsonl",
+                                        "runner/tools/de_dust_corpus.py"]))
+        self.assertFalse(C.corpus_only(["docs/use/questions.md"]))
+        self.assertFalse(C.corpus_only(["runner/tests/de_dust/queries.crashes.jsonl",
+                                        "PROTOCOL.md"]))
+        self.assertFalse(C.corpus_only([]))
+
+    def test_decide_reads_the_push_range_and_nothing_else(self):
+        from runner.tools import ci_scope as C
+
+        def diff(paths, rc=0):
+            def run(cmd, **kw):
+                self.assertEqual(["git", "diff", "--name-only", "abc", "def"], cmd)
+                return mock.Mock(returncode=rc, stdout="\n".join(paths) + "\n")
+            return run
+
+        self.assertEqual("true", C.decide("push", "abc", "def",
+                                          run=diff(["runner/tests/de_dust/wire.jsonl"])))
+        self.assertEqual("false", C.decide("push", "abc", "def",
+                                           run=diff(["runner/wire/verify.py"])))
+        self.assertEqual("false", C.decide("push", "abc", "def", run=diff([], rc=128)))
+        self.assertEqual("false", C.decide("push", "0" * 40, "def", run=diff(["x"])))
+        self.assertEqual("false", C.decide("workflow_dispatch", "abc", "def", run=diff(["x"])))
+        self.assertEqual("false", C.decide("push", "abc", "", run=diff(["x"])))
+
+    def test_main_prints_the_output_line(self):
+        from runner.tools import ci_scope as C
+        out = []
+        with mock.patch.object(C, "decide", return_value="true"):
+            self.assertEqual(0, C.main(environ={"EVENT": "push", "BEFORE": "a", "AFTER": "b"},
+                                       out=out.append))
+        self.assertEqual(["corpus_only=true"], out)
+
+    def test_the_heavy_jobs_wait_on_scope_and_the_suite_does_not(self):
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        with open(os.path.join(root, ".github", "workflows", "build.yml"), encoding="utf-8") as fh:
+            wf = fh.read()
+
+        def block(job):
+            m = re.search(r"^  %s:\n(.*?)(?=^  [a-z0-9_-]+:|\Z)" % re.escape(job), wf, re.M | re.S)
+            self.assertIsNotNone(m, job)
+            return m.group(1)
+
+        for job in ("test-macos", "build-windows", "build-windows-arm64", "build-linux",
+                    "build-linux-arm64", "build-macos", "build-macos-x86_64",
+                    "build-pi-light", "build-python"):
+            b = block(job)
+            self.assertIn("needs: scope", b, job)
+            self.assertIn("if: needs.scope.outputs.corpus_only != 'true'", b, job)
+        for job in ("test", "typecheck", "scope"):
+            self.assertNotIn("corpus_only != 'true'", block(job), job)
+        self.assertIn("runner/tools/ci_scope.py", block("scope"))
+        self.assertIn("contents: read", block("scope"))
+
+
 class YieldTableTest(unittest.TestCase):
 
     def test_the_table_sums_the_window_and_sorts_by_cpu(self):

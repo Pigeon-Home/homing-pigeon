@@ -46,6 +46,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  scope:
+    # de_dust2 (P8, docs/project/de_dust2.md): what this push changed.
+    # A push that touches only the fuzz corpus and the campaign's
+    # ledgers (the rigs' banks, several an hour) runs the Linux suite
+    # alone: it replays the corpus and carries the crash probes, and
+    # that is the whole of what such a push can break. Every other
+    # event -- a code or doc change, a tag, a dispatch, an unknown
+    # before -- runs the full matrix. runner/tools/ci_scope.py decides.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      corpus_only: ${{ steps.scope.outputs.corpus_only }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: python3 runner/tools/ci_scope.py >> "$GITHUB_OUTPUT"
+
   test:
     runs-on: ubuntu-latest
     permissions:
@@ -244,6 +268,8 @@ jobs:
     # macos-14. A signal, not a gate: cut-release reads `test` and
     # the build-* jobs, so a red here shows on the run and blocks
     # nothing until it has held green for a while.
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true'
     runs-on: macos-14
     permissions:
       contents: read
@@ -260,6 +286,8 @@ jobs:
     # The release waits for both, so a red suite still cannot
     # publish. Waiting here was the suite's four minutes plus
     # this job's six, in a line.
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true'
     runs-on: windows-latest
     permissions:
       contents: read
@@ -364,6 +392,8 @@ jobs:
           path: ${{ env.PKG_NAME }}.zip
 
   build-linux:
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true'
     runs-on: ubuntu-22.04
     permissions:
       contents: read
@@ -412,6 +442,8 @@ jobs:
     # copied into this archive. That proof is the arm64 leg of
     # .github/workflows/minimal-userland.yml, which runs
     # runner/tests/test_minimal_userland.py inside .github/docker/minimal-userland.
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true'
     runs-on: ubuntu-22.04-arm
     permissions:
       contents: read
@@ -444,6 +476,8 @@ jobs:
           path: ${{ env.PKG_NAME }}.tar.gz
 
   build-macos:
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true'
     runs-on: macos-14
     permissions:
       contents: read
@@ -479,6 +513,8 @@ jobs:
     # for Pi Light. Built on the arm runner; PyInstaller freezes
     # the interpreter it is built with, so this is not a cross
     # compile. No default_profile marker.
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true'
     runs-on: ubuntu-22.04-arm
     permissions:
       contents: read
@@ -516,6 +552,8 @@ jobs:
   build-windows-arm64:
     # Native Windows on ARM. Same freeze rule as the Linux
     # arm64 job: built on an arm runner, not cross-compiled.
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true'
     runs-on: windows-11-arm
     # Scarce runner: a retired label parks the release for hours
     # (ci-failures.md finding 3); 30 minutes fails it fast instead.
@@ -613,6 +651,8 @@ jobs:
     # December 2025 and a job that asks for it never starts, so
     # the release never publishes. macos-15-intel is the
     # standard runner that still freezes x86_64.
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true'
     runs-on: macos-15-intel
     # Scarce runner: when its label is retired (macos-13 was, and
     # parked release runs ~16 h -- ci-failures.md finding 3), fail
@@ -648,6 +688,8 @@ jobs:
           path: ${{ env.PKG_NAME }}.tar.gz
 
   build-python:
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read

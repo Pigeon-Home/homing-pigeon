@@ -168,6 +168,11 @@ order, 2026-10-25, after a release was blocked twice in one hour):
   which is red: the fix commit removes the decorator. A red probe
   in the live suite blocks every release behind it; an expected
   failure blocks nothing and is just as much a proof.
+- A release on change, not on bank (de_dust2 P9, the conductor's
+  "OK, implement everything", 29-OCT 8:29PM PST): a release is cut
+  when the runner changes, or once a day, never for a bank alone;
+  the corpus rides whichever release comes next, and the FULL STAMP
+  verification keeps pace with the train.
 - A release window: when the head of main is a commit whose message
   starts with `release:`, hold every push until that commit's build
   has completed (the `build` run on it; about twelve minutes), then
@@ -442,14 +447,30 @@ The loop:
    target or over, and anything lower is a serial step to name in
    the ledger. The campaign never idles between grows and stops
    only on the conductor's word.
-2. **Grow.** `HP_DE_DUST_ARCHIVE=<the archive directory> python
-   runner/tools/rig_resources.py -- python
-   runner/tools/de_dust_corpus.py grow --rounds 20000
-   --minutes 55`, started again at every rules refresh (`--jobs`
-   defaults to the box's core count; name it only to use fewer): the targets cycle, `--jobs` at a time, the next
-   starting the moment any one finishes, each cycle with the seed
-   moved on, until the minutes are up; that is the continuous grow,
-   and its resource line reads on target. The cycle starts at the
+2. **Grow.** Under de_dust2 (29-OCT, `docs/project/de_dust2.md`,
+   decided by the audit seat at the conductor's "OK, implement
+   everything"), each rig runs its lane, started again at every
+   rules refresh, `--jobs` at the box's core count and no other
+   grow work beside it (the note, the banks and the liveness watch
+   stay): Nuremberg `HP_DE_DUST_ARCHIVE=<the archive directory>
+   python runner/tools/rig_resources.py -- python
+   runner/tools/de_dust_corpus.py grow --minutes 55 --slice 120`
+   (all targets); San Francisco the same with `--target
+   query,local,board_mail,v2_mail --slice 1800`; Menlo Park two
+   grow processes, each `--jobs 1`, one on `--target wire,cloud,v2,crypto,local,stash,mail,board,board_ops,channels,manifest,inbox,local_inbox,secret,queries,names,query,board_mail,v2_mail,stage,collect
+   --slice 120` and one on `--target keydir,address,dtls --slice
+   600` (two processes never share a target, since each target owns
+   its corpus file), with `runner/tools/de_dust_survivors.py` once a
+   day in a fixed slot.
+   Under `--minutes` without `--rounds` a target's turn is a time
+   slice tilted by its yield over its last five grows (a quarter
+   with none, up to four times, a full look after a fresh seed),
+   its rounds from its measured rate, re-planned each time the
+   cycle requeues it; `--rounds N` is the old fixed count. The
+   targets cycle, `--jobs` at a time, the next starting the moment
+   any one finishes, each cycle with the seed moved on, until the
+   minutes are up; that is the continuous grow, and its resource
+   line reads on target. The cycle starts at the
    target least recently grown in the merged `runs.jsonl` and goes
    on from the thinnest (Q107, 2026-10-28; `--order fixed` is the
    list's own order), so a one-core rig with a short cycle reaches
@@ -465,8 +486,14 @@ The loop:
    one gzip JSON-lines file per grow, and the run record carries
    the file's name, size, SHA-384 and count, so the tree says
    where the rest of the proof is; the archive is never committed.
-   Once per rules refresh, after the grow cycle and before the
-   next one starts, `python runner/tools/de_dust_survivors.py`
+   Parents are drawn by the rarity of the arcs they reach and, on
+   a target the reader accepts under a fifth of, four times more for
+   accepted ones (`--uniform-parents` is the old draw); a try over
+   fifty times the corpus replay's median and over half a second is
+   a `slow` finding in `<target>.slow.jsonl`, filed as a Q like a
+   crash and never a probe. `stats --yield` prints the per-target
+   yield table the hourly note leads with. On Menlo Park once a day,
+   in its slot, `python runner/tools/de_dust_survivors.py`
    (about three minutes; every target is in its kill set, the
    agent module's readers included): it rewrites `survivors.json`
    and adds its line to `runs.jsonl`, and the ledger line names

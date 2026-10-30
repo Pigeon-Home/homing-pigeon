@@ -213,21 +213,56 @@ moves when the strategy moves.
   its value is in the lines it names; one run a day per rig is
   enough to keep the seed list honest.
 
-## 4. What the rigs run once this is decided
+## 4. The decision, and what the rigs run
 
-Written for Muse; it takes effect when the audit seat posts the
-decision in the forum, not before. Until then the loop in the
-standing orders' section M stands.
+Decided by the audit seat on 29-OCT after Muse's feedback (the
+forum, 8:29PM PST) and the conductor's "OK, implement everything"
+(8:29PM PST). Landed: P1, P2, P3, P4 and P10 in the tool
+(`--slice`, the tilt, rarity-and-acceptance parents,
+`<target>.slow.jsonl`, `stats --yield`, `--target a,b,c`); P5 as
+the `keydir` and `address` targets and the `dtls` core's planted
+tickets with resume seeds (the dtls target went from 309 to 628
+arcs at seed time); P8 as build.yml's `scope` job and
+`runner/tools/ci_scope.py`; P9 as the release rule in the standing
+orders. P6 as below, with Muse's two readings taken: "nothing else
+beside them" means no other grow work (the note, the banks and the
+liveness watch stay), and a single-homed target class is a blind
+spot when its rig falls, which the liveness watch reports the hour
+it happens.
+
+**P7 is held.** Muse's record (the forum, 8:29PM PST) is that the
+conductor ordered the ten-minute bank cadence by name for all three
+rigs on 29-OCT, because the bank commits are the status he reads;
+P7 would thin that cadence, and P8 takes the CI cost without
+touching it. P7 comes back only if the full matrices per day stay
+high with the corpus path in place, and then as a question to him.
+
+What the rigs run, from the post "de_dust2: the rigs switch" in the
+forum:
 
 - Nuremberg: `HP_DE_DUST_ARCHIVE=<archive> python
   runner/tools/rig_resources.py -- python
   runner/tools/de_dust_corpus.py grow --minutes 55 --slice 120`
-  (all targets, P1 and P2 on by default, `--jobs 1`).
+  (all targets, P1, P2 and P3 on by default, `--jobs 1`).
 - San Francisco: the same with `--target
   query,local,board_mail,v2_mail --slice 1800`.
-- Menlo Park: `--jobs 2`, one worker as Nuremberg's, one worker on
-  `--target <the new targets of P5> --slice 600`, and
-  `de_dust_survivors.py` once a day in a fixed slot; nothing else
-  beside them.
-- Bank by P7; the hourly note by P10; the ledger line, the bank's
-  title and the note say de_dust2.
+- Menlo Park: two grow processes, each `--jobs 1`: one on every
+  target but the new three, `--target wire,cloud,v2,crypto,local,stash,mail,board,board_ops,channels,manifest,inbox,local_inbox,secret,queries,names,query,board_mail,v2_mail,stage,collect --slice 120 --minutes 55`,
+  and one on `--target keydir,address,dtls --slice 600 --minutes 55`
+  (two processes never share a target, since each target owns its
+  corpus file); `de_dust_survivors.py` once a day in a fixed slot;
+  no other grow work beside them.
+- Banks at the conductor's ten-minute cadence; the hourly note by
+  P10 (`stats --yield` is its first line's source); the ledger
+  line, the bank's title and the note say de_dust2.
+
+## 5. Where to read whether it worked
+
+`python runner/tools/de_dust_corpus.py stats --yield --hours 48`:
+the CPU-hours column should flatten to within 2x across targets
+within a day, kept per CPU-hour should climb back above 2 within
+two days, `local`, `crypto`, `manifest` and `v2` should accept more
+than a fifth of their tries, the slow column should name the
+inputs the ledger already saw, and `keydir`, `address` and `dtls`
+should gain arcs on their first day. The hourly note's first line
+is the same number for the last 24 hours.
