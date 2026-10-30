@@ -17,7 +17,7 @@ campaign is idle, these orders were not followed.
 
 How a campaign is run (the rig, the loop, recording a finding, the
 watchdog, the hard rules) is `docs/project/campaign-playbook.md`.
-Questions to Claude or the owner go in `docs/use/questions.md`
+Questions to Claude or the owner go in `docs/seats/questions.md`
 (AGENTS.md rules 7 and 8). This file says only what to work on next
 and when to stop.
 
@@ -39,8 +39,8 @@ What counts as talking to him, and is not allowed outside the list:
 a chat message that reports progress, confirms an order was heard,
 announces a start or a finish, repeats a finding that is already in
 a commit or a Q entry, or relays a question that belongs in
-`docs/use/questions.md`. A reminder of this section posted in
-`docs/use/.com.chat` by Claude means the pattern was seen; the next
+`docs/seats/questions.md`. A reminder of this section posted in
+`docs/seats/.com.chat` by Claude means the pattern was seen; the next
 rule refresh re-reads this section and says so in the ledger.
 
 ## Rule refresh, every hour
@@ -48,7 +48,7 @@ rule refresh re-reads this section and says so in the ledger.
 Long runs lose context. At least once an hour, and after any restart
 or context reset, re-read before taking the next item: this file,
 AGENTS.md (rules 7, 8 and 9 above all), the open entries in
-`docs/use/questions.md`, and `docs/project/campaign-playbook.md`'s
+`docs/seats/questions.md`, and `docs/project/campaign-playbook.md`'s
 hard rules. Note the refresh in the ledger as one line
 ("rules refreshed <time>"), followed by the hour's resource line
 (below). A ledger with no refresh line in the last hour of activity
@@ -120,7 +120,7 @@ waiting is not testing.
 
 1. Pull main. If the last rule refresh was more than an hour ago, do
    it now (above).
-2. Read `docs/use/questions.md`. Anything answered since the last
+2. Read `docs/seats/questions.md`. Anything answered since the last
    pass that changes the campaign's own work (a fix to re-verify, a
    probe to retire, a decision that moves an assertion) comes first.
 3. Take the first open item from the queue below. Mark it taken by
@@ -198,7 +198,7 @@ order, 2026-10-25, after a release was blocked twice in one hour):
 ## When to stop and ask the owner
 
 Only these stop the loop, and only for the item they block. Write
-the question in `docs/use/questions.md` addressed to the owner, then
+the question in `docs/seats/questions.md` addressed to the owner, then
 continue with the next item that does not need it.
 
 - A secret: anything that needs a mailbox password, a token or a key
@@ -347,7 +347,7 @@ R4) lists it.
 
 <!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
 
-The hand-off and the fixed rules are Q59 in `docs/use/questions.md`.
+The hand-off and the fixed rules are Q59 in `docs/seats/questions.md`.
 The loop:
 
 1. **Measure.** The suite under `coverage` exactly as
@@ -421,7 +421,7 @@ The plan is `docs/project/de_dust.md` (the conductor's
 campaign, to run indefinitely: the surface, the contracts, the
 seeds and vocabulary, the roles, the saturation rule and the
 phases); the hand-off and the fixed rules are Q62 in
-`docs/use/questions.md`; the owner named the campaign on
+`docs/seats/questions.md`; the owner named the campaign on
 2026-10-26. The tool is `runner/tools/de_dust_corpus.py`, the
 corpus is `runner/tests/de_dust/<target>.jsonl` (the targets
 are the tool's own list, `stats` prints them with their saturation;
@@ -651,7 +651,7 @@ seats, split by folder so no file has two writers:
 `90000998` goes back to reviews and does not write coverage tests;
 `40000e00` lands a coverage test only for a gap it finds while fixing a
 question. A gap a seat finds outside its folders goes to the owning
-seat as a line in `docs/use/.com.chat`. Each pass commits its run data
+seat as a line in `docs/seats/.com.chat`. Each pass commits its run data
 under `docs/reports/coverage/`, with every line it leaves unrun named
 and the reason no test is aimed at it.
 

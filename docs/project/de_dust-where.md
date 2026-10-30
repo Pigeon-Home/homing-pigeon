@@ -3,7 +3,7 @@
 The working tree was clean when this was written. Everything
 below is already on `main`. This file is the index.
 
-The questions are `docs/use/questions.md`. The plan is
+The questions are `docs/seats/questions.md`. The plan is
 `docs/project/de_dust.md`. The tool is
 `runner/tools/de_dust_corpus.py`. The corpus is
 `runner/tests/de_dust/<target>.jsonl`, and

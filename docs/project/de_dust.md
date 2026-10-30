@@ -6,7 +6,7 @@ The conductor's campaign, 2026-10-26, to run indefinitely: a
 coverage-guided seed corpus against every reader that stands
 between bytes from outside and the agent's trust in them. This is
 the plan from here on; the standing orders' section M is the loop
-that runs it, `docs/use/questions.md` is where its questions and
+that runs it, `docs/seats/questions.md` is where its questions and
 findings go, and this file is revised as the campaign learns.
 Nothing here names a person, a machine, a path or an address that
 is real.
@@ -369,7 +369,7 @@ the search as well as preceding it (Muse, 2026-10-26).
   campaign writes the corpus files, the arc maps, `runs.jsonl`
   and `survivors.json`; the desk writes the tool, the seed
   functions and the readers); Muse's daily note is the top of
-  `docs/use/.com.chat`.
+  `docs/seats/.com.chat`.
 
 ## 7. Cadence and records
 

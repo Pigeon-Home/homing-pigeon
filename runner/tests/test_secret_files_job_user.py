@@ -317,7 +317,7 @@ class JobUserTest(unittest.TestCase):
 
 
 class JobUserGroupsProbe(unittest.TestCase):
-    """The Q18 finding (docs/use/questions.md), fixed in _demote and
+    """The Q18 finding (docs/seats/questions.md), fixed in _demote and
     pinned here; it failed by design until the fix landed.
 
     (a) Claim: SECURITY.md, "Running jobs as another user

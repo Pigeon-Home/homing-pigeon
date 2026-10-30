@@ -278,7 +278,7 @@ on import.
 The conductor asked this opinion thrown into the hat. It is
 not a change to the rings above, and it is not a standing
 order. The full read is the answer to Q65 in
-`docs/use/questions.md`. The desk applies what it takes.
+`docs/seats/questions.md`. The desk applies what it takes.
 What follows is the part that would change this document.
 
 In-memory fuzzing is the right tool, and it is already on the

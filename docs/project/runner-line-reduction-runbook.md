@@ -5,7 +5,7 @@
 Status: done. The series of 2026-10-25 took `runner/runner.py` from
 11,205 lines to 5,362 (it has grown since with new work), moving the
 pieces into `runner/ops/`; it shipped in 3.12.74 after a repair of
-how the extracted modules load (Q52-Q55 in `docs/use/questions.md`).
+how the extracted modules load (Q52-Q55 in `docs/seats/questions.md`).
 The phases below are the record of how it was planned. The rules
 are current and bind any further extraction.
 
@@ -136,7 +136,7 @@ When `wc -l runner/runner.py` prints a number under 10000:
 1. Run the full suite: `python3 -m unittest discover -s
    runner/tests -t .`
 2. Confirm switch-proofs is green on the tip.
-3. Write one line in `docs/use/questions.md` under the newest
+3. Write one line in `docs/seats/questions.md` under the newest
    Q: `runner.py is under 10,000 lines (N). No behavior change.
    Applied in: <commit>.`
 4. Stop.

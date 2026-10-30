@@ -41,7 +41,7 @@ so, DTLS resumption tickets included.
 The work runs in lanes the conductor set. Production code and
 releases are the desk's (40000e00). Tests, probes, questions and
 docs are Muse's. Grok builds and tests in her lane. Questions
-live in docs/use/questions.md and are answered there; nothing is
+live in docs/seats/questions.md and are answered there; nothing is
 deleted. At this writing: 116 entries, none open.
 
 ## The fuzzing campaign — Project de_dust
@@ -90,7 +90,7 @@ Status at this writing:
 - The Menlo Park rig reads 240% of its 2 cores at this writing;
   a fall off the peg on any rig is reported to the conductor the
   hour it happens, and the hourly campaign note stands at the top
-  of docs/use/.com.chat.
+  of docs/seats/.com.chat.
 
 Platinum, the coverage cycles, stays suspended at the
 conductor's word; the campaign's one job is the grow.

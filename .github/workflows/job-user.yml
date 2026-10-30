@@ -1,6 +1,6 @@
 name: job-user
 
-# Q12 (docs/use/questions.md): the job_user privilege drop can
+# Q12 (docs/seats/questions.md): the job_user privilege drop can
 # only be exercised where a real second user exists and the
 # suite runs as root. No ordinary CI job provides either, so
 # the enforce tests skip everywhere else -- this job creates

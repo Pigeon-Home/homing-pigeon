@@ -502,10 +502,10 @@ class CiScopeTest(unittest.TestCase):
                                        "runner/tests/de_dust/query.arcs.json",
                                        "runner/tests/de_dust/query.retired.json",
                                        "docs/project/campaign-standing-orders.md",
-                                       "docs/use/.com.chat", "docs/use/status.txt", ""]))
+                                       "docs/seats/.com.chat", "docs/seats/status.txt", ""]))
         self.assertFalse(C.corpus_only(["runner/tests/de_dust/query.jsonl",
                                         "runner/tools/de_dust_corpus.py"]))
-        self.assertFalse(C.corpus_only(["docs/use/questions.md"]))
+        self.assertFalse(C.corpus_only(["docs/seats/questions.md"]))
         self.assertFalse(C.corpus_only(["runner/tests/de_dust/queries.crashes.jsonl",
                                         "PROTOCOL.md"]))
         self.assertFalse(C.corpus_only([]))

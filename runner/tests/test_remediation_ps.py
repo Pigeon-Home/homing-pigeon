@@ -1,5 +1,5 @@
 """The ps-based tree sampler: Darwin and the BSDs see a job's whole
-process tree (docs/use/questions.md Q38).
+process tree (docs/seats/questions.md Q38).
 
 Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 

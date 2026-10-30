@@ -9351,7 +9351,7 @@ class TestLiveReloadBadValueReadsAsDefault(unittest.TestCase):
         next start." docs/project/campaign-playbook.md
         (line 132): "Live reload: a bad value written
         while running reads as the default and is
-        named in the log". docs/use/questions.md
+        named in the log". docs/seats/questions.md
         (line 137): "Live reload: a bad value reads
         as the default and is logged, no hidden
         last-good state". The five hot integer keys

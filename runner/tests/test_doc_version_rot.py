@@ -47,7 +47,7 @@ def _evergreen_docs():
     # does: the questions file records which release applied an
     # answer, the standing orders' ledger which release proved an
     # item. Records, not evergreen prose.
-    logs = {os.path.join(root, "docs", "use", "questions.md"),
+    logs = {os.path.join(root, "docs", "seats", "questions.md"),
             os.path.join(root, "docs", "project",
                          "campaign-standing-orders.md")}
     return [p for p in found if p not in logs]

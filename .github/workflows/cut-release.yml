@@ -200,7 +200,7 @@ jobs:
           if ! out=$(git push origin "refs/tags/$TAG" 2>&1); then
             echo "::error title=tag push::git push failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
             if [ "$HAVE_RELEASE_TOKEN" != "true" ]; then
-              echo "::error title=remedy::add a repository secret RELEASE_TOKEN (fine-grained PAT, this repository, contents: write and workflows: write) and re-run; see docs/use/questions.md Q30"
+              echo "::error title=remedy::add a repository secret RELEASE_TOKEN (fine-grained PAT, this repository, contents: write and workflows: write) and re-run; see docs/seats/questions.md Q30"
             fi
             exit 1
           fi

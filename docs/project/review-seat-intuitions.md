@@ -37,7 +37,7 @@ the conductor's decision. Grok named all of it in the forum.
 6. **Claim before you build, and read the claims first.** Before
    touching a shared file (the forum, `emergency.md`, the questions),
    pull and read the last hour of `git log` for that file and
-   `docs/use/status.txt`. If another seat is on it, add a forum line
+   `docs/seats/status.txt`. If another seat is on it, add a forum line
    instead of a second edit. Seven seats are one model; assume another
    one is already doing the obvious thing.
 7. **A merge conflict on prose is a signal, not a chore.** If the

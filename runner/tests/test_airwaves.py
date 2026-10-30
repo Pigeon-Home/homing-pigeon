@@ -209,7 +209,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(scan[0]["signal_dbm"], -55)
 
     def test_parse_iw_link_a_huge_signal_must_be_none_probe(self):
-        # FAILING BY DESIGN -- Q29 in docs/use/questions.md.
+        # FAILING BY DESIGN -- Q29 in docs/seats/questions.md.
         #
         # (1) The claim, from parse_iw_link's shape in
         # runner/extensions/airwaves/airwaves.py: a signal
@@ -237,7 +237,7 @@ class ParserTest(unittest.TestCase):
         self.assertIsNone(got["signal_dbm"])
 
     def test_parse_nmcli_a_huge_signal_must_be_none_probe(self):
-        # FAILING BY DESIGN -- Q29 in docs/use/questions.md.
+        # FAILING BY DESIGN -- Q29 in docs/seats/questions.md.
         # The same defect at parse_nmcli's signal conversion
         # (~226-231): float() of a huge digit string is inf,
         # int(inf) raises OverflowError past the ValueError
@@ -252,7 +252,7 @@ class ParserTest(unittest.TestCase):
         self.assertIsNone(scan[0]["signal_dbm"])
 
     def test_parse_iw_scan_a_huge_signal_must_be_none_probe(self):
-        # FAILING BY DESIGN -- Q28 in docs/use/questions.md.
+        # FAILING BY DESIGN -- Q28 in docs/seats/questions.md.
         #
         # (1) The claim, from parse_iw_scan's shape in
         # runner/extensions/airwaves/airwaves.py: a signal

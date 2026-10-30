@@ -290,7 +290,7 @@ class DoNotEmitTableTest(_CycleRig):
 
 
 class MissingBinaryRowAsAmended(_CycleRig):
-    """The Q21 decision (docs/use/questions.md): AGENTS.md's
+    """The Q21 decision (docs/seats/questions.md): AGENTS.md's
     missing-binary row now states what PROTOCOL.md section 3.2
     promises. At the default opinion latitude (repair) a job naming
     an interpreter that does not exist is repaired to the platform

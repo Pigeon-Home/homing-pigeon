@@ -331,7 +331,7 @@ class MusterHoldTest(unittest.TestCase):
     def test_the_file_holds_and_its_absence_does_not(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertFalse(rig_bank.muster_holds(d))
-            hold = os.path.join(d, "docs", "use", "muster.hold")
+            hold = os.path.join(d, "docs", "seats", "muster.hold")
             os.makedirs(os.path.dirname(hold))
             with open(hold, "w", encoding="utf-8") as fh:
                 fh.write("held\n")

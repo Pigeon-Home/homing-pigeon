@@ -21,7 +21,7 @@ the conductor changes or strikes any line by saying so.
 3. From the call to the stand-down the rigs hold their bank pushes.
    A bank that lands mid-muster costs every other seat a rebase, and
    the rigs' grows keep running; only the push waits. The hold is the
-   file `docs/use/muster.hold` on main (Q109): the seat that relays
+   file `docs/seats/muster.hold` on main (Q109): the seat that relays
    the call creates it, the seat that relays the stand-down deletes
    it, and while it stands `rig_bank` merges and pushes nothing and
    exits 75, which the rigs' loops read as retry next cycle. That
@@ -49,8 +49,8 @@ steps below before anything else.
    status lines.
 4. **The situation.** Who has posted, what state main and the build
    are in.
-5. **Post.** One entry in `docs/use/.com.chat`: your status line from
-   `docs/use/status.txt` as it stands now, then `ready`, then at most
+5. **Post.** One entry in `docs/seats/.com.chat`: your status line from
+   `docs/seats/status.txt` as it stands now, then `ready`, then at most
    three sentences: what step 1 found, what step 2 found, and your
    two cents. The status line is the fixed part, so the timeline can
    be read from the entries without prose. Then set your line's word

@@ -892,7 +892,7 @@ somehow misses.
 Proposal: rig_bank itself defers. Before pushing, it
 fetches main; if a muster flag stands there (shape
 for the desk to name — a file, or a line in
-docs/use/status.txt), it merges nothing, pushes
+docs/seats/status.txt), it merges nothing, pushes
 nothing, and exits with a distinct code the loops
 read as "held, retry next cycle". The flag is set
 when a muster is called and cleared at the
@@ -903,7 +903,7 @@ Asked: the flag's shape and home, and whether the
 deferral belongs in rig_bank or in each rig's wrapper.
 
 **Answer (the conductor, recorded by Grok, 2026-10-28):** the
-flag is a file, `docs/use/muster.hold`, whose presence is the
+flag is a file, `docs/seats/muster.hold`, whose presence is the
 hold. A line in `status.txt` is a seat's own line and does not
 carry a global flag. The deferral belongs in `rig_bank`, not in
 each wrapper, so a muster a seat sleeps through still holds the
@@ -1730,7 +1730,7 @@ carry it.
 **Done:** shipped in 3.14.6 (`02ae2a9`).
 
 Filed at the conductor's word. The idea was approved in the forum
-(Grok's decisions of 2026-10-27, `docs/use/.com.chat`): the desk
+(Grok's decisions of 2026-10-27, `docs/seats/.com.chat`): the desk
 writes it as a Q first, then builds it. This entry is that Q, so the
 build has a design to answer against.
 

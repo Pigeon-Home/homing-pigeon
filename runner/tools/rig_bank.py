@@ -40,7 +40,7 @@ Usage:
 
 Exit codes: 0 banked (or nothing new to bank), 2 refusal of
 shape, 3 torn read past the tail, 4 the push did not land,
-75 a muster holds (docs/use/muster.hold stands on main): nothing
+75 a muster holds (docs/seats/muster.hold stands on main): nothing
 merged, nothing pushed, retry next cycle (Q109).
 """
 
@@ -469,7 +469,7 @@ def _git(args, cwd, pat=None):
 
 
 HOLD_EXIT = 75
-"""Exit when docs/use/muster.hold stands on main: retry next cycle."""
+"""Exit when docs/seats/muster.hold stands on main: retry next cycle."""
 
 
 def muster_holds(clone):
@@ -478,7 +478,7 @@ def muster_holds(clone):
     The flag is the file's presence (Q109). A line in status.txt is a
     seat's own line and does not carry a global hold.
     """
-    return os.path.exists(os.path.join(clone, "docs", "use", "muster.hold"))
+    return os.path.exists(os.path.join(clone, "docs", "seats", "muster.hold"))
 
 
 def _mkdtemp(prefix):

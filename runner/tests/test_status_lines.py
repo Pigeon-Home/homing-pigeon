@@ -2,7 +2,7 @@
 """Project telephone-pole: the status file and the words file hold
 their shape (docs/project/telephone-pole.md).
 
-docs/use/status.txt is one line per seat, replaced, never appended:
+docs/seats/status.txt is one line per seat, replaced, never appended:
 
     SEAT STAMP @COMMIT open:Qn,Qn|- closed:Qn,Qn|- on:WORD
 
@@ -19,9 +19,9 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
-STATUS = os.path.join(ROOT, "docs", "use", "status.txt")
+STATUS = os.path.join(ROOT, "docs", "seats", "status.txt")
 WORDS = os.path.join(ROOT, "docs", "project", "telephone-pole-words.md")
-QUESTIONS = os.path.join(ROOT, "docs", "use", "questions.md")
+QUESTIONS = os.path.join(ROOT, "docs", "seats", "questions.md")
 
 _QLIST = r"(?:-|Q\d+(?:,Q\d+)*)"
 LINE = re.compile(

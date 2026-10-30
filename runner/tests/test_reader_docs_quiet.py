@@ -4,8 +4,8 @@ run. The manuals at the root and the guides under docs/use, extend,
 security, oracle, design and ietf are for someone running or
 extending the runner; how the seats work -- question numbers, seat
 names, stamps' roles, campaign names, standing orders -- lives in
-docs/project, docs/archive, docs/reports, docs/use/questions.md,
-docs/use/status.txt and the forum. A reference that drifts into a
+docs/project, docs/archive, docs/reports and docs/seats (the questions
+file, status.txt and the forum). A reference that drifts into a
 reader's page fails here, with the line.
 """
 
@@ -20,8 +20,7 @@ READER_FILES = ["README.md", "INSTALL.md", "SECURITY.md", "PROTOCOL.md", "FAQ.md
 READER_DIRS = ["docs/use", "docs/extend", "docs/security", "docs/oracle",
                "docs/design", "docs/ietf"]
 # The seats' own files under a reader directory.
-NOT_READER = {"docs/use/questions.md", "docs/use/status.txt", "docs/use/.com.chat",
-              "docs/use/muster.hold"}
+NOT_READER = set()   # the seats' files live in docs/seats, outside the reader's folders
 
 # What a seat says and a reader should not meet.
 PROCESS = re.compile(
@@ -67,6 +66,14 @@ class ReaderDocsQuietTest(unittest.TestCase):
                         rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
                         bad.append(f"{rel}:{n}: {m.group(0)!r} in {line.strip()[:80]!r}")
         self.assertEqual([], bad, "process talk in a reader's page:\n  " + "\n  ".join(bad))
+
+    def test_docs_use_holds_only_the_reader_s_pages(self):
+        # The seats' files (the questions file, status.txt, the forum,
+        # a muster hold) live in docs/seats. A job on a rig that still
+        # writes to the old path puts a file here, and this names it.
+        stray = sorted(n for n in os.listdir(os.path.join(ROOT, "docs", "use"))
+                       if not n.endswith(".md"))
+        self.assertEqual([], stray, "not a reader's page under docs/use")
 
 
 if __name__ == "__main__":

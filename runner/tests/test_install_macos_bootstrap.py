@@ -1,5 +1,5 @@
 """The macOS install finishes whether or not launchd will load the
-agent now (docs/use/questions.md Q39).
+agent now (docs/seats/questions.md Q39).
 
 Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 

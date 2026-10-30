@@ -16,7 +16,7 @@ step, so the first bad commit is named -- or, when the test did not
 exist before the commit that added it, that commit is named as the
 one the test has been red since. The result is one ledger line for
 the standing orders and, on red, a paragraph ready to paste under a
-Q in docs/use/questions.md with the reproduce command.
+Q in docs/seats/questions.md with the reproduce command.
 
 The rig's own state lives outside the tree, under --state-dir
 (default ~/.cache/homing-pigeon/regression/): the last green head

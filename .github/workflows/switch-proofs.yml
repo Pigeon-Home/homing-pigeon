@@ -1,7 +1,7 @@
 # Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
 name: switch-proofs
 
-# The owner's target for the campaign (docs/use/questions.md, Q24,
+# The owner's target for the campaign (docs/seats/questions.md, Q24,
 # 2026-10-25): prove that every security control does what
 # SECURITY.md promises when it is turned on, with the Oracle
 # simulated, and find the races on the enforce path. This workflow is

@@ -204,7 +204,7 @@ class TwoSignersProbe(unittest.TestCase):
     """Q61: the cloud sender's verifier mis-segmented a signed
     body whose payload carries a `{` inside a nested string
     key plus an escaped quote, and rejected a body the runner's
-    signer produced. Filed in `docs/use/questions.md` as Q61;
+    signer produced. Filed in `docs/seats/questions.md` as Q61;
     the sender's opener search now parses each candidate, as
     the runner's has since Q32. The suite's own witness is
     `test_parser_properties.WireProperties.

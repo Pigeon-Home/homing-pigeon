@@ -1,7 +1,7 @@
 # Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
 name: env-axes
 
-# Phase 2, item 4 (docs/use/questions.md, Q7): the protection corpus
+# Phase 2, item 4 (docs/seats/questions.md, Q7): the protection corpus
 # run once per value of a kernel setting that changes outcomes, the
 # setting recorded with every result. Muse's VM can read the setting
 # but not write it (/proc/sys is read-only there), so the pair is

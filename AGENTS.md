@@ -46,7 +46,7 @@ Those values live on the runner host. They do not travel through the SI chat.
      `.md`.
    - `docs/CHANGELOG.md`, `docs/reports/**`, `docs/archive/**` — historical
      records; banners mark them, content is not re-audited.
-7. **Questions go in `docs/use/questions.md`, not through the owner.** A
+7. **Questions go in `docs/seats/questions.md`, not through the owner.** A
    question from one agent to another, or to the owner — a policy to
    decide, a test whose assertion should move, a doc line that
    contradicts the code — is written there as a numbered entry with
@@ -64,7 +64,7 @@ Those values live on the runner host. They do not travel through the SI chat.
    the recycled `50000c8e`) fixes the
    reader and turns survivors into seeds; one writer on a file;
    Grok does not grow, and does not fix unless the conductor names
-   the crash; Muse's daily note is the top of `docs/use/.com.chat`.
+   the crash; Muse's daily note is the top of `docs/seats/.com.chat`.
 10. **Agent stamps (2026-10-26).** Each agent chat signs its commits
    and new files with its own stamp (`docs/archive/RESEARCHER_IDENT.md`).
    Researchers one, two, three and five (`10000c2a`, `200003d4`,
@@ -129,8 +129,8 @@ Those values live on the runner host. They do not travel through the SI chat.
    a seat's name or title, a campaign's name, a milestone label, a
    pointer to the questions file or the forum does not go in them:
    state the rule or the fact and leave the trail in
-   `docs/project`, `docs/archive`, `docs/reports`,
-   `docs/use/questions.md`, `docs/use/status.txt` and the forum.
+   `docs/project`, `docs/archive`, `docs/reports` and `docs/seats`
+   (the questions file, `status.txt`, the forum `.com.chat`).
    `runner/tests/test_reader_docs_quiet.py` holds the line.
 12. **Claude seats read `docs/project/claude-intuitions.md` first.**
    Eight lines on answering the size of the ask, deciding only what
@@ -146,7 +146,7 @@ new paths against this layout; the old ones are gone, with no shims.
 | Folder | What |
 |--------|------|
 | `runner/` | The runner and the Oracle. `runner/runner.py` is the agent; its modules are in four role folders: `runner/oracle/` (the Oracle), `runner/wire/` (transports, signing, the board), `runner/guard/` (security, sandbox, config readers) and `runner/ops/` (install, setup, extensions, diagnostics, and the parts of the agent's own loop split out of `runner.py`: the CLI, polling, mail, execution, queries, startup and `main`, which `runner.py` loads through `_load_mod` and re-exports). `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`) and the hosted queue's Worker (`runner/cloud/queues-worker/`). `runner/transport_extensions/` is the five shipped transports (email, file, nats, dtls, queues), one folder each with a manifest. `runner/hosting/` is the hosting control plane (`homing-pigeon-host`: provider adapters for Fly, Hetzner, DigitalOcean and GitHub Actions, the inventory, prepaid billing; `docs/project/hosting.md`). `runner/extensions/` is the shipped sense extensions, one folder each, `runner/tools/` the build and CI scripts, and `runner/tests/` the suite; all three are kept out of the wheel (`pyproject.toml`'s exclude list) and the image. `runner/tests/airgap/` (once `topaz/`) and `runner/tests/archive/` sit beside the suite, outside discovery |
-| `docs/` | Everything else to read, grouped by reader: `use/` (running it), `oracle/` (the Oracle), `extend/` (extensions, senses, transports), `security/` (threat model, safeguards, opt-in OS `hardening/` templates), `project/` (layout, testing, fuzzing, roadmap), `design/`, `ietf/`, plus `CHANGELOG.md` and `CONTRIBUTING.md`. File names are lowercase-kebab; the uppercase names are the root conventions (README, INSTALL, SECURITY, PROTOCOL, AGENTS, FAQ), `CHANGELOG.md` and `CONTRIBUTING.md` under docs/, and the historical folders (`archive/`, `reports/`, `ietf/`, `specimens/`, the hardening README) |
+| `docs/` | Everything else to read, grouped by reader: `use/` (running it), `oracle/` (the Oracle), `extend/` (extensions, senses, transports), `security/` (threat model, safeguards, opt-in OS `hardening/` templates), `project/` (layout, testing, fuzzing, roadmap), `design/`, `ietf/`, `seats/` (the seats' own files: the questions file, `status.txt`, the forum `.com.chat`, a muster hold -- nothing a reader needs), plus `CHANGELOG.md` and `CONTRIBUTING.md`. File names are lowercase-kebab; the uppercase names are the root conventions (README, INSTALL, SECURITY, PROTOCOL, AGENTS, FAQ), `CHANGELOG.md` and `CONTRIBUTING.md` under docs/, and the historical folders (`archive/`, `reports/`, `ietf/`, `specimens/`, the hardening README) |
 | `assets/` | Images |
 | `.github/` | CI: `workflows/`, `docker/` (the published image and the CI test image), `requirements-ci.txt` (the CI pins) |
 

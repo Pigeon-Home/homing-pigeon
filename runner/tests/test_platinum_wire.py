@@ -41,7 +41,7 @@ the tracer does not report; test_transports proves the refusal.
 
 No `max_examples`: HP_PLATINUM_EXAMPLES sets how hard the rig pushes,
 CI keeps the quick default. Written by 40000e00 alongside Muse's
-queue P (docs/use/.com.chat, 2026-10-26).
+queue P (docs/seats/.com.chat, 2026-10-26).
 """
 import unittest
 
