@@ -824,6 +824,23 @@ class HourlyNoteTest(unittest.TestCase):
         self.assertIn("wire -- t_grammar", text)
         self.assertNotIn("Disk probe", text)
 
+    def test_two_plans_at_one_moment_are_both_in_the_note(self):
+        now = datetime(2026, 10, 30, 22, 30, tzinfo=timezone.utc)
+        when = "2026-10-30T22:17:14Z"
+        runs = [
+            _grow("wire", "2026-10-30T22:20:00Z", seconds=30.0, kept=1),
+            {"kind": "plan", "when": when, "jobs": 1, "rig": "Menlo Park",
+             "targets": {"stage": {"seconds": 203, "tilt": 1.69}}},
+            {"kind": "plan", "when": when, "jobs": 1, "rig": "Menlo Park",
+             "targets": {"dtls_hostile": {"seconds": 2400, "tilt": 4.0},
+                         "race_state": {"seconds": 1673, "tilt": 2.79}}},
+        ]
+        text = B.hourly_note(runs, now=now, probe=False)
+        self.assertIn("the newest plans", text)
+        self.assertIn("stage at 203 s", text)
+        self.assertIn("dtls_hostile at 2,400 s", text)
+        self.assertIn("race_state at 1,673 s", text)
+
     def test_the_cli_prints_the_note_with_the_probe(self):
         lines = []
         B.cmd_stats(argparse.Namespace(yield_table=False, note=True, plan=False, hours=24),
@@ -871,6 +888,25 @@ class WatchTest(unittest.TestCase):
         self.assertEqual(1, len(breaches))
         self.assertIn("no run record in 90 min", breaches[0])
         self.assertIn("blocked on its pipe", breaches[0])
+
+    def test_the_long_lane_sets_the_stall_line_when_two_plans_share_a_time(self):
+        now = datetime(2026, 10, 30, 23, 0, tzinfo=timezone.utc)
+        when = "2026-10-30T22:17:14Z"
+        runs = [
+            _grow("dtls_hostile", "2026-10-30T22:20:00Z", seconds=2400.0, kept=0),
+            {"kind": "plan", "when": when, "jobs": 1,
+             "targets": {"stage": {"seconds": 203}}},
+            {"kind": "plan", "when": when, "jobs": 1,
+             "targets": {"dtls_hostile": {"seconds": 2400}}},
+        ]
+        _l, breaches = B.watch_readings(runs, now=now, disk_used_pct=10.0,
+                                        mem_avail_mb=900, workers=1, measure_temp=False)
+        self.assertEqual([], breaches)
+        later = datetime(2026, 10, 30, 23, 50, tzinfo=timezone.utc)
+        _l, breaches = B.watch_readings(runs, now=later, disk_used_pct=10.0,
+                                        mem_avail_mb=900, workers=1, measure_temp=False)
+        self.assertEqual(1, len(breaches))
+        self.assertIn("no run record in 90 min", breaches[0])
 
     def test_a_full_temp_volume_is_a_breach_when_the_corpus_volume_is_not(self):
         now = datetime(2026, 10, 30, 21, 40, tzinfo=timezone.utc)

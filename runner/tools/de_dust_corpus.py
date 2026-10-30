@@ -11007,11 +11007,22 @@ def saturation(target):
 
 def last_plan(runs=None):
     """The newest plan record in the ledger, or None."""
+    plans = newest_plans(runs)
+    return plans[-1] if plans else None
+
+
+def newest_plans(runs=None):
+    """Every plan tied for the newest timestamp.
+
+    Two lanes write two plans at one moment. The later line in the
+    file is not the newer plan, and a reading that keeps only one
+    of them hides the lane with the long slices."""
     plans = [r for r in (load_runs() if runs is None else runs)
              if r.get("kind") == "plan"]
     if not plans:
-        return None
-    return max(plans, key=lambda r: str(r.get("when", "")))
+        return []
+    when = max(str(r.get("when", "")) for r in plans)
+    return [r for r in plans if str(r.get("when", "")) == when]
 
 
 def cmd_distill(args, out=print):
@@ -11126,8 +11137,9 @@ def hourly_note(runs=None, now=None, hours=24, rig=None, probe=True):
                    "findings filed.")
     else:
         out.append(f"No grow in the last {hours} hours.")
-    plan = last_plan(runs)
-    if plan:
+    plans = newest_plans(runs)
+    if len(plans) == 1:
+        plan = plans[0]
         tg = sorted((plan.get("targets") or {}).items(),
                     key=lambda kv: -kv[1].get("seconds", 0))
         parts = [f"{name} at {row.get('seconds', 0):,} s with a "
@@ -11136,6 +11148,19 @@ def hourly_note(runs=None, now=None, hours=24, rig=None, probe=True):
                    + (f" on {plan['rig']}" if plan.get("rig") else "")
                    + ", puts " + "; ".join(parts)
                    + f", {plan.get('jobs', 1)} at a time.")
+    elif plans:
+        sentences = []
+        for plan in plans:
+            tg = sorted((plan.get("targets") or {}).items(),
+                        key=lambda kv: -kv[1].get("seconds", 0))
+            parts = [f"{name} at {row.get('seconds', 0):,} s with a "
+                     f"{row.get('tilt', 0):.2f}x yield tilt" for name, row in tg]
+            sentences.append("one puts " + "; ".join(parts)
+                             + f", {plan.get('jobs', 1)} at a time")
+        head = plans[0]
+        out.append(f"Slice plan: the newest plans, at {head.get('when')}"
+                   + (f" on {head['rig']}" if head.get("rig") else "")
+                   + ". " + " ".join(s[0].upper() + s[1:] + "." for s in sentences))
     loadavg = None
     try:
         loadavg = os.getloadavg()
@@ -11210,8 +11235,12 @@ def memory_total_mb():
 
 def _temp_used_pct():
     """How full the temp volume is, or None when it is the corpus
-    volume (one reading is enough) or it cannot be read."""
-    temp = tempfile.gettempdir()
+    volume (one reading is enough) or it cannot be read.
+
+    `HP_DE_DUST_TMP` is the volume the grow writes to when a rig
+    sets it (Q126). Otherwise it is the process temp directory,
+    and only when that is a different device from the corpus."""
+    temp = os.environ.get("HP_DE_DUST_TMP") or tempfile.gettempdir()
     try:
         if os.stat(temp).st_dev == os.stat(CORPUS_DIR).st_dev:
             return None
@@ -11289,13 +11318,16 @@ def watch_readings(runs=None, now=None, rig=None, disk_max=90.0, mem_min_mb=None
         lines.append(f"memory: {mem_avail_mb} MB available, floor {mem_min_mb} MB")
         if mem_avail_mb < mem_min_mb:
             breaches.append(f"memory {mem_avail_mb} MB under the {mem_min_mb} MB floor")
-    plan = last_plan(runs)
+    plans = newest_plans(runs)
     if stale_min is None:
-        longest = max([row.get("seconds", 0) for row in (plan or {}).get("targets", {}).values()]
-                      or [0])
-        stale_min = max(30, int(2 * longest / 60)) if plan else 60
+        longest = 0
+        for plan in plans:
+            longest = max(longest, max((row.get("seconds", 0)
+                                        for row in (plan.get("targets") or {}).values()),
+                                       default=0))
+        stale_min = max(30, int(2 * longest / 60)) if plans else 60
     if expect_workers is None:
-        expect_workers = 1 if plan else 0
+        expect_workers = 1 if plans else 0
     if workers is None:
         workers = grow_workers_live()
     mine = [r for r in runs if r.get("kind") in ("grow", "seed", "distill")
@@ -11414,19 +11446,20 @@ def cmd_stats(args, out=print):
         out(hourly_note(rig=os.environ.get("HP_DE_DUST_RIG") or None))
         return 0
     if getattr(args, "plan", False):
-        plan = last_plan()
-        if plan is None:
+        plans = newest_plans()
+        if not plans:
             out("no plan on record")
             return 0
-        out(f"{CAMPAIGN} plan at {plan.get('when')} on {plan.get('head')}"
-            + (f" ({plan['rig']})" if plan.get("rig") else "")
-            + f": slice {plan.get('slice')} s, {plan.get('minutes')} min, "
-            f"{plan.get('jobs')} at a time")
-        for tg, row in sorted((plan.get("targets") or {}).items(),
-                              key=lambda kv: -kv[1].get("seconds", 0)):
-            out(f"  {tg:14} {row.get('technique', 'mutation'):9} "
-                f"{row.get('tilt', 0):.2f}x {row.get('seconds', 0):6d} s "
-                f"{row.get('rounds', 0):6d} rounds  yield {row.get('yield', 0)}")
+        for plan in plans:
+            out(f"{CAMPAIGN} plan at {plan.get('when')} on {plan.get('head')}"
+                + (f" ({plan['rig']})" if plan.get("rig") else "")
+                + f": slice {plan.get('slice')} s, {plan.get('minutes')} min, "
+                f"{plan.get('jobs')} at a time")
+            for tg, row in sorted((plan.get("targets") or {}).items(),
+                                  key=lambda kv: -kv[1].get("seconds", 0)):
+                out(f"  {tg:14} {row.get('technique', 'mutation'):9} "
+                    f"{row.get('tilt', 0):.2f}x {row.get('seconds', 0):6d} s "
+                    f"{row.get('rounds', 0):6d} rounds  yield {row.get('yield', 0)}")
         return 0
     for target in _targets(args.target):
         entries = load(corpus_path(target))
