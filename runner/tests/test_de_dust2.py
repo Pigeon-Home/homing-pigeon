@@ -107,6 +107,7 @@ class CycleUsesSlicesTest(unittest.TestCase):
                 for tg in B.TARGETS}
         with mock.patch.object(B, "run_parallel", fake_parallel), \
                 mock.patch.object(B, "slice_plan", return_value=plan), \
+                mock.patch.object(B, "record_run", lambda rec: None), \
                 mock.patch.object(B, "prune_retired_crashes", return_value=0):
             B.cmd_grow(args, out=lambda *a: None)
         self.assertEqual({tg: 777 for tg in B.TARGETS}, seen["rounds"])
