@@ -1,1127 +1,1137 @@
 {
-"de_dust":1,
-"target":"keydir",
-"Agent-Stamp":"50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
-"arcs":[
-[
-"runner/transport_extensions/dtls/__main__.py",
-0,
-0
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-0,
-1
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-0,
-98
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-0,
-107
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-0,
-111
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-0,
-113
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-0,
-114
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-0,
-203
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-1,
-52
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-52,
-53
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-53,
-54
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-54,
-55
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-55,
-56
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-56,
-57
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-57,
-58
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-58,
-59
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-59,
-60
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-60,
-62
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-62,
-63
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-62,
-65
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-63,
-62
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-65,
-66
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-66,
-67
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-67,
-68
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-68,
-69
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-69,
-70
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-70,
-72
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-72,
-73
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-73,
-74
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-74,
-75
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-74,
-78
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-75,
-74
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-78,
-98
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-98,
-137
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-107,
-108
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-108,
-109
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-108,
-111
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-109,
-110
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-110,
-108
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-111,
-113
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-113,
-134
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-114,
-115
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-115,
-117
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-117,
-118
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-118,
-120
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-120,
-121
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-121,
-126
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-126,
-127
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-126,
-128
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-127,
-126
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-128,
-129
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-128,
-132
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-129,
-130
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-129,
-131
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-130,
-129
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-137,
-161
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-161,
-167
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-167,
-173
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-173,
-189
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-189,
-203
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-203,
-204
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-203,
-329
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-204,
-206
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-206,
-239
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-239,
-258
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-258,
-265
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-265,
-278
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-278,
-302
-],
-[
-"runner/transport_extensions/dtls/__main__.py",
-329,
-374
-],
-[
-"runner/wire/verify.py",
-0,
-255
-],
-[
-"runner/wire/verify.py",
-0,
-260
-],
-[
-"runner/wire/verify.py",
-0,
-274
-],
-[
-"runner/wire/verify.py",
-0,
-284
-],
-[
-"runner/wire/verify.py",
-0,
-300
-],
-[
-"runner/wire/verify.py",
-0,
-333
-],
-[
-"runner/wire/verify.py",
-0,
-337
-],
-[
-"runner/wire/verify.py",
-0,
-631
-],
-[
-"runner/wire/verify.py",
-0,
-640
-],
-[
-"runner/wire/verify.py",
-0,
-657
-],
-[
-"runner/wire/verify.py",
-0,
-666
-],
-[
-"runner/wire/verify.py",
-0,
-700
-],
-[
-"runner/wire/verify.py",
-0,
-713
-],
-[
-"runner/wire/verify.py",
-0,
-813
-],
-[
-"runner/wire/verify.py",
-0,
-827
-],
-[
-"runner/wire/verify.py",
-260,
-262
-],
-[
-"runner/wire/verify.py",
-262,
-263
-],
-[
-"runner/wire/verify.py",
-262,
-264
-],
-[
-"runner/wire/verify.py",
-264,
-265
-],
-[
-"runner/wire/verify.py",
-265,
-266
-],
-[
-"runner/wire/verify.py",
-265,
-271
-],
-[
-"runner/wire/verify.py",
-266,
-267
-],
-[
-"runner/wire/verify.py",
-267,
-268
-],
-[
-"runner/wire/verify.py",
-267,
-271
-],
-[
-"runner/wire/verify.py",
-284,
-286
-],
-[
-"runner/wire/verify.py",
-286,
-287
-],
-[
-"runner/wire/verify.py",
-287,
-288
-],
-[
-"runner/wire/verify.py",
-287,
-289
-],
-[
-"runner/wire/verify.py",
-289,
-290
-],
-[
-"runner/wire/verify.py",
-290,
-291
-],
-[
-"runner/wire/verify.py",
-291,
-292
-],
-[
-"runner/wire/verify.py",
-291,
-293
-],
-[
-"runner/wire/verify.py",
-292,
-293
-],
-[
-"runner/wire/verify.py",
-293,
-294
-],
-[
-"runner/wire/verify.py",
-293,
-300
-],
-[
-"runner/wire/verify.py",
-294,
-295
-],
-[
-"runner/wire/verify.py",
-295,
-298
-],
-[
-"runner/wire/verify.py",
-298,
-299
-],
-[
-"runner/wire/verify.py",
-298,
-300
-],
-[
-"runner/wire/verify.py",
-299,
-300
-],
-[
-"runner/wire/verify.py",
-300,
-300
-],
-[
-"runner/wire/verify.py",
-300,
-301
-],
-[
-"runner/wire/verify.py",
-300,
-302
-],
-[
-"runner/wire/verify.py",
-300,
-303
-],
-[
-"runner/wire/verify.py",
-301,
-300
-],
-[
-"runner/wire/verify.py",
-302,
-300
-],
-[
-"runner/wire/verify.py",
-337,
-339
-],
-[
-"runner/wire/verify.py",
-339,
-340
-],
-[
-"runner/wire/verify.py",
-339,
-342
-],
-[
-"runner/wire/verify.py",
-340,
-339
-],
-[
-"runner/wire/verify.py",
-640,
-642
-],
-[
-"runner/wire/verify.py",
-642,
-643
-],
-[
-"runner/wire/verify.py",
-643,
-644
-],
-[
-"runner/wire/verify.py",
-644,
-647
-],
-[
-"runner/wire/verify.py",
-647,
-650
-],
-[
-"runner/wire/verify.py",
-650,
-651
-],
-[
-"runner/wire/verify.py",
-650,
-652
-],
-[
-"runner/wire/verify.py",
-652,
-653
-],
-[
-"runner/wire/verify.py",
-652,
-654
-],
-[
-"runner/wire/verify.py",
-666,
-667
-],
-[
-"runner/wire/verify.py",
-667,
-668
-],
-[
-"runner/wire/verify.py",
-667,
-669
-],
-[
-"runner/wire/verify.py",
-669,
-670
-],
-[
-"runner/wire/verify.py",
-669,
-697
-],
-[
-"runner/wire/verify.py",
-670,
-673
-],
-[
-"runner/wire/verify.py",
-673,
-674
-],
-[
-"runner/wire/verify.py",
-674,
-675
-],
-[
-"runner/wire/verify.py",
-674,
-676
-],
-[
-"runner/wire/verify.py",
-676,
-677
-],
-[
-"runner/wire/verify.py",
-676,
-679
-],
-[
-"runner/wire/verify.py",
-677,
-678
-],
-[
-"runner/wire/verify.py",
-678,
-677
-],
-[
-"runner/wire/verify.py",
-679,
-680
-],
-[
-"runner/wire/verify.py",
-679,
-689
-],
-[
-"runner/wire/verify.py",
-680,
-681
-],
-[
-"runner/wire/verify.py",
-681,
-682
-],
-[
-"runner/wire/verify.py",
-681,
-683
-],
-[
-"runner/wire/verify.py",
-682,
-679
-],
-[
-"runner/wire/verify.py",
-683,
-684
-],
-[
-"runner/wire/verify.py",
-683,
-685
-],
-[
-"runner/wire/verify.py",
-685,
-686
-],
-[
-"runner/wire/verify.py",
-686,
-679
-],
-[
-"runner/wire/verify.py",
-686,
-687
-],
-[
-"runner/wire/verify.py",
-687,
-688
-],
-[
-"runner/wire/verify.py",
-689,
-690
-],
-[
-"runner/wire/verify.py",
-690,
-669
-],
-[
-"runner/wire/verify.py",
-690,
-691
-],
-[
-"runner/wire/verify.py",
-691,
-692
-],
-[
-"runner/wire/verify.py",
-691,
-693
-],
-[
-"runner/wire/verify.py",
-693,
-694
-],
-[
-"runner/wire/verify.py",
-694,
-669
-],
-[
-"runner/wire/verify.py",
-694,
-695
-],
-[
-"runner/wire/verify.py",
-695,
-696
-],
-[
-"runner/wire/verify.py",
-696,
-695
-],
-[
-"runner/wire/verify.py",
-713,
-714
-],
-[
-"runner/wire/verify.py",
-713,
-715
-],
-[
-"runner/wire/verify.py",
-715,
-717
-],
-[
-"runner/wire/verify.py",
-717,
-718
-],
-[
-"runner/wire/verify.py",
-718,
-719
-],
-[
-"runner/wire/verify.py",
-719,
-720
-],
-[
-"runner/wire/verify.py",
-719,
-723
-],
-[
-"runner/wire/verify.py",
-720,
-719
-],
-[
-"runner/wire/verify.py",
-720,
-721
-],
-[
-"runner/wire/verify.py",
-721,
-722
-],
-[
-"runner/wire/verify.py",
-722,
-723
-],
-[
-"runner/wire/verify.py",
-723,
-724
-],
-[
-"runner/wire/verify.py",
-723,
-725
-],
-[
-"runner/wire/verify.py",
-725,
-726
-],
-[
-"runner/wire/verify.py",
-725,
-727
-],
-[
-"runner/wire/verify.py",
-727,
-728
-],
-[
-"runner/wire/verify.py",
-728,
-729
-],
-[
-"runner/wire/verify.py",
-728,
-733
-],
-[
-"runner/wire/verify.py",
-729,
-730
-],
-[
-"runner/wire/verify.py",
-730,
-731
-],
-[
-"runner/wire/verify.py",
-730,
-732
-],
-[
-"runner/wire/verify.py",
-731,
-732
-],
-[
-"runner/wire/verify.py",
-731,
-733
-],
-[
-"runner/wire/verify.py",
-733,
-734
-],
-[
-"runner/wire/verify.py",
-734,
-735
-],
-[
-"runner/wire/verify.py",
-734,
-736
-],
-[
-"runner/wire/verify.py",
-736,
-737
-],
-[
-"runner/wire/verify.py",
-737,
-738
-],
-[
-"runner/wire/verify.py",
-737,
-744
-],
-[
-"runner/wire/verify.py",
-738,
-739
-],
-[
-"runner/wire/verify.py",
-739,
-740
-],
-[
-"runner/wire/verify.py",
-739,
-742
-],
-[
-"runner/wire/verify.py",
-740,
-741
-],
-[
-"runner/wire/verify.py",
-742,
-743
-],
-[
-"runner/wire/verify.py",
-742,
-744
-],
-[
-"runner/wire/verify.py",
-744,
-745
-],
-[
-"runner/wire/verify.py",
-744,
-756
-],
-[
-"runner/wire/verify.py",
-745,
-746
-],
-[
-"runner/wire/verify.py",
-746,
-747
-],
-[
-"runner/wire/verify.py",
-746,
-748
-],
-[
-"runner/wire/verify.py",
-748,
-749
-],
-[
-"runner/wire/verify.py",
-749,
-752
-],
-[
-"runner/wire/verify.py",
-752,
-754
-],
-[
-"runner/wire/verify.py",
-752,
-755
-],
-[
-"runner/wire/verify.py",
-754,
-753
-],
-[
-"runner/wire/verify.py",
-756,
-757
-],
-[
-"runner/wire/verify.py",
-756,
-758
-],
-[
-"runner/wire/verify.py",
-827,
-829
-],
-[
-"runner/wire/verify.py",
-829,
-831
-],
-[
-"runner/wire/verify.py",
-831,
-833
-],
-[
-"runner/wire/verify.py",
-833,
-838
-],
-[
-"runner/wire/verify.py",
-838,
-839
-],
-[
-"runner/wire/verify.py",
-839,
-842
-],
-[
-"runner/wire/verify.py",
-842,
-843
-],
-[
-"runner/wire/verify.py",
-843,
-844
-],
-[
-"runner/wire/verify.py",
-843,
-845
-],
-[
-"runner/wire/verify.py",
-845,
-846
-],
-[
-"runner/wire/verify.py",
-846,
-847
-],
-[
-"runner/wire/verify.py",
-847,
-851
-],
-[
-"runner/wire/verify.py",
-851,
-852
-],
-[
-"runner/wire/verify.py",
-852,
-855
-]
-]
+ "de_dust": 1,
+ "target": "keydir",
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "arcs": [
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   0,
+   0
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   0,
+   1
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   0,
+   98
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   0,
+   107
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   0,
+   111
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   0,
+   113
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   0,
+   114
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   0,
+   203
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   1,
+   52
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   52,
+   53
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   53,
+   54
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   54,
+   55
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   55,
+   56
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   56,
+   57
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   57,
+   58
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   58,
+   59
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   59,
+   60
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   60,
+   62
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   62,
+   63
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   62,
+   65
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   63,
+   62
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   65,
+   66
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   66,
+   67
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   67,
+   68
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   68,
+   69
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   69,
+   70
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   70,
+   72
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   72,
+   73
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   73,
+   74
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   74,
+   75
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   74,
+   78
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   75,
+   74
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   78,
+   98
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   98,
+   137
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   107,
+   108
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   108,
+   109
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   108,
+   111
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   109,
+   110
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   110,
+   108
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   111,
+   113
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   113,
+   134
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   114,
+   115
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   115,
+   117
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   117,
+   118
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   118,
+   120
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   120,
+   121
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   121,
+   126
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   126,
+   127
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   126,
+   128
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   127,
+   126
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   128,
+   129
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   128,
+   132
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   129,
+   130
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   129,
+   131
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   130,
+   129
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   137,
+   161
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   161,
+   167
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   167,
+   173
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   173,
+   189
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   189,
+   203
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   203,
+   204
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   203,
+   329
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   204,
+   206
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   206,
+   239
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   239,
+   258
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   258,
+   265
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   265,
+   278
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   278,
+   302
+  ],
+  [
+   "runner/transport_extensions/dtls/__main__.py",
+   329,
+   374
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   255
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   260
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   274
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   284
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   300
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   333
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   337
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   631
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   640
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   657
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   666
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   700
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   713
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   813
+  ],
+  [
+   "runner/wire/verify.py",
+   0,
+   827
+  ],
+  [
+   "runner/wire/verify.py",
+   260,
+   262
+  ],
+  [
+   "runner/wire/verify.py",
+   262,
+   263
+  ],
+  [
+   "runner/wire/verify.py",
+   262,
+   264
+  ],
+  [
+   "runner/wire/verify.py",
+   264,
+   265
+  ],
+  [
+   "runner/wire/verify.py",
+   265,
+   266
+  ],
+  [
+   "runner/wire/verify.py",
+   265,
+   271
+  ],
+  [
+   "runner/wire/verify.py",
+   266,
+   267
+  ],
+  [
+   "runner/wire/verify.py",
+   267,
+   268
+  ],
+  [
+   "runner/wire/verify.py",
+   267,
+   271
+  ],
+  [
+   "runner/wire/verify.py",
+   284,
+   286
+  ],
+  [
+   "runner/wire/verify.py",
+   286,
+   287
+  ],
+  [
+   "runner/wire/verify.py",
+   287,
+   288
+  ],
+  [
+   "runner/wire/verify.py",
+   287,
+   289
+  ],
+  [
+   "runner/wire/verify.py",
+   289,
+   290
+  ],
+  [
+   "runner/wire/verify.py",
+   290,
+   291
+  ],
+  [
+   "runner/wire/verify.py",
+   291,
+   292
+  ],
+  [
+   "runner/wire/verify.py",
+   291,
+   293
+  ],
+  [
+   "runner/wire/verify.py",
+   292,
+   293
+  ],
+  [
+   "runner/wire/verify.py",
+   293,
+   294
+  ],
+  [
+   "runner/wire/verify.py",
+   293,
+   300
+  ],
+  [
+   "runner/wire/verify.py",
+   294,
+   295
+  ],
+  [
+   "runner/wire/verify.py",
+   295,
+   298
+  ],
+  [
+   "runner/wire/verify.py",
+   298,
+   299
+  ],
+  [
+   "runner/wire/verify.py",
+   298,
+   300
+  ],
+  [
+   "runner/wire/verify.py",
+   299,
+   300
+  ],
+  [
+   "runner/wire/verify.py",
+   300,
+   300
+  ],
+  [
+   "runner/wire/verify.py",
+   300,
+   301
+  ],
+  [
+   "runner/wire/verify.py",
+   300,
+   302
+  ],
+  [
+   "runner/wire/verify.py",
+   300,
+   303
+  ],
+  [
+   "runner/wire/verify.py",
+   301,
+   300
+  ],
+  [
+   "runner/wire/verify.py",
+   302,
+   300
+  ],
+  [
+   "runner/wire/verify.py",
+   337,
+   339
+  ],
+  [
+   "runner/wire/verify.py",
+   339,
+   340
+  ],
+  [
+   "runner/wire/verify.py",
+   339,
+   342
+  ],
+  [
+   "runner/wire/verify.py",
+   340,
+   339
+  ],
+  [
+   "runner/wire/verify.py",
+   640,
+   642
+  ],
+  [
+   "runner/wire/verify.py",
+   642,
+   643
+  ],
+  [
+   "runner/wire/verify.py",
+   643,
+   644
+  ],
+  [
+   "runner/wire/verify.py",
+   644,
+   647
+  ],
+  [
+   "runner/wire/verify.py",
+   647,
+   650
+  ],
+  [
+   "runner/wire/verify.py",
+   650,
+   651
+  ],
+  [
+   "runner/wire/verify.py",
+   650,
+   652
+  ],
+  [
+   "runner/wire/verify.py",
+   652,
+   653
+  ],
+  [
+   "runner/wire/verify.py",
+   652,
+   654
+  ],
+  [
+   "runner/wire/verify.py",
+   666,
+   667
+  ],
+  [
+   "runner/wire/verify.py",
+   667,
+   668
+  ],
+  [
+   "runner/wire/verify.py",
+   667,
+   669
+  ],
+  [
+   "runner/wire/verify.py",
+   669,
+   670
+  ],
+  [
+   "runner/wire/verify.py",
+   669,
+   697
+  ],
+  [
+   "runner/wire/verify.py",
+   670,
+   673
+  ],
+  [
+   "runner/wire/verify.py",
+   673,
+   674
+  ],
+  [
+   "runner/wire/verify.py",
+   674,
+   675
+  ],
+  [
+   "runner/wire/verify.py",
+   674,
+   676
+  ],
+  [
+   "runner/wire/verify.py",
+   676,
+   677
+  ],
+  [
+   "runner/wire/verify.py",
+   676,
+   679
+  ],
+  [
+   "runner/wire/verify.py",
+   677,
+   678
+  ],
+  [
+   "runner/wire/verify.py",
+   678,
+   677
+  ],
+  [
+   "runner/wire/verify.py",
+   679,
+   680
+  ],
+  [
+   "runner/wire/verify.py",
+   679,
+   689
+  ],
+  [
+   "runner/wire/verify.py",
+   680,
+   681
+  ],
+  [
+   "runner/wire/verify.py",
+   681,
+   682
+  ],
+  [
+   "runner/wire/verify.py",
+   681,
+   683
+  ],
+  [
+   "runner/wire/verify.py",
+   682,
+   679
+  ],
+  [
+   "runner/wire/verify.py",
+   683,
+   684
+  ],
+  [
+   "runner/wire/verify.py",
+   683,
+   685
+  ],
+  [
+   "runner/wire/verify.py",
+   685,
+   686
+  ],
+  [
+   "runner/wire/verify.py",
+   686,
+   679
+  ],
+  [
+   "runner/wire/verify.py",
+   686,
+   687
+  ],
+  [
+   "runner/wire/verify.py",
+   687,
+   688
+  ],
+  [
+   "runner/wire/verify.py",
+   689,
+   690
+  ],
+  [
+   "runner/wire/verify.py",
+   690,
+   669
+  ],
+  [
+   "runner/wire/verify.py",
+   690,
+   691
+  ],
+  [
+   "runner/wire/verify.py",
+   691,
+   692
+  ],
+  [
+   "runner/wire/verify.py",
+   691,
+   693
+  ],
+  [
+   "runner/wire/verify.py",
+   693,
+   694
+  ],
+  [
+   "runner/wire/verify.py",
+   694,
+   669
+  ],
+  [
+   "runner/wire/verify.py",
+   694,
+   695
+  ],
+  [
+   "runner/wire/verify.py",
+   695,
+   696
+  ],
+  [
+   "runner/wire/verify.py",
+   696,
+   695
+  ],
+  [
+   "runner/wire/verify.py",
+   713,
+   714
+  ],
+  [
+   "runner/wire/verify.py",
+   713,
+   715
+  ],
+  [
+   "runner/wire/verify.py",
+   715,
+   717
+  ],
+  [
+   "runner/wire/verify.py",
+   717,
+   718
+  ],
+  [
+   "runner/wire/verify.py",
+   718,
+   719
+  ],
+  [
+   "runner/wire/verify.py",
+   719,
+   720
+  ],
+  [
+   "runner/wire/verify.py",
+   719,
+   723
+  ],
+  [
+   "runner/wire/verify.py",
+   720,
+   719
+  ],
+  [
+   "runner/wire/verify.py",
+   720,
+   721
+  ],
+  [
+   "runner/wire/verify.py",
+   721,
+   722
+  ],
+  [
+   "runner/wire/verify.py",
+   722,
+   723
+  ],
+  [
+   "runner/wire/verify.py",
+   723,
+   724
+  ],
+  [
+   "runner/wire/verify.py",
+   723,
+   725
+  ],
+  [
+   "runner/wire/verify.py",
+   725,
+   726
+  ],
+  [
+   "runner/wire/verify.py",
+   725,
+   727
+  ],
+  [
+   "runner/wire/verify.py",
+   727,
+   728
+  ],
+  [
+   "runner/wire/verify.py",
+   728,
+   729
+  ],
+  [
+   "runner/wire/verify.py",
+   728,
+   733
+  ],
+  [
+   "runner/wire/verify.py",
+   729,
+   730
+  ],
+  [
+   "runner/wire/verify.py",
+   730,
+   731
+  ],
+  [
+   "runner/wire/verify.py",
+   730,
+   732
+  ],
+  [
+   "runner/wire/verify.py",
+   731,
+   732
+  ],
+  [
+   "runner/wire/verify.py",
+   731,
+   733
+  ],
+  [
+   "runner/wire/verify.py",
+   733,
+   734
+  ],
+  [
+   "runner/wire/verify.py",
+   734,
+   735
+  ],
+  [
+   "runner/wire/verify.py",
+   734,
+   736
+  ],
+  [
+   "runner/wire/verify.py",
+   736,
+   737
+  ],
+  [
+   "runner/wire/verify.py",
+   737,
+   738
+  ],
+  [
+   "runner/wire/verify.py",
+   737,
+   744
+  ],
+  [
+   "runner/wire/verify.py",
+   738,
+   739
+  ],
+  [
+   "runner/wire/verify.py",
+   739,
+   740
+  ],
+  [
+   "runner/wire/verify.py",
+   739,
+   742
+  ],
+  [
+   "runner/wire/verify.py",
+   740,
+   741
+  ],
+  [
+   "runner/wire/verify.py",
+   742,
+   743
+  ],
+  [
+   "runner/wire/verify.py",
+   742,
+   744
+  ],
+  [
+   "runner/wire/verify.py",
+   744,
+   745
+  ],
+  [
+   "runner/wire/verify.py",
+   744,
+   756
+  ],
+  [
+   "runner/wire/verify.py",
+   745,
+   746
+  ],
+  [
+   "runner/wire/verify.py",
+   746,
+   747
+  ],
+  [
+   "runner/wire/verify.py",
+   746,
+   748
+  ],
+  [
+   "runner/wire/verify.py",
+   748,
+   749
+  ],
+  [
+   "runner/wire/verify.py",
+   749,
+   750
+  ],
+  [
+   "runner/wire/verify.py",
+   749,
+   752
+  ],
+  [
+   "runner/wire/verify.py",
+   750,
+   751
+  ],
+  [
+   "runner/wire/verify.py",
+   752,
+   754
+  ],
+  [
+   "runner/wire/verify.py",
+   752,
+   755
+  ],
+  [
+   "runner/wire/verify.py",
+   754,
+   753
+  ],
+  [
+   "runner/wire/verify.py",
+   756,
+   757
+  ],
+  [
+   "runner/wire/verify.py",
+   756,
+   758
+  ],
+  [
+   "runner/wire/verify.py",
+   827,
+   829
+  ],
+  [
+   "runner/wire/verify.py",
+   829,
+   831
+  ],
+  [
+   "runner/wire/verify.py",
+   831,
+   833
+  ],
+  [
+   "runner/wire/verify.py",
+   833,
+   838
+  ],
+  [
+   "runner/wire/verify.py",
+   838,
+   839
+  ],
+  [
+   "runner/wire/verify.py",
+   839,
+   842
+  ],
+  [
+   "runner/wire/verify.py",
+   842,
+   843
+  ],
+  [
+   "runner/wire/verify.py",
+   843,
+   844
+  ],
+  [
+   "runner/wire/verify.py",
+   843,
+   845
+  ],
+  [
+   "runner/wire/verify.py",
+   845,
+   846
+  ],
+  [
+   "runner/wire/verify.py",
+   846,
+   847
+  ],
+  [
+   "runner/wire/verify.py",
+   847,
+   851
+  ],
+  [
+   "runner/wire/verify.py",
+   851,
+   852
+  ],
+  [
+   "runner/wire/verify.py",
+   852,
+   855
+  ]
+ ]
 }
