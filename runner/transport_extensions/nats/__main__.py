@@ -41,6 +41,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
 
 from runner.transport_extensions import channel as ch  # noqa: E402
+from runner.wire import subject as _subject  # noqa: E402
 
 
 class TransportError(Exception):
@@ -55,11 +56,8 @@ def _silent_log(msg, level="INFO"):
     pass
 
 
-_JOB_ID_RE = re.compile(
-    r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", re.I)
-_RESULT_ID_RE = re.compile(
-    r"\[HOMING-PIGEON\](?:\s+\S+)*\s+(?:result|qresult)\s+(\S+)",
-    re.I)
+_JOB_ID_RE = _subject.JOB_ID_RE        # the one grammar (Q121)
+_RESULT_ID_RE = _subject.RESULT_ID_RE
 
 
 DEFAULT_PORT = 4222

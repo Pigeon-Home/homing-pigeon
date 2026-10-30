@@ -30,6 +30,11 @@ import time
 import uuid
 
 try:
+    from runner.wire import subject as _subject
+except ImportError:  # script mode
+    from wire import subject as _subject
+
+try:
     from runner.guard import confval as _confval
 except ImportError:
     from guard import confval as _confval  # type: ignore
@@ -37,9 +42,7 @@ except ImportError:
 V2 = 2
 _ID = re.compile(r"\A[A-Za-z0-9._-]{1,128}\Z")
 _KIND = re.compile(
-    r"\[HOMING-PIGEON\](?:\s+\S+)*\s+"
-    r"(determination|question|answer)\s+(\S+)",
-    re.I)
+    _subject.pattern_kind("determination|question|answer"), re.I)
 _EXPECT = ("proceed", "fail", "unknown")
 _DEADLINE_CAP = 30
 _TEXT_CAP = 500

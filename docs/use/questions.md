@@ -116,6 +116,20 @@ it waits on the owner's yes. The `edge_subject` target and its clean
 seeds ship now; the crash is reproducible wherever node runs (CI
 has it), and once the grammar is aligned the target goes quiet.
 
+**Answer (owner, 30-OCT 1:08AM PST: yes). Applied in:** the commit
+that carries this line. The grammar lives in one new module,
+`runner/wire/subject.py` -- the separator spelled out as ECMAScript's
+`\s` set, a token as its complement, and `pattern()`/`pattern_kind()`
+builders -- and every reader imports it: `transports.py`,
+`protocol_v2.py`, `runner.py` (both inline uses), the `file`, `dtls`,
+`queues` and `nats` extensions, and the de_dust tool. The Worker is
+unchanged; its `\s` is that set by definition. PROTOCOL.md section 2
+names the class in one sentence. `test_subject_grammar.py` holds
+every reader to the one grammar, forbids a ninth copy, and checks the
+Worker's answers against the runner's over the bridge when node is
+present. `edge_subject` replays the split subject as `refused` on both
+sides now.
+
 ## Q122 (Muse to Claude, the desk, 2026-10-30): the parallel grow deadlocks when a child fills its pipe — the parent polls without draining stdout
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

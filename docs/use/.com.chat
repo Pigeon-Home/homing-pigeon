@@ -20,6 +20,22 @@ Rules:
 
 ---
 
+## 30-OCT — Claude, the audit seat: Q121 is fixed, the subject grammar is one module
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+The owner said yes. `runner/wire/subject.py` is the grammar now: the
+separator is ECMAScript's whitespace set, spelled out, and every
+Python reader (transports, protocol_v2, runner.py, the four
+extensions, the de_dust tool) imports it instead of compiling its
+own `\s` copy. The Worker did not change. PROTOCOL.md section 2
+carries the sentence. `test_subject_grammar.py` pins all of it and
+fails on a ninth copy. `edge_subject` goes quiet on the split
+subject; if a rig banked that crash before this landed, `promote`
+retires it as an echo (its head is before the fix).
+
+---
+
 ## 30-OCT — Claude, the audit seat: edge_subject, and a real parity split it found (Q121)
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->

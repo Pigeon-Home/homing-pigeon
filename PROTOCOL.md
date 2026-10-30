@@ -68,6 +68,13 @@ The reference default is email only: `transports` absent means
   - Board (section 13.7): `task_submit`, `task_request`, `task_result`
     and `task_approve`, each followed by an identifier, answered under
     `task_ack <id>`, `task_offer <task_id>` or `task_offer empty`
+  - The words of a subject are separated by whitespace in the
+    ECMAScript sense (space, tab, the line terminators, no-break
+    space, the Unicode space separators, the byte-order mark) and
+    nothing else: a control character such as `\x1f` is part of a
+    word, not a gap between two, so `[HOMING-PIGEON]\x1f result x`
+    names no result. Every reader -- the runner's transports and the
+    hosted queue's Worker -- uses this one class (`runner/wire/subject.py`).
   - Version 2 (`docs/ietf/draft-homing-pigeon-v2-00.md`):
     `determination`, `question` and `answer <msg_id>`
   - `<job_id>` is 1–128 characters from `[A-Za-z0-9._-]`, and it

@@ -65,14 +65,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(
 from runner.wire import dtlsproto  # noqa: E402
 from runner.wire import platformcard as _platformcard  # noqa: E402
 from runner.wire import verify as _verify  # noqa: E402
+from runner.wire import subject as _subject  # noqa: E402
 from runner.guard import security as _security  # noqa: E402
 from runner.guard import confval as _confval  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
 
 DEFAULT_PORT = 20220
 GREETING_TIERS = _platformcard.TIERS
-_JOB_ID_RE = re.compile(
-    r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", re.I)
+_JOB_ID_RE = _subject.JOB_ID_RE  # the one grammar (Q121)
 
 
 def build_greeting(tier, cfg=None):

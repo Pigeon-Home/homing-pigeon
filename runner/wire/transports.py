@@ -62,6 +62,11 @@ import threading
 import time
 import uuid
 
+try:
+    from runner.wire import subject as _subject
+except ImportError:  # script mode
+    from wire import subject as _subject
+
 try:  # package context (runner.wire.transports)
     from runner.ops import extensions as _extensions
 except Exception:  # pragma: no cover - sibling context
@@ -103,10 +108,10 @@ DEFAULT_TRANSPORTS = ["email"]
 FILE_MAX_BYTES = 4 * 1024 * 1024
 
 _NAME_RE = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
-_RESULT_ID_RE = re.compile(
-    r"\[HOMING-PIGEON\](?:\s+\S+)*\s+(?:result|qresult)\s+(\S+)", re.I)
-_JOB_ID_RE = re.compile(
-    r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)", re.I)
+# The subject grammar is runner/wire/subject.py (Q121): one separator
+# class, the Worker's, for every reader.
+_RESULT_ID_RE = _subject.RESULT_ID_RE
+_JOB_ID_RE = _subject.JOB_ID_RE
 
 
 class TransportError(Exception):

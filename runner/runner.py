@@ -297,6 +297,9 @@ def _version_ok(v) -> bool:
 # runner/wire/verify.py (PROTOCOL sections 4, 5, 14). Every name stays
 # bound here for callers and tests.
 _verify = _required_load_mod("runner.wire.verify", "wire.verify", ': nothing can be verified')
+# The subject grammar (Q121): one separator class, the Worker's.
+_subject = _required_load_mod("runner.wire.subject", "wire.subject", ': no subject can be read')
+_SUBJECT_KIND_RE = re.compile(_subject.pattern_kind("result|job"), re.I)
 SEEN_CAP = _verify.SEEN_CAP
 _normalize = _verify._normalize
 sign_payload = _verify.sign_payload
@@ -4557,8 +4560,7 @@ def _bounce_of(subject, raw):
             is_dsn = False
     if not is_dsn:
         return None
-    m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+(result|job)\s+(\S+)",
-                  _as_str(subject), re.I)
+    m = _SUBJECT_KIND_RE.search(_as_str(subject))
     return "%s %s" % (m.group(1).lower(), m.group(2)) if m else "a message"
 
 def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
@@ -4593,8 +4595,7 @@ def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
             f"was refused after the send (see --inspect outbox)")
         _mark(imap, seq, opts)
         return None
-    m = re.search(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)",
-                  subject, re.I)
+    m = _subject.JOB_ID_RE.search(subject)
     if not m:
         vlog(f"ingest: seq {seq}: skipped; not a job message")
         _mark(imap, seq, opts)

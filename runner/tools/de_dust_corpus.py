@@ -158,6 +158,7 @@ from runner.ops.extensions import build_sensor_alert  # noqa: E402
 from runner.wire import jobcrypto as JC  # noqa: E402
 from runner.wire import protocol_v2 as P2  # noqa: E402
 from runner.wire import transports as TR  # noqa: E402
+from runner.wire import subject as SUBJ  # noqa: E402
 from runner.wire import verify as V  # noqa: E402
 from runner.wire import board as BD  # noqa: E402
 from runner.wire import dtlsproto as DT  # noqa: E402
@@ -942,8 +943,7 @@ def check_stash(entry):
     return "accepted" if got is not None else "refused"
 
 
-_JOB_SUBJECT = re.compile(r"\[HOMING-PIGEON\](?:\s+\S+)*\s+job\s+(\S+)",
-                          re.I)
+_JOB_SUBJECT = SUBJ.JOB_ID_RE  # the one grammar (Q121)
 MAILBOX = "runner@example.com"
 
 
