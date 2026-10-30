@@ -124,6 +124,17 @@ peer on the wire reaches first.
 | 16 | `query` | `runner/ops/queries.py` `handle_query_mail` through the mail rig: one query message (its subject id, the sealed object a sender chose, under a key) over the retained record of a job as the runner saved it or as a crash left it; the reply opened and held to the queries contract, the record held to spent and saved_at, a copy taken without a second reply; under the operator's flags a dry run spends nothing and sends nothing (Q87); the hourly window as the runner left it, held to section 11's accounting on every reply (Q88); the senses store as the runner left it, the senses op's filters held to the senses doc | in the corpus |
 | 17 | `board_mail` | `runner/ops/startup.py` `handle_board_mail` through the mail rig: one board message (`task_submit`, `task_request`, `task_result`, `task_approve`; its subject id, the sealed object, the key) over a board file as the runner saved it or as a crash left it; the ack or offer opened and held to section 13's shapes, the reply routed by the signed body's `reply_to` or to the mailbox, the board file read back, a copy taken; under the operator's flags a dry run leaves the board still and sends nothing (Q87); the lease as the owner wrote it over a claim an hour old | in the corpus |
 | 18 | `v2_mail` | `runner/ops/handlers.py` `handle_v2_mail` through the mail rig, the process set to answer: one version 2 message (determination, question or answer; its subject id, the sealed object, the key); the answer sent opened and validated against the question, the answer filed once, the copy dropped by the replay cache (on disk too) and a stale message refused unread (Q86); the answerer's model configured and down, or the deterministic Oracle; the two switches (a process that ignores, one that leaves a question unseen); the answer's text and id, the filed record and the late answers held to the draft by the checker's own rules | in the corpus |
+| 19 | `stage`, `collect` | `runner/ops/exec.py`: the staging of a job's inline files and the collection of its outputs, under the file-name rules (Q101) | in the corpus |
+| 20 | `keydir` | `runner/wire/verify.py` `load_key_directory`, `validate_key_directory`, `key_directory_verdict` (PROTOCOL.md section 14.4), and the two doors that ask them, `check_key_policy` and the DTLS pipe's `directory_lookup`: one directory and one key id; the verdict the same under every name of a key, `compromised` ahead of every bound, the job's door answering exactly the verdict, the DTLS lookup answering the secret exactly when the verdict admits | in the corpus (de_dust2, P5) |
+| 21 | `address` | `runner/wire/mailbox.py` `_valid_reply_to` and `send_mail`: one job's `reply_to`; an honored address is the stripped text, within the length and character rules, and the To header the result carries parses back to that one address and nothing else (Q113: a mutated address once rendered as `<>`) | in the corpus (de_dust2, P5) |
+
+The `dtls` target's core holds three resumption tickets on every
+replay (de_dust2, P5): one issued under the key in its map, one
+under a key that has left it, one from before tickets recorded
+their issuer; its seeds carry a cookie-bearing ClientHello for each
+and one fresh handshake, so the ticket path (Q110) is reached, and
+the check holds Q110's invariant on whatever a datagram does: a
+session the core resumed names an issuing key still in the map.
 
 Not targets, and why: the Oracle's reading of its model's replies
 (`runner/ops/oracle_tools.py`), the config loader and the platform
@@ -358,7 +369,14 @@ the search as well as preceding it (Muse, 2026-10-26).
 
 The grow is continuous and pegs the CPU (the conductor's order;
 the resource line reads on target or over, and anything lower is a
-serial step named in the ledger). The release train runs beside
+serial step named in the ledger). Since de_dust2
+(`docs/project/de_dust2.md`) a cycling grow gives each target a
+time slice tilted by its recent yield rather than a fixed count of
+rounds, draws parents by the rarity of what they reach and by
+whether the reader took them, and files a try far slower than the
+corpus median as a `slow` finding in `<target>.slow.jsonl`, apart
+from the crash file: a time is a property of the box, so a slow
+record is a Q and a bound for the desk, never a probe. The release train runs beside
 it; the corpus and its records ride every release, and the replay
 test is a release gate like any other. Every grow, kept or not,
 is a line in `runs.jsonl`; every pass of the regression tool, when

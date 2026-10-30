@@ -1,0 +1,47 @@
+{"de_dust": 1, "target": "address", "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"}
+{"arcs": 0, "data": "submitter@example.com", "from": "seed:plain", "id": "7a20f1ade61f3289", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si.bot@mail.example.org", "from": "seed:subdomain", "id": "95f4716dac8339b4", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si+runner@example.com", "from": "seed:plus", "id": "0950a604ec8a2406", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "first.last@example.com", "from": "seed:dots_local", "id": "8b23199a37b462f6", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "SI@EXAMPLE.COM", "from": "seed:uppercase", "id": "f42f1dc8d0b4e538", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "1234@5678.example", "from": "seed:digits", "id": "8c86597758b10873", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@sub-example.com", "from": "seed:hyphen_label", "id": "684fcd00f6ddfff2", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "submitter@.comexample.com", "from": "seed:q113", "id": "118a8f9f4e639fb6", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@.example.com", "from": "seed:leading_dot", "id": "8c059e6c0b6d6b69", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@example..com", "from": "seed:double_dot", "id": "270d3f0ad64dc804", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@example.com.", "from": "seed:trailing_dot", "id": "71163c79ee2d08b3", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@-example.com", "from": "seed:hyphen_first", "id": "ff38c35e393650ff", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@example-.com", "from": "seed:hyphen_last", "id": "b4142f9bdb429b11", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@localhost", "from": "seed:no_tld", "id": "c54557c14fc2199e", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@example.c", "from": "seed:short_tld", "id": "11991e1ecddab626", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@example.123", "from": "seed:numeric_tld", "id": "3360e9df31ca0a05", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@[192.0.2.1]", "from": "seed:ip_literal", "id": "df65ead11d9d19d3", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "SI <si@example.com>", "from": "seed:display_name", "id": "1a5eacdfcb0c663d", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "<si@example.com>", "from": "seed:angle_only", "id": "0ce92f14f4105972", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "a@example.com, b@example.com", "from": "seed:two_addresses", "id": "e282fc792601ab4d", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "s i@example.com", "from": "seed:space_inside", "id": "509a0f1413325031", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "  si@example.com  ", "from": "seed:padded", "id": "e357ff1f0b000d41", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@example.com\r\nBcc: x@example.com", "from": "seed:crlf", "id": "c1d00730212eaf01", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@example.com\nX: y", "from": "seed:lf", "id": "dc90c6d85fa958f4", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@exam\tple.com", "from": "seed:tab", "id": "daa8fa29864a6444", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@exam\u0000ple.com", "from": "seed:nul", "id": "381b26121d12b3db", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "s\u00ed@example.com", "from": "seed:unicode_local", "id": "6b54de2b501bb837", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@b\u00fccher.example", "from": "seed:idn_domain", "id": "95f031c9d0a1f004", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si\uff20example.com", "from": "seed:fullwidth_at", "id": "321f4f636b2a2906", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "\"si bot\"@example.com", "from": "seed:quoted_local", "id": "ff8fca762c8ad40c", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "", "from": "seed:empty", "id": "e45c35f14bd7f217", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "@", "from": "seed:at_only", "id": "7491f26614a955e5", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si.example.com", "from": "seed:no_at", "id": "25e26699a88030ea", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@example@example.com", "from": "seed:two_at", "id": "624544ad63e90189", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll@example.com", "from": "seed:long_local", "id": "7b2ad6c106ca501f", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.example.com", "from": "seed:long_label", "id": "41c35d014bf6f421", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.example.com", "from": "seed:label_64", "id": "b5f8b70ae3df822f", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss@example.com", "from": "seed:len_254", "id": "4bb690bd17cbc907", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss@example.com", "from": "seed:len_255", "id": "089c68a1e2c9f452", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": "si@a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.example.com", "from": "seed:many_labels", "id": "d287ca12a0a58385", "kind": "text", "mutator": "seed"}
+{"arcs": 0, "data": {"job_id": "bm-addr-0002", "kind": "ping"}, "from": "seed:job_without_reply_to", "id": "ec2f297dbc186c62", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"reply_to": 7}, "from": "seed:reply_to_number", "id": "f14a8ab4890e0090", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"reply_to": ["si@example.com"]}, "from": "seed:reply_to_list", "id": "529b4fea0762ad4f", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"reply_to": {"addr": "si@example.com"}}, "from": "seed:reply_to_object", "id": "6e1b5f2cd36a0f4e", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": {"reply_to": null}, "from": "seed:reply_to_null", "id": "7836637d5d0440dc", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": ["si@example.com"], "from": "seed:job_not_object", "id": "5771cf5a58d2ac93", "kind": "payload", "mutator": "seed"}

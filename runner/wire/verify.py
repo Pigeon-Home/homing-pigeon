@@ -707,8 +707,8 @@ def key_directory_verdict(directory, secrets, key_id, now):
     compromised is refused at once, ahead of the window. An entry
     is read under any of the key's names (Q94). An entry that
     carries a `fingerprint` must carry the key's own (section 14.2),
-    and an entry that carries a `not_before` admits nothing before
-    it (Q114).
+    an entry that carries a `not_before` admits nothing before it,
+    and `not_after` ends `in_use` as it ends `superseded` (Q114).
     """
     if directory is None:
         return None
@@ -741,9 +741,7 @@ def key_directory_verdict(directory, secrets, key_id, now):
             return "invalid key directory not_before"
         if now < since:
             return "key is not yet valid (not_before)"
-    if state == "in_use":
-        return None
-    if state == "superseded":
+    if state in ("in_use", "superseded"):
         until = entry.get("not_after")
         if until is None:
             return None
@@ -752,7 +750,8 @@ def key_directory_verdict(directory, secrets, key_id, now):
         except (TypeError, ValueError):
             return "invalid key directory not_after"
         if now > until:
-            return "key is superseded and its window has closed"
+            return ("key is superseded and its window has closed"
+                    if state == "superseded" else "key is past its not_after")
         return None
     if state in KEY_STATES:
         return f"key is {state}"

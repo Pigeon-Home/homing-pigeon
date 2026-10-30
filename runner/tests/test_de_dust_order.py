@@ -51,7 +51,7 @@ class GrowUsesTheOrderTest(unittest.TestCase):
             setattr(args, k, v)
         seen = {}
 
-        def fake_parallel(commands, jobs, out=print, minutes=0.0):
+        def fake_parallel(commands, jobs, out=print, minutes=0.0, **kw):
             seen["targets"] = [tg for tg, _cmd in commands]
             return 0
 

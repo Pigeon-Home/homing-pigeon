@@ -1695,7 +1695,7 @@ and `not_after` (seconds since the epoch). The states, in a key's
 life order: `ordered`, `generated`, `distributed`, `in_use`,
 `superseded`, `compromised`, `destroyed`. What each does:
 
-- `in_use` verifies.
+- `in_use` verifies, until its `not_after` when it carries one.
 - `superseded` verifies until its `not_after`, which is the rotation
   window (`docs/use/secret-rotation.md`); with no `not_after` it
   verifies as `in_use` does.

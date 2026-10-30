@@ -143,6 +143,12 @@ class CorpusReplayTest(unittest.TestCase):
     def test_secret(self):
         self._check("secret")
 
+    def test_keydir(self):
+        self._check("keydir")
+
+    def test_address(self):
+        self._check("address")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes

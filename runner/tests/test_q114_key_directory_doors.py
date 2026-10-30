@@ -104,6 +104,10 @@ class JobDoorTest(unittest.TestCase):
             {"old": {"state": "superseded", "not_after": now + 3600}}))
         self.assertIn("invalid key directory not_before", self._verdict(
             {"old": {"state": "in_use", "not_before": "soon"}}))
+        self.assertIn("past its not_after", self._verdict(
+            {"old": {"state": "in_use", "not_after": now - 1}}))
+        self.assertIsNone(self._verdict(
+            {"old": {"state": "in_use", "not_after": now + 3600}}))
 
     def test_the_directory_speaks_before_the_policy(self):
         cfg = _cfg({"old": {"state": "compromised"}},

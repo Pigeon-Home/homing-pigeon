@@ -127,6 +127,7 @@ import ntpath
 import os
 import posixpath
 import random
+import email.utils
 import re
 import shutil
 import subprocess
@@ -173,6 +174,21 @@ MAX_TEXT = 16 * 1024          # bytes of a text entry after mutation
 MAX_PAYLOAD = 16 * 1024       # bytes of a payload entry's JSON
 MAX_DEPTH = 24                # nesting a payload mutator may add to
 SHRINK_BUDGET = 240           # checks a crash's shrink may spend
+# de_dust2 (docs/project/de_dust2.md). P3: the parent choice.
+ACCEPT_LOW = 0.20             # below this accepted share, boost accepted parents
+ACCEPT_BOOST = 4.0            # by this much
+# P4: the slow class. A try this many times the corpus replay's
+# median, and at least this long, is a finding (Q84's class).
+SLOW_FACTOR = 50.0
+SLOW_FLOOR_SEC = 0.5
+# P1/P2: the time slice a cycling grow gives each target, and the
+# tilt by yield around it.
+DEFAULT_SLICE_SEC = 120
+SLICE_MIN_ROUNDS = 400
+SLICE_MAX_ROUNDS = 50000
+SLICE_FIRST_ROUNDS = 2000     # a target with no rate on record yet
+TILT_FLOOR = 0.25             # a target with no yield keeps this much
+TILT_MAX = 4.0                # the best target gets at most this much
 
 # Invented secrets for invented fixtures: 64 hex digits each, the
 # shape validate_shared_secret accepts. Nothing here is a real key.
@@ -227,6 +243,7 @@ class ArcTracer:
     def __init__(self, files):
         self.files = {os.path.normcase(os.path.abspath(f)) for f in files}
         self.arcs = set()
+        self.hit = set()           # the arcs the last run touched (de_dust2)
         self.new = 0
         self._last = {}
         self._known = {}
@@ -242,7 +259,9 @@ class ArcTracer:
         if event != "call" or not self._mine(frame.f_code.co_filename):
             return None
         self._last[id(frame)] = 0
-        self.arcs.add((frame.f_code.co_filename, 0, frame.f_lineno))
+        arc = (frame.f_code.co_filename, 0, frame.f_lineno)
+        self.arcs.add(arc)
+        self.hit.add(arc)
         return self._local
 
     def _local(self, frame, event, arg):
@@ -250,7 +269,9 @@ class ArcTracer:
             key = id(frame)
             prev = self._last.get(key, 0)
             line = frame.f_lineno
-            self.arcs.add((frame.f_code.co_filename, prev, line))
+            arc = (frame.f_code.co_filename, prev, line)
+            self.arcs.add(arc)
+            self.hit.add(arc)
             self._last[key] = line
         elif event == "return":
             self._last.pop(id(frame), None)
@@ -260,6 +281,7 @@ class ArcTracer:
         """fn(*args) under the tracer; afterwards `new` is the count of
         arcs the call added. Whatever fn raises propagates."""
         before = len(self.arcs)
+        self.hit = set()
         previous = sys.gettrace()
         sys.settrace(self._global)
         try:
@@ -1071,10 +1093,11 @@ def check_dtls(entry):
             accepted = True
             _dtls_readers(bytes(parsed[2]))
 
+    cores = []
+
     def _feed():
-        core = DT.DtlsServerCore(
-            secrets_map={_DTLS_IDENTITY: "bm-secret-0001"},
-            rng=lambda n: b"\x5a" * n)
+        core = _dtls_core()
+        cores.append(core)
         return core.feed(data, _DTLS_ADDR, _DTLS_NOW)
 
     out, exc = _call(_feed)
@@ -1085,7 +1108,37 @@ def check_dtls(entry):
             or not all(isinstance(dg, (bytes, bytearray)) for dg in out)):
         raise Crash("shape", "DtlsServerCore.feed returned "
                     f"{type(out).__name__}")
+    # Q110's invariant, on whatever the datagram did: a session the
+    # core resumed names an issuing key that still stands in its map.
+    for session in cores[0].sessions.values():
+        if session.resumed and (session.issuer is None
+                                or cores[0].secret_for(session.issuer) is None):
+            raise Crash("contract", "a session resumed under a ticket whose "
+                        f"issuing key is {session.issuer!r}, not in the map")
     return "accepted" if accepted else "refused"
+
+
+_DTLS_TICKET_PSK = b"\x5c" * 48
+# Three tickets every fresh core holds (de_dust2, P5): one issued
+# under the key in the map, one under a key that has left it, and one
+# table entry from before tickets recorded their issuer.
+_DTLS_TICKETS = {
+    b"\x7a" * 24: (_DTLS_TICKET_PSK, _DTLS_NOW + 600, _DTLS_IDENTITY),
+    b"\x7b" * 24: (_DTLS_TICKET_PSK, _DTLS_NOW + 600, b"bm-psk-gone"),
+    b"\x7c" * 24: (_DTLS_TICKET_PSK, _DTLS_NOW + 600),
+}
+
+
+def _dtls_core():
+    """The server core the dtls target feeds: an invented secret map,
+    a fixed rng (so a cookie-bearing ClientHello from the seeds is
+    valid against every fresh core) and the three planted tickets."""
+    core = DT.DtlsServerCore(
+        secrets_map={_DTLS_IDENTITY: "bm-secret-0001"},
+        rng=lambda n: b"\x5a" * n)
+    for ticket, entry in _DTLS_TICKETS.items():
+        core.tickets[ticket] = entry
+    return core
 _BOARD_STATUSES = {"not_found", "duplicate", "not_claimed", "pending_review",
                    "done"}
 _BOARD_OPS = ("submit", "offer", "complete", "approve", "reoffer")
@@ -1675,6 +1728,234 @@ def _local_inbox_sequence(spec):
         return "accepted" if len(filed) > 1 else "refused"
     finally:
         shutil.rmtree(base, ignore_errors=True)
+
+
+# ------------------------------------------------------------------
+# keydir: the key directory's three readers (Q114, de_dust2 P5)
+# ------------------------------------------------------------------
+
+_KEYDIR_SECRETS = {"": SECRET, "ops": OPS, "canary-key": SENSE}
+_KEYDIR_CFG = {"shared_secret": SECRET,
+               "additional_secrets": {"ops": OPS, "canary-key": SENSE}}
+_KEYDIR_FAR = 4_000_000_000.0     # a bound the clock will not reach soon
+_KEYDIR_PAST = 1.0                # a bound long closed
+_KEYDIR_JOB = {"job_id": "bm-keydir-0001", "kind": "ping"}
+
+
+def _keydir_parts(data):
+    """(directory, key_id) from an entry: a payload {directory, key_id}
+    or anything else as the directory itself with the default key."""
+    if isinstance(data, dict) and "directory" in data:
+        key_id = data.get("key_id", "")
+        return data["directory"], key_id
+    return data, ""
+
+
+def check_keydir(entry):
+    """keydir: a key directory as the config would carry it, read by
+    load_key_directory, validate_key_directory and key_directory_verdict
+    (PROTOCOL.md section 14.4), and the two doors that ask them --
+    check_key_policy at the job's door and the DTLS pipe's lookup.
+    Contract: the loader and the validator raise RuntimeError naming
+    a config error and nothing else; the verdict never raises and
+    answers None or a reason; a directory the validator passed gives,
+    for every key the runner holds, the same verdict under each of
+    the key's names, `compromised` ahead of every bound, `in_use`
+    with no bound admitted, a missing entry refused; the job's door
+    answers exactly the verdict when no policy stands, and the DTLS
+    lookup answers the secret exactly when the verdict admits.
+    Accepted when the entry's key is admitted."""
+    directory, key_id = _keydir_parts(entry["data"])
+    if TU._lone_surrogate(directory) or TU._lone_surrogate(key_id):
+        note("gate", "lone surrogate")
+        return "refused"
+    cfg = dict(_KEYDIR_CFG, key_directory=directory)
+    loaded, exc = _call(V.load_key_directory, cfg)
+    if exc is not None:
+        _expect_refusal(exc, RuntimeError, "load_key_directory")
+        if "config error" not in str(exc):
+            raise Crash("contract", "load_key_directory refused without "
+                        f"naming a config error: {_short(exc)}")
+        return "refused"
+    if loaded is not directory:
+        raise Crash("contract", "load_key_directory did not hand back the "
+                    "inline directory")
+    valid, exc = _call(V.validate_key_directory, cfg, _KEYDIR_SECRETS)
+    valid_ok = exc is None
+    if exc is not None:
+        _expect_refusal(exc, RuntimeError, "validate_key_directory")
+        if "config error" not in str(exc):
+            raise Crash("contract", "validate_key_directory refused without "
+                        f"naming a config error: {_short(exc)}")
+    elif valid is not directory:
+        raise Crash("contract", "validate_key_directory did not hand back "
+                    "the directory it passed")
+    names = list(_KEYDIR_SECRETS) + [V._key_fingerprint(SECRET)]
+    if isinstance(key_id, str) and key_id not in names:
+        names.append(key_id)
+    # The doors read the clock; so does this table, once.
+    now = time.time()
+    verdicts = {}
+    for name in names:
+        got, exc = _call(V.key_directory_verdict, directory,
+                         _KEYDIR_SECRETS, name, now)
+        if exc is not None:
+            raise Crash("exception", "key_directory_verdict raised "
+                        f"{type(exc).__name__} for {name!r}: {_short(exc)}")
+        if got is not None and not isinstance(got, str):
+            raise Crash("shape", f"key_directory_verdict answered {got!r}"[:200])
+        verdicts[name] = got
+        note("verdict", name, got)
+    # The default key under its two names: one key, one verdict.
+    fp = V._key_fingerprint(SECRET)
+    if verdicts[""] != verdicts[fp]:
+        raise Crash("contract", "the default key's verdict differs under "
+                    f"its fingerprint: {verdicts['']!r} vs {verdicts[fp]!r}")
+    if valid_ok and isinstance(directory, dict):
+        for name in _KEYDIR_SECRETS:
+            entry_names = V.key_names(_KEYDIR_SECRETS, name)
+            found = next((directory[n] for n in entry_names if n in directory),
+                         None)
+            v = verdicts[name]
+            if found is None:
+                if v is None or "no key directory entry" not in v:
+                    raise Crash("contract", f"{name!r} has no entry and the "
+                                f"verdict is {v!r}")
+                continue
+            state = found.get("state")
+            if state == "compromised" and v != "key is compromised":
+                raise Crash("contract", f"{name!r} is compromised and the "
+                            f"verdict is {v!r}")
+            if (state == "in_use" and found.get("not_before") is None
+                    and found.get("not_after") is None
+                    and found.get("fingerprint") is None and v is not None):
+                raise Crash("contract", f"{name!r} is in_use with no bound "
+                            f"and the verdict is {v!r}")
+            if state in ("ordered", "generated", "distributed", "destroyed") \
+                    and v is None:
+                raise Crash("contract", f"{name!r} is {state} and admitted")
+    # The job's door answers the verdict (no policy stands here): the
+    # whole-directory check is the startup gate, the doors read each
+    # key's own entry, so a live edit that breaks one entry locks out
+    # that key and no other.
+    for name in _KEYDIR_SECRETS:
+        door, exc = _call(V.check_key_policy, {}, name, cfg, _KEYDIR_JOB,
+                          _KEYDIR_SECRETS)
+        if exc is not None:
+            raise Crash("exception", "check_key_policy raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        want = verdicts[name]
+        if door != want:
+            raise Crash("contract", f"the job's door said {door!r} for "
+                        f"{name!r}; the verdict is {want!r}")
+    # The DTLS lookup answers the secret exactly when the verdict admits.
+    look = _dtls_pipe().directory_lookup(
+        cfg, DT.make_secret_lookup(SECRET, _KEYDIR_CFG["additional_secrets"]),
+        now=lambda: now)
+    for name in _KEYDIR_SECRETS:
+        got, exc = _call(look, DT.identity_for(name))
+        if exc is not None:
+            raise Crash("exception", "the DTLS lookup raised "
+                        f"{type(exc).__name__}: {_short(exc)}")
+        admits = verdicts[name] is None
+        if admits and got != _KEYDIR_SECRETS[name]:
+            raise Crash("contract", f"the DTLS lookup refused {name!r}, which "
+                        "the verdict admits")
+        if not admits and got is not None:
+            raise Crash("contract", f"the DTLS lookup answered {name!r}, "
+                        "which the verdict refuses")
+    note("valid", valid_ok)
+    asked = key_id if isinstance(key_id, str) else ""
+    return "accepted" if verdicts.get(asked) is None else "refused"
+
+
+def _dtls_pipe():
+    """The DTLS transport's module, loaded once (it lives beside the
+    extension, not in runner/wire)."""
+    global _DTLS_PIPE
+    if _DTLS_PIPE is None:
+        import importlib
+        _DTLS_PIPE = importlib.import_module(
+            "runner.transport_extensions.dtls.__main__")
+    return _DTLS_PIPE
+
+
+_DTLS_PIPE = None
+
+
+# ------------------------------------------------------------------
+# address: the reply_to reader and the header it becomes (Q113)
+# ------------------------------------------------------------------
+
+class _CatchSmtp:
+    def __init__(self):
+        self.sent = []
+
+    def send_message(self, msg):
+        self.sent.append(msg)
+
+
+_ADDRESS_CFG = {"mailbox_user": "runner@example.com"}
+_ADDRESS_CTRL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def check_address(entry):
+    """address: a job's reply_to through _valid_reply_to and, when it
+    is honored, through send_mail into a To header (Q113: a mutated
+    address once rendered as `<>`). Contract: _valid_reply_to never
+    raises and answers None or the stripped text; an honored address
+    is at most 254 characters, carries no control character, and
+    the message send_mail builds carries it as its To header, which
+    parses back to that one address and nothing else; a job that is
+    not an object, or a reply_to that is not text, is None. Accepted
+    when the address is honored."""
+    data = entry["data"]
+    job = data if isinstance(data, dict) else {"reply_to": data}
+    if TU._lone_surrogate(job):
+        note("gate", "lone surrogate")
+        return "refused"
+    got, exc = _call(MB._valid_reply_to, job)
+    if exc is not None:
+        raise Crash("exception", "_valid_reply_to raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    rt = job.get("reply_to") if isinstance(job, dict) else None
+    if got is None:
+        if isinstance(rt, str):
+            note("refused", "text", len(rt))
+        else:
+            note("refused", "not text")
+        return "refused"
+    if not isinstance(got, str):
+        raise Crash("shape", f"_valid_reply_to answered {type(got).__name__}")
+    if not isinstance(rt, str):
+        raise Crash("contract", "an address was honored from a reply_to "
+                    "that is not text")
+    if got != rt.strip():
+        raise Crash("contract", "the honored address is not the stripped "
+                    "reply_to")
+    if len(got) > 254 or _ADDRESS_CTRL.search(got) or "@" not in got:
+        raise Crash("contract", f"the honored address breaks the rules: "
+                    f"{got[:60]!r}")
+    smtp = _CatchSmtp()
+    _, exc = _call(MB.send_mail, smtp, _ADDRESS_CFG, "[HOMING-PIGEON] result "
+                   "bm-addr-0001", "ok\n", got)
+    if exc is not None:
+        raise Crash("exception", f"send_mail raised {type(exc).__name__}: "
+                    f"{_short(exc)}")
+    if len(smtp.sent) != 1:
+        raise Crash("contract", "send_mail built no message for an honored "
+                    "address")
+    header = str(smtp.sent[0]["To"] or "")
+    name, addr = email.utils.parseaddr(header)
+    if addr != got or name:
+        raise Crash("provenance", "the result is addressed to "
+                    f"{header[:60]!r}, not the honored {got[:60]!r}")
+    raw, exc = _call(smtp.sent[0].as_bytes)
+    if exc is not None:
+        raise Crash("exception", "the result message would not serialize: "
+                    f"{_short(exc)}")
+    note("to", header)
+    return "accepted"
 
 
 def check_secret(entry):
@@ -4125,8 +4406,40 @@ def seeds_dtls():
         ("empty", b""),
         ("length_overrun", bytes(overrun)),
     ]
+    out += _dtls_resume_seeds()
     return [make_entry("text", _dtls_text(blob), "seed:" + name, "seed")
             for name, blob in out]
+
+
+def _dtls_resume_seeds():
+    """Cookie-bearing second ClientHellos (de_dust2, P5): one that
+    resumes each planted ticket, and one fresh handshake under the
+    identity in the map. The core's rng is fixed, so the cookie a
+    fresh core issues is the cookie it later accepts, and these
+    datagrams reach `begin` and the ticket path on every replay."""
+    out = []
+    for name, ticket in (("resume_live", b"\x7a" * 24),
+                         ("resume_gone", b"\x7b" * 24),
+                         ("resume_unrecorded", b"\x7c" * 24),
+                         ("hello_cookie", None)):
+        server = _dtls_core()
+        if ticket is None:
+            client = DT.DtlsClientCore("bm-secret-0001", rng=lambda n: b"\x33" * n)
+            client._identity = _DTLS_IDENTITY
+        else:
+            client = DT.DtlsClientCore("bm-secret-0001",
+                                       ticket=(ticket, _DTLS_TICKET_PSK),
+                                       rng=lambda n: b"\x33" * n)
+        first = client.start(_DTLS_NOW)
+        answer = []
+        for dg in first:
+            answer += server.feed(dg, _DTLS_ADDR, _DTLS_NOW)
+        second = []
+        for dg in answer:
+            second += client.feed(dg, _DTLS_NOW)
+        if second:
+            out.append((name, second[0]))
+    return out
 def _task(tid="bm-task-0001", **extra):
     task = {"task_id": tid, "priority": 1, "requires": [],
             "capabilities": ["shell"], "compartments": [],
@@ -5205,6 +5518,130 @@ def seeds_local_inbox():
         ("empty_inbox", {"files": []}),
     ]
     return [make_entry("payload", p, "seed:" + n, "seed") for n, p in out]
+
+
+def seeds_keydir():
+    fp = V._key_fingerprint(SECRET)
+    fp_ops = V._key_fingerprint(OPS)
+    far, past = _KEYDIR_FAR, _KEYDIR_PAST
+
+    def d(**entries):
+        return entries
+
+    dirs = [
+        ("all_in_use", d(**{"": {"state": "in_use"}, "ops": {"state": "in_use"},
+                           "canary-key": {"state": "in_use"}})),
+        ("default_by_fingerprint", d(**{fp: {"state": "in_use"},
+                                        "ops": {"state": "in_use"},
+                                        "canary-key": {"state": "in_use"}})),
+        ("ops_superseded_open", d(**{"": {"state": "in_use"},
+                                     "ops": {"state": "superseded",
+                                             "not_after": far},
+                                     "canary-key": {"state": "in_use"}})),
+        ("ops_superseded_closed", d(**{"": {"state": "in_use"},
+                                       "ops": {"state": "superseded",
+                                               "not_after": past},
+                                       "canary-key": {"state": "in_use"}})),
+        ("ops_compromised", d(**{"": {"state": "in_use"},
+                                 "ops": {"state": "compromised"},
+                                 "canary-key": {"state": "in_use"}})),
+        ("ops_destroyed", d(**{"": {"state": "in_use"},
+                               "ops": {"state": "destroyed"},
+                               "canary-key": {"state": "in_use"}})),
+        ("ops_not_yet", d(**{"": {"state": "in_use"},
+                             "ops": {"state": "in_use", "not_before": far},
+                             "canary-key": {"state": "in_use"}})),
+        ("ops_fingerprint_right", d(**{"": {"state": "in_use"},
+                                       "ops": {"state": "in_use", "fingerprint": fp_ops},
+                                       "canary-key": {"state": "in_use"}})),
+        ("ops_fingerprint_wrong", d(**{"": {"state": "in_use"},
+                                       "ops": {"state": "in_use", "fingerprint": fp},
+                                       "canary-key": {"state": "in_use"}})),
+        ("canary_missing", d(**{"": {"state": "in_use"}, "ops": {"state": "in_use"}})),
+        ("empty", {}),
+        ("ordered_next", d(**{"": {"state": "in_use"}, "ops": {"state": "in_use"},
+                              "canary-key": {"state": "in_use"},
+                              "next": {"state": "ordered", "fingerprint": "k-00000000"}})),
+        ("bad_state", d(**{"": {"state": "live"}})),
+        ("state_missing", d(**{"": {}})),
+        ("entry_text", d(**{"": "in_use"})),
+        ("bound_text", d(**{"": {"state": "in_use", "not_before": "soon"}})),
+        ("bound_bool", d(**{"": {"state": "in_use", "not_after": True}})),
+        ("bound_string_number", d(**{"": {"state": "superseded", "not_after": str(far)}})),
+        ("in_use_expired", d(**{"": {"state": "in_use", "not_after": past}})),
+        ("in_use_open", d(**{"": {"state": "in_use", "not_before": past, "not_after": far}})),
+        ("bound_nested", d(**{"": {"state": "in_use", "not_before": {"at": far}}})),
+        ("fingerprint_number", d(**{"": {"state": "in_use", "fingerprint": 7}})),
+        ("extra_members", d(**{"": {"state": "in_use", "note": "x" * 40, "list": [1, 2]}})),
+        ("not_an_object_list", [{"state": "in_use"}]),
+        ("not_an_object_text", "in_use"),
+        ("not_an_object_number", 1),
+        ("not_an_object_null", None),
+        ("unicode_name", d(**{"": {"state": "in_use"}, "op\u00e9ra": {"state": "in_use"}})),
+    ]
+    out = []
+    for name, directory in dirs:
+        out.append(make_entry("payload", {"directory": directory, "key_id": ""},
+                              "seed:" + name, "seed"))
+    for key_id in ("ops", "canary-key", fp, fp_ops, "nobody", 7, None):
+        out.append(make_entry("payload", {"directory": dirs[0][1], "key_id": key_id},
+                              "seed:key_" + str(key_id), "seed"))
+    return out
+
+
+def seeds_address():
+    long_local = "l" * 64
+    long_label = "d" * 63
+    out = [
+        ("plain", "submitter@example.com"),
+        ("subdomain", "si.bot@mail.example.org"),
+        ("plus", "si+runner@example.com"),
+        ("dots_local", "first.last@example.com"),
+        ("uppercase", "SI@EXAMPLE.COM"),
+        ("digits", "1234@5678.example"),
+        ("hyphen_label", "si@sub-example.com"),
+        ("q113", "submitter@.comexample.com"),
+        ("leading_dot", "si@.example.com"),
+        ("double_dot", "si@example..com"),
+        ("trailing_dot", "si@example.com."),
+        ("hyphen_first", "si@-example.com"),
+        ("hyphen_last", "si@example-.com"),
+        ("no_tld", "si@localhost"),
+        ("short_tld", "si@example.c"),
+        ("numeric_tld", "si@example.123"),
+        ("ip_literal", "si@[192.0.2.1]"),
+        ("display_name", "SI <si@example.com>"),
+        ("angle_only", "<si@example.com>"),
+        ("two_addresses", "a@example.com, b@example.com"),
+        ("space_inside", "s i@example.com"),
+        ("padded", "  si@example.com  "),
+        ("crlf", "si@example.com\r\nBcc: x@example.com"),
+        ("lf", "si@example.com\nX: y"),
+        ("tab", "si@exam\tple.com"),
+        ("nul", "si@exam\x00ple.com"),
+        ("unicode_local", "s\u00ed@example.com"),
+        ("idn_domain", "si@b\u00fccher.example"),
+        ("fullwidth_at", "si\uff20example.com"),
+        ("quoted_local", '"si bot"@example.com'),
+        ("empty", ""),
+        ("at_only", "@"),
+        ("no_at", "si.example.com"),
+        ("two_at", "si@example@example.com"),
+        ("long_local", long_local + "@example.com"),
+        ("long_label", "si@" + long_label + ".example.com"),
+        ("label_64", "si@" + long_label + "d.example.com"),
+        ("len_254", "s" * (254 - len("@example.com")) + "@example.com"),
+        ("len_255", "s" * (255 - len("@example.com")) + "@example.com"),
+        ("many_labels", "si@" + ".".join(["a"] * 60) + ".example.com"),
+        ("job_without_reply_to", {"job_id": "bm-addr-0002", "kind": "ping"}),
+        ("reply_to_number", {"reply_to": 7}),
+        ("reply_to_list", {"reply_to": ["si@example.com"]}),
+        ("reply_to_object", {"reply_to": {"addr": "si@example.com"}}),
+        ("reply_to_null", {"reply_to": None}),
+        ("job_not_object", ["si@example.com"]),
+    ]
+    return [make_entry("text" if isinstance(t, str) else "payload", t,
+                       "seed:" + n, "seed") for n, t in out]
 
 
 def seeds_secret():
@@ -7375,11 +7812,18 @@ TARGETS = {
               "check": check_stage, "seeds": seeds_stage},
     "collect": {"files": [_src("ops", "exec.py")],
                 "check": check_collect, "seeds": seeds_collect},
+    # de_dust2, P5: readers with recent real bugs or new code.
+    "keydir": {"files": [_src("wire", "verify.py"),
+                         _src("transport_extensions", "dtls", "__main__.py")],
+               "check": check_keydir, "seeds": seeds_keydir},
+    "address": {"files": [_src("wire", "mailbox.py")],
+                "check": check_address, "seeds": seeds_address},
 }
 
 
-def corpus_path(target, crashes=False):
-    name = target + (".crashes.jsonl" if crashes else ".jsonl")
+def corpus_path(target, crashes=False, slow=False):
+    name = target + (".crashes.jsonl" if crashes else
+                     ".slow.jsonl" if slow else ".jsonl")
     return os.path.join(CORPUS_DIR, name)
 
 
@@ -7615,6 +8059,7 @@ def _run_record(kind, target, session, before, added, seconds, **extra):
         "arcs_after": len(session.tracer.arcs),
         "kept": [e["id"] for e in added],
         "crashes": len(session.crashes),
+        "slow": len(session.slow),
         "outcomes": dict(session.outcomes),
         "slowest_ms": round(session.slowest[0] * 1000),
         "slowest": session.slowest[1],
@@ -7634,21 +8079,33 @@ class Session:
         self.ids = {e["id"] for e in self.entries}
         self.tracer = ArcTracer(self.spec["files"])
         self.crashes = []
+        self.slow = []             # (entry, Crash("slow", ...)) (de_dust2)
         self.slowest = (0.0, None)
-        self.outcomes = {"accepted": 0, "refused": 0, "crash": 0}
+        self.outcomes = {"accepted": 0, "refused": 0, "crash": 0, "slow": 0}
         self.tried = 0
         self.mutators_tried = {}
         self.mutator_errors = {}
         self.mutators_kept = {}
+        # de_dust2: what each entry reaches and whether the reader
+        # took it, for the parent choice; and the slow bound, set
+        # from the corpus replay's median.
+        self.hits = {}
+        self.accepted_ids = set()
+        self.median = None
+        self.slow_bound = None
 
     def run(self, entry, trace=True):
         """(outcome, new_arcs, seconds) of one entry; a Crash is
-        recorded and reported as the outcome "crash"."""
+        recorded and reported as the outcome "crash". A try over the
+        slow bound (set after the baseline: SLOW_FACTOR times the
+        corpus replay's median, and at least SLOW_FLOOR_SEC) is the
+        outcome "slow", recorded apart from the crashes (de_dust2)."""
         t0 = time.perf_counter()
         try:
             if trace:
                 outcome = self.tracer.run(check, self.target, entry)
                 new = self.tracer.new
+                self.hits[entry["id"]] = frozenset(self.tracer.hit)
             else:
                 outcome = check(self.target, entry)
                 new = 0
@@ -7659,23 +8116,84 @@ class Session:
         dt = time.perf_counter() - t0
         if dt > self.slowest[0]:
             self.slowest = (dt, entry["id"])
-        self.outcomes[outcome] += 1
+        if outcome == "accepted":
+            self.accepted_ids.add(entry["id"])
+        if (outcome != "crash" and self.slow_bound is not None
+                and dt > self.slow_bound):
+            crash = Crash("slow", f"{dt * 1000:.0f} ms, "
+                          f"{dt / max(self.median, 1e-9):.0f}x the corpus "
+                          f"median of {self.median * 1000:.1f} ms")
+            self.slow.append((entry, crash))
+            outcome = "slow"
+        self.outcomes[outcome] = self.outcomes.get(outcome, 0) + 1
         return outcome, new, dt
 
     def baseline(self):
         """Replay the corpus under the tracer so growth measures
-        against what the corpus already reaches."""
+        against what the corpus already reaches, and set the slow
+        bound from the replay's median (de_dust2)."""
+        times = []
         for e in self.entries:
-            self.run(e)
+            times.append(self.run(e)[2])
+        if times:
+            times.sort()
+            self.median = times[len(times) // 2]
+            self.slow_bound = max(SLOW_FLOOR_SEC, SLOW_FACTOR * self.median)
 
-    def grow(self, rng, rounds, log=None, history=None, archive=None):
+    def accepted_share(self):
+        """The share of the corpus the reader accepts, from the last
+        replay; None before one."""
+        if not self.entries or not self.hits:
+            return None
+        return len(self.accepted_ids & {e["id"] for e in self.entries}) \
+            / len(self.entries)
+
+    def parent_weights(self):
+        """One weight per corpus entry (de_dust2, P3): the AFL favored
+        rule in two terms. An entry weighs one over the number of
+        entries reaching its rarest arc, so the entries that alone
+        hold an arc are mutated most; and on a target where the reader
+        accepts under ACCEPT_LOW of the corpus, an accepted entry
+        weighs ACCEPT_BOOST times a refused one, so the children reach
+        past the first gate. Entries without a recorded run weigh as
+        the median entry does. None when nothing is recorded."""
+        if not self.hits:
+            return None
+        count = {}
+        for e in self.entries:
+            for arc in self.hits.get(e["id"], ()):
+                count[arc] = count.get(arc, 0) + 1
+        share = self.accepted_share()
+        boost = share is not None and share < ACCEPT_LOW
+        weights = []
+        known = []
+        for e in self.entries:
+            hit = self.hits.get(e["id"])
+            if not hit:
+                weights.append(None)
+                continue
+            rarest = min(count[arc] for arc in hit)
+            w = 1.0 / rarest
+            if boost and e["id"] in self.accepted_ids:
+                w *= ACCEPT_BOOST
+            weights.append(w)
+            known.append(w)
+        if not known:
+            return None
+        known.sort()
+        fill = known[len(known) // 2]
+        return [fill if w is None else w for w in weights]
+
+    def grow(self, rng, rounds, log=None, history=None, archive=None,
+             uniform_parents=False):
         """Mutate from the corpus for `rounds` children; keep each one
         that reaches a new arc. Returns the entries added. `history`
         is {name: (tried, kept)} from earlier grows of this target,
         and with it the choice of mutator is steered toward the ones
         still finding arcs (Muse, 2026-10-26: saturation is per
-        mutator). `archive`, when given, is called with a record of
-        every child tried, kept or not."""
+        mutator). Parents are drawn by `parent_weights` (de_dust2,
+        P3) unless `uniform_parents`. `archive`, when given, is called
+        with a record of every child tried, kept or not."""
         added = []
         self.tried = 0
         self.mutators_tried = {}
@@ -7684,9 +8202,13 @@ class Session:
             return added
         history = dict(history or {})
         weights = steering(history) if history else None
+        parents = None if uniform_parents else self.parent_weights()
         self.mutator_errors = {}
         for n in range(rounds):
-            parent = rng.choice(self.entries)
+            if parents is not None:
+                parent = rng.choices(self.entries, parents)[0]
+            else:
+                parent = rng.choice(self.entries)
             try:
                 child = mutate(rng, parent, self.entries, self.target,
                                weights)
@@ -7721,6 +8243,10 @@ class Session:
                 if log:
                     log(f"  crash at round {n}: {self.crashes[-1][1]}")
                 continue
+            if outcome == "slow":
+                if log:
+                    log(f"  slow at round {n}: {self.slow[-1][1]}")
+                continue
             tried, kept = history.get(name, (0, 0))
             history[name] = (tried + 1, kept + (1 if new else 0))
             if new:
@@ -7728,12 +8254,19 @@ class Session:
                 self.entries.append(entry)
                 self.ids.add(entry["id"])
                 added.append(entry)
+                if parents is not None:
+                    # A keeper holds arcs nothing else does: the top
+                    # weight until the next recount.
+                    parents.append(max(parents) if parents else 1.0)
                 self.mutators_kept[name] = self.mutators_kept.get(name, 0) + 1
                 if log:
                     log(f"  +{new:3d} arcs  {name:14s} {entry['id']}  "
                         f"({outcome})")
-            if weights is not None and self.tried % 200 == 0:
-                weights = steering(history)
+            if self.tried % 200 == 0:
+                if weights is not None:
+                    weights = steering(history)
+                if parents is not None:
+                    parents = self.parent_weights()
         return added
 
     def shrink(self, entry, crash):
@@ -7776,11 +8309,15 @@ class Session:
 # ------------------------------------------------------------------
 
 def _targets(arg):
+    """The targets an argument names: all, one, or a comma list
+    (de_dust2: a rig's lane is a list)."""
     if arg in (None, "all"):
         return list(TARGETS)
-    if arg not in TARGETS:
-        sys.exit(f"unknown target {arg!r}; one of {', '.join(TARGETS)}")
-    return [arg]
+    names = [a.strip() for a in str(arg).split(",") if a.strip()]
+    for name in names:
+        if name not in TARGETS:
+            sys.exit(f"unknown target {name!r}; one of {', '.join(TARGETS)}")
+    return names or list(TARGETS)
 
 
 def _with_rig(fn):
@@ -7819,6 +8356,39 @@ def _record_crashes(target, session, out):
     if fresh:
         save(path, target, existing)
         out(f"  {fresh} crash(es) written to {_shown(path)}")
+    return fresh
+
+
+def _record_slow(target, session, out):
+    """The grow's slow findings (de_dust2, P4) to <target>.slow.jsonl:
+    the entry as tried, its time against the corpus median, the day
+    and the tree. Apart from the crash file on purpose: a time is a
+    property of the box, so a slow record is a Q to file and a bound
+    for the desk to write, never an expectedFailure probe that a fast
+    runner would pass by accident. The id is the entry's, so the bank
+    unions the file as it unions a corpus."""
+    if not session.slow:
+        return 0
+    path = corpus_path(target, slow=True)
+    existing = load(path)
+    known = {e["id"] for e in existing}
+    fresh = 0
+    for entry, crash in session.slow:
+        record = dict(entry)
+        record.update({"crash": crash.kind, "detail": crash.detail,
+                       "median_ms": round((session.median or 0) * 1000, 1),
+                       "found": datetime.now(timezone.utc).strftime(
+                           "%Y-%m-%d"),
+                       "head": head_sha()[:12]})
+        if record["id"] in known:
+            continue
+        known.add(record["id"])
+        existing.append(record)
+        fresh += 1
+        out(f"  SLOW {target} {record['id']}: {crash}")
+    if fresh:
+        save(path, target, existing)
+        out(f"  {fresh} slow finding(s) written to {_shown(path)}")
     return fresh
 
 
@@ -7876,17 +8446,22 @@ def cmd_seed(args, out=print):
 
 
 def grow_commands(targets, rounds, seed, verbose, archive=None,
-                  no_steer=False):
-    """One `grow` subprocess command per target, for --jobs."""
+                  no_steer=False, rounds_for=None, uniform_parents=False):
+    """One `grow` subprocess command per target, for --jobs.
+    `rounds_for(target)`, when given, names each target's rounds
+    (de_dust2 slices) in place of the one `rounds`."""
     out = []
     for target in targets:
+        n = rounds_for(target) if rounds_for else rounds
         cmd = [sys.executable, os.path.abspath(__file__), "grow",
-               "--target", target, "--rounds", str(rounds),
+               "--target", target, "--rounds", str(n),
                "--seed", str(seed), "--jobs", "1"]
         if verbose:
             cmd.append("--verbose")
         if archive:
             cmd += ["--archive", archive]
+        if uniform_parents:
+            cmd.append("--uniform-parents")
         if no_steer:
             cmd.append("--no-steer")
         out.append((target, cmd))
@@ -7929,7 +8504,7 @@ class Archive:
 
 
 def run_parallel(commands, jobs, out=print, spawn=None, minutes=0.0,
-                 clock=time.monotonic, nap=0.2):
+                 clock=time.monotonic, nap=0.2, requeue=None):
     """Run the commands `jobs` at a time, launching the next the moment
     any one finishes, so every core stays busy; each command's output
     is printed whole when it finishes. With `minutes` > 0 the list is
@@ -7965,7 +8540,10 @@ def run_parallel(commands, jobs, out=print, spawn=None, minutes=0.0,
                 out(line)
             status = max(status, proc.returncode or 0)
             if deadline is not None and clock() < deadline:
-                pending.append((target, _next_seed(cmd)))
+                nxt = _next_seed(cmd)
+                if requeue is not None:
+                    nxt = requeue(target, nxt)
+                pending.append((target, nxt))
     return status
 
 
@@ -7979,6 +8557,16 @@ def _next_seed(cmd):
     return cmd
 
 
+def _set_rounds(cmd, rounds):
+    """The same command with its --rounds set (de_dust2 slices)."""
+    cmd = list(cmd)
+    if "--rounds" in cmd:
+        cmd[cmd.index("--rounds") + 1] = str(int(rounds))
+    else:
+        cmd += ["--rounds", str(int(rounds))]
+    return cmd
+
+
 def cmd_grow(args, out=print):
     for target in _targets(args.target):
         prune_retired_crashes(target, out)
@@ -7987,12 +8575,18 @@ def cmd_grow(args, out=print):
 
 def _cmd_grow(args, out=print):
     rounds = args.rounds
-    if rounds is None:
-        rounds = int(os.environ.get("HP_DE_DUST_ROUNDS", DEFAULT_ROUNDS))
     seed = args.seed if args.seed is not None else \
         int.from_bytes(os.urandom(4), "big")
     targets = _targets(args.target)
     minutes = getattr(args, "minutes", 0) or 0
+    # de_dust2 (P1, P2): under --minutes a target's rounds come from
+    # its time slice and its measured rate, tilted by its yield,
+    # unless --rounds names a fixed count.
+    slice_sec = getattr(args, "slice", None)
+    if slice_sec is None and minutes and rounds is None:
+        slice_sec = float(os.environ.get("HP_DE_DUST_SLICE", DEFAULT_SLICE_SEC))
+    if rounds is None:
+        rounds = int(os.environ.get("HP_DE_DUST_ROUNDS", DEFAULT_ROUNDS))
     if minutes and len(targets) > 1 and getattr(args, "order", "stale") != "fixed":
         targets = stale_order(targets)
         out("de_dust grow: targets by staleness, least recently grown "
@@ -8003,14 +8597,37 @@ def _cmd_grow(args, out=print):
         # between one core busy and all of them. With --minutes the
         # targets cycle until the time is up: the continuous grow
         # that fills the gap between a measure and a pass.
-        out(f"de_dust grow: {rounds} rounds, rng seed {seed}, "
-            f"{min(args.jobs, len(targets))} targets at a time"
+        rounds_for = None
+        requeue = None
+        if slice_sec:
+            plan = slice_plan(targets, slice_sec)
+            for tg in targets:
+                row = plan[tg]
+                out(f"de_dust2 slice: {tg} {row['tilt']:.2f}x -> "
+                    f"{row['seconds']:.0f} s, {row['rounds']} rounds"
+                    + (f" at {row['rate']:.0f}/s" if row["rate"] else
+                       " (no rate on record)"))
+            rounds_for = lambda tg: plan[tg]["rounds"]  # noqa: E731
+
+            def requeue(tg, cmd):
+                # The ledger has this grow's record by now: the rate
+                # and the yield move the next slice.
+                row = slice_plan([tg], slice_sec)[tg]
+                out(f"de_dust2 slice: {tg} {row['tilt']:.2f}x -> "
+                    f"{row['seconds']:.0f} s, {row['rounds']} rounds")
+                return _set_rounds(cmd, row["rounds"])
+        out(f"de_dust grow: {'time slices of %g s' % slice_sec if slice_sec else '%d rounds' % rounds}, "
+            f"rng seed {seed}, {min(args.jobs, len(targets))} targets at a time"
             + (f", for {minutes:g} minutes" if minutes else ""))
         return run_parallel(grow_commands(targets, rounds, seed,
                                           args.verbose,
                                           getattr(args, "archive", None),
-                                          getattr(args, "no_steer", False)),
-                            args.jobs, out=out, minutes=minutes)
+                                          getattr(args, "no_steer", False),
+                                          rounds_for=rounds_for,
+                                          uniform_parents=getattr(
+                                              args, "uniform_parents", False)),
+                            args.jobs, out=out, minutes=minutes,
+                            requeue=requeue)
     out(f"de_dust grow: {rounds} rounds, rng seed {seed}")
     status = 0
     for target in targets:
@@ -8032,12 +8649,15 @@ def _cmd_grow(args, out=print):
         history = None if no_steer else mutator_history(target)
         archive = Archive(where, target, seed) if where else None
 
+        uniform = getattr(args, "uniform_parents", False)
+
         def work():
             session.baseline()
             before = len(session.tracer.arcs)
             added = session.grow(rng, rounds, log=out if args.verbose
                                  else None, history=history,
-                                 archive=archive.add if archive else None)
+                                 archive=archive.add if archive else None,
+                                 uniform_parents=uniform)
             return before, added
         try:
             before, added = _with_rig(work)
@@ -8051,6 +8671,8 @@ def _cmd_grow(args, out=print):
             extra["archive"] = archived
         if history is not None:
             extra["steered"] = True
+        if not uniform:
+            extra["parents"] = "rarity"
         if fresh:
             extra["seeds_added"] = len(fresh)
         if getattr(session, "mutator_errors", None):
@@ -8063,10 +8685,12 @@ def _cmd_grow(args, out=print):
             mutators_kept=session.mutators_kept, **extra))
         out(f"{target}: {len(entries)} -> {len(session.entries)} entries, "
             f"arcs {before} -> {len(session.tracer.arcs)}, "
-            f"{session.outcomes['crash']} crashes, slowest "
+            f"{session.outcomes['crash']} crashes, "
+            f"{session.outcomes.get('slow', 0)} slow, slowest "
             f"{session.slowest[0] * 1000:.0f} ms ({session.slowest[1]})")
         if _with_rig(lambda: _record_crashes(target, session, out)):
             status = 1
+        _with_rig(lambda: _record_slow(target, session, out))
     return status
 
 
@@ -8244,6 +8868,140 @@ def stale_order(targets, runs=None):
                                            list(targets).index(tg)))
 
 
+def _target_records(target, runs=None, kinds=("grow",)):
+    """A target's run records of the given kinds, oldest first by the
+    time each ran (the records of several lanes merge in commit
+    order, not time order)."""
+    recs = load_runs() if runs is None else runs
+    return sorted((r for r in recs
+                   if r.get("kind") in kinds and r.get("target") == target),
+                  key=lambda r: str(r.get("when", "")))
+
+
+def target_rate(target, runs=None, grows=5):
+    """Tries per second over a target's last `grows` grow records, or
+    None with no record (de_dust2, P1)."""
+    recs = _target_records(target, runs)[-grows:]
+    tried = sum(int(r.get("tried") or 0) for r in recs)
+    seconds = sum(float(r.get("seconds") or 0) for r in recs)
+    if tried <= 0 or seconds <= 0:
+        return None
+    return tried / seconds
+
+
+def target_yield(target, runs=None, grows=5):
+    """(yield, fresh) for a target (de_dust2, P2): yield is the
+    entries kept plus the arcs gained over its last `grows` grows
+    since its newest seed record, and fresh says fewer than `grows`
+    grows have run since that seed (or ever), so the target has not
+    had its full look yet."""
+    recs = _target_records(target, runs, kinds=("grow", "seed"))
+    cut = 0
+    for i, r in enumerate(recs):
+        if r.get("kind") == "seed":
+            cut = i + 1
+    grows_since = [r for r in recs[cut:] if r.get("kind") == "grow"]
+    recent = grows_since[-grows:]
+    total = 0
+    for r in recent:
+        total += len(r.get("kept") or [])
+        total += max(0, int(r.get("arcs_after") or 0)
+                     - int(r.get("arcs_before") or 0))
+    return total, len(grows_since) < grows
+
+
+def slice_tilt(yield_, fresh):
+    """The multiple of the base slice a target earns: a quarter with
+    no yield, one plus a quarter per entry or arc up to TILT_MAX, and
+    at least one for a target still owed its first look."""
+    tilt = TILT_FLOOR if yield_ <= 0 else min(TILT_MAX, 1.0 + yield_ / 4.0)
+    if fresh:
+        tilt = max(1.0, tilt)
+    return tilt
+
+
+def slice_plan(targets, base_seconds, runs=None):
+    """{target: {tilt, seconds, rounds, rate, yield}} for one cycle
+    (de_dust2, P1 and P2): each target's rounds are its tilted slice
+    times its measured rate, clamped, or SLICE_FIRST_ROUNDS with no
+    rate on record."""
+    runs = load_runs() if runs is None else runs
+    plan = {}
+    for target in targets:
+        rate = target_rate(target, runs)
+        got, fresh = target_yield(target, runs)
+        tilt = slice_tilt(got, fresh)
+        seconds = base_seconds * tilt
+        if rate is None:
+            rounds = SLICE_FIRST_ROUNDS
+        else:
+            rounds = int(min(SLICE_MAX_ROUNDS,
+                             max(SLICE_MIN_ROUNDS, seconds * rate)))
+        plan[target] = {"tilt": tilt, "seconds": seconds, "rounds": rounds,
+                        "rate": rate, "yield": got}
+    return plan
+
+
+def yield_table(hours=48, runs=None, now=None):
+    """Per-target rows over the last `hours` of grow records (de_dust2,
+    P10): cpu_h, tries per second, kept, arcs gained, accepted share,
+    kept per CPU-hour; rows by CPU spent, then a fleet row."""
+    runs = load_runs() if runs is None else runs
+    now = now or datetime.now(timezone.utc)
+    since = (now - timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rows = {}
+    for r in runs:
+        if r.get("kind") != "grow" or str(r.get("when", "")) < since:
+            continue
+        row = rows.setdefault(r.get("target"), {
+            "runs": 0, "seconds": 0.0, "tried": 0, "kept": 0, "arcs": 0,
+            "accepted": 0, "refused": 0, "crashes": 0, "slow": 0})
+        row["runs"] += 1
+        row["seconds"] += float(r.get("seconds") or 0)
+        row["tried"] += int(r.get("tried") or 0)
+        row["kept"] += len(r.get("kept") or [])
+        row["arcs"] += max(0, int(r.get("arcs_after") or 0)
+                           - int(r.get("arcs_before") or 0))
+        o = r.get("outcomes") or {}
+        row["accepted"] += int(o.get("accepted") or 0)
+        row["refused"] += int(o.get("refused") or 0)
+        row["crashes"] += int(o.get("crash") or 0)
+        row["slow"] += int(o.get("slow") or 0)
+    out = []
+    for target, row in sorted(rows.items(), key=lambda kv: -kv[1]["seconds"]):
+        out.append(_yield_row(target, row))
+    fleet = {k: sum(r[k] for r in rows.values()) for k in
+             ("runs", "seconds", "tried", "kept", "arcs", "accepted",
+              "refused", "crashes", "slow")} if rows else None
+    if fleet:
+        out.append(_yield_row("fleet", fleet))
+    return out
+
+
+def _yield_row(target, row):
+    cpu_h = row["seconds"] / 3600.0
+    tries = row["accepted"] + row["refused"]
+    return {"target": target, "runs": row["runs"], "cpu_h": cpu_h,
+            "tries_per_s": row["tried"] / row["seconds"] if row["seconds"] else 0.0,
+            "kept": row["kept"], "arcs": row["arcs"],
+            "accepted_share": row["accepted"] / tries if tries else 0.0,
+            "crashes": row["crashes"], "slow": row["slow"],
+            "kept_per_cpu_h": row["kept"] / cpu_h if cpu_h else 0.0}
+
+
+def format_yield(rows, hours):
+    lines = [f"de_dust2 yield, last {hours:g} h: {'target':12} {'runs':>4} "
+             f"{'cpu_h':>6} {'tries/s':>7} {'kept':>4} {'arcs+':>5} "
+             f"{'acc%':>4} {'crash':>5} {'slow':>4} {'kept/cpu_h':>10}"]
+    for r in rows:
+        lines.append(f"{'':24} {r['target']:12} {r['runs']:4d} "
+                     f"{r['cpu_h']:6.2f} {r['tries_per_s']:7.1f} "
+                     f"{r['kept']:4d} {r['arcs']:5d} "
+                     f"{r['accepted_share'] * 100:4.0f} {r['crashes']:5d} "
+                     f"{r['slow']:4d} {r['kept_per_cpu_h']:10.2f}")
+    return lines
+
+
 def load_runs():
     path = runs_path()
     if not os.path.exists(path):
@@ -8319,6 +9077,11 @@ def saturation(target):
 
 
 def cmd_stats(args, out=print):
+    if getattr(args, "yield_table", False):
+        hours = getattr(args, "hours", 48) or 48
+        for line in format_yield(yield_table(hours), hours):
+            out(line)
+        return 0
     for target in _targets(args.target):
         entries = load(corpus_path(target))
         crashes = load(corpus_path(target, crashes=True))
@@ -8369,6 +9132,12 @@ def main(argv=None):
         p.add_argument("--target", default="all",
                        help="one of %s, or all" % ", ".join(TARGETS))
         p.set_defaults(fn=fn)
+        if name == "stats":
+            p.add_argument("--yield", dest="yield_table", action="store_true",
+                           help="the per-target yield table over the last "
+                                "--hours of grows: CPU, rate, kept, arcs, "
+                                "accepted share, kept per CPU-hour")
+            p.add_argument("--hours", type=float, default=48)
         if name == "grow":
             p.add_argument("--rounds", type=int, default=None,
                            help="children to try per target "
@@ -8400,6 +9169,16 @@ def main(argv=None):
                            help="choose mutators uniformly instead of "
                                 "steering toward the ones still finding "
                                 "arcs in the last grows")
+            p.add_argument("--slice", type=float, default=None,
+                           help="with --minutes: seconds of each target's "
+                                "turn per cycle, tilted by its yield; its "
+                                "rounds follow from its measured rate "
+                                "(HP_DE_DUST_SLICE, default %d; --rounds "
+                                "names a fixed count instead)"
+                                % DEFAULT_SLICE_SEC)
+            p.add_argument("--uniform-parents", action="store_true",
+                           help="draw parents uniformly instead of by "
+                                "rarity and acceptance")
             p.add_argument("--order", choices=("stale", "fixed"),
                            default="stale",
                            help="with --minutes: the order the targets "
