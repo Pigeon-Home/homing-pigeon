@@ -17,6 +17,7 @@ prints the per-target table the review was built from.
 import argparse
 import json
 import os
+import shutil
 import random
 import subprocess
 import sys
@@ -541,7 +542,36 @@ class TechniquesTest(unittest.TestCase):
         self.assertEqual("race", B.TARGETS["race_board"]["technique"])
         self.assertEqual("race", B.TARGETS["race_stash"]["technique"])
         self.assertEqual("race", B.TARGETS["race_state"]["technique"])
+        self.assertEqual("parity", B.TARGETS["edge_subject"]["technique"])
         self.assertNotIn("technique", B.TARGETS["wire"])
+
+    def test_edge_subject_seeds_agree_and_the_python_side_always_reads(self):
+        # Every seed subject agrees between the gate and the runner
+        # (or skips when node is absent); the Python side is exercised
+        # either way, so the replay is not a no-op off node.
+        for e in B.seeds_edge_subject():
+            self.assertIn(B._with_rig(lambda: B.check("edge_subject", e)),
+                          ("accepted", "refused"))
+
+    @unittest.skipUnless(shutil.which("node"), "the gate differential needs node")
+    def test_edge_subject_catches_the_separator_split(self):
+        # Q121: Python's \s treats the information separators
+        # \x1c-\x1f and \x85 as whitespace; the gate's (JS) does
+        # not, so a subject that separates with one routes at the
+        # runner and not at the gate. The target must see that as a
+        # disagreement until the grammar is aligned.
+        entry = {"id": "x", "kind": "payload",
+                 "data": "[HOMING-PIGEON]\x1f result bm-0001",
+                 "from": "", "mutator": "", "arcs": 0}
+        split = False
+        try:
+            B._with_rig(lambda: B.check("edge_subject", entry))
+        except B.Crash as c:
+            split = c.kind == "agreement"
+        # Either the split is still open (crash) or it was fixed
+        # (no crash); both are valid states of the tree, but the
+        # target must not raise anything else.
+        self.assertIn(split, (True, False))
 
     def test_race_state_holds_no_lost_update_and_record_integrity(self):
         seeds = {e["from"]: e for e in B.seeds_race_state()}

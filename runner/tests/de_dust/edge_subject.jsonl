@@ -1,0 +1,21 @@
+{"de_dust": 1, "target": "edge_subject", "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"}
+{"arcs": 0, "data": "[HOMING-PIGEON] job bm-0001", "from": "seed:edge_subject_0", "id": "7f66c62fd4db6629", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] result bm-0001", "from": "seed:edge_subject_1", "id": "6c36b047bcd77f0c", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] qresult q-0001", "from": "seed:edge_subject_2", "id": "7153ce72021fe391", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] TEST job bm-0002", "from": "seed:edge_subject_3", "id": "ee61dba2d6d6c28c", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "Re: [HOMING-PIGEON] job bm-0003", "from": "seed:edge_subject_4", "id": "8357e0b95b14fed9", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] job", "from": "seed:edge_subject_5", "id": "ac148ebf570826ed", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON]   job   bm-0004", "from": "seed:edge_subject_6", "id": "8ce4d1ada04cc31f", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON]\tjob\tbm-0005", "from": "seed:edge_subject_7", "id": "1e54d5db68e848af", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[homing-pigeon] JOB bm-0006", "from": "seed:edge_subject_8", "id": "7e4fa644ce972739", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] a b c job bm-0007", "from": "seed:edge_subject_9", "id": "f5f0241759598446", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] job bm result r1", "from": "seed:edge_subject_10", "id": "075578fdd27966c5", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] result r1 job j1", "from": "seed:edge_subject_11", "id": "e4bf24b38a9fef5a", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] job ../escape", "from": "seed:edge_subject_12", "id": "88cf3121b7f1bcf1", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] job id\u00a0two", "from": "seed:edge_subject_13", "id": "a04a19fa4af84e82", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] job \u2028x", "from": "seed:edge_subject_14", "id": "88cd2a77a09ee316", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "nothing to see here", "from": "seed:edge_subject_15", "id": "cd7293d85ba07362", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "", "from": "seed:edge_subject_16", "id": "a2410027290d0b9e", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON]", "from": "seed:edge_subject_17", "id": "d92eb86034998194", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON] word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word job tail", "from": "seed:edge_subject_18", "id": "8c955711898c47f0", "kind": "payload", "mutator": "seed"}
+{"arcs": 0, "data": "[HOMING-PIGEON]                                                                                                                                                                                                        job spaced", "from": "seed:edge_subject_19", "id": "b1580a247d8fcf82", "kind": "payload", "mutator": "seed"}

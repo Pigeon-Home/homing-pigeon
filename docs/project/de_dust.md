@@ -132,6 +132,7 @@ peer on the wire reaches first.
 | 24 | `race_stash` | `runner/runner.py` under threads: lanes of stash, deliver, fail, undeliver and resend over one outbox; a sent body was stashed, and one key is not delivered twice with no undeliver between | in the corpus (de_dust2, technique `race`) |
 | 25 | `race_state` | `runner/runner.py` under threads: lanes over the pool's seen and retained files; the seen file loses no key a thread marked, and a retained id reads back as one complete write (a second save of the same id replaces the first) | in the corpus (de_dust2, technique `race`) |
 | 26 | `dtls_hostile` | `runner/wire/dtlsproto.py`, stateful: the client against a server that does not hold its key, the wire mutated in flight; no key, no session -- the client never establishes and never surfaces a server message, raising only `DtlsError` (`docs/project/de_dust2.md` section 7) | in the corpus (de_dust2, technique `protocol`) |
+| 27 | `edge_subject` | `runner/wire/transports.py` vs the hosted queue's Worker (`runner/cloud/queues-worker/src/index.js`): one subject line, and the gate's `jobIdOf`/`resultIdOf` must read the same job and result id as the runner's `_JOB_ID_RE`/`_RESULT_ID_RE`, over a node bridge; skipped when node is absent (`docs/project/de_dust2.md` section 7, Q121) | in the corpus (de_dust2, technique `parity`) |
 
 The `dtls` target's core holds three resumption tickets on every
 replay (de_dust2, P5): one issued under the key in its map, one

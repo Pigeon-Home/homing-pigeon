@@ -3180,6 +3180,130 @@ def seeds_dtls_hostile():
             for name, script in specs]
 
 
+class _EdgeSubject:
+    """The Worker's subject router, one node process for the run
+    (de_dust2). None when node is not there: the campaign still
+    replays. Returns (job_id, result_id) as the gate reads them."""
+
+    proc = None
+    skip = False
+    lock = threading.Lock()
+    script = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "cloud/queues-worker/src/edge_subject_stdio.mjs")
+
+    @classmethod
+    def ids(cls, subject):
+        with cls.lock:
+            if cls.skip:
+                return None
+            if cls.proc is None or cls.proc.poll() is not None:
+                try:
+                    cls.proc = subprocess.Popen(
+                        ["node", cls.script],
+                        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                        stderr=subprocess.DEVNULL, text=True, bufsize=1)
+                except OSError:
+                    cls.skip = True
+                    return None
+            try:
+                cls.proc.stdin.write(json.dumps(
+                    {"subject": subject}, ensure_ascii=True) + "\n")
+                cls.proc.stdin.flush()
+                line = cls.proc.stdout.readline()
+            except (OSError, UnicodeEncodeError, TypeError, ValueError):
+                cls._drop()
+                return None
+            if not line:
+                cls._drop()
+                return None
+            try:
+                got = json.loads(line)
+            except ValueError:
+                cls._drop()
+                return None
+            if not isinstance(got, dict) or set(got) - {"job", "result"}:
+                cls._drop()
+                return None
+            return (got.get("job"), got.get("result"))
+
+    @classmethod
+    def _drop(cls):
+        proc = cls.proc
+        cls.proc = None
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+
+
+def check_edge_subject(entry):
+    """edge_subject: one subject line (de_dust2). The hosted queue's
+    Worker routes a message by the id it reads from the subject with
+    jobIdOf and resultIdOf; the runner reads the same subject with
+    _JOB_ID_RE and _RESULT_ID_RE (runner/wire/transports.py), the
+    same two patterns. Contract: the gate and the runner read the
+    same job id and the same result id from every subject -- else a
+    message is one id at the gate and another, or none, at the
+    runner, and the job routes two ways. Neither extractor raises;
+    a pathological subject that makes either regex backtrack is
+    caught by the slow class. Accepted when an id was read, refused
+    when neither side read one. Skipped (refused) when node is
+    absent, so the campaign still replays."""
+    subject = entry["data"]
+    if not isinstance(subject, str):
+        # A mutator may hand a non-string; that is not a subject, not
+        # a fault. Both sides read nothing from it.
+        return "refused"
+    if TU._lone_surrogate(subject):
+        note("edge_subject", "lone surrogate")
+        return "refused"
+    pj = TR._JOB_ID_RE.search(subject)
+    pr = TR._RESULT_ID_RE.search(subject)
+    py_job = pj.group(1) if pj else None
+    py_result = pr.group(1) if pr else None
+    pair = _EdgeSubject.ids(subject)
+    if pair is None:
+        note("edge_subject", "skipped")
+        return "accepted" if (py_job or py_result) else "refused"
+    edge_job, edge_result = pair
+    if edge_job != py_job:
+        raise Crash("agreement", "the gate and the runner read different "
+                    f"job ids from the subject: gate {edge_job!r}, "
+                    f"runner {py_job!r}")
+    if edge_result != py_result:
+        raise Crash("agreement", "the gate and the runner read different "
+                    f"result ids from the subject: gate {edge_result!r}, "
+                    f"runner {py_result!r}")
+    note("edge_subject", "job" if py_job else "-", "result" if py_result else "-")
+    return "accepted" if (py_job or py_result) else "refused"
+
+
+def seeds_edge_subject():
+    subjects = [
+        "[HOMING-PIGEON] job bm-0001",
+        "[HOMING-PIGEON] result bm-0001",
+        "[HOMING-PIGEON] qresult q-0001",
+        "[HOMING-PIGEON] TEST job bm-0002",
+        "Re: [HOMING-PIGEON] job bm-0003",
+        "[HOMING-PIGEON] job",                      # no id
+        "[HOMING-PIGEON]   job   bm-0004",          # extra spaces
+        "[HOMING-PIGEON]\tjob\tbm-0005",            # tabs
+        "[homing-pigeon] JOB bm-0006",              # case
+        "[HOMING-PIGEON] a b c job bm-0007",        # words between
+        "[HOMING-PIGEON] job bm result r1",         # job wins, first match
+        "[HOMING-PIGEON] result r1 job j1",         # both present
+        "[HOMING-PIGEON] job ../escape",            # id the runner would reject later
+        "[HOMING-PIGEON] job id two",          # nbsp inside
+        "[HOMING-PIGEON] job  x",              # line separator
+        "nothing to see here",
+        "",
+        "[HOMING-PIGEON]",
+        "[HOMING-PIGEON] " + "word " * 40 + "job tail",   # many words
+        "[HOMING-PIGEON]" + " " * 200 + "job spaced",      # long run of spaces
+    ]
+    return [make_entry("payload", subj, "seed:edge_subject_%d" % i, "seed")
+            for i, subj in enumerate(subjects)]
+
+
+
 def check_secret(entry):
     """secret: one candidate shared secret, as text, before the two
     strength rules that must stay in step (send_job.py's comment):
@@ -9058,6 +9182,10 @@ TARGETS = {
     "dtls_hostile": {"files": [_src("wire", "dtlsproto.py")],
                      "check": check_dtls_hostile, "seeds": seeds_dtls_hostile,
                      "technique": "protocol"},
+    # de_dust2: the hosted queue's subject router vs the runner's.
+    "edge_subject": {"files": [_src("wire", "transports.py")],
+                     "check": check_edge_subject, "seeds": seeds_edge_subject,
+                     "technique": "parity"},
 }
 
 
@@ -10605,9 +10733,14 @@ def cmd_distill(args, out=print):
     sound. Crash and slow files are left alone."""
     status = 0
     for target in _targets(args.target):
-        if TARGETS[target].get("technique") == "race":
+        tech = TARGETS[target].get("technique")
+        if tech == "race":
             out(f"{target}: skipped (a race target's arcs are not "
                 "deterministic)")
+            continue
+        if tech == "parity":
+            out(f"{target}: skipped (a parity target's coverage lives in "
+                "the other implementation; there is no Python arc to cover)")
             continue
         entries = load(corpus_path(target))
         if not entries:

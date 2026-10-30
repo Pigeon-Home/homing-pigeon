@@ -455,7 +455,7 @@ The loop:
    (all targets); San Francisco the same with `--target
    query,local,board_mail,v2_mail --slice 1800`; Menlo Park two
    grow processes, each `--jobs 1`, one on `--target wire,cloud,v2,crypto,local,stash,mail,board,board_ops,channels,manifest,inbox,local_inbox,secret,queries,names,query,board_mail,v2_mail,stage,collect
-   --slice 120` and one on `--target keydir,address,dtls,dtls_session,dtls_hostile,race_board,race_stash,race_state --slice
+   --slice 120` and one on `--target keydir,address,dtls,dtls_session,dtls_hostile,edge_subject,race_board,race_stash,race_state --slice
    600` (two processes never share a target, since each target owns
    its corpus file), with `runner/tools/de_dust_survivors.py` once a
    day in a fixed slot.

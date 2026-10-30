@@ -243,7 +243,7 @@ forum:
   query,local,board_mail,v2_mail --slice 1800`.
 - Menlo Park: two grow processes, each `--jobs 1`: one on every
   target but the new three, `--target wire,cloud,v2,crypto,local,stash,mail,board,board_ops,channels,manifest,inbox,local_inbox,secret,queries,names,query,board_mail,v2_mail,stage,collect --slice 120 --minutes 55`,
-  and one on `--target keydir,address,dtls,dtls_session,dtls_hostile,race_board,race_stash,race_state --slice 600 --minutes 55`
+  and one on `--target keydir,address,dtls,dtls_session,dtls_hostile,edge_subject,race_board,race_stash,race_state --slice 600 --minutes 55`
   (two processes never share a target, since each target owns its
   corpus file); `de_dust_survivors.py` once a day in a fixed slot;
   no other grow work beside them.
@@ -339,6 +339,22 @@ bank and the yield table are the same for all of them.
   technique sits out the Windows-surface differential and the
   survivors' kill set; its proof is many schedules with no
   violation, logged run by run.
+- **Cross-implementation parity** (`edge_subject`, and the `edge`
+  differential inside `wire`/`crypto`): two implementations of one
+  wire contract, held to the same answer. The hosted queue's Worker
+  is JavaScript; the runner is Python; both decide whether a signed
+  body verifies (`edge`) and what id a subject routes by
+  (`edge_subject`), and they must agree, or the gate queues a job
+  the runner rejects or routes it by an id the runner does not. The
+  check drives the Worker's pure functions over a one-process node
+  bridge (`runner/cloud/queues-worker/src/*_stdio.mjs`) and compares
+  with the Python reader on the same input; when node is absent the
+  differential is skipped and the Python side still runs, so the
+  campaign replays anywhere. `edge_subject` found its first finding
+  on its first grow: Python's `\s` counts the information-separator
+  controls `\x1c-\x1f` and `\x85` as whitespace and JavaScript's
+  does not, so a subject separated by one routes at the runner and
+  not at the gate (Q121).
 
 Keeping the corpus fast: `distill` trims a target's corpus to a
 minimal set that still reaches every arc it reaches now (seeds

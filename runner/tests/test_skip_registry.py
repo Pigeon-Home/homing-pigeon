@@ -132,6 +132,13 @@ REGISTERED = {
     "these jobs use sh": "run on POSIX",
     "wipe unload differs on Windows": "run on POSIX",
     "clamdscan shim is a shell script": "run on POSIX",
+    "the gate differential needs node":
+        "test_de_dust2's edge_subject parity check drives the Worker's "
+        "JavaScript over a node bridge; off node the Python side still "
+        "runs, so only the cross-implementation assertion is skipped",
+    "peak RSS is read from /proc":
+        "test_de_dust2's synthetic-grow memory peak reads "
+        "/proc/self/status; runs on Linux, skipped where /proc is absent",
     "Windows Defender is present": "run in the Windows job",
     "Windows reads the event log": "run in the Windows job",
     "Windows reads the registry": "run in the Windows job",

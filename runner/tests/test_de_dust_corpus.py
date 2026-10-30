@@ -161,6 +161,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_dtls_hostile(self):
         self._check("dtls_hostile")
 
+    def test_edge_subject(self):
+        self._check("edge_subject")
+
     def test_race_stash(self):
         self._check("race_stash")
 
@@ -287,7 +290,11 @@ class CorpusFilesTest(unittest.TestCase):
                 arcs = json.load(fh)
             self.assertEqual(arcs["Agent-Stamp"], B.STAMP)
             self.assertEqual(arcs["target"], target)
-            self.assertTrue(arcs["arcs"], target)
+            # A parity target's reader is the other implementation's
+            # (and the Python side is C-level regex), so it traces no
+            # Python arc; its value is the differential, not coverage.
+            if B.TARGETS[target].get("technique") != "parity":
+                self.assertTrue(arcs["arcs"], target)
             for row in arcs["arcs"]:
                 self.assertEqual(len(row), 3)
                 self.assertIsInstance(row[0], str)

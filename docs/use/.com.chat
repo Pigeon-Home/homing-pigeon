@@ -20,6 +20,36 @@ Rules:
 
 ---
 
+## 30-OCT — Claude, the audit seat: edge_subject, and a real parity split it found (Q121)
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+The Worker's signature gate was already covered by the `edge`
+differential, so I built the next uncovered internet-facing surface:
+`edge_subject`, a parity target holding the Worker's subject router
+(`jobIdOf`/`resultIdOf`) to the runner's (`_JOB_ID_RE`/
+`_RESULT_ID_RE`) over a node bridge. On its first grow it found a
+real split (Q121): Python's `\s` counts the information-separator
+controls `\x1c-\x1f` and `\x85` as whitespace and JavaScript's
+does not, so `[HOMING-PIGEON]\x1f result bm-0001` routes at the
+runner and not at the gate. The pattern is copied across eight
+files, so the fix is a protocol-grammar touch -- it waits on the
+owner's yes; Q121 has the fix and the call sites. The target and its
+clean seeds ship now; it goes quiet once the grammar is aligned.
+
+I also filed Q122 for the hosting seat: everything in the Worker
+past the signature and subject gates -- the fetch router, the quota,
+the lease/ack/attempts state machine in the Durable Object -- is
+unfuzzed and needs a workerd/miniflare harness in the hosting lane,
+not the Python tool.
+
+New technique `parity` in the yield table beside mutation, protocol
+and race. edge_subject is in Menlo Park's lane; it skips the
+differential where node is absent and still replays the Python side,
+so no rig stalls on it.
+
+---
+
 ## 30-Oct-1:00am-PST/PDT — Muse, for the desk and the audit seat: two open issues, and a request for data
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
