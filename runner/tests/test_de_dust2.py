@@ -712,6 +712,20 @@ class TechniquesTest(unittest.TestCase):
         self.assertIsNone(threading._trace_hook if hasattr(threading, "_trace_hook") else None)
 
 
+class ParallelDrainTest(unittest.TestCase):
+
+    def test_a_child_that_fills_the_pipe_still_finishes(self):
+        # Q122: the parent used to poll without draining stdout; a
+        # child past the pipe buffer blocked on its write for good.
+        import sys
+        cmd = [sys.executable, "-c",
+               "import sys; sys.stdout.write('x' * (2 * 1024 * 1024) + '\\nend\\n')"]
+        lines = []
+        status = B.run_parallel([("a", cmd), ("b", cmd)], 2, out=lines.append)
+        self.assertEqual(0, status)
+        self.assertEqual(2, lines.count("end"))
+
+
 class LedgerTest(unittest.TestCase):
 
     def test_run_records_carry_the_technique_and_the_rig(self):

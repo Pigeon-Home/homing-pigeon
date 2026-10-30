@@ -944,6 +944,9 @@ def check_stash(entry):
 
 
 _JOB_SUBJECT = SUBJ.JOB_ID_RE  # the one grammar (Q121)
+# An id a target puts in a subject must be one token of that grammar:
+# the gap class is the Worker's, not Python's isspace (Q121).
+_SUBJECT_TOKEN = re.compile(SUBJ.TOKEN_CLASS + "+")
 MAILBOX = "runner@example.com"
 
 
@@ -2878,8 +2881,12 @@ def check_race_state(entry):
                         key = tag if isinstance(tag, str) and tag else f"bm-seen-{t}-{i}"
                         R.save_seen(seen_path, {key: True},
                                     keep_sec=R.seen_keep_sec({}))
-                        with marked_lock:
-                            marked[key] = t
+                        # A key with a NUL is dropped by the store's
+                        # own rule (_write_seen_kept); the file is not
+                        # held to it.
+                        if "\x00" not in key:
+                            with marked_lock:
+                                marked[key] = t
                     elif name == "load_seen":
                         got = R.load_seen(seen_path)
                         if not isinstance(got, dict):
@@ -3952,7 +3959,7 @@ def check_query(entry):
         data = {"query": data}
     subject_id = data.get("subject_id")
     if not isinstance(subject_id, str) or not subject_id \
-            or any(c.isspace() for c in subject_id):
+            or not _SUBJECT_TOKEN.fullmatch(subject_id):
         subject_id = "bm-q-0001"
     payload = _stamp_issued_at(data.get("query"))
     if not isinstance(payload, dict):
@@ -4323,7 +4330,7 @@ def check_board_mail(entry):
         kind = "task_submit"
     ident = data.get("ident")
     if not isinstance(ident, str) or not ident \
-            or any(c.isspace() for c in ident):
+            or not _SUBJECT_TOKEN.fullmatch(ident):
         ident = "bm-task-0001"
     payload = data.get("payload")
     if not isinstance(payload, dict):
@@ -4613,7 +4620,7 @@ def check_v2_mail(entry):
         kind = "question"
     ident = data.get("ident")
     if not isinstance(ident, str) or not ident \
-            or any(c.isspace() for c in ident):
+            or not _SUBJECT_TOKEN.fullmatch(ident):
         ident = "q.bm-job-0001"
     payload = _stamp_issued_at(data.get("payload"))
     if not isinstance(payload, dict):
@@ -10008,11 +10015,34 @@ def run_parallel(commands, jobs, out=print, spawn=None, minutes=0.0,
     pending = list(commands)
     running = []
     status = 0
+
+    def _drain(proc):
+        """A reader thread for the child's stdout, so a child that
+        writes more than the pipe holds never blocks on the write
+        while the parent polls (Q122, Muse's Menlo Park stall). The
+        bytes are collected for the whole-output print at the end.
+        A fake process without a pipe is left to communicate()."""
+        stream = getattr(proc, "stdout", None)
+        if stream is None or not hasattr(stream, "read"):
+            return None
+        chunks = []
+
+        def pump():
+            try:
+                for chunk in iter(lambda: stream.read(65536), b""):
+                    chunks.append(chunk)
+            except (OSError, ValueError):
+                pass
+        t = threading.Thread(target=pump, daemon=True)
+        t.start()
+        return t, chunks
+
     while pending or running:
         while pending and len(running) < max(1, jobs) and (
                 deadline is None or clock() < deadline):
             target, cmd = pending.pop(0)
-            running.append((target, cmd, spawn(cmd)))
+            proc = spawn(cmd)
+            running.append((target, cmd, proc, _drain(proc)))
         finished = [r for r in running if r[2].poll() is not None]
         if not finished:
             if not running:
@@ -10021,8 +10051,13 @@ def run_parallel(commands, jobs, out=print, spawn=None, minutes=0.0,
             continue
         for item in finished:
             running.remove(item)
-            target, cmd, proc = item
-            output, _ = proc.communicate()
+            target, cmd, proc, drain = item
+            if drain is not None:
+                drain[0].join()
+                proc.wait()
+                output = b"".join(drain[1])
+            else:
+                output, _ = proc.communicate()
             text = output.decode("utf-8", "replace") if isinstance(
                 output, bytes) else (output or "")
             for line in text.rstrip().splitlines():

@@ -371,7 +371,7 @@ files, so the fix is a protocol-grammar touch -- it waits on the
 owner's yes; Q121 has the fix and the call sites. The target and its
 clean seeds ship now; it goes quiet once the grammar is aligned.
 
-I also filed Q122 for the hosting seat: everything in the Worker
+I also filed Q123 (first numbered Q122) for the hosting seat: everything in the Worker
 past the signature and subject gates -- the fetch router, the quota,
 the lease/ack/attempts state machine in the Durable Object -- is
 unfuzzed and needs a workerd/miniflare harness in the hosting lane,

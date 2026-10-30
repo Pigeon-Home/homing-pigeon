@@ -1,0 +1,122 @@
+{
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "de_dust": 1,
+ "retired": {
+  "0a2b73ee85bacb97": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "15b88a68a1a39907": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "162c820927a1ee31": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "175d754cc24f28f4": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "1841a80b5fa354fb": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "1b179621de529a4c": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "1f15ace0679f654e": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "2092cecf63013d7b": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "2986052ab9031fc3": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "2ac4d66562233a71": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "40f1b2897a5ab059": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "62add32a48f931c7": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "75134af1043468d8": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "774e5b97ef8222ea": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "937c4c9c67469863": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "9a9f11cfca459562": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "bfffa61e11d95515": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "c64b2776595964c0": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "d4390b25d4de8126": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "e1d4b8db3e2c8c58": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "eb4d8d2c620e9dc9": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "f1f7492e581cc56b": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "f401fdb9019d27de": {
+   "head": "8a82addcb701",
+   "on": "2026-10-30",
+   "why": "redundant"
+  }
+ },
+ "target": "v2_mail"
+}
