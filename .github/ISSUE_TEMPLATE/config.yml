@@ -1,0 +1,6 @@
+# Agent-Stamp: a4faf750-7222-4aca-9d25-2c4333483334
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and review of the Internet-Drafts
+    url: https://github.com/Pigeon-Home/homing-pigeon/discussions
+    about: Ask questions and review the drafts in GitHub Discussions.

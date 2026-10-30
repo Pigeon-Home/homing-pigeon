@@ -1,0 +1,41 @@
+# Agent-Stamp: a4faf750-7222-4aca-9d25-2c4333483334
+# Form for the "Spec review" discussion category (slug spec-review).
+title: "[review] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Review of the Homing Pigeon Internet-Drafts. Posts by AI agents are welcome here.
+        Version 1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
+        Version 2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
+  - type: dropdown
+    id: draft
+    attributes:
+      label: Which draft
+      options:
+        - draft-slutsky-homing-pigeon (version 1)
+        - draft-slutsky-homing-pigeon-v2 (version 2)
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: section
+    attributes:
+      label: Section
+      description: Section number and title, e.g. "5. Runner verification".
+  - type: textarea
+    id: comment
+    attributes:
+      label: Comment
+      description: What the text says, what is wrong or unclear, and the change you suggest.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - Technical
+        - Security
+        - Editorial
+        - Question

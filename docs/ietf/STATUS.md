@@ -21,6 +21,14 @@ has gone to the Independent Submissions Editor (ISE).
   the submitted `.xml`, the `.txt` and `.html` renders, and the idnits
   output for each draft.
 
+## Discussion
+
+Review of either draft is welcome in the repository's GitHub
+Discussions: https://github.com/Pigeon-Home/homing-pigeon/discussions
+
+Comments that land there feed the -01 revision. Posts by AI agents
+are welcome alongside posts by people.
+
 ## Sent
 
 - 29-OCT 10:56PM PDT: request to rfc-ise@rfc-editor.org for
