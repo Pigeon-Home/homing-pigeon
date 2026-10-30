@@ -16,16 +16,16 @@ keyword: [determination, question, answer, context segment]
 stand_alone: yes
 pi: [toc, sortrefs, symrefs]
 author:
-  - ins: "A. Placeholder"
-    name: "Author Placeholder"
-    organization: Pigeon-Home
-    email: "author@example.com"
+  - ins: "A. Slutsky"
+    name: "Andrew Slutsky"
+    email: "slutsky5544@gmail.com"
 
 normative:
   I-D.slutsky-homing-pigeon:
     title: "Homing Pigeon Message Protocol, Version 1"
     author:
-      - name: "Author Placeholder"
+      - name: "Andrew Slutsky"
+        ins: "A. Slutsky"
     date: 2026-10
     seriesinfo:
       Internet-Draft: draft-slutsky-homing-pigeon-00

@@ -2,9 +2,9 @@
 
 
 
-Network Working Group                                     A. Placeholder
-Internet-Draft                                               Pigeon-Home
-Intended status: Informational                           30 October 2026
+Network Working Group                                         A. Slutsky
+Internet-Draft                                           30 October 2026
+Intended status: Informational                                          
 Expires: 3 May 2027
 
 
@@ -53,7 +53,7 @@ Status of This Memo
 
 
 
-Placeholder                Expires 3 May 2027                   [Page 1]
+Slutsky                    Expires 3 May 2027                   [Page 1]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Placeholder                Expires 3 May 2027                   [Page 2]
+Slutsky                    Expires 3 May 2027                   [Page 2]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -165,7 +165,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                   [Page 3]
+Slutsky                    Expires 3 May 2027                   [Page 3]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -221,7 +221,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                   [Page 4]
+Slutsky                    Expires 3 May 2027                   [Page 4]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -277,7 +277,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                   [Page 5]
+Slutsky                    Expires 3 May 2027                   [Page 5]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -333,7 +333,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                   [Page 6]
+Slutsky                    Expires 3 May 2027                   [Page 6]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -389,7 +389,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                   [Page 7]
+Slutsky                    Expires 3 May 2027                   [Page 7]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -445,7 +445,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                   [Page 8]
+Slutsky                    Expires 3 May 2027                   [Page 8]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -501,7 +501,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                   [Page 9]
+Slutsky                    Expires 3 May 2027                   [Page 9]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -557,7 +557,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 10]
+Slutsky                    Expires 3 May 2027                  [Page 10]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -613,7 +613,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 11]
+Slutsky                    Expires 3 May 2027                  [Page 11]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -669,7 +669,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 12]
+Slutsky                    Expires 3 May 2027                  [Page 12]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -725,7 +725,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 13]
+Slutsky                    Expires 3 May 2027                  [Page 13]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -781,7 +781,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 14]
+Slutsky                    Expires 3 May 2027                  [Page 14]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -837,7 +837,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 15]
+Slutsky                    Expires 3 May 2027                  [Page 15]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -893,7 +893,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 16]
+Slutsky                    Expires 3 May 2027                  [Page 16]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -949,7 +949,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 17]
+Slutsky                    Expires 3 May 2027                  [Page 17]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 18]
+Slutsky                    Expires 3 May 2027                  [Page 18]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 19]
+Slutsky                    Expires 3 May 2027                  [Page 19]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1117,7 +1117,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 20]
+Slutsky                    Expires 3 May 2027                  [Page 20]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1173,7 +1173,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 21]
+Slutsky                    Expires 3 May 2027                  [Page 21]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1229,7 +1229,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 22]
+Slutsky                    Expires 3 May 2027                  [Page 22]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1285,7 +1285,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 23]
+Slutsky                    Expires 3 May 2027                  [Page 23]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1341,7 +1341,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 24]
+Slutsky                    Expires 3 May 2027                  [Page 24]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1397,7 +1397,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 25]
+Slutsky                    Expires 3 May 2027                  [Page 25]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1453,7 +1453,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 26]
+Slutsky                    Expires 3 May 2027                  [Page 26]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1509,7 +1509,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 27]
+Slutsky                    Expires 3 May 2027                  [Page 27]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1565,7 +1565,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 28]
+Slutsky                    Expires 3 May 2027                  [Page 28]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1621,7 +1621,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 29]
+Slutsky                    Expires 3 May 2027                  [Page 29]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1677,7 +1677,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 30]
+Slutsky                    Expires 3 May 2027                  [Page 30]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1733,7 +1733,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 31]
+Slutsky                    Expires 3 May 2027                  [Page 31]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1789,7 +1789,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 32]
+Slutsky                    Expires 3 May 2027                  [Page 32]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1845,7 +1845,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 33]
+Slutsky                    Expires 3 May 2027                  [Page 33]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1901,7 +1901,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 34]
+Slutsky                    Expires 3 May 2027                  [Page 34]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1957,7 +1957,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 35]
+Slutsky                    Expires 3 May 2027                  [Page 35]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -2013,7 +2013,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 36]
+Slutsky                    Expires 3 May 2027                  [Page 36]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -2069,7 +2069,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 37]
+Slutsky                    Expires 3 May 2027                  [Page 37]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -2094,8 +2094,8 @@ Internet-Draft              Homing Pigeon v1                October 2026
 23.2.  Informative References
 
    [I-D.slutsky-homing-pigeon-v2]
-              Placeholder, A., "Homing Pigeon Message Protocol, Version
-              2: Determinations, Questions, and Shared Context", Work in
+              Slutsky, A., "Homing Pigeon Message Protocol, Version 2:
+              Determinations, Questions, and Shared Context", Work in
               Progress, Internet-Draft, draft-slutsky-homing-pigeon-
               v2-00, October 2026,
               <https://datatracker.ietf.org/doc/html/draft-slutsky-
@@ -2107,9 +2107,8 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 Author's Address
 
-   Author Placeholder
-   Pigeon-Home
-   Email: author@example.com
+   Andrew Slutsky
+   Email: slutsky5544@gmail.com
 
 
 
@@ -2125,4 +2124,5 @@ Author's Address
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 38]
+
+Slutsky                    Expires 3 May 2027                  [Page 38]

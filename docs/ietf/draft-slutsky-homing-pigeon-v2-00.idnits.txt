@@ -19,10 +19,11 @@ $ idnits --offline --no-progress --no-color -o simple draft-slutsky-homing-pigeo
 FAIL - Document draft-slutsky-homing-pigeon-v2-00.xml has nits. (mode: normal)
 
 [1] Comment | NON_ASCII_CHARACTERS | Document contains non-ASCII characters: (U+00A0, NO-BREAK SPACE) x1, — (U+2014, EM DASH) x4. Check that each is needed and displays correctly. Outside of names, describe them using U+ notation and/or their Unicode names.
-[2] Error | POSSIBLE_DOWNREF | RFC 2119 status can't be fetched. Reference is possible downref
-[3] Error | POSSIBLE_DOWNREF | RFC 8174 status can't be fetched. Reference is possible downref
-[4] Warning | NORMATIVE_REFERENCE_TO_DRAFT | Normative reference to the Internet-Draft draft-slutsky-homing-pigeon-00. A document is not published as an RFC before the drafts it references normatively.
-[5] Comment | UNDEFINED_STATUS | RFC 2119 does not have a defined status or could not be fetched.
-[6] Comment | UNDEFINED_STATUS | RFC 8174 does not have a defined status or could not be fetched.
-[7] Warning | UNDEFINED_STATE | The draft reference draft-slutsky-homing-pigeon does not have a defined state or could not be fetched.
-[8] Comment | LINE_PI | Document contains <?line 123?> processing instruction tags.
+[2] Comment | EMPTY_AUTHOR_ORGANIZATION | The author organization is defined but empty. | Author 1 (Andrew Slutsky) (rfc.front.author[0].organization) | Ln 16 Col 7
+[3] Error | POSSIBLE_DOWNREF | RFC 2119 status can't be fetched. Reference is possible downref
+[4] Error | POSSIBLE_DOWNREF | RFC 8174 status can't be fetched. Reference is possible downref
+[5] Warning | NORMATIVE_REFERENCE_TO_DRAFT | Normative reference to the Internet-Draft draft-slutsky-homing-pigeon-00. A document is not published as an RFC before the drafts it references normatively.
+[6] Comment | UNDEFINED_STATUS | RFC 2119 does not have a defined status or could not be fetched.
+[7] Comment | UNDEFINED_STATUS | RFC 8174 does not have a defined status or could not be fetched.
+[8] Warning | UNDEFINED_STATE | The draft reference draft-slutsky-homing-pigeon does not have a defined state or could not be fetched.
+[9] Comment | LINE_PI | Document contains <?line 123?> processing instruction tags.

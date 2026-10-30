@@ -16,10 +16,9 @@ keyword: [email, HMAC, job execution, DTLS]
 stand_alone: yes
 pi: [toc, sortrefs, symrefs]
 author:
-  - ins: "A. Placeholder"
-    name: "Author Placeholder"
-    organization: Pigeon-Home
-    email: "author@example.com"
+  - ins: "A. Slutsky"
+    name: "Andrew Slutsky"
+    email: "slutsky5544@gmail.com"
 
 normative:
   RFC2104:
@@ -172,7 +171,8 @@ informative:
   I-D.slutsky-homing-pigeon-v2:
     title: "Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context"
     author:
-      - name: "Author Placeholder"
+      - name: "Andrew Slutsky"
+        ins: "A. Slutsky"
     date: 2026-10
     seriesinfo:
       Internet-Draft: draft-slutsky-homing-pigeon-v2-00

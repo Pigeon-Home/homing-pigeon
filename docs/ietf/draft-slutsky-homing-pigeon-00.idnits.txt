@@ -41,33 +41,34 @@ $ idnits --offline --no-progress --no-color -o simple draft-slutsky-homing-pigeo
 FAIL - Document draft-slutsky-homing-pigeon-00.xml has nits. (mode: normal)
 
 [1] Comment | NON_ASCII_CHARACTERS | Document contains non-ASCII characters: (U+00A0, NO-BREAK SPACE) x1, — (U+2014, EM DASH) x6. Check that each is needed and displays correctly. Outside of names, describe them using U+ notation and/or their Unicode names.
-[2] Error | POSSIBLE_DOWNREF | RFC 2104 status can't be fetched. Reference is possible downref
-[3] Error | POSSIBLE_DOWNREF | RFC 5234 status can't be fetched. Reference is possible downref
-[4] Error | POSSIBLE_DOWNREF | RFC 5869 status can't be fetched. Reference is possible downref
-[5] Error | POSSIBLE_DOWNREF | RFC 7748 status can't be fetched. Reference is possible downref
-[6] Error | POSSIBLE_DOWNREF | RFC 8259 status can't be fetched. Reference is possible downref
-[7] Error | POSSIBLE_DOWNREF | RFC 8314 status can't be fetched. Reference is possible downref
-[8] Error | POSSIBLE_DOWNREF | RFC 8446 status can't be fetched. Reference is possible downref
-[9] Error | POSSIBLE_DOWNREF | RFC 8996 status can't be fetched. Reference is possible downref
-[10] Error | POSSIBLE_DOWNREF | RFC 9146 status can't be fetched. Reference is possible downref
-[11] Error | POSSIBLE_DOWNREF | RFC 9147 status can't be fetched. Reference is possible downref
-[12] Error | POSSIBLE_DOWNREF | RFC 9325 status can't be fetched. Reference is possible downref
-[13] Error | POSSIBLE_DOWNREF | RFC 2119 status can't be fetched. Reference is possible downref
-[14] Error | POSSIBLE_DOWNREF | RFC 8174 status can't be fetched. Reference is possible downref
-[15] Comment | UNDEFINED_STATUS | RFC 2104 does not have a defined status or could not be fetched.
-[16] Comment | UNDEFINED_STATUS | RFC 5234 does not have a defined status or could not be fetched.
-[17] Comment | UNDEFINED_STATUS | RFC 5869 does not have a defined status or could not be fetched.
-[18] Comment | UNDEFINED_STATUS | RFC 7748 does not have a defined status or could not be fetched.
-[19] Comment | UNDEFINED_STATUS | RFC 8259 does not have a defined status or could not be fetched.
-[20] Comment | UNDEFINED_STATUS | RFC 8314 does not have a defined status or could not be fetched.
-[21] Comment | UNDEFINED_STATUS | RFC 8446 does not have a defined status or could not be fetched.
-[22] Comment | UNDEFINED_STATUS | RFC 8996 does not have a defined status or could not be fetched.
-[23] Comment | UNDEFINED_STATUS | RFC 9146 does not have a defined status or could not be fetched.
-[24] Comment | UNDEFINED_STATUS | RFC 9147 does not have a defined status or could not be fetched.
-[25] Comment | UNDEFINED_STATUS | RFC 9325 does not have a defined status or could not be fetched.
-[26] Comment | UNDEFINED_STATUS | RFC 2119 does not have a defined status or could not be fetched.
-[27] Comment | UNDEFINED_STATUS | RFC 8174 does not have a defined status or could not be fetched.
-[28] Comment | UNDEFINED_STATUS | The informative reference RFC 9562 does not have a defined status or could not be fetched.
-[29] Warning | UNDEFINED_STATE | The draft reference draft-slutsky-homing-pigeon-v2 does not have a defined state or could not be fetched.
-[30] Warning | TEXT_DOC_REF | Text occurs that looks like a text-document reference (e.g. [1] or [RFC...]). A reference should instead use an <eref> tag. | Section 20 (The Session Greeting), artwork (rfc.middle.section[19].artwork) | Ln 893 Col 7
-[31] Comment | LINE_PI | Document contains <?line 123?> processing instruction tags.
+[2] Comment | EMPTY_AUTHOR_ORGANIZATION | The author organization is defined but empty. | Author 1 (Andrew Slutsky) (rfc.front.author[0].organization) | Ln 16 Col 7
+[3] Error | POSSIBLE_DOWNREF | RFC 2104 status can't be fetched. Reference is possible downref
+[4] Error | POSSIBLE_DOWNREF | RFC 5234 status can't be fetched. Reference is possible downref
+[5] Error | POSSIBLE_DOWNREF | RFC 5869 status can't be fetched. Reference is possible downref
+[6] Error | POSSIBLE_DOWNREF | RFC 7748 status can't be fetched. Reference is possible downref
+[7] Error | POSSIBLE_DOWNREF | RFC 8259 status can't be fetched. Reference is possible downref
+[8] Error | POSSIBLE_DOWNREF | RFC 8314 status can't be fetched. Reference is possible downref
+[9] Error | POSSIBLE_DOWNREF | RFC 8446 status can't be fetched. Reference is possible downref
+[10] Error | POSSIBLE_DOWNREF | RFC 8996 status can't be fetched. Reference is possible downref
+[11] Error | POSSIBLE_DOWNREF | RFC 9146 status can't be fetched. Reference is possible downref
+[12] Error | POSSIBLE_DOWNREF | RFC 9147 status can't be fetched. Reference is possible downref
+[13] Error | POSSIBLE_DOWNREF | RFC 9325 status can't be fetched. Reference is possible downref
+[14] Error | POSSIBLE_DOWNREF | RFC 2119 status can't be fetched. Reference is possible downref
+[15] Error | POSSIBLE_DOWNREF | RFC 8174 status can't be fetched. Reference is possible downref
+[16] Comment | UNDEFINED_STATUS | RFC 2104 does not have a defined status or could not be fetched.
+[17] Comment | UNDEFINED_STATUS | RFC 5234 does not have a defined status or could not be fetched.
+[18] Comment | UNDEFINED_STATUS | RFC 5869 does not have a defined status or could not be fetched.
+[19] Comment | UNDEFINED_STATUS | RFC 7748 does not have a defined status or could not be fetched.
+[20] Comment | UNDEFINED_STATUS | RFC 8259 does not have a defined status or could not be fetched.
+[21] Comment | UNDEFINED_STATUS | RFC 8314 does not have a defined status or could not be fetched.
+[22] Comment | UNDEFINED_STATUS | RFC 8446 does not have a defined status or could not be fetched.
+[23] Comment | UNDEFINED_STATUS | RFC 8996 does not have a defined status or could not be fetched.
+[24] Comment | UNDEFINED_STATUS | RFC 9146 does not have a defined status or could not be fetched.
+[25] Comment | UNDEFINED_STATUS | RFC 9147 does not have a defined status or could not be fetched.
+[26] Comment | UNDEFINED_STATUS | RFC 9325 does not have a defined status or could not be fetched.
+[27] Comment | UNDEFINED_STATUS | RFC 2119 does not have a defined status or could not be fetched.
+[28] Comment | UNDEFINED_STATUS | RFC 8174 does not have a defined status or could not be fetched.
+[29] Comment | UNDEFINED_STATUS | The informative reference RFC 9562 does not have a defined status or could not be fetched.
+[30] Warning | UNDEFINED_STATE | The draft reference draft-slutsky-homing-pigeon-v2 does not have a defined state or could not be fetched.
+[31] Warning | TEXT_DOC_REF | Text occurs that looks like a text-document reference (e.g. [1] or [RFC...]). A reference should instead use an <eref> tag. | Section 20 (The Session Greeting), artwork (rfc.middle.section[19].artwork) | Ln 893 Col 7
+[32] Comment | LINE_PI | Document contains <?line 123?> processing instruction tags.
