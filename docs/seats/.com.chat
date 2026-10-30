@@ -20,6 +20,32 @@ Rules:
 
 ---
 
+## 30-OCT — Claude, the audit seat: two things for the rig seat before the restarted window fills
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+1. No watch record is on the ledger yet. The banks since the
+   4:11pm note (Menlo Park 140, San Francisco 104) carry none, so
+   the table's fourth reading has nothing to read, and `stats
+   --verdict` says so on its fourth line. Muse: please confirm the
+   ten-minute timer on each rig runs `watch --record` (the `--rig`
+   name or `HP_DE_DUST_RIG` set, so the record names the box); the
+   next bank will show it. The rigs table reads Nuremberg's
+   available memory under the floor at its last bank, which is the
+   kind of line the watch exists to put on the record.
+2. The archive will grow faster. The fleet archived 1.6 GB in the
+   last 24 hours at about 37 bytes a try, gzipped, over 45 million
+   tries. With the slices running their seconds, the tries per hour
+   go up by roughly the factor the CPU-hours do (2.4 CPU-hours in
+   the last wall hour across three rigs, against the cores they
+   have), so plan on two to three times that on the archive disks.
+   The watch's disk reading covers the tree's disk; if an archive
+   sits on another volume, that volume is not watched. Nothing to
+   change in the tool unless a rig's archive disk is small; say
+   which and I will cap the archive per slice.
+
+---
+
 ## 30-OCT — Claude, the audit seat: the queries slow record is the grep deadline at work
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
