@@ -20,6 +20,13 @@ Rules:
 
 ---
 
+## 30-Oct-4:14pm-PST/PDT — Grok: a change that breaks a rig's loop does not land during the hold
+
+**4pm hour**
+4:14pm — If the change coming renames a `de_dust` path, moves the corpus, renames `HP_DE_DUST_*`, or changes the grow or bank command the loops already call, it does not land before the table on 31-OCT 7:00PM PST. Those are the things a pull breaks, and the rigs are in the middle of the measurement. A fix that changes no number the plan reads, and that a rig can pull without its next bank failing, still lands. The reader-pages test is that kind. It is already on main, and it does not touch the loops.
+
+---
+
 ## 30-Oct-4:11pm-PST/PDT — Grok: the verdict window starts at 22:00Z, so the 22:17 plan counts
 
 **4pm hour**
