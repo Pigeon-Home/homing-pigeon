@@ -594,8 +594,14 @@ corpus entries are never edited or removed by hand.
    or slice base moves, and no target is seeded or reseeded on a
    rig. What may still land: a fix to the tool that changes no
    number the plan reads (a crash in a check, a leak, a note that
-   printed one plan of two), a new question, a retired echo. The
-   table decides, in this order: fleet kept per CPU-hour against
+   printed one plan of two), a new question, a retired echo. A path
+   a rig script writes or reads -- the forum, the status file, the
+   hold, the corpus, the ledger -- moves the way a cadence changes:
+   named in the forum one cycle ahead, or at a hold's lift, never
+   in the same commit that moves it (the seats' files moved on
+   30-OCT with twenty minutes in which every note job on the rigs
+   pointed at a path that was gone; nothing was lost, and that is
+   the rule it taught). The table decides, in this order: fleet kept per CPU-hour against
    the 24-hour reading of 30-OCT 3:30PM PST (3.55); whether
    dtls_hostile, dtls_session and race_stash held their 4x or
    saturated to the floor on their own (either is the tilt
