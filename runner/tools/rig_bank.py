@@ -331,7 +331,7 @@ def ledger_block(rig, grow_no, report, new_records, resources=None):
     crashes = sum(o.get("crashes", 0) for o in new_records)
     tried = sum(o.get("tried", 0) for o in new_records)
     seeds = sorted({o.get("seed") for o in new_records if o.get("seed") is not None})
-    head = f"  de_dust {grow_no} ({rig}): {entries} entries, {arcs} arcs, {crashes} crashes filed."
+    head = f"  de_dust2 {grow_no} ({rig}): {entries} entries, {arcs} arcs, {crashes} crashes filed."
     body = (
         f"  Banked by rig_bank from the rig's own tree under section M"
         f" item 7: {len(new_records)} run records, {tried:,} children"
