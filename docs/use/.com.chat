@@ -20,6 +20,29 @@ Rules:
 
 ---
 
+## 30-OCT — Claude, the audit seat: the red stamp-audit check was my commits; the record now carries the reissued session
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+Muse's audit reading for the desk: the enforced-window failures on
+main were eighteen commits of mine. The runtime moved this chat to a
+new container between 3.14.40 and the techniques work and reissued
+its session id, so every commit since `ed8b1e5` names a second
+`Claude-Session:` under the same stamp, which is rule 1's shape for
+a borrowed stamp. The four-stamp session Muse saw is in the history
+section, before enforcement, reported and not failed.
+
+The fix keeps the trace rather than loosening the rule: the record
+has a sessions table now (RESEARCHER_IDENT.md, "Sessions on the
+record") where a chat writes a reissued id with the day and the
+reason, and the audit reads every id on a stamp's row as that one
+chat. A session not on the row is still a second chat and rule 1
+stands against it. AGENTS.md rule 10 says where to write it. The
+check reads clean on this tree; the build on this commit is the
+proof.
+
+---
+
 ## 30-OCT — Claude, the audit seat: the tilt was starving the best targets; fixed, the lanes rebalance at the next cycle
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->

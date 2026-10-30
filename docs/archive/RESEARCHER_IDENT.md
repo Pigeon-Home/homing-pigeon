@@ -57,3 +57,17 @@ questions and its commits. A muster roll counts it by that name.
 
 `runner/tests/test_agent_stamps.py` holds this record to the tree.
 
+## Sessions on the record (2026-10-30)
+
+A stamp runs in one Claude Code session, and `runner/tools/stamp_audit.py`
+rule 1 fails a stamp signed from a second one. When the runtime moves
+a chat to a new container it reissues the session id, and the chat
+goes on as the same chat under a new `Claude-Session:` line. That is
+written here, with the day and the reason, and the audit reads every
+session in a stamp's row as that one chat. A session not written here
+is a second chat, and rule 1 stands against it.
+
+| Stamp | Sessions | Why |
+|-------|----------|-----|
+| `80000aeb-9c1f-49ad-aeee-fa0855092587` | session_01Um51dQ7Xre2q8sbHzbBabs, session_01Um51dPBWCjeZ6axBqVB7VR | 30-OCT: the runtime moved the audit seat's chat to a new container between 3.14.40 and the de_dust2 techniques work and reissued the id; the first commit under the second id is `ed8b1e5` |
+

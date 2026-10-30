@@ -121,6 +121,32 @@ class StampAuditRulesTest(unittest.TestCase):
                                       _c(2, [_A], "session_a"),
                                       _c(3, [_B], "session_b")])[0], [])
 
+    def test_a_session_on_the_stamp_s_record_is_the_same_chat(self):
+        # The runtime reissued a chat's session id; the record's
+        # sessions table names both, and rule 1 reads them as one chat.
+        commits = [_c(1, [_A], "session_a"), _c(2, [_A], "session_a2"),
+                   _c(3, [_A], "session_a")]
+        _s, violations, _h = SA.audit(commits, _KNOWN,
+                                      sessions={_A: {"session_a", "session_a2"}})
+        self.assertEqual([], violations)
+        # A third session not on the row is still a second chat.
+        _s, violations, _h = SA.audit(commits + [_c(4, [_A], "session_a3")], _KNOWN,
+                                      sessions={_A: {"session_a", "session_a2"}})
+        self.assertEqual({"rule 1"}, {r for _c_, r, _m in violations})
+        self.assertTrue(violations)
+        # And with no row the old rule stands.
+        _s, violations, _h = SA.audit(commits, _KNOWN)
+        self.assertEqual({"rule 1"}, {r for _c_, r, _m in violations})
+        self.assertTrue(violations)
+
+    def test_the_record_s_sessions_table_parses(self):
+        rows = SA.sessions_on_record()
+        self.assertIn("80000aeb-9c1f-49ad-aeee-fa0855092587", rows)
+        self.assertEqual(2, len(rows["80000aeb-9c1f-49ad-aeee-fa0855092587"]))
+        for stamp, sessions in rows.items():
+            self.assertIn(stamp, SA.record())
+            self.assertTrue(all(x.startswith("session_") for x in sessions))
+
     def test_a_borrowed_stamp_breaks_rule_one_and_two(self):
         rules, _h = self._rules([_c(1, [_A], "session_a"),
                                  _c(2, [_B], "session_b"),
@@ -169,7 +195,9 @@ class StampHistoryTest(unittest.TestCase):
         commits = SA.git_log()
         if commits is None:
             self.skipTest("git is not on PATH")
-        _s, violations, _h = SA.audit(commits, SA.record())
+        known = SA.record()
+        _s, violations, _h = SA.audit(commits, known,
+                                      sessions=SA.sessions_on_record(known=known))
         self.assertEqual([(c.sha[:9], r, m) for c, r, m in violations], [])
 
 

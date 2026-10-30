@@ -93,7 +93,11 @@ Those values live on the runner host. They do not travel through the SI chat.
    stamp from one session (2026-10-27): `runner/tools/stamp_audit.py`
    fails the push that signs a stamp from a second session, a
    session as a second stamp, a recycled stamp, or an unregistered
-   one.
+   one. When the runtime moves a chat to a new container and
+   reissues its session id, the chat writes the new id in the
+   record's sessions table (`docs/archive/RESEARCHER_IDENT.md`,
+   "Sessions on the record") with the day and the reason, and the
+   audit reads every id on the row as that one chat (30-OCT).
 9. **The campaign runs from its standing orders.** What to test next
    is `docs/project/campaign-standing-orders.md`, a queue that does
    not run out; since 29-OCT the campaign is de_dust2

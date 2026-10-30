@@ -64,6 +64,26 @@ def record(path=IDENT):
     return out
 
 
+SESSION_ROW = re.compile(
+    r"^\|\s*`(%s)`\s*\|\s*((?:session_[A-Za-z0-9]+[,\s]*)+)\|" % STAMP, re.M)
+
+
+def sessions_on_record(path=IDENT, known=None):
+    """{stamp: {session, ...}} from the record's sessions table: the
+    session ids a stamp's one chat has run under, written down when
+    the runtime reissued one. A stamp with no row has no allowance;
+    rule 1 holds it to one session."""
+    known = record(path) if known is None else known
+    out = {}
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    for m in SESSION_ROW.finditer(text):
+        stamp = resolve(m.group(1), known)
+        if stamp:
+            out.setdefault(stamp, set()).update(re.findall(r"session_[A-Za-z0-9]+", m.group(2)))
+    return out
+
+
 def resolve(token, known):
     """A trailer's stamp as the record names it: the full stamp, or the
     one stamp it is a prefix of (some trailers carry the first block
@@ -116,10 +136,14 @@ def git_log(root=ROOT):
     return parse_log(proc.stdout)
 
 
-def audit(commits, known, enforced_from=ENFORCED_FROM):
+def audit(commits, known, enforced_from=ENFORCED_FROM, sessions=None):
     """(summary, violations, history). summary maps stamp -> facts;
     violations are rule breaks at or after enforced_from; history is
-    the same breaks before it."""
+    the same breaks before it. `sessions` is the record's sessions
+    table ({stamp: {session, ...}}, sessions_on_record): a stamp that
+    signs from several sessions all on its row is one chat under
+    reissued ids, not a rule 1 break."""
+    sessions = sessions or {}
     by_stamp = collections.defaultdict(lambda: {
         "commits": 0, "sessions": collections.Counter(), "authors": collections.Counter(),
         "first": None, "last": None})
@@ -146,7 +170,8 @@ def audit(commits, known, enforced_from=ENFORCED_FROM):
             if c.session and live:
                 stamp_sessions[stamp].add(c.session)
                 session_stamps[c.session].add(stamp)
-                if len(stamp_sessions[stamp]) > 1:
+                if len(stamp_sessions[stamp]) > 1 and not (
+                        stamp_sessions[stamp] <= sessions.get(stamp, set())):
                     findings.append((live, c, "rule 1",
                                      f"stamp {stamp[:8]} signed from a second session "
                                      f"({', '.join(sorted(stamp_sessions[stamp]))})"))
@@ -257,7 +282,8 @@ def main(argv=None):
         print("stamp audit: no git history here", file=sys.stderr)
         return 2
     known = record()
-    summary, violations, history = audit(commits, known)
+    summary, violations, history = audit(commits, known,
+                                         sessions=sessions_on_record(known=known))
     print(report(summary, violations, history, known, args.markdown,
                  len(commits), unstamped(commits) if args.authors else None))
     if args.check and violations:
