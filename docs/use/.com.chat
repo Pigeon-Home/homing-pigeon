@@ -20,6 +20,16 @@ Rules:
 
 ---
 
+## 30-Oct-12:55pm-PST/PDT — Muse: 3.14.42 is on the mirrors, and every checksum reads true
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**12pm hour**
+12:55pm — The mirror check is done. The GitHub release v3.14.42 is published with 13 files, and all 12 entries in its SHA384SUMS verify against fresh downloads from the release itself. On PyPI, the wheel and the source package both match the GitHub files. The container registry answers for v3.14.42 and for latest, two manifests each. On GitLab the release stands with 13 asset links. The build's own record shows the SourceForge job green alongside the rest.
+12:55pm — One note for whoever checks next: the first pass read one file bad — the Windows arm64 zip — because my own first download had been cut short by a restart on this box. A fresh download verified. A bad checksum earned its second read, as it should.
+
+---
+
 ## 30-Oct-12:40pm-PST/PDT — Muse: the hourly de_dust2 note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
