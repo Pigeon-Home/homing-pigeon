@@ -1,0 +1,86 @@
+ANDREW SLUTSKY
+slutsky5544@gmail.com
+
+SUMMARY
+=======
+Security software engineer with over 15 years in cybersecurity: cryptographic
+interoperability and product certification, public key infrastructure, code
+signing, and fuzzing platforms. Built and evaluated the systems other
+engineers rely on to prove software is trustworthy - from NSA high-assurance
+encryptors tested against 300+ requirements, to the PKI tooling behind the
+Microsoft Trusted Root Program, to Microsoft's OneFuzz fuzzing platform
+integrated into the Windows OS build pipeline. Exact handling of highly
+sensitive information is a constant in that work: COMSEC procedures and
+engineering on PRSS, the single service through which all Microsoft code
+signing flows.
+
+EXPERIENCE
+==========
+
+Senior Security Software Engineer | Microsoft | Apr 2020 - 2025
+  * Full-stack developer on public key infrastructure tools supporting the
+    Microsoft Trusted Root Program, which governs PKI across all Windows
+    devices globally; shipped security and operational improvements to the
+    services.
+  * Engineering lead for an automated pull-request validation tool ensuring
+    designated Windows OS bug fixes remain guarded behind security
+    precautions that prevent exploits.
+  * Developed OneFuzz, Microsoft's self-hosted fuzzing-as-a-service platform
+    enabling continuous developer-driven fuzzing; integrated OneFuzz with
+    the Windows OS CI/CD pipeline (2.5 years, from mid-2022).
+  * Software engineer on PRSS, the single service through which all
+    Microsoft code signing flows, across five years at Microsoft: Service
+    Fabric-based distributed signing for Microsoft products and services.
+    Carried the team's DRI (Designated Responsible Individual) on-call
+    rotation for the production signing service. Azure, .NET, Key Vault,
+    DevOps.
+
+Computer Scientist | NIWC Pacific (DoD) | Jan 2010 - Apr 2020
+  * Developed and maintained an enterprise software package (500,000 lines
+    of Python, 20,000 lines of C extension modules) used to evaluate NSA and
+    vendor HAIPE cryptographic systems before operational deployment.
+  * Certification test & evaluation: authored test reports for the NSA
+    sponsor recording black-box conformance results against 300+ testable
+    requirements; performed vendor-to-vendor interoperability testing on a
+    complex testbed mimicking operational networks. Received an On The Spot
+    Award (2019) for a key role on the HAIPE Test Team.
+  * Built Linux tools implementing the IP network stack over raw sockets:
+    Ethernet, IPv4/IPv6, UDP/TCP, HTTP, FTP, ARP/NS, routing, ICMP/ICMPv6,
+    IGMP/MLD, VPNs, ISAKMP, IKEv1, IKEv2, ESPv3. Implemented cryptographic
+    symmetric and key-agreement algorithms in C and Python.
+  * Release lead (documentation, versioning, RPM packaging, distribution);
+    monthly penetration-testing scans (Nessus, nmap, Puppet); authored
+    specifications including an NSA-sponsored network intrusion detection
+    system feeding a SIEM; prototyped a Tactical Secure Voice radio with
+    MELPe vocoder to NSA specification.
+
+Software Engineer | DuPont Electronic Technologies | 2007 - 2010
+  * Designed a multi-vendor laboratory testbed (IEEE-488 GPIB) and LabVIEW
+    software to monitor experiments and record data; developed test
+    procedures comparing dielectric materials for LED-cooling applications.
+
+Creator and Maintainer - Homing Pigeon (open source) | 2025 - Present
+Self-hosted agent that runs HMAC-signed jobs dispatched by a cloud AI over
+email, with a local-model Oracle for attested answers (Python, stdlib-only,
+2,500+ tests, releases on GitHub, PyPI, Docker, SourceForge and GitLab).
+
+SKILLS
+======
+Languages: Python, C, C++, C#, PowerShell, Bash, x86/x64 Intel assembly, SQL,
+Java, JavaScript, PHP, Perl
+Domains: PKI and code signing, IPsec/IKE/ESP, cryptographic interoperability
+and conformance testing, fuzzing, penetration testing, protocol analysis
+(Wireshark/tcpdump), Linux kernel and systems
+Environments: GNU/Linux, Windows, FreeBSD, Solaris, Azure, Cisco IOS
+
+EDUCATION
+=========
+MS, Computer Science - SUNY, University at Buffalo (2010)
+BS, Computer Science - SUNY, University at Fredonia (2008)
+
+CERTIFICATIONS
+==============
+CISSP (ISC2)
+Red Hat Certified System Administrator (RHCSA EX200)
+Wireshark Certified Network Analyst (WCNA)
+SANS MGT512
