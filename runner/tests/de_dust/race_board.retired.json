@@ -2,6 +2,11 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "de_dust": 1,
  "retired": {
+  "0b4409407de1953b": {
+   "head": "b54df5df1772",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
   "0ff9ad6f4a31cce3": {
    "head": "7f0bdc008dbe",
    "on": "2026-10-30",
@@ -14,6 +19,11 @@
   },
   "1120f9aa62203fd4": {
    "head": "a3ca428074bd",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "1b4514713e94767f": {
+   "head": "b54df5df1772",
    "on": "2026-10-30",
    "why": "redundant"
   },
@@ -32,6 +42,16 @@
    "on": "2026-10-30",
    "why": "redundant"
   },
+  "3d4ee74101e9fea4": {
+   "head": "b54df5df1772",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "4042bbe469da86e8": {
+   "head": "b54df5df1772",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
   "4258998c3b37c815": {
    "head": "7f0bdc008dbe",
    "on": "2026-10-30",
@@ -47,6 +67,11 @@
    "on": "2026-10-30",
    "why": "redundant"
   },
+  "6891dc4e5f88464d": {
+   "head": "b54df5df1772",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
   "785ba483daa38aa4": {
    "head": "7f0bdc008dbe",
    "on": "2026-10-30",
@@ -54,6 +79,11 @@
   },
   "817e481004ed7c8e": {
    "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "81c413318f05b1e4": {
+   "head": "b54df5df1772",
    "on": "2026-10-30",
    "why": "redundant"
   },
@@ -77,6 +107,11 @@
    "on": "2026-10-30",
    "why": "redundant"
   },
+  "b09e9778c41606ad": {
+   "head": "b54df5df1772",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
   "b54e293b9a6fca66": {
    "head": "4ab926d251ba",
    "on": "2026-10-30",
@@ -94,6 +129,11 @@
   },
   "c549dc512d61345a": {
    "head": "7f0bdc008dbe",
+   "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "fda1cc95201ebe84": {
+   "head": "b54df5df1772",
    "on": "2026-10-30",
    "why": "redundant"
   }
