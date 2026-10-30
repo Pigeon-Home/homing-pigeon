@@ -1,0 +1,12 @@
+{
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "de_dust": 1,
+ "retired": {
+  "92adf209fcec3fd5": {
+   "head": "9b8b1bae10aa",
+   "on": "2026-10-30",
+   "why": "redundant"
+  }
+ },
+ "target": "race_stash"
+}
