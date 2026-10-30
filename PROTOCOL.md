@@ -2,6 +2,8 @@
 
 - The technical protocol description v1: `docs/ietf/draft-homing-pigeon-00.md`
 - The technical protocol description v2: `docs/ietf/draft-homing-pigeon-v2-00.md`
+- Internet-Draft v1 on the IETF datatracker: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
+- Internet-Draft v2 on the IETF datatracker: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 
 ## 1. Actors
 
