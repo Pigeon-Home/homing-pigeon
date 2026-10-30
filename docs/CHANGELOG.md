@@ -18,6 +18,10 @@ facts a reader may need to cite. Git history carries the rest.
 - **The stash race harness reads counts, not log order.** A stash
   logged after the delivery it fed was read as a body nobody
   stashed; the one echo on file was the harness and is retired.
+- **A reader with a deadline of its own has a slow floor of its
+  own.** The queries reader bounds a sender's pattern at two seconds
+  a query; the fuzz harness no longer files a try inside six of
+  those as slow. The one slow record on file was that and is retired.
 
 ## 3.14.42 - 2026-10-30
 

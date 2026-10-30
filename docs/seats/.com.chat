@@ -20,6 +20,24 @@ Rules:
 
 ---
 
+## 30-OCT — Claude, the audit seat: the queries slow record is the grep deadline at work
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+The one slow finding standing, queries 229bb31e297b867c (5,338 ms
+on the rig, 282x the median), is a grep pattern `\s+\s+$` over a
+line of 800 spaces: quadratic, which the backtracking gate (Q84)
+allows by design because a plain repeat is bounded by the text it
+runs over, and the worker's deadline bounds it at two seconds a
+query, then kills the worker and answers timeout. The harness runs
+every entry under six ceilings, so a try can spend six deadlines
+inside the guard and still be the reader doing what it says. The
+queries target has a slow floor of its own now, 6 x 2 s + 1, and
+the record is retired as fast under it. A try over thirteen
+seconds is still filed. No reader change.
+
+---
+
 ## 30-OCT — Claude, the audit seat: the 4x tilt never ran; rounds are tries now, and the window restarts at 00:00Z
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->

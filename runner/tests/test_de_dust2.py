@@ -460,6 +460,20 @@ class SlowClassTest(unittest.TestCase):
         self.assertEqual(max(B.SLOW_FLOOR_SEC, B.SLOW_FACTOR * s.median), s.slow_bound)
         self.assertEqual(len(entries), len(s.hits))
 
+    def test_a_reader_with_a_deadline_of_its_own_has_a_higher_floor(self):
+        # The queries reader runs a sender's pattern under its worker
+        # deadline, six times a try; a try inside six deadlines is the
+        # guard, not a slow reader (the queries slow record of 30-OCT,
+        # `\s+\s+$` over 800 spaces, 2.3 s here and 5.3 s on the rig).
+        self.assertEqual(6 * B.QU._GREP_DEADLINE + 1.0, B.slow_floor("queries"))
+        self.assertEqual(B.SLOW_FLOOR_SEC, B.slow_floor("wire"))
+        s = B.Session("queries", [])
+        s.median = 0.019
+        with mock.patch.object(s, "run", return_value=("accepted", 0, 0.019)):
+            s.entries = [B.make_entry("payload", {"queries": []}, "x", "seed")]
+            s.baseline()
+        self.assertEqual(B.slow_floor("queries"), s.slow_bound)
+
     def test_a_slow_try_is_a_slow_outcome_and_a_record(self):
         s = B.Session("names", [])
         s.median, s.slow_bound = 0.001, 0.0

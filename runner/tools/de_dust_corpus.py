@@ -9197,7 +9197,15 @@ TARGETS = {
     "queries": {"files": [_src("ops", "policy.py"), _src("ops", "queries.py"),
                           _src("ops", "attest.py"),
                           _src("guard", "security.py")],
-                "check": check_queries, "seeds": seeds_queries},
+                "check": check_queries, "seeds": seeds_queries,
+                # The reader runs a sender's grep pattern in its
+                # worker under a deadline of its own (two seconds a
+                # query, then the worker is killed and the answer is
+                # timeout); a polynomial pattern such as `\s+\s+$`
+                # over a long line spends up to that on each of the
+                # six ceilings a try runs under. A try inside six
+                # deadlines is the guard at work, not a slow reader.
+                "slow_floor_sec": 6 * QU._GREP_DEADLINE + 1.0},
     "names": {"files": [_src("guard", "filenames.py"), _src("runner.py")],
               "check": check_names, "seeds": seeds_names},
     "query": {"files": [_src("ops", "queries.py"), _src("runner.py"),
@@ -9750,7 +9758,8 @@ class Session:
         if times:
             times.sort()
             self.median = times[len(times) // 2]
-            self.slow_bound = max(SLOW_FLOOR_SEC, SLOW_FACTOR * self.median)
+            self.slow_bound = max(slow_floor(self.target),
+                                  SLOW_FACTOR * self.median)
 
     def distill(self):
         """A minimal corpus that reaches every arc the whole corpus
@@ -10715,6 +10724,14 @@ def cmd_promote(args, out=print):
     return status
 
 
+def slow_floor(target):
+    """The least time a try must take to be filed slow for `target`:
+    SLOW_FLOOR_SEC, or the target's own `slow_floor_sec` where its
+    reader runs a sender's input under a deadline of its own."""
+    own = TARGETS.get(target, {}).get("slow_floor_sec") or 0.0
+    return max(SLOW_FLOOR_SEC, float(own))
+
+
 def _promote_slow(target, out):
     """The slow findings on file (de_dust2, P4), replayed after a
     fix: a record that now runs under half the slow floor (the best
@@ -10742,7 +10759,7 @@ def _promote_slow(target, out):
                     pass
                 dt = time.perf_counter() - t0
                 best = dt if best is None else min(best, dt)
-            (fast if best < SLOW_FLOOR_SEC / 2 else still).append((record, best))
+            (fast if best < slow_floor(target) / 2 else still).append((record, best))
     _with_rig(work)
     if fast:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
