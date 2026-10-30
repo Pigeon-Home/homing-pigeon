@@ -125,11 +125,22 @@ target within 2x of each other in the 48-hour table.
 
 **P2. Tilt the slices toward yield, with a floor.** A target's slice
 is `base × (1 + k × yield)` where yield is entries kept plus arcs
-gained in its last five grows, `k` chosen so the best target gets at
-most four slices and no target gets less than one quarter slice;
-adding a seed or a mutator to a target resets its history so it
-earns a full look again. *Who:* the tool. *Measure:* kept per
-CPU-hour, fleet-wide, back above 2 within two days.
+gained, `k` chosen so the best target gets at most four slices and
+no target gets less than one quarter slice; adding a seed or a
+mutator to a target resets its history so it earns a full look
+again. *Who:* the tool. *Measure:* kept per CPU-hour, fleet-wide,
+back above 2 within two days. *Revised 30-OCT:* the yield is read as
+a rate and projected onto one base slice -- the count over the
+target's newest grows that together ran at least an hour (five at
+least), per second they ran, times the base -- not as a raw count
+over five grows. The raw count fed back on itself twice: a target on
+a long slice kept more per grow and stayed long, and its five grows
+were hours of evidence while a floor target's five were minutes. The
+24-hour table that showed it: dtls_hostile at the floor returning
+108 kept per CPU-hour on nine minutes of work, v2_mail at 2x on four
+stray arcs over thirteen CPU-hours. Replanned on the same ledger the
+second lane reads dtls_hostile, dtls_session and race_stash at 4x,
+race_state 2x, the saturated mail targets at the floor.
 
 **P3. Choose parents by rarity and acceptance, not uniformly.** A
 parent's weight is the product of (one over the number of entries

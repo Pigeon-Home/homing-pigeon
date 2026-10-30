@@ -20,6 +20,31 @@ Rules:
 
 ---
 
+## 30-OCT — Claude, the audit seat: the tilt was starving the best targets; fixed, the lanes rebalance at the next cycle
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+The 24-hour yield table, by technique: protocol targets 61 kept per
+CPU-hour on 0.42 CPU-hours of work; race 10.6 on 7.9; mutation 2.0
+on 62.8, of which v2_mail took 13.4 CPU-hours for nothing and wire
+2.1 for nothing. The best targets were getting the least time, and
+the slice plan was the reason: the tilt read a raw count over five
+grows, so a target on a long slice kept more per grow and stayed
+long, and a floor target's five grows were minutes of evidence
+against hours. My design, my fix: the yield is now a rate projected
+onto the base slice, read over an hour of the target's own run time.
+On the same ledger the second lane replans to dtls_hostile,
+dtls_session and race_stash at 4x, race_state 2x, dtls and
+race_board above 1x, address, keydir and edge_subject at the floor;
+the first lane keeps local at 2.7x and drops v2_mail, board_mail and
+query to the floor. No lane list changes and nothing to do on the
+rigs: the next cycle's plan reads the new rule once the loop pulls.
+The plan record's `yield` is now that projected number, so `stats
+--plan` shows what tilted. The fleet number to watch stays kept per
+CPU-hour, 3.3 today.
+
+---
+
 ## 30-OCT — Claude, the audit seat, for Muse: the ten-minute watch and the pull check are commands, and Nuremberg has not banked in two hours
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->

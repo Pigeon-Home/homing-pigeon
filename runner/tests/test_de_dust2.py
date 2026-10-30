@@ -64,6 +64,32 @@ class SlicePlanTest(unittest.TestCase):
         self.assertEqual(B.TILT_MAX, B.slice_tilt(400, False))
         self.assertEqual(2.0, B.slice_tilt(4, True))
 
+    def test_the_tilt_reads_the_rate_not_the_slice_length(self):
+        # Two targets keeping at the same rate: one on 1,000 s slices
+        # with 20 kept each, one on 100 s slices with 2 kept each. The
+        # raw count would tilt the long one 4x and the short one
+        # 1.5x; projected onto the base slice they tilt the same.
+        runs = ([_grow("long", "2026-10-29T1%d:00:00Z" % i, seconds=1000.0, kept=20)
+                 for i in range(5)]
+                + [_grow("short", "2026-10-29T1%d:00:00Z" % i, seconds=100.0, kept=2)
+                   for i in range(5)])
+        plan = B.slice_plan(["long", "short"], 600, runs)
+        self.assertEqual(plan["long"]["tilt"], plan["short"]["tilt"])
+        self.assertEqual(B.TILT_MAX, plan["short"]["tilt"])
+
+    def test_the_yield_is_read_over_an_hour_of_the_target_s_own_time(self):
+        # A floor target on 150 s slices keeps one entry every eighth
+        # slice. Five grows see nothing; an hour of its run time (24
+        # slices) sees three, and the tilt lifts off the floor.
+        runs = [_grow("thin", "2026-10-29T%02d:%02d:00Z" % (10 + i // 4, (i % 4) * 15),
+                      seconds=150.0, kept=(1 if i % 8 == 0 else 0))
+                for i in range(24)]
+        self.assertEqual((0, False), B.target_yield("thin", runs))
+        got, fresh = B.target_yield_per_slice("thin", 600, runs)
+        self.assertGreater(got, 0)
+        self.assertFalse(fresh)
+        self.assertGreater(B.slice_plan(["thin"], 600, runs)["thin"]["tilt"], B.TILT_FLOOR)
+
     def test_rounds_follow_the_slice_and_the_rate_clamped(self):
         runs = ([_grow("slow", "2026-10-29T1%d:00:00Z" % i, tried=100, seconds=10.0)
                  for i in range(5)]

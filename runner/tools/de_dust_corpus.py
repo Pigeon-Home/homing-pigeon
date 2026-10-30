@@ -10632,6 +10632,47 @@ def target_yield(target, runs=None, grows=5):
     return total, len(grows_since) < grows
 
 
+YIELD_WINDOW_SEC = 3600.0     # the run time a target's yield is read over
+
+
+def target_yield_per_slice(target, base_seconds, runs=None, grows=5,
+                           window_seconds=YIELD_WINDOW_SEC):
+    """(yield, fresh) as target_yield, with the yield projected onto
+    one base slice and read over a window of run time: the count over
+    the target's newest grows that together ran at least
+    `window_seconds` (and at least `grows` of them), per second they
+    ran, times `base_seconds`. A raw count over a fixed number of
+    grows feeds back on itself twice -- a target on a long slice
+    keeps more per grow and stays long, and its five grows are hours
+    of evidence while a floor target's five are minutes -- whatever
+    each returns per CPU-second (30-OCT: dtls_hostile at the floor on
+    108 kept per CPU-hour, v2_mail at 2x on four stray arcs).
+    Projected over a window of time, the tilt reads the rate and the
+    slice length drops out."""
+    recs = _target_records(target, runs, kinds=("grow", "seed"))
+    cut = 0
+    for i, r in enumerate(recs):
+        if r.get("kind") == "seed":
+            cut = i + 1
+    grows_since = [r for r in recs[cut:] if r.get("kind") == "grow"]
+    recent = []
+    span = 0.0
+    for r in reversed(grows_since):
+        if len(recent) >= grows and span >= window_seconds:
+            break
+        recent.append(r)
+        span += float(r.get("seconds") or 0)
+    total = 0
+    seconds = 0.0
+    for r in recent:
+        total += len(r.get("kept") or [])
+        total += max(0, int(r.get("arcs_after") or 0)
+                     - int(r.get("arcs_before") or 0))
+        seconds += float(r.get("seconds") or 0)
+    projected = total / seconds * base_seconds if seconds > 0 else float(total)
+    return projected, len(grows_since) < grows
+
+
 def slice_tilt(yield_, fresh):
     """The multiple of the base slice a target earns: a quarter with
     no yield, one plus a quarter per entry or arc up to TILT_MAX, and
@@ -10651,7 +10692,7 @@ def slice_plan(targets, base_seconds, runs=None):
     plan = {}
     for target in targets:
         rate = target_rate(target, runs)
-        got, fresh = target_yield(target, runs)
+        got, fresh = target_yield_per_slice(target, base_seconds, runs)
         tilt = slice_tilt(got, fresh)
         seconds = base_seconds * tilt
         if rate is None:
@@ -10660,7 +10701,7 @@ def slice_plan(targets, base_seconds, runs=None):
             rounds = int(min(SLICE_MAX_ROUNDS,
                              max(SLICE_MIN_ROUNDS, seconds * rate)))
         plan[target] = {"tilt": tilt, "seconds": seconds, "rounds": rounds,
-                        "rate": rate, "yield": got}
+                        "rate": rate, "yield": round(got, 1)}
     return plan
 
 
