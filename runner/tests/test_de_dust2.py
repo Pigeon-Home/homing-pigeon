@@ -1054,6 +1054,17 @@ class VerdictTest(unittest.TestCase):
         lines = B.verdict(runs, now=now, since="2026-10-30T22:55:00Z")
         self.assertIn("v2_mail: 1 plan(s), 0 above the floor", "\n".join(lines))
 
+    def test_the_default_window_keeps_the_tell_and_drops_the_old_tilt(self):
+        now = datetime(2026, 10, 30, 23, 9, tzinfo=timezone.utc)
+        runs = [self._plan("2026-10-30T21:39:18Z", {"dtls_hostile": 0.25}),
+                self._plan("2026-10-30T22:17:14Z", {"dtls_hostile": 4.0,
+                                                   "dtls_session": 4.0,
+                                                   "race_stash": 4.0})]
+        text = "\n".join(B.verdict(runs, now=now))
+        self.assertIn("dtls_hostile: 1 plan(s)", text)
+        self.assertIn("held 4x", text)
+        self.assertNotIn("first 0.25x", text)
+
     def test_the_watch_records_itself_when_asked(self):
         recorded = []
         with mock.patch.object(B, "record_run", recorded.append), \

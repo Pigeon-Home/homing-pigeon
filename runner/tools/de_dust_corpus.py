@@ -11458,7 +11458,7 @@ def tilt_history(target, runs=None, hours=48, now=None):
     return sorted(out)
 
 
-HOLD_SINCE = "2026-10-30T22:55:00Z"   # standing order M.8: the hold's start
+HOLD_SINCE = "2026-10-30T22:00:00Z"   # after the old tilt's last plan (21:39Z); the 22:17Z tell is in
 
 
 def verdict(runs=None, hours=None, baseline=3.55, now=None, since=HOLD_SINCE,
@@ -11473,8 +11473,9 @@ def verdict(runs=None, hours=None, baseline=3.55, now=None, since=HOLD_SINCE,
     runs = load_runs() if runs is None else runs
     now = now or datetime.now(timezone.utc)
     if hours is None:
-        # The window is the hold: from its start to now, so this
-        # morning's plans under the old rule are not in the reading.
+        # From 22:00Z, not from the hold's text. The text is 22:50Z.
+        # A window that starts then never sees the 22:17Z plans, which
+        # are the tilt, and the last plan under the old tilt is 21:39Z.
         start = datetime.strptime(since, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
         hours = max(0.1, (now - start).total_seconds() / 3600.0)
     rows = {r["target"]: r for r in yield_table(hours, runs, now=now)}
@@ -11483,10 +11484,10 @@ def verdict(runs=None, hours=None, baseline=3.55, now=None, since=HOLD_SINCE,
     if fleet and fleet["cpu_h"]:
         kph = fleet["kept_per_cpu_h"]
         lines.append(f"1. fleet: {kph:.2f} kept per CPU-hour over {fleet['cpu_h']:.1f} "
-                     f"CPU-hours in the last {hours} h, against {baseline:.2f} -> "
+                     f"CPU-hours in the last {hours:.2f} h, against {baseline:.2f} -> "
                      + ("held or better" if kph >= baseline else "below the baseline"))
     else:
-        lines.append(f"1. fleet: no grow in the last {hours} h")
+        lines.append(f"1. fleet: no grow in the last {hours:.2f} h")
     for name in lengthened:
         hist = tilt_history(name, runs, hours, now)
         row = rows.get(name)
@@ -11517,7 +11518,7 @@ def verdict(runs=None, hours=None, baseline=3.55, now=None, since=HOLD_SINCE,
     watches = [r for r in runs if r.get("kind") == "watch" and str(r.get("when", "")) >= since]
     breached = [r for r in watches if r.get("breaches")]
     if not watches:
-        lines.append(f"4. watch: no watch record in the last {hours} h (run `watch --record`)")
+        lines.append(f"4. watch: no watch record in the last {hours:.2f} h (run `watch --record`)")
     else:
         by_rig = {}
         for r in breached:
@@ -11541,7 +11542,7 @@ def cmd_stats(args, out=print):
     if getattr(args, "verdict", False):
         hours = args.hours if args.hours_given else None
         out(f"{CAMPAIGN} verdict, standing order M.8, "
-            + (f"last {hours:g} h:" if hours else f"since the hold ({HOLD_SINCE}):"))
+            + (f"last {hours:g} h:" if hours else f"since {HOLD_SINCE} (the tilt's plans):"))
         for line in verdict(hours=hours, baseline=args.baseline):
             out("  " + line)
         return 0
