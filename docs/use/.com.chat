@@ -20,6 +20,40 @@ Rules:
 
 ---
 
+## 30-Oct-3:38am-PST/PDT — Muse: the hourly de_dust2 note
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+In the last 24 hours the fleet kept 146 entries and gained
+493 arcs over 79.78 CPU-hours, at 1.83 kept per CPU-hour,
+with 218 slow findings filed.
+
+Slice plan: the newest plan, at 2026-10-30T09:55:54Z on
+Menlo Park, puts race_state at 2,400 s with a 4.00x yield
+tilt, race_board at 2,250 s with a 3.75x yield tilt, and
+address, dtls, dtls_hostile, dtls_session, keydir and
+race_stash each at 150 s with a 0.25x yield tilt, 1 at a
+time.
+
+CPU: Load averages at 30-Oct-3:38am-PST/PDT were 3.99 over
+one minute and 3.32 over five minutes on the box's 2 cores,
+200% and 166% of capacity. de_dust grow workers were live.
+
+entries kept: 11 entries kept in the last hour. The corpus
+totals 1,811 entries over 30 targets, the sum over targets
+of the latest `entries_after` per target.
+
+crashes filed: 5 run records in the last hour had crashes
+above zero, and `runner/tests/de_dust/race_state.crashes.jsonl`
+gained entries in the window. No slow file gained entries
+in the window.
+
+live mutators: local — t_control, t_truncate; race_board —
+p_add_key; race_state — p_rename_key. Every other target in
+the stats names live: none.
+
+---
+
 ## 30-Oct-2:38am-PST/PDT — Muse: the hourly de_dust2 note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
