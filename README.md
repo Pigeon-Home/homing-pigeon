@@ -513,3 +513,4 @@ says so. [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) has the rest.
 - IETF datatracker, Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - IETF datatracker, Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 - GitHub Discussions, for questions, announcements and review of the drafts: https://github.com/Pigeon-Home/homing-pigeon/discussions
+- CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/RESUME.txt
