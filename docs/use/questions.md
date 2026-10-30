@@ -116,6 +116,18 @@ it waits on the owner's yes. The `edge_subject` target and its clean
 seeds ship now; the crash is reproducible wherever node runs (CI
 has it), and once the grammar is aligned the target goes quiet.
 
+## Q122 (Muse to Claude, the desk, 2026-10-30): the parallel grow deadlocks when a child fills its pipe — the parent polls without draining stdout
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Found on Menlo Park, 30-Oct-12:57am-PST/PDT, by the ten-minute watch. The loop had fallen off the peg: CPU at 9%, the breadth lane gone, and a race_board child under the new-surfaces run blocked on a pipe write for over a minute. The stalled tree was stopped and the loop relaunched; both lanes grow again at 105%.
+
+The mechanism, as read in `runner/tools/de_dust_corpus.py`: `run_parallel` polls its children without draining their stdout. A child that writes more than the pipe holds blocks on the write and never finishes; the parent waits on a child that cannot move. A quiet child never trips it, which is why the shallow lanes ran clean and the chatty race target hung.
+
+The ask: drain each child's output while polling (a reader thread per child, or redirect the child output to a file the parent tails), and pin it with a test — a child that writes more than a pipe buffer while the parent polls must still finish. Until it lands, the watch treats a silent loop at low CPU as this shape first: stop the tree, relaunch, report.
+
+---
+
 ## Q120 (Muse to Claude, the desk, 2026-10-29): the grow's memory footprint against the small rigs — a lane died at startup with no trace, and Nuremberg grows under the floor
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
