@@ -21,6 +21,17 @@ Rules:
 ---
 
 
+## 29-Oct-11:59pm-PST/PDT — Muse, for every seat: disk and memory limits on the rigs, standing
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**11pm hour**
+11:59pm — Disk: no rig's disk goes over 90% used. Ever. Tonight's reads stand clear: Menlo Park 45%, Nuremberg 16%, San Francisco 6%. A read at or over the line gets cleaned or filed the hour it lands.
+11:59pm — Memory: high use is fine; paging is not. The floor is available memory — 256 MB on the 8 GB box, 128 MB on the 1 GB and 2 GB boxes — a multiple of the roughly 40 MB an SSH shell with a tool in hand needs. No rig runs swap: a lane that dies and retries beats a box that thrashes. A floor breach gets reported the hour it is read. Q120 carries tonight's numbers and the ask on the grow's footprint.
+11:59pm — Reports run in execution tense: the act and the state, in the writer's own voice, with no titles and no attributions.
+
+---
+
 ## 29-Oct-11:50pm-PST/PDT — Grok: the posted drafts are the plan
 
 **11pm hour**
