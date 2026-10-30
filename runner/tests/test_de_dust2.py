@@ -18,6 +18,8 @@ import argparse
 import json
 import os
 import random
+import subprocess
+import sys
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -270,6 +272,95 @@ class SliceBudgetTest(unittest.TestCase):
             s.grow(random.Random(1), 5, uniform_parents=True)
         self.assertEqual(5, s.tried)
         self.assertIsNone(s.stopped)
+
+
+class FootprintTest(unittest.TestCase):
+    """Q120. A discarded child must not leave a hit set behind, and
+    a synthetic grow's RSS must not climb with the tries."""
+
+    def test_a_refused_try_leaves_no_hit_set(self):
+        s = B.Session("names", [{"id": "a", "kind": "text", "data": "a",
+                                 "from": "", "mutator": "", "arcs": 0}])
+        s.hits["a"] = frozenset()
+        s.median, s.slow_bound = 0.001, 10.0
+        n = {"i": 0}
+
+        def mutate(rng, parent, entries, target, weights):
+            n["i"] += 1
+            return ("child-%d" % n["i"], "p_test")
+
+        def run(entry, trace=True, remember=True):
+            if remember:
+                s.hits[entry["id"]] = frozenset({("f", 1, 2)})
+            return ("refused", 0, 0.001)
+
+        with mock.patch.object(B, "mutate", side_effect=mutate), \
+                mock.patch.object(s, "run", side_effect=run):
+            s.grow(random.Random(1), 30, uniform_parents=True)
+        self.assertEqual(30, s.tried)
+        self.assertEqual({"a"}, set(s.hits))
+
+    def test_a_kept_child_keeps_its_hit_set(self):
+        s = B.Session("names", [{"id": "a", "kind": "text", "data": "a",
+                                 "from": "", "mutator": "", "arcs": 0}])
+        s.hits["a"] = frozenset({("f", 0, 1)})
+        s.median, s.slow_bound = 0.001, 10.0
+        s.tracer.hit = {("f", 1, 2), ("f", 2, 3)}
+
+        def mutate(rng, parent, entries, target, weights):
+            return ("kept-child", "p_test")
+
+        def run(entry, trace=True, remember=True):
+            self.assertFalse(remember)
+            return ("accepted", 2, 0.001)
+
+        with mock.patch.object(B, "mutate", side_effect=mutate), \
+                mock.patch.object(s, "run", side_effect=run):
+            added = s.grow(random.Random(1), 1, uniform_parents=True)
+        self.assertEqual(1, len(added))
+        self.assertEqual(s.tracer.hit, set(s.hits[added[0]["id"]]))
+        self.assertIn(added[0]["id"], s.accepted_ids)
+        self.assertEqual({"a", added[0]["id"]}, set(s.hits))
+
+    def test_the_lane_says_what_it_loaded(self):
+        text = B.footprint_line("dtls", [{"id": "a"}])
+        self.assertIn("dtls: corpus 1 entries,", text)
+        self.assertIn("hit sets follow the entries, not the tries", text)
+        if os.path.exists("/proc/meminfo"):
+            self.assertIn("MemAvailable", text)
+            self.assertIsInstance(B.memory_available_mb(), int)
+
+    def test_a_synthetic_grow_peaks_with_the_corpus(self):
+        if not os.path.exists("/proc/self/status"):
+            self.skipTest("peak RSS is read from /proc")
+        script = (
+            "import json, random\n"
+            "from runner.tools import de_dust_corpus as B\n"
+            "def rss():\n"
+            "    with open('/proc/self/status') as fh:\n"
+            "        for line in fh:\n"
+            "            if line.startswith('VmRSS:'):\n"
+            "                return int(line.split()[1])\n"
+            "seeds = [dict(e) for e in B.seeds_dtls()]\n"
+            "s = B.Session('dtls', seeds)\n"
+            "B._with_rig(s.baseline)\n"
+            "base = rss()\n"
+            "added = B._with_rig(lambda: s.grow(random.Random(1), 800))\n"
+            "print(json.dumps({'base': base, 'end': rss(), "
+            "'hits': len(s.hits), 'entries': len(s.entries), "
+            "'tried': s.tried, 'added': len(added)}))\n"
+        )
+        proc = subprocess.run([sys.executable, "-c", script], cwd=B.ROOT,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              timeout=180)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode("utf-8", "replace")[-2000:])
+        row = json.loads(proc.stdout.decode().strip().splitlines()[-1])
+        self.assertEqual(row["hits"], row["entries"])
+        self.assertGreater(row["tried"], 400)
+        # A discarded hit set was about 20 KB of RSS. 800 tries of
+        # that is well past 8 MB, which a corpus of the dtls seeds
+        # does not need.
+        self.assertLess(row["end"] - row["base"], 8 * 1024)
 
 
 class SlowClassTest(unittest.TestCase):

@@ -8975,18 +8975,23 @@ class Session:
         # live weight list is cut in the same turn (de_dust2).
         self.slow_parents = {}
 
-    def run(self, entry, trace=True):
+    def run(self, entry, trace=True, remember=True):
         """(outcome, new_arcs, seconds) of one entry; a Crash is
         recorded and reported as the outcome "crash". A try over the
         slow bound (set after the baseline: SLOW_FACTOR times the
         corpus replay's median, and at least SLOW_FLOOR_SEC) is the
-        outcome "slow", recorded apart from the crashes (de_dust2)."""
+        outcome "slow", recorded apart from the crashes (de_dust2).
+        `remember` stores the arcs this entry reached. A grow passes
+        False and stores them only for a child it keeps (Q120): a
+        discarded try's hit set is otherwise still here at the end of
+        the slice, and a long slice is tens of thousands of them."""
         t0 = time.perf_counter()
         try:
             if trace:
                 outcome = self.tracer.run(check, self.target, entry)
                 new = self.tracer.new
-                self.hits[entry["id"]] = frozenset(self.tracer.hit)
+                if remember:
+                    self.hits[entry["id"]] = frozenset(self.tracer.hit)
             else:
                 outcome = check(self.target, entry)
                 new = 0
@@ -8997,7 +9002,7 @@ class Session:
         dt = time.perf_counter() - t0
         if dt > self.slowest[0]:
             self.slowest = (dt, entry["id"])
-        if outcome == "accepted":
+        if outcome == "accepted" and remember:
             self.accepted_ids.add(entry["id"])
         if (outcome != "crash" and self.slow_bound is not None
                 and dt > self.slow_bound):
@@ -9143,7 +9148,9 @@ class Session:
                 continue
             self.tried += 1
             self.mutators_tried[name] = self.mutators_tried.get(name, 0) + 1
-            outcome, new, dt = self.run(entry)
+            # The tracer's hit set is still this child's until the next
+            # run. Copy it only when the child stays in the corpus.
+            outcome, new, dt = self.run(entry, remember=False)
             if archive is not None:
                 archive({"id": entry["id"], "from": parent["id"],
                          "mutator": name, "kind": entry["kind"],
@@ -9175,6 +9182,9 @@ class Session:
             tried, kept = history.get(name, (0, 0))
             history[name] = (tried + 1, kept + (1 if new else 0))
             if new:
+                self.hits[entry["id"]] = frozenset(self.tracer.hit)
+                if outcome == "accepted":
+                    self.accepted_ids.add(entry["id"])
                 entry["arcs"] = new
                 self.entries.append(entry)
                 self.ids.add(entry["id"])
@@ -9515,6 +9525,40 @@ def _set_budget(cmd, seconds):
     return cmd
 
 
+def memory_available_mb():
+    """MemAvailable in MiB, or None where the kernel does not report
+    it. The rigs read the floors from this number; the tool only
+    says it."""
+    try:
+        fh = open("/proc/meminfo", encoding="ascii", errors="replace")
+    except OSError:
+        return None
+    with fh:
+        for line in fh:
+            if line.startswith("MemAvailable:"):
+                parts = line.split()
+                if len(parts) >= 2 and parts[1].isdigit():
+                    return int(parts[1]) // 1024
+    return None
+
+
+def footprint_line(target, entries):
+    """What a lane holds before it mutates (Q120). Hit sets follow
+    the entries loaded, not the tries. The available-memory suffix
+    is present only where the kernel reports it."""
+    path = corpus_path(target)
+    try:
+        nbytes = os.path.getsize(path)
+    except OSError:
+        nbytes = 0
+    line = (f"{target}: corpus {len(entries)} entries, {nbytes} bytes; "
+            f"hit sets follow the entries, not the tries")
+    avail = memory_available_mb()
+    if avail is not None:
+        line += f"; MemAvailable {avail} MB"
+    return line
+
+
 def cmd_grow(args, out=print):
     for target in _targets(args.target):
         prune_retired_crashes(target, out)
@@ -9615,6 +9659,12 @@ def _cmd_grow(args, out=print):
             out(f"{target}: no corpus and no seeds")
             status = 2
             continue
+        # Before the replay. Flushed: a kill mid-grow still leaves
+        # the line in the pipe, which is the trace the breadth lane
+        # did not have (Q120).
+        out(footprint_line(target, session.entries))
+        if out is print:
+            sys.stdout.flush()
         for e in fresh:
             e["arcs"] = 0
         t0 = time.perf_counter()

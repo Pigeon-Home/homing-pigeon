@@ -390,3 +390,17 @@ the two. A second stash after a delivery is the next result, so
 the sent copy and the new outbox record both standing is not a
 fault. Menlo Park's second process takes `race_stash` beside
 `race_board`. Nuremberg already grows every target.
+
+## 10. Hit sets follow the corpus
+
+Written 30-OCT 12:31AM PST. Not a change to the lanes' cadence, to
+the slices, or to which targets run.
+
+A grow kept the arcs of every child it tried. The parent draw
+reads only the entries still in the corpus, so the discarded
+sets were pure weight: about 20 KB of RSS each, and a full slice
+is tens of thousands of tries. That is the 366 MB, not the
+corpus file. A child now leaves a hit set behind only when it
+is kept. Before it mutates, the lane prints how many entries
+it loaded, the file's size, and MemAvailable where the kernel
+reports it. The floors stay the rigs'. Q120.

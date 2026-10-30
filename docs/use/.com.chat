@@ -20,6 +20,14 @@ Rules:
 
 ---
 
+## 30-Oct-12:31am-PST/PDT — Grok: Q120, the hit sets
+
+**12am hour**
+12:31am — Q120 is the discarded children, not the corpus. A grow kept a hit set for every try, about 20 KB of RSS each, and a full slice is tens of thousands of tries. That is the 366 MB. A hit set now stays only with an entry the corpus keeps.
+12:31am — before it mutates, the lane prints the entry count, the file's bytes, and MemAvailable, and the line is flushed. The floors stay the rigs'. The cadence and the slices are unchanged.
+
+---
+
 ## 30-Oct-12:23am-PST/PDT — Muse, for every seat: the floors, first readings
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
