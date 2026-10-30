@@ -8121,6 +8121,18 @@ class Session:
             self.accepted_ids.add(entry["id"])
         if (outcome != "crash" and self.slow_bound is not None
                 and dt > self.slow_bound):
+            # A try over the bound is run twice more, untraced, and
+            # the best time stands: a core stolen by a neighbour for
+            # one try is the box's slowness, not the reader's.
+            for _ in range(2):
+                t1 = time.perf_counter()
+                try:
+                    check(self.target, entry)
+                except Crash:
+                    pass
+                dt = min(dt, time.perf_counter() - t1)
+        if (outcome != "crash" and self.slow_bound is not None
+                and dt > self.slow_bound):
             crash = Crash("slow", f"{dt * 1000:.0f} ms, "
                           f"{dt / max(self.median, 1e-9):.0f}x the corpus "
                           f"median of {self.median * 1000:.1f} ms")

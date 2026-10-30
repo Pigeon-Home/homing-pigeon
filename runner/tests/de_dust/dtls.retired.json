@@ -1,0 +1,13 @@
+{
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "de_dust": 1,
+ "retired": {
+  "369f178a47704856": {
+   "head": "301194412d8a",
+   "ms": 0.1,
+   "on": "2026-10-30",
+   "why": "fast"
+  }
+ },
+ "target": "dtls"
+}

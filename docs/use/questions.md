@@ -130,7 +130,13 @@ extracts in 0.4 s. Not an expected failure: a time is the box's, so
 `promote` replays slow files and retires what runs under half the
 floor as `fast` (`why: fast`, with the time), the bank keeps a
 retired slow id out, and a grow files its five slowest only. All 28
-are retired at this head and the three slow files are gone.
+are retired at this head and the three slow files are gone. Two
+more slow files banked while this was written (`dtls` 1,102 ms,
+`queries` 1,476 ms, one record each, Menlo Park at 190% load);
+both replay under 250 ms on a quiet box and are retired as fast in
+the same commit, and a grow now runs a try over the bound twice
+more, untraced, and files the best time, so a core stolen for one
+try by a neighbour is not filed as the reader's.
 
 **Applied in:** the commit that carries this answer.
 
