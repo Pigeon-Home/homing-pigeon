@@ -82,30 +82,30 @@ Table of Contents
      1.1.  Why specify this publicly . . . . . . . . . . . . . . . .   4
      1.2.  Versions in this document . . . . . . . . . . . . . . . .   4
    2.  Requirements Language . . . . . . . . . . . . . . . . . . . .   5
-   3.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   6
+   3.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   5
    4.  Scope . . . . . . . . . . . . . . . . . . . . . . . . . . . .   6
    5.  Transport Binding . . . . . . . . . . . . . . . . . . . . . .   7
-     5.1.  The File Binding  . . . . . . . . . . . . . . . . . . . .   8
-     5.2.  The NATS Binding  . . . . . . . . . . . . . . . . . . . .   9
-   6.  Subjects  . . . . . . . . . . . . . . . . . . . . . . . . . .  10
-   7.  Body and Signature Marker . . . . . . . . . . . . . . . . . .  11
-     7.1.  MAC . . . . . . . . . . . . . . . . . . . . . . . . . . .  12
+     5.1.  The File Binding  . . . . . . . . . . . . . . . . . . . .   9
+     5.2.  The NATS Binding  . . . . . . . . . . . . . . . . . . . .  10
+   6.  Subjects  . . . . . . . . . . . . . . . . . . . . . . . . . .  11
+   7.  Body and Signature Marker . . . . . . . . . . . . . . . . . .  12
+     7.1.  MAC . . . . . . . . . . . . . . . . . . . . . . . . . . .  13
      7.2.  Constant-time compare . . . . . . . . . . . . . . . . . .  13
    8.  Unknown Members . . . . . . . . . . . . . . . . . . . . . . .  13
-   9.  Common Members  . . . . . . . . . . . . . . . . . . . . . . .  13
+   9.  Common Members  . . . . . . . . . . . . . . . . . . . . . . .  14
    10. Key Selection . . . . . . . . . . . . . . . . . . . . . . . .  14
-     10.1.  Fingerprint names  . . . . . . . . . . . . . . . . . . .  14
-   11. Job Message . . . . . . . . . . . . . . . . . . . . . . . . .  15
-     11.1.  issued_at  . . . . . . . . . . . . . . . . . . . . . . .  16
-     11.2.  reply_to . . . . . . . . . . . . . . . . . . . . . . . .  17
-     11.3.  ping and exec  . . . . . . . . . . . . . . . . . . . . .  17
-     11.4.  files  . . . . . . . . . . . . . . . . . . . . . . . . .  17
-   12. Kind and Type Failures  . . . . . . . . . . . . . . . . . . .  18
-   13. Result Message  . . . . . . . . . . . . . . . . . . . . . . .  18
-     13.1.  exit_code  . . . . . . . . . . . . . . . . . . . . . . .  20
-     13.2.  Truncation . . . . . . . . . . . . . . . . . . . . . . .  21
-   14. Receiver Processing . . . . . . . . . . . . . . . . . . . . .  21
-   15. Retry . . . . . . . . . . . . . . . . . . . . . . . . . . . .  22
+     10.1.  Fingerprint names  . . . . . . . . . . . . . . . . . . .  15
+   11. Job Message . . . . . . . . . . . . . . . . . . . . . . . . .  16
+     11.1.  issued_at  . . . . . . . . . . . . . . . . . . . . . . .  17
+     11.2.  reply_to . . . . . . . . . . . . . . . . . . . . . . . .  18
+     11.3.  ping and exec  . . . . . . . . . . . . . . . . . . . . .  18
+     11.4.  files  . . . . . . . . . . . . . . . . . . . . . . . . .  18
+   12. Kind and Type Failures  . . . . . . . . . . . . . . . . . . .  19
+   13. Result Message  . . . . . . . . . . . . . . . . . . . . . . .  19
+     13.1.  exit_code  . . . . . . . . . . . . . . . . . . . . . . .  21
+     13.2.  Truncation . . . . . . . . . . . . . . . . . . . . . . .  22
+   14. Receiver Processing . . . . . . . . . . . . . . . . . . . . .  22
+   15. Retry . . . . . . . . . . . . . . . . . . . . . . . . . . . .  23
 
 
 
@@ -114,41 +114,41 @@ Placeholder                Expires 3 May 2027                   [Page 2]
 Internet-Draft              Homing Pigeon v1                October 2026
 
 
-   16. Per-Job Encryption  . . . . . . . . . . . . . . . . . . . . .  23
-     16.1.  Construction . . . . . . . . . . . . . . . . . . . . . .  24
-     16.2.  Receiver processing  . . . . . . . . . . . . . . . . . .  24
-     16.3.  Results  . . . . . . . . . . . . . . . . . . . . . . . .  25
-     16.4.  No forward secrecy . . . . . . . . . . . . . . . . . . .  25
-   17. Security Considerations . . . . . . . . . . . . . . . . . . .  25
-     17.1.  The signer controls the host . . . . . . . . . . . . . .  25
-     17.2.  Confidentiality and its limits . . . . . . . . . . . . .  26
-     17.3.  Offline guessing . . . . . . . . . . . . . . . . . . . .  26
-     17.4.  Headers are not authentication . . . . . . . . . . . . .  26
-     17.5.  Unknown key identifiers  . . . . . . . . . . . . . . . .  27
-     17.6.  Replay . . . . . . . . . . . . . . . . . . . . . . . . .  27
-     17.7.  Two secrets  . . . . . . . . . . . . . . . . . . . . . .  27
-     17.8.  Marker collision . . . . . . . . . . . . . . . . . . . .  27
-     17.9.  Output . . . . . . . . . . . . . . . . . . . . . . . . .  27
-     17.10. At-least-once  . . . . . . . . . . . . . . . . . . . . .  27
-   18. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  27
-   19. The DTLS Binding  . . . . . . . . . . . . . . . . . . . . . .  28
-     19.1.  Shape  . . . . . . . . . . . . . . . . . . . . . . . . .  29
-     19.2.  The Profile  . . . . . . . . . . . . . . . . . . . . . .  29
-     19.3.  Carrying the Messages  . . . . . . . . . . . . . . . . .  30
-     19.4.  Composition with Per-Job Encryption  . . . . . . . . . .  31
-   20. The Session Greeting  . . . . . . . . . . . . . . . . . . . .  31
-   21. The Submitter's Conformance Burden  . . . . . . . . . . . . .  33
-   22. Security Considerations (DTLS Binding)  . . . . . . . . . . .  33
-     22.1.  Forward secrecy is a requirement, not a property . . . .  33
-     22.2.  One secret, two constructions  . . . . . . . . . . . . .  34
-     22.3.  The greeting discloses . . . . . . . . . . . . . . . . .  34
-     22.4.  Amplification and the listener . . . . . . . . . . . . .  34
-     22.5.  Channel security is not delivery . . . . . . . . . . . .  35
-     22.6.  Termination in the middle  . . . . . . . . . . . . . . .  35
-   23. References  . . . . . . . . . . . . . . . . . . . . . . . . .  35
-     23.1.  Normative References . . . . . . . . . . . . . . . . . .  35
-     23.2.  Informative References . . . . . . . . . . . . . . . . .  37
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  37
+   16. Per-Job Encryption  . . . . . . . . . . . . . . . . . . . . .  24
+     16.1.  Construction . . . . . . . . . . . . . . . . . . . . . .  25
+     16.2.  Receiver processing  . . . . . . . . . . . . . . . . . .  25
+     16.3.  Results  . . . . . . . . . . . . . . . . . . . . . . . .  26
+     16.4.  No forward secrecy . . . . . . . . . . . . . . . . . . .  26
+   17. Security Considerations . . . . . . . . . . . . . . . . . . .  26
+     17.1.  The signer controls the host . . . . . . . . . . . . . .  26
+     17.2.  Confidentiality and its limits . . . . . . . . . . . . .  27
+     17.3.  Offline guessing . . . . . . . . . . . . . . . . . . . .  27
+     17.4.  Headers are not authentication . . . . . . . . . . . . .  27
+     17.5.  Unknown key identifiers  . . . . . . . . . . . . . . . .  28
+     17.6.  Replay . . . . . . . . . . . . . . . . . . . . . . . . .  28
+     17.7.  Two secrets  . . . . . . . . . . . . . . . . . . . . . .  28
+     17.8.  Marker collision . . . . . . . . . . . . . . . . . . . .  28
+     17.9.  Output . . . . . . . . . . . . . . . . . . . . . . . . .  28
+     17.10. At-least-once  . . . . . . . . . . . . . . . . . . . . .  28
+   18. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  28
+   19. The DTLS Binding  . . . . . . . . . . . . . . . . . . . . . .  29
+     19.1.  Shape  . . . . . . . . . . . . . . . . . . . . . . . . .  30
+     19.2.  The Profile  . . . . . . . . . . . . . . . . . . . . . .  30
+     19.3.  Carrying the Messages  . . . . . . . . . . . . . . . . .  31
+     19.4.  Composition with Per-Job Encryption  . . . . . . . . . .  32
+   20. The Session Greeting  . . . . . . . . . . . . . . . . . . . .  32
+   21. The Submitter's Conformance Burden  . . . . . . . . . . . . .  34
+   22. Security Considerations (DTLS Binding)  . . . . . . . . . . .  34
+     22.1.  Forward secrecy is a requirement, not a property . . . .  34
+     22.2.  One secret, two constructions  . . . . . . . . . . . . .  35
+     22.3.  The greeting discloses . . . . . . . . . . . . . . . . .  35
+     22.4.  Amplification and the listener . . . . . . . . . . . . .  35
+     22.5.  Channel security is not delivery . . . . . . . . . . . .  36
+     22.6.  Termination in the middle  . . . . . . . . . . . . . . .  36
+   23. References  . . . . . . . . . . . . . . . . . . . . . . . . .  36
+     23.1.  Normative References . . . . . . . . . . . . . . . . . .  36
+     23.2.  Informative References . . . . . . . . . . . . . . . . .  38
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  38
 
 1.  Introduction
 
@@ -235,19 +235,12 @@ Internet-Draft              Homing Pigeon v1                October 2026
    are the same objects on every binding, byte for byte; their v member
    is 1, and a receiver MUST NOT reject an object for carrying v = 1 on
    any binding.  A receiver that does not offer a binding is not non-
-   conformant; it simply does not offer that binding.  An earlier
-   framing treated the DTLS binding as a second version of the protocol.
-   That framing is withdrawn: there is no version 2 of the job and
-   result objects (the version 2 of draft-slutsky-homing-pigeon-v2-00 is
-   a different message family, carried beside them), and the protocol's
-   version is 1 on every binding this document specifies.
+   conformant; it simply does not offer that binding.
 
    The reference implementation speaks version 1, and it implements the
    bindings this document specifies, including the DTLS session binding
-   of Section 19.  On 2026-10-17 the implementation briefly required v =
-   2.  That bump changed the integer only, and it was reverted the same
-   day.  A receiver following this document rejects any message v other
-   than 1.
+   of Section 19.  A receiver following this document rejects any
+   message v other than 1.
 
    The sender also requires the shared secret to meet a minimum-entropy
    floor (Section 17.3).  That floor is not a protocol version; it is a
@@ -272,16 +265,6 @@ Internet-Draft              Homing Pigeon v1                October 2026
    BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
 
-
-
-
-
-
-Placeholder                Expires 3 May 2027                   [Page 5]
-
-Internet-Draft              Homing Pigeon v1                October 2026
-
-
 3.  Terminology
 
    Job: a signed request that the runner execute work, or answer a
@@ -291,6 +274,13 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
    Shared secret: an octet string known to the submitter and the runner.
    It is the HMAC key.  It is not sent on the wire.
+
+
+
+Placeholder                Expires 3 May 2027                   [Page 5]
+
+Internet-Draft              Homing Pigeon v1                October 2026
+
 
    Default secret: the shared secret selected when key_id is absent.
 
@@ -330,6 +320,16 @@ Internet-Draft              Homing Pigeon v1                October 2026
    This document does not specify disclosure policy, queries,
    attestations, task boards, sensors, confinement, installers, or local
    models.  A job MAY carry extra members for those uses.  Receivers
+   that do not implement them MUST ignore unknown members (Section 8)
+   and MUST still reject an unknown v or an unknown job kind (Sections 8
+   and 12).  Section 1 describes how those uses relate to this document.
+
+
+
+
+
+
+
 
 
 
@@ -337,10 +337,6 @@ Placeholder                Expires 3 May 2027                   [Page 6]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
-
-   that do not implement them MUST ignore unknown members (Section 8)
-   and MUST still reject an unknown v or an unknown job kind (Sections 8
-   and 12).  Section 1 describes how those uses relate to this document.
 
 5.  Transport Binding
 
@@ -368,6 +364,36 @@ Internet-Draft              Homing Pigeon v1                October 2026
    environment already speaks, and the reference implementation enables
    it by default; that is guidance, not a requirement.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Placeholder                Expires 3 May 2027                   [Page 7]
+
+Internet-Draft              Homing Pigeon v1                October 2026
+
+
    Two security properties are REQUIRED of the protocol on every
    binding, and they attach differently.  The first is authentication of
    the object: the MAC of Section 7, verified as Section 14 specifies.
@@ -386,14 +412,6 @@ Internet-Draft              Homing Pigeon v1                October 2026
    binding's carriage terminates at an intermediary, or stores the
    object outside the parties' control, the transport does not satisfy
    the property, and Section 16 is the mechanism that provides it; a
-
-
-
-Placeholder                Expires 3 May 2027                   [Page 7]
-
-Internet-Draft              Homing Pigeon v1                October 2026
-
-
    message sent in cleartext by the explicit choice Section 16 permits
    is a message for which the confidentiality property is not claimed.
    Each binding specified in this document states which case it is: the
@@ -425,6 +443,13 @@ Internet-Draft              Homing Pigeon v1                October 2026
    job encryption of Section 16, which travels with the object on every
    binding.
 
+
+
+Placeholder                Expires 3 May 2027                   [Page 8]
+
+Internet-Draft              Homing Pigeon v1                October 2026
+
+
    The body is UTF-8 text in a text/plain part.  This document does not
    register a media type.  If the message is multipart, the receiver
    uses the first text/plain part that is not an attachment.
@@ -441,14 +466,6 @@ Internet-Draft              Homing Pigeon v1                October 2026
    filesystem (a mounted volume, a synchronized folder, a removable
    medium) and for testing: it is the email binding's envelope with the
    mailbox removed, and nothing else changes.
-
-
-
-
-Placeholder                Expires 3 May 2027                   [Page 8]
-
-Internet-Draft              Homing Pigeon v1                October 2026
-
 
    The envelope mapping is byte-for-byte the email form: a subject line
    in the shape of Section 6, a blank line, then the signed body.  A job
@@ -476,6 +493,19 @@ Internet-Draft              Homing Pigeon v1                October 2026
    and set it deliberately; the signature check does not excuse a world-
    writable inbox.
 
+
+
+
+
+
+
+
+
+Placeholder                Expires 3 May 2027                   [Page 9]
+
+Internet-Draft              Homing Pigeon v1                October 2026
+
+
    The binding's limits are the filesystem's.  Both parties need access
    to the same directories, so the binding does not cross a network by
    itself (a network filesystem under it is the deployment's own affair,
@@ -499,13 +529,6 @@ Internet-Draft              Homing Pigeon v1                October 2026
    already share a NATS broker: a low-latency pipe with no store-and-
    forward pretensions.
 
-
-
-Placeholder                Expires 3 May 2027                   [Page 9]
-
-Internet-Draft              Homing Pigeon v1                October 2026
-
-
    The envelope mapping is the email form carried as a message payload:
    the subject line of Section 6, a blank line, then the signed body, as
    one payload.  Jobs are published on a jobs subject (a LOCAL name; the
@@ -520,6 +543,24 @@ Internet-Draft              Homing Pigeon v1                October 2026
    retries per Section 15, and the seen-set makes a repeat harmless.  A
    deployment that needs broker-side retention needs a persistence layer
    this binding does not specify.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Placeholder                Expires 3 May 2027                  [Page 10]
+
+Internet-Draft              Homing Pigeon v1                October 2026
+
 
    Two gates stand in series.  The first is the broker's own
    authentication: broker authentication is REQUIRED by default -- a
@@ -553,15 +594,6 @@ Internet-Draft              Homing Pigeon v1                October 2026
    Subjects are part of the email binding (Section 5): they are how the
    receiver recognizes a job message in the mailbox.
 
-
-
-
-
-Placeholder                Expires 3 May 2027                  [Page 10]
-
-Internet-Draft              Homing Pigeon v1                October 2026
-
-
    Subjects are matched case-insensitively.  A preamble such as Re: MAY
    appear before the marker.  The marker need not be the first character
    of the subject.
@@ -577,6 +609,14 @@ Internet-Draft              Homing Pigeon v1                October 2026
    decoration.
 
    A result subject matches:
+
+
+
+
+Placeholder                Expires 3 May 2027                  [Page 11]
+
+Internet-Draft              Homing Pigeon v1                October 2026
+
 
    [HOMING-PIGEON] SP result SP job-id
 
@@ -611,13 +651,6 @@ Internet-Draft              Homing Pigeon v1                October 2026
    line endings, computes the MAC over those octets (Section 7.1), and
    replaces the final } with:
 
-
-
-Placeholder                Expires 3 May 2027                  [Page 11]
-
-Internet-Draft              Homing Pigeon v1                October 2026
-
-
    ,"sig":"<96 hex digits>"}
 
    JSON member order before sig is the sender's choice. sig MUST be
@@ -632,6 +665,14 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
    2.  Let marker be the last occurrence of the eight characters , " s i
        g " : ".
+
+
+
+
+Placeholder                Expires 3 May 2027                  [Page 12]
+
+Internet-Draft              Homing Pigeon v1                October 2026
+
 
    3.  If marker is absent, the message is malformed.
 
@@ -664,16 +705,6 @@ Internet-Draft              Homing Pigeon v1                October 2026
    Receivers MUST reject a malformed tail.  Receivers MUST reject a MAC
    mismatch.  A mismatch produces no result message (Section 14).
 
-
-
-
-
-
-Placeholder                Expires 3 May 2027                  [Page 12]
-
-Internet-Draft              Homing Pigeon v1                October 2026
-
-
 7.2.  Constant-time compare
 
    The compare covers all 96 digits.  It MUST NOT stop at the first
@@ -689,6 +720,15 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
    *  type other than job, on a message the receiver is executing as a
       job, MUST be rejected
+
+
+
+
+
+Placeholder                Expires 3 May 2027                  [Page 13]
+
+Internet-Draft              Homing Pigeon v1                October 2026
+
 
    *  kind other than exec or ping MUST NOT be executed; the reference
       receiver rejects any other value except sensor_alert, which it
@@ -723,13 +763,6 @@ Internet-Draft              Homing Pigeon v1                October 2026
      |        |        |          | signed octets.                  |
      +--------+--------+----------+---------------------------------+
 
-
-
-Placeholder                Expires 3 May 2027                  [Page 13]
-
-Internet-Draft              Homing Pigeon v1                October 2026
-
-
                                  Table 1
 
    key_id is covered by the MAC.  Key identifiers MAY appear in logs.
@@ -744,6 +777,14 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
    The receiver holds a map from key_id to secret.  The empty identifier
    names the default secret.
+
+
+
+
+Placeholder                Expires 3 May 2027                  [Page 14]
+
+Internet-Draft              Homing Pigeon v1                October 2026
+
 
    Selection, before the MAC:
 
@@ -773,19 +814,6 @@ Internet-Draft              Homing Pigeon v1                October 2026
    that same secret.  One key_id still names one secret.  One secret MAY
    have several identifiers.  Two secrets MUST NOT share one.
 
-
-
-
-
-
-
-
-
-Placeholder                Expires 3 May 2027                  [Page 14]
-
-Internet-Draft              Homing Pigeon v1                October 2026
-
-
    The reference sender includes key_id on every message it signs.  The
    value is the fingerprint, unless the sender was told to use a chosen
    name.  The empty identifier is how a sender asks for the unnamed
@@ -806,6 +834,13 @@ Internet-Draft              Homing Pigeon v1                October 2026
    derives a job key, so a name cannot be confused with a signature or
    turned into one.  Publishing the name discloses nothing a signed
    message does not already disclose.
+
+
+
+Placeholder                Expires 3 May 2027                  [Page 15]
+
+Internet-Draft              Homing Pigeon v1                October 2026
+
 
    The DTLS PSK identity (Section 3) is a different label. homing-pigeon
    names the default secret. homing-pigeon: followed by a configured
@@ -837,7 +872,28 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 15]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Placeholder                Expires 3 May 2027                  [Page 16]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -893,7 +949,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 16]
+Placeholder                Expires 3 May 2027                  [Page 17]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -949,7 +1005,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 17]
+Placeholder                Expires 3 May 2027                  [Page 18]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1005,7 +1061,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 18]
+Placeholder                Expires 3 May 2027                  [Page 19]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1061,7 +1117,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 19]
+Placeholder                Expires 3 May 2027                  [Page 20]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1117,7 +1173,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 20]
+Placeholder                Expires 3 May 2027                  [Page 21]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1173,7 +1229,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 21]
+Placeholder                Expires 3 May 2027                  [Page 22]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1229,7 +1285,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 22]
+Placeholder                Expires 3 May 2027                  [Page 23]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1285,7 +1341,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 23]
+Placeholder                Expires 3 May 2027                  [Page 24]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1341,7 +1397,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 24]
+Placeholder                Expires 3 May 2027                  [Page 25]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1397,7 +1453,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 25]
+Placeholder                Expires 3 May 2027                  [Page 26]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1453,7 +1509,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 26]
+Placeholder                Expires 3 May 2027                  [Page 27]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1509,7 +1565,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 27]
+Placeholder                Expires 3 May 2027                  [Page 28]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1565,7 +1621,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 28]
+Placeholder                Expires 3 May 2027                  [Page 29]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1621,7 +1677,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 29]
+Placeholder                Expires 3 May 2027                  [Page 30]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1677,7 +1733,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 30]
+Placeholder                Expires 3 May 2027                  [Page 31]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1733,7 +1789,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 31]
+Placeholder                Expires 3 May 2027                  [Page 32]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1789,7 +1845,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 32]
+Placeholder                Expires 3 May 2027                  [Page 33]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1845,7 +1901,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 33]
+Placeholder                Expires 3 May 2027                  [Page 34]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1901,7 +1957,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 34]
+Placeholder                Expires 3 May 2027                  [Page 35]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -1957,7 +2013,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 35]
+Placeholder                Expires 3 May 2027                  [Page 36]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -2013,7 +2069,7 @@ Internet-Draft              Homing Pigeon v1                October 2026
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 36]
+Placeholder                Expires 3 May 2027                  [Page 37]
 
 Internet-Draft              Homing Pigeon v1                October 2026
 
@@ -2069,4 +2125,4 @@ Author's Address
 
 
 
-Placeholder                Expires 3 May 2027                  [Page 37]
+Placeholder                Expires 3 May 2027                  [Page 38]
