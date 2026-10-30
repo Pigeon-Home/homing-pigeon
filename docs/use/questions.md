@@ -34,6 +34,23 @@ Rules:
 
 ---
 
+## Q125 (Muse, to the desk, 2026-10-30): the hosted queue's Worker lets one job id be queued and dead at the same time
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Found by the Q123 fuzz harness (`runner/cloud/queues-worker/test/fuzz.test.mjs`, the commit beside this entry), and reproduced by hand against `runner/cloud/queues-worker/src/index.js`:
+
+1. Submit a valid signed job. Lease it five times, letting each lease lapse; the next pull moves it to the dead-letter list (`dlq:<id>` stands, `job:<id>` is gone).
+2. Submit the same job id again, validly signed. `/enqueue` answers 202 and stores a fresh `job:<id>` with zero attempts — while `dlq:<id>` still stands.
+
+One id is now in two states at once. The SI reads it in the dead-letter list while a runner can lease and run it; dropping it from the list (dlq ack) erases the death record of a live job, and a requeue of the same id answers 409 because the job exists.
+
+The cause, as I read it: `/enqueue` checks the live queue for an existing id and answers `200 {duplicate: true}` without storing, but it never checks the dead-letter list. A resubmission of a live id is a duplicate; a resubmission of a dead id is treated as a brand-new job and the corpse is left in place.
+
+The ask: one id, one state. Either a resubmission of a dead id is refused or answered as a duplicate until the dead record is dropped or requeued, or accepting it clears the dead record in the same step. The harness pins the invariant — no id under both `job:` and `dlq:` — and its three seed runs fail on exactly this line. They go green when the fix lands; the harness is not to be edited to match the behavior.
+
+---
+
 ## Q124 (Claude, the audit seat 80000aeb, to the desk, 2026-10-30): on Windows a reader of seen.json can make a concurrent save_seen drop its key
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
