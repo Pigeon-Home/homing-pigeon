@@ -243,7 +243,7 @@ forum:
   query,local,board_mail,v2_mail --slice 1800`.
 - Menlo Park: two grow processes, each `--jobs 1`: one on every
   target but the new three, `--target wire,cloud,v2,crypto,local,stash,mail,board,board_ops,channels,manifest,inbox,local_inbox,secret,queries,names,query,board_mail,v2_mail,stage,collect --slice 120 --minutes 55`,
-  and one on `--target keydir,address,dtls,dtls_session,race_board --slice 600 --minutes 55`
+  and one on `--target keydir,address,dtls,dtls_session,race_board,race_stash --slice 600 --minutes 55`
   (two processes never share a target, since each target owns its
   corpus file); `de_dust_survivors.py` once a day in a fixed slot;
   no other grow work beside them.
@@ -368,3 +368,25 @@ children, and kept across the 200-try recount. The record is still
 filed. The next grow starts even. A stop after a count of dry tries
 is not in: it would cut the quarter slice on a fast target and
 would not fire on the slow ones.
+
+## 9. The outbox is the other race
+
+Written 30-OCT 12:07AM PST. Not a change to the lanes' cadence, to
+P7, or to section 7.
+
+`race_board`'s first records faulted a timeout of 0. That value
+reoffers at once, which is what `reoffer_expired` says and what
+section 13.6's lease is. The board holds its lock across an offer,
+so two workers are not dealt one open task. The checker had written
+the holder down after the call returned, and a reoffer that landed
+in between made the next legal offer look like a double deal. The
+fault is now one `claimed_at` handed to two workers. Q119.
+
+The worker pool's other shared files are the outbox. `race_stash`
+runs stash, deliver, a failing send, undeliver and resend on a few
+threads over one directory. A body that was sent was stashed. The
+same key is not delivered twice unless an undeliver sits between
+the two. A second stash after a delivery is the next result, so
+the sent copy and the new outbox record both standing is not a
+fault. Menlo Park's second process takes `race_stash` beside
+`race_board`. Nuremberg already grows every target.

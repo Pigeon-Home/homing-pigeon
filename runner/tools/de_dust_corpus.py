@@ -2441,12 +2441,14 @@ def check_race_board(entry):
     """race_board: up to four threads, each a list of board operations
     (submit, offer, complete, approve, reoffer) over one Board on a
     throwaway path, interleaved under a short switch interval.
-    Contract: no thread raises; every offer hands out a task no
-    other worker holds at that moment; a task completes as done or
-    pending_review exactly once, by its holder; approve moves only a
-    pending_review task; the board reloaded from its file after the
-    threads join equals the board in memory; and the counts add up
-    to the tasks on the board. Accepted when some task was done."""
+    Contract: no thread raises; a fault is one claimed_at handed to
+    two workers (one lease, dealt twice). A timeout of 0 ends the
+    lease at once, and the next offer is a new lease. A task
+    completes as done or pending_review exactly once, by a key the
+    board still names; approve moves only a pending_review task; the
+    board reloaded from its file after the threads join equals the
+    board in memory; and the counts add up to the tasks on the
+    board. Accepted when some task was done."""
     spec = entry["data"]
     if TU._lone_surrogate(spec):
         note("gate", "lone surrogate")
@@ -2464,7 +2466,7 @@ def check_race_board(entry):
     log = []                  # (thread, op, task, result) in completion order
     log_lock = threading.Lock()
     errors = []
-    holders = {}              # task_id -> worker holding the lease
+    holders = {}              # task_id -> (worker, claimed_at)
     holders_lock = threading.Lock()
     faults = []
 
@@ -2490,13 +2492,24 @@ def check_race_board(entry):
                     # a completion by another key is refused.
                     got = board.offer(worker, caps, worker, _RACE_CFG)
                     tid = got.get("task_id") if isinstance(got, dict) else None
-                    if tid is not None:
+                    if isinstance(got, dict) and isinstance(tid, str):
+                        claim_at = got.get("claimed_at")
                         with holders_lock:
                             other = holders.get(tid)
-                            if other is not None and other != worker:
-                                faults.append(f"{tid} offered to {worker} while "
-                                              f"{other} held it")
-                            holders[tid] = worker
+                            # One lease is one claimed_at. A timeout of
+                            # 0 ends it at once, and the next offer is
+                            # a new lease. The fault is the same instant
+                            # handed to two workers, not a holder the
+                            # checker recorded after the board had
+                            # already reoffered.
+                            if (other is not None and other[0] != worker
+                                    and other[1] == claim_at
+                                    and claim_at is not None):
+                                faults.append(
+                                    f"{tid} offered to {worker} while "
+                                    f"{other[0]} held it")
+                            if got.get("claimed_by") == worker:
+                                holders[tid] = (worker, claim_at)
                     record(t, name, tid, worker)
                 elif name == "complete":
                     status, why = board.complete(task, {"ok": True},
@@ -2504,10 +2517,19 @@ def check_race_board(entry):
                                                  holder=worker)
                     if status in ("done", "pending_review"):
                         with holders_lock:
-                            if holders.get(task) not in (None, worker):
-                                faults.append(f"{task} completed by {worker}, "
-                                              f"held by {holders.get(task)}")
+                            held = holders.get(task)
                             holders.pop(task, None)
+                        # The board accepted this key. A map entry
+                        # from a lease a timeout-0 reoffer already
+                        # ended is not a second holder.
+                        if held is not None and held[0] != worker:
+                            task_rec = board.tasks.get(task)
+                            claimed = (task_rec.get("claimed_by")
+                                       if isinstance(task_rec, dict) else None)
+                            if claimed == held[0]:
+                                faults.append(
+                                    f"{task} completed by {worker}, "
+                                    f"held by {held[0]}")
                     record(t, name, task, status)
                 elif name == "approve":
                     ok, why = board.approve(task)
@@ -2611,6 +2633,188 @@ def seeds_race_board():
         ("unknown_ops", {"threads": [[{"op": "nope"}, 7, "offer", S(t1)], "not a lane"]}),
         ("empty", {"threads": []}),
         ("not_an_object", ["submit"]),
+    ]
+    return [make_entry("payload", spec, "seed:" + name, "seed") for name, spec in specs]
+
+
+# ------------------------------------------------------------------
+# race_stash: threads over one outbox (de_dust2)
+# ------------------------------------------------------------------
+#
+# The worker pool stashes a finished result and delivers it while a
+# resend pass walks the same outbox. The record for one skey is one
+# file. This target runs those operations from several threads and
+# holds the file rules on whatever order the box produced: a body
+# that was sent is a body that was stashed, and one skey is not
+# delivered twice without an undeliver between the two. A second
+# stash after a delivery leaves the sent copy where it is and a
+# new record in the outbox; that is the next result, not two
+# copies of one.
+
+_STASH_KEYS = ("bm-stash-0001", "bm-stash-0002")
+
+
+def check_race_stash(entry):
+    """race_stash: up to four threads, each a list of outbox
+    operations (stash, deliver, fail, undeliver, resend) over one
+    base directory, interleaved under a short switch interval.
+    Contract: no thread raises; every body a sender was handed was
+    stashed for that key; the same key is not delivered twice with
+    no undeliver between; every record left behind reads back.
+    Accepted when some body was delivered."""
+    spec = entry["data"]
+    if TU._lone_surrogate(spec):
+        note("gate", "lone surrogate")
+        return "refused"
+    lanes = _race_ops(spec)
+    if not lanes:
+        return "refused"
+    switch = spec.get("switch", 1e-5) if isinstance(spec, dict) else 1e-5
+    if isinstance(switch, bool) or not isinstance(switch, (int, float)) \
+            or switch != switch or not 1e-6 <= switch <= 1e-2:
+        switch = 1e-5
+    base = tempfile.mkdtemp(prefix="hp-de_dust-stash-")
+    events = []
+    lock = threading.Lock()
+    errors = []
+
+    def run_lane(t, ops):
+        try:
+            for op in ops:
+                name = op["op"]
+                skey = op.get("skey")
+                if not isinstance(skey, str) or not skey:
+                    skey = _STASH_KEYS[t % len(_STASH_KEYS)]
+                if name == "stash":
+                    body = op.get("body")
+                    if not isinstance(body, str):
+                        body = "body-" + skey
+                    subject = op.get("subject")
+                    if not isinstance(subject, str):
+                        subject = "[HOMING-PIGEON] result " + skey
+                    ok = R.stash_result(base, skey, {"job_id": skey, "kind": "exec"},
+                                        subject, body)
+                    with lock:
+                        events.append(("stash", skey, body, bool(ok)))
+                elif name == "deliver":
+                    sent = []
+
+                    def sender(subject, body, to, sent=sent):
+                        sent.append(body)
+
+                    ok = R.deliver_stash(base, skey, sender, cfg={})
+                    with lock:
+                        if sent:
+                            events.append(("deliver", skey, sent[0], bool(ok)))
+                elif name == "fail":
+                    def bad(subject, body, to):
+                        raise RuntimeError("down")
+
+                    R.deliver_stash(base, skey, bad, cfg={})
+                    with lock:
+                        events.append(("fail", skey))
+                elif name == "undeliver":
+                    R.undeliver_stash(base, skey, "channel write failed")
+                    with lock:
+                        events.append(("undeliver", skey))
+                elif name == "resend":
+                    sent_bodies = []
+
+                    def resender(subject, body, to, box=sent_bodies):
+                        box.append(body)
+
+                    R.resend_stashed(base, {}, resender, now=time.time() + 120)
+                    with lock:
+                        for body in sent_bodies:
+                            events.append(("deliver", None, body, True))
+                elif name == "yield":
+                    time.sleep(0)
+                time.sleep(0)
+        except Exception as e:
+            errors.append(f"thread {t}: {type(e).__name__}: {_short(e)}")
+
+    previous = sys.getswitchinterval()
+    sys.setswitchinterval(float(switch))
+    try:
+        workers = [threading.Thread(target=run_lane, args=(t, ops), daemon=True)
+                   for t, ops in enumerate(lanes)]
+        for w in workers:
+            w.start()
+        for w in workers:
+            w.join(timeout=30)
+        if any(w.is_alive() for w in workers):
+            raise Crash("resource", "a stash thread did not finish in 30 s")
+    finally:
+        sys.setswitchinterval(previous)
+    if errors:
+        shutil.rmtree(base, ignore_errors=True)
+        raise Crash("exception", errors[0])
+    faults = []
+    stashed = {}
+    open_delivery = set()
+    delivered = 0
+    for ev in events:
+        kind = ev[0]
+        if kind == "stash" and ev[3]:
+            stashed.setdefault(ev[1], set()).add(ev[2])
+            open_delivery.discard(ev[1])
+        elif kind == "undeliver":
+            open_delivery.discard(ev[1])
+        elif kind == "deliver":
+            skey, body = ev[1], ev[2]
+            delivered += 1
+            owners = [k for k, bodies in stashed.items() if body in bodies]
+            if skey is None:
+                skey = owners[0] if len(owners) == 1 else None
+                if not owners:
+                    faults.append("delivered a body nobody stashed")
+            elif body not in stashed.get(skey, ()):
+                faults.append(f"{skey} delivered a body that was not stashed")
+            if skey is not None:
+                if skey in open_delivery:
+                    faults.append(f"{skey} delivered twice without an undeliver")
+                open_delivery.add(skey)
+    if faults:
+        shutil.rmtree(base, ignore_errors=True)
+        raise Crash("contract", faults[0])
+    for skey in stashed:
+        paths = (
+            ("outbox", R._stash_path(base, skey)),
+            ("sent", R._sent_path(base, skey)),
+            ("failed", os.path.join(R._outbox_dir(base), "failed",
+                                    R._record_name(skey))),
+        )
+        for folder, path in paths:
+            if os.path.exists(path) and R._read_record(path) is None:
+                faults.append(f"{skey} left an unreadable record in {folder}")
+    shutil.rmtree(base, ignore_errors=True)
+    if faults:
+        raise Crash("contract", faults[0])
+    note("race", len(lanes), "delivered", delivered)
+    return "accepted" if delivered else "refused"
+
+
+def seeds_race_stash():
+    K1, K2 = _STASH_KEYS
+    S = lambda skey, body: {"op": "stash", "skey": skey, "body": body}  # noqa: E731
+    D = lambda skey: {"op": "deliver", "skey": skey}  # noqa: E731
+    F = lambda skey: {"op": "fail", "skey": skey}  # noqa: E731
+    U = lambda skey: {"op": "undeliver", "skey": skey}  # noqa: E731
+    Y = {"op": "yield"}
+    specs = [
+        ("two_keys", {"threads": [
+            [S(K1, "one"), D(K1)],
+            [S(K2, "two"), D(K2)]]}),
+        ("fail_then_resend", {"threads": [
+            [S(K1, "kept"), F(K1), {"op": "resend"}]]}),
+        ("deliver_undeliver_deliver", {"threads": [
+            [S(K1, "again"), D(K1), U(K1), D(K1)]]}),
+        ("two_bodies_one_key", {"threads": [
+            [S(K1, "alpha"), Y, D(K1)],
+            [Y, S(K1, "beta")]]}),
+        ("yield_only", {"threads": [[Y, Y], [Y]]}),
+        ("empty", {"threads": []}),
+        ("junk", {"threads": [[{"op": "nope"}], "nope"]}),
     ]
     return [make_entry("payload", spec, "seed:" + name, "seed") for name, spec in specs]
 
@@ -8482,6 +8686,10 @@ TARGETS = {
     # de_dust2: threads interleaved over shared state.
     "race_board": {"files": [_src("wire", "board.py")],
                    "check": check_race_board, "seeds": seeds_race_board,
+                   "technique": "race"},
+    # de_dust2: the worker pool's outbox, the same technique.
+    "race_stash": {"files": [_src("runner.py")],
+                   "check": check_race_stash, "seeds": seeds_race_stash,
                    "technique": "race"},
 }
 

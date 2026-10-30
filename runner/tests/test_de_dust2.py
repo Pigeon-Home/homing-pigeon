@@ -447,6 +447,7 @@ class TechniquesTest(unittest.TestCase):
     def test_the_targets_declare_their_technique(self):
         self.assertEqual("protocol", B.TARGETS["dtls_session"]["technique"])
         self.assertEqual("race", B.TARGETS["race_board"]["technique"])
+        self.assertEqual("race", B.TARGETS["race_stash"]["technique"])
         self.assertNotIn("technique", B.TARGETS["wire"])
 
     def test_a_session_script_replays_the_same_way_twice(self):
@@ -479,8 +480,21 @@ class TechniquesTest(unittest.TestCase):
             self.assertIn(B._with_rig(lambda: B.check("race_board", seeds[name])),
                           ("accepted", "refused"), name)
 
+    def test_a_stash_race_keeps_the_outbox_rules(self):
+        seeds = {e["from"]: e for e in B.seeds_race_stash()}
+        for name in ("seed:two_keys", "seed:fail_then_resend",
+                     "seed:deliver_undeliver_deliver", "seed:two_bodies_one_key"):
+            self.assertEqual("accepted",
+                             B._with_rig(lambda: B.check("race_stash", seeds[name])),
+                             name)
+        for name in ("seed:empty", "seed:junk", "seed:yield_only"):
+            self.assertEqual("refused",
+                             B._with_rig(lambda: B.check("race_stash", seeds[name])),
+                             name)
+
     def test_race_targets_sit_out_the_surface_differential_and_the_kill_set(self):
         self.assertEqual([], B.platform_disagreements("race_board"))
+        self.assertEqual([], B.platform_disagreements("race_stash"))
         from runner.tools import de_dust_survivors as S
         self.assertNotIn("race_board", S.targets_for("board"))
         self.assertIn("board", S.targets_for("board"))

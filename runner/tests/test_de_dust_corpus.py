@@ -155,6 +155,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_race_board(self):
         self._check("race_board")
 
+    def test_race_stash(self):
+        self._check("race_stash")
+
 
 class CrashProbesTest(unittest.TestCase):
     """One probe per crash on file, under expectedFailure: it passes
