@@ -3,7 +3,8 @@
 // Object per tenant (docs/extend/transports.md, "Queues").
 //
 // Roles and routes (every route is /t/<tenant>/...):
-//   SI      POST /jobs            signed job envelope in  (Bearer SI token)
+//   SI      POST /jobs            signed job envelope in; a dead id is 409
+//                                 until the SI acks or requeues it
 //   runner  GET  /jobs?max=N      lease up to N jobs      (Bearer runner token)
 //   runner  POST /jobs/<id>/lease renew a lease it holds   (a long job)
 //   runner  POST /jobs/<id>/ack   job finished
@@ -353,6 +354,15 @@ export class TenantQueue {
       const text = await request.text();
       const existing = await s.get(`job:${jobId}`);
       if (existing) return json(200, { id: jobId, duplicate: true });
+      const dead = await s.get(`dlq:${jobId}`);
+      if (dead) {
+        return json(409, {
+          error: "a job with this id is dead",
+          id: jobId,
+          attempts: dead.attempts,
+          dead_at: dead.dead_at,
+        });
+      }
       const hourKey = `quota:hour:${Math.floor(now / 3_600_000)}`;
       const dayKey = `quota:day:${Math.floor(now / 86_400_000)}`;
       const jobs = (await s.get(hourKey)) || 0;

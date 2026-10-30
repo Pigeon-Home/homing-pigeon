@@ -14,13 +14,6 @@
 //
 // The seed is the reproduction: a failure names its seed and the
 // operation index, and the same seed replays the same run.
-//
-// KNOWN DIVERGENCE (Q125, filed 2026-10-30): the three seed runs fail
-// on "an id is both queued and dead" — /enqueue checks the live
-// queue for a duplicate but not the dead-letter list, so resubmitting
-// a dead-lettered id stores a fresh job while its dead record still
-// stands. Do not green this by editing the harness; it goes green
-// when the desk's fix to /enqueue lands.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -207,7 +200,7 @@ async function runFuzz(seed, ops) {
       } else if (r.status === 429) {
         assert.equal(snapshotBilling(storage()), beforeBilling,
           `${where}: a 429 stored or billed something`);
-      } else if ([400, 403].includes(r.status)) {
+      } else if ([400, 403, 409].includes(r.status)) {
         assert.equal(snapshot(storage()), before, `${where}: a gate refusal changed state`);
       } else {
         assert.equal(r.status, 200, `${where}: submit answered ${r.status}`);

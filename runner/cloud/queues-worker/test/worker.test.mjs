@@ -214,6 +214,37 @@ test("a lease expires and the job is offered again; five attempts dead-letter it
   assert.ok(!storage.map.has("job:j1"));
 });
 
+test("a dead id resubmitted is refused until the SI acks or requeues it", async () => {
+  let now = 1_000_000;
+  const env = makeEnv({ lease: 1000, clock: () => now });
+  await addTenant(env);
+  const body = await signedJob("j1");
+  assert.equal((await worker.fetch(req("/t/alice/jobs", { method: "POST", token: SI, body }), env)).status, 202);
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const r = await worker.fetch(req("/t/alice/jobs", { token: RUNNER }), env);
+    assert.equal(r.status, 200, `attempt ${attempt}`);
+    now += 2000;
+  }
+  assert.equal((await worker.fetch(req("/t/alice/jobs", { token: RUNNER }), env)).status, 204);
+  const storage = env.objects.get("alice").state.storage;
+  const hourKey = `quota:hour:${Math.floor(now / 3_600_000)}`;
+  const billed = storage.map.get(hourKey);
+  const r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: SI, body }), env);
+  assert.equal(r.status, 409);
+  const answered = await r.json();
+  assert.equal(answered.error, "a job with this id is dead");
+  assert.equal(answered.id, "j1");
+  assert.equal(answered.attempts, 5);
+  assert.equal(typeof answered.dead_at, "number");
+  assert.ok(!storage.map.has("job:j1"));
+  assert.ok(storage.map.has("dlq:j1"));
+  assert.equal(storage.map.get(hourKey), billed);
+  assert.equal((await worker.fetch(req("/t/alice/dlq/j1/ack", { method: "POST", token: SI }), env)).status, 204);
+  assert.equal((await worker.fetch(req("/t/alice/jobs", { method: "POST", token: SI, body }), env)).status, 202);
+  assert.ok(storage.map.has("job:j1"));
+  assert.ok(!storage.map.has("dlq:j1"));
+});
+
 test("the quota is a hard stop with a retry hint, and counts only accepted jobs", async () => {
   const env = makeEnv({ quota: { jobs_per_hour: 2, bytes_per_day: 10_000 } });
   await addTenant(env);

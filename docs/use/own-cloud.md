@@ -106,7 +106,8 @@ python3 runner/cloud/send_job.py results --from-queue https://hp.example.workers
 
 A job that ran out of attempts without a result lands on the
 dead-letter list; `send_job.py dlq --from-queue URL` reads it, and
-`--drop ID` or `--requeue ID` handles one.
+`--drop ID` or `--requeue ID` handles one. Sending the same id
+again before that is a refusal, not a new job.
 
 ## Afterwards
 

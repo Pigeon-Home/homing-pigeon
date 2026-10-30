@@ -215,7 +215,7 @@ shape, subject line, blank line, signed body):
 
 | Who | Call | Means |
 | --- | --- | --- |
-| SI | `POST /jobs` | a signed job in; 202 `{"id"}`, 200 `{"duplicate": true}` on a repeat, 403 bad signature, 429 over quota |
+| SI | `POST /jobs` | a signed job in; 202 `{"id"}`, 200 `{"duplicate": true}` on a repeat of a live id, 409 naming the dead record when that id is on the dead-letter list, 403 bad signature, 429 over quota |
 | runner | `GET /jobs?max=N` | lease up to N jobs; 200 `{"jobs": [{"id", "envelope", "attempt"}]}` or 204 |
 | runner | `POST /jobs/<id>/ack` | the job is finished; 204, or 404 if already gone |
 | runner | `POST /jobs/<id>/lease` | renew the lease on a job still running, each pass, so a job longer than the lease is not offered again or dead-lettered; 204, or 404 when the queue no longer holds it leased |
@@ -230,7 +230,10 @@ A lease lasts `LEASE_MS` (default 300 s). The runner renews the lease
 of every job it is still running on each pass, so a long build keeps
 one attempt however long it runs. A job whose lease lapses (the runner
 died or lost the network) is offered again, and after five attempts it
-moves to the tenant's dead-letter list. Tenant records live in the `TENANTS` KV
+moves to the tenant's dead-letter list. Sending that id again is
+refused with 409 until the SI drops the dead record or requeues it;
+enqueue does not clear the death record and does not bill the
+refusal. Tenant records live in the `TENANTS` KV
 namespace (`si_token_sha256`, `runner_token_sha256`, `hmac_secret`,
 `quota`), or in the four secrets `TENANT`, `SI_TOKEN`,
 `RUNNER_TOKEN`, `HMAC_SECRET` for a one-tenant deployment.
