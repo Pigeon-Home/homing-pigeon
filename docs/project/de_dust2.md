@@ -226,11 +226,16 @@ liveness watch stay), and a single-homed target class is a blind
 spot when its rig falls, which the liveness watch reports the hour
 it happens.
 
-**P7 is held.** The ten-minute bank cadence on all three rigs is a
-standing order from 29-OCT (the bank commits are the status line
-Dru reads); P7 would thin it, and P8 takes the CI cost without
-touching it. P7 comes back only if the full matrices per day stay
-high with the corpus path in place.
+**P7 is in, by another road.** The ten-minute bank cadence was a
+standing order from 29-OCT while the bank commits were the only
+sign of life a rig gave; on 30-OCT the cadence went hourly (Menlo
+Park first, the hosted rigs as their timers are changed), which is
+P7's thinning without P7's rule. What the ten-minute cadence was
+carrying: a rig that dies loses at most ten minutes of unbanked
+grow, now at most an hour -- on a box with a flickering disk that
+is the one real cost, and the ledger on the rig's own tree still
+holds the runs until the next bank lands. A crash a rig finds waits
+up to an hour to be seen; nothing in the campaign is that urgent.
 
 What the rigs run, from the post "de_dust2: the rigs switch" in the
 forum:
@@ -247,7 +252,7 @@ forum:
   (two processes never share a target, since each target owns its
   corpus file); `de_dust_survivors.py` once a day in a fixed slot;
   no other grow work beside them.
-- Banks at the ten-minute cadence; the hourly note by
+- Banks hourly (ten-minute until 30-OCT); the hourly note by
   P10 (`stats --yield` is its first line's source); the ledger
   line, the bank's title and the note say de_dust2.
 
