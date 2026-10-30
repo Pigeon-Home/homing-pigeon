@@ -35,3 +35,4 @@
 {"arcs": 0, "data": {"directory": {"": {"state": "in_use"}, "canary-key": {"state": "in_use"}, "ops": {"state": "in_use"}}, "key_id": 7}, "from": "seed:key_7", "id": "bf0a0b590d010e23", "kind": "payload", "mutator": "seed"}
 {"arcs": 0, "data": {"directory": {"": {"state": "in_use"}, "canary-key": {"state": "in_use"}, "ops": {"state": "in_use"}}, "key_id": null}, "from": "seed:key_None", "id": "f2f7d3c03bd009a3", "kind": "payload", "mutator": "seed"}
 {"arcs": 2, "data": {"directory": {"": {"not_after": "proceed", "not_before": 1.0, "state": "in_use"}}, "key_id": ""}, "from": "ab183c298d3c126f", "id": "089e603fd88a1072", "kind": "payload", "mutator": "p_replace"}
+{"arcs": 2, "data": {"directory": {"": {"not_after": {"x": 1.0}, "state": "in_use"}}, "key_id": ""}, "from": "2ab84a6e6b4d342a", "id": "786f7c0f9edc8572", "kind": "payload", "mutator": "p_nest"}

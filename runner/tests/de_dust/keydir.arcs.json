@@ -575,6 +575,11 @@
   ],
   [
    "runner/wire/verify.py",
+   301,
+   302
+  ],
+  [
+   "runner/wire/verify.py",
    302,
    300
   ],
