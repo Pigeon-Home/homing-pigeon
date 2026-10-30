@@ -924,6 +924,18 @@ class HourlyNoteTest(unittest.TestCase):
         self.assertIn("wire -- t_grammar", text)
         self.assertNotIn("Disk probe", text)
 
+    def test_the_note_says_how_the_hour_s_grows_ended(self):
+        now = datetime(2026, 10, 30, 22, 0, tzinfo=timezone.utc)
+        runs = [_grow("wire", "2026-10-30T21:30:00Z", seconds=1800.0, tried=900),
+                _grow("dtls_hostile", "2026-10-30T21:40:00Z", seconds=1800.0, tried=100),
+                _grow("race_stash", "2026-10-30T21:50:00Z", seconds=3.0, tried=0)]
+        runs[0]["stopped"] = "budget"
+        runs[2]["stopped"] = "exhausted"
+        text = B.hourly_note(runs, now=now, probe=False)
+        self.assertIn("Grows in the last hour: 3, 1,000 tries over 1.00 CPU-hours; "
+                      "1 ran their budget out, 1 their rounds, and 1 ended exhausted, "
+                      "the mutators making nothing new from the corpus of race_stash.", text)
+
     def test_two_plans_at_one_moment_are_both_in_the_note(self):
         now = datetime(2026, 10, 30, 22, 30, tzinfo=timezone.utc)
         when = "2026-10-30T22:17:14Z"

@@ -11270,6 +11270,31 @@ def hourly_note(runs=None, now=None, hours=24, rig=None, probe=True):
             latest[r["target"]] = r["entries_after"]
     out.append(f"Entries kept: {kept} in the last hour. The corpus totals "
                f"{sum(latest.values()):,} entries over {len(latest)} targets.")
+    if hour:
+        # How the hour's grows ended: on their budget (the slice ran
+        # its seconds), on their rounds, or exhausted (the mutators
+        # could make nothing new from that corpus, a finding of its
+        # own). Records from before the field count as on rounds.
+        ended = {"budget": 0, "exhausted": [], "rounds": 0}
+        for r in hour:
+            how = r.get("stopped")
+            if how == "budget":
+                ended["budget"] += 1
+            elif how == "exhausted":
+                ended["exhausted"].append(r.get("target", "?"))
+            else:
+                ended["rounds"] += 1
+        tried = sum(int(r.get("tried") or 0) for r in hour)
+        secs = sum(float(r.get("seconds") or 0) for r in hour)
+        line = (f"Grows in the last hour: {len(hour)}, {tried:,} tries over "
+                f"{secs / 3600:.2f} CPU-hours; {ended['budget']} ran their "
+                f"budget out, {ended['rounds']} their rounds")
+        if ended["exhausted"]:
+            names = sorted(set(ended["exhausted"]))
+            line += (f", and {len(ended['exhausted'])} ended exhausted, the "
+                     f"mutators making nothing new from the corpus of "
+                     f"{', '.join(names)}")
+        out.append(line + ".")
     crashed = sorted({r["target"] for r in hour if (r.get("crashes") or 0) > 0})
     slowed = sorted({r["target"] for r in hour if (r.get("slow") or 0) > 0})
     out.append("Crashes filed: " + (f"{sum(1 for r in hour if (r.get('crashes') or 0) > 0)} "
