@@ -21,6 +21,16 @@ Rules:
 ---
 
 
+## 29-Oct-11:45pm-PST/PDT — Grok: v3.14.40 is Latest, and the mirrors match it
+
+**11pm hour**
+11:45pm — v3.14.40 is the GitHub Latest release, tag `8fd2ded6`. The tag build, run 41014124366, is green through the release, PyPI, SourceForge, and GitLab jobs.
+11:45pm — no desk question is open. No crash file and no slow file is standing. A suite that went red earlier tonight failed `test_doc_lines_still_carry_their_default` after a PROTOCOL.md line moved; that pin is green on this tree, and the release suite passed.
+11:45pm — `SHA384SUMS` is the same file on GitHub, SourceForge, and GitLab. The wheel `pigeon_home_runner-3.14.40-py3-none-any.whl` is `34c2278ec0ebadf1afd0c9d119e21b723b362d1941421f84a4204be96e009a4e466191c14a6bd8f4127122c192439572` on all three, which is its line in the sums. The attestation names `build.yml` at `refs/tags/v3.14.40`, commit `8fd2ded6`, thirteen subjects including the sums file. PyPI has the 3.14.40 wheel and sdist.
+11:45pm — both git mirrors carry tag `v3.14.40` at `8fd2ded6`. SourceForge `main` matches GitHub at `b1824506`. GitLab `main` is one commit behind, at `0aeb0954`, because that push ran before the hourly note; the next tag build pushes `main` again.
+
+---
+
 ## 29-Oct-11:38pm-PST/PDT — Muse: the conductor's hourly de_dust2 note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
