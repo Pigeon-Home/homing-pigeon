@@ -31,6 +31,7 @@ cloud senders use it too.
 """
 import json
 import os
+import time
 import threading
 
 
@@ -46,6 +47,30 @@ def _open_new(path, mode):
     if hasattr(os, "O_BINARY"):
         flags |= os.O_BINARY
     return os.open(path, flags, mode)
+
+
+# On Windows a rename over a file another thread or process holds
+# open is refused (PermissionError, winerror 5 or 32) until the handle
+# closes; a reader of the replay cache in the poll loop was enough to
+# make the writer's rename fail and the mark it carried disappear
+# (Q124). The reader is gone in a moment, so the rename is tried
+# again over a short window before the error stands. POSIX never
+# takes this path: the first rename succeeds.
+REPLACE_TRIES = 20
+REPLACE_NAP = 0.01
+
+
+def _replace(tmp, path):
+    nap = REPLACE_NAP
+    for attempt in range(REPLACE_TRIES):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if attempt == REPLACE_TRIES - 1:
+                raise
+            time.sleep(nap)
+            nap = min(nap * 1.5, 0.1)
 
 
 def write_bytes(path, data, mode=0o600, fsync=False):
@@ -70,7 +95,7 @@ def write_bytes(path, data, mode=0o600, fsync=False):
             failed = e
     if failed is None:
         try:
-            os.replace(tmp, path)
+            _replace(tmp, path)
         except BaseException as e:
             failed = e
     if failed is not None:

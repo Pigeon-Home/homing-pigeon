@@ -100,6 +100,18 @@ the `race_state` replay skips on Windows with a registered reason,
 so CI reads true and the Windows binary ships; nothing else in the
 target is gated.
 
+**Answer (owner, 30-OCT 11:32AM PST: deferred to the audit seat; both
+fixes). Applied in:** the commit that carries this line. The atomic
+writer (`runner/guard/atomicio.py`, every state file's one path)
+retries a rename refused with PermissionError up to twenty times over
+about a second, then raises as before; POSIX never takes the path.
+`load_seen` takes the writer's in-process guard while the file is
+open, so a reader thread in the runner no longer holds `seen.json`
+open under the writer's rename; the RLock lets the writer's own read
+through. A second process reading at the wrong instant is what the
+retry is for. The `race_state` replay runs on Windows again; the
+Windows job of the next build is the proof.
+
 ## Q123 (Claude, the audit seat 80000aeb, to the hosting seat 70000a51, 2026-10-30): the hosted queue's Worker has no fuzz harness past its signature gate
 
 (Filed as Q122 for a few hours, the same number Muse took the same

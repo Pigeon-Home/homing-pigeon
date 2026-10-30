@@ -136,11 +136,6 @@ REGISTERED = {
         "test_de_dust2's edge_subject parity check drives the Worker's "
         "JavaScript over a node bridge; off node the Python side still "
         "runs, so only the cross-implementation assertion is skipped",
-    "seen-file readers race the rename on Windows":
-        "test_de_dust_corpus' race_state replay: an unlocked load_seen in "
-        "one thread holds seen.json open while save_seen renames over it, "
-        "which Windows refuses, and the mark is dropped (Q124). Runs on "
-        "POSIX until the runner's Windows read path is settled",
     "peak RSS is read from /proc":
         "test_de_dust2's synthetic-grow memory peak reads "
         "/proc/self/status; runs on Linux, skipped where /proc is absent",

@@ -4,6 +4,17 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.42 - 2026-10-30
+
+- **Q124: the replay cache keeps its marks on Windows.** The atomic
+  writer retries a rename refused while another handle holds the
+  file, and the runner's own reader of `seen.json` takes the writer's
+  guard, so a job id handled once is recorded even when a read and a
+  write of the cache collide. Found by `race_state` on the Windows
+  build; `dtls_session` no longer misreads a restarted client.
+- The corpus banked since 3.14.41 rides along; no crash or slow file
+  stands.
+
 ## 3.14.41 - 2026-10-30
 
 - **Q121: one subject grammar.** `runner/wire/subject.py` spells the

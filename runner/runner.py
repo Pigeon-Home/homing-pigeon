@@ -4860,8 +4860,15 @@ def load_seen(path: str, stamped=False) -> dict:
     try:
         if not isinstance(path, str) or not path or os.path.islink(path):
             return {}
-        with open(path, encoding="utf-8") as fh:
-            data = json.load(fh)
+        # The in-process guard the writer holds (Q124): a reader in
+        # another thread no longer has the file open while the
+        # writer renames over it. The RLock lets the writer's own
+        # read inside _with_seen_file pass. The file lock is the
+        # writer's alone; a second process reading is the rename
+        # retry's to ride out.
+        with _SEEN_FILE_GUARD:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
         if isinstance(data, list):
             return {str(x): True for x in data}
         if isinstance(data, dict):

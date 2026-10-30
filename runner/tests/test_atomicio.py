@@ -210,6 +210,61 @@ class AtomicWriteTest(unittest.TestCase):
                 atomicio.write_text(bad, "x")
 
 
+class ReplaceRetryTest(unittest.TestCase):
+    """Q124: Windows refuses a rename over a file another thread
+    holds open; the writer tries again over a short window."""
+
+    def test_a_rename_refused_twice_lands_on_the_third_try(self):
+        base = tempfile.mkdtemp(prefix="hp-replace-")
+        path = os.path.join(base, "seen.json")
+        real = os.replace
+        calls = []
+
+        def refuse_twice(src, dst):
+            calls.append(1)
+            if len(calls) < 3:
+                raise PermissionError(13, "The process cannot access the file")
+            return real(src, dst)
+        with mock.patch.object(atomicio.os, "replace", refuse_twice), \
+                mock.patch.object(atomicio.time, "sleep", lambda s: None):
+            atomicio.write_json(path, {"k": 1})
+        with open(path, encoding="utf-8") as fh:
+            self.assertEqual({"k": 1}, json.load(fh))
+        self.assertEqual(3, len(calls))
+        self.assertEqual([], [n for n in os.listdir(base) if ".tmp." in n])
+        shutil.rmtree(base, ignore_errors=True)
+
+    def test_a_rename_refused_for_good_raises_and_cleans_up(self):
+        base = tempfile.mkdtemp(prefix="hp-replace-")
+        path = os.path.join(base, "seen.json")
+        calls = []
+
+        def refuse(src, dst):
+            calls.append(1)
+            raise PermissionError(13, "held")
+        with mock.patch.object(atomicio.os, "replace", refuse), \
+                mock.patch.object(atomicio.time, "sleep", lambda s: None), \
+                self.assertRaises(PermissionError):
+            atomicio.write_json(path, {"k": 1})
+        self.assertEqual(atomicio.REPLACE_TRIES, len(calls))
+        self.assertEqual([], os.listdir(base))
+        shutil.rmtree(base, ignore_errors=True)
+
+    def test_other_errors_are_not_retried(self):
+        base = tempfile.mkdtemp(prefix="hp-replace-")
+        path = os.path.join(base, "seen.json")
+        calls = []
+
+        def nospace(src, dst):
+            calls.append(1)
+            raise OSError(28, "No space left on device")
+        with mock.patch.object(atomicio.os, "replace", nospace), \
+                self.assertRaises(OSError):
+            atomicio.write_json(path, {"k": 1})
+        self.assertEqual(1, len(calls))
+        shutil.rmtree(base, ignore_errors=True)
+
+
 class QuarantineMarkerTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-atomicio-q-")
