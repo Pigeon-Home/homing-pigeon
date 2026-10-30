@@ -65,7 +65,7 @@ the proof it is built to give, not one given.
 |---|---|---|---|---|
 | Linux (ubuntu-latest) | `test` job, in-process under the wall clock | `linux` leg (bwrap) and `root` leg (a second user): every control | smoked | suite and binaries on every push to main and every tag; the switch proofs on a push that touches `runner/**`, SECURITY.md, the hardening templates or `switch-proofs.yml`, and nightly, never on a tag |
 | Windows (windows-latest) | `build-windows` job, sharded over 4 cores | `windows` leg: the platform-neutral controls | smoked | as Linux |
-| macOS (macos-14) | `test-macos` job, sharded over 3 cores | `macos` leg and `macos-root` leg (a second user): the POSIX controls, the drop included | smoked (both macOS builds) | as Linux |
+| macOS (macos-15) | `test-macos` job, sharded over 3 cores | `macos` leg and `macos-root` leg (a second user): the POSIX controls, the drop included | smoked (both macOS builds) | as Linux |
 | FreeBSD 15 (a VM inside a Linux runner) | as an ordinary user, under the wall clock | as root with a second user: the POSIX controls | not built (sdist install) | weekly, on dispatch, and when `freebsd.yml` changes; no green run yet |
 
 The roster (`runner/tests/switch_roster.py`) says, per control, what

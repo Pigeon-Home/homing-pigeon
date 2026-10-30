@@ -265,12 +265,12 @@ jobs:
     # has shipped macOS binaries since the start, smoked but never
     # tested: the POSIX half of the product on Darwin rested on
     # Linux's word. Sharded like the Windows suite; three cores on
-    # macos-14. A signal, not a gate: cut-release reads `test` and
+    # macos-15. A signal, not a gate: cut-release reads `test` and
     # the build-* jobs, so a red here shows on the run and blocks
     # nothing until it has held green for a while.
     needs: scope
     if: needs.scope.outputs.corpus_only != 'true'
-    runs-on: macos-14
+    runs-on: macos-15
     permissions:
       contents: read
     steps:
@@ -478,7 +478,7 @@ jobs:
   build-macos:
     needs: scope
     if: needs.scope.outputs.corpus_only != 'true'
-    runs-on: macos-14
+    runs-on: macos-15
     permissions:
       contents: read
     steps:
@@ -646,7 +646,7 @@ jobs:
           path: ${{ env.PKG_NAME }}.zip
 
   build-macos-x86_64:
-    # Native Intel macOS. macos-14 is Apple Silicon and cannot
+    # Native Intel macOS. macos-15 is Apple Silicon and cannot
     # freeze an x86_64 interpreter. macos-13 was retired in
     # December 2025 and a job that asks for it never starts, so
     # the release never publishes. macos-15-intel is the
