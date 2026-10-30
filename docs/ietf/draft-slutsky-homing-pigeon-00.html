@@ -1,0 +1,2887 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>Homing Pigeon Message Protocol, Version 1</title>
+<meta content="Author Placeholder" name="author">
+<meta content="
+       This document specifies the Homing Pigeon message protocol, version 1: signed JSON job and result objects exchanged over a transport binding. On the email binding, a submitter sends one HMAC-SHA-384 signed JSON object to a mailbox; a runner polls that mailbox, verifies the signature, executes the job, and returns a signed result; the other bindings carry the same objects unchanged. The signature is the only authorization. The job object is protected end to end by per-job AEAD encryption, a required part of the protocol: implementations  MUST  support it, the reference software sends encrypted by default, and a receiver refuses a cleartext job unless the operator has explicitly enabled cleartext acceptance — in the reference software, only by a command-line parameter. The store-and-forward bindings open no inbound listener on the host that runs the job. 
+       The DTLS binding changes the binding and not the messages: the same signed objects travel inside a direct DTLS 1.3 session between the submitter and the runner. It is a binding of version 1, not a new version of the protocol. The shared secret is the session's external pre-shared key; key exchange is ephemeral-only, so sessions have perfect forward secrecy; and once the handshake has authenticated the submitter, the runner opens the session with a greeting that discloses a tiered, responder-chosen summary of its platform. The binding opens an inbound listener on the runner's host and is off unless the owner enables it. It is an addition, never a replacement: the store-and-forward bindings remain the ones every submitter can reach. 
+    " name="description">
+<meta content="xml2rfc 3.35.0" name="generator">
+<meta content="email" name="keyword">
+<meta content="HMAC" name="keyword">
+<meta content="job execution" name="keyword">
+<meta content="DTLS" name="keyword">
+<meta content="draft-slutsky-homing-pigeon-00" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.35.0
+    Python 3.13.17
+    ConfigArgParse 1.9.0
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.3
+    natsort 8.4.0
+    platformdirs 4.14.0
+    pycountry 26.2.16
+    pypdf 6.17.0
+    PyYAML 6.0.3
+    requests 2.34.2
+    wcwidth 0.9.4
+-->
+<link href="draft-slutsky-homing-pigeon-00.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">/*
+
+  NOTE: Changes at the bottom of this file overrides some earlier settings.
+
+  Once the style has stabilized and has been adopted as an official RFC style,
+  this can be consolidated so that style settings occur only in one place, but
+  for now the contents of this file consists first of the initial CSS work as
+  provided to the RFC Formatter (xml2rfc) work, followed by itemized and
+  commented changes found necessary during the development of the v3
+  formatters.
+
+*/
+
+/* fonts */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
+
+:root {
+  --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
+  --font-serif: 'Noto Serif', 'Times', 'Times New Roman', serif;
+  --font-mono: 'Roboto Mono', Courier, 'Courier New', monospace;
+}
+
+@viewport {
+  zoom: 1.0;
+}
+@-ms-viewport {
+  width: extend-to-zoom;
+  zoom: 1.0;
+}
+/* general and mobile first */
+html {
+}
+body {
+  max-width: 90%;
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  overflow-wrap: break-word;
+}
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  line-height: 1.3;
+}
+#title {
+  clear: both;
+  border-bottom: 1px solid #ddd;
+  margin: 0 0 0.5em 0;
+  padding: 1em 0 0.5em;
+}
+.author {
+  padding-bottom: 4px;
+}
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  margin-top: -20px;  /* provide offset for in-page anchors */
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h5, h6 {
+  font-size: 14px;
+}
+#n-copyright-notice {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+/* general structure */
+p {
+  padding: 0;
+  margin: 0 0 1em 0;
+  text-align: left;
+}
+div, span {
+  position: relative;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+@media print {
+  svg {
+    max-height: 850px;
+    max-width: 660px;
+  }
+}
+svg[font-family~="serif" i], svg [font-family~="serif" i] {
+  font-family: var(--font-serif);
+}
+svg[font-family~="sans-serif" i], svg [font-family~="sans-serif" i] {
+  font-family: var(--font-sans);
+}
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  display: table;
+  border: none;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 1em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.ulBare, li.ulBare {
+  margin-left: 0em !important;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+/* 
+dl.nohang > dt {
+  float: none;
+}
+*/
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+/* XXX probably not this:
+a.selfRef:hover {
+  background-color: transparent;
+  cursor: default;
+} */
+
+/* Figures */
+tt, code, pre {
+  background-color: #f9f9f9;
+  font-family: var(--font-mono);
+}
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption {
+  font-style: italic;
+  margin: 0 0 1em 0;
+}
+@media screen {
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    max-width: calc(100% - 22px);
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 1.2em 2em;
+}
+blockquote {
+  background-color: #f9f9f9;
+  color: #111; /* Arlen: WCAG 2019 */
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin: 1em 0;
+}
+blockquote > *:last-child {
+  margin-bottom: 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+.xref {
+  overflow-wrap: normal;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+table p {
+  /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
+     be allowed within tables more generally, it would be far better to select on a class. */
+  margin: 0;
+}
+sub,
+sup {
+ white-space: nowrap;
+}
+
+/* pilcrow */
+a.pilcrow {
+  color: #666; /* Arlen: AHDJ 2019 */
+  text-decoration: none;
+  visibility: hidden;
+  user-select: none;
+  -ms-user-select: none;
+  -o-user-select:none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media screen {
+  aside:hover > a.pilcrow,
+  p:hover > a.pilcrow,
+  blockquote:hover > a.pilcrow,
+  div:hover > a.pilcrow,
+  li:hover > a.pilcrow,
+  pre:hover > a.pilcrow {
+    visibility: visible;
+  }
+  a.pilcrow:hover {
+    background-color: transparent;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: 0.9em;
+}
+#identifiers dt {
+  width: 3em;
+  clear: left;
+}
+#identifiers dd {
+  float: left;
+  margin-bottom: 0;
+}
+/* Fix PDF info block run off issue */
+@media print {
+  #identifiers dd {
+    max-width: 100%;
+  }
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #666; /* Arlen: WCAG 2019 */
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc  {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+nav.toc ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+nav.toc li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.refSubseries {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 600px) {
+  .index ul {
+    -moz-column-count: 2;
+    -moz-column-gap: 20px;
+  }
+  .index ul ul {
+    -moz-column-count: 1;
+    -moz-column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  font-family: var(--font-sans);
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+
+/* temporary notes */
+.rfcEditorRemove::before {
+  position: absolute;
+  top: 0.2em;
+  right: 0.2em;
+  padding: 0.2em;
+  content: "The RFC Editor will remove this note";
+  color: #9e2a00; /* Arlen: WCAG 2019 */
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+}
+.rfcEditorRemove {
+  position: relative;
+  padding-top: 1.8em;
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  border-radius: 3px;
+}
+.cref {
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 1023px) {
+  body {
+    padding-top: 2em;
+  }
+  #title {
+    padding: 1em 0;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: -18px;  /* provide offset for in-page anchors */
+    padding-top: 38px;
+  }
+  #identifiers dd {
+    max-width: 60%;
+  }
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    border-bottom: 1px solid #ccc;
+  }
+  #toc h2 {
+    margin: -1px 0 0 0;
+    padding: 4px 0 4px 6px;
+    padding-right: 1em;
+    min-width: 190px;
+    font-size: 1.1em;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 6px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 1024px) {
+  body {
+    max-width: 724px;
+    margin: 42px auto;
+    padding-left: 1.5em;
+    padding-right: 29em;
+  }
+  #toc {
+    position: fixed;
+    top: 42px;
+    right: 42px;
+    width: 25%;
+    margin: 0;
+    padding: 0 1em;
+    z-index: 1;
+  }
+  #toc h2 {
+    border-top: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 0;
+    overflow: auto;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  .breakable pre {
+    break-inside: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* This is commented out here, as the string-set: doesn't
+   pass W3C validation currently */
+/*
+.ears thead .left {
+  string-set: ears-top-left content();
+}
+
+.ears thead .center {
+  string-set: ears-top-center content();
+}
+
+.ears thead .right {
+  string-set: ears-top-right content();
+}
+
+.ears tfoot .left {
+  string-set: ears-bottom-left content();
+}
+
+.ears tfoot .center {
+  string-set: ears-bottom-center content();
+}
+
+.ears tfoot .right {
+  string-set: ears-bottom-right content();
+}
+*/
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+  /* The following is commented out here, but set appropriately by in code, as
+     the content depends on the document */
+  /*
+  @top-left {
+    content: 'Internet-Draft';
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-left {
+    content: string(ears-top-left);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-center {
+    content: string(ears-top-center);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-right {
+    content: string(ears-top-right);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @bottom-left {
+    content: string(ears-bottom-left);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-center {
+    content: string(ears-bottom-center);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-right {
+      content: '[Page ' counter(page) ']';
+      vertical-align: top;
+      border-top: solid 1px #ccc;
+  }
+  */
+
+}
+
+/* Changes introduced to fix issues found during implementation */
+/* Make sure links are clickable even if overlapped by following H* */
+a {
+  z-index: 2;
+}
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Leave room in document info to show Internet-Draft on one line */
+#identifiers dt {
+  width: 8em;
+}
+
+/* Don't waste quite as much whitespace between label and value in doc info */
+#identifiers dd {
+  margin-left: 1em;
+}
+
+/* Give floating toc a background color (needed when it's a div inside section */
+#toc {
+  background-color: white;
+}
+
+/* Make the collapsed ToC header render white on gray also when it's a link */
+@media screen and (max-width: 1023px) {
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+}
+
+/* Give the bottom of the ToC some whitespace */
+@media screen and (min-width: 1024px) {
+  #toc {
+    padding: 0 0 1em 1em;
+  }
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* prevent monospace from becoming overly large */
+tt, code, pre {
+  font-size: 95%;
+}
+
+/* Fix the height/width aspect for ascii art*/
+.sourcecode pre,
+.art-text pre {
+  line-height: 1.12;
+}
+
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin-right: 0.5em;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 30em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Provide table alignment support.  We can't use the alignX classes above
+   since they do unwanted things with caption and other styling. */
+table.right {
+ margin-left: auto;
+ margin-right: 0;
+}
+table.center {
+ margin-left: auto;
+ margin-right: auto;
+}
+table.left {
+ margin-left: 0;
+ margin-right: auto;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+caption a[href] {
+  color: #222;
+}
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+/* Tweak the invisible space above H* in order not to overlay links in text above */
+ h2 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 31px;
+ }
+ h3 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+ h4 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+/* Float artwork pilcrow to the right */
+@media screen {
+  .artwork a.pilcrow {
+    display: block;
+    line-height: 0.7;
+    margin-top: 0.15em;
+  }
+}
+/* Make pilcrows on dd visible */
+@media screen {
+  dd:hover > a.pilcrow {
+    visibility: visible;
+  }
+}
+/* Make the placement of figcaption match that of a table's caption
+   by removing the figure's added bottom margin */
+.alignLeft.art-text,
+.alignCenter.art-text,
+.alignRight.art-text {
+   margin-bottom: 0;
+}
+.alignLeft,
+.alignCenter,
+.alignRight {
+  margin: 1em 0 0 0;
+}
+/* In print, the pilcrow won't show on hover, so prevent it from taking up space,
+   possibly even requiring a new line */
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+/* Styling for the external metadata */
+div#external-metadata {
+  background-color: #eee;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  display: none;
+}
+div#internal-metadata {
+  padding: 0.5em;                       /* to match the external-metadata padding */
+}
+/* Styling for title RFC Number */
+h1#rfcnum {
+  clear: both;
+  margin: 0 0 -1em;
+  padding: 1em 0 0 0;
+}
+/* Make .olPercent look the same as <ol><li> */
+dl.olPercent > dd {
+  margin-bottom: 0.25em;
+  min-height: initial;
+}
+/* Give aside some styling to set it apart */
+aside {
+  border-left: 1px solid #ddd;
+  margin: 1em 0 1em 2em;
+  padding: 0.2em 2em;
+}
+aside > dl,
+aside > ol,
+aside > ul,
+aside > table,
+aside > p {
+  margin-bottom: 0.5em;
+}
+/* Additional page break settings */
+@media print {
+  figcaption, table caption {
+    page-break-before: avoid;
+  }
+  table {
+    page-break-inside: avoid;
+  }
+}
+/* Font size adjustments for print */
+@media print {
+  body  { font-size: 10pt;      line-height: normal; max-width: 96%; }
+  h1    { font-size: 1.72em;    padding-top: 1.5em; } /* 1*1.2*1.2*1.2 */
+  h2    { font-size: 1.44em;    padding-top: 1.5em; } /* 1*1.2*1.2 */
+  h3    { font-size: 1.2em;     padding-top: 1.5em; } /* 1*1.2 */
+  h4    { font-size: 1em;       padding-top: 1.5em; }
+  h5, h6 { font-size: 1em;      margin: initial; padding: 0.5em 0 0.3em; }
+}
+/* Sourcecode margin in print, when there's no pilcrow */
+@media print {
+  .artwork,
+  .artwork > pre,
+  .sourcecode {
+    margin-bottom: 1em;
+  }
+}
+/* Avoid narrow tables forcing too narrow table captions, which may render badly */
+table {
+  min-width: 20em;
+}
+/* ol type a */
+ol.type-a { list-style-type: lower-alpha; }
+ol.type-A { list-style-type: upper-alpha; }
+ol.type-i { list-style-type: lower-roman; }
+ol.type-I { list-style-type: upper-roman; }
+/* Apply the print table and row borders in general, on request from the RPC,
+and increase the contrast between border and odd row background slightly */
+table {
+  border: 1px solid #ddd;
+}
+td {
+  border-top: 1px solid #ddd;
+}
+tr {
+  break-inside: avoid;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f8f8f8;
+}
+/* Use style rules to govern display of the TOC. */
+@media screen and (max-width: 1023px) {
+  #toc nav { display: none; }
+  #toc.active nav { display: block; }
+}
+/* Add support for keepWithNext */
+.keepWithNext {
+  break-after: avoid-page;
+  break-after: avoid-page;
+}
+/* Add support for keepWithPrevious */
+.keepWithPrevious {
+  break-before: avoid-page;
+}
+/* Change the approach to avoiding breaks inside artwork etc. */
+figure, pre, table, .artwork, .sourcecode  {
+  break-before: auto;
+  break-after: auto;
+}
+/* Avoid breaks between <dt> and <dd> */
+dl {
+  break-before: auto;
+  break-inside: auto;
+}
+dt {
+  break-before: auto;
+  break-after: avoid-page;
+}
+dd {
+  break-before: avoid-page;
+  break-after: auto;
+  orphans: 3;
+  widows: 3
+}
+span.break, dd.break {
+  margin-bottom: 0;
+  min-height: 0;
+  break-before: auto;
+  break-inside: auto;
+  break-after: auto;
+}
+/* Undo break-before ToC */
+@media print {
+  #toc {
+    break-before: auto;
+  }
+}
+/* Text in compact lists should not get extra bottom margin space,
+   since that would makes the list not compact */
+ul.compact p, .ulCompact p,
+ol.compact p, .olCompact p {
+ margin: 0;
+}
+/* But the list as a whole needs the extra space at the end */
+section ul.compact,
+section .ulCompact,
+section ol.compact,
+section .olCompact {
+  margin-bottom: 1em;                    /* same as p not within ul.compact etc. */
+}
+/* The tt and code background above interferes with for instance table cell
+   backgrounds.  Changed to something a bit more selective. */
+tt, code {
+  background-color: transparent;
+}
+p tt, p code, li tt, li code, dt tt, dt code {
+  background-color: #f8f8f8;
+}
+/* Tweak the pre margin -- 0px doesn't come out well */
+pre {
+   margin-top: 0.5px;
+}
+/* Tweak the compact list text */
+ul.compact, .ulCompact,
+ol.compact, .olCompact,
+dl.compact, .dlCompact {
+  line-height: normal;
+}
+/* Don't add top margin for nested lists */
+li > ul, li > ol, li > dl,
+dd > ul, dd > ol, dd > dl,
+dl > dd > dl {
+  margin-top: initial;
+}
+/* Elements that should not be rendered on the same line as a <dt> */
+/* This should match the element list in writer.text.TextWriter.render_dl() */
+dd > div.artwork:first-child,
+dd > aside:first-child,
+dd > blockquote:first-child,
+dd > figure:first-child,
+dd > ol:first-child,
+dd > div.sourcecode:first-child,
+dd > table:first-child,
+dd > ul:first-child {
+  clear: left;
+}
+/* fix for weird browser behaviour when <dd/> is empty */
+dt+dd:empty::before{
+  content: "\00a0";
+}
+/* Make paragraph spacing inside <li> smaller than in body text, to fit better within the list */
+li > p {
+  margin-bottom: 0.5em
+}
+/* Don't let p margin spill out from inside list items */
+li > p:last-of-type:only-child {
+  margin-bottom: 0;
+}
+</style>
+<link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">Homing Pigeon v1</td>
+<td class="right">October 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Placeholder</td>
+<td class="center">Expires 3 May 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Network Working Group</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-slutsky-homing-pigeon-00</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-10-30" class="published">30 October 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Informational</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-05-03">3 May 2027</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">A. Placeholder</div>
+<div class="org">Pigeon-Home</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">Homing Pigeon Message Protocol, Version 1</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">This document specifies the Homing Pigeon message protocol, version 1: signed JSON job and result objects exchanged over a transport binding. On the email binding, a submitter sends one HMAC-SHA-384 signed JSON object to a mailbox; a runner polls that mailbox, verifies the signature, executes the job, and returns a signed result; the other bindings carry the same objects unchanged. The signature is the only authorization. The job object is protected end to end by per-job AEAD encryption, a required part of the protocol: implementations <span class="bcp14">MUST</span> support it, the reference software sends encrypted by default, and a receiver refuses a cleartext job unless the operator has explicitly enabled cleartext acceptance — in the reference software, only by a command-line parameter. The store-and-forward bindings open no inbound listener on the host that runs the job.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-2">The DTLS binding changes the binding and not the messages: the same signed objects travel inside a direct DTLS 1.3 session between the submitter and the runner. It is a binding of version 1, not a new version of the protocol. The shared secret is the session's external pre-shared key; key exchange is ephemeral-only, so sessions have perfect forward secrecy; and once the handshake has authenticated the submitter, the runner opens the session with a greeting that discloses a tiered, responder-chosen summary of its platform. The binding opens an inbound listener on the runner's host and is off unless the owner enables it. It is an addition, never a replacement: the store-and-forward bindings remain the ones every submitter can reach.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 3 May 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-why-specify-this-publicly" class="internal xref">Why specify this publicly</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-versions-in-this-document" class="internal xref">Versions in this document</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-requirements-language" class="internal xref">Requirements Language</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-scope" class="internal xref">Scope</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-transport-binding" class="internal xref">Transport Binding</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
+                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-the-file-binding" class="internal xref">The File Binding</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2">
+                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-the-nats-binding" class="internal xref">The NATS Binding</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-subjects" class="internal xref">Subjects</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-body-and-signature-marker" class="internal xref">Body and Signature Marker</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.1">
+                <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-mac" class="internal xref">MAC</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2">
+                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-constant-time-compare" class="internal xref">Constant-time compare</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-unknown-members" class="internal xref">Unknown Members</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-common-members" class="internal xref">Common Members</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-key-selection" class="internal xref">Key Selection</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.1">
+                <p id="section-toc.1-1.10.2.1.1"><a href="#section-10.1" class="auto internal xref">10.1</a>.  <a href="#name-fingerprint-names" class="internal xref">Fingerprint names</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-job-message" class="internal xref">Job Message</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
+                <p id="section-toc.1-1.11.2.1.1"><a href="#section-11.1" class="auto internal xref">11.1</a>.  <a href="#name-issued_at" class="internal xref">issued_at</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
+                <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-reply_to" class="internal xref">reply_to</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.3">
+                <p id="section-toc.1-1.11.2.3.1"><a href="#section-11.3" class="auto internal xref">11.3</a>.  <a href="#name-ping-and-exec" class="internal xref">ping and exec</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.4">
+                <p id="section-toc.1-1.11.2.4.1"><a href="#section-11.4" class="auto internal xref">11.4</a>.  <a href="#name-files" class="internal xref">files</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-kind-and-type-failures" class="internal xref">Kind and Type Failures</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-result-message" class="internal xref">Result Message</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.1">
+                <p id="section-toc.1-1.13.2.1.1"><a href="#section-13.1" class="auto internal xref">13.1</a>.  <a href="#name-exit_code" class="internal xref">exit_code</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.2">
+                <p id="section-toc.1-1.13.2.2.1"><a href="#section-13.2" class="auto internal xref">13.2</a>.  <a href="#name-truncation" class="internal xref">Truncation</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-receiver-processing" class="internal xref">Receiver Processing</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
+            <p id="section-toc.1-1.15.1"><a href="#section-15" class="auto internal xref">15</a>. <a href="#name-retry" class="internal xref">Retry</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
+            <p id="section-toc.1-1.16.1"><a href="#section-16" class="auto internal xref">16</a>. <a href="#name-per-job-encryption" class="internal xref">Per-Job Encryption</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.1">
+                <p id="section-toc.1-1.16.2.1.1"><a href="#section-16.1" class="auto internal xref">16.1</a>.  <a href="#name-construction" class="internal xref">Construction</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.2">
+                <p id="section-toc.1-1.16.2.2.1"><a href="#section-16.2" class="auto internal xref">16.2</a>.  <a href="#name-receiver-processing-2" class="internal xref">Receiver processing</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.3">
+                <p id="section-toc.1-1.16.2.3.1"><a href="#section-16.3" class="auto internal xref">16.3</a>.  <a href="#name-results" class="internal xref">Results</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.4">
+                <p id="section-toc.1-1.16.2.4.1"><a href="#section-16.4" class="auto internal xref">16.4</a>.  <a href="#name-no-forward-secrecy" class="internal xref">No forward secrecy</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
+            <p id="section-toc.1-1.17.1"><a href="#section-17" class="auto internal xref">17</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.1">
+                <p id="section-toc.1-1.17.2.1.1"><a href="#section-17.1" class="auto internal xref">17.1</a>.  <a href="#name-the-signer-controls-the-hos" class="internal xref">The signer controls the host</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.2">
+                <p id="section-toc.1-1.17.2.2.1"><a href="#section-17.2" class="auto internal xref">17.2</a>.  <a href="#name-confidentiality-and-its-lim" class="internal xref">Confidentiality and its limits</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.3">
+                <p id="section-toc.1-1.17.2.3.1"><a href="#section-17.3" class="auto internal xref">17.3</a>.  <a href="#name-offline-guessing" class="internal xref">Offline guessing</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.4">
+                <p id="section-toc.1-1.17.2.4.1"><a href="#section-17.4" class="auto internal xref">17.4</a>.  <a href="#name-headers-are-not-authenticat" class="internal xref">Headers are not authentication</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.5">
+                <p id="section-toc.1-1.17.2.5.1"><a href="#section-17.5" class="auto internal xref">17.5</a>.  <a href="#name-unknown-key-identifiers" class="internal xref">Unknown key identifiers</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.6">
+                <p id="section-toc.1-1.17.2.6.1"><a href="#section-17.6" class="auto internal xref">17.6</a>.  <a href="#name-replay" class="internal xref">Replay</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.7">
+                <p id="section-toc.1-1.17.2.7.1"><a href="#section-17.7" class="auto internal xref">17.7</a>.  <a href="#name-two-secrets" class="internal xref">Two secrets</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.8">
+                <p id="section-toc.1-1.17.2.8.1"><a href="#section-17.8" class="auto internal xref">17.8</a>.  <a href="#name-marker-collision" class="internal xref">Marker collision</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.9">
+                <p id="section-toc.1-1.17.2.9.1"><a href="#section-17.9" class="auto internal xref">17.9</a>.  <a href="#name-output" class="internal xref">Output</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.10">
+                <p id="section-toc.1-1.17.2.10.1"><a href="#section-17.10" class="auto internal xref">17.10</a>. <a href="#name-at-least-once" class="internal xref">At-least-once</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18">
+            <p id="section-toc.1-1.18.1"><a href="#section-18" class="auto internal xref">18</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19">
+            <p id="section-toc.1-1.19.1"><a href="#section-19" class="auto internal xref">19</a>. <a href="#name-the-dtls-binding" class="internal xref">The DTLS Binding</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.1">
+                <p id="section-toc.1-1.19.2.1.1"><a href="#section-19.1" class="auto internal xref">19.1</a>.  <a href="#name-shape" class="internal xref">Shape</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.2">
+                <p id="section-toc.1-1.19.2.2.1"><a href="#section-19.2" class="auto internal xref">19.2</a>.  <a href="#name-the-profile" class="internal xref">The Profile</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.3">
+                <p id="section-toc.1-1.19.2.3.1"><a href="#section-19.3" class="auto internal xref">19.3</a>.  <a href="#name-carrying-the-messages" class="internal xref">Carrying the Messages</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19.2.4">
+                <p id="section-toc.1-1.19.2.4.1"><a href="#section-19.4" class="auto internal xref">19.4</a>.  <a href="#name-composition-with-per-job-en" class="internal xref">Composition with Per-Job Encryption</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20">
+            <p id="section-toc.1-1.20.1"><a href="#section-20" class="auto internal xref">20</a>. <a href="#name-the-session-greeting" class="internal xref">The Session Greeting</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21">
+            <p id="section-toc.1-1.21.1"><a href="#section-21" class="auto internal xref">21</a>. <a href="#name-the-submitters-conformance-" class="internal xref">The Submitter's Conformance Burden</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22">
+            <p id="section-toc.1-1.22.1"><a href="#section-22" class="auto internal xref">22</a>. <a href="#name-security-considerations-dtl" class="internal xref">Security Considerations (DTLS Binding)</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.1">
+                <p id="section-toc.1-1.22.2.1.1"><a href="#section-22.1" class="auto internal xref">22.1</a>.  <a href="#name-forward-secrecy-is-a-requir" class="internal xref">Forward secrecy is a requirement, not a property</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.2">
+                <p id="section-toc.1-1.22.2.2.1"><a href="#section-22.2" class="auto internal xref">22.2</a>.  <a href="#name-one-secret-two-construction" class="internal xref">One secret, two constructions</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.3">
+                <p id="section-toc.1-1.22.2.3.1"><a href="#section-22.3" class="auto internal xref">22.3</a>.  <a href="#name-the-greeting-discloses" class="internal xref">The greeting discloses</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.4">
+                <p id="section-toc.1-1.22.2.4.1"><a href="#section-22.4" class="auto internal xref">22.4</a>.  <a href="#name-amplification-and-the-liste" class="internal xref">Amplification and the listener</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.5">
+                <p id="section-toc.1-1.22.2.5.1"><a href="#section-22.5" class="auto internal xref">22.5</a>.  <a href="#name-channel-security-is-not-del" class="internal xref">Channel security is not delivery</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22.2.6">
+                <p id="section-toc.1-1.22.2.6.1"><a href="#section-22.6" class="auto internal xref">22.6</a>.  <a href="#name-termination-in-the-middle" class="internal xref">Termination in the middle</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23">
+            <p id="section-toc.1-1.23.1"><a href="#section-23" class="auto internal xref">23</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.1">
+                <p id="section-toc.1-1.23.2.1.1"><a href="#section-23.1" class="auto internal xref">23.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23.2.2">
+                <p id="section-toc.1-1.23.2.2.1"><a href="#section-23.2" class="auto internal xref">23.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.24">
+            <p id="section-toc.1-1.24.1"><a href="#appendix-A" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">Some hosts cannot accept inbound connections. The protocol needs a store-and-forward queue so neither side opens a connection to the other. The first binding this document specifies is a mailbox: the submitter does not open a connection to the runner, and the runner does not open a connection to the submitter except to read and write that mailbox.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">The exchange is two messages:<a href="#section-1-2" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-1-3">
+<pre>
+Submitter                    Mailbox                      Runner
+    |                            |                            |
+    |  job message (signed JSON) |                            |
+    |---------------------------&gt;|                            |
+    |                            |  poll                      |
+    |                            |&lt;---------------------------|
+    |                            |  result message            |
+    |                            |  (signed JSON)             |
+    |                            |&lt;---------------------------|
+    |  result (same mailbox, or  |                            |
+    |   signed reply_to)         |                            |
+    |&lt;---------------------------|                            |
+</pre><a href="#section-1-3" class="pilcrow">¶</a>
+</div>
+<p id="section-1-4">The deployment this protocol is written for is a person operating their own machines from a cloud-resident agent. The person holds the mailbox and the secret; the agent holds neither the host nor a network path to it. Email is the path that already exists between them. The runner is deliberately plain: it executes what the signature authorizes, on the owner's host, under the owner's account.<a href="#section-1-4" class="pilcrow">¶</a></p>
+<p id="section-1-5">Version negotiation is not a handshake. The message carries <code>v</code>. This document defines <code>v</code> = 1 only. A receiver that does not implement version 1 <span class="bcp14">MUST</span> reject the message.<a href="#section-1-5" class="pilcrow">¶</a></p>
+<div id="why-specify-this-publicly">
+<section id="section-1.1">
+        <h3 id="name-why-specify-this-publicly">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-why-specify-this-publicly" class="section-name selfRef">Why specify this publicly</a>
+        </h3>
+<p id="section-1.1-1">The protocol is specified in the open so that a submitter does not need the runner's source code. Any implementation of this document can submit jobs: the subject, the JSON object, and the MAC are all specified here, and the reference transport is email, which the submitter already speaks.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">Two things are out of scope for this document and are established out of band: the mailbox address, and the shared secret. The sender asks the owner which address to use, and the owner provides the secret with it. Neither is discovered from the mail. Once the sender knows the address, the secret, and this specification, no further coordination is required.<a href="#section-1.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="versions-in-this-document">
+<section id="section-1.2">
+        <h3 id="name-versions-in-this-document">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-versions-in-this-document" class="section-name selfRef">Versions in this document</a>
+        </h3>
+<p id="section-1.2-1">This document specifies one version of the protocol: version 1. Its bindings are the email binding (Section 5), the file binding (Section 5.1), the NATS binding (Section 5.2), and the DTLS session binding (Section 19), which also carries the session greeting (Section 20). It consolidates this document's earlier text, which specified the email binding alone, with the DTLS binding text that was first drafted as a companion document. The companion draft that now carries the name draft-slutsky-homing-pigeon-v2-00 <span>[<a href="#I-D.slutsky-homing-pigeon-v2" class="cite xref">I-D.slutsky-homing-pigeon-v2</a>]</span> is a different document: it specifies protocol version 2 (the determination, question, and answer exchange) and does not specify a binding.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<p id="section-1.2-2">A binding does not version the messages. The job and result objects are the same objects on every binding, byte for byte; their <code>v</code> member is 1, and a receiver <span class="bcp14">MUST NOT</span> reject an object for carrying <code>v</code> = 1 on any binding. A receiver that does not offer a binding is not non-conformant; it simply does not offer that binding. An earlier framing treated the DTLS binding as a second version of the protocol. That framing is withdrawn: there is no version 2 of the job and result objects (the version 2 of draft-slutsky-homing-pigeon-v2-00 is a different message family, carried beside them), and the protocol's version is 1 on every binding this document specifies.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
+<p id="section-1.2-3">The reference implementation speaks version 1, and it implements the bindings this document specifies, including the DTLS session binding of Section 19. On 2026-10-17 the implementation briefly required <code>v</code> = 2. That bump changed the integer only, and it was reverted the same day. A receiver following this document rejects any message <code>v</code> other than 1.<a href="#section-1.2-3" class="pilcrow">¶</a></p>
+<p id="section-1.2-4">The sender also requires the shared secret to meet a minimum-entropy floor (Section 17.3). That floor is not a protocol version; it is a requirement of this protocol, and it binds version 1 senders and runners today (Section 17.3). Nothing else in the exchange changes shape.<a href="#section-1.2-4" class="pilcrow">¶</a></p>
+<p id="section-1.2-5">Later work also layers behavior this document scopes out (Section 4) onto the base exchange: a local disclosure policy on results, queries against retained output, attestations, and task boards. Those behaviors ride in extra members (Section 8); they do not redefine any message specified here. One consequence a submitter needs: a receiver layered with a disclosure policy can withhold result output that a version 1 receiver would send, so the guidance in Section 13.2 binds only where no such policy is in force.<a href="#section-1.2-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="requirements-language">
+<section id="section-2">
+      <h2 id="name-requirements-language">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-requirements-language" class="section-name selfRef">Requirements Language</a>
+      </h2>
+<p id="section-2-1">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>", "<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">NOT RECOMMENDED</span>",
+"<span class="bcp14">MAY</span>", and "<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as
+described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they
+appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="terminology">
+<section id="section-3">
+      <h2 id="name-terminology">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+      </h2>
+<p id="section-3-1">Job: a signed request that the runner execute work, or answer a liveness check.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<p id="section-3-2">Result: a signed report of what the runner did with one job.<a href="#section-3-2" class="pilcrow">¶</a></p>
+<p id="section-3-3">Shared secret: an octet string known to the submitter and the runner. It is the HMAC key. It is not sent on the wire.<a href="#section-3-3" class="pilcrow">¶</a></p>
+<p id="section-3-4">Default secret: the shared secret selected when <code>key_id</code> is absent.<a href="#section-3-4" class="pilcrow">¶</a></p>
+<p id="section-3-5">Key identifier: the string in <code>key_id</code>. It is a label, not a secret.<a href="#section-3-5" class="pilcrow">¶</a></p>
+<p id="section-3-6">Seen-set: the runner's record of <code>job_id</code> values already processed. It is local state. It is not a message.<a href="#section-3-6" class="pilcrow">¶</a></p>
+<p id="section-3-7">Freshness window: how far <code>issued_at</code> may be from the runner's clock before the job is rejected.<a href="#section-3-7" class="pilcrow">¶</a></p>
+<p id="section-3-8">Preamble: text in the message body before the signed JSON object. It is not signed.<a href="#section-3-8" class="pilcrow">¶</a></p>
+<p id="section-3-9">LOCAL: a parameter or a check this document allows a receiver to set for itself. It is not negotiated.<a href="#section-3-9" class="pilcrow">¶</a></p>
+<p id="section-3-10">Session: one DTLS association between a submitter (the initiator, in the DTLS client role) and a runner (the responder, in the DTLS server role). Defined in Section 19.<a href="#section-3-10" class="pilcrow">¶</a></p>
+<p id="section-3-11">Greeting: the first application message of a session, sent by the runner after authentication completes (Section 20).<a href="#section-3-11" class="pilcrow">¶</a></p>
+<p id="section-3-12">PSK identity: the <code>pre_shared_key</code> identity under which a secret is offered. The default secret's identity is <code>homing-pigeon</code>; an additional secret's is <code>homing-pigeon:</code> followed by its <code>key_id</code>.<a href="#section-3-12" class="pilcrow">¶</a></p>
+<p id="section-3-13">Ticket: the opaque resumption identity a runner issues in a NewSessionTicket message.<a href="#section-3-13" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="scope">
+<section id="section-4">
+      <h2 id="name-scope">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-scope" class="section-name selfRef">Scope</a>
+      </h2>
+<p id="section-4-1">This document specifies subjects, the signed object, the MAC, <code>key_id</code>, <code>reply_to</code>, replay, freshness, the <code>job</code> message, and the <code>result</code> message.<a href="#section-4-1" class="pilcrow">¶</a></p>
+<p id="section-4-2">This document does not specify disclosure policy, queries, attestations, task boards, sensors, confinement, installers, or local models. A job <span class="bcp14">MAY</span> carry extra members for those uses. Receivers that do not implement them <span class="bcp14">MUST</span> ignore unknown members (Section 8) and <span class="bcp14">MUST</span> still reject an unknown <code>v</code> or an unknown job <code>kind</code> (Sections 8 and 12). Section 1 describes how those uses relate to this document.<a href="#section-4-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="transport-binding">
+<section id="section-5">
+      <h2 id="name-transport-binding">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-transport-binding" class="section-name selfRef">Transport Binding</a>
+      </h2>
+<p id="section-5-1">This section specifies the email binding. The protocol itself needs only the store-and-forward queue from Section 1. Further bindings are specified in Sections 5.1 and 5.2; both carry the same messages, unchanged. A direct session binding, in which the same messages travel inside a DTLS session and the runner greets the submitter after authentication, is specified in Section 19.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-2">The binding layer is abstract. A binding is an interchangeable carrier of the same messages: the objects, the MAC, the per-job encryption of Section 16, and the receiver checks of this document are identical on every binding. An implementation <span class="bcp14">MAY</span> substitute one binding for another, or add a binding, without changing the protocol; two parties interoperate on any binding both offer.<a href="#section-5-2" class="pilcrow">¶</a></p>
+<p id="section-5-3">Conformance is per binding. This document specifies one version of the protocol, version 1, and an implementation conforms for each binding it offers; it need not offer every binding, and no binding is mandatory to implement: a conforming implementation offers at least one binding, and two parties interoperate on any binding both offer. Pairing is established out of band (Section 1) in either case. The email binding of this section is the binding every submitter environment already speaks, and the reference implementation enables it by default; that is guidance, not a requirement.<a href="#section-5-3" class="pilcrow">¶</a></p>
+<p id="section-5-4">Two security properties are <span class="bcp14">REQUIRED</span> of the protocol on every binding, and they attach differently. The first is authentication of the object: the MAC of Section 7, verified as Section 14 specifies. That requirement attaches to the object, never to the transport. No authentication a binding performs, however strong, satisfies or relaxes it, because the MAC is the admission decision, it selects the key (Section 10), it binds the exact object, and it remains verifiable after any session has ended. The second is confidentiality of the object, in transit and at rest, between the submitter and the runner. That requirement attaches to the property, not to a mechanism. A binding whose carriage provides confidentiality end to end, between the holders of the shared secret, with no intermediary that can read the object or store it outside the parties' control, satisfies the property itself, and the per-job encryption of Section 16 is then <span class="bcp14">OPTIONAL</span> on that binding. Where a binding's carriage terminates at an intermediary, or stores the object outside the parties' control, the transport does not satisfy the property, and Section 16 is the mechanism that provides it; a message sent in cleartext by the explicit choice Section 16 permits is a message for which the confidentiality property is not claimed. Each binding specified in this document states which case it is: the email binding in this section, the file binding in Section 5.1, the NATS binding in Section 5.2, and the DTLS binding in Section 19.4.<a href="#section-5-4" class="pilcrow">¶</a></p>
+<p id="section-5-5">The runner reads the mailbox with IMAP and writes with SMTP. Mail authentication is out of band. The signature check does not change with the mail credential.<a href="#section-5-5" class="pilcrow">¶</a></p>
+<p id="section-5-6">IMAP and SMTP <span class="bcp14">MUST</span> be used over TLS. An implementation <span class="bcp14">MUST NOT</span> carry this protocol over a cleartext IMAP or SMTP session. The TLS version <span class="bcp14">MUST</span> be 1.2 or higher; TLS 1.0 and TLS 1.1 <span class="bcp14">MUST NOT</span> be used <span>[<a href="#RFC8996" class="cite xref">RFC8996</a>]</span>. The recommendations of <span>[<a href="#RFC9325" class="cite xref">RFC9325</a>]</span> apply. Cleartext mail access is obsolete <span>[<a href="#RFC8314" class="cite xref">RFC8314</a>]</span>: implicit TLS is preferred, and where STARTTLS is used it <span class="bcp14">MUST</span> be required rather than opportunistic, and the peer certificate <span class="bcp14">MUST</span> be verified. TLS protects a hop. It does not hide the message from the mailbox provider (Section 17.2). The TLS requirements of this section therefore do not satisfy the confidentiality property stated above: the mailbox provider is an intermediary that stores the object and can read it. On this binding the confidentiality property is carried by the per-job encryption of Section 16, and the authentication property by the MAC, as it is on every binding.<a href="#section-5-6" class="pilcrow">¶</a></p>
+<p id="section-5-7">An implementation <span class="bcp14">MAY</span> additionally support PGP/MIME protection of the mail on this binding. Such support is not required, and it is not this protocol's confidentiality mechanism: that mechanism is the per-job encryption of Section 16, which travels with the object on every binding.<a href="#section-5-7" class="pilcrow">¶</a></p>
+<p id="section-5-8">The body is UTF-8 text in a <code>text/plain</code> part. This document does not register a media type. If the message is multipart, the receiver uses the first <code>text/plain</code> part that is not an attachment.<a href="#section-5-8" class="pilcrow">¶</a></p>
+<p id="section-5-9">The message <span class="bcp14">MUST</span> be rejected before the MAC if the raw RFC822 object exceeds the receiver's size cap. The <span class="bcp14">RECOMMENDED</span> cap is 4194304 octets. A cap of 0 means no limit. This cap is LOCAL.<a href="#section-5-9" class="pilcrow">¶</a></p>
+<div id="the-file-binding">
+<section id="section-5.1">
+        <h3 id="name-the-file-binding">
+<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-the-file-binding" class="section-name selfRef">The File Binding</a>
+        </h3>
+<p id="section-5.1-1">The file binding carries the same envelope as a file in a pair of watched directories on a filesystem both parties can reach. It exists for deployments where the submitter and the runner share a filesystem (a mounted volume, a synchronized folder, a removable medium) and for testing: it is the email binding's envelope with the mailbox removed, and nothing else changes.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+<p id="section-5.1-2">The envelope mapping is byte-for-byte the email form: a subject line in the shape of Section 6, a blank line, then the signed body. A job is a regular file in the inbox directory. The file <span class="bcp14">SHOULD</span> be named <code>&lt;ident&gt;.job.txt</code>, where <code>&lt;ident&gt;</code> is the binding-local name of the job (the <code>job_id</code> serves), but a receiver <span class="bcp14">MUST NOT</span> condition acceptance on the name: every regular file in the inbox is read as a candidate job and judged by its contents, and symbolic links and directories are not read. A result is a file named <code>&lt;ident&gt;.result.txt</code> in the outbox directory. A receiver polls the directories on its ordinary poll cycle.<a href="#section-5.1-2" class="pilcrow">¶</a></p>
+<p id="section-5.1-3">Acknowledgement is consumption. Whichever side has taken a file moves it into a sibling <code>done/</code> directory; files are never deleted by the binding. A redelivery of the same job rewrites the same file name, and the seen-set (Sections 14 and 17.6) deduplicates the repeat: delivery is at-least-once, exactly as on the email binding (Section 17.10).<a href="#section-5.1-3" class="pilcrow">¶</a></p>
+<p id="section-5.1-4">Two gates stand in series on this binding. The first is the inbox directory's operating-system access control: only principals the owner has given write access can present envelopes at all. The second is the signature, which remains the authorization, unchanged. A deployment <span class="bcp14">MUST</span> treat the directory's access control as a real gate and set it deliberately; the signature check does not excuse a world-writable inbox.<a href="#section-5.1-4" class="pilcrow">¶</a></p>
+<p id="section-5.1-5">The binding's limits are the filesystem's. Both parties need access to the same directories, so the binding does not cross a network by itself (a network filesystem under it is the deployment's own affair, with its own failure modes). There is no store-and-forward beyond the disk, no ordering beyond arrival, and the size cap of Section 5 applies to envelope files.<a href="#section-5.1-5" class="pilcrow">¶</a></p>
+<p id="section-5.1-6">Of the two security properties of Section 5, this binding provides neither itself, and needs neither from a transport: the carriage never leaves storage both parties already control, and no intermediary reads or holds the object. The MAC carries the authentication property, as on every binding. Whether Section 16 is applied on this binding is a local policy decision about the readers of that storage; a sender <span class="bcp14">MAY</span> apply it, and a receiver <span class="bcp14">MUST</span> be able to receive it, as Section 16 requires of every receiver.<a href="#section-5.1-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="the-nats-binding">
+<section id="section-5.2">
+        <h3 id="name-the-nats-binding">
+<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-the-nats-binding" class="section-name selfRef">The NATS Binding</a>
+        </h3>
+<p id="section-5.2-1">The NATS binding carries the same envelope over core NATS publish/subscribe. It exists for deployments where submitter and runner already share a NATS broker: a low-latency pipe with no store-and-forward pretensions.<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2">The envelope mapping is the email form carried as a message payload: the subject line of Section 6, a blank line, then the signed body, as one payload. Jobs are published on a jobs subject (a LOCAL name; the reference default is <code>homing-pigeon.jobs</code>). Results are published on a per-job subject formed from a LOCAL prefix and the <code>job_id</code> (the reference default is <code>homing-pigeon.results.&lt;job_id&gt;</code>).<a href="#section-5.2-2" class="pilcrow">¶</a></p>
+<p id="section-5.2-3">Core NATS is at-most-once: the broker acknowledges nothing and retains nothing. A job published while no runner is subscribed is lost, and a result published while no submitter is subscribed is lost. The protocol's own machinery is the recovery: the submitter retries per Section 15, and the seen-set makes a repeat harmless. A deployment that needs broker-side retention needs a persistence layer this binding does not specify.<a href="#section-5.2-3" class="pilcrow">¶</a></p>
+<p id="section-5.2-4">Two gates stand in series. The first is the broker's own authentication: broker authentication is <span class="bcp14">REQUIRED</span> by default -- a conforming receiver <span class="bcp14">MUST NOT</span> consume jobs over an unauthenticated broker connection, and the credential is supplied in configuration or in the broker URL's userinfo. A deployment <span class="bcp14">MAY</span> relax this by an explicit local setting (LOCAL), in which case the signature is the only gate and the deployment <span class="bcp14">MUST NOT</span> claim the two-gate posture. The second gate is the signature, unchanged. A required-auth NATS deployment is, for this reason, the more strongly gated of the bindings in this document: email's mailbox login authorizes the runner's reading, never the sender, so email stands on the signature alone.<a href="#section-5.2-4" class="pilcrow">¶</a></p>
+<p id="section-5.2-5">The binding's limits are the broker's: payload sizes are bounded by the broker's maximum and by the cap of Section 5, and ordering is per-subject arrival only.<a href="#section-5.2-5" class="pilcrow">¶</a></p>
+<p id="section-5.2-6">Of the two security properties of Section 5, broker authentication satisfies neither: it authenticates a party to the broker, not the object to the runner, and the broker is an intermediary that can read what it carries. TLS on a broker connection, where a deployment uses it, protects a hop to the broker in the same sense as Section 5's mail TLS, and no further. The MAC therefore carries the authentication property on this binding, as on every binding, and the confidentiality property is carried by the per-job encryption of Section 16, where the sender applies it.<a href="#section-5.2-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="subjects">
+<section id="section-6">
+      <h2 id="name-subjects">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-subjects" class="section-name selfRef">Subjects</a>
+      </h2>
+<p id="section-6-1">Subjects are part of the email binding (Section 5): they are how the receiver recognizes a job message in the mailbox.<a href="#section-6-1" class="pilcrow">¶</a></p>
+<p id="section-6-2">Subjects are matched case-insensitively. A preamble such as <code>Re:</code> <span class="bcp14">MAY</span> appear before the marker. The marker need not be the first character of the subject.<a href="#section-6-2" class="pilcrow">¶</a></p>
+<p id="section-6-3">A job subject matches this pattern, in the sense of a search, not a full-string match:<a href="#section-6-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-6-4">
+<pre>
+[HOMING-PIGEON] (SP word)* SP job SP job-id
+</pre><a href="#section-6-4" class="pilcrow">¶</a>
+</div>
+<p id="section-6-5"><code>word</code> is one or more visible characters. <code>job-id</code> is one or more visible characters with no space, further constrained below. The words between the marker and <code>job</code> are decoration. <code>TEST</code> is a legal decoration.<a href="#section-6-5" class="pilcrow">¶</a></p>
+<p id="section-6-6">A result subject matches:<a href="#section-6-6" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-6-7">
+<pre>
+[HOMING-PIGEON] SP result SP job-id
+</pre><a href="#section-6-7" class="pilcrow">¶</a>
+</div>
+<p id="section-6-8">ABNF <span>[<a href="#RFC5234" class="cite xref">RFC5234</a>]</span> for the identifier only:<a href="#section-6-8" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-6-9">
+<pre>
+job-id      = 1*128 job-id-char
+job-id-char = ALPHA / DIGIT / "." / "_" / "-"
+</pre><a href="#section-6-9" class="pilcrow">¶</a>
+</div>
+<p id="section-6-10">The <code>job_id</code> in the subject <span class="bcp14">MUST</span> equal the <code>job_id</code> member. A mismatch <span class="bcp14">MUST</span> be rejected (Section 14).<a href="#section-6-10" class="pilcrow">¶</a></p>
+<p id="section-6-11"><code>job-id</code> <span class="bcp14">MUST NOT</span> be <code>.</code> or <code>..</code>.<a href="#section-6-11" class="pilcrow">¶</a></p>
+<p id="section-6-12">A UUID <span>[<a href="#RFC9562" class="cite xref">RFC9562</a>]</span> is <span class="bcp14">RECOMMENDED</span> as the <code>job_id</code>.<a href="#section-6-12" class="pilcrow">¶</a></p>
+<p id="section-6-13">A message whose subject is not a job subject is not a job. The receiver <span class="bcp14">MUST NOT</span> execute it. The receiver <span class="bcp14">MAY</span> mark it seen so that a later poll skips it. Result messages use the result pattern above and are produced by the runner. They are not jobs.<a href="#section-6-13" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="body-and-signature-marker">
+<section id="section-7">
+      <h2 id="name-body-and-signature-marker">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-body-and-signature-marker" class="section-name selfRef">Body and Signature Marker</a>
+      </h2>
+<p id="section-7-1">The signed object is one JSON object <span>[<a href="#RFC8259" class="cite xref">RFC8259</a>]</span>. The receiver ignores preamble and trailer. Verification uses the object that ends in the signature marker.<a href="#section-7-1" class="pilcrow">¶</a></p>
+<p id="section-7-2">Line endings are normalized before both signing and verifying: every CRLF becomes LF, then every remaining CR becomes LF. Trailing whitespace after that normalization is not part of the signed octets.<a href="#section-7-2" class="pilcrow">¶</a></p>
+<p id="section-7-3">The sender builds the object without <code>sig</code>, serializes it, normalizes line endings, computes the MAC over those octets (Section 7.1), and replaces the final <code>}</code> with:<a href="#section-7-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-7-4">
+<pre>
+,"sig":"&lt;96 hex digits&gt;"}
+</pre><a href="#section-7-4" class="pilcrow">¶</a>
+</div>
+<p id="section-7-5">JSON member order before <code>sig</code> is the sender's choice. <code>sig</code> <span class="bcp14">MUST</span> be last. Senders <span class="bcp14">SHOULD</span> serialize with no insignificant whitespace. Receivers <span class="bcp14">MUST</span> accept insignificant whitespace inside the object, because the MAC covers the octets the sender actually produced, not a re-encoding.<a href="#section-7-5" class="pilcrow">¶</a></p>
+<p id="section-7-6">The receiver finds the signature as follows:<a href="#section-7-6" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-7-7">
+<li id="section-7-7.1">
+          <p id="section-7-7.1.1">Normalize line endings and remove trailing whitespace.<a href="#section-7-7.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-7-7.2">
+          <p id="section-7-7.2.1">Let <code>marker</code> be the last occurrence of the eight characters <code>,</code> <code>"</code> <code>s</code> <code>i</code> <code>g</code> <code>"</code> <code>:</code> <code>"</code>.<a href="#section-7-7.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-7-7.3">
+          <p id="section-7-7.3.1">If <code>marker</code> is absent, the message is malformed.<a href="#section-7-7.3.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-7-7.4">
+          <p id="section-7-7.4.1">The 96 characters after <code>marker</code> <span class="bcp14">MUST</span> be hexadecimal. The two characters after those <span class="bcp14">MUST</span> be <code>"</code> and <code>}</code>.<a href="#section-7-7.4.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-7-7.5">
+          <p id="section-7-7.5.1">The signed octets are the bytes from the <code>{</code> that opens this object through the character before <code>marker</code>, plus one <code>}</code>.<a href="#section-7-7.5.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-7-7.6">
+          <p id="section-7-7.6.1">That <code>{</code> is the start of the object that contains the marker, not a <code>{</code> inside a string. If no such <code>{</code> exists, the message is malformed.<a href="#section-7-7.6.1" class="pilcrow">¶</a></p>
+</li>
+      </ol>
+<p id="section-7-8">A sender <span class="bcp14">MUST NOT</span> place the character sequence <code>,"sig":"</code> inside any string value. The receiver uses the last occurrence.<a href="#section-7-8" class="pilcrow">¶</a></p>
+<div id="mac">
+<section id="section-7.1">
+        <h3 id="name-mac">
+<a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-mac" class="section-name selfRef">MAC</a>
+        </h3>
+<p id="section-7.1-1">The MAC is HMAC-SHA-384 <span>[<a href="#RFC2104" class="cite xref">RFC2104</a>]</span> using SHA-384 <span>[<a href="#FIPS180-4" class="cite xref">FIPS180-4</a>]</span>.<a href="#section-7.1-1" class="pilcrow">¶</a></p>
+<p id="section-7.1-2">The HMAC key is the UTF-8 octets of the shared secret. Implementations <span class="bcp14">MUST NOT</span> hash, stretch, or otherwise derive that key. The secret is a string of characters. Two sides that disagree on the characters disagree on the key.<a href="#section-7.1-2" class="pilcrow">¶</a></p>
+<p id="section-7.1-3"><code>sig</code> is the 48-octet HMAC value encoded as 96 hexadecimal digits. Senders <span class="bcp14">MUST</span> use lowercase digits. Receivers <span class="bcp14">MUST</span> compare in constant time after mapping ASCII <code>A-F</code> to <code>a-f</code>.<a href="#section-7.1-3" class="pilcrow">¶</a></p>
+<p id="section-7.1-4">Receivers <span class="bcp14">MUST</span> reject a malformed tail. Receivers <span class="bcp14">MUST</span> reject a MAC mismatch. A mismatch produces no result message (Section 14).<a href="#section-7.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="constant-time-compare">
+<section id="section-7.2">
+        <h3 id="name-constant-time-compare">
+<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-constant-time-compare" class="section-name selfRef">Constant-time compare</a>
+        </h3>
+<p id="section-7.2-1">The compare covers all 96 digits. It <span class="bcp14">MUST NOT</span> stop at the first differing digit in a way that a network observer can time. A local reject log <span class="bcp14">MAY</span> record that the MAC failed. It <span class="bcp14">SHOULD NOT</span> record the expected digest.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="unknown-members">
+<section id="section-8">
+      <h2 id="name-unknown-members">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-unknown-members" class="section-name selfRef">Unknown Members</a>
+      </h2>
+<p id="section-8-1">A receiver <span class="bcp14">MUST</span> ignore object members it does not implement, except:<a href="#section-8-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-8-2.1">
+          <p id="section-8-2.1.1"><code>v</code> other than 1 <span class="bcp14">MUST</span> be rejected<a href="#section-8-2.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-8-2.2">
+          <p id="section-8-2.2.1"><code>type</code> other than <code>job</code>, on a message the receiver is executing as a job, <span class="bcp14">MUST</span> be rejected<a href="#section-8-2.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-8-2.3">
+          <p id="section-8-2.3.1"><code>kind</code> other than <code>exec</code> or <code>ping</code> <span class="bcp14">MUST NOT</span> be executed; the reference receiver rejects any other value except <code>sensor_alert</code>, which it files as a signed alert for its Oracle (PROTOCOL.md, "Senses") and never executes<a href="#section-8-2.3.1" class="pilcrow">¶</a></p>
+</li>
+      </ul>
+<p id="section-8-3">Ignoring a member means the member is still covered by the MAC and has no effect on version 1 processing.<a href="#section-8-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="common-members">
+<section id="section-9">
+      <h2 id="name-common-members">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-common-members" class="section-name selfRef">Common Members</a>
+      </h2>
+<table class="center" id="table-1">
+        <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Member</th>
+            <th class="text-left" rowspan="1" colspan="1">JSON type</th>
+            <th class="text-left" rowspan="1" colspan="1">Presence</th>
+            <th class="text-left" rowspan="1" colspan="1">Rule</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>v</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">number</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Integer 1. No other value is defined.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>type</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>job</code> or <code>result</code>.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>job_id</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Section 6.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>key_id</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Selects the HMAC key. Absent selects the default secret.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>aud</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Audience claim. Enforcement is LOCAL. <code>runner_id</code> is accepted as its older spelling; when both are present <code>aud</code> is the claim.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>sig</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Section 7. Not part of the signed octets.</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="section-9-2"><code>key_id</code> is covered by the MAC. Key identifiers <span class="bcp14">MAY</span> appear in logs. An unknown <code>key_id</code> <span class="bcp14">MUST</span> be rejected before the MAC is computed. The receiver <span class="bcp14">MUST NOT</span> try another secret.<a href="#section-9-2" class="pilcrow">¶</a></p>
+<p id="section-9-3">If a receiver enforces <code>runner_id</code>, the expected value <span class="bcp14">MUST</span> come from the receiver's configuration. The signed value is what the submitter claimed. It is not the source of the expected value.<a href="#section-9-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="key-selection">
+<section id="section-10">
+      <h2 id="name-key-selection">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-key-selection" class="section-name selfRef">Key Selection</a>
+      </h2>
+<p id="section-10-1">The receiver holds a map from <code>key_id</code> to secret. The empty identifier names the default secret.<a href="#section-10-1" class="pilcrow">¶</a></p>
+<p id="section-10-2">Selection, before the MAC:<a href="#section-10-2" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-10-3">
+<li id="section-10-3.1">
+          <p id="section-10-3.1.1">If <code>key_id</code> is absent, select the default secret.<a href="#section-10-3.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-10-3.2">
+          <p id="section-10-3.2.1">If <code>key_id</code> is present and is a string in the map, select that secret.<a href="#section-10-3.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-10-3.3">
+          <p id="section-10-3.3.1">Otherwise reject. Do not compute a MAC.<a href="#section-10-3.3.1" class="pilcrow">¶</a></p>
+</li>
+      </ol>
+<p id="section-10-4">How keys are stored is LOCAL. Two values <span class="bcp14">MUST NOT</span> be assigned to one <code>key_id</code>. The default identifier has one slot.<a href="#section-10-4" class="pilcrow">¶</a></p>
+<div id="fingerprint-names">
+<section id="section-10.1">
+        <h3 id="name-fingerprint-names">
+<a href="#section-10.1" class="section-number selfRef">10.1. </a><a href="#name-fingerprint-names" class="section-name selfRef">Fingerprint names</a>
+        </h3>
+<p id="section-10.1-1">A secret <span class="bcp14">MAY</span> be named by its fingerprint. The reference software does so. The fingerprint is <code>k-</code> followed by the first eight lowercase hexadecimal digits of SHA-384 over the UTF-8 octets of the label <code>homing-pigeon key id v1\n</code> and then the secret's UTF-8 octets:<a href="#section-10.1-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-10.1-2">
+<pre>
+key_id = "k-" ||
+  hex(SHA-384("homing-pigeon key id v1\n" || secret))[:8]
+</pre><a href="#section-10.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-10.1-3">The reference receiver puts that identifier in the map of Section 10, pointing at the same secret the empty identifier names. An operator-chosen name, when one was configured, is a further identifier for that same secret. One <code>key_id</code> still names one secret. One secret <span class="bcp14">MAY</span> have several identifiers. Two secrets <span class="bcp14">MUST NOT</span> share one.<a href="#section-10.1-3" class="pilcrow">¶</a></p>
+<p id="section-10.1-4">The reference sender includes <code>key_id</code> on every message it signs. The value is the fingerprint, unless the sender was told to use a chosen name. The empty identifier is how a sender asks for the unnamed form. A receiver that has not registered the fingerprint <span class="bcp14">MUST</span> reject that message as an unknown <code>key_id</code> (step 3). An absent <code>key_id</code> still selects the default secret.<a href="#section-10.1-4" class="pilcrow">¶</a></p>
+<p id="section-10.1-5">A fingerprint that is not in the map is an unknown <code>key_id</code>. So is a near-miss: a different length, a different case, or the fingerprint of a secret the receiver does not hold. The receiver <span class="bcp14">MUST NOT</span> select the default secret for any of those.<a href="#section-10.1-5" class="pilcrow">¶</a></p>
+<p id="section-10.1-6">The name is a label. It is 32 bits of a one-way function over a secret of at least 128 bits of entropy (Section 17.3). It is not invertible. As an oracle for a guessed secret it is weaker than the HMAC on any captured message, which already tests a guess in full. The label keeps this hash apart from that HMAC and from the HKDF that derives a job key, so a name cannot be confused with a signature or turned into one. Publishing the name discloses nothing a signed message does not already disclose.<a href="#section-10.1-6" class="pilcrow">¶</a></p>
+<p id="section-10.1-7">The DTLS PSK identity (Section 3) is a different label. <code>homing-pigeon</code> names the default secret. <code>homing-pigeon:</code> followed by a configured <code>key_id</code> names an additional secret. The fingerprint is not a PSK identity unless the operator stored that string as a <code>key_id</code>.<a href="#section-10.1-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="job-message">
+<section id="section-11">
+      <h2 id="name-job-message">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-job-message" class="section-name selfRef">Job Message</a>
+      </h2>
+<p id="section-11-1"><code>type</code> is <code>job</code>.<a href="#section-11-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-11-2">
+<pre>
+{
+  "v": 1,
+  "type": "job",
+  "job_id": "3f9a1c2e-7b14-4e0a-9c2d-6f0a1b2c3d4e",
+  "issued_at": "2026-10-13T12:00:00Z",
+  "kind": "exec",
+  "script": "date\n",
+  "timeout_sec": 60,
+  "key_id": "submitter-a",
+  "reply_to": "submitter@example.com",
+  "sig": "001122...eeff"
+}
+</pre><a href="#section-11-2" class="pilcrow">¶</a>
+</div>
+<p id="section-11-3">The <code>sig</code> line above is abbreviated. On the wire it is 96 hex digits.<a href="#section-11-3" class="pilcrow">¶</a></p>
+<table class="center" id="table-2">
+        <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Member</th>
+            <th class="text-left" rowspan="1" colspan="1">JSON type</th>
+            <th class="text-left" rowspan="1" colspan="1">Presence</th>
+            <th class="text-left" rowspan="1" colspan="1">Rule</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>issued_at</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Section 11.1.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>kind</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>exec</code> or <code>ping</code>.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>reply_to</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Section 11.2.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>script</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">see 11.3</td>
+            <td class="text-left" rowspan="1" colspan="1">Inline script. <code>exec</code> only.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>script_url</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">see 11.3</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https</code> URL of the script. <code>exec</code> only.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>script_sha384</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">96 lowercase hex digits over the script octets.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>interpreter</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">array of strings</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Program, then its arguments.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>args</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">array of strings</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Appended after the script path.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>env</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">object</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">String values merged into the environment.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>files</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">array</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Section 11.4.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>timeout_sec</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">number</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Positive integer. <span class="bcp14">RECOMMENDED</span> default 300. <span class="bcp14">RECOMMENDED</span> maximum 3600.</td>
+          </tr>
+        </tbody>
+      </table>
+<div id="issuedat">
+<section id="section-11.1">
+        <h3 id="name-issued_at">
+<a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-issued_at" class="section-name selfRef">issued_at</a>
+        </h3>
+<p id="section-11.1-1"><code>issued_at</code> is an ISO 8601 timestamp. It <span class="bcp14">MUST</span> carry a timezone designator, <code>Z</code> or a numeric offset. A value without a timezone <span class="bcp14">MUST</span> be rejected. A value that does not parse <span class="bcp14">MUST</span> be rejected. Senders <span class="bcp14">SHOULD</span> use UTC in the form <code>YYYY-MM-DDTHH:MM:SSZ</code>.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
+<p id="section-11.1-2">Let <code>age</code> be the runner's clock minus <code>issued_at</code>, in seconds.<a href="#section-11.1-2" class="pilcrow">¶</a></p>
+<p id="section-11.1-3">The receiver <span class="bcp14">MUST</span> reject the job if <code>age</code> is greater than its past window. The <span class="bcp14">RECOMMENDED</span> past window is 3600 seconds. That window is LOCAL.<a href="#section-11.1-3" class="pilcrow">¶</a></p>
+<p id="section-11.1-4">The receiver <span class="bcp14">MUST</span> reject the job if <code>issued_at</code> is too far in the future. The <span class="bcp14">RECOMMENDED</span> future allowance is 300 seconds.<a href="#section-11.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="replyto">
+<section id="section-11.2">
+        <h3 id="name-reply_to">
+<a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-reply_to" class="section-name selfRef">reply_to</a>
+        </h3>
+<p id="section-11.2-1"><code>reply_to</code> is a single address, at most 254 characters, of the form <code>local@domain</code>, with no display name, no angle brackets, and no comma. The domain contains a dot.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
+<p id="section-11.2-2">If the member is absent, or present but invalid, the result goes to the runner's own mailbox. The job is not rejected for an invalid <code>reply_to</code>.<a href="#section-11.2-2" class="pilcrow">¶</a></p>
+<p id="section-11.2-3">The receiver <span class="bcp14">MUST</span> take the result address only from this member. The email <code>From</code> header and the email <code>Reply-To</code> header <span class="bcp14">MUST NOT</span> select it.<a href="#section-11.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="ping-and-exec">
+<section id="section-11.3">
+        <h3 id="name-ping-and-exec">
+<a href="#section-11.3" class="section-number selfRef">11.3. </a><a href="#name-ping-and-exec" class="section-name selfRef">ping and exec</a>
+        </h3>
+<p id="section-11.3-1"><code>kind</code> <code>ping</code> carries no script. The runner <span class="bcp14">MUST NOT</span> start a script. The result has <code>kind</code> <code>ping</code>.<a href="#section-11.3-1" class="pilcrow">¶</a></p>
+<p id="section-11.3-2"><code>kind</code> <code>exec</code> requires at least one of <code>script</code> or <code>script_url</code>. If neither is present, the receiver <span class="bcp14">MUST</span> reject the job (Section 12). If both are present, the receiver <span class="bcp14">MUST</span> use <code>script_url</code> and <span class="bcp14">MUST</span> ignore <code>script</code>.<a href="#section-11.3-2" class="pilcrow">¶</a></p>
+<p id="section-11.3-3">If <code>script_sha384</code> is present, the receiver <span class="bcp14">MUST</span> hash the script octets with SHA-384 and <span class="bcp14">MUST</span> reject the job if the digest differs. The digest is 96 lowercase hex digits.<a href="#section-11.3-3" class="pilcrow">¶</a></p>
+<p id="section-11.3-4">If <code>interpreter</code> is absent, the runner uses a LOCAL default.<a href="#section-11.3-4" class="pilcrow">¶</a></p>
+<p id="section-11.3-5">The script is written to a new file in a fresh directory for this <code>job_id</code> and run as:<a href="#section-11.3-5" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-11.3-6">
+<pre>
+&lt;interpreter...&gt; &lt;script-file&gt; &lt;args...&gt;
+</pre><a href="#section-11.3-6" class="pilcrow">¶</a>
+</div>
+<p id="section-11.3-7">The working directory is that job directory. On timeout the receiver <span class="bcp14">MUST</span> kill the process tree. A <code>timeout_sec</code> above the receiver's maximum <span class="bcp14">MUST</span> be reduced to that maximum; the job <span class="bcp14">MUST NOT</span> be rejected for an excessive timeout alone. The <span class="bcp14">RECOMMENDED</span> maximum is 3600.<a href="#section-11.3-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="files">
+<section id="section-11.4">
+        <h3 id="name-files">
+<a href="#section-11.4" class="section-number selfRef">11.4. </a><a href="#name-files" class="section-name selfRef">files</a>
+        </h3>
+<p id="section-11.4-1">Each element is an object:<a href="#section-11.4-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-3">
+          <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1">Member</th>
+              <th class="text-left" rowspan="1" colspan="1">JSON type</th>
+              <th class="text-left" rowspan="1" colspan="1">Presence</th>
+              <th class="text-left" rowspan="1" colspan="1">Rule</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>name</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">REQUIRED</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">File name inside the job directory.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>url</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">REQUIRED</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>https</code> URL.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>sha384</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">OPTIONAL</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">96 lowercase hex digits.</td>
+            </tr>
+          </tbody>
+        </table>
+<p id="section-11.4-3"><code>name</code> <span class="bcp14">MUST NOT</span> be absolute, <span class="bcp14">MUST NOT</span> contain <code>..</code> as a path segment, and <span class="bcp14">MUST NOT</span> escape the job directory. A violation <span class="bcp14">MUST</span> be rejected before the file is used.<a href="#section-11.4-3" class="pilcrow">¶</a></p>
+<p id="section-11.4-4">Downloads <span class="bcp14">MUST</span> use HTTPS. If <code>sha384</code> is present, a digest mismatch <span class="bcp14">MUST</span> be rejected.<a href="#section-11.4-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="kind-and-type-failures">
+<section id="section-12">
+      <h2 id="name-kind-and-type-failures">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-kind-and-type-failures" class="section-name selfRef">Kind and Type Failures</a>
+      </h2>
+<p id="section-12-1">Unknown <code>kind</code> <span class="bcp14">MUST NOT</span> be executed.<a href="#section-12-1" class="pilcrow">¶</a></p>
+<p id="section-12-2">A job the receiver rejects after the MAC has verified, because the kind, the script hash, the file name, or a similar check failed, <span class="bcp14">MUST</span> produce a result (Section 13) with <code>exit_code</code> -2 and a short reason in <code>stderr</code>. That job <span class="bcp14">MUST</span> be marked seen and <span class="bcp14">MUST NOT</span> be retried.<a href="#section-12-2" class="pilcrow">¶</a></p>
+<p id="section-12-3">A job rejected before the MAC verifies produces no result. See Section 14.<a href="#section-12-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="result-message">
+<section id="section-13">
+      <h2 id="name-result-message">
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-result-message" class="section-name selfRef">Result Message</a>
+      </h2>
+<p id="section-13-1">The result is signed with the same secret that verified the job. <code>key_id</code> on the result, when present, <span class="bcp14">MUST</span> name that secret. The reference sender includes it (Section 10.1): the identifier the job carried, or, when the job carried none, the default secret's fingerprint.<a href="#section-13-1" class="pilcrow">¶</a></p>
+<p id="section-13-2"><code>type</code> is <code>result</code>. The subject is the result pattern in Section 6.<a href="#section-13-2" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-13-3">
+<pre>
+{
+  "v": 1,
+  "type": "result",
+  "job_id": "3f9a1c2e-7b14-4e0a-9c2d-6f0a1b2c3d4e",
+  "kind": "exec",
+  "completed_at": "2026-10-13T12:01:23Z",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": "",
+  "stderr": "",
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "duration_sec": 12.345,
+  "runner": "host.example",
+  "sig": "001122...eeff"
+}
+</pre><a href="#section-13-3" class="pilcrow">¶</a>
+</div>
+<table class="center" id="table-4">
+        <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Member</th>
+            <th class="text-left" rowspan="1" colspan="1">JSON type</th>
+            <th class="text-left" rowspan="1" colspan="1">Presence</th>
+            <th class="text-left" rowspan="1" colspan="1">Rule</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>completed_at</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Same form as <code>issued_at</code>.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>kind</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The job's kind.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>exit_code</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">number</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Section 13.1.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>timed_out</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">boolean</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">True if the process tree was killed for time.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>stdout</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Captured standard output. May be empty.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>stderr</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Captured standard error. May be empty.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>stdout_truncated</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">boolean</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">True if <code>stdout</code> was cut.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>stderr_truncated</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">boolean</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">True if <code>stderr</code> was cut.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>duration_sec</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">number</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Seconds, as a JSON number.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>runner</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Host label. Authenticated only by the result MAC.</td>
+          </tr>
+        </tbody>
+      </table>
+<div id="exitcode">
+<section id="section-13.1">
+        <h3 id="name-exit_code">
+<a href="#section-13.1" class="section-number selfRef">13.1. </a><a href="#name-exit_code" class="section-name selfRef">exit_code</a>
+        </h3>
+<table class="center" id="table-5">
+          <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1">Value</th>
+              <th class="text-left" rowspan="1" colspan="1">Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">0</td>
+              <td class="text-left" rowspan="1" colspan="1">The process exited 0, or <code>ping</code> succeeded.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">-1</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>timed_out</code> is true. The process tree was killed.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">-2</td>
+              <td class="text-left" rowspan="1" colspan="1">Rejected before execution. Reason in <code>stderr</code>. Not retried.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">other</td>
+              <td class="text-left" rowspan="1" colspan="1">The process exit status.</td>
+            </tr>
+          </tbody>
+        </table>
+<p id="section-13.1-2">If <code>timed_out</code> is true, <code>exit_code</code> <span class="bcp14">MUST</span> be -1.<a href="#section-13.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="truncation">
+<section id="section-13.2">
+        <h3 id="name-truncation">
+<a href="#section-13.2" class="section-number selfRef">13.2. </a><a href="#name-truncation" class="section-name selfRef">Truncation</a>
+        </h3>
+<p id="section-13.2-1">Each stream <span class="bcp14">MAY</span> be cut at a LOCAL limit on the decoded text. The <span class="bcp14">RECOMMENDED</span> limit is 100000 characters. When a stream is cut, its <code>*_truncated</code> member <span class="bcp14">MUST</span> be true. When it is not cut, that member <span class="bcp14">MUST</span> be false.<a href="#section-13.2-1" class="pilcrow">¶</a></p>
+<p id="section-13.2-2">A result specified here includes the output the receiver chose to send. Omitting output for a local privacy policy is outside version 1. A submitter <span class="bcp14">MUST NOT</span> assume output will be withheld. Where a disclosure policy is layered on the exchange (Section 1), this guidance does not hold and the submitter <span class="bcp14">MUST NOT</span> rely on it.<a href="#section-13.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="receiver-processing">
+<section id="section-14">
+      <h2 id="name-receiver-processing">
+<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-receiver-processing" class="section-name selfRef">Receiver Processing</a>
+      </h2>
+<p id="section-14-1">The receiver maintains a seen-set. The key <span class="bcp14">SHOULD</span> be <code>job_id</code> prefixed by the receiver's configured <code>runner_id</code> when one is configured, so two runners sharing a mailbox do not treat each other's jobs as replays.<a href="#section-14-1" class="pilcrow">¶</a></p>
+<p id="section-14-2">For each unseen message:<a href="#section-14-2" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-14-3">
+<li id="section-14-3.1">
+          <p id="section-14-3.1.1">If the subject is not a job subject, do not execute. This is not an error. Stop.<a href="#section-14-3.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.2">
+          <p id="section-14-3.2.1">If the seen-set already contains this <code>job_id</code>, do not execute. Stop.<a href="#section-14-3.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.3">
+          <p id="section-14-3.3.1">If the raw message exceeds the size cap (Section 5), reject with no result. Mark seen. Stop.<a href="#section-14-3.3.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.4">
+          <p id="section-14-3.4.1">Select the key (Section 10). On failure, reject with no result. Mark seen. Stop.<a href="#section-14-3.4.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.5">
+          <p id="section-14-3.5.1">Verify the MAC (Section 7). On failure, reject with no result. Mark seen. Stop. The <code>From</code> header is not an input to this step.<a href="#section-14-3.5.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.6">
+          <p id="section-14-3.6.1">Parse the signed octets as one JSON object. If it is not an object, reject with no result. Mark seen. Stop.<a href="#section-14-3.6.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.7">
+          <p id="section-14-3.7.1">If <code>v</code> is not 1 or <code>type</code> is not <code>job</code>, reject with no result. Mark seen. Stop.<a href="#section-14-3.7.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.8">
+          <p id="section-14-3.8.1">If the subject <code>job_id</code> and the member <code>job_id</code> differ, reject with no result. Mark seen. Stop. (A <code>job_id</code> that is illegal under Section 6 is a shape failure of step 12: the job verified, so it is answered with an <code>exit_code</code> -2 result and enters the seen-set.)<a href="#section-14-3.8.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.9">
+          <p id="section-14-3.9.1">Check <code>issued_at</code> (Section 11.1). On failure, reject with no result. Mark seen. Stop.<a href="#section-14-3.9.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.10">
+          <p id="section-14-3.10.1">LOCAL checks (audience, per-key policy) <span class="bcp14">MAY</span> reject here. A reject at this step <span class="bcp14">MUST NOT</span> execute the job. Whether a result is sent is LOCAL. The reference receiver sends no result for an audience failure.<a href="#section-14-3.10.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.11">
+          <p id="section-14-3.11.1">If <code>kind</code> is <code>ping</code>, go to step 13.<a href="#section-14-3.11.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.12">
+          <p id="section-14-3.12.1">If <code>kind</code> is <code>exec</code>, resolve the script and files (Section 11). On failure, send a result with <code>exit_code</code> -2, mark seen, stop. If <code>kind</code> is anything else, send a result with <code>exit_code</code> -2, mark seen, stop.<a href="#section-14-3.12.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.13">
+          <p id="section-14-3.13.1">Execute. Honor <code>timeout_sec</code>.<a href="#section-14-3.13.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.14">
+          <p id="section-14-3.14.1">Build the result (Section 13) and sign it with the secret from step 4.<a href="#section-14-3.14.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.15">
+          <p id="section-14-3.15.1">Stash the signed result in a LOCAL outbox, record <code>job_id</code> in the seen-set, and mark seen, in that order, before any send is attempted.<a href="#section-14-3.15.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-14-3.16">
+          <p id="section-14-3.16.1">Send the result to <code>reply_to</code> if that member is valid, otherwise to the runner mailbox. If the send fails, the stashed result is resent on later polls, the same octets each time, until it lands or the stash's retention lapses. The job is never executed again (Section 15).<a href="#section-14-3.16.1" class="pilcrow">¶</a></p>
+</li>
+      </ol>
+<p id="section-14-4">If the object verified at step 5 is an encryption envelope, Section 16 applies: decrypt after step 5 and process the recovered body from step 4. The envelope's verification never substitutes for the body's own.<a href="#section-14-4" class="pilcrow">¶</a></p>
+<p id="section-14-5">The email <code>From</code> address <span class="bcp14">MAY</span> be logged after step 5. It <span class="bcp14">MUST NOT</span> authorize the job. It <span class="bcp14">MUST NOT</span> choose the result address.<a href="#section-14-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="retry">
+<section id="section-15">
+      <h2 id="name-retry">
+<a href="#section-15" class="section-number selfRef">15. </a><a href="#name-retry" class="section-name selfRef">Retry</a>
+      </h2>
+<p id="section-15-1">Execution is at most once; delivery of the result is at least once.<a href="#section-15-1" class="pilcrow">¶</a></p>
+<p id="section-15-2">A receiver <span class="bcp14">MUST</span> record <code>job_id</code> in the seen-set once it holds a signed result for the job (step 15), before the first send, and <span class="bcp14">MUST NOT</span> execute the job again because a send failed. A send that fails is retried from the stash; the resent result is the same octets.<a href="#section-15-2" class="pilcrow">¶</a></p>
+<p id="section-15-3">Submitters <span class="bcp14">MUST</span> still treat <code>exec</code> as repeatable: a receiver whose seen-set was cleared, or a job delivered to two receivers, runs it twice.<a href="#section-15-3" class="pilcrow">¶</a></p>
+<p id="section-15-4">Two senses of "seen" are kept apart. Marking a message seen (Section 14, steps 3 through 12 and 15) is the binding-level flag: that copy of the message is not reprocessed. Recording a <code>job_id</code> in the seen-set is the replay state of Section 14, and a receiver <span class="bcp14">MUST</span> add a <code>job_id</code> to the seen-set only after it has produced a result for it: the stashed result of step 15, or the <code>exit_code</code> -2 result of step 12. A reject that produces no result (steps 3 through 9, and step 10 when the LOCAL choice is silence) <span class="bcp14">MUST NOT</span> enter the seen-set. A redelivered copy of such a message is therefore processed afresh and rejected afresh. This is deliberate: a message that never verified cannot burn a <code>job_id</code>, so a forger holding a victim's <code>job_id</code> cannot block the genuine job from running.<a href="#section-15-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="per-job-encryption">
+<section id="section-16">
+      <h2 id="name-per-job-encryption">
+<a href="#section-16" class="section-number selfRef">16. </a><a href="#name-per-job-encryption" class="section-name selfRef">Per-Job Encryption</a>
+      </h2>
+<p id="section-16-1">This section defines per-job encryption: encrypting the job object itself, so the binding's store-and-forward hops carry ciphertext instead of the signed body. It is a required part of version 1. Implementations <span class="bcp14">MUST</span> support receiving and decrypting objects encrypted as this section specifies. Senders <span class="bcp14">SHOULD</span> encrypt; the reference software encrypts by default on the sending side, and encryption <span class="bcp14">MUST NOT</span> fail silently into cleartext. A receiver <span class="bcp14">MUST NOT</span> execute a job object received in cleartext unless the operator has explicitly enabled cleartext acceptance on that receiver. In the reference software the enable is a command-line parameter (<code>--allow-cleartext</code>), deliberately not a configuration setting, so the posture holds only for the invocation that asks for it; the sender's corresponding explicit choice is the reference sender's <code>--cleartext</code> parameter. The MAC of Section 7 is verified before the form of the object is considered, in every posture: cleartext is never unauthenticated.<a href="#section-16-1" class="pilcrow">¶</a></p>
+<p id="section-16-2">This section is the protocol's confidentiality mechanism at the object layer. Receiver support is <span class="bcp14">REQUIRED</span> on every binding, because a sender <span class="bcp14">MAY</span> apply this section on any binding. Sender application is <span class="bcp14">OPTIONAL</span> on a binding that itself provides the confidentiality property as Section 5 states; the DTLS binding of Section 19 is that case (Section 19.4). On a binding that does not provide the property, this section is the only mechanism that does, and the sender posture above applies in full.<a href="#section-16-2" class="pilcrow">¶</a></p>
+<div id="construction">
+<section id="section-16.1">
+        <h3 id="name-construction">
+<a href="#section-16.1" class="section-number selfRef">16.1. </a><a href="#name-construction" class="section-name selfRef">Construction</a>
+        </h3>
+<p id="section-16.1-1">The plaintext is the complete signed job body in its Section 7 form — the payload object with the signature spliced in. The cipher is AES-256-GCM <span>[<a href="#SP800-38D" class="cite xref">SP800-38D</a>]</span>:<a href="#section-16.1-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-16.1-2.1">
+            <p id="section-16.1-2.1.1">Key: HKDF <span>[<a href="#RFC5869" class="cite xref">RFC5869</a>]</span> with HMAC-SHA-384. The input keying material is the UTF-8 octets of the secret selected per Section 10. The salt is the nonce. The info string is "homing-pigeon job-encryption v1". The output is 32 octets.<a href="#section-16.1-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-16.1-2.2">
+            <p id="section-16.1-2.2.1">Nonce: 12 octets, freshly random for each message.<a href="#section-16.1-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-16.1-2.3">
+            <p id="section-16.1-2.3.1">Additional authenticated data: the <code>job_id</code>, the <code>key_id</code> (empty for the default secret), and the algorithm string, each UTF-8, joined by single NUL (0x00) octets, in that order.<a href="#section-16.1-2.3.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-16.1-3">The transmitted body is a JSON envelope object, signed exactly as Section 7 specifies — the MAC covers the envelope as transmitted:<a href="#section-16.1-3" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-16.1-4">
+<pre>
+{"hp_enc": {"alg": "aes-256-gcm/hkdf-sha384",
+            "nonce": "&lt;base64&gt;", "ct": "&lt;base64&gt;"}}
+</pre><a href="#section-16.1-4" class="pilcrow">¶</a>
+</div>
+<p id="section-16.1-5"><code>ct</code> is the ciphertext with the 16-octet GCM tag appended, base64-encoded. When the selected secret is not the default, the envelope carries the same <code>key_id</code> member a cleartext body would. <code>hp_enc</code> is a reserved member name: a body whose members are exactly the envelope's is an envelope, and senders <span class="bcp14">MUST NOT</span> use <code>hp_enc</code> for any other purpose.<a href="#section-16.1-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="receiver-processing-1">
+<section id="section-16.2">
+        <h3 id="name-receiver-processing-2">
+<a href="#section-16.2" class="section-number selfRef">16.2. </a><a href="#name-receiver-processing-2" class="section-name selfRef">Receiver processing</a>
+        </h3>
+<p id="section-16.2-1">An envelope is processed inside Section 14's steps, not beside them:<a href="#section-16.2-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-16.2-2">
+<li id="section-16.2-2.1">
+            <p id="section-16.2-2.1.1">The envelope's <code>key_id</code> selects the secret (Section 10), exactly as for a cleartext body.<a href="#section-16.2-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-16.2-2.2">
+            <p id="section-16.2-2.2.1">The envelope's MAC is verified — step 5 applied to the envelope. On failure, reject as step 5 specifies. A receiver <span class="bcp14">MUST NOT</span> attempt decryption before the MAC verifies.<a href="#section-16.2-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-16.2-2.3">
+            <p id="section-16.2-2.3.1">Decrypt. Any failure — an unknown <code>alg</code>, a malformed member, a tag mismatch — is a rejection with no result, marked seen, as in step 5. No partial plaintext is processed.<a href="#section-16.2-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-16.2-2.4">
+            <p id="section-16.2-2.4.1">The recovered body re-enters Section 14 at step 4, as if it had arrived directly; its own MAC is verified again, and its <code>key_id</code> <span class="bcp14">MUST</span> match the envelope's.<a href="#section-16.2-2.4.1" class="pilcrow">¶</a></p>
+</li>
+        </ol>
+<p id="section-16.2-3">Support of this section is <span class="bcp14">REQUIRED</span> (Section 16). A receiver that does not implement it is not conformant; presented with an envelope, it sees an object without <code>v</code> or <code>type</code> and rejects it at step 7.<a href="#section-16.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="results">
+<section id="section-16.3">
+        <h3 id="name-results">
+<a href="#section-16.3" class="section-number selfRef">16.3. </a><a href="#name-results" class="section-name selfRef">Results</a>
+        </h3>
+<p id="section-16.3-1">The result for an encrypted job <span class="bcp14">SHOULD</span> be encrypted in the same construction, with the job's <code>job_id</code> in the additional data, so an exchange is encrypted in both directions or neither. A receiver's local policy <span class="bcp14">MAY</span> override in either direction; the reference receiver exposes that policy as configuration and defaults to mirroring the job.<a href="#section-16.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="no-forward-secrecy">
+<section id="section-16.4">
+        <h3 id="name-no-forward-secrecy">
+<a href="#section-16.4" class="section-number selfRef">16.4. </a><a href="#name-no-forward-secrecy" class="section-name selfRef">No forward secrecy</a>
+        </h3>
+<p id="section-16.4-1">Per-job encryption provides confidentiality against observers of the transport. It provides NO forward secrecy, and the two statements travel together wherever the mechanism is described: the key derives from the static shared secret, so compromise of the secret exposes every recorded encrypted job and result, past and future. Encryption also raises the value of a captured secret under Section 17.3's analysis; it does not lower it.<a href="#section-16.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="security-considerations">
+<section id="section-17">
+      <h2 id="name-security-considerations">
+<a href="#section-17" class="section-number selfRef">17. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<div id="the-signer-controls-the-host">
+<section id="section-17.1">
+        <h3 id="name-the-signer-controls-the-hos">
+<a href="#section-17.1" class="section-number selfRef">17.1. </a><a href="#name-the-signer-controls-the-hos" class="section-name selfRef">The signer controls the host</a>
+        </h3>
+<p id="section-17.1-1">A valid MAC is permission to run as the runner's account. Anyone who holds the secret can operate the host. This protocol does not define a sandbox. LOCAL confinement <span class="bcp14">MUST NOT</span> be assumed by the submitter.<a href="#section-17.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="confidentiality-and-its-limits">
+<section id="section-17.2">
+        <h3 id="name-confidentiality-and-its-lim">
+<a href="#section-17.2" class="section-number selfRef">17.2. </a><a href="#name-confidentiality-and-its-lim" class="section-name selfRef">Confidentiality and its limits</a>
+        </h3>
+<p id="section-17.2-1">HMAC authenticates; it does not encrypt. The protocol's confidentiality is Section 16, and nothing else in this document provides it. Where cleartext is in use under an operator's explicit enable (Section 16), the transport operator (in this binding, the mailbox provider) can read every job and every result, and an observer who can read the transport learns the script, the arguments, the environment, and the output.<a href="#section-17.2-1" class="pilcrow">¶</a></p>
+<p id="section-17.2-2">With per-job encryption in use, the job and result bodies are encrypted end to end on the binding: an observer of the transport learns the subject (which names the <code>job_id</code>), the timing, and the size, and nothing of the content. The reference software encrypts by default. A receiver that has not explicitly enabled cleartext acceptance refuses a cleartext object; an enabled receiver logs each cleartext arrival, so the choice is visible.<a href="#section-17.2-2" class="pilcrow">¶</a></p>
+<p id="section-17.2-3">Per-job encryption provides NO forward secrecy. Its key derives from the static shared secret, so compromise of the secret exposes every recorded encrypted job and result, past and future. A confidentiality claim for this protocol <span class="bcp14">MUST</span> be read with that limit attached.<a href="#section-17.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="offline-guessing">
+<section id="section-17.3">
+        <h3 id="name-offline-guessing">
+<a href="#section-17.3" class="section-number selfRef">17.3. </a><a href="#name-offline-guessing" class="section-name selfRef">Offline guessing</a>
+        </h3>
+<p id="section-17.3-1">One captured message is enough to test candidate secrets. More messages do not reduce that search. HMAC-SHA-384 does not yield the key from the tags.<a href="#section-17.3-1" class="pilcrow">¶</a></p>
+<p id="section-17.3-2">The secret <span class="bcp14">SHOULD</span> be 32 octets from a cryptographic generator, stored as characters and used as UTF-8. Sixty-four hexadecimal characters are the usual form. A long human sentence is not a substitute. The secret <span class="bcp14">SHOULD NOT</span> be the mailbox password.<a href="#section-17.3-2" class="pilcrow">¶</a></p>
+<p id="section-17.3-3">The floor is normative for this protocol: the shared secret <span class="bcp14">MUST</span> carry at least 128 bits of entropy, estimated as the secret's length times log2 of its alphabet size, and a sender <span class="bcp14">MUST</span> refuse to sign with a secret below that floor. The requirement answers the offline-guessing attack above, and it binds version 1 today: the reference runner refuses to start with a secret below the floor, and the reference sender refuses to sign with one.<a href="#section-17.3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="headers-are-not-authentication">
+<section id="section-17.4">
+        <h3 id="name-headers-are-not-authenticat">
+<a href="#section-17.4" class="section-number selfRef">17.4. </a><a href="#name-headers-are-not-authenticat" class="section-name selfRef">Headers are not authentication</a>
+        </h3>
+<p id="section-17.4-1"><code>From</code>, <code>Reply-To</code>, <code>Sender</code>, and <code>To</code> <span class="bcp14">MUST NOT</span> satisfy the MAC and <span class="bcp14">MUST NOT</span> select <code>reply_to</code>. An invalid MAC <span class="bcp14">MUST NOT</span> cause any result to be sent.<a href="#section-17.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="unknown-key-identifiers">
+<section id="section-17.5">
+        <h3 id="name-unknown-key-identifiers">
+<a href="#section-17.5" class="section-number selfRef">17.5. </a><a href="#name-unknown-key-identifiers" class="section-name selfRef">Unknown key identifiers</a>
+        </h3>
+<p id="section-17.5-1">Failing closed before the MAC stops a message from verifying under the default secret because of a typo, and it avoids using MAC time as a probe of which identifiers exist. A near-miss fingerprint is this case (Section 10.1): it is not the default secret under another spelling.<a href="#section-17.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="replay">
+<section id="section-17.6">
+        <h3 id="name-replay">
+<a href="#section-17.6" class="section-number selfRef">17.6. </a><a href="#name-replay" class="section-name selfRef">Replay</a>
+        </h3>
+<p id="section-17.6-1">The past window rejects stale <code>issued_at</code>. The seen-set rejects a repeated <code>job_id</code>. A receiver with a wrong clock will accept stale jobs or reject fresh ones. A receiver whose seen-set is cleared will accept a replay that is still inside the past window. Jobs <span class="bcp14">MUST</span> be safe to repeat for that reason; a lost result no longer causes one (Section 15).<a href="#section-17.6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="two-secrets">
+<section id="section-17.7">
+        <h3 id="name-two-secrets">
+<a href="#section-17.7" class="section-number selfRef">17.7. </a><a href="#name-two-secrets" class="section-name selfRef">Two secrets</a>
+        </h3>
+<p id="section-17.7-1">The transport credentials and the HMAC secret, which authorizes jobs.<a href="#section-17.7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="marker-collision">
+<section id="section-17.8">
+        <h3 id="name-marker-collision">
+<a href="#section-17.8" class="section-number selfRef">17.8. </a><a href="#name-marker-collision" class="section-name selfRef">Marker collision</a>
+        </h3>
+<p id="section-17.8-1">The splitter uses the last <code>,"sig":"</code>. A string value that contains that sequence will not verify as the sender intended. Senders <span class="bcp14">MUST</span> keep that sequence out of values.<a href="#section-17.8-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="output">
+<section id="section-17.9">
+        <h3 id="name-output">
+<a href="#section-17.9" class="section-number selfRef">17.9. </a><a href="#name-output" class="section-name selfRef">Output</a>
+        </h3>
+<p id="section-17.9-1">Version 1 results carry <code>stdout</code> and <code>stderr</code> up to the truncation limit. A receiver that wants to withhold output is implementing a different policy. That policy is not signaled by <code>v</code>. How that layering relates to this document is stated in Section 1.<a href="#section-17.9-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="at-least-once">
+<section id="section-17.10">
+        <h3 id="name-at-least-once">
+<a href="#section-17.10" class="section-number selfRef">17.10. </a><a href="#name-at-least-once" class="section-name selfRef">At-least-once</a>
+        </h3>
+<p id="section-17.10-1">An attacker who can drop the result mail delays delivery: the receiver resends the stashed result, the same octets, and does not execute the job again (Section 15). This protocol does not add a separate ack.<a href="#section-17.10-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="iana-considerations">
+<section id="section-18">
+      <h2 id="name-iana-considerations">
+<a href="#section-18" class="section-number selfRef">18. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-18-1">This document has no IANA actions.<a href="#section-18-1" class="pilcrow">¶</a></p>
+<p id="section-18-2">No new port, service name, media type, TLS extension, or object identifier is required. HMAC-SHA-384 is already named by <span>[<a href="#RFC2104" class="cite xref">RFC2104</a>]</span> and <span>[<a href="#FIPS180-4" class="cite xref">FIPS180-4</a>]</span>. The algorithm OID <code>hmacWithSHA384</code> (<code>1.2.840.113549.2.10</code>) already exists. This protocol identifies the algorithm by name, not by OID.<a href="#section-18-2" class="pilcrow">¶</a></p>
+<p id="section-18-3">The reference port for the DTLS binding (Section 19), UDP 20220, is a LOCAL default of the reference implementation, not a registered assignment; deployments may use any port, and submitters learn the port out of band, with the address and the secret.<a href="#section-18-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="the-dtls-binding">
+<section id="section-19">
+      <h2 id="name-the-dtls-binding">
+<a href="#section-19" class="section-number selfRef">19. </a><a href="#name-the-dtls-binding" class="section-name selfRef">The DTLS Binding</a>
+      </h2>
+<p id="section-19-1">This section and the three that follow it specify one further binding of version 1 and one behavior on it: a direct DTLS 1.3 session between submitter and runner, with the shared secret as the session's pre-shared key (this section), and the session greeting the runner sends once the handshake has authenticated the submitter (Section 20). The messages do not change on this binding; everything this document specifies for them applies unchanged.<a href="#section-19-1" class="pilcrow">¶</a></p>
+<p id="section-19-2">The store-and-forward bindings need no path between submitter and runner: a mailbox both can reach is enough, and the runner opens no listener. That is the right default, and it is also a ceiling. Where a direct path does exist -- the submitter can open a UDP flow to the runner's host -- a session buys three things the mailbox cannot: latency measured in round trips instead of poll cycles, confidentiality of the job and result objects themselves (not merely of one mail hop), and that confidentiality with forward secrecy.<a href="#section-19-2" class="pilcrow">¶</a></p>
+<p id="section-19-3">The cost is real, and it falls on the submitter. The store-and-forward bindings ask the submitter only to produce a signed object and hand it to a store-and-forward system it already speaks. This binding asks the submitter to terminate DTLS itself: the handshake, retransmission timers, connection IDs, session resumption -- a network stack obligation, discharged in the submitter's own environment. Many submitter environments cannot open a UDP socket at all. That is why this binding is optional, why the greeting (Section 20) hangs on the session existing, and why the email binding remains the binding every submitter reaches. Section 21 states the conformance burden plainly.<a href="#section-19-3" class="pilcrow">¶</a></p>
+<p id="section-19-4">Two consequences of a direct binding deserve emphasis up front. First, the runner listens: enabling this binding opens an inbound UDP listener on the runner's host, a posture the store-and-forward bindings deliberately never take. The binding is therefore off unless an owner enables it; nothing about installing or running the runner opens it. Second, channel security is not delivery. A session protects what crosses it while it lives; it acknowledges nothing at the protocol layer. Delivery, retry, and deduplication remain the protocol's own machinery (Sections 19.3 and 22.5).<a href="#section-19-4" class="pilcrow">¶</a></p>
+<div id="shape">
+<section id="section-19.1">
+        <h3 id="name-shape">
+<a href="#section-19.1" class="section-number selfRef">19.1. </a><a href="#name-shape" class="section-name selfRef">Shape</a>
+        </h3>
+<p id="section-19.1-1">The submitter initiates. The runner listens on a UDP port (LOCAL; the reference default is 20220, which is not registered -- see Section 18) only when the binding is enabled. One session carries any number of job and result messages in each direction while it lives. Roles do not reverse: the runner never initiates a session to a submitter.<a href="#section-19.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="the-profile">
+<section id="section-19.2">
+        <h3 id="name-the-profile">
+<a href="#section-19.2" class="section-number selfRef">19.2. </a><a href="#name-the-profile" class="section-name selfRef">The Profile</a>
+        </h3>
+<p id="section-19.2-1">This binding is a bounded profile of DTLS 1.3 <span>[<a href="#RFC9147" class="cite xref">RFC9147</a>]</span>. An implementation of this binding implements exactly this profile; a peer proposing anything outside it is refused, and the refusal ends that handshake, not the listener.<a href="#section-19.2-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-19.2-2.1">
+            <p id="section-19.2-2.1.1">Transport: DTLS 1.3 <span>[<a href="#RFC9147" class="cite xref">RFC9147</a>]</span> over UDP. DTLS 1.2 <span class="bcp14">MUST NOT</span> be negotiated.<a href="#section-19.2-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-19.2-2.2">
+            <p id="section-19.2-2.2.1">Ciphersuite: TLS_AES_256_GCM_SHA384 <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span> only. No other suite is offered or accepted.<a href="#section-19.2-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-19.2-2.3">
+            <p id="section-19.2-2.3.1">Authentication: pre-shared key only. The external PSK is the shared secret, under the identities of Section 3. Certificates are not part of this profile, in either direction. The shared secret <span class="bcp14">MUST</span> meet the minimum-entropy floor of this protocol (Section 17.3); a secret below the floor <span class="bcp14">MUST NOT</span> be offered as a PSK.<a href="#section-19.2-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-19.2-2.4">
+            <p id="section-19.2-2.4.1">Key exchange: <code>psk_dhe_ke</code> only. The <code>psk_key_exchange_modes</code> extension <span class="bcp14">MUST</span> offer mode 1 and <span class="bcp14">MUST NOT</span> offer mode 0 (<code>psk_ke</code>); a responder <span class="bcp14">MUST</span> refuse a handshake that does not offer <code>psk_dhe_ke</code>. An ephemeral X25519 <span>[<a href="#RFC7748" class="cite xref">RFC7748</a>]</span> key share <span class="bcp14">MUST</span> ride every handshake, full or resumed. Section 22.1 gives the reason: this is the profile's perfect-forward-secrecy requirement, and it is not negotiable within the profile.<a href="#section-19.2-2.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-19.2-2.5">
+            <p id="section-19.2-2.5.1">Address validation: the responder <span class="bcp14">MUST</span> perform the HelloRetryRequest cookie exchange of <span>[<a href="#RFC9147" class="cite xref">RFC9147</a>]</span> before allocating session state, and <span class="bcp14">MUST NOT</span> send any flight larger than the retry itself before the cookie returns. The cookie is stateless and is bound to the initiator's address.<a href="#section-19.2-2.5.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-19.2-2.6">
+            <p id="section-19.2-2.6.1">Connection ID: both sides <span class="bcp14">MUST</span> negotiate the <code>connection_id</code> extension <span>[<a href="#RFC9146" class="cite xref">RFC9146</a>]</span> and <span class="bcp14">MUST</span> accept records under the negotiated IDs from a changed source address, so that a NAT rebinding does not kill a session.<a href="#section-19.2-2.6.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-19.2-2.7">
+            <p id="section-19.2-2.7.1">Retransmission: handshake flights are retransmitted on the timers <span>[<a href="#RFC9147" class="cite xref">RFC9147</a>]</span> specifies. Duplicate or retransmitted handshake messages are consumed exactly once per handshake; a duplicate <span class="bcp14">MUST NOT</span> corrupt the transcript or the session.<a href="#section-19.2-2.7.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-19.2-2.8">
+            <p id="section-19.2-2.8.1">Early data: none. 0-RTT <span class="bcp14">MUST NOT</span> be offered, sent, or accepted; epoch 1 keys are never derived.<a href="#section-19.2-2.8.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-19.2-2.9">
+            <p id="section-19.2-2.9.1">Resumption: a responder <span class="bcp14">MAY</span> issue a NewSessionTicket. A resumed session <span class="bcp14">MUST</span> use a fresh ephemeral key share (the <code>psk_dhe_ke</code> rule admits no exception for resumption), <span class="bcp14">MUST</span> be treated as a new session for greeting purposes (Section 20), and the ticket <span class="bcp14">SHOULD</span> be single-use.<a href="#section-19.2-2.9.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-19.2-2.10">
+            <p id="section-19.2-2.10.1">KeyUpdate: an implementation <span class="bcp14">MUST NOT</span> initiate KeyUpdate. An implementation that receives a KeyUpdate with <code>update_requested</code> set <span class="bcp14">SHOULD</span> answer it as <span>[<a href="#RFC9147" class="cite xref">RFC9147</a>]</span> requires; an implementation <span class="bcp14">MAY</span> instead ignore KeyUpdate, and peers <span class="bcp14">MUST NOT</span> depend on it, as this profile never initiates one.<a href="#section-19.2-2.10.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-19.2-2.11">
+            <p id="section-19.2-2.11.1">Malformed input: a malformed or undecryptable datagram is dropped and logged. It <span class="bcp14">MUST NOT</span> be fatal to the listener or to any session but, at most, its own.<a href="#section-19.2-2.11.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+</section>
+</div>
+<div id="carrying-the-messages">
+<section id="section-19.3">
+        <h3 id="name-carrying-the-messages">
+<a href="#section-19.3" class="section-number selfRef">19.3. </a><a href="#name-carrying-the-messages" class="section-name selfRef">Carrying the Messages</a>
+        </h3>
+<p id="section-19.3-1">Inside a session, application data is a stream of messages, each framed by a four-octet big-endian length prefix. Each message is one protocol envelope in the same form the store-and-forward bindings carry: the subject line, a blank line, then the signed body, exactly as the email binding carries it. A job message is answered, in due course, by its result message on the same session.<a href="#section-19.3-1" class="pilcrow">¶</a></p>
+<p id="section-19.3-2">Acknowledgement and deduplication are the protocol's own, unchanged: the runner's seen-set governs whether a job executes (Section 14), the submitter retries per Section 15, and DTLS record protection contributes neither an acknowledgement nor a duplicate suppression at the protocol layer. A result produced after its session has died cannot be delivered on that session; the submitter learns of the loss by timeout, re-asks on a fresh session, and the seen-set makes the repeat safe.<a href="#section-19.3-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="composition-with-per-job-encryption">
+<section id="section-19.4">
+        <h3 id="name-composition-with-per-job-en">
+<a href="#section-19.4" class="section-number selfRef">19.4. </a><a href="#name-composition-with-per-job-en" class="section-name selfRef">Composition with Per-Job Encryption</a>
+        </h3>
+<p id="section-19.4-1">This binding provides the confidentiality property of Section 5 itself: the session is direct between the holders of the shared secret, no intermediary stores the object or can read it, and the session AEAD protects the object in transit with forward secrecy (Section 22.1). Application of the per-job encryption of Section 16 (the <code>hp_enc</code> envelope) on this binding is therefore <span class="bcp14">OPTIONAL</span>. A sender may send a cleartext signed job inside a session; the envelope remains available where protection at rest, beyond the session's lifetime, is wanted (the reference sender applies it by default and offers <code>--cleartext</code>). The receiver rule of Section 16 is unchanged on this binding: a cleartext object is executed only where the operator has explicitly enabled cleartext acceptance. Receiver support of Section 16 remains <span class="bcp14">REQUIRED</span>, on this binding as on every binding. Neither layer's presence relaxes the other's checks where it is applied: the envelope signature is verified before decryption, and the object signature is verified before execution, session or no session. The session's authentication of its peer does not substitute for the object signature: authentication attaches to the object (Section 5), not to the transport, on this binding as on every other.<a href="#section-19.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="the-session-greeting">
+<section id="section-20">
+      <h2 id="name-the-session-greeting">
+<a href="#section-20" class="section-number selfRef">20. </a><a href="#name-the-session-greeting" class="section-name selfRef">The Session Greeting</a>
+      </h2>
+<p id="section-20-1">When a session's handshake completes -- the responder has verified the initiator's Finished and the session keys are live -- the RUNNER sends the session's first application message: the greeting. Three properties are normative.<a href="#section-20-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-20-2.1">
+          <p id="section-20-2.1.1">The greeting is post-authentication, never before. A responder <span class="bcp14">MUST NOT</span> send it before the handshake completes, and an unauthenticated peer harvests nothing from this binding: before authentication the only thing a stranger can obtain is the cookie exchange of Section 19.2.<a href="#section-20-2.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-20-2.2">
+          <p id="section-20-2.2.1">The greeting precedes work. A runner <span class="bcp14">MUST NOT</span> accept a job on a session before it has sent the greeting on that session.<a href="#section-20-2.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-20-2.3">
+          <p id="section-20-2.3.1">The greeting is the responder's choice. Its disclosure tier is the runner's LOCAL configuration. The initiator cannot request, negotiate, or widen it; this document defines no mechanism by which it could.<a href="#section-20-2.3.1" class="pilcrow">¶</a></p>
+</li>
+      </ul>
+<p id="section-20-3">The greeting is a JSON object <span>[<a href="#RFC8259" class="cite xref">RFC8259</a>]</span> in the protocol's idiom:<a href="#section-20-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-20-4">
+<pre>
+{"disclosure": "family",
+ "platform": {"os_family": "linux",
+              "default_interpreter": ["sh"],
+              "protocol_versions": [1]},
+ "transport": "dtls",
+ "type": "greeting",
+ "v": 1}
+</pre><a href="#section-20-4" class="pilcrow">¶</a>
+</div>
+<p id="section-20-5">The members <code>type</code> (always <code>greeting</code>), <code>transport</code> (always <code>dtls</code>), <code>v</code> (the protocol version, 1), and <code>disclosure</code> (the tier in force) are always present. The <code>platform</code> member is present unless the tier is <code>none</code>, and its members depend on the tier:<a href="#section-20-5" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-20-6.1">
+          <p id="section-20-6.1.1"><code>none</code>: no <code>platform</code> member. The greeting still goes out; it says the session exists and nothing about the host.<a href="#section-20-6.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-20-6.2">
+          <p id="section-20-6.2.1"><code>family</code>: <code>os_family</code> (one of <code>windows</code>, <code>macos</code>, <code>linux</code>, <code>other</code>), <code>default_interpreter</code> (the argv the receiver runs a script with when the job names none) and <code>protocol_versions</code> (the message versions it opens). This is the reference default.<a href="#section-20-6.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-20-6.3">
+          <p id="section-20-6.3.1"><code>standard</code>: <code>family</code> plus <code>os_release</code> (the operating system's release string) and <code>python_version</code> (the runner runtime's version).<a href="#section-20-6.3.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-20-6.4">
+          <p id="section-20-6.4.1"><code>full</code>: <code>standard</code> plus <code>path_tools</code>, an object naming a fixed, bounded set of common tools and whether each is on the runner's PATH.<a href="#section-20-6.4.1" class="pilcrow">¶</a></p>
+</li>
+      </ul>
+<p id="section-20-7">The platform values above are strings on the wire; a future enterprise profile <span class="bcp14">MAY</span> map them under an OID arc.<a href="#section-20-7" class="pilcrow">¶</a></p>
+<p id="section-20-8">The disclosure is proportioned the way the protocol already proportions result content: a deployment that answers jobs with full output discloses more in results than one that answers with attestations, and the same owner's posture, expressed as a tier, governs the greeting. The information itself is of the kind any job the runner accepts could observe by running; the greeting gives it to the authenticated submitter up front, where it is useful for choosing what to send (an interpreter name, a script form), without spending a job to learn it.<a href="#section-20-8" class="pilcrow">¶</a></p>
+<p id="section-20-9">A resumed session is a new session for this section: the greeting <span class="bcp14">MUST</span> be sent again, under the tier in force at that time.<a href="#section-20-9" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="the-submitters-conformance-burden">
+<section id="section-21">
+      <h2 id="name-the-submitters-conformance-">
+<a href="#section-21" class="section-number selfRef">21. </a><a href="#name-the-submitters-conformance-" class="section-name selfRef">The Submitter's Conformance Burden</a>
+      </h2>
+<p id="section-21-1">This section is candid because the Introduction's promise -- that a submitter needs nothing but the specification and tools it already has -- does not survive contact with a session binding, and a specification that hides its costs invites broken deployments.<a href="#section-21-1" class="pilcrow">¶</a></p>
+<p id="section-21-2">A conforming submitter for this binding implements DTLS 1.3 in the profile of Section 19.2 for itself: the handshake state machine, PSK binders, the cookie exchange, handshake retransmission timers (a UDP peer that cannot retransmit cannot finish a handshake on a lossy path), connection IDs, and resumption. It needs a UDP path to the runner, which is an environment property, not a code property: a submitter running inside a hosted tool that offers only HTTPS egress, or no raw sockets at all, cannot use this binding no matter how correct its implementation is.<a href="#section-21-2" class="pilcrow">¶</a></p>
+<p id="section-21-3">None of this is required of a submitter that uses only the store-and-forward bindings. The conformance of the messages and their checks is untouched by this section, a runner without this binding is a complete deployment, and an owner enables the binding as an additional door on a host they choose, for submitters that can reach it. The bindings coexist: the same runner, the same secrets, the same objects; the session is a faster, confidential carriage for submitters equipped for it, and the mailbox remains for those that are not.<a href="#section-21-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security-considerations-dtls-binding">
+<section id="section-22">
+      <h2 id="name-security-considerations-dtl">
+<a href="#section-22" class="section-number selfRef">22. </a><a href="#name-security-considerations-dtl" class="section-name selfRef">Security Considerations (DTLS Binding)</a>
+      </h2>
+<div id="forward-secrecy-is-a-requirement-not-a-property">
+<section id="section-22.1">
+        <h3 id="name-forward-secrecy-is-a-requir">
+<a href="#section-22.1" class="section-number selfRef">22.1. </a><a href="#name-forward-secrecy-is-a-requir" class="section-name selfRef">Forward secrecy is a requirement, not a property</a>
+        </h3>
+<p id="section-22.1-1">The profile's load-bearing rule is that <code>psk_ke</code> is prohibited. In <code>psk_ke</code>, session keys derive from the pre-shared key alone; anyone who later obtains the secret and has recorded the session decrypts it in full. Because this protocol's shared secret is long-lived and is also the job-signing key, that failure mode would be catastrophic and silent. In <code>psk_dhe_ke</code>, every session -- full or resumed -- mixes a fresh ephemeral X25519 secret into its keys, so a later compromise of the shared secret yields the ability to impersonate going forward (which the version 1 analysis already grants a secret-holder) but decrypts no recorded session. An implementation <span class="bcp14">MUST NOT</span> offer, accept, or fall back to <code>psk_ke</code>, including on resumption and including when a peer insists. One limit is stated plainly: forward secrecy here is not post-quantum secrecy. The ephemeral exchange is X25519, so a recorded session is exposed to a future cryptographically relevant quantum computer in a way the symmetric constructions of this protocol (the object MAC of Section 7.1 and the per-job encryption of Section 16) are not. A hybrid post-quantum key exchange is the known remedy and is future work for this profile.<a href="#section-22.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="one-secret-two-constructions">
+<section id="section-22.2">
+        <h3 id="name-one-secret-two-construction">
+<a href="#section-22.2" class="section-number selfRef">22.2. </a><a href="#name-one-secret-two-construction" class="section-name selfRef">One secret, two constructions</a>
+        </h3>
+<p id="section-22.2-1">The shared secret does two jobs on this binding: it is the DTLS external PSK, and it remains the HMAC key of the job and result objects. These are independent constructions (the TLS key schedule's HKDF derivation chain, and HMAC-SHA-384 over the object), and neither's outputs feed the other. The composition does not weaken the analysis of Section 17: the session authenticates the channel, the signature authorizes the object, and a job's authority comes from the signature alone, so a job captured anywhere -- a mailbox, a session recording -- is exactly as powerful as it is on any other binding, and replay is governed by the same seen-set and freshness rules. The offline-guessing analysis of Section 17.3 applies to the PSK unchanged: the entropy floor is normative for the secret in both roles.<a href="#section-22.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="the-greeting-discloses">
+<section id="section-22.3">
+        <h3 id="name-the-greeting-discloses">
+<a href="#section-22.3" class="section-number selfRef">22.3. </a><a href="#name-the-greeting-discloses" class="section-name selfRef">The greeting discloses</a>
+        </h3>
+<p id="section-22.3-1">The greeting is a deliberate, bounded disclosure to an authenticated peer. Its bounds are its defenses: it is never sent before authentication, it contains no identifiers beyond platform shape (no hostname, no addresses, no user names, no filesystem paths beyond tool presence), its richest tier names a fixed tool set rather than enumerating the system, and its tier is set by the party being described. An owner who considers even the OS family sensitive sets <code>none</code> and the greeting still satisfies Section 20. What the greeting must never become is a negotiation: a future extension that lets the initiator ask for more would invert the design and <span class="bcp14">MUST NOT</span> be added compatibly.<a href="#section-22.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="amplification-and-the-listener">
+<section id="section-22.4">
+        <h3 id="name-amplification-and-the-liste">
+<a href="#section-22.4" class="section-number selfRef">22.4. </a><a href="#name-amplification-and-the-liste" class="section-name selfRef">Amplification and the listener</a>
+        </h3>
+<p id="section-22.4-1">A UDP listener is a reflection surface. The cookie exchange is the mitigation this profile adopts: the responder is stateless and sends nothing larger than the retry flight until the initiator proves it can receive at its claimed address, so the binding cannot be used to amplify traffic at a third party beyond that small, fixed flight. The listener's other exposure is computational: handshakes cost more than datagrams. The stateless cookie keeps pre-authentication cost to one MAC verification per first hello; malformed datagrams are dropped at parse, and per-session failure is contained to the session.<a href="#section-22.4-1" class="pilcrow">¶</a></p>
+<p id="section-22.4-2">Enabling this binding changes the host's posture from the store-and-forward bindings' no-listener stance, and this document does not minimize that: the listener is off unless enabled, its port is LOCAL, and an owner who does not need the session binding should leave it off and lose nothing.<a href="#section-22.4-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="channel-security-is-not-delivery">
+<section id="section-22.5">
+        <h3 id="name-channel-security-is-not-del">
+<a href="#section-22.5" class="section-number selfRef">22.5. </a><a href="#name-channel-security-is-not-del" class="section-name selfRef">Channel security is not delivery</a>
+        </h3>
+<p id="section-22.5-1">DTLS authenticates and encrypts records; it does not promise that a job arrived, ran, or was answered. This profile deliberately keeps the protocol's at-least-once semantics (Section 19.3) rather than letting a reliable-looking channel imply reliable delivery: sessions die (reboots, NAT timeouts past the connection ID's rescue, key exhaustion), and when one dies mid-exchange the loss is visible as a timeout, recoverable by a retry the seen-set makes safe. An implementation <span class="bcp14">MUST NOT</span> treat session establishment as job acceptance, nor session delivery of a result as its acknowledgement; the signed result message is the acknowledgement, as on every binding.<a href="#section-22.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="termination-in-the-middle">
+<section id="section-22.6">
+        <h3 id="name-termination-in-the-middle">
+<a href="#section-22.6" class="section-number selfRef">22.6. </a><a href="#name-termination-in-the-middle" class="section-name selfRef">Termination in the middle</a>
+        </h3>
+<p id="section-22.6-1">The confidentiality claim is end to end between the submitter and the runner process. A middlebox that terminates DTLS -- an inspecting proxy the path forces traffic through -- ends the claim at that box: the session is then confidential in two hops, and the operator of the middlebox can read job and result objects in clear, though per-job encryption (Section 19.4) still protects an encrypted object past it. Deployments that route this binding through such a box should enable the object layer and understand which guarantee each layer is carrying.<a href="#section-22.6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="sec-combined-references">
+<section id="section-23">
+      <h2 id="name-references">
+<a href="#section-23" class="section-number selfRef">23. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<div id="sec-normative-references">
+<section id="section-23.1">
+        <h3 id="name-normative-references">
+<a href="#section-23.1" class="section-number selfRef">23.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="FIPS180-4">[FIPS180-4]</dt>
+        <dd>
+<span class="refAuthor">National Institute of Standards and Technology</span>, <span class="refTitle">"Secure Hash Standard (SHS)"</span>, <span class="seriesInfo">FIPS PUB 180-4</span>, <span class="seriesInfo">DOI 10.6028/NIST.FIPS.180-4</span>, <time datetime="2015-08" class="refDate">August 2015</time>, <span>&lt;<a href="https://doi.org/10.6028/NIST.FIPS.180-4">https://doi.org/10.6028/NIST.FIPS.180-4</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2104">[RFC2104]</dt>
+        <dd>
+<span class="refAuthor">Krawczyk, H.</span>, <span class="refAuthor">Bellare, M.</span>, and <span class="refAuthor">R. Canetti</span>, <span class="refTitle">"HMAC: Keyed-Hashing for Message Authentication"</span>, <span class="seriesInfo">RFC 2104</span>, <span class="seriesInfo">DOI 10.17487/RFC2104</span>, <time datetime="1997-02" class="refDate">February 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2104">https://www.rfc-editor.org/info/rfc2104</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc2119">https://www.rfc-editor.org/rfc/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC5234">[RFC5234]</dt>
+        <dd>
+<span class="refAuthor">Ed., D. C.</span> and <span class="refAuthor">P. Overell</span>, <span class="refTitle">"Augmented BNF for Syntax Specifications: ABNF"</span>, <span class="seriesInfo">RFC 5234</span>, <span class="seriesInfo">STD 68</span>, <span class="seriesInfo">DOI 10.17487/RFC5234</span>, <time datetime="2008-01" class="refDate">January 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5234">https://www.rfc-editor.org/info/rfc5234</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC5869">[RFC5869]</dt>
+        <dd>
+<span class="refAuthor">Krawczyk, H.</span> and <span class="refAuthor">P. Eronen</span>, <span class="refTitle">"HMAC-based Extract-and-Expand Key Derivation Function (HKDF)"</span>, <span class="seriesInfo">RFC 5869</span>, <span class="seriesInfo">DOI 10.17487/RFC5869</span>, <time datetime="2010-05" class="refDate">May 2010</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5869">https://www.rfc-editor.org/info/rfc5869</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7748">[RFC7748]</dt>
+        <dd>
+<span class="refAuthor">Langley, A.</span>, <span class="refAuthor">Hamburg, M.</span>, and <span class="refAuthor">S. Turner</span>, <span class="refTitle">"Elliptic Curves for Security"</span>, <span class="seriesInfo">RFC 7748</span>, <span class="seriesInfo">DOI 10.17487/RFC7748</span>, <time datetime="2016-01" class="refDate">January 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7748">https://www.rfc-editor.org/info/rfc7748</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+        <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8174">https://www.rfc-editor.org/rfc/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8259">[RFC8259]</dt>
+        <dd>
+<span class="refAuthor">Ed., T. B.</span>, <span class="refTitle">"The JavaScript Object Notation (JSON) Data Interchange Format"</span>, <span class="seriesInfo">RFC 8259</span>, <span class="seriesInfo">STD 90</span>, <span class="seriesInfo">DOI 10.17487/RFC8259</span>, <time datetime="2017-12" class="refDate">December 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8259">https://www.rfc-editor.org/info/rfc8259</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8314">[RFC8314]</dt>
+        <dd>
+<span class="refAuthor">Moore, K.</span> and <span class="refAuthor">C. Newman</span>, <span class="refTitle">"Cleartext Considered Obsolete: Use of Transport Layer Security (TLS) for Email Submission and Access"</span>, <span class="seriesInfo">RFC 8314</span>, <span class="seriesInfo">DOI 10.17487/RFC8314</span>, <time datetime="2018-01" class="refDate">January 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8314">https://www.rfc-editor.org/info/rfc8314</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8446">[RFC8446]</dt>
+        <dd>
+<span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"The Transport Layer Security (TLS) Protocol Version 1.3"</span>, <span class="seriesInfo">RFC 8446</span>, <span class="seriesInfo">DOI 10.17487/RFC8446</span>, <time datetime="2018-08" class="refDate">August 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8446">https://www.rfc-editor.org/info/rfc8446</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8996">[RFC8996]</dt>
+        <dd>
+<span class="refAuthor">Moriarty, K.</span> and <span class="refAuthor">S. Farrell</span>, <span class="refTitle">"Deprecating TLS 1.0 and TLS 1.1"</span>, <span class="seriesInfo">RFC 8996</span>, <span class="seriesInfo">BCP 195</span>, <span class="seriesInfo">DOI 10.17487/RFC8996</span>, <time datetime="2021-03" class="refDate">March 2021</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8996">https://www.rfc-editor.org/info/rfc8996</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9146">[RFC9146]</dt>
+        <dd>
+<span class="refAuthor">Ed., E. R.</span>, <span class="refAuthor">Ed., H. T.</span>, <span class="refAuthor">Fossati, T.</span>, and <span class="refAuthor">A. Kraus</span>, <span class="refTitle">"Connection Identifier for DTLS 1.2"</span>, <span class="seriesInfo">RFC 9146</span>, <span class="seriesInfo">DOI 10.17487/RFC9146</span>, <time datetime="2022-03" class="refDate">March 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9146">https://www.rfc-editor.org/info/rfc9146</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9147">[RFC9147]</dt>
+        <dd>
+<span class="refAuthor">Rescorla, E.</span>, <span class="refAuthor">Tschofenig, H.</span>, and <span class="refAuthor">N. Modadugu</span>, <span class="refTitle">"The Datagram Transport Layer Security (DTLS) Protocol Version 1.3"</span>, <span class="seriesInfo">RFC 9147</span>, <span class="seriesInfo">DOI 10.17487/RFC9147</span>, <time datetime="2022-04" class="refDate">April 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9147">https://www.rfc-editor.org/info/rfc9147</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9325">[RFC9325]</dt>
+        <dd>
+<span class="refAuthor">Sheffer, Y.</span>, <span class="refAuthor">Saint-Andre, P.</span>, and <span class="refAuthor">T. Fossati</span>, <span class="refTitle">"Recommendations for Secure Use of Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)"</span>, <span class="seriesInfo">RFC 9325</span>, <span class="seriesInfo">BCP 195</span>, <span class="seriesInfo">DOI 10.17487/RFC9325</span>, <time datetime="2022-11" class="refDate">November 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9325">https://www.rfc-editor.org/info/rfc9325</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="SP800-38D">[SP800-38D]</dt>
+      <dd>
+<span class="refAuthor">Dworkin, M.</span>, <span class="refTitle">"Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC"</span>, <span class="seriesInfo">NIST SP 800-38D</span>, <span class="seriesInfo">DOI 10.6028/NIST.SP.800-38D</span>, <time datetime="2007-11" class="refDate">November 2007</time>, <span>&lt;<a href="https://doi.org/10.6028/NIST.SP.800-38D">https://doi.org/10.6028/NIST.SP.800-38D</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="sec-informative-references">
+<section id="section-23.2">
+        <h3 id="name-informative-references">
+<a href="#section-23.2" class="section-number selfRef">23.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="I-D.slutsky-homing-pigeon-v2">[I-D.slutsky-homing-pigeon-v2]</dt>
+        <dd>
+<span class="refAuthor">Placeholder, A.</span>, <span class="refTitle">"Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-slutsky-homing-pigeon-v2-00</span>, <time datetime="2026-10" class="refDate">October 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-slutsky-homing-pigeon-v2-00">https://datatracker.ietf.org/doc/html/draft-slutsky-homing-pigeon-v2-00</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9562">[RFC9562]</dt>
+      <dd>
+<span class="refAuthor">Davis, K.</span>, <span class="refAuthor">Peabody, B.</span>, and <span class="refAuthor">P. Leach</span>, <span class="refTitle">"Universally Unique IDentifiers (UUIDs)"</span>, <span class="seriesInfo">RFC 9562</span>, <span class="seriesInfo">DOI 10.17487/RFC9562</span>, <time datetime="2024-05" class="refDate">May 2024</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9562">https://www.rfc-editor.org/info/rfc9562</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</div>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-A">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Author Placeholder</span></div>
+<div dir="auto" class="left"><span class="org">Pigeon-Home</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:author@example.com" class="email">author@example.com</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

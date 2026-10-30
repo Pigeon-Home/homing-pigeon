@@ -1,0 +1,28 @@
+# Agent-Stamp: a4faf750-7222-4aca-9d25-2c4333483334
+# idnits 3.3.0, run 2026-10-30 with --offline: the RFC status lookups (downref and
+# status checks) need rfc-editor.org and datatracker.ietf.org, which the build host could not reach.
+
+$ idnits --offline --no-progress --no-color -o simple draft-slutsky-homing-pigeon-v2-00.txt
+FAIL - Document draft-slutsky-homing-pigeon-v2-00.txt has nits. (mode: normal)
+
+[1] Comment | NON_ASCII_CHARACTERS | Document contains non-ASCII characters: — (U+2014, EM DASH) x4. Check that each is needed and displays correctly. Outside of names, describe them using U+ notation and/or their Unicode names.
+[2] Error | POSSIBLE_DOWNREF | RFC 2119 status can't be fetched. Reference is possible downref | Ln 749 Col 4
+[3] Error | POSSIBLE_DOWNREF | RFC 8174 status can't be fetched. Reference is possible downref | Ln 754 Col 4
+[4] Warning | NORMATIVE_REFERENCE_TO_DRAFT | Normative reference to the Internet-Draft draft-slutsky-homing-pigeon-00. A document is not published as an RFC before the drafts it references normatively. | Ln 746 Col 54
+[5] Comment | UNDEFINED_STATUS | RFC 2119 does not have a defined status or could not be fetched. | Ln 749 Col 4
+[6] Comment | UNDEFINED_STATUS | RFC 8174 does not have a defined status or could not be fetched. | Ln 754 Col 4
+[7] Warning | UNDEFINED_STATE | The draft reference draft-slutsky-homing-pigeon does not have a defined state or could not be fetched. | Ln 746 Col 54
+[8] Comment | RFC_REFERENCE_URL_FORMAT | References to RFCs should link to the RFC's info page, https://www.rfc-editor.org/info/rfcN. Found 2 links to RFC text instead: https://www.rfc-editor.org/rfc/rfc2119 (and 1 more); for that one, use https://www.rfc-editor.org/info/rfc2119. xml2rfc currently renders references without a target this way and will switch to /info/: if this document was produced by xml2rfc from XML without explicit targets, nothing needs changing in the source. | Ln 752 Col 16, Ln 756 Col 26
+[9] Warning | REFERENCE_MISSING_IN_REFERENCE_SECTION | Document has [HOMING-PIGEON] but does not occur in any reference section.
+
+$ idnits --offline --no-progress --no-color -o simple draft-slutsky-homing-pigeon-v2-00.xml
+FAIL - Document draft-slutsky-homing-pigeon-v2-00.xml has nits. (mode: normal)
+
+[1] Comment | NON_ASCII_CHARACTERS | Document contains non-ASCII characters: (U+00A0, NO-BREAK SPACE) x1, — (U+2014, EM DASH) x4. Check that each is needed and displays correctly. Outside of names, describe them using U+ notation and/or their Unicode names.
+[2] Error | POSSIBLE_DOWNREF | RFC 2119 status can't be fetched. Reference is possible downref
+[3] Error | POSSIBLE_DOWNREF | RFC 8174 status can't be fetched. Reference is possible downref
+[4] Warning | NORMATIVE_REFERENCE_TO_DRAFT | Normative reference to the Internet-Draft draft-slutsky-homing-pigeon-00. A document is not published as an RFC before the drafts it references normatively.
+[5] Comment | UNDEFINED_STATUS | RFC 2119 does not have a defined status or could not be fetched.
+[6] Comment | UNDEFINED_STATUS | RFC 8174 does not have a defined status or could not be fetched.
+[7] Warning | UNDEFINED_STATE | The draft reference draft-slutsky-homing-pigeon does not have a defined state or could not be fetched.
+[8] Comment | LINE_PI | Document contains <?line 123?> processing instruction tags.

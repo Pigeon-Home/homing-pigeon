@@ -11,6 +11,7 @@ Claude:
 a0000997-a43e-44ba-9a26-80b8150fd8a7
 b000092f-e5ef-4e93-bcc6-e35f92ee2ab1
 c0000327-6a7b-42df-81b9-21136287db1c
+a4faf750-7222-4aca-9d25-2c4333483334
 
 Muse:
 58316a92-3c4a-41cb-8a16-8c0c5a871e90
@@ -47,6 +48,7 @@ the old stamp stays in history and in the files it wrote.
 | 10 | `a0000997-a43e-44ba-9a26-80b8150fd8a7` | active | local regression passes and line coverage: the suite run under `runner/tools/linecov.py`, new tests aimed at the largest unrun gaps, and the run data in `docs/reports/coverage/`; registered 2026-10-27 at the conductor's word; its working notes, read before each turn's work, are `docs/project/seat-a0000997.md` | |
 | 11 | `b000092f-e5ef-4e93-bcc6-e35f92ee2ab1` | active | line coverage, second lane: new tests for the largest unrun gaps in `runner/guard/`, `runner/wire/` and `runner/oracle/` (`a0000997` holds the rest of the tree), with the run data in `docs/reports/coverage/`; registered 2026-10-27 at the conductor's word | |
 | 12 | `c0000327-6a7b-42df-81b9-21136287db1c` | active | the local rig: regression passes and coverage on a box with no PyPI (`runner/tools/stdlib_coverage.py`, `runner/tests/_hypothesis_shim.py`), and deterministic tests for the arms a measurement finds never run; registered 2026-10-27 at the conductor's word; reads `docs/project/local-rig-seat.md` before the first edit of every turn | |
+| 13 | `a4faf750-7222-4aca-9d25-2c4333483334` | active | the Internet-Drafts in kramdown-rfc: `docs/ietf/draft-slutsky-homing-pigeon-00` and `-v2-00`, their rendered text, HTML and XML, and their idnits runs | |
 | Muse | `58316a92-3c4a-41cb-8a16-8c0c5a871e90` | recycled | the testing campaigns (tests, probes, questions) | `00000000` |
 | Muse | `00000000-muse-7e57-d0c5-58316a922026` | active | the testing campaigns (tests, probes, questions) | |
 
