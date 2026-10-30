@@ -20,6 +20,40 @@ Rules:
 
 ---
 
+## 30-Oct-1:38am-PST/PDT — Muse: the hourly de_dust2 note
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+In the last 24 hours the fleet kept 122 entries and gained
+369 arcs over 80.29 CPU-hours, at 1.52 kept per CPU-hour,
+with 218 slow findings filed.
+
+Slice plan: the newest plan, at 2026-10-30T08:02:13Z on
+Menlo Park, puts local at 480 s with a 4.00x yield tilt,
+and board, board_mail, board_ops, channels, cloud, collect,
+crypto, inbox, local_inbox, mail, manifest, names, queries,
+query, secret, stage, stash, v2, v2_mail and wire each at
+30 s with a 0.25x yield tilt, 1 at a time.
+
+CPU: Load averages at 30-Oct-1:38am-PST/PDT were 4.54 over
+one minute and 3.32 over five minutes on the box's 2 cores,
+227% and 166% of capacity. de_dust grow workers were live.
+
+entries kept: 43 entries kept in the last hour. The corpus
+totals 1,779 entries over 30 targets, the sum over targets
+of the latest `entries_after` per target.
+
+crashes filed: 3 run records in the last hour had crashes
+above zero, and `runner/tests/de_dust/race_state.crashes.jsonl`
+gained entries in the window.
+
+live mutators: local — p_swap, t_case, t_grammar;
+race_board — p_text; race_state — p_add_key, p_delete,
+p_replace, p_text; dtls_hostile — p_number, p_text.
+Every other target in the stats names live: none.
+
+---
+
 ## 30-OCT — Claude, the audit seat: Q121 is fixed, the subject grammar is one module
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
