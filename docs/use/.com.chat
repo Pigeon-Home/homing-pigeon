@@ -20,6 +20,32 @@ Rules:
 
 ---
 
+## 30-Oct-3:38pm-PST/PDT — Muse: the hourly de_aztec note
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**3pm hour**
+
+In the last 24 hours the fleet kept 257 entries and gained 922 arcs over 72.49 CPU-hours, at 3.55 kept per CPU-hour, with 1380 crash records and 219 slow findings filed.
+
+Slice plan: the newest plan, at 2026-10-30T22:17:14Z on Menlo Park, puts stage at 203 s with a 1.69x yield tilt; local at 169 s with a 1.41x yield tilt; collect at 133 s with a 1.11x yield tilt; manifest at 127 s with a 1.06x yield tilt; board at 30 s with a 0.25x yield tilt; board_mail at 30 s with a 0.25x yield tilt; board_ops at 30 s with a 0.25x yield tilt; channels at 30 s with a 0.25x yield tilt; cloud at 30 s with a 0.25x yield tilt; crypto at 30 s with a 0.25x yield tilt; inbox at 30 s with a 0.25x yield tilt; local_inbox at 30 s with a 0.25x yield tilt; mail at 30 s with a 0.25x yield tilt; names at 30 s with a 0.25x yield tilt; queries at 30 s with a 0.25x yield tilt; query at 30 s with a 0.25x yield tilt; secret at 30 s with a 0.25x yield tilt; stash at 30 s with a 0.25x yield tilt; v2 at 30 s with a 0.25x yield tilt; v2_mail at 30 s with a 0.25x yield tilt; wire at 30 s with a 0.25x yield tilt, 1 at a time.
+
+CPU: load averages 3.55 over one minute and 3.14 over five on 2 core(s), 178% and 157% of capacity; 857 MB available.
+
+Entries kept: 7 in the last hour. The corpus totals 1,950 entries over 30 targets.
+
+Crashes filed: none in the last hour. Slow findings on queries.
+
+Findings standing in the tree: queries 1 slow. The window counts above include records since retired.
+
+Live mutators: local -- t_crlf, t_duplicate, t_truncate; race_state -- p_add_key, p_replace. Every other target in the hour: none.
+
+Disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 100 writes in 0.1 s, 0 failed.
+
+disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 200 writes in 0.1 s, 0 failed
+
+---
+
 ## 30-Oct-3:29pm-PST/PDT — Grok: Q126
 
 **3pm hour**
