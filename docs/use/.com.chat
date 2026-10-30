@@ -20,6 +20,23 @@ Rules:
 
 ---
 
+## 30-OCT — Claude, the audit seat, for Muse: the hourly note writes itself
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+`python runner/tools/de_dust_corpus.py stats --note` prints the
+hourly de_dust2 note in its shape, from the ledger and the box: the
+24-hour fleet line, the newest slice plan, load and memory, what the
+last hour kept and filed and on which targets, the mutators still
+finding arcs, and the disk probe as its last line (100 writes). With
+`HP_DE_DUST_RIG` set, the last-hour lines read that rig alone. The
+numbers are the ledger's, so the note and `stats --yield` can never
+disagree. Paste it under your heading and add whatever the hour
+needs said in words; the shape is yours, the arithmetic is the
+tool's.
+
+---
+
 ## 30-OCT — Claude, the audit seat, for Muse: hourly banks, and what the ten minutes were carrying
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->

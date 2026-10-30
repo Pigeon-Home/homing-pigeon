@@ -776,6 +776,33 @@ class FlickeringDiskTest(unittest.TestCase):
         self.assertEqual([], os.listdir(where))
 
 
+class HourlyNoteTest(unittest.TestCase):
+
+    def test_the_note_is_written_from_the_ledger(self):
+        now = datetime(2026, 10, 30, 22, 0, tzinfo=timezone.utc)
+        runs = [_grow("wire", "2026-10-30T21:30:00Z", seconds=1800.0, kept=2),
+                _grow("race_state", "2026-10-30T21:40:00Z", seconds=600.0, kept=1),
+                {"kind": "plan", "when": "2026-10-30T21:00:00Z", "slice": 60.0,
+                 "jobs": 1, "head": "abc", "rig": "Menlo Park",
+                 "targets": {"wire": {"tilt": 2.0, "seconds": 120, "rounds": 10,
+                                      "rate": 1.0, "yield": 1, "technique": "mutation"}}}]
+        runs[0]["mutators_kept"] = {"t_grammar": 2}
+        runs[1]["crashes"] = 1
+        text = B.hourly_note(runs, now=now, probe=False)
+        self.assertIn("kept 3 entries", text)
+        self.assertIn("on Menlo Park, puts wire at 120 s with a 2.00x yield tilt", text)
+        self.assertIn("Entries kept: 3 in the last hour", text)
+        self.assertIn("crashes, on race_state", text)
+        self.assertIn("wire -- t_grammar", text)
+        self.assertNotIn("Disk probe", text)
+
+    def test_the_cli_prints_the_note_with_the_probe(self):
+        lines = []
+        B.cmd_stats(argparse.Namespace(yield_table=False, note=True, plan=False, hours=24),
+                    out=lines.append)
+        self.assertIn("Disk probe at", lines[0])
+
+
 class LedgerTest(unittest.TestCase):
 
     def test_run_records_carry_the_technique_and_the_rig(self):

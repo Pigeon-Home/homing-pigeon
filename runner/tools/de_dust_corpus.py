@@ -10908,11 +10908,92 @@ def cmd_disk(args, out=print):
     return 1 if bad else 0
 
 
+def hourly_note(runs=None, now=None, hours=24, rig=None, probe=True):
+    """The hourly de_dust2 note, as text, from the ledger and the box
+    (de_dust2, for the rig seat): the 24-hour fleet line, the newest
+    slice plan, the box's load and memory, what the last hour kept
+    and filed, the mutators still finding arcs, and the disk probe.
+    Everything a reader needs is in the ledger; this writes it in the
+    note's shape so the hour is not assembled by hand."""
+    runs = load_runs() if runs is None else runs
+    now = now or datetime.now(timezone.utc)
+    rows = {r["target"]: r for r in yield_table(hours, runs, now=now)}
+    fleet = rows.get("fleet")
+    out = []
+    if fleet and fleet["cpu_h"]:
+        out.append(f"In the last {hours} hours the fleet kept {fleet['kept']} "
+                   f"entries and gained {fleet['arcs']} arcs over "
+                   f"{fleet['cpu_h']:.2f} CPU-hours, at "
+                   f"{fleet['kept_per_cpu_h']:.2f} kept per CPU-hour, with "
+                   f"{fleet['crashes']} crash records and {fleet['slow']} slow "
+                   "findings filed.")
+    else:
+        out.append(f"No grow in the last {hours} hours.")
+    plan = last_plan(runs)
+    if plan:
+        tg = sorted((plan.get("targets") or {}).items(),
+                    key=lambda kv: -kv[1].get("seconds", 0))
+        parts = [f"{name} at {row.get('seconds', 0):,} s with a "
+                 f"{row.get('tilt', 0):.2f}x yield tilt" for name, row in tg]
+        out.append(f"Slice plan: the newest plan, at {plan.get('when')}"
+                   + (f" on {plan['rig']}" if plan.get("rig") else "")
+                   + ", puts " + "; ".join(parts)
+                   + f", {plan.get('jobs', 1)} at a time.")
+    load = None
+    try:
+        load = os.getloadavg()
+    except (AttributeError, OSError):
+        pass
+    cores = os.cpu_count() or 1
+    mem = memory_available_mb()
+    if load:
+        out.append(f"CPU: load averages {load[0]:.2f} over one minute and "
+                   f"{load[1]:.2f} over five on {cores} core(s), "
+                   f"{load[0] / cores * 100:.0f}% and {load[1] / cores * 100:.0f}% "
+                   f"of capacity" + (f"; {mem} MB available" if mem is not None else "") + ".")
+    since = (now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    hour = [r for r in runs if r.get("kind") == "grow" and str(r.get("when", "")) >= since
+            and (rig is None or r.get("rig") == rig)]
+    kept = sum(len(r.get("kept") or []) if isinstance(r.get("kept"), list)
+               else int(r.get("kept") or 0) for r in hour)
+    latest = {}
+    for r in runs:
+        if r.get("kind") in ("grow", "seed", "distill") and "entries_after" in r:
+            latest[r["target"]] = r["entries_after"]
+    out.append(f"Entries kept: {kept} in the last hour. The corpus totals "
+               f"{sum(latest.values()):,} entries over {len(latest)} targets.")
+    crashed = sorted({r["target"] for r in hour if (r.get("crashes") or 0) > 0})
+    slowed = sorted({r["target"] for r in hour if (r.get("slow") or 0) > 0})
+    out.append("Crashes filed: " + (f"{sum(1 for r in hour if (r.get('crashes') or 0) > 0)} "
+               f"run record(s) in the last hour had crashes, on {', '.join(crashed)}."
+               if crashed else "none in the last hour.")
+               + (f" Slow findings on {', '.join(slowed)}." if slowed else " No slow finding."))
+    live = {}
+    for r in hour:
+        for name, n in (r.get("mutators_kept") or {}).items():
+            if n:
+                live.setdefault(r["target"], set()).add(name)
+    if live:
+        out.append("Live mutators: " + "; ".join(
+            f"{t} -- {', '.join(sorted(m))}" for t, m in sorted(live.items()))
+            + ". Every other target in the hour: none.")
+    else:
+        out.append("Live mutators: none kept an arc in the last hour.")
+    if probe:
+        lines = []
+        cmd_disk(argparse.Namespace(writes=100, where=None), out=lines.append)
+        out.append(lines[0][0].upper() + lines[0][1:] + ".")
+    return "\n\n".join(out)
+
+
 def cmd_stats(args, out=print):
     if getattr(args, "yield_table", False):
         hours = getattr(args, "hours", 48) or 48
         for line in format_yield(yield_table(hours), hours):
             out(line)
+        return 0
+    if getattr(args, "note", False):
+        out(hourly_note(rig=os.environ.get("HP_DE_DUST_RIG") or None))
         return 0
     if getattr(args, "plan", False):
         plan = last_plan()
@@ -10994,6 +11075,9 @@ def main(argv=None):
                                 "--hours of grows: CPU, rate, kept, arcs, "
                                 "accepted share, kept per CPU-hour")
             p.add_argument("--hours", type=float, default=48)
+            p.add_argument("--note", action="store_true",
+                           help="the hourly de_dust2 note, in its shape, "
+                                "from the ledger, the box and the disk probe")
             p.add_argument("--plan", action="store_true",
                            help="the newest slice plan a cycling grow "
                                 "recorded: what each target was given and why")
