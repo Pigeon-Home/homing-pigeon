@@ -2530,7 +2530,7 @@ Also in this release, from the unreleased queue:
   v1.1.1 tag), Sysmon's `LICENSE.txt`, and the NATS client
   protocol page. Those paths are corrected.
 - A design note for agent stamps is in
-  `docs/design/agent-stamp-design.md`. It is a note, not a
+  `docs/project/agent-stamp-design.md`. It is a note, not a
   behavior change.
 
 ## 3.12.53 - 2026-10-22

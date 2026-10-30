@@ -381,7 +381,7 @@ and that board does not need Python either.
    unrestricted and the runner says so at startup. The signer then
    passes `--key-id grok-4` to `send_job.py`. The secret the
    installer generates for you is named too, by its fingerprint
-   (step 5 above; Q94), and on Windows `install.exe --check` prints the key
+   (step 5 above), and on Windows `install.exe --check` prints the key
    ids this runner holds and never the values (elsewhere,
    `send_job.py key-id --secret <secret>`). Rotation and the policy
    details: `docs/use/secret-rotation.md`, PROTOCOL.md section 14.

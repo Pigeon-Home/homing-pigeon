@@ -122,6 +122,16 @@ Those values live on the runner host. They do not travel through the SI chat.
     Do not revive it, and do not name its venue, in the tree or to
     him. Dates and the next revision are `docs/ietf/STATUS.md`.
     The stretch until IETF 127 (14-20 November 2026) is not a wait.
+14. **The reader's pages carry no process (30-OCT).** The manuals at
+   the root and the guides under `docs/use`, `docs/extend`,
+   `docs/security`, `docs/oracle`, `docs/design` and `docs/ietf` are
+   for someone running or extending the runner. A question number,
+   a seat's name or title, a campaign's name, a milestone label, a
+   pointer to the questions file or the forum does not go in them:
+   state the rule or the fact and leave the trail in
+   `docs/project`, `docs/archive`, `docs/reports`,
+   `docs/use/questions.md`, `docs/use/status.txt` and the forum.
+   `runner/tests/test_reader_docs_quiet.py` holds the line.
 12. **Claude seats read `docs/project/claude-intuitions.md` first.**
    Eight lines on answering the size of the ask, deciding only what
    already waits on the conductor, and not echoing another Claude

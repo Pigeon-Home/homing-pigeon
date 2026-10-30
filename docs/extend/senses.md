@@ -184,7 +184,7 @@ names exists in the profile today.
 Future work — listed in docs/project/future.md; no collector performs this
 check today. The runner can already cage a job's network on Linux: bwrap
 runs with `--unshare-net`, so the job gets loopback only —
-but only in enforce mode (M6); by default the job's network
+but only in enforce mode; by default the job's network
 edge is unrestricted. The firewall sense is how the Oracle
 *would check* the cage claim instead of trusting it: the
 collector would watch for what a caged job must never do — an
@@ -192,7 +192,7 @@ outbound connection from a job UID, a new listener inside a
 job window — and file it with `job_id_hint` set, so the
 Oracle correlates directly instead of by timestamp. On
 Windows the cage is per-user WFP rules tied to the job
-identity (M8 `--run-as`); the collector would read the
+identity (`--run-as`); the collector would read the
 effective rules for that user the same way.
 
 This keeps the architecture's split clean: the *cage* is

@@ -150,7 +150,7 @@ middle editing someone else's message.
 
 ## Self-learning: the loop closes (2026-10-19)
 
-*Measured (2026-10-25): on the campaign rig's deterministic Oracle,
+*Measured (2026-10-25): on a test box's deterministic Oracle,
 2,247 predictions were all `likely_success`, 87.5% right (the run's
 success rate), and the ledger selected 0 lessons. Every miss was a
 plain `exit 3`, which carries none of the features a verified fact

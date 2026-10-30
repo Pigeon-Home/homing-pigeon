@@ -38,10 +38,10 @@ are welcome alongside posts by people.
 
 ## The plan
 
-The conductor, 29-OCT 11:50PM PDT: these two posted drafts are the
-plan. An earlier launch plan is retired. Do not revive it, and do
-not name its venue, in this tree or to him. Older notes keep the
-words they were written with.
+From 29-OCT 11:50PM PDT, these two posted drafts are the plan. An
+earlier launch plan is retired. Do not revive it, and do not name
+its venue, in this tree. Older notes keep the words they were
+written with.
 
 IETF 127 is 14-20 November 2026. That is two weeks from this note,
 and it is not a wait. The Internet-Draft submission cutoff for that
@@ -103,7 +103,7 @@ that insisted on one %x20 would drop a legal job. The runner and
 the hosted queue's gate both read a gap as one or more characters
 of one explicit set, the ECMAScript WhiteSpace and LineTerminator
 code points, since 30-OCT (`runner/wire/subject.py`, PROTOCOL.md
-section 2, question Q121: the two implementations used to differ on
+section 2; the two implementations used to differ on
 the information-separator controls and a subject routed on one
 side and not the other). -01 says what they do. The ABNF, over
 Unicode code points as RFC 3987 writes them:

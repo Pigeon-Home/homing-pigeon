@@ -13,7 +13,7 @@ guess cheaper. Pigeon mail never carries the secret, only the tag.
 A job with no `key_id` verifies against `shared_secret`, and so does a job
 whose `key_id` is that secret's fingerprint (`k-<8 hex>`, PROTOCOL.md
 section 14.2: the name every secret carries, which the reference sender
-uses by default since Q94). A job with any other `key_id` verifies
+uses by default). A job with any other `key_id` verifies
 against `additional_secrets`. Secrets are read at startup — editing
 config.json takes effect on restart.
 
@@ -30,8 +30,7 @@ entry onto the new id.
 
 ## Naming the first secret
 
-The conductor decided on 2026-10-27 (Q94) that a secret the
-installer generates is named, and it is:
+A secret the installer generates is named, and it is:
 
 - The first secret's name is its fingerprint, `k-<8 hex>`
   (PROTOCOL.md section 14.2), which the installer prints beside the

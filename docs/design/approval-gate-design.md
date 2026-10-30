@@ -1,4 +1,4 @@
-# Approval gate — design (M10)
+# Approval gate — design
 
 *Not built. See docs/project/future.md. This document records the shape of a
 human approval step before job execution, so the work can be picked
@@ -45,7 +45,7 @@ Modes (what gets gated):
   script matches destructive patterns wait. (Requires the reviewer to
   produce a machine-readable risk signal; today it produces notes.)
 
-### Audit/enforce integration (M0)
+### Audit/enforce integration
 
 The `mode` above selects *what* gets gated. *Whether* the gate holds
 jobs is governed by the M0 three-mode system like every other

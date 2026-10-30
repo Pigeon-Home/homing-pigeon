@@ -283,7 +283,7 @@ The open items above, as the build closed them:
   job's process subtree (via `/proc` on Linux, a Toolhelp32
   snapshot on Windows, and one `ps -axo pid,ppid,rss,time`
   call on Darwin and the BSDs, which have no `/proc` of Linux's
-  shape and no stdlib route to the process table -- Q38) plus
+  shape and no stdlib route to the process table) plus
   a stat of its workdir. Correlation rule,
   as built: the box's own clock is the only clock; an event
   belongs to a job's window when its timestamp falls inside

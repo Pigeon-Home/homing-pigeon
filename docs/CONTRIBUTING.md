@@ -79,12 +79,10 @@ Two more files carry the version and move in the same commit:
 `runner/ops/install.py` (`__version__`) and the pin in
 `runner/tests/test_install_edges.py`. A release commit touches all four.
 
-The release commit's author email is `noreply@x.ai`.
-`grok@x.ai` is on the WagiklinKasa account, so a
-commit that uses it shows that name on GitHub and
-counts toward that account in the contributors.
-Every release commit is Grok's. The address is the
-only thing that was wrong.
+The release commit's author email is a no-reply address: a
+commit under a personal address shows that person's account on
+GitHub and counts toward it in the contributors, which a release
+commit should not do.
 
 
 ### The looking is the gate

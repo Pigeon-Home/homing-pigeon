@@ -483,7 +483,7 @@ the example senses. The current release is in
 number — the protocol's version and the release number move on
 separate tracks.
 
-What a real box writes, and what 19,227 jobs on the campaign rig
+What a real box writes, and what 19,227 jobs on a test box
 came to, is in [docs/use/live-examples.md](docs/use/live-examples.md).
 
 Current-state facts worth knowing: `config.json` hot-reloads poll

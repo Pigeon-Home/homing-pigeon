@@ -23,7 +23,7 @@ handling jobs.
 
 ## What the learning ledger looks like
 
-On the campaign rig (deterministic mode, 2,248 graded jobs) every
+On a test box (deterministic mode, 2,248 graded jobs) every
 prediction was `likely_success`: the ledger's accuracy is the success
 rate and no failure was foreseen. Its real lines and numbers are in
 [live-examples.md](../use/live-examples.md#what-the-oracle-recorded).

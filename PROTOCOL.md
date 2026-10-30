@@ -534,7 +534,7 @@ outbox (section 6, "Execution at most once"). Everything that
 runs on the unauthenticated message, the routing checks and the
 search for the signed object's opening brace among them, is
 linear in the body: a verifier that walks once per brace hands
-any sender a quadratic hold on the loop before the MAC (Q116).
+any sender a quadratic hold on the loop before the MAC.
 Two senses of *seen* are kept apart throughout: *marking the
 mail seen* is the channel-level flag — the message will not
 be reprocessed — while *recording the id in the seen-set* is
@@ -1457,8 +1457,7 @@ original secret as `shared_secret` so keyless senders keep verifying.
 Every secret also has a name of its own, its fingerprint, which the
 installer prints beside the secret it generates and the reference
 sender uses by default; an absent or empty `key_id` stays the way a
-sender selects that first secret (section 14.2; the conductor's
-decision, Q94, 2026-10-27).
+sender selects that first secret (section 14.2).
 
 Key IDs are labels, not secrets. They may appear in logs and error
 messages. Unknown key IDs are rejected before any cryptographic work,

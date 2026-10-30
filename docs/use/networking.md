@@ -57,9 +57,9 @@ Three slots, deliberately separate:
   and new listeners; the `netmon` sense watches flows and
   DNS. Neither blocks anything. Safe to leave on everywhere.
 - **Cage (opt-in enforcement).** Linux: bwrap with
-  `--unshare-net` (loopback-only jobs) in enforce mode (M6).
+  `--unshare-net` (loopback-only jobs) in enforce mode.
   Windows: per-user WFP rules tied to the job identity
-  (M8 `--run-as`) — **not built; the Windows cage is parked**
+  (`--run-as`) — **not built; the Windows cage is parked**
   and no WFP rules are written today. The firewall *sense*
   verifies the cage held — check, don't trust.
 - **Egress policy (opt-in enforcement).** Per-job-identity

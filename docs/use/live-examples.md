@@ -10,22 +10,22 @@ its file, and `runner/tests/test_live_capture.py` fails if a quoted
 line stops matching that file; the numbers are written by
 `runner/tools/live_capture.py` and checked the same way.
 
-## The rig, and what it was not
+## The box, and what it was not
 
-The campaign rig is a two-core Linux VM, kernel 7.0, Python 3.12,
+The test box is a two-core Linux VM, kernel 7.0, Python 3.12,
 runner **3.12.51**. It ran as root with confinement off, every
 security mode off, the Oracle in deterministic mode (Pi Light), and,
 from its third start on 2026-10-22 onward, `judge=off` and
 `max_result_view=full`, so the SI saw each job's whole output. Mail
 carried jobs at first; after the mail-off of 2026-10-23 the file
-transport carried them. The campaign sent the same eight scripts in
+transport carried them. The test sent the same eight scripts in
 rotation, one at a time: the next job went out when the last result
 had been read.
 
 That is a test bench, deliberately wide open, not a recommended
 setup. A real install starts with the `password-only` profile
 (`max_result_view: attested`, `judge: advisory`), which is what the
-rig's first two starts show.
+box's first two starts show.
 
 ## What 19,227 jobs came to
 
@@ -82,7 +82,7 @@ What the numbers say:
 
 ## Startup
 
-The configuration the campaign ran under, from the rig's third start
+The configuration the test ran under, from the box's third start
 (the first two show `judge=advisory ceiling=attested`):
 
 <!-- source: runner.log -->
@@ -199,8 +199,8 @@ on each pass:
 ## Posture
 
 `runner.py --posture` from the tree at capture time (3.12.70)
-against a staging copy of the rig's config and state, on
-2026-10-25. Every warning here is the rig's open setup, named (the
+against a staging copy of the box's config and state, on
+2026-10-25. Every warning here is the box's open setup, named (the
 OK lines for the config file, the service, the base dir and the
 feature switches are left out):
 
@@ -217,14 +217,14 @@ feature switches are left out):
 [OK  ] audit log      no audit entries yet (nothing to protect)
 ```
 
-The matching `--audit-report` is empty: with every mode off, the rig
+The matching `--audit-report` is empty: with every mode off, the box
 never wrote `security-audit.jsonl`.
 
 ## Using the capture
 
 - `python3 runner/tools/live_capture.py` prints every number above
   as JSON; `--markdown` prints the block.
-- The campaign records are one JSON object per line in
+- The job records are one JSON object per line in
   `campaign-results.jsonl.gz` (`zcat` or `gzip.open` reads them).
 - The suite replays parts of the capture through the runner's own
   readers (`runner/tests/test_live_capture.py`): the learning ledger

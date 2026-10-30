@@ -1,4 +1,4 @@
-# Asymmetric signing — design (M9)
+# Asymmetric signing — design
 
 *Not built. See docs/project/future.md. This document records the shape of a
 migration from HMAC shared secrets to Ed25519 signatures, so

@@ -147,7 +147,7 @@ or file contents.
 
 ### What a wide-open box looks like
 
-The campaign rig ran as root with confinement and every security
+A test box ran as root with confinement and every security
 mode off, at `max_result_view: full`
 ([live-examples.md](docs/use/live-examples.md)). Three things from
 its 19,227 jobs are worth knowing before loosening a real box:
@@ -178,7 +178,7 @@ its 19,227 jobs are worth knowing before loosening a real box:
 | `confinement` | M6 | Runs jobs inside a Linux sandbox (bwrap) |
 | `job_user` | M8 | Runs jobs as a different POSIX user |
 
-### Confinement (M6)
+### Confinement
 
 With `security.modes.confinement: enforce` on Linux and `bwrap`
 installed, each `exec` job runs inside a bubblewrap sandbox: `/usr`
@@ -213,7 +213,7 @@ Optional tuning under `security.confinement` (all optional):
 }
 ```
 
-### Running jobs as another user (M8)
+### Running jobs as another user
 
 With `security.modes.job_user: enforce` and
 `security.job_user: {"user": "pigeon-jobs"}`, each `exec` job runs as
@@ -227,7 +227,7 @@ normally and records a `would_run_as` decision (reason
 `would_run_as_user`).
 The user must exist, or startup fails.
 
-### Secret files (M8)
+### Secret files
 
 Secrets don't have to live in `config.json`. `shared_secret_file`
 and `additional_secrets_files` (`{"key_id": "/path/to/file"}`) read
@@ -235,7 +235,7 @@ each secret from a file at startup (whitespace-stripped). A secret
 given both inline and via file is a startup error, as is a missing or
 empty file. File secrets pass the same entropy gate.
 
-### Multiple secrets (M-key)
+### Multiple secrets
 
 `additional_secrets` maps key IDs to further shared secrets
 (PROTOCOL.md section 14). Threat notes:
@@ -256,8 +256,8 @@ empty file. File secrets pass the same entropy gate.
   29-OCT the search for the `{` that opens the signed object walked
   the brace walk once per brace, quadratic in a nest, so an
   unauthenticated sender could post a `max_job_bytes` body of braces
-  and hold the mail loop for a day before any MAC ran (Q116, found
-  by the corpus campaign's latency class). The search is one
+  and hold the mail loop for a day before any MAC ran; fuzzing
+  found it as a latency outlier. The search is one
   backward pass now, in the runner and in the sender's verifier
   alike, with the same answers; a 4 MB nest extracts in under a
   second.
@@ -280,7 +280,7 @@ empty file. File secrets pass the same entropy gate.
   the output is correct; review (`require_review`, the human gate)
   is the correctness anchor.
 
-### The panic word (Q100)
+### The panic word
 
 The worst case in this file is the shared secret in the wrong hands.
 Revoking the mailbox and rotating the key both need a laptop and
@@ -297,10 +297,10 @@ user, a holder of the secret can send a job that deletes the word's
 file or patches the check before the owner ever sends the word. The
 word is real protection only where jobs cannot write to the runner's
 state or code, which today means `security.job_user` in `enforce`
-(M8, above) on a POSIX box. `install.py --check` prints which case a
+(above) on a POSIX box. `install.py --check` prints which case a
 box is in. Keep the word off the machine it protects.
 
-### Key names are public (Q94)
+### Key names are public
 
 Every secret has a name, its fingerprint `k-<8 hex>` (PROTOCOL.md
 section 14.2), and the names travel in the open: a result names the

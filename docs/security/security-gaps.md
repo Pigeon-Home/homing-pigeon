@@ -116,7 +116,7 @@ where each one stands. Items marked absent are listed in docs/project/future.md.
 
 The near-zero default posture is the owner's call, not an accident:
 this is a personal runner, and availability beats strictness for one
-user's box. Most of the hardening controls (M0–M11) are opt-in for
+user's box. Most of the hardening controls are opt-in for
 that reason. The exceptions: M1 is two always-on defect fixes with
 default-on caps (`max_job_bytes` / `max_script_bytes`), M3 and M4
 are read-only report tools (`--audit-report` / `--posture`), not
