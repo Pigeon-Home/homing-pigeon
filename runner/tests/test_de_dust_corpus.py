@@ -579,6 +579,61 @@ class ToolTest(unittest.TestCase):
         self.assertIn("wire 10", lines)
         self.assertEqual(len(lines), len(set(lines)))
 
+    def test_a_late_slice_is_clipped_to_the_cycle_and_a_sliver_is_not_started(self):
+        # A ten-minute cycle on a clock that moves 100 s per look.
+        # The first launch has 500 s left after the launch loop's
+        # own look, so a 2,400-second slice is clipped to what is
+        # left; once under the 150-second floor, the next one is
+        # not started at all.
+        commands = B.grow_commands(["wire"], 50, 9, False,
+                                   budget_for=lambda tg: 2400.0)
+        ticks = [0.0]
+
+        def clock():
+            ticks[0] += 100.0
+            return ticks[0]
+
+        launched = []
+
+        class Fake:
+            def __init__(self, cmd):
+                launched.append(cmd)
+                self.returncode = 0
+
+            def poll(self):
+                return 0
+
+            def communicate(self):
+                return b"", None
+        lines = []
+        B.run_parallel(commands, 1, out=lines.append, spawn=Fake,
+                       minutes=10.0, clock=clock, nap=0, floor_sec=150.0)
+        budgets = [float(c[c.index("--budget-sec") + 1]) for c in launched]
+        self.assertTrue(budgets, lines)
+        self.assertTrue(all(b < 2400.0 for b in budgets), budgets)
+        self.assertTrue(any("clipped to" in ln for ln in lines), lines)
+        self.assertTrue(any("not started" in ln for ln in lines), lines)
+        self.assertTrue(all(b >= 150.0 for b in budgets), budgets)
+
+    def test_a_slice_that_fits_the_cycle_keeps_its_budget(self):
+        commands = B.grow_commands(["wire"], 50, 9, False,
+                                   budget_for=lambda tg: 30.0)
+        launched = []
+
+        class Fake:
+            def __init__(self, cmd):
+                launched.append(cmd)
+                self.returncode = 0
+
+            def poll(self):
+                return 0
+
+            def communicate(self):
+                return b"", None
+        B.run_parallel(commands, 1, out=lambda *_a: None, spawn=Fake,
+                       minutes=0.0, nap=0, floor_sec=150.0)
+        self.assertEqual(["30"], [c[c.index("--budget-sec") + 1] for c in launched])
+
     def test_entry_ids_follow_the_data(self):
         a = B.make_entry("text", "abc", "seed:x", "seed")
         b = B.make_entry("text", "abc", "seed:y", "t_drop")

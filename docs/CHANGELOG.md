@@ -12,7 +12,9 @@ facts a reader may need to cite. Git history carries the rest.
   record says why a grow ended. Before this, a long slice on a
   script-shaped corpus ended in seconds with a few hundred tries, so
   the slices the planner lengthened never ran. The ceiling on a
-  slice's rounds is 2,000,000.
+  slice's rounds is 2,000,000, and a slice launched late in a timed
+  cycle is clipped to the cycle's remainder (or not started, under
+  the floor), so the cycle ends when its minutes do.
 - **The stash race harness reads counts, not log order.** A stash
   logged after the delivery it fed was read as a body nobody
   stashed; the one echo on file was the harness and is retired.

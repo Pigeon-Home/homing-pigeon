@@ -442,6 +442,17 @@ ceiling moved from 50,000 to 2,000,000 so a fast target's long
 slice is bounded by its seconds, not the ceiling. The hold's
 window restarts at the first plans made with this tool.
 
+A slice fits its cycle (the same hour). With slices that run, a
+4x slice on a 600-second base is forty minutes, and a cycle of
+`--minutes 55` that let one start at minute 54 ran to minute 94
+before the rig pulled its rules. A slice launched with less than
+its planned seconds left in the cycle gets the remainder as its
+budget, and with less than the floor left (a quarter of the base
+slice) it is not started; the cycle prints which. The plan record
+keeps the planned seconds, the grow record the seconds it had,
+and the yield is read over the target's own run time, so a
+clipped slice is read fairly.
+
 A slow child discounts its parent by a quarter for the rest of that
 grow, on the next draw, stacked if the parent keeps producing slow
 children, and kept across the 200-try recount. The record is still

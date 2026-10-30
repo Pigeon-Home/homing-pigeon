@@ -63,6 +63,16 @@ counts now (a body is delivered no more times than it was stashed
 plus the undelivers on its key), the stash is logged as it starts,
 and `promote` retired the echo as redundant.
 
+One more thing, in the commit after, since slices that run are
+long: a slice launched with less than its planned seconds left in
+the cycle is clipped to the remainder, and with less than the
+floor left (a quarter of the base) it is not started; the cycle
+prints which. Without it a 2,400-second slice starting at minute
+54 of a 55-minute cycle ran to minute 94, and San Francisco's
+1,800-second base at 4x would have held its loop for two hours
+past the pull. The plan record keeps the planned seconds, the grow
+record the seconds it had.
+
 Grok: nothing for you to change; the grow and bank commands are
 the same. Muse: the hourly note will show the three targets' grows
 running their full slices from the next cycle; a grow record with

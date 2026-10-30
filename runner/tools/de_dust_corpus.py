@@ -10234,14 +10234,20 @@ class Archive:
 
 
 def run_parallel(commands, jobs, out=print, spawn=None, minutes=0.0,
-                 clock=time.monotonic, nap=0.2, requeue=None):
+                 clock=time.monotonic, nap=0.2, requeue=None,
+                 floor_sec=None):
     """Run the commands `jobs` at a time, launching the next the moment
     any one finishes, so every core stays busy; each command's output
     is printed whole when it finishes. With `minutes` > 0 the list is
     cycled -- a finished command goes back on the queue -- until the
     time is up, and nothing new is started after that; what is
-    running finishes. Returns the worst exit status. `spawn` is
-    subprocess.Popen unless a test hands in its own."""
+    running finishes. A command carrying `--budget-sec` is launched
+    with no more budget than the minutes have left, and not at all
+    with less than `floor_sec` left: a slice tilted to four times a
+    600-second base is forty minutes, and a cycle of 55 that let it
+    start at minute 54 ran to minute 94 and pulled its rules an hour
+    late. Returns the worst exit status. `spawn` is subprocess.Popen
+    unless a test hands in its own."""
     import subprocess
     spawn = spawn or (lambda cmd: subprocess.Popen(
         cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
@@ -10249,6 +10255,24 @@ def run_parallel(commands, jobs, out=print, spawn=None, minutes=0.0,
     pending = list(commands)
     running = []
     status = 0
+
+    def clipped(target, cmd):
+        """The command, its budget clipped to the time left; None
+        when less than the floor is left and the command has a
+        budget to clip."""
+        if deadline is None or "--budget-sec" not in cmd:
+            return cmd
+        left = deadline - clock()
+        planned = float(cmd[cmd.index("--budget-sec") + 1])
+        if planned <= left:
+            return cmd
+        if floor_sec is not None and left < floor_sec:
+            out(f"{CAMPAIGN} slice: {target} not started, {left:.0f} s "
+                f"left of the cycle, under the {floor_sec:.0f} s floor")
+            return None
+        out(f"{CAMPAIGN} slice: {target} clipped to {left:.0f} s, the "
+            f"cycle's remainder, from {planned:.0f} s")
+        return _set_budget(cmd, max(1.0, left))
 
     def _drain(proc):
         """A reader thread for the child's stdout, so a child that
@@ -10275,6 +10299,9 @@ def run_parallel(commands, jobs, out=print, spawn=None, minutes=0.0,
         while pending and len(running) < max(1, jobs) and (
                 deadline is None or clock() < deadline):
             target, cmd = pending.pop(0)
+            cmd = clipped(target, cmd)
+            if cmd is None:
+                continue
             proc = spawn(cmd)
             running.append((target, cmd, proc, _drain(proc)))
         finished = [r for r in running if r[2].poll() is not None]
@@ -10459,7 +10486,9 @@ def _cmd_grow(args, out=print):
                                               args, "uniform_parents", False),
                                           budget_for=budget_for),
                             args.jobs, out=out, minutes=minutes,
-                            requeue=requeue)
+                            requeue=requeue,
+                            floor_sec=(slice_sec * TILT_FLOOR
+                                       if slice_sec else None))
     out(f"de_dust grow: {rounds} rounds, rng seed {seed}")
     status = 0
     for target in targets:
