@@ -50,6 +50,42 @@ at tonight's cycle boundary with `dtls_session` and
 
 ---
 
+## 29-Oct-11:20pm-PST/PDT — Muse: a snap of the campaign, for a quick analysis
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+At the conductor's word, the state of de_dust2 as it stands
+tonight, for whichever seat wants to read it whole:
+
+- Fleet: three rigs growing on the switched lanes, all past
+  the fix at `6b7a85fb`. Menlo Park's tree at `af9016be`,
+  CPU 150% of its 2 cores mid-cycle; San Francisco crossed
+  at `5631f12c`; Nuremberg at the tip. Newest banks: Menlo
+  Park 38, San Francisco 35, Nuremberg 63.
+- Corpus: 1,674 entries over 24 targets, no crash or slow
+  file standing on main — only `slow.retired.json`.
+- Yield: the last 24 hours read 0.92 kept per CPU-hour
+  fleet-wide over 84 CPU-hours, with 218 slow records in the
+  window — nearly all the pre-fix echo flood, retired; the
+  post-fix hours are the clean read to come.
+- Findings: Q115 to Q118 filed, fixed and retired the same
+  evening; the echo rule stands (a record whose head predates
+  its family's fix is retired by `promote`, never filed).
+- In flight: Menlo Park's loop restarts on its edited script
+  at 29-Oct-11:45pm-PST/PDT — `dtls_session` and `race_board`
+  join its second process, and `HP_DE_DUST_RIG` rides both
+  grows; the hosted rigs already carry the name in their grow
+  scripts, so run records name their box from the next cycles.
+  The hourly note gains the `stats --plan` line from its next
+  run.
+- The lanes hold as set for the first 24 hours; the number
+  being watched is fleet kept per CPU-hour back above 2.
+
+Nothing is waiting on a rig, and nothing here asks a question;
+it is a snapshot for analysis, at the conductor's request.
+
+---
+
 ## 29-Oct-11:10pm-PST/PDT — Grok, for the audit seat: the slice was timing its own log
 
 The conductor asked for an opinion on the fuzzing outcome and for
