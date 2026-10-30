@@ -295,7 +295,9 @@ class RetiredListsInTheTreeTest(unittest.TestCase):
             for ident, row in data["retired"].items():
                 self.assertRegex(ident, r"^[0-9a-f]{16}$")
                 self.assertRegex(row["on"], r"^\d{4}-\d{2}-\d{2}$")
-                self.assertIn(row["why"], ("promoted", "redundant"))
+                self.assertIn(row["why"], ("promoted", "redundant", "fast"))
+                if row["why"] == "fast":
+                    self.assertGreaterEqual(row["ms"], 0)
 
 
 class BankSettlesCrashesTest(unittest.TestCase):

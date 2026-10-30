@@ -181,6 +181,7 @@ ACCEPT_BOOST = 4.0            # by this much
 # median, and at least this long, is a finding (Q84's class).
 SLOW_FACTOR = 50.0
 SLOW_FLOOR_SEC = 0.5
+SLOW_PER_GROW = 5             # the slowest tries a grow files
 # P1/P2: the time slice a cycling grow gives each target, and the
 # tilt by yield around it.
 DEFAULT_SLICE_SEC = 120
@@ -8123,6 +8124,7 @@ class Session:
             crash = Crash("slow", f"{dt * 1000:.0f} ms, "
                           f"{dt / max(self.median, 1e-9):.0f}x the corpus "
                           f"median of {self.median * 1000:.1f} ms")
+            crash.seconds = dt
             self.slow.append((entry, crash))
             outcome = "slow"
         self.outcomes[outcome] = self.outcomes.get(outcome, 0) + 1
@@ -8373,7 +8375,11 @@ def _record_slow(target, session, out):
     existing = load(path)
     known = {e["id"] for e in existing}
     fresh = 0
-    for entry, crash in session.slow:
+    # The slowest SLOW_PER_GROW of a grow, not every try over the
+    # bound: one shape over the floor would otherwise file dozens of
+    # near-copies a grow.
+    slowest = sorted(session.slow, key=lambda ec: -getattr(ec[1], "seconds", 0.0))
+    for entry, crash in slowest[:SLOW_PER_GROW]:
         record = dict(entry)
         record.update({"crash": crash.kind, "detail": crash.detail,
                        "median_ms": round((session.median or 0) * 1000, 1),
@@ -8830,7 +8836,56 @@ def cmd_promote(args, out=print):
             f"(fixed, reaching nothing new), {len(keep)} still crash")
         if keep:
             status = 1
+    for target in _targets(args.target):
+        if _promote_slow(target, out):
+            status = 1
     return status
+
+
+def _promote_slow(target, out):
+    """The slow findings on file (de_dust2, P4), replayed after a
+    fix: a record that now runs under half the slow floor (the best
+    of three untraced runs) is fast, retired as such, and gone from
+    `<target>.slow.jsonl`; one still over the floor stays. A time is
+    the box's, so this is the promoting box's reading, and the
+    retirement names its head like any other. Returns True when some
+    record is still slow."""
+    path = corpus_path(target, slow=True)
+    records = load(path)
+    if not records:
+        return False
+    fast, still = [], []
+
+    def work():
+        for record in records:
+            entry = {k: record[k] for k in
+                     ("id", "kind", "data", "from", "mutator", "arcs")}
+            best = None
+            for _ in range(3):
+                t0 = time.perf_counter()
+                try:
+                    check(target, entry)
+                except Crash:
+                    pass
+                dt = time.perf_counter() - t0
+                best = dt if best is None else min(best, dt)
+            (fast if best < SLOW_FLOOR_SEC / 2 else still).append((record, best))
+    _with_rig(work)
+    if fast:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        head = head_sha()[:12]
+        retired = load_retired(target)
+        for record, best in fast:
+            retired[record["id"]] = {"on": today, "why": "fast", "head": head,
+                                     "ms": round(best * 1000, 1)}
+        save_retired(target, retired)
+    if still:
+        save(path, target, [r for r, _ in still])
+    else:
+        os.remove(path)
+    out(f"{target}: {len(fast)} slow finding(s) now fast (retired), "
+        f"{len(still)} still slow")
+    return bool(still)
 
 
 def last_grow(target):

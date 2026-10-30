@@ -1703,7 +1703,9 @@ life order: `ordered`, `generated`, `distributed`, `in_use`,
   of every other check on the entry.
 - A key with no entry is refused: a configured directory is the
   source of truth for every key the runner holds, the default key
-  included.
+  included. One key, one entry: a key with entries under two of its
+  names is refused under either name and is a config error at
+  startup.
 - An entry that carries `fingerprint` must carry the key's own
   (section 14.2), or the key is refused; `not_before` admits nothing
   before it; a value that is not a number, a state that is not in

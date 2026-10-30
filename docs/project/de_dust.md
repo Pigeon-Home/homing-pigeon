@@ -376,7 +376,10 @@ rounds, draws parents by the rarity of what they reach and by
 whether the reader took them, and files a try far slower than the
 corpus median as a `slow` finding in `<target>.slow.jsonl`, apart
 from the crash file: a time is a property of the box, so a slow
-record is a Q and a bound for the desk, never a probe. The release train runs beside
+record is a Q and a bound for the desk, never a probe; after the
+fix, `promote` replays the slow file and retires as `fast` what now
+runs under half the floor, and the bank keeps a retired id out as
+it does a fixed crash. The release train runs beside
 it; the corpus and its records ride every release, and the replay
 test is a release gate like any other. Every grow, kept or not,
 is a line in `runs.jsonl`; every pass of the regression tool, when

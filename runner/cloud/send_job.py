@@ -211,11 +211,7 @@ def _object_start(norm: str, sig_at: int) -> int:
     computed; the HMAC still decides.
     """
     first_walk = None
-    for start in range(sig_at - 1, -1, -1):
-        if norm[start] != "{":
-            continue
-        if not _in_root_object_at(norm, start, sig_at):
-            continue
+    for start in _root_candidates(norm, sig_at):
         if first_walk is None:
             first_walk = start
         try:
@@ -230,6 +226,57 @@ def _object_start(norm: str, sig_at: int) -> int:
         # signature mismatch) as it always did.
         return first_walk
     raise ValueError("no JSON object before signature")
+
+
+def _root_candidates(norm: str, sig_at: int):
+    """The `{` positions before the marker whose text up to it is a
+    whole root object by the brace walk (`_in_root_object_at`),
+    newest first, found in one pass over the text instead of one walk
+    per brace (de_dust2 slow records on wire and cloud, Q116: a body
+    nested a few hundred levels deep cost a walk per level, each the
+    length of the body, so a 16 KB nest took half a second and a
+    4 MB one would take the rest of the day, before any MAC).
+
+    A walk from a brace runs the same three-state string machine
+    (out of a string, in one, in one after a backslash) whatever
+    brace it starts at, so the suffix of the text after a position
+    has one summary per starting state: the net brace depth it adds,
+    the lowest depth it touches on the way, and the state it ends in.
+    Scanning backward keeps the three summaries for the position
+    after the current one; a brace at the current position walks
+    true exactly when the suffix after it, entered out of a string,
+    never closes the brace (lowest depth not below zero), adds no net
+    depth (the walk ends at depth one), and ends out of a string. The
+    results are the walk's, brace for brace; only the cost changed."""
+    OUT, IN, ESC = 0, 1, 2
+    delta = [0, 0, 0]
+    low = [0, 0, 0]
+    final = [OUT, IN, ESC]
+    for p in range(sig_at - 1, -1, -1):
+        c = norm[p]
+        if c == "{":
+            if low[OUT] >= 0 and delta[OUT] == 0 and final[OUT] == OUT:
+                yield p
+            n0, e0 = OUT, 1
+        elif c == "}":
+            n0, e0 = OUT, -1
+        elif c == '"':
+            n0, e0 = IN, 0
+        else:
+            n0, e0 = OUT, 0
+        if c == "\\":
+            n1 = ESC
+        elif c == '"':
+            n1 = OUT
+        else:
+            n1 = IN
+        d0 = e0 + delta[n0]
+        l0 = e0 + low[n0]
+        if l0 > 0:
+            l0 = 0
+        delta = [d0, delta[n1], delta[IN]]
+        low = [l0, low[n1], low[IN]]
+        final = [final[n0], final[n1], final[IN]]
 
 
 def _in_root_object_at(norm: str, start: int, sig_at: int) -> bool:

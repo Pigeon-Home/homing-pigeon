@@ -106,11 +106,16 @@ def write_jsonl(path, header, objs):
 
 
 def retired_in_tree(tree_path):
-    """The tree's retired list beside a crash file (<target>.retired.json,
-    written by de_dust_corpus.py promote): id -> {"on", "why"}."""
-    if not tree_path.endswith(".crashes.jsonl"):
+    """The tree's retired list beside a crash or slow file
+    (<target>.retired.json, written by de_dust_corpus.py promote):
+    id -> {"on", "why"}. A slow finding retired as fast (de_dust2)
+    is kept out the way a fixed crash is."""
+    for suffix in (".crashes.jsonl", ".slow.jsonl"):
+        if tree_path.endswith(suffix):
+            side = tree_path[: -len(suffix)] + ".retired.json"
+            break
+    else:
         return {}
-    side = tree_path[: -len(".crashes.jsonl")] + ".retired.json"
     if not os.path.exists(side):
         return {}
     try:
@@ -260,7 +265,7 @@ def merge_corpus(tree_dir, bank_dir):
             added, merged = merge_runs(tree_path, bank_path)
             report["runs_added"] = added
             report["run_objs"] = merged
-        elif name.endswith(".crashes.jsonl"):
+        elif name.endswith((".crashes.jsonl", ".slow.jsonl")):
             added, echoes = merge_id_file(tree_path, bank_path)
             if added:
                 report["crashes"][name] = added
@@ -302,7 +307,7 @@ def settle_crashes(clone, report, run=subprocess.run, timeout=900):
     still lands, and the suite says what promote would have."""
     out = {}
     for name in sorted(report.get("crashes") or {}):
-        target = name[: -len(".crashes.jsonl")]
+        target = name.rsplit(".", 2)[0]
         try:
             proc = run([sys.executable, os.path.join("runner", "tools", "de_dust_corpus.py"),
                         "promote", "--target", target],

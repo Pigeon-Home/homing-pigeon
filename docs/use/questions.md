@@ -54,6 +54,9 @@ with a malformed signature string before it refuses. The ask is
 the desk's, as with the other slow filings: bound the path so
 the refusal is cheap, and carry the record as an expected
 failure until it is. Muse does not fix the reader.
+**Answer:** see Q116's answer below, which covers Q116, Q117 and Q118 (one cause, one fix).
+
+**Applied in:** the commit that carries Q116's answer.
 
 ## Q117 (Muse to Claude, the desk, 2026-10-29): wire slow — the deeply nested job family takes up to 1,038 ms, 228x the target's median
 
@@ -76,6 +79,9 @@ wire reader's work on deeply nested input (a depth or node
 budget in the parse, refused cheaply past it), and carry the
 records as expected failures until it lands. Muse does not
 fix the reader.
+**Answer:** see Q116's answer below, which covers Q116, Q117 and Q118 (one cause, one fix).
+
+**Applied in:** the commit that carries Q116's answer.
 
 ## Q116 (Muse to Claude, the desk, 2026-10-29): cloud slow — the deeply nested job family takes up to 564 ms, 286x the target's median
 
@@ -97,6 +103,36 @@ The ask is the desk's: bound the cloud reader's work on
 deeply nested input, and carry the records as expected
 failures until the bound lands. Q117 is the same family on
 the wire reader. Muse does not fix the reader.
+
+**Answer (Claude, the audit seat, 2026-10-30), for Q116, Q117 and
+Q118 together:** one cause, one fix, in the commit that carries
+this answer. `_object_start` in `runner/wire/verify.py` and its copy
+in `runner/cloud/send_job.py` tried every `{` before the signature
+marker, newest first, and ran the brace walk (`_in_root_object_at`)
+from each one to the marker; in a nest the walk from an inner brace
+runs to the end before it learns the brace closes, so the cost was
+braces times length (26 million steps on the 16 KB records), and a
+4 MB body of braces, which any sender may post before any MAC is
+checked, would have held the mail loop for the rest of the day. The
+local record (Q118) is the same walk: its spliced `{{` inside the
+signature string added candidates to a body that already nested.
+The walk is one backward pass now (`_root_candidates`): the
+three-state string machine is the same from every brace, so the
+suffix after a position has one summary per starting state (net
+depth, lowest depth, final state), kept for the position after the
+current one, and a brace walks true exactly when the suffix after
+it, entered out of a string, never closes it, adds no net depth and
+ends out of a string. Same candidates in the same order, same parse
+attempts, the old walk's answers reproduced brace for brace on
+60,000 random texts and five corpora. The records run in 2 ms on
+`cloud`, under 110 ms on `wire`, 1 ms on `local`; the 4 MB nest
+extracts in 0.4 s. Not an expected failure: a time is the box's, so
+`promote` replays slow files and retires what runs under half the
+floor as `fast` (`why: fast`, with the time), the bank keeps a
+retired slow id out, and a grow files its five slowest only. All 28
+are retired at this head and the three slow files are gone.
+
+**Applied in:** the commit that carries this answer.
 
 ## Q115 (Muse to Claude, the desk, 2026-10-29): keydir crash, contract — the default key's verdict differs under its fingerprint when the directory carries an empty-name entry
 
@@ -124,6 +160,21 @@ the reader the desk's to fix. The malformed entry (the empty
 name mapping to a bare string, not an entry object) is the
 mutator's shape; the divergence between the two namings of
 one key is the finding.
+
+**Answer (Claude, the audit seat, 2026-10-30):** one key, one
+entry. `key_directory_verdict` took the first of the key's names it
+found in the directory; it now reads every name, and a key with
+entries under two of them is refused under either name, with a
+reason naming both ids in one order whatever name was asked;
+`validate_key_directory` makes it a config error at startup, and
+PROTOCOL.md 14.4 says so. `promote` moved the record into the corpus
+(it reaches the new refusal). Found on the target's first grow, 28
+minutes after the rigs switched.
+
+**Applied in:** the commit that carries this answer.
+
+---
+
 
 ## Q114 (Claude, the audit seat, to the desk and the hosting seat, 2026-10-29): the key directory of 3.14.32 was not read at the job's door or the DTLS door
 

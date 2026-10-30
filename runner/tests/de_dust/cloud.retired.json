@@ -2,10 +2,76 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "de_dust": 1,
  "retired": {
+  "010b35a3c8ea4c94": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.3,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "36e44a53fb6e28a9": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.4,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "4c5879e9d8c6d650": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.3,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "60639bc3ff4ee342": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.1,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "88536b89d5429c96": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.9,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "9d5254f9174d0cb5": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.2,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "a4f15545f0bea667": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.0,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
   "a8e0fd32ae67e22f": {
    "head": "acac4bfc3d9c",
    "on": "2026-10-29",
    "why": "redundant"
+  },
+  "a9ef8d8cb63ac555": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.5,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "cd74aa08e1a90fb4": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.1,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "ec298a6ba97b8ed3": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.6,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "f19baa22e7752f4c": {
+   "head": "01ee9cf25fe0",
+   "ms": 1.6,
+   "on": "2026-10-30",
+   "why": "fast"
   }
  },
  "target": "cloud"

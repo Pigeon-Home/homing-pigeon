@@ -83,6 +83,19 @@ class JobDoorTest(unittest.TestCase):
         self.assertIn("no key directory entry",
                       self._verdict({"old": {"state": "in_use"}}, key_id=""))
 
+    def test_one_key_under_two_names_is_refused_under_either(self):
+        # Q115 (the keydir target's first crash): an entry under "" and
+        # one under the fingerprint read differently by the name used.
+        fp = key_fingerprint(CURRENT)
+        two = {"": "job", fp: {"state": "in_use"}, "old": {"state": "in_use"}}
+        under_empty = self._verdict(two, key_id="")
+        under_fp = self._verdict(two, key_id=fp)
+        self.assertEqual(under_empty, under_fp)
+        self.assertIn("under two ids", under_empty)
+        with self.assertRaises(RuntimeError) as ctx:
+            verify.validate_key_directory(_cfg(two), self.secrets)
+        self.assertIn("one key under two ids", str(ctx.exception))
+
     def test_a_fingerprint_must_be_the_keys_own(self):
         self.assertIsNone(self._verdict(
             {"old": {"state": "in_use", "fingerprint": key_fingerprint(OLD)}}))

@@ -223,6 +223,41 @@ class SlowClassTest(unittest.TestCase):
         self.assertEqual(2.0, recs[0]["median_ms"])
         self.assertFalse(os.path.exists(B.corpus_path("names", crashes=True) + ".x"))
 
+    def test_a_grow_files_its_slowest_five_only(self):
+        s = B.Session("names", [])
+        s.median = 0.001
+        for i in range(8):
+            c = B.Crash("slow", f"{i} ms")
+            c.seconds = i / 1000.0
+            s.slow.append(({"id": "s%d" % i, "kind": "text", "data": str(i), "from": "",
+                            "mutator": "", "arcs": 0}, c))
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td):
+                self.assertEqual(B.SLOW_PER_GROW, B._record_slow("names", s, lambda *a: None))
+                ids = [r["id"] for r in B.load(B.corpus_path("names", slow=True))]
+        self.assertEqual(["s7", "s6", "s5", "s4", "s3"], ids)
+
+    def test_promote_retires_a_slow_finding_that_runs_fast_now(self):
+        entry = {"id": "f1", "kind": "text", "data": "a", "from": "", "mutator": "", "arcs": 0,
+                 "crash": "slow", "detail": "900 ms", "median_ms": 2.0, "found": "2026-10-30",
+                 "head": "abc"}
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td), \
+                    mock.patch.object(B, "check", return_value="refused"), \
+                    mock.patch.object(B, "head_sha", return_value="feedfacefeedface"):
+                B.save(B.corpus_path("names", slow=True), "names", [entry])
+                # Still slow when the floor is below any run.
+                with mock.patch.object(B, "SLOW_FLOOR_SEC", -1.0):
+                    self.assertTrue(B._promote_slow("names", lambda *a: None))
+                self.assertTrue(os.path.exists(B.corpus_path("names", slow=True)))
+                # Fast when it runs under half the floor.
+                self.assertFalse(B._promote_slow("names", lambda *a: None))
+                self.assertFalse(os.path.exists(B.corpus_path("names", slow=True)))
+                retired = B.load_retired("names")
+        self.assertEqual("fast", retired["f1"]["why"])
+        self.assertEqual("feedfacefeed", retired["f1"]["head"])
+        self.assertIn("ms", retired["f1"])
+
     def test_slow_records_on_file_replay_without_a_timing_assertion(self):
         # The probe suite carries crash files only; a slow file is a
         # finding to file, and every record on one must still read.
