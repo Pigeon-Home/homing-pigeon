@@ -112,6 +112,11 @@ Those values live on the runner host. They do not travel through the SI chat.
    for the conductor". The release train runs on his signal. Older
    entries keep the word they were written with; nothing is
    rewritten.
+13. **The plan (29-OCT).** The conductor's plan is the two
+    Internet-Drafts he posted. An earlier launch plan is retired.
+    Do not revive it, and do not name its venue, in the tree or to
+    him. Dates and the next revision are `docs/ietf/STATUS.md`.
+    The stretch until IETF 127 (14-20 November 2026) is not a wait.
 12. **Claude seats read `docs/project/claude-intuitions.md` first.**
    Eight lines on answering the size of the ask, deciding only what
    already waits on the conductor, and not echoing another Claude

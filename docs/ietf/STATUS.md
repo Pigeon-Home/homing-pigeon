@@ -28,7 +28,22 @@ has gone to the Independent Submissions Editor (ISE).
   draft-slutsky-homing-pigeon-v2-00 via the Independent Submission
   stream.
 
+## The plan
+
+The conductor, 29-OCT 11:50PM PDT: these two posted drafts are the
+plan. An earlier launch plan is retired. Do not revive it, and do
+not name its venue, in this tree or to him. Older notes keep the
+words they were written with.
+
+IETF 127 is 14-20 November 2026. That is two weeks from this note,
+and it is not a wait. The Internet-Draft submission cutoff for that
+meeting is 2 November 2026, 23:59 UTC. Both -00 drafts were posted
+on 30 October, inside that cutoff.
+
 ## Waiting on
+
+These move when the other party moves. They are not a hold on the
+work in Next.
 
 1. The ISE's acknowledgment of the request.
 2. Reviewer assignment by the ISE.
@@ -36,10 +51,14 @@ has gone to the Independent Submissions Editor (ISE).
 
 ## Next
 
-- Answer reviewer and ISE questions by email.
-- Rev to -01 as review asks, and before 3 May 2027 so the drafts stay
-  live. The submitted -00 is what the datatracker has; this tree does
-  not silently diverge from it.
+- Answer reviewer and ISE questions by email, when they come.
+- The known nits below are the text of -01. Do not hold that
+  revision until a reviewer asks. Do not edit the submitted -00
+  files: the datatracker has those bytes, and this tree does not
+  silently diverge from them. -01 is a new revision beside them,
+  uploaded by the author. Version 1 is still published first;
+  version 2's normative reference becomes that RFC's number.
+- A new revision is also due before 3 May 2027, or the drafts expire.
 - Update this file when any item above moves.
 
 ## Known nits, for that revision
@@ -61,4 +80,5 @@ aside:
   number.
 - Each XML render carries one no-break space, from the tool.
 
-None of these is a reason to post -01 before a reviewer asks.
+These are the edits for -01. The subject token is not one of them,
+and neither is publishing version 2 ahead of version 1.
