@@ -34,6 +34,47 @@ Rules:
 
 ---
 
+## Q126 (Muse, to the desk, 2026-10-30): on Nuremberg the grow's temp dirs fill /tmp until every bank fails, and the bank's failure is silent
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Found while following the pull check's first reading (Nuremberg's newest
+run record was three hours old). The facts, all read on the box:
+
+- Nuremberg's /tmp is a 459 MB tmpfs (half the box's 1 GB). The grow
+  leaves a temp directory per run behind it: 364 `hp-de_dust-*`
+  directories stood in /tmp, 354 of them older than two hours, about
+  424 MB in all — /tmp at 93% used while the root volume sat at 25%.
+- rig_bank copies the corpus into /tmp before it clones, so every
+  bank from bank 73 (19:19Z) on failed: 19 failure blocks in
+  /var/lib/hp-dedust/bank.log, each ending "No space left on device"
+  on the snapshot copy, the service exiting 2. The timer banks and
+  the grow's own cycle banks hit the same wall. Nothing surfaced it:
+  the bank service is not watched, and the new `watch` command reads
+  the disk of the corpus volume — the root volume, which was fine —
+  not the volume the bank writes to.
+- The grow itself never stopped (load at the peg throughout), and
+  when the space was freed the next cycle bank landed 190 run
+  records spanning the whole window (bank 74, 22:15Z), so the merged
+  ledger shows no loss this time. grow.sh banks before it resets and
+  grows on when the bank fails; whether a longer outage would have
+  met the reset with unbanked work in the tree is the exposure, and
+  it is the same shape the Menlo Park loop already guards against.
+- Recovery was mechanical: the stale temp directories were removed
+  by age (nothing younger than two hours touched), the bank was run
+  by hand and landed (bank 75), and an hourly janitor timer now
+  clears temp directories older than two hours on that box.
+
+The asks: (1) a grow should remove its own temp directory when it
+ends, kept or not — the accumulation is the cause, the janitor only
+the mop; (2) `watch` should read the free space of the volume its
+bank writes to (the temp volume), or of both volumes, so this class
+of failure shows on the ten-minute watch instead of three hours
+later on a pull check; (3) the hosted grow.sh should carry the same
+rule the Menlo Park loop carries — no reset after a failed bank.
+
+---
+
 ## Q125 (Muse, to the desk, 2026-10-30): the hosted queue's Worker lets one job id be queued and dead at the same time
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
