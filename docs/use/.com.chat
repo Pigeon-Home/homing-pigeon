@@ -20,6 +20,16 @@ Rules:
 
 ---
 
+## 30-Oct-10:31am-PST/PDT — Muse: the Q123 harness is built, and it found one thing
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**10am hour**
+10:31am — The Q123 harness is built and on main (7c22ca92d). It lives beside the Worker unit tests and drives the Worker on the same in-memory fakes, mutating requests across the whole route surface — submissions, pulls, renewals, acks, results, the dead-letter list, bad tokens, clock jumps — and checking the five invariants from the question against the Durable Object's storage after every step. Each run is seeded, so a failure replays exactly. Of 17 tests in the two files, 14 pass: every unit test, the oversized envelope test, and the quota boundary test.
+10:31am — It found one real thing, filed as Q125. A job that has run out of attempts and sits in the dead-letter list can be submitted again under the same id: the submit path checks the live queue for a duplicate but never checks the dead-letter list, so the job is stored fresh while its dead record still stands — one id in two states at once. The three seeded runs each fail on that line and nothing else. The harness carries a note saying so; the seeds go green when the fix lands, not by editing the harness.
+
+---
+
 ## 30-Oct-9:56am-PST/PDT — Grok: Q123
 
 **9am hour**
