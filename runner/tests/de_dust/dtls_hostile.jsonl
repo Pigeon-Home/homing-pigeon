@@ -15,3 +15,5 @@
 {"arcs": 0, "data": [], "from": "seed:empty", "id": "6c0aed326d7260f2", "kind": "payload", "mutator": "seed"}
 {"arcs": 0, "data": {"op": "deliver"}, "from": "seed:not_a_list", "id": "66b94ff4d9355fba", "kind": "payload", "mutator": "seed"}
 {"arcs": 0, "data": [5, "deliver", null, {"op": "nope"}, {"n": -1, "op": "deliver"}], "from": "seed:junk_steps", "id": "afd2be39db3890a1", "kind": "payload", "mutator": "seed"}
+{"arcs": 1, "data": [{"op": "deliver"}, {"dt": 0, "op": "tick"}, {"op": "deliver"}, {"op": "deliver"}, {"op": "deliver"}, {"op": "deliver"}], "from": "f8b9ff2b18cb2d17", "id": "232fe41b8dc5b3b6", "kind": "payload", "mutator": "p_number"}
+{"arcs": 14, "data": [{"bytes": "deadbeef", "op": "inject"}, {"bytes": "0000000000000000000000000000000000099999999999999999999", "op": "inject"}, {"op": "deliver"}, {"op": "deliver"}, {"op": "deliver"}, {"op": "deliver"}], "from": "b7cf45e1a2095752", "id": "b6314900f3c3f76c", "kind": "payload", "mutator": "p_text"}

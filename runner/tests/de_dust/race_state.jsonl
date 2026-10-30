@@ -11,3 +11,4 @@
 {"arcs": 0, "data": {"threads": [[{"op": "nope"}, 7, "mark", {"op": "mark"}], "x"]}, "from": "seed:unknown_ops", "id": "eae57e0b921e5ac8", "kind": "payload", "mutator": "seed"}
 {"arcs": 0, "data": {"threads": []}, "from": "seed:empty", "id": "2e4a9213929dcb36", "kind": "payload", "mutator": "seed"}
 {"arcs": 0, "data": ["mark"], "from": "seed:not_an_object", "id": "9846a9daa219fc1f", "kind": "payload", "mutator": "seed"}
+{"arcs": 1, "data": {"threads": [[{"id": "..", "op": "save"}, {"id": "bad id with spaces", "op": "save"}, {"id": "", "op": "save"}], [{"id": "bm-ret-ok", "op": "save"}, {"id": "[..]", "op": "load"}]]}, "from": "97b7d08662e915f1", "id": "0b63d103df644374", "kind": "payload", "mutator": "p_text"}
