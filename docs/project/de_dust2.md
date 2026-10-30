@@ -332,8 +332,10 @@ bank and the yield table are the same for all of them.
   between, every record left behind reads back). `race_state` runs
   the pool's other two files: the seen file (no lost update -- every
   key a thread marked is in the file after the join) and the
-  retained store (no torn read -- a record reads back as exactly
-  what was written). Not deterministic by nature, so the race
+  retained store (no torn read -- the file matches one complete
+  write, and a second save of the same id replaces the first).
+  prune deletes retained files older than a day and rewrites the
+  seen cache; a fresh key stays. Not deterministic by nature, so the race
   technique sits out the Windows-surface differential and the
   survivors' kill set; its proof is many schedules with no
   violation, logged run by run.

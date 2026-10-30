@@ -2842,10 +2842,12 @@ def check_race_state(entry):
     load the seen cache, save a retained record, load one, prune),
     interleaved under a short switch interval. Contract: no thread
     raises; after the join the seen file holds every key any thread
-    marked (no lost update); every retained record a thread saved
-    loads back as exactly the payload it wrote (no torn read);
-    load_seen and load_retained always return their type. Accepted
-    when a key was marked or a record saved."""
+    marked (no lost update); a retained id reads back as one complete
+    payload a thread saved for it, never a mix of two writes. Two
+    saves of one id keep one of them. prune deletes retained files
+    older than a day and rewrites the seen cache without dropping a
+    fresh key. The directory is removed on every exit, including a
+    crash. Accepted when a key was marked or a record saved."""
     spec = entry["data"]
     if TU._lone_surrogate(spec):
         note("gate", "lone surrogate")
@@ -2858,93 +2860,99 @@ def check_race_state(entry):
             or switch != switch or not 1e-6 <= switch <= 1e-2:
         switch = 1e-5
     base = tempfile.mkdtemp(prefix="hp-de_dust-state-")
-    seen_path = os.path.join(base, "seen.json")
-    now = time.time()
-    marked = {}               # key -> thread that marked it
-    marked_lock = threading.Lock()
-    saved = {}                # job_id -> payload the thread wrote
-    saved_lock = threading.Lock()
-    errors = []
-
-    def run_lane(t, ops):
-        try:
-            for i, op in enumerate(ops):
-                name = op["op"]
-                if name == "mark":
-                    tag = op.get("key")
-                    key = tag if isinstance(tag, str) and tag else f"bm-seen-{t}-{i}"
-                    R.save_seen(seen_path, {key: True},
-                                keep_sec=R.seen_keep_sec({}))
-                    with marked_lock:
-                        marked[key] = t
-                elif name == "load_seen":
-                    got = R.load_seen(seen_path)
-                    if not isinstance(got, dict):
-                        errors.append(f"thread {t}: load_seen returned "
-                                      f"{type(got).__name__}, not a dict")
-                elif name == "save":
-                    raw = op.get("id")
-                    job_id = raw if isinstance(raw, str) and raw else f"bm-ret-{t}-{i}"
-                    payload = {"v": job_id, "t": t, "i": i,
-                               "saved_at": now, "body": "x" * (i % 7)}
-                    R.save_retained(base, job_id, payload)
-                    if R._SAFE_JOB_ID.match(job_id) and job_id not in (".", ".."):
-                        with saved_lock:
-                            saved[job_id] = payload
-                elif name == "load":
-                    raw = op.get("id")
-                    job_id = raw if isinstance(raw, str) and raw else f"bm-ret-{t}-{i}"
-                    got = R.load_retained(base, job_id)
-                    if got is not None and not isinstance(got, dict):
-                        errors.append(f"thread {t}: load_retained returned "
-                                      f"{type(got).__name__}")
-                    elif isinstance(got, dict) and got.get("v") not in (None, job_id):
-                        errors.append(f"thread {t}: load_retained({job_id}) "
-                                      f"returned record for {got.get('v')}")
-                elif name == "prune":
-                    R.load_seen(seen_path)
-                elif name == "yield":
-                    time.sleep(0)
-                time.sleep(0)
-        except Exception as e:  # the contract: nothing raises
-            errors.append(f"thread {t}: {type(e).__name__}: {_short(e)}")
-
-    previous = sys.getswitchinterval()
-    sys.setswitchinterval(float(switch))
     try:
-        workers = [threading.Thread(target=run_lane, args=(t, ops), daemon=True)
-                   for t, ops in enumerate(lanes)]
-        for w in workers:
-            w.start()
-        for w in workers:
-            w.join(timeout=30)
-        if any(w.is_alive() for w in workers):
-            raise Crash("resource", "a state thread did not finish in 30 s")
-    finally:
-        sys.setswitchinterval(previous)
-    if errors:
-        raise Crash("exception", errors[0])
-    final = R.load_seen(seen_path)
-    if not isinstance(final, dict):
-        raise Crash("shape", "the seen file does not read back as a dict")
-    missing = [k for k in marked if k not in final]
-    if missing:
-        raise Crash("race", f"{len(missing)} seen key(s) a thread recorded "
-                    f"are not in the file after the join, e.g. {missing[0]} "
-                    f"(worker pool lost a claim)")
-    for job_id, payload in saved.items():
-        got = R.load_retained(base, job_id)
-        if got is None:
-            raise Crash("race", f"the retained record {job_id} a thread saved "
-                        "is absent after the join")
-        if got.get("v") != job_id or got.get("t") != payload["t"] \
-                or got.get("i") != payload["i"]:
-            raise Crash("race", f"the retained record {job_id} read back as "
-                        f"another thread's write ({got.get('v')}, t={got.get('t')})")
-    shutil.rmtree(base, ignore_errors=True)
-    note("race_state", len(lanes), "marked", len(marked), "saved", len(saved))
-    return "accepted" if (marked or saved) else "refused"
+        seen_path = os.path.join(base, "seen.json")
+        now = time.time()
+        marked = {}               # key -> thread that marked it
+        marked_lock = threading.Lock()
+        saved = {}                # job_id -> payloads whose write returned
+        saved_lock = threading.Lock()
+        errors = []
 
+        def run_lane(t, ops):
+            try:
+                for i, op in enumerate(ops):
+                    name = op["op"]
+                    if name == "mark":
+                        tag = op.get("key")
+                        key = tag if isinstance(tag, str) and tag else f"bm-seen-{t}-{i}"
+                        R.save_seen(seen_path, {key: True},
+                                    keep_sec=R.seen_keep_sec({}))
+                        with marked_lock:
+                            marked[key] = t
+                    elif name == "load_seen":
+                        got = R.load_seen(seen_path)
+                        if not isinstance(got, dict):
+                            errors.append(f"thread {t}: load_seen returned "
+                                          f"{type(got).__name__}, not a dict")
+                    elif name == "save":
+                        raw = op.get("id")
+                        job_id = raw if isinstance(raw, str) and raw else f"bm-ret-{t}-{i}"
+                        payload = {"v": job_id, "t": t, "i": i,
+                                   "saved_at": now, "body": "x" * (i % 7)}
+                        R.save_retained(base, job_id, payload)
+                        if R._SAFE_JOB_ID.match(job_id) and job_id not in (".", ".."):
+                            with saved_lock:
+                                saved.setdefault(job_id, []).append(payload)
+                    elif name == "load":
+                        raw = op.get("id")
+                        job_id = raw if isinstance(raw, str) and raw else f"bm-ret-{t}-{i}"
+                        got = R.load_retained(base, job_id)
+                        if got is not None and not isinstance(got, dict):
+                            errors.append(f"thread {t}: load_retained returned "
+                                          f"{type(got).__name__}")
+                        elif isinstance(got, dict) and got.get("v") not in (None, job_id):
+                            errors.append(f"thread {t}: load_retained({job_id}) "
+                                          f"returned record for {got.get('v')}")
+                    elif name == "prune":
+                        raw = op.get("days", 1)
+                        days = raw if isinstance(raw, int) \
+                            and not isinstance(raw, bool) and raw > 0 else 1
+                        R.prune_retained(base, days)
+                        R.save_seen(seen_path, {},
+                                    keep_sec=R.seen_keep_sec({}))
+                    elif name == "yield":
+                        time.sleep(0)
+                    time.sleep(0)
+            except Exception as e:  # the contract: nothing raises
+                errors.append(f"thread {t}: {type(e).__name__}: {_short(e)}")
+
+        previous = sys.getswitchinterval()
+        sys.setswitchinterval(float(switch))
+        try:
+            workers = [threading.Thread(target=run_lane, args=(t, ops), daemon=True)
+                       for t, ops in enumerate(lanes)]
+            for w in workers:
+                w.start()
+            for w in workers:
+                w.join(timeout=30)
+            if any(w.is_alive() for w in workers):
+                raise Crash("resource", "a state thread did not finish in 30 s")
+        finally:
+            sys.setswitchinterval(previous)
+        if errors:
+            raise Crash("exception", errors[0])
+        final = R.load_seen(seen_path)
+        if not isinstance(final, dict):
+            raise Crash("shape", "the seen file does not read back as a dict")
+        missing = [k for k in marked if k not in final]
+        if missing:
+            raise Crash("race", f"{len(missing)} seen key(s) a thread recorded "
+                        f"are not in the file after the join, e.g. {missing[0]} "
+                        f"(worker pool lost a claim)")
+        for job_id, payloads in saved.items():
+            got = R.load_retained(base, job_id)
+            if got is None:
+                raise Crash("race", f"the retained record {job_id} a thread saved "
+                            "is absent after the join")
+            if got not in payloads:
+                raise Crash("race", f"the retained record {job_id} read back as "
+                            f"a mix of writes (v={got.get('v')}, t={got.get('t')}, "
+                            f"i={got.get('i')})")
+        note("race_state", len(lanes), "marked", len(marked), "saved", len(saved))
+        return "accepted" if (marked or saved) else "refused"
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
 
 def seeds_race_state():
     M = lambda **kw: dict(op="mark", **kw)          # noqa: E731

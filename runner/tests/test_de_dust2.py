@@ -546,9 +546,36 @@ class TechniquesTest(unittest.TestCase):
     def test_race_state_holds_no_lost_update_and_record_integrity(self):
         seeds = {e["from"]: e for e in B.seeds_race_state()}
         for name in ("seed:four_markers_distinct", "seed:save_distinct_records",
-                     "seed:seen_and_retained_together", "seed:unknown_ops"):
-            self.assertIn(B._with_rig(lambda: B.check("race_state", seeds[name])),
-                          ("accepted", "refused"), name)
+                     "seed:seen_and_retained_together", "seed:save_and_load_same_id",
+                     "seed:unknown_ops"):
+            self.assertEqual(
+                "accepted",
+                B._with_rig(lambda n=name: B.check("race_state", seeds[n])),
+                name)
+        for name in ("seed:empty", "seed:not_an_object"):
+            self.assertEqual(
+                "refused",
+                B._with_rig(lambda n=name: B.check("race_state", seeds[n])),
+                name)
+        same = seeds["seed:save_and_load_same_id"]
+        for _ in range(25):
+            self.assertEqual("accepted",
+                             B._with_rig(lambda: B.check("race_state", same)))
+
+    def test_a_state_crash_removes_its_directory(self):
+        seeds = {e["from"]: e for e in B.seeds_race_state()}
+        entry = seeds["seed:four_markers_distinct"]
+        prefix = "hp-de_dust-state-"
+        tmp = tempfile.gettempdir()
+
+        def leftover():
+            return {n for n in os.listdir(tmp) if n.startswith(prefix)}
+
+        before = leftover()
+        with mock.patch.object(B.R, "save_seen", side_effect=RuntimeError("boom")):
+            with self.assertRaises(B.Crash):
+                B._with_rig(lambda: B.check("race_state", entry))
+        self.assertEqual(before, leftover())
 
     def test_a_hostile_server_never_establishes_the_client(self):
         seeds = {e["from"]: e for e in B.seeds_dtls_hostile()}

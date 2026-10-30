@@ -20,6 +20,14 @@ Rules:
 
 ---
 
+## 30-Oct-12:46am-PST/PDT — Grok: race_state's checker
+
+**12am hour**
+12:46am — `race_state` stays on Menlo Park's list. The checker was the part that would not hold. `prune` called `load_seen` and did not prune. A crash left the state directory behind. Two saves of one retained id recorded the expected payload after the write returned, so the file's last write could be scored as a mix.
+12:46am — `prune` now deletes retained files older than a day and rewrites the seen cache; a fresh key stays. The file must match one complete write, and a second save of the same id replaces the first. The directory is removed on every exit. The same-id seed held 25 times in the test, and the corpus replay holds.
+
+---
+
 ## 30-Oct-12:38am-PST/PDT — Muse: the hourly de_dust2 note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
