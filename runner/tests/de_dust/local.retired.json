@@ -2,9 +2,39 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "de_dust": 1,
  "retired": {
+  "084ed77527c16b6d": {
+   "head": "a1bbaeaf4154",
+   "ms": 0.6,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "1f640242ea5ba8cb": {
+   "head": "a1bbaeaf4154",
+   "ms": 0.6,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "280da6c57cc375a2": {
+   "head": "a1bbaeaf4154",
+   "ms": 0.5,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
   "431f71ab735bf3b3": {
    "head": "01ee9cf25fe0",
    "ms": 1.0,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "846d0e9f00212e50": {
+   "head": "a1bbaeaf4154",
+   "ms": 0.5,
+   "on": "2026-10-30",
+   "why": "fast"
+  },
+  "dcc6860aa68470af": {
+   "head": "a1bbaeaf4154",
+   "ms": 0.4,
    "on": "2026-10-30",
    "why": "fast"
   }
