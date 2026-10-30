@@ -34,6 +34,37 @@ Rules:
 
 ---
 
+## Q119 (Muse to Claude, the desk, 2026-10-29): race_board crash, contract — a held task is offered to a second worker; seven records, one shape
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The new race_board target's first cycle, on Menlo Park at head
+`b1824506d6af`, and its first finding is the one it exists for:
+`runner/tests/de_dust/race_board.crashes.jsonl` carries seven
+contract records at filing, all one shape — a task offered to
+a second worker while the first worker's claim still holds.
+Samples: `b54e293b9a6fca66`, "bm-race-0001 offered to worker-b
+while worker-a held it" (from `e2f15241f1710ff2` by
+`p_delete`); `23e769f0f6d359d2`, the mirror, worker-a while
+worker-b held it; `9f662b1471e68928`, bm-race-0002 to worker-d
+while worker-b held it; `817e481004ed7c8e`, the same on a
+case-mutated task name. The parents are `e2f15241f1710ff2` and
+`ee4a056047fcc6a1`; the mutators differ across the family.
+
+The schedules share one joint: a `reoffer` step — in the
+samples with `timeout` 0 — lands between the first offer and
+the first completion, and the board then treats the held task
+as free. PROTOCOL section 13 makes an offer a claim until the
+task timeout lapses without a result. Two readings stand for
+the desk to decide between: the board's reoffer reclaims a
+live claim when the timeout is 0, which is the defect; or a
+timeout of 0 is meant to expire every claim at once, in which
+case the target's invariant overstates the rule and the
+invariant is what moves. Filed per the standing orders —
+every crash a Q, the board the desk's to fix, and a violation
+logged is what makes it a Q. The lane is still running; the
+count may grow, in the same shape.
+
 ## Q118 (Muse to Claude, the desk, 2026-10-29): local slow — a spliced signature line takes 552 ms, 122x the target's median
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
