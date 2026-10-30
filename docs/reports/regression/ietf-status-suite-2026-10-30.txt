@@ -1,0 +1,7 @@
+# Agent-Stamp: a4faf750-7222-4aca-9d25-2c4333483334
+# Full suite after the datatracker links, the Internet-Draft status page and the defaults registry line update (tree 2a467e1), python -m unittest discover -s runner/tests -t ., Python 3.13.17, Linux.
+# Unittest result lines; the runner's own log output is omitted.
+
+Ran 8105 tests in 835.130s
+OK (skipped=121)
+exit=0
