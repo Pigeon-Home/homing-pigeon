@@ -146,6 +146,44 @@ class EmailPipeFailureShapes(unittest.TestCase):
         self.assertFalse(os.path.exists(result))
         self.assertEqual(imap.flagged, ["1"])
 
+    def test_a_suffixed_result_marks_the_job_seen(self):
+        # mail-1.result-2.txt does not end in .result.txt. The
+        # flush used the whole filename, so the mail was never
+        # marked seen and the job was fetched again.
+        imap = FakeIMAP([])
+        smtp = FakeSMTP()
+        pipe = self._pipe(imap, smtp)
+        pipe._delivered["1"] = "mail-1"
+        path = os.path.join(self.channel, "outbox",
+                            "mail-1.result-2.txt")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(ch.envelope("result", "signed-result"))
+        pipe.flush_results(imap)
+        self.assertEqual(smtp.sent and len(smtp.sent), 1)
+        self.assertEqual(imap.flagged, ["1"])
+        self.assertFalse(os.path.exists(path))
+
+    def test_a_suffixed_result_shares_the_sidecar_with_its_primary(self):
+        imap = FakeIMAP([])
+        smtp = FakeSMTP()
+        pipe = self._pipe(imap, smtp)
+        pipe._delivered["1"] = "mail-1"
+        pipe._targets["mail-1"] = "body@example.com"
+        self._write_result()
+        with open(os.path.join(self.channel, "outbox",
+                               "mail-1.result-2.txt"),
+                  "w", encoding="utf-8") as fh:
+            fh.write(ch.envelope("result", "second"))
+        with open(os.path.join(self.channel, "outbox",
+                               "mail-1.target.txt"),
+                  "w", encoding="utf-8") as fh:
+            fh.write("ops@example.com\n")
+        pipe.flush_results(imap)
+        self.assertEqual(len(smtp.sent), 2)
+        self.assertEqual({str(m["To"]) for m in smtp.sent},
+                         {"ops@example.com"})
+        self.assertEqual(imap.flagged, ["1"])
+
     def test_sidecar_move_failure_is_logged_not_fatal(self):
         self._write_result()
         sidecar = os.path.join(self.channel, "outbox",

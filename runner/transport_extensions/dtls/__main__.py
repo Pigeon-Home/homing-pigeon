@@ -302,8 +302,7 @@ class DtlsPipe:
     def _pump_results(self):
         for fname, subject, body in ch.pending_results(
                 self.channel):
-            ident = fname[:-len(".result.txt")] \
-                if fname.endswith(".result.txt") else fname
+            ident = ch.result_file_id(fname) or fname
             session_id = self.job_session.get(ident)
             text = ch.envelope(subject, body)
             if body and not body.endswith("\n"):

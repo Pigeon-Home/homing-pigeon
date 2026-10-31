@@ -1867,6 +1867,26 @@ class DtlsPumpResultsLegsTest(unittest.TestCase):
         self.assertTrue(sent_texts[0].endswith(
             b"no trailing newline\n"))
 
+    def test_a_suffixed_result_uses_the_job_session(self):
+        # job-live.result-2.txt does not end in .result.txt. The
+        # pump used the whole filename, missed the session, and
+        # acked the result into done without sending it.
+        pipe, channel = self._pipe()
+        outbox = ch.dirs(channel)["outbox"]
+        with open(os.path.join(outbox, "job-live.result-2.txt"),
+                  "w", encoding="utf-8") as fh:
+            fh.write(ch.envelope("[HOMING-PIGEON] result job-live",
+                                 "the answer"))
+        pipe.job_session["job-live"] = "s1"
+        sent = []
+        pipe.core.send_app = lambda sid, data: (
+            sent.append(sid), [("127.0.0.1", b"dg")])[1]
+        pipe._send = lambda dg, addr: None
+        pipe._pump_results()
+        self.assertEqual(sent, ["s1"])
+        self.assertEqual(os.listdir(ch.dirs(channel)["outbox_done"]),
+                         ["job-live.result-2.txt"])
+
 
 class DtlsRunOnceLegsTest(unittest.TestCase):
     """Queue A refill: DtlsPipe.run_once's socket legs

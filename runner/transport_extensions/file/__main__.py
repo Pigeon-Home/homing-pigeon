@@ -144,8 +144,7 @@ class FilePipe:
 
     def scan_results(self):
         for fname, subject, body in ch.pending_results(self.channel):
-            ident = fname[:-len(".result.txt")] \
-                if fname.endswith(".result.txt") else fname
+            ident = ch.result_file_id(fname) or fname
             entry = self._pending.pop(ident, None)
             watched = entry[0] if entry else None
             jid = _job_id_from_result(subject) or ident

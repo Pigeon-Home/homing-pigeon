@@ -692,7 +692,11 @@ The pipe itself is a pair of directories, the channel, at
   it as `<ident>.job.txt`, where `<ident>` is your stable id
   for the job.
 - `outbox/` — result envelopes, runner → extension, same
-  shape, named `<ident>.result.txt` for the job's ident. When
+  shape, named `<ident>.result.txt` for the job's ident. A second
+  result written while that file is still there is
+  `<ident>.result-2.txt`. It is the same ident: the pipe
+  correlates it with the job, and the sidecar is still
+  `<ident>.target.txt`. When
   the core knows the job's validated `reply_to`, a sidecar
   `<ident>.target.txt` sits beside the result file holding
   that one address, and the extension sends the result there

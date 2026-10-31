@@ -203,6 +203,20 @@ class ChannelServiceTest(unittest.TestCase):
         self.assertTrue(first.endswith("j1.result.txt"))
         self.assertTrue(second.endswith("j1.result-2.txt"))
 
+    def test_a_second_result_keeps_the_ident_on_the_sidecar(self):
+        transports.write_channel_result(
+            self.tmp, "file", "[HOMING-PIGEON] job j1",
+            "[HOMING-PIGEON] result j1", "one",
+            target="ops@example.com")
+        transports.write_channel_result(
+            self.tmp, "file", "[HOMING-PIGEON] job j1",
+            "[HOMING-PIGEON] result j1", "two",
+            target="ops@example.com")
+        outbox = transports.channel_paths(self.tmp, "file")["outbox"]
+        names = set(os.listdir(outbox))
+        self.assertIn("j1.target.txt", names)
+        self.assertNotIn("j1.result-2.txt.target.txt", names)
+
 
 class FilePipeEdgeTest(unittest.TestCase):
     def setUp(self):
@@ -246,6 +260,24 @@ class FilePipeEdgeTest(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(
             self.pipe.outbox, "job-9.result-2.txt")))
         self.assertNotIn("stem", self.pipe._pending)
+
+    def test_a_suffixed_channel_result_consumes_the_watched_job(self):
+        # stem.result-2.txt does not end in .result.txt. The pipe
+        # used the whole filename, missed the job it had delivered,
+        # and left the watched file to be run again.
+        watched = os.path.join(self.pipe.inbox, "watched.txt")
+        with open(watched, "w", encoding="utf-8") as f:
+            f.write("job\n")
+        self.pipe._pending["stem"] = ("watched.txt", "job-9")
+        outbox = ch.dirs(self.channel)["outbox"]
+        with open(os.path.join(outbox, "stem.result-2.txt"), "w",
+                  encoding="utf-8") as f:
+            f.write("[HOMING-PIGEON] result job-9\n\nok\n")
+        self.pipe.scan_results()
+        self.assertNotIn("stem", self.pipe._pending)
+        self.assertFalse(os.path.exists(watched))
+        self.assertTrue(os.path.exists(
+            os.path.join(self.pipe.done, "watched.txt")))
 
     def test_a_rejected_job_is_consumed_from_inbox_done(self):
         watched = os.path.join(self.pipe.inbox, "w.txt")

@@ -31,7 +31,6 @@ import hashlib
 import ipaddress
 import json
 import os
-import re
 import sys
 import urllib.error
 import urllib.parse
@@ -91,9 +90,12 @@ def _open_without_redirect(req, timeout=None):
 
 
 _TOKEN_OPENER = urllib.request.build_opener(_RedirectRefused)
-# The writer names the first result "<id>.result.txt" and, while that
-# file is still in the outbox, the next one "<id>.result-<n>.txt".
-_RESULT_FILE_RE = re.compile(r"^(.+)\.result(?:-\d+)?\.txt$")
+
+
+def _result_file_id(fname):
+    """The job a result file is named for. A collision name still
+    names that job; the whole filename does not."""
+    return ch.result_file_id(fname)
 
 
 def _job_id(subject):
@@ -103,13 +105,6 @@ def _job_id(subject):
 
 def _result_id(subject):
     m = _RESULT_ID_RE.search(subject or "")
-    return m.group(1) if m else None
-
-
-def _result_file_id(fname):
-    """The job a result file is named for. A collision name still
-    names that job; the whole filename does not."""
-    m = _RESULT_FILE_RE.match(fname or "")
     return m.group(1) if m else None
 
 

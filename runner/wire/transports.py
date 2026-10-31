@@ -396,9 +396,11 @@ def write_channel_result(base_dir, name, job_subject, subject, body,
         text += "\n"
     _atomic_write(path, text)
     if isinstance(target, str) and target.strip():
-        fname = os.path.basename(path)
-        stem = fname[:-len(".result.txt")] \
-            if fname.endswith(".result.txt") else fname
+        # The suffix on a collision file is not part of the ident.
+        # The sidecar the pipe reads is <ident>.target.txt, the
+        # same file the primary result uses.
+        from runner.transport_extensions import channel as _ch
+        stem = _ch.result_file_id(os.path.basename(path)) or rid
         _atomic_write(os.path.join(paths["outbox"],
                                    stem + ".target.txt"),
                       target.strip() + "\n")

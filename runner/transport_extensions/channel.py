@@ -39,6 +39,17 @@ FILE_MAX_BYTES = 4 * 1024 * 1024
 _RESULT_NAME_RE = re.compile(r"^(.+)\.result(?:-\d+)?\.txt$")
 
 
+def result_file_id(fname):
+    """The ident a result file is named for.
+
+    ``j1.result.txt`` and ``j1.result-2.txt`` are both j1. The
+    suffix is only how a second file is kept from clobbering the
+    first. A name that is not a result file is None.
+    """
+    m = _RESULT_NAME_RE.match(os.path.basename(fname or ""))
+    return m.group(1) if m else None
+
+
 class PermanentDeliveryError(Exception):
     """A transport's way of saying a result will never go out as it
     is (the far end refused it for good: a 5xx, an oversize
@@ -177,9 +188,9 @@ def refuse_result(channel, fname, reason):
     no stub, and the job stayed leased."""
     d = dirs(channel)
     failed = os.path.join(d["outbox"], "failed")
-    named = _RESULT_NAME_RE.match(fname or "")
-    stem = named.group(1) if named else fname
-    dest_name = (stem + ".result.txt") if named else fname
+    named_id = result_file_id(fname)
+    stem = named_id or fname
+    dest_name = (stem + ".result.txt") if named_id else fname
     try:
         os.makedirs(failed, exist_ok=True)
         os.replace(os.path.join(d["outbox"], fname),

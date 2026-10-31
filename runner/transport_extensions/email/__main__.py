@@ -113,7 +113,6 @@ class EmailPipe:
         imap = self._imap_factory(self.cfg)
         try:
             mails = _mailbox.fetch_job_mails(imap)
-            outbox = os.path.join(self.channel, "outbox")
             for seq, raw in mails:
                 subject, body = _subject_body(raw)
                 ident = f"mail-{seq}"
@@ -121,12 +120,13 @@ class EmailPipe:
                     self.channel, "inbox", "done",
                     ident + ".job.txt")
                 if os.path.exists(done):
-                    # Already carried once. Mark seen -- unless
-                    # its result is still waiting in the outbox,
-                    # in which case the flush below marks it when
-                    # the result actually goes out.
-                    if not os.path.exists(os.path.join(
-                            outbox, ident + ".result.txt")):
+                    # Already carried once. Mark seen -- unless a
+                    # result for it is still in the outbox, including
+                    # a suffixed name (mail-1.result-2.txt). That
+                    # file does not end in .result.txt, and looking
+                    # only for the primary marked the mail seen
+                    # while the result was still here.
+                    if not self._result_waiting(ident):
                         _mailbox.mark_seen(imap, seq)
                     continue
                 ch.deliver_job(self.channel, ident, subject, body)
@@ -142,6 +142,18 @@ class EmailPipe:
                 imap.logout()
             except Exception:
                 pass
+
+    def _result_waiting(self, ident, ignore=None):
+        """True when some result file for this ident is still in
+        the outbox. A suffixed name counts. `ignore` is the file
+        this pass is already sending."""
+        outbox = os.path.join(self.channel, "outbox")
+        try:
+            names = os.listdir(outbox)
+        except OSError:
+            return False
+        return any(n != ignore and ch.result_file_id(n) == ident
+                   for n in names)
 
     def _sidecar_path(self, ident):
         return os.path.join(self.channel, "outbox",
@@ -170,6 +182,11 @@ class EmailPipe:
         src = self._sidecar_path(ident)
         if not os.path.exists(src):
             return
+        # A sibling result for this ident is still in the outbox.
+        # It reads the same sidecar. Moving it now would send that
+        # one to the mailbox instead of the address the core named.
+        if self._result_waiting(ident):
+            return
         try:
             os.replace(src, os.path.join(
                 self.channel, "outbox", "done",
@@ -185,13 +202,15 @@ class EmailPipe:
         smtp = self._smtp_factory(self.cfg)
         try:
             for fname, subject, body in pending:
-                ident = fname[:-len(".result.txt")] \
-                    if fname.endswith(".result.txt") else fname
+                ident = ch.result_file_id(fname) or fname
                 to = self._sidecar_target(ident)
+                waiting = self._result_waiting(ident, ignore=fname)
                 if to is None:
-                    to = self._targets.pop(ident,
-                                           self.mailbox_addr)
-                else:
+                    if waiting:
+                        to = self._targets.get(ident, self.mailbox_addr)
+                    else:
+                        to = self._targets.pop(ident, self.mailbox_addr)
+                elif not waiting:
                     self._targets.pop(ident, None)
                 try:
                     _mailbox.send_mail(smtp, self.cfg, subject, body,
@@ -204,6 +223,8 @@ class EmailPipe:
                     # queue behind it keeps moving (review item 4).
                     ch.refuse_result(self.channel, fname, e)
                     self._ack_sidecar(ident)
+                    if self._result_waiting(ident):
+                        continue
                     for seq, dident in list(self._delivered.items()):
                         if dident == ident:
                             _mailbox.mark_seen(imap, seq)
@@ -211,6 +232,8 @@ class EmailPipe:
                     continue
                 ch.ack_result(self.channel, fname)
                 self._ack_sidecar(ident)
+                if self._result_waiting(ident):
+                    continue
                 for seq, dident in list(self._delivered.items()):
                     if dident == ident:
                         _mailbox.mark_seen(imap, seq)
