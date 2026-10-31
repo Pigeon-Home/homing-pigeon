@@ -137,6 +137,13 @@ def pending_results(channel):
             continue
         try:
             if os.path.getsize(path) > FILE_MAX_BYTES:
+                # Left here, this file is invisible: no transport
+                # posts it, and the job it finished stays leased.
+                # Set it aside so the runner can answer with a stub.
+                refuse_result(
+                    channel, fname,
+                    f"{os.path.getsize(path)} bytes exceeds the "
+                    f"{FILE_MAX_BYTES}-byte cap")
                 continue
             with open(path, encoding="utf-8") as f:
                 text = f.read()

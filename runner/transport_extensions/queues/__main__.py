@@ -191,6 +191,12 @@ class QueueClient:
                     raise RuntimeError(
                         "post result: the queue kept a different envelope")
             return True
+        # 400 and 413 will not succeed on a later pass. 403 is the
+        # signature gate, which a result post does not use today; a
+        # refusal for good is still not a retry.
+        if status in (400, 403, 413):
+            raise ch.PermanentDeliveryError(
+                f"post result: HTTP {status}: {payload[:120]!r}")
         raise RuntimeError(f"post result: HTTP {status}: "
                            f"{payload[:120]!r}")
 
@@ -296,6 +302,14 @@ class QueuePipe:
                 text += "\n"
             try:
                 self.client.post_result(text)
+            except ch.PermanentDeliveryError as e:
+                # The worker will not take this body. Set it aside
+                # for the stub, and keep the lease: the stub is not
+                # in the outbox yet, and acking now would finish the
+                # job with nothing stored.
+                ch.refuse_result(self.channel, fname, e)
+                unposted.add(ident)
+                continue
             except RuntimeError as e:
                 ch.log(f"queues transport: result {ident} not posted: {e}; "
                        f"will retry", "WARN")

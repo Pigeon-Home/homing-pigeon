@@ -40,6 +40,7 @@ class FakeWorkerState:
         self.dead = []
         self.calls = []
         self.fail_results = 0  # next N result posts answer 503
+        self.result_status = None  # a permanent refusal, when set
         self.attempt_out = {}  # id -> attempt number the next pull reports
 
 
@@ -154,6 +155,9 @@ def make_handler(state):
                 if state.fail_results:
                     state.fail_results -= 1
                     return self._send(503, b'{"error":"later"}')
+                if state.result_status:
+                    return self._send(state.result_status,
+                                      b'{"error":"no"}')
                 parsed = ch.parse_envelope(body)
                 rid = q._result_id(parsed[0]) if parsed else None
                 if rid and rid in state.results:
@@ -461,6 +465,28 @@ class QueuePipeTest(unittest.TestCase):
             pipe.push_results()
             self.assertEqual(w.state.acked, ["j1"])
             self.assertIn("j1", w.state.results)
+
+    def test_a_result_the_worker_will_never_take_is_set_aside(self):
+        # 413 will not succeed next pass. The file is set aside for
+        # the stub, and the job stays leased so this pass does not
+        # finish it with nothing stored.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.result_status = 413
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            self._core_answers("j1", "j1")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", pipe._pending)
+            d = ch.dirs(self.channel)
+            self.assertFalse(os.path.exists(
+                os.path.join(d["outbox"], "j1.result.txt")))
+            failed = os.path.join(d["outbox"], "failed")
+            self.assertIn("j1.result.txt", os.listdir(failed))
+            self.assertTrue(any(n.endswith(".refused.txt")
+                                for n in os.listdir(failed)))
 
     def test_malformed_and_oversize_envelopes_are_refused_and_acked(self):
         with FakeWorker() as w:

@@ -77,6 +77,10 @@ class ChannelHelperTest(unittest.TestCase):
         names = [row[0] for row in found]
         self.assertEqual(names, ["good.result.txt"])
         self.assertEqual(found[0][1], "Sub")
+        failed = os.path.join(out, "failed")
+        self.assertIn("big.result.txt", os.listdir(failed))
+        self.assertTrue(any(n.endswith(".refused.txt")
+                            for n in os.listdir(failed)))
 
     def test_ack_of_a_missing_file_does_not_raise(self):
         ch.ack_result(self.tmp, "never-written.result.txt")
