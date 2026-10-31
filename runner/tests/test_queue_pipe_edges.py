@@ -99,8 +99,11 @@ class PipeArmsTest(unittest.TestCase):
         self.assertEqual(inbox, ["q1.job.txt"])
 
     def test_a_result_without_a_final_newline_gets_one(self):
+        # The file is named for the id in the subject. A different
+        # name is left where it is and never posted, which is not
+        # this arm.
         ch._atomic_write(os.path.join(ch.dirs(self.channel)["outbox"],
-                                      "q1.result.txt"),
+                                      "j1.result.txt"),
                          "[HOMING-PIGEON] result j1\n\n{\"sig\":\"00\"}")
         sent = []
         self.client.post_result.side_effect = lambda t: sent.append(t) or True

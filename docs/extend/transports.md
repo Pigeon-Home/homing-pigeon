@@ -183,7 +183,9 @@ one we'd recommend to anyone who winces at the word "email."
   without one). The inbox file is the job id, all 128 characters:
   cutting it at 120 put two ids that differed later in one file, and
   the result's name was not the id in the subject, so the output was
-  never posted and the job stayed leased. A second file for the same id, named while the first
+  never posted and the job stayed leased. An ack that does not
+  succeed leaves the result where it is and the job leased, and the
+  next pass tries the ack again. A second file for the same id, named while the first
   is still waiting, does not replace that result and still acks the
   job. A file whose subject names a different job is left where it
   is. A malformed or oversize envelope is refused and

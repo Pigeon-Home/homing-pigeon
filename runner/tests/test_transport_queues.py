@@ -40,6 +40,7 @@ class FakeWorkerState:
         self.dead = []
         self.calls = []
         self.fail_results = 0  # next N result posts answer 503
+        self.fail_acks = 0     # next N job acks answer 500
         self.result_status = None  # a permanent refusal, when set
         self.attempt_out = {}  # id -> attempt number the next pull reports
 
@@ -137,6 +138,9 @@ def make_handler(state):
             if path.startswith("/t/alice/jobs/") and path.endswith("/ack"):
                 if not self._auth(RUNNER_TOKEN):
                     return self._send(401)
+                if state.fail_acks:
+                    state.fail_acks -= 1
+                    return self._send(500, b'{"error":"later"}')
                 jid = path.split("/")[4]
                 had = state.jobs.pop(jid, None)
                 state.leased.discard(jid)
@@ -534,6 +538,33 @@ class QueuePipeTest(unittest.TestCase):
             self.assertIn(f"result {b}", w.state.results[b])
             self.assertNotIn(a, pipe._pending)
             self.assertNotIn(b, pipe._pending)
+
+    def test_an_ack_the_queue_refuses_is_retried(self):
+        # The result was stored. The ack came back 500. Moving the
+        # file and forgetting the id there meant the next pass did
+        # not try again, and the job stayed leased with no one to
+        # finish it.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.fail_acks = 1
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            self._core_answers("j1", "j1")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", pipe._pending)
+            self.assertIn("j1", w.state.jobs)
+            self.assertIn("j1", w.state.results)
+            d = ch.dirs(self.channel)
+            self.assertTrue(os.path.isfile(
+                os.path.join(d["outbox"], "j1.result.txt")))
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertNotIn("j1", pipe._pending)
+            self.assertNotIn("j1", w.state.jobs)
+            self.assertFalse(os.path.exists(
+                os.path.join(d["outbox"], "j1.result.txt")))
 
     def test_malformed_and_oversize_envelopes_are_refused_and_acked(self):
         with FakeWorker() as w:

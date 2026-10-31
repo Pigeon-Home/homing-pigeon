@@ -315,10 +315,25 @@ class QueuePipe:
                        f"will retry", "WARN")
                 unposted.add(ident)
                 continue
+            # The result is stored. Ack before forgetting the file.
+            # A refused or dropped ack has to be retried, and the
+            # file is what makes the next pass try again. Forgetting
+            # the id here left the job leased with no one to finish it.
+            if ident in self._pending or ident in self._seen:
+                try:
+                    accepted = self.client.ack(ident)
+                except OSError as e:
+                    ch.log(f"queues transport: result {ident} posted, "
+                           f"ack failed: {e}; will retry", "WARN")
+                    unposted.add(ident)
+                    continue
+                if not accepted:
+                    ch.log(f"queues transport: result {ident} posted, "
+                           f"ack refused; will retry", "WARN")
+                    unposted.add(ident)
+                    continue
             ch.ack_result(self.channel, fname)
-            if self._pending.pop(ident, None) is not None or \
-                    ident in self._seen:
-                self.client.ack(ident)
+            self._pending.pop(ident, None)
         # A file over the channel cap is set aside inside the listing,
         # so this loop never saw it. That id is not finished: the stub
         # is not in the outbox yet.
@@ -334,13 +349,24 @@ class QueuePipe:
         # A job the core consumed without a result (a rejection)
         # is finished too: inbox/done is the signal.
         # A result still waiting to be posted keeps its job leased.
+        # An ack that does not succeed leaves the id leased so the
+        # next pass can try again.
         chan_done = os.path.join(self.channel, "inbox", "done")
         for ident in list(self._pending):
             if ident in unposted:
                 continue
             if os.path.exists(os.path.join(chan_done, ident + ".job.txt")):
+                try:
+                    accepted = self.client.ack(ident)
+                except OSError as e:
+                    ch.log(f"queues transport: {ident}: ack failed: {e}; "
+                           f"will retry", "WARN")
+                    continue
+                if not accepted:
+                    ch.log(f"queues transport: {ident}: ack refused; "
+                           f"will retry", "WARN")
+                    continue
                 del self._pending[ident]
-                self.client.ack(ident)
 
 
 def main(argv=None, opener=None, passes=None):
