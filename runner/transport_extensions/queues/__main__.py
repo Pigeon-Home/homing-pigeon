@@ -27,6 +27,7 @@ without a result, a rejection), so a crash between pull and run
 leaves the job on the queue for the next lease.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -168,10 +169,30 @@ class QueueClient:
         status, payload = self._request(
             "POST", "/results", envelope_text.encode("utf-8"),
             "text/plain; charset=utf-8")
-        if status not in (200, 202):
-            raise RuntimeError(f"post result: HTTP {status}: "
-                               f"{payload[:120]!r}")
-        return True
+        if status == 202:
+            return True
+        if status == 200:
+            # A retry of the bytes already stored may finish the job.
+            # A different result for that id was not stored, and
+            # finishing the job here would throw the new output away.
+            # A 200 that names no hash is the old answer: treat it as
+            # the same bytes, so a worker from before this field still
+            # completes a retry.
+            digest = None
+            try:
+                data = json.loads(payload.decode("utf-8"))
+                if isinstance(data, dict) and isinstance(data.get("sha256"), str):
+                    digest = data["sha256"]
+            except (ValueError, UnicodeDecodeError):
+                digest = None
+            if digest is not None:
+                got = hashlib.sha256(envelope_text.encode("utf-8")).hexdigest()
+                if digest != got:
+                    raise RuntimeError(
+                        "post result: the queue kept a different envelope")
+            return True
+        raise RuntimeError(f"post result: HTTP {status}: "
+                           f"{payload[:120]!r}")
 
 
 def resolve_token(cfg, environ=None):

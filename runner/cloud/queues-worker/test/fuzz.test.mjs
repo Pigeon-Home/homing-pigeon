@@ -946,7 +946,9 @@ test("fuzz: a second result for an id keeps the first envelope", async () => {
   assert.equal(r.status, 202);
   r = await worker.fetch(req("/t/alice/results", { method: "POST", token: `Bearer ${RUNNER}`, body: second }), env);
   assert.equal(r.status, 200);
-  assert.equal((await r.json()).duplicate, true);
+  const dup = await r.json();
+  assert.equal(dup.duplicate, true);
+  assert.equal(dup.sha256, await sha256Hex(first));
   const stored = env.objects.get("alice").state.storage.map.get("result:j1");
   assert.equal(stored.envelope, first);
   r = await worker.fetch(req("/t/alice/results", { token: `Bearer ${SI}` }), env);

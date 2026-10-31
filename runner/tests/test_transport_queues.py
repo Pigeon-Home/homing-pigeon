@@ -6,6 +6,7 @@ Cloudflare Worker does (runner/cloud/queues-worker/src/index.js, whose
 own tests run under node): lease, ack, results. It listens on
 loopback in this process; nothing leaves the machine.
 """
+import hashlib
 import http.server
 import json
 import os
@@ -156,8 +157,11 @@ def make_handler(state):
                 parsed = ch.parse_envelope(body)
                 rid = q._result_id(parsed[0]) if parsed else None
                 if rid and rid in state.results:
+                    digest = hashlib.sha256(
+                        state.results[rid].encode("utf-8")).hexdigest()
                     return self._send(200, json.dumps(
-                        {"id": rid, "duplicate": True}).encode())
+                        {"id": rid, "duplicate": True,
+                         "sha256": digest}).encode())
                 state.results[rid] = body
                 return self._send(202, json.dumps({"id": rid}).encode())
             return self._send(404)
@@ -365,7 +369,13 @@ class QueuePipeTest(unittest.TestCase):
             stored = w.state.results["j1"].replace(" ", "")
             self.assertIn('"exit_code":0', stored)
             self.assertNotIn('"exit_code":1', stored)
-            self.assertEqual(sorted(os.listdir(d["outbox"])), ["done"])
+            # The second file is a different envelope. It was not
+            # stored, so it stays for a person instead of being
+            # thrown away.
+            self.assertEqual(sorted(os.listdir(d["outbox"])),
+                             ["done", "j1.result-2.txt"])
+            self.assertEqual(os.listdir(d["outbox_done"]),
+                             ["j1.result.txt"])
 
     def test_a_collision_name_alone_still_acks_the_job(self):
         with FakeWorker() as w:
@@ -397,6 +407,44 @@ class QueuePipeTest(unittest.TestCase):
                 os.path.join(d["outbox"], "j1.result.txt")))
             self.assertIn("j1", w.state.jobs)
             self.assertIn("j2", w.state.jobs)
+
+    def test_a_different_result_already_stored_does_not_finish_the_job(self):
+        # The previous life left its result. This life produced a
+        # different one. A 200 is not that result being stored, so
+        # the job stays leased and the new file stays in the outbox.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.results["j1"] = (
+                '[HOMING-PIGEON] result j1\n\n{"exit_code":0}\n')
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            ch._atomic_write(os.path.join(d["outbox"], "j1.result.txt"),
+                             '[HOMING-PIGEON] result j1\n\n{"exit_code":1}\n')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", w.state.jobs)
+            self.assertIn("j1", pipe._pending)
+            self.assertIn('"exit_code":0', w.state.results["j1"])
+            self.assertTrue(os.path.isfile(
+                os.path.join(d["outbox"], "j1.result.txt")))
+
+    def test_a_retried_result_of_the_same_bytes_finishes_the_job(self):
+        text = '[HOMING-PIGEON] result j1\n\n{"exit_code":0}\n'
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.results["j1"] = text
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            ch._atomic_write(os.path.join(d["outbox"], "j1.result.txt"), text)
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertFalse(os.path.exists(
+                os.path.join(d["outbox"], "j1.result.txt")))
+            self.assertNotIn("j1", pipe._pending)
 
     def test_a_result_the_worker_refuses_is_retried_not_dropped(self):
         with FakeWorker() as w:
