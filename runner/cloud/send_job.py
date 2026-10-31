@@ -732,10 +732,23 @@ def cmd_new(args) -> int:
         if status in (200, 202):
             dup = ""
             try:
-                if json.loads(text).get("duplicate") is True:
-                    dup = ", already queued"
+                answered = json.loads(text)
             except (ValueError, AttributeError):
-                pass
+                answered = None
+            if isinstance(answered, dict) and answered.get("duplicate") is True:
+                digest = answered.get("sha256")
+                # No hash is an older worker: a retry still looks
+                # queued. A hash of a different envelope means the
+                # job that will run is not the one just sent.
+                if isinstance(digest, str):
+                    ours = hashlib.sha256(
+                        envelope.encode("utf-8")).hexdigest()
+                    if digest != ours:
+                        print(f"error: job {payload['job_id']} is already "
+                              f"queued with a different envelope; this "
+                              f"one was not stored", file=sys.stderr)
+                        return 1
+                dup = ", already queued"
             print(f"queued job {payload['job_id']} at {args.to_queue} "
                   f"(HTTP {status}{dup})", file=sys.stderr)
             return 0

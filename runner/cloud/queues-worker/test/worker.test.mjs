@@ -67,8 +67,8 @@ async function addTenant(env, slug = "alice", extra = {}) {
   }));
 }
 
-async function signedJob(jobId, secret = SECRET) {
-  const payload = JSON.stringify({ v: 1, type: "job", job_id: jobId, kind: "exec", script: "echo hi" });
+async function signedJob(jobId, secret = SECRET, script = "echo hi") {
+  const payload = JSON.stringify({ v: 1, type: "job", job_id: jobId, kind: "exec", script });
   const sig = await hmacSha384Hex(secret, payload);
   const body = payload.slice(0, -1) + `,"sig":"${sig}"}`;
   return `[HOMING-PIGEON] job ${jobId}\n\n${body}\n`;
@@ -166,7 +166,9 @@ test("submit, lease, ack, result, read, ack: the whole loop", async () => {
   // A duplicate submit is acknowledged, not queued twice.
   r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: SI, body: job }), env);
   assert.equal(r.status, 200);
-  assert.equal((await r.json()).duplicate, true);
+  const dup = await r.json();
+  assert.equal(dup.duplicate, true);
+  assert.equal(dup.sha256, await sha256Hex(job));
   // The runner leases it.
   r = await worker.fetch(req("/t/alice/jobs?max=5", { token: RUNNER }), env);
   assert.equal(r.status, 200);
@@ -195,6 +197,22 @@ test("submit, lease, ack, result, read, ack: the whole loop", async () => {
   assert.equal(r.status, 204);
   r = await worker.fetch(req("/t/alice/results", { token: SI }), env);
   assert.equal(r.status, 204);
+});
+
+test("a second submit with a different body does not replace the first", async () => {
+  const env = makeEnv();
+  await addTenant(env);
+  const first = await signedJob("j1", SECRET, "echo hi");
+  const second = await signedJob("j1", SECRET, "echo bye");
+  assert.equal((await worker.fetch(req("/t/alice/jobs", { method: "POST", token: SI, body: first }), env)).status, 202);
+  const r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: SI, body: second }), env);
+  assert.equal(r.status, 200);
+  const body = await r.json();
+  assert.equal(body.duplicate, true);
+  assert.equal(body.sha256, await sha256Hex(first));
+  assert.notEqual(body.sha256, await sha256Hex(second));
+  const pulled = await (await worker.fetch(req("/t/alice/jobs?max=1", { token: RUNNER }), env)).json();
+  assert.equal(pulled.jobs[0].envelope, first);
 });
 
 test("a lease expires and the job is offered again; five attempts dead-letter it", async () => {

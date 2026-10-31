@@ -554,7 +554,16 @@ export class TenantQueue {
       const quota = JSON.parse(request.headers.get("x-hp-quota") || "{}");
       const text = await request.text();
       const existing = await s.get(`job:${jobId}`);
-      if (existing) return json(200, { id: jobId, duplicate: true });
+      if (existing) {
+        // The first envelope stays. sha256 is of that envelope, so
+        // a retry of the same bytes can be treated as queued and a
+        // different job cannot look like that retry.
+        return json(200, {
+          id: jobId,
+          duplicate: true,
+          sha256: await sha256Hex(existing.envelope || ""),
+        });
+      }
       const dead = await s.get(`dlq:${jobId}`);
       if (dead) {
         return json(409, {

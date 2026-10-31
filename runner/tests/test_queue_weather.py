@@ -9,6 +9,7 @@ already holds reads as queued. An HTTP status is an answer, never
 retried, and an error that is not weather is not swallowed.
 """
 import argparse
+import hashlib
 import http.client
 import io
 import json
@@ -227,6 +228,39 @@ class PostTest(_Base):
                 rc = self._send_new(args)
         self.assertEqual(rc, 0)
         self.assertIn("already queued", err.getvalue())
+
+    def test_a_different_envelope_for_a_live_id_is_not_queued(self):
+        # 200 used to mean success. The first envelope stays, so a
+        # second script under the same id never ran, and the command
+        # still exited 0.
+        args = argparse.Namespace(to_queue=URL, queue_token_env=None)
+        with mock.patch.object(send_job, "post_to_queue", return_value=(
+                200, json.dumps({"id": "jq-1", "duplicate": True,
+                                 "sha256": "0" * 64}))):
+            err = io.StringIO()
+            with redirect_stderr(err):
+                rc = self._send_new(args)
+        self.assertEqual(rc, 1)
+        self.assertIn("different envelope", err.getvalue())
+
+    def test_the_same_envelope_sent_again_is_already_queued(self):
+        args = argparse.Namespace(to_queue=URL, queue_token_env=None)
+        sent = {}
+
+        def answer(url, envelope, token_env=None, opener=None):
+            sent["envelope"] = envelope
+            digest = hashlib.sha256(envelope.encode("utf-8")).hexdigest()
+            return 200, json.dumps({"id": "jq-1", "duplicate": True,
+                                    "sha256": digest})
+
+        with mock.patch.object(send_job, "post_to_queue", side_effect=answer):
+            err = io.StringIO()
+            with redirect_stderr(err):
+                rc = self._send_new(args)
+        self.assertEqual(rc, 0)
+        self.assertIn("already queued", err.getvalue())
+        self.assertTrue(sent["envelope"].startswith(
+            "[HOMING-PIGEON] job jq-1\n"))
 
     def _send_new(self, args):
         argv = ["send_job.py", "new", "--kind", "ping", "--job-id", "jq-1",
