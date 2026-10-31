@@ -57,6 +57,17 @@ class ApplierLessonsTest(unittest.TestCase):
         # at systemctl --user daemon-reload from a service context.
         self.assertIn("./install --system", self.applier)
 
+    def test_stops_the_runner_before_replacing_its_program(self):
+        # Replacing an executing file fails ("text file busy"); the
+        # first live reinstall died on it. The stop must come before
+        # the install, and a failed install must start the runner
+        # again on the previous version.
+        stop = self.applier.index("systemctl stop homing-pigeon.service")
+        install = self.applier.index("./install --system")
+        self.assertLess(stop, install)
+        self.assertIn("systemctl start homing-pigeon.service",
+                      self.applier)
+
     def test_shims_the_children_the_installer_leaks_into(self):
         # The frozen installer's bundled OpenSSL leaks via
         # LD_LIBRARY_PATH and kills this platform's systemctl/curl.

@@ -44,7 +44,18 @@ for tool in systemctl curl; do
   printf '#!/bin/sh\nunset LD_LIBRARY_PATH\nexec /usr/bin/%s "$@"\n' "$tool" > "$SHIM/$tool"
   chmod 755 "$SHIM/$tool"
 done
-PATH="$SHIM:$PATH" TMPDIR=/root/.homing-pigeon/tmp timeout 600 ./install --system || fail "the installer failed"
+# The running runner holds its own program file open, and replacing an
+# executing file fails ("text file busy") -- the first live reinstall
+# died on exactly that. Stop the runner before the install; if the
+# install fails, start it again on the previous version so a bad
+# upgrade never leaves the box without its runner.
+systemctl stop homing-pigeon.service
+if PATH="$SHIM:$PATH" TMPDIR=/root/.homing-pigeon/tmp timeout 600 ./install --system; then
+  echo "applier: install ok"
+else
+  systemctl start homing-pigeon.service
+  fail "the installer failed (runner restarted on the previous version)"
+fi
 PROFILE_NOW=$(/usr/bin/python3 -c "import json; print(json.load(open('/root/.homing-pigeon/config.json')).get('profile',''))")
 if [ "$PROFILE_BEFORE" != "$PROFILE_NOW" ]; then
   /usr/bin/python3 -c "
@@ -61,7 +72,7 @@ fi
 mkdir -p /etc/systemd/system/homing-pigeon.service.d
 printf '[Service]\nEnvironment=SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem\n' > /etc/systemd/system/homing-pigeon.service.d/ca-bundle.conf
 systemctl daemon-reload
-systemctl restart homing-pigeon.service || fail "the runner restart failed"
+systemctl start homing-pigeon.service || fail "the runner restart failed"
 sleep 5
 V=$(/root/.homing-pigeon/homing-pigeon --version 2>&1 | head -1)
 echo "upgraded: $V" > "$PAYLOAD/outcome.txt"
