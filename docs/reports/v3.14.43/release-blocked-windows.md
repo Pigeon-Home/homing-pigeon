@@ -93,6 +93,7 @@ hours earlier.
 | ~00:57 | `1aeaec19` | (watcher) | The audit seat's watcher saw the green run and called `gh workflow run`; GraphQL 403; no dispatch. |
 | 00:58:28 | `b3800a18` | build 41152999571 | `release: 3.14.43` (empty). Dedicated group. `build-windows` job 124393603434 **failure** in 2m24s at the `run_tests_parallel.py` step; `build-linux`, `build-linux-arm64`, `build-macos`, `build-macos-x86_64`, `build-pi-light`, `build-python`, `build-windows-arm64`, `test-macos`, `scope` all green; `test` still running when this was written. |
 | 00:59:00 | `36908087` (Muse) | build 41153044427 | `release: 3.14.43`. `build-windows` **failure**; `test` still running. |
+| 01:10:13 | `b3800a18` | cut-release 41154000111 | The cut, dispatched over REST once build 41152999571 had completed (`test` and `typecheck` green by then; `build-windows` the one red job). Guard steps "the version, and that every carrier agrees", "workflow files changed since the last tag?", "the tag does not exist yet" and "same code as the last release?" all passed; "the build on this commit is green" failed with the single annotation `build-windows: completed/failure`. No tag was pushed; `git ls-remote --tags origin v3.14.43` returns nothing. |
 
 Three consecutive full-matrix runs on three different 3.14.43 commits
 (`3ca0f890`, `bf934f87`, `b3800a18`) and a fourth (`36908087`) all
@@ -181,8 +182,8 @@ these, if any, the Windows leg objects to is not established.
 - Why the dead-shard annotation from `0bb97efe` did not appear: the
   code did not reach it, it raised, or Actions did not parse what it
   wrote. The annotations endpoint shows none of its output.
-- Whether the Linux `test` job on `b3800a18` and `36908087` passes;
-  both were still running when this was written.
+- Whether the Linux `test` job on `36908087` passes; it was still
+  running when this was written. On `b3800a18` it passed.
 
 ## State at the time of writing
 
@@ -191,8 +192,10 @@ these, if any, the Windows leg objects to is not established.
   3.14.43 exists; those jobs run only on the tag build.
 - `v3.14.42` remains the latest release on every mirror.
 - Two cut-release attempts on `11a3038e` failed on the guard for lack
-  of any `build-*` check run; no attempt has yet been made on a commit
-  whose `build-windows` ran, because on every such commit it is red.
-- The driver started at 30-OCT 6:03PM PST waits for a green full
-  matrix on `b3800a18` or `36908087` and dispatches the cut over REST
-  on success. With `build-windows` red on both, it will not dispatch.
+  of any `build-*` check run. A third, on `b3800a18` at 30-OCT 6:10PM
+  PST, reached the guard with every other check passed and failed on
+  `build-windows: completed/failure` alone. That is the whole of what
+  stands between the version on main and the mirrors.
+- The Linux `test` and `typecheck` jobs on `b3800a18` completed green
+  before the cut was attempted, which closes one of the unknowns
+  above: the suite passes on the Linux leg of the same commit.
