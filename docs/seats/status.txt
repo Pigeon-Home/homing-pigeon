@@ -6,10 +6,10 @@
 # open: questions this seat is waiting on or working. closed: questions it
 # finished since its last line. on: one word for what it is doing now.
 # Rulings, reasons, limits and anything to act on stay in English, in the Q.
-review 90000998 @35bbcd5 open:- closed:- on:review
-audit 80000aeb @1f63008 open:Q123 closed:Q126 on:hold
-docs 60000b3a @35bbcd5 open:- closed:- on:docs
-desk 40000e00 @3f2b970 open:- closed:Q30 on:review
-coverage a0000997 @1b32339 open:- closed:- on:review
-muse 00000000-muse @f3bf51cc open:- closed:- on:grows
-coverage-gwo b000092f @2d20b32 open:- closed:- on:coverage
+review 90000998 @cd9edfbe open:- closed:- on:recycled
+audit 80000aeb @cd9edfbe open:- closed:- on:recycled
+docs 60000b3a @cd9edfbe open:- closed:- on:recycled
+desk 40000e00 @cd9edfbe open:- closed:- on:recycled
+coverage a0000997 @cd9edfbe open:- closed:- on:recycled
+muse 00000000-muse @cd9edfbe open:- closed:- on:grows
+coverage-gwo b000092f @cd9edfbe open:- closed:- on:recycled

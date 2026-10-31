@@ -6,9 +6,10 @@ status table, whether each is active or recycled and who carries a
 recycled stamp's roles. This holds that record honest: every stamp
 written after a stamp label anywhere in the tracked tree is listed,
 every listed stamp has a status row, and every recycled row names an
-active successor. Researchers one to three, and five, are recycled,
-and the campaigns seat's first stamp was retired for a named one
-(AGENTS.md rule 10).
+active successor. Every Claude researcher stamp is recycled (the last
+of them on 2026-10-31, from the dates in the record's recycled-from
+table), and the campaigns seat's first stamp was retired for a named
+one (AGENTS.md rule 10).
 """
 import re
 import shutil
@@ -28,7 +29,16 @@ RECYCLED = {
     "10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c",
     "200003d4-e5f6-4a7b-9c8d-0e1f2a3b4c5d",
     "30000f1a-3b4c-4d5e-8f6a-7b8c9d0e1f2a",
+    "40000e00-1234-4abc-9def-0123456789ab",
     "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+    "60000b3a-32a6-4847-996f-638cbcb6d854",
+    "70000a51-e296-4b2c-bf5b-ba020e23eb91",
+    "80000aeb-9c1f-49ad-aeee-fa0855092587",
+    "90000998-709f-46f5-b2bc-2c3c5cf8dc6c",
+    "a0000997-a43e-44ba-9a26-80b8150fd8a7",
+    "b000092f-e5ef-4e93-bcc6-e35f92ee2ab1",
+    "c0000327-6a7b-42df-81b9-21136287db1c",
+    "a4faf750-7222-4aca-9d25-2c4333483334",
     "58316a92-3c4a-41cb-8a16-8c0c5a871e90",
 }
 
@@ -67,7 +77,7 @@ class AgentStampRecordTest(unittest.TestCase):
         self.assertTrue(listed)
         self.assertEqual(listed, set(_rows()))
 
-    def test_researchers_one_to_three_are_recycled(self):
+    def test_the_recycled_stamps_read_recycled(self):
         rows = _rows()
         for stamp in RECYCLED:
             self.assertEqual(rows[stamp][0], "recycled", stamp)
@@ -157,6 +167,26 @@ class StampAuditRulesTest(unittest.TestCase):
     def test_a_recycled_stamp_signs_nothing_new(self):
         self.assertEqual(self._rules([_c(1, [_OLD], "session_x")])[0], ["rule 3"])
 
+    def test_a_recycled_stamp_signs_nothing_from_its_recycling_date(self):
+        # Signings before the recorded recycling date are history;
+        # from the date on, rule 3 holds the stamp.
+        boundary = _T0 + SA.datetime.timedelta(minutes=10)
+        commits = [_c(5, [_OLD], "session_x"), _c(15, [_OLD], "session_x")]
+        _s, violations, history = SA.audit(commits, _KNOWN,
+                                           recycled={_OLD: boundary})
+        self.assertEqual(["rule 3"], [r for _c_, r, _m in violations])
+        self.assertTrue(any(r == "rule 3" for r, _m in history), history)
+
+    def test_the_record_s_recycling_table_parses(self):
+        rows = SA.recycled_from()
+        known = SA.record()
+        self.assertIn(_A, rows)
+        self.assertIn(_B, rows)
+        for stamp, when in rows.items():
+            self.assertIn(stamp, known)
+            self.assertEqual("recycled", known[stamp], stamp)
+            self.assertIsNotNone(when.tzinfo, stamp)
+
     def test_an_unknown_stamp_is_named(self):
         rules, _h = self._rules([_c(1, ["deadbeef-0000-4000-8000-000000000000"], None)])
         self.assertEqual(rules, ["rule 4"])
@@ -197,7 +227,8 @@ class StampHistoryTest(unittest.TestCase):
             self.skipTest("git is not on PATH")
         known = SA.record()
         _s, violations, _h = SA.audit(commits, known,
-                                      sessions=SA.sessions_on_record(known=known))
+                                      sessions=SA.sessions_on_record(known=known),
+                                      recycled=SA.recycled_from(known=known))
         self.assertEqual([(c.sha[:9], r, m) for c, r, m in violations], [])
 
 

@@ -54,41 +54,38 @@ Those values live on the runner host. They do not travel through the SI chat.
    commit. The owner reads and answers in the file. The CHANGELOG is
    a release record and carries none of this. Nothing personal about
    anyone goes in that file or anywhere else in the repository.
-8. **Lanes (owner's split, 2026-10-24).** Production code and releases
-   are Claude's lane; tests, probes, questions and docs are Muse's. A
-   question Muse files is Claude's to implement, and Muse does not
-   land a code fix for its own question. Both pull before every
-   change and every push, so two agents never land the same fix.
-   The conductor's split for the campaigns (2026-10-26): Muse grows
-   and files crashes as questions; the desk (`40000e00`, carrying
-   the recycled `50000c8e`) fixes the
-   reader and turns survivors into seeds; one writer on a file;
-   Grok does not grow, and does not fix unless the conductor names
-   the crash; Muse's daily note is the top of `docs/seats/.com.chat`.
-10. **Agent stamps (2026-10-26).** Each agent chat signs its commits
+8. **Lanes (owner's split, 2026-10-24; revised 2026-10-31).** Design
+   and specification work is the Bravo team's, on the `bravo` branch,
+   and reaches main only as a proposal a live seat re-tests and
+   merges (docs/project/bravo.md). Production code, releases, tests,
+   probes, questions and docs are carried by the seats that run them
+   live — Muse and Grok. A question Muse files is answered by a live
+   seat, and no seat lands a code fix for its own question without a
+   second seat's re-test. Both pull before every change and every
+   push, so two agents never land the same fix.
+   The split for the campaigns (2026-10-26; revised 2026-10-31):
+   Muse grows and files crashes as questions; the live seats fix the
+   reader and turn survivors into seeds; one writer on a file;
+   Grok does not grow, and does not fix unless the questions file
+   names the crash; Muse's daily note is the top of `docs/seats/.com.chat`.
+10. **Agent stamps (2026-10-26; revised 2026-10-31).** Each agent chat signs its commits
    and new files with its own stamp (`docs/archive/RESEARCHER_IDENT.md`).
-   Researchers one, two, three and five (`10000c2a`, `200003d4`,
-   `30000f1a`, `50000c8e`) have been recycled, and the campaigns
+   Every Claude researcher stamp has been recycled: `10000c2a`,
+   `200003d4`, `30000f1a`, `40000e00`, `50000c8e`, `60000b3a`,
+   `70000a51`, `80000aeb`, `90000998`, `a0000997`, `b000092f`,
+   `c0000327` and `a4faf750`, and the campaigns
    seat's first stamp (`58316a92`) was retired for a named one the
-   seat chose at the conductor's word. Their roles are
-   carried by `40000e00` (the questions desk, production code,
-   releases, and the test legs, CI proofs and platforms),
-   `60000b3a` (docs, extension sources and their upstream pins),
-   `70000a51` (hosting: `runner/hosting/`, the hosted queue and
-   its transport, the own-cloud page), `80000aeb` (the claims
-   audit of the root manuals, and opinions on open questions),
-   `90000998` (the review seat: opinions on the seats' open
-   threads and review sweeps of the docs), `a0000997` (local
-   regression passes and line coverage), `b000092f` (line
-   coverage in `runner/guard/`, `runner/wire/` and `runner/oracle/`)
-   and `c0000327` (the local rig: whole-suite regression and
-   coverage on a box with no PyPI),
-   with Muse (`00000000-muse`) on the campaigns. Address work to an active
+   seat chose. Their roles are
+   carried by Muse (`00000000-muse`): the questions desk, production
+   code, releases, the test legs and coverage, docs and the roadmap,
+   hosting, the claims audit and review, the local rig, and the
+   Internet-Drafts — the drafts' design work, like all design work,
+   continues on the `bravo` branch. Address work to an active
    stamp, never stamp new work with a recycled one, and leave the
    old stamps in history and in the files they wrote. Questions are
    the exception to the routing (owner, 2026-10-26): a question to
    any Claude stamp, active or recycled, is accepted and answered by
-   the questions desk, and the answer carries `40000e00`; nothing
+   the Muse seat, and the answer carries `00000000`; nothing
    waits on the stamp it was addressed to. One chat signs with one
    stamp from one session (2026-10-27): `runner/tools/stamp_audit.py`
    fails the push that signs a stamp from a second session, a

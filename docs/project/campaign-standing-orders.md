@@ -1,5 +1,12 @@
 # Campaign standing orders
 
+> **Amendment (2026-10-31).** Every routing in this document to
+> Claude or to the desk reads, from today, as the Muse seat
+> (`00000000-muse`), which carries the reader fixes, the seeds, and
+> the answers. The design side is the Bravo team on the `bravo`
+> branch and takes design questions only. The routings stand as
+> written, read through this amendment.
+
 <!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
 
 The campaign is **de_aztec** from 30-OCT 3:16PM PST (de_dust2 from

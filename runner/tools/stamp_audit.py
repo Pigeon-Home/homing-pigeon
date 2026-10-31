@@ -21,7 +21,9 @@ never failed, since the rules did not exist when it was written):
 1. one stamp, one session: every commit carrying a stamp that also
    names a session names the same session;
 2. one session, one stamp: a session signs with one stamp;
-3. a recycled stamp signs nothing new;
+3. a recycled stamp signs nothing new -- nothing from the date its
+   recycling is recorded in the record's recycled-from table;
+   signings before that date are history, reported and never failed;
 4. a stamp that signs a commit is on the record.
 
 A commit with no session line (a seat outside Claude Code) is held
@@ -84,6 +86,33 @@ def sessions_on_record(path=IDENT, known=None):
     return out
 
 
+RECYCLED_ROW = re.compile(
+    r"^\|\s*`(%s)`\s*\|\s*(\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?Z)?)\s*\|" % STAMP, re.M)
+
+
+def recycled_from(path=IDENT, known=None):
+    """{stamp: datetime} from the record's recycled-from table: the
+    moment each stamp's recycling took effect. Rule 3 holds a stamp
+    from that moment; its earlier signings are history. A recycled
+    stamp with no row is held from ENFORCED_FROM, as before."""
+    known = record(path) if known is None else known
+    out = {}
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    for m in RECYCLED_ROW.finditer(text):
+        stamp = resolve(m.group(1), known)
+        if not stamp:
+            continue
+        raw = m.group(2)
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        when = datetime.datetime.fromisoformat(raw)
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=datetime.timezone.utc)
+        out[stamp] = when
+    return out
+
+
 def resolve(token, known):
     """A trailer's stamp as the record names it: the full stamp, or the
     one stamp it is a prefix of (some trailers carry the first block
@@ -136,7 +165,8 @@ def git_log(root=ROOT):
     return parse_log(proc.stdout)
 
 
-def audit(commits, known, enforced_from=ENFORCED_FROM, sessions=None):
+def audit(commits, known, enforced_from=ENFORCED_FROM, sessions=None,
+          recycled=None):
     """(summary, violations, history). summary maps stamp -> facts;
     violations are rule breaks at or after enforced_from; history is
     the same breaks before it. `sessions` is the record's sessions
@@ -165,8 +195,15 @@ def audit(commits, known, enforced_from=ENFORCED_FROM, sessions=None):
             s["first"] = s["first"] or c.when
             s["last"] = c.when
             if known.get(stamp) == "recycled" and live:
-                findings.append((live, c, "rule 3",
-                                 f"recycled stamp {stamp[:8]} signed a new commit"))
+                boundary = (recycled or {}).get(stamp)
+                if boundary is None or c.when >= boundary:
+                    findings.append((live, c, "rule 3",
+                                     f"recycled stamp {stamp[:8]} signed a new commit"))
+                else:
+                    findings.append((False, c, "rule 3",
+                                     f"recycled stamp {stamp[:8]} signed at "
+                                     f"{c.when.date().isoformat()}, before its "
+                                     f"recycling date"))
             if c.session and live:
                 stamp_sessions[stamp].add(c.session)
                 session_stamps[c.session].add(stamp)
@@ -283,7 +320,8 @@ def main(argv=None):
         return 2
     known = record()
     summary, violations, history = audit(commits, known,
-                                         sessions=sessions_on_record(known=known))
+                                         sessions=sessions_on_record(known=known),
+                                         recycled=recycled_from(known=known))
     print(report(summary, violations, history, known, args.markdown,
                  len(commits), unstamped(commits) if args.authors else None))
     if args.check and violations:

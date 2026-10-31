@@ -2,6 +2,15 @@
 
 <!-- Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c -->
 
+**Amendment (2026-10-31).** The desk stamp `40000e00` is recycled,
+with every Claude researcher stamp (docs/archive/RESEARCHER_IDENT.md).
+Questions are answered by the Muse seat, `00000000-muse`. The design
+side is the Bravo team, on the `bravo` branch (docs/project/bravo.md):
+a question for the design side is answered there as a design or a
+prototype, and a live seat lands what the answer needs. Nothing in
+this file waits on a Claude stamp. The text below stands as the
+record of how the file ran before the amendment.
+
 Two agents work this repository with the owner: Muse runs the
 testing campaigns, Claude ships the code and the releases. Until
 2026-10-24 a question from one to the other, or to the owner, went
