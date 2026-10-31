@@ -3,7 +3,7 @@
  "entries": [
   {
    "seed": 4,
-   "op": 8220,
+   "op": 8222,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -19,7 +19,7 @@
   },
   {
    "seed": 4,
-   "op": 6398,
+   "op": 6400,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -63,7 +63,7 @@
   },
   {
    "seed": 4,
-   "op": 4824,
+   "op": 4826,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -93,7 +93,7 @@
   },
   {
    "seed": 4,
-   "op": 9965,
+   "op": 9967,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -122,7 +122,7 @@
   },
   {
    "seed": 4,
-   "op": 9977,
+   "op": 9979,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -135,7 +135,7 @@
   },
   {
    "seed": 4,
-   "op": 4536,
+   "op": 5722,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -166,7 +166,7 @@
   },
   {
    "seed": 4,
-   "op": 7043,
+   "op": 7045,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -180,7 +180,7 @@
   },
   {
    "seed": 4,
-   "op": 7249,
+   "op": 7251,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -196,7 +196,7 @@
   },
   {
    "seed": 4,
-   "op": 9716,
+   "op": 9718,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -226,7 +226,7 @@
   },
   {
    "seed": 4,
-   "op": 19787,
+   "op": 19788,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -256,7 +256,7 @@
   },
   {
    "seed": 4,
-   "op": 10409,
+   "op": 10411,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -286,7 +286,7 @@
   },
   {
    "seed": 4,
-   "op": 6308,
+   "op": 6310,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -300,20 +300,7 @@
   },
   {
    "seed": 4,
-   "op": 13102,
-   "route": "DELETE /t/:slug/dlq",
-   "status": 401,
-   "keys": [
-    "dlq",
-    "quota:day",
-    "quota:exceeded",
-    "quota:hour",
-    "result"
-   ]
-  },
-  {
-   "seed": 4,
-   "op": 6556,
+   "op": 6558,
    "route": "DELETE /t/:slug/dlq",
    "status": 401,
    "keys": [
@@ -332,7 +319,7 @@
   },
   {
    "seed": 4,
-   "op": 14443,
+   "op": 14444,
    "route": "DELETE /t/:slug/dlq",
    "status": 405,
    "keys": [
@@ -425,7 +412,7 @@
   },
   {
    "seed": 4,
-   "op": 11626,
+   "op": 11628,
    "route": "DELETE /t/:slug/dlq",
    "status": 405,
    "keys": [
@@ -455,7 +442,7 @@
   },
   {
    "seed": 4,
-   "op": 7607,
+   "op": 7609,
    "route": "DELETE /t/:slug/dlq",
    "status": 405,
    "keys": [
@@ -471,7 +458,7 @@
   },
   {
    "seed": 4,
-   "op": 18010,
+   "op": 18011,
    "route": "DELETE /t/:slug/dlq",
    "status": 405,
    "keys": [
@@ -486,7 +473,7 @@
   },
   {
    "seed": 4,
-   "op": 10267,
+   "op": 10269,
    "route": "DELETE /t/:slug/dlq",
    "status": 405,
    "keys": [
@@ -501,7 +488,7 @@
   },
   {
    "seed": 4,
-   "op": 16825,
+   "op": 16826,
    "route": "DELETE /t/:slug/dlq",
    "status": 405,
    "keys": [
@@ -528,7 +515,7 @@
   },
   {
    "seed": 4,
-   "op": 18786,
+   "op": 18787,
    "route": "GET /health",
    "status": 200,
    "keys": [
@@ -615,7 +602,7 @@
   },
   {
    "seed": 4,
-   "op": 12154,
+   "op": 12156,
    "route": "GET /health",
    "status": 200,
    "keys": [
@@ -631,7 +618,7 @@
   },
   {
    "seed": 4,
-   "op": 14173,
+   "op": 13731,
    "route": "GET /health",
    "status": 200,
    "keys": [
@@ -675,7 +662,7 @@
   },
   {
    "seed": 4,
-   "op": 15419,
+   "op": 15420,
    "route": "GET /health",
    "status": 200,
    "keys": [
@@ -709,21 +696,6 @@
     "att:3",
     "dlq",
     "held",
-    "job",
-    "quota:day",
-    "quota:exceeded",
-    "quota:hour",
-    "result"
-   ]
-  },
-  {
-   "seed": 4,
-   "op": 13730,
-   "route": "GET /health",
-   "status": 200,
-   "keys": [
-    "att:3",
-    "dlq",
     "job",
     "quota:day",
     "quota:exceeded",
@@ -778,7 +750,7 @@
   },
   {
    "seed": 4,
-   "op": 5201,
+   "op": 5203,
    "route": "GET /health",
    "status": 200,
    "keys": [
@@ -808,7 +780,7 @@
   },
   {
    "seed": 4,
-   "op": 4713,
+   "op": 4715,
    "route": "GET /health",
    "status": 200,
    "keys": [
@@ -866,7 +838,7 @@
   },
   {
    "seed": 4,
-   "op": 12563,
+   "op": 12565,
    "route": "GET /health",
    "status": 200,
    "keys": [
@@ -980,7 +952,7 @@
   },
   {
    "seed": 4,
-   "op": 14301,
+   "op": 14302,
    "route": "GET /t/:slug/dlq",
    "status": 200,
    "keys": [
@@ -995,7 +967,7 @@
   },
   {
    "seed": 4,
-   "op": 5191,
+   "op": 5193,
    "route": "GET /t/:slug/dlq",
    "status": 200,
    "keys": [
@@ -1010,7 +982,7 @@
   },
   {
    "seed": 2,
-   "op": 309,
+   "op": 403,
    "route": "GET /t/:slug/dlq",
    "status": 200,
    "keys": [
@@ -1942,7 +1914,7 @@
   },
   {
    "seed": 1,
-   "op": 479,
+   "op": 483,
    "route": "GET /t/:slug/jobs?max",
    "status": 204,
    "keys": [
@@ -1958,7 +1930,7 @@
   },
   {
    "seed": 4,
-   "op": 14302,
+   "op": 14303,
    "route": "GET /t/:slug/jobs?max",
    "status": 204,
    "keys": [
@@ -2029,7 +2001,7 @@
   },
   {
    "seed": 2,
-   "op": 302,
+   "op": 392,
    "route": "GET /t/:slug/jobs?max",
    "status": 204,
    "keys": [
@@ -2195,7 +2167,7 @@
   },
   {
    "seed": 4,
-   "op": 4475,
+   "op": 10787,
    "route": "GET /t/:slug/jobs?max",
    "status": 401,
    "keys": [
@@ -2210,7 +2182,7 @@
   },
   {
    "seed": 4,
-   "op": 6709,
+   "op": 6711,
    "route": "GET /t/:slug/jobs?max",
    "status": 401,
    "keys": [
@@ -2236,8 +2208,8 @@
    ]
   },
   {
-   "seed": 2,
-   "op": 365,
+   "seed": 3,
+   "op": 168,
    "route": "GET /t/:slug/jobs?max",
    "status": 401,
    "keys": [
@@ -2253,7 +2225,7 @@
   },
   {
    "seed": 4,
-   "op": 5675,
+   "op": 5677,
    "route": "GET /t/:slug/jobs?max",
    "status": 401,
    "keys": [
@@ -2357,7 +2329,7 @@
   },
   {
    "seed": 4,
-   "op": 11188,
+   "op": 11190,
    "route": "GET /t/:slug/jobs?max",
    "status": 401,
    "keys": [
@@ -2474,7 +2446,7 @@
   },
   {
    "seed": 4,
-   "op": 9879,
+   "op": 9881,
    "route": "GET /t/:slug/jobs?max",
    "status": 401,
    "keys": [
@@ -2504,7 +2476,7 @@
   },
   {
    "seed": 4,
-   "op": 5002,
+   "op": 4584,
    "route": "GET /t/:slug/jobs?max",
    "status": 401,
    "keys": [
@@ -2549,7 +2521,7 @@
   },
   {
    "seed": 4,
-   "op": 12337,
+   "op": 12339,
    "route": "GET /t/:slug/jobs?max",
    "status": 401,
    "keys": [
@@ -2606,7 +2578,7 @@
   },
   {
    "seed": 4,
-   "op": 6698,
+   "op": 6700,
    "route": "GET /t/:slug/jobs?max",
    "status": 401,
    "keys": [
@@ -2710,7 +2682,7 @@
   },
   {
    "seed": 2,
-   "op": 481,
+   "op": 302,
    "route": "GET /t/:slug/jobs",
    "status": 200,
    "keys": [
@@ -2740,8 +2712,8 @@
    ]
   },
   {
-   "seed": 2,
-   "op": 302,
+   "seed": 3,
+   "op": 396,
    "route": "GET /t/:slug/jobs",
    "status": 200,
    "keys": [
@@ -2894,7 +2866,7 @@
   },
   {
    "seed": 2,
-   "op": 387,
+   "op": 313,
    "route": "GET /t/:slug/jobs",
    "status": 204,
    "keys": [
@@ -2925,7 +2897,7 @@
   },
   {
    "seed": 2,
-   "op": 313,
+   "op": 409,
    "route": "GET /t/:slug/jobs",
    "status": 204,
    "keys": [
@@ -3178,7 +3150,7 @@
   },
   {
    "seed": 4,
-   "op": 17304,
+   "op": 17305,
    "route": "GET /t/:slug/jobs",
    "status": 401,
    "keys": [
@@ -3236,7 +3208,7 @@
   },
   {
    "seed": 4,
-   "op": 8049,
+   "op": 8051,
    "route": "GET /t/:slug/jobs",
    "status": 401,
    "keys": [
@@ -3293,7 +3265,7 @@
   },
   {
    "seed": 4,
-   "op": 16665,
+   "op": 16666,
    "route": "GET /t/:slug/jobs",
    "status": 401,
    "keys": [
@@ -3320,7 +3292,7 @@
   },
   {
    "seed": 4,
-   "op": 7253,
+   "op": 7255,
    "route": "GET /t/:slug/jobs",
    "status": 401,
    "keys": [
@@ -3380,7 +3352,7 @@
   },
   {
    "seed": 4,
-   "op": 19588,
+   "op": 19589,
    "route": "GET /t/:slug/jobs",
    "status": 401,
    "keys": [
@@ -3464,7 +3436,7 @@
   },
   {
    "seed": 4,
-   "op": 10395,
+   "op": 10397,
    "route": "GET /t/:slug/jobs",
    "status": 401,
    "keys": [
@@ -3543,7 +3515,7 @@
   },
   {
    "seed": 4,
-   "op": 4794,
+   "op": 4796,
    "route": "GET /t/:slug/results",
    "status": 200,
    "keys": [
@@ -3819,7 +3791,7 @@
   },
   {
    "seed": 2,
-   "op": 306,
+   "op": 408,
    "route": "GET /t/:slug/results",
    "status": 200,
    "keys": [
@@ -3908,7 +3880,7 @@
   },
   {
    "seed": 4,
-   "op": 11475,
+   "op": 11477,
    "route": "GET /t/:slug/results",
    "status": 200,
    "keys": [
@@ -4066,7 +4038,7 @@
   },
   {
    "seed": 4,
-   "op": 9971,
+   "op": 9973,
    "route": "GET /t/:slug/results",
    "status": 204,
    "keys": [
@@ -4139,7 +4111,7 @@
   },
   {
    "seed": 4,
-   "op": 6582,
+   "op": 6584,
    "route": "GET /t/alice",
    "status": 404,
    "keys": [
@@ -4169,7 +4141,7 @@
   },
   {
    "seed": 4,
-   "op": 16334,
+   "op": 16335,
    "route": "GET /t/alice",
    "status": 404,
    "keys": [
@@ -4213,7 +4185,7 @@
   },
   {
    "seed": 4,
-   "op": 6165,
+   "op": 6167,
    "route": "GET /t/alice",
    "status": 404,
    "keys": [
@@ -4256,7 +4228,7 @@
   },
   {
    "seed": 4,
-   "op": 2297,
+   "op": 1825,
    "route": "GET /t/alice",
    "status": 404,
    "keys": [
@@ -4271,7 +4243,7 @@
   },
   {
    "seed": 4,
-   "op": 9578,
+   "op": 9580,
    "route": "GET /t/alice",
    "status": 404,
    "keys": [
@@ -4316,7 +4288,7 @@
   },
   {
    "seed": 4,
-   "op": 1825,
+   "op": 2915,
    "route": "GET /t/alice",
    "status": 404,
    "keys": [
@@ -4331,7 +4303,7 @@
   },
   {
    "seed": 4,
-   "op": 10872,
+   "op": 10874,
    "route": "GET /t/alice",
    "status": 404,
    "keys": [
@@ -4421,7 +4393,7 @@
   },
   {
    "seed": 4,
-   "op": 5023,
+   "op": 5025,
    "route": "GET /t/alice",
    "status": 404,
    "keys": [
@@ -4464,7 +4436,7 @@
   },
   {
    "seed": 4,
-   "op": 6563,
+   "op": 6565,
    "route": "GET /t/alice",
    "status": 404,
    "keys": [
@@ -4505,7 +4477,7 @@
   },
   {
    "seed": 4,
-   "op": 4508,
+   "op": 5087,
    "route": "GET /t/alice/jobs/j1",
    "status": 404,
    "keys": [
@@ -4566,7 +4538,7 @@
   },
   {
    "seed": 4,
-   "op": 10606,
+   "op": 10608,
    "route": "GET /t/alice/jobs/j1",
    "status": 404,
    "keys": [
@@ -4596,7 +4568,7 @@
   },
   {
    "seed": 4,
-   "op": 17712,
+   "op": 17713,
    "route": "GET /t/alice/jobs/j1",
    "status": 404,
    "keys": [
@@ -4610,7 +4582,7 @@
   },
   {
    "seed": 4,
-   "op": 5957,
+   "op": 5959,
    "route": "GET /t/alice/jobs/j1",
    "status": 404,
    "keys": [
@@ -4686,7 +4658,7 @@
   },
   {
    "seed": 4,
-   "op": 7765,
+   "op": 7767,
    "route": "GET /t/alice/jobs/j1",
    "status": 404,
    "keys": [
@@ -4731,7 +4703,7 @@
   },
   {
    "seed": 4,
-   "op": 12787,
+   "op": 12789,
    "route": "GET /t/alice/jobs/j1",
    "status": 404,
    "keys": [
@@ -4745,7 +4717,7 @@
   },
   {
    "seed": 4,
-   "op": 4767,
+   "op": 4510,
    "route": "GET /t/alice/jobs/j1",
    "status": 404,
    "keys": [
@@ -4770,7 +4742,7 @@
   },
   {
    "seed": 4,
-   "op": 10776,
+   "op": 10778,
    "route": "GET /t/alice/nope",
    "status": 404,
    "keys": [
@@ -4812,7 +4784,7 @@
   },
   {
    "seed": 4,
-   "op": 5334,
+   "op": 5336,
    "route": "GET /t/alice/nope",
    "status": 404,
    "keys": [
@@ -4828,7 +4800,7 @@
   },
   {
    "seed": 4,
-   "op": 14442,
+   "op": 14443,
    "route": "GET /t/alice/nope",
    "status": 404,
    "keys": [
@@ -4843,7 +4815,7 @@
   },
   {
    "seed": 4,
-   "op": 6649,
+   "op": 6651,
    "route": "GET /t/alice/nope",
    "status": 404,
    "keys": [
@@ -4858,7 +4830,7 @@
   },
   {
    "seed": 4,
-   "op": 4513,
+   "op": 4537,
    "route": "GET /t/alice/nope",
    "status": 404,
    "keys": [
@@ -4889,7 +4861,7 @@
   },
   {
    "seed": 4,
-   "op": 4967,
+   "op": 4969,
    "route": "GET /t/alice/nope",
    "status": 404,
    "keys": [
@@ -5039,7 +5011,7 @@
   },
   {
    "seed": 4,
-   "op": 18134,
+   "op": 13180,
    "route": "GET /t/alice/nope",
    "status": 404,
    "keys": [
@@ -5096,7 +5068,7 @@
   },
   {
    "seed": 4,
-   "op": 6572,
+   "op": 6574,
    "route": "GET /t/alice/nope",
    "status": 404,
    "keys": [
@@ -5132,7 +5104,7 @@
   },
   {
    "seed": 4,
-   "op": 17181,
+   "op": 17182,
    "route": "POST /health",
    "status": 200,
    "keys": [
@@ -5162,7 +5134,7 @@
   },
   {
    "seed": 4,
-   "op": 6131,
+   "op": 6133,
    "route": "POST /health",
    "status": 200,
    "keys": [
@@ -5192,7 +5164,7 @@
   },
   {
    "seed": 4,
-   "op": 5147,
+   "op": 5149,
    "route": "POST /health",
    "status": 200,
    "keys": [
@@ -5208,7 +5180,7 @@
   },
   {
    "seed": 4,
-   "op": 19348,
+   "op": 19349,
    "route": "POST /health",
    "status": 200,
    "keys": [
@@ -5268,7 +5240,7 @@
   },
   {
    "seed": 4,
-   "op": 7235,
+   "op": 7237,
    "route": "POST /health",
    "status": 200,
    "keys": [
@@ -5298,7 +5270,7 @@
   },
   {
    "seed": 4,
-   "op": 4846,
+   "op": 4848,
    "route": "POST /health",
    "status": 200,
    "keys": [
@@ -5358,7 +5330,7 @@
   },
   {
    "seed": 4,
-   "op": 4708,
+   "op": 4710,
    "route": "POST /health",
    "status": 200,
    "keys": [
@@ -5418,7 +5390,7 @@
   },
   {
    "seed": 4,
-   "op": 16463,
+   "op": 16464,
    "route": "POST /health",
    "status": 200,
    "keys": [
@@ -5445,7 +5417,7 @@
   },
   {
    "seed": 4,
-   "op": 6695,
+   "op": 6697,
    "route": "POST /health",
    "status": 200,
    "keys": [
@@ -5472,7 +5444,7 @@
   },
   {
    "seed": 4,
-   "op": 6612,
+   "op": 6614,
    "route": "POST /t/:other/jobs",
    "status": 404,
    "keys": [
@@ -5663,7 +5635,7 @@
   },
   {
    "seed": 4,
-   "op": 5429,
+   "op": 5431,
    "route": "POST /t/:other/jobs",
    "status": 404,
    "keys": [
@@ -5855,7 +5827,7 @@
   },
   {
    "seed": 4,
-   "op": 4586,
+   "op": 7443,
    "route": "POST /t/:other/jobs",
    "status": 404,
    "keys": [
@@ -5916,7 +5888,7 @@
   },
   {
    "seed": 4,
-   "op": 8614,
+   "op": 8616,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 204,
    "keys": [
@@ -5947,7 +5919,7 @@
   },
   {
    "seed": 4,
-   "op": 17642,
+   "op": 17643,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 204,
    "keys": [
@@ -5961,7 +5933,7 @@
   },
   {
    "seed": 4,
-   "op": 5140,
+   "op": 5142,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 204,
    "keys": [
@@ -5977,7 +5949,7 @@
   },
   {
    "seed": 4,
-   "op": 6153,
+   "op": 6155,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 204,
    "keys": [
@@ -6008,7 +5980,7 @@
   },
   {
    "seed": 4,
-   "op": 18713,
+   "op": 18714,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 204,
    "keys": [
@@ -6038,7 +6010,7 @@
   },
   {
    "seed": 4,
-   "op": 7510,
+   "op": 7623,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 204,
    "keys": [
@@ -6054,7 +6026,7 @@
   },
   {
    "seed": 4,
-   "op": 4554,
+   "op": 5774,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 204,
    "keys": [
@@ -6068,8 +6040,8 @@
    ]
   },
   {
-   "seed": 2,
-   "op": 355,
+   "seed": 4,
+   "op": 18190,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 204,
    "keys": [
@@ -6085,7 +6057,7 @@
   },
   {
    "seed": 4,
-   "op": 11436,
+   "op": 11438,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 204,
    "keys": [
@@ -6128,7 +6100,7 @@
   },
   {
    "seed": 4,
-   "op": 8365,
+   "op": 8367,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 204,
    "keys": [
@@ -6140,7 +6112,7 @@
   },
   {
    "seed": 4,
-   "op": 5649,
+   "op": 5651,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 404,
    "keys": [
@@ -6286,7 +6258,7 @@
   },
   {
    "seed": 4,
-   "op": 8029,
+   "op": 4545,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 404,
    "keys": [
@@ -6343,8 +6315,8 @@
    ]
   },
   {
-   "seed": 2,
-   "op": 486,
+   "seed": 3,
+   "op": 356,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 404,
    "keys": [
@@ -6435,7 +6407,7 @@
   },
   {
    "seed": 4,
-   "op": 5200,
+   "op": 5202,
    "route": "POST /t/:slug/dlq/:id/ack",
    "status": 404,
    "keys": [
@@ -6593,7 +6565,7 @@
   },
   {
    "seed": 4,
-   "op": 10588,
+   "op": 10590,
    "route": "POST /t/:slug/dlq/:id/lease",
    "status": 404,
    "keys": [
@@ -6608,7 +6580,7 @@
   },
   {
    "seed": 4,
-   "op": 8367,
+   "op": 8369,
    "route": "POST /t/:slug/dlq/:id/lease",
    "status": 404,
    "keys": [
@@ -6638,7 +6610,7 @@
   },
   {
    "seed": 4,
-   "op": 16338,
+   "op": 16339,
    "route": "POST /t/:slug/dlq/:id/lease",
    "status": 404,
    "keys": [
@@ -6696,7 +6668,7 @@
   },
   {
    "seed": 4,
-   "op": 5356,
+   "op": 5358,
    "route": "POST /t/:slug/dlq/:id/lease",
    "status": 404,
    "keys": [
@@ -6727,7 +6699,7 @@
   },
   {
    "seed": 4,
-   "op": 9967,
+   "op": 9969,
    "route": "POST /t/:slug/dlq/:id/lease",
    "status": 404,
    "keys": [
@@ -6817,7 +6789,7 @@
   },
   {
    "seed": 4,
-   "op": 11629,
+   "op": 11631,
    "route": "POST /t/:slug/dlq/:id/lease",
    "status": 404,
    "keys": [
@@ -6832,7 +6804,7 @@
   },
   {
    "seed": 4,
-   "op": 7757,
+   "op": 7759,
    "route": "POST /t/:slug/dlq/:id/lease",
    "status": 404,
    "keys": [
@@ -6877,7 +6849,7 @@
   },
   {
    "seed": 4,
-   "op": 5046,
+   "op": 5048,
    "route": "POST /t/:slug/dlq/:id/lease",
    "status": 404,
    "keys": [
@@ -7004,7 +6976,7 @@
   },
   {
    "seed": 4,
-   "op": 5064,
+   "op": 5066,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 202,
    "keys": [
@@ -7065,7 +7037,7 @@
   },
   {
    "seed": 4,
-   "op": 8127,
+   "op": 4543,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 202,
    "keys": [
@@ -7080,7 +7052,7 @@
   },
   {
    "seed": 4,
-   "op": 7294,
+   "op": 7296,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 202,
    "keys": [
@@ -7095,7 +7067,7 @@
   },
   {
    "seed": 4,
-   "op": 6032,
+   "op": 6034,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 202,
    "keys": [
@@ -7141,7 +7113,21 @@
   },
   {
    "seed": 4,
-   "op": 6350,
+   "op": 12808,
+   "route": "POST /t/:slug/dlq/:id/requeue",
+   "status": 202,
+   "keys": [
+    "att:3",
+    "job",
+    "quota:day",
+    "quota:exceeded",
+    "quota:hour",
+    "result"
+   ]
+  },
+  {
+   "seed": 4,
+   "op": 6352,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 202,
    "keys": [
@@ -7217,7 +7203,7 @@
   },
   {
    "seed": 4,
-   "op": 9907,
+   "op": 9909,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 202,
    "keys": [
@@ -7247,7 +7233,7 @@
   },
   {
    "seed": 4,
-   "op": 9698,
+   "op": 9700,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 202,
    "keys": [
@@ -7276,7 +7262,7 @@
   },
   {
    "seed": 4,
-   "op": 18791,
+   "op": 18792,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 404,
    "keys": [
@@ -7334,7 +7320,7 @@
   },
   {
    "seed": 4,
-   "op": 5674,
+   "op": 5676,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 404,
    "keys": [
@@ -7466,7 +7452,7 @@
   },
   {
    "seed": 4,
-   "op": 9973,
+   "op": 9975,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 404,
    "keys": [
@@ -7614,7 +7600,7 @@
   },
   {
    "seed": 4,
-   "op": 7053,
+   "op": 7055,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 404,
    "keys": [
@@ -7644,7 +7630,7 @@
   },
   {
    "seed": 4,
-   "op": 5236,
+   "op": 5238,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 404,
    "keys": [
@@ -7729,7 +7715,7 @@
   },
   {
    "seed": 4,
-   "op": 8287,
+   "op": 8289,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 429,
    "keys": [
@@ -7746,7 +7732,7 @@
   },
   {
    "seed": 4,
-   "op": 8290,
+   "op": 8292,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 429,
    "keys": [
@@ -7762,7 +7748,7 @@
   },
   {
    "seed": 4,
-   "op": 8269,
+   "op": 8271,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 429,
    "keys": [
@@ -7779,7 +7765,7 @@
   },
   {
    "seed": 4,
-   "op": 8321,
+   "op": 8323,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 429,
    "keys": [
@@ -7796,7 +7782,7 @@
   },
   {
    "seed": 4,
-   "op": 8340,
+   "op": 8342,
    "route": "POST /t/:slug/dlq/:id/requeue",
    "status": 429,
    "keys": [
@@ -7897,7 +7883,7 @@
   },
   {
    "seed": 4,
-   "op": 5352,
+   "op": 5354,
    "route": "POST /t/:slug/jobs",
    "status": 200,
    "keys": [
@@ -8054,7 +8040,7 @@
   },
   {
    "seed": 4,
-   "op": 6198,
+   "op": 6200,
    "route": "POST /t/:slug/jobs",
    "status": 200,
    "keys": [
@@ -8167,7 +8153,7 @@
   },
   {
    "seed": 2,
-   "op": 315,
+   "op": 395,
    "route": "POST /t/:slug/jobs",
    "status": 200,
    "keys": [
@@ -8452,7 +8438,7 @@
   },
   {
    "seed": 4,
-   "op": 5352,
+   "op": 5354,
    "route": "POST /t/:slug/jobs",
    "status": 202,
    "keys": [
@@ -8623,7 +8609,7 @@
   },
   {
    "seed": 2,
-   "op": 358,
+   "op": 480,
    "route": "POST /t/:slug/jobs",
    "status": 202,
    "keys": [
@@ -8639,7 +8625,7 @@
   },
   {
    "seed": 4,
-   "op": 6062,
+   "op": 6064,
    "route": "POST /t/:slug/jobs",
    "status": 202,
    "keys": [
@@ -8770,8 +8756,8 @@
    ]
   },
   {
-   "seed": 3,
-   "op": 411,
+   "seed": 2,
+   "op": 358,
    "route": "POST /t/:slug/jobs",
    "status": 202,
    "keys": [
@@ -9671,7 +9657,7 @@
   },
   {
    "seed": 2,
-   "op": 310,
+   "op": 415,
    "route": "POST /t/:slug/jobs",
    "status": 401,
    "keys": [
@@ -9702,7 +9688,7 @@
   },
   {
    "seed": 4,
-   "op": 8341,
+   "op": 8343,
    "route": "POST /t/:slug/jobs",
    "status": 401,
    "keys": [
@@ -10244,7 +10230,7 @@
   },
   {
    "seed": 4,
-   "op": 5049,
+   "op": 4414,
    "route": "POST /t/:slug/jobs",
    "status": 403,
    "keys": [
@@ -10341,7 +10327,7 @@
   },
   {
    "seed": 4,
-   "op": 10794,
+   "op": 10796,
    "route": "POST /t/:slug/jobs",
    "status": 409,
    "keys": [
@@ -10403,7 +10389,7 @@
   },
   {
    "seed": 4,
-   "op": 5408,
+   "op": 5410,
    "route": "POST /t/:slug/jobs",
    "status": 409,
    "keys": [
@@ -10434,7 +10420,7 @@
   },
   {
    "seed": 4,
-   "op": 6106,
+   "op": 6108,
    "route": "POST /t/:slug/jobs",
    "status": 409,
    "keys": [
@@ -10462,8 +10448,8 @@
    ]
   },
   {
-   "seed": 4,
-   "op": 854,
+   "seed": 2,
+   "op": 447,
    "route": "POST /t/:slug/jobs",
    "status": 409,
    "keys": [
@@ -10479,7 +10465,7 @@
   },
   {
    "seed": 4,
-   "op": 5036,
+   "op": 5038,
    "route": "POST /t/:slug/jobs",
    "status": 409,
    "keys": [
@@ -10612,7 +10598,7 @@
   },
   {
    "seed": 4,
-   "op": 6130,
+   "op": 6132,
    "route": "POST /t/:slug/jobs",
    "status": 429,
    "keys": [
@@ -10769,7 +10755,7 @@
   },
   {
    "seed": 4,
-   "op": 6961,
+   "op": 6963,
    "route": "POST /t/:slug/jobs",
    "status": 429,
    "keys": [
@@ -10784,7 +10770,7 @@
   },
   {
    "seed": 4,
-   "op": 9975,
+   "op": 9977,
    "route": "POST /t/:slug/jobs",
    "status": 429,
    "keys": [
@@ -10814,7 +10800,7 @@
   },
   {
    "seed": 2,
-   "op": 491,
+   "op": 303,
    "route": "POST /t/:slug/jobs",
    "status": 429,
    "keys": [
@@ -10878,7 +10864,7 @@
   },
   {
    "seed": 4,
-   "op": 8275,
+   "op": 8277,
    "route": "POST /t/:slug/jobs",
    "status": 429,
    "keys": [
@@ -10910,8 +10896,8 @@
    ]
   },
   {
-   "seed": 2,
-   "op": 303,
+   "seed": 4,
+   "op": 225,
    "route": "POST /t/:slug/jobs",
    "status": 429,
    "keys": [
@@ -10975,7 +10961,7 @@
   },
   {
    "seed": 4,
-   "op": 7391,
+   "op": 7393,
    "route": "POST /t/:slug/jobs",
    "status": 429,
    "keys": [
@@ -11024,7 +11010,7 @@
   },
   {
    "seed": 4,
-   "op": 5022,
+   "op": 5024,
    "route": "POST /t/:slug/jobs",
    "status": 429,
    "keys": [
@@ -11071,7 +11057,7 @@
   },
   {
    "seed": 4,
-   "op": 10189,
+   "op": 10191,
    "route": "POST /t/:slug/jobs",
    "status": 429,
    "keys": [
@@ -11165,8 +11151,8 @@
    ]
   },
   {
-   "seed": 2,
-   "op": 364,
+   "seed": 4,
+   "op": 948,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 204,
    "keys": [
@@ -11182,7 +11168,7 @@
   },
   {
    "seed": 4,
-   "op": 9401,
+   "op": 9403,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 204,
    "keys": [
@@ -11242,7 +11228,7 @@
   },
   {
    "seed": 4,
-   "op": 3055,
+   "op": 1452,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 204,
    "keys": [
@@ -11300,7 +11286,7 @@
   },
   {
    "seed": 4,
-   "op": 9996,
+   "op": 9998,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 204,
    "keys": [
@@ -11403,7 +11389,7 @@
   },
   {
    "seed": 4,
-   "op": 8999,
+   "op": 9001,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 204,
    "keys": [
@@ -11433,7 +11419,7 @@
   },
   {
    "seed": 4,
-   "op": 4710,
+   "op": 4585,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 204,
    "keys": [
@@ -11447,7 +11433,7 @@
   },
   {
    "seed": 2,
-   "op": 459,
+   "op": 357,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 204,
    "keys": [
@@ -11463,7 +11449,7 @@
   },
   {
    "seed": 4,
-   "op": 5021,
+   "op": 5023,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 204,
    "keys": [
@@ -11675,7 +11661,7 @@
   },
   {
    "seed": 4,
-   "op": 13473,
+   "op": 13474,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 401,
    "keys": [
@@ -11689,7 +11675,7 @@
   },
   {
    "seed": 4,
-   "op": 7666,
+   "op": 7668,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 401,
    "keys": [
@@ -11749,7 +11735,7 @@
   },
   {
    "seed": 4,
-   "op": 5759,
+   "op": 5761,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 401,
    "keys": [
@@ -11765,7 +11751,7 @@
   },
   {
    "seed": 4,
-   "op": 19862,
+   "op": 19863,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 401,
    "keys": [
@@ -11795,7 +11781,7 @@
   },
   {
    "seed": 4,
-   "op": 5491,
+   "op": 5493,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 401,
    "keys": [
@@ -11825,7 +11811,7 @@
   },
   {
    "seed": 4,
-   "op": 12336,
+   "op": 12338,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 401,
    "keys": [
@@ -11882,7 +11868,7 @@
   },
   {
    "seed": 4,
-   "op": 6553,
+   "op": 6555,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 401,
    "keys": [
@@ -11961,7 +11947,7 @@
   },
   {
    "seed": 4,
-   "op": 8623,
+   "op": 8625,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 404,
    "keys": [
@@ -12120,7 +12106,7 @@
   },
   {
    "seed": 4,
-   "op": 9980,
+   "op": 9982,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 404,
    "keys": [
@@ -12149,7 +12135,7 @@
   },
   {
    "seed": 4,
-   "op": 14302,
+   "op": 14303,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 404,
    "keys": [
@@ -12268,7 +12254,7 @@
   },
   {
    "seed": 4,
-   "op": 4563,
+   "op": 7518,
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 404,
    "keys": [
@@ -12618,7 +12604,7 @@
   },
   {
    "seed": 4,
-   "op": 7191,
+   "op": 7193,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 401,
    "keys": [
@@ -12633,7 +12619,7 @@
   },
   {
    "seed": 4,
-   "op": 8666,
+   "op": 8668,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 401,
    "keys": [
@@ -12649,7 +12635,7 @@
   },
   {
    "seed": 4,
-   "op": 8628,
+   "op": 8630,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 401,
    "keys": [
@@ -12709,7 +12695,7 @@
   },
   {
    "seed": 4,
-   "op": 13304,
+   "op": 13305,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 401,
    "keys": [
@@ -12739,7 +12725,7 @@
   },
   {
    "seed": 4,
-   "op": 11193,
+   "op": 11195,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 401,
    "keys": [
@@ -12829,7 +12815,7 @@
   },
   {
    "seed": 4,
-   "op": 14500,
+   "op": 14501,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 401,
    "keys": [
@@ -12873,7 +12859,7 @@
   },
   {
    "seed": 4,
-   "op": 14365,
+   "op": 14366,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 401,
    "keys": [
@@ -12919,7 +12905,7 @@
   },
   {
    "seed": 4,
-   "op": 9671,
+   "op": 9673,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 401,
    "keys": [
@@ -12933,7 +12919,7 @@
   },
   {
    "seed": 4,
-   "op": 8355,
+   "op": 8357,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 401,
    "keys": [
@@ -12946,7 +12932,7 @@
   },
   {
    "seed": 4,
-   "op": 4881,
+   "op": 4883,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 401,
    "keys": [
@@ -13070,7 +13056,7 @@
   },
   {
    "seed": 4,
-   "op": 9137,
+   "op": 7471,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 404,
    "keys": [
@@ -13128,7 +13114,7 @@
   },
   {
    "seed": 4,
-   "op": 9978,
+   "op": 9980,
    "route": "POST /t/:slug/jobs/:id/lease",
    "status": 404,
    "keys": [
@@ -13418,7 +13404,7 @@
   },
   {
    "seed": 4,
-   "op": 6707,
+   "op": 6709,
    "route": "POST /t/:slug/jobs/:id/requeue",
    "status": 404,
    "keys": [
@@ -13448,7 +13434,7 @@
   },
   {
    "seed": 4,
-   "op": 8227,
+   "op": 8229,
    "route": "POST /t/:slug/jobs/:id/requeue",
    "status": 404,
    "keys": [
@@ -13478,7 +13464,7 @@
   },
   {
    "seed": 4,
-   "op": 6175,
+   "op": 6177,
    "route": "POST /t/:slug/jobs/:id/requeue",
    "status": 404,
    "keys": [
@@ -13508,7 +13494,7 @@
   },
   {
    "seed": 4,
-   "op": 14477,
+   "op": 14478,
    "route": "POST /t/:slug/jobs/:id/requeue",
    "status": 404,
    "keys": [
@@ -13566,7 +13552,7 @@
   },
   {
    "seed": 4,
-   "op": 5724,
+   "op": 5726,
    "route": "POST /t/:slug/jobs/:id/requeue",
    "status": 404,
    "keys": [
@@ -13642,7 +13628,7 @@
   },
   {
    "seed": 4,
-   "op": 11462,
+   "op": 11464,
    "route": "POST /t/:slug/jobs/:id/requeue",
    "status": 404,
    "keys": [
@@ -13702,7 +13688,7 @@
   },
   {
    "seed": 4,
-   "op": 11644,
+   "op": 11646,
    "route": "POST /t/:slug/jobs/:id/requeue",
    "status": 404,
    "keys": [
@@ -13913,7 +13899,7 @@
   },
   {
    "seed": 4,
-   "op": 1990,
+   "op": 1811,
    "route": "POST /t/:slug/results",
    "status": 200,
    "keys": [
@@ -13985,7 +13971,7 @@
   },
   {
    "seed": 4,
-   "op": 5960,
+   "op": 5962,
    "route": "POST /t/:slug/results",
    "status": 200,
    "keys": [
@@ -14146,7 +14132,7 @@
   },
   {
    "seed": 4,
-   "op": 7124,
+   "op": 7126,
    "route": "POST /t/:slug/results",
    "status": 200,
    "keys": [
@@ -14298,7 +14284,7 @@
   },
   {
    "seed": 4,
-   "op": 8225,
+   "op": 8227,
    "route": "POST /t/:slug/results",
    "status": 202,
    "keys": [
@@ -14432,7 +14418,7 @@
   },
   {
    "seed": 4,
-   "op": 7233,
+   "op": 7235,
    "route": "POST /t/:slug/results",
    "status": 202,
    "keys": [
@@ -14492,7 +14478,7 @@
   },
   {
    "seed": 4,
-   "op": 6010,
+   "op": 6012,
    "route": "POST /t/:slug/results",
    "status": 202,
    "keys": [
@@ -14565,7 +14551,7 @@
   },
   {
    "seed": 4,
-   "op": 5233,
+   "op": 5235,
    "route": "POST /t/:slug/results",
    "status": 202,
    "keys": [
@@ -14804,7 +14790,7 @@
   },
   {
    "seed": 4,
-   "op": 4619,
+   "op": 6036,
    "route": "POST /t/:slug/results",
    "status": 400,
    "keys": [
@@ -14820,7 +14806,7 @@
   },
   {
    "seed": 4,
-   "op": 7232,
+   "op": 7234,
    "route": "POST /t/:slug/results",
    "status": 400,
    "keys": [
@@ -14908,7 +14894,7 @@
   },
   {
    "seed": 4,
-   "op": 17976,
+   "op": 17977,
    "route": "POST /t/:slug/results",
    "status": 400,
    "keys": [
@@ -14968,7 +14954,7 @@
   },
   {
    "seed": 4,
-   "op": 5252,
+   "op": 5254,
    "route": "POST /t/:slug/results",
    "status": 400,
    "keys": [
@@ -14998,7 +14984,7 @@
   },
   {
    "seed": 4,
-   "op": 10397,
+   "op": 10399,
    "route": "POST /t/:slug/results",
    "status": 400,
    "keys": [
@@ -15037,7 +15023,7 @@
   },
   {
    "seed": 4,
-   "op": 4783,
+   "op": 4785,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 204,
    "keys": [
@@ -15052,7 +15038,7 @@
   },
   {
    "seed": 4,
-   "op": 6708,
+   "op": 6710,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 204,
    "keys": [
@@ -15082,7 +15068,7 @@
   },
   {
    "seed": 4,
-   "op": 9130,
+   "op": 9132,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 204,
    "keys": [
@@ -15172,7 +15158,7 @@
   },
   {
    "seed": 4,
-   "op": 9966,
+   "op": 9968,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 204,
    "keys": [
@@ -15216,7 +15202,7 @@
   },
   {
    "seed": 4,
-   "op": 14300,
+   "op": 14301,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 204,
    "keys": [
@@ -15320,7 +15306,7 @@
   },
   {
    "seed": 4,
-   "op": 7708,
+   "op": 7710,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 204,
    "keys": [
@@ -15424,7 +15410,7 @@
   },
   {
    "seed": 4,
-   "op": 4770,
+   "op": 4772,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 204,
    "keys": [
@@ -15452,7 +15438,7 @@
   },
   {
    "seed": 4,
-   "op": 6710,
+   "op": 6712,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 404,
    "keys": [
@@ -15628,7 +15614,7 @@
   },
   {
    "seed": 4,
-   "op": 2895,
+   "op": 1836,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 404,
    "keys": [
@@ -15642,7 +15628,7 @@
   },
   {
    "seed": 4,
-   "op": 9974,
+   "op": 9976,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 404,
    "keys": [
@@ -15701,7 +15687,7 @@
   },
   {
    "seed": 4,
-   "op": 1836,
+   "op": 2104,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 404,
    "keys": [
@@ -15804,7 +15790,7 @@
   },
   {
    "seed": 4,
-   "op": 4714,
+   "op": 4716,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 404,
    "keys": [
@@ -15834,7 +15820,7 @@
   },
   {
    "seed": 4,
-   "op": 5054,
+   "op": 5056,
    "route": "POST /t/:slug/results/:id/ack",
    "status": 404,
    "keys": [
@@ -15932,21 +15918,6 @@
    "keys": []
   },
   {
-   "seed": 4,
-   "op": 4476,
-   "route": "POST /t/:slug/results/:id/lease",
-   "status": 404,
-   "keys": [
-    "att:0",
-    "dlq",
-    "job",
-    "quota:day",
-    "quota:exceeded",
-    "quota:hour",
-    "result"
-   ]
-  },
-  {
    "seed": 2,
    "op": 14,
    "route": "POST /t/:slug/results/:id/lease",
@@ -15961,7 +15932,7 @@
   },
   {
    "seed": 4,
-   "op": 8676,
+   "op": 8678,
    "route": "POST /t/:slug/results/:id/lease",
    "status": 404,
    "keys": [
@@ -15977,7 +15948,7 @@
   },
   {
    "seed": 4,
-   "op": 8622,
+   "op": 8624,
    "route": "POST /t/:slug/results/:id/lease",
    "status": 404,
    "keys": [
@@ -16007,7 +15978,7 @@
   },
   {
    "seed": 4,
-   "op": 6178,
+   "op": 6180,
    "route": "POST /t/:slug/results/:id/lease",
    "status": 404,
    "keys": [
@@ -16067,7 +16038,7 @@
   },
   {
    "seed": 4,
-   "op": 5932,
+   "op": 4552,
    "route": "POST /t/:slug/results/:id/lease",
    "status": 404,
    "keys": [
@@ -16083,7 +16054,7 @@
   },
   {
    "seed": 4,
-   "op": 4413,
+   "op": 12086,
    "route": "POST /t/:slug/results/:id/lease",
    "status": 404,
    "keys": [
@@ -16143,7 +16114,7 @@
   },
   {
    "seed": 4,
-   "op": 13177,
+   "op": 14508,
    "route": "POST /t/:slug/results/:id/lease",
    "status": 404,
    "keys": [
@@ -16203,7 +16174,22 @@
   },
   {
    "seed": 4,
-   "op": 5898,
+   "op": 4413,
+   "route": "POST /t/:slug/results/:id/lease",
+   "status": 404,
+   "keys": [
+    "att:5",
+    "dlq",
+    "job",
+    "quota:day",
+    "quota:exceeded",
+    "quota:hour",
+    "result"
+   ]
+  },
+  {
+   "seed": 4,
+   "op": 5900,
    "route": "POST /t/:slug/results/:id/lease",
    "status": 404,
    "keys": [
@@ -16245,7 +16231,7 @@
   },
   {
    "seed": 4,
-   "op": 12578,
+   "op": 12580,
    "route": "POST /t/:slug/results/:id/lease",
    "status": 404,
    "keys": [
@@ -16287,7 +16273,7 @@
   },
   {
    "seed": 4,
-   "op": 5671,
+   "op": 5673,
    "route": "PUT /t/:slug/jobs",
    "status": 405,
    "keys": [
@@ -16345,7 +16331,7 @@
   },
   {
    "seed": 4,
-   "op": 5701,
+   "op": 5703,
    "route": "PUT /t/:slug/jobs",
    "status": 405,
    "keys": [
@@ -16361,7 +16347,7 @@
   },
   {
    "seed": 4,
-   "op": 15055,
+   "op": 15056,
    "route": "PUT /t/:slug/jobs",
    "status": 405,
    "keys": [
@@ -16376,7 +16362,7 @@
   },
   {
    "seed": 4,
-   "op": 5831,
+   "op": 5833,
    "route": "PUT /t/:slug/jobs",
    "status": 405,
    "keys": [
@@ -16465,7 +16451,7 @@
   },
   {
    "seed": 4,
-   "op": 7084,
+   "op": 7086,
    "route": "PUT /t/:slug/jobs",
    "status": 405,
    "keys": [
@@ -16511,7 +16497,7 @@
   },
   {
    "seed": 4,
-   "op": 10960,
+   "op": 7523,
    "route": "PUT /t/:slug/jobs",
    "status": 405,
    "keys": [
@@ -16541,7 +16527,7 @@
   },
   {
    "seed": 4,
-   "op": 10702,
+   "op": 10704,
    "route": "PUT /t/:slug/jobs",
    "status": 405,
    "keys": [
@@ -16571,7 +16557,7 @@
   },
   {
    "seed": 4,
-   "op": 9667,
+   "op": 9669,
    "route": "PUT /t/:slug/jobs",
    "status": 405,
    "keys": [
@@ -17059,7 +17045,7 @@
   },
   {
    "seed": 2,
-   "op": 318,
+   "op": 370,
    "route": "tick",
    "status": 0,
    "keys": [

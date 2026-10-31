@@ -39,6 +39,14 @@ export const DO_VALUE_MAX = 2_000_000;
 // on the next read.
 export const RESPONSE_BUDGET = 8 * 1024 * 1024;
 const PAGE = 8;
+
+// A missing or non-numeric max keeps the route's default. Zero and
+// negative are one job, not that default: the caller named a count.
+export function clampedMax(raw, fallback) {
+  const n = parseInt(raw ?? "", 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(1, Math.min(100, n));
+}
 export const DEFAULT_QUOTA = { jobs_per_hour: 600, bytes_per_day: 256 * 1024 * 1024 };
 
 const enc = new TextEncoder();
@@ -328,7 +336,7 @@ export default {
       // attempt count (counted against the hourly job quota).
       if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
       if (request.method === "GET" && !itemId) {
-        const max = Math.max(1, Math.min(100, parseInt(url.searchParams.get("max") || "20", 10) || 20));
+        const max = clampedMax(url.searchParams.get("max"), 20);
         return forward(`/dlq?max=${max}`, { method: "POST" });
       }
       if (request.method === "POST" && verb === "ack") {
@@ -373,7 +381,7 @@ export default {
     }
     if (kind === "jobs" && request.method === "GET") {
       if (!(await bearerMatches(request, tenant.runner_token_sha256))) return json(401, { error: "runner token" });
-      const max = Math.max(1, Math.min(100, parseInt(url.searchParams.get("max") || "8", 10) || 8));
+      const max = clampedMax(url.searchParams.get("max"), 8);
       return forward(`/pull?max=${max}`, { method: "POST" });
     }
     if (kind === "jobs" && request.method === "POST" && ackId) {
@@ -393,7 +401,7 @@ export default {
     }
     if (kind === "results" && request.method === "GET") {
       if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
-      const max = Math.max(1, Math.min(100, parseInt(url.searchParams.get("max") || "20", 10) || 20));
+      const max = clampedMax(url.searchParams.get("max"), 20);
       return forward(`/results?max=${max}`, { method: "POST" });
     }
     if (kind === "results" && request.method === "POST" && ackId) {
@@ -459,8 +467,7 @@ export class TenantQueue {
       // the object, and the platform will kill that once the queue is
       // larger than memory. A short page is not the end: keep going
       // until a page is empty or the caller has enough.
-      const asked = parseInt(url.searchParams.get("max") || "8", 10);
-      const max = Math.max(1, Math.min(100, asked || 8));
+      const max = clampedMax(url.searchParams.get("max"), 8);
       const lease = parseInt(this.env.LEASE_MS || "", 10) || LEASE_MS_DEFAULT;
       const out = [];
       let used = 0;
@@ -491,7 +498,7 @@ export class TenantQueue {
       return out.length ? json(200, { jobs: out }) : new Response(null, { status: 204 });
     }
     if (url.pathname === "/dlq") {
-      const max = Math.max(1, Math.min(100, parseInt(url.searchParams.get("max") || "20", 10) || 20));
+      const max = clampedMax(url.searchParams.get("max"), 20);
       const out = [];
       let startAfter;
       for (;;) {
@@ -564,7 +571,7 @@ export class TenantQueue {
       return json(202, { id: rid });
     }
     if (url.pathname === "/results") {
-      const max = Math.max(1, Math.min(100, parseInt(url.searchParams.get("max") || "20", 10) || 20));
+      const max = clampedMax(url.searchParams.get("max"), 20);
       const out = [];
       let used = 0;
       let full = false;

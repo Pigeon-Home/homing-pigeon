@@ -709,6 +709,25 @@ test("fuzz: two overlapping pulls do not lease one job twice", async () => {
   void now;
 });
 
+test("fuzz: max=0 leases one job, not the default page", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 10, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  for (const id of ["m1", "m2", "m3"]) {
+    assert.equal((await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: await signedJob(id) }), env)).status, 202);
+  }
+  let r = await worker.fetch(req("/t/alice/jobs?max=0", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).jobs.length, 1);
+  r = await worker.fetch(req("/t/alice/jobs?max=-3", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).jobs.length, 1);
+  now += 1000;
+  r = await worker.fetch(req("/t/alice/jobs?max=abc", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).jobs.length, 3);
+});
+
 test("fuzz: a body over the day cap is refused while the hour is open", async () => {
   let now = 1_700_000_000_000;
   const quota = { jobs_per_hour: 6, bytes_per_day: 60_000 };

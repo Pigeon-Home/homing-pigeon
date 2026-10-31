@@ -216,13 +216,13 @@ shape, subject line, blank line, signed body):
 | Who | Call | Means |
 | --- | --- | --- |
 | SI | `POST /jobs` | a signed job in; 202 `{"id"}`, 200 `{"duplicate": true}` on a repeat of a live id, 409 naming the dead record when that id is on the dead-letter list, 400 when the id is not 1–128 of `[A-Za-z0-9._-]` (and not `.` or `..`) or the subject's id is not the `job_id` in the signed payload, 403 bad signature, 413 when the stored record (including its dead-letter copy) would pass the object's 2 MB key-and-value limit, 429 over quota |
-| runner | `GET /jobs?max=N` | lease up to N jobs, fewer when the envelopes would pass 8 MB; 200 `{"jobs": [{"id", "envelope", "attempt"}]}` or 204 |
+| runner | `GET /jobs?max=N` | lease up to N jobs (N clamped to 1..100; a non-number keeps 8; 0 or below is 1), fewer when the envelopes would pass 8 MB; 200 `{"jobs": [{"id", "envelope", "attempt"}]}` or 204 |
 | runner | `POST /jobs/<id>/ack` | the job is finished; 204, or 404 if already gone |
 | runner | `POST /jobs/<id>/lease` | renew the lease on a job still running, each pass, so a job longer than the lease is not offered again or dead-lettered; 204, or 404 when the queue no longer holds it leased |
 | runner | `POST /results` | a result envelope in; 202, 200 `{"duplicate": true}` when that id is already stored (the first envelope stays), 400 when the id is not a safe id, 413 over the same 2 MB storage limit |
-| SI | `GET /results?max=N` | results out, fewer than N when the envelopes would pass 8 MB; 200 `{"results": [...]}` or 204 |
+| SI | `GET /results?max=N` | results out (N clamped to 1..100; a non-number keeps 20; 0 or below is 1), fewer than N when the envelopes would pass 8 MB; 200 `{"results": [...]}` or 204 |
 | SI | `POST /results/<id>/ack` | the SI has it; 204 |
-| SI | `GET /dlq?max=N` | the dead-letter list: id, attempts, subject and times, no envelope; 200 `{"dead": [...]}` or 204 |
+| SI | `GET /dlq?max=N` | the dead-letter list (N clamped the same way as results): id, attempts, subject and times, no envelope; 200 `{"dead": [...]}` or 204 |
 | SI | `POST /dlq/<id>/ack` | drop a dead job; 204, or 404 |
 | SI | `POST /dlq/<id>/requeue` | offer it again with a fresh attempt count, counted against the hourly job quota; 202, 404, 409 when a job with that id is queued, 429 over quota |
 
