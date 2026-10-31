@@ -44,6 +44,9 @@ from runner.wire import subject as _subject  # noqa: E402
 MAX_BYTES = ch.FILE_MAX_BYTES
 _JOB_ID_RE = _subject.JOB_ID_RE        # the one grammar (Q121)
 _RESULT_ID_RE = _subject.RESULT_ID_RE
+# The writer names the first result "<id>.result.txt" and, while that
+# file is still in the outbox, the next one "<id>.result-<n>.txt".
+_RESULT_FILE_RE = re.compile(r"^(.+)\.result(?:-\d+)?\.txt$")
 
 
 def _job_id(subject):
@@ -53,6 +56,13 @@ def _job_id(subject):
 
 def _result_id(subject):
     m = _RESULT_ID_RE.search(subject or "")
+    return m.group(1) if m else None
+
+
+def _result_file_id(fname):
+    """The job a result file is named for. A collision name still
+    names that job; the whole filename does not."""
+    m = _RESULT_FILE_RE.match(fname or "")
     return m.group(1) if m else None
 
 
@@ -244,9 +254,22 @@ class QueuePipe:
 
     def push_results(self):
         unposted = set()
-        for fname, subject, body in ch.pending_results(self.channel):
-            ident = fname[:-len(".result.txt")] \
-                if fname.endswith(".result.txt") else fname
+        # "<id>.result-2.txt" sorts before "<id>.result.txt". The
+        # worker keeps the first envelope posted for an id, so the
+        # name the writer used first has to be posted first.
+        waiting = ch.pending_results(self.channel)
+        waiting.sort(key=lambda row: (not row[0].endswith(".result.txt"), row[0]))
+        for fname, subject, body in waiting:
+            file_id = _result_file_id(fname)
+            subject_id = _result_id(subject)
+            if file_id and subject_id and file_id != subject_id:
+                # The worker would file this under the subject and an
+                # ack of the filename would finish a different job.
+                ch.log(f"queues transport: result {fname} names {subject_id}, "
+                       f"not {file_id}; left for a person", "WARN")
+                unposted.add(file_id)
+                continue
+            ident = file_id or subject_id or fname
             text = ch.envelope(subject, body)
             if body and not body.endswith("\n"):
                 text += "\n"

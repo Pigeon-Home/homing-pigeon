@@ -155,6 +155,9 @@ def make_handler(state):
                     return self._send(503, b'{"error":"later"}')
                 parsed = ch.parse_envelope(body)
                 rid = q._result_id(parsed[0]) if parsed else None
+                if rid and rid in state.results:
+                    return self._send(200, json.dumps(
+                        {"id": rid, "duplicate": True}).encode())
                 state.results[rid] = body
                 return self._send(202, json.dumps({"id": rid}).encode())
             return self._send(404)
@@ -341,6 +344,59 @@ class QueuePipeTest(unittest.TestCase):
                        os.path.join(d["inbox_done"], "j1.job.txt"))
             pipe.push_results()
             self.assertEqual(w.state.acked, ["j1"])
+
+    def test_a_collision_name_keeps_the_first_result_and_acks_the_job(self):
+        # While j1.result.txt is still in the outbox, the writer names
+        # the next file j1.result-2.txt. That name sorts first, and it
+        # does not end in .result.txt, so the stem is not the job id.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            ch._atomic_write(os.path.join(d["outbox"], "j1.result.txt"),
+                             '[HOMING-PIGEON] result j1\n\n{"exit_code":0}\n')
+            ch._atomic_write(os.path.join(d["outbox"], "j1.result-2.txt"),
+                             '[HOMING-PIGEON] result j1\n\n{"exit_code":1}\n')
+            pipe.push_results()
+            self.assertIn("j1", w.state.acked)
+            self.assertNotIn("j1", w.state.jobs)
+            stored = w.state.results["j1"].replace(" ", "")
+            self.assertIn('"exit_code":0', stored)
+            self.assertNotIn('"exit_code":1', stored)
+            self.assertEqual(sorted(os.listdir(d["outbox"])), ["done"])
+
+    def test_a_collision_name_alone_still_acks_the_job(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            ch._atomic_write(os.path.join(d["outbox"], "j1.result-2.txt"),
+                             '[HOMING-PIGEON] result j1\n\n{"exit_code":0}\n')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", w.state.results)
+
+    def test_a_result_headed_for_a_different_job_is_left(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.jobs["j2"] = envelope("j2")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            ch._atomic_write(os.path.join(d["outbox"], "j1.result.txt"),
+                             '[HOMING-PIGEON] result j2\n\n{"exit_code":0}\n')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertEqual(w.state.results, {})
+            self.assertTrue(os.path.isfile(
+                os.path.join(d["outbox"], "j1.result.txt")))
+            self.assertIn("j1", w.state.jobs)
+            self.assertIn("j2", w.state.jobs)
 
     def test_a_result_the_worker_refuses_is_retried_not_dropped(self):
         with FakeWorker() as w:

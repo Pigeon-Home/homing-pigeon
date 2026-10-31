@@ -180,7 +180,10 @@ one we'd recommend to anyone who winces at the word "email."
   Outbound only: it leases jobs from the Worker, drops them in the
   channel inbox, posts the channel's results back and acks the job
   only once its result has been posted (or the core consumed it
-  without one). A malformed or oversize envelope is refused and
+  without one). A second file for the same id, named while the first
+  is still waiting, does not replace that result and still acks the
+  job. A file whose subject names a different job is left where it
+  is. A malformed or oversize envelope is refused and
   acked so it does not return every lease.
 - `send_job.py new --to-queue <url>` — the SI side. The SI token is
   read from `HP_SI_TOKEN` (or `--queue-token-env NAME`), never from
