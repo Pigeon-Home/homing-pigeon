@@ -53,4 +53,5 @@ fuzz file replays `test/fuzz.corpus.json`, then one seed of 20,000
 operations. Some operations send a pair of requests, in order, so a
 seed replays. One pinned test races two pulls. A body over the day
 cap, a requeue into a full hour, a qresult, and a second tenant,
-are in the mix.
+are in the mix. A pull's attempt and envelope are checked against
+storage, and a verb on the wrong list is a 404.

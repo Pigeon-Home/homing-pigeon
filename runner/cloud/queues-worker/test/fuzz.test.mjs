@@ -306,7 +306,7 @@ export async function runFuzz(seed, ops) {
     return jobs;
   };
 
-  const checkPull = (jobs, book, where) => {
+  const checkPull = (jobs, book, box, where) => {
     const seen = new Set();
     for (const job of jobs) {
       assert.ok(!seen.has(job.id), `${where}: ${job.id} handed out twice in one pull`);
@@ -314,6 +314,12 @@ export async function runFuzz(seed, ops) {
       const held = book.get(job.id);
       assert.ok(held === undefined || held <= now,
         `${where}: ${job.id} re-offered at ${now} while leased until ${held}`);
+      const stored = box.map.get(`job:${job.id}`);
+      assert.ok(stored, `${where}: pull handed ${job.id}, which is not queued`);
+      assert.equal(stored.attempts, job.attempt, `${where}: ${job.id} attempt ${job.attempt} but storage says ${stored && stored.attempts}`);
+      assert.equal(stored.envelope, job.envelope, `${where}: ${job.id} envelope does not match storage`);
+      assert.ok(stored.leased_until > now, `${where}: ${job.id} handed out with no live lease`);
+      assert.ok(job.attempt >= 1 && job.attempt <= MAX_ATTEMPTS, `${where}: ${job.id} attempt ${job.attempt}`);
     }
   };
 
@@ -366,7 +372,7 @@ export async function runFuzz(seed, ops) {
         assert.equal(snapshot(storage()), before, `${where}: a refused pull changed state`);
       } else if (r.status === 200) {
         const jobs = await readJobs(r);
-        checkPull(jobs, book, where);
+        checkPull(jobs, book, storage(), where);
         const bob = bobStorage();
         for (const job of jobs) {
           assert.ok(!(bob && bob.map.has(`job:${job.id}`)),
@@ -390,24 +396,31 @@ export async function runFuzz(seed, ops) {
         const p1 = `/t/alice/jobs${max()}`;
         const p2 = `/t/alice/jobs${max()}`;
         const a = await doFetch("GET", p1, { token: t1 });
-        const b = await doFetch("GET", p2, { token: t2 });
-        note(i, a.tuple); note(i, b.tuple);
+        note(i, a.tuple);
         const jobs = [];
-        if (t1 === `Bearer ${RUNNER}` && a.r.status === 200) jobs.push(await readJobs(a.r));
-        else if (t1 !== `Bearer ${RUNNER}`) assert.equal(a.r.status, 401, `${where}: bad token answered ${a.r.status}`);
-        if (t2 === `Bearer ${RUNNER}` && b.r.status === 200) jobs.push(await readJobs(b.r));
-        else if (t2 !== `Bearer ${RUNNER}`) assert.equal(b.r.status, 401, `${where}: bad token answered ${b.r.status}`);
+        if (t1 === `Bearer ${RUNNER}` && a.r.status === 200) {
+          const list = await readJobs(a.r);
+          checkPull(list, book, storage(), where);
+          jobs.push(list);
+        } else if (t1 !== `Bearer ${RUNNER}`) assert.equal(a.r.status, 401, `${where}: bad token answered ${a.r.status}`);
+        const b = await doFetch("GET", p2, { token: t2 });
+        note(i, b.tuple);
+        if (t2 === `Bearer ${RUNNER}` && b.r.status === 200) {
+          const list = await readJobs(b.r);
+          checkPull(list, book, storage(), where);
+          jobs.push(list);
+        } else if (t2 !== `Bearer ${RUNNER}`) assert.equal(b.r.status, 401, `${where}: bad token answered ${b.r.status}`);
         const ids = jobs.flat().map((j) => j.id);
         assert.equal(new Set(ids).size, ids.length, `${where}: ${ids} leased to both pulls`);
-        for (const list of jobs) checkPull(list, book, where);
         syncOutstanding();
       } else if (kind === "pull-ack") {
         const id = rnd() < 0.8 ? pick(IDS) : "ghost";
         const pull = await doFetch("GET", "/t/alice/jobs?max=5", { token: `Bearer ${RUNNER}` });
-        const ack = await doFetch("POST", `/t/alice/jobs/${id}/ack`, { token: `Bearer ${RUNNER}` });
-        note(i, pull.tuple); note(i, ack.tuple);
+        note(i, pull.tuple);
         const jobs = pull.r.status === 200 ? await readJobs(pull.r) : [];
-        checkPull(jobs, book, where);
+        checkPull(jobs, book, storage(), where);
+        const ack = await doFetch("POST", `/t/alice/jobs/${id}/ack`, { token: `Bearer ${RUNNER}` });
+        note(i, ack.tuple);
         if (ack.r.status === 204) {
           assert.ok(!storage().map.has(`job:${id}`), `${where}: ack of ${id} left the job queued`);
         }
@@ -447,7 +460,17 @@ export async function runFuzz(seed, ops) {
       } else if (which < 0.75) {
         const { r, tuple } = await doFetch("GET", "/t/alice/results", { token: `Bearer ${SI}` });
         note(i, tuple);
-        assert.ok([200, 204].includes(r.status), `${where}: results read answered ${r.status}`);
+        if (r.status === 200) {
+          const bob = bobStorage();
+          for (const row of (await r.json()).results) {
+            const stored = storage().map.get(`result:${row.id}`);
+            assert.ok(stored, `${where}: result ${row.id} is not alice's`);
+            assert.equal(stored.envelope, row.envelope, `${where}: result ${row.id} envelope does not match storage`);
+            assert.ok(!(bob && bob.map.has(`result:${row.id}`)), `${where}: alice was handed bob's result ${row.id}`);
+          }
+        } else {
+          assert.equal(r.status, 204, `${where}: results read answered ${r.status}`);
+        }
       } else {
         const { r, tuple } = await doFetch("POST", `/t/alice/results/${id}/ack`, { token: `Bearer ${SI}` });
         note(i, tuple);
@@ -476,8 +499,11 @@ export async function runFuzz(seed, ops) {
         note(i, tuple);
         assert.ok([200, 204].includes(r.status), `${where}: dlq read answered ${r.status}`);
         if (r.status === 200) {
+          const bob = bobStorage();
           for (const d of (await r.json()).dead) {
             assert.equal(d.attempts, MAX_ATTEMPTS, `${where}: dlq lists ${d.id} at ${d.attempts} attempts`);
+            assert.ok(storage().map.has(`dlq:${d.id}`), `${where}: dlq lists ${d.id}, which alice does not hold`);
+            assert.ok(!(bob && bob.map.has(`dlq:${d.id}`)), `${where}: alice was handed bob's dead job ${d.id}`);
           }
         }
       } else if (which < 0.7) {
@@ -489,7 +515,14 @@ export async function runFuzz(seed, ops) {
         const { r, tuple } = await doFetch("POST", `/t/alice/dlq/${id}/requeue`, { token: `Bearer ${SI}` });
         note(i, tuple);
         assert.ok([202, 404, 409, 429].includes(r.status), `${where}: requeue answered ${r.status}`);
-        if (r.status === 202) bump(hourKey(), 1);
+        if (r.status === 202) {
+          bump(hourKey(), 1);
+          const job = storage().map.get(`job:${id}`);
+          assert.ok(job, `${where}: requeue of ${id} stored nothing`);
+          assert.equal(job.attempts, 0, `${where}: requeue left ${id} at attempt ${job.attempts}`);
+          assert.equal(job.leased_until, 0, `${where}: requeue of ${id} left a lease`);
+          assert.ok(!storage().map.has(`dlq:${id}`), `${where}: requeue left ${id} dead`);
+        }
         if (r.status === 429) assert.equal(snapshot(storage()), before, `${where}: a 429 requeue changed state`);
       }
       }
@@ -507,8 +540,9 @@ export async function runFuzz(seed, ops) {
         note(i, tuple);
         assert.equal(snapshot(storage()), beforeAlice, `${where}: bob's pull changed alice`);
         if (r.status === 200) {
-          for (const job of await readJobs(r)) {
-            assert.ok(bobStorage().map.has(`job:${job.id}`), `${where}: bob was handed ${job.id} it does not hold`);
+          const jobs = await readJobs(r);
+          checkPull(jobs, new Map(), bobStorage(), where);
+          for (const job of jobs) {
             assert.ok(!storage().map.has(`job:${job.id}`), `${where}: bob was handed alice's ${job.id}`);
           }
         } else {
@@ -519,12 +553,31 @@ export async function runFuzz(seed, ops) {
         note(i, tuple);
         assert.equal(r.status, 401, `${where}: alice's runner opened bob (${r.status})`);
         assert.equal(snapshot(storage()), beforeAlice, `${where}: a refused bob pull changed alice`);
-      } else {
+      } else if (which < 0.84) {
         const id = pick(["b1", "b2"]);
         const { r, tuple } = await doFetch("POST", "/t/bob/jobs", { token: `Bearer ${BOB_SI}`, body: bobEnvelopes.get(id) });
         note(i, tuple);
         assert.equal(snapshot(storage()), beforeAlice, `${where}: bob's submit changed alice`);
         assert.ok([200, 202, 409, 429].includes(r.status), `${where}: bob's submit answered ${r.status}`);
+      } else {
+        const id = pick(["b1", "b2"]);
+        const body = `[HOMING-PIGEON] qresult ${id}\n\n{"exit_code":0}\n`;
+        const posted = await doFetch("POST", "/t/bob/results", { token: `Bearer ${BOB_RUNNER}`, body });
+        note(i, posted.tuple);
+        assert.equal(posted.r.status, 202, `${where}: bob's qresult answered ${posted.r.status}`);
+        assert.equal(snapshot(storage()), beforeAlice, `${where}: bob's qresult changed alice`);
+        const read = await doFetch("GET", "/t/alice/results", { token: `Bearer ${SI}` });
+        note(i, read.tuple);
+        if (read.r.status === 200) {
+          const ids = (await read.r.json()).results.map((row) => row.id);
+          assert.ok(!ids.includes(id), `${where}: alice was handed bob's result ${id}`);
+        } else {
+          assert.equal(read.r.status, 204, `${where}: alice's result read answered ${read.r.status}`);
+        }
+        const own = await doFetch("GET", "/t/bob/results", { token: `Bearer ${BOB_SI}` });
+        note(i, own.tuple);
+        assert.equal(own.r.status, 200, `${where}: bob's result read answered ${own.r.status}`);
+        assert.ok((await own.r.json()).results.some((row) => row.id === id), `${where}: bob lost qresult ${id}`);
       }
     } else {
       const choice = pick([
@@ -536,6 +589,9 @@ export async function runFuzz(seed, ops) {
         ["POST", "/health"],
         ["PUT", "/t/alice/jobs"],
         ["DELETE", "/t/alice/dlq"],
+        ["POST", "/t/alice/jobs/j1/requeue"],
+        ["POST", "/t/alice/results/j1/lease"],
+        ["POST", "/t/alice/dlq/j1/lease"],
       ]);
       const body = choice[0] === "POST" && choice[1].endsWith("/jobs") ? envelopes.get("j1") : undefined;
       const token = choice[1].includes("nobody") ? `Bearer ${SI}` : pick([`Bearer ${SI}`, `Bearer ${RUNNER}`, "Bearer " + "q".repeat(SI.length)]);
@@ -551,6 +607,10 @@ export async function runFuzz(seed, ops) {
       if (choice[1].includes("nobody") || choice[1] === "/t/alice" || choice[1] === "/t/alice/nope") {
         assert.equal(r.status, 404, `${where}: ${choice[1]} answered ${r.status}`);
         assert.equal(snapshot(storage()), before, `${where}: a miss changed state`);
+      }
+      if (/\/jobs\/[^/]+\/requeue$/.test(choice[1]) || /\/(?:results|dlq)\/[^/]+\/lease$/.test(choice[1])) {
+        assert.equal(r.status, 404, `${where}: ${choice[1]} answered ${r.status}`);
+        assert.equal(snapshot(storage()), before, `${where}: a verb on the wrong list changed state`);
       }
     }
     checkState(storage(), now, expected, where);
@@ -718,6 +778,39 @@ test("fuzz: a qresult is stored and a job subject on that route is not", async (
     body: "[HOMING-PIGEON] job qr1\n\n{\"exit_code\":0}\n",
   }), env);
   assert.equal(r.status, 400);
+  void now;
+});
+
+test("fuzz: a result stays in its tenant, and a verb on the wrong list is a 404", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now });
+  await addTenant(env);
+  await addTenant(env, "bob", { si: BOB_SI, runner: BOB_RUNNER, secret: BOB_SECRET });
+  const alice = () => env.objects.get("alice").state.storage;
+  let r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: await signedJob("only") }), env);
+  assert.equal(r.status, 202);
+  r = await worker.fetch(req("/t/alice/jobs?max=1", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 200);
+  const job = (await r.json()).jobs[0];
+  assert.equal(job.attempt, 1);
+  assert.equal(alice().map.get("job:only").envelope, job.envelope);
+  const before = snapshot(alice());
+  for (const path of ["/t/alice/jobs/only/requeue", "/t/alice/results/only/lease", "/t/alice/dlq/only/lease"]) {
+    r = await worker.fetch(req(path, { method: "POST", token: `Bearer ${SI}` }), env);
+    assert.equal(r.status, 404, path);
+    assert.equal(snapshot(alice()), before, path);
+  }
+  r = await worker.fetch(req("/t/bob/results", {
+    method: "POST", token: `Bearer ${BOB_RUNNER}`,
+    body: "[HOMING-PIGEON] qresult b1\n\n{\"exit_code\":0}\n",
+  }), env);
+  assert.equal(r.status, 202);
+  assert.equal(snapshot(alice()), before);
+  r = await worker.fetch(req("/t/alice/results", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 204);
+  r = await worker.fetch(req("/t/bob/results", { token: `Bearer ${BOB_SI}` }), env);
+  assert.equal(r.status, 200);
+  assert.deepEqual((await r.json()).results.map((row) => row.id), ["b1"]);
   void now;
 });
 
