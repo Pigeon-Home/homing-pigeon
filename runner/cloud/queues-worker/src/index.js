@@ -252,8 +252,13 @@ export function safeJobId(id) {
 }
 
 function bodyJobId(body) {
+  // The id the runner will trust is the one inside the signed payload,
+  // not a second parse of the whole body. Python's parser accepts
+  // NaN and Infinity; JSON.parse rejects the body and used to 400 a
+  // job the runner would run.
+  const ex = extractSigAndPayload(typeof body === "string" ? body : "");
   let obj;
-  try { obj = JSON.parse(body); } catch { return undefined; }
+  try { obj = pyLoads(ex ? ex.payload : (body || "")); } catch { return undefined; }
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return undefined;
   return typeof obj.job_id === "string" ? obj.job_id : undefined;
 }

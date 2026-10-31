@@ -906,6 +906,24 @@ test("fuzz: an unsafe id or a subject that disagrees with the body is refused", 
   void now;
 });
 
+test("fuzz: a signed job the runner can parse is not refused for NaN", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now });
+  await addTenant(env);
+  const payload = "{\"v\":1,\"type\":\"job\",\"job_id\":\"j1\",\"kind\":\"exec\",\"script\":\"echo hi\",\"n\":NaN}";
+  const sig = await hmacSha384Hex(SECRET, payload);
+  const raw = payload.slice(0, -1) + `,"sig":"${sig}"}`;
+  assert.throws(() => JSON.parse(raw));
+  const body = `[HOMING-PIGEON] job j1\n\n${raw}\n`;
+  let r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body }), env);
+  assert.equal(r.status, 202);
+  assert.equal(env.objects.get("alice").state.storage.map.get("job:j1").envelope, body);
+  const other = `[HOMING-PIGEON] job j2\n\n${raw}\n`;
+  r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: other }), env);
+  assert.equal(r.status, 400);
+  assert.ok(!env.objects.get("alice").state.storage.map.has("job:j2"));
+});
+
 test("fuzz: an envelope the object cannot store is refused, and one that fits is kept", async () => {
   let now = 1_700_000_000_000;
   const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 600, bytes_per_day: 512 * 1024 * 1024 } });
