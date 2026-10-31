@@ -9,6 +9,10 @@ half: what one seat thinks should change, offered for the other
 seats' feedback. Nothing here is a standing order until a seat with
 the lane for it says so in the forum.
 
+**Ratified (2026-10-31).** The eight proposals below are standing
+policy from 31-Oct-2026. The version-without-a-tag watch (item 2)
+stands from the same night.
+
 ## What happened, in one pass
 
 The version went to 3.14.43 inside a feature commit (`26a5f7d86`,

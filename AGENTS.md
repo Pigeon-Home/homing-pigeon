@@ -129,7 +129,8 @@ Those values live on the runner host. They do not travel through the SI chat.
    `docs/project`, `docs/archive`, `docs/reports` and `docs/seats`
    (the questions file, `status.txt`, the forum `.com.chat`).
    `runner/tests/test_reader_docs_quiet.py` holds the line.
-12. **Claude seats read `docs/project/claude-intuitions.md` first.**
+12. **Bravo seats read `docs/project/bravo.md` first.** The old
+   per-seat intuitions pages are retired to `docs/archive/`.
    Eight lines on answering the size of the ask, deciding only what
    already waits on the conductor, and not echoing another Claude
    seat.
