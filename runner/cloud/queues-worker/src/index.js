@@ -20,9 +20,11 @@
 // to the role's stored hash; a job body must carry a valid HMAC-SHA-384
 // under the tenant's shared secret when REJECT_INVALID_HMAC is on
 // (default on here, unlike the old boundary-only Worker); and the
-// tenant's quota (jobs per hour, bytes per day) must have room. The
-// quota is the spending cap Cloudflare does not provide: an exceeded
-// tenant gets 429 and nothing is stored or billed past it.
+// tenant's quota (jobs per hour, bytes per day) must have room.
+// Result bytes use that same daily cap on their own counter, so a
+// day full of jobs still accepts its answers. The quota is the
+// spending cap Cloudflare does not provide: an exceeded tenant gets
+// 429 and nothing is stored or billed past it.
 //
 // Tenant records come from the TENANTS KV namespace
 // ({si_token_sha256, runner_token_sha256, hmac_secret, quota}) or,
@@ -475,6 +477,7 @@ export default {
     }
     if (kind === "results" && request.method === "POST" && !ackId) {
       if (!(await bearerMatches(request, tenant.runner_token_sha256))) return json(401, { error: "runner token" });
+      if (quotaRejected(tenant.quota)) return json(400, { error: "quota is not a number" });
       const text = await request.text();
       if (utf8Length(text) > DO_VALUE_MAX) return json(413, { error: "envelope over the storage limit" });
       const parsed = parseEnvelope(text);
@@ -482,7 +485,14 @@ export default {
       const rid = resultIdOf(parsed.subject);
       if (!rid) return json(400, { error: "subject does not name a result" });
       if (!safeJobId(rid)) return json(400, { error: "job id is not a safe id" });
-      return forward("/result", { method: "POST", headers: { "x-hp-result-id": rid }, body: text });
+      return forward("/result", {
+        method: "POST",
+        headers: {
+          "x-hp-result-id": rid,
+          "x-hp-quota": JSON.stringify(tenant.quota || DEFAULT_QUOTA),
+        },
+        body: text,
+      });
     }
     if (kind === "results" && request.method === "GET") {
       if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
@@ -692,7 +702,23 @@ export class TenantQueue {
       if (resultStoredBytes(rid, text, now) > DO_VALUE_MAX) {
         return json(413, { error: "envelope over the storage limit" });
       }
+      // Results are not jobs, so they do not spend the hourly job
+      // cap or the job byte counter. They have the same daily byte
+      // cap on their own counter: a day full of jobs still accepts
+      // its answers, and a runner token cannot fill the object past
+      // that cap. A copy of a result already stored is not billed.
+      const quota = JSON.parse(request.headers.get("x-hp-quota") || "{}");
+      const dayKey = `quota:resday:${Math.floor(now / 86_400_000)}`;
+      const bytes = (await s.get(dayKey)) || 0;
+      const bpd = takeQuota(quota.bytes_per_day, DEFAULT_QUOTA.bytes_per_day);
+      const weight = utf8Length(text);
+      if (bytes + weight > bpd) {
+        await s.put("quota:exceeded", ((await s.get("quota:exceeded")) || 0) + 1);
+        const retry = 86400 - Math.floor((now % 86_400_000) / 1000);
+        return json(429, { error: "tenant quota exceeded", bytes_today: bytes }, { "retry-after": String(retry) });
+      }
       await s.put(`result:${rid}`, record);
+      await s.put(dayKey, bytes + weight);
       return json(202, { id: rid });
     }
     if (url.pathname === "/results") {

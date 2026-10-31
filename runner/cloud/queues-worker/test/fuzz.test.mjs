@@ -20,8 +20,9 @@
 //
 // A tuple is the route, the status, and what the storage showed:
 // the key prefixes, whether a job is leased (`held`), the highest
-// attempt still queued (`att:N`), and on a 429 which cap fired
-// (`cap:hour` or `cap:day`). The first seed and operation that
+// attempt still queued (`att:N`), the result byte counter
+// (`quota:resday`, separate from the job day), and on a 429 which
+// cap fired (`cap:hour` or `cap:day`). The first seed and operation that
 // reached each tuple is kept in fuzz.corpus.json. The replay runs
 // those prefixes before the long seed spends its budget. A failure
 // names its seed and the operation index, and the same seed replays
@@ -205,6 +206,7 @@ function keyPrefixes(box, now = 0, extra = []) {
   for (const [k, v] of box.map) {
     if (k.startsWith("quota:hour:")) names.add("quota:hour");
     else if (k.startsWith("quota:day:")) names.add("quota:day");
+    else if (k.startsWith("quota:resday:")) names.add("quota:resday");
     else if (k.startsWith("quota:")) names.add(k);
     else names.add(k.split(":")[0]);
     if (k.startsWith("job:") && v && typeof v === "object") {
@@ -775,6 +777,44 @@ test("fuzz: the daily cap counts UTF-8 bytes, not JavaScript characters", async 
   assert.equal(r.status, 429);
   assert.ok(!env.objects.get("alice").state.storage.map.has("job:j1"));
   assert.equal(env.objects.get("alice").state.storage.map.get(dayKey), smallBytes);
+});
+
+test("fuzz: result bytes have their own day cap, and a full job day does not block them", async () => {
+  let now = 1_700_000_000_000;
+  const job = await signedJob("j1");
+  const jobBytes = new TextEncoder().encode(job).length;
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 10, bytes_per_day: jobBytes } });
+  await addTenant(env);
+  const storage = () => env.objects.get("alice").state.storage;
+  let r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: job }), env);
+  assert.equal(r.status, 202);
+  r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: await signedJob("j2") }), env);
+  assert.equal(r.status, 429);
+  const answer = `[HOMING-PIGEON] result j1\n\n{"exit_code":0}\n`;
+  const answerBytes = new TextEncoder().encode(answer).length;
+  assert.ok(answerBytes <= jobBytes);
+  r = await worker.fetch(req("/t/alice/results", { method: "POST", token: `Bearer ${RUNNER}`, body: answer }), env);
+  assert.equal(r.status, 202);
+  const resKey = `quota:resday:${Math.floor(now / 86_400_000)}`;
+  assert.equal(storage().map.get(resKey), answerBytes);
+  assert.equal(storage().map.get(`quota:day:${Math.floor(now / 86_400_000)}`), jobBytes);
+  const again = await worker.fetch(req("/t/alice/results", { method: "POST", token: `Bearer ${RUNNER}`, body: answer }), env);
+  assert.equal(again.status, 200);
+  assert.equal(storage().map.get(resKey), answerBytes);
+  const fat = `[HOMING-PIGEON] result j2\n\n${"x".repeat(jobBytes)}\n`;
+  assert.ok(new TextEncoder().encode(fat).length > jobBytes);
+  const before = storage().map.get(resKey);
+  r = await worker.fetch(req("/t/alice/results", { method: "POST", token: `Bearer ${RUNNER}`, body: fat }), env);
+  assert.equal(r.status, 429);
+  const dayRetry = 86400 - Math.floor((now % 86_400_000) / 1000);
+  assert.equal(Number(r.headers.get("retry-after")), dayRetry);
+  assert.equal(storage().map.get(resKey), before);
+  assert.ok(!storage().map.has("result:j2"));
+  const bad = makeEnv({ clock: () => now, quota: { bytes_per_day: "lots" } });
+  await addTenant(bad);
+  r = await worker.fetch(req("/t/alice/results", { method: "POST", token: `Bearer ${RUNNER}`, body: answer }), bad);
+  assert.equal(r.status, 400);
+  assert.equal(bad.TENANT_QUEUE.get("alice").state.storage.map.size, 0);
 });
 
 test("fuzz: bob's runner does not see alice's job", async () => {

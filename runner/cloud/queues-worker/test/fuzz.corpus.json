@@ -14,6 +14,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -29,6 +30,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -44,6 +46,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -72,6 +75,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -88,6 +92,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -103,6 +108,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -117,6 +123,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -130,7 +137,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -146,6 +154,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -161,6 +170,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -175,6 +185,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -191,6 +202,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -206,6 +218,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -221,6 +234,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -235,6 +249,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -251,6 +266,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -266,6 +282,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -281,6 +298,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -295,6 +313,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -307,6 +326,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -329,6 +349,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -344,6 +365,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -360,6 +382,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -375,6 +398,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -391,6 +415,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -407,6 +432,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -422,6 +448,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -437,6 +464,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -453,6 +481,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -468,6 +497,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -483,6 +513,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -497,6 +528,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -510,6 +542,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -524,6 +557,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -537,6 +571,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -553,6 +588,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -568,6 +604,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -583,6 +620,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -597,6 +635,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -613,6 +652,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -628,6 +668,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -643,6 +684,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -657,6 +699,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -671,6 +714,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -700,6 +744,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -715,6 +760,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -729,6 +775,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -745,6 +792,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -760,6 +808,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -775,6 +824,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -789,6 +839,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -805,6 +856,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -820,6 +872,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -833,6 +886,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -845,6 +899,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -869,6 +924,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -885,6 +941,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -900,6 +957,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -916,6 +974,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -931,6 +990,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -947,6 +1007,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -962,7 +1023,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -977,6 +1039,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -993,6 +1056,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1008,6 +1072,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1024,6 +1089,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1039,6 +1105,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1052,6 +1119,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1066,6 +1134,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1092,6 +1161,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1107,6 +1177,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1135,6 +1206,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1149,6 +1221,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1177,6 +1250,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1205,6 +1279,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1220,6 +1295,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1248,6 +1324,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1263,6 +1340,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1277,6 +1355,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1292,6 +1371,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1320,6 +1400,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1332,6 +1413,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1355,6 +1437,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1385,6 +1468,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1400,6 +1484,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1428,6 +1513,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1457,6 +1543,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1472,6 +1559,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1487,6 +1575,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1515,6 +1604,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1544,6 +1634,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1559,6 +1650,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1574,6 +1666,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1602,6 +1695,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1631,6 +1725,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1646,7 +1741,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -1661,6 +1757,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1689,6 +1786,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1718,6 +1816,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1733,7 +1832,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -1748,6 +1848,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1776,6 +1877,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1792,6 +1894,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1822,6 +1925,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1850,6 +1954,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1866,6 +1971,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1881,6 +1987,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1896,6 +2003,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1925,6 +2033,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1940,7 +2049,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -1955,6 +2065,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -1983,6 +2094,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2012,6 +2124,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2027,7 +2140,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -2042,6 +2156,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2058,6 +2173,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2073,7 +2189,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -2088,6 +2205,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2101,6 +2219,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2125,6 +2244,7 @@
     "dlq",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2137,6 +2257,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2155,6 +2276,7 @@
    "route": "GET /t/:slug/jobs?max",
    "status": 204,
    "keys": [
+    "quota:resday",
     "result"
    ]
   },
@@ -2177,6 +2299,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2191,6 +2314,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2204,6 +2328,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2220,6 +2345,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2235,6 +2361,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2250,6 +2377,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2278,6 +2406,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2294,6 +2423,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2309,6 +2439,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2324,6 +2455,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2338,6 +2470,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2354,6 +2487,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2369,6 +2503,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2384,6 +2519,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2412,6 +2548,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2441,6 +2578,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2456,6 +2594,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2471,6 +2610,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2485,6 +2625,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2501,6 +2642,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2516,7 +2658,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -2531,6 +2674,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2546,6 +2690,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2560,6 +2705,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2573,6 +2719,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2585,6 +2732,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2617,6 +2765,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2632,6 +2781,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2648,6 +2798,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2663,6 +2814,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2693,6 +2845,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2708,6 +2861,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2724,6 +2878,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2739,6 +2894,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2755,6 +2911,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2770,7 +2927,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -2785,6 +2943,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2801,6 +2960,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2816,6 +2976,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2830,6 +2991,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2846,6 +3008,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2861,6 +3024,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2877,6 +3041,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2892,6 +3057,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2908,6 +3074,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2923,7 +3090,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -2938,6 +3106,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2954,6 +3123,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2969,6 +3139,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2982,6 +3153,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -2994,6 +3166,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3003,6 +3176,7 @@
    "route": "GET /t/:slug/jobs",
    "status": 204,
    "keys": [
+    "quota:resday",
     "result"
    ]
   },
@@ -3016,6 +3190,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3044,6 +3219,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3059,6 +3235,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3087,6 +3264,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3102,6 +3280,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3117,6 +3296,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3132,6 +3312,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3159,6 +3340,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3172,6 +3354,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3188,6 +3371,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3203,6 +3387,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3218,6 +3403,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3233,6 +3419,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3247,6 +3434,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3274,6 +3462,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3287,6 +3476,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3303,6 +3493,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3318,7 +3509,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -3333,6 +3525,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3347,6 +3540,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3361,6 +3555,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3374,6 +3569,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3402,6 +3598,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3417,6 +3614,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3431,6 +3629,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3445,6 +3644,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3458,6 +3658,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3471,6 +3672,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3483,6 +3685,7 @@
     "dlq",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3495,6 +3698,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3510,6 +3714,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3524,6 +3729,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3537,6 +3743,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3553,6 +3760,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3568,6 +3776,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3583,6 +3792,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3597,6 +3807,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3611,6 +3822,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3627,6 +3839,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3642,6 +3855,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3657,6 +3871,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3671,6 +3886,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3685,6 +3901,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3698,6 +3915,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3714,6 +3932,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3729,6 +3948,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3743,6 +3963,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3758,6 +3979,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3772,6 +3994,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3786,6 +4009,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3802,6 +4026,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3817,6 +4042,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3832,6 +4058,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3846,6 +4073,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3859,6 +4087,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3875,6 +4104,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3890,6 +4120,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3905,6 +4136,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3919,6 +4151,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3933,6 +4166,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3946,6 +4180,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3959,6 +4194,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3971,6 +4207,7 @@
     "dlq",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3983,6 +4220,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -3992,6 +4230,7 @@
    "route": "GET /t/:slug/results",
    "status": 200,
    "keys": [
+    "quota:resday",
     "result"
    ]
   },
@@ -4046,7 +4285,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -4075,7 +4315,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -4106,6 +4347,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4120,6 +4362,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4136,6 +4379,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4151,6 +4395,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4166,6 +4411,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4194,6 +4440,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4223,6 +4470,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4238,6 +4486,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4252,6 +4501,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4268,6 +4518,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4283,6 +4534,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4298,6 +4550,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4312,6 +4565,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4328,6 +4582,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4343,6 +4598,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4358,6 +4614,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4372,6 +4629,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4388,6 +4646,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4403,6 +4662,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4418,6 +4678,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4431,6 +4692,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4443,6 +4705,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4458,6 +4721,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4472,6 +4736,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4488,6 +4753,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4503,6 +4769,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4517,6 +4784,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4533,6 +4801,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4548,6 +4817,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4563,6 +4833,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4577,6 +4848,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4593,6 +4865,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4608,6 +4881,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4622,6 +4896,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4638,6 +4913,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4653,6 +4929,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4667,6 +4944,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4683,6 +4961,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4698,6 +4977,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4712,6 +4992,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4725,6 +5006,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4737,6 +5019,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4752,6 +5035,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4766,6 +5050,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4795,6 +5080,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4810,6 +5096,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4825,6 +5112,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4841,6 +5129,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4856,6 +5145,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4870,6 +5160,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4886,6 +5177,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4901,6 +5193,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4916,6 +5209,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4930,6 +5224,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4946,6 +5241,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4961,6 +5257,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4976,6 +5273,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -4990,6 +5288,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5006,6 +5305,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5021,6 +5321,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5036,6 +5337,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5050,6 +5352,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5063,6 +5366,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5075,6 +5379,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5099,6 +5404,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5113,6 +5419,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5129,6 +5436,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5144,6 +5452,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5159,6 +5468,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5175,6 +5485,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5190,6 +5501,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5205,6 +5517,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5219,6 +5532,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5235,6 +5549,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5250,6 +5565,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5265,6 +5581,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5279,6 +5596,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5295,6 +5613,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5310,7 +5629,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -5325,6 +5645,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5339,6 +5660,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5355,6 +5677,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5370,6 +5693,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5385,6 +5709,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5399,6 +5724,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5412,6 +5738,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5424,6 +5751,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5439,6 +5767,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5453,6 +5782,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5466,6 +5796,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5482,6 +5813,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5497,6 +5829,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5512,6 +5845,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5526,6 +5860,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5542,6 +5877,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5557,6 +5893,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5572,6 +5909,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5600,6 +5938,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5614,6 +5953,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5630,6 +5970,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5645,6 +5986,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5660,6 +6002,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5688,6 +6031,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5717,6 +6061,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5732,7 +6077,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -5747,6 +6093,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5762,6 +6109,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5776,6 +6124,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5792,6 +6141,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5807,6 +6157,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5822,6 +6173,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5836,6 +6188,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5862,6 +6215,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5874,6 +6228,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5899,6 +6254,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5914,6 +6270,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5928,6 +6285,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5944,6 +6302,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5959,6 +6318,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5975,6 +6335,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -5990,6 +6351,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6005,6 +6367,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6021,6 +6384,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6036,6 +6400,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6052,6 +6417,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6067,6 +6433,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6082,6 +6449,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6095,6 +6463,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6107,6 +6476,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6122,6 +6492,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6136,6 +6507,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6165,6 +6537,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6180,6 +6553,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6195,6 +6569,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6223,6 +6598,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6237,6 +6613,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6253,6 +6630,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6268,6 +6646,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6283,6 +6662,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6311,6 +6691,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6327,6 +6708,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6342,6 +6724,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6357,6 +6740,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6371,6 +6755,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6387,6 +6772,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6402,7 +6788,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -6417,6 +6804,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6432,6 +6820,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6446,6 +6835,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6462,6 +6852,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6477,6 +6868,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6492,6 +6884,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6506,6 +6899,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6532,6 +6926,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6544,6 +6939,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6575,6 +6971,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6589,6 +6986,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6605,6 +7003,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6620,6 +7019,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6635,6 +7035,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6663,6 +7064,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6679,6 +7081,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6694,6 +7097,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6708,7 +7112,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -6722,6 +7127,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6738,6 +7144,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6753,6 +7160,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6768,6 +7176,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6784,6 +7193,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6799,6 +7209,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6814,6 +7225,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6828,6 +7240,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6844,6 +7257,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6859,6 +7273,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6874,6 +7289,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6888,6 +7304,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6914,6 +7331,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6926,6 +7344,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6957,6 +7376,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6971,6 +7391,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -6987,6 +7408,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7002,6 +7424,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7016,6 +7439,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7032,6 +7456,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7047,6 +7472,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7062,6 +7488,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7078,6 +7505,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7093,6 +7521,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7108,6 +7537,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7122,6 +7552,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7138,6 +7569,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7153,6 +7585,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7167,6 +7600,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7183,6 +7617,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7198,7 +7633,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -7213,6 +7649,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7228,6 +7665,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7242,6 +7680,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7257,6 +7696,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7271,6 +7711,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7300,6 +7741,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7330,6 +7772,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7345,6 +7788,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7359,6 +7803,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7375,6 +7820,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7390,6 +7836,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7405,6 +7852,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7433,6 +7881,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7447,6 +7896,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7460,7 +7910,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -7476,6 +7927,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7491,6 +7943,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7506,6 +7959,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7534,6 +7988,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7550,6 +8005,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7565,7 +8021,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -7580,6 +8037,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7595,6 +8053,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7609,6 +8068,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7625,6 +8085,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7640,6 +8101,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7655,6 +8117,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7669,6 +8132,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7682,6 +8146,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7694,6 +8159,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7727,6 +8193,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7743,6 +8210,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7760,6 +8228,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7777,6 +8246,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7793,6 +8263,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7808,6 +8279,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7822,6 +8294,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7835,6 +8308,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7863,6 +8337,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7878,6 +8353,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7893,6 +8369,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7908,6 +8385,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7936,6 +8414,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7963,6 +8442,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -7991,6 +8471,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8006,6 +8487,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8021,6 +8503,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8049,6 +8532,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8077,6 +8561,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8092,6 +8577,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8107,6 +8593,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8121,6 +8608,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8135,6 +8623,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8164,6 +8653,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8179,7 +8669,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -8194,6 +8685,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8209,6 +8701,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8250,6 +8743,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8263,6 +8757,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8279,6 +8774,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8294,6 +8790,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8309,6 +8806,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8323,6 +8821,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8336,6 +8835,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8351,6 +8851,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8365,6 +8866,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8379,6 +8881,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8405,6 +8908,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8433,6 +8937,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8448,6 +8953,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8463,6 +8969,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8491,6 +8998,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8505,6 +9013,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8521,6 +9030,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8536,6 +9046,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8551,6 +9062,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8579,6 +9091,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8620,6 +9133,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8635,6 +9149,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8650,6 +9165,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8664,6 +9180,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8693,6 +9210,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8708,7 +9226,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -8723,6 +9242,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8738,6 +9258,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8752,6 +9273,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8768,6 +9290,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8783,6 +9306,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8798,6 +9322,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8826,6 +9351,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8839,6 +9365,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8854,6 +9381,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8868,6 +9396,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8897,6 +9426,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8927,6 +9457,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8942,6 +9473,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8970,6 +9502,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -8999,6 +9532,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9014,6 +9548,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9029,6 +9564,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9057,6 +9593,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9071,6 +9608,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9100,6 +9638,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9115,6 +9654,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9130,6 +9670,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9158,6 +9699,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9174,6 +9716,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9189,7 +9732,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -9204,6 +9748,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9219,6 +9764,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9233,6 +9779,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9249,6 +9796,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9264,7 +9812,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -9279,6 +9828,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9294,6 +9844,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9322,6 +9873,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9335,6 +9887,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9359,6 +9912,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9390,6 +9944,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9404,6 +9959,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9417,6 +9973,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9433,6 +9990,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9448,6 +10006,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9463,6 +10022,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9491,6 +10051,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9520,6 +10081,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9535,6 +10097,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9550,6 +10113,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9578,6 +10142,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9594,6 +10159,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9609,6 +10175,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9624,6 +10191,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9652,6 +10220,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9668,6 +10237,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9683,7 +10253,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -9698,6 +10269,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9713,6 +10285,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9727,6 +10300,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9743,6 +10317,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9758,6 +10333,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9773,6 +10349,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9801,6 +10378,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9814,6 +10392,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9826,6 +10405,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9857,6 +10437,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9871,6 +10452,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9884,6 +10466,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9900,6 +10483,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9915,6 +10499,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9930,6 +10515,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9958,6 +10544,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9974,6 +10561,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -9989,6 +10577,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10004,6 +10593,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10018,6 +10608,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10032,7 +10623,22 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
+   ]
+  },
+  {
+   "seed": 4,
+   "op": 9974,
+   "route": "POST /t/:slug/jobs",
+   "status": 403,
+   "keys": [
+    "att:2",
+    "job",
+    "quota:day",
+    "quota:exceeded",
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -10061,6 +10667,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10076,6 +10683,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10091,6 +10699,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10119,6 +10728,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10135,6 +10745,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10150,7 +10761,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -10165,6 +10777,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10180,6 +10793,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10194,6 +10808,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10210,6 +10825,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10225,7 +10841,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -10240,6 +10857,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10255,6 +10873,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10269,6 +10888,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10282,6 +10902,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10306,6 +10927,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10337,6 +10959,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10353,6 +10976,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10368,6 +10992,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10384,6 +11009,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10399,6 +11025,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10415,6 +11042,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10430,6 +11058,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10444,6 +11073,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10460,6 +11090,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10475,6 +11106,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10491,6 +11123,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10506,6 +11139,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10519,6 +11153,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10531,6 +11166,7 @@
     "dlq",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10547,6 +11183,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10562,6 +11199,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10593,6 +11231,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10609,6 +11248,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10625,6 +11265,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10655,6 +11296,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10671,6 +11313,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10686,6 +11329,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10703,6 +11347,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10719,6 +11364,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10735,6 +11381,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10765,6 +11412,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10779,7 +11427,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -10795,6 +11444,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10812,6 +11462,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10828,6 +11479,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10844,6 +11496,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10859,6 +11512,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10876,6 +11530,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10892,6 +11547,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10909,6 +11565,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10925,6 +11582,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10941,6 +11599,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10956,6 +11615,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10972,6 +11632,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -10989,6 +11650,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11005,7 +11667,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -11021,6 +11684,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11037,6 +11701,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11052,6 +11717,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11068,6 +11734,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11082,6 +11749,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11095,6 +11763,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11118,6 +11787,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11133,6 +11803,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11147,6 +11818,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11163,6 +11835,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11178,6 +11851,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11193,6 +11867,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11207,6 +11882,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11223,6 +11899,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11238,6 +11915,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11253,7 +11931,23 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
+   ]
+  },
+  {
+   "seed": 4,
+   "op": 9970,
+   "route": "POST /t/:slug/jobs/:id/ack",
+   "status": 204,
+   "keys": [
+    "att:2",
+    "held",
+    "job",
+    "quota:day",
+    "quota:exceeded",
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -11281,6 +11975,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11295,6 +11990,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11324,6 +12020,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11339,6 +12036,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11354,6 +12052,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11368,6 +12067,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11384,6 +12084,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11399,6 +12100,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11414,6 +12116,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11428,6 +12131,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11444,6 +12148,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11459,6 +12164,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11474,6 +12180,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11502,6 +12209,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11528,6 +12236,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11552,6 +12261,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11566,6 +12276,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11582,6 +12293,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11597,6 +12309,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11625,6 +12338,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11641,6 +12355,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11656,6 +12371,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11670,6 +12386,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11686,6 +12403,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11701,6 +12419,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11716,6 +12435,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11730,6 +12450,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11746,6 +12467,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11761,6 +12483,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11776,6 +12499,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11790,6 +12514,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11806,6 +12531,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11821,6 +12547,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11836,6 +12563,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11850,6 +12578,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11863,6 +12592,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11875,6 +12605,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11899,6 +12630,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11913,6 +12645,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11926,6 +12659,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11942,6 +12676,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11957,6 +12692,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -11972,6 +12708,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12000,6 +12737,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12014,6 +12752,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12043,6 +12782,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12058,6 +12798,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12073,6 +12814,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12101,6 +12843,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12114,7 +12857,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -12130,6 +12874,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12145,7 +12890,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -12160,6 +12906,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12175,6 +12922,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12203,6 +12951,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12219,6 +12968,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12234,6 +12984,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12249,6 +13000,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12263,6 +13015,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12279,6 +13032,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12294,7 +13048,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -12309,6 +13064,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12324,6 +13080,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12338,6 +13095,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12351,6 +13109,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12375,6 +13134,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12393,6 +13153,7 @@
    "route": "POST /t/:slug/jobs/:id/ack",
    "status": 404,
    "keys": [
+    "quota:resday",
     "result"
    ]
   },
@@ -12416,6 +13177,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12431,6 +13193,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12447,6 +13210,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12462,6 +13226,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12478,6 +13243,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12493,6 +13259,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12523,6 +13290,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12538,7 +13306,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -12553,6 +13322,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12569,6 +13339,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12584,7 +13355,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -12599,6 +13371,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12614,6 +13387,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12630,6 +13404,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12645,6 +13420,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12660,6 +13436,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12674,6 +13451,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12690,6 +13468,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12705,6 +13484,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12720,6 +13500,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12734,6 +13515,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12750,6 +13532,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12765,6 +13548,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12780,6 +13564,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12794,6 +13579,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12810,6 +13596,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12825,6 +13612,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12840,6 +13628,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12854,6 +13643,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12870,6 +13660,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12885,6 +13676,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12900,6 +13692,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12914,6 +13707,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12927,6 +13721,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12939,6 +13734,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12961,6 +13757,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12975,6 +13772,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -12991,6 +13789,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13006,6 +13805,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13021,6 +13821,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13035,6 +13836,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13051,6 +13853,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13066,6 +13869,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13081,6 +13885,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13095,6 +13900,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13109,6 +13915,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13122,7 +13929,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -13138,6 +13946,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13153,6 +13962,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13168,6 +13978,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13182,6 +13993,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13211,6 +14023,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13226,7 +14039,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -13241,6 +14055,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13256,6 +14071,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13270,6 +14086,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13286,6 +14103,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13301,6 +14119,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13316,6 +14135,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13330,6 +14150,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13356,6 +14177,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13368,6 +14190,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13399,6 +14222,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13413,6 +14237,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13429,6 +14254,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13444,6 +14270,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13459,6 +14286,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13473,6 +14301,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13489,6 +14318,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13504,6 +14334,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13519,6 +14350,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13547,6 +14379,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13563,6 +14396,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13578,6 +14412,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13593,6 +14428,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13607,6 +14443,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13623,6 +14460,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13638,6 +14476,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13653,6 +14492,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13667,6 +14507,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13683,6 +14524,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13698,6 +14540,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13713,6 +14556,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13727,6 +14571,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13740,6 +14585,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13752,6 +14598,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13776,6 +14623,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13790,6 +14638,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13803,6 +14652,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13819,6 +14669,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13834,6 +14685,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13849,6 +14701,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13863,6 +14716,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13879,6 +14733,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13894,6 +14749,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13909,6 +14765,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13923,6 +14780,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13937,6 +14795,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13950,6 +14809,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13966,6 +14826,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13981,6 +14842,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -13995,6 +14857,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14010,6 +14873,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14024,6 +14888,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14038,6 +14903,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14054,6 +14920,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14069,6 +14936,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14084,6 +14952,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14098,6 +14967,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14111,6 +14981,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14127,6 +14998,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14142,6 +15014,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14157,6 +15030,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14171,6 +15045,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14185,6 +15060,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14198,6 +15074,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14211,6 +15088,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14223,6 +15101,7 @@
     "dlq",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14235,6 +15114,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14250,6 +15130,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14263,6 +15144,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14279,6 +15161,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14294,6 +15177,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14309,6 +15193,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14323,6 +15208,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14337,6 +15223,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14353,6 +15240,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14368,6 +15256,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14383,6 +15272,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14397,6 +15287,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14413,6 +15304,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14428,6 +15320,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14443,6 +15336,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14457,6 +15351,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14473,6 +15368,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14488,6 +15384,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14503,6 +15400,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14517,6 +15415,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14530,6 +15429,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14546,6 +15446,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14561,6 +15462,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14576,6 +15478,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14590,6 +15493,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14603,6 +15507,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14615,6 +15520,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14624,6 +15530,7 @@
    "route": "POST /t/:slug/results",
    "status": 202,
    "keys": [
+    "quota:resday",
     "result"
    ]
   },
@@ -14639,6 +15546,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14652,6 +15560,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14668,6 +15577,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14683,6 +15593,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14711,6 +15622,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14727,6 +15639,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14742,6 +15655,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14757,6 +15671,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14771,6 +15686,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14785,6 +15701,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14801,6 +15718,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14816,6 +15734,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14831,6 +15750,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14845,6 +15765,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14874,6 +15795,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14889,7 +15811,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -14904,6 +15827,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14919,6 +15843,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14933,6 +15858,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14949,6 +15875,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14964,6 +15891,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14979,6 +15907,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -14993,6 +15922,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15006,6 +15936,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15018,6 +15949,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15033,6 +15965,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15047,6 +15980,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15063,6 +15997,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15078,6 +16013,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15093,6 +16029,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15107,6 +16044,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15123,6 +16061,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15138,6 +16077,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15153,6 +16093,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15167,7 +16108,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -15181,6 +16123,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15197,6 +16140,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15212,7 +16156,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -15227,6 +16172,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15242,6 +16188,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15256,7 +16203,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -15270,6 +16218,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15286,6 +16235,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15301,7 +16251,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -15316,6 +16267,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15331,6 +16283,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15345,6 +16298,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15361,6 +16315,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15376,6 +16331,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15391,6 +16347,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15405,6 +16362,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15418,6 +16376,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15433,6 +16392,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15447,6 +16407,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15476,6 +16437,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15506,6 +16468,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15521,6 +16484,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15549,6 +16513,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15565,6 +16530,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15580,6 +16546,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15595,6 +16562,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15623,6 +16591,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15636,7 +16605,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -15652,6 +16622,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15667,6 +16638,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15682,6 +16654,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15696,6 +16669,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15712,6 +16686,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15727,7 +16702,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -15742,6 +16718,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15756,7 +16733,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -15771,6 +16749,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15799,6 +16778,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15815,6 +16795,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15830,6 +16811,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15845,6 +16827,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15873,6 +16856,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15886,6 +16870,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15898,6 +16883,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15927,6 +16913,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15943,6 +16930,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15958,6 +16946,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15973,6 +16962,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -15987,6 +16977,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16003,6 +16994,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16018,6 +17010,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16033,6 +17026,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16049,6 +17043,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16064,6 +17059,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16079,6 +17075,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16093,6 +17090,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16109,6 +17107,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16124,6 +17123,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16139,6 +17139,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16153,6 +17154,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16169,6 +17171,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16184,6 +17187,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16199,6 +17203,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16213,6 +17218,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16226,6 +17232,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16238,6 +17245,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16252,6 +17260,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16268,6 +17277,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16283,6 +17293,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16298,6 +17309,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16326,6 +17338,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16342,6 +17355,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16357,6 +17371,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16372,6 +17387,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16386,6 +17402,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16402,6 +17419,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16417,6 +17435,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16432,6 +17451,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16446,6 +17466,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16462,6 +17483,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16477,6 +17499,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16492,6 +17515,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16506,6 +17530,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16522,6 +17547,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16537,6 +17563,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16552,6 +17579,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16566,6 +17594,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16579,6 +17608,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16594,6 +17624,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16608,6 +17639,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16634,6 +17666,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16650,6 +17683,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16665,6 +17699,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16680,6 +17715,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16708,6 +17744,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16722,6 +17759,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16748,6 +17786,7 @@
     "job",
     "quota:day",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16764,6 +17803,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16779,6 +17819,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16794,6 +17835,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16822,7 +17864,22 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
+   ]
+  },
+  {
+   "seed": 4,
+   "op": 9971,
+   "route": "tick",
+   "status": 0,
+   "keys": [
+    "att:2",
+    "job",
+    "quota:day",
+    "quota:exceeded",
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -16851,6 +17908,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16866,6 +17924,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16881,6 +17940,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16909,6 +17969,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16938,6 +17999,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16953,7 +18015,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -16968,6 +18031,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -16982,7 +18046,8 @@
     "job",
     "quota:day",
     "quota:exceeded",
-    "quota:hour"
+    "quota:hour",
+    "quota:resday"
    ]
   },
   {
@@ -16997,6 +18062,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -17011,6 +18077,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -17040,6 +18107,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -17055,6 +18123,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -17070,6 +18139,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -17084,6 +18154,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -17110,6 +18181,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },
@@ -17122,6 +18194,7 @@
     "quota:day",
     "quota:exceeded",
     "quota:hour",
+    "quota:resday",
     "result"
    ]
   },

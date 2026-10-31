@@ -20,7 +20,11 @@ The object is SQLite-backed, so a key and its value together cannot
 exceed 2 MB. An envelope that would not fit, including the dead-letter
 copy with its lease timestamp, the hand a pull adds, and the
 `requeued_at` a later dead copy still carries, is a 413 and stores
-nothing. A result is held to the same limit. A pull reads the queue a page at a time, so
+nothing. A result is held to the same storage limit, and to the
+same daily byte cap on its own counter. A day full of jobs still
+accepts its answers, and a runner token cannot fill the object
+past that cap. A copy of a result already stored is not billed
+again. A pull reads the queue a page at a time, so
 one read does not load every envelope into the object. A jobs or
 results response stops at 8 MB of envelopes. A results page says
 `more` when rows are still waiting, and `?after=<id>` reads on
