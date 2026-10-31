@@ -54,4 +54,6 @@ operations. Some operations send a pair of requests, in order, so a
 seed replays. One pinned test races two pulls. A body over the day
 cap, a requeue into a full hour, a qresult, and a second tenant,
 are in the mix. A pull's attempt and envelope are checked against
-storage, and a verb on the wrong list is a 404.
+storage, and a verb on the wrong list is a 404. An id the route
+cannot name, or a subject id that is not the signed `job_id`, is a
+400 and stores nothing.

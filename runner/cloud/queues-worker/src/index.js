@@ -198,6 +198,24 @@ export function resultIdOf(subject) {
   return m ? m[1] : null;
 }
 
+// The subject grammar (Q121) extracts any non-space token, so it stays
+// in step with the runner. The route can only address an id the
+// protocol allows: 1 to 128 of [A-Za-z0-9._-], and not "." or "..".
+// A slash, or a longer token, is stored under a key the ack path
+// cannot name.
+export function safeJobId(id) {
+  return typeof id === "string"
+    && /^[A-Za-z0-9._-]{1,128}$/.test(id)
+    && id !== "." && id !== "..";
+}
+
+function bodyJobId(body) {
+  let obj;
+  try { obj = JSON.parse(body); } catch { return undefined; }
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return undefined;
+  return typeof obj.job_id === "string" ? obj.job_id : undefined;
+}
+
 async function loadTenant(env, slug) {
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(slug)) return null;
   if (env.TENANTS && typeof env.TENANTS.get === "function") {
@@ -292,12 +310,14 @@ export default {
       if (!parsed) return json(400, { error: "malformed envelope: subject, blank line, body" });
       const jobId = jobIdOf(parsed.subject);
       if (!jobId) return json(400, { error: "subject does not name a job" });
+      if (!safeJobId(jobId)) return json(400, { error: "job id is not a safe id" });
       if (rejectOn(env)) {
         if (!tenant.hmac_secret) return json(500, { error: "tenant has no hmac_secret" });
         const verdict = await signatureVerdict(tenant.hmac_secret, parsed.body);
         if (verdict === "no-sig") return json(400, { error: "body carries no sig member" });
         if (verdict !== "accept") return json(403, { error: "invalid signature" });
       }
+      if (bodyJobId(parsed.body) !== jobId) return json(400, { error: "job_id mismatch between subject and body" });
       return forward("/enqueue", {
         method: "POST",
         headers: { "x-hp-job-id": jobId, "x-hp-quota": JSON.stringify(tenant.quota || DEFAULT_QUOTA) },
@@ -320,6 +340,7 @@ export default {
       if (!parsed) return json(400, { error: "malformed envelope" });
       const rid = resultIdOf(parsed.subject);
       if (!rid) return json(400, { error: "subject does not name a result" });
+      if (!safeJobId(rid)) return json(400, { error: "job id is not a safe id" });
       return forward("/result", { method: "POST", headers: { "x-hp-result-id": rid }, body: text });
     }
     if (kind === "results" && request.method === "GET") {

@@ -332,6 +332,7 @@ export async function runFuzz(seed, ops) {
       let body = envelopes.get(id);
       let path = "/t/alice/jobs";
       let token = rnd() < 0.85 ? `Bearer ${SI}` : pick(BAD_FOR_SI);
+      let shaped = "";
       if (variant < 0.10) body = wrongSecret.replace("job j1", `job ${id}`);
       else if (variant < 0.18) body = `[HOMING-PIGEON] job ${id}\n\n{"v":1}\n`;
       else if (variant < 0.26) body = body.replace("echo hi", "echo hj");
@@ -340,6 +341,13 @@ export async function runFuzz(seed, ops) {
       else if (variant < 0.50) body = body.slice(0, 1 + Math.floor(rnd() * 24));
       else if (variant < 0.58) path = "/t/nobody/jobs";
       else if (variant < 0.70) body = fat;
+      else if (variant < 0.78) {
+        body = body.replace(/\[HOMING-PIGEON\] job \S+/, "[HOMING-PIGEON] job other");
+        shaped = "mismatch";
+      } else if (variant < 0.86) {
+        body = body.replace(/\[HOMING-PIGEON\] job \S+/, "[HOMING-PIGEON] job a/b");
+        shaped = "unsafe";
+      }
       const before = snapshot(storage());
       const beforeBilling = snapshotBilling(storage());
       const { r, tuple } = await doFetch("POST", path, { token, body });
@@ -350,6 +358,9 @@ export async function runFuzz(seed, ops) {
       } else if (token !== `Bearer ${SI}`) {
         assert.equal(r.status, 401, `${where}: bad token answered ${r.status}`);
         assert.equal(snapshot(storage()), before, `${where}: a refused submit changed state`);
+      } else if (shaped) {
+        assert.equal(r.status, 400, `${where}: a ${shaped} id answered ${r.status}`);
+        assert.equal(snapshot(storage()), before, `${where}: a ${shaped} id changed state`);
       } else if (r.status === 202) {
         bump(hourKey(), 1); bump(dayKey(), body.length);
       } else if (r.status === 429) {
@@ -811,6 +822,36 @@ test("fuzz: a result stays in its tenant, and a verb on the wrong list is a 404"
   r = await worker.fetch(req("/t/bob/results", { token: `Bearer ${BOB_SI}` }), env);
   assert.equal(r.status, 200);
   assert.deepEqual((await r.json()).results.map((row) => row.id), ["b1"]);
+  void now;
+});
+
+test("fuzz: an unsafe id or a subject that disagrees with the body is refused", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now });
+  await addTenant(env);
+  env.TENANT_QUEUE.get("alice");
+  const storage = () => env.objects.get("alice").state.storage;
+  const good = await signedJob("j1");
+  const before = snapshot(storage());
+  const mismatch = good.replace("[HOMING-PIGEON] job j1", "[HOMING-PIGEON] job j2");
+  let r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: mismatch }), env);
+  assert.equal(r.status, 400);
+  assert.equal(snapshot(storage()), before);
+  for (const id of ["a/b", ".", "..", "a".repeat(129)]) {
+    const body = good.replace("[HOMING-PIGEON] job j1", `[HOMING-PIGEON] job ${id}`);
+    r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body }), env);
+    assert.equal(r.status, 400, id);
+    assert.equal(snapshot(storage()), before, id);
+  }
+  r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: "[HOMING-PIGEON] qresult a/b\n\n{\"exit_code\":0}\n",
+  }), env);
+  assert.equal(r.status, 400);
+  assert.equal(snapshot(storage()), before);
+  r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: await signedJob("ok.id_1") }), env);
+  assert.equal(r.status, 202);
+  assert.ok(storage().map.has("job:ok.id_1"));
   void now;
 });
 
