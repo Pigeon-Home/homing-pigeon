@@ -98,6 +98,17 @@ class QueueClientEdgesTest(unittest.TestCase):
         self.assertTrue(c.renew("j/1"))
         self.assertFalse(c.renew("j1"))
 
+    def test_ack_and_renew_name_the_hand_the_pull_gave(self):
+        body = json.dumps({"jobs": [{
+            "id": "j1", "envelope": "e", "attempt": 2, "hand": 7}]})
+        op = opener((200, body), (204, b""), (204, b""))
+        c = q.QueueClient("https://w.example/t/a", "tok", opener=op)
+        self.assertEqual([i for i, _ in c.pull(1)], ["j1"])
+        self.assertTrue(c.ack("j1"))
+        self.assertTrue(c.renew("j1"))
+        self.assertIn("/jobs/j1/ack?attempt=2&hand=7", op.seen[1][1])
+        self.assertIn("/jobs/j1/lease?attempt=2&hand=7", op.seen[2][1])
+
 
 class QueuePipeEdgesTest(unittest.TestCase):
     def setUp(self):

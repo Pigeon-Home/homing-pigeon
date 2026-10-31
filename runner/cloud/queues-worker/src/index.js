@@ -7,7 +7,8 @@
 //                                 until the SI acks or requeues it
 //   runner  GET  /jobs?max=N      lease up to N jobs      (Bearer runner token)
 //   runner  POST /jobs/<id>/lease renew a lease it holds   (a long job)
-//   runner  POST /jobs/<id>/ack   job finished
+//   runner  POST /jobs/<id>/ack   job finished. ?hand=N names the pull;
+//                                 a later pull's job is left in place
 //   runner  POST /results         result envelope in
 //   SI      GET  /results?max=N   results out
 //   SI      POST /results/<id>/ack
@@ -99,10 +100,14 @@ function utf8Length(text) {
 }
 
 // Bytes the runtime will persist: the key plus the JSON value. A pull
-// replaces leased_until 0 with a millisecond timestamp before the
-// dead-letter copy adds dead_at. Budget that wider record, or a job
-// that measured as fitting throws on the way to the dead list.
+// replaces leased_until 0 with a millisecond timestamp and adds a
+// hand before the dead-letter copy adds dead_at. A requeue keeps
+// requeued_at, so the next dead copy carries both. Budget that
+// widest record, or a job that measured as fitting throws on the
+// way back to the dead list. A hand only grows, one per pull and
+// per requeue, so the budget uses the widest integer JSON keeps exact.
 const FAR_MS = 9_999_999_999_999;
+const HAND_MAX = Number.MAX_SAFE_INTEGER;
 export function storagePairBytes(key, value) {
   return enc.encode(key).length + enc.encode(JSON.stringify(value)).length;
 }
@@ -112,11 +117,13 @@ export function jobStoredBytes(jobId, text, now) {
   const size = utf8Length(text);
   const dead = {
     id: jobId, envelope: text, size,
-    attempts: MAX_ATTEMPTS, leased_until: stamp, enqueued_at: stamp, dead_at: stamp,
+    attempts: MAX_ATTEMPTS, leased_until: stamp, enqueued_at: stamp,
+    hand: HAND_MAX, requeued_at: stamp, dead_at: stamp,
   };
   const again = {
     id: jobId, envelope: text, size,
-    attempts: 0, leased_until: 0, enqueued_at: stamp, requeued_at: stamp,
+    attempts: 0, leased_until: 0, enqueued_at: stamp,
+    hand: HAND_MAX, requeued_at: stamp,
   };
   return Math.max(
     storagePairBytes(`dlq:${jobId}`, dead),
@@ -352,6 +359,37 @@ function json(status, body, extra = {}) {
   });
 }
 
+// Present and not an integer is a bad receipt. Absent is the old
+// call, which does not name a pull.
+function namedInt(raw) {
+  if (raw == null || raw === "") return undefined;
+  const n = Number(raw);
+  if (!Number.isInteger(n)) return null;
+  return n;
+}
+
+// An attempt or a hand that is not this record's does not hold it.
+// A hand only goes up, including across a requeue, so the number the
+// pull returned cannot name a later life. Omitting both keeps the
+// old call.
+function namesThisPull(job, url) {
+  const attempt = namedInt(url.searchParams.get("attempt"));
+  const hand = namedInt(url.searchParams.get("hand"));
+  if (attempt === null || hand === null) return false;
+  if (attempt !== undefined && attempt !== job.attempts) return false;
+  if (hand !== undefined && hand !== job.hand) return false;
+  return true;
+}
+
+function receiptQuery(url) {
+  let extra = "";
+  for (const key of ["attempt", "hand"]) {
+    const v = url.searchParams.get(key);
+    if (v != null && v !== "") extra += `&${key}=${encodeURIComponent(v)}`;
+  }
+  return extra;
+}
+
 function rejectOn(env) {
   const v = (env.REJECT_INVALID_HMAC ?? "true").toString().toLowerCase();
   return !(v === "false" || v === "0" || v === "off");
@@ -397,9 +435,7 @@ export default {
       // The runner still holds a job it is running: renew its lease
       // so a long job is not offered again or dead-lettered.
       if (!(await bearerMatches(request, tenant.runner_token_sha256))) return json(401, { error: "runner token" });
-      const attempt = url.searchParams.get("attempt");
-      const extra = attempt == null || attempt === "" ? "" : `&attempt=${encodeURIComponent(attempt)}`;
-      return forward(`/renew?id=${encodeURIComponent(leaseId)}${extra}`, { method: "POST" });
+      return forward(`/renew?id=${encodeURIComponent(leaseId)}${receiptQuery(url)}`, { method: "POST" });
     }
     if (kind === "jobs" && request.method === "POST" && !ackId) {
       // SI submits a job.
@@ -433,7 +469,7 @@ export default {
     }
     if (kind === "jobs" && request.method === "POST" && ackId) {
       if (!(await bearerMatches(request, tenant.runner_token_sha256))) return json(401, { error: "runner token" });
-      return forward(`/ack?id=${encodeURIComponent(ackId)}`, { method: "POST" });
+      return forward(`/ack?id=${encodeURIComponent(ackId)}${receiptQuery(url)}`, { method: "POST" });
     }
     if (kind === "results" && request.method === "POST" && !ackId) {
       if (!(await bearerMatches(request, tenant.runner_token_sha256))) return json(401, { error: "runner token" });
@@ -537,8 +573,9 @@ export class TenantQueue {
           if (out.length > 0 && used + weight > RESPONSE_BUDGET) { full = true; break; }
           job.leased_until = now + lease;
           job.attempts += 1;
+          job.hand = (job.hand || 0) + 1;
           await s.put(key, job);
-          out.push({ id: job.id, envelope: job.envelope, attempt: job.attempts });
+          out.push({ id: job.id, envelope: job.envelope, attempt: job.attempts, hand: job.hand });
           used += weight;
         }
         if (out.length >= max || full || startAfter === prev) break;
@@ -584,7 +621,12 @@ export class TenantQueue {
                     { "retry-after": String(3600 - Math.floor((now % 3_600_000) / 1000)) });
       }
       const { dead_at, ...job } = dead;
-      await s.put(`job:${id}`, { ...job, leased_until: 0, attempts: 0, requeued_at: now });
+      // The hand the last pull was given must not still name this
+      // record: nobody holds the requeued job yet.
+      await s.put(`job:${id}`, {
+        ...job, leased_until: 0, attempts: 0, requeued_at: now,
+        hand: (job.hand || 0) + 1,
+      });
       await s.delete(`dlq:${id}`);
       await s.put(hourKey, jobs + 1);
       return json(202, { id });
@@ -593,13 +635,10 @@ export class TenantQueue {
       const id = url.searchParams.get("id");
       const job = await s.get(`job:${id}`);
       if (!job || !(job.leased_until > now)) return new Response(null, { status: 404 });
-      // The attempt the pull handed out. A later pull has a higher
-      // one, so the first runner's renew must not extend that lease.
-      const attemptRaw = url.searchParams.get("attempt");
-      if (attemptRaw != null && attemptRaw !== "") {
-        const n = Number(attemptRaw);
-        if (!Number.isInteger(n) || n !== job.attempts) return new Response(null, { status: 404 });
-      }
+      // The attempt and the hand the pull handed out. A later pull
+      // has a higher hand, and a requeue bumps it too, so the first
+      // runner's renew must not extend that lease.
+      if (!namesThisPull(job, url)) return new Response(null, { status: 404 });
       const lease = leaseMs(this.env);
       job.leased_until = now + lease;
       await s.put(`job:${id}`, job);
@@ -607,9 +646,14 @@ export class TenantQueue {
     }
     if (url.pathname === "/ack") {
       const id = url.searchParams.get("id");
-      const had = await s.get(`job:${id}`);
+      const job = await s.get(`job:${id}`);
+      // A named hand or attempt that is not this pull's leaves the
+      // job. Two runners share a token; the one that lost the lease
+      // must not delete the job the later pull is running. Omitting
+      // both is the old call and deletes whatever is queued.
+      if (!job || !namesThisPull(job, url)) return new Response(null, { status: 404 });
       await s.delete(`job:${id}`);
-      return new Response(null, { status: had ? 204 : 404 });
+      return new Response(null, { status: 204 });
     }
     if (url.pathname === "/result") {
       const rid = request.headers.get("x-hp-result-id");

@@ -163,10 +163,14 @@ function checkState(storage, now, expected, where) {
         `${where}: ${k} attempts ${v.attempts} outside 0..${MAX_ATTEMPTS}`);
       assert.ok(!map.has(`dlq:${v.id}`), `${where}: ${v.id} is both queued and dead`);
       assert.equal(new TextEncoder().encode(v.envelope).length, v.size, `${where}: ${k} size record lies about its envelope`);
+      if (v.leased_until > now) {
+        assert.ok(Number.isInteger(v.hand) && v.hand >= 1, `${where}: leased ${k} has no hand`);
+      }
     }
     if (k.startsWith("dlq:")) {
       assert.equal(v.attempts, MAX_ATTEMPTS,
         `${where}: ${k} reached the dead-letter with ${v.attempts} attempts, not ${MAX_ATTEMPTS}`);
+      assert.ok(Number.isInteger(v.hand) && v.hand >= 1, `${where}: ${k} hand ${v.hand}`);
     }
     if (k.startsWith("quota:hour:")) hourJobs = Math.max(hourJobs, 0);
   }
@@ -317,9 +321,11 @@ export async function runFuzz(seed, ops) {
       const stored = box.map.get(`job:${job.id}`);
       assert.ok(stored, `${where}: pull handed ${job.id}, which is not queued`);
       assert.equal(stored.attempts, job.attempt, `${where}: ${job.id} attempt ${job.attempt} but storage says ${stored && stored.attempts}`);
+      assert.equal(stored.hand, job.hand, `${where}: ${job.id} hand ${job.hand} but storage says ${stored && stored.hand}`);
       assert.equal(stored.envelope, job.envelope, `${where}: ${job.id} envelope does not match storage`);
       assert.ok(stored.leased_until > now, `${where}: ${job.id} handed out with no live lease`);
       assert.ok(job.attempt >= 1 && job.attempt <= MAX_ATTEMPTS, `${where}: ${job.id} attempt ${job.attempt}`);
+      assert.ok(Number.isInteger(job.hand) && job.hand >= 1, `${where}: ${job.id} hand ${job.hand}`);
     }
   };
 
@@ -960,9 +966,25 @@ test("fuzz: an envelope the object cannot store is refused, and one that fits is
     now += 1000;
   }
   assert.ok(storage().map.has("dlq:big1"));
+  const deadHand = storage().map.get("dlq:big1").hand;
   r = await worker.fetch(req("/t/alice/dlq/big1/requeue", { method: "POST", token: `Bearer ${SI}` }), env);
   assert.equal(r.status, 202);
   assert.equal(storage().map.get("job:big1").attempts, 0);
+  // The hand the last pull held does not still name the requeued job,
+  // and a second trip to the dead list still fits: that copy keeps
+  // requeued_at as well as dead_at.
+  assert.ok(storage().map.get("job:big1").hand > deadHand);
+  assert.ok(storagePairBytes("job:big1", storage().map.get("job:big1"))
+    <= jobStoredBytes("big1", storage().map.get("job:big1").envelope, now));
+  for (let i = 0; i < 6; i++) {
+    await worker.fetch(req("/t/alice/jobs?max=1", { token: `Bearer ${RUNNER}` }), env);
+    now += 1000;
+  }
+  const dead = storage().map.get("dlq:big1");
+  assert.ok(dead);
+  assert.ok(dead.requeued_at);
+  assert.ok(storagePairBytes("dlq:big1", dead) <= jobStoredBytes("big1", dead.envelope, now));
+  assert.ok(storagePairBytes("dlq:big1", dead) <= DO_VALUE_MAX);
   const before = snapshot(storage());
   // Under the raw-length gate, over once the record is wrapped.
   const empty2 = await signedJob("big2", SECRET, "");
@@ -1010,6 +1032,30 @@ test("fuzz: the storage budget counts the lease timestamp, not zero", async () =
   assert.equal(r.status, 413);
   assert.ok(!env.objects.get("alice").state.storage.map.has(`job:${id}`));
   assert.ok(!env.objects.get("alice").state.storage.map.has("quota:exceeded"));
+});
+
+test("fuzz: the storage budget counts the requeued dead copy, not the first", async () => {
+  const now = 9_999_999_999_999;
+  const id = "edge";
+  const narrow = (text) => storagePairBytes(`dlq:${id}`, {
+    id, envelope: text, size: text.length, attempts: 5,
+    leased_until: now, enqueued_at: now, dead_at: now,
+  });
+  const per = jobStoredBytes(id, "x", now) - jobStoredBytes(id, "", now);
+  let text = "x".repeat(Math.floor((DO_VALUE_MAX - jobStoredBytes(id, "", now)) / per) + 1);
+  while (jobStoredBytes(id, text, now) <= DO_VALUE_MAX) text += "x";
+  while (text.length > 1 && jobStoredBytes(id, text.slice(0, -1), now) > DO_VALUE_MAX) text = text.slice(0, -1);
+  assert.ok(jobStoredBytes(id, text, now) > DO_VALUE_MAX);
+  assert.ok(narrow(text) <= DO_VALUE_MAX, "the first dead copy would have stored this");
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 10, bytes_per_day: 9_000_000_000 } });
+  const obj = env.TENANT_QUEUE.get("alice");
+  const r = await obj.fetch(new Request("https://do/enqueue", {
+    method: "POST",
+    headers: { "x-hp-job-id": id, "x-hp-quota": JSON.stringify(env.quota) },
+    body: text,
+  }));
+  assert.equal(r.status, 413);
+  assert.ok(!env.objects.get("alice").state.storage.map.has(`job:${id}`));
 });
 
 test("fuzz: a pull pages the queue and still leases every waiting job", async () => {

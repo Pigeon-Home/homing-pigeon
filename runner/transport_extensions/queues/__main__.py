@@ -78,6 +78,7 @@ class QueueClient:
         self.timeout = timeout
         self._open = opener or urllib.request.urlopen
         self._attempt = {}
+        self._hand = {}
 
     def _request(self, method, path, body=None, content_type=None):
         req = urllib.request.Request(
@@ -119,23 +120,37 @@ class QueueClient:
                 attempt = item.get("attempt")
                 if isinstance(attempt, int) and not isinstance(attempt, bool):
                     self._attempt[ident] = attempt
+                hand = item.get("hand")
+                if isinstance(hand, int) and not isinstance(hand, bool):
+                    self._hand[ident] = hand
                 out.append((ident, env))
         return out
 
+    def _receipt(self, ident):
+        """The pull this process was given, so a later pull's job is
+        not acked or renewed. A worker that did not send a hand is
+        the old call."""
+        parts = []
+        attempt = self._attempt.get(ident)
+        hand = self._hand.get(ident)
+        if isinstance(attempt, int) and not isinstance(attempt, bool):
+            parts.append(f"attempt={attempt}")
+        if isinstance(hand, int) and not isinstance(hand, bool):
+            parts.append(f"hand={hand}")
+        return ("?" + "&".join(parts)) if parts else ""
+
     def ack(self, ident):
-        status, _ = self._request("POST", f"/jobs/{ident}/ack")
+        status, _ = self._request("POST", f"/jobs/{ident}/ack{self._receipt(ident)}")
         return status in (200, 204, 404)
 
     def renew(self, ident):
         """Renew the lease on a job this runner is still running. True
         when the queue renewed it; False when it no longer holds the
         job under a lease (acked, the lease lapsed, or a later pull
-        took it). The attempt from the pull is sent when we have one,
-        so a renew cannot extend a hand that moved on."""
-        path = f"/jobs/{urllib.parse.quote(ident, safe='')}/lease"
-        attempt = self._attempt.get(ident)
-        if isinstance(attempt, int) and not isinstance(attempt, bool):
-            path += f"?attempt={attempt}"
+        took it). The attempt and the hand from the pull are sent
+        when we have them, so a renew cannot extend a hand that
+        moved on."""
+        path = f"/jobs/{urllib.parse.quote(ident, safe='')}/lease{self._receipt(ident)}"
         status, _ = self._request("POST", path)
         return status in (200, 204)
 

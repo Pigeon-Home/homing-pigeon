@@ -18,7 +18,8 @@ spending cap Cloudflare does not provide: jobs per hour and bytes per
 day, a hard 429 with `Retry-After`, nothing stored or billed past it.
 The object is SQLite-backed, so a key and its value together cannot
 exceed 2 MB. An envelope that would not fit, including the dead-letter
-copy with its lease timestamp and a later requeue, is a 413 and stores
+copy with its lease timestamp, the hand a pull adds, and the
+`requeued_at` a later dead copy still carries, is a 413 and stores
 nothing. A result is held to the same limit. A pull reads the queue a page at a time, so
 one read does not load every envelope into the object. A jobs or
 results response stops at 8 MB of envelopes and the next read
@@ -67,7 +68,7 @@ fuzz file replays `test/fuzz.corpus.json`, then one seed of 20,000
 operations. Some operations send a pair of requests, in order, so a
 seed replays. One pinned test races two pulls. A body over the day
 cap, a requeue into a full hour, a qresult, and a second tenant,
-are in the mix. A pull's attempt and envelope are checked against
+are in the mix. A pull's attempt, hand and envelope are checked against
 storage, and a verb on the wrong list is a 404. An id the route
 cannot name, or a subject id that is not the signed `job_id`, is a
 400 and stores nothing.
