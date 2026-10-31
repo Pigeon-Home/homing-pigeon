@@ -103,14 +103,14 @@ test("an ack of the hand that lost does not delete the new pull's job", async ()
   assert.equal(second.hand, 2);
   const held = box(env).get("job:j1").leased_until;
   r = await worker.fetch(req("/t/alice/jobs/j1/ack?hand=1&attempt=1", { method: "POST", token: RUNNER }), env);
-  assert.equal(r.status, 404);
+  assert.equal(r.status, 409);
   assert.equal(box(env).get("job:j1").leased_until, held);
   assert.equal(box(env).get("job:j1").hand, 2);
   r = await worker.fetch(req("/t/alice/jobs/j1/lease?attempt=2&hand=1", { method: "POST", token: RUNNER }), env);
-  assert.equal(r.status, 404);
+  assert.equal(r.status, 409);
   assert.equal(box(env).get("job:j1").leased_until, held);
   r = await worker.fetch(req("/t/alice/jobs/j1/ack?hand=nope", { method: "POST", token: RUNNER }), env);
-  assert.equal(r.status, 404);
+  assert.equal(r.status, 409);
   assert.ok(box(env).has("job:j1"));
   r = await worker.fetch(req("/t/alice/jobs/j1/ack?hand=2", { method: "POST", token: RUNNER }), env);
   assert.equal(r.status, 204);
@@ -129,7 +129,7 @@ test("an ack from the life before a requeue does not delete the new one", async 
   assert.equal(box(env).get("job:j1").hand, deadHand + 1);
   assert.equal(box(env).get("job:j1").attempts, 0);
   let r = await worker.fetch(req(`/t/alice/jobs/j1/ack?hand=${deadHand}`, { method: "POST", token: RUNNER }), env);
-  assert.equal(r.status, 404);
+  assert.equal(r.status, 409);
   assert.equal(box(env).get("job:j1").attempts, 0);
   r = await pull(env);
   const job = (await r.json()).jobs[0];
@@ -137,7 +137,7 @@ test("an ack from the life before a requeue does not delete the new one", async 
   assert.equal(job.hand, deadHand + 2);
   // The attempt count collided with the first life. The hand did not.
   r = await worker.fetch(req("/t/alice/jobs/j1/ack?attempt=1&hand=1", { method: "POST", token: RUNNER }), env);
-  assert.equal(r.status, 404);
+  assert.equal(r.status, 409);
   assert.equal(box(env).get("job:j1").hand, job.hand);
   r = await worker.fetch(req(`/t/alice/jobs/j1/ack?hand=${job.hand}`, { method: "POST", token: RUNNER }), env);
   assert.equal(r.status, 204);
@@ -158,7 +158,7 @@ test("a renew after the lease moved does not extend the new holder", async () =>
   assert.equal((await r.json()).jobs[0].attempt, 2);
   const held = box(env).get("job:j1").leased_until;
   r = await worker.fetch(req("/t/alice/jobs/j1/lease?attempt=1", { method: "POST", token: RUNNER }), env);
-  assert.equal(r.status, 404);
+  assert.equal(r.status, 409);
   assert.equal(box(env).get("job:j1").leased_until, held);
   clock.t += 1;
   r = await worker.fetch(req("/t/alice/jobs/j1/lease?attempt=2", { method: "POST", token: RUNNER }), env);

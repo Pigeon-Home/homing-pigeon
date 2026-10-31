@@ -699,8 +699,9 @@ export class TenantQueue {
       if (!job || !(job.leased_until > now)) return new Response(null, { status: 404 });
       // The attempt and the hand the pull handed out. A later pull
       // has a higher hand, and a requeue bumps it too, so the first
-      // runner's renew must not extend that lease.
-      if (!namesThisPull(job, url)) return new Response(null, { status: 404 });
+      // runner's renew must not extend that lease. 409, not 404:
+      // the job is still leased, and 404 is only "it is gone".
+      if (!namesThisPull(job, url)) return new Response(null, { status: 409 });
       const lease = leaseMs(this.env);
       job.leased_until = now + lease;
       await s.put(`job:${id}`, job);
@@ -709,11 +710,11 @@ export class TenantQueue {
     if (url.pathname === "/ack") {
       const id = url.searchParams.get("id");
       const job = await s.get(`job:${id}`);
-      // A named hand or attempt that is not this pull's leaves the
-      // job. Two runners share a token; the one that lost the lease
-      // must not delete the job the later pull is running. Omitting
-      // both is the old call and deletes whatever is queued.
-      if (!job || !namesThisPull(job, url)) return new Response(null, { status: 404 });
+      // 404 is only "nothing is queued". A receipt that is not this
+      // pull's is 409: the job is still there. 404 made the runner
+      // forget the result and run the job again when the lease ended.
+      if (!job) return new Response(null, { status: 404 });
+      if (!namesThisPull(job, url)) return new Response(null, { status: 409 });
       await s.delete(`job:${id}`);
       return new Response(null, { status: 204 });
     }

@@ -41,6 +41,7 @@ class FakeWorkerState:
         self.calls = []
         self.fail_results = 0  # next N result posts answer 503
         self.fail_acks = 0     # next N job acks answer 500
+        self.conflict_acks = False  # 409: the job is still queued
         self.result_status = None  # a permanent refusal, when set
         self.attempt_out = {}  # id -> attempt number the next pull reports
 
@@ -141,6 +142,8 @@ def make_handler(state):
                 if state.fail_acks:
                     state.fail_acks -= 1
                     return self._send(500, b'{"error":"later"}')
+                if state.conflict_acks:
+                    return self._send(409, b'{"error":"not this pull"}')
                 jid = path.split("/")[4]
                 had = state.jobs.pop(jid, None)
                 state.leased.discard(jid)
@@ -654,6 +657,27 @@ class QueuePipeTest(unittest.TestCase):
             self.assertNotIn("j1", w.state.jobs)
             self.assertFalse(os.path.exists(
                 os.path.join(d["outbox"], "j1.result.txt")))
+
+    def test_an_ack_for_another_pull_keeps_the_result(self):
+        # 404 means the job is not queued. A receipt that is not
+        # this pull's used to be 404 too. The client forgot the
+        # result, and the next time the lease ended the job ran
+        # again. 409 leaves the file, and the next pass tries
+        # the ack again.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.conflict_acks = True
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            self._core_answers("j1", "j1")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", pipe._pending)
+            self.assertIn("j1", w.state.jobs)
+            self.assertIn("j1", w.state.results)
+            self.assertTrue(os.path.isfile(os.path.join(
+                ch.dirs(self.channel)["outbox"], "j1.result.txt")))
 
     def test_malformed_and_oversize_envelopes_are_refused_and_acked(self):
         with FakeWorker() as w:
