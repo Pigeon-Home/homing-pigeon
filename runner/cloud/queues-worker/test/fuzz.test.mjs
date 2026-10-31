@@ -889,6 +889,53 @@ test("fuzz: a qresult is stored and a job subject on that route is not", async (
   void now;
 });
 
+test("fuzz: a result whose body names a different id is refused", async () => {
+  const env = makeEnv();
+  await addTenant(env);
+  const storage = () => env.objects.get("alice").state.storage;
+  let r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: "[HOMING-PIGEON] result j1\n\n{\"job_id\":\"j2\",\"exit_code\":0}\n",
+  }), env);
+  assert.equal(r.status, 400);
+  assert.equal(storage().map.size, 0);
+  r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: "[HOMING-PIGEON] result j1\n\n{\"job_id\":1}\n",
+  }), env);
+  assert.equal(r.status, 400);
+  r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: "[HOMING-PIGEON] qresult q1\n\n{\"query_id\":\"q2\"}\n",
+  }), env);
+  assert.equal(r.status, 400);
+  assert.ok(!storage().map.has("result:q1"));
+  const payload = JSON.stringify({ v: 1, type: "result", job_id: "j2", exit_code: 0 });
+  const sig = await hmacSha384Hex(SECRET, payload);
+  const signed = payload.slice(0, -1) + `,"sig":"${sig}"}`;
+  r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: `[HOMING-PIGEON] result j1\n\n{"job_id":"j1"}${signed}\n`,
+  }), env);
+  assert.equal(r.status, 400);
+  r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: "[HOMING-PIGEON] result j1\n\n{\"job_id\":\"j1\",\"exit_code\":0}\n",
+  }), env);
+  assert.equal(r.status, 202);
+  r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: "[HOMING-PIGEON] qresult q1\n\n{\"query_id\":\"q1\"}\n",
+  }), env);
+  assert.equal(r.status, 202);
+  r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: "[HOMING-PIGEON] result enc1\n\n{\"hp_enc\":{\"alg\":\"AES-256-GCM\",\"nonce\":\"aa\",\"ct\":\"bb\"}}\n",
+  }), env);
+  assert.equal(r.status, 202);
+  assert.ok(storage().map.has("result:enc1"));
+});
+
 test("fuzz: a second result for an id keeps the first envelope", async () => {
   let now = 1_700_000_000_000;
   const env = makeEnv({ clock: () => now });

@@ -35,7 +35,8 @@ same 8 MB counted on subjects. The answer says `more` when rows
 are still waiting, and `?after=<id>` reads on from the last id
 shown, so the list is not hidden behind a row you have not
 dropped. A second result for an id keeps the first envelope, the
-same way a repeated job submit does.
+same way a repeated job submit does. A body that names a different
+id is refused, so it cannot take that place.
 
 ## Deploy
 

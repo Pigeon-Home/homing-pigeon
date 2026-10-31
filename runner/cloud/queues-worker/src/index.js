@@ -295,9 +295,14 @@ export function jobIdOf(subject) {
   return m ? m[1] : null;
 }
 
+function resultSubject(subject) {
+  const m = (subject || "").match(/\[HOMING-PIGEON\](?:\s+\S+)*\s+(result|qresult)\s+(\S+)/i);
+  return m ? { kind: m[1].toLowerCase(), id: m[2] } : null;
+}
+
 export function resultIdOf(subject) {
-  const m = (subject || "").match(/\[HOMING-PIGEON\](?:\s+\S+)*\s+(?:result|qresult)\s+(\S+)/i);
-  return m ? m[1] : null;
+  const named = resultSubject(subject);
+  return named ? named.id : null;
 }
 
 // The subject grammar (Q121) extracts any non-space token, so it stays
@@ -321,6 +326,19 @@ function bodyJobId(body) {
   try { obj = pyLoads(ex ? ex.payload : (body || "")); } catch { return undefined; }
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return undefined;
   return typeof obj.job_id === "string" ? obj.job_id : undefined;
+}
+
+// The id the body claims, from the signed payload when there is one.
+// Undefined when that field is absent (an encrypted envelope has none;
+// the SI binds it by decrypting under the subject id). Null when the
+// field is present and not a string: that is not the subject's id.
+function payloadId(body, field) {
+  const ex = extractSigAndPayload(typeof body === "string" ? body : "");
+  let obj;
+  try { obj = pyLoads(ex ? ex.payload : (body || "")); } catch { return undefined; }
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return undefined;
+  if (!Object.prototype.hasOwnProperty.call(obj, field)) return undefined;
+  return typeof obj[field] === "string" ? obj[field] : null;
 }
 
 async function loadTenant(env, slug) {
@@ -482,13 +500,22 @@ export default {
       if (utf8Length(text) > DO_VALUE_MAX) return json(413, { error: "envelope over the storage limit" });
       const parsed = parseEnvelope(text);
       if (!parsed) return json(400, { error: "malformed envelope" });
-      const rid = resultIdOf(parsed.subject);
-      if (!rid) return json(400, { error: "subject does not name a result" });
-      if (!safeJobId(rid)) return json(400, { error: "job id is not a safe id" });
+      const named = resultSubject(parsed.subject);
+      if (!named) return json(400, { error: "subject does not name a result" });
+      if (!safeJobId(named.id)) return json(400, { error: "job id is not a safe id" });
+      // A result that names a different id in its body is stored under
+      // the subject, and the first envelope stays, so the real answer
+      // for that id can never replace it. Absent is not a claim: an
+      // encrypted envelope carries the id in the subject only.
+      const field = named.kind === "qresult" ? "query_id" : "job_id";
+      const claimed = payloadId(parsed.body, field);
+      if (claimed !== undefined && claimed !== named.id) {
+        return json(400, { error: `${field} mismatch between subject and body` });
+      }
       return forward("/result", {
         method: "POST",
         headers: {
-          "x-hp-result-id": rid,
+          "x-hp-result-id": named.id,
           "x-hp-quota": JSON.stringify(tenant.quota || DEFAULT_QUOTA),
         },
         body: text,
