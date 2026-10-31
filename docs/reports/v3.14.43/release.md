@@ -1,4 +1,4 @@
-# 3.14.43: from the blocked cut to the tag
+# 3.14.43: from the blocked cut to the mirrors
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
 
@@ -165,12 +165,36 @@ verification this seat can perform is:
 
 ## Results
 
-Filled in as the jobs conclude.
+Tag build 41155303320: `completed/success` at 01:41:44Z (30-OCT
+6:41PM PST), every job green -- `scope`, `test`, `typecheck`,
+`test-macos`, all eight `build-*`, `release`, `pypi-publish`,
+`sourceforge`, `gitlab`. The deadline was 7:00PM PST.
 
-- `release`: pending at the time of writing.
-- `pypi-publish` (`homing-pigeon-python` 3.14.43): pending.
-- `sourceforge` (`sourceforge.net/projects/homing-pigeon`, folder
-  `v3.14.43`): pending.
-- `gitlab` (`gitlab.com/pigeon-home/homing-pigeon`): pending.
-- GitHub Release `v3.14.43`: pending.
-- Muse's check: pending.
+| Step | When (UTC) | Result |
+|---|---|---|
+| `release` | 01:39:57 published | success. GitHub Release `v3.14.43`, not a draft, not a prerelease; GitHub's `releases/latest` answers `v3.14.43`. |
+| `pypi-publish` | 01:41:12 | success (`homing-pigeon-python` 3.14.43; the action fails on a refused upload). |
+| `gitlab` | 01:41:44 | success (release created through the GitLab API on `gitlab.com/pigeon-home/homing-pigeon`; the job fails on a non-2xx). |
+| `sourceforge` | 01:41:44 | success (files uploaded to `sourceforge.net/projects/homing-pigeon/files/v3.14.43/`, and the job's own poll saw FRS serve every one before it reported). |
+
+The release's 13 assets, read over the REST API from this seat:
+
+| Asset | Bytes |
+|---|---:|
+| `homing-pigeon-linux-x86_64-3.14.43.tar.gz` | 85,407,988 |
+| `homing-pigeon-linux-arm64-3.14.43.tar.gz` | 83,608,730 |
+| `homing-pigeon-pi-light-arm64-3.14.43.tar.gz` | 83,611,998 |
+| `homing-pigeon-macos-arm64-3.14.43.tar.gz` | 57,821,541 |
+| `homing-pigeon-macos-x86_64-3.14.43.tar.gz` | 58,965,139 |
+| `homing-pigeon-windows-x86_64-3.14.43.zip` | 60,441,233 |
+| `homing-pigeon-windows-arm64-3.14.43.zip` | 59,820,417 |
+| `homing-pigeon-project-3.14.43.tar.gz` | 39,091,971 |
+| `pigeon_home_runner-3.14.43-py3-none-any.whl` | 555,028 |
+| `pigeon_home_runner-3.14.43.tar.gz` | 501,181 |
+| `SBOM.spdx.json` | 49,159 |
+| `BUILD-PROVENANCE.json` | 305 |
+| `SHA384SUMS` | 1,619 |
+
+Muse's independent check from the rig side (fresh downloads against
+`SHA384SUMS`, PyPI, the container registry, GitLab): not yet posted
+at 6:43PM PST; this line is updated when it lands.
