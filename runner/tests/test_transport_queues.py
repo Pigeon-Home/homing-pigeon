@@ -509,6 +509,32 @@ class QueuePipeTest(unittest.TestCase):
             failed = os.path.join(d["outbox"], "failed")
             self.assertIn("j1.result.txt", os.listdir(failed))
 
+    def test_two_ids_that_differ_past_120_characters_both_finish(self):
+        # The channel kept 120 characters of the id. A queue id is
+        # 128. These two shared one inbox file, the result's name
+        # was not the id in the subject, and the done-file was not
+        # the name the ack looks for. Neither result was posted and
+        # neither job was acked.
+        a = "c" * 120 + "a" * 8
+        b = "c" * 120 + "b" * 8
+        with FakeWorker() as w:
+            w.state.jobs[a] = envelope(a)
+            w.state.jobs[b] = envelope(b)
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            inbox = ch.dirs(self.channel)["inbox"]
+            names = sorted(n for n in os.listdir(inbox) if n != "done")
+            self.assertEqual(names, [a + ".job.txt", b + ".job.txt"])
+            self._core_answers(a, a)
+            self._core_answers(b, b)
+            pipe.push_results()
+            self.assertEqual(sorted(w.state.acked), sorted([a, b]))
+            self.assertIn(f"result {a}", w.state.results[a])
+            self.assertIn(f"result {b}", w.state.results[b])
+            self.assertNotIn(a, pipe._pending)
+            self.assertNotIn(b, pipe._pending)
+
     def test_malformed_and_oversize_envelopes_are_refused_and_acked(self):
         with FakeWorker() as w:
             w.state.jobs["bad"] = "no blank line here"

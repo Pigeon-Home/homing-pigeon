@@ -114,8 +114,13 @@ def deliver_job(channel, ident, subject, body):
     message's own id); the file lands as <ident>.job.txt so a
     redelivery of the same job rewrites the same file."""
     d = dirs(channel)
+    # A job id is 1–128 of [A-Za-z0-9._-] (the protocol, and the
+    # queue). Keeping 120 made two ids that differed later one
+    # file. The result was then named for the short file, not the
+    # id in the subject, so it was never posted, and the done-file
+    # the core wrote was not the name the ack looks for.
     safe = "".join(c if (c.isalnum() or c in "._-") else "_"
-                   for c in str(ident))[:120] or "job"
+                   for c in str(ident))[:128] or "job"
     path = os.path.join(d["inbox"], safe + ".job.txt")
     text = envelope(subject, body)
     if body and not body.endswith("\n"):

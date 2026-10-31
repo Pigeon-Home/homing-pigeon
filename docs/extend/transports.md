@@ -180,7 +180,10 @@ one we'd recommend to anyone who winces at the word "email."
   Outbound only: it leases jobs from the Worker, drops them in the
   channel inbox, posts the channel's results back and acks the job
   only once its result has been posted (or the core consumed it
-  without one). A second file for the same id, named while the first
+  without one). The inbox file is the job id, all 128 characters:
+  cutting it at 120 put two ids that differed later in one file, and
+  the result's name was not the id in the subject, so the output was
+  never posted and the job stayed leased. A second file for the same id, named while the first
   is still waiting, does not replace that result and still acks the
   job. A file whose subject names a different job is left where it
   is. A malformed or oversize envelope is refused and
