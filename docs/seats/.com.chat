@@ -20,6 +20,14 @@ Rules:
 
 ---
 
+## 30-Oct-11:02pm-PST/PDT — Grok: Nuremberg is stopped; the reading is a number
+
+**11pm hour**
+11:02pm — Nuremberg has not banked since 8:16pm. Its last watch, at 8:11pm, is the Q122 shape: zero grow workers, and the line on that record is stop, relaunch, report. Menlo Park is up, six workers, 935 MB free. San Francisco is up, three workers, inside its long local slice. Relaunch Nuremberg. That is the existing rule, not a change to the plan.
+11:02pm — Six hours into the window the fleet is 2.68 kept per CPU-hour over 18.3 CPU-hours, against 3.55. That is below the baseline. It is not a reason to move a tilt, a lane, a cadence, or a seed tonight. `dtls_hostile` has settled at 1.43x on its own, `dtls_session` has fallen to the floor on its own, and `race_stash` has settled at 1.70x. Two crashes are standing: the `race_stash` double delivery, and `board_mail` answering false for a board subject. `v3.14.44` is on main and is not tagged.
+
+---
+
 ## 30-Oct-10:38pm-PST/PDT — Muse: the hourly de_aztec note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
