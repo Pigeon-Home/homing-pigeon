@@ -61,12 +61,13 @@ def make_handler(state):
                 self.wfile.write(body)
 
         def do_GET(self):
-            state.calls.append(("GET", self.path))
-            if self.path.startswith("/t/alice/results"):
+            path = self.path.split("?", 1)[0]
+            state.calls.append(("GET", path))
+            if path.startswith("/t/alice/results"):
                 return self._si_results()
-            if self.path.startswith("/t/alice/dlq"):
+            if path.startswith("/t/alice/dlq"):
                 return self._si_dlq()
-            if not self.path.startswith("/t/alice/jobs"):
+            if not path.startswith("/t/alice/jobs"):
                 return self._send(404)
             if not self._auth(RUNNER_TOKEN):
                 return self._send(401)
@@ -77,7 +78,7 @@ def make_handler(state):
             out = []
             for i, e in free[:8]:
                 state.leased.add(i)
-                out.append({"id": i, "envelope": e})
+                out.append({"id": i, "envelope": e, "attempt": 1})
             return self._send(200, json.dumps({"jobs": out}).encode())
 
         def _si_results(self):
@@ -99,10 +100,11 @@ def make_handler(state):
             return self._send(200, json.dumps({"dead": out}).encode())
 
         def do_POST(self):
+            path = self.path.split("?", 1)[0]
             n = int(self.headers.get("Content-Length") or 0)
             body = self.rfile.read(n).decode("utf-8") if n else ""
-            state.calls.append(("POST", self.path))
-            if self.path == "/t/alice/jobs":
+            state.calls.append(("POST", path))
+            if path == "/t/alice/jobs":
                 if not self._auth(SI_TOKEN):
                     return self._send(401)
                 parsed = ch.parse_envelope(body)
@@ -111,10 +113,10 @@ def make_handler(state):
                 jid = q._job_id(parsed[0])
                 state.jobs[jid] = body
                 return self._send(202, json.dumps({"id": jid}).encode())
-            if self.path.startswith("/t/alice/dlq/"):
+            if path.startswith("/t/alice/dlq/"):
                 if not self._auth(SI_TOKEN):
                     return self._send(401)
-                _, _, _, _, did, verb = self.path.split("/")
+                _, _, _, _, did, verb = path.split("/")
                 if did not in state.dead:
                     return self._send(404)
                 state.dead.remove(did)
@@ -122,31 +124,28 @@ def make_handler(state):
                     state.jobs[did] = envelope(did)
                     return self._send(202, json.dumps({"id": did}).encode())
                 return self._send(204)
-            if self.path.startswith("/t/alice/jobs/") and \
-                    self.path.endswith("/lease"):
+            if path.startswith("/t/alice/jobs/") and path.endswith("/lease"):
                 if not self._auth(RUNNER_TOKEN):
                     return self._send(401)
-                jid = self.path.split("/")[4]
+                jid = path.split("/")[4]
                 state.renewed.append(jid)
                 return self._send(204 if jid in state.leased else 404)
-            if self.path.startswith("/t/alice/jobs/") and \
-                    self.path.endswith("/ack"):
+            if path.startswith("/t/alice/jobs/") and path.endswith("/ack"):
                 if not self._auth(RUNNER_TOKEN):
                     return self._send(401)
-                jid = self.path.split("/")[4]
+                jid = path.split("/")[4]
                 had = state.jobs.pop(jid, None)
                 state.leased.discard(jid)
                 state.acked.append(jid)
                 return self._send(204 if had else 404)
-            if self.path.startswith("/t/alice/results/") and \
-                    self.path.endswith("/ack"):
+            if path.startswith("/t/alice/results/") and path.endswith("/ack"):
                 if not self._auth(SI_TOKEN):
                     return self._send(401)
-                rid = self.path.split("/")[4]
+                rid = path.split("/")[4]
                 had = state.results.pop(rid, None)
                 state.results_acked.append(rid)
                 return self._send(204 if had else 404)
-            if self.path == "/t/alice/results":
+            if path == "/t/alice/results":
                 if not self._auth(RUNNER_TOKEN):
                     return self._send(401)
                 if state.fail_results:

@@ -77,6 +77,7 @@ class QueueClient:
         self.token = token
         self.timeout = timeout
         self._open = opener or urllib.request.urlopen
+        self._attempt = {}
 
     def _request(self, method, path, body=None, content_type=None):
         req = urllib.request.Request(
@@ -115,6 +116,9 @@ class QueueClient:
             ident = item.get("id")
             env = item.get("envelope")
             if isinstance(ident, str) and ident and isinstance(env, str):
+                attempt = item.get("attempt")
+                if isinstance(attempt, int) and not isinstance(attempt, bool):
+                    self._attempt[ident] = attempt
                 out.append((ident, env))
         return out
 
@@ -125,9 +129,14 @@ class QueueClient:
     def renew(self, ident):
         """Renew the lease on a job this runner is still running. True
         when the queue renewed it; False when it no longer holds the
-        job under a lease (acked, or the lease already lapsed)."""
-        status, _ = self._request(
-            "POST", f"/jobs/{urllib.parse.quote(ident, safe='')}/lease")
+        job under a lease (acked, the lease lapsed, or a later pull
+        took it). The attempt from the pull is sent when we have one,
+        so a renew cannot extend a hand that moved on."""
+        path = f"/jobs/{urllib.parse.quote(ident, safe='')}/lease"
+        attempt = self._attempt.get(ident)
+        if isinstance(attempt, int) and not isinstance(attempt, bool):
+            path += f"?attempt={attempt}"
+        status, _ = self._request("POST", path)
         return status in (200, 204)
 
     def post_result(self, envelope_text):

@@ -47,6 +47,36 @@ export function clampedMax(raw, fallback) {
   if (!Number.isFinite(n)) return fallback;
   return Math.max(1, Math.min(100, n));
 }
+
+// A blank field is zero, which locks the tenant. A numeric string is
+// that number. Anything else is not a number: the worker refuses the
+// record, and the object falls back to the default so a bad value
+// cannot turn the cap off.
+export function quotaNumber(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (t === "") return 0;
+    const n = Number(t);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function quotaRejected(quota) {
+  if (quota == null || typeof quota !== "object") return false;
+  for (const key of ["jobs_per_hour", "bytes_per_day"]) {
+    if (quota[key] == null) continue;
+    if (quotaNumber(quota[key]) == null) return true;
+  }
+  return false;
+}
+
+function takeQuota(value, fallback) {
+  if (value == null) return fallback;
+  const n = quotaNumber(value);
+  return n == null ? fallback : n;
+}
 export const DEFAULT_QUOTA = { jobs_per_hour: 600, bytes_per_day: 256 * 1024 * 1024 };
 
 const enc = new TextEncoder();
@@ -343,6 +373,7 @@ export default {
         return forward(`/dlq-ack?id=${encodeURIComponent(itemId)}`, { method: "POST" });
       }
       if (request.method === "POST" && verb === "requeue") {
+        if (quotaRejected(tenant.quota)) return json(400, { error: "quota is not a number" });
         return forward(`/dlq-requeue?id=${encodeURIComponent(itemId)}`, {
           method: "POST", headers: { "x-hp-quota": JSON.stringify(tenant.quota || DEFAULT_QUOTA) },
         });
@@ -353,11 +384,14 @@ export default {
       // The runner still holds a job it is running: renew its lease
       // so a long job is not offered again or dead-lettered.
       if (!(await bearerMatches(request, tenant.runner_token_sha256))) return json(401, { error: "runner token" });
-      return forward(`/renew?id=${encodeURIComponent(leaseId)}`, { method: "POST" });
+      const attempt = url.searchParams.get("attempt");
+      const extra = attempt == null || attempt === "" ? "" : `&attempt=${encodeURIComponent(attempt)}`;
+      return forward(`/renew?id=${encodeURIComponent(leaseId)}${extra}`, { method: "POST" });
     }
     if (kind === "jobs" && request.method === "POST" && !ackId) {
       // SI submits a job.
       if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
+      if (quotaRejected(tenant.quota)) return json(400, { error: "quota is not a number" });
       const text = await request.text();
       if (!text) return json(400, { error: "empty body" });
       if (utf8Length(text) > DO_VALUE_MAX) return json(413, { error: "envelope over the storage limit" });
@@ -447,8 +481,8 @@ export class TenantQueue {
       const dayKey = `quota:day:${Math.floor(now / 86_400_000)}`;
       const jobs = (await s.get(hourKey)) || 0;
       const bytes = (await s.get(dayKey)) || 0;
-      const jph = quota.jobs_per_hour ?? DEFAULT_QUOTA.jobs_per_hour;
-      const bpd = quota.bytes_per_day ?? DEFAULT_QUOTA.bytes_per_day;
+      const jph = takeQuota(quota.jobs_per_hour, DEFAULT_QUOTA.jobs_per_hour);
+      const bpd = takeQuota(quota.bytes_per_day, DEFAULT_QUOTA.bytes_per_day);
       const weight = utf8Length(text);
       if (jobs + 1 > jph || bytes + weight > bpd) {
         await s.put("quota:exceeded", ((await s.get("quota:exceeded")) || 0) + 1);
@@ -476,6 +510,7 @@ export class TenantQueue {
       for (;;) {
         const page = await s.list({ prefix: "job:", limit: PAGE, startAfter });
         if (page.size === 0) break;
+        const prev = startAfter;
         for (const [key, job] of page) {
           startAfter = key;
           if (out.length >= max) break;
@@ -493,7 +528,7 @@ export class TenantQueue {
           out.push({ id: job.id, envelope: job.envelope, attempt: job.attempts });
           used += weight;
         }
-        if (out.length >= max || full) break;
+        if (out.length >= max || full || startAfter === prev) break;
       }
       return out.length ? json(200, { jobs: out }) : new Response(null, { status: 204 });
     }
@@ -504,6 +539,7 @@ export class TenantQueue {
       for (;;) {
         const page = await s.list({ prefix: "dlq:", limit: PAGE, startAfter });
         if (page.size === 0) break;
+        const prev = startAfter;
         for (const [key, d] of page) {
           startAfter = key;
           if (out.length >= max) break;
@@ -511,7 +547,7 @@ export class TenantQueue {
                      enqueued_at: d.enqueued_at, dead_at: d.dead_at,
                      subject: (parseEnvelope(d.envelope) || {}).subject || null });
         }
-        if (out.length >= max) break;
+        if (out.length >= max || startAfter === prev) break;
       }
       return out.length ? json(200, { dead: out }) : new Response(null, { status: 204 });
     }
@@ -529,7 +565,7 @@ export class TenantQueue {
       const quota = JSON.parse(request.headers.get("x-hp-quota") || "{}");
       const hourKey = `quota:hour:${Math.floor(now / 3_600_000)}`;
       const jobs = (await s.get(hourKey)) || 0;
-      const jph = quota.jobs_per_hour ?? DEFAULT_QUOTA.jobs_per_hour;
+      const jph = takeQuota(quota.jobs_per_hour, DEFAULT_QUOTA.jobs_per_hour);
       if (jobs + 1 > jph) {
         return json(429, { error: "tenant quota exceeded", jobs_this_hour: jobs },
                     { "retry-after": String(3600 - Math.floor((now % 3_600_000) / 1000)) });
@@ -544,6 +580,13 @@ export class TenantQueue {
       const id = url.searchParams.get("id");
       const job = await s.get(`job:${id}`);
       if (!job || !(job.leased_until > now)) return new Response(null, { status: 404 });
+      // The attempt the pull handed out. A later pull has a higher
+      // one, so the first runner's renew must not extend that lease.
+      const attemptRaw = url.searchParams.get("attempt");
+      if (attemptRaw != null && attemptRaw !== "") {
+        const n = Number(attemptRaw);
+        if (!Number.isInteger(n) || n !== job.attempts) return new Response(null, { status: 404 });
+      }
       const lease = parseInt(this.env.LEASE_MS || "", 10) || LEASE_MS_DEFAULT;
       job.leased_until = now + lease;
       await s.put(`job:${id}`, job);
@@ -579,6 +622,7 @@ export class TenantQueue {
       for (;;) {
         const page = await s.list({ prefix: "result:", limit: PAGE, startAfter });
         if (page.size === 0) break;
+        const prev = startAfter;
         for (const [key, row] of page) {
           startAfter = key;
           if (out.length >= max) break;
@@ -587,7 +631,7 @@ export class TenantQueue {
           out.push({ id: row.id, envelope: row.envelope, at: row.at });
           used += weight;
         }
-        if (out.length >= max || full) break;
+        if (out.length >= max || full || startAfter === prev) break;
       }
       return out.length ? json(200, { results: out }) : new Response(null, { status: 204 });
     }

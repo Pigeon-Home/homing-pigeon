@@ -172,7 +172,7 @@ one we'd recommend to anyone who winces at the word "email."
   the tenant's quota: jobs per hour and UTF-8 bytes per day, a hard 429
   with `Retry-After`. That quota is the spending cap Cloudflare
   itself does not provide. Its unit tests run under node
-  (`node --test runner/cloud/queues-worker/test/worker.test.mjs runner/cloud/queues-worker/test/fuzz.test.mjs`).
+  (`node --test runner/cloud/queues-worker/test/worker.test.mjs runner/cloud/queues-worker/test/fuzz.test.mjs runner/cloud/queues-worker/test/fatfinger.test.mjs`).
 - `runner/transport_extensions/queues/` — the runner-side extension.
   Outbound only: it leases jobs from the Worker, drops them in the
   channel inbox, posts the channel's results back and acks the job
@@ -218,7 +218,7 @@ shape, subject line, blank line, signed body):
 | SI | `POST /jobs` | a signed job in; 202 `{"id"}`, 200 `{"duplicate": true}` on a repeat of a live id, 409 naming the dead record when that id is on the dead-letter list, 400 when the id is not 1–128 of `[A-Za-z0-9._-]` (and not `.` or `..`) or the subject's id is not the `job_id` in the signed payload, 403 bad signature, 413 when the stored record (including its dead-letter copy) would pass the object's 2 MB key-and-value limit, 429 over quota |
 | runner | `GET /jobs?max=N` | lease up to N jobs (N clamped to 1..100; a non-number keeps 8; 0 or below is 1), fewer when the envelopes would pass 8 MB; 200 `{"jobs": [{"id", "envelope", "attempt"}]}` or 204 |
 | runner | `POST /jobs/<id>/ack` | the job is finished; 204, or 404 if already gone |
-| runner | `POST /jobs/<id>/lease` | renew the lease on a job still running, each pass, so a job longer than the lease is not offered again or dead-lettered; 204, or 404 when the queue no longer holds it leased |
+| runner | `POST /jobs/<id>/lease` | renew the lease on a job still running, each pass, so a job longer than the lease is not offered again or dead-lettered; 204, or 404 when the queue no longer holds it leased. `?attempt=N` names the attempt the pull handed out; a later pull's attempt is not extended |
 | runner | `POST /results` | a result envelope in; 202, 200 `{"duplicate": true}` when that id is already stored (the first envelope stays), 400 when the id is not a safe id, 413 over the same 2 MB storage limit |
 | SI | `GET /results?max=N` | results out (N clamped to 1..100; a non-number keeps 20; 0 or below is 1), fewer than N when the envelopes would pass 8 MB; 200 `{"results": [...]}` or 204 |
 | SI | `POST /results/<id>/ack` | the SI has it; 204 |

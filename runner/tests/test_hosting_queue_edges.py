@@ -318,8 +318,9 @@ class Store { constructor() { this.m = new Map(); }
   async get(k) { return this.m.has(k) ? structuredClone(this.m.get(k)) : undefined; }
   async put(k, v) { this.m.set(k, structuredClone(v)); }
   async delete(k) { return this.m.delete(k); }
-  async list({ prefix = "", limit = Infinity } = {}) { const o = new Map();
+  async list({ prefix = "", limit = Infinity, startAfter } = {}) { const o = new Map();
     for (const k of [...this.m.keys()].sort()) { if (o.size >= limit) break;
+      if (startAfter !== undefined && k <= startAfter) continue;
       if (k.startsWith(prefix)) o.set(k, structuredClone(this.m.get(k))); } return o; } }
 const objs = new Map();
 const env = { TENANTS: { async get(k) { return k === slug ? fs.readFileSync(recPath, "utf8") : null; } },

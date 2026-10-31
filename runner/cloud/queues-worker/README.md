@@ -42,7 +42,9 @@ Many tenants: bind a KV namespace as `TENANTS` and store one record
 per slug: `{"si_token_sha256", "runner_token_sha256", "hmac_secret",
 "quota": {"jobs_per_hour", "bytes_per_day"}}`. Hashes are SHA-256 hex
 of the token. `bytes_per_day` counts UTF-8 bytes, and so does the
-size recorded on a job.
+size recorded on a job. A quota field that is not a number is a
+400. Zero, or a blank field, locks the tenant rather than meaning
+unlimited.
 
 `homing-pigeon-host queue-tenant --tenant <slug> --worker <url>` mints
 one: it writes the tokens and the shared secret to
@@ -54,7 +56,7 @@ that use them.
 ## Test
 
 ```bash
-node --test runner/cloud/queues-worker/test/worker.test.mjs runner/cloud/queues-worker/test/fuzz.test.mjs
+node --test runner/cloud/queues-worker/test/worker.test.mjs runner/cloud/queues-worker/test/fuzz.test.mjs runner/cloud/queues-worker/test/fatfinger.test.mjs
 ```
 
 No wrangler, no network: the Durable Object namespace and KV are
