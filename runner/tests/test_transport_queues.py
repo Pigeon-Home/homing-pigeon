@@ -39,6 +39,7 @@ class FakeWorkerState:
         self.dead = []
         self.calls = []
         self.fail_results = 0  # next N result posts answer 503
+        self.attempt_out = {}  # id -> attempt number the next pull reports
 
 
 def make_handler(state):
@@ -78,7 +79,8 @@ def make_handler(state):
             out = []
             for i, e in free[:8]:
                 state.leased.add(i)
-                out.append({"id": i, "envelope": e, "attempt": 1})
+                out.append({"id": i, "envelope": e,
+                            "attempt": state.attempt_out.get(i, 1)})
             return self._send(200, json.dumps({"jobs": out}).encode())
 
         def _si_results(self):
@@ -273,6 +275,50 @@ class QueuePipeTest(unittest.TestCase):
             pipe.renew_leases()               # finished: no renewal
             self.assertEqual(w.state.renewed, ["j1", "j1"])
             self.assertEqual(w.state.acked, ["j1"])
+
+    def test_an_id_offered_again_after_it_finished_is_delivered_again(self):
+        # The SI requeues, or posts the same id again, while this
+        # process is still up. The pull has already leased it. Ignoring
+        # the offer burns that lease, and the next ones, until the job
+        # is dead. The previous life's done-file must not ack this one.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            self._core_answers("j1", "j1")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            again = envelope("j1", '{"v":1,"script":"echo again"}')
+            w.state.jobs["j1"] = again
+            pipe.pull_jobs()
+            inbox = os.path.join(ch.dirs(self.channel)["inbox"], "j1.job.txt")
+            done = os.path.join(ch.dirs(self.channel)["inbox_done"],
+                                "j1.job.txt")
+            self.assertTrue(os.path.isfile(inbox))
+            with open(inbox, encoding="utf-8") as fh:
+                self.assertIn("echo again", fh.read())
+            self.assertFalse(os.path.exists(done))
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self._core_answers("j1", "j1")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+
+    def test_a_lapsed_lease_keeps_one_copy_and_the_new_attempt(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            client = q.QueueClient(w.url, RUNNER_TOKEN)
+            pipe = q.QueuePipe({}, self.channel, client)
+            pipe.pull_jobs()
+            self.assertEqual(client._attempt["j1"], 1)
+            w.state.leased.discard("j1")
+            w.state.attempt_out["j1"] = 2
+            pipe.pull_jobs()
+            self.assertEqual(sorted(os.listdir(
+                ch.dirs(self.channel)["inbox"])), ["done", "j1.job.txt"])
+            self.assertEqual(client._attempt["j1"], 2)
+            self.assertIn("j1", pipe._pending)
 
     def test_a_lease_the_queue_no_longer_holds_is_logged_not_fatal(self):
         with FakeWorker() as w:

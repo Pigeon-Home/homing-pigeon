@@ -171,7 +171,13 @@ class QueuePipe:
         self.client = client
         self.max_jobs = _int(cfg.get("max_jobs"), 8, lo=1, hi=100)
         self._pending = {}  # queue id -> job_id (or None)
-        self._seen = set()  # queue ids delivered this process
+        # Ids this process has delivered. A result for one of them is
+        # still acked if it is no longer in _pending. It does not mean
+        # "drop the next offer": a requeue, or the same id sent again
+        # after an ack, is a new life. Dropping it here would still
+        # lease it on every pull until it dead-letters, and the runner
+        # would never see it.
+        self._seen = set()
 
     def _refuse(self, ident, why):
         ch.log(f"queues transport: {ident}: refused: {why}", "WARN")
@@ -193,7 +199,10 @@ class QueuePipe:
 
     def pull_jobs(self):
         for ident, text in self.client.pull(self.max_jobs):
-            if ident in self._pending or ident in self._seen:
+            # Still in the inbox. pull() already stored the attempt
+            # this lease handed out, so the next renew matches it.
+            # A second file would clobber the one the core is reading.
+            if ident in self._pending:
                 continue
             if len(text.encode("utf-8")) > MAX_BYTES:
                 self._refuse(ident, f"exceeds the {MAX_BYTES}-byte cap")
@@ -204,7 +213,17 @@ class QueuePipe:
                                     "between subject and body)")
                 continue
             subject, body = parsed
-            ch.deliver_job(self.channel, ident, subject, body)
+            path = ch.deliver_job(self.channel, ident, subject, body)
+            # The previous life of this id left inbox/done/<id>.job.txt,
+            # and that file means "this life finished, ack it". This
+            # offer is not that life. Clear the marker before anything
+            # acks, or the new job is dropped without running.
+            done = os.path.join(os.path.dirname(path), "done",
+                                os.path.basename(path))
+            try:
+                os.remove(done)
+            except FileNotFoundError:
+                pass
             self._pending[ident] = _job_id(subject)
             self._seen.add(ident)
 

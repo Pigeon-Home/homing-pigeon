@@ -207,7 +207,9 @@ one we'd recommend to anyone who winces at the word "email."
   line per dead job, or `--drop ID`, or `--requeue ID`. A requeued job
   is the same signed job, so a runner that already saw it, or holds it
   past its freshness window, refuses it as any replay; send a new job
-  for anything older.
+  for anything older. The queue transport delivers that offer again,
+  including to a process that already finished the id. Ignoring it
+  would still lease it on every pull until it dead-lettered.
 
 **The contract** (every route under `/t/<tenant>/`, every call with
 `Authorization: Bearer <token>`; the envelope is the file transport's
