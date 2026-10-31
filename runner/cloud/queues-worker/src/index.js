@@ -51,7 +51,10 @@ export function clampedMax(raw, fallback) {
 // A blank field is zero, which locks the tenant. A numeric string is
 // that number. Anything else is not a number: the worker refuses the
 // record, and the object falls back to the default so a bad value
-// cannot turn the cap off.
+// cannot turn the cap off. A missing quota is the default. A present
+// quota that is not an object (a bare number, a string, a list) is
+// refused too: the default is a wide cap, and that typo must not
+// widen the tenant to it.
 export function quotaNumber(value) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
@@ -64,7 +67,8 @@ export function quotaNumber(value) {
 }
 
 function quotaRejected(quota) {
-  if (quota == null || typeof quota !== "object") return false;
+  if (quota == null) return false;
+  if (typeof quota !== "object" || Array.isArray(quota)) return true;
   for (const key of ["jobs_per_hour", "bytes_per_day"]) {
     if (quota[key] == null) continue;
     if (quotaNumber(quota[key]) == null) return true;

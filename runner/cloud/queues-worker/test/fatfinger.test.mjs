@@ -301,6 +301,36 @@ test("a zero or blank hourly cap locks the tenant", async () => {
   }
 });
 
+test("a quota that is not an object is refused and stores nothing", async () => {
+  for (const quota of ["10", 10, [10, 60_000]]) {
+    const env = makeEnv({ quota });
+    await addTenant(env);
+    const r = await postJob(env, "j1");
+    assert.equal(r.status, 400, `quota ${JSON.stringify(quota)}`);
+    assert.equal((await r.json()).error, "quota is not a number");
+    assert.ok(!env.objects.has("alice") || !box(env).has("job:j1"));
+  }
+});
+
+test("a quota edited into a string leaves the dead job where it is", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 10, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  await postJob(env, "j1");
+  await kill(env, clock);
+  env.TENANTS.store.set("alice", JSON.stringify({
+    si_token_sha256: await sha256Hex(SI),
+    runner_token_sha256: await sha256Hex(RUNNER),
+    hmac_secret: SECRET,
+    quota: "10",
+  }));
+  const r = await worker.fetch(req("/t/alice/dlq/j1/requeue", { method: "POST", token: SI }), env);
+  assert.equal(r.status, 400);
+  assert.equal((await r.json()).error, "quota is not a number");
+  assert.ok(box(env).has("dlq:j1"));
+  assert.ok(!box(env).has("job:j1"));
+});
+
 test("a quota written as words is refused and stores nothing", async () => {
   const env = makeEnv({ quota: { jobs_per_hour: "600 jobs", bytes_per_day: 60_000 } });
   await addTenant(env);

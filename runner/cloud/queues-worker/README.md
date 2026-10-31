@@ -43,8 +43,10 @@ per slug: `{"si_token_sha256", "runner_token_sha256", "hmac_secret",
 "quota": {"jobs_per_hour", "bytes_per_day"}}`. Hashes are SHA-256 hex
 of the token. `bytes_per_day` counts UTF-8 bytes, and so does the
 size recorded on a job. A quota field that is not a number is a
-400. Zero, or a blank field, locks the tenant rather than meaning
-unlimited.
+400, and so is a quota that is present but not an object (a bare
+number, a string, a list): that is not the default cap. A missing
+quota is the default. Zero, or a blank field, locks the tenant
+rather than meaning unlimited.
 
 `homing-pigeon-host queue-tenant --tenant <slug> --worker <url>` mints
 one: it writes the tokens and the shared secret to

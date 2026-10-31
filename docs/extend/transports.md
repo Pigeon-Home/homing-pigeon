@@ -170,8 +170,11 @@ one we'd recommend to anyone who winces at the word "email."
   (bearer token for the role, then HMAC-SHA-384 under the tenant's
   shared secret, `REJECT_INVALID_HMAC` on by default) and enforces
   the tenant's quota: jobs per hour and UTF-8 bytes per day, a hard 429
-  with `Retry-After`. That quota is the spending cap Cloudflare
-  itself does not provide. Its unit tests run under node
+  with `Retry-After`. A missing quota is the default, 600 jobs an hour
+  and 256 MiB a day. A quota that is present and not an object of
+  numbers (a bare number, a string, a list, or a field that is not a
+  number) is a 400, not that default. That quota is the spending cap
+  Cloudflare itself does not provide. Its unit tests run under node
   (`node --test runner/cloud/queues-worker/test/worker.test.mjs runner/cloud/queues-worker/test/fuzz.test.mjs runner/cloud/queues-worker/test/fatfinger.test.mjs`).
 - `runner/transport_extensions/queues/` — the runner-side extension.
   Outbound only: it leases jobs from the Worker, drops them in the
