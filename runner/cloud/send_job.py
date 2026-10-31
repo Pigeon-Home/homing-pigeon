@@ -828,9 +828,9 @@ def post_to_queue(url, envelope, token_env=None, opener=None):
     if not token:
         raise SystemExit(f"error: --to-queue needs the SI token in "
                          f"environment variable {name}")
-    if not isinstance(url, str) or not (
-            url.startswith("https://") or url.startswith("http://127.0.0.1")
-            or url.startswith("http://localhost")):
+    from runner.transport_extensions.queues.__main__ import (
+        queue_base_allowed, _open_without_redirect)
+    if not queue_base_allowed(url):
         raise SystemExit("error: --to-queue must be an https URL "
                          "(loopback http is allowed for tests)")
     req = urllib.request.Request(
@@ -839,7 +839,7 @@ def post_to_queue(url, envelope, token_env=None, opener=None):
         headers={"Authorization": f"Bearer {token}",
                  "Content-Type": "text/plain; charset=utf-8",
                  "User-Agent": "homing-pigeon-send-job"})
-    return _send_with_retry(opener or urllib.request.urlopen, req)
+    return _send_with_retry(opener or _open_without_redirect, req)
 
 
 def repair_line(payload):
@@ -1068,9 +1068,9 @@ def _queue_call(url, method, path, token_env=None, opener=None):
     if not token:
         raise SystemExit(f"error: the queue needs the SI token in "
                          f"environment variable {name}")
-    if not isinstance(url, str) or not (
-            url.startswith("https://") or url.startswith("http://127.0.0.1")
-            or url.startswith("http://localhost")):
+    from runner.transport_extensions.queues.__main__ import (
+        queue_base_allowed, _open_without_redirect)
+    if not queue_base_allowed(url):
         raise SystemExit("error: the queue URL must be https "
                          "(loopback http is allowed for tests)")
     req = urllib.request.Request(
@@ -1078,7 +1078,7 @@ def _queue_call(url, method, path, token_env=None, opener=None):
         data=b"" if method == "POST" else None,
         headers={"Authorization": f"Bearer {token}",
                  "User-Agent": "homing-pigeon-send-job"})
-    return _send_with_retry(opener or urllib.request.urlopen, req)
+    return _send_with_retry(opener or _open_without_redirect, req)
 
 
 def _result_job_id(subject):

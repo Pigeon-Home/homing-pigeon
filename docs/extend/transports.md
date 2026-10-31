@@ -185,7 +185,10 @@ one we'd recommend to anyone who winces at the word "email."
   the result's name was not the id in the subject, so the output was
   never posted and the job stayed leased. An ack that does not
   succeed leaves the result where it is and the job leased, and the
-  next pass tries the ack again. A second file for the same id, named while the first
+  next pass tries the ack again. Plain http is the loopback host
+  itself, not a URL that only begins with that text, and a redirect
+  is not followed: either one would send the bearer token off the
+  machine. A second file for the same id, named while the first
   is still waiting, does not replace that result and still acks the
   job. A file whose subject names a different job is left where it
   is. A malformed or oversize envelope is refused and

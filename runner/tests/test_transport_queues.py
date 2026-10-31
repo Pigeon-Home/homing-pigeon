@@ -229,6 +229,45 @@ class QueueClientTest(unittest.TestCase):
             self.assertEqual(q._int(bad, 8, lo=1, hi=100), 8, repr(bad))
         self.assertEqual(q._int("5", 8, lo=1, hi=100), 5)
 
+    def test_a_url_that_only_starts_with_loopback_is_not(self):
+        # The inference door parses the host. The queue door used to
+        # accept any string that began with the loopback text, and
+        # the bearer token would have gone there in clear.
+        self.assertTrue(q.queue_base_allowed("http://127.0.0.1:9/t/a"))
+        self.assertTrue(q.queue_base_allowed("http://localhost/t/a"))
+        self.assertTrue(q.queue_base_allowed("http://[::1]/t/a"))
+        self.assertTrue(q.queue_base_allowed("https://q.example.test/t/a"))
+        for bad in ("http://127.0.0.1.evil.test/t/a",
+                    "http://localhost.evil.test/t/a",
+                    "http://127.0.0.1@evil.test/t/a",
+                    "http://q.example.test/t/a",
+                    "http://2130706433/t/a",
+                    "https://", "", None):
+            self.assertFalse(q.queue_base_allowed(bad), bad)
+
+    def test_a_redirect_does_not_take_the_token_with_it(self):
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(302)
+                self.send_header("Location", "http://127.0.0.1:1/stolen")
+                self.end_headers()
+
+            def log_message(self, *a):
+                pass
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            url = f"http://127.0.0.1:{server.server_address[1]}/t/alice"
+            client = q.QueueClient(url, RUNNER_TOKEN)
+            with self.assertRaises(RuntimeError) as cm:
+                client.pull(1)
+        finally:
+            server.shutdown()
+            server.server_close()
+        self.assertIn("302", str(cm.exception))
+
 
 class QueuePipeTest(unittest.TestCase):
     def setUp(self):
@@ -600,6 +639,14 @@ class QueuePipeTest(unittest.TestCase):
                            "token": "t"}, fh)
             self.assertEqual(q.main(["queues", self.channel, cfg_path],
                                     passes=1), 2)
+            for disguised in ("http://127.0.0.1.evil.test/t/a",
+                              "http://localhost.evil.test/t/a",
+                              "http://127.0.0.1@evil.test/t/a"):
+                with open(cfg_path, "w", encoding="utf-8") as fh:
+                    json.dump({"url": disguised, "token": "t"}, fh)
+                self.assertEqual(
+                    q.main(["queues", self.channel, cfg_path], passes=1),
+                    2, disguised)
 
 
 class SendJobToQueueTest(unittest.TestCase):
@@ -624,6 +671,11 @@ class SendJobToQueueTest(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 send_job.post_to_queue("http://q.example.test/t/a",
                                        envelope("j"))
+            for disguised in ("http://127.0.0.1.evil.test/t/a",
+                              "http://localhost.evil.test/t/a",
+                              "http://127.0.0.1@evil.test/t/a"):
+                with self.assertRaises(SystemExit):
+                    send_job.post_to_queue(disguised, envelope("j"))
         finally:
             del os.environ["HP_SI_TOKEN"]
 

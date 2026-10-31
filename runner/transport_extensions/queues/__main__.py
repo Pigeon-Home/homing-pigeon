@@ -28,6 +28,7 @@ leaves the job on the queue for the next lease.
 """
 
 import hashlib
+import ipaddress
 import json
 import os
 import re
@@ -45,6 +46,51 @@ from runner.wire import subject as _subject  # noqa: E402
 MAX_BYTES = ch.FILE_MAX_BYTES
 _JOB_ID_RE = _subject.JOB_ID_RE        # the one grammar (Q121)
 _RESULT_ID_RE = _subject.RESULT_ID_RE
+
+
+def queue_base_allowed(url):
+    """https anywhere, or http whose host is loopback.
+
+    A prefix is not a host. ``http://127.0.0.1.example`` and
+    ``http://localhost.example`` and ``http://127.0.0.1@evil.test``
+    are other machines. The bearer token would go there in clear.
+    The same rule the inference door uses for a model endpoint.
+    """
+    if not isinstance(url, str):
+        return False
+    try:
+        parsed = urllib.parse.urlparse(url.strip())
+    except Exception:
+        return False
+    host = parsed.hostname
+    if parsed.scheme == "https":
+        return bool(host)
+    if parsed.scheme != "http" or not host:
+        return False
+    host = host.lower().rstrip(".")
+    if host == "localhost":
+        return True
+    try:
+        return bool(ipaddress.ip_address(host).is_loopback)
+    except ValueError:
+        return False
+
+
+class _RedirectRefused(urllib.request.HTTPRedirectHandler):
+    """A Location is not the queue. Following it would send the
+    bearer token to whatever answered, including a loopback model
+    that emitted a redirect by mistake."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code, "redirect refused", headers, fp)
+
+
+def _open_without_redirect(req, timeout=None):
+    return _TOKEN_OPENER.open(req, timeout=timeout)
+
+
+_TOKEN_OPENER = urllib.request.build_opener(_RedirectRefused)
 # The writer names the first result "<id>.result.txt" and, while that
 # file is still in the outbox, the next one "<id>.result-<n>.txt".
 _RESULT_FILE_RE = re.compile(r"^(.+)\.result(?:-\d+)?\.txt$")
@@ -87,7 +133,7 @@ class QueueClient:
         self.url = url.rstrip("/")
         self.token = token
         self.timeout = timeout
-        self._open = opener or urllib.request.urlopen
+        self._open = opener or _open_without_redirect
         self._attempt = {}
         self._hand = {}
 
@@ -376,9 +422,7 @@ def main(argv=None, opener=None, passes=None):
         ch.log("queues transport: no channel directory given", "ERROR")
         return 2
     url = cfg.get("url")
-    if not isinstance(url, str) or not url.startswith("https://") \
-            and not url.startswith("http://127.0.0.1") \
-            and not url.startswith("http://localhost"):
+    if not queue_base_allowed(url):
         ch.log("queues transport: transport_queues.url must be an https "
                "URL (loopback http is allowed for tests)", "ERROR")
         return 2
