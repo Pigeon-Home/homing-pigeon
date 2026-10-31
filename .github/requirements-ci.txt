@@ -12,7 +12,7 @@ hypothesis==6.170.5; python_version >= "3.10"
 # The 3.9 floor leg (python-range.yml): 6.142.0 dropped 3.9, so the
 # floor keeps the last release that ran there.
 hypothesis==6.141.1; python_version < "3.10"
-pytest==9.1.1
+pytest==9.2.0
 build==1.6.1
 mutmut==3.8.0
 pyrefly==1.4.0
