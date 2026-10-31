@@ -33,7 +33,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA, DO_VALUE_MAX, jobStoredBytes, RESPONSE_BUDGET } from "../src/index.js";
+import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA, DO_VALUE_MAX, jobStoredBytes, storagePairBytes, RESPONSE_BUDGET } from "../src/index.js";
 
 const MAX_ATTEMPTS = 5;
 const LONG_OPS = 20_000;
@@ -927,6 +927,31 @@ test("fuzz: an envelope the object cannot store is refused, and one that fits is
   assert.equal(r.status, 413);
   assert.ok(!storage().map.has("result:big1"));
   assert.equal(snapshot(storage()), before);
+});
+
+test("fuzz: the storage budget counts the lease timestamp, not zero", async () => {
+  const now = 1_700_000_000_000;
+  const id = "edge";
+  const narrow = (text) => storagePairBytes(`dlq:${id}`, {
+    id, envelope: text, size: text.length, attempts: 5,
+    leased_until: 0, enqueued_at: now, dead_at: now,
+  });
+  const per = jobStoredBytes(id, "x", now) - jobStoredBytes(id, "", now);
+  let text = "x".repeat(Math.floor((DO_VALUE_MAX - jobStoredBytes(id, "", now)) / per) + 1);
+  while (jobStoredBytes(id, text, now) <= DO_VALUE_MAX) text += "x";
+  while (text.length > 1 && jobStoredBytes(id, text.slice(0, -1), now) > DO_VALUE_MAX) text = text.slice(0, -1);
+  assert.ok(jobStoredBytes(id, text, now) > DO_VALUE_MAX);
+  assert.ok(narrow(text) <= DO_VALUE_MAX, "the old budget would have stored this");
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 10, bytes_per_day: 9_000_000_000 } });
+  const obj = env.TENANT_QUEUE.get("alice");
+  const r = await obj.fetch(new Request("https://do/enqueue", {
+    method: "POST",
+    headers: { "x-hp-job-id": id, "x-hp-quota": JSON.stringify(env.quota) },
+    body: text,
+  }));
+  assert.equal(r.status, 413);
+  assert.ok(!env.objects.get("alice").state.storage.map.has(`job:${id}`));
+  assert.ok(!env.objects.get("alice").state.storage.map.has("quota:exceeded"));
 });
 
 test("fuzz: a pull pages the queue and still leases every waiting job", async () => {

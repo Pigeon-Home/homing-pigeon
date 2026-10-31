@@ -18,8 +18,8 @@ spending cap Cloudflare does not provide: jobs per hour and bytes per
 day, a hard 429 with `Retry-After`, nothing stored or billed past it.
 The object is SQLite-backed, so a key and its value together cannot
 exceed 2 MB. An envelope that would not fit, including the dead-letter
-copy and a later requeue, is a 413 and stores nothing. A result is
-held to the same limit. A pull reads the queue a page at a time, so
+copy with its lease timestamp and a later requeue, is a 413 and stores
+nothing. A result is held to the same limit. A pull reads the queue a page at a time, so
 one read does not load every envelope into the object. A jobs or
 results response stops at 8 MB of envelopes and the next read
 returns the rest. The dead-letter list is paged the same way, and

@@ -43,22 +43,28 @@ export const DEFAULT_QUOTA = { jobs_per_hour: 600, bytes_per_day: 256 * 1024 * 1
 
 const enc = new TextEncoder();
 
-// Bytes the runtime will persist: the key plus the JSON value. The
-// dead-letter copy adds dead_at, and a requeue adds requeued_at, so
-// a job is refused unless every form it will take still fits.
+// Bytes the runtime will persist: the key plus the JSON value. A pull
+// replaces leased_until 0 with a millisecond timestamp before the
+// dead-letter copy adds dead_at. Budget that wider record, or a job
+// that measured as fitting throws on the way to the dead list.
+const FAR_MS = 9_999_999_999_999;
 export function storagePairBytes(key, value) {
   return enc.encode(key).length + enc.encode(JSON.stringify(value)).length;
 }
 
 export function jobStoredBytes(jobId, text, now) {
-  const base = {
+  const stamp = Math.max(FAR_MS, Number(now) || 0);
+  const dead = {
     id: jobId, envelope: text, size: text.length,
-    attempts: MAX_ATTEMPTS, leased_until: 0, enqueued_at: now,
+    attempts: MAX_ATTEMPTS, leased_until: stamp, enqueued_at: stamp, dead_at: stamp,
+  };
+  const again = {
+    id: jobId, envelope: text, size: text.length,
+    attempts: 0, leased_until: 0, enqueued_at: stamp, requeued_at: stamp,
   };
   return Math.max(
-    storagePairBytes(`job:${jobId}`, base),
-    storagePairBytes(`dlq:${jobId}`, { ...base, dead_at: now }),
-    storagePairBytes(`job:${jobId}`, { ...base, attempts: 0, requeued_at: now }),
+    storagePairBytes(`dlq:${jobId}`, dead),
+    storagePairBytes(`job:${jobId}`, again),
   );
 }
 
