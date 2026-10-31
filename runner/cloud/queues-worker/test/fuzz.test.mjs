@@ -12,19 +12,21 @@
 //   5. a token that does not hash to the stored hash is refused,
 //      and a refused request changes no state.
 //
-// Two requests are in flight together on some operations. The fake
-// applies the Durable Object input gate: one object fetch runs at a
-// time, because this handler only awaits storage once it has the
-// body. The Worker's own token hash and HMAC still overlap, which
-// is where they run, outside the object. A job id in both answers
-// is a failure.
+// A seeded operation that sends two requests runs them in issue
+// order, so the same seed replays. The pinned test is the one that
+// races two pulls. The fake applies the Durable Object input gate:
+// one object fetch runs at a time, because this handler only awaits
+// storage once it has the body. A job id in both answers is a failure.
 //
-// A tuple is the route, the status, and the storage-key prefixes
-// left behind. The first seed and operation that reached each tuple
-// is kept in fuzz.corpus.json. The replay runs those prefixes
-// before the long seed spends its budget. A failure names its seed
-// and the operation index, and the same seed replays the same run.
-// HP_FUZZ_WRITE=1 rewrites the corpus from what this process saw.
+// A tuple is the route, the status, and what the storage showed:
+// the key prefixes, whether a job is leased (`held`), the highest
+// attempt still queued (`att:N`), and on a 429 which cap fired
+// (`cap:hour` or `cap:day`). The first seed and operation that
+// reached each tuple is kept in fuzz.corpus.json. The replay runs
+// those prefixes before the long seed spends its budget. A failure
+// names its seed and the operation index, and the same seed replays
+// the same run. HP_FUZZ_WRITE=1 rewrites the corpus from what this
+// process saw.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -97,12 +99,18 @@ function makeEnv({ quota, clock } = {}) {
 const SECRET = "s".repeat(64);
 const SI = "si-token-alice";
 const RUNNER = "runner-token-alice";
+const BOB_SECRET = "b".repeat(64);
+const BOB_SI = "si-token-bob";
+const BOB_RUNNER = "runner-token-bob";
 
-async function addTenant(env, slug = "alice") {
+async function addTenant(env, slug = "alice", creds = {}) {
+  const si = creds.si || SI;
+  const runnerTok = creds.runner || RUNNER;
+  const secret = creds.secret || SECRET;
   env.TENANTS.store.set(slug, JSON.stringify({
-    si_token_sha256: await sha256Hex(SI),
-    runner_token_sha256: await sha256Hex(RUNNER),
-    hmac_secret: SECRET,
+    si_token_sha256: await sha256Hex(si),
+    runner_token_sha256: await sha256Hex(runnerTok),
+    hmac_secret: secret,
     quota: env.quota,
   }));
 }
@@ -186,14 +194,23 @@ const BAD_FOR_RUNNER = [
   "Bearer " + "q".repeat(RUNNER.length),
 ];
 
-function keyPrefixes(storage) {
+function keyPrefixes(box, now = 0, extra = []) {
   const names = new Set();
-  for (const k of storage.map.keys()) {
+  let maxAtt = -1;
+  let held = false;
+  for (const [k, v] of box.map) {
     if (k.startsWith("quota:hour:")) names.add("quota:hour");
     else if (k.startsWith("quota:day:")) names.add("quota:day");
     else if (k.startsWith("quota:")) names.add(k);
     else names.add(k.split(":")[0]);
+    if (k.startsWith("job:") && v && typeof v === "object") {
+      if (typeof v.attempts === "number" && v.attempts > maxAtt) maxAtt = v.attempts;
+      if (v.leased_until > now) held = true;
+    }
   }
+  if (maxAtt >= 0) names.add("att:" + maxAtt);
+  if (held) names.add("held");
+  for (const e of extra) names.add(e);
   return [...names].sort();
 }
 
@@ -202,7 +219,7 @@ function routeOf(method, path) {
   const bare = path.split("?")[0];
   const m = bare.match(/^\/t\/([^/]+)\/(jobs|results|dlq)(?:\/[^/]+\/(ack|lease|requeue))?\/?$/);
   if (!m) return `${method} ${bare}`;
-  const slug = m[1] === "alice" ? ":slug" : ":other";
+  const slug = m[1] === "alice" || m[1] === "bob" ? ":slug" : ":other";
   const tail = m[3] ? `/${m[2]}/:id/${m[3]}` : `/${m[2]}`;
   const query = path.includes("?") ? "?max" : "";
   return `${method} /t/${slug}${tail}${query}`;
@@ -233,13 +250,21 @@ export async function runFuzz(seed, ops) {
   let now = 1_700_000_000_000;
   const env = makeEnv({ clock: () => now });
   await addTenant(env);
+  await addTenant(env, "bob", { si: BOB_SI, runner: BOB_RUNNER, secret: BOB_SECRET });
   env.TENANT_QUEUE.get("alice");
   const storage = () => env.objects.get("alice").state.storage;
+  const bobStorage = () => env.objects.get("bob") && env.objects.get("bob").state.storage;
   const expected = new Map(); // quota counter key -> value implied by responses
   const outstanding = new Map(); // job id -> leased_until, from pulls not yet expired or acked
   const envelopes = new Map();
   for (const id of IDS) envelopes.set(id, await signedJob(id));
   const wrongSecret = await signedJob("j1", "wrong-secret");
+  // Bigger than the day cap, smaller than the 4 MiB refusal. Signed,
+  // so it reaches the quota check. The hour cap is what used to hide it.
+  const fat = await signedJob("fat1", SECRET, "x".repeat(env.quota.bytes_per_day));
+  assert.ok(fat.length > env.quota.bytes_per_day && fat.length < ENVELOPE_MAX);
+  const bobEnvelopes = new Map();
+  for (const id of ["b1", "b2"]) bobEnvelopes.set(id, await signedJob(id, BOB_SECRET));
   const bump = (key, by) => expected.set(key, (expected.get(key) ?? 0) + by);
   const hourKey = () => `quota:hour:${Math.floor(now / 3_600_000)}`;
   const dayKey = () => `quota:day:${Math.floor(now / 86_400_000)}`;
@@ -248,8 +273,17 @@ export async function runFuzz(seed, ops) {
   const doFetch = async (method, path, opts) => {
     const r = await worker.fetch(req(path, { method, ...opts }), env);
     assert.ok(KNOWN_STATUS.has(r.status), `seed ${seed}: ${method} ${path} status ${r.status} is not a known answer`);
-    const keys = keyPrefixes(storage());
-    const tuple = tupleOf(routeOf(method, path), r.status, keys);
+    const extra = [];
+    if (r.status === 429) {
+      let jobs = 0;
+      try { jobs = (await r.clone().json()).jobs_this_hour ?? 0; } catch { /* not json */ }
+      const jph = env.quota.jobs_per_hour ?? DEFAULT_QUOTA.jobs_per_hour;
+      extra.push(jobs + 1 > jph ? "cap:hour" : "cap:day");
+    }
+    const slug = (path.split("?")[0].match(/^\/t\/([^/]+)/) || [])[1];
+    const obj = slug && env.objects.get(slug);
+    const box = obj ? obj.state.storage : storage();
+    const tuple = tupleOf(routeOf(method, path), r.status, keyPrefixes(box, now, extra));
     return { r, tuple };
   };
 
@@ -299,6 +333,7 @@ export async function runFuzz(seed, ops) {
       else if (variant < 0.42) body = "";
       else if (variant < 0.50) body = body.slice(0, 1 + Math.floor(rnd() * 24));
       else if (variant < 0.58) path = "/t/nobody/jobs";
+      else if (variant < 0.70) body = fat;
       const before = snapshot(storage());
       const beforeBilling = snapshotBilling(storage());
       const { r, tuple } = await doFetch("POST", path, { token, body });
@@ -330,15 +365,21 @@ export async function runFuzz(seed, ops) {
         assert.equal(r.status, 401, `${where}: bad token answered ${r.status}`);
         assert.equal(snapshot(storage()), before, `${where}: a refused pull changed state`);
       } else if (r.status === 200) {
-        checkPull(await readJobs(r), book, where);
+        const jobs = await readJobs(r);
+        checkPull(jobs, book, where);
+        const bob = bobStorage();
+        for (const job of jobs) {
+          assert.ok(!(bob && bob.map.has(`job:${job.id}`)),
+            `${where}: alice was handed ${job.id}, which bob holds`);
+        }
         syncOutstanding();
       } else {
         assert.equal(r.status, 204, `${where}: pull answered ${r.status}`);
       }
     } else if (roll < 0.52) {
-      // Two requests at once. The gate serializes the object; the
-      // check is that a job still has one holder when both answers
-      // are in.
+      // Two requests, in issue order. Promise.all would let the two
+      // token hashes finish in either order, and the seed would not
+      // replay. The pinned test is the one that races them.
       const kind = pick(["pull-pull", "pull-ack", "submit-submit"]);
       const book = new Map(outstanding);
       if (kind === "pull-pull") {
@@ -348,10 +389,8 @@ export async function runFuzz(seed, ops) {
         const t2 = token();
         const p1 = `/t/alice/jobs${max()}`;
         const p2 = `/t/alice/jobs${max()}`;
-        const [a, b] = await Promise.all([
-          doFetch("GET", p1, { token: t1 }),
-          doFetch("GET", p2, { token: t2 }),
-        ]);
+        const a = await doFetch("GET", p1, { token: t1 });
+        const b = await doFetch("GET", p2, { token: t2 });
         note(i, a.tuple); note(i, b.tuple);
         const jobs = [];
         if (t1 === `Bearer ${RUNNER}` && a.r.status === 200) jobs.push(await readJobs(a.r));
@@ -364,26 +403,20 @@ export async function runFuzz(seed, ops) {
         syncOutstanding();
       } else if (kind === "pull-ack") {
         const id = rnd() < 0.8 ? pick(IDS) : "ghost";
-        const [pull, ack] = await Promise.all([
-          doFetch("GET", "/t/alice/jobs?max=5", { token: `Bearer ${RUNNER}` }),
-          doFetch("POST", `/t/alice/jobs/${id}/ack`, { token: `Bearer ${RUNNER}` }),
-        ]);
+        const pull = await doFetch("GET", "/t/alice/jobs?max=5", { token: `Bearer ${RUNNER}` });
+        const ack = await doFetch("POST", `/t/alice/jobs/${id}/ack`, { token: `Bearer ${RUNNER}` });
         note(i, pull.tuple); note(i, ack.tuple);
         const jobs = pull.r.status === 200 ? await readJobs(pull.r) : [];
         checkPull(jobs, book, where);
         if (ack.r.status === 204) {
           assert.ok(!storage().map.has(`job:${id}`), `${where}: ack of ${id} left the job queued`);
-          assert.ok(!jobs.some((j) => j.id === id) || !storage().map.has(`job:${id}`),
-            `${where}: ${id} was pulled and acked and is still queued`);
         }
         syncOutstanding();
       } else {
         const id = pick(IDS);
         const body = envelopes.get(id);
-        const [a, b] = await Promise.all([
-          doFetch("POST", "/t/alice/jobs", { token: `Bearer ${SI}`, body }),
-          doFetch("POST", "/t/alice/jobs", { token: `Bearer ${SI}`, body }),
-        ]);
+        const a = await doFetch("POST", "/t/alice/jobs", { token: `Bearer ${SI}`, body });
+        const b = await doFetch("POST", "/t/alice/jobs", { token: `Bearer ${SI}`, body });
         note(i, a.tuple); note(i, b.tuple);
         const accepted = [a.r, b.r].filter((r) => r.status === 202);
         assert.ok(accepted.length <= 1, `${where}: ${id} was stored twice`);
@@ -443,10 +476,39 @@ export async function runFuzz(seed, ops) {
         if (r.status === 202) bump(hourKey(), 1);
         if (r.status === 429) assert.equal(snapshot(storage()), before, `${where}: a 429 requeue changed state`);
       }
-    } else if (roll < 0.92) {
+    } else if (roll < 0.88) {
       now += pick([0, 100, 999, 1000, 5000, 3_599_000, 3_600_000, 86_400_000]);
       syncOutstanding();
-      note(i, tupleOf("tick", 0, keyPrefixes(storage())));
+      note(i, tupleOf("tick", 0, keyPrefixes(storage(), now)));
+    } else if (roll < 0.94) {
+      // Bob is a second tenant. His runner must not see alice's jobs,
+      // and alice's token must not open his queue.
+      const which = rnd();
+      const beforeAlice = snapshot(storage());
+      if (which < 0.34) {
+        const { r, tuple } = await doFetch("GET", "/t/bob/jobs?max=5", { token: `Bearer ${BOB_RUNNER}` });
+        note(i, tuple);
+        assert.equal(snapshot(storage()), beforeAlice, `${where}: bob's pull changed alice`);
+        if (r.status === 200) {
+          for (const job of await readJobs(r)) {
+            assert.ok(bobStorage().map.has(`job:${job.id}`), `${where}: bob was handed ${job.id} it does not hold`);
+            assert.ok(!storage().map.has(`job:${job.id}`), `${where}: bob was handed alice's ${job.id}`);
+          }
+        } else {
+          assert.equal(r.status, 204, `${where}: bob's pull answered ${r.status}`);
+        }
+      } else if (which < 0.67) {
+        const { r, tuple } = await doFetch("GET", "/t/bob/jobs", { token: `Bearer ${RUNNER}` });
+        note(i, tuple);
+        assert.equal(r.status, 401, `${where}: alice's runner opened bob (${r.status})`);
+        assert.equal(snapshot(storage()), beforeAlice, `${where}: a refused bob pull changed alice`);
+      } else {
+        const id = pick(["b1", "b2"]);
+        const { r, tuple } = await doFetch("POST", "/t/bob/jobs", { token: `Bearer ${BOB_SI}`, body: bobEnvelopes.get(id) });
+        note(i, tuple);
+        assert.equal(snapshot(storage()), beforeAlice, `${where}: bob's submit changed alice`);
+        assert.ok([200, 202, 409, 429].includes(r.status), `${where}: bob's submit answered ${r.status}`);
+      }
     } else {
       const choice = pick([
         ["GET", "/health"],
@@ -455,6 +517,8 @@ export async function runFuzz(seed, ops) {
         ["POST", "/t/nobody/jobs"],
         ["GET", "/t/alice/nope"],
         ["POST", "/health"],
+        ["PUT", "/t/alice/jobs"],
+        ["DELETE", "/t/alice/dlq"],
       ]);
       const body = choice[0] === "POST" && choice[1].endsWith("/jobs") ? envelopes.get("j1") : undefined;
       const token = choice[1].includes("nobody") ? `Bearer ${SI}` : pick([`Bearer ${SI}`, `Bearer ${RUNNER}`, "Bearer " + "q".repeat(SI.length)]);
@@ -462,6 +526,11 @@ export async function runFuzz(seed, ops) {
       const { r, tuple } = await doFetch(choice[0], choice[1], { token, body });
       note(i, tuple);
       if (choice[1] === "/health") assert.equal(r.status, 200, `${where}: health answered ${r.status}`);
+      if (choice[0] === "PUT" || choice[0] === "DELETE") {
+        const refused = choice[0] === "DELETE" && token !== `Bearer ${SI}` ? 401 : 405;
+        assert.equal(r.status, refused, `${where}: ${choice[0]} answered ${r.status}`);
+        assert.equal(snapshot(storage()), before, `${where}: a refused method changed state`);
+      }
       if (choice[1].includes("nobody") || choice[1] === "/t/alice" || choice[1] === "/t/alice/nope") {
         assert.equal(r.status, 404, `${where}: ${choice[1]} answered ${r.status}`);
         assert.equal(snapshot(storage()), before, `${where}: a miss changed state`);
@@ -538,6 +607,52 @@ test("fuzz: two overlapping pulls do not lease one job twice", async () => {
   }
   assert.equal(new Set(ids).size, ids.length, `one job leased twice: ${ids}`);
   assert.ok(ids.includes("only"));
+  void now;
+});
+
+test("fuzz: a body over the day cap is refused while the hour is open", async () => {
+  let now = 1_700_000_000_000;
+  const quota = { jobs_per_hour: 6, bytes_per_day: 60_000 };
+  const env = makeEnv({ clock: () => now, quota });
+  await addTenant(env);
+  env.TENANT_QUEUE.get("alice");
+  const storage = () => env.objects.get("alice").state.storage;
+  const fat = await signedJob("fat1", SECRET, "x".repeat(quota.bytes_per_day));
+  assert.ok(fat.length > quota.bytes_per_day && fat.length < ENVELOPE_MAX);
+  const before = snapshotBilling(storage());
+  const r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: fat }), env);
+  assert.equal(r.status, 429);
+  const answered = await r.json();
+  assert.ok((answered.jobs_this_hour ?? 0) + 1 <= quota.jobs_per_hour);
+  const dayRetry = 86400 - Math.floor((now % 86_400_000) / 1000);
+  assert.equal(Number(r.headers.get("retry-after")), dayRetry);
+  assert.equal(snapshotBilling(storage()), before);
+  assert.ok(!storage().map.has("job:fat1"));
+  const small = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: await signedJob("j1") }), env);
+  assert.equal(small.status, 202);
+});
+
+test("fuzz: bob's runner does not see alice's job", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 10, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  await addTenant(env, "bob", { si: BOB_SI, runner: BOB_RUNNER, secret: BOB_SECRET });
+  const alice = () => env.objects.get("alice").state.storage;
+  let r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: await signedJob("only") }), env);
+  assert.equal(r.status, 202);
+  const before = snapshot(alice());
+  r = await worker.fetch(req("/t/bob/jobs?max=5", { token: `Bearer ${BOB_RUNNER}` }), env);
+  assert.equal(r.status, 204);
+  assert.equal(snapshot(alice()), before);
+  r = await worker.fetch(req("/t/bob/jobs", { method: "POST", token: `Bearer ${BOB_SI}`, body: await signedJob("b1", BOB_SECRET) }), env);
+  assert.equal(r.status, 202);
+  assert.equal(snapshot(alice()), before);
+  r = await worker.fetch(req("/t/alice/jobs?max=5", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 200);
+  const ids = (await r.json()).jobs.map((j) => j.id);
+  assert.deepEqual(ids, ["only"]);
+  r = await worker.fetch(req("/t/bob/jobs", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 401);
   void now;
 });
 
