@@ -1,0 +1,8 @@
+[Unit]
+Description=Minute check for a staged Homing Pigeon remote-upgrade trigger
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+Unit=hp-remote-upgrade.service
+[Install]
+WantedBy=timers.target

@@ -36,6 +36,97 @@ a bare name (`["bash"]`, `["sh"]`) that resolves under `/usr`. This
 was learned live on 31 Oct 2026: the same clock job failed with
 `/bin/sh` named and ran clean with the field left out.
 
+## Remote upgrade
+
+A runner can be upgraded remotely by anyone who holds its shared
+secret. The procedure is a part of the software suite — an operating
+procedure built from the job machinery — and deliberately not a part
+of the protocol specification: the wire carries an ordinary signed
+job, nothing more. It was first run end to end on 31 Oct 2026,
+taking a hosted runner from 3.14.2 to 3.15.0.
+
+It has two halves, because a confined job cannot do the whole thing
+and is not allowed to: PROTOCOL.md section 9.4 — no job field can
+widen or disable confinement, the sandbox has no network, and the
+runner's own tree is outside a job's reach.
+
+**The job half (the secret-holder's side).** Send one signed exec
+job that names the release tarball and the release's SHA384SUMS as
+URL input files (`--file` in send_job.py). The runner itself
+downloads its input files before the job starts, outside the
+sandbox — that is how the bytes cross a wall the job cannot. The
+tarball is about 91 MB; the runner's download cap is 100 MiB. The
+job's script then checks the tarball against the sums inside its own
+work directory — the one place a job can write that is still there
+after it exits — moves the tarball into a `remote-upgrade` folder in
+that work directory, and leaves a `trigger` file beside it:
+
+```sh
+set -eu
+grep homing-pigeon-linux-x86_64-<version>.tar.gz SHA384SUMS > hp.sum
+sha384sum -c hp.sum
+mkdir -p remote-upgrade
+mv homing-pigeon-linux-x86_64-<version>.tar.gz remote-upgrade/
+touch remote-upgrade/trigger
+echo remote-upgrade: staged and triggered
+```
+
+`set -eu` matters: without it a failed download or a failed digest
+check still prints the success line and exits 0, and the sender
+reads a staging that never happened. (Learned on the first attempt,
+which tried to fetch with curl from inside the sandbox: no network,
+nothing staged, and an unconditional "staged" line that said
+otherwise.)
+
+**The host half (installed once by the owner).** The kit in
+`runner/tools/remote-upgrade/` — the applier
+`hp-remote-upgrade-apply` plus its systemd service, path and timer
+units — is installed on the box once. The timer runs the applier
+every minute (the path unit is a fast path only: a PathExistsGlob
+two directories deep did not fire when the trigger appeared). The
+applier finds the newest triggered payload, fetches a FRESH
+SHA384SUMS for the staged version and checks the tarball against it
+a second time, then runs the release's own installer and restarts
+the runner. The outcome is written to `outcome.txt` in the payload
+folder; the full log is `/root/.homing-pigeon/remote-upgrade-applier.log`.
+
+Four things the first run earned, all handled inside the applier:
+
+- The installer for a box that runs the runner as a system service
+  needs `--system`; without it, it installs a user unit and dies at
+  `systemctl --user daemon-reload`, which has no session to talk to
+  from a service.
+- The frozen installer leaks its bundled OpenSSL into every program
+  it shells out to, and a current Fedora's `systemctl` and `curl`
+  need newer OpenSSL symbols than the bundle carries — they die on
+  the mismatch. The applier puts small wrapper scripts for
+  `systemctl` and `curl` first on the installer's PATH; each wrapper
+  drops the leaked library path and runs the real tool.
+- Give the installer a disk-backed TMPDIR (the applier uses
+  `/root/.homing-pigeon/tmp`). A small or full /tmp breaks it twice:
+  the release extract does not fit, and later the frozen runner
+  itself extracts into TMPDIR at every start and crash-loops when
+  there is no room. A /tmp full of old rig debris (450 MB of bank
+  temp folders) was the last wall on the first run.
+- The installer re-stamps the config's profile (it applied
+  `password-only` to a `hosted` box). The applier records the profile
+  before the install and restores it if it changed; the rest of the
+  config the installer leaves alone, as documented. A remote upgrade
+  also re-arms the box's panic word; the install log on the box is
+  where that is recorded.
+
+One thing the applier leaves in place after the swap: the frozen
+runner cannot find this platform's CA bundle by itself and every
+transport then fails TLS ("unable to get local issuer
+certificate"). The applier writes a systemd drop-in naming the
+bundle (`SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`
+on Fedora) and restarts the runner with it.
+
+Proof it worked, in order: the applier's `outcome.txt` names the
+new version, `homing-pigeon --version` on the box agrees, both
+transports pass clean, and the clock job above, sent again, comes
+back signed by the upgraded runner with its clock still true.
+
 `--arg` and `--env KEY=value` are repeatable. `--script-url URL` sends
 the script by link instead (https only; the runner downloads it), and
 `--script-sha384 HEX` pins its hash, checked before anything runs.

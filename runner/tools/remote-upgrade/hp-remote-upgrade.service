@@ -1,0 +1,6 @@
+[Unit]
+Description=Apply a staged Homing Pigeon remote upgrade
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/hp-remote-upgrade-apply

@@ -1,0 +1,68 @@
+#!/bin/sh
+# hp-remote-upgrade-apply -- host half of the remote upgrade procedure.
+# A signed job stages a release tarball in its work directory (the one
+# place a confined job can write that persists) and leaves a trigger
+# file beside it. This applier, fired by hp-remote-upgrade.path,
+# re-verifies the staged tarball against a freshly fetched SHA384SUMS
+# before it swaps anything, then runs the release's own installer and
+# restarts the runner onto the new code.
+set -u
+WORK=/root/.homing-pigeon/work
+LOG=/root/.homing-pigeon/remote-upgrade-applier.log
+exec >>"$LOG" 2>&1
+echo "=== applier $(date -u +%FT%TZ)"
+PAYLOAD=""
+for d in $(ls -td "$WORK"/*/remote-upgrade 2>/dev/null); do
+  if [ -f "$d/trigger" ]; then PAYLOAD="$d"; break; fi
+done
+[ -n "$PAYLOAD" ] || { echo "no triggered payload"; exit 0; }
+rm -f "$PAYLOAD/trigger"
+fail() { echo "FAILED: $1" > "$PAYLOAD/outcome.txt"; echo "applier FAILED: $1"; exit 0; }
+TARBALL=$(ls "$PAYLOAD"/homing-pigeon-linux-*-*.tar.gz 2>/dev/null | head -1)
+[ -n "$TARBALL" ] || fail "no tarball staged"
+BASE=$(basename "$TARBALL")
+VER=$(echo "$BASE" | sed -E 's/^homing-pigeon-linux-[^-]+-(.*)\.tar\.gz$/\1/')
+[ -n "$VER" ] || fail "cannot read the version from $BASE"
+cd "$PAYLOAD" || fail "cannot enter payload dir"
+curl -fsSL -o SHA384SUMS.fresh "https://github.com/Pigeon-Home/homing-pigeon/releases/download/v$VER/SHA384SUMS" || fail "cannot fetch SHA384SUMS for v$VER"
+grep "$BASE" SHA384SUMS.fresh > fresh.sum || fail "no sums line for $BASE"
+sha384sum -c fresh.sum || fail "staged tarball fails the fresh SHA384SUMS check"
+mkdir -p /root/.homing-pigeon/tmp
+EX=$(mktemp -d -p /root/.homing-pigeon)
+tar -xzf "$TARBALL" -C "$EX" || fail "extract failed"
+DIR=$(ls -d "$EX"/homing-pigeon-linux-*-*/ 2>/dev/null | head -1)
+[ -n "$DIR" ] || fail "no release directory in the tarball"
+cd "$DIR" || fail "cannot enter release dir"
+PROFILE_BEFORE=$(/usr/bin/python3 -c "import json; print(json.load(open('/root/.homing-pigeon/config.json')).get('profile',''))")
+# The frozen installer leaks its bundled OpenSSL into every child it
+# shells out to (LD_LIBRARY_PATH points at its extraction dir), and
+# this box's systemctl and curl need newer OpenSSL symbols than the
+# bundle carries -- daemon-reload dies on the mismatch. Shim the two
+# children that matter with wrappers that drop the leaked path.
+SHIM=$(mktemp -d -p /root/.homing-pigeon)
+for tool in systemctl curl; do
+  printf '#!/bin/sh\nunset LD_LIBRARY_PATH\nexec /usr/bin/%s "$@"\n' "$tool" > "$SHIM/$tool"
+  chmod 755 "$SHIM/$tool"
+done
+PATH="$SHIM:$PATH" TMPDIR=/root/.homing-pigeon/tmp timeout 600 ./install --system || fail "the installer failed"
+PROFILE_NOW=$(/usr/bin/python3 -c "import json; print(json.load(open('/root/.homing-pigeon/config.json')).get('profile',''))")
+if [ "$PROFILE_BEFORE" != "$PROFILE_NOW" ]; then
+  /usr/bin/python3 -c "
+import json, os
+p = '/root/.homing-pigeon/config.json'
+c = json.load(open(p)); c['profile'] = '$PROFILE_BEFORE'
+json.dump(c, open(p, 'w'), indent=1); os.chmod(p, 0o600)
+"
+  echo "applier: restored profile $PROFILE_BEFORE (installer had stamped $PROFILE_NOW)"
+fi
+# The frozen runner cannot find this box's CA bundle on its own; the
+# drop-in names it. The installer rewrites the unit but drop-ins live
+# beside it and survive -- rewrite ours anyway so it is always there.
+mkdir -p /etc/systemd/system/homing-pigeon.service.d
+printf '[Service]\nEnvironment=SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem\n' > /etc/systemd/system/homing-pigeon.service.d/ca-bundle.conf
+systemctl daemon-reload
+systemctl restart homing-pigeon.service || fail "the runner restart failed"
+sleep 5
+V=$(/root/.homing-pigeon/homing-pigeon --version 2>&1 | head -1)
+echo "upgraded: $V" > "$PAYLOAD/outcome.txt"
+echo "applier done: $V"

@@ -1,0 +1,7 @@
+[Unit]
+Description=Watch for a staged Homing Pigeon remote-upgrade trigger
+[Path]
+PathExistsGlob=/root/.homing-pigeon/work/*/remote-upgrade/trigger
+Unit=hp-remote-upgrade.service
+[Install]
+WantedBy=multi-user.target
