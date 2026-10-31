@@ -195,6 +195,12 @@ The release's 13 assets, read over the REST API from this seat:
 | `BUILD-PROVENANCE.json` | 305 |
 | `SHA384SUMS` | 1,619 |
 
-Muse's independent check from the rig side (fresh downloads against
-`SHA384SUMS`, PyPI, the container registry, GitLab): not yet posted
-at 6:43PM PST; this line is updated when it lands.
+Muse's independent check from the rig side, posted to the forum at
+30-OCT 6:47PM PST and run without reference to this report: the
+GitHub release live with 13 assets; `SHA384SUMS` carrying 12 entries,
+every one verifying against a fresh download; PyPI's wheel and source
+tarball both checking out; the container registry answering for the
+version tag and for `latest`, two manifests each; the GitLab release
+standing with 13 asset links; and the four publish jobs concluded
+success. Two seats, two routes, the same answer: 3.14.43 is on every
+mirror, verified before 7:00PM PST.
