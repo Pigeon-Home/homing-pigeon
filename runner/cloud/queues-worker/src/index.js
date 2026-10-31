@@ -30,10 +30,36 @@
 
 const LEASE_MS_DEFAULT = 300_000;
 const MAX_ATTEMPTS = 5;
-const ENVELOPE_MAX = 4 * 1024 * 1024;
+// SQLite-backed Durable Object (wrangler new_sqlite_classes): the key
+// and the value together cannot exceed 2 MB. The smaller reading of
+// that limit. A body under it can still wrap, once stored, past it.
+export const DO_VALUE_MAX = 2_000_000;
 export const DEFAULT_QUOTA = { jobs_per_hour: 600, bytes_per_day: 256 * 1024 * 1024 };
 
 const enc = new TextEncoder();
+
+// Bytes the runtime will persist: the key plus the JSON value. The
+// dead-letter copy adds dead_at, and a requeue adds requeued_at, so
+// a job is refused unless every form it will take still fits.
+export function storagePairBytes(key, value) {
+  return enc.encode(key).length + enc.encode(JSON.stringify(value)).length;
+}
+
+export function jobStoredBytes(jobId, text, now) {
+  const base = {
+    id: jobId, envelope: text, size: text.length,
+    attempts: MAX_ATTEMPTS, leased_until: 0, enqueued_at: now,
+  };
+  return Math.max(
+    storagePairBytes(`job:${jobId}`, base),
+    storagePairBytes(`dlq:${jobId}`, { ...base, dead_at: now }),
+    storagePairBytes(`job:${jobId}`, { ...base, attempts: 0, requeued_at: now }),
+  );
+}
+
+export function resultStoredBytes(id, text, now) {
+  return storagePairBytes(`result:${id}`, { id, envelope: text, at: now });
+}
 
 function constantTimeEqual(a, b) {
   if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
@@ -305,7 +331,7 @@ export default {
       if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
       const text = await request.text();
       if (!text) return json(400, { error: "empty body" });
-      if (text.length > ENVELOPE_MAX) return json(413, { error: "envelope over 4 MiB" });
+      if (text.length > DO_VALUE_MAX) return json(413, { error: "envelope over the storage limit" });
       const parsed = parseEnvelope(text);
       if (!parsed) return json(400, { error: "malformed envelope: subject, blank line, body" });
       const jobId = jobIdOf(parsed.subject);
@@ -336,6 +362,7 @@ export default {
     if (kind === "results" && request.method === "POST" && !ackId) {
       if (!(await bearerMatches(request, tenant.runner_token_sha256))) return json(401, { error: "runner token" });
       const text = await request.text();
+      if (text.length > DO_VALUE_MAX) return json(413, { error: "envelope over the storage limit" });
       const parsed = parseEnvelope(text);
       if (!parsed) return json(400, { error: "malformed envelope" });
       const rid = resultIdOf(parsed.subject);
@@ -383,6 +410,9 @@ export class TenantQueue {
           attempts: dead.attempts,
           dead_at: dead.dead_at,
         });
+      }
+      if (jobStoredBytes(jobId, text, now) > DO_VALUE_MAX) {
+        return json(413, { error: "envelope over the storage limit" });
       }
       const hourKey = `quota:hour:${Math.floor(now / 3_600_000)}`;
       const dayKey = `quota:day:${Math.floor(now / 86_400_000)}`;
@@ -476,7 +506,11 @@ export class TenantQueue {
     if (url.pathname === "/result") {
       const rid = request.headers.get("x-hp-result-id");
       const text = await request.text();
-      await s.put(`result:${rid}`, { id: rid, envelope: text, at: now });
+      const record = { id: rid, envelope: text, at: now };
+      if (resultStoredBytes(rid, text, now) > DO_VALUE_MAX) {
+        return json(413, { error: "envelope over the storage limit" });
+      }
+      await s.put(`result:${rid}`, record);
       return json(202, { id: rid });
     }
     if (url.pathname === "/results") {

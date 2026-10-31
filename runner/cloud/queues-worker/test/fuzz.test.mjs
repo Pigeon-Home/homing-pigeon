@@ -33,10 +33,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA } from "../src/index.js";
+import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA, DO_VALUE_MAX, jobStoredBytes } from "../src/index.js";
 
 const MAX_ATTEMPTS = 5;
-const ENVELOPE_MAX = 4 * 1024 * 1024;
 const LONG_OPS = 20_000;
 const CORPUS_PATH = join(dirname(fileURLToPath(import.meta.url)), "fuzz.corpus.json");
 
@@ -259,10 +258,10 @@ export async function runFuzz(seed, ops) {
   const envelopes = new Map();
   for (const id of IDS) envelopes.set(id, await signedJob(id));
   const wrongSecret = await signedJob("j1", "wrong-secret");
-  // Bigger than the day cap, smaller than the 4 MiB refusal. Signed,
+  // Bigger than the day cap, smaller than the storage refusal. Signed,
   // so it reaches the quota check. The hour cap is what used to hide it.
   const fat = await signedJob("fat1", SECRET, "x".repeat(env.quota.bytes_per_day));
-  assert.ok(fat.length > env.quota.bytes_per_day && fat.length < ENVELOPE_MAX);
+  assert.ok(fat.length > env.quota.bytes_per_day && fat.length < DO_VALUE_MAX);
   const bobEnvelopes = new Map();
   for (const id of ["b1", "b2"]) bobEnvelopes.set(id, await signedJob(id, BOB_SECRET));
   const bump = (key, by) => expected.set(key, (expected.get(key) ?? 0) + by);
@@ -706,7 +705,7 @@ test("fuzz: a body over the day cap is refused while the hour is open", async ()
   env.TENANT_QUEUE.get("alice");
   const storage = () => env.objects.get("alice").state.storage;
   const fat = await signedJob("fat1", SECRET, "x".repeat(quota.bytes_per_day));
-  assert.ok(fat.length > quota.bytes_per_day && fat.length < ENVELOPE_MAX);
+  assert.ok(fat.length > quota.bytes_per_day && fat.length < DO_VALUE_MAX);
   const before = snapshotBilling(storage());
   const r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: fat }), env);
   assert.equal(r.status, 429);
@@ -855,26 +854,48 @@ test("fuzz: an unsafe id or a subject that disagrees with the body is refused", 
   void now;
 });
 
-test("fuzz: an oversized envelope is refused unread, at and past the cap", async () => {
+test("fuzz: an envelope the object cannot store is refused, and one that fits is kept", async () => {
   let now = 1_700_000_000_000;
   const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 600, bytes_per_day: 512 * 1024 * 1024 } });
   await addTenant(env);
   const storage = () => env.objects.get("alice").state.storage;
-  // Just under the cap, validly signed: the size gate lets it through.
-  const room = ENVELOPE_MAX - 200;
-  const under = await signedJob("big1", SECRET, "x".repeat(room));
-  assert.ok(under.length <= ENVELOPE_MAX);
-  let r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: under }), env);
+  const empty = await signedJob("big1", SECRET, "");
+  const fit = await signedJob("big1", SECRET, "x".repeat(DO_VALUE_MAX - empty.length - 800));
+  assert.ok(jobStoredBytes("big1", fit, now) <= DO_VALUE_MAX);
+  assert.ok(jobStoredBytes("big1", fit, now) > DO_VALUE_MAX - 2_000);
+  let r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: fit }), env);
   assert.equal(r.status, 202);
-  assert.ok(storage().map.has("job:big1"));
-  // Past the cap: 413, nothing stored, no quota counted.
-  const over = await signedJob("big2", SECRET, "x".repeat(ENVELOPE_MAX));
-  assert.ok(over.length > ENVELOPE_MAX);
+  // The dead-letter copy and a later requeue have to fit too.
+  for (let i = 0; i < 6; i++) {
+    await worker.fetch(req("/t/alice/jobs?max=1", { token: `Bearer ${RUNNER}` }), env);
+    now += 1000;
+  }
+  assert.ok(storage().map.has("dlq:big1"));
+  r = await worker.fetch(req("/t/alice/dlq/big1/requeue", { method: "POST", token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 202);
+  assert.equal(storage().map.get("job:big1").attempts, 0);
   const before = snapshot(storage());
-  r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: over }), env);
+  // Under the raw-length gate, over once the record is wrapped.
+  const empty2 = await signedJob("big2", SECRET, "");
+  const wrapped = await signedJob("big2", SECRET, "x".repeat(DO_VALUE_MAX - empty2.length));
+  assert.ok(wrapped.length <= DO_VALUE_MAX);
+  assert.ok(jobStoredBytes("big2", wrapped, now) > DO_VALUE_MAX);
+  r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: wrapped }), env);
   assert.equal(r.status, 413);
   assert.equal(snapshot(storage()), before);
-  assert.ok(!storage().map.has("job:big2"));
+  // Past the raw limit, and a result the same size.
+  const raw = await signedJob("big3", SECRET, "x".repeat(DO_VALUE_MAX));
+  assert.ok(raw.length > DO_VALUE_MAX);
+  r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: raw }), env);
+  assert.equal(r.status, 413);
+  assert.equal(snapshot(storage()), before);
+  r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: `[HOMING-PIGEON] qresult big1\n\n${"x".repeat(DO_VALUE_MAX)}\n`,
+  }), env);
+  assert.equal(r.status, 413);
+  assert.ok(!storage().map.has("result:big1"));
+  assert.equal(snapshot(storage()), before);
 });
 
 test("fuzz: the quota boundary — the first job past the cap is the first 429", async () => {
