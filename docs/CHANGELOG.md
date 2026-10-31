@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.44 - 2026-10-30
+
+- **The shard fix has its test.** The interrupt test now asserts the
+  shard's own log, not only the banner: a shard that dies early hands
+  its output to the parent, and the parent reports it instead of
+  taking an interrupt in its wait. The 3.14.43 Windows failure mode
+  is pinned where it cannot quietly return.
+- **The release procedure is written down.** The findings and the
+  retrospective on the 3.14.43 cut are in docs/reports/v3.14.43/:
+  the guard's shape, the release commit's own build lane, the
+  one-cutter rule, and the mirror check as a second seat's reading.
+
 ## 3.14.43 - 2026-10-30
 
 - **The fuzz grow's rounds are tries.** A round whose mutator made
