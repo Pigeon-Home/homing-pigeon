@@ -15,6 +15,27 @@ python3 runner/cloud/send_job.py new --kind exec --script-file job.sh \
   --arg=--verbose --env MODE=ci --secret <the-string>
 ```
 
+## The first live check: the clock job
+
+The standard first job to a new runner is the clock check from the
+campaign's job set (`runner/tools/soak.py`): the script `date;
+date +%s`, sent with no interpreter field at all. The runner runs it
+on its platform default, and the result's stdout reads back the
+runner's date and epoch. Compare the epoch with your own clock: a
+healthy runner agrees within a second or two, plus the mailbox poll
+interval (the runner polls every 20 seconds by default, so the result
+arrives a little after the send).
+
+Do not name the interpreter by an absolute path. `--interpreter
+'["/bin/sh"]'` looks harmless and is not: the runner's sandbox binds
+the interpreter's install prefix read-only, so an absolute path makes
+it bind `/bin` itself, and on a usr-merged system (Fedora, Ubuntu)
+the job dies at once — exit 1 in a few milliseconds, no output at
+all. Omit `--interpreter` and let the runner use its default, or use
+a bare name (`["bash"]`, `["sh"]`) that resolves under `/usr`. This
+was learned live on 31 Oct 2026: the same clock job failed with
+`/bin/sh` named and ran clean with the field left out.
+
 `--arg` and `--env KEY=value` are repeatable. `--script-url URL` sends
 the script by link instead (https only; the runner downloads it), and
 `--script-sha384 HEX` pins its hash, checked before anything runs.
