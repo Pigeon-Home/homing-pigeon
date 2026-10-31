@@ -488,6 +488,27 @@ class QueuePipeTest(unittest.TestCase):
             self.assertTrue(any(n.endswith(".refused.txt")
                                 for n in os.listdir(failed)))
 
+    def test_an_oversized_result_does_not_finish_the_job(self):
+        # The listing sets a file over the channel cap aside before
+        # this pass can post it. The core has already consumed the
+        # job. That must not ack it: nothing is stored yet.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            os.replace(os.path.join(d["inbox"], "j1.job.txt"),
+                       os.path.join(d["inbox_done"], "j1.job.txt"))
+            with open(os.path.join(d["outbox"], "j1.result.txt"), "wb") as fh:
+                fh.write(b"x" * (ch.FILE_MAX_BYTES + 1))
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", pipe._pending)
+            self.assertIn("j1", w.state.jobs)
+            failed = os.path.join(d["outbox"], "failed")
+            self.assertIn("j1.result.txt", os.listdir(failed))
+
     def test_malformed_and_oversize_envelopes_are_refused_and_acked(self):
         with FakeWorker() as w:
             w.state.jobs["bad"] = "no blank line here"

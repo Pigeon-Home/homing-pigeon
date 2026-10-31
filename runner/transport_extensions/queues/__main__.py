@@ -319,6 +319,18 @@ class QueuePipe:
             if self._pending.pop(ident, None) is not None or \
                     ident in self._seen:
                 self.client.ack(ident)
+        # A file over the channel cap is set aside inside the listing,
+        # so this loop never saw it. That id is not finished: the stub
+        # is not in the outbox yet.
+        failed = os.path.join(self.channel, "outbox", "failed")
+        try:
+            set_aside = os.listdir(failed)
+        except OSError:
+            set_aside = []
+        for fname in set_aside:
+            file_id = _result_file_id(fname)
+            if file_id and file_id in self._pending:
+                unposted.add(file_id)
         # A job the core consumed without a result (a rejection)
         # is finished too: inbox/done is the signal.
         # A result still waiting to be posted keeps its job leased.
