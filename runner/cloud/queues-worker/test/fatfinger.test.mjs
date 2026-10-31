@@ -439,6 +439,21 @@ test("Alice and alice are different tenants", async () => {
   assert.equal((await worker.fetch(req("/t/Alice/jobs", { method: "POST", token: SI, body: await signedJob("j1") }), env)).status, 202);
 });
 
+test("LEASE_MS=-1 is the five-minute default, not an already-expired lease", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: -1, quota: { jobs_per_hour: 10, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  await postJob(env, "j1");
+  assert.equal((await pull(env)).status, 200);
+  assert.equal(box(env).get("job:j1").leased_until - clock.t, 300_000);
+  clock.t += 1000;
+  assert.equal((await pull(env)).status, 204);
+  clock.t += 1;
+  const r = await worker.fetch(req("/t/alice/jobs/j1/lease?attempt=1", { method: "POST", token: RUNNER }), env);
+  assert.equal(r.status, 204);
+  assert.equal(box(env).get("job:j1").leased_until - clock.t, 300_000);
+});
+
 test("LEASE_MS=300 is 300 milliseconds, and the job dead-letters", async () => {
   const clock = { t: 1_700_000_000_000 };
   const env = makeEnv({ clock: () => clock.t, lease: 300, quota: { jobs_per_hour: 10, bytes_per_day: 60_000 } });

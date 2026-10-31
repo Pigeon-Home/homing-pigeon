@@ -29,6 +29,15 @@
 // TENANT, SI_TOKEN, RUNNER_TOKEN, HMAC_SECRET.
 
 const LEASE_MS_DEFAULT = 300_000;
+
+// Milliseconds, via parseInt: "300000ms" is 300000 and "five" is not
+// a number. Zero and negative are the default too. A negative is
+// truthy, and using it would expire the job as it was handed out.
+function leaseMs(env) {
+  const n = parseInt((env && env.LEASE_MS) || "", 10);
+  if (!Number.isFinite(n) || n <= 0) return LEASE_MS_DEFAULT;
+  return n;
+}
 const MAX_ATTEMPTS = 5;
 // SQLite-backed Durable Object (wrangler new_sqlite_classes): the key
 // and the value together cannot exceed 2 MB. The smaller reading of
@@ -506,7 +515,7 @@ export class TenantQueue {
       // larger than memory. A short page is not the end: keep going
       // until a page is empty or the caller has enough.
       const max = clampedMax(url.searchParams.get("max"), 8);
-      const lease = parseInt(this.env.LEASE_MS || "", 10) || LEASE_MS_DEFAULT;
+      const lease = leaseMs(this.env);
       const out = [];
       let used = 0;
       let full = false;
@@ -591,7 +600,7 @@ export class TenantQueue {
         const n = Number(attemptRaw);
         if (!Number.isInteger(n) || n !== job.attempts) return new Response(null, { status: 404 });
       }
-      const lease = parseInt(this.env.LEASE_MS || "", 10) || LEASE_MS_DEFAULT;
+      const lease = leaseMs(this.env);
       job.leased_until = now + lease;
       await s.put(`job:${id}`, job);
       return new Response(null, { status: 204 });

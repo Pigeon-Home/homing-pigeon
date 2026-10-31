@@ -231,7 +231,10 @@ shape, subject line, blank line, signed body):
 | SI | `POST /dlq/<id>/ack` | drop a dead job; 204, or 404 |
 | SI | `POST /dlq/<id>/requeue` | offer it again with a fresh attempt count, counted against the hourly job quota; 202, 404, 409 when a job with that id is queued, 429 over quota |
 
-A lease lasts `LEASE_MS` (default 300 s). The runner renews the lease
+A lease lasts `LEASE_MS` milliseconds (default 300000, five minutes).
+Zero, a negative, or a word is that default. The value is read with
+`parseInt`, so `300` is 300 milliseconds and `300000ms` is 300000.
+The runner renews the lease
 of every job it is still running on each pass, so a long build keeps
 one attempt however long it runs. A job whose lease lapses (the runner
 died or lost the network) is offered again, and after five attempts it
