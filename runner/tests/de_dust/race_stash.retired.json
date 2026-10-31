@@ -2,6 +2,11 @@
  "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
  "de_dust": 1,
  "retired": {
+  "001bee114ece755f": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "032dad15f254939e": {
    "head": "dd2221c44524",
    "on": "2026-10-31",
@@ -12,8 +17,18 @@
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "0715977982ce1b9c": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "0a1d31f0f936dbf0": {
    "head": "dd2221c44524",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "0b2528d31ed21f22": {
+   "head": "ba0b62effed0",
    "on": "2026-10-31",
    "why": "redundant"
   },
@@ -24,6 +39,11 @@
   },
   "104be6f1e19cfe1b": {
    "head": "dd2221c44524",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "113da2433f4e8080": {
+   "head": "ba0b62effed0",
    "on": "2026-10-31",
    "why": "redundant"
   },
@@ -57,8 +77,33 @@
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "1ab17bc1ea63d024": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "1bb90c903416b669": {
    "head": "dd2221c44524",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "1ea0e1ea07ef2e64": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "1ef873a59ddcd5d8": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "1f207d836ea0c90a": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "1f5798a7a52a7cea": {
+   "head": "ba0b62effed0",
    "on": "2026-10-31",
    "why": "redundant"
   },
@@ -84,6 +129,11 @@
   },
   "25ec28b0b71f2ce0": {
    "head": "dd2221c44524",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "29214279d8cd3c37": {
+   "head": "ba0b62effed0",
    "on": "2026-10-31",
    "why": "redundant"
   },
@@ -117,8 +167,18 @@
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "449653bbfd1108b1": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "4603f00e1a4b9339": {
    "head": "dd2221c44524",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "46e5ba33a333dd6b": {
+   "head": "ba0b62effed0",
    "on": "2026-10-31",
    "why": "redundant"
   },
@@ -137,8 +197,23 @@
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "4926b65c01e4aa9f": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "4c0f139ab731ee2e": {
    "head": "dd2221c44524",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "4d704833618e0851": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "549d41567bd101ec": {
+   "head": "ba0b62effed0",
    "on": "2026-10-31",
    "why": "redundant"
   },
@@ -152,13 +227,28 @@
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "5720eae7998e28fa": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "5aadf8713c005368": {
    "head": "dd2221c44524",
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "5dab716e2b6a99e8": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "5e55ba8602dde516": {
    "head": "dd2221c44524",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "62e76bd1c454752e": {
+   "head": "ba0b62effed0",
    "on": "2026-10-31",
    "why": "redundant"
   },
@@ -232,9 +322,19 @@
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "8fd3891e7be640a3": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "92adf209fcec3fd5": {
    "head": "9b8b1bae10aa",
    "on": "2026-10-30",
+   "why": "redundant"
+  },
+  "940dccde83461197": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
    "why": "redundant"
   },
   "9bc7d8826411be18": {
@@ -287,6 +387,11 @@
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "a72dfbb3b51054f1": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "a77a0b811786246b": {
    "head": "dd2221c44524",
    "on": "2026-10-31",
@@ -297,6 +402,11 @@
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "aca39b7f5b3545ad": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "aff48f46e5ddfc4f": {
    "head": "dd2221c44524",
    "on": "2026-10-31",
@@ -304,6 +414,11 @@
   },
   "b0fbde85f6d12205": {
    "head": "dd2221c44524",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "b1b11abe4ee498c9": {
+   "head": "ba0b62effed0",
    "on": "2026-10-31",
    "why": "redundant"
   },
@@ -319,6 +434,11 @@
   },
   "b4b65a58aa4dfd6f": {
    "head": "dd2221c44524",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "b9bcba94935859f3": {
+   "head": "ba0b62effed0",
    "on": "2026-10-31",
    "why": "redundant"
   },
@@ -359,6 +479,11 @@
   },
   "c1c5c2f67255ddee": {
    "head": "dd2221c44524",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "c20c94c3ed11be84": {
+   "head": "ba0b62effed0",
    "on": "2026-10-31",
    "why": "redundant"
   },
@@ -407,6 +532,21 @@
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "d2d96b2a2dedc7c3": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "d3373272c647146d": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
+  "d4649668389ab2c2": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "d6ab6d9433e4982b": {
    "head": "dd2221c44524",
    "on": "2026-10-31",
@@ -422,10 +562,20 @@
    "on": "2026-10-31",
    "why": "redundant"
   },
+  "db899be63c8dfd31": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "redundant"
+  },
   "dca7258d8ca4cbbb": {
    "head": "dd2221c44524",
    "on": "2026-10-31",
    "why": "redundant"
+  },
+  "dedf051ec1c71364": {
+   "head": "ba0b62effed0",
+   "on": "2026-10-31",
+   "why": "promoted"
   },
   "e1d4ce5aff55d8f4": {
    "head": "dd2221c44524",
