@@ -583,8 +583,14 @@ export class TenantQueue {
       return out.length ? json(200, { jobs: out }) : new Response(null, { status: 204 });
     }
     if (url.pathname === "/dlq") {
+      // The response carries no envelope, but the subject is the
+      // whole text before the blank line, and that can be the
+      // envelope. Stop at the same budget as a jobs read. The next
+      // read, once those rows are dropped, returns the rest.
       const max = clampedMax(url.searchParams.get("max"), 20);
       const out = [];
+      let used = 0;
+      let full = false;
       let startAfter;
       for (;;) {
         const page = await s.list({ prefix: "dlq:", limit: PAGE, startAfter });
@@ -593,11 +599,15 @@ export class TenantQueue {
         for (const [key, d] of page) {
           startAfter = key;
           if (out.length >= max) break;
+          const subject = (parseEnvelope(d.envelope) || {}).subject || null;
+          const weight = utf8Length(subject || "");
+          if (out.length > 0 && used + weight > RESPONSE_BUDGET) { full = true; break; }
           out.push({ id: d.id, attempts: d.attempts, size: d.size,
                      enqueued_at: d.enqueued_at, dead_at: d.dead_at,
-                     subject: (parseEnvelope(d.envelope) || {}).subject || null });
+                     subject });
+          used += weight;
         }
-        if (out.length >= max || startAfter === prev) break;
+        if (out.length >= max || full || startAfter === prev) break;
       }
       return out.length ? json(200, { dead: out }) : new Response(null, { status: 204 });
     }

@@ -1141,6 +1141,52 @@ test("fuzz: the dead-letter list is paged and still names every dead job", async
   assert.ok(calls >= 3, `one list returned the whole dead list (${calls})`);
 });
 
+test("fuzz: a dead-letter read stops at 8 MB of subjects and the next read has the rest", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 60, bytes_per_day: 60_000_000 } });
+  await addTenant(env);
+  const ids = ["s1", "s2", "s3", "s4", "s5", "s6"];
+  const pad = "s".repeat(1_500_000);
+  for (const id of ids) {
+    const payload = JSON.stringify({ v: 1, type: "job", job_id: id, kind: "exec", script: "echo hi" });
+    const sig = await hmacSha384Hex(SECRET, payload);
+    const body = payload.slice(0, -1) + `,"sig":"${sig}"}`;
+    const text = `[HOMING-PIGEON] job ${id} ${pad}\n\n${body}\n`;
+    const r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: text }), env);
+    assert.equal(r.status, 202, id);
+  }
+  // One pull hands out only as many envelopes as fit in 8 MB, so a
+  // pull of the whole page never reaches the last id. Lease one at
+  // a time, five times, then the next pull dead-letters them.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    for (const id of ids) {
+      const got = await worker.fetch(req("/t/alice/jobs?max=1", { token: `Bearer ${RUNNER}` }), env);
+      assert.equal(got.status, 200, `${id} attempt ${attempt}`);
+    }
+    now += 1000;
+  }
+  await worker.fetch(req("/t/alice/jobs?max=8", { token: `Bearer ${RUNNER}` }), env);
+  const storage = () => env.objects.get("alice").state.storage;
+  for (const id of ids) assert.ok(storage().map.has(`dlq:${id}`), id);
+  let r = await worker.fetch(req("/t/alice/dlq?max=100", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const first = (await r.json()).dead;
+  assert.ok(first.length >= 1 && first.length < ids.length, `returned ${first.length}`);
+  const bytes = (rows) => rows.reduce((n, row) => n + new TextEncoder().encode(row.subject || "").length, 0);
+  assert.ok(bytes(first) <= RESPONSE_BUDGET);
+  assert.ok(first[0].subject.startsWith("[HOMING-PIGEON] job "));
+  assert.ok(first[0].subject.length > 1_000_000);
+  for (const row of first) {
+    assert.ok(!("envelope" in row));
+    assert.equal((await worker.fetch(req(`/t/alice/dlq/${row.id}/ack`, { method: "POST", token: `Bearer ${SI}` }), env)).status, 204);
+  }
+  r = await worker.fetch(req("/t/alice/dlq?max=100", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const rest = (await r.json()).dead;
+  assert.deepEqual([...first, ...rest].map((d) => d.id).sort(), ids);
+  assert.ok(bytes(rest) <= RESPONSE_BUDGET);
+});
+
 test("fuzz: the quota boundary — the first job past the cap is the first 429", async () => {
   let now = 1_700_000_000_000;
   const quota = { jobs_per_hour: 3, bytes_per_day: 60_000 };

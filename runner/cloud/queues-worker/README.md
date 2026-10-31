@@ -23,8 +23,10 @@ copy with its lease timestamp, the hand a pull adds, and the
 nothing. A result is held to the same limit. A pull reads the queue a page at a time, so
 one read does not load every envelope into the object. A jobs or
 results response stops at 8 MB of envelopes and the next read
-returns the rest. The dead-letter list is paged the same way, and
-its response does not carry the envelope. A second result for an
+returns the rest. The dead-letter list is paged the same way.
+Its response does not carry the envelope, and it stops at the
+same 8 MB counted on subjects, so a subject that is the whole
+envelope cannot fill the object. A second result for an
 id keeps the first envelope, the same way a repeated job submit does.
 
 ## Deploy
