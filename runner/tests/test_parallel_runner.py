@@ -534,6 +534,22 @@ class AnnotationTest(unittest.TestCase):
         out = "FAIL: test_x (mod.Cls.test_x)\nAssertionError: 1 != 2\n"
         lines = rtp.annotations_for(out, 2)
         self.assertFalse(any("10038" in ln for ln in lines))
+        self.assertFalse(any("ended without" in ln for ln in lines))
+
+    def test_a_shard_that_died_with_no_test_named_puts_its_tail_on_the_run_page(self):
+        out = ("test_a (mod.K.test_a) ... ok\n" * 60
+               + "Traceback (most recent call last):\n"
+               + '  File "x.py", line 1, in <module>\n'
+               + "ImportError: cannot import name 'y' from 'z' (z.py)\n")
+        lines = rtp.annotations_for(out, 3)
+        self.assertEqual(1, len(lines))
+        self.assertTrue(lines[0].startswith("::error title=shard 3 ended without a named failure::"))
+        self.assertIn("ImportError%3A cannot import name 'y' from 'z' (z.py)", lines[0])
+        self.assertNotIn("\n", lines[0])
+        self.assertEqual(lines[0].count("::"), 2)
+        # The tail is the last TAIL_LINES lines, not the whole output.
+        self.assertLessEqual(lines[0].count("%0A"), rtp.TAIL_LINES)
+        self.assertLess(len(lines[0]), rtp.TAIL_CHARS + 200)
 
 
 if __name__ == "__main__":

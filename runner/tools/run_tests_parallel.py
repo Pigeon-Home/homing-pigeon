@@ -69,6 +69,8 @@ _RAN_LINE = re.compile(r"^Ran \d+ tests? in ")
 # The workflow-command parser treats these as part of the command.
 _ANNOTATION_UNSAFE = str.maketrans({"\r": " ", "\n": " ", "%": "%25",
                                     ":": "%3A", ",": "%2C"})
+TAIL_LINES = 40      # of a shard that died with no test named
+TAIL_CHARS = 3500    # Actions keeps about 4 KB of an annotation
 
 
 def _emit(text):
@@ -344,13 +346,26 @@ def annotations_for(output, shard):
             "(WinError 10038: select on a closed socket); "
             "the dump is in the log" % shard)
     reasons = failure_reasons(output)
-    for test_id in failed_tests(output):
+    named = failed_tests(output)
+    for test_id in named:
         title = test_id.translate(_ANNOTATION_UNSAFE)
         message = "unittest failed in shard %d; its output is above" % shard
         if test_id in reasons:
             message += " -- " + reasons[test_id]
         message = message.translate(_ANNOTATION_UNSAFE)
         lines.append("::error title=%s::%s" % (title, message))
+    if not named:
+        # The shard ended without unittest naming a test: the
+        # interpreter died, the loader raised, or the run was cut.
+        # The log host is often out of reach of the reader (the
+        # Windows legs of 30-OCT: four shards gone in two minutes,
+        # nothing on the run page), so the tail of the output goes
+        # on the run page, newlines as %0A, which the page unfolds.
+        tail = output.rstrip().splitlines()[-TAIL_LINES:]
+        text = "%0A".join(ln.translate(_ANNOTATION_UNSAFE)
+                          for ln in tail)[-TAIL_CHARS:]
+        lines.append("::error title=shard %d ended without a named "
+                     "failure::its last lines%%3A %%0A%s" % (shard, text))
     return lines
 
 
