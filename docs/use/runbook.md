@@ -154,12 +154,16 @@ To check a download against all of it, on any outlet, see
 
 **Releasing through your SI instead:** say "tag and publish
 everything." That one sentence is the whole instruction set. The SI
-bumps the version in the four places it lives, waits for the
-branch build to go green at every job, tags that commit, watches
-the tag build job by job (mutation included), and then checks
-every outlet by name -- GitHub Release, PyPI, Docker, SourceForge,
-GitLab -- before reporting. You get one report when all of it is
-confirmed, or one report naming the exact outlet that failed.
+bumps the version in the four places it lives, runs the version
+test and the doc-drift guard before pushing, waits until the nine
+guard jobs on that commit are green (`test` and the eight
+`build-*` jobs; `test-macos` is not one of them), tags that
+commit, and watches the tag build through `release`,
+`pypi-publish`, `sourceforge` and `gitlab`. Mutation does not run
+on a tag. It then checks every outlet by name -- GitHub Release,
+PyPI, Docker, SourceForge, GitLab -- before reporting. You get one
+report when all of it is confirmed, or one report naming the exact
+outlet that failed.
 
 ---
 

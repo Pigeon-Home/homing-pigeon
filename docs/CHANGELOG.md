@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.47 - 2026-10-31
+
+- **What made 3.14.46 slow.** Seventy minutes, two failed cycles
+  before the one that published. The doc-drift guard was not run
+  before the first release commit, and the tag build's Windows leg
+  then caught a double send the branch build had missed. The record
+  is docs/reports/v3.14.46/release-retrospective.md. The runbook's
+  release paragraph now names the nine guard jobs, the local
+  doc-drift check, and that mutation does not run on a tag.
+
 ## 3.14.46 - 2026-10-31
 
 - **One stash is claimed before it is sent.** A resend and a direct

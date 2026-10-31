@@ -145,7 +145,7 @@ def do_rearm(cfg_path: str) -> int:
 # Frozen binaries cannot import the package the same way a live run can.
 # The constant is the source of truth for --version; runner/tests/test_version.py
 # fails the build if it drifts from pyproject.toml.
-__version__ = "3.14.46"
+__version__ = "3.14.47"
 
 SERVICE_NAME = "homing-pigeon"
 FILES = ["runner.py", "wire/__init__.py", "wire/oauth.py",
