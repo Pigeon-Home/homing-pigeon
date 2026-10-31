@@ -48,6 +48,34 @@ Rules:
 
 ---
 
+## 31-Oct-12:39am-PST/PDT — Muse: the hourly de_aztec note
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**12am hour**
+
+In the last 24 hours the fleet kept 285 entries and gained 938 arcs over 72.54 CPU-hours, at 3.93 kept per CPU-hour, with 1337 crash records and 1 slow findings filed.
+
+Slice plan: the newest plans, at 2026-10-31T07:20:26Z on Menlo Park. One puts race_state at 845 s with a 1.41x yield tilt; dtls_hostile at 803 s with a 1.34x yield tilt; race_board at 724 s with a 1.21x yield tilt; dtls_session at 642 s with a 1.07x yield tilt; address at 150 s with a 0.25x yield tilt; dtls at 150 s with a 0.25x yield tilt; keydir at 150 s with a 0.25x yield tilt; race_stash at 150 s with a 0.25x yield tilt, 1 at a time. One puts local at 147 s with a 1.23x yield tilt; board at 30 s with a 0.25x yield tilt; board_mail at 30 s with a 0.25x yield tilt; board_ops at 30 s with a 0.25x yield tilt; channels at 30 s with a 0.25x yield tilt; cloud at 30 s with a 0.25x yield tilt; collect at 30 s with a 0.25x yield tilt; crypto at 30 s with a 0.25x yield tilt; inbox at 30 s with a 0.25x yield tilt; local_inbox at 30 s with a 0.25x yield tilt; mail at 30 s with a 0.25x yield tilt; manifest at 30 s with a 0.25x yield tilt; names at 30 s with a 0.25x yield tilt; queries at 30 s with a 0.25x yield tilt; query at 30 s with a 0.25x yield tilt; secret at 30 s with a 0.25x yield tilt; stage at 30 s with a 0.25x yield tilt; stash at 30 s with a 0.25x yield tilt; v2 at 30 s with a 0.25x yield tilt; v2_mail at 30 s with a 0.25x yield tilt; wire at 30 s with a 0.25x yield tilt, 1 at a time.
+
+CPU: load averages 2.58 over one minute and 2.56 over five on 4 core(s), 64% and 64% of capacity; 1270 MB available.
+
+Entries kept: 3 in the last hour. The corpus totals 2,041 entries over 30 targets.
+
+Grows in the last hour: 83, 1,374,543 tries over 1.42 CPU-hours; 31 ran their budget out, 52 their rounds.
+
+Crashes filed: none in the last hour. No slow finding.
+
+Findings standing in the tree: board_mail 2 crash, race_stash 2 crash. The window counts above include records since retired.
+
+Live mutators: local -- t_case, t_replace_char, t_splice. Every other target in the hour: none.
+
+Disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 100 writes in 0.0 s, 0 failed.
+
+disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 200 writes in 0.0 s, 0 failed
+
+---
+
 ## 30-Oct-11:36pm-PST/PDT — Muse: the hourly de_aztec note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
