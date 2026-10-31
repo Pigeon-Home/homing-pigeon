@@ -127,6 +127,69 @@ new version, `homing-pigeon --version` on the box agrees, both
 transports pass clean, and the clock job above, sent again, comes
 back signed by the upgraded runner with its clock still true.
 
+**The upgrade key.** The everyday shared secret can do far more
+than upgrade, so upgrades should not ride on it. PROTOCOL.md
+section 14 lets a runner hold additional named secrets, each with
+its own policy. The standing arrangement for upgrades is a key
+named `upgrade`, issued for this one purpose:
+
+```json
+"additional_secrets": {"upgrade": "<high-entropy secret>"},
+"key_policies": {
+  "upgrade": {
+    "allowed_kinds": ["exec"],
+    "allowed_script_sha384": ["<sha384 of the staging script>"],
+    "allowed_files": ["homing-pigeon-<platform>-<version>.tar.gz",
+                      "SHA384SUMS"],
+    "max_timeout_sec": 300
+  }
+}
+```
+
+The sender keeps the pair in its keyring (`send_job.py keyring add
+--key-id upgrade --runner <mailbox>`) and sends with `--key-id
+upgrade`. The policy fences the key to the one act: it can run the
+exact staging script, with the exact two input files, and nothing
+else — a clock job signed with the upgrade key is refused ("script
+is not in this key's allowlist"). Rotating the key is a config
+edit: add the new secret, hand it out, retire the old one. When the
+staging script changes, its digest in the policy changes with it;
+that re-pinning is deliberate, not friction. The upgrade key is
+platform-independent — it is config and protocol, and works the
+same on every platform the runner runs on.
+
+**Platforms.** The contract is the same everywhere: the signed
+staging job (under the upgrade key) leaves a verified tarball and a
+trigger in a job work directory; the host applier re-checks the
+tarball against a fresh SHA384SUMS, stops the runner, runs the
+release's installer, restores the config profile if the installer
+re-stamped it, starts the runner, and writes the outcome beside the
+payload. Stopping first is not optional: a running runner holds its
+own program file open, and replacing it fails ("text file busy") —
+a failed install must start the runner again on the previous
+version, which every applier below does. What differs per platform
+is only the service control, the archive tool, and the scheduler
+that fires the applier:
+
+| Platform | Runner runs as | Applier | Fired by | Status |
+|---|---|---|---|---|
+| Linux (systemd) | systemd service | `hp-remote-upgrade-apply` (sh) | systemd timer, every minute (path unit as fast path) | Live-proven |
+| Windows | Scheduled Task `HomingPigeon` | `hp-remote-upgrade-apply.ps1` | Scheduled Task `HomingPigeonRemoteUpgrade`, every minute | Kitted, not yet live-proven |
+| macOS | launchd agent `com.homing-pigeon.runner` | `hp-remote-upgrade-apply-macos.sh` | LaunchAgent with a 60-second interval | Kitted, not yet live-proven |
+
+Platform notes:
+
+- The staging script is shell on Linux and macOS and PowerShell on
+  Windows; the upgrade key's policy pins whichever one the platform
+  uses.
+- On Linux the applier writes the CA-bundle drop-in with the first
+  bundle it finds: Fedora/RHEL keep it at
+  `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`, Debian/Ubuntu
+  at `/etc/ssl/certs/ca-certificates.crt`. Windows and macOS runners
+  use their platform stores and need no drop-in.
+- The sums check uses `sha384sum` on Linux, `shasum -a 384` on
+  macOS, and `Get-FileHash -Algorithm SHA384` on Windows.
+
 `--arg` and `--env KEY=value` are repeatable. `--script-url URL` sends
 the script by link instead (https only; the runner downloads it), and
 `--script-sha384 HEX` pins its hash, checked before anything runs.

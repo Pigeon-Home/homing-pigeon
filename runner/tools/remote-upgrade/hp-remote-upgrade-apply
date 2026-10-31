@@ -66,11 +66,20 @@ json.dump(c, open(p, 'w'), indent=1); os.chmod(p, 0o600)
 "
   echo "applier: restored profile $PROFILE_BEFORE (installer had stamped $PROFILE_NOW)"
 fi
-# The frozen runner cannot find this box's CA bundle on its own; the
-# drop-in names it. The installer rewrites the unit but drop-ins live
-# beside it and survive -- rewrite ours anyway so it is always there.
+# The frozen runner cannot find this platform's CA bundle on its
+# own; the drop-in names it. The installer rewrites the unit but
+# drop-ins live beside it and survive -- rewrite ours anyway so it
+# is always there. The bundle's path is the platform's: Fedora/RHEL
+# and Debian/Ubuntu keep it in different places, so take the first
+# that exists and write no drop-in when neither does.
+CA=""
+for cand in /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/ssl/certs/ca-certificates.crt; do
+  if [ -f "$cand" ]; then CA="$cand"; break; fi
+done
 mkdir -p /etc/systemd/system/homing-pigeon.service.d
-printf '[Service]\nEnvironment=SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem\n' > /etc/systemd/system/homing-pigeon.service.d/ca-bundle.conf
+if [ -n "$CA" ]; then
+  printf '[Service]\nEnvironment=SSL_CERT_FILE=%s\n' "$CA" > /etc/systemd/system/homing-pigeon.service.d/ca-bundle.conf
+fi
 systemctl daemon-reload
 systemctl start homing-pigeon.service || fail "the runner restart failed"
 sleep 5

@@ -27,7 +27,10 @@ class KitFilesTest(unittest.TestCase):
         for name in ("hp-remote-upgrade-apply",
                      "hp-remote-upgrade.service",
                      "hp-remote-upgrade.path",
-                     "hp-remote-upgrade.timer"):
+                     "hp-remote-upgrade.timer",
+                     "hp-remote-upgrade-apply.ps1",
+                     "hp-remote-upgrade-apply-macos.sh",
+                     "com.homing-pigeon.remote-upgrade.plist"):
             self.assertTrue(os.path.isfile(os.path.join(KIT, name)), name)
 
     def test_units_point_at_the_applier_and_the_trigger(self):
@@ -83,8 +86,7 @@ class ApplierLessonsTest(unittest.TestCase):
         self.assertIn("restored profile", self.applier)
 
     def test_leaves_the_ca_bundle_drop_in(self):
-        self.assertIn("SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/"
-                      "tls-ca-bundle.pem", self.applier)
+        self.assertIn("Environment=SSL_CERT_FILE=%s", self.applier)
         self.assertIn("homing-pigeon.service.d/ca-bundle.conf", self.applier)
 
     def test_reports_the_outcome_beside_the_payload(self):
@@ -99,6 +101,50 @@ class ApplierLessonsTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
 
+class PlatformAppliersTest(unittest.TestCase):
+    """The same contract on every platform: re-check against a fresh
+    SHA384SUMS, stop the runner before replacing its program, start
+    it again on failure, restore the profile, write the outcome."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.win = _read(os.path.join(
+            KIT, "hp-remote-upgrade-apply.ps1"))
+        cls.mac = _read(os.path.join(
+            KIT, "hp-remote-upgrade-apply-macos.sh"))
+        cls.linux = _read(os.path.join(KIT, "hp-remote-upgrade-apply"))
+
+    def test_windows_applier_holds_the_contract(self):
+        self.assertIn("Get-FileHash -Algorithm SHA384", self.win)
+        self.assertIn("SHA384SUMS", self.win)
+        stop = self.win.index("schtasks /End /TN HomingPigeon")
+        install = self.win.index("Start-Process")
+        self.assertLess(stop, install)
+        self.assertIn("schtasks /Run /TN HomingPigeon", self.win)
+        self.assertIn("outcome.txt", self.win)
+        self.assertIn("restored profile", self.win)
+
+    def test_macos_applier_holds_the_contract(self):
+        self.assertIn("shasum -a 384", self.mac)
+        self.assertIn("SHA384SUMS.fresh", self.mac)
+        stop = self.mac.index("launchctl bootout")
+        install = self.mac.index("./install")
+        self.assertLess(stop, install)
+        self.assertIn("launchctl kickstart", self.mac)
+        self.assertIn("outcome.txt", self.mac)
+
+    def test_linux_ca_bundle_covers_both_families(self):
+        self.assertIn("/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+                      self.linux)
+        self.assertIn("/etc/ssl/certs/ca-certificates.crt", self.linux)
+
+    def test_macos_trigger_plist_fires_every_minute(self):
+        plist = _read(os.path.join(
+            KIT, "com.homing-pigeon.remote-upgrade.plist"))
+        self.assertIn("hp-remote-upgrade-apply-macos.sh", plist)
+        self.assertIn("<integer>60</integer>", plist)
+
+
 class DocTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -109,6 +155,14 @@ class DocTest(unittest.TestCase):
         self.assertIn("deliberately not a part\nof the protocol "
                       "specification", self.doc)
         self.assertIn("who holds its shared\nsecret", self.doc)
+
+    def test_the_upgrade_key_and_platforms_are_documented(self):
+        self.assertIn("**The upgrade key.**", self.doc)
+        self.assertIn('"upgrade"', self.doc)
+        self.assertIn("allowed_script_sha384", self.doc)
+        self.assertIn("**Platforms.**", self.doc)
+        self.assertIn("Live-proven", self.doc)
+        self.assertIn("not yet live-proven", self.doc)
 
     def test_the_job_script_fails_loud(self):
         # set -eu: a failed fetch or digest check must not print the
