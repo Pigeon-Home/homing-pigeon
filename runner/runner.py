@@ -1694,6 +1694,26 @@ def _stash_fail(base_dir, skey, rec, reason, cfg=None):
     _stash_move(base_dir, skey,
                 os.path.join(_outbox_dir(base_dir), OUTBOX_FAILED_DIRNAME))
 
+_STASH_GUARDS = {}
+_STASH_GUARDS_LOCK = threading.Lock()
+
+
+def _stash_guard(skey):
+    """The lock for one outbox key.
+
+    A delivery and the resend pass can both hold the same record.
+    The send and the move into sent/ stay inside this lock, so the
+    second sender finds the record gone instead of sending it again.
+    """
+    key = _as_str(skey)
+    with _STASH_GUARDS_LOCK:
+        guard = _STASH_GUARDS.get(key)
+        if guard is None:
+            guard = threading.RLock()
+            _STASH_GUARDS[key] = guard
+        return guard
+
+
 def deliver_stash(base_dir, skey, sender, cfg=None, now=None):
     """One delivery attempt of the waiting record for skey.
 
@@ -1702,7 +1722,15 @@ def deliver_stash(base_dir, skey, sender, cfg=None, now=None):
     count; on an exception the record's attempt count, time and error
     are updated and a WARN is logged. Never raises: a delivery
     failure is not a job failure. Returns True when delivered.
+    One key is sent by one caller at a time.
     """
+    if not _valid_base(base_dir):
+        return False
+    with _stash_guard(skey):
+        return _deliver_stash_held(base_dir, skey, sender, cfg, now)
+
+
+def _deliver_stash_held(base_dir, skey, sender, cfg=None, now=None):
     rec = load_stash(base_dir, skey)
     if rec is None:
         return False
@@ -1737,7 +1765,7 @@ def deliver_stash(base_dir, skey, sender, cfg=None, now=None):
             rec["stubbed"] = True
             rec["attempts"] = 0
             _stash_rewrite(base_dir, skey, rec)
-            return deliver_stash(base_dir, skey, sender, cfg=cfg, now=now)
+            return _deliver_stash_held(base_dir, skey, sender, cfg=cfg, now=now)
         _stash_rewrite(base_dir, skey, rec)
         log(f"result {rec.get('job_id')} not delivered (attempt {attempt}): "
             f"{e}; kept in the outbox", "WARN")

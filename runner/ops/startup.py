@@ -12,6 +12,17 @@ try:
     from runner.ops.live import _runner
 except ImportError:  # running from inside runner/ as __main__
     from ops.live import _runner  # type: ignore
+try:
+    from runner.wire import subject as _subject
+except ImportError:
+    from wire import subject as _subject  # type: ignore
+
+# The board subject, in the one grammar (Q121). Python's \s counts
+# \x1c-\x1f as a gap; the protocol counts them as part of a word.
+# A subject the grammar accepts and this regex dropped came back
+# on every poll.
+_BOARD_SUBJECT = re.compile(_subject.pattern_kind(
+    "task_submit|task_request|task_result|task_approve"), re.I)
 import email
 
 def log_startup(cfg, args, base_dir):
@@ -105,7 +116,7 @@ def log_startup(cfg, args, base_dir):
 def handle_board_mail(cfg, imap, smtp, seq, raw, subject, board, secrets, opts, base_dir):
     """Handle task_submit / task_request / task_result / task_approve. Returns True if handled."""
     R = _runner()
-    m = re.search(r"\[HOMING-PIGEON\].*?(task_submit|task_request|task_result|task_approve)\s+(\S+)", subject, re.I)
+    m = _BOARD_SUBJECT.search(subject or "")
     if not m:
         return False
     kind, ident = m.group(1).lower(), m.group(2)

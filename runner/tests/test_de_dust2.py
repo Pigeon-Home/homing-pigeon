@@ -815,6 +815,52 @@ class TechniquesTest(unittest.TestCase):
                      ("undeliver", "k"), ("deliver", "k", "x", True)]
         self.assertEqual([], B._stash_verdict(once_each)[0])
 
+    def test_the_filed_crashes_meet_the_contract(self):
+        # board_mail: a unit separator is a word, so the handler takes
+        # the subject. A board key with a space is not a task id, so
+        # it is not offered. race_stash: one record is sent once even
+        # when a resend and a deliver overlap.
+        board = [
+            {"file": None, "ident": "\x1f",
+             "kind": {"task_id": ".", "type": "task_approve", "v": 1},
+             "payload": "task_approve"},
+            {"file": "{\n  \"bm-task-000[HOMING-PIGEON] TEST job 1\": {\n"
+             "    \"task_id\": \"bm-task-0001\",\n    \"priority\": \"canary-key\",\n"
+             "    \"requires\": [],\n    \"capabilities\": [\"shell\"],\n"
+             "    \"compartments\": [],\n    \"payload\": {\"script\": \"echo task\"},\n"
+             "    \"state\": \"open\",\n"
+             "    \"submitted_at\": \"2026-10-26T12:00:00+00:00\"\n  }\n}",
+             "ident": "worker-a", "kind": "task_request",
+             "payload": {"capabilities": ["shell"],
+                         "reply_to": "worker@example.com",
+                         "type": "task_request", "v": 1,
+                         "worker_id": "worker-a"}},
+        ]
+        for data in board:
+            entry = {"id": "x", "kind": "payload", "data": data,
+                     "from": "", "mutator": "", "arcs": 0}
+            self.assertIn(B._with_rig(lambda e=entry: B.check("board_mail", e)),
+                          ("accepted", "refused"))
+        stash = [
+            {"threads": [[{"body": "alpha", "op": "stash", "skey": "bm-stash-0001"},
+                          {"op": "yield"},
+                          {"op": "deliver", "skey": "bm-stash-0001"}],
+                         [{"op": "resend"},
+                          {"SKEY": "bm-stash-0001", "body": "beta", "op": "stash"}]]},
+            {"threads": [[{"body": "alpha", "op": "stash", "skey": "bm-stash-0001"},
+                          [[{"op": "nope"}], "nope"],
+                          {"op": "deliver", "skey": "bm-stash-0001"}],
+                         [{"op": "resend"},
+                          {"Skey": "bm-stash-0001", "body": "beta", "op": "stash"}]]},
+        ]
+        for data in stash:
+            entry = {"id": "x", "kind": "payload", "data": data,
+                     "from": "", "mutator": "", "arcs": 0}
+            for _ in range(8):
+                self.assertIn(
+                    B._with_rig(lambda e=entry: B.check("race_stash", e)),
+                    ("accepted", "refused"))
+
     def test_race_targets_sit_out_the_surface_differential_and_the_kill_set(self):
         self.assertEqual([], B.platform_disagreements("race_board"))
         self.assertEqual([], B.platform_disagreements("race_stash"))

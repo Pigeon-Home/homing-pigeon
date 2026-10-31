@@ -98,6 +98,16 @@ def _finite_floats(value):
 
 BOARD_LOCK = threading.RLock()
 
+# The job_id grammar (PROTOCOL.md sections 2 and 13.1). A key that
+# is not one id cannot go in a subject: the words would split, and
+# no result could name the task. The dot names are not ids.
+_TASK_ID = re.compile(r"[A-Za-z0-9._-]{1,128}")
+
+
+def _task_id_ok(tid):
+    return isinstance(tid, str) and _TASK_ID.fullmatch(tid) is not None \
+        and tid not in (".", "..")
+
 class Board:
     """Task board: open -> claimed -> done (plus pending_review)."""
 
@@ -125,10 +135,15 @@ class Board:
         for key, task in data.items():
             if not isinstance(key, str) or not isinstance(task, dict):
                 continue
-            # Every lookup -- complete, approve, a requires entry --
-            # goes by the key. A record whose task_id disagrees with
-            # its key would be handed out under a name no result
-            # could complete, so the record carries its key.
+            # A hand-written or crashed file can name a task with a
+            # key the protocol cannot put in a subject (a space, a
+            # bracket). submit() refuses that id. Loading it and
+            # offering it sends a subject no receiver can read, so
+            # the record is skipped. The key is the id every lookup
+            # uses; a record whose task_id disagrees with a legal
+            # key carries the key.
+            if not _task_id_ok(key):
+                continue
             if task.get("task_id") != key:
                 task["task_id"] = key
             # submit refuses a non-finite priority, and save cannot
@@ -157,10 +172,7 @@ class Board:
         if not isinstance(task, dict):
             return False, "invalid task"
         tid = task.get("task_id")
-        # The job_id grammar (PROTOCOL.md sections 2 and 13.1): the
-        # dot names are not ids (Q98 item 19).
-        if not isinstance(tid, str) or not re.fullmatch(
-                r"[A-Za-z0-9._-]{1,128}", tid) or tid in (".", ".."):
+        if not _task_id_ok(tid):
             return False, "invalid task_id"
         for field in ("requires", "capabilities", "compartments"):
             v = task.get(field)

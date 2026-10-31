@@ -956,6 +956,13 @@ def check_stash(entry):
     return "accepted" if got is not None else "refused"
 
 
+def _subject_words(subject):
+    """The subject's words under the protocol's gap class, not
+    Python's split. A unit separator is part of a word, and
+    str.strip would cut it off."""
+    return [w for w in re.split(SUBJ.SPACE_CLASS + "+", str(subject)) if w]
+
+
 _JOB_SUBJECT = SUBJ.JOB_ID_RE  # the one grammar (Q121)
 # An id a target puts in a subject must be one token of that grammar:
 # the gap class is the Worker's, not Python's isspace (Q121).
@@ -4491,7 +4498,7 @@ def check_board_mail(entry):
                     raise Crash("provenance", f"the reply is addressed to "
                                 f"{msg['To']!r}")
                 rsubject = str(msg["Subject"])
-                words = rsubject.split()
+                words = _subject_words(rsubject)
                 if len(words) != 3 or words[0] != "[HOMING-PIGEON]" \
                         or words[1] not in ("task_ack", "task_offer"):
                     raise Crash("contract", f"the reply's subject is "

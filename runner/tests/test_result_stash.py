@@ -18,6 +18,7 @@ import os
 import shutil
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import uuid
@@ -232,6 +233,27 @@ class ExecuteOnceTest(StashHarness):
         self._cycle([], smtp, seen)
         self.assertEqual(smtp.attempts, 2)
         self.assertEqual(len(self._failed()), 1)
+
+    def test_two_callers_send_one_stash_once(self):
+        skey = "bm-stash-0001"
+        self.assertTrue(R.stash_result(
+            self.tmp, skey, {"job_id": skey, "kind": "exec"},
+            "[HOMING-PIGEON] result " + skey, "alpha"))
+        sent = []
+
+        def sender(subject, body, to):
+            time.sleep(0.05)
+            sent.append(body)
+
+        threads = [threading.Thread(target=R.deliver_stash,
+                                    args=(self.tmp, skey, sender))
+                   for _ in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+            self.assertFalse(t.is_alive())
+        self.assertEqual(sent, ["alpha"])
 
     def test_crash_between_execute_and_stash_is_the_only_window(self):
         # The stash write is the one window: a job whose record cannot
