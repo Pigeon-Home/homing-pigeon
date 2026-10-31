@@ -552,6 +552,28 @@ class QueuePipeTest(unittest.TestCase):
             failed = os.path.join(d["outbox"], "failed")
             self.assertIn("j1.result.txt", os.listdir(failed))
 
+    def test_a_refused_collision_name_is_the_job_the_sweep_reads(self):
+        # j1.result-2.txt does not end in .result.txt. Set aside
+        # under that name, the sweep opens <stem>.result.txt, never
+        # sees the body, and writes no stub. The file stays in
+        # failed/, so the job stays leased.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            os.replace(os.path.join(d["inbox"], "j1.job.txt"),
+                       os.path.join(d["inbox_done"], "j1.job.txt"))
+            with open(os.path.join(d["outbox"], "j1.result-2.txt"), "wb") as fh:
+                fh.write(b"x" * (ch.FILE_MAX_BYTES + 1))
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", pipe._pending)
+            failed = os.path.join(d["outbox"], "failed")
+            self.assertEqual(sorted(os.listdir(failed)),
+                             ["j1.refused.txt", "j1.result.txt"])
+
     def test_two_ids_that_differ_past_120_characters_both_finish(self):
         # The channel kept 120 characters of the id. A queue id is
         # 128. These two shared one inbox file, the result's name

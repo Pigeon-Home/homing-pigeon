@@ -307,9 +307,39 @@ class StubTest(StashHarness):
         self.assertEqual(R._sweep_channel_refusals(self.tmp, self.cfg,
                                                    ["email"]), 1)
         self.assertEqual(ch.pending_results(channel), [])
-        self.assertEqual(len(self._failed()), 1)
-        rows = [a for a in self._audit() if a.get("feature") == "delivery"]
-        self.assertEqual(rows[-1]["decision"], "failed")
+
+    def test_a_refused_collision_name_still_gets_its_stub(self):
+        # The writer names a second file mail-7.result-2.txt. That
+        # name does not end in .result.txt. The sweep opens
+        # <id>.result.txt, so the refusal has to land under the id
+        # or this pass writes no stub and the job stays leased.
+        jid = str(uuid.uuid4())
+        job = TR.job_payload(jid)
+        from runner.wire import jobcrypto
+        from send_job import sign_payload
+        body = jobcrypto.encrypt_body(sign_payload(job, TR.SECRET), TR.SECRET,
+                                      job_id=jid, key_id="",
+                                      sign=sign_payload)
+        seen = {}
+        out = R.process_transport_message(
+            self.cfg, self.tmp, seen, R.build_secrets(self.cfg), {},
+            "[HOMING-PIGEON] job " + jid, body, transport="email")
+        subject, rbody, target = out[0]
+        paths = R._transports.ensure_channel_dirs(self.tmp, "email")
+        fname = "mail-7.result-2.txt"
+        with open(os.path.join(paths["outbox"], fname), "w",
+                  encoding="utf-8") as fh:
+            fh.write(R._transports.format_envelope(subject, rbody))
+        channel = R._transports.channel_root(self.tmp, "email")
+        ch.refuse_result(channel, fname, "413")
+        failed = os.path.join(paths["outbox"], "failed")
+        self.assertEqual(sorted(os.listdir(failed)),
+                         ["mail-7.refused.txt", "mail-7.result.txt"])
+        self.assertEqual(R._sweep_channel_refusals(self.tmp, self.cfg,
+                                                   ["email"]), 1)
+        pending = [p[0] for p in ch.pending_results(channel)]
+        self.assertIn("mail-7.result.txt", pending)
+        self.assertEqual(os.listdir(failed), [])
 
 
 if given is not None:

@@ -24,6 +24,7 @@ an envelope lands whole or not at all.
 
 import json
 import os
+import re
 import sys
 import time
 
@@ -33,6 +34,9 @@ except ImportError:
     from guard import atomicio as _atomicio  # type: ignore
 
 FILE_MAX_BYTES = 4 * 1024 * 1024
+# j1.result.txt and j1.result-2.txt are both the job j1. The sweep
+# reads failed/<id>.result.txt beside <id>.refused.txt.
+_RESULT_NAME_RE = re.compile(r"^(.+)\.result(?:-\d+)?\.txt$")
 
 
 class PermanentDeliveryError(Exception):
@@ -163,17 +167,23 @@ def pending_results(channel):
 
 def refuse_result(channel, fname, reason):
     """A result the far end refused for good: moved to
-    outbox/failed/ beside a <stem>.refused.txt that carries the
+    outbox/failed/ beside a <id>.refused.txt that carries the
     reason, so the runner's next pass can answer it with a stub
-    and the queue behind it keeps moving. Never raises."""
+    and the queue behind it keeps moving. Never raises.
+
+    The sweep opens <id>.result.txt. A collision name
+    (j1.result-2.txt) does not end in .result.txt, and leaving
+    it under that name meant the sweep never saw the body, wrote
+    no stub, and the job stayed leased."""
     d = dirs(channel)
     failed = os.path.join(d["outbox"], "failed")
+    named = _RESULT_NAME_RE.match(fname or "")
+    stem = named.group(1) if named else fname
+    dest_name = (stem + ".result.txt") if named else fname
     try:
         os.makedirs(failed, exist_ok=True)
         os.replace(os.path.join(d["outbox"], fname),
-                   os.path.join(failed, fname))
-        stem = fname[:-len(".result.txt")] \
-            if fname.endswith(".result.txt") else fname
+                   os.path.join(failed, dest_name))
         _atomic_write(os.path.join(failed, stem + ".refused.txt"),
                       str(reason).replace("\r", " ").replace("\n", " ")
                       + "\n")

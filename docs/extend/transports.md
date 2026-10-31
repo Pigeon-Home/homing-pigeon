@@ -190,7 +190,10 @@ one we'd recommend to anyone who winces at the word "email."
   is not followed: either one would send the bearer token off the
   machine. A second file for the same id, named while the first
   is still waiting, does not replace that result and still acks the
-  job. A file whose subject names a different job is left where it
+  job. A refused collision name is set aside as that id's
+  result, not under the suffixed filename: the sweep reads
+  `<id>.result.txt`, and the other name never got a stub, so the
+  job stayed leased. A file whose subject names a different job is left where it
   is. A malformed or oversize envelope is refused and
   acked so it does not return every lease.
 - `send_job.py new --to-queue <url>` — the SI side. The SI token is
