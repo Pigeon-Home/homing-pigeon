@@ -162,7 +162,7 @@ function checkState(storage, now, expected, where) {
       assert.ok(Number.isInteger(v.attempts) && v.attempts >= 0 && v.attempts <= MAX_ATTEMPTS,
         `${where}: ${k} attempts ${v.attempts} outside 0..${MAX_ATTEMPTS}`);
       assert.ok(!map.has(`dlq:${v.id}`), `${where}: ${v.id} is both queued and dead`);
-      assert.equal(v.envelope.length, v.size, `${where}: ${k} size record lies about its envelope`);
+      assert.equal(new TextEncoder().encode(v.envelope).length, v.size, `${where}: ${k} size record lies about its envelope`);
     }
     if (k.startsWith("dlq:")) {
       assert.equal(v.attempts, MAX_ATTEMPTS,
@@ -362,7 +362,7 @@ export async function runFuzz(seed, ops) {
         assert.equal(r.status, 400, `${where}: a ${shaped} id answered ${r.status}`);
         assert.equal(snapshot(storage()), before, `${where}: a ${shaped} id changed state`);
       } else if (r.status === 202) {
-        bump(hourKey(), 1); bump(dayKey(), body.length);
+        bump(hourKey(), 1); bump(dayKey(), new TextEncoder().encode(body).length);
       } else if (r.status === 429) {
         assert.equal(snapshotBilling(storage()), beforeBilling,
           `${where}: a 429 stored or billed something`);
@@ -445,7 +445,7 @@ export async function runFuzz(seed, ops) {
         const accepted = [a.r, b.r].filter((r) => r.status === 202);
         assert.ok(accepted.length <= 1, `${where}: ${id} was stored twice`);
         for (const r of accepted) {
-          bump(hourKey(), 1); bump(dayKey(), body.length);
+          bump(hourKey(), 1); bump(dayKey(), new TextEncoder().encode(body).length);
           void r;
         }
       }
@@ -731,6 +731,27 @@ test("fuzz: a body over the day cap is refused while the hour is open", async ()
   assert.equal(small.status, 202);
 });
 
+test("fuzz: the daily cap counts UTF-8 bytes, not JavaScript characters", async () => {
+  let now = 1_700_000_000_000;
+  const wide = await signedJob("j1", SECRET, "é".repeat(40));
+  const chars = wide.length;
+  const wideBytes = new TextEncoder().encode(wide).length;
+  assert.ok(wideBytes > chars);
+  const small = await signedJob("j2", SECRET, "ok");
+  const smallBytes = new TextEncoder().encode(small).length;
+  assert.ok(smallBytes <= chars);
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 10, bytes_per_day: chars } });
+  await addTenant(env);
+  let r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: small }), env);
+  assert.equal(r.status, 202);
+  const dayKey = `quota:day:${Math.floor(now / 86_400_000)}`;
+  assert.equal(env.objects.get("alice").state.storage.map.get(dayKey), smallBytes);
+  r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: wide }), env);
+  assert.equal(r.status, 429);
+  assert.ok(!env.objects.get("alice").state.storage.map.has("job:j1"));
+  assert.equal(env.objects.get("alice").state.storage.map.get(dayKey), smallBytes);
+});
+
 test("fuzz: bob's runner does not see alice's job", async () => {
   let now = 1_700_000_000_000;
   const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 10, bytes_per_day: 60_000 } });
@@ -999,7 +1020,7 @@ test("fuzz: a read gives back the rest on the next call instead of one huge resp
   assert.equal(r.status, 200);
   const first = (await r.json()).results;
   assert.ok(first.length >= 1 && first.length < ids.length, `returned ${first.length}`);
-  assert.ok(first.reduce((n, row) => n + row.envelope.length, 0) <= RESPONSE_BUDGET);
+  assert.ok(first.reduce((n, row) => n + new TextEncoder().encode(row.envelope).length, 0) <= RESPONSE_BUDGET);
   for (const row of first) {
     assert.equal((await worker.fetch(req(`/t/alice/results/${row.id}/ack`, { method: "POST", token: `Bearer ${SI}` }), env)).status, 204);
   }

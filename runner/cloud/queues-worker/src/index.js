@@ -43,6 +43,10 @@ export const DEFAULT_QUOTA = { jobs_per_hour: 600, bytes_per_day: 256 * 1024 * 1
 
 const enc = new TextEncoder();
 
+function utf8Length(text) {
+  return enc.encode(text).length;
+}
+
 // Bytes the runtime will persist: the key plus the JSON value. A pull
 // replaces leased_until 0 with a millisecond timestamp before the
 // dead-letter copy adds dead_at. Budget that wider record, or a job
@@ -54,12 +58,13 @@ export function storagePairBytes(key, value) {
 
 export function jobStoredBytes(jobId, text, now) {
   const stamp = Math.max(FAR_MS, Number(now) || 0);
+  const size = utf8Length(text);
   const dead = {
-    id: jobId, envelope: text, size: text.length,
+    id: jobId, envelope: text, size,
     attempts: MAX_ATTEMPTS, leased_until: stamp, enqueued_at: stamp, dead_at: stamp,
   };
   const again = {
-    id: jobId, envelope: text, size: text.length,
+    id: jobId, envelope: text, size,
     attempts: 0, leased_until: 0, enqueued_at: stamp, requeued_at: stamp,
   };
   return Math.max(
@@ -342,7 +347,7 @@ export default {
       if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
       const text = await request.text();
       if (!text) return json(400, { error: "empty body" });
-      if (text.length > DO_VALUE_MAX) return json(413, { error: "envelope over the storage limit" });
+      if (utf8Length(text) > DO_VALUE_MAX) return json(413, { error: "envelope over the storage limit" });
       const parsed = parseEnvelope(text);
       if (!parsed) return json(400, { error: "malformed envelope: subject, blank line, body" });
       const jobId = jobIdOf(parsed.subject);
@@ -373,7 +378,7 @@ export default {
     if (kind === "results" && request.method === "POST" && !ackId) {
       if (!(await bearerMatches(request, tenant.runner_token_sha256))) return json(401, { error: "runner token" });
       const text = await request.text();
-      if (text.length > DO_VALUE_MAX) return json(413, { error: "envelope over the storage limit" });
+      if (utf8Length(text) > DO_VALUE_MAX) return json(413, { error: "envelope over the storage limit" });
       const parsed = parseEnvelope(text);
       if (!parsed) return json(400, { error: "malformed envelope" });
       const rid = resultIdOf(parsed.subject);
@@ -431,16 +436,17 @@ export class TenantQueue {
       const bytes = (await s.get(dayKey)) || 0;
       const jph = quota.jobs_per_hour ?? DEFAULT_QUOTA.jobs_per_hour;
       const bpd = quota.bytes_per_day ?? DEFAULT_QUOTA.bytes_per_day;
-      if (jobs + 1 > jph || bytes + text.length > bpd) {
+      const weight = utf8Length(text);
+      if (jobs + 1 > jph || bytes + weight > bpd) {
         await s.put("quota:exceeded", ((await s.get("quota:exceeded")) || 0) + 1);
         const retry = jobs + 1 > jph
           ? 3600 - Math.floor((now % 3_600_000) / 1000)
           : 86400 - Math.floor((now % 86_400_000) / 1000);
         return json(429, { error: "tenant quota exceeded", jobs_this_hour: jobs, bytes_today: bytes }, { "retry-after": String(retry) });
       }
-      await s.put(`job:${jobId}`, { id: jobId, envelope: text, size: text.length, enqueued_at: now, leased_until: 0, attempts: 0 });
+      await s.put(`job:${jobId}`, { id: jobId, envelope: text, size: weight, enqueued_at: now, leased_until: 0, attempts: 0 });
       await s.put(hourKey, jobs + 1);
-      await s.put(dayKey, bytes + text.length);
+      await s.put(dayKey, bytes + weight);
       return json(202, { id: jobId });
     }
     if (url.pathname === "/pull") {
@@ -467,7 +473,7 @@ export class TenantQueue {
             await s.delete(key);
             continue;
           }
-          const weight = (job.envelope || "").length;
+          const weight = utf8Length(job.envelope || "");
           if (out.length > 0 && used + weight > RESPONSE_BUDGET) { full = true; break; }
           job.leased_until = now + lease;
           job.attempts += 1;
@@ -564,7 +570,7 @@ export class TenantQueue {
         for (const [key, row] of page) {
           startAfter = key;
           if (out.length >= max) break;
-          const weight = (row.envelope || "").length;
+          const weight = utf8Length(row.envelope || "");
           if (out.length > 0 && used + weight > RESPONSE_BUDGET) { full = true; break; }
           out.push({ id: row.id, envelope: row.envelope, at: row.at });
           used += weight;

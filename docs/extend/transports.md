@@ -169,7 +169,7 @@ one we'd recommend to anyone who winces at the word "email."
   Object per tenant. The Worker gates every job at the edge
   (bearer token for the role, then HMAC-SHA-384 under the tenant's
   shared secret, `REJECT_INVALID_HMAC` on by default) and enforces
-  the tenant's quota: jobs per hour and bytes per day, a hard 429
+  the tenant's quota: jobs per hour and UTF-8 bytes per day, a hard 429
   with `Retry-After`. That quota is the spending cap Cloudflare
   itself does not provide. Its unit tests run under node
   (`node --test runner/cloud/queues-worker/test/worker.test.mjs runner/cloud/queues-worker/test/fuzz.test.mjs`).

@@ -41,7 +41,8 @@ wrangler deploy
 Many tenants: bind a KV namespace as `TENANTS` and store one record
 per slug: `{"si_token_sha256", "runner_token_sha256", "hmac_secret",
 "quota": {"jobs_per_hour", "bytes_per_day"}}`. Hashes are SHA-256 hex
-of the token.
+of the token. `bytes_per_day` counts UTF-8 bytes, and so does the
+size recorded on a job.
 
 `homing-pigeon-host queue-tenant --tenant <slug> --worker <url>` mints
 one: it writes the tokens and the shared secret to
