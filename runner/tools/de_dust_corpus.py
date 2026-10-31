@@ -11653,7 +11653,7 @@ def cmd_stats(args, out=print):
     if getattr(args, "verdict", False):
         hours = args.hours if args.hours_given else None
         out(f"{CAMPAIGN} verdict, standing order M.8, "
-            + (f"last {hours:g} h:" if hours else f"since {HOLD_SINCE} (the tilt's plans):"))
+            + (f"last {hours:g} h:" if hours else f"since {HOLD_SINCE} (rounds as tries):"))
         for line in verdict(hours=hours, baseline=args.baseline):
             out("  " + line)
         return 0

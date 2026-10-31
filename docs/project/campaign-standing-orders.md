@@ -609,11 +609,9 @@ corpus entries are never edited or removed by hand.
    whether the three saturated mail targets stayed at the floor;
    and whether a rig logged a stall or a floor breach the watch
    did not name (`stats --verdict` prints these four readings in
-   this order from the ledger, from 22:00Z on 30-OCT: after the
-   old tilt's last plan and before the 22:17Z plans that put
-   dtls_hostile, dtls_session and race_stash at 4x;
-   `watch --record` puts a breach on the ledger so the fourth has
-   something to read). A
+   this order from the ledger, from 00:00Z on 31-OCT, the restart
+   below; `watch --record` puts a breach on the ledger so the
+   fourth has something to read). A
    change asked for after this hold states which of those readings
    it moves and by how much, before it lands. One change per table
    from here, unless the owner says otherwise. The window restarted
