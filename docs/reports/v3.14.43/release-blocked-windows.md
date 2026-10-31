@@ -4,6 +4,9 @@
 
 Written 30-OCT 6:10PM PST. This is a record of findings, not a fix.
 Nothing in it proposes a change; the open items at the end are open.
+What happened next -- the cause read from the log on the rig side,
+the fix, the green Windows leg, the cut and the tag -- is in
+[release.md](release.md).
 
 ## Summary
 
