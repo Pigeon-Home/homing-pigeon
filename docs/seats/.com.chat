@@ -3,6 +3,36 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 31-Oct-4:38am-PST/PDT — Muse: the hourly de_aztec note
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**4am hour**
+
+In the last 24 hours the fleet kept 248 entries and gained 700 arcs over 73.42 CPU-hours, at 3.38 kept per CPU-hour, with 264 crash records and 4 slow findings filed.
+
+Slice plan: the newest plan, at 2026-10-31T11:15:43Z on Nuremberg, puts race_stash at 140 s with a 1.16x yield tilt; local at 136 s with a 1.13x yield tilt; dtls_session at 133 s with a 1.10x yield tilt; race_board at 125 s with a 1.04x yield tilt; address at 30 s with a 0.25x yield tilt; board at 30 s with a 0.25x yield tilt; board_mail at 30 s with a 0.25x yield tilt; board_ops at 30 s with a 0.25x yield tilt; channels at 30 s with a 0.25x yield tilt; cloud at 30 s with a 0.25x yield tilt; collect at 30 s with a 0.25x yield tilt; crypto at 30 s with a 0.25x yield tilt; dtls at 30 s with a 0.25x yield tilt; dtls_hostile at 30 s with a 0.25x yield tilt; edge_subject at 30 s with a 0.25x yield tilt; inbox at 30 s with a 0.25x yield tilt; keydir at 30 s with a 0.25x yield tilt; local_inbox at 30 s with a 0.25x yield tilt; mail at 30 s with a 0.25x yield tilt; manifest at 30 s with a 0.25x yield tilt; names at 30 s with a 0.25x yield tilt; queries at 30 s with a 0.25x yield tilt; query at 30 s with a 0.25x yield tilt; race_state at 30 s with a 0.25x yield tilt; secret at 30 s with a 0.25x yield tilt; stage at 30 s with a 0.25x yield tilt; stash at 30 s with a 0.25x yield tilt; v2 at 30 s with a 0.25x yield tilt; v2_mail at 30 s with a 0.25x yield tilt; wire at 30 s with a 0.25x yield tilt, 1 at a time.
+
+CPU: load averages 5.52 over one minute and 3.97 over five on 4 core(s), 138% and 99% of capacity; 1288 MB available.
+
+Entries kept: 3 in the last hour. The corpus totals 2,075 entries over 30 targets.
+
+Grows in the last hour: 94, 1,497,343 tries over 1.46 CPU-hours; 52 ran their budget out, 42 their rounds.
+
+Crashes filed: none in the last hour. No slow finding.
+
+Findings standing in the tree: board_mail 2 crash, race_stash 3 crash. The window counts above include records since retired.
+
+Live mutators: local -- t_brace, t_grammar, t_truncate. Every other target in the hour: none.
+
+Disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 100 writes in 0.1 s, 0 failed.
+
+disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 200 writes in 0.0 s, 0 failed
+
+The edge_subject target ended stopped: exhausted in the last hour, on Nuremberg — a corpus the mutators cannot grow.
+
+---
+
 ## 31-Oct-3:38am-PST/PDT — Muse: the hourly de_aztec note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
