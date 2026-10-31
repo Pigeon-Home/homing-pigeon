@@ -433,22 +433,34 @@ export class TenantQueue {
       return json(202, { id: jobId });
     }
     if (url.pathname === "/pull") {
-      const max = parseInt(url.searchParams.get("max") || "8", 10);
+      // Page the prefix. One unbounded list() loads every envelope into
+      // the object, and the platform will kill that once the queue is
+      // larger than memory. A short page is not the end: keep going
+      // until a page is empty or the caller has enough.
+      const asked = parseInt(url.searchParams.get("max") || "8", 10);
+      const max = Math.max(1, Math.min(100, asked || 8));
       const lease = parseInt(this.env.LEASE_MS || "", 10) || LEASE_MS_DEFAULT;
-      const all = await s.list({ prefix: "job:" });
+      const PAGE = 8;
       const out = [];
-      for (const [key, job] of all) {
-        if (out.length >= max) break;
-        if (job.leased_until > now) continue;
-        if (job.attempts >= MAX_ATTEMPTS) {
-          await s.put(`dlq:${job.id}`, { ...job, dead_at: now });
-          await s.delete(key);
-          continue;
+      let startAfter;
+      for (;;) {
+        const page = await s.list({ prefix: "job:", limit: PAGE, startAfter });
+        if (page.size === 0) break;
+        for (const [key, job] of page) {
+          startAfter = key;
+          if (out.length >= max) break;
+          if (job.leased_until > now) continue;
+          if (job.attempts >= MAX_ATTEMPTS) {
+            await s.put(`dlq:${job.id}`, { ...job, dead_at: now });
+            await s.delete(key);
+            continue;
+          }
+          job.leased_until = now + lease;
+          job.attempts += 1;
+          await s.put(key, job);
+          out.push({ id: job.id, envelope: job.envelope, attempt: job.attempts });
         }
-        job.leased_until = now + lease;
-        job.attempts += 1;
-        await s.put(key, job);
-        out.push({ id: job.id, envelope: job.envelope, attempt: job.attempts });
+        if (out.length >= max) break;
       }
       return out.length ? json(200, { jobs: out }) : new Response(null, { status: 204 });
     }

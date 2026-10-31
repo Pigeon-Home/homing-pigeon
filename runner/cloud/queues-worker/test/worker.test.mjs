@@ -16,10 +16,11 @@ class FakeStorage {
   async get(k) { return this.map.has(k) ? structuredClone(this.map.get(k)) : undefined; }
   async put(k, v) { this.map.set(k, structuredClone(v)); }
   async delete(k) { return this.map.delete(k); }
-  async list({ prefix = "", limit = Infinity } = {}) {
+  async list({ prefix = "", limit = Infinity, startAfter } = {}) {
     const out = new Map();
     for (const k of [...this.map.keys()].sort()) {
       if (out.size >= limit) break;
+      if (startAfter !== undefined && k <= startAfter) continue;
       if (k.startsWith(prefix)) out.set(k, structuredClone(this.map.get(k)));
     }
     return out;

@@ -44,10 +44,11 @@ class FakeStorage {
   async get(k) { return this.map.has(k) ? structuredClone(this.map.get(k)) : undefined; }
   async put(k, v) { this.map.set(k, structuredClone(v)); }
   async delete(k) { return this.map.delete(k); }
-  async list({ prefix = "", limit = Infinity } = {}) {
+  async list({ prefix = "", limit = Infinity, startAfter } = {}) {
     const out = new Map();
     for (const k of [...this.map.keys()].sort()) {
       if (out.size >= limit) break;
+      if (startAfter !== undefined && k <= startAfter) continue;
       if (k.startsWith(prefix)) out.set(k, structuredClone(this.map.get(k)));
     }
     return out;
@@ -896,6 +897,34 @@ test("fuzz: an envelope the object cannot store is refused, and one that fits is
   assert.equal(r.status, 413);
   assert.ok(!storage().map.has("result:big1"));
   assert.equal(snapshot(storage()), before);
+});
+
+test("fuzz: a pull pages the queue and still leases every waiting job", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 60, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  const ids = ["p1", "p2", "p3", "p4", "p5"];
+  for (const id of ids) {
+    const r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: await signedJob(id) }), env);
+    assert.equal(r.status, 202, id);
+  }
+  const storage = env.objects.get("alice").state.storage;
+  const raw = storage.list.bind(storage);
+  let calls = 0;
+  storage.list = async (opts = {}) => {
+    calls += 1;
+    return raw({ ...opts, limit: Math.min(opts.limit ?? Infinity, 2) });
+  };
+  let r = await worker.fetch(req("/t/alice/jobs?max=5", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 200);
+  assert.deepEqual((await r.json()).jobs.map((j) => j.id).sort(), ids);
+  assert.ok(calls >= 3, `one list returned the whole queue (${calls})`);
+  // The first two stay leased. The next pull must keep paging to find the rest.
+  now += 1000;
+  calls = 0;
+  r = await worker.fetch(req("/t/alice/jobs?max=5", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 200);
+  assert.deepEqual((await r.json()).jobs.map((j) => j.id).sort(), ids);
 });
 
 test("fuzz: the quota boundary — the first job past the cap is the first 429", async () => {
