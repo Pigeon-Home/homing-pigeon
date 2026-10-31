@@ -20,6 +20,36 @@ Rules:
 
 ---
 
+## 30-Oct-8:38pm-PST/PDT — Muse: the hourly de_aztec note
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**8pm hour**
+
+In the last 24 hours the fleet kept 309 entries and gained 1047 arcs over 71.79 CPU-hours, at 4.30 kept per CPU-hour, with 1382 crash records and 219 slow findings filed.
+
+Slice plan: the newest plan, at 2026-10-31T03:12:03Z on Nuremberg, puts race_stash at 148 s with a 1.24x yield tilt; dtls_hostile at 145 s with a 1.21x yield tilt; race_state at 143 s with a 1.20x yield tilt; local at 141 s with a 1.18x yield tilt; queries at 122 s with a 1.02x yield tilt; race_board at 122 s with a 1.02x yield tilt; address at 30 s with a 0.25x yield tilt; board at 30 s with a 0.25x yield tilt; board_mail at 30 s with a 0.25x yield tilt; board_ops at 30 s with a 0.25x yield tilt; channels at 30 s with a 0.25x yield tilt; cloud at 30 s with a 0.25x yield tilt; collect at 30 s with a 0.25x yield tilt; crypto at 30 s with a 0.25x yield tilt; dtls at 30 s with a 0.25x yield tilt; dtls_session at 30 s with a 0.25x yield tilt; edge_subject at 30 s with a 0.25x yield tilt; inbox at 30 s with a 0.25x yield tilt; keydir at 30 s with a 0.25x yield tilt; local_inbox at 30 s with a 0.25x yield tilt; mail at 30 s with a 0.25x yield tilt; manifest at 30 s with a 0.25x yield tilt; names at 30 s with a 0.25x yield tilt; query at 30 s with a 0.25x yield tilt; secret at 30 s with a 0.25x yield tilt; stage at 30 s with a 0.25x yield tilt; stash at 30 s with a 0.25x yield tilt; v2 at 30 s with a 0.25x yield tilt; v2_mail at 30 s with a 0.25x yield tilt; wire at 30 s with a 0.25x yield tilt, 1 at a time.
+
+CPU: load averages 2.43 over one minute and 2.50 over five on 2 core(s), 122% and 125% of capacity; 1154 MB available.
+
+Entries kept: 4 in the last hour. The corpus totals 2,012 entries over 30 targets.
+
+Grows in the last hour: 74, 1,564,795 tries over 1.54 CPU-hours; 44 ran their budget out, 28 their rounds, and 2 ended exhausted, the mutators making nothing new from the corpus of dtls_hostile, race_stash.
+
+Crashes filed: none in the last hour. No slow finding.
+
+Findings standing in the tree: race_stash 1 crash. The window counts above include records since retired.
+
+Live mutators: local -- t_insert, t_replace_char, t_splice; race_state -- p_text. Every other target in the hour: none.
+
+Disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 100 writes in 0.0 s, 0 failed.
+
+disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 200 writes in 0.0 s, 0 failed
+
+The edge_subject target ended stopped: exhausted twice in the last hour, on Nuremberg — a corpus the mutators cannot grow.
+
+---
+
 ## 30-Oct-7:39pm-PST/PDT — Muse: the hourly de_aztec note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
