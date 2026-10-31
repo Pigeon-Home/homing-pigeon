@@ -44,8 +44,10 @@ that use them.
 ## Test
 
 ```bash
-node --test runner/cloud/queues-worker/test/worker.test.mjs
+node --test runner/cloud/queues-worker/test/worker.test.mjs runner/cloud/queues-worker/test/fuzz.test.mjs
 ```
 
 No wrangler, no network: the Durable Object namespace and KV are
-in-memory fakes with the shapes the runtime hands the Worker.
+in-memory fakes with the shapes the runtime hands the Worker. The
+fuzz file replays `test/fuzz.corpus.json`, then one seed of 20,000
+operations. Some of those operations put two requests in flight.

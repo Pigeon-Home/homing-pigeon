@@ -172,7 +172,7 @@ one we'd recommend to anyone who winces at the word "email."
   the tenant's quota: jobs per hour and bytes per day, a hard 429
   with `Retry-After`. That quota is the spending cap Cloudflare
   itself does not provide. Its unit tests run under node
-  (`node --test runner/cloud/queues-worker/test/worker.test.mjs`).
+  (`node --test runner/cloud/queues-worker/test/worker.test.mjs runner/cloud/queues-worker/test/fuzz.test.mjs`).
 - `runner/transport_extensions/queues/` — the runner-side extension.
   Outbound only: it leases jobs from the Worker, drops them in the
   channel inbox, posts the channel's results back and acks the job

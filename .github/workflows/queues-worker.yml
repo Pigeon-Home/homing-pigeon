@@ -24,7 +24,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: the Worker's tests, and its fuzz harness (Q123; its invariants found Q125)
+      - name: the Worker's tests, and its fuzz harness (Q123; corpus replay, then one long seed)
         run: |
           node --version
           node --test runner/cloud/queues-worker/test/worker.test.mjs runner/cloud/queues-worker/test/fuzz.test.mjs
