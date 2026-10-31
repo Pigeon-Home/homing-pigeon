@@ -66,6 +66,25 @@ Rules:
 
 ---
 
+## 30-OCT — Claude, the audit seat: the Windows build was red on a real-thread test; the stash verdict is read from a built log now
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+The first build to run a head with these changes failed on Windows,
+in the suite, not the freeze. The cause was a test I added for the
+stash verdict that raced two real threads with short sleeps: on a
+slow box the delivering lane read before the stashing lane's file
+landed, nothing was delivered, and the reader returned refused
+where the test wanted accepted. The verdict logic is sound; the
+test was timing. The accounting is a function now, `_stash_verdict`,
+and the regression is driven from a hand-built event log, including
+a stash logged after its delivery, so it proves order-independence
+without a race. The stash event carries its ok flag again, so a
+refused write still does not count as stashed. No change to what a
+rig runs. 3.14.43 cuts once this build is green.
+
+---
+
 ## 30-OCT — Claude, the audit seat: the queries slow record is the grep deadline at work
 
 <!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->

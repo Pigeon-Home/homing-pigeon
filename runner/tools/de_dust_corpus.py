@@ -2688,6 +2688,50 @@ def seeds_race_board():
 _STASH_KEYS = ("bm-stash-0001", "bm-stash-0002")
 
 
+def _stash_verdict(events):
+    """(faults, delivered) for a race_stash run from its event log.
+    The log holds each event in the order its thread took the lock,
+    after the operation returned, which is not the order the
+    operations touched the outbox: a stash can finish its write,
+    another thread deliver what it wrote, and the delivery be logged
+    before the stash. So the contract is read as counts, not as a
+    sequence: a delivered body must have been handed to a stash for
+    that key at some point, and a body is delivered no more times
+    than it was stashed plus the undelivers on its key (an undeliver
+    puts the record back for another go)."""
+    faults = []
+    stashed = {}            # (skey, body) -> stashes handed in
+    undelivers = {}         # skey -> count
+    delivers = {}           # (skey, body) -> deliveries
+    delivered = 0
+    for ev in events:
+        if ev[0] == "stash" and ev[3]:
+            stashed[(ev[1], ev[2])] = stashed.get((ev[1], ev[2]), 0) + 1
+        elif ev[0] == "undeliver":
+            undelivers[ev[1]] = undelivers.get(ev[1], 0) + 1
+    for ev in events:
+        if ev[0] != "deliver":
+            continue
+        skey, body = ev[1], ev[2]
+        delivered += 1
+        if skey is None:
+            owners = [k for (k, b) in stashed if b == body]
+            if not owners:
+                faults.append("delivered a body nobody stashed")
+                continue
+            skey = owners[0] if len(set(owners)) == 1 else None
+            if skey is None:
+                continue
+        elif (skey, body) not in stashed:
+            faults.append(f"{skey} delivered a body that was not stashed")
+            continue
+        delivers[(skey, body)] = delivers.get((skey, body), 0) + 1
+        if delivers[(skey, body)] > (stashed[(skey, body)]
+                                     + undelivers.get(skey, 0)):
+            faults.append(f"{skey} delivered twice without an undeliver")
+    return faults, delivered
+
+
 def check_race_stash(entry):
     """race_stash: up to four threads, each a list of outbox
     operations (stash, deliver, fail, undeliver, resend) over one
@@ -2726,10 +2770,10 @@ def check_race_stash(entry):
                     subject = op.get("subject")
                     if not isinstance(subject, str):
                         subject = "[HOMING-PIGEON] result " + skey
+                    ok = R.stash_result(base, skey, {"job_id": skey, "kind": "exec"},
+                                        subject, body)
                     with lock:
-                        events.append(("stash", skey, body))
-                    R.stash_result(base, skey, {"job_id": skey, "kind": "exec"},
-                                   subject, body)
+                        events.append(("stash", skey, body, bool(ok)))
                 elif name == "deliver":
                     sent = []
 
@@ -2786,49 +2830,12 @@ def check_race_stash(entry):
     if errors:
         shutil.rmtree(base, ignore_errors=True)
         raise Crash("exception", errors[0])
-    # The log holds each event in the order its thread took the
-    # lock, after the operation returned, which is not the order the
-    # operations touched the outbox: a stash can finish its write,
-    # another thread deliver what it wrote, and the delivery be
-    # logged before the stash. So the contract is read as counts,
-    # not as a sequence: a delivered body must have been handed to
-    # a stash for that key at some point, and a body is delivered
-    # no more times than it was stashed plus the undelivers on its
-    # key (an undeliver puts the record back for another go).
-    faults = []
-    stashed = {}            # (skey, body) -> stashes handed in
-    undelivers = {}         # skey -> count
-    delivers = {}           # (skey, body) -> deliveries
-    delivered = 0
-    for ev in events:
-        if ev[0] == "stash":
-            stashed[(ev[1], ev[2])] = stashed.get((ev[1], ev[2]), 0) + 1
-        elif ev[0] == "undeliver":
-            undelivers[ev[1]] = undelivers.get(ev[1], 0) + 1
-    for ev in events:
-        if ev[0] != "deliver":
-            continue
-        skey, body = ev[1], ev[2]
-        delivered += 1
-        if skey is None:
-            owners = [k for (k, b) in stashed if b == body]
-            if not owners:
-                faults.append("delivered a body nobody stashed")
-                continue
-            skey = owners[0] if len(set(owners)) == 1 else None
-            if skey is None:
-                continue
-        elif (skey, body) not in stashed:
-            faults.append(f"{skey} delivered a body that was not stashed")
-            continue
-        delivers[(skey, body)] = delivers.get((skey, body), 0) + 1
-        if delivers[(skey, body)] > (stashed[(skey, body)]
-                                     + undelivers.get(skey, 0)):
-            faults.append(f"{skey} delivered twice without an undeliver")
+    faults, delivered = _stash_verdict(events)
     if faults:
         shutil.rmtree(base, ignore_errors=True)
         raise Crash("contract", faults[0])
-    for skey in stashed:
+    stashed_keys = {ev[1] for ev in events if ev[0] == "stash" and ev[3]}
+    for skey in stashed_keys:
         paths = (
             ("outbox", R._stash_path(base, skey)),
             ("sent", R._sent_path(base, skey)),

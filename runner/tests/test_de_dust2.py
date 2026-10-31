@@ -786,31 +786,34 @@ class TechniquesTest(unittest.TestCase):
                              name)
 
     def test_a_stash_logged_after_its_delivery_is_not_a_fault(self):
-        # The event log takes each entry after its operation returns.
-        # A stash that writes, is read and delivered by the other
-        # lane, and only then returns, is logged after the delivery;
-        # the contract reads counts, not the log's order, so the
-        # delivery of a body that was stashed is not "a body that was
-        # not stashed" (the race_stash echo of 30-OCT).
-        real_stash, real_deliver = B.R.stash_result, B.R.deliver_stash
+        # The event log takes each entry after its operation returns,
+        # so a stash that wrote, was read and delivered by the other
+        # lane, and only then returned is logged after the delivery.
+        # The verdict reads counts, not the log's order, so that
+        # delivery is not "a body that was not stashed" (the
+        # race_stash echo of 30-OCT). Driven from a hand-built log so
+        # it does not race two threads on a slow box.
+        events = [("deliver", "bm-stash-0001", "beta", True),
+                  ("stash", "bm-stash-0001", "beta", True)]
+        faults, delivered = B._stash_verdict(events)
+        self.assertEqual([], faults)
+        self.assertEqual(1, delivered)
 
-        def slow_to_return(*a, **k):
-            ok = real_stash(*a, **k)
-            time.sleep(0.2)
-            return ok
-
-        def late_to_start(*a, **k):
-            time.sleep(0.05)
-            return real_deliver(*a, **k)
-
-        spec = {"threads": [[{"op": "deliver", "skey": "bm-stash-0001"}],
-                            [{"op": "stash", "skey": "bm-stash-0001",
-                              "body": "beta"}]]}
-        entry = B.make_entry("payload", spec, "x", "seed")
-        with mock.patch.object(B.R, "stash_result", slow_to_return), \
-                mock.patch.object(B.R, "deliver_stash", late_to_start):
-            self.assertEqual("accepted",
-                             B._with_rig(lambda: B.check("race_stash", entry)))
+    def test_the_stash_verdict_still_catches_a_real_breach(self):
+        # A body delivered for a key it was never stashed under is a
+        # fault whatever the order, and a second delivery with no
+        # undeliver between is one too.
+        self.assertEqual("bm-stash-0001 delivered a body that was not stashed",
+                         B._stash_verdict([("deliver", "bm-stash-0001", "ghost", True)])[0][0])
+        # A stash whose write was refused does not count as stashed.
+        self.assertTrue(B._stash_verdict([("stash", "k", "x", False),
+                                          ("deliver", "k", "x", True)])[0])
+        twice = [("stash", "k", "x", True), ("deliver", "k", "x", True),
+                 ("deliver", "k", "x", True)]
+        self.assertIn("delivered twice", B._stash_verdict(twice)[0][0])
+        once_each = [("stash", "k", "x", True), ("deliver", "k", "x", True),
+                     ("undeliver", "k"), ("deliver", "k", "x", True)]
+        self.assertEqual([], B._stash_verdict(once_each)[0])
 
     def test_race_targets_sit_out_the_surface_differential_and_the_kill_set(self):
         self.assertEqual([], B.platform_disagreements("race_board"))
