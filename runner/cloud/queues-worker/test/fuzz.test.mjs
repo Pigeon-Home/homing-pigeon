@@ -33,7 +33,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA, DO_VALUE_MAX, jobStoredBytes } from "../src/index.js";
+import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA, DO_VALUE_MAX, jobStoredBytes, RESPONSE_BUDGET } from "../src/index.js";
 
 const MAX_ATTEMPTS = 5;
 const LONG_OPS = 20_000;
@@ -925,6 +925,61 @@ test("fuzz: a pull pages the queue and still leases every waiting job", async ()
   r = await worker.fetch(req("/t/alice/jobs?max=5", { token: `Bearer ${RUNNER}` }), env);
   assert.equal(r.status, 200);
   assert.deepEqual((await r.json()).jobs.map((j) => j.id).sort(), ids);
+});
+
+test("fuzz: a read gives back the rest on the next call instead of one huge response", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 60, bytes_per_day: 60_000_000 } });
+  await addTenant(env);
+  const piece = 1_500_000;
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  for (const id of ids) {
+    const r = await worker.fetch(req("/t/alice/results", {
+      method: "POST", token: `Bearer ${RUNNER}`,
+      body: `[HOMING-PIGEON] result ${id}\n\n${"x".repeat(piece)}\n`,
+    }), env);
+    assert.equal(r.status, 202, id);
+  }
+  let r = await worker.fetch(req("/t/alice/results?max=100", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const first = (await r.json()).results;
+  assert.ok(first.length >= 1 && first.length < ids.length, `returned ${first.length}`);
+  assert.ok(first.reduce((n, row) => n + row.envelope.length, 0) <= RESPONSE_BUDGET);
+  for (const row of first) {
+    assert.equal((await worker.fetch(req(`/t/alice/results/${row.id}/ack`, { method: "POST", token: `Bearer ${SI}` }), env)).status, 204);
+  }
+  r = await worker.fetch(req("/t/alice/results?max=100", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const rest = (await r.json()).results;
+  assert.deepEqual([...first, ...rest].map((row) => row.id).sort(), ids);
+  for (const id of ids) assert.ok(env.objects.get("alice").state.storage.map.has(`result:${id}`) === rest.some((row) => row.id === id));
+});
+
+test("fuzz: the dead-letter list is paged and still names every dead job", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 60, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  const ids = ["d1", "d2", "d3", "d4", "d5"];
+  for (const id of ids) {
+    assert.equal((await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: await signedJob(id) }), env)).status, 202);
+  }
+  for (let i = 0; i < 6; i++) {
+    await worker.fetch(req("/t/alice/jobs?max=5", { token: `Bearer ${RUNNER}` }), env);
+    now += 1000;
+  }
+  const storage = env.objects.get("alice").state.storage;
+  const raw = storage.list.bind(storage);
+  let calls = 0;
+  storage.list = async (opts = {}) => {
+    calls += 1;
+    return raw({ ...opts, limit: Math.min(opts.limit ?? Infinity, 2) });
+  };
+  const r = await worker.fetch(req("/t/alice/dlq?max=5", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const dead = (await r.json()).dead;
+  assert.deepEqual(dead.map((d) => d.id).sort(), ids);
+  for (const d of dead) assert.ok(!("envelope" in d));
+  assert.ok(calls >= 3, `one list returned the whole dead list (${calls})`);
 });
 
 test("fuzz: the quota boundary — the first job past the cap is the first 429", async () => {

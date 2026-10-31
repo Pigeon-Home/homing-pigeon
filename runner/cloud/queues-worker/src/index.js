@@ -34,6 +34,11 @@ const MAX_ATTEMPTS = 5;
 // and the value together cannot exceed 2 MB. The smaller reading of
 // that limit. A body under it can still wrap, once stored, past it.
 export const DO_VALUE_MAX = 2_000_000;
+// One read must not hold more envelope bytes than this. A page of
+// full-size records is already most of it. The caller gets the rest
+// on the next read.
+export const RESPONSE_BUDGET = 8 * 1024 * 1024;
+const PAGE = 8;
 export const DEFAULT_QUOTA = { jobs_per_hour: 600, bytes_per_day: 256 * 1024 * 1024 };
 
 const enc = new TextEncoder();
@@ -440,8 +445,9 @@ export class TenantQueue {
       const asked = parseInt(url.searchParams.get("max") || "8", 10);
       const max = Math.max(1, Math.min(100, asked || 8));
       const lease = parseInt(this.env.LEASE_MS || "", 10) || LEASE_MS_DEFAULT;
-      const PAGE = 8;
       const out = [];
+      let used = 0;
+      let full = false;
       let startAfter;
       for (;;) {
         const page = await s.list({ prefix: "job:", limit: PAGE, startAfter });
@@ -455,23 +461,33 @@ export class TenantQueue {
             await s.delete(key);
             continue;
           }
+          const weight = (job.envelope || "").length;
+          if (out.length > 0 && used + weight > RESPONSE_BUDGET) { full = true; break; }
           job.leased_until = now + lease;
           job.attempts += 1;
           await s.put(key, job);
           out.push({ id: job.id, envelope: job.envelope, attempt: job.attempts });
+          used += weight;
         }
-        if (out.length >= max) break;
+        if (out.length >= max || full) break;
       }
       return out.length ? json(200, { jobs: out }) : new Response(null, { status: 204 });
     }
     if (url.pathname === "/dlq") {
-      const max = parseInt(url.searchParams.get("max") || "20", 10);
-      const all = await s.list({ prefix: "dlq:", limit: max });
+      const max = Math.max(1, Math.min(100, parseInt(url.searchParams.get("max") || "20", 10) || 20));
       const out = [];
-      for (const [, d] of all) {
-        out.push({ id: d.id, attempts: d.attempts, size: d.size,
-                   enqueued_at: d.enqueued_at, dead_at: d.dead_at,
-                   subject: (parseEnvelope(d.envelope) || {}).subject || null });
+      let startAfter;
+      for (;;) {
+        const page = await s.list({ prefix: "dlq:", limit: PAGE, startAfter });
+        if (page.size === 0) break;
+        for (const [key, d] of page) {
+          startAfter = key;
+          if (out.length >= max) break;
+          out.push({ id: d.id, attempts: d.attempts, size: d.size,
+                     enqueued_at: d.enqueued_at, dead_at: d.dead_at,
+                     subject: (parseEnvelope(d.envelope) || {}).subject || null });
+        }
+        if (out.length >= max) break;
       }
       return out.length ? json(200, { dead: out }) : new Response(null, { status: 204 });
     }
@@ -526,10 +542,24 @@ export class TenantQueue {
       return json(202, { id: rid });
     }
     if (url.pathname === "/results") {
-      const max = parseInt(url.searchParams.get("max") || "20", 10);
-      const all = await s.list({ prefix: "result:", limit: max });
+      const max = Math.max(1, Math.min(100, parseInt(url.searchParams.get("max") || "20", 10) || 20));
       const out = [];
-      for (const [, r] of all) out.push({ id: r.id, envelope: r.envelope, at: r.at });
+      let used = 0;
+      let full = false;
+      let startAfter;
+      for (;;) {
+        const page = await s.list({ prefix: "result:", limit: PAGE, startAfter });
+        if (page.size === 0) break;
+        for (const [key, row] of page) {
+          startAfter = key;
+          if (out.length >= max) break;
+          const weight = (row.envelope || "").length;
+          if (out.length > 0 && used + weight > RESPONSE_BUDGET) { full = true; break; }
+          out.push({ id: row.id, envelope: row.envelope, at: row.at });
+          used += weight;
+        }
+        if (out.length >= max || full) break;
+      }
       return out.length ? json(200, { results: out }) : new Response(null, { status: 204 });
     }
     if (url.pathname === "/results-ack") {
