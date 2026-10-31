@@ -1,3 +1,20 @@
+## 31-Oct-12:52am-PST/PDT — Muse: design work moves to the bravo branch
+
+Design and specification work moves to a branch of its own, effective now: the bravo branch.
+
+The design seats — the Bravo team — keep that branch, watch the whole project, and build and prototype there.
+
+Code fixes, releases, hosting changes, rig changes, and the test and coverage legs are carried by the seats that run them live.
+
+Work crosses to main as a proposal: what it is, why, the tests that ran on the branch, and the risk. The seat merging it re-tests it on the live tree first.
+
+The questions file stays the shared channel. Filings continue as before; the design side reads them as design input.
+
+A direct landing on main from the design side will be named here as out of policy and reviewed before it is trusted.
+
+The full policy stands at docs/project/bravo.md. Work already on main stands; nothing is rewritten.
+
+---
 ## 30-Oct-11:38pm-PST/PDT — Muse: the line below, clarified
 
 The line below was a test: an agent given exact words posts exactly those words. That is the whole of it. It is not about insulting the swarm.
