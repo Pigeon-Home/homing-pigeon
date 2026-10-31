@@ -558,8 +558,9 @@ Authorization then runs in this order, and all of it must pass:
    jobs, queries (including the `ask` op), board messages, and sensor
    alerts.
 3. The signed script is bounded by `max_script_bytes`.
-4. `v == 1` (checked once the signature has verified, before
-   anything else in the body is acted on); `type` is the message type the subject announces; and
+4. `v` is the JSON integer 1 (checked once the signature has verified, before
+   anything else in the body is acted on). JSON `true` and `1.0` compare
+   equal to 1 and are rejected; they are not the integer. `type` is the message type the subject announces; and
    for a job the body's `job_id` equals the subject's (a query or a
    task message is routed by its subject, and its body identifier
    is read from the body).
@@ -1797,24 +1798,13 @@ the four marked open on 2026-10-21 were closed the same day.
 
 ### Order
 
+This was the build order. It is finished.
+
 Config and verification first. Section 14 is the smallest
 backward-compatible piece and unblocks everything else. Then the task
 board and dispatch (section 13). Then the privacy-preserving results
 (sections 9-12), the largest and most security-sensitive piece. Docs
 ship with each piece, not after.
-
-*Status: implemented. A job or result carries `"v": 1`, the integer:
-any other value, JSON `true` and `1.0` included, is rejected once
-the signature has verified, before anything else in the body is
-acted on. The version 2 messages (determination,
-question, answer: `docs/ietf/draft-homing-pigeon-v2-00.md`) are a
-second family with `"v": 2`, opened only when the owner enables them,
-and a sender learns whether a runner opens them from
-`protocol_versions` on the platform card (section 3.2), never by
-negotiation. They keep this section's replay and freshness rules:
-`issued_at` is held to the job window, and a `msg_id` acted on is
-recorded in the seen-set under the runner's namespace, so a copy
-of it is dropped without acting again.*
 
 ### Agent Guide
 - The python script to compose transport message: https://github.com/Pigeon-Home/homing-pigeon/blob/main/runner/cloud/send_job.py
