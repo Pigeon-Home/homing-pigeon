@@ -191,7 +191,7 @@ these, if any, the Windows leg objects to is not established.
 ## State at the time of writing
 
 - `v3.14.43` is not tagged. No GitHub Release, no PyPI
-  (`homing-pigeon-python`), SourceForge or GitLab publication for
+  (`pigeon-home-runner`), SourceForge or GitLab publication for
   3.14.43 exists; those jobs run only on the tag build.
 - `v3.14.42` remains the latest release on every mirror.
 - Two cut-release attempts on `11a3038e` failed on the guard for lack

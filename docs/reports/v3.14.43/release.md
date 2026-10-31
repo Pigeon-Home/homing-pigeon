@@ -173,7 +173,7 @@ Tag build 41155303320: `completed/success` at 01:41:44Z (30-OCT
 | Step | When (UTC) | Result |
 |---|---|---|
 | `release` | 01:39:57 published | success. GitHub Release `v3.14.43`, not a draft, not a prerelease; GitHub's `releases/latest` answers `v3.14.43`. |
-| `pypi-publish` | 01:41:12 | success (`homing-pigeon-python` 3.14.43; the action fails on a refused upload). |
+| `pypi-publish` | 01:41:12 | success (PyPI project `pigeon-home-runner` 3.14.43, the wheel `pigeon_home_runner-3.14.43-py3-none-any.whl` and the sdist; `homing-pigeon-python` is the trusted-publisher environment's name, not the package's. The action fails on a refused upload). |
 | `gitlab` | 01:41:44 | success (release created through the GitLab API on `gitlab.com/pigeon-home/homing-pigeon`; the job fails on a non-2xx). |
 | `sourceforge` | 01:41:44 | success (files uploaded to `sourceforge.net/projects/homing-pigeon/files/v3.14.43/`, and the job's own poll saw FRS serve every one before it reported). |
 
