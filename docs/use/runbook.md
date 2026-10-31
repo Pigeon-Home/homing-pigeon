@@ -157,13 +157,17 @@ everything." That one sentence is the whole instruction set. The SI
 bumps the version in the four places it lives, runs the version
 test and the doc-drift guard before pushing, waits until the nine
 guard jobs on that commit are green (`test` and the eight
-`build-*` jobs; `test-macos` is not one of them), tags that
-commit, and watches the tag build through `release`,
-`pypi-publish`, `sourceforge` and `gitlab`. Mutation does not run
-on a tag. It then checks every outlet by name -- GitHub Release,
-PyPI, Docker, SourceForge, GitLab -- before reporting. You get one
-report when all of it is confirmed, or one report naming the exact
-outlet that failed.
+`build-*` jobs; `test-macos` is not one of them), and tags that
+commit as soon as they are. A later commit on main is not that
+commit; the tag is the full sha. It watches the tag build through
+`release`, `pypi-publish`, `sourceforge` and `gitlab`. Mutation
+does not run on a tag. The image workflow still starts when the
+tag is cut, before that build finishes. A version whose tests
+fail can already have an image (`v3.14.45`). Holding the image
+until `release` succeeds is not done yet. It then checks every
+outlet by name -- GitHub Release, PyPI, Docker, SourceForge,
+GitLab -- before reporting. You get one report when all of it
+is confirmed, or one report naming the exact outlet that failed.
 
 ---
 

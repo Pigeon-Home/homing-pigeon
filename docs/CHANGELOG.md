@@ -4,6 +4,20 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.0 - 2026-10-31
+
+- **3.14.47 published in one cycle.** Twenty-seven minutes from
+  the release commit to the GitHub release, fifteen from a green
+  branch build. Nothing failed. The record is
+  docs/reports/v3.14.47/release-retrospective.md. The runbook now
+  says to tag that commit as soon as the nine are green, and that
+  a later commit on main is not that commit.
+- The image workflow still starts when the tag is cut. Holding it
+  until the release job succeeds is not done: it does not make a
+  release faster. `v3.14.45` remains an image with no GitHub release.
+- The corpus banked since 3.14.47 rides along. No crash or slow file
+  stands.
+
 ## 3.14.47 - 2026-10-31
 
 - **What made 3.14.46 slow.** Seventy minutes, two failed cycles
