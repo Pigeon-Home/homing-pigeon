@@ -219,7 +219,7 @@ shape, subject line, blank line, signed body):
 | runner | `GET /jobs?max=N` | lease up to N jobs, fewer when the envelopes would pass 8 MB; 200 `{"jobs": [{"id", "envelope", "attempt"}]}` or 204 |
 | runner | `POST /jobs/<id>/ack` | the job is finished; 204, or 404 if already gone |
 | runner | `POST /jobs/<id>/lease` | renew the lease on a job still running, each pass, so a job longer than the lease is not offered again or dead-lettered; 204, or 404 when the queue no longer holds it leased |
-| runner | `POST /results` | a result envelope in; 202, 400 when the id is not a safe id, 413 over the same 2 MB storage limit |
+| runner | `POST /results` | a result envelope in; 202, 200 `{"duplicate": true}` when that id is already stored (the first envelope stays), 400 when the id is not a safe id, 413 over the same 2 MB storage limit |
 | SI | `GET /results?max=N` | results out, fewer than N when the envelopes would pass 8 MB; 200 `{"results": [...]}` or 204 |
 | SI | `POST /results/<id>/ack` | the SI has it; 204 |
 | SI | `GET /dlq?max=N` | the dead-letter list: id, attempts, subject and times, no envelope; 200 `{"dead": [...]}` or 204 |

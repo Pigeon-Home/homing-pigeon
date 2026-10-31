@@ -465,9 +465,18 @@ export async function runFuzz(seed, ops) {
         const kind = rnd() < 0.5 ? "result" : rnd() < 0.5 ? "qresult" : "job";
         const subject = `[HOMING-PIGEON] ${kind} ${id}`;
         const body = `${subject}\n\n{"exit_code":0}\n`;
+        const kept = storage().map.get(`result:${id}`);
         const { r, tuple } = await doFetch("POST", "/t/alice/results", { token: `Bearer ${RUNNER}`, body });
         note(i, tuple);
-        assert.equal(r.status, kind === "job" ? 400 : 202, `${where}: ${kind} answered ${r.status}`);
+        if (kind === "job") {
+          assert.equal(r.status, 400, `${where}: job answered ${r.status}`);
+        } else if (kept) {
+          assert.equal(r.status, 200, `${where}: a second ${kind} answered ${r.status}`);
+          assert.equal(storage().map.get(`result:${id}`).envelope, kept.envelope, `${where}: a second ${kind} replaced ${id}`);
+        } else {
+          assert.equal(r.status, 202, `${where}: ${kind} answered ${r.status}`);
+          assert.equal(storage().map.get(`result:${id}`).envelope, body);
+        }
       } else if (which < 0.75) {
         const { r, tuple } = await doFetch("GET", "/t/alice/results", { token: `Bearer ${SI}` });
         note(i, tuple);
@@ -573,10 +582,12 @@ export async function runFuzz(seed, ops) {
       } else {
         const id = pick(["b1", "b2"]);
         const body = `[HOMING-PIGEON] qresult ${id}\n\n{"exit_code":0}\n`;
+        const kept = bobStorage() && bobStorage().map.get(`result:${id}`);
         const posted = await doFetch("POST", "/t/bob/results", { token: `Bearer ${BOB_RUNNER}`, body });
         note(i, posted.tuple);
-        assert.equal(posted.r.status, 202, `${where}: bob's qresult answered ${posted.r.status}`);
+        assert.equal(posted.r.status, kept ? 200 : 202, `${where}: bob's qresult answered ${posted.r.status}`);
         assert.equal(snapshot(storage()), beforeAlice, `${where}: bob's qresult changed alice`);
+        if (kept) assert.equal(bobStorage().map.get(`result:${id}`).envelope, kept.envelope);
         const read = await doFetch("GET", "/t/alice/results", { token: `Bearer ${SI}` });
         note(i, read.tuple);
         if (read.r.status === 200) {
@@ -789,6 +800,25 @@ test("fuzz: a qresult is stored and a job subject on that route is not", async (
     body: "[HOMING-PIGEON] job qr1\n\n{\"exit_code\":0}\n",
   }), env);
   assert.equal(r.status, 400);
+  void now;
+});
+
+test("fuzz: a second result for an id keeps the first envelope", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now });
+  await addTenant(env);
+  const first = "[HOMING-PIGEON] result j1\n\n{\"exit_code\":0}\n";
+  const second = "[HOMING-PIGEON] qresult j1\n\n{\"exit_code\":1}\n";
+  let r = await worker.fetch(req("/t/alice/results", { method: "POST", token: `Bearer ${RUNNER}`, body: first }), env);
+  assert.equal(r.status, 202);
+  r = await worker.fetch(req("/t/alice/results", { method: "POST", token: `Bearer ${RUNNER}`, body: second }), env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).duplicate, true);
+  const stored = env.objects.get("alice").state.storage.map.get("result:j1");
+  assert.equal(stored.envelope, first);
+  r = await worker.fetch(req("/t/alice/results", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).results[0].envelope, first);
   void now;
 });
 

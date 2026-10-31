@@ -534,6 +534,11 @@ export class TenantQueue {
     if (url.pathname === "/result") {
       const rid = request.headers.get("x-hp-result-id");
       const text = await request.text();
+      // The first result for an id stays, as a repeated job submit does.
+      // A later post, including one the SI has not acked yet, must not
+      // replace the envelope the SI was shown.
+      const existing = await s.get(`result:${rid}`);
+      if (existing) return json(200, { id: rid, duplicate: true });
       const record = { id: rid, envelope: text, at: now };
       if (resultStoredBytes(rid, text, now) > DO_VALUE_MAX) {
         return json(413, { error: "envelope over the storage limit" });
