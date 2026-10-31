@@ -75,6 +75,16 @@ Server runs under its evaluation terms until a license key is
 added; desktop Windows is not licensed for server hardware
 and is not used.
 
+**Assume a bare machine.** No procedure for this machine may
+assume a tool is installed — not git, not Python, not anything
+beyond Windows itself and the runner. Every step installs what
+it needs, in the open, as part of the step. A procedure that
+works only because something happened to be on the machine
+already is a broken procedure; the failure will arrive on the
+next fresh machine, in front of a different operator. The
+first repository job below follows the rule: it carries its
+own portable git.
+
 ## State at writing (31-Oct-2026 4:35pm-PST/PDT)
 
 - **Windows installed.** Windows Server 2022 Standard (Server
