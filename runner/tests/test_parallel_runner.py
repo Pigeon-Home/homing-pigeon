@@ -555,18 +555,36 @@ class AnnotationTest(unittest.TestCase):
     def test_an_interrupt_while_waiting_fails_and_names_itself(self):
         with tempfile.TemporaryDirectory() as d:
             _write(d, "test_alpha.py", _PASS)
+            paths = []
+            real_open = open
+
+            def spy_open(file, mode="r", *args, **kwargs):
+                handle = real_open(file, mode, *args, **kwargs)
+                if (isinstance(file, str) and file.endswith("shard-0.log")
+                        and "w" in mode):
+                    paths.append(file)
+                return handle
 
             def boom(self, timeout=None):
+                # Popen does not keep a caller-supplied stdout file, so
+                # the bytes are planted in the log the parent will read.
+                if paths:
+                    with real_open(paths[0], "ab") as handle:
+                        handle.write(b"shard-marker-line\n")
                 raise KeyboardInterrupt
 
             buf = io.StringIO()
-            with mock.patch.object(subprocess.Popen, "wait", boom), \
+            with mock.patch("builtins.open", spy_open), \
+                    mock.patch.object(subprocess.Popen, "wait", boom), \
                     contextlib.redirect_stdout(buf), \
                     contextlib.redirect_stderr(buf):
                 rc = rtp.main(["--jobs", "1", "--top-level-dir", d,
                                "test_alpha"])
         self.assertEqual(1, rc)
-        self.assertIn("INTERRUPTED", buf.getvalue())
+        text = buf.getvalue()
+        self.assertIn("INTERRUPTED", text)
+        self.assertIn("shard-marker-line", text)
+        self.assertNotIn("Traceback", text)
 
 
 if __name__ == "__main__":
