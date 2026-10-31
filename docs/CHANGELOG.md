@@ -4,6 +4,22 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.46 - 2026-10-31
+
+- **One stash is claimed before it is sent.** A resend and a direct
+  deliver could both send the same outbox record. The record now
+  leaves the outbox before the send, under one lock per key, and
+  comes back if the send fails. The 3.14.45 tag carried only the
+  lock. Its Windows build still sent one record twice, so that tag
+  was not published. Do not rerun the v3.14.45 tag build.
+- **A board subject the grammar accepts is handled.** The board reader
+  matched the subject with Python's whitespace, so a unit separator in
+  the id was a gap and the message was left unseen. The subject is the
+  shared grammar. A board key that is not a task id is not loaded, so
+  it is not offered under a subject that splits.
+- The corpus banked since 3.14.44 rides along. No crash or slow file
+  stands.
+
 ## 3.14.45 - 2026-10-31
 
 - **One stash is sent once.** A resend and a direct deliver could both

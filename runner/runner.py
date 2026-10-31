@@ -1702,8 +1702,8 @@ def _stash_guard(skey):
     """The lock for one outbox key.
 
     A delivery and the resend pass can both hold the same record.
-    The send and the move into sent/ stay inside this lock, so the
-    second sender finds the record gone instead of sending it again.
+    The record leaves the outbox before the send, still inside this
+    lock, so the second sender finds it gone.
     """
     key = _as_str(skey)
     with _STASH_GUARDS_LOCK:
@@ -1730,15 +1730,39 @@ def deliver_stash(base_dir, skey, sender, cfg=None, now=None):
         return _deliver_stash_held(base_dir, skey, sender, cfg, now)
 
 
+def _unclaim_stash(base_dir, skey, rec):
+    """Put a claimed record back in the outbox. The send did not
+    stick. False when the write fails: the record stays in sent/
+    and is not sent again."""
+    try:
+        _ensure_private_dir(_outbox_dir(base_dir))
+        _atomicio.write_json(_stash_path(base_dir, skey), rec)
+        _unlink_quiet(_sent_path(base_dir, skey))
+        return True
+    except Exception as e:
+        log(f"result {rec.get('job_id')} could not be put back in the "
+            f"outbox after a failed send: {e}", "WARN")
+        return False
+
+
 def _deliver_stash_held(base_dir, skey, sender, cfg=None, now=None):
     rec = load_stash(base_dir, skey)
     if rec is None:
+        return False
+    # Claim the record before the send. A move that fails leaves it
+    # in the outbox and this caller does not send; the other caller,
+    # waiting on the same lock, then takes it. Sending first and
+    # moving after let a failed move on Windows hand the same record
+    # to the second caller.
+    if not _stash_move(base_dir, skey, os.path.join(base_dir, SENT_DIRNAME)):
         return False
     now = time.time() if now is None else now
     attempt = int(rec.get("attempts") or 0) + 1
     try:
         sender(rec["subject"], rec["body"], rec.get("to"))
     except Exception as e:
+        if not _unclaim_stash(base_dir, skey, rec):
+            return False
         rec["attempts"] = attempt
         rec["last_attempt"] = now
         rec["last_error"] = _as_text(e)[:500]
@@ -1772,7 +1796,6 @@ def _deliver_stash_held(base_dir, skey, sender, cfg=None, now=None):
         return False
     log(f"result {rec.get('job_id')} delivered (attempt {attempt})"
         + (" as the stub" if rec.get("stubbed") else ""))
-    _stash_move(base_dir, skey, os.path.join(base_dir, SENT_DIRNAME))
     return True
 
 def undeliver_stash(base_dir, skey, reason):
