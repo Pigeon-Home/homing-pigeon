@@ -20,6 +20,34 @@ Rules:
 
 ---
 
+## 30-Oct-9:38pm-PST/PDT — Muse: the hourly de_aztec note
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**9pm hour**
+
+In the last 24 hours the fleet kept 290 entries and gained 968 arcs over 69.54 CPU-hours, at 4.17 kept per CPU-hour, with 1381 crash records and 128 slow findings filed.
+
+Slice plan: the newest plan, at 2026-10-31T03:12:03Z on Nuremberg, puts race_stash at 148 s with a 1.24x yield tilt; dtls_hostile at 145 s with a 1.21x yield tilt; race_state at 143 s with a 1.20x yield tilt; local at 141 s with a 1.18x yield tilt; queries at 122 s with a 1.02x yield tilt; race_board at 122 s with a 1.02x yield tilt; address at 30 s with a 0.25x yield tilt; board at 30 s with a 0.25x yield tilt; board_mail at 30 s with a 0.25x yield tilt; board_ops at 30 s with a 0.25x yield tilt; channels at 30 s with a 0.25x yield tilt; cloud at 30 s with a 0.25x yield tilt; collect at 30 s with a 0.25x yield tilt; crypto at 30 s with a 0.25x yield tilt; dtls at 30 s with a 0.25x yield tilt; dtls_session at 30 s with a 0.25x yield tilt; edge_subject at 30 s with a 0.25x yield tilt; inbox at 30 s with a 0.25x yield tilt; keydir at 30 s with a 0.25x yield tilt; local_inbox at 30 s with a 0.25x yield tilt; mail at 30 s with a 0.25x yield tilt; manifest at 30 s with a 0.25x yield tilt; names at 30 s with a 0.25x yield tilt; query at 30 s with a 0.25x yield tilt; secret at 30 s with a 0.25x yield tilt; stage at 30 s with a 0.25x yield tilt; stash at 30 s with a 0.25x yield tilt; v2 at 30 s with a 0.25x yield tilt; v2_mail at 30 s with a 0.25x yield tilt; wire at 30 s with a 0.25x yield tilt, 1 at a time.
+
+CPU: load averages 1.23 over one minute and 2.10 over five on 4 core(s), 31% and 53% of capacity; 104 MB available.
+
+Entries kept: 0 in the last hour. The corpus totals 2,012 entries over 30 targets.
+
+Crashes filed: none in the last hour. No slow finding.
+
+Findings standing in the tree: race_stash 1 crash. The window counts above include records since retired.
+
+Live mutators: none kept an arc in the last hour.
+
+Disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 100 writes in 0.1 s, 0 failed.
+
+disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 200 writes in 0.1 s, 0 failed
+
+Menlo Park's watch recorded no grow workers live at 8:57pm, and its next records in the hour show six grow workers live again — a fall and a recovery in the hour.
+
+---
+
 ## 30-Oct-8:38pm-PST/PDT — Muse: the hourly de_aztec note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
