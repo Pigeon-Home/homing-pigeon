@@ -1111,61 +1111,89 @@ def _queue_plain(cmd):
 def cmd_results(args, opener=None) -> int:
     """Read results from a hosted queue: one JSON line per result on
     stdout, verified (and decrypted under the job id in its subject).
-    --ack removes a result from the queue only after it verified; a
-    result that does not verify stays, so it can be looked at again.
-    Exit 0 when every result verified (or none was waiting), 1 when
-    any did not, 2 when the queue refused the read."""
+    A page that says `more` is followed, so a result that does not
+    verify cannot hide the ones after it. --ack removes a result from
+    the queue only after it verified; a result that does not verify
+    stays, so it can be looked at again. Exit 0 when every result
+    verified (or none was waiting), 1 when any did not, 2 when the
+    queue refused the read or a page did not advance."""
+    from urllib.parse import quote
     max_n = max(1, min(int(args.max or 20), 100))
-    status, text = _queue_call(args.from_queue, "GET",
-                               f"/results?max={max_n}",
-                               args.queue_token_env, opener)
-    if status == 204:
-        print("no results waiting", file=sys.stderr)
-        return 0
-    if status != 200:
-        print(f"error: the queue answered {status}: {text[:200]}",
-              file=sys.stderr)
-        return 2
-    # The Worker answers an empty queue with 204 and a 200 only with a
-    # list, so a 200 without one is neither an answer nor an empty
-    # queue: exit 2, never "no results", so a watcher cannot read a
-    # cut or rewritten body as a stopped runner (Q105).
-    try:
-        items = json.loads(text).get("results")
-    except (ValueError, AttributeError):
-        items = None
-    if not isinstance(items, list):
-        print("error: the queue's answer is not a results list",
-              file=sys.stderr)
-        return 2
+    after = None
+    seen = set()
+    printed = False
     bad = 0
-    for item in items:
-        rid = item.get("id") if isinstance(item, dict) else None
-        envelope = item.get("envelope") if isinstance(item, dict) else None
-        line = {"id": rid}
+    while True:
+        path = f"/results?max={max_n}"
+        if after:
+            path += "&after=" + quote(after, safe="")
+        status, text = _queue_call(args.from_queue, "GET", path,
+                                   args.queue_token_env, opener)
+        if status == 204:
+            if not printed:
+                print("no results waiting", file=sys.stderr)
+            return 1 if bad else 0
+        if status != 200:
+            print(f"error: the queue answered {status}: {text[:200]}",
+                  file=sys.stderr)
+            return 2
+        # The Worker answers an empty queue with 204 and a 200 only with a
+        # list, so a 200 without one is neither an answer nor an empty
+        # queue: exit 2, never "no results", so a watcher cannot read a
+        # cut or rewritten body as a stopped runner (Q105).
         try:
-            if not isinstance(envelope, str):
-                raise ValueError("the result carries no envelope")
-            subject, _, body = normalize(envelope).partition("\n\n")
-            line["job_id"] = _result_job_id(subject)
-            payload = _open_body(body, args, line["job_id"])
-            line["ok"] = True
-            line["payload"] = payload
-        except ValueError as e:
-            bad += 1
-            line["ok"] = False
-            line["error"] = str(e)
-        if line["ok"] and args.ack and isinstance(rid, str):
-            from urllib.parse import quote
+            payload = json.loads(text)
+            items = payload.get("results") if isinstance(payload, dict) else None
+        except (ValueError, AttributeError):
+            payload, items = None, None
+        if not isinstance(items, list):
+            print("error: the queue's answer is not a results list",
+                  file=sys.stderr)
+            return 2
+        if not items:
+            if not printed:
+                print("no results waiting", file=sys.stderr)
+            return 1 if bad else 0
+        for item in items:
+            rid = item.get("id") if isinstance(item, dict) else None
+            if isinstance(rid, str):
+                if rid in seen:
+                    print("error: the results list did not advance",
+                          file=sys.stderr)
+                    return 2
+                seen.add(rid)
+            envelope = item.get("envelope") if isinstance(item, dict) else None
+            line = {"id": rid}
             try:
-                st, _t = _queue_call(args.from_queue, "POST",
-                                     f"/results/{quote(rid, safe='')}/ack",
-                                     args.queue_token_env, opener)
-            except QueueUnreachable:
-                st = None  # stays on the queue; the next read has it
-            line["acked"] = st in (200, 204, 404)
-        print(json.dumps(line, ensure_ascii=False))
-    return 1 if bad else 0
+                if not isinstance(envelope, str):
+                    raise ValueError("the result carries no envelope")
+                subject, _, body = normalize(envelope).partition("\n\n")
+                line["job_id"] = _result_job_id(subject)
+                payload_body = _open_body(body, args, line["job_id"])
+                line["ok"] = True
+                line["payload"] = payload_body
+            except ValueError as e:
+                bad += 1
+                line["ok"] = False
+                line["error"] = str(e)
+            if line["ok"] and args.ack and isinstance(rid, str):
+                try:
+                    st, _t = _queue_call(args.from_queue, "POST",
+                                         f"/results/{quote(rid, safe='')}/ack",
+                                         args.queue_token_env, opener)
+                except QueueUnreachable:
+                    st = None  # stays on the queue; the next read has it
+                line["acked"] = st in (200, 204, 404)
+            print(json.dumps(line, ensure_ascii=False))
+            printed = True
+        if not (isinstance(payload, dict) and payload.get("more") is True):
+            return 1 if bad else 0
+        nxt = items[-1].get("id") if isinstance(items[-1], dict) else None
+        if not isinstance(nxt, str) or nxt == after:
+            print("error: the results list did not advance",
+                  file=sys.stderr)
+            return 2
+        after = nxt
 
 
 

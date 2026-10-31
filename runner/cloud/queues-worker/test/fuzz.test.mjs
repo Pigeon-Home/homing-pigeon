@@ -1101,17 +1101,52 @@ test("fuzz: a read gives back the rest on the next call instead of one huge resp
   }
   let r = await worker.fetch(req("/t/alice/results?max=100", { token: `Bearer ${SI}` }), env);
   assert.equal(r.status, 200);
-  const first = (await r.json()).results;
+  const firstBody = await r.json();
+  const first = firstBody.results;
+  assert.equal(firstBody.more, true);
   assert.ok(first.length >= 1 && first.length < ids.length, `returned ${first.length}`);
   assert.ok(first.reduce((n, row) => n + new TextEncoder().encode(row.envelope).length, 0) <= RESPONSE_BUDGET);
+  const last = first[first.length - 1].id;
+  r = await worker.fetch(req(`/t/alice/results?max=100&after=${last}`, { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const restBody = await r.json();
+  assert.notEqual(restBody.more, true);
+  assert.deepEqual([...first, ...restBody.results].map((row) => row.id).sort(), ids);
+  const storage = env.objects.get("alice").state.storage;
+  for (const id of ids) assert.ok(storage.map.has(`result:${id}`));
   for (const row of first) {
     assert.equal((await worker.fetch(req(`/t/alice/results/${row.id}/ack`, { method: "POST", token: `Bearer ${SI}` }), env)).status, 204);
   }
   r = await worker.fetch(req("/t/alice/results?max=100", { token: `Bearer ${SI}` }), env);
   assert.equal(r.status, 200);
-  const rest = (await r.json()).results;
-  assert.deepEqual([...first, ...rest].map((row) => row.id).sort(), ids);
-  for (const id of ids) assert.ok(env.objects.get("alice").state.storage.map.has(`result:${id}`) === rest.some((row) => row.id === id));
+  const afterAck = (await r.json()).results;
+  assert.deepEqual(afterAck.map((row) => row.id).sort(), restBody.results.map((row) => row.id).sort());
+});
+
+test("fuzz: a results page that ends on the page size still says more", async () => {
+  const env = makeEnv();
+  await addTenant(env);
+  const storage = env.TENANT_QUEUE.get(env.TENANT_QUEUE.idFromName("alice")).state.storage;
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9"];
+  for (const id of ids) {
+    storage.map.set(`result:${id}`, {
+      id, envelope: `[HOMING-PIGEON] result ${id}\n\n{}\n`, at: 1,
+    });
+  }
+  let r = await worker.fetch(req("/t/alice/results?max=8", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const first = await r.json();
+  assert.equal(first.more, true);
+  assert.deepEqual(first.results.map((row) => row.id), ids.slice(0, 8));
+  r = await worker.fetch(req("/t/alice/results?max=8&after=r8", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const rest = await r.json();
+  assert.notEqual(rest.more, true);
+  assert.deepEqual(rest.results.map((row) => row.id), ["r9"]);
+  for (const id of ids) assert.ok(storage.map.has(`result:${id}`));
+  r = await worker.fetch(req("/t/alice/results?max=8&after=../job", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).results[0].id, "r1");
 });
 
 test("fuzz: the dead-letter list is paged and still names every dead job", async () => {

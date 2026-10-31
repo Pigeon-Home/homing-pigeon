@@ -187,10 +187,12 @@ one we'd recommend to anyone who winces at the word "email."
   the command line.
 - `send_job.py results --from-queue <url>` — the SI reads its results
   back: one JSON line per result, verified and, when encrypted, opened
-  under the job id in its subject. `--ack` removes a result only after
+  under the job id in its subject. A page that stopped says `more`,
+  and the command reads the next page, so a result that does not
+  verify cannot hide the ones after it. `--ack` removes a result only after
   it verified; one that does not verify stays on the queue. Exit 0 when
   every result verified or none was waiting, 1 when any did not, 2 when
-  the queue refused the read.
+  the queue refused the read or a page did not advance.
 - Both sides ride out the queue's weather. A read cut short, a
   dropped connection or a timeout is tried again twice, after one and
   three seconds; a read that still cannot finish exits 2 with one plain
@@ -227,7 +229,7 @@ shape, subject line, blank line, signed body):
 | runner | `POST /jobs/<id>/ack` | the job is finished; 204, or 404 if already gone. `?hand=N` is the hand the pull returned, and `?attempt=N` is that pull's attempt. A later pull has a higher hand, and a requeue bumps the hand too, so the first runner's ack does not delete the job the later pull is running. Omitting both is the old call and deletes whatever is queued under that id |
 | runner | `POST /jobs/<id>/lease` | renew the lease on a job still running, each pass, so a job longer than the lease is not offered again or dead-lettered; 204, or 404 when the queue no longer holds it leased. `?attempt=N` names the attempt the pull handed out and `?hand=N` names its hand; a later pull's lease is not extended |
 | runner | `POST /results` | a result envelope in; 202, 200 `{"duplicate": true}` when that id is already stored (the first envelope stays), 400 when the id is not a safe id, 413 over the same 2 MB storage limit |
-| SI | `GET /results?max=N` | results out (N clamped to 1..100; a non-number keeps 20; 0 or below is 1), fewer than N when the envelopes would pass 8 MB; 200 `{"results": [...]}` or 204 |
+| SI | `GET /results?max=N` | results out (N clamped to 1..100; a non-number keeps 20; 0 or below is 1), fewer than N when the envelopes would pass 8 MB. `more: true` means the page stopped with rows still waiting, and `?after=<id>` (the last id returned; an id that is not safe is ignored) is the next page, so a result that stays unacked cannot hide the ones after it. 200 `{"results": [...]}` or 204 |
 | SI | `POST /results/<id>/ack` | the SI has it; 204 |
 | SI | `GET /dlq?max=N` | the dead-letter list (N clamped the same way as results): id, attempts, subject and times, no envelope; fewer than N when the subjects would pass 8 MB. `more: true` means the page stopped with rows still waiting, and `?after=<id>` (the last id returned; an id that is not safe is ignored) is the next page, so the rest is read without dropping. 200 `{"dead": [...]}` or 204 |
 | SI | `POST /dlq/<id>/ack` | drop a dead job; 204, or 404 |

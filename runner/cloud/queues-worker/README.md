@@ -22,14 +22,16 @@ copy with its lease timestamp, the hand a pull adds, and the
 `requeued_at` a later dead copy still carries, is a 413 and stores
 nothing. A result is held to the same limit. A pull reads the queue a page at a time, so
 one read does not load every envelope into the object. A jobs or
-results response stops at 8 MB of envelopes and the next read
-returns the rest. The dead-letter list is paged the same way.
+results response stops at 8 MB of envelopes. A results page says
+`more` when rows are still waiting, and `?after=<id>` reads on
+from the last id shown, so a result that stays unacked cannot
+hide the ones after it. The dead-letter list is paged the same way.
 Its response does not carry the envelope, and it stops at the
 same 8 MB counted on subjects. The answer says `more` when rows
 are still waiting, and `?after=<id>` reads on from the last id
 shown, so the list is not hidden behind a row you have not
-dropped. A second result for an
-id keeps the first envelope, the same way a repeated job submit does.
+dropped. A second result for an id keeps the first envelope, the
+same way a repeated job submit does.
 
 ## Deploy
 

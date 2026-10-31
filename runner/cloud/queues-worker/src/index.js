@@ -487,7 +487,9 @@ export default {
     if (kind === "results" && request.method === "GET") {
       if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
       const max = clampedMax(url.searchParams.get("max"), 20);
-      return forward(`/results?max=${max}`, { method: "POST" });
+      const after = url.searchParams.get("after");
+      const tail = after && safeJobId(after) ? `&after=${encodeURIComponent(after)}` : "";
+      return forward(`/results?max=${max}${tail}`, { method: "POST" });
     }
     if (kind === "results" && request.method === "POST" && ackId) {
       if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
@@ -694,26 +696,38 @@ export class TenantQueue {
       return json(202, { id: rid });
     }
     if (url.pathname === "/results") {
+      // One page stops at max or at 8 MB of envelopes. `more` means
+      // rows are still waiting. `after` is the last id returned, so
+      // the next read continues without acking. A result that does
+      // not verify stays, and it must not hide the ones after it.
+      // An after that is not a safe id is ignored.
       const max = clampedMax(url.searchParams.get("max"), 20);
+      const after = url.searchParams.get("after");
       const out = [];
       let used = 0;
-      let full = false;
-      let startAfter;
+      let more = false;
+      let startAfter = after && safeJobId(after) ? `result:${after}` : undefined;
       for (;;) {
         const page = await s.list({ prefix: "result:", limit: PAGE, startAfter });
         if (page.size === 0) break;
         const prev = startAfter;
         for (const [key, row] of page) {
           startAfter = key;
-          if (out.length >= max) break;
+          if (out.length >= max) { more = true; break; }
           const weight = utf8Length(row.envelope || "");
-          if (out.length > 0 && used + weight > RESPONSE_BUDGET) { full = true; break; }
+          if (out.length > 0 && used + weight > RESPONSE_BUDGET) { more = true; break; }
           out.push({ id: row.id, envelope: row.envelope, at: row.at });
           used += weight;
         }
-        if (out.length >= max || full || startAfter === prev) break;
+        if (more || startAfter === prev) break;
+        if (out.length >= max) break;
       }
-      return out.length ? json(200, { results: out }) : new Response(null, { status: 204 });
+      if (out.length >= max && !more) {
+        const peek = await s.list({ prefix: "result:", limit: 1, startAfter });
+        if (peek.size > 0) more = true;
+      }
+      if (!out.length) return new Response(null, { status: 204 });
+      return json(200, more ? { results: out, more: true } : { results: out });
     }
     if (url.pathname === "/results-ack") {
       const id = url.searchParams.get("id");

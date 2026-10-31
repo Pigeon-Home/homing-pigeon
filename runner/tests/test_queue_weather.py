@@ -108,6 +108,28 @@ class ReadTest(_Base):
             self.assertEqual(rc, 2, body)
             self.assertIn("not a dead-letter list", err, body)
 
+    def test_a_cut_results_list_is_read_through(self):
+        opener = _Opener(
+            (200, json.dumps({"results": [{"id": "a", "envelope": "nope"}],
+                              "more": True})),
+            (200, json.dumps({"results": [{"id": "b", "envelope": "nope"}]})))
+        rc, out, err = self.run_cmd(send_job.cmd_results, opener)
+        self.assertEqual(rc, 1, err)
+        self.assertEqual([json.loads(line)["id"]
+                          for line in out.splitlines()], ["a", "b"])
+        self.assertTrue(all(json.loads(line)["ok"] is False
+                            for line in out.splitlines()))
+        self.assertIn("after=a", opener.requests[1].full_url)
+
+    def test_a_results_page_that_repeats_is_refused(self):
+        page = json.dumps({"results": [{"id": "a", "envelope": "nope"}],
+                           "more": True})
+        opener = _Opener((200, page), (200, page))
+        rc, out, err = self.run_cmd(send_job.cmd_results, opener)
+        self.assertEqual(rc, 2)
+        self.assertIn("did not advance", err)
+        self.assertEqual(json.loads(out)["id"], "a")
+
     def test_the_dead_letter_list_rides_it_out_too(self):
         opener = _Opener(_drop(), (200, json.dumps({"dead": [{"id": "j"}]})))
         rc, out, err = self.run_cmd(send_job.cmd_dlq, opener, drop=None,
