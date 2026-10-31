@@ -52,4 +52,5 @@ in-memory fakes with the shapes the runtime hands the Worker. The
 fuzz file replays `test/fuzz.corpus.json`, then one seed of 20,000
 operations. Some operations send a pair of requests, in order, so a
 seed replays. One pinned test races two pulls. A body over the day
-cap, and a second tenant, are in the mix.
+cap, a requeue into a full hour, a qresult, and a second tenant,
+are in the mix.

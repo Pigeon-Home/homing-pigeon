@@ -438,11 +438,12 @@ export async function runFuzz(seed, ops) {
       const id = pick(IDS);
       const which = rnd();
       if (which < 0.45) {
-        const subject = rnd() < 0.8 ? `[HOMING-PIGEON] result ${id}` : `[HOMING-PIGEON] job ${id}`;
+        const kind = rnd() < 0.5 ? "result" : rnd() < 0.5 ? "qresult" : "job";
+        const subject = `[HOMING-PIGEON] ${kind} ${id}`;
         const body = `${subject}\n\n{"exit_code":0}\n`;
         const { r, tuple } = await doFetch("POST", "/t/alice/results", { token: `Bearer ${RUNNER}`, body });
         note(i, tuple);
-        assert.ok([202, 400].includes(r.status), `${where}: result post answered ${r.status}`);
+        assert.equal(r.status, kind === "job" ? 400 : 202, `${where}: ${kind} answered ${r.status}`);
       } else if (which < 0.75) {
         const { r, tuple } = await doFetch("GET", "/t/alice/results", { token: `Bearer ${SI}` });
         note(i, tuple);
@@ -453,6 +454,21 @@ export async function runFuzz(seed, ops) {
         assert.ok([204, 404].includes(r.status), `${where}: result ack answered ${r.status}`);
       }
     } else if (roll < 0.82) {
+      const dead = [...storage().map.keys()].filter((k) => k.startsWith("dlq:")).map((k) => k.slice(4)).sort();
+      const hourFull = (storage().map.get(hourKey()) ?? 0) + 1 > env.quota.jobs_per_hour;
+      if (dead.length && hourFull && rnd() < 0.5) {
+        // The walk otherwise never requeues while the hour is full:
+        // a day-cap refusal does not spend an hour slot, so the two
+        // conditions rarely meet. This is that meeting.
+        const id = dead[0];
+        const before = snapshot(storage());
+        const { r, tuple } = await doFetch("POST", `/t/alice/dlq/${id}/requeue`, { token: `Bearer ${SI}` });
+        note(i, tuple);
+        assert.equal(r.status, 429, `${where}: requeue at a full hour answered ${r.status}`);
+        const hourRetry = 3600 - Math.floor((now % 3_600_000) / 1000);
+        assert.equal(Number(r.headers.get("retry-after")), hourRetry, `${where}: requeue 429 was not the hour cap`);
+        assert.equal(snapshot(storage()), before, `${where}: a refused requeue changed state`);
+      } else {
       const id = rnd() < 0.8 ? pick(IDS) : "ghost";
       const which = rnd();
       if (which < 0.4) {
@@ -475,6 +491,7 @@ export async function runFuzz(seed, ops) {
         assert.ok([202, 404, 409, 429].includes(r.status), `${where}: requeue answered ${r.status}`);
         if (r.status === 202) bump(hourKey(), 1);
         if (r.status === 429) assert.equal(snapshot(storage()), before, `${where}: a 429 requeue changed state`);
+      }
       }
     } else if (roll < 0.88) {
       now += pick([0, 100, 999, 1000, 5000, 3_599_000, 3_600_000, 86_400_000]);
@@ -653,6 +670,54 @@ test("fuzz: bob's runner does not see alice's job", async () => {
   assert.deepEqual(ids, ["only"]);
   r = await worker.fetch(req("/t/bob/jobs", { token: `Bearer ${RUNNER}` }), env);
   assert.equal(r.status, 401);
+  void now;
+});
+
+test("fuzz: requeue at a full hour leaves the dead job dead", async () => {
+  let now = 1_700_000_000_000;
+  const quota = { jobs_per_hour: 1, bytes_per_day: 60_000 };
+  const env = makeEnv({ clock: () => now, quota });
+  await addTenant(env);
+  const storage = () => env.objects.get("alice").state.storage;
+  let r = await worker.fetch(req("/t/alice/jobs", { method: "POST", token: `Bearer ${SI}`, body: await signedJob("d1") }), env);
+  assert.equal(r.status, 202);
+  for (let i = 0; i < 6; i++) {
+    await worker.fetch(req("/t/alice/jobs?max=1", { token: `Bearer ${RUNNER}` }), env);
+    now += 1000;
+  }
+  assert.ok(storage().map.has("dlq:d1"));
+  const before = snapshot(storage());
+  r = await worker.fetch(req("/t/alice/dlq/d1/requeue", { method: "POST", token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 429);
+  const hourRetry = 3600 - Math.floor((now % 3_600_000) / 1000);
+  assert.equal(Number(r.headers.get("retry-after")), hourRetry);
+  assert.equal(snapshot(storage()), before);
+  assert.ok(!storage().map.has("job:d1"));
+  now += 3_600_000;
+  r = await worker.fetch(req("/t/alice/dlq/d1/requeue", { method: "POST", token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 202);
+  assert.equal(storage().map.get("job:d1").attempts, 0);
+  assert.ok(!storage().map.has("dlq:d1"));
+});
+
+test("fuzz: a qresult is stored and a job subject on that route is not", async () => {
+  let now = 1_700_000_000_000;
+  const env = makeEnv({ clock: () => now });
+  await addTenant(env);
+  let r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: "[HOMING-PIGEON] qresult qr1\n\n{\"exit_code\":0}\n",
+  }), env);
+  assert.equal(r.status, 202);
+  assert.equal((await r.json()).id, "qr1");
+  r = await worker.fetch(req("/t/alice/results", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  assert.deepEqual((await r.json()).results.map((row) => row.id), ["qr1"]);
+  r = await worker.fetch(req("/t/alice/results", {
+    method: "POST", token: `Bearer ${RUNNER}`,
+    body: "[HOMING-PIGEON] job qr1\n\n{\"exit_code\":0}\n",
+  }), env);
+  assert.equal(r.status, 400);
   void now;
 });
 
