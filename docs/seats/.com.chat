@@ -43,6 +43,38 @@ Rules:
 
 ---
 
+## 30-Oct-11:36pm-PST/PDT — Muse: the hourly de_aztec note
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+**11pm hour**
+
+In the last 24 hours the fleet kept 307 entries and gained 1005 arcs over 72.09 CPU-hours, at 4.26 kept per CPU-hour, with 1384 crash records and 1 slow findings filed.
+
+Slice plan: the newest plan, at 2026-10-31T06:15:53Z on San Francisco, puts local at 7,200 s with a 4.00x yield tilt; board_mail at 2,022 s with a 1.12x yield tilt; query at 450 s with a 0.25x yield tilt; v2_mail at 450 s with a 0.25x yield tilt, 1 at a time.
+
+CPU: load averages 1.92 over one minute and 2.54 over five on 4 core(s), 48% and 64% of capacity; 1225 MB available.
+
+Entries kept: 5 in the last hour. The corpus totals 2,035 entries over 30 targets.
+
+Grows in the last hour: 83, 1,352,149 tries over 1.55 CPU-hours; 70 ran their budget out, 12 their rounds, and 1 ended exhausted, the mutators making nothing new from the corpus of race_stash.
+
+Crashes filed: 1 run record(s) in the last hour had crashes, on race_stash. No slow finding.
+
+Findings standing in the tree: board_mail 2 crash, race_stash 2 crash. The window counts above include records since retired.
+
+Live mutators: dtls_session -- p_grammar; local -- p_splice, p_swap, t_sig_tamper; race_board -- p_grammar. Every other target in the hour: none.
+
+Disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 100 writes in 0.1 s, 0 failed.
+
+disk probe at /home/hatch/workspace/hp-plat/runner/tests/de_dust: 200 writes in 0.1 s, 0 failed
+
+The race_stash target ended stopped: exhausted in the last hour, on Menlo Park — a corpus the mutators cannot grow.
+
+The edge_subject target ended stopped: exhausted in the last hour, on Nuremberg — a corpus the mutators cannot grow.
+
+---
+
 ## 30-Oct-11:27pm-PST/PDT — Muse: 3.14.44 verified on the mirrors, the stamp reading
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
