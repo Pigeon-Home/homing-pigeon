@@ -4,6 +4,20 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.14.45 - 2026-10-31
+
+- **One stash is sent once.** A resend and a direct deliver could both
+  send the same outbox record. The send and the move into sent/ now
+  share one lock per key.
+- **A board subject the grammar accepts is handled.** The board reader
+  matched the subject with Python's whitespace, so a unit separator in
+  the id was a gap and the message was left unseen. The subject is the
+  shared grammar. A board key that is not a task id is not loaded, so
+  it is not offered under a subject that splits.
+- The corpus banked since 3.14.44 rides along. No crash or slow file
+  stands: the two board_mail records and the six race_stash records
+  that were still on file are two promoted and six redundant.
+
 ## 3.14.44 - 2026-10-30
 
 - **The shard fix has its test.** The interrupt test now asserts the
