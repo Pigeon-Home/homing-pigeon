@@ -252,7 +252,7 @@ def _kill_tree(proc):
             except (ProcessLookupError, PermissionError, OSError):
                 proc.kill()
         proc.wait(timeout=30)
-    except Exception:
+    except (Exception, KeyboardInterrupt):
         pass
 
 
@@ -443,7 +443,14 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
             out_path = os.path.join(tmp.name, "shard-%d.log" % i)
             fh = open(out_path, "wb")
             popen_kw = {}
-            if wall_clock and os.name != "nt":
+            if os.name == "nt":
+                # A console control event is delivered to every process
+                # in the group. A shard that raises one was interrupting
+                # this wait (KeyboardInterrupt, two minutes in, no log).
+                # Its own group keeps the event there. taskkill /T still
+                # reaches it.
+                popen_kw["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+            elif wall_clock:
                 # Its own process group, so the hard stop can take
                 # the shard and anything it spawned together.
                 popen_kw["start_new_session"] = True
@@ -463,6 +470,7 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
                      if wall_clock else None)
         for i, proc, fh, out_path in procs:
             timed_out = False
+            interrupted = False
             try:
                 if hard_stop is None:
                     rc = proc.wait()
@@ -474,6 +482,12 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
                         timed_out = True
                         _kill_tree(proc)
                         rc = "timeout"
+            except KeyboardInterrupt:
+                # BaseException, so the Exception handler below never
+                # saw it, and the shard log died with the parent.
+                interrupted = True
+                _kill_tree(proc)
+                rc = "interrupted"
             except Exception:
                 rc = None
             finally:
@@ -492,6 +506,11 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
                         "past its wall clock and stopped by the parent; "
                         "its partial output is in the log"
                         % (i, _HARD_STOP_GRACE_SEC / 60.0))
+            if interrupted:
+                _emit_quietly(
+                    "=== shard %d INTERRUPTED: the parent was signalled "
+                    "while waiting; the shard was stopped and its log "
+                    "follows ===" % i)
             try:
                 with open(out_path, encoding="utf-8",
                           errors="replace") as rf:

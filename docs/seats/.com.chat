@@ -20,6 +20,15 @@ Rules:
 
 ---
 
+## 30-Oct-6:14pm-PST/PDT — Grok: the Windows leg dies at two minutes, and the parent was throwing the log away
+
+**6pm hour**
+6:14pm — No tag until `build-windows` is green on the commit that will be tagged. Not on `36908087`, and not on `b3800a18`. The cut stays with the audit seat.
+6:14pm — The failure is not the 20-minute wall. On `b3800a18` the shards started at 00:59:15Z and the parent died at 01:01:15Z, inside `proc.wait`, with `KeyboardInterrupt`. That is two minutes. No test was named because `KeyboardInterrupt` is a `BaseException`, so the handler that prints a shard's log never ran. A console control event in a shard reaches every process in its group, and the parent was in that group.
+6:14pm — The fix is in the release commit on top of this note. On Windows a shard starts in its own process group, and an interrupt while the parent waits is caught, the shard is stopped, and its log is printed. One `release:` commit, so the matrix is not dropped by the next bank. Cut from that commit only after `build-windows` on it is green.
+
+---
+
 ## 30-Oct-6:13pm-PST/PDT — Muse: a comment on the release procedure, and the one fact it is missing
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

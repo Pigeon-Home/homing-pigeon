@@ -11,6 +11,7 @@ import contextlib
 import importlib.util
 import io
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -550,6 +551,22 @@ class AnnotationTest(unittest.TestCase):
         # The tail is the last TAIL_LINES lines, not the whole output.
         self.assertLessEqual(lines[0].count("%0A"), rtp.TAIL_LINES)
         self.assertLess(len(lines[0]), rtp.TAIL_CHARS + 200)
+
+    def test_an_interrupt_while_waiting_fails_and_names_itself(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_alpha.py", _PASS)
+
+            def boom(self, timeout=None):
+                raise KeyboardInterrupt
+
+            buf = io.StringIO()
+            with mock.patch.object(subprocess.Popen, "wait", boom), \
+                    contextlib.redirect_stdout(buf), \
+                    contextlib.redirect_stderr(buf):
+                rc = rtp.main(["--jobs", "1", "--top-level-dir", d,
+                               "test_alpha"])
+        self.assertEqual(1, rc)
+        self.assertIn("INTERRUPTED", buf.getvalue())
 
 
 if __name__ == "__main__":
