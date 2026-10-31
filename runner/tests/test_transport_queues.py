@@ -574,6 +574,34 @@ class QueuePipeTest(unittest.TestCase):
             self.assertEqual(sorted(os.listdir(failed)),
                              ["j1.refused.txt", "j1.result.txt"])
 
+    def test_a_result_that_cannot_be_read_does_not_finish_the_job(self):
+        # No blank line, so no transport posts it. The core has
+        # consumed the job. Skipping the file and acking here
+        # finished the job with nothing stored.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            os.replace(os.path.join(d["inbox"], "j1.job.txt"),
+                       os.path.join(d["inbox_done"], "j1.job.txt"))
+            with open(os.path.join(d["outbox"], "j1.result.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("not an envelope")
+            with open(os.path.join(d["outbox"], "j1.target.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("ops@example.com\n")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", pipe._pending)
+            self.assertIn("j1", w.state.jobs)
+            failed = os.path.join(d["outbox"], "failed")
+            self.assertEqual(sorted(os.listdir(failed)),
+                             ["j1.refused.txt", "j1.result.txt"])
+            self.assertTrue(os.path.isfile(
+                os.path.join(d["outbox"], "j1.target.txt")))
+
     def test_two_ids_that_differ_past_120_characters_both_finish(self):
         # The channel kept 120 characters of the id. A queue id is
         # 128. These two shared one inbox file, the result's name

@@ -63,6 +63,9 @@ class ChannelHelperTest(unittest.TestCase):
         with open(os.path.join(out, "plain"), "w",
                   encoding="utf-8") as f:
             f.write("no blank line here")
+        with open(os.path.join(out, "bad.result.txt"), "w",
+                  encoding="utf-8") as f:
+            f.write("no blank line here")
         with open(os.path.join(out, "good.result.txt"), "w",
                   encoding="utf-8") as f:
             f.write("Sub\n\nbody\n")
@@ -77,6 +80,15 @@ class ChannelHelperTest(unittest.TestCase):
         names = [row[0] for row in found]
         self.assertEqual(names, ["good.result.txt"])
         self.assertEqual(found[0][1], "Sub")
+        # Not a result name: a sidecar-shaped file stays.
+        self.assertTrue(os.path.isfile(os.path.join(out, "plain")))
+        # A result name that cannot be posted is set aside, or the
+        # queue acks the job and the output is gone.
+        failed = os.path.join(out, "failed")
+        self.assertIn("bad.result.txt", os.listdir(failed))
+        self.assertIn("bad.refused.txt", os.listdir(failed))
+        self.assertFalse(os.path.exists(
+            os.path.join(out, "bad.result.txt")))
         failed = os.path.join(out, "failed")
         self.assertIn("big.result.txt", os.listdir(failed))
         self.assertTrue(any(n.endswith(".refused.txt")

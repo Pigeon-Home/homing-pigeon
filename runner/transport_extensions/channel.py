@@ -167,10 +167,26 @@ def pending_results(channel):
                 continue
             with open(path, encoding="utf-8") as f:
                 text = f.read()
-        except (OSError, UnicodeDecodeError):
+        except UnicodeDecodeError:
+            # A result file that is not text will never post. Left
+            # here it is invisible, and the queue acks the job as
+            # if the core had produced nothing.
+            if result_file_id(fname):
+                refuse_result(channel, fname,
+                              "result file is not UTF-8")
+            continue
+        except OSError:
             continue
         parsed = parse_envelope(text)
         if parsed is None:
+            # Same hole: no blank line, so no transport posts it,
+            # and it is not "no result". A sidecar is not a result
+            # file and stays where the pipe reads it.
+            if result_file_id(fname):
+                refuse_result(
+                    channel, fname,
+                    "malformed envelope (no blank line between "
+                    "subject and body)")
             continue
         out.append((fname, parsed[0], parsed[1]))
     return out
