@@ -1173,12 +1173,13 @@ def cmd_results(args, opener=None) -> int:
 def cmd_dlq(args, opener=None) -> int:
     """The hosted queue's dead-letter list: jobs that ran out of
     attempts without a result. Lists them (one JSON line each: id,
-    attempts, subject, times), or with --drop ID removes one, or with
-    --requeue ID offers it again with a fresh attempt count. A
-    requeued job is the same signed job: a runner that already saw
-    it, or that holds it past its freshness window, refuses it as it
-    would any replay; send a new job instead. Exit 0 on success, 1
-    when the id is not on the list, 2 when the queue refused."""
+    attempts, subject, times), following a page that says `more`,
+    or with --drop ID removes one, or with --requeue ID offers it
+    again with a fresh attempt count. A requeued job is the same
+    signed job: a runner that already saw it, or that holds it past
+    its freshness window, refuses it as it would any replay; send a
+    new job instead. Exit 0 on success, 1 when the id is not on the
+    list, 2 when the queue refused or a page did not advance."""
     from urllib.parse import quote
     for verb, ident in (("ack", args.drop), ("requeue", args.requeue)):
         if ident:
@@ -1197,26 +1198,55 @@ def cmd_dlq(args, opener=None) -> int:
                   file=sys.stderr)
             return 2
     max_n = max(1, min(int(args.max or 20), 100))
-    st, text = _queue_call(args.from_queue, "GET", f"/dlq?max={max_n}",
-                           args.queue_token_env, opener)
-    if st == 204:
-        print("the dead-letter list is empty", file=sys.stderr)
-        return 0
-    if st != 200:
-        print(f"error: the queue answered {st}: {text[:200]}",
-              file=sys.stderr)
-        return 2
-    try:
-        dead = json.loads(text).get("dead")
-    except (ValueError, AttributeError):
-        dead = None
-    if not isinstance(dead, list):
-        print("error: the queue's answer is not a dead-letter list",
-              file=sys.stderr)
-        return 2
-    for d in dead:
-        print(json.dumps(d, ensure_ascii=False))
-    return 0
+    # A page stops at max or at 8 MB of subjects and says `more`.
+    # Follow it. Dropping is not how you see the rest of the list.
+    after = None
+    seen = set()
+    printed = False
+    while True:
+        path = f"/dlq?max={max_n}"
+        if after:
+            path += "&after=" + quote(after, safe="")
+        st, text = _queue_call(args.from_queue, "GET", path,
+                               args.queue_token_env, opener)
+        if st == 204:
+            if not printed:
+                print("the dead-letter list is empty", file=sys.stderr)
+            return 0
+        if st != 200:
+            print(f"error: the queue answered {st}: {text[:200]}",
+                  file=sys.stderr)
+            return 2
+        try:
+            payload = json.loads(text)
+            dead = payload.get("dead") if isinstance(payload, dict) else None
+        except (ValueError, AttributeError):
+            payload, dead = None, None
+        if not isinstance(dead, list):
+            print("error: the queue's answer is not a dead-letter list",
+                  file=sys.stderr)
+            return 2
+        if not dead:
+            if not printed:
+                print("the dead-letter list is empty", file=sys.stderr)
+            return 0
+        for d in dead:
+            ident = d.get("id") if isinstance(d, dict) else None
+            if not isinstance(ident, str) or ident in seen:
+                print("error: the dead-letter list did not advance",
+                      file=sys.stderr)
+                return 2
+            seen.add(ident)
+            print(json.dumps(d, ensure_ascii=False))
+            printed = True
+        if not (isinstance(payload, dict) and payload.get("more") is True):
+            return 0
+        nxt = dead[-1].get("id") if isinstance(dead[-1], dict) else None
+        if not isinstance(nxt, str):
+            print("error: the dead-letter list did not advance",
+                  file=sys.stderr)
+            return 2
+        after = nxt
 
 
 def _board_body(payload, ident, args) -> str:

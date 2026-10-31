@@ -418,7 +418,9 @@ export default {
       if (!(await bearerMatches(request, tenant.si_token_sha256))) return json(401, { error: "si token" });
       if (request.method === "GET" && !itemId) {
         const max = clampedMax(url.searchParams.get("max"), 20);
-        return forward(`/dlq?max=${max}`, { method: "POST" });
+        const after = url.searchParams.get("after");
+        const tail = after && safeJobId(after) ? `&after=${encodeURIComponent(after)}` : "";
+        return forward(`/dlq?max=${max}${tail}`, { method: "POST" });
       }
       if (request.method === "POST" && verb === "ack") {
         return forward(`/dlq-ack?id=${encodeURIComponent(itemId)}`, { method: "POST" });
@@ -585,31 +587,42 @@ export class TenantQueue {
     if (url.pathname === "/dlq") {
       // The response carries no envelope, but the subject is the
       // whole text before the blank line, and that can be the
-      // envelope. Stop at the same budget as a jobs read. The next
-      // read, once those rows are dropped, returns the rest.
+      // envelope. Stop at the same budget as a jobs read. `more`
+      // means this page stopped with rows still waiting; `after` is
+      // the last id returned, so the next read continues without
+      // dropping anything. An after that is not a safe id is ignored.
       const max = clampedMax(url.searchParams.get("max"), 20);
+      const after = url.searchParams.get("after");
       const out = [];
       let used = 0;
-      let full = false;
-      let startAfter;
+      let more = false;
+      let startAfter = after && safeJobId(after) ? `dlq:${after}` : undefined;
       for (;;) {
         const page = await s.list({ prefix: "dlq:", limit: PAGE, startAfter });
         if (page.size === 0) break;
         const prev = startAfter;
         for (const [key, d] of page) {
           startAfter = key;
-          if (out.length >= max) break;
+          if (out.length >= max) { more = true; break; }
           const subject = (parseEnvelope(d.envelope) || {}).subject || null;
           const weight = utf8Length(subject || "");
-          if (out.length > 0 && used + weight > RESPONSE_BUDGET) { full = true; break; }
+          if (out.length > 0 && used + weight > RESPONSE_BUDGET) { more = true; break; }
           out.push({ id: d.id, attempts: d.attempts, size: d.size,
                      enqueued_at: d.enqueued_at, dead_at: d.dead_at,
                      subject });
           used += weight;
         }
-        if (out.length >= max || full || startAfter === prev) break;
+        if (more || startAfter === prev) break;
+        if (out.length >= max) break;
       }
-      return out.length ? json(200, { dead: out }) : new Response(null, { status: 204 });
+      // A full page that ended exactly on max has not seen the next
+      // key. Look once, so the caller is not told the list ended.
+      if (out.length >= max && !more) {
+        const peek = await s.list({ prefix: "dlq:", limit: 1, startAfter });
+        if (peek.size > 0) more = true;
+      }
+      if (!out.length) return new Response(null, { status: 204 });
+      return json(200, more ? { dead: out, more: true } : { dead: out });
     }
     if (url.pathname === "/dlq-ack") {
       const id = url.searchParams.get("id");

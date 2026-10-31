@@ -1170,21 +1170,49 @@ test("fuzz: a dead-letter read stops at 8 MB of subjects and the next read has t
   for (const id of ids) assert.ok(storage().map.has(`dlq:${id}`), id);
   let r = await worker.fetch(req("/t/alice/dlq?max=100", { token: `Bearer ${SI}` }), env);
   assert.equal(r.status, 200);
-  const first = (await r.json()).dead;
+  const firstBody = await r.json();
+  const first = firstBody.dead;
+  assert.equal(firstBody.more, true);
   assert.ok(first.length >= 1 && first.length < ids.length, `returned ${first.length}`);
   const bytes = (rows) => rows.reduce((n, row) => n + new TextEncoder().encode(row.subject || "").length, 0);
   assert.ok(bytes(first) <= RESPONSE_BUDGET);
   assert.ok(first[0].subject.startsWith("[HOMING-PIGEON] job "));
   assert.ok(first[0].subject.length > 1_000_000);
-  for (const row of first) {
-    assert.ok(!("envelope" in row));
-    assert.equal((await worker.fetch(req(`/t/alice/dlq/${row.id}/ack`, { method: "POST", token: `Bearer ${SI}` }), env)).status, 204);
-  }
-  r = await worker.fetch(req("/t/alice/dlq?max=100", { token: `Bearer ${SI}` }), env);
+  for (const row of first) assert.ok(!("envelope" in row));
+  const last = first[first.length - 1].id;
+  r = await worker.fetch(req(`/t/alice/dlq?max=100&after=${last}`, { token: `Bearer ${SI}` }), env);
   assert.equal(r.status, 200);
-  const rest = (await r.json()).dead;
-  assert.deepEqual([...first, ...rest].map((d) => d.id).sort(), ids);
-  assert.ok(bytes(rest) <= RESPONSE_BUDGET);
+  const restBody = await r.json();
+  assert.notEqual(restBody.more, true);
+  assert.deepEqual([...first, ...restBody.dead].map((d) => d.id).sort(), ids);
+  assert.ok(bytes(restBody.dead) <= RESPONSE_BUDGET);
+  for (const id of ids) assert.ok(storage().map.has(`dlq:${id}`), id);
+});
+
+test("fuzz: a dead-letter page that ends on the page size still says more", async () => {
+  const env = makeEnv();
+  await addTenant(env);
+  const storage = env.TENANT_QUEUE.get(env.TENANT_QUEUE.idFromName("alice")).state.storage;
+  const ids = ["d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9"];
+  for (const id of ids) {
+    storage.map.set(`dlq:${id}`, {
+      id, envelope: `[HOMING-PIGEON] job ${id}\n\n{}\n`, attempts: 5,
+      size: 1, enqueued_at: 1, dead_at: 1,
+    });
+  }
+  let r = await worker.fetch(req("/t/alice/dlq?max=8", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const first = await r.json();
+  assert.equal(first.more, true);
+  assert.deepEqual(first.dead.map((d) => d.id), ids.slice(0, 8));
+  r = await worker.fetch(req("/t/alice/dlq?max=8&after=d8", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const rest = await r.json();
+  assert.notEqual(rest.more, true);
+  assert.deepEqual(rest.dead.map((d) => d.id), ["d9"]);
+  r = await worker.fetch(req("/t/alice/dlq?max=8&after=../quota", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).dead[0].id, "d1");
 });
 
 test("fuzz: the quota boundary — the first job past the cap is the first 429", async () => {

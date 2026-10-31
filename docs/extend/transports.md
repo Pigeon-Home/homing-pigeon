@@ -207,7 +207,9 @@ one we'd recommend to anyone who winces at the word "email."
   never sends. Conclude that a runner has stopped only from reads that
   finished.
 - `send_job.py dlq --from-queue <url>` — the dead-letter list: one JSON
-  line per dead job, or `--drop ID`, or `--requeue ID`. A requeued job
+  line per dead job, or `--drop ID`, or `--requeue ID`. A page that
+  stopped says `more`, and the command reads the next page, so a
+  long subject does not hide the rows after it. A requeued job
   is the same signed job, so a runner that already saw it, or holds it
   past its freshness window, refuses it as any replay; send a new job
   for anything older. The queue transport delivers that offer again,
@@ -227,7 +229,7 @@ shape, subject line, blank line, signed body):
 | runner | `POST /results` | a result envelope in; 202, 200 `{"duplicate": true}` when that id is already stored (the first envelope stays), 400 when the id is not a safe id, 413 over the same 2 MB storage limit |
 | SI | `GET /results?max=N` | results out (N clamped to 1..100; a non-number keeps 20; 0 or below is 1), fewer than N when the envelopes would pass 8 MB; 200 `{"results": [...]}` or 204 |
 | SI | `POST /results/<id>/ack` | the SI has it; 204 |
-| SI | `GET /dlq?max=N` | the dead-letter list (N clamped the same way as results): id, attempts, subject and times, no envelope; fewer than N when the subjects would pass 8 MB, and the next read after those are dropped returns the rest; 200 `{"dead": [...]}` or 204 |
+| SI | `GET /dlq?max=N` | the dead-letter list (N clamped the same way as results): id, attempts, subject and times, no envelope; fewer than N when the subjects would pass 8 MB. `more: true` means the page stopped with rows still waiting, and `?after=<id>` (the last id returned; an id that is not safe is ignored) is the next page, so the rest is read without dropping. 200 `{"dead": [...]}` or 204 |
 | SI | `POST /dlq/<id>/ack` | drop a dead job; 204, or 404 |
 | SI | `POST /dlq/<id>/requeue` | offer it again with a fresh attempt count, counted against the hourly job quota; 202, 404, 409 when a job with that id is queued, 429 over quota |
 

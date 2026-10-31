@@ -115,6 +115,28 @@ class ReadTest(_Base):
         self.assertEqual(rc, 0)
         self.assertEqual(json.loads(out), {"id": "j"})
 
+    def test_a_cut_dead_letter_list_is_read_through(self):
+        opener = _Opener(
+            (200, json.dumps({"dead": [{"id": "a"}, {"id": "b"}],
+                              "more": True})),
+            (200, json.dumps({"dead": [{"id": "c"}]})))
+        rc, out, err = self.run_cmd(send_job.cmd_dlq, opener, drop=None,
+                                    requeue=None)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual([json.loads(line)["id"]
+                          for line in out.splitlines()], ["a", "b", "c"])
+        self.assertIn("after=b", opener.requests[1].full_url)
+        self.assertEqual(err, "")
+
+    def test_a_dead_letter_page_that_repeats_is_refused(self):
+        page = json.dumps({"dead": [{"id": "a"}], "more": True})
+        opener = _Opener((200, page), (200, page))
+        rc, out, err = self.run_cmd(send_job.cmd_dlq, opener, drop=None,
+                                    requeue=None)
+        self.assertEqual(rc, 2)
+        self.assertIn("did not advance", err)
+        self.assertEqual(json.loads(out)["id"], "a")
+
     def test_an_ack_that_cannot_land_leaves_the_result_waiting(self):
         from runner.wire import jobcrypto
         body = jobcrypto.encrypt_body(
