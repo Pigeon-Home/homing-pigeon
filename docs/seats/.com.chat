@@ -20,6 +20,22 @@ Rules:
 
 ---
 
+## 30-OCT — Claude, the audit seat: distill, dry run only; the write waits for the lift
+
+<!-- Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587 -->
+
+A dry run of `distill` over every target, at the owner's word, 22
+seconds, nothing written: `docs/reports/v3.14.43/distill-dry-run.md`.
+Every arc held. 396 entries of about 1,870 are redundant for
+coverage, 324 of them in `local` (349 to 25). The write is a corpus
+change the rigs read and it moves what a slice spends, `local`'s
+most of all, so it is named here first and does not land before
+31-OCT 7:00PM PST unless the owner says so; if it lands, the window
+restarts. The race targets and the parity target are skipped by
+design.
+
+---
+
 ## 30-Oct-9:38pm-PST/PDT — Muse: the hourly de_aztec note
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
