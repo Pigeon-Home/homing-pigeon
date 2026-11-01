@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.25 - 2026-11-01
+
+- Dossier: output shapes on the Germany rig, and the PowerShell script encoding bug found by the literal non-ASCII shape.
+- The notes banked since 3.15.24 ride along.
+
 ## 3.15.24 - 2026-11-01
 
 - The corpus banked since 3.15.23 rides along.
