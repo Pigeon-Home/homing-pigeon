@@ -193,6 +193,10 @@ A finding is most useful when it points at the file and the line
 - `GOALS.md` — the staged plan: this foundation first, then the
   model, then each property, then the conformance tests, with the
   scope raising between stages.
+- `thinking.md` — the reasoning behind the work: why the gate
+  comes first, why size is a character count, the open
+  content-independence challenge, the standing rules, and the
+  findings and limits gathered in one place.
 - `runner/tests/test_proof_constraints.py` — the unit test that
   pins the harvested constraint values against the code and
   against `constraints.md`. If a declared default changes, this
