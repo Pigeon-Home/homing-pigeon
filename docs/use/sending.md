@@ -37,9 +37,9 @@ the record. Write it down; do not ask twice.
 
 ## The first live check: the clock job
 
-The standard first job to a new runner is the clock check from the
-campaign's job set (`runner/tools/soak.py`): the script `date;
-date +%s`, sent with no interpreter field at all. The runner runs it
+The standard first job to a new runner is the clock check in
+`runner/tools/soak.py`: the script `date; date +%s`, sent with no
+interpreter field at all. The runner runs it
 on its platform default, and the result's stdout reads back the
 runner's date and epoch. Compare the epoch with your own clock: a
 healthy runner agrees within a second or two, plus the mailbox poll
