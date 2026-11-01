@@ -175,6 +175,22 @@ trace from stage 2 has been classified — model defect, code
 defect, or assumption working as stated — with the resolution
 recorded.
 
+This stage has landed. The reconciliation is `stage3.md`:
+every step of `Gate.tla` matched to the code location that
+performs it, in order; the claim in `Claim.tla` matched to the
+in-process half of the code's claim; six gaps (code branches
+the model does not represent, each with the reason it is safe
+for P1 or the later property it belongs to); and four
+findings, none of them a counterexample to P1 — the
+encodability check the code runs twice and the model once,
+the repaired job the code can execute in place of the job it
+checked, two outcomes the code defers where the model refuses,
+and the audience clause's configuration precondition. Both
+stage 2 witness traces are classified in `stage3.md` as
+assumptions working as stated. The model was not edited and
+no runner code was changed in this stage; the findings stand
+as the record the later stages work from.
+
 ## Stage 4 — Each property in turn
 
 **Contents.** P2 to P6, one at a time, each through the same
