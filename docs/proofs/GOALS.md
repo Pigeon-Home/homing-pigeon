@@ -314,7 +314,8 @@ found to move a refuse-class binding. The one gap recorded
 there is that Decision 1's sentence also asks for a log line
 when a bad port is written live, and `reload_hot_config`
 does not emit one, because it never reads the key. Stage 4's
-five properties are checked. Stage 5 remains.
+five properties are checked. Stage 5 has landed; the record
+is `stage5.md`.
 
 ## Stage 5 — Conformance tests tying the model to the code
 
@@ -339,13 +340,20 @@ run once per property and its result recorded, because a test
 family that cannot catch the change it exists to catch is
 decoration.
 
-Started, not done. `stage5.md` records the first four tests,
-in `runner/tests/test_proof_conformance.py`. They drive
-`handle_mail`: a refused cleartext job does not consume the
-id, an unsigned body does not execute, a recorded result is
-resent and not run again, and a repaired interpreter the key
-forbids does not execute. The rest of the family, and the
-scratch-copy mutation check, are still open.
+This stage has landed. `stage5.md` names a test for every
+clause of P1 through P6. The new ones, in
+`runner/tests/test_proof_conformance.py`, drive `handle_mail`:
+the caps at and over the bound, audience enforce and off, a
+bad version, type, and job id, a stale and a future stamp, a
+forbidden kind, a dry run, an id already seen, a sensor
+alert, the panic word, and a good ping that does execute.
+The pins from stage 1 and stage 4 cover the clauses whose
+code is not the mail path. A one-line scratch-copy change
+was caught for each of the six properties, and the copies
+were restored. The limits are in `stage5.md`: the file,
+DTLS, and queues gates are pinned at the code site rather
+than by opening the far end, and delivery's "eventually"
+half is not a waited-on transport.
 
 ## Stage 6 — Raising the scope, little by little
 
