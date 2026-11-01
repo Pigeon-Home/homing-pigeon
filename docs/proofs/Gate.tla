@@ -3,10 +3,13 @@
 \* check order in properties.md (P1, at commit 6d6288c5). Each
 \* disjunct of Next is annotated with that order's step number.
 \*
-\* This is the first rung, P1(49). Every message in Messages stands
-\* for a handling whose script has a character count of at most 49.
-\* The character count is not a field the gate branches on, so it is
-\* not a state variable: the set below is already that bound.
+\* This model stands at the second rung, P1(500). Every message in
+\* Messages stands for a handling whose script has a character
+\* count of at most 500. It was first checked at the first rung,
+\* P1(49) (stage2.md); the raise to 500, and why the same set
+\* carries the wider bound, is stage6-rung500.md. The character
+\* count is not a field the gate branches on, so it is not a
+\* state variable: the set below is already that bound.
 \* scriptOver is the code's byte cap (constraints.md C2), which can
 \* still refuse a short script when the owner has set a small cap.
 \*

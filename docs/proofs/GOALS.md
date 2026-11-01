@@ -386,6 +386,19 @@ a counterexample stops the raising until the finding is resolved;
 the previous bound's checked claim stands in the meantime, stated
 at its own bound.
 
+Progress: the first raise has landed. P1(500), the second rung of
+the ladder in item 1, is checked: the record is
+`stage6-rung500.md`. The bound in `Gate.tla` is a declared
+interpretation of the model's message set, not a state variable —
+the gate does not branch on character count — so the raise
+restated the declaration and re-ran every configuration: the
+three audience forms and the claim race hold, both witnesses
+behave as at the first rung, and the state counts are unchanged
+from P1(49), because the searched set is the same and what
+widened is the set of handlings it stands for. The conformance
+family still passes (67 pinning tests, 4 conformance tests).
+The rungs above 500, and items 2 to 4, remain open.
+
 ## What this plan does not do
 
 - It does not change any runner behaviour. A code defect found by
