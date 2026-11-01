@@ -1824,10 +1824,10 @@ class DtlsPumpResultsLegsTest(unittest.TestCase):
     275-281). Two of the pump's promises: a result
     body that does not end in a newline gets one
     before it goes on the wire, and a result whose
-    session is gone is not dropped on the floor --
-    it is acked into done with the reason logged,
-    because the sender re-asks on a fresh session
-    and the seen-set dedups.
+    session is gone stays in the outbox. Acking it
+    into done threw the only copy away. The peer
+    comes back, the session is remembered, and the
+    same file goes out.
     """
 
     def _pipe(self):
@@ -1845,14 +1845,40 @@ class DtlsPumpResultsLegsTest(unittest.TestCase):
             fh.write(ch.envelope("[HOMING-PIGEON] result "
                                  + ident, body))
 
-    def test_a_gone_session_acks_the_result_into_done(self):
+    def test_a_gone_session_keeps_the_result_until_the_peer_is_back(self):
+        # Acking this into done left nothing for the re-ask.
+        # The seen-set will not run the job again.
         pipe, channel = self._pipe()
         self._result(channel, "job-gone", "the answer")
         pipe._pump_results()
         d = ch.dirs(channel)
-        self.assertEqual(os.listdir(d["outbox"]), ["done"])
+        self.assertEqual(os.listdir(d["outbox_done"]), [])
+        self.assertIn("job-gone.result.txt", os.listdir(d["outbox"]))
+        pipe.job_session["job-gone"] = "s2"
+        sent = []
+        pipe.core.send_app = lambda sid, data: (
+            sent.append((sid, data)), [("127.0.0.1", b"dg")])[1]
+        pipe._send = lambda dg, addr: True
+        pipe._pump_results()
+        self.assertEqual([row[0] for row in sent], ["s2"])
+        self.assertIn(b"the answer", sent[0][1])
         self.assertEqual(os.listdir(d["outbox_done"]),
                          ["job-gone.result.txt"])
+
+    def test_a_datagram_that_does_not_leave_keeps_the_result(self):
+        pipe, channel = self._pipe()
+        self._result(channel, "job-live", "the answer")
+        pipe.job_session["job-live"] = "s1"
+        pipe.core.send_app = lambda sid, data: [("127.0.0.1", b"dg")]
+        pipe._send = lambda dg, addr: False
+        pipe._pump_results()
+        d = ch.dirs(channel)
+        self.assertIn("job-live.result.txt", os.listdir(d["outbox"]))
+        self.assertEqual(os.listdir(d["outbox_done"]), [])
+        pipe._send = lambda dg, addr: True
+        pipe._pump_results()
+        self.assertEqual(os.listdir(d["outbox_done"]),
+                         ["job-live.result.txt"])
 
     def test_a_body_without_a_newline_gets_one(self):
         pipe, channel = self._pipe()
@@ -1861,7 +1887,7 @@ class DtlsPumpResultsLegsTest(unittest.TestCase):
         sent_texts = []
         pipe.core.send_app = lambda sid, data: (
             sent_texts.append(data), [("127.0.0.1", b"dg")])[1]
-        pipe._send = lambda dg, addr: None
+        pipe._send = lambda dg, addr: True
         pipe._pump_results()
         self.assertEqual(len(sent_texts), 1)
         self.assertTrue(sent_texts[0].endswith(
@@ -1881,7 +1907,7 @@ class DtlsPumpResultsLegsTest(unittest.TestCase):
         sent = []
         pipe.core.send_app = lambda sid, data: (
             sent.append(sid), [("127.0.0.1", b"dg")])[1]
-        pipe._send = lambda dg, addr: None
+        pipe._send = lambda dg, addr: True
         pipe._pump_results()
         self.assertEqual(sent, ["s1"])
         self.assertEqual(os.listdir(ch.dirs(channel)["outbox_done"]),

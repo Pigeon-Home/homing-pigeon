@@ -44,9 +44,11 @@ only on established sessions, which is to say only after the
 greeting has been sent.
 
 Results are session-bound: a result that lands after its
-session is gone cannot be delivered on it, so it is logged
-loudly and acked into done/ -- the SI re-asks on a fresh
-session and the protocol's seen-set dedups the repeat.
+session is gone cannot go out on that session. The file stays.
+The SI re-asks on a fresh session, that session is remembered
+against the job, and the result goes out then. Acking it into
+done/ here threw the only copy away, and the seen-set would
+not run the job again.
 """
 
 import json
@@ -233,6 +235,9 @@ class DtlsPipe:
         self.sock.bind((self.bind, self.port))
         self.sock.setblocking(False)
         self.job_session = {}        # job ident -> session id
+        # Idents we already logged as waiting for a session, so a
+        # pass every tenth of a second does not say it again.
+        self._waiting_session = set()
 
     # -- one pass -----------------------------------------------------
 
@@ -261,6 +266,8 @@ class DtlsPipe:
         except OSError as e:
             ch.log(f"dtls transport: send to {addr} failed: {e}",
                    "WARN")
+            return False
+        return True
 
     def _drain_events(self):
         events, self.core.events = self.core.events, []
@@ -311,16 +318,19 @@ class DtlsPipe:
             if session_id is not None:
                 sent = self.core.send_app(
                     session_id, text.encode("utf-8"))
-            if not sent:
-                ch.log(f"dtls transport: result for {ident} "
-                       "cannot be delivered -- its session is "
-                       "gone; acking it into done (the sender "
-                       "re-asks on a fresh session and the "
-                       "seen-set dedups)", "WARN")
-                ch.ack_result(self.channel, fname)
+            delivered = bool(sent) and all(
+                self._send(dg, addr) for addr, dg in sent)
+            if not delivered:
+                # No session, or the datagram did not leave. The
+                # file is the only copy. The peer comes back on a
+                # fresh session and this pass sends it then.
+                if ident not in self._waiting_session:
+                    ch.log(f"dtls transport: result for {ident} "
+                           "is not on a session yet; it stays "
+                           "until the peer is back", "WARN")
+                    self._waiting_session.add(ident)
                 continue
-            for addr, dg in sent:
-                self._send(dg, addr)
+            self._waiting_session.discard(ident)
             ch.ack_result(self.channel, fname)
             ch.log(f"dtls transport: result for {ident} sent")
 

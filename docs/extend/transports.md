@@ -464,9 +464,10 @@ implemented as a bounded pure-Python profile
   cleartext job in DTLS and an encrypted job in DTLS are
   both legal). Ack/dedup is still the protocol's seen-set —
   channel security is not delivery. Results return on the
-  session; a result that lands after its session is gone is
-  logged loudly and acked, and the SI re-asks on a fresh
-  session.
+  session; a result that lands after its session is gone
+  stays in the outbox. The SI re-asks on a fresh session,
+  and the result goes out on that session. A datagram that
+  does not leave does not finish the file either.
 - **The client** is `runner/cloud/send_dtls.py`: it signs exactly
   like `send_job.py` (per-job encryption on by default,
   `--cleartext` selects the plain signed form), prints the
