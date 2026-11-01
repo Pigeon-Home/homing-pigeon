@@ -4,6 +4,17 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.2 - 2026-10-31
+
+- **Windows platform proofs.** The startup mailbox gate now
+  applies only when the email transport is enabled, so a
+  file-transport-only runner no longer sits at an unseen
+  setup prompt. Job-user enforcement on Windows now refuses
+  at startup instead of silently doing nothing, and audit
+  writes an unsupported-platform entry.
+- Every shipped file is above 90 percent of its statements.
+- The corpus banked since 3.15.1 rides along.
+
 ## 3.15.1 - 2026-10-31
 
 - **A result is not finished until it has left.** A file left
