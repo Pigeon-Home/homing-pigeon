@@ -280,6 +280,24 @@ own portable git.
   installing here before the chat can be shown live end to
   end.
 
+- **The repo suites under the box's own Python
+  (1 Nov 2026).** One job (f2a329aa) made a sparse checkout
+  of `runner/` plus `pyproject.toml` at the current main
+  (ec5fbd5e, 804 files) and ran a picked Windows-relevant
+  subset with the box's own Python 3.12.7: the Windows
+  portability, surface, run-as, CLI-simulation and platform
+  proofs suites, the Windows test-runner simulation suite,
+  and the skip registry — 52 tests in 49.4 seconds, all
+  passed, no failures, no errors, no skips. Two shape notes
+  from the run: the checkout was made outside the job's
+  work folder (at `C:\hp-suites10`), so the artifact scan
+  never had to read a whole repository tree the job
+  produced; and the suite driver sat at the checkout root
+  and named its own root on the path, because the box's
+  embeddable Python does not pick up the working directory
+  the way a full install does. The job finished exit 0 and
+  its signed result verified.
+
 ## The upgrade pause: a supposition, written before measuring
 
 How much work does a remote upgrade throw away? The question
