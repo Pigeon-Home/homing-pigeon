@@ -76,7 +76,7 @@ refuse-class setting it stops the runner before any job is read.
   the registry row records policy `refuse`, default `1048576`.
 - **Measure note:** the production cap measures UTF-8 **bytes**.
   The proof work measures **characters** for its own starting
-  bound (scripts under 50 characters; see `README.md`). The two
+  bound (scripts under 50 characters; see `readme.md`). The two
   measures are different things and are never interchanged in
   these files: a 49-character script of multi-byte characters is
   inside the proof bound and can still be many more than 49 bytes,
@@ -92,7 +92,7 @@ refuse-class setting it stops the runner before any job is read.
   count says how much script there is. The proof states its
   gate property as a family over that count, P1(B) in
   `properties.md`, and the ladder of bounds it climbs is
-  recorded in `GOALS.md`, stage 6.
+  recorded in `goals.md`, stage 6.
 
 ## C3. Maximum result size — `max_result_bytes`
 

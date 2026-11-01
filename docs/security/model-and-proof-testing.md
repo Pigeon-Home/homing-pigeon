@@ -250,9 +250,9 @@ check that proves the family can catch a change are still open.
 
 ## The records
 
-- `docs/proofs/README.md` — the goal, the assumptions, and how
+- `docs/proofs/readme.md` — the goal, the assumptions, and how
   the work is reviewed.
-- `docs/proofs/GOALS.md` — the staged plan and what done means at
+- `docs/proofs/goals.md` — the staged plan and what done means at
   each stage.
 - `docs/proofs/properties.md` — the six properties in full, with
   the code's check order and the shape of a counterexample to

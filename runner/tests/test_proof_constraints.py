@@ -684,8 +684,11 @@ class ReplayPins(unittest.TestCase):
             self.assertTrue(R._disk_owns(base, "pin-claim", {}))
             folder, claim = R._claim_path(base, "pin-live")
             os.makedirs(folder, exist_ok=True)
-            # A live holder's claim is never taken.
-            proc = subprocess.Popen(["sleep", "30"])
+            # A live holder's claim is never taken. The holder is
+            # this interpreter sleeping, not a platform command:
+            # "sleep" is not a Windows program name.
+            proc = subprocess.Popen(
+                [sys.executable, "-c", "import time; time.sleep(30)"])
             try:
                 with open(claim, "w", encoding="utf-8") as fh:
                     fh.write("%d\n%f\npin-live\n" % (proc.pid,
@@ -694,9 +697,20 @@ class ReplayPins(unittest.TestCase):
             finally:
                 proc.kill()
                 proc.wait()
-            # A dead holder's claim is stolen at once.
+            # A dead holder's claim is stolen at once. On Windows
+            # a just-killed child's process object can still be
+            # opened through the handle Popen holds, and a handle
+            # means alive (the PidAliveWindowsBranchTest pin), so
+            # the dead holder named on Windows is a pid with no
+            # process at all -- the dead-pid shape the v2 message
+            # tests use there. Elsewhere the killed child's own
+            # pid is the dead holder, as before.
+            dead_pid = proc.pid
+            if os.name == "nt":
+                dead_pid = 2 ** 22
+                self.assertFalse(R._pid_alive(dead_pid))
             with open(claim, "w", encoding="utf-8") as fh:
-                fh.write("%d\n%f\npin-live\n" % (proc.pid,
+                fh.write("%d\n%f\npin-live\n" % (dead_pid,
                                                  _time.time()))
             self.assertTrue(R._disk_owns(base, "pin-live", {}))
             # An unreadable holder is taken only at the stale age.

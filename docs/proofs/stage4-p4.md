@@ -323,7 +323,7 @@ One construction-side observation is recorded, in the open:
 - Script identity is pinned-or-not. The model does not
   evaluate SHA-384; that a digest cannot be produced for a
   script the attacker does not hold byte-for-byte is the
-  standing cryptographic assumption (`README.md`), and two
+  standing cryptographic assumption (`readme.md`), and two
   scripts with one digest would be one shape here and a
   break of that assumption, not of this step.
 - The effective interpreter and the effective timeout are

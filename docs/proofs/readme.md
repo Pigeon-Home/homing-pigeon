@@ -96,7 +96,7 @@ under 50 — that is, 49 characters or fewer. At that bound a model
 checker can be exhaustive about the shapes a script's length and
 position can take, and the gate's decisions do not depend on
 script content beyond the checks the code performs. The bound
-then raises little by little, stage by stage, as `GOALS.md` sets
+then raises little by little, stage by stage, as `goals.md` sets
 out. In `properties.md` the gate property is written as a family
 over the bound, P1(B) for a bound of B characters; the first rung
 is P1(49), and the last is the production cap itself.
@@ -128,7 +128,7 @@ The work grows in layers, each one resting on the last:
    (the ordered checks) and `Claim.tla` (two handlers racing the
    claim). The checker is TLC. What it found at the first rung
    is `stage2.md`. The tool choice and the rest of the plan are
-   in `GOALS.md`.
+   in `goals.md`.
 4. **Checked model.** The checker searches the model for a
    counterexample to each stated property, inside the stated
    bound. A counterexample is a finding, not an embarrassment: it
@@ -190,7 +190,7 @@ A finding is most useful when it points at the file and the line
   function, and the refuse-or-default class of each constraint.
 - `properties.md` — the property list. P1 through P6 are
   stated in full.
-- `GOALS.md` — the staged plan: this foundation first, then the
+- `goals.md` — the staged plan: this foundation first, then the
   model, then each property, then the conformance tests, with the
   scope raising between stages.
 - `thinking.md` — the reasoning behind the work: why the gate

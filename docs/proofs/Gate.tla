@@ -16,7 +16,7 @@
 \* bound. scriptOver is the code's byte cap, which can still
 \* refuse a short script when the owner has set a small cap.
 \*
-\* Cryptography is an assumption (README.md). `signed` means an
+\* Cryptography is an assumption (readme.md). `signed` means an
 \* HMAC-SHA-384 body verified under a secret this runner holds.
 \* `innerMismatch` means an encrypted body whose inner key id is not
 \* the outer one. The model does not contain a forgery step.

@@ -1,6 +1,6 @@
 # Stage 5 — conformance: the clauses driven against the real code
 
-Stage 5 is done on the terms `GOALS.md` sets. Every clause of
+Stage 5 is done on the terms `goals.md` sets. Every clause of
 P1 through P6 names at least one test that drives the real
 code — not the model — the family passes on this branch, and
 the per-property mutation checks below were each caught by

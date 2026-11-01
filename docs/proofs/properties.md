@@ -21,7 +21,7 @@ commit `6d6288c5`.
   deliveries, and observe any traffic the transport exposes. The
   attacker cannot forge an HMAC-SHA-384 signature under a secret
   they do not hold, and cannot read or alter an AES-256-GCM
-  envelope under such a secret (the assumptions in `README.md`).
+  envelope under such a secret (the assumptions in `readme.md`).
 - **Runner.** The process on the host that polls for jobs, applies
   the gate, executes what passes, and signs and delivers results.
   The runner is trusted to run its own code; the question every
@@ -141,7 +141,7 @@ The family is climbed in stages:
   script's length can take, and the gate's decisions do not
   depend on script content beyond the checks the code performs.
 - **Raised rungs.** The same nine clauses, re-proven at each
-  raised bound on the ladder in `GOALS.md` (stage 6): 500,
+  raised bound on the ladder in `goals.md` (stage 6): 500,
   5,000, 50,000, and 500,000 characters, then the production
   cap. **P1(500) is checked** (`stage6-rung500.md`). The
   rungs above it are the same searched set: the character

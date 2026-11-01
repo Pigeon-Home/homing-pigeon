@@ -151,7 +151,7 @@ own, in force until one is revisited in the open with its
 reason written down.
 
 - **Rung raises need no separate approval.** The ladder in
-  `GOALS.md` is itself the standing decision; a raise is
+  `goals.md` is itself the standing decision; a raise is
   executed and reported with its counts, and a counterexample
   at any rung stops the climb until the finding is resolved.
 - **Constraints come from the code, and the code wins.** Every
@@ -246,7 +246,7 @@ place.
   after seven days does the same.
 - **The one assumption.** Everything rests on this: a valid
   signature cannot be forged without the secret. The model
-  starts where the cryptography ends, and `README.md` states
+  starts where the cryptography ends, and `readme.md` states
   the full set of assumptions the work carries.
 
 ## Where things stand, and what is next

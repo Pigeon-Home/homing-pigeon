@@ -62,7 +62,7 @@ silently.
   count is.
 - **Cryptography is an assumption, not a target.** The model
   treats HMAC-SHA-384 unforgeability and the AES-256-GCM
-  construction as axioms, stated in `README.md`. This work checks
+  construction as axioms, stated in `readme.md`. This work checks
   what the runner does with a verified signature; it does not
   re-prove the primitives.
 - **The Oracle is out of the model's trusted base.** It advises
@@ -76,7 +76,7 @@ silently.
 
 ## Stage 1 — Foundation (this stage)
 
-**Contents.** This directory: `README.md` (goal, honest scope,
+**Contents.** This directory: `readme.md` (goal, honest scope,
 assumptions, starting bound), `constraints.md` (the harvested
 inventory, C1 to C16, each with its Decision 1 class),
 `properties.md` (P1 in full with the code's real check order;

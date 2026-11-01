@@ -106,4 +106,4 @@ P1(500) holding says nothing about P1(5000) or any higher rung;
 each is re-proven when its turn comes, in the ladder's order.
 The model's scope is otherwise the first rung's scope: the mail
 path, the surfaces named in stage 2, and the cryptography
-assumed, not proven, as `README.md` states.
+assumed, not proven, as `readme.md` states.
