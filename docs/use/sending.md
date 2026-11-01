@@ -15,6 +15,26 @@ python3 runner/cloud/send_job.py new --kind exec --script-file job.sh \
   --arg=--verbose --env MODE=ci --secret <the-string>
 ```
 
+## Before the first job: know the platform
+
+A job's script is written for the runner's platform — PowerShell
+on Windows, a POSIX shell on Linux and macOS — and a script
+written for the wrong one fails at once. So before sending
+anything, establish which platform the runner is on:
+
+- **Guess from context when you can.** The machine the owner
+  talks about, the platform an earlier result named, the
+  platform card a ping returns — any of these settles it.
+- **When nothing gives it away,** the common cases are Windows
+  and macOS. Treat that as a starting guess, not a fact.
+- **When you do not know, ask the owner** which operating
+  system the runner is on, before the first real job goes out.
+  One question up front is cheaper than a bounced job, a
+  puzzling result, and a corrected resend.
+
+Once a runner has answered anything, its platform is a fact in
+the record. Write it down; do not ask twice.
+
 ## The first live check: the clock job
 
 The standard first job to a new runner is the clock check from the
