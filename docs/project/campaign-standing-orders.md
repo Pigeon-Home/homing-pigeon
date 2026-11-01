@@ -6503,6 +6503,8 @@ when done, the proving commit or run. Newest first.
   Banked by rig_bank from the rig's own tree under section M item 7: 21 run records, 625,050 children (seeds 20340, 20359, 20463, 20464, 20465, 20466, 20470, 20481, 20482, 20576, 20577, 20594, 20595); totals from the merged tree. The rig's tree at 8e708073f23d.
   de_aztec 199 (Menlo Park): 2215 entries, 8599 arcs, 0 crashes filed.
   Banked by rig_bank from the rig's own tree under section M item 7: 11 run records, 351,623 children (seeds 8680); totals from the merged tree. The rig's tree at 9a3c9da2db2f. Crash records replayed at main's head: inbox: 0 promoted, 0 redundant (fixed, reaching nothing new), 0 still crash. Retired echoes not re-banked: 3.
+  de_aztec 147 (San Francisco): 2215 entries, 8599 arcs, 0 crashes filed.
+  Banked by rig_bank from the rig's own tree under section M item 7: 1 run records, 3,597 children (seeds 2860163462); totals from the merged tree. The rig's tree at 1b07e3b56e66.
 - v3.12.71 FULL STAMP DONE: GitHub
   release published
   2026-10-25T22:02:36Z by
