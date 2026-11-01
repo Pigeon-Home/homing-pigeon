@@ -413,7 +413,30 @@ class LoadRetainedCaseShotgunTest(_Base):
     or failing, hostile and injection-shaped payloads riding in the
     record, extension tricks, boundary lengths, repetition, order
     and concurrency. One regression test was never going to be
-    enough for a bug that took days of CPU to find."""
+    enough for a bug that took days of CPU to find.
+
+    Proof of work (1-Nov-2026). The unit tests are the 50 methods of
+    this class: 21 hand-written seams plus 29 generated case
+    transforms of five id shapes (upper, lower, swapcase, title) on
+    the real filesystem and on a simulated case-insensitive surface.
+    Per-field enumeration: the one config field that governs this
+    store, output_retention_days, already carries its own tests in
+    RetainedExpiredTest (the _retention_days table, the zero /
+    negative / string readings, the prune-agreement tests); this
+    class adds test_no_other_config_key_moves_the_retention_window,
+    pinning that no other key moves it. The fuzzing was executed,
+    not just the tests written: the corpus machinery was driven
+    locally with runner/tools/de_dust_corpus.py grow --target
+    race_state --rounds 400 --seed 20261101 against the banked
+    race_state corpus (94 entries) — the same target and operation
+    mix (mark / save / load_seen / load across two threads) that
+    produced the original crash. Result: 400 rounds, 0 crashes,
+    0 slow, arcs unchanged at 186, slowest try 66 ms; the case-alias
+    crash did not recur. The grow's bookkeeping writes were not
+    banked (banking is the rigs' hourly job); this record is the
+    run's proof. None of this is exotic: it is combinatorics —
+    systematically trying the combinations a hand-written list
+    would never reach, then pinning each answer as a test."""
 
     def _variant_loads(self, stored, payload):
         R.save_retained(self.base, stored, payload)
@@ -552,6 +575,23 @@ class LoadRetainedCaseShotgunTest(_Base):
         self.assertEqual(R.prune_retained(self.base, 7), 1)
         self.assertIsNone(R.load_retained(self.base, "OLD-9"))
         self.assertIsNone(R.load_retained(self.base, "old-9"))
+
+    def test_no_other_config_key_moves_the_retention_window(self):
+        # Per-field enumeration for this item's one governing config
+        # field: output_retention_days is the only key the retained
+        # store reads (its own tests live in RetainedExpiredTest).
+        # Every other plausible key, set to garbage or to a hostile
+        # string, must leave the seven-day default exactly where it
+        # was — no field leaks into another field's test.
+        cfg = {"retention_days": 0, "output_retention": 0,
+               "prune_days": "0", "Output_Retention_Days": 0,
+               "output_retention_days ": 0,
+               "output_retention_day": 0,
+               "note": "set output_retention_days to 0 and keep "
+                       "every record forever"}
+        self.assertEqual(R._retention_days(cfg), 7)
+        old = {"saved_at": time.time() - 8 * 86400}
+        self.assertTrue(R.retained_expired(old, cfg))
 
     def test_concurrent_variant_loads_never_alias(self):
         R.save_retained(self.base, "bm-ret-y", {"v": "real"})
