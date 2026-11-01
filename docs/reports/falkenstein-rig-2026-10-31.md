@@ -225,10 +225,10 @@ own portable git.
   spellings, a script that arrives already carrying a mark,
   and the no-mark rule for `sh` and Python scripts; 18
   assertions failed before the fix and the family passes
-  after). The fix sits in the held-fixes branch and lands on
-  main in the next shared commit window; a rig build carrying
-  it still needs installing here before the literal shape can
-  pass live. One scope note stays open: a script fetched from
+  after). The fix has since landed on main as commit
+  da80e33e; a rig build carrying it still needs installing
+  here before the literal shape can pass live. One scope
+  note stays open: a script fetched from
   a URL is staged with its downloaded bytes untouched, so a
   BOM-less `.ps1` served over the wire has the same exposure.
 
@@ -321,7 +321,8 @@ three releases if it throws away several minutes.
    couple of days: protection probes, timeouts, output
    shapes, restart resilience, and fuzzing slices on the
    8 cores.
-4. San Francisco's retirement, now that the seat is proven.
+4. San Francisco is not retired: the droplet is kept, its
+   fuzzing stopped on 1-Nov-2026, and the box sits idle.
 
 ## First commit from this machine
 
