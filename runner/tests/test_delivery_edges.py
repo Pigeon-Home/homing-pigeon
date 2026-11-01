@@ -84,17 +84,22 @@ class SweepTest(_Base):
         shutil.rmtree(self.failed)
         self.assertEqual(self.sweep(), 0)
 
-    def test_bytes_that_are_not_utf8_are_set_aside(self):
+    def test_bytes_that_are_not_utf8_stay_until_a_record_answers(self):
+        # Filing this pair to done made the queue ack the job
+        # with nothing stored. There is no record yet.
         self.refusal("bad", b"\xff\xfe not text")
-        self.assertEqual(self.sweep(), 1)
-        self.assertEqual(self.done(), ["bad.refused.txt", "bad.result.txt"])
-        self.assertEqual(os.listdir(self.failed), [])
+        self.assertEqual(self.sweep(), 0)
+        self.assertEqual(self.done(), [])
+        self.assertEqual(sorted(os.listdir(self.failed)),
+                         ["bad.refused.txt", "bad.result.txt"])
 
-    def test_a_result_with_no_job_id_is_set_aside(self):
+    def test_a_result_with_no_job_id_stays_until_a_record_answers(self):
         self.refusal("nid", R._transports.format_envelope(
             "[HOMING-PIGEON] something else", "{}"))
-        self.assertEqual(self.sweep(), 1)
-        self.assertEqual(self.done(), ["nid.refused.txt", "nid.result.txt"])
+        self.assertEqual(self.sweep(), 0)
+        self.assertEqual(self.done(), [])
+        self.assertEqual(sorted(os.listdir(self.failed)),
+                         ["nid.refused.txt", "nid.result.txt"])
 
     def test_a_stub_that_cannot_be_signed_gives_the_record_up(self):
         skey, _ = self.record("j-nostub")
@@ -122,11 +127,15 @@ class SweepTest(_Base):
                          ["nw.refused.txt", "nw.result.txt"])
         self.assertFalse(R._read_record(path).get("stubbed"))
 
-    def test_a_refusal_file_that_will_not_move_still_counts(self):
+    def test_a_refusal_with_no_record_is_not_counted_as_filed(self):
+        # There is nothing to move. Counting it filed is what
+        # cleared the pair and let the queue ack the job.
         self.refusal("stuck", b"\xff")
         with mock.patch.object(R.os, "replace",
                                side_effect=OSError("busy")):
-            self.assertEqual(self.sweep(), 1)
+            self.assertEqual(self.sweep(), 0)
+        self.assertEqual(sorted(os.listdir(self.failed)),
+                         ["stuck.refused.txt", "stuck.result.txt"])
 
 
 class KeptOriginalTest(_Base):
