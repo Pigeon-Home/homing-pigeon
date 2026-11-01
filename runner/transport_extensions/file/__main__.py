@@ -171,7 +171,25 @@ class FilePipe:
         # failure does not move that channel file, so this
         # loop does not see it and the watched job stays.
         chan_done = os.path.join(self.channel, "inbox", "done")
+        # A result the channel set aside is not "no result". The
+        # stub has not been copied out yet. Finishing the watched
+        # file here marked the job seen with nothing in the outbox.
+        held = set()
+        failed_dir = os.path.join(self.channel, "outbox", "failed")
+        try:
+            held_names = os.listdir(failed_dir)
+        except OSError:
+            held_names = []
+        for fname in held_names:
+            fid = ch.result_file_id(fname)
+            if fid:
+                held.add(fid)
         for ident, (watched, jid) in list(self._pending.items()):
+            if ident in held or (jid and jid in held):
+                ch.log(f"file transport: result for {ident} is "
+                       f"still set aside; the watched job stays",
+                       "WARN")
+                continue
             if os.path.exists(os.path.join(
                     chan_done, ident + ".job.txt")):
                 del self._pending[ident]

@@ -305,6 +305,33 @@ class FilePipeEdgeTest(unittest.TestCase):
         self.assertTrue(os.path.exists(
             os.path.join(self.pipe.done, "job-3.job-seen")))
 
+    def test_a_result_still_set_aside_does_not_finish_the_watched_job(self):
+        # The core had consumed the job, and the result was
+        # waiting in failed/ for a stub. The watched file was
+        # moved to done and marked seen, with nothing in the
+        # outbox for the SI to pick up.
+        watched = os.path.join(self.pipe.inbox, "w.txt")
+        with open(watched, "w", encoding="utf-8") as f:
+            f.write("[HOMING-PIGEON] job job-3\n\nbody\n")
+        self.pipe.scan_jobs()
+        done = os.path.join(self.channel, "inbox", "done")
+        os.makedirs(done, exist_ok=True)
+        open(os.path.join(done, "w.job.txt"), "w").close()
+        failed = os.path.join(self.channel, "outbox", "failed")
+        os.makedirs(failed, exist_ok=True)
+        with open(os.path.join(failed, "w.result.txt"), "w",
+                  encoding="utf-8") as f:
+            f.write("not an envelope")
+        with open(os.path.join(failed, "w.refused.txt"), "w",
+                  encoding="utf-8") as f:
+            f.write("not an envelope\n")
+        self.pipe.scan_results()
+        self.assertIn("w", self.pipe._pending)
+        self.assertTrue(os.path.exists(watched))
+        self.assertFalse(os.path.exists(
+            os.path.join(self.pipe.done, "job-3.job-seen")))
+        self.assertEqual(os.listdir(self.pipe.outbox), [])
+
     def test_a_file_that_cannot_be_read_is_refused(self):
         inbox = self.pipe.inbox
         done = self.pipe.done

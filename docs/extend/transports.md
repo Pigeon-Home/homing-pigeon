@@ -404,7 +404,10 @@ broker, nothing to sign up for.
   comes back it moves the job file to a `done/` subfolder —
   never deletes. Results land in the outbox as
   `<job_id>.result.txt`, same envelope shape. A redelivered
-  copy of a finished job is acked, not re-executed.
+  copy of a finished job is acked, not re-executed. A result
+  still set aside under the channel's `outbox/failed/` has not
+  come back yet: the watched job stays until the stub is
+  copied out.
 - Refusals mirror the local-inbox discipline: symlinks are
   refused unread, files over 4 MiB are refused unread, and a
   malformed envelope is refused with the reason left in a
