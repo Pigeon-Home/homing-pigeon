@@ -444,6 +444,25 @@ on the machine that ran it, so that half is not claimed.
 The scripts are a sample of each construct, not every
 nesting that fits in 49 characters, and not every string.
 
+## Stage 8 — Content-independence at 50,000 characters
+
+**Contents.** The same check as stage 7, at the ladder's
+50,000-character rung. The scripts are long enough that
+the inventory cannot be every construct. It is three
+texts of exactly 50,000 characters that bash accepts, and
+one of 50,001. The gate admits them. A short cap refuses
+the three by the cap, not by the text.
+
+**Done means:** the lengths are exact, `bash -n` accepts
+them, `handle_mail` admits them, the short cap names
+itself, and the record says that 50,000 is not a code
+limit.
+
+This stage has landed. The harness is
+`runner/tests/test_proof_content_50k.py`. The record is
+`stage8.md`. A script of 50,001 characters is still
+admitted, because the code's cap is 1048576 bytes.
+
 ## What this plan does not do
 
 - It does not change any runner behaviour. A code defect found by

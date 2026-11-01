@@ -288,3 +288,10 @@ constructible bash scripts, each admitted by the real gate,
 each longer one refused by the byte cap and not by its
 text. `stage7.md` records the sample and the two halves
 that were not claimed, PowerShell and the rungs above 49.
+
+Stage 8 takes the same check to 50,000 characters, the
+rung named here between 5,000 and 500,000. Three scripts
+of that exact length, different texts, are admitted, and
+one of 50,001 characters is admitted too, because the
+figure is the rung and not the code's byte cap.
+`stage8.md` is the record.
