@@ -36,7 +36,10 @@ Use this protocol: https://pigeon-home.com/PROTOCOLv1
 Shared Secret: "YOUR_SECRET_STRING"
 Run a job that retrieves the system clock and then display it here.
 ```
-IETF Internet-Drafts, posted: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/ and https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/ — where they stand is [docs/ietf/STATUS.md](docs/ietf/STATUS.md).
+IETF Internet-Drafts:
+Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
+Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
+IETF Status: [docs/ietf/STATUS.md](docs/ietf/STATUS.md).
 
 **No mailbox yet?** `python3 runner/runner.py --config config.json
 --local-test` runs the whole loop in process: you play the SI in a
