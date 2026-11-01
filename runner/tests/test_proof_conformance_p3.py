@@ -214,10 +214,10 @@ class NatsGateTest(unittest.TestCase):
     """The pipe refuses to start without broker credentials
     unless the waiver is literally true."""
 
-    def test_no_credentials_no_waiver_refuses(self):
-        with tempfile.TemporaryDirectory() as td:
-            with self.assertRaises(nats_ext.TransportError):
-                nats_ext.NatsPipe({}, td)
+    # The bare no-credentials refusal itself is pinned in
+    # test_proof_conformance.py
+    # (test_nats_without_credentials_refuses_to_start); this
+    # class carries the shapes around it.
 
     def test_a_string_waiver_does_not_waive(self):
         with tempfile.TemporaryDirectory() as td:

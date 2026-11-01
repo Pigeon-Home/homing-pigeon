@@ -30,12 +30,12 @@ end to end on the final tree before this record was written.
 | `runner/tests/test_proof_constraints.py` | 67 | The stage 1 pinning file: values, readers, and fences at the function level |
 | `runner/tests/test_proof_conformance.py` | 64 | P1's nine clauses and check order through `handle_mail`; the record resend; the NATS start |
 | `runner/tests/test_proof_conformance_p2.py` | 27 | P2: the result view and query answers read out of delivered results; the confinement chain and the sandbox builder; the watched set on a real tree |
-| `runner/tests/test_proof_conformance_p3.py` | 28 | P3: each transport at its own edge, and the file pipe end to end through the channel and the real core |
+| `runner/tests/test_proof_conformance_p3.py` | 27 | P3: each transport at its own edge, and the file pipe end to end through the channel and the real core |
 | `runner/tests/test_proof_conformance_p4.py` | 38 | P4: the key-policy step at the job's door, the other doors, and the repaired job's re-judgment |
 | `runner/tests/test_proof_conformance_p5.py` | 12 | P5: the claim, the cache, the claim file, and the record, over one shared runner home |
 | `runner/tests/test_proof_conformance_p6.py` | 13 | P6: Decision 1 through the real `main()` startup and the real reload |
 
-249 proof tests in all. A few P1 refusal steps also have
+248 proof tests in all. A few P1 refusal steps also have
 older tests in `runner/tests/test_coverage_floor.py`; they
 are named in the first pass's tables rather than copied.
 
@@ -348,9 +348,59 @@ again on the final tree, every shape was caught again.
 
 On the final tree: `test_proof_constraints.py` 67,
 `test_proof_conformance.py` 64, and the sibling files 27,
-28, 38, 12, and 13 — 249 tests, all passing under both
+27, 38, 12, and 13 — 248 tests, all passing under both
 pytest and the suite's own unittest discovery. The mutation
 runs above were made in a scratch copy (`cp` of the tree,
 `.git` excluded), one file changed at a time and restored
 after each run; the working tree carried no mutation at any
 commit.
+
+## First-hand verification
+
+After both passes landed, the whole stage was re-audited
+clause by clause against `properties.md` as written — the
+tables below are that walk, not a copy of either pass's
+claims — and the family was re-run end to end (248 tests,
+all passing). The verdict per property:
+
+| Property | Clauses | Verdict |
+|---|---|---|
+| P1 | 9 of 9 | Every clause names behavioural drives through `handle_mail`, at and either side of each boundary, in the conformance file; clause 8's step is the P4 file, clause 9 the P5 file |
+| P2 | 9 of 9 | Clauses 5–8 behavioural on delivered results; 1–3 on the confinement chain and builder, with clause 3 carrying finding F1 against its floor sentence; 4 at the snapshot functions over real trees plus the attestation pin; 9 by the source scan, which is the direct drive for a "read nowhere" claim |
+| P3 | 9 of 9 | Behavioural at every transport's own edge; clause 9's testable content (a waiver is the literal `True` or it is nothing) is driven, the rest being a claim about deployments |
+| P4 | 12 of 12 | At the job's door for clauses 2, 3, 4, 5, 7, 8, 9, 10, 11; at the step for 6; at the builder for 12; clause 1 by composition with P1's key-selection tests |
+| P5 | 11 of 11 | At the door for 1, 2, 3, 5, 6, 7, 11; at the record store for 9 and 10; clauses 4 and 8 rest on the pinning file's drives of the real claim and cache code over real files |
+| P6 | 7 of 7 | Clauses 1–4 through the real `main()`; 5–7 through the real reload; clause 3's boolean, non-finite, and bounds sub-claims at the reader level in the pinning file. One recorded exception inside clause 5's territory: the boolean written live for a hot key, deliberately not pinned (see the P6 section above) |
+
+Duplicates between the two passes were judged pair by pair.
+One test was dropped as an exact duplicate: the second
+pass's bare NATS no-credentials constructor test asserted
+nothing the first pass's
+`test_nats_without_credentials_refuses_to_start` does not;
+the four shapes around it (string waiver, literal waiver,
+token, URL-embedded credentials) have no counterpart and
+stay. Every other overlap is either strictly stronger in
+the second pass — both sides of each cap where the first
+pass drove one, the audit mode's `would_deny` record, the
+record resent byte-for-byte from a real first run where
+the first pass stubbed the lookup — or complementary,
+carrying an assertion the other lacks: the first pass's
+cleartext test pins the id unconsumed, which no second-pass
+test asserts, and its repaired-interpreter test is the
+negative half of stage 3's F2, which the second pass's
+`RepairedJobRejudgedTest` completes with the positive
+halves. That debt is confirmed closed: both tests were run
+by name in this verification and pass.
+
+The mutation claim was verified the strong way. In a fresh
+scratch copy of the final tree, five of the recorded
+mutations were re-run: P1's cleartext refusal skipped and
+P1's freshness bound widened, P4's kinds fence skipped and
+P4's pinning comparison inverted, and P2's ceiling ignored.
+Each run exited 1, caught by exactly the test the record
+names (for the two second shapes, by the tests named in the
+table above). The remaining recorded mutations — P3's and
+P5's shared sites, P6's reload fallback and its
+boolean-as-number — were run first-hand in the completion
+pass on the same production code and are not re-run here;
+no production file they touch changed in between.
