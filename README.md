@@ -37,9 +37,9 @@ Shared Secret: "YOUR_SECRET_STRING"
 Run a job that retrieves the system clock and then display it here.
 ```
 IETF Internet-Drafts:
-Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
-Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
-IETF Status: [docs/ietf/STATUS.md](docs/ietf/STATUS.md).
+- Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
+- Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
+- IETF Status: [docs/ietf/STATUS.md](docs/ietf/STATUS.md).
 
 **No mailbox yet?** `python3 runner/runner.py --config config.json
 --local-test` runs the whole loop in process: you play the SI in a
