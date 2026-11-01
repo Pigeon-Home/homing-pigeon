@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.26 - 2026-11-01
+
+- Fix: PowerShell scripts are staged with a UTF-8 BOM so Windows PowerShell 5.1 reads non-ASCII literals as UTF-8.
+- The corpus banked since 3.15.25 rides along (Menlo Park bank 209, Germany bank 15).
+
 ## 3.15.25 - 2026-11-01
 
 - Dossier: output shapes on the Germany rig, and the PowerShell script encoding bug found by the literal non-ASCII shape.
