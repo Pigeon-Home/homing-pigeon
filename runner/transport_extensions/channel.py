@@ -153,7 +153,14 @@ def pending_results(channel):
         if fname in ("done", "failed"):
             continue
         path = os.path.join(d["outbox"], fname)
-        if not os.path.isfile(path) or os.path.islink(path):
+        if os.path.islink(path):
+            # Following the link would read some other file, and
+            # skipping it made the result invisible, so the queue
+            # acked the job with nothing stored.
+            if result_file_id(fname):
+                refuse_symlink_result(channel, fname)
+            continue
+        if not os.path.isfile(path):
             continue
         try:
             if os.path.getsize(path) > FILE_MAX_BYTES:
@@ -218,6 +225,33 @@ def refuse_result(channel, fname, reason):
             f"outbox/failed/ for the runner's stub", "WARN")
     except OSError as e:
         log(f"cannot set aside refused result {fname}: {e}", "WARN")
+
+
+def refuse_symlink_result(channel, fname):
+    """A result name that is a symlink is not a result. The link
+    is removed without being followed, and a real empty file is
+    left where the sweep looks, so the job gets a stub instead
+    of being acked with nothing stored."""
+    d = dirs(channel)
+    named_id = result_file_id(fname)
+    if not named_id:
+        return
+    failed = os.path.join(d["outbox"], "failed")
+    src = os.path.join(d["outbox"], fname)
+    dest = os.path.join(failed, named_id + ".result.txt")
+    reason = "result file was a symlink; not followed"
+    try:
+        os.makedirs(failed, exist_ok=True)
+        if not os.path.lexists(dest):
+            _atomic_write(dest, "")
+        _atomic_write(os.path.join(failed, named_id + ".refused.txt"),
+                      reason + "\n")
+        os.unlink(src)
+    except OSError as e:
+        log(f"cannot set aside symlink result {fname}: {e}", "WARN")
+        return
+    log(f"result {fname} refused for good: {reason}; set aside under "
+        f"outbox/failed/ for the runner's stub", "WARN")
 
 
 def ack_result(channel, fname):

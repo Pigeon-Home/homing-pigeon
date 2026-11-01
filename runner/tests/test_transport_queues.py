@@ -605,6 +605,34 @@ class QueuePipeTest(unittest.TestCase):
             self.assertTrue(os.path.isfile(
                 os.path.join(d["outbox"], "j1.target.txt")))
 
+    def test_a_symlink_result_is_not_followed_and_does_not_finish_the_job(self):
+        # A link was not a file the listing would post, so it was
+        # skipped. The job was acked, and nothing was stored.
+        # Following the link would have read some other file.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            os.replace(os.path.join(d["inbox"], "j1.job.txt"),
+                       os.path.join(d["inbox_done"], "j1.job.txt"))
+            secret = os.path.join(self.channel, "secret.txt")
+            with open(secret, "w", encoding="utf-8") as fh:
+                fh.write("not-for-the-queue\n")
+            os.symlink(secret, os.path.join(d["outbox"], "j1.result.txt"))
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", w.state.jobs)
+            self.assertFalse(os.path.lexists(
+                os.path.join(d["outbox"], "j1.result.txt")))
+            failed = os.path.join(d["outbox"], "failed")
+            stored = os.path.join(failed, "j1.result.txt")
+            self.assertTrue(os.path.isfile(stored))
+            self.assertFalse(os.path.islink(stored))
+            with open(stored, encoding="utf-8") as fh:
+                self.assertNotIn("not-for-the-queue", fh.read())
+
     def test_two_ids_that_differ_past_120_characters_both_finish(self):
         # The channel kept 120 characters of the id. A queue id is
         # 128. These two shared one inbox file, the result's name

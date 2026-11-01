@@ -196,7 +196,8 @@ one we'd recommend to anyone who winces at the word "email."
   result, not under the suffixed filename: the sweep reads
   `<id>.result.txt`, and the other name never got a stub, so the
   job stayed leased. A result file that is not UTF-8, or that
-  has no blank line, is set aside the same way. The sweep still
+  has no blank line, or that is a symlink, is set aside the
+  same way. The link is not followed. The sweep still
   answers it: the id is the file's name when the body does not
   name one. Moving that pair to done without a stub finished the
   job with nothing stored. A file whose subject names a different job is left where it
