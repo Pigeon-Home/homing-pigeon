@@ -48,9 +48,9 @@ The fleet's Windows seat. Two jobs:
 2. Fuzzing capacity on the platform the other rigs do not cover:
    8 cores and 16 GB against the de_aztec corpus tooling.
 
-The San Francisco droplet retires once this seat is proven,
-and its $12 a month folds into this machine's cost. Until then
-both run.
+San Francisco is not retired: the droplet is kept, its
+fuzzing stopped on 1-Nov-2026, and the box sits idle at $12 a
+month.
 
 ## The setup order
 
@@ -225,12 +225,60 @@ own portable git.
   spellings, a script that arrives already carrying a mark,
   and the no-mark rule for `sh` and Python scripts; 18
   assertions failed before the fix and the family passes
-  after). The fix sits in the held-fixes branch and lands on
-  main in the next shared commit window; a rig build carrying
-  it still needs installing here before the literal shape can
-  pass live. One scope note stays open: a script fetched from
+  after). The fix has since landed on main as commit
+  da80e33e; a rig build carrying it still needs installing
+  here before the literal shape can pass live. One scope
+  note stays open: a script fetched from
   a URL is staged with its downloaded bytes untouched, so a
   BOM-less `.ps1` served over the wire has the same exposure.
+
+- **The Oracle on Windows, and a console encoding bug
+  (1 Nov 2026).** Two jobs exercised the deterministic Oracle
+  on this rig. The first (c5ef73a1) declared five queries in
+  its result policy — attest, grep, tail, ask and senses.
+  Attest answered true for exit_zero; senses answered with a
+  real alert from the box (a registry services change, filed
+  that morning); ask was refused as inference_unconfigured;
+  and grep and tail were refused on policy, because this
+  rig's view ceiling is attested and raw output lines never
+  cross under that view. All five answers are the designed
+  ones. The job's own read-back confirmed the posture:
+  oracle_mode is deterministic, the profile is pi-light,
+  transports are file only, the config's inference block
+  carries an empty endpoint and an empty model, and no
+  Ollama process runs — no model is configured or loaded.
+  The second job (75563043) ran the installed binary's
+  terminal chat (`--oracle-cli`) on the box and asked what
+  jobs have run. The ask round trip worked at the record
+  layer: the chat log on the box holds the open, the
+  question, an answer assembled from the box's records (the
+  job index, newest first, with retained summaries and
+  notable lines, under the deterministic header), and the
+  close. No model took part. But the answer never reached
+  the screen: printing it raised UnicodeEncodeError and the
+  chat process died with a traceback. The records carry
+  characters the Windows console's cp1252 text layer cannot
+  encode — the Chinese and Japanese text and the duck emoji
+  from the output-shapes jobs are in the retained output the
+  answer is assembled from — so on this box the
+  deterministic answer is unprintable by construction
+  whenever an earlier job printed such text. The loopback
+  window does not have the fault: it encodes its body as
+  UTF-8 explicitly. The fix makes the terminal chat's
+  default printer write an unencodable answer to the
+  console's raw buffer as UTF-8 when there is one, and
+  otherwise print it with the characters the console cannot
+  carry replaced, in the console's own encoding. It is
+  pinned by a new test family
+  (`runner/tests/test_oracle_cli_encoding.py`: deterministic
+  and model answers against buffer and no-buffer cp1252
+  consoles, exotic characters in runs at the answer's
+  edges, plain ASCII unchanged; 5 of 6 failed before the
+  fix, the family and the touched suites pass after). The
+  fix sits in a held commit and lands on main at the next
+  shared window; a rig build carrying it still needs
+  installing here before the chat can be shown live end to
+  end.
 
 ## The upgrade pause: a supposition, written before measuring
 
@@ -244,6 +292,73 @@ test that follows it is a real test of it.
 
 Supposition, recorded before measuring: a remote upgrade swaps only the runner program. The fuzzing grow runs as its own processes from the rig's own clone, so its threads are never stopped by an upgrade and no fuzzing work is thrown away. The runner itself is down only while the applier stops it, installs, and starts it again — expected to be seconds, and in any case under a minute. The only work an upgrade can throw away is a job in flight on the runner at that moment, which would need to be sent again; no campaign state is lost, because the corpus lives on disk and banks every hour. Predicted measurement: runner pause under one minute, fuzzing work lost zero minutes.
 
+### What the test found (1-Nov-2026)
+
+The upgrade key half of the test landed in full. The upgrade
+secret and its key policy are installed in the rig's config,
+put there by a signed job through the runner (job 01176c3f);
+the policy allows only exec jobs, pins one staging script, and
+allows only the Windows release package and its checksum file.
+The negative test behaved exactly as designed: a clock job
+signed with the upgrade key was turned away for not being the
+pinned script, and a clock job under the ordinary key passed
+after the restart with a true clock.
+
+The upgrade itself could not be run, so the predicted pause
+has no measurement yet. The host half of the procedure — the
+applier, a scheduled task that watches for a staged release,
+stops the runner, installs, and starts it again — is not
+installed on this rig: there is no such task on the box and
+nothing in its install locations, checked live before the
+test. Installing it was held for the owner's word after the
+kit file's read was flagged by a safety check in the session
+running the test. Until an applier is in place, a staged
+upgrade has nothing to act on it, and there is no outcome
+file to read a pause from.
+
+Two smaller facts were measured on the way, both from the
+runner restart the key install needed:
+
+- A plain restart of the runner on this rig costs about 8
+  seconds: the stop was issued at 11:42:01 box time and the
+  restarted runner's startup lines are in its log at 11:42:09,
+  watching its inbox a second later.
+- The grow never noticed the restart. Its loop process and
+  both lanes' processes hold the same start times before and
+  after (the loop since the day before, the lanes since the
+  cycle start at 11:26:10), and its log shows no gap beyond
+  its normal rhythm. That is direct evidence for the
+  supposition's mechanism — the grow runs independently of
+  the runner — observed at restart scale.
+
+Verdict on the supposition: untested as written, with its
+load-bearing claim supported. The claim that an upgrade
+throws away no fuzzing work held for the one runner stop
+performed. The runner-pause prediction (under a minute) sits
+comfortably with an 8-second plain restart, but a real
+upgrade adds a fresh checksum fetch and a full install that a
+restart does not have, so the prediction stays a prediction
+until the applier's first live run measures it. Work thrown
+away by that restart: no fuzzing work, and no job was in
+flight to lose.
+
+Cadence consequence: the number the cadence decision waits
+on does not exist yet, so no cadence change is made on this
+evidence. The standing rule — an upgrade every two or three
+releases, keeping every runner on a build an hour or two old
+at most — stays in force until the measurement lands. The
+standing upgrade automation stops at the same door: it can
+watch the gap between the rig's build and the newest release,
+but it cannot drive an upgrade until the applier is installed
+on the rig, and it will not send upgrade jobs into that gap.
+A standing hourly watch (germany-remote-upgrade-watch) now
+records that gap and the applier's presence; it is gated to
+drive an upgrade only once the applier is on the box and this
+section holds a measured pause, and the cadence it will use
+is the one that measurement supports — every release if an
+upgrade throws away about a minute of work or less, every
+three releases if it throws away several minutes.
+
 ## What remains
 
 1. The `job_user` divergence on Windows (see the enforcement
@@ -254,7 +369,8 @@ Supposition, recorded before measuring: a remote upgrade swaps only the runner p
    couple of days: protection probes, timeouts, output
    shapes, restart resilience, and fuzzing slices on the
    8 cores.
-4. San Francisco's retirement, now that the seat is proven.
+4. San Francisco is not retired: the droplet is kept, its
+   fuzzing stopped on 1-Nov-2026, and the box sits idle.
 
 ## First commit from this machine
 

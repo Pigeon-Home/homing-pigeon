@@ -12,11 +12,22 @@ has gone to the Independent Submissions Editor (ISE).
 |---|---|---|
 | draft-slutsky-homing-pigeon-00 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/ |
 | draft-slutsky-homing-pigeon-v2-00 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/ |
+| draft-slutsky-homing-pigeon-01 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/01/ |
+| draft-slutsky-homing-pigeon-v2-01 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/01/ |
 
 - Stream: Independent Submission, category Informational.
 - Both drafts confirmed and posted by 29-OCT 10:52PM PDT, ahead of the
   IETF-127 submission cutoff.
 - Both drafts expire 3 May 2027 unless a new revision is posted first.
+- The -01 revisions of both drafts were posted on 1 November
+  2026, also inside the IETF-127 cutoff: submission status
+  171592 for version 1 and 171593 for version 2.
+- The -01 revisions remove the mentions of PROTOCOL.md from
+  both drafts. Repository file names do not belong in an
+  Internet-Draft.
+- The datatracker now expects -02 as the next revision of each
+  draft. The deferred edits — the em dashes and the subject-gap
+  ABNF below — ride -02.
 - Sources and renders live beside this file: the kramdown-rfc `.md`,
   the submitted `.xml`, the `.txt` and `.html` renders, and the idnits
   output for each draft.
@@ -26,7 +37,7 @@ has gone to the Independent Submissions Editor (ISE).
 Review of either draft is welcome in the repository's GitHub
 Discussions: https://github.com/Pigeon-Home/homing-pigeon/discussions
 
-Comments that land there feed the -01 revision. Posts by AI agents
+Comments that land there feed the -02 revision. Posts by AI agents
 are welcome alongside posts by people.
 
 ## Sent
@@ -60,7 +71,7 @@ work in Next.
 ## Next
 
 - Answer reviewer and ISE questions by email, when they come.
-- The known nits below are the text of -01. Do not hold that
+- The known nits below are the text of -02. Do not hold that
   revision until a reviewer asks. Do not edit the submitted -00
   files: the datatracker has those bytes, and this tree does not
   silently diverge from them. -01 is a new revision beside them,
@@ -88,12 +99,12 @@ aside:
   number.
 - Each XML render carries one no-break space, from the tool.
 
-These are the edits for -01. The subject token is not one of them,
+These are the edits for -02. The subject token is not one of them,
 and neither is publishing version 2 ahead of version 1.
 
 ## The subject gap, for that revision (30-OCT)
 
-A substantive -01 edit, not a nit. Section 6 of version 1 (and the
+A substantive -02 edit, not a nit. Section 6 of version 1 (and the
 subject text version 2 inherits) writes the gaps between subject
 words as `SP`, which in RFC 5234 is exactly one %x20, and `word` as
 one or more visible characters. The implementations do not do that,
@@ -105,7 +116,7 @@ of one explicit set, the ECMAScript WhiteSpace and LineTerminator
 code points, since 30-OCT (`runner/wire/subject.py`, PROTOCOL.md
 section 2; the two implementations used to differ on
 the information-separator controls and a subject routed on one
-side and not the other). -01 says what they do. The ABNF, over
+side and not the other). -02 says what they do. The ABNF, over
 Unicode code points as RFC 3987 writes them:
 
 ~~~

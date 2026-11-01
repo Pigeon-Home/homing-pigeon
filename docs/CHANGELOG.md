@@ -4,6 +4,24 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.32 - 2026-11-01
+
+- Fix: --oracle-cli no longer dies on answers its console cannot encode.
+- The corpus banked since 3.15.31 rides along (Germany bank 19, Menlo Park banks 214-215).
+
+## 3.15.31 - 2026-11-01
+
+- Dossier: the Oracle on Windows, and a console encoding bug found by it.
+
+## 3.15.30 - 2026-11-01
+
+- The corpus banked since 3.15.29 rides along (Germany bank 18, Menlo Park bank 213).
+
+## 3.15.29 - 2026-11-01
+
+- Docs: the -01 draft postings are recorded, the upgrade-pause conclusions name the standing upgrade watch, and the dossier premise on San Francisco is corrected.
+- The corpus banked since 3.15.28 rides along (Germany bank 17, Menlo Park banks 211-212).
+
 ## 3.15.28 - 2026-11-01
 
 - Docs: the upgrade-pause supposition is recorded before measuring.

@@ -16,6 +16,44 @@ except ImportError:  # running from inside runner/ as __main__
     from ops.live import _runner  # type: ignore
 import email
 
+def _console_print(text) -> None:
+    """print() that survives a console that cannot encode the text.
+
+    An Oracle answer is assembled from the box's own records (the
+    deterministic answer) or a model's words, and either can carry
+    characters the console's text layer cannot encode -- on Windows
+    that layer is cp1252, and a job that once printed Chinese text
+    or an emoji makes every later deterministic answer carry them.
+    Plain print() raised UnicodeEncodeError partway through such an
+    answer and killed the whole --oracle-cli door (Germany rig,
+    1-Nov-2026). The answer instead goes to the console's raw
+    buffer as UTF-8 when there is one (the shape the parallel test
+    reporter's fix uses), and otherwise prints with the characters
+    the console cannot carry replaced, in its own encoding. The
+    chat never dies over an answer's characters.
+    """
+    try:
+        print(text)
+        return
+    except UnicodeEncodeError:
+        pass
+    out = sys.stdout
+    buf = getattr(out, "buffer", None)
+    if buf is not None:
+        try:
+            buf.write((str(text) + "\n").encode("utf-8"))
+            buf.flush()
+            return
+        except Exception:
+            pass
+    enc = getattr(out, "encoding", None) or "utf-8"
+    try:
+        print(str(text).encode(enc, "replace").decode(enc))
+    except Exception:
+        print(str(text).encode("utf-8", "replace").decode(
+            "utf-8", "replace"))
+
+
 def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
     """Chat with the Oracle in the terminal. Does not poll the mailbox.
 
@@ -29,7 +67,7 @@ def oracle_cli(cfg, cfg_path=None, input_fn=None, print_fn=None) -> int:
     if input_fn is None:
         input_fn = input
     if print_fn is None:
-        print_fn = print
+        print_fn = _console_print
     if not isinstance(cfg, dict):
         cfg = {}
     base = R._base_dir_for(cfg, cfg_path)
