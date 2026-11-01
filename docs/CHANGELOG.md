@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.14 - 2026-11-01
+
+- The corpus banked since 3.15.13 rides along.
+
 ## 3.15.13 - 2026-11-01
 
 - Worker agents: the page is generalized to external agent
