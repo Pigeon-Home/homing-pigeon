@@ -1639,7 +1639,32 @@ def _channel_sequence(spec):
         targets = [f for f in outbox if f.endswith(".target.txt")]
         results = [f for f in outbox if f not in targets]
         want = len(parsed) * (2 if mode == "two" else 1) if replying else 0
-        want_targets = len(parsed) if mode in ("reply", "two", "touch") else 0
+        # A second file for one ident is <ident>.result-N.txt. Its
+        # sidecar is still <ident>.target.txt: the pipe reads one
+        # target per job, not one per collision file. Two inbox
+        # names that strip to one stem (bm-0021 and bm-0021.job.txt,
+        # or a name whose unsafe characters clean to that stem) are
+        # that one job. A case-folding filesystem also stores
+        # a.target.txt and A.target.txt as one file.
+        probe = os.path.join(base, "._hp_case_A")
+        try:
+            with open(probe, "w"):
+                pass
+            folds = os.path.exists(os.path.join(base, "._hp_case_a"))
+        finally:
+            try:
+                os.remove(probe)
+            except OSError:
+                pass
+
+        def _target_ident(fname):
+            stem = (fname[:-len(".job.txt")]
+                    if fname.endswith(".job.txt") else fname)
+            rid = re.sub(r"[^A-Za-z0-9._-]", "_", stem)
+            return rid.lower() if folds else rid
+
+        want_targets = (len({_target_ident(n) for n in parsed})
+                        if mode in ("reply", "two", "touch") else 0)
         if len(results) != want or len(targets) != want_targets:
             raise Crash("contract", f"after {mode}, {want} result files "
                         f"with {want_targets} target sidecars expected and "
