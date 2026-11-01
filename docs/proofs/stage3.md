@@ -222,6 +222,52 @@ configurations in `stage2.md`'s table held. There is
 therefore no trace left unclassified, and no trace in either
 class that this reconciliation found to be a code defect.
 
+## Independent re-run of the stage 2 checks
+
+The model and its recorded results were treated as unverified
+input to this stage, not as ground truth: a reconciliation
+against a model whose own checks were taken on trust would
+prove nothing about either side. Every configuration named in
+`stage2.md` was therefore re-run from the files on this branch,
+with the tooling `stage2.md` names — TLC 2.19 from the TLA+
+tools `v1.7.4` jar. The one environment difference is the Java
+runtime: 21 here, 17 in `stage2.md`'s record. The results are
+identical to the digit, so the difference does not touch any
+claim.
+
+| Configuration | `stage2.md` records | This re-run |
+|---|---|---|
+| `GateEnforce.cfg` | holds; 3,095,432 generated, 2,309,000 distinct | holds, no error; 3,095,432 generated, 2,309,000 distinct, depth 18 |
+| `GateDefault.cfg` | holds; 3,106,576 generated, 2,320,144 distinct | holds, no error; 3,106,576 generated, 2,320,144 distinct, depth 18 |
+| `GateAudit.cfg` | holds; 3,106,576 generated, 2,320,144 distinct | holds, no error; 3,106,576 generated, 2,320,144 distinct, depth 18 |
+| `Claim.cfg` | holds; 7 generated, 5 distinct | holds, no error; 7 generated, 5 distinct |
+| `GateWitness.cfg` | `NothingExecutes` fails, as expected | `NothingExecutes` violated; 2,309,000 distinct states explored |
+| `GateDefaultWitness.cfg` | `AudienceWasRequired` fails, as expected | `AudienceWasRequired` violated; 2,320,144 distinct states explored |
+
+The remaining numeric claims in `stage2.md` were checked the
+same way: the enforce run computes 786,432 initial states,
+exactly the figure recorded (and exactly the size of the
+`Messages` set — eighteen booleans and three claim states);
+the fingerprint collision estimates printed by the re-run are
+9.8E-8 optimistic and 5.2E-7 from the actual fingerprints,
+which is the "on the order of 1e-7" the record states; and
+the depth of each gate search is 18, as recorded. The
+explanations in `stage2.md` for the differences between
+configurations also check out against the model as written:
+enforce explores fewer states because a failed audience check
+stops the handling at step 5, and audit and default explore
+identical spaces because audit's extra work is setting
+`noted`, which the default run's states already vary.
+
+The end state of this section is the one the stage required:
+every claim in `stage2.md` about what was checked and what
+the checker found is confirmed by a run performed for this
+reconciliation. No claim in `stage2.md` is left flagged as
+unconfirmed, because none needed to be — and had a count or a
+result differed, the difference would have been recorded here
+as a finding against the record, in the same plain terms as
+F1 to F4.
+
 ## Verdict
 
 Every model step in `Gate.tla` matches a code location that
