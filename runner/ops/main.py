@@ -101,6 +101,21 @@ def main() -> int:
                       "sandbox, or set confinement to audit or off.",
                       file=sys.stderr)
                 return 2
+        # Same refuse class: job_user on enforce is a POSIX setuid
+        # demote; on Windows the mechanism cannot engage, and until
+        # this check the mode was accepted and silently did nothing
+        # (jobs ran as the runner's own account, found live on the
+        # Germany rig, 2026-10-31).
+        if R._security.sec_mode(cfg, "job_user") == "enforce" \
+                and getattr(R, "_job_user_startup_problem", None) is not None:
+            problem = R._job_user_startup_problem(cfg)
+            if problem:
+                print("config error: security.modes.job_user is "
+                      "enforce but the mechanism cannot engage: "
+                      + problem + ". Refusing to start; set "
+                      "job_user to audit or off.",
+                      file=sys.stderr)
+                return 2
         if R._security.sec_mode(cfg, "audience") != "off" \
                 and not cfg.get("runner_id"):
             R.log("WARN: security.modes.audience is not off but "
@@ -191,7 +206,11 @@ def main() -> int:
     # (service, automation) keeps the fail-fast config error.
     if not args.local_test and not args.oracle and not args.oracle_cli \
             and R._setup is not None:
-        reason = R._setup.needs_setup(cfg)
+        try:
+            _gate_transports = R._enabled_transports(cfg)
+        except Exception:
+            _gate_transports = None
+        reason = R._setup.mailbox_gate_reason(cfg, _gate_transports)
         if reason:
             if R._setup.is_tty() and R._setup.prompt_yes_no(
                     f"Mailbox auth not configured ({reason}). "

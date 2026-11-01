@@ -5,6 +5,7 @@ Extracted from runner.py.
 import json
 import os
 import signal
+import sys
 
 
 try:
@@ -110,14 +111,47 @@ def _finish_remediation(cfg, st, monitor, job, job_id, work,
     return member
 
 
+def job_user_startup_problem(cfg, platform=None):
+    """Why job_user on enforce cannot run here, or None when it can.
+
+    The mechanism is a POSIX setuid demote in a preexec hook; on
+    Windows there is no such hook, so enforce there changes what
+    the box protects while doing nothing (Decision 1's refuse
+    class, the same one confinement's startup_problem guards).
+    platform defaults to sys.platform; tests pass it.
+    """
+    if platform is None:
+        platform = sys.platform
+    if platform != "win32":
+        return None
+    sec = _runner()._security
+    if sec is None or sec.sec_mode(cfg, "job_user") != "enforce":
+        return None
+    return ("job_user (a POSIX setuid demote) is POSIX-only; "
+            "this machine is win32")
+
+
 def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
     R = _runner()
-    if _runner()._security is None or os.name == "nt":
+    if _runner()._security is None:
         return None
-    face = face or _runner()._JobUserFace()
     mode = _runner()._security.sec_mode(cfg, "job_user")
     if mode == "off":
         return None
+    if os.name == "nt":
+        # The demote cannot engage on Windows. Enforce is refused
+        # at startup (job_user_startup_problem); audit still leaves
+        # its record here instead of the old silent return.
+        _runner()._security.bump_evaluated(base_dir, "job_user")
+        try:
+            _runner()._security.write_audit_entry(
+                base_dir, "job_user", "unsupported_platform",
+                "job_user_posix_only", job_id=str(job_id), cfg=cfg,
+                mode=mode)
+        except Exception:
+            pass
+        return None
+    face = face or _runner()._JobUserFace()
     _runner()._security.bump_evaluated(base_dir, "job_user")
     sec = cfg.get("security")
     sec = sec if isinstance(sec, dict) else {}

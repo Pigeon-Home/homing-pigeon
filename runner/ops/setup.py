@@ -88,6 +88,23 @@ def needs_setup(cfg: dict) -> str | None:
     return None
 
 
+def mailbox_gate_reason(cfg: dict, transports) -> str | None:
+    """The startup gate's reason, or None when startup may proceed.
+
+    The gate guards mailbox auth, so it applies only when the
+    email transport is enabled. A runner with the email transport
+    off (a file-transport-only box) has no mailbox to set up: the
+    gate firing there sat the Germany rig's first boot forever at
+    a setup prompt for a mailbox it will never use (2026-10-31).
+    transports=None (the enabled set could not be read) keeps the
+    gate: fail toward asking, and the transport error itself is
+    reported by its own check later in startup.
+    """
+    if transports is not None and "email" not in transports:
+        return None
+    return needs_setup(cfg)
+
+
 def prompt_yes_no(text: str, default: bool = True) -> bool:
     """Yes/no prompt. Default shown in caps. EOF counts as the default."""
     try:
