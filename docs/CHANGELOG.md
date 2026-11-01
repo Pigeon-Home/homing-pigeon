@@ -4,6 +4,19 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.1 - 2026-10-31
+
+- **A result is not finished until it has left.** A file left
+  from a life already finished does not ack the next one. NATS
+  waits for the broker's PONG. A DTLS result stays until a
+  session can take it. Mail that cannot be built is not treated
+  as sent. A symlink, or a result the process cannot read, does
+  not finish the job. A refusal with no record stays in failed
+  until one can answer it. A file-transport job stays while its
+  result is still set aside.
+- The corpus banked since 3.15.0 rides along. No crash or slow
+  file stands.
+
 ## 3.15.0 - 2026-10-31
 
 - **3.14.47 published in one cycle.** Twenty-seven minutes from
