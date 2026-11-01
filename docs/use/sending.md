@@ -36,6 +36,98 @@ a bare name (`["bash"]`, `["sh"]`) that resolves under `/usr`. This
 was learned live on 31 Oct 2026: the same clock job failed with
 `/bin/sh` named and ran clean with the field left out.
 
+## The first real job: check out the repository and commit
+
+Once the clock reads true, the natural next job proves the whole
+loop at once: the rig checks out the owner's repository, makes a
+small change, commits, and pushes — the same motion every later
+setup step (credentials, tools, configuration) is built from.
+This example ran live on a fresh Windows runner over the file
+transport on 31 Oct 2026; over email the envelope is identical.
+
+Three rules of thumb, all earned the same day:
+
+1. **Assume a bare machine.** The runner's executable carries
+   everything it needs, but nothing else is installed — no git,
+   no Python. The job brings what it needs: here a portable git,
+   downloaded and unpacked inside its own work directory.
+2. **Declare what your tools carry.** The runner scans every
+   file a job produces, and a produced file that references a
+   credential store the script never mentioned is the authority
+   tripwire: the job is killed and its outputs quarantined. The
+   portable git's sample ssh client configuration names
+   `~/.ssh/id_rsa`, `~/.ssh/id_dsa` and `~/.ssh/id_ecdsa`, and
+   the first attempt died in eleven seconds for exactly that.
+   The script declares the three paths in its header comments —
+   declarations are read from the script's own text — and that
+   is the whole fix. Before sending a new job shape, rehearse
+   it: run the runner's own scanner (`runner/ops/paths.py`,
+   `runner/oracle/remediation.py`'s `classify_findings`) over
+   the files the job will produce.
+3. **Produce only what the job needs.** A full checkout of a
+   repository whose tests and docs discuss credential stores
+   produces more undeclared references than a script can
+   declare. The job checks out sparsely — only the file it
+   edits — and a guard refuses to commit if anything else
+   changed.
+
+The credential for the push travels as a job input file
+(`--inline-file github-pat.txt=...`) and is answered from that
+file through `GIT_ASKPASS`; it never appears on a command line
+and is never inside the checked-out tree.
+
+```powershell
+# Declared credential reference (portable git sample config): ~/.ssh/id_rsa
+# Declared credential reference (portable git sample config): ~/.ssh/id_dsa
+# Declared credential reference (portable git sample config): ~/.ssh/id_ecdsa
+$ErrorActionPreference = 'Stop'
+$work = $PWD.Path
+
+# portable git, brought by the job (bare-machine rule)
+Invoke-WebRequest -Uri 'https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.1/MinGit-2.47.0-64-bit.zip' -OutFile (Join-Path $work 'mingit.zip')
+Expand-Archive (Join-Path $work 'mingit.zip') -DestinationPath (Join-Path $work 'mingit') -Force
+$git = Join-Path $work 'mingit\cmd\git.exe'
+
+# sparse clone: only the file this job edits
+& $git clone --no-checkout 'https://github.com/Pigeon-Home/homing-pigeon.git' (Join-Path $work 'repo')
+$repo = Join-Path $work 'repo'
+& $git -C $repo sparse-checkout init --no-cone
+& $git -C $repo sparse-checkout set '/docs/reports/falkenstein-rig-2026-10-31.md'
+& $git -C $repo checkout
+Set-Location $repo
+& $git config user.name 'Muse'
+& $git config user.email 'muse@localhost'
+
+# the change
+$note = "`n## First commit from this machine`n`nAppended by a signed job through this machine's own runner, at $(Get-Date -Format o).`n"
+[IO.File]::AppendAllText((Resolve-Path 'docs\reports\falkenstein-rig-2026-10-31.md').Path, $note, (New-Object Text.UTF8Encoding($false)))
+
+# guard: exactly one file changed
+if ((& $git status --porcelain).Count -ne 1) { throw 'expected exactly one changed file' }
+& $git add 'docs/reports/falkenstein-rig-2026-10-31.md'
+& $git commit -m 'docs: first commit from this machine, through its own runner'
+if ($LASTEXITCODE -ne 0) { throw 'commit failed' }
+
+# push: the credential is answered from the job's own input file
+$ask = Join-Path $work 'askpass.cmd'
+Set-Content -Path $ask -Value "@echo off`r`ntype `"%~dp0github-pat.txt`"" -Encoding ascii
+$env:GIT_ASKPASS = $ask
+$env:GIT_TERMINAL_PROMPT = '0'
+& $git push 'https://x-access-token@github.com/Pigeon-Home/homing-pigeon.git' HEAD:main
+if ($LASTEXITCODE -ne 0) { throw 'push failed' }
+```
+
+Sent with no interpreter field (PowerShell is the Windows
+default), the GitHub credential as an inline input file, and a
+timeout sized for the downloads:
+
+```bash
+python3 runner/cloud/send_job.py new --secret <the-string> \
+  --script-file checkout-and-commit.ps1 \
+  --inline-file github-pat.txt=<path-to-credential-file> \
+  --timeout 900
+```
+
 ## Remote upgrade
 
 A runner can be upgraded remotely by anyone who holds its shared
