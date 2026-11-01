@@ -6,13 +6,13 @@ read cold and in full — the reasoning is here, not in any
 conversation — so a reviewer who has never seen this branch can
 check the plan itself, not just its outputs.
 
-The work lives on the `testing` branch. Nothing here changes the
+The work lives on `main`. It began on a separate `testing`
+branch; that branch was merged into `main` in full on
+1-Nov-2026 and then closed and deleted, and the proof work
+continues on `main` from there. Nothing here changes the
 runner's behaviour; releases continue from `main` exactly as
-before, and a stage lands here only when its own definition of
-done is met.
-
-Merged to `main` on 1-Nov-2026: the proof work now lives on `main`
-and continues there.
+before, and a stage lands only when its own definition of done
+is met.
 
 ## What is being built, and why in this order
 
