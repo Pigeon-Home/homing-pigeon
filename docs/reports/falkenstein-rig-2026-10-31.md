@@ -232,6 +232,54 @@ own portable git.
   a URL is staged with its downloaded bytes untouched, so a
   BOM-less `.ps1` served over the wire has the same exposure.
 
+- **The Oracle on Windows, and a console encoding bug
+  (1 Nov 2026).** Two jobs exercised the deterministic Oracle
+  on this rig. The first (c5ef73a1) declared five queries in
+  its result policy — attest, grep, tail, ask and senses.
+  Attest answered true for exit_zero; senses answered with a
+  real alert from the box (a registry services change, filed
+  that morning); ask was refused as inference_unconfigured;
+  and grep and tail were refused on policy, because this
+  rig's view ceiling is attested and raw output lines never
+  cross under that view. All five answers are the designed
+  ones. The job's own read-back confirmed the posture:
+  oracle_mode is deterministic, the profile is pi-light,
+  transports are file only, the config's inference block
+  carries an empty endpoint and an empty model, and no
+  Ollama process runs — no model is configured or loaded.
+  The second job (75563043) ran the installed binary's
+  terminal chat (`--oracle-cli`) on the box and asked what
+  jobs have run. The ask round trip worked at the record
+  layer: the chat log on the box holds the open, the
+  question, an answer assembled from the box's records (the
+  job index, newest first, with retained summaries and
+  notable lines, under the deterministic header), and the
+  close. No model took part. But the answer never reached
+  the screen: printing it raised UnicodeEncodeError and the
+  chat process died with a traceback. The records carry
+  characters the Windows console's cp1252 text layer cannot
+  encode — the Chinese and Japanese text and the duck emoji
+  from the output-shapes jobs are in the retained output the
+  answer is assembled from — so on this box the
+  deterministic answer is unprintable by construction
+  whenever an earlier job printed such text. The loopback
+  window does not have the fault: it encodes its body as
+  UTF-8 explicitly. The fix makes the terminal chat's
+  default printer write an unencodable answer to the
+  console's raw buffer as UTF-8 when there is one, and
+  otherwise print it with the characters the console cannot
+  carry replaced, in the console's own encoding. It is
+  pinned by a new test family
+  (`runner/tests/test_oracle_cli_encoding.py`: deterministic
+  and model answers against buffer and no-buffer cp1252
+  consoles, exotic characters in runs at the answer's
+  edges, plain ASCII unchanged; 5 of 6 failed before the
+  fix, the family and the touched suites pass after). The
+  fix sits in a held commit and lands on main at the next
+  shared window; a rig build carrying it still needs
+  installing here before the chat can be shown live end to
+  end.
+
 ## The upgrade pause: a supposition, written before measuring
 
 How much work does a remote upgrade throw away? The question
