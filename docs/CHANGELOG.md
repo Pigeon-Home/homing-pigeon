@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.27 - 2026-11-01
+
+- Fix: every script is staged as exact bytes, so a Windows runner no longer rewrites a sender's LF line endings to CRLF (the 3.15.26 Windows build failure).
+- The corpus banked since 3.15.26 rides along (Germany bank 16, Menlo Park bank 210).
+
 ## 3.15.26 - 2026-11-01
 
 - Fix: PowerShell scripts are staged with a UTF-8 BOM so Windows PowerShell 5.1 reads non-ASCII literals as UTF-8.
