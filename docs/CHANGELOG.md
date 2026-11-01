@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.10 - 2026-11-01
+
+- Worker agents: an external agent on the task board,
+  documented as a pattern with OpenClaw as the worked example.
+
 ## 3.15.9 - 2026-11-01
 
 - The corpus banked since 3.15.8 rides along.
