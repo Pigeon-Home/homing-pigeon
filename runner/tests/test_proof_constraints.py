@@ -14,7 +14,9 @@ docs/proofs/constraints.md. Stage 4 added C17 and C18 (the
 result-policy ceiling and the sandbox shape's sources) and
 their pins, from the same code, and then C19 and C20 (the
 queues edge gates and the per-transport gate postures) with
-theirs.
+theirs. P4's pass added the key-policy behaviour pins under
+C14 and the new C21 and C22 (the key directory's precedence
+and the upgrade key arrangement) with theirs.
 """
 import hashlib
 import os
@@ -230,6 +232,187 @@ class GateShapePins(unittest.TestCase):
         # 256 bits and passes.
         strong = hashlib.sha384(b"proof-constraints-seed").hexdigest()[:64]
         S.validate_shared_secret(strong)
+
+
+class KeyPolicyPins(unittest.TestCase):
+    """C14/C21/C22: a key's policy binds exactly what it names.
+
+    These are behaviour pins, not source scans: they drive the
+    real check_key_policy and check_door_policy the way
+    handle_mail and the other doors drive them, with policies
+    built by the real build_key_policies.
+    """
+
+    PIN = hashlib.sha384(b"the pinned staging script").hexdigest()
+
+    def _policies(self, entry, key="upgrade"):
+        cfg = {"key_policies": {key: entry}}
+        return V.build_key_policies(cfg), cfg
+
+    def _upgrade(self):
+        # The recorded arrangement (C22) with a stand-in digest:
+        # execution only, one pinned script, a 300-second cap.
+        return self._policies({
+            "allowed_kinds": ["exec"],
+            "allowed_script_sha384": [self.PIN],
+            "max_timeout_sec": 300})
+
+    def test_c22_upgrade_key_accepts_only_the_pinned_script(self):
+        policies, cfg = self._upgrade()
+        job = {"kind": "exec", "script": "the pinned staging script"}
+        self.assertIsNone(
+            V.check_key_policy(policies, "upgrade", cfg, job))
+        # The clock job's shape: an execution job carrying any
+        # other script is refused, with the recorded reason.
+        clock = {"kind": "exec", "script": "date"}
+        self.assertEqual(
+            V.check_key_policy(policies, "upgrade", cfg, clock),
+            "script is not in this key's allowlist")
+
+    def test_c14_pinning_refuses_url_missing_and_beside(self):
+        policies, cfg = self._upgrade()
+        url_only = {"kind": "exec", "script_url": "https://x/y"}
+        self.assertIsNotNone(
+            V.check_key_policy(policies, "upgrade", cfg, url_only))
+        # A script_url beside the pinned script is refused too:
+        # the executor stages the URL first when both are present.
+        beside = {"kind": "exec", "script": "the pinned staging script",
+                  "script_url": "https://x/y"}
+        self.assertIsNotNone(
+            V.check_key_policy(policies, "upgrade", cfg, beside))
+        missing = {"kind": "exec"}
+        self.assertIsNotNone(
+            V.check_key_policy(policies, "upgrade", cfg, missing))
+
+    def test_c14_kinds_fence_refuses_every_other_kind(self):
+        policies, cfg = self._upgrade()
+        for kind in ("ping", "sensor_alert", "recipe", "change"):
+            job = {"kind": kind, "script": "the pinned staging script"}
+            self.assertIsNotNone(
+                V.check_key_policy(policies, "upgrade", cfg, job), kind)
+        # A job with no kind at all is refused by the same fence.
+        self.assertIsNotNone(V.check_key_policy(
+            policies, "upgrade", cfg,
+            {"script": "the pinned staging script"}))
+
+    def test_c14_timeout_cap_binds_the_pinned_key(self):
+        policies, cfg = self._upgrade()
+        over = {"kind": "exec", "script": "the pinned staging script",
+                "timeout_sec": 301}
+        self.assertIsNotNone(
+            V.check_key_policy(policies, "upgrade", cfg, over))
+        at = {"kind": "exec", "script": "the pinned staging script",
+              "timeout_sec": 300}
+        self.assertIsNone(V.check_key_policy(policies, "upgrade", cfg, at))
+
+    def test_c14_no_entry_unrestricted_unless_default_deny(self):
+        job = {"kind": "exec", "script": "anything at all"}
+        self.assertIsNone(V.check_key_policy({}, "worker", {}, job))
+        deny = {"key_policies_default_deny": True}
+        self.assertIsNotNone(V.check_key_policy({}, "worker", deny, job))
+        # The owner's key is exempt from the flag.
+        self.assertIsNone(V.check_key_policy({}, "", deny, job))
+
+    def test_c14_policy_is_the_keys_not_the_names(self):
+        strong = hashlib.sha384(b"proof-constraints-seed").hexdigest()[:64]
+        secrets = V.build_secrets({"shared_secret": strong})
+        fp = S.key_fingerprint(strong)
+        entry = {"allowed_kinds": ["exec"],
+                 "allowed_script_sha384": [self.PIN]}
+        policies = V.build_key_policies({"key_policies": {"": entry}})
+        job = {"kind": "exec", "script": "some other script"}
+        # An entry written for the default key binds it under its
+        # fingerprint exactly as under the empty id: the policy is
+        # read by the key's value, under any of its names.
+        self.assertIsNotNone(V.check_key_policy(
+            policies, fp, {}, job, secrets=secrets))
+        self.assertIsNotNone(V.check_key_policy(
+            policies, "", {}, job, secrets=secrets))
+        good = {"kind": "exec", "script": "the pinned staging script"}
+        self.assertIsNone(V.check_key_policy(
+            policies, fp, {}, good, secrets=secrets))
+        # And the deny flag never refuses the owner's key under
+        # its fingerprint.
+        deny = {"key_policies_default_deny": True}
+        self.assertIsNone(V.check_key_policy(
+            {}, fp, deny, good, secrets=secrets))
+
+    def test_c14_recipes_and_interpreters_fences(self):
+        policies, cfg = self._policies({
+            "allowed_kinds": ["exec", "recipe"],
+            "allowed_interpreters": [["sh"]],
+            "allowed_recipes": ["nightly"]}, key="worker")
+        bad = {"kind": "exec", "script": "x", "interpreter": ["bash"]}
+        self.assertIsNotNone(
+            V.check_key_policy(policies, "worker", cfg, bad))
+        good = {"kind": "exec", "script": "x", "interpreter": ["sh"]}
+        self.assertIsNone(
+            V.check_key_policy(policies, "worker", cfg, good))
+        # A recipe's interpreter is the owner's: the recipes list
+        # governs it and the interpreter list does not bind it.
+        rec = {"kind": "recipe", "recipe": "nightly",
+               "interpreter": ["bash"]}
+        self.assertIsNone(
+            V.check_key_policy(policies, "worker", cfg, rec))
+        rec2 = {"kind": "recipe", "recipe": "other"}
+        self.assertIsNotNone(
+            V.check_key_policy(policies, "worker", cfg, rec2))
+
+    def test_c14_build_validates_and_lowercases(self):
+        with self.assertRaises(RuntimeError):
+            V.build_key_policies(
+                {"key_policies": {"k": {"allowed_script_sha384": []}}})
+        with self.assertRaises(RuntimeError):
+            V.build_key_policies(
+                {"key_policies": {"k": {"allowed_kinds": []}}})
+        with self.assertRaises(RuntimeError):
+            V.build_key_policies(
+                {"key_policies": {"k": {"max_timeout_sec": True}}})
+        policies, _cfg = self._policies(
+            {"allowed_script_sha384": [self.PIN.upper()]}, key="k")
+        self.assertEqual(policies["k"]["allowed_script_sha384"],
+                         [self.PIN])
+
+    def test_c14_build_refuses_one_key_entered_twice(self):
+        strong = hashlib.sha384(b"proof-constraints-seed").hexdigest()[:64]
+        fp = S.key_fingerprint(strong)
+        cfg = {"shared_secret": strong,
+               "key_policies": {"": {"allowed_kinds": ["exec"]},
+                                fp: {"allowed_kinds": ["exec"]}}}
+        with self.assertRaises(RuntimeError):
+            V.build_key_policies(cfg)
+
+    def test_c21_directory_speaks_before_the_policy(self):
+        policies, _cfg = self._upgrade()
+        job = {"kind": "exec", "script": "the pinned staging script"}
+        # The policy allows this job; a directory that refuses
+        # the key refuses it first.
+        cfg = {"key_directory": {"upgrade": {"state": "compromised"}}}
+        self.assertEqual(
+            V.check_key_policy(policies, "upgrade", cfg, job),
+            "key is compromised")
+        # A held key with no entry in a configured directory is
+        # refused as well.
+        cfg2 = {"key_directory": {"other": {"state": "in_use"}}}
+        self.assertEqual(
+            V.check_key_policy(policies, "upgrade", cfg2, job),
+            "no key directory entry for this key")
+
+    def test_c14_door_policy_binds_the_other_doors(self):
+        cfg = {"key_policies": {"upgrade": {
+            "allowed_kinds": ["exec"],
+            "allowed_script_sha384": [self.PIN]}}}
+        for door in ("query", "board", "v2"):
+            self.assertIsNotNone(
+                V.check_door_policy(cfg, None, "upgrade", door), door)
+        # The cancel door is exempt from the kinds list -- a key
+        # cancels its own jobs -- but not from the deny flag.
+        self.assertIsNone(
+            V.check_door_policy(cfg, None, "upgrade", "cancel"))
+        deny = {"key_policies_default_deny": True}
+        self.assertIsNotNone(
+            V.check_door_policy(deny, None, "worker", "query"))
+        self.assertIsNone(V.check_door_policy(deny, None, "", "query"))
 
 
 class ResultPolicyCeilingPins(unittest.TestCase):
@@ -480,6 +663,18 @@ class DocsSyncPins(unittest.TestCase):
         doc = _read(os.path.join("docs", "proofs", "properties.md"))
         for token in ("TransGate.tla", "stage4-p3.md",
                       "A waived gate is a waived property"):
+            self.assertIn(token, doc)
+
+    def test_properties_doc_states_p4_in_full(self):
+        doc = _read(os.path.join("docs", "proofs", "properties.md"))
+        for token in ("KeyPolicy.tla", "stage4-p4.md",
+                      "check_key_policy"):
+            self.assertIn(token, doc)
+
+    def test_constraints_doc_carries_c21_and_c22(self):
+        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        for token in ("C21", "C22", "key_directory_verdict",
+                      "max_timeout_sec", "SHA384SUMS"):
             self.assertIn(token, doc)
 
     def test_properties_doc_states_p1_and_placeholders(self):

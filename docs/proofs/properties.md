@@ -1,10 +1,10 @@
 # Properties
 
 This file states the properties the proof work sets out to check.
-P1 is stated in full, precisely enough to model, and P2 and P3
-are now stated in full as well (stage 4). P4 to P6 are named
-placeholders with one-line statements; each will be stated in
-full, in its own stage, before any model of it is built
+P1 is stated in full, precisely enough to model, and P2, P3,
+and P4 are now stated in full as well (stage 4). P5 and P6 are
+named placeholders with one-line statements; each will be stated
+in full, in its own stage, before any model of it is built
 (`GOALS.md` gives the order).
 
 Constraint identifiers (C1, C2, and so on) refer to
@@ -661,15 +661,191 @@ these shapes is a counterexample:
 The checked model, the configurations, and the witnesses are
 recorded in `stage4-p3.md`; the model is `TransGate.tla`.
 
+## P4. A named key can do only what its policy allows
+
+### Statement
+
+P4 is P1's clause 8 taken on its own, because it is the
+sharpest single-key claim the system makes. One key in
+particular carries it: the upgrade key, a named additional
+secret whose whole purpose is to stage a release, and whose
+policy pins it to that one act. The claim is that the pinning
+machinery — key policies, PROTOCOL.md section 14.1 — fences a
+key to exactly what its entry names, at the job's door and at
+the runner's other doors, and that the upgrade key's fence
+admits one shape only.
+
+The step this property speaks about is `check_key_policy`
+(`runner/wire/verify.py`, line 878), called at the job's door
+from `handle_mail` (step 10 of P1's check order, after the
+signature has verified and after freshness), again on the
+Oracle-repaired job before it can run (`runner/ops/mail.py`,
+line 382), and on the local-signals path
+(`runner/runner.py`, line 3990). The policy map it reads is
+built by `build_key_policies` (`runner/wire/verify.py`,
+line 485) at startup (`runner/ops/main.py`, line 140) and per
+poll cycle (`runner/ops/poll.py`, line 41). The other doors —
+query, board, version 2, cancel — apply the same entry through
+`check_door_policy` (`runner/wire/verify.py`, line 826).
+
+For every job decided at the policy step, all of the following
+hold:
+
+1. **The step speaks for the key that verified.** The key id
+   the step receives is the one `verify_body_keyed` returned —
+   the key whose secret verified the signature, selected
+   before any MAC work, with any other id refused as unknown
+   (C7). A job MUST NOT be verified under one key and judged
+   under another's policy; a holder of one key's secret cannot
+   present under another key's name, and cannot escape a
+   policy by naming no key, since the unnamed form selects the
+   default secret, whose signature the holder cannot produce.
+2. **The key directory speaks first.** Where a directory is
+   configured, its verdict is taken before the policy is read
+   (C21): a key it refuses — compromised, no entry, a closed
+   window, a mismatched fingerprint — is refused whatever its
+   policy allows, and an unreadable directory refuses the key.
+3. **No entry means unrestricted — with one flag, and never
+   against the owner.** A key with no policy entry is refused
+   at this step only where `key_policies_default_deny` is set
+   and the key is not the default key. The default key is
+   exempt from that flag under every name it answers to — the
+   empty id, its fingerprint, a stored name for the same
+   secret — because the step reads a key by its value, under
+   any of its names.
+4. **The policy is the key's, not the name's.** The entry is
+   found under any of the key's names (`policy_for`,
+   `runner/wire/verify.py`, line 380), and a configuration
+   that enters one key under two of its names is a startup
+   error. The verdict MUST NOT depend on which of its names a
+   sender used.
+5. **Kinds.** Where `allowed_kinds` is present, the job's kind
+   MUST be listed (lines 924 to 929). For the upgrade key,
+   whose list is `["exec"]` (C22), every other kind — ping,
+   sensor_alert, recipe, change, a job with no kind — is
+   refused at this fence, before any question about a script
+   arises.
+6. **Recipes and interpreters.** Where `allowed_recipes` is
+   present, a recipe or change job's recipe MUST be listed
+   (lines 930 to 936). Where `allowed_interpreters` is
+   present, the job's effective interpreter — its own, or the
+   configured default — MUST exactly match a listed list
+   (lines 938 to 944); the fence does not bind recipe and
+   change jobs, whose interpreter is the owner's.
+7. **Timeout.** Where `max_timeout_sec` is present, the job's
+   effective timeout — its own `timeout_sec`, or the
+   documented default — MUST NOT exceed the cap (lines 945 to
+   962). For the upgrade arrangement the cap is 300 seconds
+   (C22).
+8. **Script pinning.** Where `allowed_script_sha384` is
+   present and the job's kind is `exec`, the job MUST carry an
+   inline script whose SHA-384, over the script's UTF-8 bytes,
+   is in the policy's list (lines 963 to 982; the list's
+   entries are lowercased when the policy is built, line 553).
+   A `script_url` is refused under such a policy — alone, and
+   beside an allowlisted inline script, since the executor
+   stages the URL first when both are present — because its
+   content cannot be checked before download. A missing or
+   non-string script is refused. The branch does not run for
+   other kinds: a ping from a pinning key is governed by
+   clause 5 alone, exactly as section 14.1 states.
+9. **The fence stands at the other doors.** The same entry
+   binds the key at the query, board, and version 2 doors
+   through `check_door_policy`: a policy that lists
+   `allowed_kinds` admits a door only when it names the door,
+   and the deny flag refuses an entry-less additional key at
+   every door. The cancel door is exempt from the kinds list —
+   a key cancels only its own jobs — and is not exempt from
+   the directory or the deny flag. For the upgrade key,
+   `["exec"]` names no other door, so its messages are refused
+   at the query, board, and version 2 doors outright. The key
+   directory also gates the DTLS transport's PSK lookup (the
+   extension's `directory_lookup`), so a refused key opens no
+   session.
+10. **A repaired job is re-judged.** The one repair the runner
+    can make to a job — the Oracle's interpreter repair —
+    produces a job that is put through `check_key_policy`
+    again before execution, and the repair never touches the
+    script, so a repair MUST NOT launder a script past clause
+    8: the re-judged job faces the pinning branch with the
+    script it arrived with.
+11. **The surrounding fences are mode-gated, and the
+    statement says so.** The entry's env, file, and argument
+    constraints (`allowed_env`, `denied_env`, `allowed_files`,
+    `allow_file_urls`, `max_args`, `args_pattern`, and the
+    dangerous-env rule for pinned scripts) are computed as
+    findings by `check_policy_constraints`
+    (`runner/wire/verify.py`, line 1022) and applied behind
+    this step through `policy_env`, `policy_files`, and
+    `policy_args` (`runner/ops/mail.py`, lines 186 to 218):
+    in `enforce` a finding refuses, in `audit` it is recorded
+    and the job runs, with every mode `off` the findings are
+    not computed. In particular the upgrade arrangement's
+    `allowed_files` fence (C22) binds exactly when
+    `policy_files` is not `off`. Clauses 5 to 8 are not
+    mode-gated: they refuse in every posture.
+12. **A malformed policy never reaches the step.**
+    `build_key_policies` validates each entry as it builds:
+    a non-object entry, an empty or mistyped kinds,
+    interpreters, recipes, hashes, env or files list, a
+    boolean or sub-1 `max_timeout_sec`, an `args_pattern`
+    that does not compile or that backtracks on a hostile
+    probe, and one key entered twice are startup
+    configuration errors — refuse class (C14). The map the
+    step reads contains only validated entries, with only the
+    fields the builder carries.
+
+In short form:
+
+> A key's policy is a fence with that key's name on it: the
+> kinds it may run, the recipes, the interpreters, the
+> timeout, and — sharpest — the exact scripts, by SHA-384
+> digest. The upgrade key's fence admits one shape: an
+> execution job carrying the one pinned staging script,
+> inside its timeout cap. Every other shape from that key is
+> refused at the policy step, after the signature and before
+> execution; the same fence stands at the query, board, and
+> version 2 doors; and the key directory's refusal stands in
+> front of the fence at all of them.
+
+The short form is a summary. The twelve clauses above are the
+property. Where they differ, the clauses win.
+
+### What a counterexample would look like
+
+A counterexample to P4 is a single concrete handling — real,
+in the code, or exhibited by the model inside its space — in
+which a job is accepted past the policy step outside its
+key's fence. Any one of these shapes is a counterexample:
+
+- An execution job signed with the upgrade key carrying any
+  script but the pinned one — the clock job's shape — reaches
+  execution.
+- An execution job carrying a `script_url`, alone or beside
+  the pinned script, signed with a pinning key, reaches
+  execution.
+- A job of any other kind from the upgrade key — a ping, a
+  sensor alert, a recipe — performs its kind.
+- A job from a governed key executes with an interpreter its
+  entry does not list, a timeout over its cap, or a recipe
+  its entry does not name.
+- An additional key's verdict differs by the name it was
+  presented under, or an additional key with no entry runs a
+  job while `key_policies_default_deny` is set — or the
+  default key is refused by that flag under any of its names.
+- A key the directory refuses runs a job its policy would
+  allow.
+- A query, board, or version 2 message from the upgrade key
+  is admitted at that door.
+
+The checked model, the configurations, and the witnesses are
+recorded in `stage4-p4.md`; the model is `KeyPolicy.tla`.
+
 ## The placeholder properties
 
 Statements only. Each is taken up in full, in the order
 `GOALS.md` gives, before any model of it is built.
 
-- **P4. The upgrade key is pinned to one script.** A job signed
-  with the upgrade key executes only if it is an execution job
-  carrying the one inline script whose SHA-384 the key's policy
-  pins; every other shape from that key is refused (C14).
 - **P5. Replay cannot re-execute.** A job id executes at most
   once per runner state directory, and its result is delivered at
   least once, inside the two named windows of C15 and no others.

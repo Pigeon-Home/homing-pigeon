@@ -241,6 +241,32 @@ transport in the code presents a job whose own credential
 check failed, was bypassed, or was silently skipped. P4 to P6
 remain, in the order above.
 
+P4 has landed. The full statement is in `properties.md` —
+twelve clauses: the step speaks for the key that verified,
+the key directory's verdict stands in front of the policy,
+the policy is the key's and not the name's, and the fences
+(kinds, recipes, interpreters, timeout, and the script
+pinning) refuse in every posture, while the env, file, and
+argument constraints behind the step are mode-gated and are
+stated as such. The constraints it needed are C21 (the key
+directory's precedence) and C22 (the upgrade key
+arrangement) in `constraints.md`. The model is
+`KeyPolicy.tla`, a single-decision model of the policy step
+checked over the full policy space (24,576 initial states:
+every key, job shape, and per-field outcome against every
+policy deployment), with two witness configurations whose
+expected failures exhibit the pinned key's one permitted
+shape being accepted under its arrangement, and the owner's
+key running an ordinary job in a pinned deployment.
+`stage4-p4.md` is the record. No execution outside a built
+policy was found. One construction-side observation is
+recorded there: the policy builder carries only the fields
+it knows, so a misspelled field name in an entry is absent
+from the built policy without a word — the fence enforces
+the policy as built, and the gap between the written entry
+and the built one is the owner's to see. P5 and P6 remain,
+in the order above.
+
 ## Stage 5 — Conformance tests tying the model to the code
 
 **Contents.** For each checked property, a test family in

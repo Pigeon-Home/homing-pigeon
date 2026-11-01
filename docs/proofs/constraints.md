@@ -613,6 +613,68 @@ refuse-class setting it stops the runner before any job is read.
   setting where the gate is the environment's (file) or absent
   by design (email).
 
+## C21. The key directory speaks before the policy
+
+- **Constraint:** when a key directory is configured, its
+  verdict for a key MUST be taken before the key's policy is
+  applied, at the job's door and at every other door. A key
+  the directory refuses MUST NOT be admitted by any policy,
+  and a held key with no entry in a configured directory is
+  refused: the directory, when present, is the source of
+  truth for whether a key may be used at all. `compromised`
+  is refused ahead of the entry's validity window; an entry
+  whose `fingerprint` does not match the key's own refuses
+  the key; an unreadable directory refuses the key — the
+  check fails closed, never open.
+- **Where:** `runner/wire/verify.py` — `key_directory_verdict`,
+  line 762; `check_key_policy` takes the verdict at lines 904
+  to 910, before it reads any policy entry, and
+  `check_door_policy` takes it at lines 854 to 858, the same
+  order at the other doors. The directory is loaded per check
+  (`load_key_directory`, line 678), so a state change holds
+  from the next message with no restart. Startup validation
+  is `validate_key_directory` (line 703): a malformed entry is
+  a startup configuration error. The protocol statement is
+  PROTOCOL.md section 14.4.
+- **Class:** refuse class. A directory that cannot be read or
+  is malformed stops the runner at startup; per message, an
+  unreadable directory refuses the key.
+
+## C22. The upgrade key arrangement
+
+- **Constraint:** the standing upgrade arrangement names a key
+  `upgrade` in `additional_secrets` and fences it in
+  `key_policies`: `allowed_kinds` is `["exec"]`,
+  `allowed_script_sha384` carries exactly one digest, the
+  SHA-384 of the one staging script; `allowed_files` carries
+  the two staged names, the release tarball and `SHA384SUMS`;
+  and `max_timeout_sec` is 300. Of these fences, kinds,
+  timeout, and the script pin are applied by the policy step
+  itself in every posture (C14); the files fence is applied
+  through the mode-gated findings behind it (P4, clause 11).
+  When the staging script changes, its digest in the policy
+  MUST change with it — the re-pinning is deliberate.
+- **Value:** the arrangement's shape, as written for
+  deployments. The digest value is a deployment value: the
+  tree carries the shape with a placeholder where the digest
+  goes, and no digest value for it is recorded in the tree —
+  checked at this stage against the sending guide's example,
+  the example configuration, and the upgrade kit, none of
+  which carries a 96-hex value for it. Each deployment's own
+  configuration carries its digest, beside the secret it
+  fences, and the proof work has no need of the value: the
+  property is about the pinning machinery, not the pinned
+  bytes.
+- **Where:** `docs/use/sending.md`, the remote upgrade
+  section's "The upgrade key", which also records the live
+  negative case in one sentence: a clock job signed with the
+  upgrade key is refused — "script is not in this key's
+  allowlist" — the refusal the pinning branch of
+  `check_key_policy` produces (C14). The kit the arrangement
+  drives is `runner/tools/remote-upgrade/`.
+- **Class:** the arrangement is a deployment's configuration;
+  the machinery that enforces it is refuse class (C14).
+
 ## Summary table
 
 | ID | Constraint | Default or value | Startup class |
@@ -637,3 +699,5 @@ refuse-class setting it stops the runner before any job is read.
 | C18 | Sandbox shape | fixed flags; work mount `/work`; interpreter prefix bound read-only | mode and block refuse class; the rest is code |
 | C19 | Queues edge gates | SI bearer, then edge HMAC while `REJECT_INVALID_HMAC` is on (default on); runner bearer on lease/ack/results | refuse at the edge; missing runner token refuses the extension's start |
 | C20 | Transport gate postures | email none; file OS-held; NATS required, waiver is literal `true`; DTLS no waiver; queues unconditional | refuse where a code refusal exists; environment or absent by design otherwise |
+| C21 | Key directory precedence | verdict before policy, at every door; no entry in a configured directory refuses; unreadable refuses | refuse |
+| C22 | Upgrade key arrangement | kinds `["exec"]`; one pinned digest (deployment value); files the tarball and `SHA384SUMS`; `max_timeout_sec` 300 | arrangement is deployment config; machinery refuse (C14) |
