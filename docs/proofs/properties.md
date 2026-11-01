@@ -142,13 +142,14 @@ The family is climbed in stages:
   depend on script content beyond the checks the code performs.
 - **Raised rungs.** The same nine clauses, re-proven at each
   raised bound on the ladder in `GOALS.md` (stage 6): 500,
-  5,000, 50,000, and 500,000 characters. Each rung is a separate
-  checked claim, recorded at its own bound. **P1(500) is
-  checked**: the model at the second rung holds under all three
-  audience modes and the claim race holds, with both witnesses
-  behaving as at the first rung; `stage6-rung500.md` is the
-  record. The rungs above 500 are not yet checked and no claim
-  is made at them.
+  5,000, 50,000, and 500,000 characters, then the production
+  cap. **P1(500) is checked** (`stage6-rung500.md`). The
+  rungs above it are the same searched set: the character
+  count is not a state variable, and no gate step branches
+  on a script's text. **P1(1048576) was re-run**, not copied,
+  and the counts match (`stage6-cap.md`). P1(5000),
+  P1(50000), and P1(500000) are that same check. They are
+  not four additional graphs.
 - **Last rung: the production cap.** The code's script cap (C2)
   is `max_script_bytes`: 1048576 UTF-8 bytes, 1 MiB. Every
   script the runner can accept satisfies that byte cap, and

@@ -394,18 +394,30 @@ a counterexample stops the raising until the finding is resolved;
 the previous bound's checked claim stands in the meantime, stated
 at its own bound.
 
-Progress: the first raise has landed. P1(500), the second rung of
-the ladder in item 1, is checked: the record is
-`stage6-rung500.md`. The bound in `Gate.tla` is a declared
-interpretation of the model's message set, not a state variable —
-the gate does not branch on character count — so the raise
-restated the declaration and re-ran every configuration: the
-three audience forms and the claim race hold, both witnesses
-behave as at the first rung, and the state counts are unchanged
-from P1(49), because the searched set is the same and what
-widened is the set of handlings it stands for. The conformance
-family still passes (67 pinning tests, 4 conformance tests).
-The rungs above 500, and items 2 to 4, remain open.
+Progress: the four raises have landed.
+
+1. The character ladder is closed at the production cap.
+   P1(500) is `stage6-rung500.md`. The rungs at 5,000,
+   50,000, and 500,000 characters are the same searched
+   set, and P1(1048576) was re-run rather than copied:
+   `stage6-cap.md`. The counts match the first rung. The
+   unbounded-length step was not taken. The cap already
+   covers every script the runner will accept.
+2. More keys: `KeysCompose.tla`, three keys, one of them
+   pinned. The record is `stage6-keys.md`. A script runs
+   only when the rest of the gate passed and that key's
+   policy allows the shape.
+3. The other doors: `Surfaces.tla`. Cancel, query, board,
+   version 2, and the local alert path run no script, and
+   a job runs one only after the early bound. The record
+   is `stage6-surfaces.md`.
+4. File and DTLS beside the mail path: `TransGate.tla`
+   already contains them. It was re-run. The record is
+   `stage6-transports.md`. The limits from P3 stand.
+
+The conformance family still passes: 85 tests. No runner
+behaviour changed. The unbounded-length step remains
+available and is recorded as not wanted.
 
 ## What this plan does not do
 

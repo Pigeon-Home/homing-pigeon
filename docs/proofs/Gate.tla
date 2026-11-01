@@ -3,15 +3,18 @@
 \* check order in properties.md (P1, at commit 6d6288c5). Each
 \* disjunct of Next is annotated with that order's step number.
 \*
-\* This model stands at the second rung, P1(500). Every message in
-\* Messages stands for a handling whose script has a character
-\* count of at most 500. It was first checked at the first rung,
-\* P1(49) (stage2.md); the raise to 500, and why the same set
-\* carries the wider bound, is stage6-rung500.md. The character
-\* count is not a field the gate branches on, so it is not a
-\* state variable: the set below is already that bound.
-\* scriptOver is the code's byte cap (constraints.md C2), which can
-\* still refuse a short script when the owner has set a small cap.
+\* This model stands at the production-cap rung, P1(1048576).
+\* Every message in Messages stands for a handling whose script
+\* has a character count of at most 1048576, which is every
+\* script the code's byte cap can admit (constraints.md C2:
+\* a character is at least one UTF-8 byte). It was checked at
+\* P1(49) (stage2.md) and P1(500) (stage6-rung500.md). The
+\* rungs between 500 and the cap are the same searched set;
+\* stage6-cap.md records why, and the re-run at this rung.
+\* The character count is not a field the gate branches on, so
+\* it is not a state variable: the set below is already that
+\* bound. scriptOver is the code's byte cap, which can still
+\* refuse a short script when the owner has set a small cap.
 \*
 \* Cryptography is an assumption (README.md). `signed` means an
 \* HMAC-SHA-384 body verified under a secret this runner holds.
