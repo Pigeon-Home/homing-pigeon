@@ -513,3 +513,4 @@ says so. [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) has the rest.
 - IETF datatracker, Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - IETF datatracker, Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/RESUME.txt
+The security model — the gate, the key fences, the ceilings a job cannot raise, and the configuration rules — and the formal proof testing that checks it, property by property, are described in [docs/security/model-and-proof-testing.md](docs/security/model-and-proof-testing.md).
