@@ -466,12 +466,94 @@ passes: 131 tests across
 `runner/tests/test_proof_conformance.py`. No runner
 behaviour changed.
 
+## Stage 8 — The 50,000-character bound
+
+**Contents.** The job acceptance gate property family
+P1(B) re-checked at a script bound of 50,000 characters:
+the next rung of the ladder after stage 7, named as its
+own stage in the same sequence. Fifty thousand
+characters is a very large bound for a script, far
+beyond anything the gate sees in ordinary use, and it
+is still short of the protocol max, which is stage 10.
+
+**The claim.** The same nine gate clauses of P1 in
+`properties.md`, for every handling whose script has at
+most 50,000 characters. The bound is a character count,
+as at every rung, and the production caps are unchanged.
+
+**Done means:** the gate model is checked at the 50,000
+bound under audience enforce, off, and audit, with the
+claim race and both witnesses run as at the earlier
+rungs; the conformance family still passes; and the
+outcome is recorded in its own record.
+
+This stage is defined and not yet run. Stage 6's
+section records the same-searched-set argument covering
+this rung; this stage's own check, when it runs,
+replaces reliance on that argument for this bound, and
+its record will be named here.
+
+## Stage 9 — The 500,000-character bound
+
+**Contents.** The job acceptance gate property family
+P1(B) re-checked at a script bound of 500,000
+characters: the next rung of the ladder after stage 8.
+A script of half a million characters is about half the
+largest script the code's byte cap can admit at all.
+
+**The claim.** The same nine gate clauses of P1 in
+`properties.md`, for every handling whose script has at
+most 500,000 characters. The bound is a character
+count, as at every rung, and the production caps are
+unchanged.
+
+**Done means:** the gate model is checked at the
+500,000 bound under audience enforce, off, and audit,
+with the claim race and both witnesses run as at the
+earlier rungs; the conformance family still passes; and
+the outcome is recorded in its own record.
+
+This stage is defined and not yet run. Stage 6's
+section records the same-searched-set argument covering
+this rung; this stage's own check, when it runs,
+replaces reliance on that argument for this bound, and
+its record will be named here.
+
+## Stage 10 — The protocol max: 1,048,576 characters
+
+**Contents.** The last rung of the ladder: P1(B) at a
+script bound of 1048576 characters, the production
+script cap's own number — the protocol max. At this
+bound the family's claim covers every script the code's
+byte cap can admit, as `properties.md` shows: a
+character is at least one UTF-8 byte, so no script the
+runner can accept has a character count above it.
+
+**The claim.** The same nine gate clauses of P1 in
+`properties.md`, for every handling whose script has at
+most 1048576 characters — which is every handling the
+runner can accept at all. The production caps are
+unchanged; this stage's bound is the cap itself, stated
+as a character count.
+
+**Done means:** the gate model is checked at the cap
+bound under audience enforce, off, and audit, with the
+claim race and both witnesses run as at the earlier
+rungs; the conformance family still passes; and the
+outcome is recorded in its own record.
+
+This stage is defined and not yet run as this stage.
+The cap rung was re-run during stage 6, and that run is
+recorded in `stage6-cap.md`; stage 10's own check is
+the ladder's last step in this naming, and its record
+will be named here when it runs.
+
 ## Content-independence at the first rung
 
 A note on the headings of the four sections that follow:
 they landed numbered as stages 7 to 9. The stage numbers
 in this plan belong to the ladder — stage 7 is the
-5,000-character bound, in the section above — so the
+5,000-character bound — so the
 numbers were taken off their headings, and the sections
 stand under the name of the check they record. Their
 contents are unchanged.
