@@ -530,17 +530,23 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         # carries a BOM character keeps exactly one. Every other
         # script kind keeps its exact bytes: a BOM would corrupt
         # an sh script's head.
+        #
+        # Every kind is staged as encoded bytes in binary mode.
+        # The non-PowerShell branch used to write in text mode,
+        # and text mode on Windows translates "\n" to "\r\n" on
+        # write, so the staged bytes were not the sender's bytes
+        # (a sender's CRLF came out CR-CRLF): the exact-bytes
+        # tests passed on Linux, where the translation is an
+        # identity, and failed on the Windows CI leg for 3.15.26.
         if script_path.endswith(".ps1"):
-            data = script.lstrip("\ufeff").encode("utf-8")
-            with open(script_path, "wb") as fh:
-                # The job has to be a file to run. This is not a password store.
-                # codeql[py/clear-text-storage-sensitive-data]
-                fh.write(b"\xef\xbb\xbf" + data)
+            data = b"\xef\xbb\xbf" + \
+                script.lstrip("\ufeff").encode("utf-8")
         else:
-            with open(script_path, "w", encoding="utf-8") as fh:
-                # The job has to be a file to run. This is not a password store.
-                # codeql[py/clear-text-storage-sensitive-data]
-                fh.write(script)
+            data = script.encode("utf-8")
+        with open(script_path, "wb") as fh:
+            # The job has to be a file to run. This is not a password store.
+            # codeql[py/clear-text-storage-sensitive-data]
+            fh.write(data)
     else:
         raise _runner().JobRejected("exec job requires script or script_url")
     change_sha = None

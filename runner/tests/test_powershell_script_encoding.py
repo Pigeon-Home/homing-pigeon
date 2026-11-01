@@ -150,5 +150,106 @@ class OtherInterpretersKeepExactBytesTest(unittest.TestCase):
         self.assertEqual(data, script.encode("utf-8"))
 
 
+# Line endings are bytes too. The two tests above failed on the
+# Windows CI leg for 3.15.26 (build runs 41335002283 and
+# 41335002330, build-windows job, shard 2): the staged bytes came
+# back with CRLF where the sender sent LF --
+#   b"# héllo\r\nprint('🦆')\r\n" != b"# héllo\nprint('🦆')\n"
+#   b"echo héllo 🦆\r\n" != b"echo héllo 🦆\n"
+# while every Linux leg was green. Cause: the non-PowerShell
+# branch staged through a text-mode open, and text mode on
+# Windows translates "\n" to "\r\n" on write (on Linux the same
+# code is an identity, which is why the bug hid until the Windows
+# leg ran the family). A sender's CRLF is likewise mangled the
+# other way: its "\n" half becomes CRLF, giving CR-CRLF.
+#
+# The samples below bookend the odd characters: LF, CRLF and CR
+# endings, mixed endings, no trailing ending, runs of endings at
+# the front, middle and back (the bookend rule), and non-ASCII
+# text at the front, middle and back. Every sample must stage
+# byte for byte, for sh and for Python, with no BOM.
+LINE_ENDING_SAMPLES = [
+    "echo héllo 🦆\n",
+    "# héllo\nprint('🦆')\n",
+    "echo one\necho two\necho café\n",
+    "echo one\r\necho two\r\necho café\r\n",
+    "echo one\recho two\recho café\r",
+    "echo one\necho two\r\necho three\recho four\n",
+    "echo héllo 🦆",
+    "# héllo\nprint('🦆')",
+    "echo x\n\n\necho y\n",
+    "echo x\r\n\r\n\r\necho y\r\n",
+    "\necho leading blank line\n",
+    "\r\necho leading blank line\r\n",
+    "echo front 🦆\n" + "\n" * 10 + "echo back é\n",
+    "echo front é\r\n" + "\r\n" * 10 + "echo back 🦆\r\n",
+    "é" * 10 + "\n" + "a" * 10 + "\n",
+    "🦆" * 5 + "\r\n" + "mid é" + "\r\n" + "🦆" * 5 + "\r\n",
+    ";-- echo bookends --;\n",
+    "# --;'\" bookends\nprint('x')\n# --;'\" bookends\n",
+]
+
+
+class OtherInterpretersLineEndingsExactBytesTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._n = 0
+
+    def _stage_one(self, interpreter, script):
+        self._n += 1
+        return _stage(self._tmp, f"lines-{self._n}", interpreter, script)
+
+    def test_sh_line_endings_keep_exact_bytes(self):
+        for script in LINE_ENDING_SAMPLES:
+            with self.subTest(script=repr(script[:24])):
+                name, data = self._stage_one(["sh"], script)
+                self.assertEqual(name, "script")
+                self.assertFalse(data.startswith(BOM))
+                self.assertEqual(data, script.encode("utf-8"))
+
+    def test_python_line_endings_keep_exact_bytes(self):
+        for script in LINE_ENDING_SAMPLES:
+            with self.subTest(script=repr(script[:24])):
+                name, data = self._stage_one([sys.executable], script)
+                self.assertEqual(name, "script.py")
+                self.assertFalse(data.startswith(BOM))
+                self.assertEqual(data, script.encode("utf-8"))
+
+    def test_powershell_line_endings_round_trip_under_bom(self):
+        # The .ps1 branch already wrote bytes; pinning it here so
+        # a unification of the two branches cannot regress it.
+        for script in ("Write-Output \"héllo\"\n",
+                       "Write-Output \"héllo\"\r\n",
+                       "Write-Output \"one\"\nWrite-Output \"🦆\"\r\n"):
+            with self.subTest(script=repr(script[:24])):
+                name, data = self._stage_one(["powershell"], script)
+                self.assertEqual(name, "script.ps1")
+                self.assertTrue(data.startswith(BOM))
+                self.assertEqual(data.count(BOM), 1)
+                self.assertEqual(data.decode("utf-8-sig"), script)
+
+
+class StagingWritesBytesNotTextTest(unittest.TestCase):
+    """The deterministic substrate of the Windows failure.
+
+    Text-mode newline translation cannot be reproduced on a
+    Linux host (there os.linesep is the identity), so the
+    behavioural tests above only fail where the bug lives, on
+    Windows. This pin records the substrate they depend on, on
+    every host: script staging in runner/ops/exec.py must write
+    encoded bytes in binary mode, never a text-mode open whose
+    newline translation is platform-dependent.
+    """
+
+    def test_exec_staging_opens_the_script_in_binary_mode(self):
+        path = os.path.join(REPO, "runner", "ops", "exec.py")
+        with open(path, encoding="utf-8") as fh:
+            source = fh.read()
+        self.assertNotIn('open(script_path, "w"', source,
+                         "text-mode staging translates newlines "
+                         "on Windows; stage the encoded bytes")
+        self.assertIn('open(script_path, "wb"', source)
+
+
 if __name__ == "__main__":
     unittest.main()
