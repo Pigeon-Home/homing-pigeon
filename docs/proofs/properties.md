@@ -2,8 +2,8 @@
 
 This file states the properties the proof work sets out to check.
 P1 is stated in full, precisely enough to model, and P2, P3,
-and P4 are now stated in full as well (stage 4). P5 and P6 are
-named placeholders with one-line statements; each will be stated
+P4, and P5 are now stated in full as well (stage 4). P6 is a
+named placeholder with a one-line statement; it will be stated
 in full, in its own stage, before any model of it is built
 (`GOALS.md` gives the order).
 
@@ -841,14 +841,236 @@ key's fence. Any one of these shapes is a counterexample:
 The checked model, the configurations, and the witnesses are
 recorded in `stage4-p4.md`; the model is `KeyPolicy.tla`.
 
+## P5. Replay cannot re-execute
+
+### Statement
+
+P5 is the property of time and repetition: the same job,
+delivered twice, resent by its sender, or replayed by an
+attacker who captured the valid signed bytes, MUST NOT
+execute twice. Execution is at most once per job per runner
+state directory; delivery of the result is at least once.
+Stage 2's `Claim.tla` checked the narrow core — two handlers
+racing one id in one process take the slot at most once —
+and stage 3 recorded the mechanics around it as this
+property's material: the stale-claim rule, the `_IN_FLIGHT`
+lifecycle, and the resend's digest match. This statement is
+written from those mechanics as the code performs them, and
+it is stated no more strongly than they support: its edges
+are named windows, priced in the clauses, not fine print.
+
+A **job**, for this property, is a job id together with the
+digest of the job as received — the SHA-384 over every
+member but `sig`, in the canonical serialization
+(`received_digest`, `runner/oracle/opinion.py`, line 130).
+The distinction carries the property. An attacker replaying
+captured bytes presents the identical job: every check P1
+applies was passed by those bytes once, and the digest is
+the same. A different body under the same id is a different
+job; only a key holder can present one, because its
+signature must verify and its `issued_at` must be fresh, so
+presenting it is the key holder's own act, not a replay.
+
+Three layers of state, all on disk in the runner's state
+directory, carry the guarantee:
+
+- **The replay cache** — `seen.json`, keyed by the seen key
+  (the job id, namespaced by `runner_id` when one is
+  configured: `_seen_key`, `runner/wire/verify.py`,
+  line 1165), each entry stamped with the time it was
+  recorded, kept for the horizon of C23. The in-memory set a
+  poll cycle works with is loaded from this file
+  (`runner/ops/main.py`, line 308; the channel path loads it
+  the same way, `runner/ops/handlers.py`, line 207), and
+  writes merge under the seen-file lock, so two processes'
+  caches are one cache.
+- **The claim** — an in-process half and a disk half. In one
+  process, the check-and-add under `_MAIL_LOCK` against the
+  seen set and `_IN_FLIGHT` (`runner/ops/mail.py`, lines 260
+  to 278); across processes, a claim file taken under the
+  seen-file lock by `_disk_owns` (`runner/ops/misc.py`,
+  line 241), held until the id is in the cache, and released
+  in the handling's `finally` span when it is not
+  (`runner/ops/mail.py`, lines 734 to 738, through
+  `_disk_release`, `runner/runner.py`, line 4900).
+- **The record** — the result itself, stashed in the outbox
+  before the first send is attempted and moved to `sent/`
+  on delivery (`stash_result`, `runner/runner.py`,
+  line 1623; the ordering is the module comment at lines
+  1570 to 1585), carrying the received digest of the job it
+  answers. A redelivery that reaches the record is answered
+  from it by `load_sent_result` (line 2326), which returns
+  the record only when its digest is the redelivered job's.
+
+For every job delivered to the gate — that is, for every
+handling that passes P1's steps and reaches the claim, step
+15 of P1's order — all of the following hold:
+
+1. **At most once, per job.** A job MUST NOT execute more
+   than once in a runner state directory, except across one
+   of the window events clauses 7 to 9 price, each of which
+   buys at most one further execution. Two executions of two
+   different jobs that share an id are not a counterexample:
+   the count is per digest, not per id alone.
+2. **The cache answers first.** A delivery whose id is in
+   the replay cache — in memory, or found in `seen.json` by
+   the claim — MUST NOT execute and MUST NOT be answered
+   from the record by that handling: the copy is done, the
+   message is marked seen, and nothing is sent
+   (`runner/ops/mail.py`, lines 261 to 267; `_disk_owns`
+   records the key in the in-memory cache on the same path).
+   The result the sender is waiting for is the outbox's to
+   deliver (clause 10), not the duplicate's.
+3. **One claim, in both halves.** While a handling holds
+   the id — in `_IN_FLIGHT`, or as a live claim file — a
+   second handling of the id MUST NOT execute. In one
+   process the second handling is skipped at the claim,
+   under the same lock that performed the check-and-add.
+   Across processes the second handling finds the claim
+   held and leaves the message unseen, so the copy is
+   deferred to a later poll rather than dropped
+   (`runner/ops/mail.py`, lines 266 to 278): what differs
+   across the halves is the loser's outcome, never the
+   safety claim — this is stage 3's finding F3, and the
+   model's claim covers both.
+4. **A dead holder's claim is stealable, on the stale
+   rule.** A claim whose holder is dead MAY be taken by the
+   next handling at once; a claim whose holder cannot be
+   read MAY be taken only once the file is at least
+   `_CLAIM_STALE_SEC` old; a live holder's claim MUST NOT
+   be taken at any age (C24). Stealing a claim never by
+   itself executes anything twice: the thief still faces
+   the cache and the record, in that order.
+5. **The record answers the resend.** A delivery that takes
+   the claim and finds a record whose digest is its own
+   MUST be answered with the recorded result, MUST be
+   committed as seen, and MUST NOT execute
+   (`runner/ops/mail.py`, lines 320 to 330). This path is
+   reached when the cache no longer holds the id but the
+   record stands — the cache entry aged out or was evicted
+   (C23), or the cache write was lost while the stash was
+   not — and it is the second layer of the guarantee: the
+   cache expiring does not by itself reopen execution.
+6. **A different job under a reused id runs on its own.** A
+   delivery that takes the claim and finds a record whose
+   digest is not its own MUST NOT be answered from that
+   record (`load_sent_result` returns no record on a digest
+   mismatch); it proceeds to execution as the new job it
+   is. While the cache holds the id, clause 2 reaches it
+   first and it does not run — a reused id is usable only
+   once the cache has let it go, and then only by a key
+   holder presenting a fresh, validly signed job.
+7. **The crash window, priced.** A crash — or a restart,
+   which is the same event from the record's side — between
+   a run and its stash leaves no record and no cache entry,
+   and a redelivery of that job executes again: the second
+   run is bought by the crash, and at most one run follows
+   each such crash, because the run that completes commits
+   its record and its cache entry in one locked span
+   (`commit_and_deliver`, `runner/ops/mail.py`, lines 295
+   to 318 — a stash that cannot be written leaves the job
+   uncommitted, which is this window and no other). A crash
+   after the commit cannot re-execute: the state it would
+   need is already on disk. This is the one window C15
+   names, and the statement does not hide it.
+8. **The cache's window is built to outlast the gate's.**
+   The cache keeps an entry for `max(max_job_age_sec + 300,
+   86400)` seconds (C23): by construction, longer than the
+   freshness window in which P1 step 9 would accept the
+   mail at all, plus its future bound. A replay old enough
+   to have left the cache is refused as stale before it
+   reaches the claim — unless the entry was evicted at the
+   cache's 200,000-entry cap, in which case clause 5's
+   record is the layer that answers, inside its own window
+   (clause 9).
+9. **The record's window, priced.** A delivered record
+   ages out with `output_retention_days` (default 7 days;
+   an explicit 0 means it never ages out, C25). Once the
+   record is gone and the cache entry with it, the id is a
+   new id to the runner, and a fresh, validly signed job
+   under it executes — at most one further execution, bought
+   by the expiry. A replay of the original bytes cannot
+   reach this window inside any ordinary configuration: it
+   would have to be fresh under P1 step 9 while older than
+   the retention, which requires `max_job_age_sec` to be
+   configured past the retention — an owner's configuration
+   that reopens the id deliberately, and the guarantee is
+   not stated against it.
+10. **Delivery is at least once, inside the stash
+    window.** The result is stashed before the first send;
+    a failed send is retried from the stash, with
+    `result_resend_backoff_sec` between attempts, and is
+    never produced by a second run (C25). After
+    `result_stash_retention_sec` of attempts (default
+    86,400 seconds) the runner gives the delivery up: the
+    record moves to `outbox/failed/` with an audit entry
+    and leaves the set clause 5 answers from. Inside that
+    window the result MUST be delivered at least once, the
+    stash surviving restarts like the rest of the state;
+    past it, delivery is no longer claimed — while execution
+    still cannot recur, because the cache entry committed
+    with the stash stands on the horizon of clause 8.
+11. **Restart changes nothing but the dead claim.** Every
+    layer is disk state, so a restart neither grants nor
+    loses an execution: the cache is reloaded from
+    `seen.json`, the records stand where they were written,
+    and the only restart-shaped event in the whole property
+    is a claim left by the dead process, governed by
+    clause 4 — plus clause 7's window, when the death came
+    between a run and its record. A runner restarted cleanly
+    between a commit and a send delivers from the stash and
+    runs nothing.
+
+In short form:
+
+> A job executes at most once per state directory. The
+> replay cache turns a duplicate away; one claim, in-process
+> and on disk, keeps two handlings from running it; and a
+> redelivery that outlives the cache is answered from the
+> recorded result, bound to the job's own digest, and runs
+> nothing. The guarantee has three priced edges: a crash
+> between a run and its record buys one more run; the record
+> ageing out buys one more run of a fresh job under the id;
+> and delivery is promised only inside the stash window.
+> Outside those edges, replay is answered, never re-run.
+
+The short form is a summary. The eleven clauses above are
+the property. Where they differ, the clauses win.
+
+### What a counterexample would look like
+
+A counterexample to P5 is a single concrete sequence —
+real, in the code, or exhibited by the model inside its
+space — in which one job executes twice without a window
+event buying the second run. Any one of these shapes is a
+counterexample:
+
+- Two handlings of one job, in one process or two, both
+  reach execution while neither a crash nor an expiry stands
+  between them.
+- A redelivery is answered by re-running the job although
+  its record stands and its digest matches.
+- A redelivery carrying a different job under the id is
+  answered with the recorded result of the first — the
+  record's digest check failing to distinguish them. (The
+  converse — the different job executing once the cache has
+  let the id go — is clause 6, the designed behaviour, and
+  is not a counterexample.)
+- A claim whose holder is alive is taken by a second
+  handling, and the job runs under both.
+- A restart by itself — no crash between a run and its
+  record — causes a committed job to execute again.
+
+The checked model, the configurations, and the witnesses are
+recorded in `stage4-p5.md`; the model is `Replay.tla`.
+`Claim.tla` (stage 2) remains the check of the narrow race;
+this model is the full shape.
+
 ## The placeholder properties
 
 Statements only. Each is taken up in full, in the order
 `GOALS.md` gives, before any model of it is built.
 
-- **P5. Replay cannot re-execute.** A job id executes at most
-  once per runner state directory, and its result is delivered at
-  least once, inside the two named windows of C15 and no others.
 - **P6. Refuse-class configuration behaves as Decision 1
   requires.** A present-but-unusable value in the refuse class
   stops the runner at startup and names the setting; a value in

@@ -264,8 +264,36 @@ recorded there: the policy builder carries only the fields
 it knows, so a misspelled field name in an entry is absent
 from the built policy without a word — the fence enforces
 the policy as built, and the gap between the written entry
-and the built one is the owner's to see. P5 and P6 remain,
-in the order above.
+and the built one is the owner's to see.
+
+P5 has landed. The full statement is in `properties.md` —
+eleven clauses over the three disk layers that carry the
+guarantee: the replay cache (which turns a duplicate away),
+the claim in its in-process and disk halves (with the stale
+rule for a dead holder), and the recorded result (which
+answers a redelivery that outlives the cache, bound to the
+job's received digest). The statement is per job — id plus
+digest — so a different job under a reused id runs on its
+own once the cache lets the id go, and it prices three
+edges: a crash between a run and its record buys one more
+run, the record's expiry buys one more, and delivery is
+promised only inside the stash window. The constraints it
+needed are C23 (the cache's keep horizon, built to outlast
+the freshness window, and its cap), C24 (the claim's stale
+rule), and C25 (the record's retention and the delivery
+window) in `constraints.md`. The model is `Replay.tla` —
+two handlings, both digest classes, the claim taken,
+deferred, released, and stolen, a crash after a run, and
+both retentions expiring, each window event priced at most
+once — checked exhaustively (1,792 distinct states), with
+two witness configurations whose expected failures exhibit
+a first execution and a duplicate answered from the record.
+`stage4-p5.md` is the record. No replay path to a second
+execution was found outside the priced windows; the one
+observation recorded there is that the record's digest
+check is skipped when the opinion module is absent, which
+errs toward answering rather than executing and so does not
+touch the execution claim. P6 remains.
 
 ## Stage 5 — Conformance tests tying the model to the code
 

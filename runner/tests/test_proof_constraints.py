@@ -16,7 +16,10 @@ their pins, from the same code, and then C19 and C20 (the
 queues edge gates and the per-transport gate postures) with
 theirs. P4's pass added the key-policy behaviour pins under
 C14 and the new C21 and C22 (the key directory's precedence
-and the upgrade key arrangement) with theirs.
+and the upgrade key arrangement) with theirs. P5's pass added
+the replay behaviour pins under C15 and the new C23, C24, and
+C25 (the replay cache's keep horizon, the claim's stale rule,
+and the record's retention and delivery window) with theirs.
 """
 import hashlib
 import os
@@ -631,6 +634,117 @@ class TransportGatePins(unittest.TestCase):
         self.assertIn('if name == "email":', wire)
 
 
+class ReplayPins(unittest.TestCase):
+    """C15's mechanics against the real functions (P5): the
+    cache's horizon, the claim's stale rule, and the record a
+    redelivery is answered from, bound to the job's digest."""
+
+    def test_c23_seen_keep_horizon_outlasts_freshness(self):
+        # The floor: one day, whatever the freshness window is.
+        self.assertEqual(R.seen_keep_sec({}), 86400)
+        self.assertEqual(R.seen_keep_sec({"max_job_age_sec": 3600}),
+                         86400)
+        # Past the floor, the horizon is the window plus the
+        # 300-second future bound, exactly.
+        self.assertEqual(R.seen_keep_sec({"max_job_age_sec": 100000}),
+                         100300)
+        self.assertEqual(R.SEEN_KEEP_FLOOR, 86400)
+
+    def test_c23_seen_cap(self):
+        self.assertEqual(V.SEEN_CAP, 200_000)
+        self.assertEqual(R.SEEN_CAP, 200_000)
+
+    def test_c23_seen_write_drops_entries_past_the_horizon(self):
+        import tempfile
+        import time as _time
+        old = R._SEEN_KEEP[0]
+        R._SEEN_KEEP[0] = 86400
+        try:
+            with tempfile.TemporaryDirectory() as base:
+                path = os.path.join(base, "seen.json")
+                now = _time.time()
+                kept = R._write_seen_kept(
+                    path, {"fresh": now, "stale": now - 90000})
+                self.assertIn("fresh", kept)
+                self.assertNotIn("stale", kept)
+        finally:
+            R._SEEN_KEEP[0] = old
+
+    def test_c24_claim_stale_constant(self):
+        self.assertEqual(R._CLAIM_STALE_SEC, 86400)
+
+    def test_c24_disk_claim_live_dead_and_unreadable(self):
+        import subprocess
+        import tempfile
+        import time as _time
+        with tempfile.TemporaryDirectory() as base:
+            # A free id is claimed.
+            self.assertTrue(R._disk_owns(base, "pin-claim", {}))
+            folder, claim = R._claim_path(base, "pin-live")
+            os.makedirs(folder, exist_ok=True)
+            # A live holder's claim is never taken.
+            proc = subprocess.Popen(["sleep", "30"])
+            try:
+                with open(claim, "w", encoding="utf-8") as fh:
+                    fh.write("%d\n%f\npin-live\n" % (proc.pid,
+                                                     _time.time()))
+                self.assertFalse(R._disk_owns(base, "pin-live", {}))
+            finally:
+                proc.kill()
+                proc.wait()
+            # A dead holder's claim is stolen at once.
+            with open(claim, "w", encoding="utf-8") as fh:
+                fh.write("%d\n%f\npin-live\n" % (proc.pid,
+                                                 _time.time()))
+            self.assertTrue(R._disk_owns(base, "pin-live", {}))
+            # An unreadable holder is taken only at the stale age.
+            folder2, claim2 = R._claim_path(base, "pin-garbled")
+            with open(claim2, "w", encoding="utf-8") as fh:
+                fh.write("not-a-pid\n%f\npin-garbled\n" % _time.time())
+            self.assertFalse(R._disk_owns(base, "pin-garbled", {}))
+            old = _time.time() - 90000
+            os.utime(claim2, (old, old))
+            self.assertTrue(R._disk_owns(base, "pin-garbled", {}))
+
+    def test_c25_retention_and_stash_window_defaults(self):
+        self.assertEqual(R._retention_days({}), 7)
+        self.assertEqual(R._retention_days(
+            {"output_retention_days": 0}), 0)
+        self.assertEqual(R._retention_days(
+            {"output_retention_days": 3}), 3)
+        self.assertEqual(R._stash_retention_sec({}), 86400)
+        self.assertEqual(R._resend_backoff_sec({}), 60)
+
+    def test_c15_record_answers_only_its_own_job(self):
+        import tempfile
+        job = {"job_id": "p5-pin-1", "kind": "exec", "script": "x"}
+        with tempfile.TemporaryDirectory() as base:
+            self.assertTrue(R.stash_result(
+                base, "p5-key", job, "subject", "the result body"))
+            rec = R.load_sent_result(base, "p5-key", job)
+            self.assertIsNotNone(rec)
+            self.assertEqual(rec["body"], "the result body")
+            # A different job under the same id gets no record:
+            # the digest does not match, so nothing is answered
+            # from the first job's result.
+            altered = dict(job, script="y")
+            self.assertIsNone(R.load_sent_result(
+                base, "p5-key", altered))
+            # The same record answers from sent/ as from the
+            # outbox.
+            self.assertTrue(R._stash_move(
+                base, "p5-key", os.path.join(base, "sent")))
+            self.assertIsNotNone(R.load_sent_result(
+                base, "p5-key", job))
+
+    def test_c15_received_digest_excludes_only_the_signature(self):
+        digest = R._opinion.received_digest
+        self.assertEqual(digest({"a": 1, "sig": "x"}),
+                         digest({"a": 1, "sig": "y"}))
+        self.assertNotEqual(digest({"a": 1, "sig": "x"}),
+                            digest({"a": 2, "sig": "x"}))
+
+
 class DocsSyncPins(unittest.TestCase):
     """The inventory must carry the same values the code declares.
 
@@ -675,6 +789,19 @@ class DocsSyncPins(unittest.TestCase):
         doc = _read(os.path.join("docs", "proofs", "constraints.md"))
         for token in ("C21", "C22", "key_directory_verdict",
                       "max_timeout_sec", "SHA384SUMS"):
+            self.assertIn(token, doc)
+
+    def test_constraints_doc_carries_c23_to_c25(self):
+        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        for token in ("C23", "C24", "C25", "seen_keep_sec",
+                      "_CLAIM_STALE_SEC", "result_stash_retention_sec",
+                      "200,000"):
+            self.assertIn(token, doc)
+
+    def test_properties_doc_states_p5_in_full(self):
+        doc = _read(os.path.join("docs", "proofs", "properties.md"))
+        for token in ("Replay.tla", "stage4-p5.md",
+                      "load_sent_result"):
             self.assertIn(token, doc)
 
     def test_properties_doc_states_p1_and_placeholders(self):

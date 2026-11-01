@@ -396,7 +396,13 @@ refuse-class setting it stops the runner before any job is read.
   commit-and-deliver path at lines 295 to 318 stashes, commits,
   and only then sends; a cached result is resent without
   execution at lines 320 to 330. The protocol statement is
-  PROTOCOL.md sections 5 and 6.
+  PROTOCOL.md sections 5 and 6. The mechanics this entry
+  abstracts — the cache's keep horizon, the claim's stale
+  rule, and the record's own retention and delivery window —
+  are C23, C24, and C25, harvested for P5's stage; the
+  delivery half of this constraint holds inside C25's stash
+  window, and a delivery given up there is the third edge,
+  on the delivery side only.
 - **Class:** not a configuration setting; an execution semantic.
 - **The named windows, recorded plainly:** the guarantee has two
   edges, and a model of it MUST carry both. First, a crash between
@@ -675,6 +681,77 @@ refuse-class setting it stops the runner before any job is read.
 - **Class:** the arrangement is a deployment's configuration;
   the machinery that enforces it is refuse class (C14).
 
+## C23. The replay cache's keep horizon
+
+- **Constraint:** a replay-cache entry MUST be kept at least as
+  long as a message the door would take can still arrive, so
+  the cache cannot age out from under the freshness window.
+  The horizon is `max(max_job_age_sec + 300, 86400)` seconds —
+  the freshness window (C12) plus its future bound, with a
+  floor of one day. Entries are written with the time they
+  were recorded and dropped on write once older than the
+  horizon. The cache also has a size ceiling, `SEEN_CAP`, of
+  200,000 entries inside the horizon; past it the oldest are
+  dropped and a warning is logged.
+- **Where:** `runner/runner.py` — `seen_keep_sec` (line 4843)
+  computes the horizon and `SEEN_KEEP_FLOOR` (line 4839) is
+  the 86400 floor; `_write_seen_kept` (line 4867) applies the
+  horizon and the cap on every write; `SEEN_CAP` is
+  `runner/wire/verify.py` line 61, re-exported by the runner
+  (line 303). `save_seen` (line 4972) merges under the
+  seen-file lock, so two processes' writes do not wipe each
+  other's entries.
+- **Class:** not a setting of its own; derived from C12 and
+  two constants. The cap is the recorded edge: a flood of
+  more than 200,000 distinct job ids inside one horizon can
+  evict an entry early. Eviction alone does not re-execute —
+  the recorded result (C25) still answers the redelivery —
+  which is why P5 prices the two layers separately.
+
+## C24. The claim's stale rule
+
+- **Constraint:** a claim file whose holder is alive MUST NOT
+  be stolen, at any age. A claim whose holder is dead MAY be
+  stolen at once. A claim whose holder cannot be read (no
+  usable pid in the file) MAY be stolen only once the file is
+  at least `_CLAIM_STALE_SEC` old — 86,400 seconds. The claim
+  is a file created with `O_EXCL` under the seen-file lock,
+  carrying the holder's pid, the time, and the key.
+- **Where:** `runner/runner.py` line 4746 is the constant;
+  the rule itself is `_disk_owns` in `runner/ops/misc.py`
+  (line 241): the pid branches are at lines 277 to 288, the
+  `O_EXCL` create at line 294, all inside `_with_seen_file`
+  (`runner/runner.py`, line 4781). `_disk_release`
+  (line 4900) drops only the caller's own claim, under the
+  same lock.
+- **Class:** a constant, not a setting.
+
+## C25. The record's retention, and the delivery window
+
+- **Constraint:** the recorded result is kept in two places
+  with two clocks. A waiting record sits in the outbox and is
+  retried with `result_resend_backoff_sec` between attempts
+  (default 60 seconds); after `result_stash_retention_sec`
+  (default 86,400 seconds) of attempts the runner gives the
+  delivery up — the record moves to `outbox/failed/` with an
+  audit entry, and leaves the set a redelivery is answered
+  from, because `load_sent_result` reads the outbox and the
+  sent folder only. A delivered record sits in `sent/` and
+  ages out with `output_retention_days` (default 7; an
+  explicit 0 means no expiry), pruned once per poll.
+- **Where:** `runner/runner.py` — `_retention_days`
+  (line 1547), `prune_sent` (line 2372), called per poll from
+  `runner/ops/poll.py` lines 43 to 44; `_stash_retention_sec`
+  (line 1615) and `_resend_backoff_sec` (line 1619);
+  `stash_result` (line 1623), `deliver_stash` (line 1718),
+  `resend_stashed` (line 1849), and the give-up path
+  `_stash_fail`; `load_sent_result` (line 2326) reads the
+  outbox path, then the sent path.
+- **Class:** `output_retention_days` and the two stash
+  values are owner configuration, default class; the shape —
+  stash before send, give up into `failed/`, answer only
+  from the two folders — is code.
+
 ## Summary table
 
 | ID | Constraint | Default or value | Startup class |
@@ -701,3 +778,6 @@ refuse-class setting it stops the runner before any job is read.
 | C20 | Transport gate postures | email none; file OS-held; NATS required, waiver is literal `true`; DTLS no waiver; queues unconditional | refuse where a code refusal exists; environment or absent by design otherwise |
 | C21 | Key directory precedence | verdict before policy, at every door; no entry in a configured directory refuses; unreadable refuses | refuse |
 | C22 | Upgrade key arrangement | kinds `["exec"]`; one pinned digest (deployment value); files the tarball and `SHA384SUMS`; `max_timeout_sec` 300 | arrangement is deployment config; machinery refuse (C14) |
+| C23 | Replay-cache keep horizon | `max(max_job_age_sec + 300, 86400)` sec; `SEEN_CAP` 200,000 | derived from C12; constants |
+| C24 | Claim stale rule | live holder never stolen; dead at once; unreadable at 86,400 sec | constant |
+| C25 | Record retention and delivery window | sent ages at `output_retention_days` (7; 0 never); stash given up at `result_stash_retention_sec` 86,400, backoff 60 | default class; the shape is code |
