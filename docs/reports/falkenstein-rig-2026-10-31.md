@@ -377,6 +377,33 @@ is the one that measurement supports — every release if an
 upgrade throws away about a minute of work or less, every
 three releases if it throws away several minutes.
 
+### Addendum (1-Nov-2026): approval given; the measurement is blocked at the key's pin
+
+The owner's word for installing the applier and running the
+first measured upgrade was given on 1-Nov-2026, and the
+preparatory half is complete on the rig: the config now
+carries job_user at audit, the placeholder mailbox values
+are removed, and the upgrade key's policy names the current
+release's Windows zip and SHA384SUMS as its only allowed
+files; the runner was restarted on that config and answers
+addressed jobs. The measurement itself cannot start yet,
+for a reason the preparation exposed: the staging-script
+hash pinned in the upgrade key's policy is, byte for byte,
+the staging script documented in the sending guide with the
+version read as 3.15.0 — the Linux staging script from the
+proven 3.14.2 to 3.15.0 run, carried into this rig's policy
+unchanged when the key was installed. A staging script that
+names this rig's Windows zip hashes differently and so can
+never run under that key, and the pinned script itself
+looks for a Linux tarball name that is not among the files
+the policy allows. Until the policy is re-pinned to a
+Windows staging script — an owner-side change to a security
+control, recorded here as the decision now owed — no staging
+job can be sent, and the pause stays unmeasured. The applier
+install remains held as well, as the scenario queue records.
+No cadence change follows from this addendum; the standing
+rule above stays in force.
+
 ## What remains
 
 1. The `job_user` divergence on Windows (see the enforcement
