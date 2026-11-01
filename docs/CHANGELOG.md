@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.28 - 2026-11-01
+
+- Docs: the upgrade-pause supposition is recorded before measuring.
+
 ## 3.15.27 - 2026-11-01
 
 - Fix: every script is staged as exact bytes, so a Windows runner no longer rewrites a sender's LF line endings to CRLF (the 3.15.26 Windows build failure).
