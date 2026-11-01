@@ -119,7 +119,6 @@ class SweepChannelRefusalsProperties(unittest.TestCase):
         try:
             cfg = _cfg(with_key=True)
             names = []
-            planted = 0
             for i, plan in enumerate(plans):
                 name = f"chan{i}"
                 names.append(name)
@@ -139,14 +138,31 @@ class SweepChannelRefusalsProperties(unittest.TestCase):
                     result_text = None
                 _plant_refusal(base, name, stem, plan["reason"],
                                result_text)
-                planted += 1
+            def _stays(plan):
+                # A result file with no record to answer it stays
+                # in failed/. Garbage does not name the job, so the
+                # sweep looks up the file's stem and does not find
+                # the record planted under the job id.
+                if plan["result"] == "absent":
+                    return False
+                if plan["result"] == "garbage":
+                    return True
+                return plan["record"] == "absent"
+
             handled = R._sweep_channel_refusals(
                 base, cfg, names + bogus_names)
-            self.assertEqual(handled, planted)
+            self.assertEqual(handled, sum(not _stays(p) for p in plans))
             for i, plan in enumerate(plans):
                 paths = T.channel_paths(base, f"chan{i}")
                 done = os.path.join(paths["outbox_done"],
                                     f"stem{i}.refused.txt")
+                kept = os.path.join(paths["outbox"], "failed",
+                                    f"stem{i}.refused.txt")
+                if _stays(plan):
+                    self.assertFalse(os.path.exists(done),
+                                     f"note {i} filed with no record")
+                    self.assertTrue(os.path.exists(kept))
+                    continue
                 self.assertTrue(os.path.exists(done),
                                 f"note {i} not filed to done/")
                 job_id = f"job-{i}-" + "a" * 8
@@ -242,6 +258,31 @@ class SweepDeterministicArms(unittest.TestCase):
                 fh.write("a file where the done dir belongs")
             handled = R._sweep_channel_refusals(base, cfg, ["chan"])
             self.assertEqual(handled, 1)
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+    def test_a_refusal_with_no_record_stays_until_one_exists(self):
+        # The pair was moved to done. The queue then saw no
+        # result and no refusal, and acked the job.
+        base = tempfile.mkdtemp(prefix="hp-plat-norec-")
+        try:
+            cfg = _cfg()
+            _plant_refusal(base, "queues", "j1", "not an envelope",
+                           "not an envelope")
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+            self.assertEqual(handled, 0)
+            paths = T.channel_paths(base, "queues")
+            failed = os.path.join(paths["outbox"], "failed")
+            self.assertEqual(sorted(os.listdir(failed)),
+                             ["j1.refused.txt", "j1.result.txt"])
+            self.assertEqual(os.listdir(paths["outbox_done"]), [])
+            _plant_sent_record(base, cfg, "j1")
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+            self.assertEqual(handled, 1)
+            stub = os.path.join(paths["outbox"], "j1.result.txt")
+            self.assertTrue(os.path.isfile(stub))
+            self.assertFalse(os.path.exists(os.path.join(
+                failed, "j1.result.txt")))
         finally:
             shutil.rmtree(base, ignore_errors=True)
 

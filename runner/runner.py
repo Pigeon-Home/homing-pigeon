@@ -2192,7 +2192,11 @@ def _sweep_channel_refusals(base_dir, cfg, names):
     is found by the result's job id, the original is kept under
     work/<job_id>/result.json, a signed stub goes back out the same
     channel, once; a stub refused too is given up with an audit
-    entry. The refusal files move to outbox/done/."""
+    entry. The refusal files move to outbox/done/ once the stub
+    has gone out, or once the record has been given up. A result
+    with no record here stays in failed/: moving it finished the
+    job with nothing stored, and the record may arrive on a later
+    pass."""
     if _transports is None or not _valid_base(base_dir):
         return 0
     handled = 0
@@ -2268,7 +2272,13 @@ def _sweep_channel_refusals(base_dir, cfg, names):
                                  f"{reason}", cfg)
             else:
                 log(f"{name} transport: refused result {stem} has no "
-                    f"record here ({reason}); set aside", "WARN")
+                    f"record here ({reason}); it stays until one "
+                    f"does", "WARN")
+                if os.path.isfile(result_file):
+                    # Moving the pair to done made the queue ack
+                    # the job with nothing stored. The record may
+                    # not have been written yet. Leave both files.
+                    continue
             done = paths["outbox_done"]
             for fname in (note, stem + ".result.txt"):
                 src = os.path.join(failed, fname)
