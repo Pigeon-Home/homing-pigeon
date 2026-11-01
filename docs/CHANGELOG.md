@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.35 - 2026-11-01
+
+- Fix: the proof docs' two uppercase names are now lowercase-kebab (docs/proofs/goals.md and docs/proofs/readme.md), so the layout guard passes on every platform, and the c24 disk-claim test uses a portable live holder and dead pid, so it passes on Windows.
+- Proofs: stage 5's first-hand verification, the content-independence checks up the ladder, and stage 7 at the 5,000-character bound ride along, with stages 8 to 10 defined.
+
 ## 3.15.34 - 2026-11-01
 
 - Proofs: the formal gate model, its properties and conformance tests land on main, with the security model and proof-testing program.
