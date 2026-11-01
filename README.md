@@ -3,7 +3,7 @@
 Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
 
 > ⚠️ **USE AT YOUR OWN RISK.** This tool hands full administrative
-> control of the machine it is installed to whoever holds the shared secret. The holder
+> control of the machine it is installed on, to whoever holds the shared secret. The holder
 > can install software, read files, add users, and pivot to your network.
 
 Your cloud AI (called the SI throughout this repo) is smart, but it
