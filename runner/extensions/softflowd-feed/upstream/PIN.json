@@ -1,6 +1,6 @@
 {
-  "bytes": 50630,
-  "fetched_at": "2026-10-31T13:51:09Z",
+  "bytes": 53504,
+  "fetched_at": "2026-11-01T14:29:09Z",
   "files": {
     "LICENSE": {
       "bytes": 7371,
@@ -15,12 +15,12 @@
       "sha384": "6c2d357f1c43470d76683168fdb53bdda375a25fe27070ce5499e6154150f58f9073bb269ef2dd57a4011dbbed04945e"
     },
     "softflowd.h": {
-      "bytes": 16010,
-      "sha384": "9523a41528ee1daf78e3f35f72965fc8585d78db189c36fa89a7eb8a81f6bbc5feaf45b553fc8b924062cb6fe6990957"
+      "bytes": 18884,
+      "sha384": "5618ea9841848847dcde9399ab58f9023121c04c2b4256a50c38077619db07605db35720d96ffe1ed27020909c04c100"
     }
   },
   "license": "BSD-3-Clause",
-  "pin": "37c9cf894254b49826a1b9369a112e936759bbad",
+  "pin": "e8b66950085bc548b98472e4dd8893634e4c7056",
   "ref": "master",
   "repo": "https://github.com/irino/softflowd"
 }
