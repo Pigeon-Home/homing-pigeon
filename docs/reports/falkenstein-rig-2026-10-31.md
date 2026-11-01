@@ -303,6 +303,13 @@ standing upgrade automation stops at the same door: it can
 watch the gap between the rig's build and the newest release,
 but it cannot drive an upgrade until the applier is installed
 on the rig, and it will not send upgrade jobs into that gap.
+A standing hourly watch (germany-remote-upgrade-watch) now
+records that gap and the applier's presence; it is gated to
+drive an upgrade only once the applier is on the box and this
+section holds a measured pause, and the cadence it will use
+is the one that measurement supports — every release if an
+upgrade throws away about a minute of work or less, every
+three releases if it throws away several minutes.
 
 ## What remains
 
