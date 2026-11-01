@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.32 - 2026-11-01
+
+- Fix: --oracle-cli no longer dies on answers its console cannot encode.
+- The corpus banked since 3.15.31 rides along (Germany bank 19, Menlo Park banks 214-215).
+
 ## 3.15.31 - 2026-11-01
 
 - Dossier: the Oracle on Windows, and a console encoding bug found by it.
