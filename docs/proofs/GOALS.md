@@ -422,7 +422,59 @@ The conformance family still passes: 85 tests. No runner
 behaviour changed. The unbounded-length step remains
 available and is recorded as not wanted.
 
-## Stage 7 — Content-independence at the first rung
+## Stage 7 — The 5,000-character bound as its own stage
+
+**Contents.** The job acceptance gate property family
+P1(B) re-checked at a script bound of 5,000 characters,
+with that rung named as its own stage. The stage names
+now follow the ladder one rung at a time: stage 6 closed
+at the 500-character bound, and the names continue up the
+same ladder — stage 8 at 50,000 characters, stage 9 at
+500,000, and stage 10 at the production cap of 1048576
+characters. Stage 6's section above keeps its own record,
+including the raises it carried past 500 at the time; this
+stage gives the 5,000 rung its own check and its own
+record rather than resting on that section's
+same-searched-set argument alone.
+
+**The claim.** The same nine gate clauses of P1 in
+`properties.md` — no job executes without a valid HMAC
+signature, the correct audience, the size caps the code
+declares, and cleartext refused by default — for every
+handling whose script has at most 5,000 characters. The
+bound is a character count, as at every rung: a one-liner
+can be very long, and line counts mislead. The production
+caps are unchanged; the code's script cap stays 1048576
+UTF-8 bytes (C2), and the 5,000-character bound is this
+stage's scope, not a product limit.
+
+**Done means:** the gate model is checked at the 5,000
+bound under audience enforce, off, and audit, with the
+claim race and both witnesses run as at the earlier
+rungs; the conformance family still passes; and the
+outcome is recorded in `stage7-5000.md`.
+
+This stage has landed. The check was run at the 5,000
+bound itself: `P1Inv` holds under all three audience
+modes, the claim race holds at-most-once, and both
+witnesses fail in the shapes they are supposed to fail
+in. The counts match the earlier rungs exactly, as the
+same-searched-set argument said they would. The record
+is `stage7-5000.md`. The conformance family still
+passes: 131 tests across
+`runner/tests/test_proof_constraints.py` and
+`runner/tests/test_proof_conformance.py`. No runner
+behaviour changed.
+
+## Content-independence at the first rung
+
+A note on the headings of the four sections that follow:
+they landed numbered as stages 7 to 9. The stage numbers
+in this plan belong to the ladder — stage 7 is the
+5,000-character bound, in the section above — so the
+numbers were taken off their headings, and the sections
+stand under the name of the check they record. Their
+contents are unchanged.
 
 **Contents.** The challenge `thinking.md` records and does
 not close. At scripts of at most 49 characters, list the
@@ -444,7 +496,7 @@ on the machine that ran it, so that half is not claimed.
 The scripts are a sample of each construct, not every
 nesting that fits in 49 characters, and not every string.
 
-## Stage 8 — Content-independence at 50,000 characters
+## Content-independence at 50,000 characters
 
 **Contents.** The same check as stage 7, at the ladder's
 50,000-character rung. The scripts are long enough that
@@ -463,7 +515,7 @@ This stage has landed. The harness is
 `stage8.md`. A script of 50,001 characters is still
 admitted, because the code's cap is 1048576 bytes.
 
-## Stage 9 — Content-independence at 500,000 characters
+## Content-independence at 500,000 characters
 
 **Contents.** The same check as stage 8, at the next
 figure the ladder names. Three texts of exactly 500,000
@@ -482,7 +534,7 @@ This stage has landed. The harness is
 admitted. The production cap, 1048576 bytes, was not
 generated here.
 
-## Stage 10 — Content-independence at the production cap
+## Content-independence at the production cap
 
 **Contents.** The last figure. The code admits a script
 of exactly 1048576 bytes and refuses one of 1048577. The
