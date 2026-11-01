@@ -12,7 +12,9 @@ The values pinned here are the ones at commit 6d6288c5
 (release 3.15.28), recorded as C1 to C16 in
 docs/proofs/constraints.md. Stage 4 added C17 and C18 (the
 result-policy ceiling and the sandbox shape's sources) and
-their pins, from the same code.
+their pins, from the same code, and then C19 and C20 (the
+queues edge gates and the per-transport gate postures) with
+theirs.
 """
 import hashlib
 import os
@@ -365,6 +367,87 @@ class SandboxShapePins(unittest.TestCase):
         self.assertEqual(offenders, [])
 
 
+class TransportGatePins(unittest.TestCase):
+    """C19/C20: the transport gates stand where P3 says they do.
+
+    These are source-scan pins: each transport's gate lives in
+    its extension, at the far end it talks to, or (file) in the
+    operating system, and the core attests none of it. What can
+    be pinned is that the gate sites the statement names are
+    the sites the code has -- the refusal texts, the order of
+    the queues edge checks, and the one write path into the
+    core's gate.
+    """
+
+    def test_c20_nats_credentials_required_unless_literal_true(self):
+        text = _read(os.path.join(
+            "runner", "transport_extensions", "nats", "__main__.py"))
+        # The waiver is the literal value True and nothing else.
+        self.assertIn(
+            'cfg.get("allow_unauthenticated") is True', text)
+        # No credentials and no waiver is a refusal to start.
+        self.assertIn("refuses to start: no broker", text)
+        self.assertIn("first authorization gate", text)
+
+    def test_c20_file_extension_has_no_credential_of_its_own(self):
+        # The honest negative half of P3's file clause: nothing
+        # in the extension's code checks a credential; the gate
+        # is the inbox directory's OS access control.
+        text = _read(os.path.join(
+            "runner", "transport_extensions", "file", "__main__.py"))
+        for word in ("password", "token", "credential"):
+            self.assertNotIn(word, text)
+
+    def test_c20_dtls_no_secret_no_start_and_established_only(self):
+        ext = _read(os.path.join(
+            "runner", "transport_extensions", "dtls", "__main__.py"))
+        self.assertIn("no shared_secret was handed", ext)
+        proto = _read(os.path.join("runner", "wire", "dtlsproto.py"))
+        # Application data before the session is established is
+        # dropped, in the server session's authenticated feed.
+        self.assertIn("application data before the session", proto)
+        self.assertIn("PSK binder mismatch", proto)
+        self.assertIn("unknown PSK identity", proto)
+
+    def test_c19_queues_extension_refuses_to_start_tokenless(self):
+        text = _read(os.path.join(
+            "runner", "transport_extensions", "queues", "__main__.py"))
+        self.assertIn("no runner token", text)
+        # Every call carries the bearer token.
+        self.assertIn('"Authorization": f"Bearer {self.token}"', text)
+
+    def test_c19_queues_edge_checks_bearer_before_signature(self):
+        text = _read(os.path.join(
+            "runner", "cloud", "queues-worker", "src", "index.js"))
+        # The edge signature check is on by default.
+        self.assertIn('env.REJECT_INVALID_HMAC ?? "true"', text)
+        # In the submission route, the SI bearer check comes
+        # before the edge signature verdict.
+        block = text[text.index("// SI submits a job."):]
+        bearer = block.index(
+            "bearerMatches(request, tenant.si_token_sha256)")
+        verdict = block.index("signatureVerdict")
+        self.assertLess(bearer, verdict)
+        # A role with no stored hash refuses every token.
+        self.assertIn("if (!m || !wantHash) return false", text)
+
+    def test_c20_channel_envelopes_face_the_core_gate(self):
+        # The composition point: a transported envelope becomes a
+        # synthetic message and handle_mail -- the whole of P1,
+        # signature included -- is what it faces.
+        text = _read(os.path.join("runner", "runner.py"))
+        self.assertIn(
+            'handle_mail(cfg, imap, cap, "transport", raw', text)
+        # And only DTLS is handed secret material, because it
+        # terminates authentication itself; only email is handed
+        # the mailbox keys.
+        wire = _read(os.path.join("runner", "wire", "transports.py"))
+        dtls_at = wire.index('if name == "dtls":')
+        handed = wire.index("out.update(_dtls_secret_material(cfg))")
+        self.assertLess(dtls_at, handed)
+        self.assertIn('if name == "email":', wire)
+
+
 class DocsSyncPins(unittest.TestCase):
     """The inventory must carry the same values the code declares.
 
@@ -385,6 +468,18 @@ class DocsSyncPins(unittest.TestCase):
     def test_constraints_doc_carries_c17_and_c18(self):
         doc = _read(os.path.join("docs", "proofs", "constraints.md"))
         for token in ("C17", "C18", "VIEW_ORDER", "interpreter_binds"):
+            self.assertIn(token, doc)
+
+    def test_constraints_doc_carries_c19_and_c20(self):
+        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        for token in ("C19", "C20", "REJECT_INVALID_HMAC",
+                      "allow_unauthenticated"):
+            self.assertIn(token, doc)
+
+    def test_properties_doc_states_p3_in_full(self):
+        doc = _read(os.path.join("docs", "proofs", "properties.md"))
+        for token in ("TransGate.tla", "stage4-p3.md",
+                      "A waived gate is a waived property"):
             self.assertIn(token, doc)
 
     def test_properties_doc_states_p1_and_placeholders(self):

@@ -523,6 +523,96 @@ refuse-class setting it stops the runner before any job is read.
   at startup (C11); the flag set and the prefix rule are code
   constants, not settings.
 
+## C19. The queues edge — bearer first, edge signature by default
+
+- **Constraint:** at the hosted queue's edge, a job submission
+  MUST carry the SI's bearer token before anything is stored,
+  and while the edge signature check is on, the body MUST also
+  verify there. The runner's calls — lease, renew, ack, result
+  posts — MUST carry the runner's bearer token. Tokens are
+  compared by SHA-256 hash against the tenant's stored hashes,
+  in constant time; a role with no stored hash refuses every
+  token (fails closed).
+- **Value:** the edge signature check, `REJECT_INVALID_HMAC`,
+  is on unless its value is `false`, `0`, or `off`
+  (case-insensitive) — on is the default, including when the
+  variable is absent. Two distinct tokens exist per tenant: the
+  SI token submits and reads results; the runner token leases,
+  acks, and posts results. Neither token is the shared secret;
+  the edge HMAC, when on, uses the tenant's shared secret and
+  is a duplicate of the core's check (C5), not a third gate.
+- **Where:** `runner/cloud/queues-worker/src/index.js` —
+  `bearerMatches`, line 368 (SHA-256 of the presented token,
+  constant-time compare, no stored hash means no match);
+  `rejectOn`, line 413; the submission route checks the SI
+  token at line 464 and the edge signature at lines 475 to 478
+  (400 when the body carries no signature, 403 when it does not
+  verify), in that order, before the enqueue forward. The
+  runner-token checks are at lines 459 (lease renewal), 488
+  (pull), 493 (ack), and 497 (result post). The runner-side
+  extension refuses to start with no token resolved
+  (`runner/transport_extensions/queues/__main__.py`, `main`,
+  lines 466 to 471) and sends the token on every call
+  (`QueueClient._request`, line 135).
+- **Class:** refuse class in shape — a missing runner token
+  stops the extension before it polls, and a missing bearer at
+  the edge refuses the submission before storage. The edge
+  switch itself is a deployment variable of the hosted queue,
+  not a runner configuration key.
+
+## C20. The transport gate postures, per transport
+
+- **Constraint:** each shipped transport's credential gate has
+  a fixed posture the deployment can only waive where the code
+  names a waiver. A gate that exists MUST be applied before
+  the message can be presented to the core; the core itself
+  performs no transport check (it is transport-blind, and the
+  composition is by channel position: an envelope exists in a
+  channel only because its pipe put it there).
+- **Value, per transport:**
+  - **Email:** no sender gate exists. The mailbox login is the
+    runner's own credential (`runner/wire/mailbox.py`,
+    `connect_imap`, line 199; login at line 219); it
+    authenticates no sender.
+  - **File:** no credential in code. The gate is the inbox
+    directory's OS access control, applied before the
+    extension reads (`FilePipe.scan_jobs`,
+    `runner/transport_extensions/file/__main__.py`, line 90,
+    applies shape discipline only).
+  - **NATS:** credentials are required; the waiver is the
+    literal value `true` for `allow_unauthenticated` — any
+    other value, including a truthy string, does not waive
+    (`NatsPipe.__init__`, `runner/transport_extensions/nats/
+    __main__.py`, lines 351 to 361: `cfg.get(
+    "allow_unauthenticated") is True`, and the credential test
+    is token, or user, or URL userinfo present). No credentials
+    and no waiver is a refusal to start (exit 2 through
+    `main`).
+  - **DTLS:** no waiver exists. No secret handed over is a
+    refusal to start (`runner/transport_extensions/dtls/
+    __main__.py`, `main`, line 346), and application data is
+    handled only on an established session
+    (`runner/wire/dtlsproto.py`, `_ServerSession.
+    feed_authenticated`, line 1412). The credential is the
+    shared secret itself as PSK (C5's secret, a second role).
+  - **Queues:** see C19; both bearer gates are unconditional —
+    no configuration value waives either token.
+- **Where the composition is pinned:** the core hands each
+  extension only its own configuration block, plus the mailbox
+  keys to email alone and the secret material to DTLS alone,
+  because those two terminate something themselves
+  (`runner/wire/transports.py`, `_runtime_config`, line 671;
+  `_dtls_secret_material`, line 635). No other pipe ever holds
+  the shared secret, so no other pipe can check the signature
+  itself; verification stays in the core for every transport
+  (`process_transport_message`, `runner/runner.py`, line 5238,
+  calling `handle_mail` at line 5266).
+- **Class:** refuse class where a code refusal exists (NATS
+  without credentials, DTLS without a secret, queues without a
+  runner token all refuse to start); not a configuration
+  setting where the gate is the environment's (file) or absent
+  by design (email).
+
 ## Summary table
 
 | ID | Constraint | Default or value | Startup class |
@@ -545,3 +635,5 @@ refuse-class setting it stops the runner before any job is read.
 | C16 | Transport credentials | required where a transport has them | refuse in the NATS example |
 | C17 | Result-policy ceiling | views attested < summary < redacted < full; budget defaults 8 and 8, effective is the min | combination rule in code; ceilings are owner config |
 | C18 | Sandbox shape | fixed flags; work mount `/work`; interpreter prefix bound read-only | mode and block refuse class; the rest is code |
+| C19 | Queues edge gates | SI bearer, then edge HMAC while `REJECT_INVALID_HMAC` is on (default on); runner bearer on lease/ack/results | refuse at the edge; missing runner token refuses the extension's start |
+| C20 | Transport gate postures | email none; file OS-held; NATS required, waiver is literal `true`; DTLS no waiver; queues unconditional | refuse where a code refusal exists; environment or absent by design otherwise |

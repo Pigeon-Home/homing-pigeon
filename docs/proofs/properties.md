@@ -1,11 +1,11 @@
 # Properties
 
 This file states the properties the proof work sets out to check.
-P1 is stated in full, precisely enough to model, and P2 is now
-stated in full as well (stage 4). P3 to P6 are named placeholders
-with one-line statements; each will be stated in full, in its
-own stage, before any model of it is built (`GOALS.md` gives
-the order).
+P1 is stated in full, precisely enough to model, and P2 and P3
+are now stated in full as well (stage 4). P4 to P6 are named
+placeholders with one-line statements; each will be stated in
+full, in its own stage, before any model of it is built
+(`GOALS.md` gives the order).
 
 Constraint identifiers (C1, C2, and so on) refer to
 `constraints.md`, where every value is harvested from the code at
@@ -464,16 +464,208 @@ a counterexample:
 The checked model, the configurations, and the witnesses are
 recorded in `stage4-p2.md`; the model is `Confine.tla`.
 
+## P3. A transport's credentials are a required second gate
+
+### Statement
+
+P3 stands in front of P1. A message reaches the signature check
+only by crossing its transport, and the five shipped transports
+do not stand in the same relation to credentials. Where a
+transport has credentials of its own, they are a gate in front
+of the signature: checked first, and a message that has not
+passed them does not reach the signature check at all. Where a
+transport has none, the signature stands alone, and this
+statement says so per transport rather than claiming a
+uniformity the code does not have.
+
+The composition is by position, and one fact shapes all of it:
+the core is transport-blind. `_service_transports`
+(`runner/runner.py`, line 5300) services each enabled
+transport's channel; `service_channel`
+(`runner/wire/transports.py`, line 535) hands every envelope it
+finds to `process_transport_message` (`runner/runner.py`, line
+5238), which runs it through `handle_mail` and therefore
+through the whole of P1, signature included. The core performs
+no transport-credential check and receives no attestation that
+one happened: an envelope is in the channel because a pipe put
+it there (`deliver_job`, `runner/transport_extensions/
+channel.py`, line 125), and each pipe puts it there only for a
+message that crossed the pipe. The clauses below are therefore
+claims about where each transport's gate stands and what it
+stops, stated per transport where the transports genuinely
+differ.
+
+1. **The order is fixed.** On every transport that has a
+   credential gate, the gate runs before the core's signature
+   check, and the signature check runs in the core, identically
+   for every transport. A transport-gate failure is not a
+   signature refusal: the message is never presented — never
+   enqueued, never delivered into the channel, never carried on
+   an established session — so the core never sees it and P1 is
+   never reached.
+2. **A valid signature is not sufficient where a gate is in
+   force.** For every arrival on a transport whose credential
+   gate is in force in that deployment, if the credential check
+   has not passed, the arrival MUST NOT be presented to the
+   core, whatever its signature says.
+3. **The credential gate is not sufficient either.** An arrival
+   that passed the transport gate still faces the signature and
+   every other clause of P1 in the core. Passing a pipe's
+   credential check authorizes nothing by itself.
+4. **Email has no sender gate, and the property claims none
+   for it.** The only credential on the email path is the
+   mailbox login (`runner/wire/mailbox.py`, `connect_imap`,
+   line 199; the login itself at line 219), and it is the
+   runner's credential to its own mail server: it authorizes
+   the runner's reading and sending, and it authenticates no
+   sender. Anyone who can route a message into the mailbox
+   presents an envelope to the signature check. If the login
+   fails, the email extension's pass fails and nothing is
+   fetched — the login can stop delivery, but it is not a gate
+   in front of the signature in P3's sense, and
+   `mail_tls_required` (line 121) governs the pipe's
+   certificate verification, not acceptance. Email stands on
+   the signature alone, by design (C16).
+5. **File's gate is the operating system's, held outside the
+   code.** The file extension has no credential of its own:
+   `FilePipe.scan_jobs` (`runner/transport_extensions/file/
+   __main__.py`, line 90) applies shape discipline — a symlink
+   is refused unread, an oversize file is refused unread, a
+   malformed envelope is refused with the reason recorded —
+   and delivers what it read. What decides who may present a
+   file at all is write access to the inbox directory,
+   enforced by the operating system before the extension can
+   see the file. P3's claim for file is therefore an
+   environment claim: it holds exactly insofar as the inbox
+   directory's access control admits only the principals the
+   owner intends. The runner's code cannot check that
+   condition, and no clause here pretends it does.
+6. **NATS's gate is broker authentication, required unless
+   waived in the open.** The extension refuses to start with
+   no broker credentials configured — a token, or a user and
+   password, from the `transport_nats` block or the broker
+   URL's userinfo — unless `allow_unauthenticated` is the
+   literal value `true` (`NatsPipe.__init__`,
+   `runner/transport_extensions/nats/__main__.py`, lines 351
+   to 361; `main` turns the refusal into exit 2). With
+   credentials configured, the broker enforces them at
+   CONNECT: an `-ERR` answer raises in `NatsClient.connect`
+   (line 190), the pipe reconnects with backoff, and
+   `deliver_job` is reachable only for messages received on an
+   established connection. A publisher faces the broker's same
+   rule: a connection the broker refuses publishes nothing.
+   Two conditions bound the claim, and both are stated rather
+   than assumed away: the broker MUST actually be run
+   requiring authentication (the extension's refusal covers
+   the runner's side of the deployment; a broker configured to
+   accept anonymous connections waives the gate at the
+   broker), and a deployment that sets
+   `allow_unauthenticated: true` with no credentials waives
+   the gate in the open — it starts, it logs a warning that
+   the HMAC signature is the only authorization gate on that
+   transport, and it does not carry P3 (C20).
+7. **DTLS's gate is the shared secret itself, in a second
+   role.** The extension refuses to start when no secret was
+   handed over (`runner/transport_extensions/dtls/__main__.py`,
+   `main`, line 346), and it re-checks the entropy floor of
+   every PSK it would terminate with (`_psk_floor_problem`,
+   line 139). The gate is the handshake in
+   `runner/wire/dtlsproto.py`: the server session
+   (`_ServerSession`, line 1209) looks up the secret for the
+   peer's PSK identity (an unknown identity is refused, line
+   1303; the key directory can refuse a key, through the
+   extension's `directory_lookup`, line 100), verifies the PSK
+   binder (a mismatch refuses the handshake, line 1315), and
+   handles application data only once the session is
+   established — application data before that is dropped (line
+   1412). Only an established session produces the
+   application-message event the extension delivers from, so
+   no job crosses before authentication. Resumption PSKs are
+   issued only inside an established session and stay chained
+   to the key that authenticated it. The two gates are real
+   and ordered, but they are not two credentials: the PSK is
+   the signature's own secret doing a second job, and a party
+   who holds the secret passes both, exactly as P1's attacker
+   model already assumes. The claim for DTLS is two checks,
+   one secret, stated in those words.
+8. **Queues' gates are bearer tokens at the hosted edge,
+   checked before anything is stored.** In the Worker
+   (`runner/cloud/queues-worker/src/index.js`), every route
+   first compares the presented bearer token's SHA-256 against
+   the role's stored hash (`bearerMatches`, line 368; a
+   missing stored hash fails closed). Job submission requires
+   the SI's token first (line 464) and then, while
+   `REJECT_INVALID_HMAC` is on — the default (`rejectOn`, line
+   413) — a valid edge HMAC under the tenant's secret (lines
+   475 to 478); a submission failing either is answered 401 or
+   403 and never enqueued. The runner's token gates the other
+   direction: lease, renewal, ack, and result posts all
+   require it (lines 459, 488, 493, 497), the extension
+   refuses to start without one
+   (`runner/transport_extensions/queues/__main__.py`, `main`,
+   lines 466 to 471) and sends it on every call
+   (`QueueClient._request`, line 135), and a wrong token makes
+   the pull raise, the pass fail, and nothing be delivered.
+   The edge signature check is a duplicate of the core's
+   check, not one of the two gates: with `REJECT_INVALID_HMAC`
+   off, a badly signed job with a good token is enqueued and
+   leased, and is then refused by the core under P1 — the
+   two-gate claim for queues is bearer token plus core
+   signature, and it holds in both postures of the edge switch
+   (C19).
+9. **A waived gate is a waived property.** Any deployment that
+   turns a transport's credential gate off — the NATS waiver,
+   a broker run without authentication, an inbox directory the
+   owner opens to every local principal — does not carry P3
+   for that transport and MUST NOT be described as carrying
+   it. The signature gate of P1 is unaffected by any of these
+   waivers.
+
+In short form:
+
+> Where a transport has credentials of its own, they are
+> checked first and they are required: a message that has not
+> passed them never reaches the signature check, and a message
+> that has passed them still faces the signature in full.
+> Where a transport has none — email — the signature stands
+> alone, and the property says which transports those are
+> instead of pretending otherwise.
+
+The short form is a summary. The nine clauses above are the
+property. Where they differ, the clauses win.
+
+### What a counterexample would look like
+
+A counterexample to P3 is a single concrete arrival — real, in
+the code, or exhibited by the model — that is presented to the
+core, or accepted, in a way the clauses forbid. Any one of
+these shapes is a counterexample:
+
+- A job presented to the core over NATS, DTLS, queues, or file
+  whose transport credential check failed or never ran, in a
+  deployment where that transport's gate is in force.
+- A queues job enqueued by a submission with no bearer token or
+  a wrong one, or a job leased by a pull that carried a wrong
+  runner token.
+- A DTLS application message delivered to the core from a
+  session that never completed the PSK handshake, or under a
+  PSK identity the lookup or the key directory refused.
+- A NATS message delivered into the channel while the broker
+  was refusing the extension's connection.
+- A file delivered by the file extension that was placed by a
+  principal the inbox directory's access control does not
+  admit — a counterexample to the environment condition of
+  clause 5, recorded as one: it would indict the deployment's
+  access control, not a check the code performs.
+
+The checked model, the configurations, and the witnesses are
+recorded in `stage4-p3.md`; the model is `TransGate.tla`.
+
 ## The placeholder properties
 
 Statements only. Each is taken up in full, in the order
 `GOALS.md` gives, before any model of it is built.
 
-- **P3. A transport's credentials are a required second gate.**
-  Where a transport has credentials of its own, a message that
-  has not passed that gate does not reach the signature check at
-  all, and a deployment that waives the gate does not carry the
-  property (C16).
 - **P4. The upgrade key is pinned to one script.** A job signed
   with the upgrade key executes only if it is an execution job
   carrying the one inline script whose SHA-384 the key's policy

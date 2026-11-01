@@ -220,7 +220,26 @@ configurations whose expected failures exhibit a narrowing
 taking effect and the one bounded widening the statement names
 — the read-only bind of an outside-`/usr` interpreter's own
 prefix, recorded as finding F1 in `stage4-p2.md`, which is the
-stage's record. P3 to P6 remain, in the order above.
+stage's record.
+
+P3 has landed. The full statement is in `properties.md` —
+nine clauses, stated per transport where the transports
+genuinely differ: email has no sender gate and the property
+claims none, file's gate is the operating system's, NATS's is
+broker authentication waivable only in the open, DTLS's is the
+shared secret itself in a second role, and queues' is two
+bearer tokens at the hosted edge. The constraints it needed
+are C19 and C20 in `constraints.md`. The model is
+`TransGate.tla`, a single-decision composition model checked
+over the full space (80 initial states: every transport,
+signature outcome, and credential outcome, against both
+deployment postures), with two witness configurations whose
+expected failures exhibit a both-gates acceptance and a
+signature-only acceptance on a gateless transport.
+`stage4-p3.md` is the record. No bypass was found: no
+transport in the code presents a job whose own credential
+check failed, was bypassed, or was silently skipped. P4 to P6
+remain, in the order above.
 
 ## Stage 5 — Conformance tests tying the model to the code
 
