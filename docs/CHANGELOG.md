@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.3 - 2026-10-31
+
+- **Retained records are read under their exact job id.** On a
+  case-insensitive filesystem a load for a case-variant id no
+  longer returns another job's retained record; the store
+  checks the directory entry's exact name first. The crash the
+  Germany rig banked for this is fixed and retired.
+- **Security parity on Windows.** The parity test now accepts
+  job-user's unsupported-platform audit record on Windows
+  alongside the would-* audit records, while still rejecting
+  every denial in audit mode.
+
 ## 3.15.2 - 2026-10-31
 
 - **Windows platform proofs.** The startup mailbox gate now
