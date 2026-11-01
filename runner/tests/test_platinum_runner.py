@@ -184,6 +184,33 @@ class SweepChannelRefusalsProperties(unittest.TestCase):
 
 
 class SweepDeterministicArms(unittest.TestCase):
+    def test_a_result_that_does_not_parse_is_still_the_job_in_its_name(self):
+        # No blank line, so the subject cannot name the job. The
+        # file is j1.result.txt. Leaving it unnamed moved the pair
+        # to done and the queue acked j1 with nothing stored.
+        base = tempfile.mkdtemp(prefix="hp-plat-unnamed-")
+        try:
+            cfg = _cfg()
+            job_id = "j1"
+            _plant_sent_record(base, cfg, job_id)
+            _plant_refusal(base, "queues", job_id, "not an envelope",
+                           "not an envelope")
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+            self.assertEqual(handled, 1)
+            paths = T.channel_paths(base, "queues")
+            stub = os.path.join(paths["outbox"], job_id + ".result.txt")
+            self.assertTrue(os.path.isfile(stub))
+            with open(stub, encoding="utf-8") as fh:
+                text = fh.read()
+            self.assertIn(f"result {job_id}", text)
+            self.assertIn("\n\n", text)
+            rec = R._read_record(R._sent_path(base, R._seen_key(cfg, job_id)))
+            self.assertTrue(rec.get("stubbed"))
+            self.assertFalse(os.path.exists(os.path.join(
+                paths["outbox"], "failed", job_id + ".result.txt")))
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
     def test_a_failed_stub_write_leaves_the_note_for_next_cycle(self):
         base = tempfile.mkdtemp(prefix="hp-plat-stubfail-")
         try:

@@ -2226,6 +2226,13 @@ def _sweep_channel_refusals(base_dir, cfg, names):
             if parsed is not None:
                 m = _transports._RESULT_ID_RE.search(parsed[0] or "")
                 job_id = m.group(1) if m else None
+            if job_id is None and os.path.isfile(result_file):
+                # The body did not name a job: no blank line, or not
+                # text. The pair is <id>.result.txt beside
+                # <id>.refused.txt. Moving it to done here made the
+                # queue ack the job with nothing stored. The id in
+                # the name is the job the file was refused for.
+                job_id = stem
             rec = None
             skey = _seen_key(cfg, job_id) if job_id else None
             if skey:
