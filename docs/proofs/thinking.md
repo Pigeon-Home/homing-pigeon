@@ -295,3 +295,9 @@ of that exact length, different texts, are admitted, and
 one of 50,001 characters is admitted too, because the
 figure is the rung and not the code's byte cap.
 `stage8.md` is the record.
+
+Stage 9 takes the same check to 500,000 characters, the
+next figure the ladder names. Three scripts of that exact
+length are admitted, and one of 500,001 characters is
+admitted too. `stage9.md` is the record. The production
+cap itself, 1048576 bytes, has not been generated.

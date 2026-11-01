@@ -463,6 +463,25 @@ This stage has landed. The harness is
 `stage8.md`. A script of 50,001 characters is still
 admitted, because the code's cap is 1048576 bytes.
 
+## Stage 9 — Content-independence at 500,000 characters
+
+**Contents.** The same check as stage 8, at the next
+figure the ladder names. Three texts of exactly 500,000
+characters that bash accepts, and one of 500,001. The
+gate admits them. A short cap refuses the three by the
+cap, not by the text.
+
+**Done means:** the lengths are exact, `bash -n` accepts
+them, `handle_mail` admits them, the short cap names
+itself, and the record says that 500,000 is not a code
+limit.
+
+This stage has landed. The harness is
+`runner/tests/test_proof_content_500k.py`. The record is
+`stage9.md`. A script of 500,001 characters is still
+admitted. The production cap, 1048576 bytes, was not
+generated here.
+
 ## What this plan does not do
 
 - It does not change any runner behaviour. A code defect found by
