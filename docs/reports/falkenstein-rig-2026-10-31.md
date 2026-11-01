@@ -149,6 +149,39 @@ own portable git.
   against the runner's own scanner code over the exact file
   set it would produce; the rehearsal predicted both the kill
   and the clean run.
+- **Every security setting turned on (31 Oct 2026,
+  evening).** All six `security.modes` were set to `enforce`
+  (policy_env, policy_files, policy_args, audience,
+  confinement, job_user). The Oracle stays deterministic —
+  no local model is configured or running. Two findings came
+  straight out of the attempt:
+  - **Confinement cannot enforce on Windows, and the runner
+    refuses to pretend.** With confinement at `enforce` the
+    runner declined to start at all: "confinement (bwrap) is
+    Linux-only; this machine is win32. Refusing to start; fix
+    the sandbox, or set confinement to audit or off." That is
+    Decision 1 behaving as designed — a protection that cannot
+    engage is a startup error, never a silent no-op.
+    Confinement was set to `audit` — the strongest setting
+    this platform supports in 3.15.0 — and the runner started
+    clean with the other five modes enforcing.
+  - **Audience enforcement turns unaddressed jobs away.** The
+    first two test jobs under the new posture were rejected at
+    the door: "security policy (audience): runner_id
+    mismatch." With audience enforcing, a job must be
+    addressed to this runner (`--aud` on the sender). Resent
+    addressed, both passed: a clock job returning a true
+    clock, and a job that installed Python 3.12.7 onto the
+    system at `C:\hp-tools\python` and ran it.
+  - **A divergence to chase: `job_user` enforces in name
+    only on Windows.** Both jobs reported their identity as
+    `NT AUTHORITY\SYSTEM` — the runner's own account — with
+    job_user at `enforce`. Where confinement refused a
+    setting it cannot honor, job_user accepted one. On Linux
+    the mode runs jobs as another user; on Windows in 3.15.0
+    it changes nothing, and nothing says so. This needs
+    either an implementation or the same refusal confinement
+    gives, and a test that pins whichever is chosen.
 - **A bug found on the way, recorded here.** The runner's
   startup gate asks for mailbox authentication without
   checking whether the email transport is enabled
@@ -166,11 +199,14 @@ own portable git.
 
 ## What remains
 
-1. Python on the machine, delivered as a job — the fuzzing
-   tooling and local submission helpers run on it.
+1. The `job_user` divergence on Windows (see the enforcement
+   entry above): implement it or refuse it, with a test.
 2. The Windows remote-upgrade applier, proven live with a
    same-version reinstall under the upgrade key.
-3. Fuzzing slices on the 8 cores.
+3. Windows scenario runs, hammering the rig over the next
+   couple of days: protection probes, timeouts, output
+   shapes, restart resilience, and fuzzing slices on the
+   8 cores.
 4. San Francisco's retirement, now that the seat is proven.
 
 ## First commit from this machine
