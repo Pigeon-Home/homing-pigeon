@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.11 - 2026-11-01
+
+- Fix: the defaults registry follows the extensions guide's
+  line shift, so the doc drift guard passes again.
+
 ## 3.15.10 - 2026-11-01
 
 - Worker agents: an external agent on the task board,
