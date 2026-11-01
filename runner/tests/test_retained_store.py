@@ -187,6 +187,49 @@ class LoadRetainedTest(_Base):
                 os.path, "commonpath", side_effect=ValueError("mixed")):
             self.assertIsNone(R.load_retained(self.base, "job-13"))
 
+    # Case is part of a job id. A case-insensitive filesystem
+    # (Windows NTFS, a default macOS volume) answers a load for
+    # "bm-RET-Y" with the record stored for "bm-ret-y" unless the
+    # store checks the directory entry's exact name: the Germany
+    # rig's grow filed exactly that as race_state crash
+    # 9b26d146d86a0e08 (2026-11-01), a retained record returned
+    # for a different job id than the one it was saved under.
+    def test_case_variant_ids_do_not_alias_the_stored_record(self):
+        R.save_retained(self.base, "bm-ret-y", {"v": "bm-ret-y"})
+        self.assertEqual(R.load_retained(self.base, "bm-ret-y"),
+                         {"v": "bm-ret-y"})
+        for variant in ("bm-RET-Y", "BM-RET-Y", "bm-ret-Y", "Bm-Ret-Y"):
+            self.assertIsNone(R.load_retained(self.base, variant),
+                              variant)
+
+    def test_case_variant_saves_do_not_alias_either_way(self):
+        R.save_retained(self.base, "CaseJob-1", {"v": "upper-first"})
+        self.assertIsNone(R.load_retained(self.base, "casejob-1"))
+        self.assertIsNone(R.load_retained(self.base, "CASEJOB-1"))
+        self.assertEqual(R.load_retained(self.base, "CaseJob-1"),
+                         {"v": "upper-first"})
+
+    def _load_under_case_insensitive_surface(self, job_id, payload):
+        # Simulate the one seam a case-insensitive filesystem
+        # changes: isfile and the read itself succeed for a name
+        # that differs only in case. The directory listing still
+        # carries the stored name's real case, as NTFS/APFS do.
+        with unittest.mock.patch.object(
+                os.path, "isfile", return_value=True), \
+                unittest.mock.patch.object(
+                    R, "_read_json_dict", return_value=dict(payload)):
+            return R.load_retained(self.base, job_id)
+
+    def test_case_variant_load_is_none_on_a_case_insensitive_fs(self):
+        R.save_retained(self.base, "bm-ret-y", {"v": "bm-ret-y"})
+        self.assertIsNone(self._load_under_case_insensitive_surface(
+            "bm-RET-Y", {"v": "bm-ret-y"}))
+
+    def test_exact_case_load_reads_on_a_case_insensitive_fs(self):
+        R.save_retained(self.base, "bm-ret-y", {"v": "bm-ret-y"})
+        self.assertEqual(self._load_under_case_insensitive_surface(
+            "bm-ret-y", {"v": "bm-ret-y"}), {"v": "bm-ret-y"})
+
 
 class PruneRetainedTest(_Base):
     def _plant(self, name, age_days):

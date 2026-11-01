@@ -2420,6 +2420,20 @@ def load_retained(base_dir, job_id):
     except ValueError:
         return None
     with _RETAINED_LOCK:
+        # Case is part of a job id, but a case-insensitive
+        # filesystem (Windows NTFS, a default macOS volume) opens
+        # "bm-RET-Y.json" when only "bm-ret-y.json" is stored, so
+        # isfile/open alone would return one job's record under a
+        # different job's id (the Germany rig's race_state crash
+        # 9b26d146d86a0e08, 2026-11-01). The directory listing
+        # carries the stored name's real case on those filesystems
+        # too: the record exists only under its exact name.
+        try:
+            names = os.listdir(retained)
+        except OSError:
+            return None
+        if f"{job_id}.json" not in names:
+            return None
         if not os.path.isfile(path):
             return None
         data = _read_json_dict(path)
