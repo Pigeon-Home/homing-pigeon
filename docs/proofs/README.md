@@ -188,9 +188,8 @@ A finding is most useful when it points at the file and the line
 - `constraints.md` — the constraint inventory harvested from the
   code at `6d6288c5`, with the exact value, the declaring file and
   function, and the refuse-or-default class of each constraint.
-- `properties.md` — the property list. P1, the gate property, is
-  stated in full. P2 to P6 are named placeholders with one-line
-  statements, to be taken one at a time.
+- `properties.md` — the property list. P1 through P6 are
+  stated in full.
 - `GOALS.md` — the staged plan: this foundation first, then the
   model, then each property, then the conformance tests, with the
   scope raising between stages.

@@ -2,10 +2,7 @@
 
 This file states the properties the proof work sets out to check.
 P1 is stated in full, precisely enough to model, and P2, P3,
-P4, and P5 are now stated in full as well (stage 4). P6 is a
-named placeholder with a one-line statement; it will be stated
-in full, in its own stage, before any model of it is built
-(`GOALS.md` gives the order).
+P4, P5, and P6 are now stated in full as well (stage 4).
 
 Constraint identifiers (C1, C2, and so on) refer to
 `constraints.md`, where every value is harvested from the code at
@@ -1066,14 +1063,72 @@ recorded in `stage4-p5.md`; the model is `Replay.tla`.
 `Claim.tla` (stage 2) remains the check of the narrow race;
 this model is the full shape.
 
+## P6. Refuse-class configuration behaves as Decision 1 requires
+
+### Statement
+
+Decision 1 (`docs/design/present-but-invalid-config.md`) splits
+a setting that is present but not usable by what a wrong value
+changes. P6 is that split, as the code performs it. The actors
+are the owner, who writes `config.json`, and the runner, which
+reads it at startup and again while running. No job is involved.
+A wrong value here is the owner's, not a sender's.
+
+For every setting the inventory classifies, the following hold:
+
+1. A key that is absent is not a present-but-unusable value. It
+   reads as its documented default, and it is not named in the
+   startup warning. `defaulted.is_defaulted` is false when the
+   value is `None` (C26).
+2. A present usable value is used as written. It is not named.
+3. A present unusable value in the default class does not stop
+   the runner. The reader returns the documented default, and
+   the startup warning names the key. A boolean is never a
+   number, a non-finite number is not usable, and a value
+   outside the key's bounds is not clamped to the bound: it is
+   unusable, and the default applies (C26).
+4. A present unusable value in the refuse class stops the
+   runner at startup, before any job is read, and the error
+   names the setting. The process exits 2. Size caps, mailbox
+   ports, key policies, and the security block are this class
+   at startup (C27).
+5. A live reload of a default-class value that is present and
+   unusable replaces the running value with the documented
+   default and names the key in the log. It does not keep a
+   hidden last-good value, and it does not stop the process
+   (C26).
+6. A refuse-class key is not in the live-reload set. A later
+   write, usable or not, does not change the running binding
+   through `reload_hot_config`. The process keeps running. The
+   new value is read at the next start, where clause 4 applies
+   if it is unusable (C27).
+7. A reload that cannot read the file changes nothing and does
+   not advance the reload marker, so the next cycle tries the
+   same file again.
+
+In short form: a typo in a tunable costs a warning and the
+documented default; a typo in a port, a policy, a secret, or a
+security mode costs the start, and never a quiet change while
+the process is already up.
+
+### What a counterexample would look like
+
+- The runner starts, and reads a job, while a refuse-class
+  setting is present and unusable.
+- A default-class setting that is present and unusable is used
+  as written, or is replaced by its default without the key
+  being named.
+- An absent key is named as if the owner had written a bad
+  value.
+- A live reload of an unusable default-class value keeps the
+  previous value.
+- A live reload of a refuse-class value changes the running
+  binding, or stops the process.
+
+The checked model is `Decision.tla`. The record is
+`stage4-p6.md`.
+
 ## The placeholder properties
 
-Statements only. Each is taken up in full, in the order
-`GOALS.md` gives, before any model of it is built.
+None remain. P1 through P6 are stated above.
 
-- **P6. Refuse-class configuration behaves as Decision 1
-  requires.** A present-but-unusable value in the refuse class
-  stops the runner at startup and names the setting; a value in
-  the default class reads as its documented default and is named
-  in the startup warning; live reload never lets a refuse-class
-  change take silent effect mid-run.

@@ -293,7 +293,28 @@ execution was found outside the priced windows; the one
 observation recorded there is that the record's digest
 check is skipped when the opinion module is absent, which
 errs toward answering rather than executing and so does not
-touch the execution claim. P6 remains.
+touch the execution claim. P6 has landed. The full statement
+is in `properties.md` — seven clauses: an absent key is the
+default and is not named, a present usable value is used as
+written, an unusable default-class value is the documented
+default and is named, an unusable refuse-class value stops
+the runner at startup and the error names the setting, a
+live reload of an unusable default-class value replaces the
+running value and names it, and a refuse-class key is not in
+the live-reload set so a later write neither changes the
+binding nor stops the process. The constraints it needed are
+C26 and C27 in `constraints.md`. The model is `Decision.tla`,
+one decision over the twelve attempts (class, presence, and
+moment), checked exhaustively (24 distinct states), with two
+witness configurations whose expected failures exhibit the
+startup stop and the named default. `stage4-p6.md` is the
+record. No refuse-class value that is present and unusable
+was found to let the runner start, and no live reload was
+found to move a refuse-class binding. The one gap recorded
+there is that Decision 1's sentence also asks for a log line
+when a bad port is written live, and `reload_hot_config`
+does not emit one, because it never reads the key. Stage 4's
+five properties are checked. Stage 5 remains.
 
 ## Stage 5 — Conformance tests tying the model to the code
 

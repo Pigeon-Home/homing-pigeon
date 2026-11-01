@@ -20,6 +20,8 @@ and the upgrade key arrangement) with theirs. P5's pass added
 the replay behaviour pins under C15 and the new C23, C24, and
 C25 (the replay cache's keep horizon, the claim's stale rule,
 and the record's retention and delivery window) with theirs.
+P6's pass added C26 and C27 (the default-class reader and the
+refuse class at startup) and the behaviour pins under them.
 """
 import hashlib
 import os
@@ -804,11 +806,78 @@ class DocsSyncPins(unittest.TestCase):
                       "load_sent_result"):
             self.assertIn(token, doc)
 
+    def test_properties_doc_states_p6_in_full(self):
+        doc = _read(os.path.join("docs", "proofs", "properties.md"))
+        for token in ("Decision.tla", "stage4-p6.md",
+                      "is_defaulted", "reload_hot_config"):
+            self.assertIn(token, doc)
+
+    def test_constraints_doc_carries_c26_and_c27(self):
+        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        for token in ("C26", "C27", "summary_line", "HOT_KEYS",
+                      "_validate_size_caps"):
+            self.assertIn(token, doc)
+
     def test_properties_doc_states_p1_and_placeholders(self):
         doc = _read(os.path.join("docs", "proofs", "properties.md"))
         for token in ("P1", "P2", "P3", "P4", "P5", "P6",
                       "under 50"):
             self.assertIn(token, doc)
+
+
+class DecisionPins(unittest.TestCase):
+    """C26 and C27: the default class names its fallback, and the
+    refuse class stops at startup and is not live-reloaded."""
+
+    def test_a_bool_is_not_a_number_and_an_absent_key_is_not_named(self):
+        from runner.guard import confval
+        from runner.guard import defaulted
+
+        self.assertEqual(confval.integer(True, 20), 20)
+        self.assertEqual(confval.integer(None, 20), 20)
+        self.assertEqual(confval.integer("nope", 20), 20)
+        self.assertEqual(confval.integer(7, 20), 7)
+        self.assertEqual(confval.port(0, 20220), 20220)
+        self.assertEqual(confval.port(443, 20220), 443)
+        self.assertFalse(defaulted.is_defaulted("poll_interval_sec", None))
+        self.assertTrue(defaulted.is_defaulted("poll_interval_sec", True))
+        self.assertTrue(defaulted.is_defaulted("poll_interval_sec", "nope"))
+        self.assertFalse(defaulted.is_defaulted("poll_interval_sec", 7))
+        line = defaulted.summary_line(["poll_interval_sec"])
+        self.assertIn("poll_interval_sec", line)
+        self.assertIn("1 setting", line)
+
+    def test_a_bad_size_cap_and_a_bad_port_name_themselves(self):
+        self.assertIsNone(R._validate_size_caps({}))
+        self.assertIsNone(R._validate_size_caps({"max_job_bytes": 0}))
+        err = R._validate_size_caps({"max_job_bytes": True})
+        self.assertIn("max_job_bytes", err)
+        err = R._validate_size_caps({"max_script_bytes": -1})
+        self.assertIn("max_script_bytes", err)
+        self.assertEqual(R._port({}, "imap_port", 993), 993)
+        with self.assertRaises(RuntimeError) as raised:
+            R._port({"imap_port": True}, "imap_port", 993)
+        self.assertIn("imap_port", str(raised.exception))
+        self.assertIn("config error", str(raised.exception))
+
+    def test_a_live_reload_defaults_a_tunable_and_leaves_a_port(self):
+        import json
+        import tempfile
+        from runner.runner import reload_hot_config
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({
+                    "poll_interval_sec": "nope",
+                    "imap_port": True,
+                }, fh)
+            cfg = {"poll_interval_sec": 7, "imap_port": 993}
+            changed = reload_hot_config(cfg, path, {"mtime": 0})
+        self.assertEqual(cfg["poll_interval_sec"], 20)
+        self.assertIn("poll_interval_sec", changed)
+        self.assertEqual(cfg["imap_port"], 993)
+        self.assertNotIn("imap_port", changed)
 
 
 if __name__ == "__main__":

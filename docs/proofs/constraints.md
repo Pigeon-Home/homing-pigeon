@@ -752,6 +752,58 @@ refuse-class setting it stops the runner before any job is read.
   stash before send, give up into `failed/`, answer only
   from the two folders — is code.
 
+## C26. The default-class reader
+
+- **Constraint:** a present-but-unusable value in the default
+  class reads as its documented default and is named. An absent
+  key reads as that default and is not named. A boolean is
+  never a number. A value outside the key's bounds is unusable,
+  not clamped.
+- **Value:** the table in `runner/guard/defaulted.py`.
+  `poll_interval_sec` defaults to 20, lower bound 0.
+  `default_timeout_sec` defaults to 300, lower bound 1.
+  `max_job_age_sec` defaults to 3600, lower bound 1.
+  `dtls_greeting` defaults to `family`, choices `none`,
+  `family`, `standard`, `full`. The hot-reload twin of the
+  numeric rows is `HOT_DEFAULTS` in `runner/runner.py`: the
+  same numbers, plus `workers` defaulting to 1.
+- **Where:** `runner/guard/confval.py`, `number` (line 78),
+  `integer` (line 94), `port` (line 102), `choice` (line 112).
+  `runner/guard/defaulted.py`, `is_defaulted` (line 81),
+  `defaulted_keys` (line 97), `summary_line` (line 105).
+  Live reload: `runner/ops/attest.py`, `reload_hot_config`,
+  lines 113 to 136, which writes the default and logs the key.
+- **Class:** default class. This entry is the class itself.
+
+## C27. The refuse class at startup, and what reload will not touch
+
+- **Constraint:** a present-but-unusable value in the refuse
+  class stops the runner at startup and the error names the
+  setting. The same keys are not in the live-reload set, so a
+  later write does not change the running binding and does not
+  stop the process.
+- **Value:** exit code 2 from `runner/ops/main.py` when a
+  startup check raises or returns an error string. The
+  live-reload set is `HOT_KEYS` and `LIVE_KEYS` in
+  `runner/runner.py` (lines 5045 and 5058) plus the keys of
+  `defaulted.NUMERIC` and `defaulted.ENUM`. None of those is
+  a port, a bind address, a secret, a key policy, or a
+  security mode.
+- **Where:** `runner/runner.py`, `_validate_size_caps`, line
+  4707, for `max_job_bytes`, `max_script_bytes`, and
+  `max_result_bytes` (a boolean, a non-int, or a negative).
+  `runner/wire/mailbox.py`, `_port`, line 80: a boolean or a
+  non-number raises `RuntimeError` naming the key; an absent
+  key uses the default. `runner/ops/main.py`, lines 125 to
+  147, prints the error and returns 2 for a bad size cap, a
+  bad key policy, or a bad `imap_port` or `smtp_port` when
+  the key is present. `reload_hot_config` never reads those
+  keys.
+- **Class:** refuse class. The defensive runtime readers that
+  still return a default after startup are the second layer
+  recorded at the top of this file; the startup check is the
+  one that enforces the class.
+
 ## Summary table
 
 | ID | Constraint | Default or value | Startup class |
@@ -781,3 +833,5 @@ refuse-class setting it stops the runner before any job is read.
 | C23 | Replay-cache keep horizon | `max(max_job_age_sec + 300, 86400)` sec; `SEEN_CAP` 200,000 | derived from C12; constants |
 | C24 | Claim stale rule | live holder never stolen; dead at once; unreadable at 86,400 sec | constant |
 | C25 | Record retention and delivery window | sent ages at `output_retention_days` (7; 0 never); stash given up at `result_stash_retention_sec` 86,400, backoff 60 | default class; the shape is code |
+| C26 | Default-class reader | unusable reads as the documented default and is named; absent is not named; a bool is not a number | default class |
+| C27 | Refuse class at startup | exit 2, the error names the key; those keys are not in the live-reload set | refuse class |
