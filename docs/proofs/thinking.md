@@ -301,3 +301,10 @@ next figure the ladder names. Three scripts of that exact
 length are admitted, and one of 500,001 characters is
 admitted too. `stage9.md` is the record. The production
 cap itself, 1048576 bytes, has not been generated.
+
+Stage 10 generates the cap. Three ASCII scripts of exactly
+1048576 bytes are admitted, and two of 1048577 bytes are
+refused, the refusal naming the cap. `stage10.md` is the
+record. The character count and the byte count coincide
+in these scripts because they are ASCII. The check counts
+bytes.

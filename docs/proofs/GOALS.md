@@ -482,6 +482,24 @@ This stage has landed. The harness is
 admitted. The production cap, 1048576 bytes, was not
 generated here.
 
+## Stage 10 — Content-independence at the production cap
+
+**Contents.** The last figure. The code admits a script
+of exactly 1048576 bytes and refuses one of 1048577. The
+texts on each side of that boundary differ, and the
+decision does not follow the text. The scripts are ASCII,
+so the character count and the byte count are the same
+number. The check counts bytes.
+
+**Done means:** the lengths are exact, `bash -n` accepts
+them, `handle_mail` admits the three at the cap and
+refuses the two one byte over, and the refusal names the
+cap and the number 1048577.
+
+This stage has landed. The harness is
+`runner/tests/test_proof_content_cap.py`. The record is
+`stage10.md`.
+
 ## What this plan does not do
 
 - It does not change any runner behaviour. A code defect found by
