@@ -64,6 +64,5 @@
 
 - **Patch level and disk encryption as senses.**
 
-- **TLS inspection and WAF.** sensor extensions
-not solve it.
+- **TLS inspection and WAF.** extensions?
 
