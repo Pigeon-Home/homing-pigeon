@@ -2985,8 +2985,12 @@ def _start_job_monitor(cfg, st, job_id, proc, work, base_dir,
             declared_paths = []
     script_findings = _script_path_findings(
         script_text, base_dir, job_id) if script_text else []
-    declared_cred = [p for p, r in script_findings
-                     if r == _remediation.CREDENTIAL_REASON]
+    # The tripwire's declared set comes from the script's
+    # comment lines only: a path the script carries as data
+    # (a string it writes, an argument it passes) does not
+    # declare the produced artifact that repeats it.
+    declared_cred = _script_declared_credential_paths(
+        script_text, base_dir, job_id) if script_text else []
     envelope_note = "declared paths: " + (
         ", ".join(declared_paths[:8]) if declared_paths else "none")
     if script_findings:
@@ -6266,6 +6270,8 @@ _PATH_SPLITTERS = " \t\r\n'\"`;|&<>(){}[]"
 
 _paths = _required_load_mod("runner.ops.paths", "ops.paths")
 _script_path_findings = _paths._script_path_findings
+_script_declared_credential_paths = \
+    _paths._script_declared_credential_paths
 
 
 def _chosen_retained_rows(base_dir, limit=6):

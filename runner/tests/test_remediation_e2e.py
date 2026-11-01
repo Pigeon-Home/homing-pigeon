@@ -18,9 +18,12 @@ promises (docs/design/remediation-design.md):
 
 The tripwire used here is the credential artifact: the job
 writes a file referencing a credential store its script never
-named. The script builds the path by concatenation so the
-literal never appears in the script text -- a path the script
-itself names is declared, by design, and cannot trip.
+declared. The script builds the path by concatenation so the
+literal never appears in the script text. A path declared in
+the script's comment lines cannot trip; a path named only in
+command text -- a string the script writes, an argument --
+is not a declaration and can (the Germany rig miss of
+1-Nov-2026; test_tripwire_declaration_harvest pins the line).
 """
 import json
 import os

@@ -1357,28 +1357,45 @@ class JobMonitor:
                     continue
                 if self._scanned.get(path) == meta:
                     continue
-                self._scanned[path] = meta
-                self._scan_file(path)
+                if self._scan_file(path):
+                    # The marker is earned only by a scan that
+                    # actually read the file. A transient read
+                    # failure (a locked file is the live
+                    # Windows shape) must not exempt this
+                    # version of the file from later passes.
+                    self._scanned[path] = meta
                 if self.outcome["acted"] is not None:
                     break
         return total
 
     def _scan_file(self, path):
+        """Scan one produced file against the findings fn.
+
+        Returns True when this version of the file is settled
+        -- actually read and evaluated, or a verdict that
+        cannot change without the file changing (too large
+        to read, binary). Returns False when the read itself
+        failed, so the caller leaves the file's marker
+        unrecorded and a later pass retries it.
+        """
         if self._findings_fn is None:
-            return
+            return True
         try:
             if os.path.getsize(path) > ARTIFACT_READ_CAP:
-                return
+                return True
             with open(path, "rb") as fh:
                 raw = fh.read(ARTIFACT_READ_CAP)
+        except OSError:
+            return False
+        try:
             text = raw.decode("utf-8")  # binary artifacts: no scan
-        except (OSError, UnicodeDecodeError):
-            return
+        except UnicodeDecodeError:
+            return True
         try:
             findings = self._findings_fn(text)
         except Exception as e:
             self._error(e)
-            return
+            return False
         tripwire, divs = classify_findings(
             findings, self._declared, self._declared_cred)
         if tripwire is not None:
@@ -1391,6 +1408,7 @@ class JobMonitor:
             self._handle(tripwire)
         for div in divs:
             self._handle(div)
+        return True
 
     def _check_window_evidence(self, pids):
         if not self.base_dir:

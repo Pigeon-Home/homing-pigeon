@@ -673,17 +673,30 @@ class ExecuteJobTest(unittest.TestCase):
             self.assertEqual(r["exit_code"], 0, mode)
             self.assertNotIn("remediation", r, mode)
 
-    def test_declared_credential_twin_is_not_tripped(self):
-        # The script itself names the credential path (the
-        # envelope declares it) and a produced file repeats it:
-        # the job is doing what it said. No tripwire, no member.
-        _base, r = self._run({"remediation_sample_sec": 0.1}, {
-            "job_id": "twin-1", "kind": "exec",
-            "script": "printf 'see ~/.aws/credentials here' "
-                      "> note.txt; cat ~/.aws/credentials "
-                      "2>/dev/null; echo ok"})
-        self.assertEqual(r["exit_code"], 0)
-        self.assertNotIn("remediation", r)
+    def test_script_named_credential_artifact_trips(self):
+        # A credential path the script names only in its
+        # command text -- the string it writes, a read of the
+        # file -- is not a declaration: declarations live in
+        # the script's comment lines. The produced file
+        # repeating the path trips the wire. (This was
+        # test_declared_credential_twin_is_not_tripped: the
+        # harvest took every credential token in the script
+        # text as declared, which is the Germany rig tripwire
+        # miss of 1-Nov-2026. The declared twin now declares
+        # in a header comment and lives in
+        # test_tripwire_declaration_harvest.)
+        cfg = {"remediation_sample_sec": 0.1}
+        with mock.patch.object(rem, "av_referral",
+                               return_value=("clean", "fake scan")):
+            _base, r = self._run(cfg, {
+                "job_id": "twin-1", "kind": "exec",
+                "script": "printf 'see ~/.aws/credentials here' "
+                          "> note.txt; cat ~/.aws/credentials "
+                          "2>/dev/null; echo ok"})
+        member = r["remediation"]
+        self.assertEqual(member["authority"], "tripwire")
+        self.assertTrue(member["divergence"].startswith(
+            "credential_artifact"))
 
     def test_undeclared_credential_artifact_quarantines(self):
         cfg = {"remediation_sample_sec": 0.1}
