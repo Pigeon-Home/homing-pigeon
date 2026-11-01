@@ -212,6 +212,16 @@ that fails its check is not done; it is a finding, and the stage
 stays open on it until the code or the statement is resolved in
 the open.
 
+Progress: P2 has landed. The full statement is in
+`properties.md`; the constraints it needed are C17 and C18 in
+`constraints.md`; the model is `Confine.tla`, checked over the
+full field space (580,608 initial states) with two witness
+configurations whose expected failures exhibit a narrowing
+taking effect and the one bounded widening the statement names
+— the read-only bind of an outside-`/usr` interpreter's own
+prefix, recorded as finding F1 in `stage4-p2.md`, which is the
+stage's record. P3 to P6 remain, in the order above.
+
 ## Stage 5 — Conformance tests tying the model to the code
 
 **Contents.** For each checked property, a test family in

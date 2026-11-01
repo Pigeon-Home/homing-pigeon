@@ -427,6 +427,102 @@ refuse-class setting it stops the runner before any job is read.
   extension refuses to start without its credentials, which is
   the refuse-class shape applied to a transport's gate.
 
+## C17. The result-policy ceiling — views and query budget
+
+- **Constraint:** a job's `result_policy` may ask for a
+  disclosure view and a query budget, and in both cases the
+  effective value MUST be the narrower of the job's ask and the
+  owner's ceiling (PROTOCOL.md section 9 and section 12,
+  non-escalation). A job MUST NOT be able to raise either value
+  past the owner's, and the redaction patterns a result is
+  scanned with MUST come from the runner — the built-in set plus
+  the owner's `redact_patterns_extra` — never from the job: the
+  job's own `redact_patterns` member is reserved in the protocol
+  and is read nowhere in the runner.
+- **Value:** views, ordered narrowest first — `attested` (0),
+  `summary` (1), `redacted` (2), `full` (3). A requested view
+  that is absent or unrecognised reads as `full`; the ceiling,
+  `max_result_view`, defaults to `full` when absent. The
+  effective view is the requested view when its order is at most
+  the ceiling's, and the ceiling otherwise. Query budget: the
+  job's `query_budget` and the owner's `max_query_budget` each
+  default to 8 when absent or unusable, and the effective budget
+  is the smaller of the two.
+- **Where:** `runner/runner.py`, line 445 —
+  `VIEW_ORDER = {"attested": 0, "summary": 1, "redacted": 2,
+  "full": 3}`. `runner/ops/policy.py`, `apply_result_policy`,
+  line 19 — the requested view at line 33, the ceiling at line
+  34, the unrecognised-view default at lines 41 to 42, and the
+  narrower-of-the-two rule at line 45. `runner/runner.py`,
+  `query_budget`, line 553 — both defaults and the `min` at
+  lines 561 to 563. `runner/runner.py`, `_redact_patterns`,
+  line 447 — built-ins plus the configured extras; no job input.
+  The raw-line query operations (`grep`, `tail`) are answered
+  only when the effective view allows raw lines:
+  `runner/runner.py`, `_raw_lines_allowed`, line 1391 — `full`
+  and `redacted` (and the empty view a non-mail caller may pass)
+  allow them; `summary` and `attested` do not.
+- **Class:** not a configuration setting of its own; the ceiling
+  keys are the owner's configuration (`max_result_view` is a
+  hot-reloadable default-class key, `max_query_budget` a plain
+  config read), and the constraint is the direction of the
+  combination rule, which lives in code.
+
+## C18. The sandbox shape — its sources
+
+- **Constraint:** when a job runs inside the bubblewrap sandbox,
+  everything that decides the sandbox's shape MUST come from the
+  owner's configuration or from code constants — the mode, the
+  fixed flag set, the work mount, the owner's extra flags and
+  extra read-only binds — with exactly one job-influenced
+  addition, stated in the next bullet. No field in a job names a
+  mount, a flag, or a path the sandbox exposes.
+- **Value:** the fixed flag set is `DEFAULT_FLAGS` (user, IPC,
+  network, and UTS namespaces; `/usr` read-only; `/proc`, `/dev`,
+  a tmpfs `/tmp`; environment cleared); the job workdir is bound
+  read-write at the work mount, default `/work`; inside the
+  sandbox the job's writable set is that workdir alone.
+- **Where:** `runner/guard/sandbox.py` — `WORK_MOUNT`, line 23;
+  `DEFAULT_FLAGS`, lines 26 to 39; `_confinement_cfg`, line 98,
+  which reads the confinement block from the configuration and
+  from nowhere else; `build_bwrap_command`, line 213, which
+  takes the configuration, validates the block (a malformed one
+  is a startup refusal, C11's class), and assembles the argv.
+  The decision to sandbox at all is `runner/runner.py`,
+  `_confinement_argv`, line 340 — the mode from the
+  configuration at line 345, `enforce` plus a working mechanism
+  sandboxes, `audit` records `would_run_sandboxed` and runs
+  normally, `off` never looks.
+- **The one job-influenced addition:** the job's `interpreter`
+  field (`runner/ops/exec.py`, line 497) selects the program
+  that runs. When that program resolves outside `/usr`,
+  `interpreter_binds` (`runner/guard/sandbox.py`, line 187)
+  binds its own install prefix — its parent directory, or its
+  grandparent when the parent is `bin`, never shallower than two
+  components — read-only, so the interpreter can run at all. The
+  rule is uniform (the owner's default interpreter gets the same
+  treatment), the job names no path to bind, the bind is never
+  writable, and each bind is appended to the caller's notes and
+  written into the audit record. A job field therefore can
+  change which interpreter prefix is visible read-only; it
+  cannot widen the writable set, add a mount of its choosing, or
+  disable the sandbox.
+- **The snapshot side:** what a job is reported to have touched
+  is computed the same way, from the owner's values alone —
+  `workspace_root` and `protected_paths` from the configuration
+  (`runner/ops/mail.py`, lines 427 to 437), the snapshot walk in
+  `runner/ops/helpers.py`, `snapshot_outside`, line 13, which
+  excludes the runner's own `base_dir` (the job's work tree
+  lives inside it and never counts), and the verdict computed by
+  `runner/runner.py`, `confinement_violated`, line 539. A query
+  may ask for the `confined_to_workspace` attestation; the value
+  it reports is the runner-computed one (`runner/ops/attest.py`,
+  `build_attestations`, line 16), or `unconfigured` when no
+  `workspace_root` is set.
+- **Class:** the mode and the confinement block are refuse class
+  at startup (C11); the flag set and the prefix rule are code
+  constants, not settings.
+
 ## Summary table
 
 | ID | Constraint | Default or value | Startup class |
@@ -447,3 +543,5 @@ refuse-class setting it stops the runner before any job is read.
 | C14 | Key policies | per-key; script pin is SHA-384 | refuse (malformed policy) |
 | C15 | Execution semantics | at most once; delivery at least once | not a setting |
 | C16 | Transport credentials | required where a transport has them | refuse in the NATS example |
+| C17 | Result-policy ceiling | views attested < summary < redacted < full; budget defaults 8 and 8, effective is the min | combination rule in code; ceilings are owner config |
+| C18 | Sandbox shape | fixed flags; work mount `/work`; interpreter prefix bound read-only | mode and block refuse class; the rest is code |

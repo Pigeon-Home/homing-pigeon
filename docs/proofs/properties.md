@@ -1,10 +1,11 @@
 # Properties
 
 This file states the properties the proof work sets out to check.
-P1 is stated in full, precisely enough to model. P2 to P6 are
-named placeholders with one-line statements; each will be stated
-in full, in its own stage, before any model of it is built
-(`GOALS.md` gives the order).
+P1 is stated in full, precisely enough to model, and P2 is now
+stated in full as well (stage 4). P3 to P6 are named placeholders
+with one-line statements; each will be stated in full, in its
+own stage, before any model of it is built (`GOALS.md` gives
+the order).
 
 Constraint identifiers (C1, C2, and so on) refer to
 `constraints.md`, where every value is harvested from the code at
@@ -330,15 +331,144 @@ version 2 mail, cancels, and the local-signals path face the same
 early bound and their own verification, and each joins the model
 in a later stage rather than being assumed equivalent.
 
+## P2. Result policies cannot widen confinement
+
+### Statement
+
+P2 starts where P1 ends: a job has passed the gate and is about
+to execute. The sender of that job may hold a valid key — P1 is
+satisfied — and may still be a compartmentalised worker whose
+jobs the owner means to keep inside a ceiling. P2 is the claim
+that the ceiling is the owner's in both of the places a job
+could try to move it: what execution may touch (PROTOCOL.md
+section 9.4), and what the job's result policy may disclose
+about the run (PROTOCOL.md sections 9 and 12, non-escalation).
+
+For every execution of a job and every result and answer built
+from it, all of the following hold:
+
+1. **The sandbox decision is the owner's.** Whether the job
+   runs inside the sandbox is a function of the configured
+   confinement mode and of the machine (whether the mechanism
+   works there) and of nothing else (C18). No field in the job
+   is read by the decision, and no field can change the mode,
+   suppress the audit record of the decision, or turn a fallback
+   into a silence: a fallback is logged and audited, and the
+   choice to fall back is the mechanism's, never the job's.
+2. **The writable set cannot grow.** Inside the sandbox, the
+   job's writable set is its work directory alone, bound at the
+   work mount (C18). No job field adds a writable path. Outside
+   the sandbox — mode `off`, mode `audit`, or a mechanism
+   fallback — execution is unsandboxed, and that state is
+   reached only through clause 1's inputs, never through a job
+   field: a job cannot argue its way out of a sandbox the owner
+   switched on and the machine can run.
+3. **The visible set grows by one bounded rule only.** Inside
+   the sandbox the job sees the fixed flag set's mounts and the
+   owner's configured extra read-only binds, plus exactly one
+   job-influenced addition: when the interpreter the job names
+   resolves outside `/usr`, that interpreter's own install
+   prefix is bound read-only, by the runner's uniform rule, so
+   the interpreter can run (C18). The job names no path to bind;
+   the prefix is derived from the interpreter the runner
+   resolved; the bind is never writable; and every such bind is
+   written into the audit record. This clause is stated with
+   the rule inside it because the rule exists in the code: a
+   statement that claimed no job influence on the visible set
+   at all would be false, and a wider influence than this rule
+   is exactly what the property forbids.
+4. **The watched set and its verdict are the owner's and the
+   runner's.** The confinement snapshot watches the owner's
+   configured `workspace_root` and `protected_paths` (C18); a
+   job cannot shrink the watched set, add an exclusion, or set
+   the verdict. The verdict — confined, violated, or
+   unconfigured — is computed by the runner from the before and
+   after snapshots. A job may ask for the
+   `confined_to_workspace` attestation; asking does not change
+   the value reported, and a predicate the runner does not have
+   answers `ok: false` with reason `unknown`.
+5. **The disclosure view is the narrower of the two.** The
+   effective result view is the narrower of the job's requested
+   view and the owner's `max_result_view` ceiling, by the fixed
+   order `attested` < `summary` < `redacted` < `full` (C17). A
+   requested view that is absent or unrecognised reads as
+   `full` — the documented default — and is then still capped
+   by the ceiling. No job field produces a view wider than the
+   ceiling.
+6. **The query budget is the smaller of the two.** The
+   effective budget is the smaller of the job's `query_budget`
+   and the owner's `max_query_budget`, each defaulting to 8
+   (C17). A job may spend its budget down; it cannot spend past
+   either number.
+7. **Redaction patterns are the runner's.** The patterns a
+   result and its answers are scanned with are the built-in set
+   plus the owner's configured extras. The job's
+   `redact_patterns` member is read nowhere in the runner; a
+   job cannot weaken, replace, or empty the set that scans its
+   own output.
+8. **Query answers carry runner-computed values, gated by the
+   effective view.** An attestation answer reports the value the
+   runner computed (the exit code, the output digest, the
+   confinement verdict of clause 4). The raw-line operations
+   (`grep`, `tail`) are answered only when the effective view
+   allows raw lines — `full` or `redacted` (C17) — and under
+   `redacted` the lines pass through the owner's patterns
+   first. Every query spends one unit of the clause 6 budget,
+   answered or rejected.
+9. **Fields named for the settings do nothing.** A job that
+   carries members named `security`, `confinement`,
+   `workspace_root`, `protected_paths`, `max_result_view`, or
+   `sandbox` has carried inert text: no runner code reads a
+   member of any of those names out of a job. Disabling
+   confinement from inside a job is not a refused request; it
+   is not a request the code contains.
+
+In short form:
+
+> The ceiling on what execution may touch, and on what a result
+> may disclose, is set by the owner's configuration and the
+> code's constants. A job's fields can narrow what it gets —
+> a narrower view, a smaller budget — and can choose the
+> interpreter whose own prefix is then bound read-only by a
+> uniform rule. They cannot widen either ceiling, and they
+> cannot disable confinement.
+
+The short form is a summary. The nine clauses above are the
+property. Where they differ, the clauses win.
+
+### What a counterexample would look like
+
+A counterexample to P2 is a single concrete execution or
+result — real, in the code, or exhibited by the model — in
+which a job field moves a ceiling. Any one of these shapes is
+a counterexample:
+
+- A result delivered in a view wider than the configured
+  `max_result_view`, because the job asked for the wider view.
+- More queries answered for a job than the smaller of its
+  `query_budget` and the owner's `max_query_budget` allows.
+- A sandboxed job able to write outside its work directory
+  because of a field it carried, or a job that runs
+  unsandboxed, under confinement `enforce` on a machine where
+  the mechanism works, because of a field it carried.
+- A mount in the sandbox of a path the job named, writable or
+  not, other than the interpreter-prefix bind of clause 3.
+- A `confined_to_workspace` attestation reporting the value
+  the job asked for rather than the verdict the runner
+  computed from its snapshots.
+- Output leaving unredacted because the job's own
+  `redact_patterns` list replaced or emptied the runner's set.
+- A raw-line answer (`grep` or `tail`) returned under an
+  effective view of `summary` or `attested`.
+
+The checked model, the configurations, and the witnesses are
+recorded in `stage4-p2.md`; the model is `Confine.tla`.
+
 ## The placeholder properties
 
 Statements only. Each is taken up in full, in the order
 `GOALS.md` gives, before any model of it is built.
 
-- **P2. Result policies cannot widen confinement.** No field in a
-  job or a result can widen or disable the confinement the owner
-  configured; the ceiling on what execution may touch is the
-  owner's, never the sender's (PROTOCOL.md section 9.4).
 - **P3. A transport's credentials are a required second gate.**
   Where a transport has credentials of its own, a message that
   has not passed that gate does not reach the signature check at

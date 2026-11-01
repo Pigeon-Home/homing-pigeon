@@ -10,7 +10,9 @@ model's claims -- must be revisited before either can stand.
 
 The values pinned here are the ones at commit 6d6288c5
 (release 3.15.28), recorded as C1 to C16 in
-docs/proofs/constraints.md.
+docs/proofs/constraints.md. Stage 4 added C17 and C18 (the
+result-policy ceiling and the sandbox shape's sources) and
+their pins, from the same code.
 """
 import hashlib
 import os
@@ -228,6 +230,141 @@ class GateShapePins(unittest.TestCase):
         S.validate_shared_secret(strong)
 
 
+class ResultPolicyCeilingPins(unittest.TestCase):
+    """C17: the job asks, the owner caps, the narrower wins."""
+
+    def _result(self, cfg, job):
+        exec_result = {"stdout": "hello ", "stderr": "world",
+                       "exit_code": 0, "timed_out": False,
+                       "duration_sec": 0.1}
+        return R.apply_result_policy(cfg, job, exec_result, {},
+                                     confined=None)
+
+    def test_c17_view_order(self):
+        self.assertEqual(R.VIEW_ORDER, {"attested": 0, "summary": 1,
+                                        "redacted": 2, "full": 3})
+
+    def test_c17_a_job_cannot_widen_past_the_ceiling(self):
+        job = {"result_policy": {"view": "full"}}
+        result, _retain = self._result({"max_result_view": "attested"},
+                                       job)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["stdout"], "")
+        result, _retain = self._result({"max_result_view": "summary"},
+                                       job)
+        self.assertEqual(result["view"], "summary")
+
+    def test_c17_narrowing_takes_effect(self):
+        # The other direction must fire, or the ceiling rule would
+        # be a model that always answers with the ceiling.
+        job = {"result_policy": {"view": "attested"}}
+        result, retain = self._result({"max_result_view": "full"}, job)
+        self.assertEqual(result["view"], "attested")
+        self.assertTrue(retain)
+
+    def test_c17_absent_and_unrecognised_views_read_as_full(self):
+        result, _ = self._result({"max_result_view": "summary"}, {})
+        self.assertEqual(result["view"], "summary")
+        job = {"result_policy": {"view": "everything"}}
+        result, _ = self._result({"max_result_view": "redacted"}, job)
+        self.assertEqual(result["view"], "redacted")
+        result, _ = self._result({}, job)
+        self.assertEqual(result["view"], "full")
+
+    def test_c17_query_budget_is_the_smaller_of_the_two(self):
+        self.assertEqual(R.query_budget({}, {}), 8)
+        self.assertEqual(
+            R.query_budget({}, {"result_policy": {"query_budget": 3}}), 3)
+        self.assertEqual(
+            R.query_budget({"max_query_budget": 2},
+                           {"result_policy": {"query_budget": 10}}), 2)
+        self.assertEqual(
+            R.query_budget({"max_query_budget": 8},
+                           {"result_policy": {"query_budget": 10}}), 8)
+        self.assertEqual(
+            R.query_budget({}, {"result_policy": {"query_budget": 0}}), 0)
+
+    def test_c17_job_redact_patterns_are_never_read(self):
+        # The patterns argument here stands for the runner's own
+        # set (built from the config by _redact_patterns). A list
+        # carried in the job changes nothing.
+        job = {"result_policy": {"view": "redacted",
+                                 "redact_patterns": ["hello"]}}
+        result, _ = self._result({}, job)
+        self.assertEqual(result["stdout"], "hello world")
+        self.assertEqual(result["redacted_families"], [])
+        self.assertIn("aws_key", R._redact_patterns({}))
+        extra = R._redact_patterns(
+            {"redact_patterns_extra": {"mine": "hello"}})
+        self.assertIn("mine", extra)
+
+    def test_c17_confined_attestation_reports_the_runners_value(self):
+        q = [{"op": "attest", "predicate": "confined_to_workspace"}]
+        att = R.build_attestations(q, {"confined": True})[0]
+        self.assertEqual((att["ok"], att["reason"]), (True, None))
+        att = R.build_attestations(q, {"confined": False})[0]
+        self.assertEqual((att["ok"], att["reason"]),
+                         (False, "violation_detected"))
+        att = R.build_attestations(q, {"confined": None})[0]
+        self.assertEqual((att["ok"], att["reason"]),
+                         (False, "unconfigured"))
+        att = R.build_attestations(
+            [{"op": "attest", "predicate": "no_such_predicate"}],
+            {"confined": True})[0]
+        self.assertEqual((att["ok"], att["reason"]), (False, "unknown"))
+
+
+class SandboxShapePins(unittest.TestCase):
+    """C18: the sandbox's shape comes from config and code."""
+
+    def test_c18_work_mount_and_fixed_flags(self):
+        from runner.guard import sandbox as SB
+        self.assertEqual(SB.WORK_MOUNT, "/work")
+        self.assertIn("--unshare-net", SB.DEFAULT_FLAGS)
+        self.assertIn("--clearenv", SB.DEFAULT_FLAGS)
+        # /usr read-only is the only bind in the fixed set.
+        self.assertEqual(SB.DEFAULT_FLAGS.count("--ro-bind"), 1)
+
+    def test_c18_interpreter_prefix_rule(self):
+        from runner.guard import sandbox as SB
+        # Under /usr: nothing to bind.
+        self.assertEqual(SB.interpreter_binds("/usr/bin/python3"), [])
+        # Outside /usr: exactly its own prefix, read-only shape.
+        self.assertEqual(SB.interpreter_binds("/opt/x64/bin/python3"),
+                         [("/opt/x64", "/opt/x64")])
+        # Never shallower than two components: /snap/bin/tool
+        # binds /snap/bin, not /snap.
+        self.assertEqual(SB.interpreter_binds("/snap/bin/tool"),
+                         [("/snap/bin", "/snap/bin")])
+
+    def test_c18_no_job_field_names_a_confinement_setting(self):
+        # The negative half of P2, pinned as a source scan: no
+        # runner-side module reads a confinement-shaped member
+        # out of a job. (This test file itself is excluded: it
+        # names the members to forbid them.)
+        names = ("security", "confinement", "workspace_root",
+                 "protected_paths", "max_result_view", "sandbox")
+        runner_dir = os.path.join(ROOT, "runner")
+        offenders = []
+        for dirpath, dirnames, filenames in os.walk(runner_dir):
+            if "tests" in dirpath.split(os.sep):
+                continue
+            dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+            for name in filenames:
+                if not name.endswith(".py"):
+                    continue
+                with open(os.path.join(dirpath, name),
+                          encoding="utf-8") as fh:
+                    text = fh.read()
+                for member in names:
+                    for shape in ('job.get("%s"' % member,
+                                  'job["%s"]' % member,
+                                  "job['%s']" % member):
+                        if shape in text:
+                            offenders.append((name, shape))
+        self.assertEqual(offenders, [])
+
+
 class DocsSyncPins(unittest.TestCase):
     """The inventory must carry the same values the code declares.
 
@@ -243,6 +380,11 @@ class DocsSyncPins(unittest.TestCase):
                       "policy_files", "policy_args", "audience",
                       "confinement", "job_user",
                       "homing-pigeon key id v1"):
+            self.assertIn(token, doc)
+
+    def test_constraints_doc_carries_c17_and_c18(self):
+        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        for token in ("C17", "C18", "VIEW_ORDER", "interpreter_binds"):
             self.assertIn(token, doc)
 
     def test_properties_doc_states_p1_and_placeholders(self):
