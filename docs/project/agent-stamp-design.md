@@ -94,10 +94,10 @@ rules from 2026-10-27T23:00Z on: one stamp, one session; one
 session, one stamp; a recycled stamp signs nothing new; every stamp
 is on the record. History before that moment is reported, never
 failed. The suite runs the check on whatever history its clone
-holds (`test_agent_stamps`, `StampHistoryTest`), and the
-`stamp-audit` workflow runs it over the full history on every push,
-with the report on the run's summary. The baseline is
-`docs/reports/stamp-audit/2026-10-27.md`.
+holds (`test_agent_stamps`, `StampHistoryTest`). The `stamp-audit`
+workflow used to run it over the full history on every push. It is
+off as of 2026-11-01: dispatch only, and the workflow is disabled.
+The baseline is `docs/reports/stamp-audit/2026-10-27.md`.
 
 ## Recycled stamps (2026-10-26)
 

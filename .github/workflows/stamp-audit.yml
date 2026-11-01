@@ -6,12 +6,11 @@ name: stamp-audit
 # were set (2026-10-27, the conductor's word) a stamp signs from one
 # session, a session signs as one stamp, a recycled stamp signs
 # nothing, and every stamp is on docs/archive/RESEARCHER_IDENT.md.
-# The suite runs the same check on a shallow clone; this job reads
-# the full history, so a stamp borrowed by another chat is caught on
-# the push that borrows it. The report rides on the run's summary.
+# Turned off 2026-11-01: it ran on every push and failed the commit
+# over and over (326 failures in four days, all of them on 11-01).
+# An agent starts it with `gh workflow run stamp-audit.yml` after
+# `gh workflow enable stamp-audit.yml`. It does not run on push.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions: {}
