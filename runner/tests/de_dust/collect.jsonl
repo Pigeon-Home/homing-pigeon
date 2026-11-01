@@ -18,3 +18,4 @@
 {"arcs": 2, "data": {"layout": [], "names": ["gon\u0000e"]}, "from": "341c10dcf06af813", "id": "36aca2946de16f5f", "kind": "payload", "mutator": "p_text"}
 {"arcs": 2, "data": {"budget": -1, "layout": [{"kind": "file", "name": "a", "size": 5}], "names": ["a/b/c.txt"]}, "from": "0c7c339f248932d9", "id": "faeb4a3ec57e30eb", "kind": "payload", "mutator": "p_splice"}
 {"arcs": 2, "data": {"layout": [{"kind": "fifo", "name": "p", "size": 5}], "names": ["\u0000p"]}, "from": "e9ffb83cb32f7b12", "id": "838bf48fad1e5b63", "kind": "payload", "mutator": "p_text"}
+{"arcs": 2, "data": {"budget": -1, "layout": [{"kind": "file", "name": "a", "size": 5}], "names": ["\"severity\":"]}, "from": "0c7c339f248932d9", "id": "0b3acb2cecd6b53f", "kind": "payload", "mutator": "p_text"}
