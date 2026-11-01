@@ -190,7 +190,9 @@ one we'd recommend to anyone who winces at the word "email."
   is not followed: either one would send the bearer token off the
   machine. A second file for the same id, named while the first
   is still waiting, does not replace that result and still acks the
-  job. A refused collision name is set aside as that id's
+  job. A result file that was already in the outbox when this
+  life was delivered is the previous life's output. It is posted,
+  and it does not ack the job just pulled. A refused collision name is set aside as that id's
   result, not under the suffixed filename: the sweep reads
   `<id>.result.txt`, and the other name never got a stub, so the
   job stayed leased. A result file that is not UTF-8, or that

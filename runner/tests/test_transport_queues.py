@@ -679,6 +679,36 @@ class QueuePipeTest(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(
                 ch.dirs(self.channel)["outbox"], "j1.result.txt")))
 
+    def test_a_result_from_the_life_already_finished_does_not_ack_the_next(self):
+        # The first life posted and was acked. The file was still
+        # in the outbox when the id was queued again. Posting it
+        # acked the new life, so that life never ran.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            self._core_answers("j1", "j1")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            d = ch.dirs(self.channel)
+            os.replace(os.path.join(d["outbox_done"], "j1.result.txt"),
+                       os.path.join(d["outbox"], "j1.result.txt"))
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", w.state.jobs)
+            self.assertIn("j1", pipe._pending)
+            self.assertFalse(os.path.exists(
+                os.path.join(d["outbox"], "j1.result.txt")))
+            self._core_answers("j1", "j1")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+            self.assertNotIn("j1", w.state.jobs)
+            self.assertNotIn("j1", pipe._pending)
+
     def test_malformed_and_oversize_envelopes_are_refused_and_acked(self):
         with FakeWorker() as w:
             w.state.jobs["bad"] = "no blank line here"

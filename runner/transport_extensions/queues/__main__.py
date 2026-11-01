@@ -264,13 +264,17 @@ class QueuePipe:
         self.client = client
         self.max_jobs = _int(cfg.get("max_jobs"), 8, lo=1, hi=100)
         self._pending = {}  # queue id -> job_id (or None)
-        # Ids this process has delivered. A result for one of them is
-        # still acked if it is no longer in _pending. It does not mean
-        # "drop the next offer": a requeue, or the same id sent again
-        # after an ack, is a new life. Dropping it here would still
-        # lease it on every pull until it dead-letters, and the runner
-        # would never see it.
+        # Ids this process has delivered. It does not mean "drop the
+        # next offer": a requeue, or the same id sent again after an
+        # ack, is a new life. Dropping it here would still lease it
+        # on every pull until it dead-letters, and the runner would
+        # never see it. It also does not mean "ack the next result":
+        # a file left from the life already finished must not finish
+        # the new one.
         self._seen = set()
+        # Result filenames that were already in the outbox when this
+        # life was delivered. They belong to the previous life.
+        self._stale = set()
 
     def _refuse(self, ident, why):
         ch.log(f"queues transport: {ident}: refused: {why}", "WARN")
@@ -306,6 +310,10 @@ class QueuePipe:
                                     "between subject and body)")
                 continue
             subject, body = parsed
+            # A result already sitting here is the previous life.
+            # Posted again, it must not ack the life we are about
+            # to deliver.
+            self._note_earlier_results(ident)
             path = ch.deliver_job(self.channel, ident, subject, body)
             # The previous life of this id left inbox/done/<id>.job.txt,
             # and that file means "this life finished, ack it". This
@@ -319,6 +327,18 @@ class QueuePipe:
                 pass
             self._pending[ident] = _job_id(subject)
             self._seen.add(ident)
+
+    def _note_earlier_results(self, ident):
+        outbox = os.path.join(self.channel, "outbox")
+        try:
+            names = os.listdir(outbox)
+        except OSError:
+            return
+        for fname in names:
+            if fname in ("done", "failed"):
+                continue
+            if ch.result_file_id(fname) == ident:
+                self._stale.add(fname)
 
     def push_results(self):
         unposted = set()
@@ -356,11 +376,15 @@ class QueuePipe:
                        f"will retry", "WARN")
                 unposted.add(ident)
                 continue
-            # The result is stored. Ack before forgetting the file.
-            # A refused or dropped ack has to be retried, and the
-            # file is what makes the next pass try again. Forgetting
-            # the id here left the job leased with no one to finish it.
-            if ident in self._pending or ident in self._seen:
+            # The result is stored. A file that was already here when
+            # this life was delivered is the previous life's output:
+            # keep it posted, and do not finish the job we just
+            # pulled. Only the life we are still running is acked.
+            if fname in self._stale:
+                ch.ack_result(self.channel, fname)
+                self._stale.discard(fname)
+                continue
+            if ident in self._pending:
                 try:
                     accepted = self.client.ack(ident)
                 except OSError as e:
