@@ -230,6 +230,29 @@ class EmailPipeFailureShapes(unittest.TestCase):
                b"\r\nattached\r\n--B--\r\n")
         self.assertEqual(email_ext._subject_body(raw), ("S", ""))
 
+    def test_an_unbuildable_result_is_not_treated_as_sent(self):
+        # The From address is the mailbox, and a line break in it
+        # is a header. The flush used to ack the file anyway.
+        cfg = dict(CFG)
+        cfg["mailbox_user"] = "runner@example.com\nBcc: x@y.z"
+        imap = FakeIMAP([])
+        smtp = FakeSMTP()
+        pipe = email_ext.EmailPipe(
+            cfg, self.channel,
+            imap_factory=lambda c: imap,
+            smtp_factory=lambda c: smtp)
+        pipe._delivered["1"] = "mail-1"
+        result = self._write_result()
+        pipe.flush_results(imap)
+        self.assertEqual(smtp.sent, [])
+        self.assertFalse(os.path.exists(result))
+        self.assertFalse(os.path.exists(os.path.join(
+            self.channel, "outbox", "done", "mail-1.result.txt")))
+        failed = os.listdir(os.path.join(
+            self.channel, "outbox", "failed"))
+        self.assertTrue(any(name.startswith("mail-1") for name in failed))
+        self.assertEqual(imap.flagged, ["1"])
+
 
 class EmailPipeMain(unittest.TestCase):
     def test_main_without_a_channel_returns_2(self):
@@ -313,13 +336,10 @@ class XOAuth2RawTest(unittest.TestCase):
 
 
 class SendMailUnbuildableTest(unittest.TestCase):
-    """Queue A refill: send_mail's unbuildable-message
-    leg (coverage run 40189711740: lines 353-355 of
-    runner/wire/mailbox.py). A recipient carrying a
-    newline cannot become a header; the function
-    logs that the result message was not built and
-    sends nothing, rather than raising into the
-    job's retry path.
+    """A recipient carrying a newline cannot become a header.
+    That used to log and return, and the caller moved the
+    result as if the mail had gone. It is a permanent
+    refusal: nothing is sent, and the stub path takes it.
     """
 
     def test_a_newline_recipient_is_not_sent(self):
@@ -329,10 +349,10 @@ class SendMailUnbuildableTest(unittest.TestCase):
         with mock.patch.object(
                 mailbox, "log",
                 lambda m, level="INFO": lines.append(m)):
-            out = mailbox.send_mail(
-                smtp, CFG, "result", "body",
-                to="victim@example.com\nBcc: evil@example.com")
-        self.assertIsNone(out)
+            with self.assertRaises(ch.PermanentDeliveryError):
+                mailbox.send_mail(
+                    smtp, CFG, "result", "body",
+                    to="victim@example.com\nBcc: evil@example.com")
         self.assertEqual(smtp.sent, [])
         self.assertTrue(any("not built" in m for m in lines))
 

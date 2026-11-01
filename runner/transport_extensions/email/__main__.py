@@ -13,6 +13,9 @@ loop any more.
 Delivery discipline mirrors the pre-extension mail path:
   - a message is marked seen only after its result has been
     sent (or the delivery itself is acked in the channel);
+  - a result that cannot be built into a message was not
+    sent. It is set aside for the stub. Treating the failure
+    as success moved the file and the mail never left;
   - a job whose channel file already sits in the channel's
     done/ was delivered before -- re-offering it would only
     duplicate work the runner already dedupes by seen-set, so

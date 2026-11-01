@@ -354,8 +354,15 @@ def send_mail(smtp, cfg, subject: str, body: str, to: str | None = None):
         msg["Subject"] = " ".join(str(subject or "").splitlines())
         msg.set_content("" if body is None else str(body))
     except Exception as e:
+        # A message that cannot be built was not sent. Returning
+        # here used to look like success, and the caller moved the
+        # result. It will not become sendable on a retry, so this
+        # is the same refusal as a 5xx: the stub goes, not the file.
         log(f"result message not built: {e}", "WARN")
-        return
+        from runner.transport_extensions.channel import (
+            PermanentDeliveryError)
+        raise PermanentDeliveryError(
+            "result message not built: %s" % e) from None
     with _MAIL_LOCK:
         smtp.send_message(msg)
 
