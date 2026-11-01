@@ -422,6 +422,28 @@ The conformance family still passes: 85 tests. No runner
 behaviour changed. The unbounded-length step remains
 available and is recorded as not wanted.
 
+## Stage 7 — Content-independence at the first rung
+
+**Contents.** The challenge `thinking.md` records and does
+not close. At scripts of at most 49 characters, list the
+constructs a default bash can build, check that bash
+accepts each as syntax, and present each to the real gate.
+The gate's decision must be the same for every one of them.
+A cap refuses by length, and the refusal must not depend
+on which construct the text was.
+
+**Done means:** the inventory is in the test, `bash -n`
+accepts every script in it, `handle_mail` admits every one
+and refuses every one longer than a one-byte cap for the
+cap, and the record says what was not enumerated.
+
+This stage has landed. The inventory is twenty-two
+scripts. `runner/tests/test_proof_content.py` is the
+harness, and `stage7.md` is the record. PowerShell is not
+on the machine that ran it, so that half is not claimed.
+The scripts are a sample of each construct, not every
+nesting that fits in 49 characters, and not every string.
+
 ## What this plan does not do
 
 - It does not change any runner behaviour. A code defect found by

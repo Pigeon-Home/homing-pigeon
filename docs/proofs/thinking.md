@@ -278,3 +278,13 @@ continues to name its property, its bound, and its assumptions.
 Nothing on this branch claims the whole system is proven, at
 any stage, and the sum of the claims is exactly the list of
 stages marked done.
+
+Stages 5, 6, and 7 have since landed, on `main`. Stage 5 is
+the conformance family. Stage 6 closed the ladder at the
+production cap and widened the model to the key map, the
+other doors, and the transports. Stage 7 is the challenge
+above, taken up at the first rung only: twenty-two
+constructible bash scripts, each admitted by the real gate,
+each longer one refused by the byte cap and not by its
+text. `stage7.md` records the sample and the two halves
+that were not claimed, PowerShell and the rungs above 49.
