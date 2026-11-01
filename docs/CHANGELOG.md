@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.34 - 2026-11-01
+
+- Proofs: the formal gate model, its properties and conformance tests land on main, with the security model and proof-testing program.
+- Docs: the Germany rig dossier entries since 3.15.33 ride along.
+
 ## 3.15.33 - 2026-11-01
 
 - The corpus banked since 3.15.32 rides along (Germany bank 20, Menlo Park bank 216).
