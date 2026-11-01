@@ -30,23 +30,29 @@ are recorded here and not folded into the coverage number.
 The run used .github/coveragerc: source is runner, tests and tools
 are omitted, branches are on, and child processes were counted.
 That is the same yardstick as the 3.13.62 report. The tree is
-larger, 33197 statements against 30412, and more of it was not
-run: 437 lines missed against 143.
+larger, 33197 statements against 30412. The first pass missed
+437 of them, and two files sat under 90 percent:
+ops/oracle_server.py at 65.8 percent and ops/mail.py at 83.7.
+ops/cancel.py sat at 90.0 exactly. The tests in
+runner/tests/test_coverage_floor.py walk those arms. The oracle
+handler runs in its own thread, which that pass did not count,
+so the new tests call it on this thread. The table counts the
+suite plus those tests. 348 statements are still missed. Every
+shipped file is above 90 percent.
 
 | | Covered | Missed | Total |
 |---|---:|---:|---:|
-| Statements | 98.7% | 437 | 33197 |
-| Branches | 96.4% | 472 | 13110 |
-| Statements and branches | 98.0% | | |
+| Statements | 99.0% | 348 | 33197 |
+| Branches | 96.7% | 433 | 13110 |
+| Statements and branches | 98.3% | | |
 
 The files at 99% and under, by statements:
 
 | File | Covered | Missed |
 |---|---:|---:|
-| ops/oracle_server.py | 65.8% | 52 |
-| ops/mail.py | 83.7% | 63 |
-| ops/cancel.py | 90.0% | 16 |
+| ops/mail.py | 92.2% | 30 |
 | transport_extensions/nats/__main__.py | 92.3% | 21 |
+| ops/cancel.py | 92.5% | 12 |
 | ops/changes.py | 92.5% | 8 |
 | wire/verify.py | 93.7% | 46 |
 | transport_extensions/queues/__main__.py | 94.5% | 17 |
@@ -69,8 +75,9 @@ The files at 99% and under, by statements:
 | oracle/dri.py | 99.0% | 4 |
 
 runner.py is 98.4% (62 missed of 3946). In the 3.13.62 report it
-was 99.7% (10 missed of 3702). The floor is ops/oracle_server.py
-at 65.8%, then ops/mail.py at 83.7%. cloud/send_job.py is 95.5%
+was 99.7% (10 missed of 3702). The floor is ops/mail.py at 92.2%.
+ops/oracle_server.py is 100% (0 missed of 152); it was the floor,
+at 65.8%, before the handler tests. cloud/send_job.py is 95.5%
 (44 missed of 986). In the 3.13.62 report that file was 93.8%.
 
 ## Text chart
@@ -78,20 +85,20 @@ at 65.8%, then ops/mail.py at 83.7%. cloud/send_job.py is 95.5%
 Statement coverage, 40 cells, one cell is 2.5 points.
 
 ```
-all              98.7  [#######################################.]
-oracle_server    65.8  [##########################..............]
-mail.py          83.7  [#################################.......]
-cancel.py        90.0  [####################################....]
+all              99.0  [########################################]
+mail.py          92.2  [#####################################...]
 nats             92.3  [#####################################...]
+cancel.py        92.5  [#####################################...]
 changes.py       92.5  [#####################################...]
 verify.py        93.7  [#####################################...]
 queues           94.5  [######################################..]
 send_job.py      95.5  [######################################..]
 runner.py        98.4  [#######################################.]
+oracle_server   100.0  [########################################]
 ```
 
 The functions with the most never-executed lines are in coverage-gaps.md.
-The largest is mail.py:handle_mail, 63 lines. Next are the oracle
-server's do_GET (24) and do_POST (23), then _in_root_object_at in
-send_job.py and verify.py, 22 lines each. The rest of the list is
-eleven lines or fewer.
+The largest is mail.py:handle_mail, 30 lines, down from 63. Next is
+_in_root_object_at in send_job.py and in verify.py, 22 lines each.
+The oracle server's do_GET and do_POST are no longer on the list.
+

@@ -1,6 +1,6 @@
 # Coverage gaps: this measurement
 
-Statements 33197, never executed 437; branches 13110, never taken 472; 98.0% covered overall (shipped code only: runner/ without tests/ and tools/).
+Statements 33197, never executed 348; branches 13110, never taken 433; 98.3% covered overall (shipped code only: runner/ without tests/ and tools/).
 
 ## Functions with the most never-executed lines
 
@@ -8,20 +8,17 @@ Lines counted are the function's own, nested functions excluded. Each row is a h
 
 | Missed | Of | Function | Never-executed lines |
 |---:|---:|---|---|
-| 63 | 672 | `runner/ops/mail.py:handle_mail` | 89-91, 141, 143, 148-149, 164-166, 170-171, 194-197, 199, 203-205, 212, 245-247, 262, 264-265, 322-324, 326-328, 387, 389, 391, 400-404, 461, 468, 482, 507-508, 577-581, 585, 589-594, 598, 643, 658, 681, 687 |
-| 24 | 33 | `runner/ops/oracle_server.py:make_oracle_server.Handler.do_GET` | 83-94, 99-108, 112, 114 |
-| 23 | 71 | `runner/ops/oracle_server.py:make_oracle_server.Handler.do_POST` | 119-120, 122-123, 129-130, 133-134, 138-139, 141, 144, 146, 152, 163-165, 168, 170, 180-181, 184-185 |
+| 30 | 672 | `runner/ops/mail.py:handle_mail` | 387, 389, 391, 400-404, 461, 468, 482, 507-508, 577-581, 585, 589-594, 598, 643, 658, 681, 687 |
 | 22 | 23 | `runner/cloud/send_job.py:_in_root_object_at` | 283-304 |
 | 22 | 23 | `runner/wire/verify.py:_in_root_object_at` | 210-231 |
-| 11 | 72 | `runner/ops/cancel.py:handle_cancel_mail` | 176-179, 181-183, 206-207, 224-225 |
 | 11 | 110 | `runner/transport_extensions/queues/__main__.py:QueuePipe.push_results` | 357-358, 408-409, 411-412, 444-445, 447, 449, 451 |
 | 9 | 52 | `runner/runner.py:_deliver_stash_held` | 1758, 1765, 1784-1785, 1788-1792 |
 | 9 | 19 | `runner/runner.py:_warm_oracle_model` | 6466-6468, 6473-6477, 6480 |
 | 7 | 77 | `runner/cloud/send_job.py:cmd_dlq` | 1264-1265, 1271-1273, 1287, 1289 |
+| 7 | 72 | `runner/ops/cancel.py:handle_cancel_mail` | 181-183, 206-207, 224-225 |
 | 7 | 346 | `runner/ops/exec.py:execute_job` | 370, 403-404, 453, 592-594 |
 | 6 | 14 | `runner/oracle/opinion.py:with_lesson_notes` | 526-531 |
 | 5 | 86 | `runner/cloud/send_job.py:cmd_results` | 1167-1169, 1206, 1208 |
-| 5 | 29 | `runner/ops/oracle_server.py:make_oracle_server.Handler._take_body` | 62, 66, 75, 78-79 |
 | 5 | 179 | `runner/ops/queries.py:handle_query_mail` | 172-173, 202, 206-207 |
 | 5 | 129 | `runner/ops/startup.py:handle_board_mail` | 171-173, 218-219 |
 | 5 | 33 | `runner/runner.py:_env_salt` | 2501, 2515-2516, 2520, 2527 |
@@ -68,14 +65,16 @@ Lines counted are the function's own, nested functions excluded. Each row is a h
 | 2 | 21 | `runner/transport_extensions/nats/__main__.py:NatsClient._fill` | 157-158 |
 | 2 | 34 | `runner/transport_extensions/queues/__main__.py:QueueClient.post_result` | 227-228 |
 | 2 | 11 | `runner/transport_extensions/queues/__main__.py:QueuePipe._note_earlier_results` | 335-336 |
+| 2 | 26 | `runner/transport_extensions/queues/__main__.py:queue_base_allowed` | 62-63 |
+| 2 | 33 | `runner/wire/dtlsproto.py:x25519` | 186-187 |
+| 2 | 13 | `runner/wire/platformcard.py:_tool_identity` | 123-124 |
 
 ## Modules, least covered first
 
 | Covered | Statements | Missed | Module |
 |---:|---:|---:|---|
-| 61% | 152 | 52 | `runner/ops/oracle_server.py` |
-| 80% | 387 | 63 | `runner/ops/mail.py` |
-| 89% | 160 | 16 | `runner/ops/cancel.py` |
+| 89% | 387 | 30 | `runner/ops/mail.py` |
+| 91% | 160 | 12 | `runner/ops/cancel.py` |
 | 92% | 274 | 21 | `runner/transport_extensions/nats/__main__.py` |
 | 93% | 735 | 46 | `runner/wire/verify.py` |
 | 93% | 106 | 8 | `runner/ops/changes.py` |
