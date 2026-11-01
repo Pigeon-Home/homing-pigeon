@@ -339,6 +339,14 @@ run once per property and its result recorded, because a test
 family that cannot catch the change it exists to catch is
 decoration.
 
+Started, not done. `stage5.md` records the first four tests,
+in `runner/tests/test_proof_conformance.py`. They drive
+`handle_mail`: a refused cleartext job does not consume the
+id, an unsigned body does not execute, a recorded result is
+resent and not run again, and a repaired interpreter the key
+forbids does not execute. The rest of the family, and the
+scratch-copy mutation check, are still open.
+
 ## Stage 6 — Raising the scope, little by little
 
 **Contents.** The bounds raise, one at a time, each raise
