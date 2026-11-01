@@ -520,10 +520,27 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
                 hashlib.sha384(script.encode("utf-8")).hexdigest() \
                 != job["script_sha384"].lower():
             raise _runner().JobRejected("script SHA384 mismatch")
-        with open(script_path, "w", encoding="utf-8") as fh:
-            # The job has to be a file to run. This is not a password store.
-            # codeql[py/clear-text-storage-sensitive-data]
-            fh.write(script)
+        # A PowerShell script is staged with a UTF-8 byte order
+        # mark: Windows PowerShell 5.1 reads a BOM-less file in the
+        # machine ANSI code page, so literal non-ASCII text in a
+        # BOM-less .ps1 is misread -- garbled where it is lucky, a
+        # parser error where a misread byte swallows a quote. The
+        # BOM is how a .ps1 declares UTF-8 to that reader (and
+        # PowerShell 7 accepts it too). A script that already
+        # carries a BOM character keeps exactly one. Every other
+        # script kind keeps its exact bytes: a BOM would corrupt
+        # an sh script's head.
+        if script_path.endswith(".ps1"):
+            data = script.lstrip("\ufeff").encode("utf-8")
+            with open(script_path, "wb") as fh:
+                # The job has to be a file to run. This is not a password store.
+                # codeql[py/clear-text-storage-sensitive-data]
+                fh.write(b"\xef\xbb\xbf" + data)
+        else:
+            with open(script_path, "w", encoding="utf-8") as fh:
+                # The job has to be a file to run. This is not a password store.
+                # codeql[py/clear-text-storage-sensitive-data]
+                fh.write(script)
     else:
         raise _runner().JobRejected("exec job requires script or script_url")
     change_sha = None
