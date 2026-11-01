@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.30 - 2026-11-01
+
+- The corpus banked since 3.15.29 rides along (Germany bank 18, Menlo Park bank 213).
+
 ## 3.15.29 - 2026-11-01
 
 - Docs: the -01 draft postings are recorded, the upgrade-pause conclusions name the standing upgrade watch, and the dossier premise on San Francisco is corrected.
