@@ -345,7 +345,10 @@ clustering, no persistence.
   (`transport_nats.result_subject_prefix`).
 - The extension holds one persistent connection: subscribe,
   deliver jobs to the runner's channel as they arrive,
-  publish results as they come back. A dead connection is
+  publish results as they come back. The result file moves
+  only after the broker answers the publish's PING. A `-ERR`,
+  or no PONG, leaves the file, and the next connection sends
+  it again. A dead connection is
   re-established with backoff; the runner and the other
   transports never notice.
 - Broker authentication is required by default: user/password

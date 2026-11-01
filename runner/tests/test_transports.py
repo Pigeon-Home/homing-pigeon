@@ -758,6 +758,7 @@ class FakeNatsServer(threading.Thread):
         self.port = self.sock.getsockname()[1]
 
     def run(self):
+        conn = None
         try:
             conn, _ = self.sock.accept()
             conn.settimeout(30)
@@ -791,10 +792,19 @@ class FakeNatsServer(threading.Thread):
                     self.published.append((parts[1], payload))
                 elif line in ("PONG",) or line.startswith("UNSUB"):
                     pass
-            conn.close()
+        except (ConnectionResetError, BrokenPipeError):
+            # The test stops the client once the publish is in.
+            # The client is still waiting for this publish's PONG,
+            # so the close lands in the middle of that exchange.
+            pass
         except Exception as e:  # noqa: BLE001 - recorded for asserts
             self.error = e
         finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except OSError:
+                    pass
             self.sock.close()
 
 
@@ -971,6 +981,47 @@ class NatsTransportExtensionTest(unittest.TestCase):
         self.assertEqual(client._connect_opts["user"], "cfguser")
         self.assertEqual(client._connect_opts["pass"], "cfgpass")
         self.assertNotIn("auth_token", client._connect_opts)
+
+    def test_a_publish_the_broker_refuses_leaves_the_result(self):
+        # The file used to move as soon as sendall returned.
+        # The broker then said no, and the result was gone.
+        outbox = self.paths["outbox"]
+        with open(os.path.join(outbox, "j1.result.txt"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("[HOMING-PIGEON] result j1\n\nok\n")
+        pipe = nats_ext.NatsPipe(
+            {"allow_unauthenticated": True}, self.paths["root"])
+
+        class Broker:
+            timeout = 5
+
+            def publish(self, subject, payload):
+                self.subject = subject
+
+            def flush(self, deadline):
+                raise nats_ext.TransportError(
+                    "nats: server error: 'Maximum Payload Violation'")
+
+        with self.assertRaises(nats_ext.TransportError):
+            pipe._flush_results(Broker())
+        self.assertTrue(os.path.isfile(
+            os.path.join(outbox, "j1.result.txt")))
+        self.assertEqual(os.listdir(self.paths["outbox_done"]), [])
+
+        class Accepted:
+            timeout = 5
+
+            def publish(self, subject, payload):
+                pass
+
+            def flush(self, deadline):
+                pass
+
+        pipe._flush_results(Accepted())
+        self.assertFalse(os.path.exists(
+            os.path.join(outbox, "j1.result.txt")))
+        self.assertIn("j1.result.txt",
+                      os.listdir(self.paths["outbox_done"]))
 
 
 class EmailTransportExtensionTest(unittest.TestCase):
@@ -2351,6 +2402,25 @@ class NatsNextMessageLegsTest(unittest.TestCase):
         with self.assertRaisesRegex(nats_ext.TransportError,
                                     "Authorization Violation"):
             client.next_message(time.monotonic() + 30)
+
+    def test_a_refused_publish_is_not_a_pong(self):
+        # The broker processed the PUB and refused it. Waiting
+        # only for the write to return moved the result anyway.
+        client = self._client(
+            [b"-ERR 'Maximum Payload Violation'\r\n"])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "Maximum Payload Violation"):
+            client.flush(time.monotonic() + 30)
+        self.assertIn(b"PING\r\n", client.sock.sent)
+
+    def test_a_job_arriving_before_the_pong_is_not_dropped(self):
+        client = self._client([
+            b"MSG homing-pigeon.jobs 1 5\r\nhello\r\n",
+            b"PONG\r\n",
+        ])
+        client.flush(time.monotonic() + 30)
+        got = client.next_message(time.monotonic() + 30)
+        self.assertEqual(got, ("homing-pigeon.jobs", b"hello"))
 
     def test_a_payload_that_stops_mid_message_times_out(self):
         client = self._client([b"MSG s 1 100\r\nshort"])

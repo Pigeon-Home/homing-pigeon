@@ -133,6 +133,10 @@ class NatsClient:
         self.sock = None
         self._buf = b""
         self._sid = 0
+        # MSG frames read while waiting for a publish's PONG.
+        # next_message returns these before it reads the socket,
+        # so a flush does not drop a job that arrived first.
+        self._queued = []
 
     # -- line/frame IO ------------------------------------------------
     def _fill(self, deadline):
@@ -231,36 +235,77 @@ class NatsClient:
     def ping(self):
         self._send(b"PING\r\n")
 
+    def _read_frame(self, deadline):
+        """One protocol item: ('pong', None), ('ping', None),
+        ('ok', None), ('err', text), ('msg', (subject, payload)),
+        or ('skip', None)."""
+        line = self._readline(deadline)
+        if line == "PONG":
+            return "pong", None
+        if line == "PING":
+            return "ping", None
+        if line.startswith("+OK"):
+            return "ok", None
+        if line.startswith("-ERR"):
+            return "err", line[5:].strip()
+        if line.startswith("MSG "):
+            parts = line.split(" ")
+            # MSG <subject> <sid> [reply-to] <bytes>
+            # ASCII digits only: str.isdigit() also takes '²',
+            # which int() refuses, and '٣', which it reads as 3.
+            if len(parts) not in (4, 5) or not parts[-1].isascii() \
+                    or not parts[-1].isdigit():
+                raise TransportError(f"nats: malformed MSG line "
+                                     f"{line[:80]!r}")
+            size = int(parts[-1])
+            raw = self._read_exact(size + 2, deadline)
+            return "msg", (parts[1], raw[:size])
+        return "skip", None
+
     def next_message(self, deadline):
         """One MSG frame as (subject, payload_bytes), or None at
         the deadline. PINGs are answered inline; other control
-        lines are skipped."""
+        lines are skipped. A frame read while confirming a
+        publish is returned before anything new is read."""
+        if self._queued:
+            return self._queued.pop(0)
         while True:
             try:
-                line = self._readline(deadline)
+                kind, value = self._read_frame(deadline)
             except _Idle:
                 return None
-            if line == "PING":
+            if kind == "ping":
                 self._send(b"PONG\r\n")
                 continue
-            if line == "PONG" or line.startswith("+OK"):
+            if kind in ("pong", "ok", "skip"):
                 continue
-            if line.startswith("-ERR"):
-                raise TransportError(f"nats: server error: "
-                                     f"{line[5:].strip()}")
-            if line.startswith("MSG "):
-                parts = line.split(" ")
-                # MSG <subject> <sid> [reply-to] <bytes>
-                # ASCII digits only: str.isdigit() also takes '²',
-                # which int() refuses, and '٣', which it reads as 3.
-                if len(parts) not in (4, 5) or not parts[-1].isascii() \
-                        or not parts[-1].isdigit():
-                    raise TransportError(f"nats: malformed MSG line "
-                                         f"{line[:80]!r}")
-                size = int(parts[-1])
-                raw = self._read_exact(size + 2, deadline)
-                return parts[1], raw[:size]
-            # Unknown line: not fatal to a minimal client; skip.
+            if kind == "err":
+                raise TransportError(f"nats: server error: {value}")
+            return value
+
+    def flush(self, deadline):
+        """The publish before this was accepted. PONG means the
+        broker got that far; -ERR or no PONG means it did not,
+        and the result file stays where the next connection
+        can send it again. A job that arrives on the way is
+        kept for next_message."""
+        self.ping()
+        try:
+            while True:
+                kind, value = self._read_frame(deadline)
+                if kind == "ping":
+                    self._send(b"PONG\r\n")
+                    continue
+                if kind in ("ok", "skip"):
+                    continue
+                if kind == "msg":
+                    self._queued.append(value)
+                    continue
+                if kind == "err":
+                    raise TransportError(f"nats: server error: {value}")
+                return
+        except _Idle:
+            raise TransportError("nats: timed out waiting for PONG")
 
     def close(self):
         if self.sock is not None:
@@ -340,6 +385,12 @@ class NatsPipe:
             client.publish(
                 f"{self.result_prefix}.{job_id}",
                 ch.envelope(subject, body))
+            # sendall only means the bytes left this process. The
+            # broker answers the PING after that publish. Moving
+            # the file first lost the result when the broker
+            # refused it, or when the connection died before it
+            # had the bytes.
+            client.flush(time.monotonic() + client.timeout)
             ch.ack_result(self.channel, fname)
 
     def stop(self):
