@@ -2,11 +2,9 @@
 
 Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
 
-> ⚠️ **USE AT YOUR OWN RISK.** This tool hands **full administrative
-> control** of the machine to whoever holds the shared secret. The
-> runner verifies a message's signature and then executes the
-> job, as a privileged user. It can install software,
-> read files, add users, and pivot to your network.
+> ⚠️ **USE AT YOUR OWN RISK.** This tool hands full administrative
+> control of the machine it is installed to whoever holds the shared secret. The holder
+> can install software, read files, add users, and pivot to your network.
 
 Your cloud AI (called the SI throughout this repo) is smart, but it
 can't touch your computer. Homing Pigeon gives it a signed channel to one: ask for a task and it runs on your machine, and
