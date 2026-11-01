@@ -11,6 +11,9 @@ runner's behaviour; releases continue from `main` exactly as
 before, and a stage lands here only when its own definition of
 done is met.
 
+Merged to `main` on 1-Nov-2026: the proof work now lives on `main`
+and continues there.
+
 ## What is being built, and why in this order
 
 A machine-checkable formal model of Homing Pigeon's security
