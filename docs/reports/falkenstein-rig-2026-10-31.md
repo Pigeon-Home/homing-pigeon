@@ -48,9 +48,9 @@ The fleet's Windows seat. Two jobs:
 2. Fuzzing capacity on the platform the other rigs do not cover:
    8 cores and 16 GB against the de_aztec corpus tooling.
 
-The San Francisco droplet retires once this seat is proven,
-and its $12 a month folds into this machine's cost. Until then
-both run.
+San Francisco is not retired: the droplet is kept, its
+fuzzing stopped on 1-Nov-2026, and the box sits idle at $12 a
+month.
 
 ## The setup order
 
