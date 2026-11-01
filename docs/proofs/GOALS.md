@@ -148,6 +148,13 @@ checks P1, in both its strong (audience `enforce`) and default
 forms, over the starting scope, and the checked configurations
 and their state counts are recorded with the model.
 
+This stage has landed. The model is `Gate.tla` for the ordered
+checks and `Claim.tla` for the one race, at the first rung
+P1(49). The configurations, the state counts, and the two
+counterexamples that are supposed to exist are in `stage2.md`.
+What has not landed, and is stage 3, is the line-by-line
+reconciliation of those steps with `handle_mail`.
+
 ## Stage 3 — The model checked against the code's order
 
 **Contents.** A step-by-step reconciliation: each model step

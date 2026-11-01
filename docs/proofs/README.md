@@ -123,9 +123,12 @@ The work grows in layers, each one resting on the last:
    enough to model: the actors, the exact order the code performs
    its checks, and what a counterexample would look like. That is
    `properties.md`.
-3. **Formal model.** The gate is modelled in a proof and model
-   language, following the check order from layer 2 exactly. The
-   tool choice and the staged plan are in `GOALS.md`.
+3. **Formal model.** The gate is modelled in TLA+, following the
+   check order from layer 2 exactly. That model is `Gate.tla`
+   (the ordered checks) and `Claim.tla` (two handlers racing the
+   claim). The checker is TLC. What it found at the first rung
+   is `stage2.md`. The tool choice and the rest of the plan are
+   in `GOALS.md`.
 4. **Checked model.** The checker searches the model for a
    counterexample to each stated property, inside the stated
    bound. A counterexample is a finding, not an embarrassment: it
