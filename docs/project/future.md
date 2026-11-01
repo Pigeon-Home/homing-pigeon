@@ -58,7 +58,7 @@
   onion, or BitTorrent and/or blockchain execution broker with embed
   wallet link key_id.
 
-  - **Cyber "Turret"** for malicious actors/swarms
+- **Cyber "Turret"** for malicious actors/swarms
   
 - **An Oracle dashboard** on loopback, to "watch" it think
 
