@@ -346,6 +346,24 @@ class QueuePipe:
         # worker keeps the first envelope posted for an id, so the
         # name the writer used first has to be posted first.
         waiting = ch.pending_results(self.channel)
+        returned = {row[0] for row in waiting}
+        # A result name the listing did not return and did not
+        # move aside (a directory, a file that could not be
+        # moved) is still that job's result. Acking here
+        # finished the job with nothing stored.
+        outbox = os.path.join(self.channel, "outbox")
+        try:
+            left = os.listdir(outbox)
+        except OSError:
+            left = []
+        for fname in left:
+            if fname in ("done", "failed") or fname in returned:
+                continue
+            file_id = _result_file_id(fname)
+            if file_id and file_id in self._pending:
+                unposted.add(file_id)
+                ch.log(f"queues transport: result {fname} was not "
+                       f"posted; {file_id} stays leased", "WARN")
         waiting.sort(key=lambda row: (not row[0].endswith(".result.txt"), row[0]))
         for fname, subject, body in waiting:
             file_id = _result_file_id(fname)

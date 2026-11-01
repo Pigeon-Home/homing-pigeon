@@ -182,7 +182,15 @@ def pending_results(channel):
                 refuse_result(channel, fname,
                               "result file is not UTF-8")
             continue
-        except OSError:
+        except OSError as e:
+            # Unreadable (a mode the process cannot open). Left
+            # here it is invisible, and the queue acks the job
+            # with nothing stored. The owner can still move it
+            # aside for the stub.
+            if result_file_id(fname):
+                refuse_result(
+                    channel, fname,
+                    "result file could not be read: %s" % e)
             continue
         parsed = parse_envelope(text)
         if parsed is None:

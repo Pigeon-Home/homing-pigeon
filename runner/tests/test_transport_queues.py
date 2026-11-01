@@ -15,6 +15,7 @@ import secrets
 import tempfile
 import threading
 import unittest
+from unittest import mock
 import urllib.request
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -632,6 +633,52 @@ class QueuePipeTest(unittest.TestCase):
             self.assertFalse(os.path.islink(stored))
             with open(stored, encoding="utf-8") as fh:
                 self.assertNotIn("not-for-the-queue", fh.read())
+
+    def test_an_unreadable_result_does_not_finish_the_job(self):
+        # The listing cannot open it. Skipping it acked the job,
+        # and the answer was never stored. Root can read a mode
+        # 000 file, so the refusal is the open itself.
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            os.replace(os.path.join(d["inbox"], "j1.job.txt"),
+                       os.path.join(d["inbox_done"], "j1.job.txt"))
+            path = os.path.join(d["outbox"], "j1.result.txt")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("[HOMING-PIGEON] result j1\n\n{}\n")
+            real_open = open
+
+            def guarded(file, *args, **kwargs):
+                if os.path.abspath(file) == os.path.abspath(path):
+                    raise OSError(13, "Permission denied")
+                return real_open(file, *args, **kwargs)
+
+            with mock.patch("builtins.open", guarded):
+                pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", w.state.jobs)
+            self.assertTrue(os.path.isfile(
+                os.path.join(d["outbox"], "failed", "j1.result.txt")))
+            self.assertFalse(os.path.exists(path))
+
+    def test_a_directory_named_as_a_result_does_not_finish_the_job(self):
+        with FakeWorker() as w:
+            w.state.jobs["j1"] = envelope("j1")
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            os.replace(os.path.join(d["inbox"], "j1.job.txt"),
+                       os.path.join(d["inbox_done"], "j1.job.txt"))
+            os.mkdir(os.path.join(d["outbox"], "j1.result.txt"))
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", w.state.jobs)
+            self.assertTrue(os.path.isdir(
+                os.path.join(d["outbox"], "j1.result.txt")))
 
     def test_two_ids_that_differ_past_120_characters_both_finish(self):
         # The channel kept 120 characters of the id. A queue id is
