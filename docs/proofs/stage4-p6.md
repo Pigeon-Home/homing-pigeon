@@ -89,8 +89,9 @@ process is stopped exactly when the class is refuse, the value
 is present and unusable, and the moment is startup, and that
 stop names the key. A reload never stops it. An unusable
 default-class value, at either moment, is the documented
-default and is named. An unusable or absent refuse-class value
-at reload leaves the prior binding in place.
+default and is named. A refuse-class value at reload, usable
+or not, and an absent value of either class, leave the prior
+binding in place.
 
 ## What was checked
 
@@ -137,6 +138,28 @@ recorded, in the open:
   that sentence alone would expect one. No code was changed
   in this pass.
 
+- **F2. A boolean written live for a hot key silently becomes
+  1.** Found in the verification pass below, by running the
+  function. The reload path for `HOT_KEYS` is `_valid_hot`
+  (`runner/runner.py` line 5061), which computes `int(value)`
+  and accepts anything that comes out at 1 or more. `int(True)`
+  is 1, so a live write of `poll_interval_sec: true` sets the
+  running value to 1 — not the documented default of 20 — and
+  no log line names the key. At startup the same value is
+  unusable under C26 ("a boolean is never a number"), reads
+  as 20, and is named. So the bool rule C26 states for the
+  class, at the reload site C26 names, does not hold for the
+  hot keys: the value that lands is neither the written
+  value's meaning nor the documented default, and it is not
+  named. Classification: a divergence between the code and
+  C26 as stated, in the reload reader only. The model's one
+  "unusable" bit cannot express it, because the two readers
+  disagree about the bit for this input. The DecisionPins
+  reload test uses a string, so this shape was unpinned. No
+  code was changed in this pass; whether the reload reader
+  should reject a bool like the startup readers do is a code
+  decision for a later stage.
+
 ## What this does not say
 
 - The model has one "unusable" bit. Each reader has its own
@@ -164,3 +187,53 @@ recorded, in the open:
   waits for the next start too.
 - Whether the missing log line in F1 should be added is a
   code change. This stage does not make it.
+
+## Verification
+
+This stage was re-checked first-hand after it landed, the
+same standard stage 3 applied to stage 2: nothing in the
+record above was taken on the author's word.
+
+- **The check was re-run.** TLC 2.19 (the `v1.7.4` tools jar)
+  on `Decision.tla` reproduced every number in the table
+  above, exactly: the main configuration holds at 36
+  generated, 24 distinct; the stop witness fails at 17
+  generated, 17 distinct, ending at `running = FALSE`,
+  `named = TRUE` for refuse, unusable, startup; the default
+  witness fails at 23 generated, 23 distinct, ending at
+  `running = TRUE`, `value = "documented"`, `named = TRUE`
+  for default, unusable, startup.
+- **The code was re-read.** Every site the record names was
+  read at the lines it cites: `confval`, `defaulted`, the
+  startup sequence in `runner/ops/main.py`,
+  `_validate_size_caps`, `_port`, `build_key_policies`, the
+  `HOT_KEYS` / `HOT_DEFAULTS` / `LIVE_KEYS` tables, and
+  `reload_hot_config`. F1 is confirmed from the code:
+  `reload_hot_config` reads only `HOT_KEYS`, `LIVE_KEYS`,
+  and the defaulted table; no port, secret, key policy, size
+  cap, or security mode is among them, so a bad refuse-class
+  write is kept out of the binding, does not stop the
+  process, and is never logged. The Decision 1 sentence it
+  falls short of is rule 4 of
+  `docs/design/present-but-invalid-config.md`.
+- **One model correction.** As first landed, the model's
+  reload outcome for a *usable* refuse-class write said the
+  written value is used and the binding is not kept, and
+  `P6Inv` did not cover that attempt — while clause 6, the
+  model's own header, and the code all say the binding is
+  kept. The outcome now puts the whole refuse class at
+  reload on the prior binding, and the invariant covers
+  every refuse-class reload attempt. Re-checked after the
+  correction: the same three results, the same counts.
+- **One new finding.** F2 above, found by running
+  `reload_hot_config` on a boolean hot-key value.
+- **Clause 7 is outside the model's space.** The twelve
+  attempts are class by presence by moment; a file the
+  reload cannot read is none of those. Clause 7 rests on
+  the code read: `reload_hot_config` returns before
+  `state["mtime"]` is set when `load_config` raises, so
+  the next cycle retries the same file. `properties.md`
+  now says this on the clause itself.
+- **The pins.** `runner/tests/test_proof_constraints.py`
+  runs 67 tests, all passing, including the three
+  `DecisionPins`.

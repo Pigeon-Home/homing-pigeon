@@ -56,12 +56,12 @@ Outcome(a) ==
              named |-> FALSE, kept |-> FALSE]
        ELSE [running |-> TRUE, value |-> "written",
              named |-> FALSE, kept |-> FALSE]
+  ELSE IF a.klass = "refuse" \/ a.presence = "absent"
+  THEN [running |-> TRUE, value |-> "prior",
+        named |-> FALSE, kept |-> TRUE]
   ELSE IF a.presence = "usable"
   THEN [running |-> TRUE, value |-> "written",
         named |-> FALSE, kept |-> FALSE]
-  ELSE IF a.presence = "absent" \/ a.klass = "refuse"
-  THEN [running |-> TRUE, value |-> "prior",
-        named |-> FALSE, kept |-> TRUE]
   ELSE [running |-> TRUE, value |-> "documented",
         named |-> TRUE, kept |-> FALSE]
 
@@ -89,8 +89,8 @@ Spec == Init /\ [][Next]_vars
 \* is present and unusable at startup, and that stop names
 \* the setting. A reload never stops it. An unusable
 \* default-class value, at either moment, is the documented
-\* default and is named. An unusable refuse-class value
-\* written while running leaves the prior binding in place.
+\* default and is named. A refuse-class value written while
+\* running, usable or not, leaves the prior binding in place.
 P6Inv ==
   \/ ~decided
   \/ /\ (o.running = FALSE) <=>
@@ -104,8 +104,7 @@ P6Inv ==
           /\ o.value = "documented"
           /\ o.named
           /\ ~o.kept
-     /\ (a.moment = "reload" /\ a.klass = "refuse"
-          /\ a.presence # "usable") =>
+     /\ (a.moment = "reload" /\ a.klass = "refuse") =>
           /\ o.value = "prior"
           /\ o.kept
           /\ o.running

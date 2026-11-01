@@ -1126,7 +1126,12 @@ the process is already up.
   binding, or stops the process.
 
 The checked model is `Decision.tla`. The record is
-`stage4-p6.md`.
+`stage4-p6.md`. Clause 7 is the one clause the model does
+not check: its attempts are class by presence by moment,
+and an unreadable file is none of those. Clause 7 is held
+by the code read at `reload_hot_config`, which returns
+before the reload marker advances when the file cannot be
+read, so the next cycle tries the same file again.
 
 ## The placeholder properties
 
