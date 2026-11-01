@@ -244,6 +244,66 @@ test that follows it is a real test of it.
 
 Supposition, recorded before measuring: a remote upgrade swaps only the runner program. The fuzzing grow runs as its own processes from the rig's own clone, so its threads are never stopped by an upgrade and no fuzzing work is thrown away. The runner itself is down only while the applier stops it, installs, and starts it again — expected to be seconds, and in any case under a minute. The only work an upgrade can throw away is a job in flight on the runner at that moment, which would need to be sent again; no campaign state is lost, because the corpus lives on disk and banks every hour. Predicted measurement: runner pause under one minute, fuzzing work lost zero minutes.
 
+### What the test found (1-Nov-2026)
+
+The upgrade key half of the test landed in full. The upgrade
+secret and its key policy are installed in the rig's config,
+put there by a signed job through the runner (job 01176c3f);
+the policy allows only exec jobs, pins one staging script, and
+allows only the Windows release package and its checksum file.
+The negative test behaved exactly as designed: a clock job
+signed with the upgrade key was turned away for not being the
+pinned script, and a clock job under the ordinary key passed
+after the restart with a true clock.
+
+The upgrade itself could not be run, so the predicted pause
+has no measurement yet. The host half of the procedure — the
+applier, a scheduled task that watches for a staged release,
+stops the runner, installs, and starts it again — is not
+installed on this rig: there is no such task on the box and
+nothing in its install locations, checked live before the
+test. Installing it was held for the owner's word after the
+kit file's read was flagged by a safety check in the session
+running the test. Until an applier is in place, a staged
+upgrade has nothing to act on it, and there is no outcome
+file to read a pause from.
+
+Two smaller facts were measured on the way, both from the
+runner restart the key install needed:
+
+- A plain restart of the runner on this rig costs about 8
+  seconds: the stop was issued at 11:42:01 box time and the
+  restarted runner's startup lines are in its log at 11:42:09,
+  watching its inbox a second later.
+- The grow never noticed the restart. Its loop process and
+  both lanes' processes hold the same start times before and
+  after (the loop since the day before, the lanes since the
+  cycle start at 11:26:10), and its log shows no gap beyond
+  its normal rhythm. That is direct evidence for the
+  supposition's mechanism — the grow runs independently of
+  the runner — observed at restart scale.
+
+Verdict on the supposition: untested as written, with its
+load-bearing claim supported. The claim that an upgrade
+throws away no fuzzing work held for the one runner stop
+performed. The runner-pause prediction (under a minute) sits
+comfortably with an 8-second plain restart, but a real
+upgrade adds a fresh checksum fetch and a full install that a
+restart does not have, so the prediction stays a prediction
+until the applier's first live run measures it. Work thrown
+away by that restart: no fuzzing work, and no job was in
+flight to lose.
+
+Cadence consequence: the number the cadence decision waits
+on does not exist yet, so no cadence change is made on this
+evidence. The standing rule — an upgrade every two or three
+releases, keeping every runner on a build an hour or two old
+at most — stays in force until the measurement lands. The
+standing upgrade automation stops at the same door: it can
+watch the gap between the rig's build and the newest release,
+but it cannot drive an upgrade until the applier is installed
+on the rig, and it will not send upgrade jobs into that gap.
+
 ## What remains
 
 1. The `job_user` divergence on Windows (see the enforcement
