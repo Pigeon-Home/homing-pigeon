@@ -232,6 +232,18 @@ own portable git.
   a URL is staged with its downloaded bytes untouched, so a
   BOM-less `.ps1` served over the wire has the same exposure.
 
+## The upgrade pause: a supposition, written before measuring
+
+How much work does a remote upgrade throw away? The question
+decides how often the rigs should be upgraded: if an upgrade
+costs almost nothing, the rigs can take every release as it
+ships, about hourly; if it throws minutes of work away, they
+should upgrade less often. The supposition below was written
+down and committed before any measurement was taken, so the
+test that follows it is a real test of it.
+
+Supposition, recorded before measuring: a remote upgrade swaps only the runner program. The fuzzing grow runs as its own processes from the rig's own clone, so its threads are never stopped by an upgrade and no fuzzing work is thrown away. The runner itself is down only while the applier stops it, installs, and starts it again — expected to be seconds, and in any case under a minute. The only work an upgrade can throw away is a job in flight on the runner at that moment, which would need to be sent again; no campaign state is lost, because the corpus lives on disk and banks every hour. Predicted measurement: runner pause under one minute, fuzzing work lost zero minutes.
+
 ## What remains
 
 1. The `job_user` divergence on Windows (see the enforcement
