@@ -197,6 +197,41 @@ own portable git.
   the placeholder comes out when a build carrying the fix is
   installed here.
 
+- **Output shapes, and a script encoding bug (1 Nov 2026).**
+  Four output shapes were sent back to back through the file
+  transport. Large output (2,000 numbered lines) round-tripped
+  exact in the runner log, empty output came back empty on both
+  streams, and stderr-only output arrived on stderr with stdout
+  empty. Non-ASCII output built at run time from code points —
+  accented Latin, Chinese and Japanese text, a duck emoji, a
+  check mark, a euro sign — round-tripped exact on stdout and
+  on stderr. The output pipeline is sound. The fifth shape
+  failed: a PowerShell script holding that same non-ASCII text
+  as literals never ran — PowerShell reported the string was
+  missing its terminator, at the line after the non-ASCII text,
+  and the job finished with exit 1. The runner stages every
+  script as UTF-8 with no byte order mark
+  (`runner/ops/exec.py`), and Windows PowerShell 5.1 reads a
+  BOM-less file in the machine ANSI code page, so multi-byte
+  UTF-8 sequences are misread: garbled where the job is lucky,
+  a broken string where it is not. The fix stages a `.ps1`
+  with the UTF-8 byte order mark — exactly one, even when the
+  sender's script already carries one — and leaves every other
+  script kind's bytes exact, because a byte order mark would
+  corrupt an `sh` script's head. It is pinned by a new test
+  family (`runner/tests/test_powershell_script_encoding.py`:
+  non-ASCII at the front, middle and back of the script, runs
+  of the odd character, the `pwsh` and `powershell.exe`
+  spellings, a script that arrives already carrying a mark,
+  and the no-mark rule for `sh` and Python scripts; 18
+  assertions failed before the fix and the family passes
+  after). The fix sits in the held-fixes branch and lands on
+  main in the next shared commit window; a rig build carrying
+  it still needs installing here before the literal shape can
+  pass live. One scope note stays open: a script fetched from
+  a URL is staged with its downloaded bytes untouched, so a
+  BOM-less `.ps1` served over the wire has the same exposure.
+
 ## What remains
 
 1. The `job_user` divergence on Windows (see the enforcement
