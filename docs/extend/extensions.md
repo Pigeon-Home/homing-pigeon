@@ -23,8 +23,8 @@ This document covers one of the two extension kinds that exist
 today: `sense`. (The other, `transport`, carries the job pipes
 and is covered in [docs/extend/transports.md](transports.md).) A
 program that does work rather than reporting or carrying — an
-external agent pulling tasks from the board — is not an extension
-kind; it is covered in
+external agent framework working with the runner — is not an
+extension kind; it is covered in
 [docs/extend/worker-agents.md](worker-agents.md). A sense
 files signed alerts with the Oracle, which fuses them with job activity. The
 plumbing underneath — alert shape, ingest gates, storage, the
