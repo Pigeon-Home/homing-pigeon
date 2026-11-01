@@ -122,6 +122,33 @@ own portable git.
   the fetch time between the two reads. The result's signature
   verified on the operating VM. The local submission route of
   the setup order is therefore proven on Windows.
+- **First repository commit from this machine.** A job was
+  sent whose script fetched a portable git, checked out this
+  repository, appended a section to this report, committed,
+  and pushed — the commit is in main's history ("first commit
+  from the Germany rig, through its own runner"). The GitHub
+  credential travelled inside the signed job and was answered
+  from the job's own file at push time; it is not in the
+  repository, and a script guard refused to commit if anything
+  besides the one file had changed.
+- **The watchdog fired on the first attempt, as designed.**
+  The runner scans the files a job produces. Eleven seconds
+  into the first attempt it killed the job: the portable git's
+  sample ssh client configuration names ssh key paths
+  (`~/.ssh/id_rsa` and family) that the job's script had never
+  declared, and an undeclared credential-store reference in a
+  produced file is the authority tripwire — the job dies and
+  its outputs are quarantined for the owner's release. The
+  second attempt declared the three key paths the sample file
+  names in its script header and checked out only the file it
+  edits; it ran clean in forty seconds. Lessons for any job
+  that fetches tools: a tool's own sample and documentation
+  files are produced artifacts under the scan, and the
+  credential paths in them must be declared in the script that
+  brings the tool. The whole job was rehearsed before sending
+  against the runner's own scanner code over the exact file
+  set it would produce; the rehearsal predicted both the kill
+  and the clean run.
 - **A bug found on the way, recorded here.** The runner's
   startup gate asks for mailbox authentication without
   checking whether the email transport is enabled
