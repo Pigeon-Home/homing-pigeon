@@ -81,6 +81,18 @@ refuse-class setting it stops the runner before any job is read.
   these files: a 49-character script of multi-byte characters is
   inside the proof bound and can still be many more than 49 bytes,
   though it remains far inside this 1 MiB cap.
+- **Script size in practice:** a typical script a cloud SI sends
+  is on the order of 500 lines; a large one is about 1000 lines.
+  Those figures describe what arrives in practice, and they are
+  recorded here for scale only — neither is the measure anything
+  binds on. The binding measure is the script's character count:
+  a one-liner can be extremely long, and obfuscation stuffs
+  characters onto few lines, so a line count can be made to say
+  almost anything about the same script, while the character
+  count says how much script there is. The proof states its
+  gate property as a family over that count, P1(B) in
+  `properties.md`, and the ladder of bounds it climbs is
+  recorded in `GOALS.md`, stage 6.
 
 ## C3. Maximum result size — `max_result_bytes`
 

@@ -97,7 +97,9 @@ checker can be exhaustive about the shapes a script's length and
 position can take, and the gate's decisions do not depend on
 script content beyond the checks the code performs. The bound
 then raises little by little, stage by stage, as `GOALS.md` sets
-out.
+out. In `properties.md` the gate property is written as a family
+over the bound, P1(B) for a bound of B characters; the first rung
+is P1(49), and the last is the production cap itself.
 
 This bound is the proof's starting scope. It is not a product
 limit. The production caps in the code — a script up to 1 MiB of
@@ -138,6 +140,45 @@ The work grows in layers, each one resting on the last:
    keys, more transports, more message kinds — and the cycle
    repeats. The roof raises little by little, and each raise is a
    new checked claim, not a bigger adjective on an old one.
+
+## How to review this
+
+This work is written to be reviewed cold, by a reader who has
+nothing but this directory and the code it points at. No context
+outside these files is needed, and none should be assumed: if a
+claim here cannot be checked from what is written here plus the
+code at `6d6288c5`, that gap is itself a review finding.
+
+The feedback wanted, in order:
+
+- **Are the properties the right ones?** P1 is stated in full in
+  `properties.md`; P2 to P6 are one-line placeholders behind it.
+  Is the gate the right first property? Is anything the gate's
+  claim silently depends on missing from the list — a property
+  that ought to be stated, in this order or at all?
+- **Is the check order stated as the code performs it?**
+  `properties.md` records the order step by step from
+  `runner/ops/mail.py`, `handle_mail`, and the helpers it calls.
+  A step that is out of order, missing, or not in the code — or
+  a branch in the code that no step covers — is a finding
+  against the statement, and it matters: an order stated wrong
+  here becomes a model built wrong in the next stage.
+- **Are any assumptions missing?** The assumptions the model
+  rests on are listed above, in "What the model assumes". If a
+  claim in these files leans on something not listed there —
+  about the runtime, a transport, the clock, the filesystem —
+  name it. An unstated assumption found in review is far cheaper
+  than one found by a counterexample later.
+- **Does any constraint value disagree with the code?** Every
+  value in `constraints.md` names the file and function it was
+  read from. A value that does not match the code at `6d6288c5`
+  is a finding against the inventory, and the inventory — not
+  the code — is what gets corrected, unless the code itself is
+  the defect, in which case saying so, with the lines, is the
+  most useful review there is.
+
+A finding is most useful when it points at the file and the line
+— in these documents or in the code — that it is about.
 
 ## The files
 

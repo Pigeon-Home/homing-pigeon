@@ -50,7 +50,13 @@ silently.
   under 50 characters.** Line counts mislead: a one-liner can be
   very long, and obfuscation packs characters onto few lines. The
   production byte caps are untouched; the character bound is the
-  model's scope control. Raising it is a stage, not an edit.
+  model's scope control. Raising it is a stage, not an edit. P1
+  is therefore stated as a family over the bound, P1(B) in
+  `properties.md`, and the rungs the family climbs are listed in
+  stage 6. For scale: a typical script a cloud SI sends is on
+  the order of 500 lines, and a large one about 1000 lines — but
+  neither figure is a measure the work binds on; the character
+  count is.
 - **Cryptography is an assumption, not a target.** The model
   treats HMAC-SHA-384 unforgeability and the AES-256-GCM
   construction as axioms, stated in `README.md`. This work checks
@@ -211,11 +217,24 @@ decoration.
 **Contents.** The bounds raise, one at a time, each raise
 re-running every stage it touches:
 
-1. The script character bound: under 50, then 100, then 500, then
-   1000, then the bound dropped in favour of length as an
-   unbounded integer with content fully abstracted — the point
-   where the model's claim stops being about a size of script at
-   all.
+1. The script character bound — the raising ladder for P1(B)
+   in `properties.md`: under 50 characters first, then 500,
+   then 5,000, then 50,000, then 500,000, then a bound of
+   1048576 characters — the production cap's own number,
+   `max_script_bytes` being 1048576 UTF-8 bytes (1 MiB) — where,
+   as `properties.md` shows, the character-bound claim covers
+   every script the code's byte cap can admit. Each rung is re-proven before the next is
+   attempted. The rungs are chosen for proof convenience: each
+   is roughly ten times the last, which keeps the number of
+   re-proofs small while still catching a counterexample near
+   the size where it first appears. They are not derived from
+   the code, and they can change; a change to a rung, and the
+   reason for it, is recorded here, and every rung already
+   checked keeps its claim at its own bound. One further step
+   remains available after the cap rung, if a later stage wants
+   it: the bound dropped in favour of length as an unbounded
+   integer with content fully abstracted — the point where the
+   model's claim stops being about a size of script at all.
 2. More keys: from two to a small map with per-key policies,
    including a pinning policy (which pulls P4's model into the
    gate's).

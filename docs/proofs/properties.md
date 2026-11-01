@@ -61,7 +61,9 @@ commit `6d6288c5`.
   character count under 50 — 49 or fewer. The bound limits the
   model's scope, not the runner: the runner's behaviour at
   production sizes is the same code path, and raising the bound
-  is a planned stage, not a change to the runner.
+  is a planned stage, not a change to the runner. P1 is stated
+  as a family over this bound — P1(B), below — so each raise is
+  the same property re-stated at a larger bound.
 
 ## P1. The acceptance gate
 
@@ -114,6 +116,52 @@ In short form, the property the whole project rests on:
 
 The short form is a summary. The nine clauses above are the
 property. Where they differ, the clauses win.
+
+### P1 as a family: P1(B)
+
+P1 is not one claim but a family of claims, one for each script
+size the model admits. **P1(B)** is the claim that the nine
+clauses above hold for every handling whose script has a
+character count of at most B — the number of characters in the
+script's text, as "Terms, stated once" defines it. B is the
+script character bound. Everything else in the statement — the
+actors, the clauses, the check order below — is the same at
+every bound; only B changes.
+
+The bound counts characters, not lines and not line length,
+because line counts mislead: a one-liner can be extremely long,
+and obfuscation stuffs many characters onto few lines, so a
+line-based bound can be walked around by formatting alone. The
+character count is the measure that tracks how much script
+actually came through the door.
+
+The family is climbed in stages:
+
+- **First rung: P1(49).** Scripts under 50 characters — 49 or
+  fewer. The property MUST be proven at this bound first: at
+  this size a checker can be exhaustive about the shapes a
+  script's length can take, and the gate's decisions do not
+  depend on script content beyond the checks the code performs.
+- **Raised rungs.** The same nine clauses, re-proven at each
+  raised bound on the ladder in `GOALS.md` (stage 6): 500,
+  5,000, 50,000, and 500,000 characters. Each rung is a separate
+  checked claim, recorded at its own bound.
+- **Last rung: the production cap.** The code's script cap (C2)
+  is `max_script_bytes`: 1048576 UTF-8 bytes, 1 MiB. Every
+  script the runner can accept satisfies that byte cap, and
+  every character takes at least one UTF-8 byte, so every
+  acceptable script has a character count of at most 1048576.
+  P1(1048576) therefore covers every script that can pass the
+  code's own cap: at the top of the ladder, the family's claim
+  and the production claim coincide. The two measures —
+  characters for the model, UTF-8 bytes for the code — remain
+  different measures, and each stays named wherever it is used.
+
+A checked claim at one rung says nothing about a higher rung.
+P1(49) holding does not make P1(500) true; each raise MUST be
+re-proven, not presumed. If a higher rung produces a
+counterexample, the lower rungs' checked claims stand, stated
+at their own bounds, until the finding is resolved.
 
 ### The audience clause, honestly weakened by mode
 
@@ -273,7 +321,8 @@ this file, made in the open.
 The first model covers the mail path only, one default key and
 one additional key, the audience feature in each of its three
 modes, cleartext and encrypted arrivals, replayed deliveries, and
-scripts whose character count is under 50. Script content is
+scripts whose character count is under 50 — the first rung,
+P1(49), of the family stated above. Script content is
 abstracted to what the gate itself looks at: character count for
 the model's bound, UTF-8 byte length for C2, and the SHA-384
 digest where a policy pins scripts (C14). Queries, board mail,
