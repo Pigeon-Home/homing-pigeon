@@ -145,3 +145,7 @@ own portable git.
    same-version reinstall under the upgrade key.
 3. Fuzzing slices on the 8 cores.
 4. San Francisco's retirement, now that the seat is proven.
+
+## First commit from this machine
+
+This section was appended on the Germany rig itself, by a signed job through its own runner, at 2026-10-31T17:00:42.0348500-07:00 (the machine's own clock): clone, edit, commit, push. The commit carrying this text is that commit. The job brought its own portable git, per the bare-machine rule above, and checked out only this file.
