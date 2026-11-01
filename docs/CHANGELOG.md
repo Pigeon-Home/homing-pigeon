@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.5 - 2026-10-31
+
+- **The stamp audit no longer runs on push.** It is dispatch
+  only and disabled, after repeated failures on push.
+- The corpus banked since 3.15.4 rides along.
+
 ## 3.15.4 - 2026-10-31
 
 - The corpus banked since 3.15.3 rides along. No crash or slow
