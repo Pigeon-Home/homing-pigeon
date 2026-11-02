@@ -581,7 +581,15 @@ describes, and a first-hand verification pass over the
 series — its tests re-run and its records re-read
 against the code, as stages 2 to 5 received — has
 since run. Its verdicts stand as appendices to the
-four records.
+four records. The series has since been redone in
+full and the redo verified first-hand; the section
+that follows the four, "Content-independence: the
+redo and the final position", states the position
+the whole work now rests on, and where a limit in
+the four sections below differs from it — the
+PowerShell half, the missing 5,000-character rung,
+the sample at the first rung — the redo's statement
+supersedes it.
 
 **Contents.** The challenge `thinking.md` records and does
 not close. At scripts of at most 49 characters, list the
@@ -658,6 +666,53 @@ cap and the number 1048577.
 This check has landed. The harness is
 `runner/tests/test_proof_content_cap.py`. The record is
 `stage10.md`.
+
+## Content-independence: the redo and the final position
+
+The four sections above are the first series, kept as
+history. The series was redone in full — both shells at
+every rung, the 5,000-character rung the first series
+skipped included — and the redo was verified first-hand:
+every count, length, and gate outcome in its records
+reproduced. Its records are `content-rung-49.md`,
+`content-rung-5000.md`, `content-rung-50000.md`,
+`content-rung-500000.md`, and `content-rung-cap.md`.
+
+The final position, the same in `thinking.md` and in
+`docs/security/model-and-proof-testing.md`: what carries
+the proof is the model argument and the stage 3 code
+walk — no step of the gate's check order branches on
+what a script says, and the model checks hold at every
+bound on the ladder up to the production cap. The redo
+demonstrates it empirically: at the first rung an
+exhaustive fragment (3,682 bash scripts and 511
+PowerShell scripts — every combination of the atom list
+at the stated depth), and at 5,000, 50,000, and 500,000
+characters and at the cap, broad composed samples in
+both shells. No rung enumerates the full closure, and
+no record claims it does; the scripts were
+syntax-checked and presented to the gate, not executed.
+
+## The final position of the whole plan
+
+Every stage in this plan has landed. The six properties
+are stated, modelled, and checked; the ladder is closed
+at the production cap; the conformance family ties every
+clause to the code; and every finding has its stated
+end, written into its stage record and gathered in
+`docs/security/model-and-proof-testing.md`: P4 F1, P6 F1,
+P6 F2, and stage 5 F1 fixed on main with the failing test
+first, and P2 F1 accepted and carried as a named limit.
+The final consistency pass re-ran the full proof test
+family on the final tree: 319 tests, none failing. 311
+passed outright; the 8 skipped are the FreeBSD and
+macOS shell checks, whose shells are not on the machine
+that ran the pass, each skip carrying its registered
+reason — and the 5 PowerShell tests that first skipped
+for the same kind of reason were re-run with PowerShell
+7.5.4 on the path and passed. The sum of the
+claims is exactly the stages and checks marked done in
+this plan — nothing more.
 
 ## What this plan does not do
 

@@ -129,16 +129,17 @@ ladder: the content-independence checks recorded in
 gate at the first rung, at 50,000 and 500,000 characters,
 and at the production cap. The records are `stage7.md` to
 `stage10.md`, under the titles they landed with. Two
-limits stand in those records and stand here: the scripts
-are samples of each construct, not the closure of every
-nesting, and the PowerShell half was not run. A first-hand
-verification pass over the series has since run: its tests
-were re-run and its records re-read against the code, and
-the verdicts stand as appendices to the four records. The
-pass confirms what the records claim for the samples they
-ran, and finds the challenge still open in its stated
-form — the closure was not enumerated, and the
-PowerShell half was not run.
+limits stood in those records: the scripts were samples
+of each construct, not the closure of every nesting, and
+the PowerShell half was not run. A first-hand verification
+pass over that series ran, and its verdicts stand as
+appendices to the four records. That series has since
+been redone in full — both shells, every rung, the
+5,000-character rung the first series skipped included —
+and the redo verified first-hand. The final position is
+stated in the next section, and it supersedes the limits
+above: the closure is still not enumerated at any bound,
+and that is the one limit that stands.
 
 ### The final position
 
@@ -296,21 +297,40 @@ place.
 - **The silent field drop (stage 4, P4, F1).** The key-policy
   builder carries only the fields it recognizes, so a
   misspelled field name in a policy entry — above all the
-  pinning field — is absent from the built policy without a
+  pinning field — was absent from the built policy without a
   word. Enforcement is exact for the policy as built; the gap
-  is between the entry as written and the policy as built, and
-  it sits on the construction side of the fence.
+  was between the entry as written and the policy as built, and
+  it sat on the construction side of the fence. Disposition:
+  fixed on main — the builder now names every field it does
+  not recognise, naming the key and the field. The record is
+  in `stage4-p4.md`.
 - **The reload naming gap (stage 4, P6, F1).** A bad
-  refuse-class value written while the runner is running is
-  never named: the reload path never reads those keys, so the
-  binding is kept and nothing stops — but no log line says the
-  value was bad, where the design rule asks for one.
+  refuse-class value written while the runner was running was
+  never named: the reload path never read those keys, so the
+  binding was kept and nothing stopped — but no log line said
+  the value was bad, where the design rule asks for one.
+  Disposition: fixed on main — the reload path now reads the
+  refuse-class values for naming only, names a bad one in the
+  log at the moment of the write, and still does not apply it
+  until the next start. The record is in `stage4-p6.md`.
 - **The boolean that becomes 1 (P6 verification, F2).** A
-  boolean written live for a hot key is accepted as the number
+  boolean written live for a hot key was accepted as the number
   1 by the reload path, instead of falling back to its
   documented default and being named, the way the same value
   is treated at startup. Proven by running the function; the
-  record is in `stage4-p6.md`.
+  record is in `stage4-p6.md`. Disposition: fixed on main —
+  the reload reader now rejects a boolean outright, so the
+  value reads as the documented default and is named.
+- **The prefix floor on the parent fallback (stage 5, F1).**
+  The two-component floor on the interpreter-prefix bind was
+  not enforced on `_install_prefix`'s parent fallback, so an
+  interpreter in the root or a top-level directory bound the
+  whole tree. Disposition: fixed on main, test first — the
+  fallback now enforces the same floor, and such an
+  interpreter gets no prefix bind. The record is in
+  `stage5.md`. The bind rule itself (P2 F1 above) is the one
+  finding accepted rather than fixed, carried as a named
+  limit in `docs/security/model-and-proof-testing.md`.
 - **The priced replay windows (P5).** At-most-once execution
   holds outside two windows the statement prices in the open:
   a crash between a run and its result being recorded buys at
@@ -355,25 +375,37 @@ The same-searched-set argument still explains why. The
 runs are what the stages asked for.
 
 The content-independence challenge above has been taken up
-as its own series, alongside the ladder: construct-built
-scripts presented to the real gate at the first rung, at
-50,000 and 500,000 characters, and at the production cap,
-where two scripts one byte over it are refused naming the
-cap. The records are `stage7.md` to `stage10.md`, under
-the titles they landed with; in the plan the series is
-cited by its name, so the stage numbers name the ladder
-alone. The series' limits stand as its records state
-them: samples of each construct, not every nesting;
-PowerShell not run. A first-hand verification pass over
-the series has since run, and its verdicts stand as
-appendices to the four records.
+as its own series, alongside the ladder, and then redone
+in full. The first series presented construct-built scripts
+to the real gate at the first rung, at 50,000 and 500,000
+characters, and at the production cap; its records are
+`stage7.md` to `stage10.md`, under the titles they landed
+with, and a first-hand verification pass over it ran, its
+verdicts standing as appendices to the four records. The
+redo supersedes it: both shells at every rung — the first
+rung, 5,000, 50,000, and 500,000 characters, and the
+production cap — verified first-hand, with the records in
+`content-rung-49.md`, `content-rung-5000.md`,
+`content-rung-50000.md`, `content-rung-500000.md`, and
+`content-rung-cap.md`. The final position is stated in
+full under the challenge above: an exhaustive fragment at
+the first rung, broad composed samples at every rung
+above it, no full closure enumerated at any bound, and
+the scripts presented to the gate, not executed.
 
-What is next, in order: stages 8, 9, and 10, each run
-at its own bound when its turn comes. Every
-widening still goes through the same cycle — state it,
-model it, check it, tie it back to the code — and every
-claim still names its property, its bound, and its
-assumptions. Nothing in this work claims the whole system
-is proven, at any stage, and the sum of the claims is
-exactly the list of stages and checks marked done —
-nothing more.
+What is next: nothing in the staged plan. Every stage in
+`goals.md` has landed, every finding has its stated end,
+and the final consistency pass has run the full proof
+test family on the final tree: 319 tests, none failing —
+311 passed outright, and the 8 skipped are the FreeBSD
+and macOS shell checks, whose shells are not on the
+machine that ran the pass, each with its registered
+reason (the 5 PowerShell tests that first skipped for
+the same kind of reason were re-run with PowerShell
+7.5.4 on the path, and passed). Every widening from
+here still goes through the same cycle — state it, model
+it, check it, tie it back to the code — and every claim
+still names its property, its bound, and its assumptions.
+Nothing in this work claims the whole system is proven,
+at any stage, and the sum of the claims is exactly the
+list of stages and checks marked done — nothing more.

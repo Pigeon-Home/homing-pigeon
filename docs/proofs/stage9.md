@@ -82,3 +82,17 @@ the harness correction) is in the stage 7 appendix
 
 Verdict for this rung: holds for the texts generated.
 The enumeration the challenge asks for remains open.
+
+## Final position (final consistency pass, 1-Nov-2026)
+
+The verdict above is this record's own, for the first
+series at this rung, and it stands as written. The
+challenge it leaves open was since taken up by the
+redo: both shells at every rung, verified first-hand,
+with the records in `content-rung-49.md`,
+`content-rung-5000.md`, `content-rung-50000.md`,
+`content-rung-500000.md`, and `content-rung-cap.md`.
+The final position — an exhaustive fragment at the
+first rung, broad composed samples above it, no full
+closure enumerated at any bound — is stated in full in
+`thinking.md`, under "The final position".

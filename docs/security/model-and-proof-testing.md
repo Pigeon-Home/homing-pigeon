@@ -230,13 +230,46 @@ the mail path. Stage 7 re-checked the gate at the
 10 — 50,000 characters, 500,000, and the production cap as
 stages in their own right — have landed the same way, each
 by a run at its own bound. The records are `stage8-50000.md`,
-`stage9-500000.md`, and `stage10-1048576.md`. Alongside the ladder, a content-independence
-series presents scripts built from a shell's constructs to the
-real gate at the first rung, at 50,000 and 500,000 characters,
-and at the cap itself, and finds the gate's decision following
-length alone; its records are landed, and a first-hand
-verification pass over the series has since run — its
-verdicts stand as appendices to the four records.
+`stage9-500000.md`, and `stage10-1048576.md`.
+
+Alongside the ladder, the content-independence series asks
+whether the gate's decision ever depends on what a script
+says, rather than on its length and the checks above. What
+carries the proof is the model argument: no step of the
+gate's check order branches on script content, walked line
+by line against the code and checked at every bound. The
+series demonstrates it empirically. It was redone in full —
+both bash and PowerShell at every rung, including the
+5,000-character rung the first series skipped — and the
+redo was verified first-hand. At the first rung the set is
+an exhaustive fragment, not a sample: 3,682 bash scripts
+and 511 PowerShell scripts, every combination of the atom
+list at the stated depth, each presented to the real gate
+and admitted. At 5,000, 50,000, and 500,000 characters the
+sets are broad composed samples in both shells, named as
+samples in their records. At the production cap, scripts of
+exactly 1,048,576 bytes were admitted in both shells and
+scripts of 1,048,577 bytes refused, the refusal naming the
+script cap. No rung enumerates the full closure of every
+nesting, and no record claims it does; the scripts were
+syntax-checked and presented to the gate, not executed.
+The redo's records are `content-rung-49.md`,
+`content-rung-5000.md`, `content-rung-50000.md`,
+`content-rung-500000.md`, and `content-rung-cap.md`; the
+first series' records, `stage7.md` to `stage10.md`, stand
+as history.
+
+The proof work is finished. A final consistency pass
+checked that this page, the staged plan, the property
+statements, the stage records, and the reasoning file all
+state this same position, and re-ran the full proof test
+family on the final tree: 319 tests, none failing — 311
+passed outright, and the 8 skipped are the FreeBSD and
+macOS shell checks, whose shells are not on the machine
+that ran the pass, each skip carrying its registered
+reason (the 5 PowerShell tests that first skipped for
+the same kind of reason were re-run with PowerShell
+7.5.4 on the path, and passed).
 
 ## Honest limits
 
@@ -295,9 +328,16 @@ verdicts stand as appendices to the four records.
 - `docs/proofs/constraints.md` — the constraint inventory, every
   value named with the file and function it was read from.
 - `docs/proofs/stage2.md`, `stage3.md`, `stage4-p2.md` through
-  `stage4-p6.md`, `stage5.md`, the `stage6-*.md` records, and
-  `stage7-5000.md` — the stage records: the checks, the state
-  counts, the witnesses, and the findings. The
+  `stage4-p6.md`, `stage5.md`, the `stage6-*.md` records,
+  `stage7-5000.md`, `stage8-50000.md`, `stage9-500000.md`, and
+  `stage10-1048576.md` — the stage records: the checks, the
+  state counts, the witnesses, and the findings. The first
   content-independence series is recorded in
   `docs/proofs/stage7.md` to `stage10.md`, under the titles
-  those records landed with.
+  those records landed with, and the redo that supersedes
+  it in `docs/proofs/content-rung-49.md`,
+  `content-rung-5000.md`, `content-rung-50000.md`,
+  `content-rung-500000.md`, and `content-rung-cap.md`.
+- `docs/proofs/thinking.md` — the reasoning behind the work,
+  the content-independence challenge, and its final position,
+  stated in full.
