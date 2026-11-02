@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.111 - 2026-11-02
+
+- Fix: the 3.15.110 build failures are fixed -- the defaults registry names the key-policy builder's private reader; a result file name gets one platform-independent reading (a backslash is a name character, not a separator); an IPv4-mapped loopback spelling is refused at the queues door on every Python version; the de_dust checker models a case-folding inbox and its banked crash is retired as fixed; the file-name bookend families take their Windows readings with registered skips; symbol-only mail addresses follow the running parser; and the gate suite clock is 30 minutes, as in python-range and freebsd. 3.15.110 itself was never published: its tag stays on the held commit.
+- The corpus banked since the 3.15.110 tag rides along (Germany banks 33 through 39).
+
 ## 3.15.110 - 2026-11-02
 
 - Proofs: shotgun queue items 3 through 27 land with their 50-test families and the written proofs, and the key-policy builder warning fix rides along.
