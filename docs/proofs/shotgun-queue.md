@@ -160,7 +160,39 @@ Applied to every item on this queue, item 1 included:
 - Fixed: e4c21957 (31-Oct-2026)
 - Existing tests: test_transport_shells.py (35 in file)
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (FilePipeHeldResultShotgunTest in
+  test_transport_shells.py): the file pipe no longer finishes a
+  watched job whose result still sits in the channel's
+  outbox/failed/ — held by the channel ident, held by the signed
+  job id, one set-aside name holding two jobs, the refused
+  sidecar alone not holding, a missing, empty or not-a-folder
+  failed/, a directory entry named like a result, the set-aside
+  file's content never read, release when the file goes away,
+  and a real result still delivering while held. Landed on main
+  2-Nov-2026 (13075bc1); the file runs green (85 tests in the
+  file, 0 skipped), no live bug exposed, no production code
+  changed.
+- Proof of work (per the method section): per-field enumeration
+  — the one parsed field is the set-aside file's name, read
+  through ch.result_file_id, and its shapes are enumerated one
+  by one (plain, collision-suffixed, zero and zero-padded
+  suffixes, suffix shapes that do not parse, empty stems, case,
+  trailing characters including the trailing newline the name
+  pattern's end anchor admits, dotted and dashed stems, unicode
+  stems, symbol-only stems, none and empty). Bookends: every
+  printable ASCII symbol at the front and the back of the name,
+  at the parser and, bar the path separator, at the pipe; the
+  non-printing bookends (NUL, tab, CR, LF) at the parser. Run
+  lengths: stems and suffix digit runs of 1, 5 and 10.
+  Injection-shaped names are ordinary names. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261108, run locally against the banked
+  channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 142, slowest try 15 ms — the
+  set-aside shape did not recur. The grow's bookkeeping writes
+  were reverted, not banked (banking is the rigs' hourly job).
+  The same write-up is carried in the test file's class
+  docstring in the repo.
 
 ### 5. Refused result with no record stays until one can answer it
 - Fixed: 2715bedc (31-Oct-2026)
