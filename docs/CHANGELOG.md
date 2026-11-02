@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.100 - 2026-11-01
+
+- Proofs: the content-series redo is complete at every rung — the first rung, 5,000, 50,000, 500,000 characters and the production cap — with stage 6 verified first-hand, and the macOS shell legs added at the content rungs.
+- Docs: the Germany rig dossier records the restart resilience run and its soft-reboot finding.
+- The corpus banked since 3.15.37 rides along (Germany bank 22, Menlo Park bank 218).
+
 ## 3.15.37 - 2026-11-01
 
 - Fix: the sandbox-shape leg that plants a real interpreter file is POSIX-only and now skips on Windows, where the planted path cannot resolve as a POSIX prefix; its pure-function pins run in every job.
