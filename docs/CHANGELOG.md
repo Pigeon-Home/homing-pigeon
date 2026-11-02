@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.103 - 2026-11-01
+
+- DTLS: the platform disclosure now rides the handshake — a configuration-style payload in the server EncryptedExtensions, following the IKEv2 Configuration Payload pattern (RFC 7296, section 3.15), so the initiator holds the platform the moment it considers the connection established, with no extra poll; legacy application-message greetings remain a fallback, and named example vectors pin the standard tier on a fake Windows host and the family tier on a fake Linux host byte-for-byte.
+- Docs: the IETF draft sources for the posted -01 revisions are restored beside the -00 files, and the -02 sources are added — version 1 section 20 rewritten for the handshake disclosure, the subject-gap ABNF in section 6, and the em dashes replaced with hyphens; prepared for review, not submitted.
+
 ## 3.15.102 - 2026-11-01
 
 - Fix: the content-series script builder is linear, not quadratic — it tracks the joined length while it cycles the catalog and joins once, producing byte-for-byte the same scripts (pinned against the original algorithm in the new test_proof_content_build). On 3.15.101 the old builder took 38.97 seconds for one cap script and the tag build's test job hit its 20 minute wall clock twice in that builder, while the same commit's main test job passed in 16 minutes 56 seconds; a cap script now composes in 0.031 seconds.
