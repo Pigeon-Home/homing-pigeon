@@ -2473,8 +2473,9 @@ test("shotgun30 injection: prompt and template shapes default; a percent suffix 
 // written: runner/tools/de_dust_corpus.py grow --target stage
 // --rounds 400 --seed 20261132, run locally against the banked
 // stage corpus (35 entries). Result: 400 rounds, 0 crashes,
-// 0 slow, arcs unchanged at 93, slowest try 55 ms -- the
-// not-an-object quota shape did not recur. The grow's
+// 0 slow, arcs unchanged at 93, slowest try 60 ms
+// (149c877bde8f9826) -- the not-an-object quota shape did not
+// recur. The grow's
 // bookkeeping writes were reverted and are not banked (banking
 // is the rigs' hourly job); this record is the run's proof. For
 // the .mjs file the Python skip registry does not apply, and
