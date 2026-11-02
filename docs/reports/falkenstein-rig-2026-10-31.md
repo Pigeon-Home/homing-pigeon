@@ -404,12 +404,125 @@ install remains held as well, as the scenario queue records.
 No cadence change follows from this addendum; the standing
 rule above stays in force.
 
+### Addendum (1-Nov-2026): the forced run — re-pin, applier, and the measured upgrade to 3.15.33
+
+The word to force the upgrade through was given, and the run
+is complete: the rig now runs 3.15.33, upgraded remotely
+under the upgrade key, with the pause measured.
+
+The re-pin came first. A Windows staging script was written
+for this rig (PowerShell: check the staged zip against the
+SHA384SUMS inside the job's own work folder, move the zip
+into a remote-upgrade folder there, leave the trigger file),
+and the policy was re-pinned to it by signed job 3c34867b:
+the pinned digest moved from 2defbec3…f6255d (the Linux
+script) to a2948fb6…f0bd8df (the Windows script), and the
+allowed files moved to the 3.15.33 Windows zip and
+SHA384SUMS. The upgrade secret itself did not change. The
+runner was restarted on the re-pinned policy, a main-key
+clock job answered, and the negative test was re-run: clock
+job bb772db8, signed with the upgrade key, was rejected with
+"key policy: script is not in this key's allowlist" and
+produced no result.
+
+Two things the run exposed on the way, both recorded
+because they change what any restart on this rig means:
+
+- Stopping the HomingPigeon task does not stop the runner.
+  The frozen runner's processes detach and survive the
+  task's stop, so every "restart" of the day had in fact
+  added another runner set: by mid-afternoon five sets,
+  started between 31-Oct and this run, were alive at once
+  and racing the same inbox, each holding the config from
+  its own start. The first negative test of this run was
+  answered by a set started on 31-Oct, before the upgrade
+  key existed, with "unknown key_id" — luck of the draw,
+  not a verdict on the current config. All sets were killed
+  and a single set started before the tests above were run.
+  Any future restart on this rig must kill the leftover
+  processes by name and count what is alive afterwards.
+- With the placeholder mailbox values removed, the 3.15.0
+  runner cannot start at all: its startup stops at the
+  mailbox setup gate (the known gate bug, fixed on main but
+  not in 3.15.0), and a task-started set sits at that unseen
+  prompt indefinitely — the restarts after the placeholder
+  removal had only appeared to work, because the older sets
+  never stopped. The inert placeholder values were restored
+  from the on-box backup so the old build could start, and
+  removed for good after the upgrade (below).
+
+The applier was installed at
+C:\ProgramData\homing-pigeon\hp-remote-upgrade-apply.ps1,
+fired every minute by a HomingPigeonRemoteUpgrade task as
+SYSTEM; its no-payload cycles logged clean before any
+payload was staged. The installed copy differs from the kit
+file in four lines: three path lines fitted to this rig's
+one-home layout (the kit looks for the home under the user
+profile or ProgramData and for the work folders directly
+under it; this rig's home is C:\homing-pigeon and its work
+folders are under state\work), and one line decoding the
+fetched SHA384SUMS from bytes to text. The second of those
+is a defect in the kit as shipped, not a rig fitting, and
+the run found a third:
+
+- Kit defect, found live (attempt 1): the applier reads the
+  fresh SHA384SUMS through Invoke-WebRequest's Content. The
+  release asset is served as application/octet-stream, so
+  the content arrives as a byte array and no sums line can
+  ever match. Outcome: "FAILED: no sums line for
+  homing-pigeon-windows-x86_64-3.15.33.zip", written before
+  anything was touched; the runner never stopped.
+- Kit defect, found live (attempt 2): the stop step is
+  schtasks /End, which — per the finding above — leaves the
+  detached runner processes alive, so the installer's copy
+  meets a locked bin\homing-pigeon.exe and the install
+  fails. Outcome: "FAILED: the installer failed (runner
+  restarted on the previous version)", the fail-safe working
+  as designed. The installed applier now force-kills
+  leftover runner processes by name and waits for them to
+  be gone before running the installer, and captures the
+  installer's own output beside the payload. Both defects
+  want fixing in the kit at the source, with tests.
+
+The measured upgrade (attempt 3, staging job 0015d70f,
+exit 0 under the upgrade key): the applier cycle began at
+16:05:03; the old runner's last log line is 16:04:15; the
+3.15.33 start line is 16:05:43. The stop-to-start window
+inside the cycle is under a minute — about forty seconds —
+and the outcome file reads "upgraded: homing-pigeon.exe
+3.15.33"; the install receipt agrees, and the installer's
+captured output ends with its normal success summary. A
+post-upgrade addressed clock job (5ae2b3b7) returned exit
+0. The grow did not notice: its supervisor process kept the
+start time it had at 14:36, the lane processes of the
+running cycle kept theirs, new worker rounds spawned on
+schedule afterwards, and no cycle was lost. Work thrown
+away by the upgrade: none that the records show.
+
+Cadence consequence: the measured pause is under a minute
+with no work lost, so by the rule written above — about a
+minute or less means every release; several minutes would
+have meant every three — the cadence this measurement
+supports for this rig is an upgrade on every release.
+
+Final state: the placeholder mailbox values were removed
+again under 3.15.33 (job 1e3cc983), and the runner was
+restarted clean on the mailbox-free config — the fixed
+gate verified live on this rig, where 3.15.0 would not
+start at all. One runner set is alive on 3.15.33; a final
+addressed clock job (47a0af89) returned exit 0. The config
+carries job_user at audit, transports ["file"], profile
+pi-light, and the upgrade policy exactly as re-pinned.
+
 ## What remains
 
 1. The `job_user` divergence on Windows (see the enforcement
    entry above): implement it or refuse it, with a test.
-2. The Windows remote-upgrade applier, proven live with a
-   same-version reinstall under the upgrade key.
+2. The Windows remote-upgrade applier: installed and proven
+   live (see the forced-run addendum above). The two kit
+   defects it exposed — the sums read as bytes, and the stop
+   step that leaves the runner's processes alive — want
+   fixing in the kit at the source, with tests.
 3. Windows scenario runs, hammering the rig over the next
    couple of days: protection probes, timeouts, output
    shapes, restart resilience, and fuzzing slices on the
