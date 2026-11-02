@@ -17,6 +17,8 @@ import tempfile
 import threading
 import unittest
 from unittest import mock
+import urllib.error
+import urllib.parse
 import urllib.request
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -3551,6 +3553,720 @@ class StaleResultDoesNotAckShotgunTest(unittest.TestCase):
                       encoding="utf-8") as fh:
                 self.assertIn('"exit_code":7', fh.read())
             self.assertEqual(w.state.acked, ["j1", "j1"])
+
+class LoopbackRedirectShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 19: a URL that only
+    starts with the loopback text is not loopback, and a
+    redirect takes the token with it (fixed dc4b7a70,
+    31-Oct-2026). Plain http used to be allowed for any string
+    beginning with http://127.0.0.1 or http://localhost: that
+    prefix is not the host, so http://127.0.0.1.evil.test,
+    http://localhost.evil.test and http://127.0.0.1@evil.test
+    would have received the bearer token in clear. And urllib
+    followed a Location header, so even a genuine loopback
+    answer that redirected elsewhere took the token along.
+    The fix parses the URL (queue_base_allowed in the queues
+    extension): https anywhere with a host, or http whose
+    parsed hostname is localhost or a loopback IP; and every
+    token-carrying open goes through _open_without_redirect,
+    whose _RedirectRefused handler raises HTTPError for any
+    Location. send_job's two queue doors (post_to_queue and
+    _queue_call) and the queues main use the same two helpers.
+    This family scattershots everything around that failure:
+    every field of the URL (scheme, host, port, path, query,
+    fragment, userinfo) and every field of the redirect (the
+    status code, the Location, the method it arrived on, the
+    chain behind it), disguised hosts in integer / hex /
+    octal / short / percent-encoded forms, lookalike and
+    unicode hosts, bookends and run lengths on the URL text,
+    injection-shaped text riding in the URL and in a
+    Location, and all 3 doors that apply the rule. One
+    regression test was never going to be enough for a bug
+    that took days of CPU to find.
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: the URL string, the
+    host inside it and the Location header get bookended
+    variants -- all 32 printable ASCII symbols
+    (string.punctuation) at the front AND the back, as
+    singles, matched pairs, mismatched pairs and symbol-only
+    strings, plus NUL, tab, CR and LF at both ends -- and run
+    lengths: runs of the odd character, and runs of 10
+    ordinary characters with the odd one at the front, the
+    back and the middle.
+
+    Proof of work (2-Nov-2026). The unit tests are the 50
+    methods of this class: 10 per-field tests, 12 disguised-
+    host tests, 12 bookend / run-length / injection sweeps,
+    12 redirect tests and 4 door-integration tests.
+    Per-field enumeration: the URL's fields each get their
+    own test -- scheme (3 tests: the https rule, the http
+    rule and the case folding), host (4 tests: localhost
+    spellings, the IPv4 loopback range, IPv6 spellings and
+    trailing dots), port, path / query / fragment and
+    userinfo -- and the redirect's fields are enumerated by
+    the redirect section (code, Location shape, arrival
+    method, chain). No live network leaves the machine:
+    the redirect tests run against threaded loopback
+    servers in this process, in the shape of the fix's own
+    tests, and record every request and Authorization
+    header so a followed redirect would be seen. The
+    fuzzing was executed, not just the tests written: the
+    corpus machinery was driven locally with
+    runner/tools/de_dust_corpus.py grow --target wire
+    --rounds 400 --seed 20261120 against the banked wire
+    corpus (117 entries) -- the wire target that carries
+    the queue envelope and URL shapes. Result: 400 rounds,
+    0 crashes, 0 slow, arcs unchanged at 184, slowest try
+    312 ms; the
+    disguised-host and redirect shapes did not recur. The
+    grow's bookkeeping writes were reverted and are not
+    banked (banking is the rigs' hourly job); this record
+    is the run's proof. None of this is exotic: it is
+    combinatorics -- systematically trying the combinations
+    a hand-written list would never reach, then pinning
+    each answer as a test."""
+
+    CORE = "http://127.0.0.1/t/a"
+    EVIL = "http://127.0.0.1.evil.test/t/a"
+
+    # -- helpers ---------------------------------------------------
+
+    def _all(self, urls, want):
+        for url in urls:
+            self.assertEqual(q.queue_base_allowed(url), want, repr(url))
+
+    def _serve(self, responder):
+        """A loopback server in this process. responder(method,
+        path, holder) -> (status, headers, body bytes); holder
+        gains 'base' once the port is known, so a responder can
+        name this very server in a Location. Returns (base_url,
+        records) where records are (method, path, Authorization)
+        for every request that actually arrived."""
+        records = []
+        holder = {}
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def _go(self):
+                n = int(self.headers.get("Content-Length") or 0)
+                if n:
+                    self.rfile.read(n)
+                records.append((self.command, self.path,
+                                self.headers.get("Authorization")))
+                status, headers, payload = responder(
+                    self.command, self.path, holder)
+                self.send_response(status)
+                for key, value in headers.items():
+                    self.send_header(key, value)
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                if payload:
+                    self.wfile.write(payload)
+
+            do_GET = _go
+            do_POST = _go
+
+            def log_message(self, *a):
+                pass
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        holder["base"] = f"http://127.0.0.1:{server.server_address[1]}"
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        return holder["base"], records
+
+    # -- per-field enumeration --------------------------------------
+
+    def test_scheme_https_any_host_with_a_host_is_allowed(self):
+        self._all(("https://q.example.test/t/a",
+                   "https://127.0.0.1.evil.test/t/a",
+                   "https://user@evil.test/t/a",
+                   "https://[::]/t/a",
+                   "https://10.0.0.1/t/a",
+                   "https://localhost.evil.test/t/a"), True)
+
+    def test_scheme_http_is_loopback_only(self):
+        self._all(("http://127.0.0.1/t/a", "http://localhost/t/a"), True)
+        self._all(("http://q.example.test/t/a",
+                   "http://10.0.0.1/t/a",
+                   "http://192.168.0.1/t/a",
+                   "http://8.8.8.8/t/a",
+                   "http://[::]/t/a"), False)
+
+    def test_scheme_and_host_case_are_folded(self):
+        self._all(("HTTP://LOCALHOST/t/a",
+                   "Http://127.0.0.1/t/a",
+                   "HtTpS://EXAMPLE.TEST/t/a",
+                   "http://LoCaLhOsT/t/a"), True)
+        self._all(("HTTP://LOCALHOST.EVIL.TEST/t/a",
+                   "HTTP://Q.EXAMPLE.TEST/t/a"), False)
+
+    def test_schemes_other_than_http_and_https_are_refused(self):
+        self._all(("ftp://127.0.0.1/t/a",
+                   "file://127.0.0.1/t/a",
+                   "ws://127.0.0.1/t/a",
+                   "wss://q.example.test/t/a",
+                   "gopher://localhost/t/a",
+                   "javascript:http://127.0.0.1/",
+                   "//127.0.0.1/t/a",
+                   "127.0.0.1/t/a",
+                   "http:127.0.0.1",
+                   "https:q.example.test",
+                   "http//127.0.0.1/t/a",
+                   "http:/127.0.0.1/t/a"), False)
+
+    def test_host_localhost_spellings_are_allowed(self):
+        self._all(("http://localhost/t/a",
+                   "http://LOCALHOST/t/a",
+                   "http://LoCaLhOsT/t/a",
+                   "http://localhost:9/t/a",
+                   "http://user@localhost/t/a"), True)
+
+    def test_host_ipv4_loopback_range_is_allowed(self):
+        self._all(("http://127.0.0.1/t/a",
+                   "http://127.0.0.2/t/a",
+                   "http://127.1.2.3/t/a",
+                   "http://127.255.255.254/t/a",
+                   "http://127.0.0.1:9/t/a"), True)
+        self._all(("http://126.255.255.255/t/a",
+                   "http://128.0.0.1/t/a"), False)
+
+    def test_host_ipv6_loopback_spellings_are_allowed(self):
+        self._all(("http://[::1]/t/a",
+                   "http://[0::1]/t/a",
+                   "http://[0000:0000:0000:0000:0000:0000:0000:0001]/t/a",
+                   "http://[::1]:9/t/a"), True)
+
+    def test_host_trailing_dot_forms_are_allowed(self):
+        # The rule strips trailing dots before comparing, the
+        # same reading a resolver gives these names.
+        self._all(("http://localhost./t/a",
+                   "http://localhost../t/a",
+                   "http://127.0.0.1./t/a",
+                   "http://127.0.0.1.../t/a"), True)
+        self._all(("http://localhost.evil.test./t/a",
+                   "http://127.0.0.1.evil.test./t/a"), False)
+
+    def test_port_field_neither_widens_nor_narrows_the_rule(self):
+        # Only the host is read; a port is never the host, and
+        # an unusable port text does not change the host either.
+        self._all(("http://127.0.0.1:0/t/a",
+                   "http://127.0.0.1:9/t/a",
+                   "http://127.0.0.1:65535/t/a",
+                   "http://127.0.0.1:99999/t/a",
+                   "http://127.0.0.1:0000000009/t/a",
+                   "http://127.0.0.1:abc/t/a",
+                   "http://127.0.0.1:-1/t/a",
+                   "http://127.0.0.1:/t/a",
+                   "http://localhost:99999/t/a"), True)
+        self._all(("http://evil.test:9/t/a",
+                   "http://evil.test:127/t/a",
+                   "http://127.0.0.1.evil.test:80/t/a"), False)
+
+    def test_path_query_and_fragment_fields_are_inert(self):
+        self._all(("http://127.0.0.1",
+                   "http://127.0.0.1/",
+                   "http://127.0.0.1//evil.test",
+                   "http://127.0.0.1/t/a?next=http://evil.test",
+                   "http://127.0.0.1/t/a#@evil.test",
+                   "http://127.0.0.1?@evil.test",
+                   "http://127.0.0.1/" + "../" * 10 + "evil",
+                   "http://localhost/t/a?u=http://127.0.0.1@evil.test"),
+                  True)
+        self._all(("http://evil.test/t/a?next=http://127.0.0.1",
+                   "http://evil.test/#http://localhost"), False)
+
+    # -- disguised hosts ---------------------------------------------
+
+    def test_userinfo_field_names_the_real_host(self):
+        # Everything before the last @ is userinfo, not host:
+        # a loopback text there does not make the host loopback,
+        # and an evil text there does not poison a loopback host.
+        self._all(("http://127.0.0.1@evil.test/t/a",
+                   "http://localhost@evil.test/t/a",
+                   "http://user:pass@evil.test/t/a",
+                   "http://127.0.0.1:9@evil.test/t/a",
+                   "http://a@127.0.0.1@evil.test/t/a"), False)
+        self._all(("http://evil.test@127.0.0.1/t/a",
+                   "http://user:pass@127.0.0.1/t/a",
+                   "http://evil.test@localhost/t/a",
+                   "http://a@b@127.0.0.1/t/a"), True)
+
+    def test_suffix_disguise_is_refused(self):
+        self._all(("http://127.0.0.1.evil.test/t/a",
+                   "http://localhost.evil.test/t/a",
+                   "http://127.0.0.1evil.test/t/a",
+                   "http://localhostevil.test/t/a",
+                   "http://127.0.0.1-evil.test/t/a",
+                   "http://evil127.0.0.1.test/t/a",
+                   "http://notlocalhost/t/a",
+                   "http://localhosts/t/a"), False)
+
+    def test_prefix_and_subdomain_disguise_is_refused(self):
+        self._all(("http://foo.localhost/t/a",
+                   "http://www.localhost/t/a",
+                   "http://foo.127.0.0.1/t/a",
+                   "http://evil-localhost.test/t/a",
+                   "http://localhost.localdomain/t/a",
+                   "http://my-localhost/t/a"), False)
+
+    def test_integer_ip_forms_are_refused(self):
+        # One integer is how some resolvers spell 127.0.0.1;
+        # the parsed-host rule does not read it as an IP at all.
+        self._all(("http://2130706433/t/a",
+                   "http://3232235521/t/a",
+                   "http://134744072/t/a",
+                   "http://0/t/a",
+                   "http://1/t/a"), False)
+
+    def test_hex_and_octal_ip_forms_are_refused(self):
+        self._all(("http://0x7f000001/t/a",
+                   "http://0x7f.0.0.1/t/a",
+                   "http://0x7f.1/t/a",
+                   "http://0177.0.0.1/t/a",
+                   "http://017700000001/t/a"), False)
+
+    def test_short_and_zero_padded_ip_forms_are_refused(self):
+        self._all(("http://127.1/t/a",
+                   "http://127.0.1/t/a",
+                   "http://127.0.0/t/a",
+                   "http://127.000.0.1/t/a",
+                   "http://127.0.0.01/t/a",
+                   "http://0127.0.0.1/t/a"), False)
+
+    def test_nonloopback_ip_hosts_are_refused(self):
+        self._all(("http://0.0.0.0/t/a",
+                   "http://10.0.0.1/t/a",
+                   "http://172.16.0.1/t/a",
+                   "http://192.168.1.1/t/a",
+                   "http://169.254.0.1/t/a",
+                   "http://255.255.255.255/t/a",
+                   "http://[::]/t/a",
+                   "http://[fe80::1]/t/a",
+                   "http://[::ffff:8.8.8.8]/t/a",
+                   "http://[::ffff:127.0.0.1]/t/a"), False)
+
+    def test_localhost_lookalikes_and_unicode_are_refused(self):
+        self._all(("http://localhos/t/a",
+                   "http://l0calhost/t/a",
+                   "http://xn--lcalhost-54a/t/a",
+                   "http://l\u043ecalhost/t/a",
+                   "http://\uff4cocalhost/t/a",
+                   "http://local\u00adhost/t/a"), False)
+
+    def test_percent_encoded_host_tricks_are_refused(self):
+        self._all(("http://%31%32%37.0.0.1/t/a",
+                   "http://127.0.0.1%2eevil.test/t/a",
+                   "http://127.0.0.1%09.evil.test/t/a",
+                   "http://127.0.0.1%0d%0a.evil.test/t/a",
+                   "http://%6cocalhost/t/a"), False)
+
+    def test_empty_and_hostless_urls_are_refused(self):
+        self._all(("", " ", "http://", "https://", "http:///",
+                   "http:///t/a", "http://:80/t/a", "https://?q=1",
+                   "http://@/t/a", "https://#frag"), False)
+
+    def test_non_string_urls_are_refused(self):
+        self._all((None, 123, 0, True, False, 1.5,
+                   b"http://127.0.0.1/t/a",
+                   ["http://127.0.0.1/t/a"],
+                   {"url": "http://127.0.0.1/t/a"},
+                   ("http://127.0.0.1/t/a",), object()), False)
+
+    def test_malformed_urls_are_refused_not_raised(self):
+        self._all(("http://[::1/t/a",
+                   "http://::1/t/a",
+                   "http://local\x00host/t/a",
+                   "http://127.0.0.1\u00a0/t/a",
+                   "http://local host/t/a",
+                   "http://127 .0.0.1/t/a",
+                   "http://127.0.0.1\\/t/a",
+                   "://127.0.0.1/t/a"), False)
+
+    # -- bookends, run lengths, injection shapes ---------------------
+
+    def test_bookend_punctuation_at_the_front_is_refused(self):
+        for symbol in string.punctuation:
+            self.assertFalse(q.queue_base_allowed(symbol + self.CORE),
+                             repr(symbol))
+            self.assertFalse(q.queue_base_allowed(symbol + self.EVIL),
+                             repr(symbol))
+
+    def test_bookend_punctuation_at_the_back_is_inert_in_the_path(self):
+        # A symbol after the whole URL lands in the path, which
+        # the rule never reads: the loopback answer stands, and
+        # the evil answer stays refused for its host.
+        for symbol in string.punctuation:
+            self.assertTrue(q.queue_base_allowed(self.CORE + symbol),
+                            repr(symbol))
+            self.assertFalse(q.queue_base_allowed(self.EVIL + symbol),
+                             repr(symbol))
+
+    def test_bookend_matched_punctuation_pairs(self):
+        for symbol in string.punctuation:
+            self.assertFalse(
+                q.queue_base_allowed(symbol + self.CORE + symbol),
+                repr(symbol))
+            self.assertTrue(
+                q.queue_base_allowed(self.CORE + "/" + symbol * 2),
+                repr(symbol))
+
+    def test_bookend_mismatched_punctuation_pairs(self):
+        symbols = string.punctuation
+        for i, symbol in enumerate(symbols):
+            other = symbols[-(i + 1)]
+            if other == symbol:
+                continue
+            self.assertFalse(
+                q.queue_base_allowed(symbol + self.CORE + other),
+                repr((symbol, other)))
+            self.assertFalse(
+                q.queue_base_allowed(other + self.EVIL + symbol),
+                repr((symbol, other)))
+
+    def test_bookend_symbol_only_strings_are_refused(self):
+        self._all((string.punctuation,
+                   string.punctuation * 3,
+                   "http://" + string.punctuation + "/t/a",
+                   "http://" + string.punctuation,
+                   "!@#$%^&*()",
+                   "http://!@#$%^&*()/t/a"), False)
+
+    def test_bookend_nonprinting_at_both_ends_of_the_url(self):
+        # The parser strips the C0 / whitespace bookends before
+        # the host is read, so a loopback core still reads as
+        # loopback -- and an evil core still reads as evil.
+        for mark in ("\x00", "\t", "\r", "\n", " "):
+            self.assertTrue(
+                q.queue_base_allowed(mark + self.CORE + mark), repr(mark))
+            self.assertFalse(
+                q.queue_base_allowed(mark + self.EVIL + mark), repr(mark))
+
+    def test_bookend_nonprinting_at_the_end_of_the_host(self):
+        # Tab, CR and LF are removed by the URL parser wherever
+        # they sit; NUL inside the host is not, and poisons it.
+        self._all(("http://127.0.0.1\t", "http://127.0.0.1\r",
+                   "http://127.0.0.1\n", "http://localhost\t/t/a"), True)
+        self._all(("http://127.0.0.1\x00", "http://localhost\x00/t/a"),
+                  False)
+
+    def test_nonprinting_inside_the_host(self):
+        self._all(("http://local\thost/t/a",
+                   "http://loca\rlhost/t/a",
+                   "http://127.0.0.\t1/t/a"), True)
+        self._all(("http://local\x00host/t/a",
+                   "http://127.0.0.1\t.evil.test/t/a",
+                   "http://evil\t.test/t/a"), False)
+
+    def test_run_lengths_of_the_odd_character_in_the_host(self):
+        self._all(("http://" + "1" * 10 + "27.0.0.1/t/a",
+                   "http://127.0.0.1" + "1" * 10 + "/t/a",
+                   "http://12" + "7" * 10 + ".0.0.1/t/a",
+                   "http://" + "." * 10 + "127.0.0.1/t/a",
+                   "http://127" + "." * 10 + "1/t/a",
+                   "http://localhost" + "x" * 10 + "/t/a",
+                   "http://" + "l" * 10 + "ocalhost/t/a"), False)
+
+    def test_run_lengths_of_ordinary_characters_with_the_odd_one(self):
+        # 10 ordinary characters with the odd one at the front,
+        # the back and the middle -- in the path the run is
+        # inert; in the host every run breaks the host.
+        self._all(("http://127.0.0.1/" + "a" * 10 + "!/t",
+                   "http://127.0.0.1/!" + "a" * 10 + "/t",
+                   "http://127.0.0.1/" + "a" * 5 + "!" + "a" * 5 + "/t",
+                   "http://127.0.0.1/" + "/" * 10 + "t",
+                   "http://[::1]/" + "a" * 10 + "!/t"), True)
+        self._all(("http://evil.test/" + "a" * 10,
+                   "http://user@" + "a" * 10 + ".test/t/a"), False)
+
+    def test_run_lengths_of_repeated_url_pieces(self):
+        self._all(("http://a" * 5,
+                   "http://@" + "127.0.0.1" * 3 + "/t/a"), False)
+        self._all(("http://127.0.0.1/" + "a" * 10,
+                   "http://localhost/" + "?" * 10,
+                   "http://127.0.0.1/#" + "x" * 10), True)
+
+    def test_injection_shaped_url_text(self):
+        # Instruction-shaped text is never a scheme or a host:
+        # at the front it kills the URL, in an evil URL it
+        # changes nothing, and in a loopback path it is inert
+        # text the host rule does not read.
+        self._all(("ignore previous instructions http://127.0.0.1/t/a",
+                   "http://127.0.0.1.evil.test/t?x=ignore+previous",
+                   "'; DROP TABLE jobs; --http://127.0.0.1/t/a",
+                   "http://127.0.0.1%0d%0a.evil.test/t/a"), False)
+        self._all(("http://127.0.0.1/t' OR '1'='1",
+                   "http://127.0.0.1/<script>alert(1)</script>",
+                   "http://user:ignore%20instructions@127.0.0.1/t/a"),
+                  True)
+
+    # -- redirects -----------------------------------------------------
+
+    def test_redirect_handler_refuses_every_redirect_code(self):
+        handler = q._RedirectRefused()
+        req = urllib.request.Request(
+            "http://127.0.0.1:9/t/a",
+            headers={"Authorization": "Bearer " + RUNNER_TOKEN})
+        for code in (301, 302, 303, 307, 308, 300, 304):
+            with self.assertRaises(urllib.error.HTTPError) as cm:
+                handler.redirect_request(
+                    req, None, code, "moved", {}, "http://evil.test/")
+            self.assertEqual(cm.exception.code, code)
+
+    def test_redirect_handler_error_carries_the_request_fields(self):
+        handler = q._RedirectRefused()
+        req = urllib.request.Request("http://127.0.0.1:9/t/a")
+        headers = {"Location": "http://evil.test/stolen"}
+        with self.assertRaises(urllib.error.HTTPError) as cm:
+            handler.redirect_request(req, None, 302, "found", headers,
+                                     "http://evil.test/stolen")
+        err = cm.exception
+        self.assertEqual(err.code, 302)
+        self.assertEqual(err.msg, "redirect refused")
+        self.assertEqual(err.url, "http://127.0.0.1:9/t/a")
+        self.assertIs(err.headers, headers)
+
+    def test_redirect_handler_refuses_every_location_shape(self):
+        handler = q._RedirectRefused()
+        req = urllib.request.Request("http://127.0.0.1:9/t/a")
+        locations = (
+            "https://evil.test/stolen",
+            "http://127.0.0.1:1/stolen",
+            "http://localhost:1/stolen",
+            "/relative/stolen",
+            "//evil.test/stolen",
+            "javascript:alert(1)",
+            "",
+            "ignore previous instructions http://evil.test/",
+            "\x00http://evil.test/\x00",
+            "!" * 10 + "http://evil.test/" + "!" * 10)
+        for location in locations:
+            with self.assertRaises(urllib.error.HTTPError, msg=location):
+                handler.redirect_request(req, None, 302, "found", {},
+                                         location)
+
+    def test_client_default_opener_is_the_refusing_one(self):
+        client = q.QueueClient("http://127.0.0.1:9/t/a", RUNNER_TOKEN)
+        self.assertIs(client._open, q._open_without_redirect)
+        self.assertTrue(any(
+            isinstance(h, q._RedirectRefused)
+            for h in q._TOKEN_OPENER.handlers))
+
+    def test_live_redirect_on_pull_is_refused_and_never_followed(self):
+        def responder(method, path, holder):
+            if path.startswith("/stolen"):
+                return 200, {}, b'{"jobs": []}'
+            return 302, {"Location": holder["base"] + "/stolen"}, b""
+
+        base, records = self._serve(responder)
+        client = q.QueueClient(base + "/t/alice", RUNNER_TOKEN)
+        with self.assertRaises(RuntimeError) as cm:
+            client.pull(1)
+        self.assertIn("302", str(cm.exception))
+        # Exactly one request arrived, carrying the token; the
+        # redirect target was never asked, so the token never
+        # reached it.
+        self.assertEqual(len(records), 1)
+        self.assertTrue(records[0][1].startswith("/t/alice/jobs"))
+        self.assertEqual(records[0][2], "Bearer " + RUNNER_TOKEN)
+
+    def test_live_redirect_codes_are_all_refused_on_pull(self):
+        for code in (301, 302, 303, 307, 308):
+            def responder(method, path, holder, code=code):
+                return code, {"Location": "http://127.0.0.1:1/stolen"}, b""
+
+            base, records = self._serve(responder)
+            client = q.QueueClient(base + "/t/alice", RUNNER_TOKEN)
+            with self.assertRaises(RuntimeError) as cm:
+                client.pull(1)
+            self.assertIn(str(code), str(cm.exception))
+            self.assertEqual(len(records), 1, code)
+
+    def test_live_redirect_on_post_result_is_refused(self):
+        def responder(method, path, holder):
+            if path.startswith("/stolen"):
+                return 202, {}, b'{"id": "j1"}'
+            return 302, {"Location": holder["base"] + "/stolen"}, b""
+
+        base, records = self._serve(responder)
+        client = q.QueueClient(base + "/t/alice", RUNNER_TOKEN)
+        with self.assertRaises(RuntimeError) as cm:
+            client.post_result("[HOMING-PIGEON] result j1\n\n{}\n")
+        self.assertIn("302", str(cm.exception))
+        self.assertEqual([r[1] for r in records], ["/t/alice/results"])
+
+    def test_live_redirect_on_ack_and_renew_does_not_succeed(self):
+        def responder(method, path, holder):
+            return 302, {"Location": "http://127.0.0.1:1/stolen"}, b""
+
+        base, records = self._serve(responder)
+        client = q.QueueClient(base + "/t/alice", RUNNER_TOKEN)
+        self.assertFalse(client.ack("j1"))
+        self.assertFalse(client.renew("j1"))
+        self.assertEqual(len(records), 2)
+        self.assertTrue(all("/stolen" not in r[1] for r in records))
+
+    def test_live_redirect_from_loopback_to_loopback_is_refused(self):
+        hits = []
+
+        def target(method, path, holder):
+            hits.append(path)
+            return 200, {}, b'{"jobs": []}'
+
+        target_base, _records = self._serve(target)
+
+        def source(method, path, holder):
+            return 302, {"Location": target_base + "/stolen"}, b""
+
+        base, records = self._serve(source)
+        client = q.QueueClient(base + "/t/alice", RUNNER_TOKEN)
+        with self.assertRaises(RuntimeError) as cm:
+            client.pull(1)
+        self.assertIn("302", str(cm.exception))
+        self.assertEqual(hits, [])
+
+    def test_live_redirect_chain_second_hop_is_never_reached(self):
+        def responder(method, path, holder):
+            if path.startswith("/hop2"):
+                return 302, {"Location": holder["base"] + "/stolen"}, b""
+            if path.startswith("/stolen"):
+                return 200, {}, b'{"jobs": []}'
+            return 302, {"Location": holder["base"] + "/hop2"}, b""
+
+        base, records = self._serve(responder)
+        client = q.QueueClient(base + "/t/alice", RUNNER_TOKEN)
+        with self.assertRaises(RuntimeError):
+            client.pull(1)
+        self.assertEqual(len(records), 1)
+        self.assertTrue(records[0][1].startswith("/t/alice/jobs"))
+
+    def test_live_302_without_a_location_is_an_answer_not_a_follow(self):
+        def responder(method, path, holder):
+            return 302, {}, b"no-location-here"
+
+        base, records = self._serve(responder)
+        client = q.QueueClient(base + "/t/alice", RUNNER_TOKEN)
+        status, payload = client._request("GET", "/jobs?max=1")
+        self.assertEqual(status, 302)
+        self.assertEqual(payload, b"no-location-here")
+        self.assertEqual(len(records), 1)
+
+    def test_live_normal_answers_still_work_through_the_refusing_opener(self):
+        def responder(method, path, holder):
+            body = json.dumps({"jobs": [{
+                "id": "j1", "envelope": envelope("j1")}]}).encode()
+            return 200, {}, body
+
+        base, records = self._serve(responder)
+        client = q.QueueClient(base + "/t/alice", RUNNER_TOKEN)
+        self.assertEqual(client.pull(8), [("j1", envelope("j1"))])
+        self.assertEqual(len(records), 1)
+
+    # -- the doors that apply the rule ---------------------------------
+
+    def test_send_job_redirect_returns_the_status_and_is_not_followed(self):
+        def responder(method, path, holder):
+            if path.startswith("/stolen"):
+                return 202, {}, b'{"id": "j1"}'
+            return 302, {"Location": holder["base"] + "/stolen"}, b""
+
+        base, records = self._serve(responder)
+        os.environ["HP_SI_TOKEN"] = SI_TOKEN
+        try:
+            status, _text = send_job.post_to_queue(
+                base + "/t/alice", envelope("j1"))
+            self.assertEqual(status, 302)
+            status, _text = send_job._queue_call(
+                base + "/t/alice", "GET", "/results")
+            self.assertEqual(status, 302)
+        finally:
+            del os.environ["HP_SI_TOKEN"]
+        paths = [r[1] for r in records]
+        self.assertEqual(paths, ["/t/alice/jobs", "/t/alice/results"])
+        self.assertTrue(all(
+            r[2] == "Bearer " + SI_TOKEN for r in records))
+
+    def test_send_job_both_doors_disguised_urls_raise(self):
+        os.environ["HP_SI_TOKEN"] = SI_TOKEN
+        try:
+            for bad in (self.EVIL,
+                        "http://localhost.evil.test/t/a",
+                        "http://127.0.0.1@evil.test/t/a",
+                        "http://localhost@evil.test/t/a",
+                        "http://2130706433/t/a",
+                        "http://0x7f.0.0.1/t/a",
+                        "http://127.000.0.1/t/a",
+                        "http://foo.localhost/t/a",
+                        "http://127.1/t/a",
+                        "http://[::ffff:127.0.0.1]/t/a",
+                        "ftp://127.0.0.1/t/a",
+                        None, ""):
+                with self.assertRaises(SystemExit, msg=repr(bad)):
+                    send_job.post_to_queue(bad, envelope("j"))
+                for method in ("GET", "POST"):
+                    with self.assertRaises(SystemExit,
+                                           msg=(bad, method)):
+                        send_job._queue_call(bad, method, "/results")
+        finally:
+            del os.environ["HP_SI_TOKEN"]
+
+    def test_send_job_doors_pass_allowed_urls_to_the_opener(self):
+        seen = []
+
+        class Resp:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def read(self):
+                return b"ok"
+
+        def opener(req, timeout=None):
+            seen.append((req.full_url, req.get_header("Authorization")))
+            return Resp()
+
+        os.environ["HP_SI_TOKEN"] = SI_TOKEN
+        try:
+            for url in ("http://127.0.0.1:9/t/a",
+                        "http://localhost/t/a",
+                        "http://[::1]/t/a",
+                        "https://q.example.test/t/a"):
+                status, text = send_job.post_to_queue(
+                    url, envelope("j"), opener=opener)
+                self.assertEqual((status, text), (200, "ok"), url)
+                status, text = send_job._queue_call(
+                    url, "GET", "/results", opener=opener)
+                self.assertEqual((status, text), (200, "ok"), url)
+        finally:
+            del os.environ["HP_SI_TOKEN"]
+        self.assertEqual(len(seen), 8)
+        self.assertTrue(all(
+            auth == "Bearer " + SI_TOKEN for _url, auth in seen))
+        self.assertTrue(seen[0][0].endswith("/t/a/jobs"))
+        self.assertTrue(seen[1][0].endswith("/t/a/results"))
+
+    def test_queue_main_disguised_and_nonstring_urls_return_2(self):
+        td = tempfile.TemporaryDirectory()
+        self.addCleanup(td.cleanup)
+        channel = os.path.join(td.name, "channel")
+        ch.dirs(channel)
+        cfg_path = os.path.join(td.name, "rt.json")
+        for bad in (self.EVIL,
+                    "http://localhost.evil.test/t/a",
+                    "http://127.0.0.1@evil.test/t/a",
+                    "http://2130706433/t/a",
+                    None, 123, ["http://127.0.0.1/t/a"], ""):
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                json.dump({"url": bad, "token": "t"}, fh)
+            self.assertEqual(
+                q.main(["queues", channel, cfg_path], passes=1), 2,
+                repr(bad))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
