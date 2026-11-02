@@ -210,6 +210,9 @@ A finding is most useful when it points at the file and the line
   `content-rung-5000.md` is the 5,000-character piece of that
   redo, the rung the earlier series skipped.
   `content-rung-49.md` is the first rung, generated.
+  `content-rung-50000.md`, `content-rung-500000.md`, and
+  `content-rung-cap.md` are the rungs above it. The cap
+  record says the series is complete.
 - `thinking.md` — the reasoning behind the work: why the gate
   comes first, why size is a character count, the open
   content-independence challenge, the standing rules, and the
