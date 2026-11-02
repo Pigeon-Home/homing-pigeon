@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.110 - 2026-11-02
+
+- Proofs: shotgun queue items 3 through 27 land with their 50-test families and the written proofs, and the key-policy builder warning fix rides along.
+- The corpus banked since 3.15.109 rides along (Germany banks 31 and 32).
+
 ## 3.15.109 - 2026-11-02
 
 - IETF: the version 2 -03 sources and renders are finalized, and STATUS records the -03 posting of version 2.
