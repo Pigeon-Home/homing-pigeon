@@ -41,7 +41,10 @@ variation tests is desired, not scope creep.
 ## The loop
 
 The driver (`campaign_loop.py`, rig-side and never committed; the
-cycles it recorded are the tests under `runner/tests/archive/`)
+cycles it recorded became the per-cycle tests once kept under
+`runner/tests/archive/` — that record was removed on 2026-11-01
+and survives at the `campaign-1-record` tag, with the eight
+shapes living on in `runner/tests/test_campaign_core.py`)
 cycles eight basic job variants,
 one execution per cycle, at a fixed spacing that never stretches
 on mail health (the tuned campaign ran a 3 s spacing, a sustained
@@ -59,15 +62,19 @@ extension's 2-second poll on both legs).
 | exit3     | echo a marker, exit 3                                    | exit code 3 preserved |
 | shadow    | read /etc/shadow, report the read's exit code            | the script's own report is in the output |
 
-Each completed cycle becomes ONE test method in
-`runner/tests/archive/campaign-1/test_campaign_loop_cycles.py` (the
-first campaign's cycles, kept beside the suite since the core cut and
-outside its discovery), replaying the
+Each completed cycle became ONE test method in the per-cycle
+record (campaign-1's generated file ran to 3,607 methods,
+campaign-2's to 9,714), replaying the
 exact script its cycle sent — rebuilt from cycle number and
 variant exactly as the loop builds it — and asserting the recorded
 exit code and the deterministic marker. Non-deterministic output
 (epoch, uptime, disk figures) is asserted structurally. There are
-no "pure repeats" to skip: every cycle converts.
+no "pure repeats" to skip: every cycle converts. The generated
+files were removed on 2026-11-01, after the shapes were cut down
+to the parameterized core in `runner/tests/test_campaign_core.py`
+and the flagread canary was lifted into
+`runner/tests/test_campaign_canary.py`; the full record stays
+reachable at the `campaign-1-record` tag.
 
 ## The phase-1 battery
 
@@ -242,7 +249,9 @@ bug crushing on the owner's word, then group the failures by
 area and component and compile the CORE group of tests (the
 eight cycle shapes as parameterized scenario tests, with the
 per-cycle record archived under `runner/tests/archive/campaign-1/`
-out of default discovery), then the second run against the
+out of default discovery — the archived copy was removed on
+2026-11-01 and the tag above is where the record lives now),
+then the second run against the
 registry — hunting the rows the registry says have no test, plus
 the environment axes (protected_symlinks/protected_regular,
 yama.ptrace_scope, hidepid on /proc,

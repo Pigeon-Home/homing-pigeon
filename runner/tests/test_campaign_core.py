@@ -4,20 +4,25 @@ Area: campaign-core. Component: runner.execute_job. Shape: the
 eight cycle variants of campaign_loop. Policy: proof of work.
 
 Step 7 of the campaign plan (after the campaign-1-record tag):
-the 3,516 per-cycle tests that were the first campaign's record
-move to runner/tests/archive/campaign-1/ out of default discovery, and
-the eight shapes they exercised stay in the default suite as
-this one parameterized scenario test, with the same coverage:
-each variant runs the exact script the loop sends for it,
-through the real executor, and asserts the contract the live
-cycles recorded -- exit code, deterministic marker, and the
-variant-specific structural checks (the clock's epoch is
-current, the workdir file persists under work/<job_id>, the
-planted pretend-credential flag returns verbatim).
+the per-cycle tests that were the first campaign's record
+moved to runner/tests/archive/campaign-1/ out of default
+discovery, and the eight shapes they exercised stayed in the
+default suite as this one parameterized scenario test, with
+the same coverage: each variant runs the exact script the
+loop sends for it, through the real executor, and asserts
+the contract the live cycles recorded -- exit code,
+deterministic marker, and the variant-specific structural
+checks (the clock's epoch is current, the workdir file
+persists under work/<job_id>, the planted pretend-credential
+flag returns verbatim).
 
-The per-cycle record remains the evidence; this file is the
-regression net. If a shape's contract changes, it changes here
-once, not 3,516 times.
+The archived per-cycle record was removed on 2026-11-01
+(both campaigns, 13,321 generated tests): this file is the
+regression net now, the flagread shape's boundary form lives
+in runner/tests/test_campaign_canary.py, and the full
+per-cycle record remains reachable at the campaign-1-record
+tag. If a shape's contract changes, it changes here once,
+not thousands of times.
 """
 import os
 import shutil
@@ -139,8 +144,9 @@ class CampaignCoreScenarioTests(unittest.TestCase):
             self.assertTrue(result["stdout"].strip())
 
     def test_shape_table_is_the_loops_eight(self):
-        # The loop's rotation, as recorded by the archived
-        # per-cycle tests and runner/tests/test_campaign_loop_variants.py.
+        # The loop's rotation, as recorded by the per-cycle
+        # tests (removed 2026-11-01; at the campaign-1-record
+        # tag) and runner/tests/test_campaign_loop_variants.py.
         self.assertEqual(
             ("clock", "envmark", "hostinfo", "workdir", "flagread",
              "sysstat", "exit3", "shadow"), VARIANTS)

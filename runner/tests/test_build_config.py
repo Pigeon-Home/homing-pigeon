@@ -404,7 +404,7 @@ class PipelineLiftsTest(unittest.TestCase):
     WORKFLOWS = ("build.yml", "docker.yml", "security.yml",
                  "minimal-userland.yml", "platform-matrix.yml",
                  "env-axes.yml", "coverage.yml", "switch-proofs.yml",
-                 "freebsd.yml", "python-range.yml", "upgrade-proof.yml", "soak.yml", "campaign-replay.yml", "queues-worker.yml",
+                 "freebsd.yml", "python-range.yml", "upgrade-proof.yml", "soak.yml", "queues-worker.yml",
                  "hardware.yml", "cut-release.yml", "job-user.yml",
                  "mutation-seeded.yml", "upstream-pins.yml",
                  "stamp-audit.yml")
@@ -689,7 +689,7 @@ class PipelineLessonsTest(unittest.TestCase):
     ALL = ("build.yml", "docker.yml", "security.yml",
            "minimal-userland.yml", "platform-matrix.yml",
            "mutation-seeded.yml", "python-range.yml", "upgrade-proof.yml",
-           "campaign-replay.yml", "soak.yml", "coverage.yml",
+           "soak.yml", "coverage.yml",
            "cut-release.yml", "env-axes.yml", "freebsd.yml", "hardware.yml",
            "job-user.yml", "queues-worker.yml", "switch-proofs.yml",
            "upstream-pins.yml", "stamp-audit.yml")

@@ -97,9 +97,12 @@
   `runner/cloud/send_dtls.py` is the same for the DTLS binding.
 - `runner/tests/` — the suite: the real runner driven against fake
   IMAP/SMTP servers and a fake NATS broker. Beside it, outside
-  discovery: `runner/tests/archive/` (the campaigns' recorded cycles,
-  one test each), `runner/tests/airgap/` (the air-gapped batches) and
-  `runner/tests/de_dust/` (the fuzz corpus and its arc maps).
+  discovery: `runner/tests/airgap/` (the air-gapped batches) and
+  `runner/tests/de_dust/` (the fuzz corpus and its arc maps). The
+  campaigns' recorded cycles sat beside it as `runner/tests/archive/`
+  until their removal on 2026-11-01; the record lives at the
+  `campaign-1-record` tag and the shapes in
+  `runner/tests/test_campaign_core.py`.
 - `runner/__init__.py` and `runner/_version.py` — the package and the
   one version constant every entry point reports.
 - `docs/use/runbook.md` — step-by-step instructions (written for a 5-year-old):
