@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.104 - 2026-11-01
+
+- Fix: the email transport keys message identity on the IMAP UID end to end instead of the reusable sequence number, so mailbox churn no longer silently drops jobs.
+- Proofs: the content-series redo is verified first-hand, the open challenge's final position is recorded, and FreeBSD 15.0 /bin/sh accepted the parser rungs; DTLS flights over mailbox carriage are recorded.
+- The corpus banked since 3.15.103 rides along (Germany bank 25, Menlo Park bank 221).
+
 ## 3.15.103 - 2026-11-01
 
 - DTLS: the platform disclosure now rides the handshake — a configuration-style payload in the server EncryptedExtensions, following the IKEv2 Configuration Payload pattern (RFC 7296, section 3.15), so the initiator holds the platform the moment it considers the connection established, with no extra poll; legacy application-message greetings remain a fallback, and named example vectors pin the standard tier on a fake Windows host and the family tier on a fake Linux host byte-for-byte.
