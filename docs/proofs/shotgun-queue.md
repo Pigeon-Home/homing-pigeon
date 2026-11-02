@@ -370,6 +370,27 @@ Applied to every item on this queue, item 1 included:
   arcs unchanged at 142, slowest try 37 ms. The grow's
   bookkeeping writes were reverted and are not banked (banking
   is the rigs' hourly job).
+- Follow-up finding (2-Nov-2026, from this item's family work;
+  the 2 tests that expose it were held back from the family
+  and are not on main): QueuePipe._stale entries are discarded
+  only on the successful stale-post path. When a noted stale
+  file leaves the outbox through a set-aside — a permanent
+  refusal inside push_results, or the listing's own set-asides
+  — the entry lingers, and a later result of the same name is
+  posted and moved to done as if it were the stale file,
+  without the result-path ack. Verified first-hand against
+  main (480e0667) with a probe driving the fake Worker: after
+  a 413 refusal set the stale file aside, _stale still held
+  the name; the fresh result then posted with no ack and the
+  job stayed leased and pending. Two bounds on the blast
+  radius, also verified: the pass's reconcile phase acks a
+  pending job whose core consumption is marked in inbox/done,
+  which rescues the plain-removal drive; and the set-aside
+  file keeps its own id in the pass's unposted set until the
+  runner's stub cycle answers it. The fix shape, for a later
+  pass: discard the _stale entry whenever its file leaves the
+  outbox by any path. No production code was changed by this
+  queue item.
 
 ### 12. An unreadable refusal is still the job in its name
 - Fixed: 9d8493c3 (31-Oct-2026)
