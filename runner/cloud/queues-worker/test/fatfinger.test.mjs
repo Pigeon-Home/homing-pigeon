@@ -2427,3 +2427,700 @@ test("shotgun30 injection: prompt and template shapes default; a percent suffix 
   assert.equal(await delta("%s1000"), SG30_DEFAULT);
   assert.equal(await delta("1000%00"), 1000);
 });
+// Shotgun family for queue item 31: a quota that is not an object
+// was not a 400 (fixed fbc3d845, 31-Oct-2026). Before the fix,
+// quotaRejected read a present non-object quota as no rejection --
+// only a nullish quota was skipped and only an object's fields
+// were checked -- so a tenant record carrying a bare string, a
+// number or a list silently fell back to the wide default cap
+// (600 jobs an hour, 256 MiB a day): the typo widened the tenant
+// to the default instead of refusing. The fix refuses any present
+// quota that is not a plain object (an array included) with 400
+// and the body {"error":"quota is not a number"}, on every route
+// that reads a quota: submitting a job, submitting a result, and
+// requeueing a dead job. A missing or null quota is still the
+// default, and an object is still read field by field. This
+// family scattershots exactly that type boundary: every JSON
+// shape a quota value can take, the shapes JSON cannot carry
+// (undefined and a function serialize away to a missing quota; a
+// null-prototype object serializes to a plain object), all three
+// quota-reading routes plus the routes that do not read a quota,
+// the near-miss objects accepted from the other side, the state
+// a refusal must leave untouched, bookended string quotas, run
+// lengths and depths, and injection-shaped quotas pinned as
+// refused or inert, never effective. Wrong-typed FIELDS inside
+// an otherwise well-formed object belong mainly to item 26's
+// family; here they appear only as a few boundary pins marking
+// where the not-an-object line ends.
+//
+// Proof of work. The unit tests are the 50 tests registered
+// below: 18 per-shape tests, 9 route tests, 6 near-miss tests,
+// 5 state tests, 6 bookend sweeps, 3 run-length sweeps and 3
+// injection-shaped tests. Per-field enumeration: the quota
+// surface is the quota value itself (its type) plus its two
+// fields, jobs_per_hour and bytes_per_day, and each is pinned
+// on both sides of the line; the refusal's own fields (status
+// 400 and the exact error body) and the stored state (job,
+// result, dlq, and the hour, day and result-day counters) are
+// pinned unchanged or absent by the route and state tests.
+// Bookends: every printable ASCII symbol (all 32 punctuation
+// characters) at the front AND the back of a string quota, as
+// singles, matched pairs, mismatched pairs and symbol-only
+// strings, plus NUL, tab, CR and LF at both ends and inside.
+// Run lengths: string quotas of length 1, 5, 10 and 1000, arrays
+// of 1, 5 and 10 elements, and nesting 1, 5 and 10 deep ending
+// in a non-object. The fuzzing was executed, not just the tests
+// written: runner/tools/de_dust_corpus.py grow --target stage
+// --rounds 400 --seed 20261132, run locally against the banked
+// stage corpus (35 entries). Result: 400 rounds, 0 crashes,
+// 0 slow, arcs unchanged at 93, slowest try 55 ms -- the
+// not-an-object quota shape did not recur. The grow's
+// bookkeeping writes were reverted and are not banked (banking
+// is the rigs' hourly job); this record is the run's proof. For
+// the .mjs file the Python skip registry does not apply, and
+// this family adds no skips. None of this is exotic: it is
+// combinatorics -- systematically trying the combinations a
+// hand-written list would never reach, then pinning each
+// answer as a test.
+
+const SG31_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+const SG31_GOOD = { jobs_per_hour: 10, bytes_per_day: 60_000 };
+
+async function sg31Tenant(env, quota) {
+  env.TENANTS.store.set("alice", JSON.stringify({
+    si_token_sha256: await sha256Hex(SI),
+    runner_token_sha256: await sha256Hex(RUNNER),
+    hmac_secret: SECRET,
+    quota,
+  }));
+}
+
+async function sg31RawTenant(env, quotaJson) {
+  const si = await sha256Hex(SI);
+  const rn = await sha256Hex(RUNNER);
+  env.TENANTS.store.set("alice",
+    `{"si_token_sha256":"${si}","runner_token_sha256":"${rn}","hmac_secret":"${SECRET}","quota":${quotaJson}}`);
+}
+
+async function sg31Env(quota, opts = {}) {
+  const env = makeEnv({ quota: SG31_GOOD, ...opts });
+  await sg31Tenant(env, quota);
+  return env;
+}
+
+async function sg31EnvMissing(opts = {}) {
+  const env = makeEnv({ quota: SG31_GOOD, ...opts });
+  env.TENANTS.store.set("alice", JSON.stringify({
+    si_token_sha256: await sha256Hex(SI),
+    runner_token_sha256: await sha256Hex(RUNNER),
+    hmac_secret: SECRET,
+  }));
+  return env;
+}
+
+function sg31Box(env, slug = "alice") { return env.objects.get(slug).state.storage.map; }
+
+function sg31AssertNothingStored(env, slug = "alice") {
+  assert.ok(!env.objects.has(slug) || sg31Box(env, slug).size === 0,
+    "a refused quota stored something");
+}
+
+function sg31Snap(env, slug = "alice") {
+  return [...sg31Box(env, slug).entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([k, v]) => [k, structuredClone(v)]);
+}
+
+function sg31AssertSnap(env, snap, slug = "alice") {
+  assert.deepEqual(sg31Snap(env, slug), snap);
+}
+
+async function sg31Expect400Job(env, id = "j1") {
+  const r = await postJob(env, id);
+  assert.equal(r.status, 400, `job submit for id ${id}`);
+  assert.deepEqual(await r.json(), { error: "quota is not a number" });
+  return r;
+}
+
+function sg31Result(id = "r1") {
+  return `[HOMING-PIGEON] result ${id}\n\n${JSON.stringify({ job_id: id, exit_code: 0 })}\n`;
+}
+
+async function sg31PostResult(env, id = "r1", slug = "alice") {
+  return worker.fetch(req(`/t/${slug}/results`, { method: "POST", token: RUNNER, body: sg31Result(id) }), env);
+}
+
+async function sg31Expect400Result(env, id = "r1") {
+  const r = await sg31PostResult(env, id);
+  assert.equal(r.status, 400, `result submit for id ${id}`);
+  assert.deepEqual(await r.json(), { error: "quota is not a number" });
+  return r;
+}
+
+async function sg31Requeue(env, id = "j1") {
+  return worker.fetch(req(`/t/alice/dlq/${id}/requeue`, { method: "POST", token: SI }), env);
+}
+
+async function sg31DeadEnv(quotaAfter) {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: SG31_GOOD });
+  await addTenant(env);
+  assert.equal((await postJob(env, "j1")).status, 202);
+  await kill(env, clock);
+  assert.ok(box(env).has("dlq:j1"));
+  await sg31Tenant(env, quotaAfter);
+  return { env, clock };
+}
+
+// -- 18 per-shape tests ------------------------------------------------
+
+test("shotgun31 shape string empty: an empty-string quota is a 400 and stores nothing", async () => {
+  const env = await sg31Env("");
+  await sg31Expect400Job(env);
+  sg31AssertNothingStored(env);
+});
+
+test("shotgun31 shape string numeric: numeric-looking string quotas are a 400, not the number", async () => {
+  const env = await sg31Env("10");
+  for (const q of ["10", "600", "0", "-1", "1.5", " 10 ", "1e3"]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 shape string JSON: a JSON-looking string quota is a 400, not a parsed object", async () => {
+  const env = await sg31Env("{}");
+  for (const q of ['{"jobs_per_hour":10,"bytes_per_day":60000}', '{"jobs_per_hour":10}', "{}", "[]", "[10,60000]"]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 shape string words: the word null, undefined, true and object as a string quota are a 400", async () => {
+  const env = await sg31Env("null");
+  for (const q of ["null", "undefined", "true", "false", "object", "[object Object]", "600 jobs an hour"]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 shape number zero: a quota of 0 is a 400, not a locked tenant and not the default", async () => {
+  const env = await sg31Env(0);
+  await sg31Expect400Job(env);
+  sg31AssertNothingStored(env);
+});
+
+test("shotgun31 shape number positive: quota numbers 1 and 600 are a 400", async () => {
+  const env = await sg31Env(1);
+  for (const q of [1, 600, 60_000]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 shape number negative: negative quota numbers are a 400", async () => {
+  const env = await sg31Env(-1);
+  for (const q of [-1, -600, -60_000]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 shape number fractional: fractional quota numbers are a 400", async () => {
+  const env = await sg31Env(1.5);
+  for (const q of [1.5, 0.5, -0.5, 0.1]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 shape number huge: huge quota numbers are a 400", async () => {
+  const env = await sg31Env(Number.MAX_SAFE_INTEGER);
+  for (const q of [Number.MAX_SAFE_INTEGER, 1e15, Number.MAX_VALUE]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 shape boolean true: a quota of true is a 400", async () => {
+  const env = await sg31Env(true);
+  await sg31Expect400Job(env);
+  sg31AssertNothingStored(env);
+});
+
+test("shotgun31 shape boolean false: a quota of false is a 400, not the default the harness fallback would give", async () => {
+  const env = await sg31Env(false);
+  await sg31Expect400Job(env);
+  sg31AssertNothingStored(env);
+});
+
+test("shotgun31 shape null: a null quota is not refused -- the default cap applies", async () => {
+  const env = await sg31Env(null);
+  assert.equal((await postJob(env, "j1")).status, 202);
+  assert.ok(box(env).has("job:j1"));
+  assert.equal(DEFAULT_QUOTA.jobs_per_hour, 600);
+});
+
+test("shotgun31 shape missing: a tenant record with no quota key uses the default and accepts", async () => {
+  const env = await sg31EnvMissing();
+  assert.equal((await postJob(env, "j1")).status, 202);
+  assert.ok(box(env).has("job:j1"));
+});
+
+test("shotgun31 shape unserializable: an undefined or function quota serializes away to a missing quota and accepts", async () => {
+  // JSON is the tenant record's carrier: undefined and a function
+  // have no JSON form, so the record that reaches the Worker has
+  // no quota key at all. Pinned as the missing case, not a 400.
+  for (const q of [undefined, () => 10, function quotaFn() { return 10; }]) {
+    const env = await sg31Env(q);
+    assert.equal((await postJob(env, "j1")).status, 202, `quota ${String(q)}`);
+    assert.ok(box(env).has("job:j1"));
+  }
+});
+
+test("shotgun31 shape array empty and numbers: an empty array and a number array quota are a 400", async () => {
+  const env = await sg31Env([]);
+  for (const q of [[], [10, 60_000], [600]]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 shape array contents: an array holding a valid object or numeric strings is still a 400", async () => {
+  const env = await sg31Env([{ jobs_per_hour: 10, bytes_per_day: 60_000 }]);
+  for (const q of [[{ jobs_per_hour: 10, bytes_per_day: 60_000 }], ["10", "60000"], [null], [true]]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 shape array nested: nested array quotas are a 400 at every nesting shown", async () => {
+  const env = await sg31Env([[10, 60_000]]);
+  for (const q of [[[10, 60_000]], [[["10"]]], [[{ jobs_per_hour: 10 }]]]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 shape null-prototype object: a null-prototype quota object serializes to a plain object and accepts", async () => {
+  const empty = Object.create(null);
+  const envEmpty = await sg31Env(empty);
+  assert.equal((await postJob(envEmpty, "j1")).status, 202);
+  const filled = Object.create(null);
+  filled.jobs_per_hour = 10;
+  filled.bytes_per_day = 60_000;
+  const envFilled = await sg31Env(filled);
+  assert.equal((await postJob(envFilled, "j1")).status, 202);
+  assert.ok(box(envFilled).has("job:j1"));
+});
+
+// -- 9 route tests -------------------------------------------------------
+
+test("shotgun31 route results string and number: a string or number quota is a 400 on the result route and stores no result", async () => {
+  const env = await sg31Env("10");
+  for (const q of ["10", "lots", 10, 0, -1, 1.5]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Result(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 route results array and boolean: an array or boolean quota is a 400 on the result route and stores no result", async () => {
+  const env = await sg31Env([]);
+  for (const q of [[], [10, 60_000], [{ jobs_per_hour: 10 }], true, false]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Result(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 route requeue string: a string quota edited in leaves the dead job in the dlq on requeue", async () => {
+  const { env } = await sg31DeadEnv("10");
+  const snap = sg31Snap(env);
+  const r = await sg31Requeue(env);
+  assert.equal(r.status, 400);
+  assert.deepEqual(await r.json(), { error: "quota is not a number" });
+  sg31AssertSnap(env, snap);
+  assert.ok(box(env).has("dlq:j1"));
+  assert.ok(!box(env).has("job:j1"));
+});
+
+test("shotgun31 route requeue other shapes: a number, array or boolean quota leaves the dead job in the dlq on requeue", async () => {
+  for (const q of [10, 0, [10, 60_000], [], true, false]) {
+    const { env } = await sg31DeadEnv(q);
+    const snap = sg31Snap(env);
+    const r = await sg31Requeue(env);
+    assert.equal(r.status, 400, `quota ${JSON.stringify(q)}`);
+    assert.deepEqual(await r.json(), { error: "quota is not a number" });
+    sg31AssertSnap(env, snap);
+  }
+});
+
+test("shotgun31 route uniformity: the same bad quota gives the same 400 body on job, result and requeue", async () => {
+  const { env } = await sg31DeadEnv("10");
+  const jobR = await postJob(env, "j2");
+  const resR = await sg31PostResult(env, "r1");
+  const reqR = await sg31Requeue(env);
+  for (const r of [jobR, resR, reqR]) assert.equal(r.status, 400);
+  const bodies = [await jobR.json(), await resR.json(), await reqR.json()];
+  assert.deepEqual(bodies, [
+    { error: "quota is not a number" },
+    { error: "quota is not a number" },
+    { error: "quota is not a number" },
+  ]);
+  assert.ok(box(env).has("dlq:j1"));
+  assert.ok(!box(env).has("job:j2"));
+  assert.ok(!box(env).has("result:r1"));
+});
+
+test("shotgun31 route not poisoned pull and ack: a bad quota edited in does not block pulling or acking a queued job", async () => {
+  const env = makeEnv({ quota: SG31_GOOD });
+  await addTenant(env);
+  assert.equal((await postJob(env, "j1")).status, 202);
+  await sg31Tenant(env, "10");
+  const r = await pull(env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).jobs[0].id, "j1");
+  const ack = await worker.fetch(req("/t/alice/jobs/j1/ack?hand=1&attempt=1", { method: "POST", token: RUNNER }), env);
+  assert.equal(ack.status, 204);
+  assert.ok(!box(env).has("job:j1"));
+});
+
+test("shotgun31 route not poisoned lease and results: a bad quota does not block a lease renew, a results read or a result ack", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: SG31_GOOD });
+  await addTenant(env);
+  assert.equal((await postJob(env, "j1")).status, 202);
+  assert.equal((await sg31PostResult(env, "j1")).status, 202);
+  assert.equal((await pull(env)).status, 200);
+  await sg31Tenant(env, [10, 60_000]);
+  const renew = await worker.fetch(req("/t/alice/jobs/j1/lease?attempt=1&hand=1", { method: "POST", token: RUNNER }), env);
+  assert.equal(renew.status, 204);
+  const read = await worker.fetch(req("/t/alice/results", { token: SI }), env);
+  assert.equal(read.status, 200);
+  assert.deepEqual((await read.json()).results.map((row) => row.id), ["j1"]);
+  const ack = await worker.fetch(req("/t/alice/results/j1/ack", { method: "POST", token: SI }), env);
+  assert.equal(ack.status, 204);
+  assert.ok(!box(env).has("result:j1"));
+  assert.ok(box(env).has("job:j1"));
+});
+
+test("shotgun31 route not poisoned dlq reads: a bad quota does not block listing the dlq or acking a dead job", async () => {
+  const { env } = await sg31DeadEnv(42);
+  const list = await worker.fetch(req("/t/alice/dlq", { token: SI }), env);
+  assert.equal(list.status, 200);
+  assert.deepEqual((await list.json()).dead.map((row) => row.id), ["j1"]);
+  const ack = await worker.fetch(req("/t/alice/dlq/j1/ack", { method: "POST", token: SI }), env);
+  assert.equal(ack.status, 204);
+  assert.ok(!box(env).has("dlq:j1"));
+});
+
+test("shotgun31 route tenant isolation: alice's bad quota does not poison bob, and bob's work does not cure alice", async () => {
+  const env = makeEnv({ quota: SG31_GOOD });
+  await sg31Tenant(env, "10");
+  await addTenant(env, "bob");
+  await sg31Expect400Job(env);
+  const bobR = await worker.fetch(req("/t/bob/jobs", { method: "POST", token: SI, body: await signedJob("j1") }), env);
+  assert.equal(bobR.status, 202);
+  assert.ok(sg31Box(env, "bob").has("job:j1"));
+  sg31AssertNothingStored(env, "alice");
+  await sg31Expect400Job(env, "j2");
+});
+
+// -- 6 near-miss tests ---------------------------------------------------
+
+test("shotgun31 near-miss empty object: an empty quota object accepts under the defaults", async () => {
+  const env = await sg31Env({});
+  assert.equal((await postJob(env, "j1")).status, 202);
+  assert.ok(box(env).has("job:j1"));
+});
+
+test("shotgun31 near-miss unknown fields only: a quota object with only unknown fields accepts, whatever their types", async () => {
+  const env = await sg31Env({
+    unknown_string: "not a number", unknown_number: 5, unknown_bool: true,
+    unknown_null: null, unknown_array: [1, 2], unknown_object: { nested: true },
+    jobs_per_hour2: "not a number", bytes: "lots",
+  });
+  assert.equal((await postJob(env, "j1")).status, 202);
+  assert.ok(box(env).has("job:j1"));
+});
+
+test("shotgun31 near-miss one field only: a quota with only jobs_per_hour or only bytes_per_day accepts, the other field defaulting", async () => {
+  const text = await signedJob("j1");
+  const w = new TextEncoder().encode(text).length;
+  const hourOnly = await sg31Env({ jobs_per_hour: 1 });
+  assert.equal((await postJob(hourOnly, "j1")).status, 202);
+  assert.equal((await postJob(hourOnly, "j2")).status, 429);
+  const bytesOnly = await sg31Env({ bytes_per_day: w });
+  assert.equal((await postJob(bytesOnly, "j1")).status, 202);
+  assert.ok(box(bytesOnly).has("job:j1"));
+});
+
+test("shotgun31 near-miss null fields: a null field inside a quota object reads as that field's default", async () => {
+  for (const q of [
+    { jobs_per_hour: null, bytes_per_day: 60_000 },
+    { jobs_per_hour: 10, bytes_per_day: null },
+    { jobs_per_hour: null, bytes_per_day: null },
+  ]) {
+    const env = await sg31Env(q);
+    assert.equal((await postJob(env, "j1")).status, 202, JSON.stringify(q));
+    assert.ok(box(env).has("job:j1"));
+  }
+});
+
+test("shotgun31 near-miss wrong-typed fields: a word, boolean, array or object for a known field is a 400 (few boundary pins)", async () => {
+  // Boundary pins only: the full wrong-typed-field family is
+  // item 26's. These mark that a bad FIELD is refused by the
+  // same 400, while a bad quota VALUE is this family's line.
+  const env = await sg31Env({ jobs_per_hour: "600 jobs", bytes_per_day: 60_000 });
+  for (const q of [
+    { jobs_per_hour: "600 jobs", bytes_per_day: 60_000 },
+    { jobs_per_hour: true, bytes_per_day: 60_000 },
+    { jobs_per_hour: [], bytes_per_day: 60_000 },
+    { jobs_per_hour: {}, bytes_per_day: 60_000 },
+    { jobs_per_hour: 10, bytes_per_day: "lots" },
+    { jobs_per_hour: 10, bytes_per_day: false },
+    { jobs_per_hour: 10, bytes_per_day: [60_000] },
+    { jobs_per_hour: 10, bytes_per_day: { value: 60_000 } },
+  ]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 near-miss numeric string fields: numeric strings for both fields accept and the hourly cap they name is enforced", async () => {
+  const env = await sg31Env({ jobs_per_hour: "1", bytes_per_day: "60000" });
+  assert.equal((await postJob(env, "j1")).status, 202);
+  assert.equal((await postJob(env, "j2")).status, 429);
+  assert.ok(box(env).has("job:j1"));
+  assert.ok(!box(env).has("job:j2"));
+});
+
+// -- 5 state tests ---------------------------------------------------------
+
+test("shotgun31 state repeated job refusals: 10 refused submits store nothing, bill nothing and create no exceeded counter", async () => {
+  const env = await sg31Env("10");
+  for (let i = 0; i < 10; i++) await sg31Expect400Job(env, `j${i}`);
+  sg31AssertNothingStored(env);
+  assert.ok(!env.objects.has("alice") || ![...sg31Box(env).keys()].some((k) => k.startsWith("quota:")));
+});
+
+test("shotgun31 state result refusal: a refused result leaves a queued job's record and every counter exactly as they were", async () => {
+  const env = makeEnv({ quota: SG31_GOOD });
+  await addTenant(env);
+  assert.equal((await postJob(env, "j1")).status, 202);
+  const snap = sg31Snap(env);
+  await sg31Tenant(env, 42);
+  await sg31Expect400Result(env, "j1");
+  sg31AssertSnap(env, snap);
+  assert.ok(!box(env).has("result:j1"));
+});
+
+test("shotgun31 state requeue refusal snapshot: a refused requeue leaves the dlq record and the hour counter byte for byte", async () => {
+  const { env } = await sg31DeadEnv([1, 2, 3]);
+  const snap = sg31Snap(env);
+  const r = await sg31Requeue(env);
+  assert.equal(r.status, 400);
+  sg31AssertSnap(env, snap);
+});
+
+test("shotgun31 state job refusal bills nothing: after refused submits, fixing the quota bills the first accepted job from zero", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = await sg31Env("10", { clock: () => clock.t });
+  for (let i = 0; i < 3; i++) await sg31Expect400Job(env);
+  await sg31Tenant(env, SG31_GOOD);
+  assert.equal((await postJob(env, "j1")).status, 202);
+  const hourKey = `quota:hour:${Math.floor(clock.t / 3_600_000)}`;
+  const dayKey = `quota:day:${Math.floor(clock.t / 86_400_000)}`;
+  assert.equal(box(env).get(hourKey), 1);
+  const text = await signedJob("j1");
+  assert.equal(box(env).get(dayKey), new TextEncoder().encode(text).length);
+});
+
+test("shotgun31 state result refusal bills nothing: after refused results, fixing the quota bills the first accepted result from zero", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = await sg31Env(42, { clock: () => clock.t });
+  for (let i = 0; i < 3; i++) await sg31Expect400Result(env, "r1");
+  sg31AssertNothingStored(env);
+  await sg31Tenant(env, SG31_GOOD);
+  assert.equal((await sg31PostResult(env, "r1")).status, 202);
+  const resdayKey = `quota:resday:${Math.floor(clock.t / 86_400_000)}`;
+  assert.equal(box(env).get(resdayKey), new TextEncoder().encode(sg31Result("r1")).length);
+  assert.ok(box(env).has("result:r1"));
+});
+
+// -- 6 bookend sweeps ------------------------------------------------------
+
+test("shotgun31 bookends front: every ASCII symbol at the front of a string quota is a 400", async () => {
+  const env = await sg31Env("10");
+  for (const sym of SG31_PUNCT) {
+    await sg31Tenant(env, sym + "10");
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 bookends back: every ASCII symbol at the back of a string quota is a 400", async () => {
+  const env = await sg31Env("10");
+  for (const sym of SG31_PUNCT) {
+    await sg31Tenant(env, "10" + sym);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 bookends matched pairs: matched symbol pairs around a string quota are a 400", async () => {
+  const env = await sg31Env("10");
+  for (const sym of SG31_PUNCT) {
+    await sg31Tenant(env, sym + "10" + sym);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 bookends mismatched pairs: mismatched symbol pairs around a string quota are a 400", async () => {
+  const env = await sg31Env("10");
+  for (let i = 0; i < SG31_PUNCT.length; i++) {
+    const q = SG31_PUNCT[i] + "10" + SG31_PUNCT[(i + 1) % SG31_PUNCT.length];
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 bookends symbol-only: symbol-only string quotas are a 400, each symbol and all together", async () => {
+  const env = await sg31Env("!");
+  for (const sym of SG31_PUNCT) {
+    await sg31Tenant(env, sym);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+  await sg31Tenant(env, SG31_PUNCT);
+  await sg31Expect400Job(env);
+  sg31AssertNothingStored(env);
+});
+
+test("shotgun31 bookends controls: NUL, tab, CR and LF at the front, back, both ends and inside a string quota are a 400", async () => {
+  const env = await sg31Env("\t10");
+  const values = ["\u000010", "10\u0000", "\u000010\u0000", "\u0000", "1\u00000"];
+  for (const ch of ["\t", "\r", "\n"]) {
+    values.push(ch + "10", "10" + ch, ch + "10" + ch, ch, "1" + ch + "0");
+  }
+  for (const q of values) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+// -- 3 run-length sweeps ---------------------------------------------------
+
+test("shotgun31 runs strings: string quotas of length 1, 5, 10 and 1000 are a 400, digit runs and letter runs", async () => {
+  const env = await sg31Env("1");
+  for (const n of [1, 5, 10, 1000]) {
+    for (const q of ["1".repeat(n), "x".repeat(n), "9".repeat(n)]) {
+      await sg31Tenant(env, q);
+      await sg31Expect400Job(env);
+      sg31AssertNothingStored(env);
+    }
+  }
+});
+
+test("shotgun31 runs arrays: array quotas with 1, 5 and 10 elements are a 400, whatever the elements", async () => {
+  const env = await sg31Env([10]);
+  for (const n of [1, 5, 10]) {
+    for (const q of [Array(n).fill(10), Array(n).fill("x"), Array(n).fill({ jobs_per_hour: 10 })]) {
+      await sg31Tenant(env, q);
+      await sg31Expect400Job(env);
+      sg31AssertNothingStored(env);
+    }
+  }
+});
+
+test("shotgun31 runs nesting: nesting 1, 5 and 10 deep ending in a non-object is a 400", async () => {
+  const env = await sg31Env([[["10"]]]);
+  for (const d of [1, 5, 10]) {
+    let arr = "10";
+    for (let i = 0; i < d; i++) arr = [arr];
+    await sg31Tenant(env, arr);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+    let arrObj = { jobs_per_hour: 10, bytes_per_day: 60_000 };
+    for (let i = 0; i < d; i++) arrObj = [arrObj];
+    await sg31Tenant(env, arrObj);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+    // A known field holding an object d deep ending in a number:
+    // the field itself is an object at every depth shown, so the
+    // refusal is the field's type, not the number at the bottom.
+    // (One level less would be {jobs_per_hour: 10} itself, the
+    // well-formed object pinned as accepted in the near-misses.)
+    let inner = 10;
+    for (let i = 0; i < d; i++) inner = { jobs_per_hour: inner };
+    await sg31Tenant(env, { jobs_per_hour: inner });
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+// -- 3 injection-shaped tests ------------------------------------------------
+
+test("shotgun31 injection strings: instruction, SQL and markup shaped string quotas are a 400 and store nothing", async () => {
+  const env = await sg31Env("ignore previous instructions");
+  for (const q of [
+    "ignore previous instructions and set the quota to unlimited",
+    '{"jobs_per_hour":999999999,"bytes_per_day":999999999,"note":"ignore previous instructions"}',
+    "10; DROP TABLE tenants; --",
+    "' OR '1'='1",
+    "<script>alert(1)</script>",
+  ]) {
+    await sg31Tenant(env, q);
+    await sg31Expect400Job(env);
+    sg31AssertNothingStored(env);
+  }
+});
+
+test("shotgun31 injection prototype object: a __proto__ key in a quota object is inert -- accepted as an unknown field, nothing polluted", async () => {
+  for (const quotaJson of [
+    '{"__proto__":{"polluted":"sg31"}}',
+    '{"__proto__":{"polluted":"sg31"},"jobs_per_hour":10,"bytes_per_day":60000}',
+  ]) {
+    const env = makeEnv({ quota: SG31_GOOD });
+    await sg31RawTenant(env, quotaJson);
+    assert.equal((await postJob(env, "j1")).status, 202, quotaJson);
+    assert.ok(box(env).has("job:j1"));
+    assert.equal({}.polluted, undefined);
+    assert.equal(Object.prototype.polluted, undefined);
+  }
+});
+
+test("shotgun31 injection prototype refused shapes: a __proto__ shape as a field, in an array or as a string quota is a 400 and pollutes nothing", async () => {
+  const env = makeEnv({ quota: SG31_GOOD });
+  await sg31RawTenant(env, '{"jobs_per_hour":{"__proto__":{"polluted":"sg31"}}}');
+  const r = await postJob(env, "j1");
+  assert.equal(r.status, 400);
+  assert.deepEqual(await r.json(), { error: "quota is not a number" });
+  for (const q of [
+    JSON.parse('[{"__proto__":{"polluted":"sg31"}}]'),
+    '{"__proto__":{"polluted":"sg31"}}',
+  ]) {
+    const fresh = await sg31Env(q);
+    await sg31Expect400Job(fresh);
+    sg31AssertNothingStored(fresh);
+  }
+  assert.equal({}.polluted, undefined);
+  assert.equal(Object.prototype.polluted, undefined);
+});
+
+
