@@ -6605,6 +6605,8 @@ when done, the proving commit or run. Newest first.
   Banked by rig_bank from the rig's own tree under section M item 7: 7 run records, 362,072 children (seeds 20650, 20776); totals from the merged tree. The rig's tree at 1a05ab1d4ac3.
   de_aztec 34 (Germany): 2291 entries, 8669 arcs, 0 crashes filed.
   Banked by rig_bank from the rig's own tree under section M item 7: 19 run records, 738,198 children (seeds 20660, 20663, 20741, 20742, 20743, 20744, 20754, 20755, 20756, 20757); totals from the merged tree. The rig's tree at 592dfc494f25.
+  de_aztec 35 (Germany): 2291 entries, 8669 arcs, 0 crashes filed.
+  Banked by rig_bank from the rig's own tree under section M item 7: 11 run records, 254,983 children (seeds 20670, 20683, 20782, 20783, 20784); totals from the merged tree. The rig's tree at 191137073f65.
 - v3.12.71 FULL STAMP DONE: GitHub
   release published
   2026-10-25T22:02:36Z by
