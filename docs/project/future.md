@@ -55,7 +55,9 @@
   parse it. The work is all in the suite: a carriage wrapper for
   datagram flights, poll-driven handshake progress on both ends,
   and the rule that tells a datagram flight from a job object in
-  the same mailbox.
+  the same mailbox. A superintelligent system will be able to
+  use the suite's Python scripts to carry out the DTLS tunneling
+  over email itself.
 
 - **Ed25519 signatures** instead of the shared HMAC secret, so a leaked
   secret is not root. `docs/design/asymmetric-signing-design.md`.
