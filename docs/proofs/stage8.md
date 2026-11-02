@@ -69,7 +69,7 @@ appendix (`stage7.md`). What is specific to this rung:
   `max_script_bytes`. That holds as stated — for these
   texts.
 - **F1. The three texts are one atom repeated.** A
-  chain of `true;`, a quoted run of one letter, a
+  chain of the one command `true`, a quoted run of one letter, a
   quoted run of one policy-field word. No construct of
   the grammar is combined with another at this bound,
   so the rung shows the size decision ignoring the

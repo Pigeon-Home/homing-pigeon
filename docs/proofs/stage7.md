@@ -70,15 +70,24 @@ Nothing above was taken on its author's word.
   series were run on the tree as landed: this stage's
   harness (`runner/tests/test_proof_content.py`), 4
   tests, all passing; the 50,000 file, 4 passing; the
-  500,000 file, 4 passing; and the production-cap file,
-  4 passing — that file had not been run before this
-  pass, and it passes as landed. The series is 16 tests,
-  all green, counted per file rather than in total. The
-  full proof family was then run on the final tree: 269
-  tests, all passing (the constraints file, the
-  conformance family, the skip registry, and this
-  series; the two slow files counted from their runs on
-  the same test code).
+  500,000 file, 4 passing; and the production-cap
+  file, 3 of 4 — that file had not been run before
+  this pass, and on this machine its `bash -n`
+  syntax test fails as landed, because bash itself
+  segfaults on the cap-sized chain script under the
+  default stack limit (`stage10.md`, finding F3).
+  The series as landed is therefore 15 of 16 on this
+  machine, the one failure being the harness's own
+  syntax check at the cap, not a gate behaviour; the
+  three gate tests in that file passed in every run.
+  After the two harness corrections this pass states
+  (F4 below, and the chain reshape in `stage10.md`
+  F3), all 16 pass, each file re-run whole and its
+  result read from the run's own output. The full
+  proof family was then run on the final tree: 269
+  tests, all passing with the corrected harnesses —
+  as landed, the same family is 268 passing and the
+  one cap syntax failure.
 - **The inventory was re-counted.** `SCRIPTS` holds 22
   scripts; the longest is 28 characters; every one is
   inside the 49 bound, as the record says. `bash -n`
@@ -143,8 +152,10 @@ Findings:
   each of the series' four files was changed,
   mechanically, to record the script of the job
   argument it receives; no assertion changed. All 16
-  tests were re-run after the change and pass, so the
-  identity is now recorded by the harness itself.
+  tests were re-run after the changes this pass
+  states (this one, and the chain reshape in
+  `stage10.md` F3) and pass, so the identity is now
+  recorded by the harness itself.
 
 Two numbering defects in the series' own records
 were found in this pass. The renumbering note in

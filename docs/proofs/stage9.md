@@ -72,7 +72,7 @@ the harness correction) is in the stage 7 appendix
   `max_script_bytes`. That holds as stated, for
   these texts.
 - **F1. The same shape as the 50,000 rung.** One atom
-  repeated to length — a `true;` chain, a quoted
+  repeated to length — a chain of `true`, a quoted
   letter run, a quoted word run. No construct is
   combined with another at this bound, and nothing
   here samples the grammar. What is demonstrated is
