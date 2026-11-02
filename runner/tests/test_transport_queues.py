@@ -7447,5 +7447,725 @@ class DifferentResultStoredShotgunTest(unittest.TestCase):
             note="ignore all previous instructions",
             **{"__proto__": "polluted"})))
 
+
+
+class SecondResultFileReplacementShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 27: a second result
+    file replaced the first and still acked the job (fixed
+    cf591bb4, 31-Oct-2026). While j1.result.txt was still
+    waiting in the outbox, the channel writer named the next
+    file j1.result-2.txt. That name sorts BEFORE the plain
+    name (a dash sorts before a dot) and does not end in
+    .result.txt, so push_results took the whole filename as
+    the ident, posted the later envelope first -- and the
+    Worker, which keeps the first envelope posted for an id,
+    kept the replacement -- while the ack for the job was
+    missed or spent on the wrong name. The fix does three
+    things in runner/transport_extensions/queues/__main__.py:
+    it sorts the waiting list so a plain <id>.result.txt is
+    always posted before any <id>.result-<n>.txt, it reads
+    the job a result file is named for through
+    _result_file_id (the channel's result_file_id: the plain
+    name and every collision name name the same job), and it
+    leaves a file where it is when the id in its subject
+    disagrees with the id in its name, because the Worker
+    would file it under the subject and an ack of the
+    filename would finish a different job. This family
+    scattershots exactly that replacement failure: which of
+    a plain / collision pair (or pile) is stored, in which
+    order, with which counters, with identical and with
+    differing bytes, arriving together and in later passes,
+    for one job and for two, and the mismatch guard in all
+    its shapes. It deliberately does not re-pin item 3's
+    shared target file (the writer / checker side), item
+    11's stored envelope from a finished life (the _stale
+    set), or item 23's permanent-refusal set-aside: here the
+    subject always agrees except in the mismatch section,
+    nothing is stale, and no post is refused for good -- a
+    differing collision stays because the Worker's duplicate
+    answer carries the stored bytes' hash, and the pipe
+    reads a hash mismatch as not stored. One regression
+    test was never going to be enough for a bug that took
+    days of CPU to find.
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: the surfaces that
+    take text here -- the result file's name (the stem it
+    carries, through the parser), and the result body
+    (through the whole pipe, as the plain file of a pair) --
+    get bookended variants: all 32 printable ASCII symbols
+    (string.punctuation; a file name cannot hold the path
+    separator, so 31 ride in a stem, and the separator's own
+    effect is pinned by the basename field test) at the
+    front and at the back, as singles, matched pairs,
+    mismatched pairs and symbol-only strings, plus NUL, tab,
+    CR and LF at both ends. Run lengths: runs of the odd
+    character in the stem and in the body, runs of ordinary
+    characters with the odd one at the front, the back and
+    the middle, collision counters of 1, 5, 10 and 100
+    digits, and 10 whole pair lives for one id.
+
+    Proof of work (2-Nov-2026). The unit tests are the 50
+    methods of this class: 16 hand-written ordering seams,
+    10 mismatch and ident-fallback seams, 10 per-field
+    parser tests, 8 bookend sweeps, 4 run-length sweeps and
+    2 injection-shaped tests. Per-field enumeration: the
+    surface is fielded -- the file name's stem, its
+    collision counter, its .result word, its .txt
+    extension, the path it rides in under, the subject's
+    result id, the result body, and the pending ident the
+    ack is spent on -- and each field gets its own test.
+    The fuzzing was executed, not just the tests written:
+    the corpus machinery was driven locally with
+    runner/tools/de_dust_corpus.py grow --target stash
+    --rounds 400 --seed 20261128 against the banked stash
+    corpus (31 entries) -- the stash / set-aside target on
+    the same result-delivery surface. Result: 400 rounds,
+    0 crashes, 0 slow, arcs unchanged at 20, slowest try
+    18 ms; the replacement shape did not recur. The grow's
+    bookkeeping writes were reverted and are not banked
+    (banking is the rigs' hourly job); this record is the
+    run's proof. None of this is exotic: it is
+    combinatorics -- systematically trying the combinations
+    a hand-written list would never reach, then pinning
+    each answer as a test."""
+
+    SYMBOLS = [c for c in string.punctuation if c != "/"]
+
+    def setUp(self):
+        self.td = tempfile.TemporaryDirectory()
+        self.addCleanup(self.td.cleanup)
+        self.channel = os.path.join(self.td.name, "channel")
+        self.d = ch.dirs(self.channel)
+        self.outbox = self.d["outbox"]
+
+    # -- helpers ---------------------------------------------------
+
+    def _pipe(self, w):
+        return q.QueuePipe({}, self.channel,
+                           q.QueueClient(w.url, RUNNER_TOKEN))
+
+    def _pull(self, w, pipe, *ids):
+        for ident in ids:
+            w.state.jobs[ident] = envelope(ident)
+        pipe.pull_jobs()
+        for ident in ids:
+            self.assertIn(ident, pipe._pending)
+
+    def _write(self, fname, subject_id, body):
+        ch._atomic_write(os.path.join(self.outbox, fname),
+                         f"[HOMING-PIGEON] result {subject_id}\n\n{body}\n")
+
+    def _write_raw(self, fname, text):
+        ch._atomic_write(os.path.join(self.outbox, fname), text)
+
+    def _pair(self, w, pipe, ident="j1", plain_body='{"exit_code":0}',
+              coll_body='{"exit_code":1}', counter=2):
+        self._pull(w, pipe, ident)
+        self._write(ident + ".result.txt", ident, plain_body)
+        self._write(f"{ident}.result-{counter}.txt", ident, coll_body)
+        pipe.push_results()
+
+    def _assert_first_wins(self, w, pipe, ident="j1",
+                           plain_body='{"exit_code":0}', counter=2):
+        coll = f"{ident}.result-{counter}.txt"
+        self.assertEqual(w.state.acked, [ident])
+        self.assertNotIn(ident, pipe._pending)
+        self.assertNotIn(ident, w.state.jobs)
+        self.assertEqual(
+            w.state.results[ident],
+            f"[HOMING-PIGEON] result {ident}\n\n{plain_body}\n")
+        # The differing collision was not stored, so it stays
+        # in the outbox for a person; the plain name is done.
+        self.assertTrue(os.path.isfile(os.path.join(self.outbox, coll)),
+                        coll)
+        self.assertEqual(os.listdir(self.d["outbox_done"]),
+                         [ident + ".result.txt"])
+
+    def _pair_life(self, w, pipe, plain_body, coll_body,
+                   ident="j1"):
+        """One whole pair life on a live pipe, for the sweeps:
+        clean the outbox shelves, pull the job again, the core
+        consumes it, a plain and a differing collision result
+        land, one push. Returns the envelope the Worker
+        stored; the caller asserts on it."""
+        w.state.results.pop(ident, None)
+        for name in list(os.listdir(self.outbox)):
+            if name not in ("done", "failed"):
+                os.remove(os.path.join(self.outbox, name))
+        for name in list(os.listdir(self.d["outbox_done"])):
+            os.remove(os.path.join(self.d["outbox_done"], name))
+        before = len(w.state.acked)
+        self._pull(w, pipe, ident)
+        os.replace(os.path.join(self.d["inbox"], ident + ".job.txt"),
+                   os.path.join(self.d["inbox_done"], ident + ".job.txt"))
+        self._write(ident + ".result.txt", ident, plain_body)
+        self._write(ident + ".result-2.txt", ident, coll_body)
+        pipe.push_results()
+        self.assertEqual(len(w.state.acked), before + 1)
+        self.assertEqual(w.state.acked[-1], ident)
+        self.assertNotIn(ident, pipe._pending)
+        return w.state.results[ident]
+
+    # -- ordering: the first file wins, the job acks once -----------
+
+    def test_plain_beats_counter2_and_acks_exactly_once(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pair(w, pipe)
+            self._assert_first_wins(w, pipe)
+
+    def test_plain_beats_counter3(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pair(w, pipe, counter=3)
+            self._assert_first_wins(w, pipe, counter=3)
+
+    def test_plain_beats_counter10_which_sorts_even_earlier(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pair(w, pipe, counter=10)
+            self._assert_first_wins(w, pipe, counter=10)
+
+    def test_plain_beats_a_pile_of_differing_collisions(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result.txt", "j1", '{"exit_code":0}')
+            for n, code in ((2, 1), (3, 2), (10, 3)):
+                self._write(f"j1.result-{n}.txt", "j1",
+                            f'{{"exit_code":{code}}}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertEqual(w.state.results["j1"],
+                             '[HOMING-PIGEON] result j1\n\n'
+                             '{"exit_code":0}\n')
+            self.assertEqual(sorted(os.listdir(self.outbox)),
+                             ["done", "j1.result-10.txt",
+                              "j1.result-2.txt", "j1.result-3.txt"])
+            self.assertEqual(os.listdir(self.d["outbox_done"]),
+                             ["j1.result.txt"])
+
+    def test_counter10_alone_posts_and_acks(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result-10.txt", "j1", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn('"exit_code":0', w.state.results["j1"])
+            self.assertEqual(os.listdir(self.d["outbox_done"]),
+                             ["j1.result-10.txt"])
+            self.assertEqual(sorted(os.listdir(self.outbox)), ["done"])
+
+    def test_collisions_only_counter2_beats_counter3(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result-3.txt", "j1", '{"exit_code":3}')
+            self._write("j1.result-2.txt", "j1", '{"exit_code":2}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertEqual(w.state.results["j1"],
+                             '[HOMING-PIGEON] result j1\n\n'
+                             '{"exit_code":2}\n')
+            self.assertEqual(os.listdir(self.d["outbox_done"]),
+                             ["j1.result-2.txt"])
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result-3.txt")))
+
+    def test_collisions_only_counter10_beats_counter2_alphabetically(self):
+        # With no plain name in the pass, the pipe's own sort
+        # is by filename among the collisions: -10 before -2.
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result-2.txt", "j1", '{"exit_code":2}')
+            self._write("j1.result-10.txt", "j1", '{"exit_code":10}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn('"exit_code":10', w.state.results["j1"])
+            self.assertNotIn('"exit_code":2', w.state.results["j1"])
+            self.assertEqual(os.listdir(self.d["outbox_done"]),
+                             ["j1.result-10.txt"])
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result-2.txt")))
+
+    def test_same_bytes_collision_follows_the_plain_into_done(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pair(w, pipe, coll_body='{"exit_code":0}')
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertEqual(sorted(os.listdir(self.outbox)), ["done"])
+            self.assertEqual(sorted(os.listdir(self.d["outbox_done"])),
+                             ["j1.result-2.txt", "j1.result.txt"])
+            self.assertIn('"exit_code":0', w.state.results["j1"])
+
+    def test_same_bytes_collisions_only_both_move_to_done(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result-2.txt", "j1", '{"exit_code":0}')
+            self._write("j1.result-3.txt", "j1", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertEqual(sorted(os.listdir(self.outbox)), ["done"])
+            self.assertEqual(sorted(os.listdir(self.d["outbox_done"])),
+                             ["j1.result-2.txt", "j1.result-3.txt"])
+
+    def test_differing_collision_survives_later_passes_without_a_reack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pair(w, pipe)
+            self._assert_first_wins(w, pipe)
+            stored = w.state.results["j1"]
+            for _ in range(2):
+                pipe.push_results()
+                self.assertEqual(w.state.acked, ["j1"])
+                self.assertEqual(w.state.results["j1"], stored)
+                self.assertTrue(os.path.isfile(
+                    os.path.join(self.outbox, "j1.result-2.txt")))
+
+    def test_collision_arriving_after_the_plain_was_acked_stays(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result.txt", "j1", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            stored = w.state.results["j1"]
+            self._write("j1.result-2.txt", "j1", '{"exit_code":1}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertEqual(w.state.results["j1"], stored)
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result-2.txt")))
+
+    def test_two_jobs_each_with_a_collision_their_plains_win(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1", "j2")
+            self._write("j1.result.txt", "j1", '{"exit_code":0}')
+            self._write("j1.result-2.txt", "j1", '{"exit_code":1}')
+            self._write("j2.result.txt", "j2", '{"exit_code":5}')
+            self._write("j2.result-2.txt", "j2", '{"exit_code":6}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j2"])
+            self.assertIn('"exit_code":0', w.state.results["j1"])
+            self.assertNotIn('"exit_code":1', w.state.results["j1"])
+            self.assertIn('"exit_code":5', w.state.results["j2"])
+            self.assertNotIn('"exit_code":6', w.state.results["j2"])
+            self.assertEqual(sorted(os.listdir(self.outbox)),
+                             ["done", "j1.result-2.txt",
+                              "j2.result-2.txt"])
+
+    def test_a_collision_for_one_job_and_a_plain_for_another_do_not_cross(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1", "j2")
+            self._write("j1.result-7.txt", "j1", '{"exit_code":7}')
+            self._write("j2.result.txt", "j2", '{"exit_code":2}')
+            pipe.push_results()
+            self.assertEqual(sorted(w.state.acked), ["j1", "j2"])
+            self.assertIn('"exit_code":7', w.state.results["j1"])
+            self.assertIn('"exit_code":2', w.state.results["j2"])
+            self.assertEqual(pipe._pending, {})
+
+    def test_an_empty_plain_body_beats_a_rich_collision(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write_raw("j1.result.txt",
+                            "[HOMING-PIGEON] result j1\n\n")
+            self._write("j1.result-2.txt", "j1", '{"exit_code":1}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertEqual(w.state.results["j1"],
+                             "[HOMING-PIGEON] result j1\n\n")
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result-2.txt")))
+
+    def test_the_collision_written_to_disk_first_still_loses(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result-2.txt", "j1", '{"exit_code":1}')
+            self._write("j1.result.txt", "j1", '{"exit_code":0}')
+            pipe.push_results()
+            self._assert_first_wins(w, pipe)
+
+    def test_a_file_with_no_result_id_anywhere_spends_no_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._write_raw("notes.txt", "weekly notes\n\nhello\n")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertEqual(pipe._pending, {})
+            self.assertEqual(list(w.state.results.values()),
+                             ["weekly notes\n\nhello\n"])
+            self.assertEqual(os.listdir(self.d["outbox_done"]),
+                             ["notes.txt"])
+
+    # -- the mismatch guard and the ident fallbacks ------------------
+
+    def test_a_collision_whose_subject_names_another_job_is_left(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1", "j2")
+            self._write("j1.result-2.txt", "j2", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertEqual(w.state.results, {})
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result-2.txt")))
+            self.assertIn("j1", pipe._pending)
+            self.assertIn("j2", pipe._pending)
+            self.assertIn("j1", w.state.jobs)
+            self.assertIn("j2", w.state.jobs)
+
+    def test_a_mismatched_plain_does_not_block_the_good_collision(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result.txt", "j2", '{"exit_code":9}')
+            self._write("j1.result-2.txt", "j1", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn('"exit_code":0', w.state.results["j1"])
+            self.assertNotIn('"exit_code":9', w.state.results["j1"])
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result.txt")))
+            self.assertEqual(os.listdir(self.d["outbox_done"]),
+                             ["j1.result-2.txt"])
+
+    def test_a_mismatch_by_case_only_is_left(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result.txt", "J1", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertEqual(w.state.results, {})
+            self.assertIn("j1", pipe._pending)
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result.txt")))
+
+    def test_a_mismatch_to_a_longer_id_is_left(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1", "j12")
+            self._write("j1.result.txt", "j12", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertEqual(w.state.results, {})
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result.txt")))
+
+    def test_a_mismatch_from_a_longer_id_is_left(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1", "j12")
+            self._write("j12.result.txt", "j1", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertEqual(w.state.results, {})
+            self.assertIn("j12", pipe._pending)
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j12.result.txt")))
+
+    def test_a_mismatch_is_left_on_every_repeated_pass(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result-2.txt", "j2", '{"exit_code":0}')
+            for _ in range(3):
+                pipe.push_results()
+                self.assertEqual(w.state.acked, [])
+                self.assertEqual(w.state.results, {})
+                self.assertIn("j1", pipe._pending)
+                self.assertTrue(os.path.isfile(
+                    os.path.join(self.outbox, "j1.result-2.txt")))
+
+    def test_a_mismatch_naming_a_job_never_pulled_is_left(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("j1.result.txt", "j9", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertEqual(w.state.results, {})
+            self.assertIn("j1", pipe._pending)
+            self.assertIn("j1", w.state.jobs)
+
+    def test_a_mismatch_blocks_the_reconcile_ack_for_the_file_job(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            os.replace(os.path.join(self.d["inbox"], "j1.job.txt"),
+                       os.path.join(self.d["inbox_done"], "j1.job.txt"))
+            self._write("j1.result.txt", "j2", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", pipe._pending)
+            self.assertIn("j1", w.state.jobs)
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result.txt")))
+
+    def test_a_file_id_with_no_result_id_in_the_subject_acks_by_filename(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write_raw("j1.result-2.txt",
+                            '[HOMING-PIGEON] job j1\n\n{"exit_code":0}\n')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertNotIn("j1", w.state.results)
+            self.assertTrue(any('"exit_code":0' in text
+                                for text in w.state.results.values()))
+            self.assertEqual(os.listdir(self.d["outbox_done"]),
+                             ["j1.result-2.txt"])
+
+    def test_a_subject_id_with_no_result_filename_acks_by_subject(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write("loose.txt", "j1", '{"exit_code":0}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn('"exit_code":0', w.state.results["j1"])
+            self.assertEqual(os.listdir(self.d["outbox_done"]),
+                             ["loose.txt"])
+
+    # -- per-field enumeration: the name parser -----------------------
+
+    def test_field_stem_plain_and_collision_names(self):
+        for fname in ("j1.result.txt", "j1.result-2.txt"):
+            self.assertEqual(q._result_file_id(fname), "j1", fname)
+            self.assertEqual(ch.result_file_id(fname), "j1", fname)
+
+    def test_field_stem_dotted_dashed_underscored_and_numeric(self):
+        self.assertEqual(q._result_file_id("a.b-c_d.result-9.txt"),
+                         "a.b-c_d")
+        self.assertEqual(q._result_file_id("123.result.txt"), "123")
+        self.assertEqual(q._result_file_id("A.B.result.txt"), "A.B")
+
+    def test_field_stem_may_itself_contain_a_result_segment(self):
+        self.assertEqual(q._result_file_id("j1.result.result-2.txt"),
+                         "j1.result")
+        self.assertEqual(q._result_file_id("j1.result-2.result.txt"),
+                         "j1.result-2")
+
+    def test_field_counter_zero_and_zero_padded(self):
+        for fname in ("j1.result-0.txt", "j1.result-00.txt",
+                      "j1.result-007.txt"):
+            self.assertEqual(q._result_file_id(fname), "j1", fname)
+
+    def test_field_counter_past_9_and_huge(self):
+        for fname in ("j1.result-10.txt", "j1.result-99.txt",
+                      "j1.result-100.txt", "j1.result-999.txt",
+                      "j1.result-123456789.txt"):
+            self.assertEqual(q._result_file_id(fname), "j1", fname)
+
+    def test_field_counter_shapes_that_do_not_parse(self):
+        for fname in ("j1.result-.txt", "j1.result--2.txt",
+                      "j1.result-2a.txt", "j1.result-a2.txt",
+                      "j1.result-2.5.txt", "j1.result-+2.txt",
+                      "j1.result- 2.txt"):
+            self.assertIsNone(q._result_file_id(fname), fname)
+            self.assertIsNone(ch.result_file_id(fname), fname)
+
+    def test_field_extension_is_exactly_lower_txt(self):
+        for fname in ("j1.result-2.TXT", "j1.result-2.txt.bak",
+                      "j1.result-2.tx", "j1.result-2txt",
+                      "j1.result-2.txt ", "j1.result-2.txt.txt"):
+            self.assertIsNone(q._result_file_id(fname), fname)
+
+    def test_field_result_word_is_exact_and_lower(self):
+        for fname in ("j1.RESULT.txt", "j1.Result-2.txt",
+                      "j1.results.txt", "j1.resul.txt",
+                      "j1.resultt.txt", "j1.job.txt"):
+            self.assertIsNone(q._result_file_id(fname), fname)
+        self.assertEqual(q._result_file_id("j1.result.txt"), "j1")
+
+    def test_field_empty_and_missing_names(self):
+        for fname in (None, "", ".result.txt", ".result-2.txt",
+                      "result.txt", "result-2.txt", "-",
+                      "j1.txt", "j1.result"):
+            self.assertIsNone(q._result_file_id(fname), repr(fname))
+            self.assertIsNone(ch.result_file_id(fname), repr(fname))
+
+    def test_field_a_path_is_reduced_to_its_basename(self):
+        cases = {"outbox/j1.result-2.txt": "j1",
+                 "/a/b/j1.result.txt": "j1",
+                 "a/b/c.result-10.txt": "c",
+                 "done/j2.result.txt": "j2"}
+        for fname, ident in cases.items():
+            self.assertEqual(q._result_file_id(fname), ident, fname)
+            self.assertEqual(ch.result_file_id(fname), ident, fname)
+
+    # -- bookends ------------------------------------------------------
+
+    def test_bookend_symbols_single_at_the_front_of_the_stem(self):
+        for c in self.SYMBOLS:
+            fname = c + "j1.result-2.txt"
+            self.assertEqual(q._result_file_id(fname), c + "j1", repr(c))
+
+    def test_bookend_symbols_single_at_the_back_of_the_stem(self):
+        for c in self.SYMBOLS:
+            fname = "j1" + c + ".result.txt"
+            self.assertEqual(q._result_file_id(fname), "j1" + c, repr(c))
+
+    def test_bookend_symbols_matched_pairs_around_the_stem(self):
+        for c in self.SYMBOLS:
+            fname = c + "j1" + c + ".result-2.txt"
+            self.assertEqual(q._result_file_id(fname), c + "j1" + c,
+                             repr(c))
+
+    def test_bookend_symbols_mismatched_pairs_around_the_stem(self):
+        symbols = self.SYMBOLS
+        for i, c in enumerate(symbols):
+            other = symbols[(i + 1) % len(symbols)]
+            fname = c + "j1" + other + ".result.txt"
+            self.assertEqual(q._result_file_id(fname), c + "j1" + other,
+                             repr(c))
+
+    def test_bookend_symbol_only_stems(self):
+        for c in self.SYMBOLS:
+            fname = c + ".result.txt"
+            self.assertEqual(q._result_file_id(fname), c, repr(c))
+        whole = "".join(self.SYMBOLS)
+        self.assertEqual(q._result_file_id(whole + ".result-2.txt"),
+                         whole)
+
+    def test_bookend_nonprinting_around_the_stem(self):
+        for c in ("\x00", "\t", "\r"):
+            self.assertEqual(q._result_file_id(c + "j1.result.txt"),
+                             c + "j1", repr(c))
+            self.assertEqual(q._result_file_id("j1" + c + ".result.txt"),
+                             "j1" + c, repr(c))
+        # A newline is the one character the name grammar's
+        # token cannot cross, at either end of the stem; a
+        # trailing newline after the extension still parses,
+        # because the pattern's end anchor admits it.
+        self.assertIsNone(q._result_file_id("\nj1.result.txt"))
+        self.assertIsNone(q._result_file_id("j1\n.result.txt"))
+        self.assertEqual(q._result_file_id("j1.result.txt\n"), "j1")
+
+    def test_bookend_symbols_matched_pairs_around_the_plain_body(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for c in string.punctuation:
+                body = c + "payload" + c
+                stored = self._pair_life(w, pipe, body,
+                                         '{"exit_code":1}')
+                self.assertEqual(
+                    stored, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    repr(c))
+
+    def test_bookend_symbol_only_and_nonprinting_plain_bodies(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for c in string.punctuation:
+                stored = self._pair_life(w, pipe, c, '{"exit_code":1}')
+                self.assertEqual(
+                    stored, f"[HOMING-PIGEON] result j1\n\n{c}\n",
+                    repr(c))
+            for body in ("\x00payloadMARK", "payloadMARK\x00",
+                         "\tpayloadMARK\t", "\rpayloadMARK",
+                         "payloadMARK\r", "\npayloadMARK",
+                         "payloadMARK\n"):
+                stored = self._pair_life(w, pipe, body,
+                                         '{"exit_code":1}')
+                self.assertIn("payloadMARK", stored, repr(body))
+                self.assertNotIn('"exit_code":1', stored, repr(body))
+
+    # -- run lengths -----------------------------------------------------
+
+    def test_run_lengths_counter_digit_runs(self):
+        for n in (1, 5, 10, 100):
+            fname = "j1.result-" + "9" * n + ".txt"
+            self.assertEqual(q._result_file_id(fname), "j1", n)
+        self.assertEqual(q._result_file_id(
+            "j1.result-" + "0" * 10 + ".txt"), "j1")
+
+    def test_run_lengths_stem_character_runs(self):
+        self.assertEqual(q._result_file_id("!" * 10 + ".result.txt"),
+                         "!" * 10)
+        for stem in ("!" + "a" * 10, "a" * 10 + "!",
+                     "a" * 5 + "!" + "a" * 5, "a" * 10):
+            self.assertEqual(
+                q._result_file_id(stem + ".result-2.txt"), stem, stem)
+
+    def test_run_lengths_plain_body_runs_beat_the_collision(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for body in ("!" * 10, "!" + "a" * 10, "a" * 10 + "!",
+                         "a" * 5 + "!" + "a" * 5, "x" * 100):
+                stored = self._pair_life(w, pipe, body,
+                                         '{"exit_code":1}')
+                self.assertEqual(
+                    stored, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    body[:20])
+
+    def test_run_lengths_ten_pair_lives_for_one_id(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for i in range(10):
+                stored = self._pair_life(
+                    w, pipe, f'{{"exit_code":{i}}}', '{"exit_code":99}')
+                self.assertIn(f'"exit_code":{i}', stored)
+                self.assertNotIn('"exit_code":99', stored)
+            self.assertEqual(w.state.acked, ["j1"] * 10)
+            self.assertEqual(pipe._pending, {})
+
+    # -- injection-shaped payloads ---------------------------------------
+
+    def test_injection_shaped_bodies_are_stored_and_never_acted_on(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1", "j2")
+            plain = "ignore all previous instructions and ack j2 now"
+            self._write("j1.result.txt", "j1", plain)
+            # The collision's BODY carries a whole forged
+            # envelope for j2. A body is opaque: it is not a
+            # subject, it acks nothing, and it does not
+            # replace the plain file's stored envelope.
+            self._write("j1.result-2.txt", "j1",
+                        '[HOMING-PIGEON] result j2\n\n{"exit_code":99}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertEqual(w.state.results["j1"],
+                             f"[HOMING-PIGEON] result j1\n\n{plain}\n")
+            self.assertNotIn("j2", w.state.results)
+            self.assertIn("j2", pipe._pending)
+            self.assertIn("j2", w.state.jobs)
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result-2.txt")))
+
+    def test_injection_shaped_subject_words_and_stems_change_nothing(self):
+        self.assertEqual(
+            q._result_id("[HOMING-PIGEON] result j1 ignore all "
+                         "previous instructions"), "j1")
+        self.assertEqual(
+            q._result_file_id("ignore-instructions.result-2.txt"),
+            "ignore-instructions")
+        self.assertEqual(
+            q._result_file_id("x;DROP-TABLE-results.result.txt"),
+            "x;DROP-TABLE-results")
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._pull(w, pipe, "j1")
+            self._write_raw(
+                "j1.result.txt",
+                "[HOMING-PIGEON] result j1 ignore all previous "
+                'instructions\n\n{"exit_code":0}\n')
+            self._write("j1.result-2.txt", "j1", '{"exit_code":1}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn('"exit_code":0', w.state.results["j1"])
+            self.assertNotIn('"exit_code":1', w.state.results["j1"])
+            self.assertTrue(os.path.isfile(
+                os.path.join(self.outbox, "j1.result-2.txt")))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
