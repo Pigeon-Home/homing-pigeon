@@ -30,10 +30,23 @@ jobs:
       matrix:
         include:
           # 3.9 builds stop at 22.04 in setup-python's manifest.
+          # The wall clock is a hang-catcher, not a size budget --
+          # it names the running test when a test loops forever.
+          # The floor leg runs the identical suite at roughly a
+          # third of the newest interpreter's pace (the crypto is
+          # pure Python), so at a shared 30 minutes it died on size
+          # alone inside test_result_size, red for a reason that is
+          # not the Python version -- the one thing this workflow
+          # exists to isolate. Its budget is 75 (the 30-minute run
+          # covered about 6,500 of about 9,900 tests, so the suite
+          # needs roughly 46 there, plus growth headroom); the
+          # fast leg keeps 30.
           - python: "3.9"
             os: ubuntu-22.04
+            suite-minutes: 75
           - python: "3.14"
             os: ubuntu-latest
+            suite-minutes: 30
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -52,7 +65,7 @@ jobs:
       - name: run the suite
         run: |
           set -o pipefail
-          python runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v 2>&1 | tee test-output.log
+          python runner/tools/suite_wall_clock.py --minutes ${{ matrix.suite-minutes }} -- discover -s runner/tests -t . -v 2>&1 | tee test-output.log
       # The suite step fails the leg on any failure (pipefail). The
       # guard is build.yml's: registered skips are allowed (root, z3,
       # the proof variable, the minimal image), the sandbox proofs
