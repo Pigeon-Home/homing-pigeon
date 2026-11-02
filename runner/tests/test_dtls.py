@@ -30,6 +30,7 @@ import importlib
 import json
 import os
 import socket
+import string
 import subprocess
 import sys
 import tempfile
@@ -2199,6 +2200,798 @@ class DtlsPumpResultsLegsTest(unittest.TestCase):
         self.assertEqual(os.listdir(ch.dirs(channel)["outbox_done"]),
                          ["job-live.result-2.txt"])
 
+
+class DtlsResultStaysShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 9 (31-Oct-2026): a
+    DTLS result that landed after its session died was acked
+    into done, so the only copy was gone when the peer
+    re-asked -- and the seen-set would not run the job again.
+    The fix (81ef9ee5) keeps the file in the outbox until a
+    session can take it: _pump_results delivers only when
+    send_app produced datagrams AND every datagram actually
+    left (_send now returns True/False instead of None), a
+    fresh session is remembered against the job in
+    job_session, and the waiting log line is said once per
+    ident through _waiting_session. This family scattershots
+    everything around that failure: no session, the wrong
+    session, a case-variant session key, stale / empty / None
+    sessions, empty and falsy send_app results, a failure on
+    the first, middle and last datagram, falsy non-bool send
+    verdicts, the real _send's OSError leg, the once-only
+    waiting log and its reset, one waiting result beside a
+    delivered one, and the re-ask arriving through _on_job
+    itself. One regression test was never going to be enough
+    for a bug that took days of CPU to find.
+
+    Proof of work (2-Nov-2026). The unit tests are the 50
+    methods of this class: 20 hand-written seams, 8 per-field
+    tests, 10 bookend sweeps, 4 run-length sweeps, 4
+    injection-shaped tests and 4 edge tests. Per-field
+    enumeration: the pump's surface is fielded -- the ident
+    (from the result file's name), the session id in
+    job_session, the file name itself, the envelope subject,
+    the result body, and each datagram's address and bytes
+    with its own send verdict -- and each field gets its own
+    test in the per-field section, pinning that delivery
+    keys on the exact ident and session and carries subject,
+    body, address and datagram bytes verbatim. Bookends:
+    every printable ASCII symbol (string.punctuation, all
+    32) at the front AND the back of the body, the subject
+    and the session id, as singles, matched pairs,
+    mismatched pairs and symbol-only strings, plus NUL, tab,
+    CR and LF at both ends; the ident sweep uses every
+    symbol a file name can hold (all but the path
+    separator). Run lengths: runs of the odd character, runs
+    of 10 ordinary characters with the odd one at the front,
+    the back and the middle, and 10 waiting / failing pumps
+    before the delivery. The fuzzing was executed, not just
+    the tests written: runner/tools/de_dust_corpus.py grow
+    --target dtls --rounds 400 --seed 20261107 against the
+    banked dtls corpus (55 entries). Result: 400 rounds,
+    0 crashes, 0 slow, arcs unchanged at 728, slowest try
+    62 ms; the lost-result shape did not recur. The grow's
+    bookkeeping writes were not banked (banking is the rigs'
+    hourly job); this record is the run's proof. None of
+    this is exotic: it is combinatorics -- systematically
+    trying the combinations a hand-written list would never
+    reach, then pinning each answer as a test."""
+
+    # -- helpers ---------------------------------------------------
+
+    def _pipe(self):
+        tmp = tempfile.mkdtemp(prefix="hp-dtls-stays-")
+        channel = os.path.join(tmp, "channel")
+        cfg = {"shared_secret": SECRET, "port": 0,
+               "bind": "127.0.0.1"}
+        return dtls_ext.DtlsPipe(cfg, channel), channel
+
+    def _write(self, channel, ident, body, fname=None,
+               subject=None):
+        outbox = ch.dirs(channel)["outbox"]
+        os.makedirs(outbox, exist_ok=True)
+        fname = fname or ident + ".result.txt"
+        if subject is None:
+            subject = "[HOMING-PIGEON] result " + ident
+        with open(os.path.join(outbox, fname), "w",
+                  encoding="utf-8") as fh:
+            fh.write(ch.envelope(subject, body))
+        return fname
+
+    def _clear(self, pipe, channel):
+        d = ch.dirs(channel)
+        for key in ("outbox", "outbox_done"):
+            for name in os.listdir(d[key]):
+                path = os.path.join(d[key], name)
+                if os.path.isfile(path):
+                    os.remove(path)
+        pipe.job_session.clear()
+        pipe._waiting_session.clear()
+
+    def _wire(self, pipe, datagrams=(("127.0.0.1", b"dg"),),
+              send=True):
+        sent, calls = [], []
+
+        def send_app(sid, data):
+            sent.append((sid, data))
+            return list(datagrams)
+
+        def _send(dg, addr):
+            calls.append((dg, addr))
+            return send(dg, addr) if callable(send) else send
+
+        pipe.core.send_app = send_app
+        pipe._send = _send
+        return sent, calls
+
+    def _stays(self, channel, fname):
+        d = ch.dirs(channel)
+        self.assertIn(fname, os.listdir(d["outbox"]))
+        self.assertNotIn(fname, os.listdir(d["outbox_done"]))
+
+    def _done(self, channel, fname):
+        d = ch.dirs(channel)
+        self.assertNotIn(fname, os.listdir(d["outbox"]))
+        self.assertIn(fname, os.listdir(d["outbox_done"]))
+
+    def _expected(self, subject, body):
+        text = ch.envelope(subject, body)
+        if body and not body.endswith("\n"):
+            text += "\n"
+        return text.encode("utf-8")
+
+    def _deliver_after_wait(self, pipe, channel, ident, body,
+                            fname=None, subject=None,
+                            session="sx"):
+        fname = self._write(channel, ident, body, fname=fname,
+                            subject=subject)
+        pipe._pump_results()
+        self._stays(channel, fname)
+        pipe.job_session[ident] = session
+        sent, _calls = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        return sent
+
+    # -- hand-written seams ----------------------------------------
+
+    def test_no_session_keeps_result_across_repeated_pumps(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        for _ in range(5):
+            pipe._pump_results()
+            self._stays(channel, fname)
+
+    def test_session_for_another_job_does_not_take_it(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-b"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._stays(channel, fname)
+        self.assertEqual(sent, [])
+
+    def test_case_variant_session_key_does_not_take_it(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        for key in ("JOB-A", "Job-A", "job-A"):
+            pipe.job_session.clear()
+            pipe.job_session[key] = "s1"
+            sent, _ = self._wire(pipe)
+            pipe._pump_results()
+            self._stays(channel, fname)
+            self.assertEqual(sent, [], key)
+
+    def test_explicit_none_session_keeps_it(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = None
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._stays(channel, fname)
+        self.assertEqual(sent, [])
+
+    def test_empty_string_session_with_no_datagrams_keeps_it(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = ""
+        pipe.core.send_app = lambda sid, data: []
+        pipe._pump_results()
+        self._stays(channel, fname)
+
+    def test_stale_session_keeps_it_then_fresh_session_delivers(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "dead"
+        pipe.core.send_app = lambda sid, data: []
+        pipe._pump_results()
+        self._stays(channel, fname)
+        pipe.job_session["job-a"] = "fresh"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual([row[0] for row in sent], ["fresh"])
+
+    def test_send_app_returning_none_keeps_it(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        pipe.core.send_app = lambda sid, data: None
+        pipe._send = lambda dg, addr: True
+        pipe._pump_results()
+        self._stays(channel, fname)
+
+    def test_send_app_returning_empty_tuple_keeps_it(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        pipe.core.send_app = lambda sid, data: ()
+        pipe._send = lambda dg, addr: True
+        pipe._pump_results()
+        self._stays(channel, fname)
+
+    def test_first_datagram_failing_keeps_it_and_retry_sends_all(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        dgs = [("127.0.0.1", b"d1"), ("127.0.0.1", b"d2")]
+        sent, calls = self._wire(pipe, datagrams=dgs,
+                                 send=lambda dg, addr: False)
+        pipe._pump_results()
+        self._stays(channel, fname)
+        self.assertEqual(calls, [(b"d1", "127.0.0.1")])
+        sent2, calls2 = self._wire(pipe, datagrams=dgs)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual(calls2, [(b"d1", "127.0.0.1"),
+                                  (b"d2", "127.0.0.1")])
+
+    def test_last_datagram_failing_keeps_it(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        dgs = [("127.0.0.1", b"d%d" % i) for i in range(3)]
+        verdicts = iter([True, True, False])
+        sent, calls = self._wire(
+            pipe, datagrams=dgs,
+            send=lambda dg, addr: next(verdicts))
+        pipe._pump_results()
+        self._stays(channel, fname)
+        self.assertEqual(len(calls), 3)
+
+    def test_middle_datagram_failing_short_circuits_the_rest(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        dgs = [("127.0.0.1", b"d%d" % i) for i in range(3)]
+        verdicts = iter([True, False, True])
+        sent, calls = self._wire(
+            pipe, datagrams=dgs,
+            send=lambda dg, addr: next(verdicts))
+        pipe._pump_results()
+        self._stays(channel, fname)
+        # all() stops at the first failure: d3 is not attempted
+        # this pass, and the file is retried whole next pass.
+        self.assertEqual([dg for dg, addr in calls],
+                         [b"d0", b"d1"])
+
+    def test_send_returning_none_keeps_it(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        sent, _ = self._wire(pipe, send=None)
+        pipe._pump_results()
+        self._stays(channel, fname)
+        self.assertEqual(len(sent), 1)
+
+    def test_send_returning_zero_keeps_it(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        self._wire(pipe, send=0)
+        pipe._pump_results()
+        self._stays(channel, fname)
+
+    def test_send_returning_truthy_non_bool_delivers(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        for verdict in (1, "sent", [1]):
+            self._clear(pipe, channel)
+            fname = self._write(channel, "job-a", "the answer")
+            pipe.job_session["job-a"] = "s1"
+            self._wire(pipe, send=verdict)
+            pipe._pump_results()
+            self._done(channel, fname)
+
+    def test_real_send_oserror_returns_false_and_keeps_it(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        pipe.core.send_app = lambda sid, data: [("127.0.0.1", b"dg")]
+        real_sock, pipe.sock = pipe.sock, mock.Mock()
+        pipe.sock.sendto.side_effect = OSError("gone")
+        try:
+            self.assertIs(pipe._send(b"dg", ("127.0.0.1", 9)),
+                          False)
+            pipe._pump_results()
+        finally:
+            real_sock.close()
+        self._stays(channel, fname)
+
+    def test_real_send_success_returns_true_and_delivers(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        pipe.core.send_app = lambda sid, data: [("127.0.0.1", b"dg")]
+        real_sock, pipe.sock = pipe.sock, mock.Mock()
+        pipe.sock.sendto.return_value = 2
+        try:
+            self.assertIs(pipe._send(b"dg", ("127.0.0.1", 9)),
+                          True)
+            pipe._pump_results()
+        finally:
+            real_sock.close()
+        self._done(channel, fname)
+
+    def test_waiting_is_logged_once_across_pumps(self):
+        pipe, channel = self._pipe()
+        self._write(channel, "job-a", "the answer")
+        with mock.patch.object(ch, "log") as log_mock:
+            for _ in range(5):
+                pipe._pump_results()
+        waiting = [c for c in log_mock.call_args_list
+                   if c.args and "is not on a session yet"
+                   in c.args[0]]
+        self.assertEqual(len(waiting), 1)
+        self.assertIn("job-a", pipe._waiting_session)
+
+    def test_waiting_is_logged_again_for_a_new_result_after_delivery(self):
+        pipe, channel = self._pipe()
+        with mock.patch.object(ch, "log") as log_mock:
+            self._write(channel, "job-a", "first")
+            pipe._pump_results()
+            pipe.job_session["job-a"] = "s1"
+            self._wire(pipe)
+            pipe._pump_results()
+            self._done(channel, "job-a.result.txt")
+            del pipe.job_session["job-a"]
+            self._write(channel, "job-a", "second")
+            pipe._pump_results()
+            # The second file stays in the outbox; the done
+            # listing still holds the first delivery of the
+            # same name, so only the outbox side is checked.
+            self.assertIn("job-a.result.txt", os.listdir(
+                ch.dirs(channel)["outbox"]))
+        waiting = [c for c in log_mock.call_args_list
+                   if c.args and "is not on a session yet"
+                   in c.args[0]]
+        self.assertEqual(len(waiting), 2)
+
+    def test_one_waiting_result_does_not_block_a_delivered_one(self):
+        pipe, channel = self._pipe()
+        waiting = self._write(channel, "job-wait", "wait")
+        ready = self._write(channel, "job-ready", "ready")
+        pipe.job_session["job-ready"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._stays(channel, waiting)
+        self._done(channel, ready)
+        self.assertEqual([row[0] for row in sent], ["s1"])
+        self.assertIn(b"ready", sent[0][1])
+
+    def test_two_waiting_results_deliver_on_their_own_sessions(self):
+        pipe, channel = self._pipe()
+        fa = self._write(channel, "job-a", "answer a")
+        fb = self._write(channel, "job-b", "answer b")
+        pipe._pump_results()
+        self._stays(channel, fa)
+        self._stays(channel, fb)
+        pipe.job_session["job-a"] = "sa"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fa)
+        self._stays(channel, fb)
+        pipe.job_session["job-b"] = "sb"
+        pipe._pump_results()
+        self._done(channel, fb)
+        self.assertEqual([row[0] for row in sent], ["sa", "sb"])
+
+    # -- per-field enumeration --------------------------------------
+    # The pump's fields, one test each: ident, session id,
+    # file name, subject, body, datagram bytes, datagram
+    # address, and the waiting set.
+
+    def test_field_ident_comes_from_the_file_name_not_the_subject(self):
+        pipe, channel = self._pipe()
+        fname = self._write(
+            channel, "job-file", "the answer",
+            subject="[HOMING-PIGEON] result job-subject")
+        pipe.job_session["job-subject"] = "wrong"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._stays(channel, fname)
+        self.assertEqual(sent, [])
+        pipe.job_session["job-file"] = "right"
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual([row[0] for row in sent], ["right"])
+
+    def test_field_session_id_is_passed_to_send_app_verbatim(self):
+        pipe, channel = self._pipe()
+        weird = "session 1\twith spaces"
+        sent = self._deliver_after_wait(
+            pipe, channel, "job-a", "the answer", session=weird)
+        self.assertEqual([row[0] for row in sent], [weird])
+
+    def test_field_suffixed_file_name_waits_and_delivers_as_its_job(self):
+        pipe, channel = self._pipe()
+        sent = self._deliver_after_wait(
+            pipe, channel, "job-a", "the answer",
+            fname="job-a.result-10.txt")
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(
+            os.listdir(ch.dirs(channel)["outbox_done"]),
+            ["job-a.result-10.txt"])
+
+    def test_field_subject_is_carried_verbatim_after_the_wait(self):
+        pipe, channel = self._pipe()
+        subject = "[HOMING-PIGEON] result job-a (final, v2)"
+        sent = self._deliver_after_wait(
+            pipe, channel, "job-a", "the answer", subject=subject)
+        self.assertEqual(sent[0][1],
+                         self._expected(subject, "the answer"))
+
+    def test_field_body_is_carried_verbatim_after_the_wait(self):
+        pipe, channel = self._pipe()
+        body = "line one\nline two\n\nline four"
+        sent = self._deliver_after_wait(
+            pipe, channel, "job-a", body)
+        self.assertIn(body.encode("utf-8"), sent[0][1])
+
+    def test_field_datagram_bytes_reach_send_unchanged(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        blob = bytes(range(256))
+        sent, calls = self._wire(
+            pipe, datagrams=(("127.0.0.1", blob),))
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual(calls, [(blob, "127.0.0.1")])
+
+    def test_field_each_datagram_keeps_its_own_address(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        pipe.job_session["job-a"] = "s1"
+        dgs = [(("127.0.0.1", 1111), b"one"),
+               (("10.0.0.2", 2222), b"two")]
+        sent, calls = self._wire(pipe, datagrams=dgs)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual(calls, [(b"one", ("127.0.0.1", 1111)),
+                                 (b"two", ("10.0.0.2", 2222))])
+
+    def test_field_waiting_set_is_per_ident(self):
+        pipe, channel = self._pipe()
+        self._write(channel, "job-a", "a")
+        self._write(channel, "job-b", "b")
+        with mock.patch.object(ch, "log") as log_mock:
+            pipe._pump_results()
+            pipe._pump_results()
+        waiting = [c.args[0] for c in log_mock.call_args_list
+                   if c.args and "is not on a session yet"
+                   in c.args[0]]
+        self.assertEqual(len(waiting), 2)
+        self.assertEqual(pipe._waiting_session,
+                         {"job-a", "job-b"})
+
+    # -- bookends: every symbol, front AND back ---------------------
+
+    def test_bookend_body_front_symbols_wait_then_deliver_intact(self):
+        pipe, channel = self._pipe()
+        subject = "[HOMING-PIGEON] result job-bk"
+        for symbol in string.punctuation:
+            self._clear(pipe, channel)
+            body = symbol + "the answer"
+            sent = self._deliver_after_wait(
+                pipe, channel, "job-bk", body)
+            self.assertEqual(sent[0][1],
+                             self._expected(subject, body),
+                             symbol)
+
+    def test_bookend_body_back_symbols_wait_then_deliver_intact(self):
+        pipe, channel = self._pipe()
+        subject = "[HOMING-PIGEON] result job-bk"
+        for symbol in string.punctuation:
+            self._clear(pipe, channel)
+            body = "the answer" + symbol
+            sent = self._deliver_after_wait(
+                pipe, channel, "job-bk", body)
+            self.assertEqual(sent[0][1],
+                             self._expected(subject, body),
+                             symbol)
+
+    def test_bookend_body_matched_pairs_wait_then_deliver_intact(self):
+        pipe, channel = self._pipe()
+        subject = "[HOMING-PIGEON] result job-bk"
+        for symbol in string.punctuation:
+            self._clear(pipe, channel)
+            body = symbol + "the answer" + symbol
+            sent = self._deliver_after_wait(
+                pipe, channel, "job-bk", body)
+            self.assertEqual(sent[0][1],
+                             self._expected(subject, body),
+                             symbol)
+
+    def test_bookend_body_mismatched_pairs_wait_then_deliver_intact(self):
+        pipe, channel = self._pipe()
+        subject = "[HOMING-PIGEON] result job-bk"
+        symbols = string.punctuation
+        rotated = symbols[1:] + symbols[:1]
+        for front, back in zip(symbols, rotated):
+            self._clear(pipe, channel)
+            body = front + "the answer" + back
+            sent = self._deliver_after_wait(
+                pipe, channel, "job-bk", body)
+            self.assertEqual(sent[0][1],
+                             self._expected(subject, body),
+                             (front, back))
+
+    def test_bookend_body_symbol_only_strings_wait_then_deliver(self):
+        pipe, channel = self._pipe()
+        subject = "[HOMING-PIGEON] result job-bk"
+        bodies = list(string.punctuation) + [
+            string.punctuation, ";;;", "---", "\"'\""]
+        for body in bodies:
+            self._clear(pipe, channel)
+            sent = self._deliver_after_wait(
+                pipe, channel, "job-bk", body)
+            self.assertEqual(sent[0][1],
+                             self._expected(subject, body),
+                             body)
+
+    def test_bookend_body_nonprinting_at_both_ends(self):
+        pipe, channel = self._pipe()
+        subject = "[HOMING-PIGEON] result job-bk"
+        for char in ("\x00", "\t", "\r", "\n"):
+            for body in (char + "the answer",
+                         "the answer" + char,
+                         char + "the answer" + char,
+                         char):
+                self._clear(pipe, channel)
+                sent = self._deliver_after_wait(
+                    pipe, channel, "job-bk", body)
+                # The channel reads result files in text
+                # mode, so a lone CR is read back as LF
+                # (universal newlines) before the pump ever
+                # sees the body; the other three characters
+                # pass through unchanged.
+                read_back = body.replace("\r", "\n")
+                self.assertEqual(
+                    sent[0][1],
+                    self._expected(subject, read_back),
+                    repr(body))
+
+    def test_bookend_subject_front_and_back_symbols(self):
+        pipe, channel = self._pipe()
+        base = "[HOMING-PIGEON] result job-bk"
+        for symbol in string.punctuation:
+            for subject in (symbol + base, base + symbol):
+                self._clear(pipe, channel)
+                sent = self._deliver_after_wait(
+                    pipe, channel, "job-bk", "the answer",
+                    subject=subject)
+                self.assertEqual(
+                    sent[0][1],
+                    self._expected(subject, "the answer"),
+                    subject)
+
+    def test_bookend_subject_matched_and_mismatched_pairs(self):
+        pipe, channel = self._pipe()
+        base = "[HOMING-PIGEON] result job-bk"
+        symbols = string.punctuation
+        rotated = symbols[1:] + symbols[:1]
+        pairs = [(s, s) for s in symbols]
+        pairs += list(zip(symbols, rotated))
+        for front, back in pairs:
+            self._clear(pipe, channel)
+            subject = front + base + back
+            sent = self._deliver_after_wait(
+                pipe, channel, "job-bk", "the answer",
+                subject=subject)
+            self.assertEqual(
+                sent[0][1],
+                self._expected(subject, "the answer"),
+                (front, back))
+
+    def test_bookend_session_id_symbols_are_passed_verbatim(self):
+        pipe, channel = self._pipe()
+        for symbol in string.punctuation:
+            for session in (symbol + "s1", "s1" + symbol,
+                            symbol + "s1" + symbol, symbol):
+                self._clear(pipe, channel)
+                sent = self._deliver_after_wait(
+                    pipe, channel, "job-bk", "the answer",
+                    session=session)
+                self.assertEqual([row[0] for row in sent],
+                                 [session], session)
+
+    def test_bookend_ident_symbols_a_file_name_can_hold(self):
+        # Every printable symbol except the path separator:
+        # a "/" cannot appear in a file name at all, so it is
+        # the one symbol this surface cannot take.
+        pipe, channel = self._pipe()
+        for symbol in string.punctuation.replace("/", ""):
+            for ident in (symbol + "job-bk", "job-bk" + symbol):
+                self._clear(pipe, channel)
+                sent = self._deliver_after_wait(
+                    pipe, channel, ident, "the answer")
+                self.assertEqual(len(sent), 1, ident)
+
+    # -- run lengths: counts, not just characters -------------------
+
+    def test_runs_of_the_odd_character_as_the_whole_body(self):
+        pipe, channel = self._pipe()
+        subject = "[HOMING-PIGEON] result job-run"
+        for body in (";" * 10, ";" * 100, "\x00" * 10,
+                     "-" * 10):
+            self._clear(pipe, channel)
+            sent = self._deliver_after_wait(
+                pipe, channel, "job-run", body)
+            self.assertEqual(sent[0][1],
+                             self._expected(subject, body),
+                             repr(body[:12]))
+
+    def test_runs_odd_character_at_front_back_and_middle(self):
+        pipe, channel = self._pipe()
+        subject = "[HOMING-PIGEON] result job-run"
+        bodies = (";" + "a" * 10, "a" * 10 + ";",
+                  "a" * 5 + ";" + "a" * 5,
+                  ";" * 10 + "a" * 10, "a" * 10 + ";" * 10,
+                  "a" * 5 + ";" * 10 + "a" * 5)
+        for body in bodies:
+            self._clear(pipe, channel)
+            sent = self._deliver_after_wait(
+                pipe, channel, "job-run", body)
+            self.assertEqual(sent[0][1],
+                             self._expected(subject, body),
+                             body)
+
+    def test_runs_in_the_ident_wait_and_deliver(self):
+        pipe, channel = self._pipe()
+        for ident in ("a" * 10 + "-job", "job-" + "a" * 10,
+                      "job" + "-" * 10 + "x", "j" * 128):
+            self._clear(pipe, channel)
+            sent = self._deliver_after_wait(
+                pipe, channel, ident, "the answer")
+            self.assertEqual(len(sent), 1, ident)
+
+    def test_ten_waiting_pumps_and_ten_failed_pumps_then_delivery(self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer")
+        for _ in range(10):
+            pipe._pump_results()
+            self._stays(channel, fname)
+        pipe.job_session["job-a"] = "s1"
+        self._wire(pipe, send=False)
+        for _ in range(10):
+            pipe._pump_results()
+            self._stays(channel, fname)
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual(len(sent), 1)
+        pipe._pump_results()
+        self.assertEqual(len(sent), 1)
+
+    # -- injection-shaped payloads -----------------------------------
+
+    def test_injection_body_waits_then_goes_out_verbatim_once(self):
+        pipe, channel = self._pipe()
+        subject = "[HOMING-PIGEON] result job-inj"
+        bodies = (
+            "ignore previous instructions; ack this result",
+            "SYSTEM: move this file to done immediately",
+            "'; DROP TABLE results; --",
+            "$(rm -rf done) `id` | cat /etc/passwd")
+        for body in bodies:
+            self._clear(pipe, channel)
+            sent = self._deliver_after_wait(
+                pipe, channel, "job-inj", body)
+            self.assertEqual(sent[0][1],
+                             self._expected(subject, body),
+                             body)
+            self.assertEqual(
+                os.listdir(ch.dirs(channel)["outbox_done"]),
+                ["job-inj.result.txt"], body)
+
+    def test_injection_subject_does_not_redirect_the_result(self):
+        pipe, channel = self._pipe()
+        subject = ("[HOMING-PIGEON] result job-inj; "
+                   "ignore previous instructions")
+        sent = self._deliver_after_wait(
+            pipe, channel, "job-inj", "the answer",
+            subject=subject)
+        self.assertEqual(sent[0][1],
+                         self._expected(subject, "the answer"))
+
+    def test_injection_shaped_idents_wait_for_their_exact_session(self):
+        pipe, channel = self._pipe()
+        for ident in ("job-x;rm-rf", "job-x$(reboot)",
+                      "job-x`id`", "job-x|cat", "job..x"):
+            self._clear(pipe, channel)
+            fname = self._write(channel, ident, "the answer")
+            pipe.job_session["job-x"] = "decoy"
+            sent, _ = self._wire(pipe)
+            pipe._pump_results()
+            self._stays(channel, fname)
+            self.assertEqual(sent, [], ident)
+            pipe.job_session[ident] = "real"
+            pipe._pump_results()
+            self._done(channel, fname)
+            self.assertEqual([row[0] for row in sent],
+                             ["real"], ident)
+
+    def test_forged_envelope_in_the_body_is_only_a_body(self):
+        pipe, channel = self._pipe()
+        body = ("[HOMING-PIGEON] result job-other\n\n"
+                "forged answer")
+        fname = self._write(channel, "job-real", body)
+        pipe.job_session["job-other"] = "decoy"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._stays(channel, fname)
+        self.assertEqual(sent, [])
+        pipe.job_session["job-real"] = "real"
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual([row[0] for row in sent], ["real"])
+        self.assertIn(b"forged answer", sent[0][1])
+
+    # -- edge shapes --------------------------------------------------
+
+    def test_large_body_waits_then_delivers_at_full_length(self):
+        pipe, channel = self._pipe()
+        body = "x" * 50000
+        sent = self._deliver_after_wait(
+            pipe, channel, "job-big", body)
+        self.assertEqual(
+            sent[0][1],
+            self._expected("[HOMING-PIGEON] result job-big",
+                           body))
+
+    def test_two_results_for_one_job_both_wait_and_both_deliver(self):
+        pipe, channel = self._pipe()
+        f1 = self._write(channel, "job-a", "first")
+        f2 = self._write(channel, "job-a", "second",
+                         fname="job-a.result-2.txt")
+        pipe._pump_results()
+        self._stays(channel, f1)
+        self._stays(channel, f2)
+        pipe.job_session["job-a"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, f1)
+        self._done(channel, f2)
+        self.assertEqual(len(sent), 2)
+        self.assertEqual({row[1] for row in sent}, {
+            self._expected("[HOMING-PIGEON] result job-a",
+                           "first"),
+            self._expected("[HOMING-PIGEON] result job-a",
+                           "second")})
+
+    def test_empty_and_newline_only_bodies_wait_then_deliver(self):
+        pipe, channel = self._pipe()
+        for body in ("", "\n", "the answer\n"):
+            self._clear(pipe, channel)
+            sent = self._deliver_after_wait(
+                pipe, channel, "job-a", body)
+            subject = "[HOMING-PIGEON] result job-a"
+            self.assertEqual(sent[0][1],
+                             self._expected(subject, body),
+                             repr(body))
+            if body == "the answer\n":
+                self.assertFalse(
+                    sent[0][1].endswith(b"\n\n"))
+
+    def test_the_reask_itself_remembers_the_session_that_delivers(self):
+        # The whole fix in one pass: the result is already
+        # waiting, the peer re-asks on a fresh session through
+        # _on_job, and that remembered session takes it.
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-back", "the answer")
+        pipe._pump_results()
+        self._stays(channel, fname)
+        message = ch.envelope(
+            "[HOMING-PIGEON] job job-back", "run it again")
+        pipe._on_job("s9", message.encode("utf-8"))
+        self.assertEqual(pipe.job_session.get("job-back"),
+                         "s9")
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual([row[0] for row in sent], ["s9"])
+        self.assertIn(b"the answer", sent[0][1])
 
 class DtlsRunOnceLegsTest(unittest.TestCase):
     """Queue A refill: DtlsPipe.run_once's socket legs
