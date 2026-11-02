@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.118 - 2026-11-02
+
+- Fix: the python-range floor leg (3.9) gets a 75-minute wall-clock budget, so the suite is not killed on size alone; the 3.14 leg stays at 30 minutes.
+- Tests: the redirect error URL is read as filename so the test passes on 3.9, and the duplicated alert-47 host test copy is dropped.
+
 ## 3.15.117 - 2026-11-02
 
 - Docs: the future list gains the DTLS over email transport extension note.
