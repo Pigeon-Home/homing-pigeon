@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.107 - 2026-11-01
+
+- DTLS: the platform disclosure object matches the -02 draft, its code point moves to the private-use range, and the extension is offered in the ClientHello and sent only when offered.
+- Proofs: the final consistency pass records one final position across the plan, the properties, the stage records, the reasoning file, and the security model.
+- The corpus banked since 3.15.106 rides along (Germany bank 28).
+
 ## 3.15.106 - 2026-11-01
 
 - Docs: a proposed IETF -03 delta is recorded, with no change to the posted drafts.
