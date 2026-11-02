@@ -1,0 +1,122 @@
+Proposed delta: -02 to -03, version 1 only. Not posted.
+Nothing in draft-slutsky-homing-pigeon-02.md was edited to
+produce this file. The reference implementation was not
+edited either. It still sends extension type 0xFE00 and
+the old greeting members. This file is the text to read
+before either of those changes.
+
+Version 2 has no proposed change. Its -02 revision is a
+version bump and an em-dash pass.
+
+================ companion name ================
+
+Two places still name draft-slutsky-homing-pigeon-v2-00.
+That revision is two behind the posted v2 draft.
+
+--- the reference block
+-      Internet-Draft: draft-slutsky-homing-pigeon-v2-00
++      Internet-Draft: draft-slutsky-homing-pigeon-v2
+
+--- Versions in this document
+-The companion draft that now carries the name draft-slutsky-homing-pigeon-v2-00 {{I-D.slutsky-homing-pigeon-v2}} is a different document:
++The companion draft draft-slutsky-homing-pigeon-v2 {{I-D.slutsky-homing-pigeon-v2}} is a different document:
+
+The citation should not carry a revision number. The
+datatracker name without one stays pointed at the current
+revision.
+
+================ subject grammar ================
+
+word-char = %x21-10FFFF overlaps gap-char (U+00A0, U+1680,
+U+2000-U+200A, and the rest of the gap set). The prose says
+the prose wins and invites the reader to finish the ABNF.
+The code in runner/wire/subject.py already matches the
+complement of the gap set, and it treats a unit separator
+as part of a word. The ABNF cannot consume U+001F at all.
+
+Replace the rule and delete the sentence that asks the
+reader to close it.
+
+-word-char      = %x21-10FFFF ; any code point that is not a gap-char
+-job-id         = 1*128 job-id-char
+-job-id-char    = ALPHA / DIGIT / "." / "_" / "-"
++; every code point that is not a gap-char
++word-char      = %x00-08 / %x0E-1F / %x21-9F / %xA1-167F
++               / %x1681-1FFF / %x200B-2027 / %x202A-202E
++               / %x2030-205E / %x2060-2FFF / %x3001-FEFE
++               / %xFF00-10FFFF
++job-id         = 1*128 word-char
+
+-`word-char` excludes the gap set by the prose of this section; a reader that wants it closed in ABNF writes the ranges out. A control character other than those listed in `gap-char` is part of a word, not a gap between two, so `[HOMING-PIGEON]<US>job x` names no job.
++A control character other than those listed in `gap-char` is part of a word, not a gap between two, so `[HOMING-PIGEON]<US>job x` names no job.
+
+job-id was ALPHA / DIGIT / "." / "_" / "-". The reference
+accepts any non-gap token, so a colon in an id is a job in
+the code and was not a job in the -02 grammar. The proposed
+rule uses the same characters as a word, capped at 128.
+The reference does not enforce 128. That enforcement is
+not part of this delta. `.` and `..` stay forbidden by the
+prose already in the section.
+
+================ the disclosure object ================
+
+The -02 sentence "in exactly this form" is false. The
+reference sends `type`, `transport`, `v`, and a trailing
+newline as well as `disclosure` and `platform`. This delta
+does not remove those members from the code. It stops the
+draft from claiming the example is what the program sends,
+and it tells a receiver to ignore members it does not know,
+so today's sender stays readable.
+
+-The reference implementation includes the platform disclosure in the handshake in exactly this form: it answers the offer on every handshake, at the tier its local configuration sets.
++A receiver MUST ignore object members it does not recognize. The reference implementation answers the offer on every handshake, at the tier its local configuration sets. The object it sends is the object above, plus the members `type`, `transport`, and `v` carried by the earlier greeting, and a trailing newline. Those extra members are facts of that program. They are not part of this specification, and a receiver MUST NOT require them.
+
+================ the code point ================
+
+-02 asks IANA for `platform_info` and leaves the value TBD.
+The reference sends 0xFE00 and its comment calls that
+private use. RFC 8447 reserves values whose first byte is
+255 for Private Use. 0xFE00 is 65024, first byte 254,
+which is Specification Required and currently unassigned.
+0xFF01 is renegotiation_info and is not available.
+
+Proposed addition to the IANA paragraph, after the TBD
+sentence:
+
++Until IANA assigns a value, this document uses 0xFFA0 as
++the interim type. 0xFFA0 is Private Use (first byte 255)
++and is not an assignment. Implementations of this
++revision send 0xFFA0. 0xFE00 is not Private Use and is
++not this extension.
+
+This delta does not change the code. The reference keeps
+sending 0xFE00 until this text is the posted revision and
+the code is told to follow it. Moving the type first would
+make the posted -02 and the program disagree in a new way.
+
+================ the ephemeral dependency ================
+
+The security argument is right for this profile, and it
+depends on `psk_ke` staying forbidden. Add one sentence
+to "The platform disclosure", after the sentence that
+names the ephemeral exchange:
+
++This placement depends on that prohibition. Were `psk_ke`
++permitted, the handshake keys would derive from the
++pre-shared key alone, and every holder of the secret
++could read the disclosure of a session it did not take
++part in. This document does not permit that mode.
+
+================ not in this delta ================
+
+- No edit to either posted draft.
+- No edit to the extension type or the disclosure object
+  in the reference implementation.
+- No idnits output. STATUS.md says that output is filed
+  for each draft. The -02 directory has the xml, the txt,
+  and the html, and no idnits file. That is a filing chore
+  for the revision that is actually rendered.
+- No change to version 2.
+- The trim list in trim-02.md is untouched. The one
+  sentence this delta rewrites ("exactly this form") is
+  already on that list.
