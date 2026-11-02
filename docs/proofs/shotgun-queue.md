@@ -221,13 +221,55 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 4203d661 (31-Oct-2026)
 - Existing tests: test_transport_queues.py (39 in file)
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (UnreadableResultShotgunTest in
+  test_transport_queues.py): a result whose read fails is set
+  aside with its refusal and never finishes the job — the
+  read-error shapes (every OSError variant), the set-aside
+  pair, the refusal reason's one-line shape, and the listing
+  retried. Landed on main 2-Nov-2026 (8ba79990; authored in a
+  parallel worktree and spliced beside item 7's family after a
+  tail conflict); the file runs green (189 tests in the file
+  with items 7 and 11 landed, 0 skipped), no live bug exposed,
+  no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  (channel, file-name stem, collision suffix, refusal-reason
+  text and shape, content subject, content body bytes, pending
+  key) and the bookend / run-length sweeps are carried in the
+  class docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target stash --rounds
+  400 --seed 20261109, run locally against the banked stash
+  corpus (31 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 20, slowest try 63 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 7. A symlink result is not followed, and does not finish the job
 - Fixed: ab721ef9 (31-Oct-2026)
 - Existing tests: test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (SymlinkResultShotgunTest in
+  test_transport_queues.py): a result that is a symlink is
+  refused unread and set aside with its refusal — links to a
+  file, a directory, missing targets, chains and loops,
+  absolute and relative targets, a forged envelope behind a
+  link, links inside failed/, and traversal-shaped ids landing
+  inside failed/. Landed on main 2-Nov-2026 (7159cf8e); the
+  file runs green (189 tests in the file with items 6 and 11
+  landed, 0 skipped — the family's only possible skip is the
+  already-registered "cannot create a symlink here", which did
+  not trigger), no live bug exposed, no production code
+  changed.
+- Proof of work (per the method section): per-field enumeration
+  (channel, file name, collision counters including past 9,
+  non-result names, dotted/dashed stems, the result_file_id
+  name table, cross-channel isolation) and the bookend /
+  run-length sweeps are carried in the class docstring in the
+  repo. Fuzz executed: runner/tools/de_dust_corpus.py grow
+  --target race_stash --rounds 400 --seed 20261110, run locally
+  against the banked race_stash corpus (64 entries). Result:
+  400 rounds, 0 crashes, 0 slow, arcs unchanged at 193,
+  slowest try 47 ms. The grow's bookkeeping writes were
+  reverted and are not banked (banking is the rigs' hourly job).
 
 ### 8. A result that cannot be built into mail is not treated as sent
 - Fixed: 6ed7281e (31-Oct-2026)
@@ -280,13 +322,54 @@ Applied to every item on this queue, item 1 included:
 - Fixed: a3cec2fc (31-Oct-2026)
 - Existing tests: test_transports.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (NatsPublishAckShotgunTest in
+  test_transports.py): the publish is not done until the
+  broker's answer comes back — PONG, -ERR, +OK, PING, MSG,
+  unknown lines, silence, a closed socket, a send failure and
+  a passed deadline at the flush, and the ack ordering and
+  retry shapes through the pipe, all against the file's
+  scripted socket fake. Landed on main 2-Nov-2026 (157e5d0c);
+  the file runs green (163 tests in the file, 0 skipped), no
+  live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  (result file name, result subject and its job id, result
+  body, subject prefix, client timeout against the flush
+  deadline) and the bookend / run-length sweeps are carried in
+  the class docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261111, run locally against the banked
+  channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 142, slowest try 61 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 11. A result from the finished life does not ack the next one
 - Fixed: bfb3a790 (31-Oct-2026)
 - Existing tests: test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (StaleResultDoesNotAckShotgunTest
+  in test_transport_queues.py): a stored result envelope from
+  a job's finished life does not ack a later lease of the same
+  id — the stored-envelope match by ident, by suffixed name
+  and by body id, stale and fresh envelopes side by side, and
+  the next life's own result posting normally. Landed on main
+  2-Nov-2026 (c2dbd567; authored in a parallel worktree and
+  spliced beside items 6 and 7 after tail conflicts); the file
+  runs green (189 tests in the file, 0 skipped), no live bug
+  exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed: the queue's named
+  target for this item, runs, is a records file and not a grow
+  target in this tree, so the corpus machinery ran against the
+  nearest target, channels — the channel inbox/result surface
+  the queues pipe is built on — with the same rounds and seed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261112 against the banked channels
+  corpus (11 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 142, slowest try 37 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 12. An unreadable refusal is still the job in its name
 - Fixed: 9d8493c3 (31-Oct-2026)
