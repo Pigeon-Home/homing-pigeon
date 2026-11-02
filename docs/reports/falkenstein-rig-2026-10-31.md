@@ -482,7 +482,14 @@ the run found a third:
   leftover runner processes by name and waits for them to
   be gone before running the installer, and captures the
   installer's own output beside the payload. Both defects
-  want fixing in the kit at the source, with tests.
+  are fixed in the kit at the source (commit 53e09554): the
+  applier decodes the fetched SHA384SUMS from bytes to text
+  before matching, and after the task stop it force-kills
+  leftover runner processes by name and waits for them to
+  be gone before the installer runs — the same two changes
+  this rig's installed copy carries — each pinned by a test
+  in runner/tests/test_remote_upgrade_kit.py that failed on
+  the kit as shipped.
 
 The measured upgrade (attempt 3, staging job 0015d70f,
 exit 0 under the upgrade key): the applier cycle began at
@@ -521,8 +528,9 @@ pi-light, and the upgrade policy exactly as re-pinned.
 2. The Windows remote-upgrade applier: installed and proven
    live (see the forced-run addendum above). The two kit
    defects it exposed — the sums read as bytes, and the stop
-   step that leaves the runner's processes alive — want
-   fixing in the kit at the source, with tests.
+   step that leaves the runner's processes alive — are
+   fixed in the kit at the source (commit 53e09554), with
+   tests.
 3. Windows scenario runs, hammering the rig over the next
    couple of days: protection probes, timeouts, output
    shapes, restart resilience, and fuzzing slices on the
