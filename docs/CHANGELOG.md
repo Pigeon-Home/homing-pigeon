@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.105 - 2026-11-01
+
+- Docs: the IETF -02 revisions are posted, with the -01 to -02 delta recorded for review.
+- Proofs: findings disposition — every open finding given a stated end, and FreeBSD 15.0 /bin/sh accepted the parser rungs.
+- Fix: a script fetched by script_url is staged with the PowerShell UTF-8 mark, and a bad live refuse-class value, a boolean hot key, and a misspelled policy field are named.
+- The corpus banked since 3.15.104 rides along (Germany bank 26).
+
 ## 3.15.104 - 2026-11-01
 
 - Fix: the email transport keys message identity on the IMAP UID end to end instead of the reusable sequence number, so mailbox churn no longer silently drops jobs.
