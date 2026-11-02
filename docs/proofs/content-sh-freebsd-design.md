@@ -55,13 +55,10 @@ HP_FREEBSD_SH=/bin/sh HP_FREEBSD_SYNTAX_ONLY=1 \
   python3 -m unittest runner.tests.test_proof_sh_freebsd
 ```
 
-`HP_FREEBSD_SYNTAX_ONLY` does not exist yet. The test
-today also drives `handle_mail`. The phase wants the
-parser only: `sh -n` on the 49-character set and on one
-script at each longer rung, one command per line, and on
-one script of 1048577 bytes. A non-zero status from
-`sh -n` fails the phase. A crash of `sh -n` is recorded
-as a crash, not as a pass. The gate is not called.
+`HP_FREEBSD_SYNTAX_ONLY=1` is the switch, and the phase
+is in `freebsd.yml`, ahead of the roster. It has not
+reported yet. The counts are still owed by that
+guest. A skip on a Linux machine remains a skip.
 
 The result is a log line from the guest: the `sh` version
 (`freebsd-version` is already printed), the counts, and

@@ -5,6 +5,10 @@ FreeBSD /bin/sh is not bash and not the macOS sh. This test
 runs only when that program is present at HP_FREEBSD_SH or
 /tmp/freebsd-sh. It does not substitute dash, or bash in
 POSIX mode, for it. The skip message is the reason.
+
+HP_FREEBSD_SYNTAX_ONLY=1 asks the parser only. sh -n runs.
+handle_mail does not. That is the phase inside the FreeBSD
+guest. The gate was already answered on these texts.
 """
 import os
 import subprocess
@@ -42,11 +46,17 @@ class FreeBSDShTest(unittest.TestCase):
             [self.binary, "-n"], input=script + "\n",
             text=True, capture_output=True)
 
+    def _syntax_only(self):
+        return os.environ.get("HP_FREEBSD_SYNTAX_ONLY") == "1"
+
     def test_first_rung(self):
         scripts = enumerate49()
-        self.assertGreaterEqual(len(scripts), 2000)
+        self.assertEqual(len(scripts), 3269)
+        self.assertTrue(all(len(s) <= 49 for s in scripts))
         joined = self._syntax("\n".join(scripts))
         self.assertEqual(joined.returncode, 0, joined.stderr[-300:])
+        if self._syntax_only():
+            return
         for n, script in enumerate(scripts):
             executed, _notes = present(script, "f49b%d" % n)
             self.assertEqual(executed, [len(script)], script)
@@ -54,15 +64,25 @@ class FreeBSDShTest(unittest.TestCase):
     def test_the_long_rungs(self):
         for n, prefix in ((5000, "f5"), (50000, "f50"),
                           (500000, "f500"), (CAP, "fcap")):
+            texts = []
             for name, start in (("a", 0), ("b", 5), ("c", 11)):
                 script = at_length(n, start)
+                texts.append(script)
+                self.assertEqual(len(script), n)
                 proc = self._syntax(script)
-                self.assertEqual(proc.returncode, 0, proc.stderr[-200:])
+                self.assertEqual(
+                    proc.returncode, 0, "%s %s" % (prefix, proc.stderr[-200:]))
+                if self._syntax_only():
+                    continue
                 executed, notes = present(script, "%s%s" % (prefix, name))
                 self.assertEqual(executed, [n], notes[-3:])
+            self.assertEqual(len(set(texts)), 3)
             over = at_length(n + 1, 0)
+            self.assertEqual(len(over), n + 1)
             proc = self._syntax(over)
             self.assertEqual(proc.returncode, 0, proc.stderr[-200:])
+            if self._syntax_only():
+                continue
             executed, notes = present(over, prefix + "over")
             if n == CAP:
                 self.assertEqual(executed, [])

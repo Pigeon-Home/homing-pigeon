@@ -80,6 +80,16 @@ jobs:
             cd "$GITHUB_WORKSPACE" || { echo "::error title=freebsd::no workspace at $GITHUB_WORKSPACE"; exit 1; }
             ls | head -20
             chown -R runner "$GITHUB_WORKSPACE" || { echo "::error title=freebsd::chown failed"; exit 1; }
+            # The parser half, before the roster and the suite, so a
+            # failure of /bin/sh is not buried under their annotations.
+            # sh -n only. The gate is not asked again.
+            echo "== freebsd sh, parser only"
+            src=0
+            HP_FREEBSD_SH=/bin/sh HP_FREEBSD_SYNTAX_ONLY=1 \
+              "$PY" -m unittest runner.tests.test_proof_sh_freebsd -v \
+              > /tmp/freebsd-sh.log 2>&1 || src=$?
+            tail -n 30 /tmp/freebsd-sh.log
+            [ "$src" -eq 0 ] || echo "::error title=freebsd sh::/bin/sh syntax check exited $src; the log is in the artifact"
             # The roster first: a step keeps ten error annotations, and
             # the suite's exception lines would otherwise take them all
             # before a failed control could name itself.
@@ -100,9 +110,9 @@ jobs:
             # The reports join the tree only now, for the artifact: a
             # root .md present while the suite runs reads as a live
             # doc to the doc guards.
-            cp /tmp/suite-freebsd.log /tmp/switch-proofs-freebsd-root.md "$GITHUB_WORKSPACE"/ 2>/dev/null || true
+            cp /tmp/suite-freebsd.log /tmp/switch-proofs-freebsd-root.md /tmp/freebsd-sh.log "$GITHUB_WORKSPACE"/ 2>/dev/null || true
             [ "$rc" -eq 0 ] || echo "::error title=freebsd suite::the suite exited $rc; the failing tests are annotated above and the log is in the artifact"
-            [ "$rc" -eq 0 ] && [ "$rrc" -eq 0 ]
+            [ "$rc" -eq 0 ] && [ "$rrc" -eq 0 ] && [ "$src" -eq 0 ]
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -110,4 +120,5 @@ jobs:
           path: |
             suite-freebsd.log
             switch-proofs-freebsd-root.md
+            freebsd-sh.log
           if-no-files-found: ignore
