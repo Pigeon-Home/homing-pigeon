@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.114 - 2026-11-02
+
+- The corpus banked since 3.15.113 rides along.
+
 ## 3.15.113 - 2026-11-02
 
 - Fix: the wall-clock mutation gate's pin moves to --minutes 30 with the clock it pins. In the 3.15.111 builds this pin was the only failure in the 9,860-test suite on Linux, Windows and macOS; every other 3.15.110 failure fixed in 3.15.111 stayed fixed. Neither 3.15.111 nor 3.15.112 was published: their tags stay on their held commits (3.15.112's release commit was overtaken on main by a corpus bank before its push landed).
