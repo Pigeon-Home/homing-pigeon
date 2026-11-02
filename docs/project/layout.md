@@ -43,7 +43,7 @@
   `runner/wire/verify.py` (signing, verification, secrets, key policies,
   audience — PROTOCOL.md sections 4, 5, 14) and `runner/wire/board.py`
   (the task board, section 13). `runner/wire/platformcard.py` is the
-  card a pong and the DTLS greeting carry; `runner/guard/textutil.py` the
+  card a pong and the DTLS handshake payload carry; `runner/guard/textutil.py` the
   text helpers they share.
 - `runner/wire/transports.py` — the transport-extension contract
   (v1), discovery, and supervision: the core is transport-blind,

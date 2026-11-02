@@ -677,7 +677,8 @@ def _runtime_config(cfg, name, base_dir, paths):
     terminate something themselves: the email pipe owns the
     mailbox, so it gets the mailbox keys; the dtls pipe
     terminates DTLS-PSK authentication, so it gets the secret
-    material it authenticates with (and the greeting posture).
+    material it authenticates with (and the platform
+    disclosure posture).
     A job arriving over dtls still faces the core's signature
     check exactly like any other transport's."""
     out = {
@@ -698,9 +699,10 @@ def _runtime_config(cfg, name, base_dir, paths):
                     out[key] = cfg[key]
         if name == "dtls":
             out.update(_dtls_secret_material(cfg))
-            # The greeting's platform card names the default
-            # interpreter and the protocol versions this runner
-            # speaks (runner/wire/platformcard.py), so those two ride too.
+            # The handshake payload's platform card names the
+            # default interpreter and the protocol versions this
+            # runner speaks (runner/wire/platformcard.py), so
+            # those two ride too.
             for key in ("dtls_greeting", "default_interpreter",
                         "protocol_v2"):
                 if key in cfg:
@@ -1060,7 +1062,8 @@ def _config_signature(cfg, base_dir):
     enabled = cfg.get("transports")
     if isinstance(enabled, (list, tuple)) and "dtls" in enabled:
         # The dtls pipe authenticates with the secret itself,
-        # so a secret or greeting change must restart it.
+        # so a secret or platform-disclosure change must
+        # restart it.
         for key in ("shared_secret", "shared_secret_file",
                     "additional_secrets", "additional_secrets_files",
                     "dtls_greeting", "default_interpreter", "protocol_v2"):

@@ -13,5 +13,5 @@ the OS family, the default interpreter, the protocol versions
 the runner speaks, and `key_ids`, the names of the keys it accepts
 (so a sender handed a bare secret sees what the runner calls it).
 Ping first and the interpreter-mismatch class of failure never
-happens; the same card rides the DTLS greeting.
+happens; the same card rides the DTLS handshake payload.
 PROTOCOL.md section 3.2.

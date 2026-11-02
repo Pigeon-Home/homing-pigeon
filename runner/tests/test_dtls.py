@@ -11,13 +11,13 @@ Layers, mirroring how the profile is built:
   verifies the Finished MAC byte for byte.
 - Core-to-core behavior over a hand relay: the cookie gate,
   psk_ke refusal (DRU's PFS rule), wrong-PSK refusal,
-  greeting ordering, resumption with fresh DHE, NAT
-  rebinding by Connection ID, tampered records, flight
-  retransmission.
+  platform-payload carriage in the handshake, resumption
+  with fresh DHE, NAT rebinding by Connection ID, tampered
+  records, flight retransmission.
 - The extension over real UDP loopback, the supervisor
   handoff, and one supervised end-to-end job.
 
-The extension/greeting imports reach the pipe the same way
+The extension/platform imports reach the pipe the same way
 the supervisor launches it (module import), and the socket
 tests use real UDP on localhost with ephemeral ports.
 """
@@ -170,13 +170,14 @@ def _pump(client, server, addr=ADDR, now=NOW):
     return out
 
 
-def _established_pair(greeting=b'{"type":"greeting","v":1}'):
+def _established_pair(platform=b'{"type":"greeting","v":1}'):
     server = dtlsproto.DtlsServerCore(
         secret_lookup=dtlsproto.make_secret_lookup(SECRET),
-        greeting_for=lambda s: greeting)
+        platform_for=lambda s: platform)
     client = dtlsproto.DtlsClientCore(SECRET)
     _pump(client, server)
     assert client.state == "established"
+    assert client.app_messages == []
     return client, server
 
 
@@ -265,11 +266,12 @@ class KeyScheduleFromTheWireTest(unittest.TestCase):
                 return chunk
             return rng
 
+        platform_payload = b'{"type":"greeting","v":1}'
         client = dtlsproto.DtlsClientCore(
             SECRET, rng=scripted(client_chunks))
         server = dtlsproto.DtlsServerCore(
             secret_lookup=dtlsproto.make_secret_lookup(SECRET),
-            greeting_for=lambda s: b"{}",
+            platform_for=lambda s: platform_payload,
             rng=scripted(server_chunks))
         ch1 = client.start(NOW)[0]
         hrr = server.feed(ch1, ADDR, NOW)[0]
@@ -305,6 +307,12 @@ class KeyScheduleFromTheWireTest(unittest.TestCase):
         # then the Finished, whose MAC the test computes.
         ctype, ee_raw = _open_record_in_test(s_hs, 2, flight[1])
         self.assertEqual(ctype, 22)
+        ee_exts, ee_end = dtlsproto._parse_extensions(
+            ee_raw[12:], 0)
+        self.assertEqual(ee_end, len(ee_raw) - 12)
+        self.assertEqual(
+            ee_exts[dtlsproto.EXT_PLATFORM_CONFIGURATION],
+            platform_payload)
         th_ee = hashlib.sha384(
             synth + hrr_raw + ch2_raw + sh_raw + ee_raw).digest()
         fin_key = _label(s_hs, b"finished", b"")
@@ -347,6 +355,18 @@ class CoreProfileTest(unittest.TestCase):
         self.assertIn(dtlsproto.EXT_COOKIE, exts)
         self.assertEqual(server.sessions, {})
         self.assertEqual(server.by_addr, {})
+
+    def test_server_core_keeps_the_legacy_positional_arguments(self):
+        payload = b'{"type":"greeting","v":1}'
+        logs = []
+        server = dtlsproto.DtlsServerCore(
+            dtlsproto.make_secret_lookup(SECRET),
+            lambda session: payload,
+            lambda msg, level="INFO": logs.append((msg, level)))
+        self.assertIs(server.greeting_for, server.platform_for)
+        self.assertEqual(server.platform_for(None), payload)
+        server.log("probe")
+        self.assertEqual(logs, [("probe", "INFO")])
 
     def test_bad_cookie_and_foreign_address_get_silence(self):
         server = dtlsproto.DtlsServerCore(
@@ -407,10 +427,11 @@ class CoreProfileTest(unittest.TestCase):
         self.assertFalse(any(e[0] == "established"
                              for e in server.events))
 
-    def test_greeting_only_after_finished(self):
+    def test_platform_payload_rides_the_final_handshake_flight(self):
+        payload = b'{"type":"greeting","v":1}'
         server = dtlsproto.DtlsServerCore(
             secret_lookup=dtlsproto.make_secret_lookup(SECRET),
-            greeting_for=lambda s: b'{"type":"greeting","v":1}')
+            platform_for=lambda s: payload)
         client = dtlsproto.DtlsClientCore(SECRET)
         # Nothing can be sent before the session exists.
         with self.assertRaises(dtlsproto.DtlsError):
@@ -423,29 +444,81 @@ class CoreProfileTest(unittest.TestCase):
         back = []
         for dg in flight:
             back += client.feed(dg, NOW)
-            snapshots.append((len(client.app_messages),
+            snapshots.append((client.greeting,
+                              client._pending_platform_payload,
+                              len(client.app_messages),
                               client.finished_sent))
-        # Until our Finished went out: no application message.
-        self.assertTrue(all(n == 0 for n, _s in snapshots))
+        # ServerHello alone does not carry it. The encrypted
+        # EncryptedExtensions record carries it as a pending
+        # payload; the client publishes it as .greeting when
+        # the server Finished in the same flight verifies --
+        # the moment the initiator considers the connection
+        # established and can act on the disclosure.
+        self.assertEqual(snapshots[0], (None, None, 0, False))
+        self.assertEqual(snapshots[1][0], None)
+        self.assertEqual(snapshots[1][1], payload)
+        self.assertEqual(snapshots[1][2], 0)
+        self.assertFalse(snapshots[1][3])
+        self.assertEqual(snapshots[2][0], json.loads(payload))
+        self.assertEqual(snapshots[2][2], 0)
+        self.assertTrue(snapshots[2][3])
         out = []
         for dg in back:
             out += server.feed(dg, ADDR, NOW)
         ev = [e[0] for e in server.events]
         self.assertIn("established", ev)
         session = next(iter(server.sessions.values()))
-        self.assertTrue(session.greeting_sent)
+        self.assertTrue(session.platform_sent)
+        self.assertFalse(any(e[0] == "app" for e in server.events))
         for dg in out:
             client.feed(dg, NOW)
-        # The greeting is the first application message, and it
-        # arrived only on a finished session.
-        self.assertIsNotNone(client.greeting)
-        first = client.app_messages[0]
-        self.assertEqual(json.loads(first)["type"], "greeting")
+        # No separate greeting application message follows.
+        self.assertEqual(client.app_messages, [])
 
-    def test_resumption_uses_fresh_dhe_and_regreets(self):
+    def test_platform_payload_is_encrypted_in_the_handshake_flight(self):
+        payload = (b'{"type":"greeting","platform":'
+                   b'{"os_family":"sentinel-os"},"v":1}')
         server = dtlsproto.DtlsServerCore(
             secret_lookup=dtlsproto.make_secret_lookup(SECRET),
-            greeting_for=lambda s: b'{"type":"greeting","v":1}')
+            platform_for=lambda s: payload)
+        client = dtlsproto.DtlsClientCore(SECRET)
+        ch1 = client.start(NOW)[0]
+        hrr = server.feed(ch1, ADDR, NOW)[0]
+        ch2 = client.feed(hrr, NOW)[0]
+        flight = server.feed(ch2, ADDR, NOW)
+        wire = b"".join(flight)
+        self.assertNotIn(payload, wire)
+        self.assertNotIn(b"sentinel-os", wire)
+        for dg in flight:
+            client.feed(dg, NOW)
+        self.assertEqual(
+            client.greeting["platform"]["os_family"],
+            "sentinel-os")
+
+    def test_a_legacy_application_greeting_still_surfaces(self):
+        # A pre-change runner sends no platform extension and
+        # follows establishment with the old application-message
+        # greeting. A current client still exposes that object
+        # as .greeting, after it has arrived as application data.
+        client, server = _established_pair(platform=None)
+        self.assertIsNone(client.greeting)
+        session = next(iter(server.sessions.values()))
+        legacy = b'{"type":"greeting","v":1}'
+        for dg in session._app_send(legacy):
+            client.feed(dg, NOW)
+        self.assertEqual(client.app_messages, [legacy])
+        self.assertEqual(client.greeting, json.loads(legacy))
+
+    def test_resumption_uses_fresh_dhe_and_rediscloses(self):
+        calls = []
+
+        def disclose(session):
+            calls.append(session.resumed)
+            return b'{"type":"greeting","v":1}'
+
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET),
+            platform_for=disclose)
         client = dtlsproto.DtlsClientCore(SECRET)
         ch2_first = self._full_handshake(client, server)
         self.assertIsNotNone(client.ticket)
@@ -461,6 +534,8 @@ class CoreProfileTest(unittest.TestCase):
         est = [e for e in server.events if e[0] == "established"]
         self.assertTrue(est[-1][2]["resumed"])
         self.assertIsNotNone(client2.greeting)
+        self.assertEqual(client2.app_messages, [])
+        self.assertEqual(calls, [False, True])
 
     def _full_handshake(self, client, server):
         """One whole handshake, every datagram delivered both
@@ -507,7 +582,7 @@ class CoreProfileTest(unittest.TestCase):
     def test_flight_retransmission_recovers_a_lost_record(self):
         server = dtlsproto.DtlsServerCore(
             secret_lookup=dtlsproto.make_secret_lookup(SECRET),
-            greeting_for=lambda s: b"{}")
+            platform_for=lambda s: b"{}")
         client = dtlsproto.DtlsClientCore(SECRET)
         ch1 = client.start(NOW)[0]
         hrr = server.feed(ch1, ADDR, NOW)[0]
@@ -597,32 +672,32 @@ if __name__ == "__main__":
 
 
 # ------------------------------------------------------------------
-# The greeting object
+# The platform payload object
 # ------------------------------------------------------------------
 
-class GreetingTest(unittest.TestCase):
+class PlatformPayloadTest(unittest.TestCase):
     def test_none_tier_discloses_nothing(self):
-        obj = json.loads(dtls_ext.build_greeting("none"))
+        obj = json.loads(dtls_ext.build_platform_payload("none"))
         self.assertEqual(obj["type"], "greeting")
         self.assertEqual(obj["transport"], "dtls")
         self.assertEqual(obj["v"], 1)
         self.assertEqual(obj["disclosure"], "none")
         self.assertNotIn("platform", obj)
 
-    def test_greeting_v_is_the_protocol_version_on_every_tier(self):
-        # There is no protocol version 2: the greeting rides a
+    def test_payload_v_is_the_protocol_version_on_every_tier(self):
+        # There is no protocol version 2: the payload rides a
         # binding of version 1, so its `v` member carries the
         # protocol version itself -- the runner's PROTOCOL_VERSION
         # -- at every disclosure tier.
         self.assertEqual(PROTOCOL_VERSION, 1)
         for tier in dtls_ext.GREETING_TIERS:
-            obj = json.loads(dtls_ext.build_greeting(tier))
+            obj = json.loads(dtls_ext.build_platform_payload(tier))
             self.assertEqual(obj["v"], PROTOCOL_VERSION)
 
     def test_family_tier_is_the_default_shape(self):
         # The family tier is what a sender needs to pick an
         # interpreter and a protocol version, and nothing more.
-        obj = json.loads(dtls_ext.build_greeting("family"))
+        obj = json.loads(dtls_ext.build_platform_payload("family"))
         self.assertEqual(obj["disclosure"], "family")
         self.assertEqual(set(obj["platform"]),
                          {"os_family", "default_interpreter",
@@ -633,25 +708,25 @@ class GreetingTest(unittest.TestCase):
         self.assertTrue(obj["platform"]["default_interpreter"])
 
     def test_the_card_follows_the_config(self):
-        obj = json.loads(dtls_ext.build_greeting(
+        obj = json.loads(dtls_ext.build_platform_payload(
             "family", {"protocol_v2": True,
                        "default_interpreter": ["bash"]}))
         self.assertEqual(obj["platform"]["protocol_versions"], [1, 2])
         self.assertEqual(obj["platform"]["default_interpreter"], ["bash"])
-        obj = json.loads(dtls_ext.build_greeting(
+        obj = json.loads(dtls_ext.build_platform_payload(
             "family", {"protocol_v2": "yes", "default_interpreter": "sh"}))
         self.assertEqual(obj["platform"]["protocol_versions"], [1])
         self.assertNotEqual(obj["platform"]["default_interpreter"], "sh")
 
     def test_standard_tier_adds_release_and_python(self):
-        obj = json.loads(dtls_ext.build_greeting("standard"))
+        obj = json.loads(dtls_ext.build_platform_payload("standard"))
         self.assertEqual(
             set(obj["platform"]),
             {"os_family", "default_interpreter", "protocol_versions",
              "os_release", "python_version"})
 
     def test_full_tier_adds_a_bounded_tools_summary(self):
-        obj = json.loads(dtls_ext.build_greeting("full"))
+        obj = json.loads(dtls_ext.build_platform_payload("full"))
         tools = obj["platform"]["path_tools"]
         self.assertEqual(
             set(tools),
@@ -736,10 +811,10 @@ class PipeSocketTest(unittest.TestCase):
             sock.send(dg)
         ok = self._drive(pipe, client, sock,
                          lambda: client.greeting is not None)
-        self.assertTrue(ok, "no greeting from the pipe")
+        self.assertTrue(ok, "no platform payload from the pipe")
         return pipe, channel, client, sock
 
-    def test_greeting_and_job_result_flow(self):
+    def test_platform_payload_and_job_result_flow(self):
         pipe, channel, client, sock = self._session()
         self.assertEqual(client.greeting["disclosure"], "family")
         self.assertEqual(
@@ -764,10 +839,10 @@ class PipeSocketTest(unittest.TestCase):
             f.write(_result_envelope(jid) + "\n")
         ok = self._drive(
             pipe, client, sock,
-            lambda: len(client.app_messages) >= 2)
+            lambda: len(client.app_messages) >= 1)
         self.assertTrue(ok, "the result never came back")
         subject, body = ch.parse_envelope(
-            client.app_messages[1].decode("utf-8"))
+            client.app_messages[0].decode("utf-8"))
         self.assertIn("result", subject)
         self.assertEqual(verify_body(body, SECRET)["stdout"],
                          "pong")
@@ -918,7 +993,7 @@ class ExtensionProcessTest(unittest.TestCase):
         self.assertIn("dtls_greeting", err)
         self.assertIn("default tier family", err)
         self.assertIn(f"listening on udp 127.0.0.1:{port}; "
-                      "greeting tier family", err)
+                      "platform disclosure tier family", err)
 
     def test_starts_and_listens_with_a_secret(self):
         tmp = tempfile.mkdtemp(prefix="hp-dtls-")

@@ -429,7 +429,8 @@ class NonStringKeyFuzzTest(unittest.TestCase):
         self.assertTrue(
             any("default tier family" in msg for msg in warned), logs)
         self.assertTrue(
-            any("greeting tier family" in msg for _l, msg in logs), logs)
+            any("platform disclosure tier family" in msg
+                for _l, msg in logs), logs)
 
     def test_a_poisoned_baseline_does_not_raise(self):
         baseline = {"kinds": {"exec": "many", "ping": [1]}}

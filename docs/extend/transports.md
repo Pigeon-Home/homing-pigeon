@@ -455,15 +455,29 @@ implemented as a bounded pure-Python profile
   that key still stands in the runner's key map: a rotated-out
   key is refused at a resume exactly as at a fresh handshake,
   and a ticket that records no key does not resume.
-- **The greeting.** After the handshake authenticates — never
-  before — the runner sends the session's first application
-  message: a greeting carrying platform information tiered
-  by the runner's `dtls_greeting` config (`none` / `family`,
-  the default: OS family only / `standard`: plus OS release
-  and Python version / `full`: plus a bounded PATH-tools
-  summary). The SI initiates; the runner chooses what it
-  discloses; the client cannot widen it. Jobs are accepted
-  only after the greeting has been sent.
+- **The platform payload.** The server's EncryptedExtensions
+  carries a configuration-style platform extension in the
+  final handshake flight. The pattern is lifted from IKEv2's
+  Configuration Payload (RFC 7296, section 3.15); the payload
+  remains this protocol's JSON greeting object. It is
+  encrypted under the handshake traffic keys, so only a PSK
+  holder can read it. The client core holds it until the
+  server Finished verifies, then exposes it as its greeting;
+  the SI therefore holds the platform when it considers the
+  connection established, with no post-handshake greeting
+  message to wait for. Disclosure is tiered by the runner's
+  `dtls_greeting` config (`family`, the default: OS family,
+  default interpreter and protocol versions / `standard`:
+  plus OS release and Python version / `full`: plus a bounded
+  PATH-tools summary). At `none`, the extension still rides
+  and carries the disclosure tier, with no `platform` member.
+  The extension is sent on every fresh handshake and every
+  resumption. The SI initiates; the runner chooses what it
+  discloses; the client cannot widen it. Jobs are ordinary
+  application messages once the session is established. A
+  current client still surfaces a pre-change runner's
+  greeting application message as the same greeting object,
+  for interoperability.
 - **Inside the session**, each message is the same signed
   envelope every other binding carries; the per-job
   encryption extension composes with it unchanged (a
@@ -477,7 +491,8 @@ implemented as a bounded pure-Python profile
 - **The client** is `runner/cloud/send_dtls.py`: it signs exactly
   like `send_job.py` (per-job encryption on by default,
   `--cleartext` selects the plain signed form), prints the
-  greeting, sends the job, prints the verified result, and
+  platform payload as the greeting object, sends the job,
+  prints the verified result, and
   can persist the resumption ticket between runs. Usage:
   `python3 runner/cloud/send_dtls.py --host <runner> [--port 20220]
   --secret <the-string> [--key-id ID] [--kind ping|exec

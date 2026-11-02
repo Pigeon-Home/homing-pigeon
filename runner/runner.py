@@ -2569,7 +2569,7 @@ def pong_platform(cfg):
     the owner's `pong_platform` tier, or None at `none` (or when the
     card module is absent). The protocol versions named are the ones
     this runner opens: version 1 always, version 2 when protocol_v2
-    is on. The same card, same tiers, as the DTLS greeting."""
+    is on. The same card, same tiers, as the DTLS handshake payload."""
     if _platformcard is None:
         return None
     tier, problem = _platformcard.tier_of(cfg, "pong_platform")

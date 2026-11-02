@@ -11,8 +11,13 @@ It rides in two places, built here so they agree:
 
 - the `platform` member of the result to a `ping` job, tiered by
   the owner's `pong_platform` (PROTOCOL.md 3.2);
-- the DTLS session's greeting, tiered by `dtls_greeting`
-  (draft-homing-pigeon-00 Section 20).
+- the platform-configuration extension in the DTLS server's
+  EncryptedExtensions, tiered by `dtls_greeting`. The carriage
+  pattern is lifted from IKEv2's Configuration Payload
+  (RFC 7296, section 3.15): configuration information rides
+  the final handshake flight, in this protocol's JSON idiom,
+  rather than following establishment as a separate greeting
+  application message.
 
 Tiers, from least to most:
 
@@ -23,9 +28,12 @@ Tiers, from least to most:
 
 The default is `family` in both places: enough to pick an
 interpreter and a protocol version, nothing a port scan would not
-tell. Disclosure happens only in an authenticated reply -- a pong
-answers a verified job, a greeting follows the handshake -- so an
-unauthenticated peer harvests nothing.
+tell. Disclosure is bounded to authenticated contexts: a pong
+answers a verified job, and the DTLS extension is encrypted
+under the handshake traffic keys, so only a peer holding the
+PSK can read it. At the DTLS `none` tier the extension still
+rides and carries the disclosure tier, with no `platform`
+member; `build_card` itself returns no card at that tier.
 
 Stdlib only; no runner imports, so the DTLS program and the core
 can both load it.

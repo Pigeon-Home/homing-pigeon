@@ -39,10 +39,18 @@ side), and the profile is deliberately narrow:
   96-bit big-endian value (epoch << 48) | sequence -- the
   DTLS combined sequence construction, because sequence
   numbers restart per epoch and the epoch is a nonce input.
+- Platform disclosure: the server's EncryptedExtensions
+  carries a configuration-style platform payload in the final
+  handshake flight. The pattern is lifted from IKEv2's
+  Configuration Payload (RFC 7296, section 3.15); the payload
+  itself stays in this protocol's JSON idiom. A client holds
+  the platform when it has processed that flight, before any
+  application data. Current clients also surface a legacy
+  peer's post-handshake greeting application message for
+  interoperability.
 - Application framing: one uint32 length prefix per message
-  over the record stream. The first application message on
-  every session is the runner's greeting (see the dtls
-  transport extension); jobs are never accepted before it.
+  over the record stream. Jobs are ordinary application
+  messages once the session is established.
 
 The cores are transport-agnostic: feed() takes datagrams and
 returns datagrams; the extension and the client own sockets.
@@ -96,6 +104,9 @@ EXT_PRE_SHARED_KEY = 41
 EXT_PSK_MODES = 45
 EXT_COOKIE = 47
 EXT_CONNECTION_ID = 54
+# Private-use extension type for this bounded profile: the
+# configuration-style platform payload in EncryptedExtensions.
+EXT_PLATFORM_CONFIGURATION = 0xFE00
 
 PSK_MODE_KE = 0              # prohibited by the profile -- never
 PSK_MODE_DHE_KE = 1          # the only mode this profile speaks
@@ -850,7 +861,12 @@ class DtlsClientCore(_Endpoint):
     """The initiator side. feed() takes datagrams from the
     server and returns datagrams to send; events and state are
     read off the object. Application messages land in
-    app_messages; the first is also parsed into .greeting."""
+    app_messages. The platform payload carried by the server's
+    EncryptedExtensions is held while the handshake flight is
+    processed and parsed into .greeting when the server
+    Finished verifies; when a legacy peer instead sends that
+    object as its first application message, the same attribute
+    is populated from there."""
 
     def __init__(self, secret, key_id=None, log=None, rng=None,
                  ticket=None):
@@ -875,6 +891,7 @@ class DtlsClientCore(_Endpoint):
         self.finished_received = False
         self.finished_sent = False
         self._ee_seen = False
+        self._pending_platform_payload = None
         self.greeting = None
         self._ticket_out = None
 
@@ -1000,8 +1017,7 @@ class DtlsClientCore(_Endpoint):
             if not self.finished_sent:
                 raise DtlsError(
                     "application data before our Finished was "
-                    "sent -- the greeting cannot precede "
-                    "authentication")
+                    "sent")
             self._app_receive(content)
             return out
         if ctype == CT_HANDSHAKE:
@@ -1037,11 +1053,13 @@ class DtlsClientCore(_Endpoint):
             self._on_ticket(body, now)
             return []
         if msg_type == HS_ENCRYPTED_EXTENSIONS:
-            # No extensions this profile acts on, but the
-            # message is part of the transcript -- once.
+            # The message is part of the transcript -- once.
+            # Its platform-configuration extension, when present,
+            # is the responder's platform disclosure.
             if not self._ee_seen:
                 self._ee_seen = True
                 self.transcript.add(raw)
+                self._on_encrypted_extensions(body)
             return []
         if msg_type == HS_KEY_UPDATE:
             return self._handle_key_update(epoch, body)
@@ -1099,6 +1117,34 @@ class DtlsClientCore(_Endpoint):
         self.state = "handshake-keys"
         return []
 
+    def _set_greeting(self, payload):
+        """Populate .greeting from a platform payload, whether
+        it arrived in EncryptedExtensions or, from a legacy
+        peer, as an application message."""
+        if isinstance(payload, dict):
+            self.greeting = payload
+            return
+        try:
+            parsed = json.loads(bytes(payload).decode("utf-8"))
+        except Exception:
+            parsed = {}
+        self.greeting = parsed if isinstance(parsed, dict) else {}
+
+    def _on_encrypted_extensions(self, body):
+        try:
+            exts, _end = _parse_extensions(body, 0)
+        except DtlsError:
+            self.log("dtls: malformed EncryptedExtensions; "
+                     "platform payload ignored", "WARN")
+            return
+        payload = exts.get(EXT_PLATFORM_CONFIGURATION)
+        if payload is not None:
+            # Held, not yet exposed: the payload becomes
+            # .greeting only when the server Finished verifies
+            # in _on_server_finished, the point at which this
+            # endpoint considers the connection established.
+            self._pending_platform_payload = payload
+
     def _on_server_finished(self, body, raw, now):
         if self.state != "handshake-keys":
             return []      # a retransmitted Finished; we moved on
@@ -1109,6 +1155,9 @@ class DtlsClientCore(_Endpoint):
             self.state = "dead"
             raise DtlsError("server Finished does not verify")
         self.finished_received = True
+        if self._pending_platform_payload is not None:
+            self._set_greeting(self._pending_platform_payload)
+            self._pending_platform_payload = None
         self.transcript.add(raw)
         ms = _hkdf_extract(
             _derive_secret(self._hs, b"derived",
@@ -1154,11 +1203,12 @@ class DtlsClientCore(_Endpoint):
         return self._ticket_out
 
     def _on_app_message(self, msg):
+        # Interoperability fallback: a pre-change runner sends
+        # the platform object as its first application message.
+        # Current runners disclose it in the handshake, so this
+        # path only populates .greeting when no extension did.
         if self.greeting is None:
-            try:
-                self.greeting = json.loads(msg.decode("utf-8"))
-            except Exception:
-                self.greeting = {}
+            self._set_greeting(msg)
 
     # -- sending application data ------------------------------------
 
@@ -1217,7 +1267,7 @@ class _ServerSession(_Endpoint):
         self.issuer = None          # the key identity behind the session
         self.resumed = False
         self.established = False
-        self.greeting_sent = False
+        self.platform_sent = False
         self._our_cid = None
         self._hs = None
         self._c_hs = None
@@ -1226,6 +1276,28 @@ class _ServerSession(_Endpoint):
     @property
     def session_id(self):
         return self._our_cid
+
+    def _platform_payload(self):
+        """The configuration-style platform payload for this
+        handshake, or None when the responder supplies none.
+        The callback is consulted for every fresh and resumed
+        handshake, after the PSK binder has verified."""
+        disclose = self.core.platform_for
+        if disclose is None:
+            return None
+        payload = disclose(self)
+        if payload is None:
+            return None
+        if isinstance(payload, dict):
+            return json.dumps(
+                payload, sort_keys=True).encode("utf-8")
+        if isinstance(payload, str):
+            return payload.encode("utf-8")
+        if isinstance(payload, (bytes, bytearray)):
+            return bytes(payload)
+        raise DtlsError(
+            "platform payload callback returned a value that "
+            "is not bytes, text, a dict, or None")
 
     # -- establishment ------------------------------------------------
 
@@ -1353,8 +1425,13 @@ class _ServerSession(_Endpoint):
         self._s_hs = _derive_secret(hs, b"s hs traffic", th)
         self.receivers[2] = _RecordSealer(self._c_hs)
         self.senders[2] = _RecordSealer(self._s_hs)
-        ee_raw = _hs_message(HS_ENCRYPTED_EXTENSIONS, b"\x00\x00",
-                             self._alloc_seq())
+        platform_payload = self._platform_payload()
+        ee_exts = [] if platform_payload is None else [
+            (EXT_PLATFORM_CONFIGURATION, platform_payload)]
+        ee_raw = _hs_message(
+            HS_ENCRYPTED_EXTENSIONS, _extensions_bytes(ee_exts),
+            self._alloc_seq())
+        self.platform_sent = platform_payload is not None
         self.transcript.add(ee_raw)
         sfin_verify = _finished_verify(self._s_hs,
                                        self.transcript.hash())
@@ -1479,12 +1556,9 @@ class _ServerSession(_Endpoint):
              {"identity": self.identity, "resumed": self.resumed,
               "addr": self.peer_addr}))
         out = []
-        # The greeting is the session's first application
-        # message -- before the ticket, before any job.
-        greeting = self.core.greeting_for(self)
-        if greeting is not None:
-            out.extend(self._app_send(greeting))
-            self.greeting_sent = True
+        # The platform payload already rode this session's
+        # EncryptedExtensions; no greeting application message
+        # is sent.
         # A fresh resumption ticket: a fresh PSK, and resumption
         # still demands fresh DHE next time.
         nonce = self.core.rng(16)
@@ -1519,12 +1593,18 @@ class DtlsServerCore:
     and no memory that matters."""
 
     def __init__(self, secret_lookup=None, greeting_for=None,
-                 log=None, rng=None, secrets_map=None):
+                 log=None, rng=None, secrets_map=None, *,
+                 platform_for=None):
         self.log = log or (lambda msg, level="INFO": None)
         if secrets_map is not None:
             secret_lookup = secrets_map.get
         self._secret_lookup = secret_lookup or (lambda ident: None)
-        self.greeting_for = greeting_for or (lambda session: None)
+        if platform_for is None:
+            # Compatibility for callers written when the same
+            # payload was delivered as an application message.
+            platform_for = greeting_for
+        self.platform_for = platform_for or (lambda session: None)
+        self.greeting_for = self.platform_for
         self.rng = rng or secrets.token_bytes
         self.cookie_secret = self.rng(32)
         self.sessions = {}         # our CID -> _ServerSession

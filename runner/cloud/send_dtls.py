@@ -4,9 +4,10 @@
 
 Signs a job exactly as send_job.py does, opens a DTLS 1.3
 session to the runner's dtls transport extension, prints the
-runner's greeting (the session's first application message,
-sent only after the handshake authenticates), sends the job
-inside the session, and prints the result that returns on it.
+runner's platform payload (carried in the handshake's
+EncryptedExtensions and exposed as the client core's greeting
+when the server Finished verifies), sends the job inside the
+session, and prints the result that returns on it.
 
 The shared secret does double duty here, by design: it is the
 HMAC key that signs the job AND the external PSK that

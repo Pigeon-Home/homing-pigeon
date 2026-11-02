@@ -15,7 +15,7 @@ Config (handed over by the runner):
         never substituted (docs/design/present-but-invalid-
         config.md, the refuse class).
     dtls_greeting (top-level runner key, handed over for this
-    extension): the greeting disclosure tier --
+    extension): the platform disclosure tier --
         none / family (default) / standard / full
     shared_secret, additional_secrets: handed over ONLY to
     this extension, because this pipe does not merely carry
@@ -35,13 +35,15 @@ security is a second gate, not a replacement, and channel
 security is not delivery (ack/dedup stays the protocol's
 seen-set, in the core).
 
-After the handshake completes -- post-authentication, never
-before -- the runner side sends the session's first
-application message: the greeting, tiered by dtls_greeting.
-The SI initiates the session; the responder chooses what it
-discloses; the client cannot widen it. Jobs are accepted
-only on established sessions, which is to say only after the
-greeting has been sent.
+The runner side puts its platform disclosure, tiered by
+dtls_greeting, in a configuration-style extension in the
+server's EncryptedExtensions. The pattern is lifted from
+IKEv2's Configuration Payload (RFC 7296, section 3.15): the
+information rides the final handshake flight, so the SI holds
+it when the session is established and no post-handshake
+greeting message follows. The SI initiates the session; the
+responder chooses what it discloses; the client cannot widen
+it. Jobs are accepted only on established sessions.
 
 Results are session-bound: a result that lands after its
 session is gone cannot go out on that session. The file stays.
@@ -77,12 +79,14 @@ GREETING_TIERS = _platformcard.TIERS
 _JOB_ID_RE = _subject.JOB_ID_RE  # the one grammar (Q121)
 
 
-def build_greeting(tier, cfg=None):
-    """The greeting application message for a disclosure tier,
-    as bytes. The object always goes out (it is the session's
-    first application message at every tier); `tier` decides
-    how much platform information rides in it. The card is the
-    one a ping's result carries (runner/wire/platformcard.py), so the
+def build_platform_payload(tier, cfg=None):
+    """The platform disclosure object for a tier, as bytes for
+    the platform-configuration extension in the server's
+    EncryptedExtensions. The extension goes out at every tier;
+    at `none` it carries the disclosure tier and no `platform`
+    member, while the other tiers decide how much platform
+    information rides in that member. The card is the one a
+    ping's result carries (runner/wire/platformcard.py), so the
     two bindings describe the box the same way."""
     obj = {"type": "greeting", "transport": "dtls", "v": 1,
            "disclosure": tier}
@@ -95,6 +99,12 @@ def build_greeting(tier, cfg=None):
         card.pop("disclosure", None)
         obj["platform"] = card
     return (json.dumps(obj, sort_keys=True) + "\n").encode("utf-8")
+
+
+# Compatibility name for callers written when this object was
+# delivered as an application message. The bytes are the same;
+# their carriage is now the handshake extension above.
+build_greeting = build_platform_payload
 
 
 def directory_lookup(cfg, lookup, log=None, now=time.time):
@@ -161,7 +171,7 @@ def _psk_floor_problem(cfg):
 
 
 def greeting_tier(cfg):
-    """The greeting disclosure tier: dtls_greeting, default family."""
+    """The platform disclosure tier: dtls_greeting, default family."""
     raw = cfg.get("dtls_greeting") if isinstance(cfg, dict) else None
     return _confval.choice(raw, GREETING_TIERS, "family")
 
@@ -226,8 +236,8 @@ class DtlsPipe:
             log=ch.log)
         self.core = dtlsproto.DtlsServerCore(
             secret_lookup=lookup,
-            greeting_for=lambda session: build_greeting(self.tier,
-                                                        self.cfg),
+            platform_for=lambda session: build_platform_payload(
+                self.tier, self.cfg),
             log=ch.log)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # bind is config, default every interface. This is how jobs arrive.
@@ -277,8 +287,9 @@ class DtlsPipe:
                 ch.log(f"dtls transport: session established "
                        f"with {info.get('addr')} "
                        f"(identity {info.get('identity')!r}, "
-                       f"resumed={info.get('resumed')}); greeting "
-                       f"sent at tier {self.tier}")
+                       f"resumed={info.get('resumed')}); platform "
+                       f"payload carried in the handshake at "
+                       f"tier {self.tier}")
             elif event[0] == "app":
                 self._on_job(event[1], event[2])
 
@@ -371,7 +382,8 @@ def main(argv=None):
         ch.log(f"dtls transport: cannot listen: {e!r}", "ERROR")
         return 2
     ch.log(f"dtls transport: listening on udp "
-           f"{pipe.bind}:{pipe.port}; greeting tier {tier}")
+           f"{pipe.bind}:{pipe.port}; platform disclosure "
+           f"tier {tier}")
     while True:
         try:
             pipe.run_once()
