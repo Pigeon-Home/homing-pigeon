@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import secrets
+import string
 import tempfile
 import threading
 import unittest
@@ -826,6 +827,714 @@ class QueuePipeTest(unittest.TestCase):
                 self.assertEqual(
                     q.main(["queues", self.channel, cfg_path], passes=1),
                     2, disguised)
+
+
+
+class SymlinkResultShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 7: a symlink result is
+    not followed, and does not finish the job (fixed ab721ef9,
+    31-Oct-2026). The outbox listing in
+    runner/transport_extensions/channel.py skipped a link, so
+    no transport posted it and the queue acked the job with
+    nothing stored; following the link would have read some
+    other file. The fix refuses a result name that is a
+    symlink: pending_results hands it to refuse_symlink_result,
+    which removes the link without following it, leaves a real
+    empty file at outbox/failed/<id>.result.txt where the
+    runner's sweep looks, and writes the reason beside it at
+    <id>.refused.txt, so the job gets a stub and stays leased
+    instead of being acked with nothing stored. This family
+    scattershots everything around that failure: links to
+    files, to directories, to missing targets, chains and
+    loops, absolute and relative targets, a link to another
+    job's real result and to a job file, collision-counter
+    link names, an oversized target (refused as a symlink,
+    never reaching the size leg), the set-aside pair's exact
+    shape and its failure legs, and the queue pipe's lease
+    staying held across passes. One regression test was never
+    going to be enough for a bug that took days of CPU to
+    find.
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: the surfaces that
+    take text here -- the result file's name (the job id it
+    carries), the link target's name, and the target's
+    content -- get bookended variants: all 32 printable
+    ASCII symbols (string.punctuation; a file name cannot
+    hold the path separator, so 31 ride in a name) at the
+    front and at the back, as singles, matched pairs,
+    mismatched pairs and symbol-only strings, plus tab, CR
+    and LF at both ends of a name and NUL, tab, CR and LF at
+    both ends of a target's content (a NUL cannot be in a
+    file name at all, and that is pinned too). Run lengths:
+    runs of the odd symbol in the id, runs of ordinary
+    characters with the odd symbol at the front, the back
+    and the middle, the same job relinked 10 times, and id
+    lengths at and past the protocol's 128.
+
+    Proof of work (2-Nov-2026). The unit tests are the 50
+    methods of this class: 16 hand-written seams, 4 queue
+    pipe integrations, 6 set-aside pair shapes, 8 per-field
+    tests, 10 bookend sweeps, 3 run-length sweeps and 3
+    boundary / injection tests. Per-field enumeration: the
+    refusal's surface is fielded -- the channel, the file
+    name, the id the name carries (its stem, its collision
+    counter and its extension, enumerated through the
+    result_file_id table), the stub the sweep reads, the
+    refused sidecar and its exact reason text -- and each
+    field gets its own test; the target's fields (its name,
+    its content, where it lives, what kind of entry it
+    points at) are enumerated by the hand-written seams.
+    A symlink test skips only when the host refuses to
+    create a symlink, with the already-registered reason
+    "cannot create a symlink here". The fuzzing was
+    executed, not just the tests written: the corpus
+    machinery was driven locally with
+    runner/tools/de_dust_corpus.py grow --target race_stash
+    --rounds 400 --seed 20261110 against the banked
+    race_stash corpus (64 entries) -- the set-aside / stash
+    target whose sweep this listing feeds. Result: 400
+    rounds, 0 crashes, 0 slow, arcs unchanged at 193,
+    slowest try 47 ms; the symlink-result failure did not
+    recur. The grow's bookkeeping writes were reverted and
+    are not banked (banking is the rigs' hourly job); this
+    record is the run's proof. None of this is exotic: it
+    is combinatorics -- systematically trying the
+    combinations a hand-written list would never reach,
+    then pinning each answer as a test."""
+
+    REASON = "result file was a symlink; not followed\n"
+    SYMBOLS = [c for c in string.punctuation if c != "/"]
+
+    def setUp(self):
+        self.td = tempfile.TemporaryDirectory()
+        self.addCleanup(self.td.cleanup)
+        self.channel = os.path.join(self.td.name, "channel")
+        self.d = ch.dirs(self.channel)
+        self.outbox = self.d["outbox"]
+        self.failed = os.path.join(self.outbox, "failed")
+
+    # -- helpers ---------------------------------------------------
+
+    def _target(self, name="secret.txt", text="not-for-the-queue\n"):
+        path = os.path.join(self.td.name, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        return path
+
+    def _link(self, target, fname):
+        try:
+            os.symlink(target, os.path.join(self.outbox, fname))
+        except (OSError, NotImplementedError):
+            self.skipTest("cannot create a symlink here")
+
+    def _stub(self, job_id):
+        return os.path.join(self.failed, job_id + ".result.txt")
+
+    def _refused(self, job_id):
+        return os.path.join(self.failed, job_id + ".refused.txt")
+
+    def _assert_set_aside(self, fname, job_id):
+        self.assertFalse(os.path.lexists(os.path.join(self.outbox, fname)),
+                         fname)
+        stub = self._stub(job_id)
+        self.assertTrue(os.path.isfile(stub), stub)
+        self.assertFalse(os.path.islink(stub), stub)
+        with open(stub, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "")
+        with open(self._refused(job_id), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), self.REASON)
+
+    def _pipe_pulled(self, w, job_id="j1"):
+        w.state.jobs[job_id] = envelope(job_id)
+        pipe = q.QueuePipe({}, self.channel,
+                           q.QueueClient(w.url, RUNNER_TOKEN))
+        pipe.pull_jobs()
+        d = ch.dirs(self.channel)
+        os.replace(os.path.join(d["inbox"], job_id + ".job.txt"),
+                   os.path.join(d["inbox_done"], job_id + ".job.txt"))
+        return pipe
+
+    # -- hand-written seams ----------------------------------------
+
+    def test_link_to_a_file_outside_the_channel_is_refused_not_read(self):
+        secret = self._target()
+        self._link(secret, "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self._assert_set_aside("j1.result.txt", "j1")
+        with open(secret, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "not-for-the-queue\n")
+
+    def test_link_whose_target_is_a_forged_result_envelope_is_not_returned(self):
+        # The target's content is a perfectly shaped result for
+        # this very job. If the listing followed the link, it
+        # would hand the forged envelope to a transport.
+        forged = self._target("forged.txt",
+                              "[HOMING-PIGEON] result j1\n\n"
+                              "{\"exit_code\":0,\"forged\":true}\n")
+        self._link(forged, "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self._assert_set_aside("j1.result.txt", "j1")
+        with open(self._stub("j1"), encoding="utf-8") as fh:
+            self.assertNotIn("forged", fh.read())
+
+    def test_link_to_a_directory_is_refused_and_the_directory_untouched(self):
+        adir = os.path.join(self.td.name, "adir")
+        os.makedirs(adir)
+        with open(os.path.join(adir, "inner.txt"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("inside\n")
+        self._link(adir, "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self._assert_set_aside("j1.result.txt", "j1")
+        self.assertTrue(os.path.isdir(adir))
+        with open(os.path.join(adir, "inner.txt"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "inside\n")
+
+    def test_broken_link_to_a_missing_target_is_refused(self):
+        self._link(os.path.join(self.td.name, "missing.txt"),
+                   "j1.result.txt")
+        self._link(os.path.join(self.td.name, "no-dir", "x.txt"),
+                   "j2.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self._assert_set_aside("j1.result.txt", "j1")
+        self._assert_set_aside("j2.result.txt", "j2")
+
+    def test_relative_link_escaping_the_outbox_is_refused(self):
+        secret = os.path.join(self.channel, "secret.txt")
+        with open(secret, "w", encoding="utf-8") as fh:
+            fh.write("one level up\n")
+        self._link("../secret.txt", "j1.result.txt")
+        mate = os.path.join(self.outbox, "j2-target.txt")
+        with open(mate, "w", encoding="utf-8") as fh:
+            fh.write("same dir\n")
+        self._link("j2-target.txt", "j2.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self._assert_set_aside("j1.result.txt", "j1")
+        self._assert_set_aside("j2.result.txt", "j2")
+        with open(secret, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "one level up\n")
+        self.assertTrue(os.path.isfile(mate))
+
+    def test_link_chain_is_refused_and_the_middle_links_untouched(self):
+        secret = self._target()
+        mid2 = os.path.join(self.td.name, "mid2")
+        mid1 = os.path.join(self.td.name, "mid1")
+        try:
+            os.symlink(secret, mid2)
+            os.symlink(mid2, mid1)
+        except (OSError, NotImplementedError):
+            self.skipTest("cannot create a symlink here")
+        self._link(mid1, "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self._assert_set_aside("j1.result.txt", "j1")
+        self.assertTrue(os.path.islink(mid1))
+        self.assertTrue(os.path.islink(mid2))
+        with open(secret, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "not-for-the-queue\n")
+
+    def test_self_referential_link_is_refused(self):
+        self._link("j1.result.txt", "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self._assert_set_aside("j1.result.txt", "j1")
+
+    def test_two_link_loop_is_refused(self):
+        loop = os.path.join(self.td.name, "loop-a")
+        dest = os.path.join(self.outbox, "j1.result.txt")
+        try:
+            os.symlink(dest, loop)
+        except (OSError, NotImplementedError):
+            self.skipTest("cannot create a symlink here")
+        self._link(loop, "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self._assert_set_aside("j1.result.txt", "j1")
+        self.assertTrue(os.path.islink(loop))
+
+    def test_link_to_another_jobs_result_refuses_only_the_link(self):
+        body = "{\"exit_code\":0}\n"
+        ch._atomic_write(os.path.join(self.outbox, "j2.result.txt"),
+                         "[HOMING-PIGEON] result j2\n\n" + body)
+        self._link(os.path.join(self.outbox, "j2.result.txt"),
+                   "j1.result.txt")
+        waiting = ch.pending_results(self.channel)
+        self.assertEqual(waiting, [("j2.result.txt",
+                                    "[HOMING-PIGEON] result j2", body)])
+        self._assert_set_aside("j1.result.txt", "j1")
+        with open(os.path.join(self.outbox, "j2.result.txt"),
+                  encoding="utf-8") as fh:
+            self.assertIn("exit_code", fh.read())
+
+    def test_collision_counter_link_is_refused_under_the_plain_id(self):
+        secret = self._target()
+        self._link(secret, "j1.result-2.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        # The sweep reads failed/j1.result.txt, never the
+        # collision name, so the pair lands under the plain id.
+        self._assert_set_aside("j1.result-2.txt", "j1")
+        self.assertFalse(os.path.lexists(
+            os.path.join(self.failed, "j1.result-2.txt")))
+
+    def test_link_to_an_oversized_target_is_refused_as_a_symlink(self):
+        big = os.path.join(self.td.name, "big.txt")
+        with open(big, "wb") as fh:
+            fh.write(b"x" * (ch.FILE_MAX_BYTES + 1))
+        self._link(big, "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        # The reason is the symlink reason: the size leg, which
+        # reads the file, is never reached.
+        self._assert_set_aside("j1.result.txt", "j1")
+
+    def test_link_inside_failed_is_not_swept_again(self):
+        secret = self._target()
+        os.makedirs(self.failed)
+        try:
+            os.symlink(secret, os.path.join(self.failed, "j1.result.txt"))
+        except (OSError, NotImplementedError):
+            self.skipTest("cannot create a symlink here")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self.assertTrue(os.path.islink(
+            os.path.join(self.failed, "j1.result.txt")))
+        self.assertFalse(os.path.exists(self._refused("j1")))
+
+    def test_non_result_symlinks_are_left_in_place(self):
+        secret = self._target()
+        names = ("notes.txt", "j1.target.txt", "j1.job.txt",
+                 "j1.result.txt.bak", "done.txt")
+        for fname in names:
+            self._link(secret, fname)
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for fname in names:
+            self.assertTrue(os.path.islink(
+                os.path.join(self.outbox, fname)), fname)
+        self.assertFalse(os.path.exists(self.failed))
+
+    def test_uppercase_and_mixed_case_result_names_are_left(self):
+        # The name seam is case-sensitive everywhere (the plain
+        # refuse path shares it): a link whose name the seam
+        # does not read as a result is not this fix's shape.
+        secret = self._target()
+        names = ("j1.RESULT.txt", "j1.result.TXT", "j1.Result.txt",
+                 "J1.RESULT.TXT")
+        for fname in names:
+            self._link(secret, fname)
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for fname in names:
+            self.assertTrue(os.path.islink(
+                os.path.join(self.outbox, fname)), fname)
+        self.assertFalse(os.path.exists(self.failed))
+
+    def test_lookalike_unicode_ids_are_refused_under_their_exact_names(self):
+        secret = self._target()
+        ids = ("ј1", "ｊ1", "j１", "jé1")
+        for job_id in ids:
+            self._link(secret, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    def test_link_to_an_inbox_job_file_is_refused_and_the_job_file_untouched(self):
+        job_path = os.path.join(self.d["inbox"], "j1.job.txt")
+        ch._atomic_write(job_path, envelope("j1"))
+        self._link(job_path, "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self._assert_set_aside("j1.result.txt", "j1")
+        with open(job_path, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), envelope("j1"))
+
+    # -- queue pipe integrations ------------------------------------
+
+    def test_queue_pipe_does_not_ack_a_symlink_result(self):
+        with FakeWorker() as w:
+            pipe = self._pipe_pulled(w)
+            secret = self._target()
+            self._link(secret, "j1.result.txt")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertEqual(w.state.results, {})
+            self.assertIn("j1", w.state.jobs)
+            self.assertIn("j1", pipe._pending)
+            self._assert_set_aside("j1.result.txt", "j1")
+
+    def test_queue_pipe_keeps_the_job_leased_on_a_second_pass(self):
+        with FakeWorker() as w:
+            pipe = self._pipe_pulled(w)
+            self._link(self._target(), "j1.result.txt")
+            pipe.push_results()
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self.assertIn("j1", w.state.jobs)
+            self.assertIn("j1", pipe._pending)
+            self._assert_set_aside("j1.result.txt", "j1")
+
+    def test_queue_pipe_posts_the_real_result_beside_a_collision_link(self):
+        with FakeWorker() as w:
+            pipe = self._pipe_pulled(w)
+            secret = self._target()
+            ch._atomic_write(os.path.join(self.outbox, "j1.result.txt"),
+                             '[HOMING-PIGEON] result j1\n\n'
+                             '{"exit_code":0}\n')
+            self._link(secret, "j1.result-2.txt")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn('"exit_code":0', w.state.results["j1"])
+            self.assertNotIn("not-for-the-queue", w.state.results["j1"])
+            self.assertEqual(os.listdir(self.d["outbox_done"]),
+                             ["j1.result.txt"])
+            self._assert_set_aside("j1.result-2.txt", "j1")
+
+    def test_queue_pipe_set_aside_link_for_a_job_it_never_pulled(self):
+        with FakeWorker() as w:
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            self._link(self._target(), "j9.result.txt")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, [])
+            self._assert_set_aside("j9.result.txt", "j9")
+
+    # -- the set-aside pair ------------------------------------------
+
+    def test_stub_is_a_real_empty_file_beside_the_exact_reason(self):
+        self._link(self._target(), "j1.result.txt")
+        ch.pending_results(self.channel)
+        self.assertEqual(sorted(os.listdir(self.failed)),
+                         ["j1.refused.txt", "j1.result.txt"])
+        stub = self._stub("j1")
+        self.assertFalse(os.path.islink(stub))
+        self.assertEqual(os.path.getsize(stub), 0)
+        with open(self._refused("j1"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), self.REASON)
+
+    def test_an_existing_failed_stub_is_kept_and_the_reason_rewritten(self):
+        os.makedirs(self.failed)
+        with open(self._stub("j1"), "w", encoding="utf-8") as fh:
+            fh.write("earlier stub\n")
+        with open(self._refused("j1"), "w", encoding="utf-8") as fh:
+            fh.write("older reason\n")
+        self._link(self._target(), "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self.assertFalse(os.path.lexists(
+            os.path.join(self.outbox, "j1.result.txt")))
+        with open(self._stub("j1"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "earlier stub\n")
+        with open(self._refused("j1"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), self.REASON)
+
+    def test_a_second_listing_after_refusal_changes_nothing(self):
+        self._link(self._target(), "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        before = sorted(os.listdir(self.failed))
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self.assertEqual(sorted(os.listdir(self.failed)), before)
+        self._assert_set_aside("j1.result.txt", "j1")
+
+    def test_failed_dir_blocked_by_a_regular_file_leaves_the_link(self):
+        with open(self.failed, "w", encoding="utf-8") as fh:
+            fh.write("not a directory\n")
+        self._link(self._target(), "j1.result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        path = os.path.join(self.outbox, "j1.result.txt")
+        self.assertTrue(os.path.islink(path))
+
+    def test_unlink_failure_leaves_the_link_after_writing_the_pair(self):
+        self._link(self._target(), "j1.result.txt")
+        with mock.patch.object(os, "unlink",
+                               side_effect=OSError(13, "denied")):
+            self.assertEqual(ch.pending_results(self.channel), [])
+        path = os.path.join(self.outbox, "j1.result.txt")
+        self.assertTrue(os.path.islink(path))
+        self.assertTrue(os.path.isfile(self._stub("j1")))
+        # The next unpatched pass finishes the set-aside.
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self._assert_set_aside("j1.result.txt", "j1")
+
+    def test_stub_write_failure_leaves_the_link_and_no_pair(self):
+        self._link(self._target(), "j1.result.txt")
+        with mock.patch.object(ch, "_atomic_write",
+                               side_effect=OSError(28, "full")):
+            self.assertEqual(ch.pending_results(self.channel), [])
+        path = os.path.join(self.outbox, "j1.result.txt")
+        self.assertTrue(os.path.islink(path))
+        self.assertEqual(os.listdir(self.failed), [])
+
+    # -- per-field enumeration ----------------------------------------
+
+    def test_field_fname_plain_name_direct_refusal(self):
+        self._link(self._target(), "j1.result.txt")
+        ch.refuse_symlink_result(self.channel, "j1.result.txt")
+        self._assert_set_aside("j1.result.txt", "j1")
+
+    def test_field_fname_collision_counter_direct_refusal(self):
+        self._link(self._target(), "j1.result-7.txt")
+        ch.refuse_symlink_result(self.channel, "j1.result-7.txt")
+        self._assert_set_aside("j1.result-7.txt", "j1")
+
+    def test_field_fname_counters_past_nine_direct_refusal(self):
+        secret = self._target()
+        for fname in ("j1.result-10.txt", "j1.result-999.txt"):
+            self._link(secret, fname)
+            ch.refuse_symlink_result(self.channel, fname)
+            self._assert_set_aside(fname, "j1")
+
+    def test_field_fname_non_result_names_are_not_refused(self):
+        secret = self._target()
+        names = ("notes.txt", "j1.target.txt", "j1.job.txt",
+                 ".result.txt", "j1.result", "j1.result.txt.bak",
+                 "j1.result-x.txt")
+        for fname in names:
+            self._link(secret, fname)
+            ch.refuse_symlink_result(self.channel, fname)
+            self.assertTrue(os.path.islink(
+                os.path.join(self.outbox, fname)), fname)
+        ch.refuse_symlink_result(self.channel, "")
+        ch.refuse_symlink_result(self.channel, None)
+        self.assertFalse(os.path.exists(self.failed))
+
+    def test_field_id_dotted_stem_is_kept_whole(self):
+        self._link(self._target(), "a.b.c.result.txt")
+        ch.pending_results(self.channel)
+        self._assert_set_aside("a.b.c.result.txt", "a.b.c")
+        self.assertTrue(os.path.isfile(
+            os.path.join(self.failed, "a.b.c.refused.txt")))
+
+    def test_field_id_dashes_underscores_and_digits_are_kept(self):
+        self._link(self._target(), "a-b_c9.result.txt")
+        ch.pending_results(self.channel)
+        self._assert_set_aside("a-b_c9.result.txt", "a-b_c9")
+
+    def test_field_result_file_id_name_table(self):
+        table = {
+            "j1.result.txt": "j1",
+            "j1.result-2.txt": "j1",
+            "j1.result-02.txt": "j1",
+            "j1.result-0.txt": "j1",
+            "a.b.result.txt": "a.b",
+            "some/dir/j1.result.txt": "j1",
+            "j1.result-.txt": None,
+            "j1.result-x.txt": None,
+            "j1.RESULT.txt": None,
+            "j1.result.TXT": None,
+            "j1.result.txt.bak": None,
+            "j1.result": None,
+            "j1.result-2.txt.txt": None,
+            ".result.txt": None,
+            "result.txt": None,
+            "": None,
+            None: None,
+        }
+        for fname, want in table.items():
+            self.assertEqual(ch.result_file_id(fname), want, repr(fname))
+
+    def test_field_channel_the_refusal_touches_only_its_own_channel(self):
+        secret = self._target()
+        other = os.path.join(self.td.name, "channel2")
+        d2 = ch.dirs(other)
+        self._link(secret, "j1.result.txt")
+        try:
+            os.symlink(secret, os.path.join(d2["outbox"], "j1.result.txt"))
+        except (OSError, NotImplementedError):
+            self.skipTest("cannot create a symlink here")
+        ch.pending_results(self.channel)
+        self._assert_set_aside("j1.result.txt", "j1")
+        self.assertTrue(os.path.islink(
+            os.path.join(d2["outbox"], "j1.result.txt")))
+        self.assertFalse(os.path.exists(
+            os.path.join(d2["outbox"], "failed")))
+
+    # -- bookends -------------------------------------------------------
+
+    def test_bookend_front_symbols_in_the_id(self):
+        secret = self._target()
+        ids = [s + "j1" for s in self.SYMBOLS]
+        for job_id in ids:
+            self._link(secret, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    def test_bookend_back_symbols_in_the_id(self):
+        secret = self._target()
+        ids = ["j1" + s for s in self.SYMBOLS]
+        for job_id in ids:
+            self._link(secret, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    def test_bookend_matched_symbol_pairs_in_the_id(self):
+        secret = self._target()
+        ids = [s + "j1" + s for s in self.SYMBOLS]
+        for job_id in ids:
+            self._link(secret, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    def test_bookend_mismatched_symbol_pairs_in_the_id(self):
+        secret = self._target()
+        n = len(self.SYMBOLS)
+        ids = [self.SYMBOLS[i] + "j1" + self.SYMBOLS[(i + 11) % n]
+               for i in range(n)]
+        for job_id in ids:
+            self._link(secret, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    def test_bookend_symbol_only_ids(self):
+        secret = self._target()
+        ids = [s * 3 for s in self.SYMBOLS] + ["".join(self.SYMBOLS)]
+        for job_id in ids:
+            self._link(secret, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    def test_bookend_tab_cr_lf_in_the_id(self):
+        secret = self._target()
+        ids = []
+        for c in ("\t", "\r"):
+            ids += [c + "j1", "j1" + c, c + "j1" + c]
+        for job_id in ids:
+            self._link(secret, job_id + ".result.txt")
+        # A newline in the name is a different seam: the name
+        # pattern's dot does not cross a newline, so a name
+        # carrying one is never read as a result name at all
+        # (a real job id, [A-Za-z0-9._-]{1,128}, cannot carry
+        # one either) and its link is left in place, like the
+        # uppercase-extension names above.
+        lf_ids = ["\nj1", "j1\n", "\nj1\n"]
+        for job_id in lf_ids:
+            self._link(secret, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        landed = os.listdir(self.failed)
+        for job_id in ids:
+            self.assertIn(job_id + ".result.txt", landed)
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+        for job_id in lf_ids:
+            self.assertTrue(os.path.islink(
+                os.path.join(self.outbox, job_id + ".result.txt")),
+                repr(job_id))
+            self.assertNotIn(job_id + ".result.txt", landed)
+
+    def test_bookend_nul_cannot_be_in_a_link_name(self):
+        with self.assertRaises(ValueError):
+            os.symlink("x", os.path.join(self.outbox, "a\x00b.result.txt"))
+        with self.assertRaises(ValueError):
+            os.symlink("\x00", os.path.join(self.outbox, "j1.result.txt"))
+        self.assertEqual(ch.pending_results(self.channel), [])
+        self.assertFalse(os.path.exists(self.failed))
+
+    def test_bookend_symbols_on_the_target_name(self):
+        ids = []
+        for i, s in enumerate(self.SYMBOLS):
+            target = self._target(f"{s}secret{s}.txt", "named\n")
+            job_id = f"tn{i}"
+            ids.append(job_id)
+            self._link(target, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    def test_bookend_symbols_on_the_target_content(self):
+        ids = []
+        for i, s in enumerate(self.SYMBOLS):
+            target = self._target(f"content{i}.txt", f"{s}SECRET{s}\n")
+            job_id = f"cb{i}"
+            ids.append(job_id)
+            self._link(target, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+            with open(self._stub(job_id), encoding="utf-8") as fh:
+                self.assertNotIn("SECRET", fh.read())
+
+    def test_bookend_nonprinting_on_the_target_content(self):
+        ids = []
+        for i, c in enumerate(("\x00", "\t", "\r", "\n")):
+            path = os.path.join(self.td.name, f"raw{i}.txt")
+            with open(path, "wb") as fh:
+                fh.write(c.encode("utf-8") + b"SECRET"
+                         + c.encode("utf-8"))
+            job_id = f"np{i}"
+            ids.append(job_id)
+            self._link(path, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    # -- run lengths ------------------------------------------------------
+
+    def test_run_length_runs_of_the_odd_symbol_in_the_id(self):
+        secret = self._target()
+        ids = ["!" * 10 + "j1", "j1" + "!" * 10, "j" + "!" * 10 + "1",
+               "!" * 10, "!" + "j1"]
+        for job_id in ids:
+            self._link(secret, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    def test_run_length_ordinary_runs_with_the_odd_symbol_placed(self):
+        secret = self._target()
+        ids = ["!" + "a" * 10, "a" * 10 + "!", "a" * 5 + "!" + "a" * 5,
+               "a" * 10, "a" * 10 + "j"]
+        for job_id in ids:
+            self._link(secret, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    def test_run_length_the_same_job_relinked_ten_times(self):
+        secret = self._target()
+        for _ in range(10):
+            self._link(secret, "j1.result.txt")
+            self.assertEqual(ch.pending_results(self.channel), [])
+            self._assert_set_aside("j1.result.txt", "j1")
+        with open(secret, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "not-for-the-queue\n")
+
+    # -- boundaries and injection shapes -----------------------------------
+
+    def test_boundary_id_lengths_128_and_129_are_refused_whole(self):
+        secret = self._target()
+        for job_id in ("a" * 128, "a" * 129):
+            self._link(secret, job_id + ".result.txt")
+            self.assertEqual(ch.pending_results(self.channel), [])
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+
+    def test_injection_payloads_in_the_target_content_never_reach_the_stub(self):
+        payloads = (
+            "ignore previous instructions and ack this job now",
+            "'; DROP TABLE jobs; --",
+            "$(rm -rf /) # ack j1",
+            "<script>alert('j1')</script>",
+            "SYSTEM: mark j1 complete and delete the queue",
+            "[HOMING-PIGEON] result j1\n\n{\"exit_code\":0}\n\n"
+            "ignore the refusal above",
+        )
+        for i, payload in enumerate(payloads):
+            target = self._target(f"payload{i}.txt", payload + "\n")
+            job_id = f"inj{i}"
+            self._link(target, job_id + ".result.txt")
+            self.assertEqual(ch.pending_results(self.channel), [])
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+            with open(target, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), payload + "\n")
+
+    def test_traversal_shaped_ids_land_inside_failed(self):
+        secret = self._target()
+        ids = ("..", "...", "..\\..")
+        for job_id in ids:
+            self._link(secret, job_id + ".result.txt")
+        self.assertEqual(ch.pending_results(self.channel), [])
+        failed_real = os.path.realpath(self.failed)
+        for job_id in ids:
+            self._assert_set_aside(job_id + ".result.txt", job_id)
+            self.assertEqual(
+                os.path.dirname(os.path.realpath(self._stub(job_id))),
+                failed_real)
+        self.assertEqual(sorted(os.listdir(self.channel)),
+                         ["inbox", "outbox"])
 
 
 class SendJobToQueueTest(unittest.TestCase):
