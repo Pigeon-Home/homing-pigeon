@@ -608,25 +608,110 @@ Applied to every item on this queue, item 1 included:
 - Fixed: fe4ec56c (31-Oct-2026)
 - Existing tests: test_queue_pipe_edges.py, test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (RefusedAckShotgunTest in
+  test_transport_queues.py, the file where the fix's own
+  regression test lives): an ack the queue refuses — 500, 409,
+  a connection error, a falsy answer — leaves the posted
+  result in place and the job leased, on both arms of the
+  pipe (the result arm and the reconcile arm), with the ack
+  call's own status and receipt fields pinned, and the retry
+  storing the same bytes once. Landed on main 2-Nov-2026
+  (spliced beside items 21, 22 and 23 after tail conflicts);
+  the file runs green (439 tests in the file with all queue
+  families landed, 0 skipped), no live bug exposed, no
+  production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261121, run locally against the banked
+  channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 142, slowest try 30 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 21. Two job ids differing only after 120 characters collide into one file; neither result posted
 - Fixed: 2f6502f2 (31-Oct-2026)
 - Existing tests: test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (LongIdCollisionShotgunTest in
+  test_transport_queues.py): the delivery name keeps 128
+  characters, so two ids differing only past that point are
+  two jobs with two files — the length boundaries
+  (119/120/121/127 kept exactly, 129 and 1000 cut at 128),
+  ids differing at every position around the cut, prefixes
+  shared to every depth, 10 ids sharing the first 127, and
+  the pair carried through the whole pipe to 2 acks. Landed
+  on main 2-Nov-2026 (334a43cb); the file runs green
+  (439 tests in the file with all queue families landed,
+  0 skipped), no live bug exposed, no production code
+  changed.
+- Proof of work (per the method section): per-field enumeration
+  (channel, ident, subject, body, the returned path) and the
+  bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target names --rounds
+  400 --seed 20261122, run locally against the banked names
+  corpus (84 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 89, slowest try 3 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 22. An oversized result does not finish the job
 - Fixed: 4922aa37 (31-Oct-2026)
 - Existing tests: test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (OversizedResultShotgunTest in
+  test_transport_queues.py): an over-cap result is set aside
+  by the listing before the pass can post it, and the pipe
+  holds the job's lease through its failed/ scan — sizes at,
+  1 under and 1 over a lowered cap and the real 4 MiB cap,
+  the trailing newline as the crossing byte, UTF-8 bytes
+  against characters, and the failed/ scan's membership
+  shapes. Distinct from item 18's set-aside naming pins.
+  Landed on main 2-Nov-2026 (spliced beside items 20, 21 and
+  23 after tail conflicts); the file runs green (439 tests in
+  the file with all queue families landed, 0 skipped), no
+  live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target stash --rounds
+  400 --seed 20261123, run locally against the banked stash
+  corpus (31 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 20, slowest try 12 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 23. A result the queue will never take is set aside
 - Fixed: 9be8c1a6 (31-Oct-2026)
 - Existing tests: test_transport_queues.py, test_transport_shells.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (QueueNeverTakesResultShotgunTest
+  in test_transport_queues.py): a result the queue answers
+  with a permanent refusal (400, 403, 413) is set aside with
+  its refusal and the job stays leased, while every retryable
+  answer (401, 404, 409, 429, 500, 503) leaves the file for
+  the next pass — the status seams at the client, the pipe
+  integrations against the fake Worker, and the oversize
+  listing leg. One behavior pinned as current, noted in the
+  class docstring: the listing's size leg reads size before
+  name, so an oversize non-result file or sidecar in the
+  outbox is also set aside under its own name. Landed on main
+  2-Nov-2026 (spliced beside items 20, 21 and 22 after tail
+  conflicts); the file runs green (439 tests in the file with
+  all queue families landed, 0 skipped), no live bug exposed,
+  no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  (status, payload, file name, subject id, body, the refusal
+  reason's shape) and the bookend / run-length sweeps are
+  carried in the class docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target race_stash
+  --rounds 400 --seed 20261124, run locally against the banked
+  race_stash corpus (64 entries). Result: 400 rounds,
+  0 crashes, 0 slow, arcs unchanged at 193, slowest try 27 ms.
+  The grow's bookkeeping writes were reverted and are not
+  banked (banking is the rigs' hourly job).
 
 ### 24. A different result for a stored id does not finish the job
 - Fixed: 2c0f4d5d (31-Oct-2026)
