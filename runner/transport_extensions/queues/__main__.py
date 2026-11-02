@@ -70,9 +70,19 @@ def queue_base_allowed(url):
     if host == "localhost":
         return True
     try:
-        return bool(ipaddress.ip_address(host).is_loopback)
+        addr = ipaddress.ip_address(host)
     except ValueError:
         return False
+    # An IPv4-mapped IPv6 spelling (::ffff:127.0.0.1) is a disguise,
+    # not a loopback spelling: ipaddress answers is_loopback for it
+    # differently across Python versions (False on 3.12, True on
+    # 3.13+), and a token door's decision must not depend on the
+    # interpreter version. Refuse the mapped form over plain http;
+    # https to the same host is unaffected by this branch.
+    if isinstance(addr, ipaddress.IPv6Address) and \
+            addr.ipv4_mapped is not None:
+        return False
+    return bool(addr.is_loopback)
 
 
 class _RedirectRefused(urllib.request.HTTPRedirectHandler):

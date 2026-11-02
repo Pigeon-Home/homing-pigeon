@@ -8,6 +8,7 @@ loopback in this process; nothing leaves the machine.
 """
 import hashlib
 import http.server
+import ipaddress
 import json
 import os
 import sys
@@ -28,6 +29,7 @@ sys.path.insert(0, REPO)
 from runner.transport_extensions import channel as ch  # noqa: E402
 from runner.transport_extensions.queues import __main__ as q  # noqa: E402
 from runner.cloud import send_job  # noqa: E402
+from runner.tests._compat import filename_punctuation  # noqa: E402
 
 RUNNER_TOKEN = "runner-token"
 SI_TOKEN = "si-token"
@@ -1428,7 +1430,13 @@ class SymlinkResultShotgunTest(unittest.TestCase):
 
     def test_bookend_symbols_on_the_target_name(self):
         ids = []
-        for i, s in enumerate(self.SYMBOLS):
+        # Windows file names cannot hold < > : " | ? * or a
+        # backslash, so the target sweep there covers every
+        # symbol a file name can hold; the full sweep runs in
+        # the Linux and macOS jobs (filename_punctuation).
+        holdable = filename_punctuation()
+        for i, s in enumerate(c for c in self.SYMBOLS
+                              if c in holdable):
             target = self._target(f"{s}secret{s}.txt", "named\n")
             job_id = f"tn{i}"
             ids.append(job_id)
@@ -1526,6 +1534,13 @@ class SymlinkResultShotgunTest(unittest.TestCase):
     def test_traversal_shaped_ids_land_inside_failed(self):
         secret = self._target()
         ids = ("..", "...", "..\\..")
+        if os.name == "nt":
+            # "..\\.." is a traversal path on Windows, not a
+            # name: a directory listing there can never yield
+            # it, and the fixture link lands in the parent
+            # directory instead. The backslash shape runs in
+            # the Linux and macOS jobs.
+            ids = ("..", "...")
         for job_id in ids:
             self._link(secret, job_id + ".result.txt")
         self.assertEqual(ch.pending_results(self.channel), [])
@@ -2013,6 +2028,8 @@ class UnreadableResultShotgunTest(unittest.TestCase):
             self.assertEqual(fh.read(), "inside the directory\n")
 
     def test_a_fifo_result_is_skipped_by_the_listing(self):
+        if not hasattr(os, "mkfifo"):
+            self.skipTest("os.mkfifo does not exist on this platform")
         path = os.path.join(ch.dirs(self.channel)["outbox"],
                             "j1.result.txt")
         os.mkfifo(path)
@@ -2326,13 +2343,14 @@ class UnreadableResultShotgunTest(unittest.TestCase):
 
     def test_bookend_symbols_in_a_directory_results_stem(self):
         # Every symbol a file name can hold (all but the path
-        # separator) at the front and at the back of the stem:
-        # the directory still names that job, and the job stays.
+        # separator; on Windows also without the characters
+        # Win32 refuses) at the front and at the back of the
+        # stem: the directory still names that job, and the job
+        # stays. The full sweep runs in the Linux and macOS
+        # jobs (filename_punctuation).
         with FakeWorker() as w:
             client = q.QueueClient(w.url, RUNNER_TOKEN)
-            for symbol in string.punctuation:
-                if symbol == "/":
-                    continue
+            for symbol in filename_punctuation():
                 for ident in (symbol + "j9", "j9" + symbol):
                     channel = self._fresh("stem-")
                     pipe = self._manual_pipe(w, channel, [ident],
@@ -3054,8 +3072,15 @@ class StaleResultDoesNotAckShotgunTest(unittest.TestCase):
         with FakeWorker() as w:
             pipe = self._pipe(w)
             self._first_life(w, pipe, "j1")
-            for fname in ("j1.result-x.txt", "j1.result.txt.bak",
-                          "j1.results.txt", "j1.result.txt "):
+            fnames = ["j1.result-x.txt", "j1.result.txt.bak",
+                      "j1.results.txt", "j1.result.txt "]
+            if os.name == "nt":
+                # Windows strips the trailing space at creation,
+                # so that name lands as the genuine previous-life
+                # name; the lookalike shape cannot exist there.
+                # It runs in the Linux and macOS jobs.
+                fnames.remove("j1.result.txt ")
+            for fname in fnames:
                 self._write_result(
                     "j1", '[HOMING-PIGEON] result j1\n\n{}\n',
                     fname=fname)
@@ -3848,6 +3873,35 @@ class LoopbackRedirectShotgunTest(unittest.TestCase):
                    "http://[::ffff:8.8.8.8]/t/a",
                    "http://[::ffff:127.0.0.1]/t/a"), False)
 
+    def test_ipv4_mapped_spellings_are_refused_over_http(self):
+        # The mapped form is a disguise in every spelling: dotted,
+        # hex-group and fully expanded name the same address, and
+        # the refusal does not depend on the embedded address --
+        # loopback, private and public mappings are all refused
+        # over plain http. https to the same hosts is the https
+        # rule's business and stays allowed.
+        self._all(("http://[::ffff:127.0.0.1]/t/a",
+                   "http://[::ffff:7f00:1]/t/a",
+                   "http://[0:0:0:0:0:ffff:127.0.0.1]/t/a",
+                   "http://[::ffff:10.0.0.1]/t/a",
+                   "http://[::ffff:192.168.1.1]/t/a",
+                   "http://[::ffff:8.8.8.8]/t/a"), False)
+        self._all(("https://[::ffff:127.0.0.1]/t/a",
+                   "https://[::ffff:8.8.8.8]/t/a"), True)
+
+    def test_mapped_refusal_survives_a_loopback_stdlib_answer(self):
+        # Python 3.13+ answers is_loopback True for an IPv4-mapped
+        # loopback address where 3.12 answers False; the CI failure
+        # on the newer interpreters was exactly that flip. Simulate
+        # the newer answer here: the door's refusal must not move.
+        with mock.patch.object(ipaddress.IPv6Address, "is_loopback",
+                               new_callable=mock.PropertyMock,
+                               return_value=True):
+            self.assertFalse(
+                q.queue_base_allowed("http://[::ffff:127.0.0.1]/t/a"))
+            self.assertTrue(
+                q.queue_base_allowed("http://[::1]/t/a"))
+
     def test_localhost_lookalikes_and_unicode_are_refused(self):
         self._all(("http://localhos/t/a",
                    "http://l0calhost/t/a",
@@ -4505,6 +4559,23 @@ class LongIdCollisionShotgunTest(unittest.TestCase):
         self.assertIn(f"body of {b}", self._read(b + ".job.txt"))
 
     def test_case_variant_tails_past_120_are_distinct_files(self):
+        # Probed on the test's own filesystem: where names
+        # fold case (Windows, a default macOS volume), the
+        # pair below is one file by the platform's own rule,
+        # and there is nothing distinct to hold.
+        for probe in (".hp-case-A", ".hp-case-a"):
+            with open(os.path.join(self.inbox, probe), "w") as fh:
+                fh.write("x")
+        folds = len([n for n in os.listdir(self.inbox)
+                     if n.startswith(".hp-case-")]) < 2
+        for probe in (".hp-case-A", ".hp-case-a"):
+            path = os.path.join(self.inbox, probe)
+            if os.path.exists(path):
+                os.unlink(path)
+        if folds:
+            self.skipTest(
+                "this filesystem folds case, so case-variant "
+                "names are one file")
         a = "c" * 120 + "ABCDEFGH"
         b = "c" * 120 + "abcdefgh"
         self._deliver(a)
@@ -4929,9 +5000,12 @@ class QueueNeverTakesResultShotgunTest(unittest.TestCase):
         pipe._pending[job_id] = job_id
         subject = subject or f"[HOMING-PIGEON] result {job_id}"
         text = subject + "\n\n" + body
-        with open(os.path.join(d["outbox"], fname), "w",
-                  encoding="utf-8") as fh:
-            fh.write(text)
+        # Bytes, not text mode: a text-mode write translates
+        # "\n" to the platform's line ending on Windows, and the
+        # set-aside assertions compare the stored bytes exactly
+        # -- the fixture must land the same bytes everywhere.
+        with open(os.path.join(d["outbox"], fname), "wb") as fh:
+            fh.write(text.encode("utf-8"))
         pipe.push_results()
         return pipe, stub, channel, text
 
@@ -6008,6 +6082,9 @@ class OversizedResultShotgunTest(unittest.TestCase):
     def test_bookend_id_front_each_punctuation_in_failed_name_holds(self):
         for c in string.punctuation:
             with self.subTest(c=c):
+                if os.name == "nt" and c in '<>:"|?*\\':
+                    self.skipTest(
+                        "a Windows file name cannot hold this character")
                 if c == "/":
                     # A file name cannot hold the separator; at the
                     # parser it is the basename boundary.
@@ -6024,6 +6101,9 @@ class OversizedResultShotgunTest(unittest.TestCase):
     def test_bookend_id_back_each_punctuation_in_failed_name_holds(self):
         for c in string.punctuation:
             with self.subTest(c=c):
+                if os.name == "nt" and c in '<>:"|?*\\':
+                    self.skipTest(
+                        "a Windows file name cannot hold this character")
                 if c == "/":
                     self.assertEqual(ch.result_file_id("j1/.result.txt"),
                                      None)
@@ -6038,6 +6118,9 @@ class OversizedResultShotgunTest(unittest.TestCase):
     def test_bookend_id_matched_pairs_in_failed_name_hold(self):
         for c in string.punctuation:
             with self.subTest(c=c):
+                if os.name == "nt" and c in '<>:"|?*\\':
+                    self.skipTest(
+                        "a Windows file name cannot hold this character")
                 if c == "/":
                     continue
                 ident = c + "j1" + c

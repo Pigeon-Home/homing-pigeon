@@ -45,8 +45,14 @@ def result_file_id(fname):
     ``j1.result.txt`` and ``j1.result-2.txt`` are both j1. The
     suffix is only how a second file is kept from clobbering the
     first. A name that is not a result file is None.
+
+    The name is data, so it gets one reading on every platform:
+    only "/" splits a name here. os.path.basename also splits
+    on "\\" on Windows, which made the same name parse to a
+    different ident there (a backslash bookend vanished into a
+    separator); a backslash is an ordinary name character.
     """
-    m = _RESULT_NAME_RE.match(os.path.basename(fname or ""))
+    m = _RESULT_NAME_RE.match((fname or "").rsplit("/", 1)[-1])
     return m.group(1) if m else None
 
 
