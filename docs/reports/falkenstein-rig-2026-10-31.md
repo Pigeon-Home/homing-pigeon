@@ -521,6 +521,30 @@ addressed clock job (47a0af89) returned exit 0. The config
 carries job_user at audit, transports ["file"], profile
 pi-light, and the upgrade policy exactly as re-pinned.
 
+## Restart resilience (1-Nov-2026)
+
+The box was rebooted through the Hetzner API and came back on
+its own. One finding in the reboot itself: the API's soft
+reboot action reported success in two seconds, but Windows
+never went down — the old boot time
+(2026-10-31T15:31:00-07:00) still held more than four minutes
+later, with the box answering throughout. The API's reset
+action (665281851081072) did reboot it: the new boot time is
+2026-11-01T17:06:01-08:00. A soft reboot through the API is
+not a reliable reboot for this Windows box; the reset action
+is the one that works.
+
+The HomingPigeon task auto-started on its boot trigger with
+no hand on the box: runner 3.15.33's startup lines are in the
+log at 01:06:24 UTC, the file transport watching its inbox.
+The grow task auto-started the same way. An addressed clock
+job sent after the reboot (08216d0e) answered with exit 0, a
+verified result, and a true clock — the epoch it printed at
+17:08:24-08:00 matched real time exactly. The file transport
+refused the envelope once on the locked-file race seen
+before, then picked it up on its own seconds later. With
+this run the twelve-scenario Windows queue is complete.
+
 ## What remains
 
 1. The `job_user` divergence on Windows (see the enforcement
@@ -531,10 +555,9 @@ pi-light, and the upgrade policy exactly as re-pinned.
    step that leaves the runner's processes alive — are
    fixed in the kit at the source (commit 53e09554), with
    tests.
-3. Windows scenario runs, hammering the rig over the next
-   couple of days: protection probes, timeouts, output
-   shapes, restart resilience, and fuzzing slices on the
-   8 cores.
+3. Windows scenario runs: complete — all twelve items in
+   the queue are done, restart resilience last (see the
+   entry above).
 4. San Francisco is not retired: the droplet is kept, its
    fuzzing stopped on 1-Nov-2026, and the box sits idle.
 
