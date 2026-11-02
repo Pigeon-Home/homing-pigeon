@@ -694,22 +694,27 @@ if __name__ == "__main__":
 
 class PlatformPayloadTest(unittest.TestCase):
     def test_none_tier_discloses_nothing(self):
-        obj = json.loads(dtls_ext.build_platform_payload("none"))
-        self.assertEqual(obj["type"], "greeting")
-        self.assertEqual(obj["transport"], "dtls")
-        self.assertEqual(obj["v"], 1)
+        raw = dtls_ext.build_platform_payload("none")
+        self.assertFalse(raw.endswith(b"\n"))
+        obj = json.loads(raw)
+        self.assertEqual(set(obj), {"disclosure"})
         self.assertEqual(obj["disclosure"], "none")
-        self.assertNotIn("platform", obj)
 
-    def test_payload_v_is_the_protocol_version_on_every_tier(self):
-        # There is no protocol version 2: the payload rides a
-        # binding of version 1, so its `v` member carries the
-        # protocol version itself -- the runner's PROTOCOL_VERSION
-        # -- at every disclosure tier.
-        self.assertEqual(PROTOCOL_VERSION, 1)
+    def test_the_object_is_disclosure_and_platform_only(self):
+        # The -02 object has no greeting members. The protocol
+        # version rides inside platform.protocol_versions.
         for tier in dtls_ext.GREETING_TIERS:
-            obj = json.loads(dtls_ext.build_platform_payload(tier))
-            self.assertEqual(obj["v"], PROTOCOL_VERSION)
+            raw = dtls_ext.build_platform_payload(tier)
+            self.assertFalse(raw.endswith(b"\n"))
+            obj = json.loads(raw)
+            self.assertNotIn("type", obj)
+            self.assertNotIn("transport", obj)
+            self.assertNotIn("v", obj)
+            self.assertEqual(obj["disclosure"], tier)
+            if tier == "none":
+                self.assertNotIn("platform", obj)
+            else:
+                self.assertIn(1, obj["platform"]["protocol_versions"])
 
     def test_family_tier_is_the_default_shape(self):
         # The family tier is what a sender needs to pick an
@@ -779,8 +784,7 @@ class PlatformExampleVectorsTest(unittest.TestCase):
         '"-NonInteractive", "-ExecutionPolicy", "Bypass", '
         '"-File"], "os_family": "windows", "os_release": '
         '"2022Server", "protocol_versions": [1], '
-        '"python_version": "3.12.7"}, "transport": "dtls", '
-        '"type": "greeting", "v": 1}')
+        '"python_version": "3.12.7"}}')
 
     # A Linux runner at the family tier: the OS family, the
     # platform default interpreter, and the protocol versions
@@ -788,8 +792,7 @@ class PlatformExampleVectorsTest(unittest.TestCase):
     EXAMPLE_FAMILY_LINUX = (
         '{"disclosure": "family", "platform": '
         '{"default_interpreter": ["sh"], "os_family": "linux", '
-        '"protocol_versions": [1]}, "transport": "dtls", '
-        '"type": "greeting", "v": 1}')
+        '"protocol_versions": [1]}}')
 
     def _payload_from_fake_host(self, tier, sys_platform,
                                 os_name, release, python_version):
@@ -833,12 +836,12 @@ class PlatformExampleVectorsTest(unittest.TestCase):
 
     def _check_vector(self, tier, sys_platform, os_name,
                       release, python_version, expected_json):
-        expected_bytes = (expected_json + "\n").encode("utf-8")
+        expected_bytes = expected_json.encode("utf-8")
         payload = self._payload_from_fake_host(
             tier, sys_platform, os_name, release, python_version)
         # The builder's bytes are the literal object, byte for
-        # byte (sorted keys, the protocol's JSON idiom, the
-        # trailing newline the payload has always carried).
+        # byte: sorted keys, no greeting members, no trailing
+        # newline.
         self.assertEqual(payload, expected_bytes)
         client, extension = self._extension_bytes_from_handshake(
             payload)
@@ -858,6 +861,17 @@ class PlatformExampleVectorsTest(unittest.TestCase):
         self._check_vector(
             "family", "linux", "posix", "6.8.0-31-generic",
             "3.12.7", self.EXAMPLE_FAMILY_LINUX)
+
+    def test_the_extension_type_is_private_use(self):
+        # RFC 8446 / RFC 8447: values whose first byte is 255
+        # are Private Use. 0xFF01 is renegotiation_info.
+        # 0xFE00 is not private use, and this profile does not
+        # send it.
+        n = dtlsproto.EXT_PLATFORM_CONFIGURATION
+        self.assertGreaterEqual(n, 0xFF00)
+        self.assertLessEqual(n, 0xFFFF)
+        self.assertNotEqual(n, 0xFF01)
+        self.assertEqual(n, 0xFFA0)
 
 
 # ------------------------------------------------------------------
