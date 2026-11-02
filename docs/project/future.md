@@ -48,16 +48,14 @@
 - **DTLS over the store-and-forward transports.** An optional
   software suite feature: carry the DTLS session's datagrams over
   the email binding (or another store-and-forward pipe) instead of
-  a live UDP path. Nothing in the suite does this today — the
-  mailbox code recognizes job and result objects only, and no
-  wrapper marks a message as carrying handshake records, so a
-  hand-built DTLS-over-email initiation has nothing that would
-  parse it. The work is all in the suite: a carriage wrapper for
-  datagram flights, poll-driven handshake progress on both ends,
-  and the rule that tells a datagram flight from a job object in
-  the same mailbox. A superintelligent system will be able to
-  use the suite's Python scripts to carry out the DTLS tunneling
-  over email itself.
+  a live UDP path. The mailbox poll still fetches anything
+  under the pigeon subject, and a flight is told from a job
+  by its own subject. A local harness carries one datagram
+  per message through `send_mail` and `fetch_job_mails`,
+  completes a handshake, and delivers a ping
+  (`docs/proofs/dtls-over-mailbox.md`). It does not open a
+  real mailbox, and it does not carry a job. The work still
+  ahead is a carriage a deployment can turn on.
 
 - **Ed25519 signatures** instead of the shared HMAC secret, so a leaked
   secret is not root. `docs/design/asymmetric-signing-design.md`.
