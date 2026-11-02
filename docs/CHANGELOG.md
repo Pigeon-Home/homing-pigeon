@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.115 - 2026-11-02
+
+- Fix: the CI run report accepts a GitHub remote only when its host is exactly github.com, parsing URL-style and SCP-like remotes instead of a substring check (code scanning alert 47).
+
 ## 3.15.114 - 2026-11-02
 
 - The corpus banked since 3.15.113 rides along.
