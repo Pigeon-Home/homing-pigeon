@@ -876,6 +876,78 @@ class PlatformExampleVectorsTest(unittest.TestCase):
 
 
 # ------------------------------------------------------------------
+# The offer: the extension is solicited, never unsolicited
+# ------------------------------------------------------------------
+
+class PlatformOfferTest(unittest.TestCase):
+    """The client offers the platform extension, empty, in
+    its ClientHello, and the server sends the disclosure in
+    EncryptedExtensions only to a client that offered it.
+    RFC 8446 section 4.2 forbids a server to send an
+    extension the client did not offer, and the draft states
+    the same rule for this extension: the bare offer asks
+    for nothing, and an initiator that did not offer gets
+    no disclosure."""
+
+    def test_the_client_offers_the_extension_empty(self):
+        client = dtlsproto.DtlsClientCore(SECRET)
+        _raw, exts = _ch_exts(client.start(NOW)[0])
+        self.assertIn(dtlsproto.EXT_PLATFORM_CONFIGURATION,
+                      exts)
+        self.assertEqual(
+            exts[dtlsproto.EXT_PLATFORM_CONFIGURATION], b"")
+
+    def test_the_offer_rides_the_second_hello_too(self):
+        # The cookie exchange makes the client send a fresh
+        # ClientHello; the offer rides that one as well.
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET),
+            platform_for=lambda s: b'{"disclosure":"family"}')
+        client = dtlsproto.DtlsClientCore(SECRET)
+        ch1 = client.start(NOW)[0]
+        hrr = server.feed(ch1, ADDR, NOW)[0]
+        ch2 = client.feed(hrr, NOW)[0]
+        _raw, exts = _ch_exts(ch2)
+        self.assertIn(dtlsproto.EXT_PLATFORM_CONFIGURATION,
+                      exts)
+        self.assertEqual(
+            exts[dtlsproto.EXT_PLATFORM_CONFIGURATION], b"")
+
+    def test_no_offer_no_disclosure(self):
+        # A client that never offered -- a peer built before
+        # the offer existed, or one that does not implement
+        # the section -- still handshakes, but the server
+        # sends it no platform extension. The no-offer hello
+        # is the client's own hello with the offer filtered
+        # out as it is encoded, so its binder still verifies.
+        real = dtlsproto._extensions_bytes
+
+        def without_offer(pairs):
+            return real(
+                [(t, v) for t, v in pairs
+                 if t != dtlsproto.EXT_PLATFORM_CONFIGURATION])
+
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET),
+            platform_for=lambda s: b'{"disclosure":"family"}')
+        client = dtlsproto.DtlsClientCore(SECRET)
+        with mock.patch.object(dtlsproto, "_extensions_bytes",
+                               without_offer):
+            ch1 = client.start(NOW)[0]
+        hrr = server.feed(ch1, ADDR, NOW)[0]
+        with mock.patch.object(dtlsproto, "_extensions_bytes",
+                               without_offer):
+            ch2 = client.feed(hrr, NOW)[0]
+        flight = server.feed(ch2, ADDR, NOW)
+        for dg in flight:
+            client.feed(dg, NOW)
+        self.assertEqual(client.state, "established")
+        self.assertIsNone(client.greeting)
+        session = next(iter(server.sessions.values()))
+        self.assertFalse(session.platform_sent)
+
+
+# ------------------------------------------------------------------
 # The extension over real UDP loopback
 # ------------------------------------------------------------------
 

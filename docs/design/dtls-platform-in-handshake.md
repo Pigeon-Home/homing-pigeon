@@ -42,6 +42,15 @@ meanings. At `none`, the extension still rides, carrying the
 tier and no `platform` member. At `family`, `standard` and
 `full`, the `platform` member carries the corresponding card.
 
+The extension is solicited, never unsolicited. The initiator
+includes the extension type, empty, in its ClientHello: the
+offer says only that it can receive the disclosure, and it
+asks for nothing. The responder sends the extension only to
+an initiator that offered it -- an extension the client did
+not offer is not sent (RFC 8446, section 4.2). A peer that
+does not offer still handshakes; it simply receives no
+disclosure.
+
 ## Client behaviour
 
 EncryptedExtensions arrives before the server's Finished in

@@ -913,6 +913,13 @@ class DtlsClientCore(_Endpoint):
             (EXT_KEY_SHARE, shares),
             (EXT_PSK_MODES, bytes([1, PSK_MODE_DHE_KE])),
             (EXT_CONNECTION_ID, b"\x04" + self._our_cid()),
+            # The platform offer: empty. It says only that
+            # this endpoint can receive the disclosure in
+            # EncryptedExtensions; it asks for nothing, and
+            # the responder chooses the tier. Without it the
+            # responder must not send the extension at all
+            # (RFC 8446 section 4.2).
+            (EXT_PLATFORM_CONFIGURATION, b""),
         ]
         if self._cookie is not None:
             exts.append((EXT_COOKIE, len(self._cookie).to_bytes(
@@ -1270,6 +1277,7 @@ class _ServerSession(_Endpoint):
         self.resumed = False
         self.established = False
         self.platform_sent = False
+        self._platform_offered = False
         self._our_cid = None
         self._hs = None
         self._c_hs = None
@@ -1389,6 +1397,11 @@ class _ServerSession(_Endpoint):
                           "dtls: PSK binder mismatch; handshake "
                           "refused")
         self.transcript.add(raw_ch)
+        # The disclosure rides only to a peer that offered
+        # it in this ClientHello; an extension the client
+        # did not offer must not be sent (RFC 8446 4.2).
+        self._platform_offered = (
+            EXT_PLATFORM_CONFIGURATION in exts)
         if EXT_CONNECTION_ID in exts:
             cid_ext = exts[EXT_CONNECTION_ID]
             if cid_ext:
@@ -1427,7 +1440,9 @@ class _ServerSession(_Endpoint):
         self._s_hs = _derive_secret(hs, b"s hs traffic", th)
         self.receivers[2] = _RecordSealer(self._c_hs)
         self.senders[2] = _RecordSealer(self._s_hs)
-        platform_payload = self._platform_payload()
+        platform_payload = (
+            self._platform_payload() if self._platform_offered
+            else None)
         ee_exts = [] if platform_payload is None else [
             (EXT_PLATFORM_CONFIGURATION, platform_payload)]
         ee_raw = _hs_message(
