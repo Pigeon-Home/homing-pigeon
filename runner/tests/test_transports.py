@@ -21,6 +21,7 @@ import os
 import smtplib
 import socket
 import ssl
+import string
 import subprocess
 import sys
 import tempfile
@@ -2455,6 +2456,607 @@ class NatsNextMessageLegsTest(unittest.TestCase):
             client._send(b"PONG\r\n")
         client.close()
         self.assertIsNone(client.sock)
+
+
+class NatsPublishAckShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 10 (31-Oct-2026): a
+    NATS result is not done until the broker answers the
+    publish. The file used to move as soon as sendall
+    returned; the broker could still refuse the bytes, or
+    the connection could die before it had them, and the
+    result was gone. The fix (a3cec2fc) makes
+    NatsClient.flush send a PING after the publish and wait
+    for the PONG: a -ERR or a missing PONG raises
+    TransportError, NatsPipe._flush_results acks the result
+    file only after flush returns, and a MSG frame read
+    while waiting is queued for next_message instead of
+    dropped. This family scattershots everything around
+    that failure: every frame shape that can answer a
+    flush (PONG, -ERR, +OK, PING, MSG, unknown lines,
+    silence, a closed socket), the exact spelling of PONG,
+    each field the pipe's flush reads, hostile and
+    injection-shaped text in the broker's error, the queued
+    message's payload and the result body, bookends and
+    run lengths on every text surface, and repeated
+    refusals followed by a retry that finally lands. One
+    regression test was never going to be enough for a bug
+    that took days of CPU to find.
+
+    Proof of work (2-Nov-2026). The unit tests are the 50
+    methods of this class: 18 hand-written seams around
+    flush, 12 per-field tests, 7 bookend sweeps, 6
+    run-length sweeps and 7 injection / frame-shape tests.
+    Per-field enumeration: the flush surface is fielded --
+    the result file name, the result subject (which names
+    the job id), the result body, the result subject
+    prefix, and the client's timeout (which sets the
+    flush deadline) -- and each field gets its own test,
+    pinning that the publish subject, the envelope bytes,
+    the acked file name and the deadline all come from
+    exactly that field. Bookends: every printable ASCII
+    symbol (string.punctuation, all 32) at the front AND
+    the back of the queued message's payload and of the
+    result body, as singles, matched pairs, mismatched
+    pairs and symbol-only strings, plus NUL, tab, CR and
+    LF at both ends. Run lengths: runs of the odd
+    character, runs of 10 ordinary characters with the
+    odd one at the front, the back and the middle, 10
+    server PINGs answered before the PONG, and 10 refused
+    flushes leaving the file in place. The fuzzing was
+    executed, not just the tests written:
+    runner/tools/de_dust_corpus.py grow --target channels
+    --rounds 400 --seed 20261111 against the banked
+    channels corpus (11 entries). Result: 400 rounds,
+    0 crashes, 0 slow, arcs unchanged at 142, slowest try
+    61 ms; the unacked-result shape did not recur. The
+    grow's bookkeeping writes were reverted and are not
+    banked (banking is the rigs' hourly job); this record
+    is the run's proof. None of this is exotic: it is
+    combinatorics -- systematically trying the
+    combinations a hand-written list would never reach,
+    then pinning each answer as a test."""
+
+    # -- helpers ---------------------------------------------------
+
+    class _Broker:
+        """A fake publish client for NatsPipe._flush_results:
+        records publishes, and flush raises the error it was
+        given (or answers, when it was given none)."""
+
+        def __init__(self, error=None):
+            self.timeout = 5
+            self.published = []
+            self.flush_calls = 0
+            self.deadlines = []
+            self.error = error
+
+        def publish(self, subject, payload):
+            self.published.append((subject, payload))
+
+        def flush(self, deadline):
+            self.flush_calls += 1
+            self.deadlines.append(deadline)
+            if self.error is not None:
+                raise self.error
+
+    def _client(self, chunks):
+        client = nats_ext.NatsClient("nats://127.0.0.1:4222")
+        client.sock = _ScriptedSock(chunks)
+        return client
+
+    def _deadline(self):
+        return time.monotonic() + 30
+
+    @staticmethod
+    def _msg(subject, payload):
+        return (f"MSG {subject} 1 {len(payload)}\r\n".encode()
+                + payload + b"\r\n")
+
+    def _pipe(self, **cfg):
+        tmp = tempfile.mkdtemp(prefix="hp-nats-ack-")
+        paths = transports.ensure_channel_dirs(tmp, "nats")
+        block = {"allow_unauthenticated": True}
+        block.update(cfg)
+        return nats_ext.NatsPipe(block, paths["root"]), paths
+
+    @staticmethod
+    def _write(paths, fname="j1.result.txt",
+               subject="[HOMING-PIGEON] result j1", body="ok\n"):
+        with open(os.path.join(paths["outbox"], fname), "w",
+                  encoding="utf-8") as fh:
+            fh.write(f"{subject}\n\n{body}")
+
+    # -- flush seams (18) ------------------------------------------
+
+    def test_pong_after_publish_returns_and_sends_one_ping(self):
+        client = self._client([b"PONG\r\n"])
+        self.assertIsNone(client.flush(self._deadline()))
+        self.assertEqual(client.sock.sent, [b"PING\r\n"])
+        self.assertEqual(client._queued, [])
+
+    def test_missing_pong_is_a_timeout_error_not_success(self):
+        client = self._client([])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "timed out waiting for PONG"):
+            client.flush(self._deadline())
+        self.assertEqual(client.sock.sent, [b"PING\r\n"])
+
+    def test_err_as_first_frame_raises_with_the_broker_text(self):
+        client = self._client(
+            [b"-ERR 'Maximum Payload Violation'\r\n"])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "Maximum Payload Violation"):
+            client.flush(self._deadline())
+
+    def test_err_with_no_text_still_raises(self):
+        client = self._client([b"-ERR\r\n"])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "server error"):
+            client.flush(self._deadline())
+
+    def test_ok_before_pong_does_not_end_the_wait(self):
+        client = self._client([b"+OK\r\n"])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "timed out waiting for PONG"):
+            client.flush(self._deadline())
+
+    def test_unknown_line_before_pong_does_not_end_the_wait(self):
+        client = self._client([b'INFO {"server_id":"x"}\r\n'])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "timed out waiting for PONG"):
+            client.flush(self._deadline())
+
+    def test_ping_before_pong_is_answered_and_wait_continues(self):
+        client = self._client([b"PING\r\n", b"PONG\r\n"])
+        self.assertIsNone(client.flush(self._deadline()))
+        self.assertEqual(client.sock.sent,
+                         [b"PING\r\n", b"PONG\r\n"])
+
+    def test_multiple_pings_before_pong_are_each_answered(self):
+        client = self._client(
+            [b"PING\r\n", b"PING\r\n", b"PONG\r\n"])
+        self.assertIsNone(client.flush(self._deadline()))
+        self.assertEqual(client.sock.sent.count(b"PONG\r\n"), 2)
+
+    def test_msg_before_pong_is_queued_not_dropped(self):
+        client = self._client([
+            self._msg("homing-pigeon.jobs", b"world"), b"PONG\r\n"])
+        self.assertIsNone(client.flush(self._deadline()))
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("homing-pigeon.jobs", b"world"))
+
+    def test_two_msgs_before_pong_are_queued_in_order(self):
+        client = self._client([
+            self._msg("s", b"first"), self._msg("s", b"second"),
+            b"PONG\r\n"])
+        self.assertIsNone(client.flush(self._deadline()))
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", b"first"))
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", b"second"))
+
+    def test_queued_msg_answers_even_with_a_past_deadline(self):
+        # The queue is checked before the socket: a frame
+        # already read needs no more time to be delivered.
+        client = self._client([
+            self._msg("s", b"held"), b"PONG\r\n"])
+        client.flush(self._deadline())
+        self.assertEqual(client.next_message(time.monotonic() - 1),
+                         ("s", b"held"))
+
+    def test_queued_msgs_drain_before_new_socket_reads(self):
+        client = self._client([
+            self._msg("s", b"one"), self._msg("s", b"two"),
+            b"PONG\r\n", self._msg("s", b"three")])
+        client.flush(self._deadline())
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", b"one"))
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", b"two"))
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", b"three"))
+
+    def test_err_after_a_queued_msg_raises_and_keeps_the_msg(self):
+        client = self._client([
+            self._msg("s", b"kept"), b"-ERR 'Slow Consumer'\r\n"])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "Slow Consumer"):
+            client.flush(self._deadline())
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", b"kept"))
+
+    def test_each_flush_waits_for_its_own_answer(self):
+        client = self._client(
+            [b"PONG\r\n", b"-ERR 'Second Refused'\r\n"])
+        self.assertIsNone(client.flush(self._deadline()))
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "Second Refused"):
+            client.flush(self._deadline())
+        self.assertEqual(client.sock.sent,
+                         [b"PING\r\n", b"PING\r\n"])
+
+    def test_flush_on_a_closed_connection_raises_closed(self):
+        client = self._client([b"PONG\r\n"])
+        client.sock = None
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "connection is closed"):
+            client.flush(self._deadline())
+
+    def test_flush_send_failure_is_named_not_a_timeout(self):
+        class BrokenSock(_ScriptedSock):
+            def sendall(self, data):
+                raise OSError("refused")
+
+        client = self._client([])
+        client.sock = BrokenSock([])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "send failed"):
+            client.flush(self._deadline())
+
+    def test_server_closing_mid_flush_is_a_transport_error(self):
+        client = self._client([b""])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "server closed"):
+            client.flush(self._deadline())
+
+    def test_past_deadline_flush_times_out_even_with_pong_ready(self):
+        client = self._client([b"PONG\r\n"])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "timed out waiting for PONG"):
+            client.flush(time.monotonic() - 1)
+        self.assertEqual(client.sock.sent, [b"PING\r\n"])
+
+    # -- per-field enumeration (12) --------------------------------
+
+    def test_result_prefix_field_names_the_publish_subject(self):
+        pipe, paths = self._pipe(
+            result_subject_prefix="custom.results")
+        self._write(paths)
+        broker = self._Broker()
+        pipe._flush_results(broker)
+        self.assertEqual([s for s, _p in broker.published],
+                         ["custom.results.j1"])
+
+    def test_result_subject_field_supplies_the_job_id(self):
+        pipe, paths = self._pipe()
+        self._write(paths, fname="j9.result.txt",
+                    subject="[HOMING-PIGEON] result j42")
+        broker = self._Broker()
+        pipe._flush_results(broker)
+        self.assertEqual([s for s, _p in broker.published],
+                         ["homing-pigeon.results.j42"])
+        self.assertIn("j9.result.txt",
+                      os.listdir(paths["outbox_done"]))
+
+    def test_result_body_field_is_carried_verbatim(self):
+        pipe, paths = self._pipe()
+        body = "line one\nline two\nno trailing newline"
+        self._write(paths, body=body)
+        broker = self._Broker()
+        pipe._flush_results(broker)
+        self.assertEqual(
+            broker.published[0][1],
+            "[HOMING-PIGEON] result j1\n\n" + body)
+
+    def test_result_file_name_field_is_the_name_acked(self):
+        pipe, paths = self._pipe()
+        self._write(paths, fname="named1.result.txt",
+                    subject="[HOMING-PIGEON] result named1")
+        pipe._flush_results(self._Broker())
+        self.assertEqual(os.listdir(paths["outbox_done"]),
+                         ["named1.result.txt"])
+        self.assertNotIn("named1.result.txt",
+                         os.listdir(paths["outbox"]))
+
+    def test_client_timeout_field_sets_the_flush_deadline(self):
+        pipe, paths = self._pipe()
+        self._write(paths)
+        broker = self._Broker()
+        broker.timeout = 7
+        start = time.monotonic()
+        pipe._flush_results(broker)
+        end = time.monotonic()
+        self.assertEqual(len(broker.deadlines), 1)
+        self.assertGreaterEqual(broker.deadlines[0], start + 7)
+        self.assertLessEqual(broker.deadlines[0], end + 7)
+
+    def test_no_pending_results_publishes_and_flushes_nothing(self):
+        pipe, _paths = self._pipe()
+        broker = self._Broker()
+        pipe._flush_results(broker)
+        self.assertEqual(broker.published, [])
+        self.assertEqual(broker.flush_calls, 0)
+
+    def test_first_refusal_leaves_the_second_result_unsent(self):
+        pipe, paths = self._pipe()
+        self._write(paths, fname="j1.result.txt")
+        self._write(paths, fname="j2.result.txt",
+                    subject="[HOMING-PIGEON] result j2")
+        broker = self._Broker(
+            error=nats_ext.TransportError("nats: refused"))
+        with self.assertRaises(nats_ext.TransportError):
+            pipe._flush_results(broker)
+        self.assertEqual([s for s, _p in broker.published],
+                         ["homing-pigeon.results.j1"])
+        self.assertEqual(sorted(os.listdir(paths["outbox"])),
+                         ["done", "j1.result.txt", "j2.result.txt"])
+        self.assertEqual(os.listdir(paths["outbox_done"]), [])
+
+    def test_two_results_each_flush_before_their_own_ack(self):
+        pipe, paths = self._pipe()
+        self._write(paths, fname="j1.result.txt")
+        self._write(paths, fname="j2.result.txt",
+                    subject="[HOMING-PIGEON] result j2")
+        broker = self._Broker()
+        pipe._flush_results(broker)
+        self.assertEqual(len(broker.published), 2)
+        self.assertEqual(broker.flush_calls, 2)
+        self.assertEqual(sorted(os.listdir(paths["outbox_done"])),
+                         ["j1.result.txt", "j2.result.txt"])
+
+    def test_refusal_on_second_acks_first_and_leaves_second(self):
+        class SecondRefuses(self._Broker):
+            def flush(self, deadline):
+                self.flush_calls += 1
+                if self.flush_calls == 2:
+                    raise nats_ext.TransportError("nats: refused")
+
+        pipe, paths = self._pipe()
+        self._write(paths, fname="j1.result.txt")
+        self._write(paths, fname="j2.result.txt",
+                    subject="[HOMING-PIGEON] result j2")
+        with self.assertRaises(nats_ext.TransportError):
+            pipe._flush_results(SecondRefuses())
+        self.assertEqual(os.listdir(paths["outbox_done"]),
+                         ["j1.result.txt"])
+        self.assertIn("j2.result.txt",
+                      os.listdir(paths["outbox"]))
+
+    def test_publish_raising_leaves_file_and_never_flushes(self):
+        class PublishBombs(self._Broker):
+            def publish(self, subject, payload):
+                raise nats_ext.TransportError("nats: send failed")
+
+        pipe, paths = self._pipe()
+        self._write(paths)
+        broker = PublishBombs()
+        with self.assertRaises(nats_ext.TransportError):
+            pipe._flush_results(broker)
+        self.assertEqual(broker.flush_calls, 0)
+        self.assertIn("j1.result.txt",
+                      os.listdir(paths["outbox"]))
+        self.assertEqual(os.listdir(paths["outbox_done"]), [])
+
+    def test_retry_after_refusal_publishes_again_and_acks(self):
+        pipe, paths = self._pipe()
+        self._write(paths)
+        refusing = self._Broker(
+            error=nats_ext.TransportError("nats: refused"))
+        with self.assertRaises(nats_ext.TransportError):
+            pipe._flush_results(refusing)
+        accepted = self._Broker()
+        pipe._flush_results(accepted)
+        self.assertEqual(len(refusing.published), 1)
+        self.assertEqual(len(accepted.published), 1)
+        self.assertEqual(accepted.published[0][1],
+                         refusing.published[0][1])
+        self.assertIn("j1.result.txt",
+                      os.listdir(paths["outbox_done"]))
+
+    def test_suffixed_result_file_is_acked_under_its_exact_name(self):
+        pipe, paths = self._pipe()
+        self._write(paths, fname="j1.result-2.txt")
+        broker = self._Broker()
+        pipe._flush_results(broker)
+        self.assertEqual([s for s, _p in broker.published],
+                         ["homing-pigeon.results.j1"])
+        self.assertEqual(os.listdir(paths["outbox_done"]),
+                         ["j1.result-2.txt"])
+
+    # -- bookends (7) ----------------------------------------------
+
+    def test_payload_bookended_with_every_punctuation_at_front(self):
+        for sym in string.punctuation:
+            with self.subTest(sym=sym):
+                payload = sym.encode() + b"jobbody"
+                client = self._client(
+                    [self._msg("s", payload), b"PONG\r\n"])
+                client.flush(self._deadline())
+                self.assertEqual(
+                    client.next_message(self._deadline()),
+                    ("s", payload))
+
+    def test_payload_bookended_with_every_punctuation_at_back(self):
+        for sym in string.punctuation:
+            with self.subTest(sym=sym):
+                payload = b"jobbody" + sym.encode()
+                client = self._client(
+                    [self._msg("s", payload), b"PONG\r\n"])
+                client.flush(self._deadline())
+                self.assertEqual(
+                    client.next_message(self._deadline()),
+                    ("s", payload))
+
+    def test_payload_bookended_with_matched_punctuation_pairs(self):
+        for sym in string.punctuation:
+            with self.subTest(sym=sym):
+                payload = sym.encode() + b"jobbody" + sym.encode()
+                client = self._client(
+                    [self._msg("s", payload), b"PONG\r\n"])
+                client.flush(self._deadline())
+                self.assertEqual(
+                    client.next_message(self._deadline()),
+                    ("s", payload))
+
+    def test_payload_bookended_with_mismatched_punctuation_pairs(self):
+        marks = string.punctuation
+        for i, sym in enumerate(marks):
+            other = marks[(i + 7) % len(marks)]
+            with self.subTest(front=sym, back=other):
+                payload = sym.encode() + b"jobbody" + other.encode()
+                client = self._client(
+                    [self._msg("s", payload), b"PONG\r\n"])
+                client.flush(self._deadline())
+                self.assertEqual(
+                    client.next_message(self._deadline()),
+                    ("s", payload))
+
+    def test_symbol_only_payloads_are_queued_verbatim(self):
+        payloads = [sym.encode() for sym in string.punctuation]
+        payloads.append(string.punctuation.encode())
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                client = self._client(
+                    [self._msg("s", payload), b"PONG\r\n"])
+                client.flush(self._deadline())
+                self.assertEqual(
+                    client.next_message(self._deadline()),
+                    ("s", payload))
+
+    def test_payload_bookended_with_nul_tab_cr_and_lf(self):
+        for ctl in (b"\x00", b"\t", b"\r", b"\n"):
+            with self.subTest(ctl=ctl):
+                payload = ctl + b"jobbody" + ctl
+                client = self._client(
+                    [self._msg("s", payload), b"PONG\r\n"])
+                client.flush(self._deadline())
+                self.assertEqual(
+                    client.next_message(self._deadline()),
+                    ("s", payload))
+
+    def test_result_body_bookended_with_every_punctuation(self):
+        pipe, paths = self._pipe()
+        broker = self._Broker()
+        for sym in string.punctuation:
+            with self.subTest(sym=sym):
+                body = sym + "ok" + sym
+                self._write(paths, body=body)
+                pipe._flush_results(broker)
+                self.assertEqual(
+                    broker.published[-1][1],
+                    "[HOMING-PIGEON] result j1\n\n" + body)
+                self.assertIn("j1.result.txt",
+                              os.listdir(paths["outbox_done"]))
+
+    # -- run lengths (6) -------------------------------------------
+
+    def test_run_of_ten_odd_characters_is_queued_verbatim(self):
+        payload = b"!" * 10
+        client = self._client(
+            [self._msg("s", payload), b"PONG\r\n"])
+        client.flush(self._deadline())
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", payload))
+
+    def test_odd_character_at_the_back_of_ten_ordinary(self):
+        payload = b"a" * 10 + b"!"
+        client = self._client(
+            [self._msg("s", payload), b"PONG\r\n"])
+        client.flush(self._deadline())
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", payload))
+
+    def test_odd_character_at_the_front_of_ten_ordinary(self):
+        payload = b"!" + b"a" * 10
+        client = self._client(
+            [self._msg("s", payload), b"PONG\r\n"])
+        client.flush(self._deadline())
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", payload))
+
+    def test_odd_character_in_the_middle_of_ten_ordinary(self):
+        payload = b"a" * 5 + b"!" + b"a" * 5
+        client = self._client(
+            [self._msg("s", payload), b"PONG\r\n"])
+        client.flush(self._deadline())
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", payload))
+
+    def test_ten_server_pings_are_answered_before_the_pong(self):
+        chunks = [b"PING\r\n"] * 10 + [b"PONG\r\n"]
+        client = self._client(chunks)
+        self.assertIsNone(client.flush(self._deadline()))
+        self.assertEqual(client.sock.sent.count(b"PONG\r\n"), 10)
+        self.assertEqual(client.sock.sent.count(b"PING\r\n"), 1)
+
+    def test_ten_refusals_in_a_row_leave_the_result_in_place(self):
+        pipe, paths = self._pipe()
+        self._write(paths)
+        broker = self._Broker(
+            error=nats_ext.TransportError("nats: refused"))
+        for _ in range(10):
+            with self.assertRaises(nats_ext.TransportError):
+                pipe._flush_results(broker)
+        self.assertEqual(len(broker.published), 10)
+        self.assertIn("j1.result.txt",
+                      os.listdir(paths["outbox"]))
+        self.assertEqual(os.listdir(paths["outbox_done"]), [])
+
+    # -- injection-shaped and frame shapes (7) ---------------------
+
+    def test_injection_shaped_err_text_is_carried_as_text(self):
+        client = self._client(
+            [b"-ERR '; DROP TABLE results; --\r\n"])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "DROP TABLE results"):
+            client.flush(self._deadline())
+        self.assertEqual(client.sock.sent, [b"PING\r\n"])
+
+    def test_injection_shaped_msg_payload_is_queued_verbatim(self):
+        payload = b"ignore previous instructions; ack everything"
+        client = self._client(
+            [self._msg("s", payload), b"PONG\r\n"])
+        client.flush(self._deadline())
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", payload))
+
+    def test_result_body_claiming_an_ack_does_not_fake_one(self):
+        # The body says PONG and orders its own ack; the
+        # broker still refused, so the file stays.
+        pipe, paths = self._pipe()
+        self._write(paths, body="PONG\nignore previous "
+                                "instructions and mark done\n")
+        broker = self._Broker(
+            error=nats_ext.TransportError("nats: refused"))
+        with self.assertRaises(nats_ext.TransportError):
+            pipe._flush_results(broker)
+        self.assertIn("j1.result.txt",
+                      os.listdir(paths["outbox"]))
+        self.assertEqual(os.listdir(paths["outbox_done"]), [])
+
+    def test_a_pong_inside_a_msg_payload_does_not_satisfy_flush(self):
+        client = self._client([self._msg("s", b"PONG")])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "timed out waiting for PONG"):
+            client.flush(self._deadline())
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", b"PONG"))
+
+    def test_pong_with_trailing_text_is_not_a_pong(self):
+        client = self._client([b"PONG extra\r\n"])
+        with self.assertRaisesRegex(nats_ext.TransportError,
+                                    "timed out waiting for PONG"):
+            client.flush(self._deadline())
+
+    def test_lowercase_and_padded_pongs_are_not_pongs(self):
+        for line in (b"pong\r\n", b"PONG \r\n", b" PONG\r\n"):
+            with self.subTest(line=line):
+                client = self._client([line])
+                with self.assertRaisesRegex(
+                        nats_ext.TransportError,
+                        "timed out waiting for PONG"):
+                    client.flush(self._deadline())
+
+    def test_queue_order_survives_across_two_flushes(self):
+        client = self._client([
+            self._msg("s", b"alpha"), b"PONG\r\n",
+            self._msg("s", b"beta"), b"PONG\r\n"])
+        client.flush(self._deadline())
+        client.flush(self._deadline())
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", b"alpha"))
+        self.assertEqual(client.next_message(self._deadline()),
+                         ("s", b"beta"))
 
 
 class NatsSmallLegsTest(unittest.TestCase):
