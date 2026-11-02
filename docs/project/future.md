@@ -45,6 +45,20 @@
   whose X25519 ephemeral is the one quantum-exposed piece (DRU; draft
   Section 22.1).
 
+- **DTLS over the store-and-forward transports.** An optional
+  software suite feature: carry the DTLS session's datagrams over
+  the email binding (or another store-and-forward pipe) instead of
+  a live UDP path. Nothing in the suite does this today — the
+  mailbox code recognizes job and result objects only, and no
+  wrapper marks a message as carrying handshake records, so a
+  hand-built DTLS-over-email initiation has nothing that would
+  parse it. The work is all in the suite: a carriage wrapper for
+  datagram flights, poll-driven handshake progress on both ends,
+  and the rule that tells a datagram flight from a job object in
+  the same mailbox. The platform payload already rides the
+  handshake itself, so a session established this way discloses
+  the platform in its final flight, with no extra poll.
+
 - **Ed25519 signatures** instead of the shared HMAC secret, so a leaked
   secret is not root. `docs/design/asymmetric-signing-design.md`.
 
