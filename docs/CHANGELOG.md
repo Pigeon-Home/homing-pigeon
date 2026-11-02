@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.109 - 2026-11-02
+
+- IETF: the version 2 -03 sources and renders are finalized, and STATUS records the -03 posting of version 2.
+- The corpus banked since 3.15.108 rides along (Germany bank 30).
+
 ## 3.15.108 - 2026-11-02
 
 - IETF: the -03 sources and renders are finalized against the landed DTLS fixes, and STATUS records the -03 posting of version 1.
