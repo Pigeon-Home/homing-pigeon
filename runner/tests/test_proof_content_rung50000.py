@@ -34,6 +34,10 @@ class Rung50000RedoTest(unittest.TestCase):
         for script in self.ps.values():
             self.assertEqual(len(script), RUNG)
 
+    # The bash -n leg is POSIX-only: on Windows the bash name
+    # is answered by the WSL launcher, which is not a bash.
+    # The gate legs in this module run in every job.
+    @unittest.skipIf(os.name == "nt", "POSIX only")
     def test_bash_accepts_each(self):
         for name, script in list(self.bash.items()) + [("past", self.past)]:
             proc = subprocess.run(

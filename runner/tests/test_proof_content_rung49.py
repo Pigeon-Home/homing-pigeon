@@ -138,6 +138,10 @@ class Rung49Test(unittest.TestCase):
         self.assertTrue(all(len(s) <= BOUND for s in self.bash))
         self.assertGreater(len(set(self.bash)), 2000)
 
+    # The bash -n leg is POSIX-only: on Windows the bash name
+    # is answered by the WSL launcher, which is not a bash.
+    # The gate legs in this module run in every job.
+    @unittest.skipIf(os.name == "nt", "POSIX only")
     def test_bash_accepts_the_set_as_syntax(self):
         proc = subprocess.run(
             ["bash", "-n"], input="\n".join(self.bash) + "\n",

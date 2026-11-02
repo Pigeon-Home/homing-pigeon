@@ -174,6 +174,10 @@ class Rung5000Test(unittest.TestCase):
             self.assertGreater(len(lines), 20)
             self.assertGreater(len(set(lines)), 10)
 
+    # The bash -n leg is POSIX-only: on Windows the bash name
+    # is answered by the WSL launcher, which is not a bash.
+    # The gate legs in this module run in every job.
+    @unittest.skipIf(os.name == "nt", "POSIX only")
     def test_bash_accepts_each_as_syntax(self):
         for name, script in self.bash.items():
             proc = subprocess.run(

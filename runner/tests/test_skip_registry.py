@@ -63,6 +63,22 @@ REGISTERED = {
         "the test_linux_* modules; run in the ubuntu test job",
     "POSIX installer path": "run on ubuntu and macOS; Windows has its own",
     "POSIX only": "run on ubuntu and macOS",
+    "pwsh is not installed; the PowerShell half of this rung was not run":
+        "the content-rung PowerShell legs; pwsh runs in the Windows "
+        "job, and the bash and gate legs in the same modules run in "
+        "every job",
+    "the macOS sh parser is not on this machine; bash 3.2.57 was not "
+    "found at HP_MACOS_SH or /tmp/macos-sh, and bash 5 is not that parser":
+        "test_proof_sh_macos runs on a machine that provides the "
+        "bash 3.2.57 binary at HP_MACOS_SH or /tmp/macos-sh; "
+        "substituting bash 5 would prove a different parser",
+    "FreeBSD sh is not on this machine. Its sources are the FreeBSD "
+    "base system and do not build with the Linux toolchain here, and "
+    "qemu-user runs Linux binaries, not FreeBSD ones. dash was not "
+    "used in its place":
+        "test_proof_sh_freebsd runs on a machine that provides the "
+        "FreeBSD sh binary at HP_FREEBSD_SH or /tmp/freebsd-sh; "
+        "substituting dash would prove a different shell",
     "kill_tree's group and extra-pid legs are POSIX-only":
         "test_runner_last_edges; the legs drive POSIX process-group "
         "signalling and run on ubuntu and macOS -- the Windows "
