@@ -252,7 +252,16 @@ def connect_smtp(cfg) -> smtplib.SMTP:
 
 
 def fetch_job_mails(imap):
-    """Return [(seq, raw_bytes)] for unseen mails with the job subject prefix.
+    """Return [(ident, raw_bytes)] for unseen mails with the job subject prefix.
+
+    The ident is the message's IMAP UID, written "u<uid>", whenever
+    the connection offers UID commands: a UID is assigned once and
+    never reused for another message, while a sequence number is
+    only today's position and is reused by a different message as
+    soon as the mailbox churns -- keying delivery bookkeeping on it
+    silently dropped jobs whose position an earlier, already-carried
+    message had held. Connections without UID commands (the harness
+    fakes) fall back to sequence numbers, as before.
 
     A bad SEARCH or one bad FETCH is skipped. The rest of the poll
     still runs. SEARCH and FETCH hold the mailbox lock for the whole
@@ -272,12 +281,25 @@ def fetch_job_mails(imap):
 
     mails = []
     with _MAIL_LOCK:
-        try:
-            typ, data = imap.search(
-                None, "UNSEEN", "SUBJECT", '"[HOMING-PIGEON]"')
-        except Exception as e:
-            note(f"IMAP SEARCH failed: {e}")
-            typ, data = None, None
+        use_uid = callable(getattr(imap, "uid", None))
+        typ, data = None, None
+        if use_uid:
+            try:
+                typ, data = imap.uid(
+                    "SEARCH", None, "UNSEEN", "SUBJECT",
+                    '"[HOMING-PIGEON]"')
+            except Exception as e:
+                note(f"IMAP UID SEARCH failed ({e}); falling back "
+                     "to sequence numbers")
+                use_uid = False
+                typ, data = None, None
+        if not use_uid:
+            try:
+                typ, data = imap.search(
+                    None, "UNSEEN", "SUBJECT", '"[HOMING-PIGEON]"')
+            except Exception as e:
+                note(f"IMAP SEARCH failed: {e}")
+                typ, data = None, None
         if typ is None:
             pass
         elif typ != "OK":
@@ -302,7 +324,12 @@ def fetch_job_mails(imap):
                     except Exception:
                         continue
                     try:
-                        ftyp, fetched = imap.fetch(num, "(RFC822)")
+                        if use_uid:
+                            ftyp, fetched = imap.uid(
+                                "FETCH", num, "(RFC822)")
+                        else:
+                            ftyp, fetched = imap.fetch(
+                                num, "(RFC822)")
                     except Exception as e:
                         note(f"IMAP FETCH {seq} failed: {e}")
                         continue
@@ -319,7 +346,8 @@ def fetch_job_mails(imap):
                             raw = part[1]
                             break
                     if raw is not None:
-                        mails.append((seq, raw))
+                        mails.append(
+                            (f"u{seq}" if use_uid else seq, raw))
     for msg in notes:
         log(msg, "WARN")
     return mails
@@ -329,10 +357,19 @@ def mark_seen(imap, seq):
     # IMAP connections are not thread-safe; serialize STORE.
     # Log after the lock. The logger takes the runner lock, and
     # the claim path holds that lock while it calls in here.
+    # A "u<uid>" ident (see fetch_job_mails) is stored by UID, so
+    # the flag lands on the message that was fetched even if the
+    # mailbox has been renumbered since; anything else is a plain
+    # sequence number and is stored the way it always was.
     err = None
     with _MAIL_LOCK:
         try:
-            imap.store(seq, "+FLAGS", "\\Seen")
+            token = str(seq)
+            if token.startswith("u") and token[1:].isdigit() \
+                    and callable(getattr(imap, "uid", None)):
+                imap.uid("STORE", token[1:], "+FLAGS", "\\Seen")
+            else:
+                imap.store(seq, "+FLAGS", "\\Seen")
         except Exception as e:
             err = e
     if err is not None:
