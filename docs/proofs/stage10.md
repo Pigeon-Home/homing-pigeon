@@ -51,3 +51,50 @@ more than 1048576 bytes, and the code would refuse it for
 the byte cap. That case was not generated. The check is
 on bytes, and these scripts were built so the two counts
 coincide.
+
+## First-hand verification
+
+Re-checked first-hand after it landed; the shared half
+of the verdict is in the stage 7 appendix
+(`stage7.md`). This stage's harness had not been run
+before this pass.
+
+- **The tests were re-run.**
+  `runner/tests/test_proof_content_cap.py` as landed:
+  4 tests, all passing. The record says the four tests
+  took about 85 seconds; on the machine that ran this
+  pass the run took 140 seconds — the counts agree and
+  the time is the machine's. After the harness
+  correction recorded in `stage7.md`, 4 passing again.
+  The boundary was re-measured by the tests
+  themselves: three scripts of exactly 1048576 UTF-8
+  bytes admitted under the default cap, two of
+  1048577 bytes refused, and the refusal names
+  `max_script_bytes` and the number 1048577, as the
+  record claims.
+- **The verdict at this rung.** This is the one rung
+  where the bound is the code's own, so the claim is
+  the boundary itself, and it holds exactly:
+  admission at the cap, refusal one byte past it, and
+  the decision unchanged across three different texts
+  at the cap and two different texts past it.
+- **F1. The texts are ASCII by construction.** The
+  character count and the byte count coincide because
+  the scripts were built so they would. A script of
+  1048576 characters that is not ASCII would be
+  refused for its byte length, and that case was not
+  generated — the record above says so itself. The
+  stage therefore demonstrates the byte boundary; the
+  character-count claim at this rung rests on the
+  ASCII construction together with the model's
+  argument that a character is at least one UTF-8
+  byte (`goals.md`, stage 10).
+- **F2. The texts are the same three padding shapes
+  as the lower rungs.** At the cap as at 50,000, no
+  construct is combined with another. The
+  demonstration is of the boundary, not of the
+  grammar at this size.
+
+Verdict for this rung: holds at the boundary, as
+stated. The challenge's enumeration, and PowerShell,
+remain open — `stage7.md`, findings F1 and F3.
