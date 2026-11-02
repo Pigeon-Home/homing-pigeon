@@ -550,13 +550,21 @@ will be named here when it runs.
 
 ## Content-independence at the first rung
 
-A note on the headings of the four sections that follow:
-they landed numbered as stages 7 to 9. The stage numbers
-in this plan belong to the ladder — stage 7 is the
-5,000-character bound — so the
-numbers were taken off their headings, and the sections
-stand under the name of the check they record. Their
-contents are unchanged.
+A note on the headings of the four sections that follow.
+The checks they record landed numbered as stages 7 to
+10, and their record files (`stage7.md` to `stage10.md`)
+keep the titles they landed with. In this plan the stage
+numbers belong to the ladder alone — stage 7 is the
+5,000-character bound — so the four sections stand under
+the name of the series they belong to,
+content-independence, and are cited by it. Their contents
+are unchanged. One state is shared by all four and is
+stated here once: each landed on the runs its record
+describes, and a first-hand verification pass over the
+series — its tests re-run and its records re-read
+against the code, as stages 2 to 5 received — is still
+owed. Until that pass runs, the series' claims rest on
+the records as landed.
 
 **Contents.** The challenge `thinking.md` records and does
 not close. At scripts of at most 49 characters, list the
@@ -571,7 +579,7 @@ accepts every script in it, `handle_mail` admits every one
 and refuses every one longer than a one-byte cap for the
 cap, and the record says what was not enumerated.
 
-This stage has landed. The inventory is twenty-two
+This check has landed. The inventory is twenty-two
 scripts. `runner/tests/test_proof_content.py` is the
 harness, and `stage7.md` is the record. PowerShell is not
 on the machine that ran it, so that half is not claimed.
@@ -580,8 +588,8 @@ nesting that fits in 49 characters, and not every string.
 
 ## Content-independence at 50,000 characters
 
-**Contents.** The same check as stage 7, at the ladder's
-50,000-character rung. The scripts are long enough that
+**Contents.** The same check as the first rung, at
+50,000 characters. The scripts are long enough that
 the inventory cannot be every construct. It is three
 texts of exactly 50,000 characters that bash accepts, and
 one of 50,001. The gate admits them. A short cap refuses
@@ -592,15 +600,15 @@ them, `handle_mail` admits them, the short cap names
 itself, and the record says that 50,000 is not a code
 limit.
 
-This stage has landed. The harness is
+This check has landed. The harness is
 `runner/tests/test_proof_content_50k.py`. The record is
 `stage8.md`. A script of 50,001 characters is still
 admitted, because the code's cap is 1048576 bytes.
 
 ## Content-independence at 500,000 characters
 
-**Contents.** The same check as stage 8, at the next
-figure the ladder names. Three texts of exactly 500,000
+**Contents.** The same check as the 50,000-character
+content check, at the next figure the ladder names. Three texts of exactly 500,000
 characters that bash accepts, and one of 500,001. The
 gate admits them. A short cap refuses the three by the
 cap, not by the text.
@@ -610,7 +618,7 @@ them, `handle_mail` admits them, the short cap names
 itself, and the record says that 500,000 is not a code
 limit.
 
-This stage has landed. The harness is
+This check has landed. The harness is
 `runner/tests/test_proof_content_500k.py`. The record is
 `stage9.md`. A script of 500,001 characters is still
 admitted. The production cap, 1048576 bytes, was not
@@ -630,7 +638,7 @@ them, `handle_mail` admits the three at the cap and
 refuses the two one byte over, and the refusal names the
 cap and the number 1048577.
 
-This stage has landed. The harness is
+This check has landed. The harness is
 `runner/tests/test_proof_content_cap.py`. The record is
 `stage10.md`.
 

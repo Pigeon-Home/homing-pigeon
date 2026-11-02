@@ -38,7 +38,7 @@ bound, the claim is not "nothing went wrong on the runs tried"
 but "there is no run, in this space, on which it goes wrong."
 
 The price of that strength is the bound, and the price is paid
-in the open: every claim on this branch names its property, its
+in the open: every claim in this work names its property, its
 bound, and its assumptions in the same breath, and a claim at
 one bound says nothing about any larger one. The conformance
 tests in stage 5 exist to keep the two honest against each
@@ -123,6 +123,21 @@ tying the model to the real code, or a stage of its own. It is
 written down so that it gets taken up deliberately, with its
 scope chosen, rather than by drift.
 
+It has since been taken up, as its own series alongside the
+ladder: the content-independence checks recorded in
+`goals.md`, presenting construct-built scripts to the real
+gate at the first rung, at 50,000 and 500,000 characters,
+and at the production cap. The records are `stage7.md` to
+`stage10.md`, under the titles they landed with. Two
+limits stand in those records and stand here: the scripts
+are samples of each construct, not the closure of every
+nesting, and the PowerShell half was not run. A first-hand
+verification pass over the series is still owed; until it
+runs, the series rests on the records as landed, and the
+position above — content-independence argued from the code
+read in stage 3 — is what this work's own verification has
+established.
+
 ## The boundary question
 
 Is there a size at which the answer becomes no? What is known
@@ -144,9 +159,9 @@ that reason: few enough re-proofs to be practical, close
 enough together that if a counterexample exists, it appears
 near the size where it first matters, not megabytes past it.
 
-## The standing rules of this branch
+## The standing rules of this work
 
-These are the rules the work runs under, stated as the branch's
+These are the rules the work runs under, stated as its
 own, in force until one is revisited in the open with its
 reason written down.
 
@@ -160,7 +175,7 @@ reason written down.
   disagree, the inventory records the code's value and the
   difference.
 - **Everything is verified first-hand before it is relied on.**
-  Whoever drafted an artifact on this branch, the branch's
+  Whoever drafted an artifact in this work, its
   claims rest only on what has been re-run and re-read: every
   checker count reproduced, every model clause walked against
   the code it claims to model. The standard the work is held to
@@ -169,8 +184,8 @@ reason written down.
   which point at records that were each verified the same way.
 - **Outside review is advisory.** Review from outside this work
   is read on its merits and incorporated when it is good; it
-  does not reorder the stages or substitute for the branch's
-  own verification pass, which decides what the branch claims.
+  does not reorder the stages or substitute for the work's
+  own verification pass, which decides what the work claims.
 
 ## Compute: use the processors that exist
 
@@ -201,7 +216,7 @@ built, and no current claim depends on it.
 ## Findings and honest limits, gathered
 
 The stage records carry each of these in full; they are
-gathered here so the branch's whole debt is visible in one
+gathered here so the work's whole debt is visible in one
 place.
 
 - **The repaired job (stage 3, F2).** The code can execute a
@@ -209,10 +224,10 @@ place.
   after the job was checked — instead of the job byte-for-byte
   as checked. The repaired shape is re-run through the judge
   and the key policy before it executes, so the one clause the
-  substitution can touch is re-checked. Stage 5 owes the
-  conformance test that pins exactly this on the real path;
-  its first slice now includes that test (`stage5.md`), and
-  the rest of the family is still owed.
+  substitution can touch is re-checked. Stage 5's
+  conformance family pins exactly this on the real path
+  (`stage5.md`), and the stage's first-hand verification
+  confirmed that debt closed.
 - **The interpreter-prefix bind (stage 4, P2, F1).** A job's
   interpreter field does change the sandbox's shape: an
   interpreter outside `/usr` gets its own install prefix bound
@@ -258,53 +273,49 @@ checked model and its record. The summary document at
 `docs/security/model-and-proof-testing.md` describes the model
 and the testing for a general reader and points back here.
 
-Stage 5 has started, not finished: four conformance tests are
-on the branch (`stage5.md`), and the rest of the
-clause-by-clause family plus the per-property mutation checks
-are still owed. The estimate for finishing stage 5 is hours of
-work, not days — an estimate, marked as one — because the
-models already exist and the stage is writing tests against
-them, not new modeling.
+Stage 5 has landed: a conformance test named for every clause
+of P1 to P6, the per-property mutation checks, and a
+first-hand verification appendix that re-walked every clause
+against `properties.md` and re-ran the family end to end —
+248 tests, all passing (`stage5.md`).
 
-Stage 6 is in flight at its first step: the gate re-checked at
-the 500-character rung, with the ladder beyond it at 5,000,
-50,000, 500,000, and the production cap. After the ladder, the
-plan widens the model itself: more keys with per-key policies,
-more surfaces (queries, board mail, version 2 mail, cancels,
-the local-signals path), and more transports beside the mail
-path. Each widening goes through the same cycle — state it,
-model it, check it, tie it back to the code — and each claim
-continues to name its property, its bound, and its assumptions.
-Nothing on this branch claims the whole system is proven, at
-any stage, and the sum of the claims is exactly the list of
-stages marked done.
+Stage 6 has landed: the character ladder closed at the
+production cap, and the model widened to the key map, the
+other doors, and the transports beside the mail path. The
+unbounded-length step remains available and is recorded as
+not wanted.
 
-Stages 5, 6, and 7 have since landed, on `main`. Stage 5 is
-the conformance family. Stage 6 closed the ladder at the
-production cap and widened the model to the key map, the
-other doors, and the transports. Stage 7 is the challenge
-above, taken up at the first rung only: twenty-two
-constructible bash scripts, each admitted by the real gate,
-each longer one refused by the byte cap and not by its
-text. `stage7.md` records the sample and the two halves
-that were not claimed, PowerShell and the rungs above 49.
+The ladder stages after 6 are named one rung at a time.
+Stage 7 has landed: P1 re-checked at the 5,000-character
+bound by a run at that bound, its record `stage7-5000.md`,
+its counts matching the earlier rungs exactly. Stages 8
+(50,000 characters), 9 (500,000), and 10 (the production
+cap, 1048576 characters) are defined and not yet run as
+stages; stage 6's same-searched-set argument and its
+re-run at the cap stand behind those bounds until each
+stage's own run replaces reliance on them.
 
-Stage 8 takes the same check to 50,000 characters, the
-rung named here between 5,000 and 500,000. Three scripts
-of that exact length, different texts, are admitted, and
-one of 50,001 characters is admitted too, because the
-figure is the rung and not the code's byte cap.
-`stage8.md` is the record.
+The content-independence challenge above has been taken up
+as its own series, alongside the ladder: construct-built
+scripts presented to the real gate at the first rung, at
+50,000 and 500,000 characters, and at the production cap,
+where two scripts one byte over it are refused naming the
+cap. The records are `stage7.md` to `stage10.md`, under
+the titles they landed with; in the plan the series is
+cited by its name, so the stage numbers name the ladder
+alone. The series' limits stand as its records state
+them: samples of each construct, not every nesting;
+PowerShell not run. A first-hand verification pass over
+the series is still owed, and until it runs, the series
+rests on the records as landed.
 
-Stage 9 takes the same check to 500,000 characters, the
-next figure the ladder names. Three scripts of that exact
-length are admitted, and one of 500,001 characters is
-admitted too. `stage9.md` is the record. The production
-cap itself, 1048576 bytes, has not been generated.
-
-Stage 10 generates the cap. Three ASCII scripts of exactly
-1048576 bytes are admitted, and two of 1048577 bytes are
-refused, the refusal naming the cap. `stage10.md` is the
-record. The character count and the byte count coincide
-in these scripts because they are ASCII. The check counts
-bytes.
+What is next, in order: the owed verification pass over
+the content-independence series; then stages 8, 9, and
+10, each run at its own bound when its turn comes. Every
+widening still goes through the same cycle — state it,
+model it, check it, tie it back to the code — and every
+claim still names its property, its bound, and its
+assumptions. Nothing in this work claims the whole system
+is proven, at any stage, and the sum of the claims is
+exactly the list of stages and checks marked done —
+nothing more.

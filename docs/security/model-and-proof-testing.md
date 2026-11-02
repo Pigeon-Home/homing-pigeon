@@ -164,8 +164,8 @@ but unusable. The split is by what a wrong value changes.
 
 ## The proof testing
 
-The model above is a design account. The proof work — on the
-`testing` branch, recorded in `docs/proofs/` — checks it,
+The model above is a design account. The proof work — on
+`main`, recorded in `docs/proofs/` — checks it,
 property by property, against the code as it stands.
 
 The method is fixed. First, every value the model depends on is
@@ -209,12 +209,33 @@ Six properties are stated and checked:
   every combination of class, presence, and moment — startup and
   live reload.
 
-Stage 5, the conformance tests, is in progress: the first tests
-drive the real gate — a refused cleartext job does not consume
-its id, an unsigned body does not execute, a recorded result is
-resent rather than re-run, and a repaired job the key forbids
-does not execute. The clause-by-clause family and the mutation
-check that proves the family can catch a change are still open.
+Stage 5, the conformance tests, has landed: a test is named for
+every clause of the six properties — among them, a refused
+cleartext job does not consume its id, an unsigned body does
+not execute, a recorded result is resent rather than re-run,
+and a repaired job the key forbids does not execute — and a
+mutation check, one deliberate change per property in a scratch
+copy, proves the family can catch the change it exists to
+catch. The stage closes with a first-hand verification
+appendix: every clause re-walked against the property
+statements and the family re-run end to end, 248 tests, all
+passing.
+
+Stage 6 raised the scope: the character ladder closed at the
+production cap, and the model widened to a map of keys with
+per-key policies, to the other doors (cancel, query, board,
+version 2, local), and to the file and DTLS transports beside
+the mail path. Stage 7 re-checked the gate at the
+5,000-character bound by a run at that bound. Stages 8, 9, and
+10 — 50,000 characters, 500,000, and the production cap as
+stages in their own right — are defined and not yet run; stage
+6's argument and its re-run at the cap stand behind those
+bounds meanwhile. Alongside the ladder, a content-independence
+series presents scripts built from a shell's constructs to the
+real gate at the first rung, at 50,000 and 500,000 characters,
+and at the cap itself, and finds the gate's decision following
+length alone; its records are landed, and a first-hand
+verification pass over the series is still owed.
 
 ## Honest limits
 
@@ -228,14 +249,15 @@ check that proves the family can catch a change are still open.
   hardware do what their own specifications say). The model
   checks what the runner does with a signature that verifies;
   proving the primitives is cryptography's work, not this
-  branch's.
+  work's.
 - **The findings are on the record, not smoothed over.** Stage 3
   found that the code can execute a job the Oracle repaired — an
   interpreter substituted after the claim — instead of the job
   byte-for-byte as checked; the repaired job is re-run through
   the judge and the key policy before it executes, a conformance
-  test now pins that shape on the real path, and the rest of the
-  stage 5 family remains the debt that finding is owed. P2
+  test pins that shape on the real path, and stage 5's
+  verification confirmed the debt that finding was owed is
+  closed. P2
   records the interpreter-prefix bind inside the property itself:
   bounded and audited, but a widening, stated as one. P6 records
   a naming gap: live reload never reads refuse-class keys, so a
@@ -243,10 +265,9 @@ check that proves the family can catch a change are still open.
   named in the log, though it changes nothing until the next
   start refuses on it.
 - **The scope starts small and rises.** Each checked claim names
-  its property, its bound, and its assumptions. The proof scope
-  starts at the 50-character rung; it is not yet a claim about
-  the whole system, and the sum of the claims is exactly the
-  properties checked — nothing more.
+  its property, its bound, and its assumptions. No claim here is
+  a claim about the whole system, and the sum of the claims is
+  exactly the properties and bounds checked — nothing more.
 
 ## The records
 
@@ -260,5 +281,9 @@ check that proves the family can catch a change are still open.
 - `docs/proofs/constraints.md` — the constraint inventory, every
   value named with the file and function it was read from.
 - `docs/proofs/stage2.md`, `stage3.md`, `stage4-p2.md` through
-  `stage4-p6.md`, `stage5.md` — the stage records: the checks,
-  the state counts, the witnesses, and the findings.
+  `stage4-p6.md`, `stage5.md`, the `stage6-*.md` records, and
+  `stage7-5000.md` — the stage records: the checks, the state
+  counts, the witnesses, and the findings. The
+  content-independence series is recorded in
+  `docs/proofs/stage7.md` to `stage10.md`, under the titles
+  those records landed with.

@@ -1,8 +1,10 @@
 # Formal proof work
 
 This directory holds the formal proof work for Homing Pigeon. It
-lives on the `testing` branch, cut from release 3.15.28 at commit
-`6d6288c5`. Nothing in this directory changes how the runner
+began on the `testing` branch, cut from release 3.15.28 at commit
+`6d6288c5`; that branch was merged into `main` in full on
+1-Nov-2026 and then closed and deleted, and the work lives on
+`main` now. Nothing in this directory changes how the runner
 behaves. The work here models the runner that already exists,
 checks the model, and ties the model back to tests.
 
@@ -136,7 +138,7 @@ The work grows in layers, each one resting on the last:
    where the model drifted from the code, and either way the next
    step is to fix the drift or the code and check again.
 5. **Conformance tests.** Each checked property gains a test
-   family on this branch that drives the real code along the
+   family in `runner/tests/` that drives the real code along the
    model's paths, so the model and the code cannot drift apart
    silently afterwards.
 6. **Raised scope.** The bound raises — longer scripts, then more
@@ -154,8 +156,8 @@ code at `6d6288c5`, that gap is itself a review finding.
 
 The feedback wanted, in order:
 
-- **Are the properties the right ones?** P1 is stated in full in
-  `properties.md`; P2 to P6 are one-line placeholders behind it.
+- **Are the properties the right ones?** P1 through P6 are
+  stated in full in `properties.md`.
   Is the gate the right first property? Is anything the gate's
   claim silently depends on missing from the list — a property
   that ought to be stated, in this order or at all?
@@ -186,13 +188,20 @@ A finding is most useful when it points at the file and the line
 ## The files
 
 - `constraints.md` — the constraint inventory harvested from the
-  code at `6d6288c5`, with the exact value, the declaring file and
+  code — begun at `6d6288c5` and extended as later stages
+  harvested theirs — with the exact value, the declaring file and
   function, and the refuse-or-default class of each constraint.
 - `properties.md` — the property list. P1 through P6 are
   stated in full.
 - `goals.md` — the staged plan: this foundation first, then the
   model, then each property, then the conformance tests, with the
   scope raising between stages.
+- The stage records — `stage2.md`, `stage3.md`, the
+  `stage4-*.md`, `stage5.md`, the `stage6-*.md`, and
+  `stage7-5000.md` — the checks, the state counts, the
+  witnesses, and the findings, stage by stage. The
+  content-independence series is recorded in `stage7.md` to
+  `stage10.md`, under the titles those records landed with.
 - `thinking.md` — the reasoning behind the work: why the gate
   comes first, why size is a character count, the open
   content-independence challenge, the standing rules, and the
