@@ -4079,7 +4079,14 @@ class LoopbackRedirectShotgunTest(unittest.TestCase):
         err = cm.exception
         self.assertEqual(err.code, 302)
         self.assertEqual(err.msg, "redirect refused")
-        self.assertEqual(err.url, "http://127.0.0.1:9/t/a")
+        # The request URL is read as filename, the member HTTPError
+        # carries on every supported Python. On 3.9 the error has no
+        # .url (3.10+ sets one), and the missing read does not raise
+        # AttributeError there: 3.9's addbase still derives from
+        # tempfile's file wrapper, whose __getattr__ answers with
+        # KeyError: 'file'. filename is the same value the handler
+        # passed in, on 3.9 and on the newer interpreters alike.
+        self.assertEqual(err.filename, "http://127.0.0.1:9/t/a")
         self.assertIs(err.headers, headers)
 
     def test_redirect_handler_refuses_every_location_shape(self):
