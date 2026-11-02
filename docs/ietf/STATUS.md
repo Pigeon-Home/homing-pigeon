@@ -17,12 +17,13 @@ has gone to the Independent Submissions Editor (ISE).
 | draft-slutsky-homing-pigeon-02 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/02/ |
 | draft-slutsky-homing-pigeon-03 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/03/ |
 | draft-slutsky-homing-pigeon-v2-02 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/02/ |
+| draft-slutsky-homing-pigeon-v2-03 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/03/ |
 
 - Stream: Independent Submission, category Informational.
 - Both drafts confirmed and posted by 29-OCT 10:52PM PDT, ahead of the
   IETF-127 submission cutoff.
 - The current revision of version 1 (-03) expires 1 May 2027 and
-  the current revision of version 2 (-02) expires 5 May 2027,
+  the current revision of version 2 (-03) expires 6 May 2027,
   unless a new revision is posted first.
 - The -01 revisions of both drafts were posted on 1 November
   2026, also inside the IETF-127 cutoff: submission status
@@ -45,8 +46,13 @@ has gone to the Independent Submissions Editor (ISE).
   assignment, the disclosure is sent only to an initiator that
   offered the extension, the word-char grammar is closed as the
   complement of the gap set, and the companion citation carries
-  no revision number. Version 2 has no -03; the datatracker
-  expects -03 as its next revision and -04 as version 1's.
+  no revision number.
+- The -03 revision of version 2 was posted on 2 November 2026:
+  submission status 171786, "New version accepted." Its only
+  changes are the companion citations: the 4 places that cited
+  the version 1 draft at its -00 revision now cite it without a
+  revision number. The datatracker expects -04 as the next
+  revision of each draft.
 - Sources and renders live beside this file: the kramdown-rfc `.md`,
   the submitted `.xml`, the `.txt` and `.html` renders, and the idnits
   output for each draft.
