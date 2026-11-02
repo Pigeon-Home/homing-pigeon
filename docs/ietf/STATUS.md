@@ -15,13 +15,15 @@ has gone to the Independent Submissions Editor (ISE).
 | draft-slutsky-homing-pigeon-01 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/01/ |
 | draft-slutsky-homing-pigeon-v2-01 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/01/ |
 | draft-slutsky-homing-pigeon-02 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/02/ |
+| draft-slutsky-homing-pigeon-03 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/03/ |
 | draft-slutsky-homing-pigeon-v2-02 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/02/ |
 
 - Stream: Independent Submission, category Informational.
 - Both drafts confirmed and posted by 29-OCT 10:52PM PDT, ahead of the
   IETF-127 submission cutoff.
-- The current revisions of both drafts expire 5 May 2027 unless a
-  new revision is posted first.
+- The current revision of version 1 (-03) expires 1 May 2027 and
+  the current revision of version 2 (-02) expires 5 May 2027,
+  unless a new revision is posted first.
 - The -01 revisions of both drafts were posted on 1 November
   2026, also inside the IETF-127 cutoff: submission status
   171592 for version 1 and 171593 for version 2.
@@ -35,6 +37,16 @@ has gone to the Independent Submissions Editor (ISE).
   requests the extension code point; both -02 revisions replace
   the em dashes with hyphens. The datatracker now expects -03
   as the next revision of each draft.
+- The -03 revision of version 1 was posted on 2 November 2026:
+  submission status 171771, "New version accepted." Version 1's
+  -03 aligns the text with the running code: the disclosure
+  object is exactly the object the code sends, the interim
+  extension code point 0xFFA0 is named as Private Use pending
+  assignment, the disclosure is sent only to an initiator that
+  offered the extension, the word-char grammar is closed as the
+  complement of the gap set, and the companion citation carries
+  no revision number. Version 2 has no -03; the datatracker
+  expects -03 as its next revision and -04 as version 1's.
 - Sources and renders live beside this file: the kramdown-rfc `.md`,
   the submitted `.xml`, the `.txt` and `.html` renders, and the idnits
   output for each draft.
