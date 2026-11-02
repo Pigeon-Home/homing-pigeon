@@ -81,4 +81,4 @@
 
 - **TLS inspection and WAF.** extensions?
 
-- **ietf homing pigeon perfect forward secrecy v3 ** defines transport extension for v1 doc: DTLS over email using SS
+- **ietf homing pigeon perfect forward secrecy v3** defines transport extension for v1 doc: DTLS over email using SS
