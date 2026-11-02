@@ -495,6 +495,23 @@ class CoreProfileTest(unittest.TestCase):
             client.greeting["platform"]["os_family"],
             "sentinel-os")
 
+    def test_every_tier_rides_the_handshake_extension(self):
+        # The gate for the handshake carriage: at every
+        # disclosure tier -- none included -- the extension
+        # rides, the client ends holding exactly the object
+        # the builder produced for that tier, and no greeting
+        # arrives as an application message.
+        for tier in dtls_ext.GREETING_TIERS:
+            with self.subTest(tier=tier):
+                payload = dtls_ext.build_platform_payload(tier)
+                client, server = _established_pair(
+                    platform=payload)
+                self.assertEqual(client.greeting,
+                                 json.loads(payload))
+                self.assertEqual(client.app_messages, [])
+                session = next(iter(server.sessions.values()))
+                self.assertTrue(session.platform_sent)
+
     def test_a_legacy_application_greeting_still_surfaces(self):
         # A pre-change runner sends no platform extension and
         # follows establishment with the old application-message
@@ -734,6 +751,113 @@ class PlatformPayloadTest(unittest.TestCase):
              "python", "curl", "git", "tar"})
         self.assertTrue(all(isinstance(v, bool)
                             for v in tools.values()))
+
+
+# ------------------------------------------------------------------
+# Named example vectors for the platform payload
+# ------------------------------------------------------------------
+
+class PlatformExampleVectorsTest(unittest.TestCase):
+    """The named example vectors: fixed, literal platform
+    objects, built from fixed fake hosts the way the
+    platform-card tests fake the host, and asserted
+    byte-for-byte against the value of the platform
+    extension in a live handshake's EncryptedExtensions --
+    and against what the client then holds as its greeting.
+    These exact objects are the ones quoted as examples for
+    this binding, so they must not drift: a change to a
+    member, a value, or the serialization breaks this test.
+    """
+
+    # The headline vector: a Windows runner at the standard
+    # tier. The fake host is Windows Server 2022, whose
+    # platform.release() is "2022Server", running Python
+    # 3.12.7, with the platform default interpreter.
+    EXAMPLE_STANDARD_WINDOWS = (
+        '{"disclosure": "standard", "platform": '
+        '{"default_interpreter": ["powershell", "-NoProfile", '
+        '"-NonInteractive", "-ExecutionPolicy", "Bypass", '
+        '"-File"], "os_family": "windows", "os_release": '
+        '"2022Server", "protocol_versions": [1], '
+        '"python_version": "3.12.7"}, "transport": "dtls", '
+        '"type": "greeting", "v": 1}')
+
+    # A Linux runner at the family tier: the OS family, the
+    # platform default interpreter, and the protocol versions
+    # -- and nothing else.
+    EXAMPLE_FAMILY_LINUX = (
+        '{"disclosure": "family", "platform": '
+        '{"default_interpreter": ["sh"], "os_family": "linux", '
+        '"protocol_versions": [1]}, "transport": "dtls", '
+        '"type": "greeting", "v": 1}')
+
+    def _payload_from_fake_host(self, tier, sys_platform,
+                                os_name, release, python_version):
+        card_mod = dtls_ext._platformcard
+        with mock.patch.object(sys, "platform", sys_platform), \
+                mock.patch.object(os, "name", os_name), \
+                mock.patch.object(card_mod.platform, "release",
+                                  lambda: release), \
+                mock.patch.object(card_mod.platform,
+                                  "python_version",
+                                  lambda: python_version):
+            return dtls_ext.build_platform_payload(tier, {})
+
+    def _extension_bytes_from_handshake(self, payload):
+        """Run one handshake carrying `payload`; return the
+        client and the platform extension's bytes, taken from
+        the EncryptedExtensions record the client received
+        (decrypted here with the in-test record opener)."""
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET),
+            platform_for=lambda s: payload)
+        client = dtlsproto.DtlsClientCore(SECRET)
+        ch1 = client.start(NOW)[0]
+        hrr = server.feed(ch1, ADDR, NOW)[0]
+        ch2 = client.feed(hrr, NOW)[0]
+        flight = server.feed(ch2, ADDR, NOW)
+        client.feed(flight[0], NOW)       # ServerHello: keys now
+        ctype, ee_raw = _open_record_in_test(client._s_hs, 2,
+                                             flight[1])
+        self.assertEqual(ctype, 22)       # handshake
+        exts, end = dtlsproto._parse_extensions(ee_raw[12:], 0)
+        self.assertEqual(end, len(ee_raw) - 12)
+        extension = exts[dtlsproto.EXT_PLATFORM_CONFIGURATION]
+        back = []
+        for dg in flight[1:]:
+            back += client.feed(dg, NOW)
+        for dg in back:
+            server.feed(dg, ADDR, NOW)
+        self.assertEqual(client.state, "established")
+        return client, extension
+
+    def _check_vector(self, tier, sys_platform, os_name,
+                      release, python_version, expected_json):
+        expected_bytes = (expected_json + "\n").encode("utf-8")
+        payload = self._payload_from_fake_host(
+            tier, sys_platform, os_name, release, python_version)
+        # The builder's bytes are the literal object, byte for
+        # byte (sorted keys, the protocol's JSON idiom, the
+        # trailing newline the payload has always carried).
+        self.assertEqual(payload, expected_bytes)
+        client, extension = self._extension_bytes_from_handshake(
+            payload)
+        # The handshake extension carries those same bytes,
+        # and the client surfaces exactly that object.
+        self.assertEqual(extension, expected_bytes)
+        self.assertEqual(client.greeting,
+                         json.loads(expected_json))
+        self.assertEqual(client.app_messages, [])
+
+    def test_example_vector_standard_windows(self):
+        self._check_vector(
+            "standard", "win32", "nt", "2022Server", "3.12.7",
+            self.EXAMPLE_STANDARD_WINDOWS)
+
+    def test_example_vector_family_linux(self):
+        self._check_vector(
+            "family", "linux", "posix", "6.8.0-31-generic",
+            "3.12.7", self.EXAMPLE_FAMILY_LINUX)
 
 
 # ------------------------------------------------------------------
