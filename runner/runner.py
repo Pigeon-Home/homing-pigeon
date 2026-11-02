@@ -5059,7 +5059,13 @@ LIVE_KEYS = ("owner_instructions", "inference", "oracle_mode", "verbose",
              "extension_sources")
 
 def _valid_hot(key: str, value):
-    """Return the int to store, or None if the value must be rejected."""
+    """Return the int to store, or None if the value must be rejected.
+
+    A boolean is not a number. `true` is 1 in Python, and a hot
+    key written that way used to become 1 with no log line.
+    """
+    if isinstance(value, bool):
+        return None
     try:
         n = int(value)
     except (TypeError, ValueError, OverflowError):

@@ -49,7 +49,15 @@ try:
 except ImportError:
     from guard import confval as _confval  # type: ignore
 
-PROTOCOL_VERSION = 1
+# Fields build_key_policies understands. Anything else in a policy
+# object is a typo: it used to vanish, and the key ran with a
+# smaller policy than the file appeared to set.
+_POLICY_FIELDS = frozenset({
+    "allowed_kinds", "allowed_interpreters", "max_timeout_sec",
+    "allowed_recipes", "allowed_script_sha384", "allowed_env",
+    "denied_env", "allow_dangerous_env", "allowed_files",
+    "allow_file_urls", "max_args", "args_pattern",
+})
 
 
 # The replay cache's hard ceiling, a backstop only. Entries leave the
@@ -482,6 +490,15 @@ def build_secrets(cfg) -> dict:
     return secrets
 
 
+def _policy_warn(msg):
+    build_key_policies.last_warnings.append(msg)
+    try:
+        from runner.runner import log
+        log(msg, "WARN")
+    except Exception:
+        pass
+
+
 def build_key_policies(cfg) -> dict:
     """key_id -> policy dict. Keys without an entry are unrestricted
     unless key_policies_default_deny is set (additional keys only;
@@ -497,6 +514,7 @@ def build_key_policies(cfg) -> dict:
     if not isinstance(raw, dict):
         raise RuntimeError("config error: key_policies must be an object")
     policies = {}
+    build_key_policies.last_warnings = []
     for kid, pol in raw.items():
         if not isinstance(kid, str):
             raise RuntimeError("config error: key_policies keys must be strings")
@@ -621,6 +639,11 @@ def build_key_policies(cfg) -> dict:
                     f"config error: key_policies[{kid!r}].args_pattern "
                     "may backtrack catastrophically on hostile input")
             clean["args_pattern"] = pattern
+        unknown = [field for field in pol if field not in _POLICY_FIELDS]
+        for field in sorted(unknown):
+            _policy_warn(
+                "config: key_policies[%r] field %r is not a policy "
+                "field and is not in the built policy" % (kid, field))
         policies[kid] = clean
     # One key, one entry (Q94): a key's names -- the default key's
     # empty id and fingerprint, an additional name over the same
