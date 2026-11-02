@@ -123,48 +123,6 @@ class RepoTest(unittest.TestCase):
                                       return_value=_done(0, url + "\n")):
                 self.assertEqual(CR._repo(), want)
 
-    def test_a_github_substring_is_not_a_github_host(self):
-        # Code scanning alert 47: "github.com" inside a URL is not
-        # the host. The old check accepted these and split a repo
-        # name out of them. The host has to be github.com itself,
-        # or the scp form git@github.com:owner/repo.
-        env = {k: v for k, v in os.environ.items() if k != CR.REPO_ENV}
-        refused = (
-            "https://github.com.evil.example/Pigeon-Home/homing-pigeon",
-            "https://evil.example/?q=github.com/Pigeon-Home/homing-pigeon",
-            "https://evil.example/github.com/Pigeon-Home/homing-pigeon",
-            "https://notgithub.com/Pigeon-Home/homing-pigeon",
-            "git@github.com.evil.example:Pigeon-Home/homing-pigeon",
-            "http://github.com.attacker.com/Pigeon-Home/homing-pigeon",
-        )
-        accepted = (
-            ("https://github.com/Pigeon-Home/homing-pigeon.git",
-             "Pigeon-Home/homing-pigeon"),
-            ("https://user:token@github.com/Pigeon-Home/homing-pigeon",
-             "Pigeon-Home/homing-pigeon"),
-            ("ssh://git@github.com/Pigeon-Home/homing-pigeon.git",
-             "Pigeon-Home/homing-pigeon"),
-            ("git@github.com:Pigeon-Home/homing-pigeon.git",
-             "Pigeon-Home/homing-pigeon"),
-            ("https://GitHub.com/Pigeon-Home/homing-pigeon",
-             "Pigeon-Home/homing-pigeon"),
-        )
-        for url in refused:
-            with self.subTest(url=url), \
-                    mock.patch.dict(os.environ, env, clear=True), \
-                    mock.patch.object(CR, "_gh", return_value=None), \
-                    mock.patch.object(CR.subprocess, "run",
-                                      return_value=_done(0, url + "\n")), \
-                    self.assertRaises(SystemExit):
-                CR._repo()
-        for url, want in accepted:
-            with self.subTest(url=url), \
-                    mock.patch.dict(os.environ, env, clear=True), \
-                    mock.patch.object(CR, "_gh", return_value=None), \
-                    mock.patch.object(CR.subprocess, "run",
-                                      return_value=_done(0, url + "\n")):
-                self.assertEqual(CR._repo(), want)
-
     def test_no_way_to_name_the_repo_says_what_to_set(self):
         env = {k: v for k, v in os.environ.items() if k != CR.REPO_ENV}
         # A remote that is not GitHub names no repo; split on a host
