@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.108 - 2026-11-02
+
+- IETF: the -03 sources and renders are finalized against the landed DTLS fixes, and STATUS records the -03 posting of version 1.
+- The corpus banked since 3.15.107 rides along (Germany bank 29).
+
 ## 3.15.107 - 2026-11-01
 
 - DTLS: the platform disclosure object matches the -02 draft, its code point moves to the private-use range, and the extension is offered in the ClientHello and sent only when offered.
