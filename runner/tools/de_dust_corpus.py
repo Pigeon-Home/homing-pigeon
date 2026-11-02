@@ -1517,6 +1517,30 @@ def _channel_sequence(spec):
     try:
         paths = TR.ensure_channel_dirs(base, _CHANNEL)
         inbox = paths["inbox"]
+        # Probe case folding before writing anything: on a
+        # case-folding filesystem (Windows, a default macOS
+        # volume) two names that differ only in case are one
+        # file -- the first spelling is the one the directory
+        # keeps, and a later write to the folded name replaces
+        # its bytes. The expectations below are built over the
+        # inbox the filesystem actually holds.
+        probe = os.path.join(base, "._hp_case_A")
+        try:
+            with open(probe, "w"):
+                pass
+            folds = os.path.exists(os.path.join(base, "._hp_case_a"))
+        finally:
+            try:
+                os.remove(probe)
+            except OSError:
+                pass
+        survivors = {}
+
+        def _survivor(name):
+            if not folds:
+                return name
+            return survivors.setdefault(name.lower(), name)
+
         expected = {}
         dirs = ["done"]
         for name, kind, payload in _channel_files(spec):
@@ -1532,7 +1556,7 @@ def _channel_sequence(spec):
             elif kind == "dir":
                 # A directory is not a message; it stays where it is.
                 os.makedirs(path, exist_ok=True)
-                dirs.append(name)
+                dirs.append(_survivor(name))
                 continue
             else:
                 try:
@@ -1540,11 +1564,11 @@ def _channel_sequence(spec):
                 except (OSError, NotImplementedError):
                     continue    # a platform without links: not a file
                 raw = None
-            expected[name] = raw
+            expected[_survivor(name)] = raw
         with open(os.path.join(inbox, _NEIGHBOR), "wb") as fh:
             fh.write(TR.format_envelope(_NEIGHBOR_SUBJECT,
                                         _NEIGHBOR_BODY).encode("utf-8"))
-        expected[_NEIGHBOR] = None
+        expected[_survivor(_NEIGHBOR)] = None
         logged = []
 
         def record(message, level="INFO"):
@@ -1645,17 +1669,8 @@ def _channel_sequence(spec):
         # names that strip to one stem (bm-0021 and bm-0021.job.txt,
         # or a name whose unsafe characters clean to that stem) are
         # that one job. A case-folding filesystem also stores
-        # a.target.txt and A.target.txt as one file.
-        probe = os.path.join(base, "._hp_case_A")
-        try:
-            with open(probe, "w"):
-                pass
-            folds = os.path.exists(os.path.join(base, "._hp_case_a"))
-        finally:
-            try:
-                os.remove(probe)
-            except OSError:
-                pass
+        # a.target.txt and A.target.txt as one file (folds was
+        # probed before the inbox was written, above).
 
         def _target_ident(fname):
             stem = (fname[:-len(".job.txt")]
