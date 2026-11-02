@@ -94,6 +94,15 @@ REGISTERED = {
         "test_confinement enforce classes (Q10); they run where the "
         "startup probe's trial run succeeds -- the env-axes job at "
         "restriction 0 and any host whose bwrap can start",
+    "canary scripts are POSIX sh scripts":
+        "test_campaign_canary; the lifted scripts are the "
+        "campaign loop's verbatim sh shapes and run wherever the "
+        "executor runs POSIX jobs (every non-Windows leg)",
+    "sandbox engages on this machine (startup probe)":
+        "test_campaign_canary's enforce-fallback arm; it runs "
+        "where the startup probe cannot start bwrap -- a box "
+        "with no bwrap installed and the macOS leg -- while the "
+        "enforce arm beside it runs where the probe succeeds",
     "the startup probe's Linux branch":
         "test_confinement startup-problem scripts; run in the "
         "Linux test job -- the probe answers at its platform "
