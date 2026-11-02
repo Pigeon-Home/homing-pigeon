@@ -34,7 +34,7 @@ Use this protocol: https://pigeon-home.com/PROTOCOLv1
 Shared Secret: "YOUR_SECRET_STRING"
 Run a job that retrieves the system clock and then display it here.
 ```
-IETF Internet-Drafts: ([docs/ietf/STATUS.md](docs/ietf/STATUS.md))
+IETF Internet-Drafts:
 - Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 
