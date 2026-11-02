@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.37 - 2026-11-01
+
+- Fix: the sandbox-shape leg that plants a real interpreter file is POSIX-only and now skips on Windows, where the planted path cannot resolve as a POSIX prefix; its pure-function pins run in every job.
+- Proofs: the content-independence series is verified first-hand, with the cap correction recorded.
+
 ## 3.15.36 - 2026-11-01
 
 - Fix: the content-independence bash legs are portable — they skip on Windows, where the bash name is not a bash, and the rung chains are one command per line, so bash no longer crashes parsing a single cap-length list at the usual stack limit.
