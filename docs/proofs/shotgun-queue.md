@@ -717,25 +717,111 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 2c0f4d5d (31-Oct-2026)
 - Existing tests: queues-worker fuzz.test.mjs, test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (DifferentResultStoredShotgunTest
+  in test_transport_queues.py, the file where the fix's own
+  tests live): a second result for an id whose stored envelope
+  hashes differently does not finish the job — the stored-hash
+  answer in every shape (matching, mismatching, uppercased,
+  padded, truncated, extended, empty, missing, wrong-typed,
+  the old Worker's no-hash answer), malformed payloads, the
+  envelope's own fields, and the permanent/retryable status
+  split. Landed on main 2-Nov-2026 (spliced beside items 20,
+  21, 22 and 23 after tail conflicts); the file runs green
+  (539 tests in the file with item 27 landed, 0 skipped), no
+  live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261125, run locally against the banked
+  channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 142, slowest try 7 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 25. A result whose body names a different id is refused (queue Worker)
 - Fixed: 9565d89f (31-Oct-2026)
 - Existing tests: queues-worker fuzz.test.mjs
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun25 suite in
+  runner/cloud/queues-worker/test/fuzz.test.mjs, the file
+  where the fix's own tests live): a result whose signed body
+  names a different id than its subject is refused — which
+  field governs each kind (job_id for result, query_id for
+  qresult, the other kind's field ignored), null and
+  wrong-typed claims, the signed payload governing past
+  unsigned decoys on both sides, duplicate keys reading their
+  last value, and a refusal billing no bytes and leaving the
+  first envelope in place. Landed on main 2-Nov-2026
+  (6911c265); the file runs green under node --test (128 tests
+  with item 26's suite landed, 128 pass, 0 skipped — the
+  Python skip registry does not apply to this file), no live
+  bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target wire --rounds
+  400 --seed 20261126, run locally against the banked wire
+  corpus (117 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 184, slowest try 660 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 26. Result bytes had no daily cap of their own (queue Worker)
 - Fixed: 90ca98f3 (31-Oct-2026)
 - Existing tests: queues-worker fuzz.test.mjs
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun26 suite in
+  runner/cloud/queues-worker/test/fuzz.test.mjs, the file
+  where the fix's own tests live): result bytes bill against
+  their own daily cap — counts at, 1 under and 1 over the
+  cap, cumulative fills, what counts (UTF-8 bytes not
+  characters, the whole envelope, the subject line, the
+  trailing newline), the 429's error/bytes/retry fields, the
+  UTC day boundary at the exact millisecond, the quota
+  object's field shapes, no refund on ack, and tenant
+  isolation. Landed on main 2-Nov-2026 (spliced after item
+  25's suite in the same file after a tail conflict); the
+  file runs green under node --test (128 tests, 128 pass,
+  0 skipped), no live bug exposed, no production code
+  changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target collect
+  --rounds 400 --seed 20261127, run locally against the banked
+  collect corpus (20 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 65, slowest try 31 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 27. A second result file replaced the first and still acked the job
 - Fixed: cf591bb4 (31-Oct-2026)
 - Existing tests: test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (SecondResultFileReplacementShotgunTest
+  in test_transport_queues.py): the writer's first name posts
+  first — a collision-named result sorting before the plain
+  name no longer replaces the stored envelope or steals the
+  ack: the ordering seams (plain beating counters 2, 3, 10;
+  collisions alone sorting alphabetically), identical bytes
+  following the winner into done with no second ack, the
+  subject-mismatch and ident-fallback seams, and the
+  result-name parser field by field. Deliberately distinct
+  from items 3, 11 and 23 in the same area. Landed on main
+  2-Nov-2026 (spliced beside items 20 to 24 after tail
+  conflicts); the file runs green (539 tests in the file,
+  0 skipped), no live bug exposed, no production code
+  changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target stash --rounds
+  400 --seed 20261128, run locally against the banked stash
+  corpus (31 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 20, slowest try 18 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 28. Results and dead-letter pages did not say when they stopped; reads stopped at 8 MB of subjects
 - Fixed: 29001ad3, 66329844, 4635a1db (31-Oct-2026)
