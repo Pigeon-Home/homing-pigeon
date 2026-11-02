@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.106 - 2026-11-01
+
+- Docs: a proposed IETF -03 delta is recorded, with no change to the posted drafts.
+- The corpus banked since 3.15.105 rides along (Germany bank 27).
+
 ## 3.15.105 - 2026-11-01
 
 - Docs: the IETF -02 revisions are posted, with the -01 to -02 delta recorded for review.
