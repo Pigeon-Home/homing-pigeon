@@ -175,13 +175,20 @@ def _install_prefix(path):
     """The directory to bind so `path` can run: its grandparent when
     the parent is `bin` (…/x64/bin/python3 -> …/x64, bringing lib/
     along), else its parent. Never shallower than two components, so
-    /snap/bin/python3 binds /snap/bin, not all of /snap."""
+    /snap/bin/python3 binds /snap/bin, not all of /snap. The floor
+    binds the parent fallback too (stage 5 finding F1, fixed in the
+    findings disposition): a prefix shallower than two components
+    is not bound at all, and this returns None -- an interpreter
+    resolved directly in the root or a top-level directory gets no
+    prefix bind instead of binding the whole root or tree."""
     parent = os.path.dirname(path)
     if os.path.basename(parent) == "bin":
         grand = os.path.dirname(parent)
         if grand.count("/") >= 2 and grand != "/":
             return grand
-    return parent
+    if parent.count("/") >= 2:
+        return parent
+    return None
 
 
 def interpreter_binds(resolved, extra_ro_binds=()):
@@ -203,7 +210,7 @@ def interpreter_binds(resolved, extra_ro_binds=()):
         if _under(cand, visible):
             continue
         prefix = _install_prefix(cand)
-        if prefix in seen or _under(prefix, visible):
+        if prefix is None or prefix in seen or _under(prefix, visible):
             continue
         seen.add(prefix)
         out.append((prefix, prefix))

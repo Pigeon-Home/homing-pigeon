@@ -10,11 +10,14 @@ defect comes back 2 without entering the poll loop. Reload is
 driven through the real reload_hot_config against a real file.
 Clause numbers are properties.md's P6 clauses.
 
-One sub-case is deliberately NOT pinned here: a boolean
-written live for a hot key. Stage 4's record for P6 (finding
-F2 there) shows the code reading it as 1 through int(value)
-where the property says the default, named -- a divergence on
-record, not a behavior this family asserts either way.
+A boolean written live for a hot key is pinned here as
+reading as the documented default, named: stage 4's record
+for P6 (finding F2 there) showed the code reading it as 1
+through int(value), and the findings disposition fixed the
+reload reader to reject a boolean like the startup readers
+do (C26: a boolean is never a number). A bad refuse-class
+value written live is likewise pinned as named and not
+applied (finding F1 there, fixed the same pass).
 """
 import io
 import json
@@ -146,6 +149,31 @@ class ReloadTest(unittest.TestCase):
         self.assertTrue(any("poll_interval_sec" in line
                             for line in logs), logs)
 
+    def test_a_boolean_hot_value_reads_as_the_default_named(self):
+        # Findings disposition -- stage 4 P6 finding F2 is
+        # FIXED. A boolean written live for a hot key used to
+        # pass int(value) and silently become 1; C26 says a
+        # boolean is never a number, so the reload reader now
+        # rejects it and the value reads as the documented
+        # default (20 for poll_interval_sec), named in the log.
+        running = {"poll_interval_sec": 45}
+        changed, logs, _state = _reload(
+            running, {"poll_interval_sec": True})
+        self.assertEqual(running["poll_interval_sec"], 20)
+        self.assertIn("poll_interval_sec", changed)
+        self.assertTrue(any("poll_interval_sec" in line
+                            for line in logs), logs)
+
+    def test_a_false_hot_value_reads_as_the_default_named(self):
+        # The other boolean: False is rejected as a boolean,
+        # not by accident of int() and the floor, and reads
+        # as the default (1 for workers), named.
+        running = {"workers": 3}
+        changed, logs, _state = _reload(running, {"workers": False})
+        self.assertEqual(running["workers"], 1)
+        self.assertIn("workers", changed)
+        self.assertTrue(any("workers" in line for line in logs), logs)
+
     def test_a_usable_hot_value_applies_as_written(self):
         running = {"workers": 1}
         changed, _logs, _state = _reload(running, {"workers": 3})
@@ -176,6 +204,26 @@ class ReloadTest(unittest.TestCase):
         self.assertEqual(running["imap_port"], 993)
         self.assertNotIn("max_job_bytes", changed)
         self.assertNotIn("imap_port", changed)
+
+    def test_a_bad_refuse_class_value_written_live_is_named(self):
+        # Findings disposition -- stage 4 P6 finding F1 is
+        # FIXED. A bad refuse-class value written while
+        # running used to be kept out of the binding and
+        # never named; the reload now names it (and still
+        # does not apply it). The port shape is the decision's
+        # own example; the size-cap shape rides the same
+        # naming read.
+        running = {"imap_port": 993, "max_job_bytes": 4194304}
+        changed, logs, _state = _reload(
+            running, {"imap_port": True, "max_job_bytes": -1})
+        self.assertEqual(running["imap_port"], 993)
+        self.assertEqual(running["max_job_bytes"], 4194304)
+        self.assertNotIn("imap_port", changed)
+        self.assertNotIn("max_job_bytes", changed)
+        self.assertTrue(any("imap_port" in line for line in logs),
+                        logs)
+        self.assertTrue(any("max_job_bytes" in line
+                            for line in logs), logs)
 
     def test_a_pinned_key_is_left_alone(self):
         running = {"workers": 1}

@@ -359,20 +359,26 @@ class SandboxShapeTest(unittest.TestCase):
         self.assertEqual(binds("/x/bin/tool"),
                          [("/x/bin", "/x/bin")])
 
-    def test_a_root_level_interpreter_binds_the_root(self):
-        # EXHIBIT, not endorsement -- stage 5 finding F1.
+    def test_a_root_level_interpreter_gets_no_prefix_bind(self):
+        # Findings disposition -- stage 5 finding F1 is FIXED.
         # F1's floor ("never shallower than two components")
-        # is enforced only on the bin/grandparent path of
-        # _install_prefix; its parent fallback returns the
+        # was enforced only on the bin/grandparent path of
+        # _install_prefix; its parent fallback returned the
         # parent unchecked, so an interpreter resolved
-        # directly in the filesystem root binds the whole
+        # directly in the filesystem root bound the whole
         # root read-only, and one in a top-level directory
-        # binds that whole tree. This test pins the current
-        # behavior so the divergence cannot drift silently;
-        # stage5.md records it against F1's statement.
+        # bound that whole tree. The fallback now enforces
+        # the same floor: a prefix shallower than two
+        # components is not bound at all, so such an
+        # interpreter gets no prefix bind (and cannot run
+        # inside the sandbox) instead of widening the visible
+        # set past the stated bound.
         binds = runner._sandbox.interpreter_binds
-        self.assertEqual(binds("/tool"), [("/", "/")])
-        self.assertEqual(binds("/x/tool"), [("/x", "/x")])
+        self.assertEqual(binds("/tool"), [])
+        self.assertEqual(binds("/x/tool"), [])
+        self.assertEqual(binds("/bin/tool"), [])
+        # Two components is exactly at the floor and binds.
+        self.assertEqual(binds("/a/b/tool"), [("/a/b", "/a/b")])
 
 
 class WatchedSetTest(unittest.TestCase):

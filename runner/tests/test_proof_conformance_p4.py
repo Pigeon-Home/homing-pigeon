@@ -423,6 +423,48 @@ class MalformedPolicyTest(unittest.TestCase):
     def test_file_urls_as_a_non_boolean(self):
         self._bad({"allow_file_urls": "yes"})
 
+    def test_an_unknown_field_is_named_not_silent(self):
+        # Findings disposition -- stage 4 P4 finding F1 is
+        # FIXED. The builder used to carry only the fields it
+        # knows and say nothing about the rest, so a
+        # misspelled fence was silently absent from the built
+        # policy. The unknown field is still not in the built
+        # policy -- the builder cannot invent its meaning --
+        # but it is now named, in the log and on the builder's
+        # warnings list, every time the policy is built.
+        built = V.build_key_policies(
+            {"key_policies": {"k": {"allowed_kind": ["exec"]}}})
+        self.assertEqual(built["k"], {})
+        notes = V.build_key_policies.last_warnings
+        self.assertTrue(any("allowed_kind" in note
+                            and "'k'" in note for note in notes),
+                        notes)
+
+    def test_near_miss_spellings_of_the_fences_are_named(self):
+        # The F1 shape, varied over the fences an owner is
+        # most likely to misspell: each near-miss name must
+        # be named rather than silently dropped.
+        for field in ("allowed_kind", "allowed_interpreter",
+                      "allowed_script_sha", "max_timeout",
+                      "allowed_recipe", "allowed_file",
+                      "allow_dangerous_environments"):
+            with self.subTest(field=field):
+                V.build_key_policies(
+                    {"key_policies": {"k": {field: ["exec"]}}})
+                self.assertTrue(any(
+                    field in note for note in
+                    V.build_key_policies.last_warnings))
+
+    def test_recognised_fields_build_quietly(self):
+        # The naming is over names the builder does not know:
+        # an entry using recognised fields builds exactly as
+        # before and names nothing.
+        built = V.build_key_policies({"key_policies": {"k": {
+            "allowed_kinds": ["exec"], "max_timeout_sec": 30}}})
+        self.assertEqual(built["k"]["allowed_kinds"], ["exec"])
+        self.assertEqual(built["k"]["max_timeout_sec"], 30)
+        self.assertEqual(V.build_key_policies.last_warnings, [])
+
 
 if __name__ == "__main__":
     unittest.main()

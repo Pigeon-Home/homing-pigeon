@@ -861,6 +861,17 @@ class DecisionPins(unittest.TestCase):
         self.assertIn("poll_interval_sec", line)
         self.assertIn("1 setting", line)
 
+    def test_valid_hot_rejects_booleans(self):
+        # C26 at the reload reader (stage 4 P6 finding F2,
+        # fixed in the findings disposition): a boolean is
+        # never a number, so _valid_hot refuses True and
+        # False outright instead of int()-ing them to 1 and
+        # 0; ordinary usable values still pass through.
+        self.assertIsNone(R._valid_hot("poll_interval_sec", True))
+        self.assertIsNone(R._valid_hot("workers", False))
+        self.assertEqual(R._valid_hot("poll_interval_sec", 5), 5)
+        self.assertEqual(R._valid_hot("poll_interval_sec", "42"), 42)
+
     def test_a_bad_size_cap_and_a_bad_port_name_themselves(self):
         self.assertIsNone(R._validate_size_caps({}))
         self.assertIsNone(R._validate_size_caps({"max_job_bytes": 0}))

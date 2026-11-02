@@ -276,6 +276,23 @@ One construction-side observation is recorded, in the open:
   (`unrestricted_extra_keys`) — but an entry whose fields
   were partly dropped is not named anywhere. No code was
   changed in this pass.
+  Disposition (findings disposition pass, 1-Nov-2026):
+  fixed on main. The builder now names every field it does
+  not recognise — in the log and on the builder's warnings
+  list, naming the key and the field — each time the policy
+  is built. The unknown field is still not in the built
+  policy, because the builder cannot invent its meaning;
+  what closed is the silence, which was the finding: an
+  owner whose fence was misspelled now has the drop stated
+  where the policy is built instead of discovering it from
+  the key's behaviour. Verified first-hand in the
+  disposition pass (the builder's own tests and
+  `runner/tests/test_live_findings.py`), with the proof
+  family's pins in `runner/tests/test_proof_conformance_p4.py`
+  (`MalformedPolicyTest`): an unknown field is named and
+  absent, near-miss spellings of the fences are named, and
+  an entry using only recognised fields builds exactly as
+  before and names nothing.
 
 ## What this does not say
 

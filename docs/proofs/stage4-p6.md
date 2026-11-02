@@ -137,6 +137,18 @@ recorded, in the open:
   decision's own sentence asks for the line, and a reader of
   that sentence alone would expect one. No code was changed
   in this pass.
+  Disposition (findings disposition pass, 1-Nov-2026):
+  fixed on main. The reload path now reads the refuse-class
+  values it used to ignore, for naming only: a bad port, a
+  size cap the startup validator rejects, or a key policy
+  that does not build is named in the log at the moment of
+  the live write, marked not applied — and it is not
+  applied: the running binding stands and the value takes
+  effect, or refuses, at the next start, exactly as clause
+  6 states. Decision 1 rule 4's log half now happens.
+  Verified first-hand in the disposition pass, with pins in
+  `runner/tests/test_proof_conformance_p6.py` (`ReloadTest`)
+  and `runner/tests/test_live_findings.py`.
 
 - **F2. A boolean written live for a hot key silently becomes
   1.** Found in the verification pass below, by running the
@@ -159,6 +171,16 @@ recorded, in the open:
   code was changed in this pass; whether the reload reader
   should reject a bool like the startup readers do is a code
   decision for a later stage.
+  Disposition (findings disposition pass, 1-Nov-2026):
+  fixed on main — the later stage took the code decision:
+  yes. `_valid_hot` now rejects a boolean outright, like
+  the startup readers do, so a live write of `true` for a
+  hot key reads as the documented default and is named in
+  the log, exactly as C26 states. Verified first-hand in
+  the disposition pass, with pins in
+  `runner/tests/test_proof_conformance_p6.py` (`ReloadTest`),
+  `runner/tests/test_proof_constraints.py` (`DecisionPins`),
+  and `runner/tests/test_live_findings.py`.
 
 ## What this does not say
 

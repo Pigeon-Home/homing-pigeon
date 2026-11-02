@@ -323,6 +323,17 @@ again on the final tree, every shape was caught again.
   depth check on the fallback, or F1's sentence amended to
   carry the exception. No production code changed in this
   stage; the choice belongs with the property's owner.
+  Disposition (findings disposition pass, 1-Nov-2026):
+  fixed on main, test first — the depth check was taken, not
+  the amended sentence. `_install_prefix` now enforces the
+  floor on the parent fallback as well: a prefix shallower
+  than two components is not bound at all, so an
+  interpreter resolved in the root or a top-level directory
+  gets no prefix bind (and cannot run inside the sandbox)
+  instead of binding the whole root or tree.
+  `SandboxShapeTest::test_a_root_level_interpreter_gets_no_prefix_bind`
+  replaces the exhibit test and pins the fixed behaviour;
+  the floor pins beside it are unchanged.
 - **The P5 observation, now pinned as behaviour.** Stage
   4's P5 record observed that with the opinion module
   unloaded, `load_sent_result` skips its digest comparison

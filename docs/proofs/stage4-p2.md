@@ -227,6 +227,18 @@ That is F1, exhibited rather than asserted.
   shaped to hide the rule: it is a variable in the model, a
   clause in the statement, and a witness configuration whose
   expected failure exhibits it.
+  Disposition (findings disposition pass, 1-Nov-2026):
+  accepted, and carried as a named limit in the security
+  model document (docs/security/model-and-proof-testing.md).
+  The rule stays as clause 3 states it — uniform, read-only,
+  audited — because the interpreter must be able to run at
+  all, and the mitigations above bound the exposure: the
+  interpreter must exist and resolve, a key policy can pin
+  the interpreters a key may name, and every bind is
+  audited. The one part of F1's statement the code did not
+  hold — the two-component floor on the parent fallback —
+  was split off as stage 5's finding F1 and is fixed there;
+  see stage5.md.
 
 No other finding came out of the code read. In particular, no
 way was found for a job field to widen the view or the budget,

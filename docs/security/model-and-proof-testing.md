@@ -260,11 +260,24 @@ verdicts stand as appendices to the four records.
   verification confirmed the debt that finding was owed is
   closed. P2
   records the interpreter-prefix bind inside the property itself:
-  bounded and audited, but a widening, stated as one. P6 records
-  a naming gap: live reload never reads refuse-class keys, so a
-  bad refuse-class value written while the runner is up is not
-  named in the log, though it changes nothing until the next
-  start refuses on it.
+  bounded and audited, but a widening, stated as one.
+- **The findings have each been given a stated end.** Fixed on
+  main, each with the failing test first: a bad refuse-class
+  value written while the runner is up — a port, a size cap,
+  a key policy that does not build — is now named in the log
+  at the moment of the write, and still not applied until the
+  next start (stage 4, P6 F1); a boolean written live for a
+  hot key now reads as the documented default and is named,
+  instead of silently becoming 1 (stage 4, P6 F2); the
+  key-policy builder now names every entry field it does not
+  recognise, naming the key and the field, instead of
+  silently building a narrower policy (stage 4, P4 F1); and
+  the interpreter-prefix floor now holds on the parent
+  fallback too, so an interpreter in the root or a top-level
+  directory gets no prefix bind instead of binding the whole
+  tree (stage 5 F1). Accepted as stated, and carried here as
+  a named limit: the interpreter-prefix bind itself —
+  bounded, uniform, read-only and audited (stage 4, P2 F1).
 - **The scope starts small and rises.** Each checked claim names
   its property, its bound, and its assumptions. No claim here is
   a claim about the whole system, and the sum of the claims is

@@ -176,6 +176,16 @@ def _name_bad_refuse(fresh):
         except Exception as exc:
             R.log("config reload: refuse-class %s=%r is not applied (%s)"
                   % (key, fresh[key], exc), "ERROR")
+    # The size caps are refuse-class too (stage 4 P6 finding
+    # F1, the disposition's extension of this read): the same
+    # validator the startup gauntlet uses names a bad one.
+    try:
+        cap_err = R._validate_size_caps(fresh)
+    except Exception:
+        cap_err = None
+    if cap_err:
+        R.log("config reload: refuse-class value is not applied (%s)"
+              % cap_err, "ERROR")
     if "key_policies" not in fresh:
         return
     try:
