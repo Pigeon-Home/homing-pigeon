@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.102 - 2026-11-01
+
+- Fix: the content-series script builder is linear, not quadratic — it tracks the joined length while it cycles the catalog and joins once, producing byte-for-byte the same scripts (pinned against the original algorithm in the new test_proof_content_build). On 3.15.101 the old builder took 38.97 seconds for one cap script and the tag build's test job hit its 20 minute wall clock twice in that builder, while the same commit's main test job passed in 16 minutes 56 seconds; a cap script now composes in 0.031 seconds.
+- Tests: the archived campaign record is removed and its canary lifted into the living suite, and the corpus banked since 3.15.101 rides along (Germany bank 24, Menlo Park bank 220).
+
 ## 3.15.101 - 2026-11-01
 
 - Fix: the content-series skip reasons are registered (the PowerShell rung legs, the macOS shell parser and the FreeBSD shell), and the redo bash legs are POSIX-only, matching the earlier proof modules, so they skip on Windows instead of failing against the WSL launcher.
