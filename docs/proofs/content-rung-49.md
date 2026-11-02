@@ -64,3 +64,29 @@ This is not every string of 49 characters. It is the
 combinations of this atom list, at this depth: pairs, and
 triples of the short atoms. Deeper nesting is not in the
 set. The rungs above 49 are not claimed here.
+
+## Verification
+
+This record was re-checked first-hand after it landed,
+the same standard the stage 6 verification applied:
+nothing in the record above was taken on the author's
+word.
+
+- **The generation was recomputed independently**, outside
+  the test harness: 22 bash atoms give 3,682 scripts, the
+  longest 46 characters, all distinct; 10 PowerShell atoms
+  give 521 candidates. Both numbers match the record.
+- **The tests were re-run.** The harness's 5 tests passed
+  with no skips, with a stock PowerShell 7.5.4 on `PATH`
+  (a fresh download for this check; the first run on this
+  machine skipped the PowerShell leg, and that run was not
+  counted). The PowerShell parser dropped exactly 10
+  candidates and the 511 survivors were all admitted, as
+  recorded. `bash -n` accepted the whole bash set as one
+  file, exit code 0, and `handle_mail` admitted all 3,682
+  bash scripts one by one.
+- **The code was re-read.** The gate's only length step on
+  current main is in `runner/ops/mail.py`:
+  `len(script.encode("utf-8"))` against `max_script_bytes`,
+  default 1048576, and the refusal names
+  `max_script_bytes`. No step branches on a script's text.

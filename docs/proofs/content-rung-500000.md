@@ -42,3 +42,28 @@ The scripts were syntax-checked, not executed.
 
 500,000 is not a limit in the code. This is not every
 construct that fits in 500,000 characters.
+
+## Verification
+
+This record was re-checked first-hand after the redo
+landed, the same standard the stage 6 verification
+applied.
+
+- **The scripts were rebuilt independently**: 3 bash
+  scripts and 3 PowerShell scripts of exactly 500,000
+  characters, the 3 bash texts different, and a fourth
+  bash script of exactly 500,001 characters. Every number
+  matches the record.
+- **The tests were re-run.** The harness's 4 tests passed,
+  with no skips once a stock PowerShell 7.5.4 was on
+  `PATH` (the first run on this machine skipped the
+  PowerShell leg, and that run was not counted).
+  PowerShell's parser accepted all 3 scripts, `bash -n`
+  accepted every bash script with exit code 0 and no
+  checker crashed, the gate admitted all 7 scripts, and a
+  cap of 100 bytes refused the 500,000-character bash
+  scripts with the refusal naming `max_script_bytes`.
+- **The code was re-read.** The only length step on
+  current main is the UTF-8 byte count against
+  `max_script_bytes` in `runner/ops/mail.py`; 500,000
+  appears nowhere in it.

@@ -63,3 +63,36 @@ tests passed.
 5,000 is not a limit in the code. The code's cap remains
 1048576 bytes. This rung does not enumerate the construct
 space. The rungs above it are not claimed here.
+
+## Verification
+
+This record was re-checked first-hand after the redo
+landed, the same standard the stage 6 verification
+applied: nothing in the record above was taken on the
+author's word. This is the rung the original series
+skipped, so it was checked first among the redo rungs.
+
+- **The scripts were rebuilt independently**, outside the
+  test harness: catalogs of 22 bash constructs and 16
+  PowerShell constructs, cycled one command per line. 3
+  bash scripts of exactly 5,000 characters, all 3 texts
+  different, 23 distinct lines in each (the 22 catalog
+  lines and the pad line); 3 PowerShell scripts of exactly
+  5,000 characters; a fourth bash script of exactly 5,001.
+  Every number matches the record.
+- **The tests were re-run.** The harness's 5 tests passed.
+  The first run on this machine skipped the PowerShell
+  test — `pwsh` was not installed — and that run was not
+  counted. A stock PowerShell 7.5.4 build was then put on
+  `PATH` and the rung re-ran with no skips: PowerShell's
+  own parser accepted all 3 scripts, the gate admitted all
+  4 bash scripts and all 3 PowerShell scripts, and a cap
+  of 100 bytes refused every 5,000-character script with
+  the refusal naming `max_script_bytes`. `bash -n`
+  accepted every bash script, exit code 0; no checker
+  crashed.
+- **The code was re-read.** On current main the gate's
+  only length step is in `runner/ops/mail.py`: the UTF-8
+  byte count against `max_script_bytes`, default 1048576.
+  5,000 appears nowhere in that step, which is why the
+  5,001-character script is admitted, as recorded.
