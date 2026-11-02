@@ -119,7 +119,8 @@ class ProductionCapTest(unittest.TestCase):
         executed = []
 
         def execute(*_a, **_k):
-            executed.append(len(script.encode("utf-8")))
+            passed = _a[1] if len(_a) > 1 else {}
+            executed.append(len((passed.get("script") or "").encode("utf-8")))
             return {"exit_code": 0, "stdout": "", "stderr": "",
                     "timed_out": False, "duration_sec": 0.0}
 

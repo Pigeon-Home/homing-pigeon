@@ -132,11 +132,13 @@ and at the production cap. The records are `stage7.md` to
 limits stand in those records and stand here: the scripts
 are samples of each construct, not the closure of every
 nesting, and the PowerShell half was not run. A first-hand
-verification pass over the series is still owed; until it
-runs, the series rests on the records as landed, and the
-position above — content-independence argued from the code
-read in stage 3 — is what this work's own verification has
-established.
+verification pass over the series has since run: its tests
+were re-run and its records re-read against the code, and
+the verdicts stand as appendices to the four records. The
+pass confirms what the records claim for the samples they
+ran, and finds the challenge still open in its stated
+form — the closure was not enumerated, and the
+PowerShell half was not run.
 
 ## The boundary question
 
@@ -306,12 +308,11 @@ cited by its name, so the stage numbers name the ladder
 alone. The series' limits stand as its records state
 them: samples of each construct, not every nesting;
 PowerShell not run. A first-hand verification pass over
-the series is still owed, and until it runs, the series
-rests on the records as landed.
+the series has since run, and its verdicts stand as
+appendices to the four records.
 
-What is next, in order: the owed verification pass over
-the content-independence series; then stages 8, 9, and
-10, each run at its own bound when its turn comes. Every
+What is next, in order: stages 8, 9, and 10, each run
+at its own bound when its turn comes. Every
 widening still goes through the same cycle — state it,
 model it, check it, tie it back to the code — and every
 claim still names its property, its bound, and its

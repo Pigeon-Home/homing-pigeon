@@ -46,3 +46,39 @@ production cap of 1048576 bytes, was not generated here.
 cap's own size is a different stage, because the cap is
 measured in bytes and a script of exactly 1048576 bytes
 is the boundary the code itself enforces.
+
+## First-hand verification
+
+Re-checked first-hand after it landed; the shared half
+of the verdict (the gate-code walk, the configuration,
+the harness correction) is in the stage 7 appendix
+(`stage7.md`).
+
+- **The tests were re-run.**
+  `runner/tests/test_proof_content_500k.py` as landed:
+  4 tests, all passing. The record says the four tests
+  took about 55 seconds; on the machine that ran this
+  pass they took 94 seconds. The counts agree; the
+  time is the machine's, and the difference is
+  recorded rather than smoothed over. After the
+  harness correction, 4 passing again. The lengths
+  were re-measured by the tests: exactly 500,000
+  characters and 500,000 UTF-8 bytes for the three
+  scripts, 500,001 for the fourth, and the three
+  texts different.
+- **The verdict at this rung.** All four texts are
+  admitted, and the three rung texts are refused
+  under a cap of 100 bytes, the refusal naming
+  `max_script_bytes`. That holds as stated, for
+  these texts.
+- **F1. The same shape as the 50,000 rung.** One atom
+  repeated to length — a `true;` chain, a quoted
+  letter run, a quoted word run. No construct is
+  combined with another at this bound, and nothing
+  here samples the grammar. What is demonstrated is
+  that the gate's size decision does not read these
+  texts, at half a million characters as at fifty
+  thousand.
+
+Verdict for this rung: holds for the texts generated.
+The enumeration the challenge asks for remains open.

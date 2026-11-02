@@ -235,7 +235,8 @@ series presents scripts built from a shell's constructs to the
 real gate at the first rung, at 50,000 and 500,000 characters,
 and at the cap itself, and finds the gate's decision following
 length alone; its records are landed, and a first-hand
-verification pass over the series is still owed.
+verification pass over the series has since run — its
+verdicts stand as appendices to the four records.
 
 ## Honest limits
 

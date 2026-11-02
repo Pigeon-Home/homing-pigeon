@@ -562,9 +562,9 @@ are unchanged. One state is shared by all four and is
 stated here once: each landed on the runs its record
 describes, and a first-hand verification pass over the
 series — its tests re-run and its records re-read
-against the code, as stages 2 to 5 received — is still
-owed. Until that pass runs, the series' claims rest on
-the records as landed.
+against the code, as stages 2 to 5 received — has
+since run. Its verdicts stand as appendices to the
+four records.
 
 **Contents.** The challenge `thinking.md` records and does
 not close. At scripts of at most 49 characters, list the
