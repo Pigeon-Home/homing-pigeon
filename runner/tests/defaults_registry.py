@@ -724,8 +724,8 @@ ROWS = [{'key': 'severity',
   'doc_line': 1508,
   'doc_token': '`max_timeout_sec`',
   'doc_status': 'verified',
-  'reader': 'runner/wire/verify.py:build_key_policies',
-  'reader_sites': ['runner/wire/verify.py:build_key_policies', 'runner/wire/verify.py:check_key_policy'],
+  'reader': 'runner/wire/verify.py:_build_key_policies',
+  'reader_sites': ['runner/wire/verify.py:_build_key_policies', 'runner/wire/verify.py:check_key_policy'],
   'policy': 'refuse',
   'lo': None,
   'hi': None,
@@ -733,7 +733,10 @@ ROWS = [{'key': 'severity',
   'test': 'TestBooleanKeyPolicyMaxTimeoutIsConfigError',
   'notes': "REFUSE-AT-STARTUP reader — see the refuse section. Errors: RuntimeError('config error: "
            "key_policies[<id>].max_timeout_sec must be a number'); RuntimeError('... must be >= "
-           "1'). There is no default to register: absence means no cap."},
+           "1'). There is no default to register: absence means no cap. The reader is "
+           "_build_key_policies: the public build_key_policies name is a _KeyPolicyBuilder "
+           "callable carrying last_warnings, and the confval read itself sits in the private "
+           "function behind it."},
  {'key': 'max_matches (grep query)',
   'scope': 'core',
   'kind': 'integer',
