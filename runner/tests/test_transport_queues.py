@@ -2665,5 +2665,892 @@ class SendJobDlqTest(unittest.TestCase):
             self.assertEqual(rc, 1)
             self.assertIn("not on the dead-letter list", err)
 
+
+
+class StaleResultDoesNotAckShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 11 (31-Oct-2026): a
+    result from the finished life does not ack the next one.
+    The first life posted its result and was acked, but the
+    file was still in the outbox when the same id was queued
+    again; posting it on the next pass matched the stored
+    hash, and the ack finished the new life before it ran.
+    The fix (bfb3a790) notes the result filenames already in
+    the outbox at the moment a life is delivered
+    (QueuePipe._note_earlier_results, the _stale set): a
+    noted file is posted and moved to done, and it does not
+    ack the job just pulled; only the result the new life
+    itself writes finishes it. This family scattershots
+    everything around that failure: which names count as the
+    previous life's (the canonical name, collision names,
+    case variants and lookalikes), where the old copy sits
+    (outbox, done, failed), a failed or refused post, a
+    second and third life, two jobs in one pass, the lease
+    the held job keeps, hostile and injection-shaped bodies,
+    subjects and job envelopes, and the timing seam itself
+    -- a file that appears only after delivery is fresh.
+    One regression test was never going to be enough for a
+    bug that took days of CPU to find.
+
+    Proof of work (2-Nov-2026). The unit tests are the 50
+    methods of this class: 21 hand-written seams, 8
+    per-field tests, 10 bookend sweeps, 4 run-length sweeps
+    and 7 injection-shaped tests. Per-field enumeration:
+    the stale decision reads a fielded surface -- the queue
+    ident, the noted filename in _stale, the _pending
+    mapping to the subject's job id, the result subject's
+    id, the result body, the stored envelope's hash at the
+    worker, and the ack call itself -- and each field gets
+    its own test in the per-field section, pinning that the
+    hold keys on the exact ident and filename, carries the
+    body verbatim, and spends no ack. Bookends: every
+    printable ASCII symbol (string.punctuation, all 32) at
+    the front AND the back of the stale body and of the
+    fresh body, as singles, matched pairs, mismatched pairs
+    and symbol-only strings, plus NUL, tab, CR and LF at
+    both ends; the ident sweep uses the symbols a job id
+    can hold. Run lengths: runs of the odd character, runs
+    of 10 ordinary characters with the odd one at the
+    front, the back and the middle, 10 stale pushes in a
+    row, and idents of 120 and 128 characters. The fuzzing
+    was executed, not just the tests written: the
+    assigned command, runner/tools/de_dust_corpus.py grow
+    --target runs --rounds 400 --seed 20261112, answers
+    "unknown target 'runs'" in this tree (runs.jsonl is a
+    records file, not a grow target), so the corpus
+    machinery ran against the nearest target, channels --
+    the channel inbox/result surface the queues pipe is
+    built on -- with the same rounds and seed against the
+    banked channels corpus (11 entries). Result: 400
+    rounds, 0 crashes, 0 slow, arcs unchanged at 142,
+    slowest try 37 ms; the stale-ack shape did not recur.
+    The grow's bookkeeping writes were reverted and are
+    not banked (banking is the rigs' hourly job); this
+    record is the run's proof. None of this is
+    exotic: it is combinatorics -- systematically trying
+    the combinations a hand-written list would never reach,
+    then pinning each answer as a test."""
+
+    def setUp(self):
+        self.td = tempfile.TemporaryDirectory()
+        self.channel = os.path.join(self.td.name, "channel")
+        ch.dirs(self.channel)
+
+    def tearDown(self):
+        self.td.cleanup()
+
+    # -- helpers ---------------------------------------------------
+
+    def _pipe(self, w):
+        return q.QueuePipe({}, self.channel,
+                           q.QueueClient(w.url, RUNNER_TOKEN))
+
+    def _core(self, ident, body='{"exit_code":0,"sig":"00"}',
+              fname=None):
+        """The core ran the job: consume the inbox file and
+        drop its result in the outbox."""
+        d = ch.dirs(self.channel)
+        os.replace(os.path.join(d["inbox"], ident + ".job.txt"),
+                   os.path.join(d["inbox_done"], ident + ".job.txt"))
+        ch._atomic_write(
+            os.path.join(d["outbox"], fname or (ident + ".result.txt")),
+            f"[HOMING-PIGEON] result {ident}\n\n{body}\n")
+
+    def _write_result(self, ident, text, fname=None):
+        d = ch.dirs(self.channel)
+        ch._atomic_write(
+            os.path.join(d["outbox"], fname or (ident + ".result.txt")),
+            text)
+
+    def _first_life(self, w, pipe, ident="j1",
+                    body='{"exit_code":0,"sig":"00"}'):
+        w.state.jobs[ident] = envelope(ident)
+        pipe.pull_jobs()
+        self._core(ident, body)
+        pipe.push_results()
+        self.assertEqual(w.state.acked[-1:], [ident])
+
+    def _requeue_with_stale(self, w, pipe, ident="j1"):
+        """The SI took the first result, its file is back in
+        the outbox, and the id is queued again: deliver the
+        new life with the old file sitting there."""
+        d = ch.dirs(self.channel)
+        w.state.results.pop(ident, None)
+        os.replace(os.path.join(d["outbox_done"], ident + ".result.txt"),
+                   os.path.join(d["outbox"], ident + ".result.txt"))
+        w.state.jobs[ident] = envelope(ident)
+        w.state.leased.discard(ident)
+        pipe.pull_jobs()
+        self.assertIn(ident, pipe._pending)
+
+    def _cycle(self, w, pipe, ident, stale_body, fresh_body):
+        """Two full lives of one id on one pipe. The first
+        life's result, left in the outbox, must post without
+        acking the second life; the second life's own result
+        acks it. Returns (stale stored text, fresh stored
+        text)."""
+        before = list(w.state.acked)
+        self._first_life(w, pipe, ident, stale_body)
+        self.assertEqual(w.state.acked, before + [ident])
+        self._requeue_with_stale(w, pipe, ident)
+        self.assertIn(ident + ".result.txt", pipe._stale)
+        pipe.push_results()
+        self.assertEqual(w.state.acked, before + [ident])
+        self.assertIn(ident, pipe._pending)
+        self.assertIn(ident, w.state.jobs)
+        d = ch.dirs(self.channel)
+        self.assertNotIn(ident + ".result.txt",
+                         os.listdir(d["outbox"]))
+        self.assertIn(ident + ".result.txt",
+                      os.listdir(d["outbox_done"]))
+        stale_stored = w.state.results[ident]
+        w.state.results.pop(ident, None)
+        self._core(ident, fresh_body)
+        pipe.push_results()
+        self.assertEqual(w.state.acked, before + [ident, ident])
+        self.assertNotIn(ident, pipe._pending)
+        return stale_stored, w.state.results[ident]
+
+    # -- hand-written seams ----------------------------------------
+
+    def test_stale_result_posts_but_the_new_life_waits_for_its_own(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            stale, fresh = self._cycle(
+                w, pipe, "j1", '{"exit_code":0}', '{"exit_code":7}')
+            self.assertIn('"exit_code":0', stale)
+            self.assertIn('"exit_code":7', fresh)
+
+    def test_stale_collision_name_posts_but_does_not_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1", '{"exit_code":0}')
+            d = ch.dirs(self.channel)
+            w.state.results.pop("j1", None)
+            os.replace(os.path.join(d["outbox_done"], "j1.result.txt"),
+                       os.path.join(d["outbox"], "j1.result-2.txt"))
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, {"j1.result-2.txt"})
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", pipe._pending)
+            self.assertIn("j1.result-2.txt",
+                          os.listdir(d["outbox_done"]))
+            w.state.results.pop("j1", None)
+            self._core("j1", '{"exit_code":7}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+
+    def test_two_stale_names_both_post_and_neither_acks(self):
+        text = '[HOMING-PIGEON] result j1\n\n{"exit_code":0}\n'
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1", '{"exit_code":0}')
+            d = ch.dirs(self.channel)
+            w.state.results.pop("j1", None)
+            os.replace(os.path.join(d["outbox_done"], "j1.result.txt"),
+                       os.path.join(d["outbox"], "j1.result.txt"))
+            self._write_result("j1", text, fname="j1.result-2.txt")
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale,
+                             {"j1.result.txt", "j1.result-2.txt"})
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", pipe._pending)
+            self.assertEqual(sorted(os.listdir(d["outbox_done"])),
+                             ["j1.result-2.txt", "j1.result.txt"])
+            w.state.results.pop("j1", None)
+            self._core("j1", '{"exit_code":7}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+
+    def test_stale_for_another_job_does_not_hold_this_one(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j2", '{"exit_code":0}')
+            # j2's file sits in the outbox while j1 is delivered.
+            d = ch.dirs(self.channel)
+            w.state.results.pop("j2", None)
+            os.replace(os.path.join(d["outbox_done"], "j2.result.txt"),
+                       os.path.join(d["outbox"], "j2.result.txt"))
+            w.state.jobs["j1"] = envelope("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, set())
+            self._core("j1", '{"exit_code":1}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j2", "j1"])
+            self.assertNotIn("j1", pipe._pending)
+
+    def test_old_copy_only_in_done_does_not_hold_the_new_life(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1", '{"exit_code":0}')
+            w.state.results.pop("j1", None)
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, set())
+            self._core("j1", '{"exit_code":7}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+
+    def test_old_copy_only_in_failed_does_not_hold_the_new_life(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1", '{"exit_code":0}')
+            d = ch.dirs(self.channel)
+            failed = os.path.join(d["outbox"], "failed")
+            os.makedirs(failed, exist_ok=True)
+            os.replace(os.path.join(d["outbox_done"], "j1.result.txt"),
+                       os.path.join(failed, "j1.result.txt"))
+            w.state.results.pop("j1", None)
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, set())
+            self._core("j1", '{"exit_code":7}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+
+    def test_stale_consumed_once_and_a_second_push_changes_nothing(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._requeue_with_stale(w, pipe, "j1")
+            pipe.push_results()
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", pipe._pending)
+            self.assertEqual(pipe._stale, set())
+            stored = w.state.results["j1"]
+            pipe.push_results()
+            self.assertEqual(w.state.results["j1"], stored)
+
+    def test_stale_survives_a_transient_post_failure(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._requeue_with_stale(w, pipe, "j1")
+            w.state.fail_results = 1
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            d = ch.dirs(self.channel)
+            self.assertIn("j1.result.txt", os.listdir(d["outbox"]))
+            self.assertEqual(pipe._stale, {"j1.result.txt"})
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", pipe._pending)
+            self.assertNotIn("j1.result.txt", os.listdir(d["outbox"]))
+
+    def test_stale_pass_never_spends_a_job_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._requeue_with_stale(w, pipe, "j1")
+            w.state.fail_acks = 1
+            pipe.push_results()          # the stale pass: no ack spent
+            self.assertEqual(w.state.fail_acks, 1)
+            self.assertEqual(w.state.acked, ["j1"])
+            w.state.results.pop("j1", None)
+            self._core("j1", '{"exit_code":7}')
+            pipe.push_results()          # the fresh ack fails once
+            self.assertEqual(w.state.fail_acks, 0)
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", pipe._pending)
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+
+    def test_a_third_life_is_held_by_the_second_lifes_leftover(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._cycle(w, pipe, "j1", '{"n":1}', '{"n":2}')
+            w.state.results.pop("j1", None)
+            stale, fresh = self._cycle(
+                w, pipe, "j1", '{"n":2}', '{"n":3}')
+            self.assertEqual(w.state.acked, ["j1"] * 4)
+            self.assertIn('"n":3', fresh)
+
+    def test_two_jobs_in_one_pass_only_the_stale_one_is_held(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1", '{"exit_code":0}')
+            self._first_life(w, pipe, "j2", '{"exit_code":0}')
+            self.assertEqual(w.state.acked, ["j1", "j2"])
+            self._requeue_with_stale(w, pipe, "j1")
+            w.state.jobs["j2"] = envelope("j2")
+            w.state.leased.discard("j2")
+            w.state.results.pop("j2", None)
+            pipe.pull_jobs()
+            self._core("j2", '{"exit_code":2}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j2", "j2"])
+            self.assertIn("j1", pipe._pending)
+            self.assertNotIn("j2", pipe._pending)
+
+    def test_a_result_appearing_after_delivery_is_fresh_and_acks(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1", '{"exit_code":0}')
+            w.state.results.pop("j1", None)
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()             # outbox empty at delivery
+            self.assertEqual(pipe._stale, set())
+            self._write_result(
+                "j1", '[HOMING-PIGEON] result j1\n\n{"exit_code":0}\n')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+            self.assertNotIn("j1", pipe._pending)
+
+    def test_note_earlier_results_reads_only_matching_result_names(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            body = '[HOMING-PIGEON] result j1\n\n{}\n'
+            for fname in ("j1.result.txt", "j1.result-2.txt",
+                          "j2.result.txt", "j1.target.txt", "notes.txt"):
+                self._write_result("j1", body, fname=fname)
+            pipe._note_earlier_results("j1")
+            self.assertEqual(pipe._stale,
+                             {"j1.result.txt", "j1.result-2.txt"})
+            pipe._note_earlier_results("j2")
+            self.assertEqual(pipe._stale, {"j1.result.txt",
+                                           "j1.result-2.txt",
+                                           "j2.result.txt"})
+            pipe._note_earlier_results("j9")
+            self.assertEqual(len(pipe._stale), 3)
+
+    def test_note_earlier_results_failing_listing_is_silent(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            with mock.patch.object(os, "listdir",
+                                   side_effect=OSError("gone")):
+                pipe._note_earlier_results("j1")
+            self.assertEqual(pipe._stale, set())
+
+    def test_note_earlier_results_empty_outbox_notes_nothing(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            pipe._note_earlier_results("j1")
+            self.assertEqual(pipe._stale, set())
+
+    def test_case_variant_result_name_is_not_the_previous_life(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._write_result(
+                "j1", '[HOMING-PIGEON] result J1\n\n{}\n',
+                fname="J1.result.txt")
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, set())
+
+    def test_lookalike_result_names_are_not_the_previous_life(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            for fname in ("j1.result-x.txt", "j1.result.txt.bak",
+                          "j1.results.txt", "j1.result.txt "):
+                self._write_result(
+                    "j1", '[HOMING-PIGEON] result j1\n\n{}\n',
+                    fname=fname)
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, set())
+
+    def test_malformed_stale_file_does_not_ack_and_is_set_aside(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._write_result("j1", "not an envelope")
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, {"j1.result.txt"})
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", pipe._pending)
+            d = ch.dirs(self.channel)
+            failed = os.path.join(d["outbox"], "failed")
+            self.assertIn("j1.result.txt", os.listdir(failed))
+
+    def test_symlink_stale_file_does_not_ack_and_is_not_followed(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            d = ch.dirs(self.channel)
+            secret = os.path.join(self.channel, "secret.txt")
+            with open(secret, "w", encoding="utf-8") as fh:
+                fh.write("not-for-the-queue\n")
+            os.symlink(secret, os.path.join(d["outbox"], "j1.result.txt"))
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", pipe._pending)
+            failed = os.path.join(d["outbox"], "failed")
+            with open(os.path.join(failed, "j1.result.txt"),
+                      encoding="utf-8") as fh:
+                self.assertNotIn("not-for-the-queue", fh.read())
+
+    def test_stale_hold_keeps_the_lease_renewable(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._requeue_with_stale(w, pipe, "j1")
+            pipe.push_results()
+            pipe.renew_leases()
+            self.assertEqual(w.state.renewed, ["j1"])
+            self.assertIn("j1", pipe._pending)
+
+    # -- per-field enumeration -------------------------------------
+    # The stale decision's fields, one test each: the ident,
+    # the noted filename, the pending mapping, the result
+    # subject, the result body, the stored hash, the ack
+    # call, and the fresh file that finally finishes it.
+
+    def test_field_ident_is_the_exact_stem_not_a_prefix(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1", '{"exit_code":0}')
+            d = ch.dirs(self.channel)
+            w.state.results.pop("j1", None)
+            os.replace(os.path.join(d["outbox_done"], "j1.result.txt"),
+                       os.path.join(d["outbox"], "j1.result.txt"))
+            w.state.jobs["j10"] = envelope("j10")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, set())
+            self._core("j10", '{"exit_code":1}')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j10"])
+            self.assertNotIn("j10", pipe._pending)
+
+    def test_field_stale_set_holds_exactly_the_noted_names(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._requeue_with_stale(w, pipe, "j1")
+            self.assertEqual(pipe._stale, {"j1.result.txt"})
+            pipe.push_results()
+            self.assertEqual(pipe._stale, set())
+
+    def test_field_pending_maps_the_new_life_and_survives_the_stale_pass(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._requeue_with_stale(w, pipe, "j1")
+            self.assertEqual(pipe._pending, {"j1": "j1"})
+            pipe.push_results()
+            self.assertEqual(pipe._pending, {"j1": "j1"})
+            w.state.results.pop("j1", None)
+            self._core("j1", '{"exit_code":7}')
+            pipe.push_results()
+            self.assertEqual(pipe._pending, {})
+
+    def test_field_result_subject_naming_another_job_is_left_not_posted(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._write_result(
+                "j1", '[HOMING-PIGEON] result j2\n\n{"exit_code":0}\n')
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, {"j1.result.txt"})
+            stored_before = dict(w.state.results)
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertEqual(w.state.results, stored_before)
+            self.assertNotIn("result j2", w.state.results["j1"])
+            d = ch.dirs(self.channel)
+            self.assertIn("j1.result.txt", os.listdir(d["outbox"]))
+            self.assertIn("j1", pipe._pending)
+
+    def test_field_result_body_of_the_stale_file_is_posted_verbatim(self):
+        body = 'multi\nline {"exit_code":0} with spaces  '
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            stale, _fresh = self._cycle(
+                w, pipe, "j1", body, '{"exit_code":7}')
+            self.assertEqual(
+                stale, f"[HOMING-PIGEON] result j1\n\n{body}\n")
+
+    def test_field_stored_hash_a_different_stale_body_is_not_a_duplicate(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1", '{"exit_code":0}')
+            # The stored envelope is exit 0; a different file
+            # of the same name is not that envelope, so its
+            # post is refused as a mismatch and nothing acks.
+            self._write_result(
+                "j1", '[HOMING-PIGEON] result j1\n\n{"exit_code":9}\n')
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", pipe._pending)
+            self.assertIn('"exit_code":0', w.state.results["j1"])
+            d = ch.dirs(self.channel)
+            self.assertIn("j1.result.txt", os.listdir(d["outbox"]))
+
+    def test_field_no_ack_call_is_made_for_the_stale_post(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._requeue_with_stale(w, pipe, "j1")
+            mark = len(w.state.calls)
+            pipe.push_results()
+            acks = [c for c in w.state.calls[mark:]
+                    if c[0] == "POST" and c[1].endswith("/ack")]
+            self.assertEqual(acks, [])
+            w.state.results.pop("j1", None)
+            self._core("j1", '{"exit_code":7}')
+            mark = len(w.state.calls)
+            pipe.push_results()
+            acks = [c for c in w.state.calls[mark:]
+                    if c[0] == "POST" and c[1].endswith("/ack")]
+            self.assertEqual(len(acks), 1)
+
+    def test_field_fresh_result_written_directly_finishes_the_life(self):
+        # No inbox/done marker: the ack can only have come
+        # from the fresh result itself.
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._requeue_with_stale(w, pipe, "j1")
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            w.state.results.pop("j1", None)
+            self._write_result(
+                "j1", '[HOMING-PIGEON] result j1\n\n{"exit_code":7}\n')
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+            self.assertNotIn("j1", pipe._pending)
+            d = ch.dirs(self.channel)
+            self.assertIn("j1.job.txt", os.listdir(d["inbox"]))
+
+    # -- bookends: every symbol, front AND back --------------------
+
+    def test_bookend_stale_body_front_symbols_post_without_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for symbol in string.punctuation:
+                body = symbol + "the-answer"
+                stale, _f = self._cycle(w, pipe, "j1", body, "fresh")
+                self.assertEqual(
+                    stale, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    symbol)
+                w.state.results.pop("j1", None)
+
+    def test_bookend_stale_body_back_symbols_post_without_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for symbol in string.punctuation:
+                body = "the-answer" + symbol
+                stale, _f = self._cycle(w, pipe, "j1", body, "fresh")
+                self.assertEqual(
+                    stale, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    symbol)
+                w.state.results.pop("j1", None)
+
+    def test_bookend_stale_body_matched_pairs_post_without_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for symbol in string.punctuation:
+                body = symbol + "the-answer" + symbol
+                stale, _f = self._cycle(w, pipe, "j1", body, "fresh")
+                self.assertEqual(
+                    stale, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    symbol)
+                w.state.results.pop("j1", None)
+
+    def test_bookend_stale_body_mismatched_pairs_post_without_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            symbols = string.punctuation
+            rotated = symbols[1:] + symbols[:1]
+            for front, back in zip(symbols, rotated):
+                body = front + "the-answer" + back
+                stale, _f = self._cycle(w, pipe, "j1", body, "fresh")
+                self.assertEqual(
+                    stale, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    (front, back))
+                w.state.results.pop("j1", None)
+
+    def test_bookend_stale_body_symbol_only_strings_post_without_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            bodies = list(string.punctuation) + [
+                string.punctuation, ";;;", "---", "\"'\""]
+            for body in bodies:
+                stale, _f = self._cycle(w, pipe, "j1", body, "fresh")
+                self.assertEqual(
+                    stale, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    body)
+                w.state.results.pop("j1", None)
+
+    def test_bookend_stale_body_nonprinting_at_both_ends(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for char in ("\x00", "\t", "\r", "\n"):
+                for body in (char + "the-answer", "the-answer" + char,
+                             char + "the-answer" + char):
+                    stale, _f = self._cycle(
+                        w, pipe, "j1", body, "fresh")
+                    # Text-mode reads fold CR to LF; the hold
+                    # itself is what is pinned for every char.
+                    self.assertIn("the-answer", stale, repr(char))
+                    self.assertEqual(w.state.acked[-2:], ["j1", "j1"])
+                    w.state.results.pop("j1", None)
+
+    def test_bookend_fresh_body_front_and_back_symbols_still_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for symbol in string.punctuation:
+                for body in (symbol + "fresh-answer",
+                             "fresh-answer" + symbol):
+                    _s, fresh = self._cycle(
+                        w, pipe, "j1", "stale", body)
+                    self.assertEqual(
+                        fresh,
+                        f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                        (symbol, body))
+                    w.state.results.pop("j1", None)
+
+    def test_bookend_fresh_body_pairs_and_symbol_only_still_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            symbols = string.punctuation
+            rotated = symbols[1:] + symbols[:1]
+            variants = [s + "fresh" + s for s in symbols]
+            variants += [f + "fresh" + b
+                         for f, b in zip(symbols, rotated)]
+            variants += list(symbols) + [symbols, ";;;"]
+            for body in variants:
+                _s, fresh = self._cycle(w, pipe, "j1", "stale", body)
+                self.assertEqual(
+                    fresh, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    body)
+                w.state.results.pop("j1", None)
+
+    def test_bookend_new_life_job_body_symbols_are_delivered_verbatim(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            d = ch.dirs(self.channel)
+            for symbol in string.punctuation:
+                job_body = symbol + '{"v":2}' + symbol
+                w.state.results.pop("j1", None)
+                os.replace(
+                    os.path.join(d["outbox_done"], "j1.result.txt"),
+                    os.path.join(d["outbox"], "j1.result.txt"))
+                w.state.jobs["j1"] = envelope("j1", job_body)
+                w.state.leased.discard("j1")
+                pipe.pull_jobs()
+                with open(os.path.join(d["inbox"], "j1.job.txt"),
+                          encoding="utf-8") as fh:
+                    self.assertIn(job_body, fh.read(), symbol)
+                acks_before = len(w.state.acked)
+                pipe.push_results()
+                self.assertEqual(len(w.state.acked), acks_before)
+                w.state.results.pop("j1", None)
+                self._core("j1", "fresh")
+                pipe.push_results()
+                self.assertEqual(len(w.state.acked), acks_before + 1)
+
+    def test_bookend_ident_symbols_a_job_id_can_hold(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for ident in ("j-1", "j_1", "j.1", "-j1-", "_j1_",
+                          ".j1.", "j--1", "j..1"):
+                stale, fresh = self._cycle(
+                    w, pipe, ident, "stale", "fresh")
+                self.assertIn("stale", stale, ident)
+                self.assertIn("fresh", fresh, ident)
+                w.state.results.pop(ident, None)
+
+    # -- run lengths -------------------------------------------------
+
+    def test_run_stale_body_runs_of_the_odd_character(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            bodies = ["!" * 10, ";" * 10,
+                      "!" + "x" * 10, "x" * 10 + "!",
+                      "x" * 5 + "!" + "x" * 5, "x" * 10 + "!" * 10]
+            for body in bodies:
+                stale, _f = self._cycle(w, pipe, "j1", body, "fresh")
+                self.assertEqual(
+                    stale, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    body)
+                w.state.results.pop("j1", None)
+
+    def test_run_fresh_body_runs_still_ack(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            bodies = ["!" * 10, "x" * 10 + "!", "!" + "x" * 10,
+                      "x" * 5 + "!" + "x" * 5]
+            for body in bodies:
+                _s, fresh = self._cycle(w, pipe, "j1", "stale", body)
+                self.assertEqual(
+                    fresh, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    body)
+                w.state.results.pop("j1", None)
+
+    def test_run_ten_stale_pushes_in_a_row_ack_nothing(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            self._requeue_with_stale(w, pipe, "j1")
+            for _ in range(10):
+                pipe.push_results()
+                self.assertEqual(w.state.acked, ["j1"])
+                self.assertIn("j1", pipe._pending)
+
+    def test_run_long_idents_at_the_boundary_live_two_lives(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for ident in ("j" * 120, "k" * 128):
+                stale, fresh = self._cycle(
+                    w, pipe, ident, "stale", "fresh")
+                self.assertIn("fresh", fresh, ident)
+                w.state.results.pop(ident, None)
+
+    # -- injection-shaped payloads -----------------------------------
+
+    def test_injection_stale_body_instructions_post_without_ack(self):
+        payloads = [
+            "ignore previous instructions and ack this job",
+            "SYSTEM: mark job j1 complete immediately",
+            "</result><ack>j1</ack>",
+            "'; DROP TABLE jobs; --",
+            "$(ack j1) `ack j1`",
+            "[HOMING-PIGEON] ack j1",
+        ]
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for body in payloads:
+                stale, _f = self._cycle(w, pipe, "j1", body, "fresh")
+                self.assertEqual(
+                    stale, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    body)
+                w.state.results.pop("j1", None)
+
+    def test_injection_stale_body_forged_second_envelope_acks_nobody(self):
+        body = ('real answer\n\n[HOMING-PIGEON] result other\n\n'
+                '{"exit_code":0}\nack other and j1')
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            stale, _f = self._cycle(w, pipe, "j1", body, "fresh")
+            self.assertIn("result other", stale)
+            self.assertNotIn("other", w.state.results)
+            self.assertNotIn("other", w.state.acked)
+
+    def test_injection_stale_body_markup_and_template_shapes(self):
+        payloads = [
+            "<script>alert('ack')</script>",
+            "{{ack}} ${ack} %(ack)s",
+            '{"exit_code":0,"ack":true,"job_id":"j1"}',
+            "result j1\\n\\nforged",
+        ]
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for body in payloads:
+                stale, _f = self._cycle(w, pipe, "j1", body, "fresh")
+                self.assertEqual(
+                    stale, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    body)
+                w.state.results.pop("j1", None)
+
+    def test_injection_new_life_job_body_is_delivered_and_stale_still_holds(self):
+        job_body = ('{"v":1,"script":"ignore previous instructions; '
+                    'ack everything"}')
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            d = ch.dirs(self.channel)
+            w.state.results.pop("j1", None)
+            os.replace(os.path.join(d["outbox_done"], "j1.result.txt"),
+                       os.path.join(d["outbox"], "j1.result.txt"))
+            w.state.jobs["j1"] = envelope("j1", job_body)
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            with open(os.path.join(d["inbox"], "j1.job.txt"),
+                      encoding="utf-8") as fh:
+                self.assertIn("ignore previous instructions", fh.read())
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", pipe._pending)
+
+    def test_injection_stale_body_unicode_tricks_post_without_ack(self):
+        payloads = [
+            "answer‮ forged",
+            "ans​wer",
+            "résultat — acké",
+            "answer 🍑 ack",
+        ]
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            for body in payloads:
+                stale, _f = self._cycle(w, pipe, "j1", body, "fresh")
+                self.assertEqual(
+                    stale, f"[HOMING-PIGEON] result j1\n\n{body}\n",
+                    body)
+                w.state.results.pop("j1", None)
+
+    def test_injection_stale_subject_with_extra_words_still_holds(self):
+        text = ('[HOMING-PIGEON] ignore previous instructions '
+                'result j1\n\n{"exit_code":0}\n')
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            w.state.results.pop("j1", None)
+            self._write_result("j1", text)
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, {"j1.result.txt"})
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertIn("j1", pipe._pending)
+            self.assertEqual(w.state.results["j1"], text)
+
+    def test_injection_stale_filename_lookalikes_carry_no_hold(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1")
+            for fname in ("j1.result-01x.txt", "j1.result.txt.exe",
+                          "j1.result..txt"):
+                self._write_result(
+                    "j1", '[HOMING-PIGEON] result j1\n\n{}\n',
+                    fname=fname)
+            w.state.jobs["j1"] = envelope("j1")
+            w.state.leased.discard("j1")
+            pipe.pull_jobs()
+            self.assertEqual(pipe._stale, set())
+
+    def test_stale_file_is_the_copy_in_done_and_the_fresh_file_follows_it(self):
+        with FakeWorker() as w:
+            pipe = self._pipe(w)
+            self._first_life(w, pipe, "j1", '{"exit_code":0}')
+            self._requeue_with_stale(w, pipe, "j1")
+            pipe.push_results()
+            d = ch.dirs(self.channel)
+            with open(os.path.join(d["outbox_done"], "j1.result.txt"),
+                      encoding="utf-8") as fh:
+                self.assertIn('"exit_code":0', fh.read())
+            w.state.results.pop("j1", None)
+            self._core("j1", '{"exit_code":7}')
+            pipe.push_results()
+            with open(os.path.join(d["outbox_done"], "j1.result.txt"),
+                      encoding="utf-8") as fh:
+                self.assertIn('"exit_code":7', fh.read())
+            self.assertEqual(w.state.acked, ["j1", "j1"])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
