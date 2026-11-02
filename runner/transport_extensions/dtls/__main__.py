@@ -80,16 +80,16 @@ _JOB_ID_RE = _subject.JOB_ID_RE  # the one grammar (Q121)
 
 
 def build_platform_payload(tier, cfg=None):
-    """The disclosure object for a tier, as the bytes of the
-    platform_info extension in EncryptedExtensions.
-
-    The object is `disclosure` and, except at `none`,
-    `platform`. It does not carry the old greeting members
-    (`type`, `transport`, `v`) and it has no trailing newline.
-    The card is the one a ping's result carries
-    (runner/wire/platformcard.py), so the two bindings
-    describe the box the same way."""
-    obj = {"disclosure": tier}
+    """The platform disclosure object for a tier, as bytes for
+    the platform-configuration extension in the server's
+    EncryptedExtensions. The extension goes out at every tier;
+    at `none` it carries the disclosure tier and no `platform`
+    member, while the other tiers decide how much platform
+    information rides in that member. The card is the one a
+    ping's result carries (runner/wire/platformcard.py), so the
+    two bindings describe the box the same way."""
+    obj = {"type": "greeting", "transport": "dtls", "v": 1,
+           "disclosure": tier}
     versions = [1]
     if isinstance(cfg, dict) and cfg.get("protocol_v2") is True:
         versions.append(2)
@@ -98,7 +98,7 @@ def build_platform_payload(tier, cfg=None):
         card = dict(card)
         card.pop("disclosure", None)
         obj["platform"] = card
-    return json.dumps(obj, sort_keys=True).encode("utf-8")
+    return (json.dumps(obj, sort_keys=True) + "\n").encode("utf-8")
 
 
 # Compatibility name for callers written when this object was

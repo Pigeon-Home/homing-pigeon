@@ -104,11 +104,9 @@ EXT_PRE_SHARED_KEY = 41
 EXT_PSK_MODES = 45
 EXT_COOKIE = 47
 EXT_CONNECTION_ID = 54
-# Interim code point for platform_info, until IANA assigns
-# one. RFC 8446 and RFC 8447 reserve values whose first byte
-# is 255 (0xFF00-0xFFFF) for Private Use, except 0xFF01,
-# which is renegotiation_info. 0xFE00 is not in that range.
-EXT_PLATFORM_CONFIGURATION = 0xFFA0
+# Private-use extension type for this bounded profile: the
+# configuration-style platform payload in EncryptedExtensions.
+EXT_PLATFORM_CONFIGURATION = 0xFE00
 
 PSK_MODE_KE = 0              # prohibited by the profile -- never
 PSK_MODE_DHE_KE = 1          # the only mode this profile speaks

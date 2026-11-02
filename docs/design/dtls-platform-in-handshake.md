@@ -18,14 +18,10 @@ from "established, nothing more is coming."
 
 The platform disclosure now rides in the handshake itself.
 The server places a configuration-style extension, type
-`0xFFA0`, in its EncryptedExtensions. `0xFFA0` is an interim
-Private Use value (RFC 8446, RFC 8447: first byte 255). It
-is not an IANA assignment, and it is not `0xFE00`. The
-extension value is the disclosure object: `disclosure` and,
-except at the `none` tier, the `platform` member built by
-`runner/wire/platformcard.py`. The old greeting members
-(`type`, `transport`, `v`) are not sent, and the bytes have
-no trailing newline.
+`0xFE00`, in its EncryptedExtensions. The extension value is
+the JSON platform object the greeting previously carried:
+the disclosure tier and, except at the `none` tier, the
+`platform` member built by `runner/wire/platformcard.py`.
 
 The pattern is lifted from IKEv2's Configuration Payload
 (RFC 7296, section 3.15). IKEv2 carries configuration
