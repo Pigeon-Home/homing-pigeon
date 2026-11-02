@@ -60,9 +60,10 @@ without anyone prompting it.
 The same bridge, holding the same authority, can run the sender
 tooling directly: the framework's own shell tool runs
 `send_job.py` to submit a signed job, open board tasks for other
-workers, and read results — over any binding the runner has
-enabled, such as the DTLS session binding, the file transport,
-or email. From the runner's side the framework is an ordinary
+workers, and read results — over email, the file transport, or
+the hosted queue, the bindings that tool speaks — and
+`send_dtls.py` where the runner has the DTLS session binding
+enabled. From the runner's side the framework is an ordinary
 sender; its messages are accepted or refused on their signatures
 and key policies, exactly like any other sender's. This is also
 how the framework asks the runner questions: by submitting work
