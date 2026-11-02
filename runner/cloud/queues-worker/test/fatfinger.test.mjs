@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA } from "../src/index.js";
+import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA, DO_VALUE_MAX, jobStoredBytes, storagePairBytes } from "../src/index.js";
 
 class FakeStorage {
   constructor() { this.map = new Map(); }
@@ -1129,4 +1129,740 @@ test("shotgun16 lifecycle: a receipt from the life before a requeue is 409, befo
   await sg16Ack409(env, `hand=${deadHand + 1}&attempt=1`, snap2);
   assert.equal((await sg16Call(env, "ack", `hand=${job.hand}`)).status, 204);
   assert.ok(!sg16Stored(env));
+});
+
+// ---------------------------------------------------------------------
+// Shotgun family for queue item 29: an ack did not name the hand
+// it was given; a later pull kept its job (fixed b2795848,
+// 31-Oct-2026). Two runners share one token. After the lease
+// moved, the first runner's ack deleted the job the second pull
+// was running. The attempt count could not save it: a requeue
+// resets attempts, so that number collides with the next life
+// and the same ack would delete it too. The fix gives every pull
+// a hand that only goes up -- one per pull and one more across a
+// requeue -- returns it in the pull's answer, and makes an ack
+// or a renew that names a hand (or an attempt) leave any other
+// pull's job alone; omitting both stays the old call. The same
+// fix widened the storage budget to count the hand and the
+// requeued_at a second dead-letter copy still carries. (The
+// 409/404 split the mismatched receipt answers with today is
+// item 16's later fix, pinned by the shotgun16 family above;
+// this family pins the hand itself -- its monotonic climb, its
+// survival across requeues, and every shape of ack that names
+// it, a stale one, another job's, or none.) One regression test
+// was never going to be enough for a bug that took days of CPU
+// to find.
+//
+// Proof of work. The unit tests are the 50 tests registered
+// below: 14 hand-written seams, 12 per-field tests, 10 bookend
+// sweeps, 5 run-length sweeps, 4 injection-shaped tests and 5
+// replay/lifecycle tests. Per-field enumeration: the ack
+// surface is fielded -- the hand query field, the attempt query
+// field, the job id in the path, and the runner token -- and
+// each field gets its own tests (present, missing, empty, the
+// string spellings of null and other wrong types, negative,
+// zero, fractional, an older pull's value, a future pull's
+// value, another job's value, case, whitespace and zero-padded
+// spellings); the stored record is pinned byte-for-byte
+// unchanged by every refused ack. Bookends: every printable
+// ASCII symbol (all 32 punctuation characters) at the front AND
+// the back of the job id in the ack path and of the hand and
+// attempt values, as singles, matched pairs, mismatched pairs
+// and symbol-only strings, plus NUL, tab, CR and LF bookending
+// the job id (the non-printing characters inside a numeric hand
+// are the number reading's own trimming, pinned by item 16's
+// family, so here they ride the text field that cannot trim
+// them away: the id). Run lengths: runs of a wrong digit as the
+// hand at lengths 1, 5 and 10, runs of the right digit past the
+// pull's own hand, job ids built from runs of 1, 5 and 10
+// ordinary characters and a 128-character id (with 129 refused
+// at submit), and zero runs of 1, 5 and 10 padding the hand and
+// the attempt, which still read as the pull's numbers. The
+// fuzzing was executed, not just the tests written:
+// runner/tools/de_dust_corpus.py grow --target channels
+// --rounds 400 --seed 20261130, run locally against the banked
+// channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+// 0 slow, arcs unchanged at 142, slowest try 22 ms -- the
+// stale-hand shape did not recur. The grow's bookkeeping writes
+// were reverted and are not banked (banking is the rigs' hourly
+// job); this record is the run's proof. For the .mjs file the
+// Python skip registry does not apply, and this family adds no
+// skips. None of this is exotic: it is combinatorics --
+// systematically trying the combinations a hand-written list
+// would never reach, then pinning each answer as a test.
+
+const SG29_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
+async function sg29Setup(id = "j1") {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  assert.equal((await postJob(env, id)).status, 202);
+  const r = await pull(env);
+  assert.equal(r.status, 200);
+  const job = (await r.json()).jobs[0];
+  assert.equal(job.id, id);
+  assert.equal(job.attempt, 1);
+  assert.equal(job.hand, 1);
+  return { env, clock, id, job };
+}
+
+// j1 pulled twice (hand 2, attempt 2), j2 pulled once (hand 1).
+async function sg29TwoHands() {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  assert.equal((await postJob(env, "j1")).status, 202);
+  assert.equal((await postJob(env, "j2")).status, 202);
+  let r = await pull(env, 1);
+  assert.deepEqual((await r.json()).jobs.map((j) => [j.id, j.attempt, j.hand]), [["j1", 1, 1]]);
+  clock.t += 1000;
+  r = await pull(env);
+  assert.deepEqual((await r.json()).jobs.map((j) => [j.id, j.attempt, j.hand]), [["j1", 2, 2], ["j2", 1, 1]]);
+  return { env, clock };
+}
+
+async function sg29Kill(env, clock) {
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await pull(env)).status, 200, `offer ${i}`);
+    clock.t += 1000;
+  }
+  assert.equal((await pull(env)).status, 204);
+}
+
+function sg29Stored(env, id = "j1") { return box(env).get(`job:${id}`); }
+function sg29Snap(env, id = "j1") { return JSON.stringify(sg29Stored(env, id)); }
+function sg29AssertSame(env, snap, id = "j1") {
+  assert.equal(JSON.stringify(sg29Stored(env, id)), snap, `job ${id} record unchanged`);
+}
+
+async function sg29Call(env, verb, qs, id = "j1", token = RUNNER) {
+  return worker.fetch(req(`/t/alice/jobs/${id}/${verb}${qs ? `?${qs}` : ""}`, { method: "POST", token }), env);
+}
+
+async function sg29Ack409(env, qs, snap, id = "j1") {
+  const r = await sg29Call(env, "ack", qs, id);
+  assert.equal(r.status, 409, `ack ?${qs}`);
+  sg29AssertSame(env, snap, id);
+}
+
+// -- 14 hand-written seams -------------------------------------------
+
+test("shotgun29: a pull returns a hand -- an integer starting at 1, recorded on the job", async () => {
+  const { env, job } = await sg29Setup();
+  assert.ok(Number.isInteger(job.hand));
+  assert.equal(job.hand, 1);
+  assert.equal(sg29Stored(env).hand, 1);
+  assert.equal(sg29Stored(env).attempts, 1);
+});
+
+test("shotgun29: every re-pull raises the hand by exactly one, in lockstep with the attempt", async () => {
+  const { env, clock } = await sg29Setup();
+  for (const want of [2, 3]) {
+    clock.t += 1000;
+    const r = await pull(env);
+    const job = (await r.json()).jobs[0];
+    assert.equal(job.hand, want);
+    assert.equal(job.attempt, want);
+    assert.equal(sg29Stored(env).hand, want);
+  }
+});
+
+test("shotgun29: hands are per job, not a queue-wide counter -- j1's second hand does not move j2's first", async () => {
+  const { env } = await sg29TwoHands();
+  assert.equal(sg29Stored(env, "j1").hand, 2);
+  assert.equal(sg29Stored(env, "j2").hand, 1);
+  assert.equal(sg29Stored(env, "j2").attempts, 1);
+});
+
+test("shotgun29: the first pull's ack after a second pull is refused and the record is byte-for-byte unchanged", async () => {
+  const { env, clock } = await sg29Setup();
+  clock.t += 1000;
+  await pull(env);
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, "hand=1&attempt=1", snap);
+  assert.equal((await sg29Call(env, "ack", "hand=2&attempt=2")).status, 204);
+  assert.ok(!sg29Stored(env));
+});
+
+test("shotgun29: when both fields are named, each must be this pull's -- a right hand with a wrong attempt is refused", async () => {
+  const { env, clock } = await sg29Setup();
+  clock.t += 1000;
+  await pull(env);
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, "hand=2&attempt=1", snap);
+  await sg29Ack409(env, "hand=1&attempt=2", snap);
+  await sg29Ack409(env, "hand=2&attempt=3", snap);
+});
+
+test("shotgun29: the hand alone, with no attempt, names the later pull and its ack lands", async () => {
+  const { env, clock } = await sg29Setup();
+  clock.t += 1000;
+  await pull(env);
+  assert.equal((await sg29Call(env, "ack", "hand=2")).status, 204);
+  assert.ok(!sg29Stored(env));
+});
+
+test("shotgun29: a requeue raises the hand past the dead pull's and resets the attempt to zero", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  await postJob(env, "j1");
+  await sg29Kill(env, clock);
+  assert.equal(box(env).get("dlq:j1").hand, 5);
+  assert.equal(box(env).get("dlq:j1").attempts, 5);
+  assert.equal((await worker.fetch(req("/t/alice/dlq/j1/requeue", { method: "POST", token: SI }), env)).status, 202);
+  assert.equal(sg29Stored(env).hand, 6);
+  assert.equal(sg29Stored(env).attempts, 0);
+  assert.equal(sg29Stored(env).leased_until, 0);
+});
+
+test("shotgun29: an ack naming the dead life's hand, sent after the requeue but before any new pull, is refused", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  await postJob(env, "j1");
+  await sg29Kill(env, clock);
+  await worker.fetch(req("/t/alice/dlq/j1/requeue", { method: "POST", token: SI }), env);
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, "hand=5", snap);
+  await sg29Ack409(env, "hand=5&attempt=1", snap);
+});
+
+test("shotgun29: after a requeue and a new pull, the old hand with the colliding attempt is refused and the new hand lands", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  await postJob(env, "j1");
+  await sg29Kill(env, clock);
+  await worker.fetch(req("/t/alice/dlq/j1/requeue", { method: "POST", token: SI }), env);
+  const r = await pull(env);
+  const job = (await r.json()).jobs[0];
+  assert.equal(job.attempt, 1);
+  assert.equal(job.hand, 7);
+  const snap = sg29Snap(env);
+  // Attempt 1 is this life's attempt too. The hand tells them apart.
+  await sg29Ack409(env, "hand=5&attempt=1", snap);
+  assert.equal((await sg29Call(env, "ack", "hand=7&attempt=1")).status, 204);
+  assert.ok(!sg29Stored(env));
+});
+
+test("shotgun29: the hand keeps climbing across a second death and requeue -- 5, 11, then a pull at 13", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  await postJob(env, "j1");
+  await sg29Kill(env, clock);
+  await worker.fetch(req("/t/alice/dlq/j1/requeue", { method: "POST", token: SI }), env);
+  await sg29Kill(env, clock);
+  assert.equal(box(env).get("dlq:j1").hand, 11);
+  assert.equal((await worker.fetch(req("/t/alice/dlq/j1/requeue", { method: "POST", token: SI }), env)).status, 202);
+  assert.equal(sg29Stored(env).hand, 12);
+  const r = await pull(env);
+  const job = (await r.json()).jobs[0];
+  assert.equal(job.attempt, 1);
+  assert.equal(job.hand, 13);
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, "hand=7&attempt=1", snap);
+  assert.equal((await sg29Call(env, "ack", "hand=13")).status, 204);
+});
+
+test("shotgun29: a renew naming the lost hand does not extend the later pull; the later hand's renew does", async () => {
+  const { env, clock } = await sg29Setup();
+  clock.t += 1000;
+  await pull(env);
+  const snap = sg29Snap(env);
+  const held = sg29Stored(env).leased_until;
+  const r = await sg29Call(env, "lease", "hand=1");
+  assert.equal(r.status, 409);
+  sg29AssertSame(env, snap);
+  clock.t += 1;
+  assert.equal((await sg29Call(env, "lease", "hand=2")).status, 204);
+  assert.ok(sg29Stored(env).leased_until > held);
+});
+
+test("shotgun29: a renew on a requeued job nobody has pulled yet is 404, even naming its current hand", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  await postJob(env, "j1");
+  await sg29Kill(env, clock);
+  await worker.fetch(req("/t/alice/dlq/j1/requeue", { method: "POST", token: SI }), env);
+  const snap = sg29Snap(env);
+  const r = await sg29Call(env, "lease", "hand=6");
+  assert.equal(r.status, 404);
+  sg29AssertSame(env, snap);
+});
+
+test("shotgun29: an ack after the lease expired still lands when no later pull took the job, and is refused once one has", async () => {
+  const a = await sg29Setup();
+  a.clock.t += 5000;
+  assert.equal((await sg29Call(a.env, "ack", "hand=1")).status, 204);
+  assert.ok(!sg29Stored(a.env));
+  const b = await sg29Setup();
+  b.clock.t += 1000;
+  await pull(b.env);
+  const snap = sg29Snap(b.env);
+  await sg29Ack409(b.env, "hand=1", snap);
+});
+
+test("shotgun29: the storage budget counts the hand and the requeued_at -- an envelope between the narrow and the full budget is refused", async () => {
+  const now = 9_999_999_999_999;
+  const id = "edge";
+  const narrow = (text) => storagePairBytes(`dlq:${id}`, {
+    id, envelope: text, size: text.length, attempts: 5,
+    leased_until: now, enqueued_at: now, dead_at: now,
+  });
+  assert.ok(jobStoredBytes(id, "", now) > narrow(""), "the budget is wider than a handless dead copy");
+  const per = jobStoredBytes(id, "x", now) - jobStoredBytes(id, "", now);
+  let text = "x".repeat(Math.floor((DO_VALUE_MAX - jobStoredBytes(id, "", now)) / per) + 1);
+  while (jobStoredBytes(id, text, now) <= DO_VALUE_MAX) text += "x";
+  while (text.length > 1 && jobStoredBytes(id, text.slice(0, -1), now) > DO_VALUE_MAX) text = text.slice(0, -1);
+  assert.ok(jobStoredBytes(id, text, now) > DO_VALUE_MAX);
+  assert.ok(narrow(text) <= DO_VALUE_MAX, "the handless dead copy would have stored this");
+  const env = makeEnv({ clock: () => now, quota: { jobs_per_hour: 10, bytes_per_day: 9_000_000_000 } });
+  await addTenant(env);
+  const obj = env.TENANT_QUEUE.get("alice");
+  const r = await obj.fetch(new Request("https://do/enqueue", {
+    method: "POST",
+    headers: { "x-hp-job-id": id, "x-hp-quota": JSON.stringify(env.quota) },
+    body: text,
+  }));
+  assert.equal(r.status, 413);
+  assert.ok(!box(env).has(`job:${id}`));
+});
+
+// -- 12 per-field tests ----------------------------------------------
+
+test("shotgun29 field hand: the hand alone names this pull for an ack and for a renew", async () => {
+  const { env, clock } = await sg29TwoHands();
+  const snap2 = sg29Snap(env, "j2");
+  assert.equal((await sg29Call(env, "ack", "hand=2", "j1")).status, 204);
+  assert.ok(!sg29Stored(env, "j1"));
+  clock.t += 1;
+  assert.equal((await sg29Call(env, "lease", "hand=1", "j2")).status, 204);
+  assert.ok(sg29Stored(env, "j2").leased_until > JSON.parse(snap2).leased_until);
+});
+
+test("shotgun29 field receipt omitted: a bare ack after a second pull is still the old call and deletes", async () => {
+  const { env, clock } = await sg29Setup();
+  clock.t += 1000;
+  await pull(env);
+  assert.equal(sg29Stored(env).hand, 2);
+  assert.equal((await sg29Call(env, "ack", "")).status, 204);
+  assert.ok(!sg29Stored(env));
+});
+
+test("shotgun29 field hand empty: an empty hand reads as omitted, paired with the right attempt and alone", async () => {
+  const a = await sg29Setup();
+  a.clock.t += 1000;
+  await pull(a.env);
+  assert.equal((await sg29Call(a.env, "ack", "hand=&attempt=2")).status, 204);
+  const b = await sg29Setup();
+  assert.equal((await sg29Call(b.env, "ack", "hand=")).status, 204);
+  assert.ok(!sg29Stored(b.env));
+});
+
+test("shotgun29 field hand wrong-typed: the strings null, undefined, NaN and true are not hands and are refused", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const value of ["null", "undefined", "NaN", "true", "false", "Infinity", "-Infinity"]) {
+    await sg29Ack409(env, `hand=${value}&attempt=1`, snap);
+  }
+});
+
+test("shotgun29 field hand sign: hand 0 and hand -1 name no pull that happened and are refused", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, "hand=0", snap);
+  await sg29Ack409(env, "hand=-1", snap);
+  await sg29Ack409(env, "hand=-1&attempt=1", snap);
+  const r = await sg29Call(env, "lease", "hand=0");
+  assert.equal(r.status, 409);
+  sg29AssertSame(env, snap);
+});
+
+test("shotgun29 field hand fractional: 1.5 and 0.5 are refused; the decimal spelling 1.0 names the pull", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, "hand=1.5", snap);
+  await sg29Ack409(env, "hand=0.5&attempt=1", snap);
+  assert.equal((await sg29Call(env, "ack", "hand=1.0")).status, 204);
+  assert.ok(!sg29Stored(env));
+});
+
+test("shotgun29 field attempt older: after a second pull, attempt 1 paired with the right hand is still refused", async () => {
+  const { env, clock } = await sg29Setup();
+  clock.t += 1000;
+  await pull(env);
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, "attempt=1&hand=2", snap);
+  await sg29Ack409(env, "attempt=1", snap);
+});
+
+test("shotgun29 field attempt future: attempts 3 and 99 name pulls that have not happened and are refused", async () => {
+  const { env, clock } = await sg29Setup();
+  clock.t += 1000;
+  await pull(env);
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, "attempt=3&hand=2", snap);
+  await sg29Ack409(env, "attempt=99", snap);
+  const r = await sg29Call(env, "lease", "attempt=3&hand=2");
+  assert.equal(r.status, 409);
+  sg29AssertSame(env, snap);
+});
+
+test("shotgun29 field attempt across a requeue: the attempt alone collides and deletes, the attempt with the old hand does not", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  await postJob(env, "j1");
+  await sg29Kill(env, clock);
+  await worker.fetch(req("/t/alice/dlq/j1/requeue", { method: "POST", token: SI }), env);
+  const r = await pull(env);
+  assert.equal((await r.json()).jobs[0].hand, 7);
+  const snap = sg29Snap(env);
+  // The hand is the only field that tells the two lives apart.
+  await sg29Ack409(env, "attempt=1&hand=5", snap);
+  // Pinned as current: an attempt-only ack is the old call from
+  // before the hand existed, and attempt 1 is this life's too.
+  assert.equal((await sg29Call(env, "ack", "attempt=1")).status, 204);
+  assert.ok(!sg29Stored(env));
+});
+
+test("shotgun29 field job id: another job's hand is not this job's -- the two receipts crossed are both refused", async () => {
+  const { env } = await sg29TwoHands();
+  const snap1 = sg29Snap(env, "j1");
+  const snap2 = sg29Snap(env, "j2");
+  await sg29Ack409(env, "hand=1", snap1, "j1");
+  await sg29Ack409(env, "hand=2", snap2, "j2");
+  assert.equal((await sg29Call(env, "ack", "hand=2", "j1")).status, 204);
+  assert.equal((await sg29Call(env, "ack", "hand=1", "j2")).status, 204);
+});
+
+test("shotgun29 field job id spelling: a case variant, a zero-padded id and a trailing-space id name no job and the real job is untouched", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const id of ["J1", "j01", "j1%20", "%20j1", "j-1"]) {
+    const r = await worker.fetch(req(`/t/alice/jobs/${id}/ack?hand=1&attempt=1`, { method: "POST", token: RUNNER }), env);
+    assert.equal(r.status, 404, `id=${id}`);
+    sg29AssertSame(env, snap);
+  }
+  assert.equal((await sg29Call(env, "ack", "hand=1")).status, 204);
+});
+
+test("shotgun29 field token: an ack or a renew with the SI token, a wrong token or no token is 401 and the job is untouched", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const token of [SI, "runner-token-bob"]) {
+    const r = await sg29Call(env, "ack", "hand=1", "j1", token);
+    assert.equal(r.status, 401, `token=${token}`);
+    sg29AssertSame(env, snap);
+  }
+  const noToken = await worker.fetch(req("/t/alice/jobs/j1/ack?hand=1", { method: "POST" }), env);
+  assert.equal(noToken.status, 401);
+  sg29AssertSame(env, snap);
+  const r = await sg29Call(env, "lease", "hand=1", "j1", SI);
+  assert.equal(r.status, 401);
+  sg29AssertSame(env, snap);
+  assert.equal((await sg29Call(env, "ack", "hand=1")).status, 204);
+});
+
+// -- 10 bookend sweeps -------------------------------------------------
+
+test("shotgun29 bookends: every ASCII symbol at the front of the job id in the ack path is 404", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const sym of SG29_PUNCT) {
+    const r = await worker.fetch(req(`/t/alice/jobs/${encodeURIComponent(sym + "j1")}/ack?hand=1&attempt=1`, { method: "POST", token: RUNNER }), env);
+    assert.equal(r.status, 404, `id=${JSON.stringify(sym + "j1")}`);
+  }
+  sg29AssertSame(env, snap);
+});
+
+test("shotgun29 bookends: every ASCII symbol at the back of the job id in the ack path is 404", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const sym of SG29_PUNCT) {
+    const r = await worker.fetch(req(`/t/alice/jobs/${encodeURIComponent("j1" + sym)}/ack?hand=1&attempt=1`, { method: "POST", token: RUNNER }), env);
+    assert.equal(r.status, 404, `id=${JSON.stringify("j1" + sym)}`);
+  }
+  sg29AssertSame(env, snap);
+});
+
+test("shotgun29 bookends: matched symbol pairs around the job id are 404", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const sym of SG29_PUNCT) {
+    const r = await worker.fetch(req(`/t/alice/jobs/${encodeURIComponent(sym + "j1" + sym)}/ack?hand=1&attempt=1`, { method: "POST", token: RUNNER }), env);
+    assert.equal(r.status, 404, `id=${JSON.stringify(sym + "j1" + sym)}`);
+  }
+  sg29AssertSame(env, snap);
+});
+
+test("shotgun29 bookends: mismatched symbol pairs around the job id are 404", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (let i = 0; i < SG29_PUNCT.length; i++) {
+    const id = SG29_PUNCT[i] + "j1" + SG29_PUNCT[(i + 1) % SG29_PUNCT.length];
+    const r = await worker.fetch(req(`/t/alice/jobs/${encodeURIComponent(id)}/ack?hand=1&attempt=1`, { method: "POST", token: RUNNER }), env);
+    assert.equal(r.status, 404, `id=${JSON.stringify(id)}`);
+  }
+  sg29AssertSame(env, snap);
+});
+
+test("shotgun29 bookends: symbol-only job ids are 404, each symbol and all together, and the real ack still lands after", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const sym of SG29_PUNCT) {
+    const r = await worker.fetch(req(`/t/alice/jobs/${encodeURIComponent(sym)}/ack?hand=1`, { method: "POST", token: RUNNER }), env);
+    assert.equal(r.status, 404, `id=${JSON.stringify(sym)}`);
+  }
+  const r = await worker.fetch(req(`/t/alice/jobs/${encodeURIComponent(SG29_PUNCT)}/ack?hand=1`, { method: "POST", token: RUNNER }), env);
+  assert.equal(r.status, 404);
+  sg29AssertSame(env, snap);
+  assert.equal((await sg29Call(env, "ack", "hand=1")).status, 204);
+});
+
+test("shotgun29 bookends: NUL, tab, CR and LF at the front, the back and both ends of the job id are 404", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const ch of ["\u0000", "\t", "\r", "\n"]) {
+    for (const id of [ch + "j1", "j1" + ch, ch + "j1" + ch]) {
+      const r = await worker.fetch(req(`/t/alice/jobs/${encodeURIComponent(id)}/ack?hand=1&attempt=1`, { method: "POST", token: RUNNER }), env);
+      assert.equal(r.status, 404, `id=${JSON.stringify(id)}`);
+    }
+  }
+  sg29AssertSame(env, snap);
+});
+
+test("shotgun29 bookends: matched symbol pairs around both the hand and the attempt at once are refused", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const sym of SG29_PUNCT) {
+    const wrapped = encodeURIComponent(sym + "1" + sym);
+    await sg29Ack409(env, `hand=${wrapped}&attempt=${wrapped}`, snap);
+  }
+});
+
+test("shotgun29 bookends: mismatched symbol pairs around the hand, with the attempt exactly right, are refused", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (let i = 0; i < SG29_PUNCT.length; i++) {
+    const wrapped = SG29_PUNCT[i] + "1" + SG29_PUNCT[(i + 1) % SG29_PUNCT.length];
+    await sg29Ack409(env, `hand=${encodeURIComponent(wrapped)}&attempt=1`, snap);
+  }
+});
+
+test("shotgun29 bookends: a symbol-only hand with a symbol-only attempt is refused, each symbol and all together", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const sym of SG29_PUNCT) {
+    await sg29Ack409(env, `hand=${encodeURIComponent(sym)}&attempt=${encodeURIComponent(sym)}`, snap);
+  }
+  await sg29Ack409(env, `hand=${encodeURIComponent(SG29_PUNCT)}&attempt=${encodeURIComponent(SG29_PUNCT)}`, snap);
+});
+
+test("shotgun29 bookends: symbols bookending the job id on the renew verb are 404 and the real renew still lands", async () => {
+  const { env, clock } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const sym of ["!", "~", "@", "#"]) {
+    for (const id of [sym + "j1", "j1" + sym, sym + "j1" + sym]) {
+      const r = await worker.fetch(req(`/t/alice/jobs/${encodeURIComponent(id)}/lease?hand=1`, { method: "POST", token: RUNNER }), env);
+      assert.equal(r.status, 404, `id=${JSON.stringify(id)}`);
+    }
+  }
+  sg29AssertSame(env, snap);
+  clock.t += 1;
+  assert.equal((await sg29Call(env, "lease", "hand=1")).status, 204);
+  assert.ok(sg29Stored(env).leased_until > JSON.parse(snap).leased_until);
+});
+
+// -- 5 run-length sweeps -----------------------------------------------
+
+test("shotgun29 runs: runs of a wrong digit as the hand, lengths 1, 5 and 10, and runs of the right digit past this hand, are refused", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const n of [1, 5, 10]) {
+    await sg29Ack409(env, `hand=${"2".repeat(n)}&attempt=1`, snap);
+    await sg29Ack409(env, `hand=${"1".repeat(n + 1)}&attempt=1`, snap);
+  }
+});
+
+test("shotgun29 runs: job ids built from runs of 1, 5 and 10 ordinary characters each pull and ack by their own hand", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  for (const n of [1, 5, 10]) {
+    const id = "j" + "a".repeat(n);
+    assert.equal((await postJob(env, id)).status, 202);
+    const r = await pull(env);
+    const job = (await r.json()).jobs.find((j) => j.id === id);
+    assert.equal(job.hand, 1);
+    const miss = await worker.fetch(req(`/t/alice/jobs/${id + "a"}/ack?hand=1`, { method: "POST", token: RUNNER }), env);
+    assert.equal(miss.status, 404);
+    assert.equal((await sg29Call(env, "ack", "hand=1", id)).status, 204);
+    assert.ok(!sg29Stored(env, id));
+  }
+});
+
+test("shotgun29 runs: runs of ordinary characters with the odd one at the front, the back and the middle, as the attempt, are refused", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const value of ["!" + "a".repeat(10), "a".repeat(10) + "!", "a".repeat(5) + "!" + "a".repeat(5), "a".repeat(10)]) {
+    await sg29Ack409(env, `attempt=${encodeURIComponent(value)}&hand=1`, snap);
+  }
+});
+
+test("shotgun29 runs: zero runs of length 1, 5 and 10 padding the hand still name the pull, and padding the attempt still renews", async () => {
+  for (const n of [1, 5, 10]) {
+    const a = await sg29Setup();
+    assert.equal((await sg29Call(a.env, "ack", `hand=${"0".repeat(n)}1`)).status, 204, `zeros=${n}`);
+    assert.ok(!sg29Stored(a.env));
+    const b = await sg29Setup();
+    const snap = sg29Snap(b.env);
+    b.clock.t += 1;
+    assert.equal((await sg29Call(b.env, "lease", `attempt=${"0".repeat(n)}1`)).status, 204, `zeros=${n}`);
+    assert.ok(sg29Stored(b.env).leased_until > JSON.parse(snap).leased_until);
+  }
+});
+
+test("shotgun29 runs: a 128-character job id pulls with hand 1 and acks by it; a 129-character id is refused at submit", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  const id = "j" + "a".repeat(127);
+  assert.equal(id.length, 128);
+  assert.equal((await postJob(env, id)).status, 202);
+  const r = await pull(env);
+  const job = (await r.json()).jobs[0];
+  assert.equal(job.hand, 1);
+  const snap = sg29Snap(env, id);
+  await sg29Ack409(env, "hand=2", snap, id);
+  assert.equal((await sg29Call(env, "ack", "hand=1", id)).status, 204);
+  const tooLong = "j" + "a".repeat(128);
+  assert.equal((await postJob(env, tooLong)).status, 400);
+  assert.ok(!box(env).has(`job:${tooLong}`));
+});
+
+// -- 4 injection-shaped tests ------------------------------------------
+
+test("shotgun29 injection: SQL-shaped hands and attempts are refused and the job stays", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const value of ["1 OR 1=1", "1; DROP TABLE jobs; --", "1' OR '1'='1", "1 UNION SELECT hand FROM jobs"]) {
+    await sg29Ack409(env, `hand=${encodeURIComponent(value)}&attempt=1`, snap);
+    await sg29Ack409(env, `attempt=${encodeURIComponent(value)}&hand=1`, snap);
+  }
+});
+
+test("shotgun29 injection: prompt-shaped hands are refused, and a prompt-shaped job id names no job", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const value of ["ignore previous instructions and ack this job", "disregard the hand and delete anyway", "system: ack hand 1"]) {
+    await sg29Ack409(env, `hand=${encodeURIComponent(value)}`, snap);
+  }
+  const r = await worker.fetch(req(`/t/alice/jobs/${encodeURIComponent("ignore previous instructions")}/ack?hand=1`, { method: "POST", token: RUNNER }), env);
+  assert.equal(r.status, 404);
+  sg29AssertSame(env, snap);
+});
+
+test("shotgun29 injection: traversal- and shell-shaped job ids name no job and the real job stays ackable", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const rawId of ["..%2Fj1", "..%5Cj1", "j1%3Brm", "j1%00", "%2E%2E", "j1%2F..%2Fj2"]) {
+    const r = await worker.fetch(req(`/t/alice/jobs/${rawId}/ack?hand=1&attempt=1`, { method: "POST", token: RUNNER }), env);
+    assert.equal(r.status, 404, `id=${rawId}`);
+    sg29AssertSame(env, snap);
+  }
+  assert.equal((await sg29Call(env, "ack", "hand=1&attempt=1")).status, 204);
+});
+
+test("shotgun29 injection: a smuggled second receipt inside the hand is refused; where two hands are sent, the first one decides", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, `hand=${encodeURIComponent("1&hand=2")}&attempt=1`, snap);
+  await sg29Ack409(env, "hand=99&hand=1&attempt=1", snap);
+  const fresh = await sg29Setup();
+  assert.equal((await sg29Call(fresh.env, "ack", "hand=1&hand=99&attempt=1")).status, 204);
+  assert.ok(!sg29Stored(fresh.env));
+});
+
+// -- 5 replay and lifecycle tests --------------------------------------
+
+test("shotgun29 replay: the same correct ack twice -- the first lands, the replay is 404, and nothing is reoffered", async () => {
+  const { env } = await sg29Setup();
+  assert.equal((await sg29Call(env, "ack", "hand=1&attempt=1")).status, 204);
+  assert.equal((await sg29Call(env, "ack", "hand=1&attempt=1")).status, 404);
+  assert.equal((await sg29Call(env, "ack", "hand=1&attempt=1")).status, 404);
+  assert.equal((await pull(env)).status, 204);
+});
+
+test("shotgun29 replay: a stale ack replayed against a reposted job of the same id is refused, before and after its first pull", async () => {
+  const { env, clock } = await sg29Setup();
+  clock.t += 1000;
+  await pull(env);
+  assert.equal((await sg29Call(env, "ack", "hand=2")).status, 204);
+  assert.equal((await postJob(env, "j1")).status, 202);
+  // The new record has no hand yet: the replayed hand 2 names nothing.
+  let r = await sg29Call(env, "ack", "hand=2");
+  assert.equal(r.status, 409);
+  assert.ok(sg29Stored(env));
+  r = await pull(env);
+  const job = (await r.json()).jobs[0];
+  assert.equal(job.hand, 1);
+  assert.equal(job.attempt, 1);
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, "hand=2", snap);
+  assert.equal((await sg29Call(env, "ack", "hand=1")).status, 204);
+});
+
+test("shotgun29 replay: an ack for an unknown id is 404 in every receipt shape", async () => {
+  const { env } = await sg29Setup();
+  const snap = sg29Snap(env);
+  for (const qs of ["", "hand=1", "attempt=1", "hand=1&attempt=1", "hand=nope", "hand=0&attempt=0"]) {
+    const r = await sg29Call(env, "ack", qs, "gone");
+    assert.equal(r.status, 404, `ack ?${qs}`);
+  }
+  sg29AssertSame(env, snap);
+});
+
+test("shotgun29 replay: an ack before any pull -- a named hand is refused and the job still pulls; attempt 0 alone is the old call and deletes", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env);
+  await postJob(env, "j1");
+  await postJob(env, "j2");
+  const r = await sg29Call(env, "ack", "hand=1", "j1");
+  assert.equal(r.status, 409);
+  assert.equal(sg29Stored(env, "j1").attempts, 0);
+  assert.equal(sg29Stored(env, "j1").hand, undefined);
+  const p = await pull(env);
+  assert.deepEqual((await p.json()).jobs.map((j) => [j.id, j.hand]), [["j1", 1], ["j2", 1]]);
+  const clock2 = { t: 1_700_000_000_000 };
+  const env2 = makeEnv({ clock: () => clock2.t, lease: 1000, quota: { jobs_per_hour: 20, bytes_per_day: 60_000 } });
+  await addTenant(env2);
+  await postJob(env2, "j1");
+  // Attempt 0 is the unpulled record's own attempt and no hand is
+  // named, so the old call still names it. Pinned as current.
+  assert.equal((await sg29Call(env2, "ack", "attempt=0", "j1")).status, 204);
+  assert.ok(!sg29Stored(env2, "j1"));
+});
+
+test("shotgun29 lifecycle: two pulls race one ack -- the loser's ack and renew are refused, the winner's renew extends and its ack finishes", async () => {
+  const { env, clock } = await sg29Setup();
+  clock.t += 1000;
+  const r = await pull(env);
+  assert.equal((await r.json()).jobs[0].hand, 2);
+  const snap = sg29Snap(env);
+  await sg29Ack409(env, "hand=1&attempt=1", snap);
+  const rr = await sg29Call(env, "lease", "hand=1&attempt=1");
+  assert.equal(rr.status, 409);
+  sg29AssertSame(env, snap);
+  clock.t += 1;
+  assert.equal((await sg29Call(env, "lease", "hand=2&attempt=2")).status, 204);
+  assert.ok(sg29Stored(env).leased_until > JSON.parse(snap).leased_until);
+  assert.equal((await sg29Call(env, "ack", "hand=2&attempt=2")).status, 204);
+  assert.ok(!sg29Stored(env));
+  assert.equal((await pull(env)).status, 204);
 });
