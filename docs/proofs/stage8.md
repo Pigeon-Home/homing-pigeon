@@ -11,7 +11,7 @@ code refuses a script at 1048576 UTF-8 bytes and not before.
 Three scripts of exactly 50,000 characters, each accepted
 by `bash -n`:
 
-- a chain of `true;`, 10,000 times
+- a chain of `true`, one command per line, 10,000 times
 - `echo` of a quoted run of the letter `a`
 - `echo` of a quoted run of the words `allowed_interpreters`
 

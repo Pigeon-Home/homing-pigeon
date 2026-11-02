@@ -51,10 +51,16 @@ def _pad(payload, n):
 
 
 def _scripts():
-    # 1048576 is not divisible by len("true;"). The chain is
+    # 1048576 is not divisible by len("true\n"). The chain is
     # filled out with a one-byte null command so the script
-    # is exactly the cap and still valid bash.
-    chain = ("true;" * (CAP // len("true;"))) + ":"
+    # is exactly the cap and still valid bash. The commands
+    # sit one per line: as one line of "true;" repeated, the
+    # chain is a single list of about 200,000 commands, and
+    # bash -n crashes on it (exit -11) at the usual 8 MB
+    # stack limit -- the parser, not the script, is what
+    # fails there, and whether it happened depended on the
+    # stack a neighbouring test left behind.
+    chain = ("true\n" * (CAP // len("true\n"))) + ":"
     letters = _echo(_pad("a", CAP - len("echo ''")))
     words = _echo(_pad("allowed_interpreters ", CAP - len("echo ''")))
     return {
@@ -97,6 +103,10 @@ class ProductionCapTest(unittest.TestCase):
         texts = [self.scripts[n] for n in ("chain", "letters", "words")]
         self.assertEqual(len(set(texts)), 3)
 
+    # The bash -n leg is POSIX-only: on Windows the bash name
+    # is answered by the WSL launcher, which is not a bash.
+    # The gate legs in this module run in every job.
+    @unittest.skipIf(os.name == "nt", "POSIX only")
     def test_bash_accepts_each_as_syntax(self):
         for name, script in self.scripts.items():
             proc = subprocess.run(

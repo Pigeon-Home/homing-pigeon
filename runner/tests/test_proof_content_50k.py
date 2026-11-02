@@ -60,7 +60,11 @@ def _pad(payload, n):
 
 
 def _scripts():
-    chain = "true;" * (RUNG // len("true;"))
+    # One command per line, not one long list: a single
+    # line of this many commands overflows the stack of
+    # bash's parser at the larger rungs (see the cap
+    # module). "true\n" is the same length as "true;".
+    chain = "true\n" * (RUNG // len("true\n"))
     letters = _echo(_pad("a", RUNG - len("echo ''")))
     words = _echo(_pad("allowed_interpreters ", RUNG - len("echo ''")))
     past = chain + ":"
@@ -104,6 +108,10 @@ class Rung50000Test(unittest.TestCase):
         texts = [self.scripts[n] for n in ("chain", "letters", "words")]
         self.assertEqual(len(set(texts)), 3)
 
+    # The bash -n leg is POSIX-only: on Windows the bash name
+    # is answered by the WSL launcher, which is not a bash.
+    # The gate legs in this module run in every job.
+    @unittest.skipIf(os.name == "nt", "POSIX only")
     def test_bash_accepts_each_as_syntax(self):
         for name, script in self.scripts.items():
             proc = subprocess.run(

@@ -18,8 +18,13 @@ this one is the byte boundary the runner enforces.
 Three scripts of exactly 1048576 bytes, each accepted by
 `bash -n`:
 
-- a chain of `true;` filled out with one `:`, because
-  1048576 is not divisible by the length of `true;`
+- a chain of `true`, one command per line, filled out
+  with one `:`, because 1048576 is not divisible by the
+  length of `true` plus its newline. (The chain was first
+  written as one line of `true;` repeated; `bash -n`
+  crashes on that single list at the usual stack limit,
+  so the one-per-line form is the one the record stands
+  on.)
 - `echo` of a quoted run of the letter `a`
 - `echo` of a quoted run of the words `allowed_interpreters`
 

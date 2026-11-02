@@ -12,7 +12,7 @@ script of one character past this rung is still inside it.
 Three scripts of exactly 500,000 characters, each accepted
 by `bash -n`:
 
-- a chain of `true;`, 100,000 times
+- a chain of `true`, one command per line, 100,000 times
 - `echo` of a quoted run of the letter `a`
 - `echo` of a quoted run of the words `allowed_interpreters`
 

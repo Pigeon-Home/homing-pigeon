@@ -100,6 +100,10 @@ class ContentIndependenceTest(unittest.TestCase):
             self.assertLessEqual(len(script), BOUND, script)
             self.assertEqual(script, script.strip())
 
+    # The bash -n leg is POSIX-only: on Windows the bash name
+    # is answered by the WSL launcher, which is not a bash.
+    # The gate legs in this module run in every job.
+    @unittest.skipIf(os.name == "nt", "POSIX only")
     def test_bash_accepts_each_script_as_syntax(self):
         for script in SCRIPTS:
             proc = subprocess.run(
