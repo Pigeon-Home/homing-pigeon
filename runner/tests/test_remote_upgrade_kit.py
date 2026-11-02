@@ -124,6 +124,35 @@ class PlatformAppliersTest(unittest.TestCase):
         self.assertIn("outcome.txt", self.win)
         self.assertIn("restored profile", self.win)
 
+    def test_windows_sums_content_is_decoded_before_matching(self):
+        # The SHA384SUMS asset is served as application/octet-stream,
+        # so Invoke-WebRequest's Content arrives as a byte array, and
+        # a byte array split on "`n" can never yield a line matching
+        # the zip's name: the first live run died with "no sums line
+        # for ..." before anything was touched. The fetched content
+        # is decoded to text when it arrives as bytes, before the
+        # line match runs.
+        decode = ("if ($sums -is [byte[]]) { $sums = "
+                  "[Text.Encoding]::UTF8.GetString($sums) }")
+        self.assertIn(decode, self.win)
+        match = self.win.index('$line = ($sums -split')
+        self.assertLess(self.win.index(decode), match)
+
+    def test_windows_stop_force_kills_leftover_runner_processes(self):
+        # schtasks /End ends the task, but the frozen runner's
+        # processes detach and survive it, so the install step met a
+        # locked bin\homing-pigeon.exe and failed on the second live
+        # attempt. After the task stop, leftover runner processes
+        # are force-killed by name -- the installer's own approach --
+        # and waited out before the install runs.
+        stop = self.win.index("schtasks /End /TN HomingPigeon")
+        kill = self.win.index("taskkill /F /IM homing-pigeon.exe")
+        install = self.win.index("Start-Process")
+        self.assertLess(stop, kill)
+        self.assertLess(kill, install)
+        self.assertIn('Get-Process -Name "homing-pigeon"', self.win)
+        self.assertIn("Start-Sleep -Seconds 1", self.win)
+
     def test_macos_applier_holds_the_contract(self):
         self.assertIn("shasum -a 384", self.mac)
         self.assertIn("SHA384SUMS.fresh", self.mac)

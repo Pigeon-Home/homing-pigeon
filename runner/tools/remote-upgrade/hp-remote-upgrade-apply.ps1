@@ -42,6 +42,7 @@ $ver = $Matches[1]
 try {
     $sums = (Invoke-WebRequest -UseBasicParsing `
         "https://github.com/Pigeon-Home/homing-pigeon/releases/download/v$ver/SHA384SUMS").Content
+    if ($sums -is [byte[]]) { $sums = [Text.Encoding]::UTF8.GetString($sums) }
 } catch { Fail "cannot fetch SHA384SUMS for v$ver" }
 $line = ($sums -split "`n" | Where-Object { $_ -match [regex]::Escape($zip.Name) } |
     Select-Object -First 1)
@@ -65,6 +66,11 @@ if (Test-Path $cfgPath) {
 # if the install fails, start it again on the previous version so a
 # bad upgrade never leaves the box without its runner.
 schtasks /End /TN HomingPigeon | Out-Null
+taskkill /F /IM homing-pigeon.exe 2>$null | Out-Null
+for ($i = 0; $i -lt 20; $i++) {
+    if (-not (Get-Process -Name "homing-pigeon" -ErrorAction SilentlyContinue)) { break }
+    Start-Sleep -Seconds 1
+}
 try {
     $p = Start-Process -FilePath (Join-Path $dir.FullName "install.exe") `
         -Wait -PassThru -NoNewWindow
