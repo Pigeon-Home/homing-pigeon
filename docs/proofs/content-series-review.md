@@ -29,3 +29,10 @@ The standing challenge, written in thinking.md, is to generate scripts from the 
 ## The redo, in one paragraph
 
 Every rung — first rung, 5,000, 50,000, 500,000, and the production cap — in both shells, built from the full construct set with varied material at full length, one command per line, syntax-checked with each shell's real parser, presented to the real gate, with a record per rung that states what was generated, how it was generated, what the gate did, what the checkers did, and what is not claimed. The existing records stay in place as history; the new series states that it supersedes them and why. Nothing in the redo counts as defended until it has been verified first-hand — that was true of the first series and it is true of this one.
+
+## Direction for the redo
+
+- Pull the newest main and read this review in full before starting.
+- Order of work: first the missing 5,000-character rung, in both shells (bash and PowerShell), built from the full construct set. Then the whole series redone rung by rung: first rung, 5,000, 50,000, 500,000, and the production cap — both shells at every rung, varied constructs at full length, one command per line, each shell's real parser for the syntax check, the real gate for the verdict, and a record per rung stating what was generated, how, what the gate did, what the checkers did, and what is not claimed.
+- Land each rung as its own commit on main, so each can be verified as it arrives.
+- When the series is complete, say so in the final record and stop there. The first-hand verification follows separately, and any further direction will be written into the proof documents on main.
