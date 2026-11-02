@@ -515,6 +515,9 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
         if job.get("script_sha384") and \
                 _runner().sha384_of(script_path).lower() != job["script_sha384"].lower():
             raise _runner().JobRejected("script SHA384 mismatch")
+        # After the hash, so the sender's bytes are what was
+        # checked. The mark is for the Windows reader only.
+        _runner().declare_ps1_utf8(script_path)
     elif script:
         if job.get("script_sha384") and \
                 hashlib.sha384(script.encode("utf-8")).hexdigest() \

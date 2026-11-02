@@ -2597,6 +2597,37 @@ def pong_platform(cfg):
         card["config_defaulted"] = _defaulted.defaulted_keys(cfg)
     return card
 
+def declare_ps1_utf8(path):
+    """Give a downloaded PowerShell script the UTF-8 mark.
+
+    An inline .ps1 is staged with a BOM so Windows PowerShell 5.1
+    does not read it in the machine ANSI code page. A script
+    fetched by script_url took the download's bytes as they
+    arrived, so a BOM-less UTF-8 .ps1 had the exposure the inline
+    path already closed. The hash is of the fetched bytes; the
+    mark is added after that check. A file that already has the
+    mark, or that is not UTF-8, is left as it arrived. The write
+    is binary, so a newline is not translated.
+    """
+    if not isinstance(path, str) or not path.endswith(".ps1"):
+        return
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read()
+    except OSError:
+        return
+    if data.startswith(b"\xef\xbb\xbf"):
+        return
+    try:
+        data.decode("utf-8")
+    except UnicodeError:
+        return
+    tmp = path + ".utf8"
+    with open(tmp, "wb") as fh:
+        fh.write(b"\xef\xbb\xbf" + data)
+    os.replace(tmp, path)
+
+
 def script_filename(interpreter) -> str:
     """Name the staged script so the interpreter will accept -File.
 
