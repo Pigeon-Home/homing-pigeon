@@ -1360,3 +1360,539 @@ test("fuzz: the quota boundary — the first job past the cap is the first 429",
   assert.equal(r2.status, 202);
   void DEFAULT_QUOTA;
 });
+
+// ---------------------------------------------------------------------
+// Shotgun family for queue item 25: a result whose body names a
+// different id is refused (queue Worker) (fixed 9565d89f,
+// 31-Oct-2026). Results are stored under the id in the subject,
+// and the first envelope stored for an id stays, so a result
+// filed under the wrong subject blocked the real answer for that
+// id for good. The fix reads the id the body claims -- job_id on
+// a result, query_id on a qresult -- from the signed payload when
+// there is one, and refuses the post with a 400 naming the field
+// when that claim is present and is not the subject's id. A body
+// that does not carry the field makes no claim and is unchanged:
+// an encrypted envelope carries the id in the subject only, and
+// a body that does not parse as one JSON object claims nothing.
+// This family scattershots everything around that refusal: both
+// kinds and the field each one reads, the other kind's field
+// ignored, every non-string claim, the signed payload read
+// against unsigned decoys on both sides, duplicate keys, nested
+// and inert fields, the subject's own grammar (extra words, case,
+// CRLF), bookended and run-length claimed ids, injection-shaped
+// claims and fields, and the storage life around a refusal --
+// the real answer still lands, a stored first envelope is not
+// displaced, and a refusal bills nothing. One regression test
+// was never going to be enough for a bug that took days of CPU
+// to find.
+//
+// Proof of work. The unit tests are the 50 tests registered
+// below: 16 hand-written seams, 10 per-field tests, 10 bookend
+// sweeps, 6 run-length sweeps, 4 injection-shaped tests and 4
+// lifecycle edges. Per-field enumeration: the refusal's surface
+// is fielded -- the subject's kind (result reads job_id, qresult
+// reads query_id), the subject's id, the body's job_id and
+// query_id one by one (string match, string mismatch, absent,
+// null, boolean, number, object, array, empty, nested, and
+// shadowed by a duplicate key), the sig member that makes the
+// payload the signed one the check reads, the hp_enc member, and
+// the body's remaining fields (exit_code, note, a previous id),
+// each pinned as inert or governing in its own test. Bookends:
+// every printable ASCII symbol (all 32 punctuation characters)
+// at the front AND the back of the claimed id, as singles,
+// matched pairs, mismatched pairs and symbol-only claims, plus
+// NUL, tab, CR and LF at both ends, and the safe id symbols
+// (., -, _) bookending the subject id and the claimed id
+// together, where the pair is accepted. Run lengths: runs of
+// the odd character as the whole claim and after an ordinary
+// prefix at lengths 1, 5, 10 and 100, 10 ordinary characters
+// with the odd one at the front, the back and the middle, ids
+// at the 127/128 length boundary matching and differing by one
+// character, and the same refused envelope posted 10 times.
+// The fuzzing was executed, not just the tests written:
+// runner/tools/de_dust_corpus.py grow --target wire --rounds
+// 400 --seed 20261126, run locally against the banked wire
+// corpus (117 entries). Result: 400 rounds, 0 crashes, 0 slow,
+// arcs unchanged at 184, slowest try 660 ms -- the mismatched-
+// result shape did not recur. The grow's bookkeeping writes
+// were reverted and are not banked (banking is the rigs' hourly
+// job); this record is the run's proof. For the .mjs file the
+// Python skip registry does not apply, and this family adds no
+// skips. None of this is exotic: it is combinatorics --
+// systematically trying the combinations a hand-written list
+// would never reach, then pinning each answer as a test.
+
+const SG25_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
+async function sg25Env() {
+  const env = makeEnv();
+  await addTenant(env);
+  env.TENANT_QUEUE.get("alice");
+  return env;
+}
+
+function sg25Map(env) {
+  return env.objects.get("alice").state.storage.map;
+}
+
+async function sg25Post(env, envelope, slug = "alice", token = RUNNER) {
+  return worker.fetch(req(`/t/${slug}/results`, {
+    method: "POST", token: `Bearer ${token}`, body: envelope,
+  }), env);
+}
+
+function sg25Envelope(subject, bodyText) {
+  return `[HOMING-PIGEON] ${subject}\n\n${bodyText}\n`;
+}
+
+async function sg25Refuse(env, subject, bodyText, field = "job_id") {
+  const id = subject.split(/\s+/).pop();
+  const before = sg25Map(env).size;
+  const r = await sg25Post(env, sg25Envelope(subject, bodyText));
+  assert.equal(r.status, 400, `${subject} / ${bodyText}`);
+  assert.equal((await r.json()).error, `${field} mismatch between subject and body`);
+  assert.ok(!sg25Map(env).has(`result:${id}`), `${subject} stored a result`);
+  assert.equal(sg25Map(env).size, before, `${subject} changed storage`);
+  return r;
+}
+
+async function sg25Accept(env, subject, bodyText) {
+  const id = subject.split(/\s+/).pop();
+  const envelope = sg25Envelope(subject, bodyText);
+  const r = await sg25Post(env, envelope);
+  assert.equal(r.status, 202, `${subject} / ${bodyText}`);
+  assert.equal((await r.json()).id, id);
+  assert.equal(sg25Map(env).get(`result:${id}`).envelope, envelope);
+  return r;
+}
+
+async function sg25SignedBody(fields, secret = SECRET) {
+  const payload = JSON.stringify(fields);
+  const sig = await hmacSha384Hex(secret, payload);
+  return payload.slice(0, -1) + `,"sig":"${sig}"}`;
+}
+
+// -- 16 hand-written seams -------------------------------------------
+
+test("shotgun25: a result whose body names a different id is refused and stores nothing", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", `{"job_id":"j2","exit_code":0}`);
+  assert.equal(sg25Map(env).size, 0);
+});
+
+test("shotgun25: a qresult whose body names a different id is refused, naming query_id", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "qresult q1", `{"query_id":"q2"}`, "query_id");
+  assert.equal(sg25Map(env).size, 0);
+});
+
+test("shotgun25: a result whose body names the subject id is stored byte for byte", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "result j1", `{"job_id":"j1","exit_code":0}`);
+});
+
+test("shotgun25: a qresult whose body names the subject id is stored", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "qresult q1", `{"query_id":"q1","rows":3}`);
+});
+
+test("shotgun25: a body with no id field at all makes no claim and is stored", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "result j1", `{"exit_code":0,"stdout":"done"}`);
+  const env2 = await sg25Env();
+  await sg25Accept(env2, "qresult q1", `{"rows":[]}`);
+});
+
+test("shotgun25: an encrypted envelope carries no claim and is stored", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "result enc1",
+    `{"hp_enc":{"alg":"AES-256-GCM","nonce":"aa","ct":"bb"}}`);
+});
+
+test("shotgun25: an encrypted shape beside a mismatched job_id is still refused", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1",
+    `{"hp_enc":{"alg":"AES-256-GCM","nonce":"aa","ct":"bb"},"job_id":"j2"}`);
+});
+
+test("shotgun25: a numeric job_id is a claim that is not the subject id and is refused", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", `{"job_id":42}`);
+  await sg25Refuse(env, "result j1", `{"job_id":0}`);
+  await sg25Refuse(env, "result j1", `{"job_id":-1}`);
+});
+
+test("shotgun25: the signed payload governs -- its different id is refused past an unsigned prefix naming the subject", async () => {
+  const env = await sg25Env();
+  const signed = await sg25SignedBody({ v: 1, type: "result", job_id: "j2", exit_code: 0 });
+  await sg25Refuse(env, "result j1", `{"job_id":"j1"}${signed}`);
+});
+
+test("shotgun25: the signed payload governs -- its matching id is stored past an unsigned prefix naming another id", async () => {
+  const env = await sg25Env();
+  const signed = await sg25SignedBody({ v: 1, type: "result", job_id: "j1", exit_code: 0 });
+  await sg25Accept(env, "result j1", `{"job_id":"evil"}${signed}`);
+});
+
+test("shotgun25: a signed payload with no id field makes no claim, past an unsigned prefix naming another id", async () => {
+  const env = await sg25Env();
+  const signed = await sg25SignedBody({ v: 1, type: "result", exit_code: 0 });
+  await sg25Accept(env, "result j1", `{"job_id":"evil"}${signed}`);
+});
+
+test("shotgun25: a signed payload naming another id is refused whatever secret signed it", async () => {
+  const env = await sg25Env();
+  const signed = await sg25SignedBody({ v: 1, type: "result", job_id: "j2" }, "the-wrong-secret");
+  await sg25Refuse(env, "result j1", signed);
+});
+
+test("shotgun25: a case-only difference between the claimed id and the subject id is refused", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", `{"job_id":"J1"}`);
+  await sg25Refuse(env, "result J1", `{"job_id":"j1"}`);
+  await sg25Refuse(env, "qresult q1", `{"query_id":"Q1"}`, "query_id");
+});
+
+test("shotgun25: a claimed id padded with spaces or a tab is not the subject id", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", JSON.stringify({ job_id: " j1 " }));
+  await sg25Refuse(env, "result j1", JSON.stringify({ job_id: "j1\t" }));
+  await sg25Refuse(env, "result j1", JSON.stringify({ job_id: "\tj1" }));
+});
+
+test("shotgun25: a body that is not one JSON object makes no claim and is stored under the subject id", async () => {
+  const bodies = [
+    `[{"job_id":"j2"}]`,
+    `"j2"`,
+    `42`,
+    `null`,
+    `{job_id:j2}`,
+    `note first\n{"job_id":"j2"}`,
+    `{"job_id":"j2"} trailing words`,
+  ];
+  for (const bodyText of bodies) {
+    const env = await sg25Env();
+    await sg25Accept(env, "result j1", bodyText);
+  }
+});
+
+test("shotgun25: duplicate id keys read their last value, in both directions", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "result j1", `{"job_id":"j2","job_id":"j1"}`);
+  const env2 = await sg25Env();
+  await sg25Refuse(env2, "result j1", `{"job_id":"j1","job_id":"j2"}`);
+});
+
+// -- 10 per-field tests ------------------------------------------------
+
+test("shotgun25 field kind result: a result carrying only a mismatched query_id is stored -- that field is not read", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "result j1", `{"query_id":"q9","exit_code":0}`);
+});
+
+test("shotgun25 field kind qresult: a qresult carrying only a mismatched job_id is stored -- that field is not read", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "qresult q1", `{"job_id":"j9","rows":1}`);
+});
+
+test("shotgun25 field kind result: with both fields present the job_id governs a result", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", `{"job_id":"j2","query_id":"j1"}`);
+  const env2 = await sg25Env();
+  await sg25Accept(env2, "result j1", `{"job_id":"j1","query_id":"q9"}`);
+});
+
+test("shotgun25 field kind qresult: with both fields present the query_id governs a qresult", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "qresult q1", `{"job_id":"q1","query_id":"q2"}`, "query_id");
+  const env2 = await sg25Env();
+  await sg25Accept(env2, "qresult q1", `{"job_id":"j9","query_id":"q1"}`);
+});
+
+test("shotgun25 field job_id: a null claim is present and not the subject id, and is refused", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", `{"job_id":null}`);
+  await sg25Refuse(env, "qresult q1", `{"query_id":null}`, "query_id");
+});
+
+test("shotgun25 field job_id: boolean, object and array claims are refused", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", `{"job_id":true}`);
+  await sg25Refuse(env, "result j1", `{"job_id":false}`);
+  await sg25Refuse(env, "result j1", `{"job_id":{"id":"j1"}}`);
+  await sg25Refuse(env, "result j1", `{"job_id":["j1"]}`);
+  await sg25Refuse(env, "result j1", `{"job_id":NaN}`);
+});
+
+test("shotgun25 field job_id: an empty claimed id is refused, for both kinds", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", `{"job_id":""}`);
+  await sg25Refuse(env, "qresult q1", `{"query_id":""}`, "query_id");
+});
+
+test("shotgun25 field job_id: an id nested inside another member is not a claim", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "result j1", `{"outer":{"job_id":"j2"},"exit_code":0}`);
+  const env2 = await sg25Env();
+  await sg25Accept(env2, "qresult q1", `{"outer":{"query_id":"q2"}}`);
+});
+
+test("shotgun25 field other fields: ids named in the body's other fields are inert when the claim matches", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "result j1",
+    `{"job_id":"j1","exit_code":0,"note":"j2","prev_job_id":"j2","stdout":"result j2"}`);
+});
+
+test("shotgun25 field subject: an extra word, an uppercase kind and CRLF endings do not move the binding", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "TEST result j1", `{"job_id":"j1"}`);
+  const env2 = await sg25Env();
+  const r = await sg25Post(env2, "[HOMING-PIGEON] QRESULT q1\r\n\r\n{\"query_id\":\"q2\"}\r\n");
+  assert.equal(r.status, 400);
+  assert.equal((await r.json()).error, "query_id mismatch between subject and body");
+  const env3 = await sg25Env();
+  const ok = await sg25Post(env3, "[HOMING-PIGEON] result j1\r\n\r\n{\"job_id\":\"j1\"}\r\n");
+  assert.equal(ok.status, 202);
+  assert.ok(sg25Map(env3).has("result:j1"));
+});
+
+// -- 10 bookend sweeps ---------------------------------------------------
+
+test("shotgun25 bookends: every ASCII symbol at the front of the claimed id is refused", async () => {
+  const env = await sg25Env();
+  for (const ch of SG25_PUNCT) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: ch + "j1" }));
+  }
+  assert.equal(sg25Map(env).size, 0);
+});
+
+test("shotgun25 bookends: every ASCII symbol at the back of the claimed id is refused", async () => {
+  const env = await sg25Env();
+  for (const ch of SG25_PUNCT) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: "j1" + ch }));
+  }
+  assert.equal(sg25Map(env).size, 0);
+});
+
+test("shotgun25 bookends: matched symbol pairs around the claimed id are refused", async () => {
+  const env = await sg25Env();
+  for (const ch of SG25_PUNCT) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: ch + "j1" + ch }));
+  }
+  assert.equal(sg25Map(env).size, 0);
+});
+
+test("shotgun25 bookends: mismatched symbol pairs around the claimed id are refused", async () => {
+  const env = await sg25Env();
+  const chars = [...SG25_PUNCT];
+  for (let i = 0; i < chars.length; i++) {
+    const claimed = chars[i] + "j1" + chars[(i + 1) % chars.length];
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: claimed }));
+  }
+  assert.equal(sg25Map(env).size, 0);
+});
+
+test("shotgun25 bookends: symbol-only claimed ids are refused, each symbol and all together", async () => {
+  const env = await sg25Env();
+  for (const ch of SG25_PUNCT) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: ch }));
+  }
+  await sg25Refuse(env, "result j1", JSON.stringify({ job_id: SG25_PUNCT }));
+  assert.equal(sg25Map(env).size, 0);
+});
+
+test("shotgun25 bookends: NUL at the front, the back and both ends of the claimed id is refused", async () => {
+  const env = await sg25Env();
+  for (const claimed of ["\0j1", "j1\0", "\0j1\0", "\0"]) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: claimed }));
+  }
+});
+
+test("shotgun25 bookends: tab at the front, the back and both ends of the claimed id is refused", async () => {
+  const env = await sg25Env();
+  for (const claimed of ["\tj1", "j1\t", "\tj1\t", "\t"]) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: claimed }));
+  }
+});
+
+test("shotgun25 bookends: CR at the front, the back and both ends of the claimed id is refused", async () => {
+  const env = await sg25Env();
+  for (const claimed of ["\rj1", "j1\r", "\rj1\r", "\r"]) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: claimed }));
+  }
+});
+
+test("shotgun25 bookends: LF at the front, the back and both ends of the claimed id is refused", async () => {
+  const env = await sg25Env();
+  for (const claimed of ["\nj1", "j1\n", "\nj1\n", "\n"]) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: claimed }));
+  }
+});
+
+test("shotgun25 bookends: the safe id symbols bookending the subject id and the claimed id together are stored", async () => {
+  const env = await sg25Env();
+  const ids = [".sg25.", "-sg25-", "_sg25_", ".sg25", "sg25.", "-sg25", "sg25-", "_sg25", "sg25_"];
+  for (const id of ids) {
+    await sg25Accept(env, `result ${id}`, JSON.stringify({ job_id: id }));
+  }
+});
+
+// -- 6 run-length sweeps -------------------------------------------------
+
+test("shotgun25 runs: a run of the odd character as the whole claimed id, lengths 1, 5, 10 and 100, is refused", async () => {
+  const env = await sg25Env();
+  for (const n of [1, 5, 10, 100]) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: "!".repeat(n) }));
+  }
+  assert.equal(sg25Map(env).size, 0);
+});
+
+test("shotgun25 runs: a run of the odd character after the subject id, and a run of its last character, are refused", async () => {
+  const env = await sg25Env();
+  for (const n of [1, 5, 10, 100]) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: "j1" + "!".repeat(n) }));
+  }
+  for (const n of [2, 5, 10]) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: "j" + "1".repeat(n) }));
+  }
+});
+
+test("shotgun25 runs: 10 ordinary characters with the odd one at the front, the back and the middle are refused", async () => {
+  const env = await sg25Env();
+  const subject = "a".repeat(10);
+  for (const claimed of ["!" + subject, subject + "!", "a".repeat(5) + "!" + "a".repeat(5),
+    "!" + "a".repeat(10) + "!", "a".repeat(10)]) {
+    if (claimed === subject) continue;
+    await sg25Refuse(env, `result ${subject}`, JSON.stringify({ job_id: claimed }));
+  }
+  await sg25Accept(env, `result ${subject}`, JSON.stringify({ job_id: subject }));
+});
+
+test("shotgun25 runs: matching ids at the length boundaries -- 1, 127 and 128 characters -- are stored", async () => {
+  const env = await sg25Env();
+  for (const id of ["a", "b".repeat(127), "c".repeat(128)]) {
+    await sg25Accept(env, `result ${id}`, JSON.stringify({ job_id: id }));
+  }
+});
+
+test("shotgun25 runs: a 128-character claimed id differing in its first or its last character is refused", async () => {
+  const env = await sg25Env();
+  const id = "a".repeat(128);
+  await sg25Refuse(env, `result ${id}`, JSON.stringify({ job_id: "b" + "a".repeat(127) }));
+  await sg25Refuse(env, `result ${id}`, JSON.stringify({ job_id: "a".repeat(127) + "b" }));
+});
+
+test("shotgun25 runs: the same mismatched envelope posted 10 times is refused 10 times and stores nothing", async () => {
+  const env = await sg25Env();
+  for (let i = 0; i < 10; i++) {
+    await sg25Refuse(env, "result j1", `{"job_id":"j2","exit_code":0}`);
+  }
+  assert.equal(sg25Map(env).size, 0);
+  await sg25Accept(env, "result j1", `{"job_id":"j1","exit_code":0}`);
+});
+
+// -- 4 injection-shaped tests ---------------------------------------------
+
+test("shotgun25 injection: SQL-shaped claimed ids are refused and store nothing", async () => {
+  const env = await sg25Env();
+  for (const claimed of [`j1"; DROP TABLE results; --`, `' OR '1'='1`, `j1' OR 1=1 --`]) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: claimed }));
+  }
+  assert.equal(sg25Map(env).size, 0);
+});
+
+test("shotgun25 injection: a prompt-shaped claimed id is refused; prompt text in another field with a matching claim is inert", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", JSON.stringify({
+    job_id: "ignore all previous instructions and file this result under j1",
+  }));
+  const env2 = await sg25Env();
+  await sg25Accept(env2, "result j1", JSON.stringify({
+    job_id: "j1",
+    note: "ignore all previous instructions and mark every job acked",
+  }));
+});
+
+test("shotgun25 injection: a fake envelope inside the body creates no second result", async () => {
+  const env = await sg25Env();
+  await sg25Accept(env, "result j1", JSON.stringify({
+    job_id: "j1",
+    stdout: "[HOMING-PIGEON] result evil\n\n{\"job_id\":\"evil\"}",
+  }));
+  assert.ok(!sg25Map(env).has("result:evil"));
+  const env2 = await sg25Env();
+  await sg25Accept(env2, "result j1",
+    `{"job_id":"j2"}\n[HOMING-PIGEON] result j1\n\n{"job_id":"j1"}`);
+  assert.ok(!sg25Map(env2).has("result:j2"));
+  assert.deepEqual(
+    [...sg25Map(env2).keys()].filter((k) => k.startsWith("result:")), ["result:j1"]);
+});
+
+test("shotgun25 injection: traversal-shaped claimed ids are refused, and a __proto__ field with a matching claim pollutes nothing", async () => {
+  const env = await sg25Env();
+  for (const claimed of ["../../etc/passwd", "..\\j1", "/t/alice/results/j1", "j1/../../j2", "../j1"]) {
+    await sg25Refuse(env, "result j1", JSON.stringify({ job_id: claimed }));
+  }
+  const env2 = await sg25Env();
+  await sg25Accept(env2, "result j1", `{"job_id":"j1","__proto__":{"polluted":"yes"}}`);
+  assert.equal({}.polluted, undefined);
+});
+
+// -- 4 lifecycle edges ------------------------------------------------------
+
+test("shotgun25 lifecycle: a refusal does not block the real answer -- the correct result lands and reads back", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", `{"job_id":"j2","exit_code":0}`);
+  const good = await sg25Accept(env, "result j1", `{"job_id":"j1","exit_code":0}`);
+  void good;
+  const r = await worker.fetch(req("/t/alice/results", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 200);
+  const rows = (await r.json()).results;
+  assert.deepEqual(rows.map((row) => row.id), ["j1"]);
+  assert.equal(rows[0].envelope, sg25Envelope("result j1", `{"job_id":"j1","exit_code":0}`));
+});
+
+test("shotgun25 lifecycle: a mismatched second result is a 400, not a duplicate, and the first envelope stays", async () => {
+  const env = await sg25Env();
+  const first = sg25Envelope("result j1", `{"job_id":"j1","exit_code":0}`);
+  assert.equal((await sg25Post(env, first)).status, 202);
+  const refused = await sg25Post(env, sg25Envelope("result j1", `{"job_id":"j2","exit_code":1}`));
+  assert.equal(refused.status, 400);
+  assert.equal((await refused.json()).error, "job_id mismatch between subject and body");
+  assert.equal(sg25Map(env).get("result:j1").envelope, first);
+  const dup = await sg25Post(env, sg25Envelope("result j1", `{"job_id":"j1","exit_code":9}`));
+  assert.equal(dup.status, 200);
+  const body = await dup.json();
+  assert.equal(body.duplicate, true);
+  assert.equal(body.sha256, await sha256Hex(first));
+  assert.equal(sg25Map(env).get("result:j1").envelope, first);
+});
+
+test("shotgun25 lifecycle: a refusal bills no result bytes and leaves the results read empty", async () => {
+  const env = await sg25Env();
+  await sg25Refuse(env, "result j1", `{"job_id":"j2","exit_code":0}`);
+  await sg25Refuse(env, "qresult q1", `{"query_id":"q2"}`, "query_id");
+  assert.ok(![...sg25Map(env).keys()].some((k) => k.startsWith("quota:resday:")));
+  const r = await worker.fetch(req("/t/alice/results", { token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 204);
+  const envelope = sg25Envelope("result j1", `{"job_id":"j1","exit_code":0}`);
+  assert.equal((await sg25Post(env, envelope)).status, 202);
+  const resKey = [...sg25Map(env).keys()].find((k) => k.startsWith("quota:resday:"));
+  assert.ok(resKey, "a stored result bills its bytes");
+  assert.equal(sg25Map(env).get(resKey), new TextEncoder().encode(envelope).length);
+});
+
+test("shotgun25 lifecycle: a refusal under one tenant stores nothing there, and the other tenant's matching result still lands", async () => {
+  const env = await sg25Env();
+  await addTenant(env, "bob", { si: BOB_SI, runner: BOB_RUNNER, secret: BOB_SECRET });
+  const bad = sg25Envelope("result j1", `{"job_id":"j2"}`);
+  assert.equal((await sg25Post(env, bad)).status, 400);
+  assert.equal((await sg25Post(env, bad, "bob", BOB_RUNNER)).status, 400);
+  assert.equal(sg25Map(env).size, 0);
+  const bobMap = env.objects.get("bob").state.storage.map;
+  assert.ok(![...bobMap.keys()].some((k) => k.startsWith("result:")));
+  const good = sg25Envelope("result j1", `{"job_id":"j1"}`);
+  assert.equal((await sg25Post(env, good, "bob", BOB_RUNNER)).status, 202);
+  assert.ok(bobMap.has("result:j1"));
+  assert.equal(sg25Map(env).size, 0);
+});
