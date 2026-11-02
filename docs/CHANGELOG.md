@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.36 - 2026-11-01
+
+- Fix: the content-independence bash legs are portable — they skip on Windows, where the bash name is not a bash, and the rung chains are one command per line, so bash no longer crashes parsing a single cap-length list at the usual stack limit.
+- Fix: the Windows remote-upgrade applier decodes the fetched SHA384SUMS from bytes and force-kills leftover runner processes at the stop step.
+- The proof ladder record and the banked corpus since 3.15.35 ride along.
+
 ## 3.15.35 - 2026-11-01
 
 - Fix: the proof docs' two uppercase names are now lowercase-kebab (docs/proofs/goals.md and docs/proofs/readme.md), so the layout guard passes on every platform, and the c24 disk-claim test uses a portable live holder and dead pid, so it passes on Windows.
