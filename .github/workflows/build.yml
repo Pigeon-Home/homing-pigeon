@@ -110,17 +110,25 @@ jobs:
       # dumps and the "Ran N tests" line; skip_guard and
       # make_snapshot read neither shape differently.
       # runner/tools/suite_wall_clock.py is `python -m unittest` with a
-      # 20-minute clock (the suite takes 4 to 6): a run still going
-      # at the deadline stops, names the test it was in with its
-      # stack, and annotates it on the run page. Not a job timer:
-      # a timer kills the job and says nothing, and on 2026-10-23
-      # a test that looped forever held both suites past 80
-      # minutes with nothing in the log to say which.
+      # 30-minute clock: a run still going at the deadline stops,
+      # names the test it was in with its stack, and annotates it
+      # on the run page. Not a job timer: a timer kills the job
+      # and says nothing, and on 2026-10-23 a test that looped
+      # forever held both suites past 80 minutes with nothing in
+      # the log to say which. The clock was 20 minutes when the
+      # suite took 4 to 6; the shotgun families since then grew
+      # the same discover run to about 23 minutes on this runner
+      # class (python-range, which runs the identical discover
+      # under a 30-minute clock, finished in 22.9 at 3.15.110),
+      # and the 20-minute clock killed the 3.15.110 gate run in
+      # test_workspace_isolation -- a 3-second file, named only
+      # because it runs last. 30 aligns this job with the
+      # python-range and freebsd full-suite clocks.
       # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
       - name: run the suite
         run: |
           set -o pipefail
-          python runner/tools/suite_wall_clock.py --minutes 20 -- discover -s runner/tests -t . -v --durations 25 2>&1 | tee test-output.log
+          python runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25 2>&1 | tee test-output.log
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
       # --annotate is the piece worth keeping from diag/bwrap-suite:
