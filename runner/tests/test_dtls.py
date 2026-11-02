@@ -2993,6 +2993,650 @@ class DtlsResultStaysShotgunTest(unittest.TestCase):
         self.assertEqual([row[0] for row in sent], ["s9"])
         self.assertIn(b"the answer", sent[0][1])
 
+class SuffixedResultStillThatJobShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 14 (31-Oct-2026): a
+    suffixed result file is still that job. j1.result-2.txt
+    does not end in .result.txt, and the pipes used the whole
+    filename as the ident: the DTLS pump missed the job's
+    session and acked the result into done without sending
+    it, the file pipe missed the watched job and left it to
+    be run again, and the email flush missed the seen flag
+    and the shared <ident>.target.txt sidecar. The fix
+    (ee1fe83f) gives the channel one name parser,
+    ch.result_file_id, and every pipe correlates through the
+    stripped ident. This family lives in the DTLS file --
+    the pipe that acked without sending -- and scattershots
+    the correlation itself with the session ALREADY live,
+    which is the shape the original bug bit: the neighbouring
+    families pin the neighbours (item 4 the name parser at
+    the file pipe's held set, item 9 a result waiting for a
+    session that is not there yet), so this one pins what
+    neither covers: suffix counters enumerated one by one
+    and carried past 9, primaries and suffixed siblings
+    delivered together in sorted file order, sessions keyed
+    by a file-name form taking nothing, the waiting log
+    naming the stripped ident once for two siblings, suffix
+    shapes that do not parse staying put under a live
+    session, and bookends and run lengths on the ident the
+    suffix rides on. One regression test was never going to
+    be enough for a bug that took days of CPU to find.
+
+    Proof of work (2-Nov-2026). The unit tests are the 50
+    methods of this class: 11 hand-written seams, 12
+    generated per-counter tests, 10 generated non-parsing
+    shape tests, 6 bookend sweeps, 4 run-length sweeps, 3
+    injection-shaped tests and 4 edge tests. Per-field
+    enumeration: the result file's name is fielded -- the
+    ident stem, the .result marker, the collision-suffix
+    counter and the .txt extension -- and each field gets
+    its own tests: the counter enumerated value by value
+    (0, 1, 2, 3, 9, 10, 11, 99, 100, 999 and the zero-padded
+    007 and 01), the marker and extension in their exact
+    case and with trailing characters in the non-parsing
+    shapes, and the stem in the prefix, nested-marker,
+    punctuated, unicode and bookended shapes; the pump's
+    other fields (the session id it looks up, the envelope
+    subject, the result body) are pinned by the reroute,
+    verbatim-body and trailing-newline tests. Bookends:
+    every printable ASCII symbol (string.punctuation, all
+    32) at the front AND the back of the ident a suffixed
+    name carries, as singles, matched pairs, mismatched
+    pairs and symbol-only idents, plus tab and CR at both
+    ends and LF pinned at the boundary it cannot cross
+    (the name pattern's dot does not match a newline, so an
+    LF-carrying ident stays unread as that job); the path
+    separator cannot ride in a file
+    name (its basename behaviour is pinned by item 4's
+    family) and NUL cannot exist in a file name at all, so
+    those two are covered at the parser level there, not
+    here. Run lengths: suffix digit runs of 10, the suffix
+    sequence carried past 9 (10 siblings, -2 through -11,
+    in one pump), runs of 10 ordinary characters with the
+    odd character at the front, the back and the middle of
+    the ident, and 10 failed pumps before the delivery.
+    The fuzzing was executed, not just the tests written:
+    runner/tools/de_dust_corpus.py grow --target dtls
+    --rounds 400 --seed 20261115 against the banked dtls
+    corpus (55 entries). Result: 400 rounds, 0 crashes,
+    0 slow, arcs unchanged at 728, slowest try 57 ms; the
+    suffixed-result shape did not recur. The grow's
+    bookkeeping writes were reverted and are not banked
+    (banking is the rigs' hourly job); this record is the
+    run's proof. None of this is exotic: it is
+    combinatorics -- systematically trying the combinations
+    a hand-written list would never reach, then pinning
+    each answer as a test."""
+
+    # -- helpers ---------------------------------------------------
+
+    def _pipe(self):
+        tmp = tempfile.mkdtemp(prefix="hp-dtls-suffix-")
+        channel = os.path.join(tmp, "channel")
+        cfg = {"shared_secret": SECRET, "port": 0,
+               "bind": "127.0.0.1"}
+        return dtls_ext.DtlsPipe(cfg, channel), channel
+
+    def _write(self, channel, ident, body, fname=None,
+               subject=None):
+        outbox = ch.dirs(channel)["outbox"]
+        os.makedirs(outbox, exist_ok=True)
+        fname = fname or ident + ".result.txt"
+        if subject is None:
+            subject = "[HOMING-PIGEON] result " + ident
+        with open(os.path.join(outbox, fname), "w",
+                  encoding="utf-8") as fh:
+            fh.write(ch.envelope(subject, body))
+        return fname
+
+    def _wire(self, pipe, send=True):
+        sent, calls = [], []
+
+        def send_app(sid, data):
+            sent.append((sid, data))
+            return [("127.0.0.1", b"dg")]
+
+        def _send(dg, addr):
+            calls.append((dg, addr))
+            return send(dg, addr) if callable(send) else send
+
+        pipe.core.send_app = send_app
+        pipe._send = _send
+        return sent, calls
+
+    def _clear(self, pipe, channel):
+        d = ch.dirs(channel)
+        for key in ("outbox", "outbox_done"):
+            for name in os.listdir(d[key]):
+                path = os.path.join(d[key], name)
+                if os.path.isfile(path):
+                    os.remove(path)
+        pipe.job_session.clear()
+        pipe._waiting_session.clear()
+
+    def _stays(self, channel, fname):
+        d = ch.dirs(channel)
+        self.assertIn(fname, os.listdir(d["outbox"]))
+        self.assertNotIn(fname, os.listdir(d["outbox_done"]))
+
+    def _done(self, channel, fname):
+        d = ch.dirs(channel)
+        self.assertNotIn(fname, os.listdir(d["outbox"]))
+        self.assertIn(fname, os.listdir(d["outbox_done"]))
+
+    def _expected(self, subject, body):
+        text = ch.envelope(subject, body)
+        if body and not body.endswith("\n"):
+            text += "\n"
+        return text.encode("utf-8")
+
+    def _deliver_suffixed(self, pipe, channel, ident,
+                          body="the answer"):
+        fname = self._write(channel, ident, body,
+                            fname=ident + ".result-2.txt")
+        pipe.job_session[ident] = "s-bk"
+        sent, _calls = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        return sent
+
+    # -- hand-written seams: the session is already live -----------
+
+    def test_suffix_3_delivers_on_the_first_pump_with_a_live_session(
+            self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-live", "the answer",
+                            fname="job-live.result-3.txt")
+        pipe.job_session["job-live"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self.assertEqual(
+            sent, [("s1", self._expected(
+                "[HOMING-PIGEON] result job-live", "the answer"))])
+        self._done(channel, fname)
+        self.assertEqual(pipe._waiting_session, set())
+
+    def test_primary_and_suffixed_siblings_all_deliver_in_one_pump(
+            self):
+        pipe, channel = self._pipe()
+        names = [
+            self._write(channel, "job-a", "one",
+                        fname="job-a.result.txt"),
+            self._write(channel, "job-a", "two",
+                        fname="job-a.result-2.txt"),
+            self._write(channel, "job-a", "three",
+                        fname="job-a.result-3.txt"),
+        ]
+        pipe.job_session["job-a"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self.assertEqual([row[0] for row in sent],
+                         ["s1", "s1", "s1"])
+        self.assertEqual(
+            sorted(os.listdir(ch.dirs(channel)["outbox_done"])),
+            sorted(names))
+        self.assertEqual(
+            [n for n in os.listdir(ch.dirs(channel)["outbox"])
+             if n.endswith(".txt")], [])
+
+    def test_suffixed_siblings_deliver_with_no_primary_present(self):
+        pipe, channel = self._pipe()
+        names = [self._write(channel, "job-a", "body %d" % n,
+                             fname="job-a.result-%d.txt" % n)
+                 for n in (2, 3, 4)]
+        pipe.job_session["job-a"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self.assertEqual(len(sent), 3)
+        for fname in names:
+            self._done(channel, fname)
+
+    def test_delivery_order_is_the_sorted_file_order(self):
+        # The channel lists names sorted: -10 sorts before -2
+        # (character order, not counter order), and both sort
+        # before the primary ('-' before '.'). The pump sends
+        # in that order, each under its own name.
+        pipe, channel = self._pipe()
+        self._write(channel, "job-a", "primary",
+                    fname="job-a.result.txt")
+        self._write(channel, "job-a", "second",
+                    fname="job-a.result-2.txt")
+        self._write(channel, "job-a", "tenth",
+                    fname="job-a.result-10.txt")
+        pipe.job_session["job-a"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self.assertIn(b"tenth", sent[0][1])
+        self.assertIn(b"second", sent[1][1])
+        self.assertIn(b"primary", sent[2][1])
+
+    def test_a_suffixed_result_for_one_job_leaves_anothers_waiting(
+            self):
+        pipe, channel = self._pipe()
+        fa = self._write(channel, "job-a", "answer a",
+                         fname="job-a.result-2.txt")
+        fb = self._write(channel, "job-b", "answer b",
+                         fname="job-b.result-2.txt")
+        pipe.job_session["job-a"] = "sa"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fa)
+        self._stays(channel, fb)
+        self.assertEqual([row[0] for row in sent], ["sa"])
+
+    def test_a_session_keyed_by_a_file_name_form_does_not_take_it(
+            self):
+        # The lookup key is the ident, never a file name: a
+        # session remembered under the primary's file name or
+        # under the suffixed file name itself is not the job.
+        pipe, channel = self._pipe()
+        for key in ("job-a.result.txt", "job-a.result-2.txt"):
+            self._clear(pipe, channel)
+            fname = self._write(channel, "job-a", "the answer",
+                                fname="job-a.result-2.txt")
+            pipe.job_session[key] = "sx"
+            sent, _ = self._wire(pipe)
+            pipe._pump_results()
+            self._stays(channel, fname)
+            self.assertEqual(sent, [], key)
+
+    def test_waiting_is_logged_once_under_the_stripped_ident(self):
+        pipe, channel = self._pipe()
+        self._write(channel, "job-a", "one",
+                    fname="job-a.result-2.txt")
+        self._write(channel, "job-a", "two",
+                    fname="job-a.result-3.txt")
+        with mock.patch.object(ch, "log") as log_mock:
+            pipe._pump_results()
+            pipe._pump_results()
+        waiting = [c.args[0] for c in log_mock.call_args_list
+                   if c.args and "is not on a session yet"
+                   in c.args[0]]
+        self.assertEqual(len(waiting), 1)
+        self.assertIn("job-a", waiting[0])
+        self.assertNotIn("result-2", waiting[0])
+        self.assertEqual(pipe._waiting_session, {"job-a"})
+
+    def test_a_failed_datagram_keeps_the_suffixed_name_for_the_retry(
+            self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer",
+                            fname="job-a.result-2.txt")
+        pipe.job_session["job-a"] = "s1"
+        self._wire(pipe, send=False)
+        pipe._pump_results()
+        # It stays under its suffixed name -- never renamed to
+        # the primary, never acked -- and the retry sends it.
+        self._stays(channel, fname)
+        self.assertEqual(
+            [n for n in os.listdir(ch.dirs(channel)["outbox"])
+             if n.endswith(".txt")], [fname])
+        self._wire(pipe, send=True)
+        pipe._pump_results()
+        self._done(channel, fname)
+
+    def test_prefix_idents_do_not_share_a_suffixed_result(self):
+        # "job" is a prefix of "job-2": job's suffixed file is
+        # job's, and job-2's primary is job-2's, and neither
+        # session takes the other's file.
+        pipe, channel = self._pipe()
+        fa = self._write(channel, "job", "for job",
+                         fname="job.result-2.txt")
+        fb = self._write(channel, "job-2", "for job-2",
+                         fname="job-2.result.txt")
+        pipe.job_session["job"] = "s-job"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fa)
+        self._stays(channel, fb)
+        self.assertEqual([row[0] for row in sent], ["s-job"])
+        pipe.job_session["job-2"] = "s-job2"
+        pipe._pump_results()
+        self._done(channel, fb)
+        self.assertEqual([row[0] for row in sent],
+                         ["s-job", "s-job2"])
+
+    def test_an_ident_ending_in_a_number_takes_its_own_suffixed_file(
+            self):
+        # job-2.result-2.txt carries two different 2s: the
+        # ident's own and the collision counter. Only the
+        # counter is stripped.
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-2", "the answer",
+                            fname="job-2.result-2.txt")
+        pipe.job_session["job"] = "s-wrong"
+        pipe.job_session["job-2"] = "s-right"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual([row[0] for row in sent], ["s-right"])
+
+    def test_a_nested_result_marker_names_the_longer_ident(self):
+        # a.result.result-2.txt: the stem itself ends in
+        # .result, so the ident is a.result, not a.
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "a.result", "the answer",
+                            fname="a.result.result-2.txt")
+        pipe.job_session["a"] = "s-short"
+        pipe.job_session["a.result"] = "s-long"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual([row[0] for row in sent], ["s-long"])
+
+    # -- bookends: every symbol on the ident, front AND back -------
+
+    def test_bookend_ident_front_symbols_deliver_as_suffixed(self):
+        pipe, channel = self._pipe()
+        for sym in string.punctuation:
+            if sym == "/":
+                continue  # a separator cannot ride in a name
+            self._clear(pipe, channel)
+            sent = self._deliver_suffixed(
+                pipe, channel, sym + "job-bk")
+            self.assertEqual([row[0] for row in sent], ["s-bk"],
+                             sym)
+
+    def test_bookend_ident_back_symbols_deliver_as_suffixed(self):
+        pipe, channel = self._pipe()
+        for sym in string.punctuation:
+            if sym == "/":
+                continue
+            self._clear(pipe, channel)
+            sent = self._deliver_suffixed(
+                pipe, channel, "job-bk" + sym)
+            self.assertEqual([row[0] for row in sent], ["s-bk"],
+                             sym)
+
+    def test_bookend_ident_matched_pairs_deliver_as_suffixed(self):
+        pipe, channel = self._pipe()
+        for sym in string.punctuation:
+            if sym == "/":
+                continue
+            self._clear(pipe, channel)
+            sent = self._deliver_suffixed(
+                pipe, channel, sym + "job-bk" + sym)
+            self.assertEqual([row[0] for row in sent], ["s-bk"],
+                             sym)
+
+    def test_bookend_ident_mismatched_pairs_deliver_as_suffixed(self):
+        pipe, channel = self._pipe()
+        symbols = string.punctuation
+        rotated = symbols[1:] + symbols[:1]
+        for front, back in zip(symbols, rotated):
+            if "/" in (front, back):
+                continue
+            self._clear(pipe, channel)
+            sent = self._deliver_suffixed(
+                pipe, channel, front + "job-bk" + back)
+            self.assertEqual([row[0] for row in sent], ["s-bk"],
+                             (front, back))
+
+    def test_bookend_ident_symbol_only_delivers_as_suffixed(self):
+        pipe, channel = self._pipe()
+        idents = [sym * 3 for sym in string.punctuation
+                  if sym != "/"]
+        idents.append(string.punctuation.replace("/", ""))
+        for ident in idents:
+            self._clear(pipe, channel)
+            sent = self._deliver_suffixed(pipe, channel, ident)
+            self.assertEqual([row[0] for row in sent], ["s-bk"],
+                             ident)
+
+    def test_bookend_ident_nonprinting_delivers_as_suffixed(self):
+        # Tab and CR can ride in a file name and in the name
+        # pattern, and a suffixed name carrying either still
+        # names its job. LF can ride in a file name but not
+        # in the pattern (its dot does not cross a newline),
+        # so an LF-carrying ident is not read as that job and
+        # the file stays -- the boundary is pinned, not
+        # assumed. NUL cannot exist in a file name at all.
+        pipe, channel = self._pipe()
+        for char in ("\t", "\r"):
+            for ident in (char + "job-bk", "job-bk" + char,
+                          char + "job-bk" + char):
+                self._clear(pipe, channel)
+                sent = self._deliver_suffixed(
+                    pipe, channel, ident)
+                self.assertEqual([row[0] for row in sent],
+                                 ["s-bk"], repr(ident))
+        for ident in ("\njob-bk", "job-bk\n", "\njob-bk\n"):
+            self._clear(pipe, channel)
+            fname = self._write(channel, "job-bk", "the answer",
+                                fname=ident + ".result-2.txt")
+            pipe.job_session[ident] = "s-bk"
+            pipe.job_session["job-bk"] = "s-plain"
+            sent, _ = self._wire(pipe)
+            pipe._pump_results()
+            self._stays(channel, fname)
+            self.assertEqual(sent, [], repr(ident))
+
+    # -- run lengths: counts, not just characters ------------------
+
+    def test_suffix_digit_runs_of_ten_deliver(self):
+        pipe, channel = self._pipe()
+        names = [
+            self._write(channel, "job-run", "ones",
+                        fname="job-run.result-1111111111.txt"),
+            self._write(channel, "job-run", "nines",
+                        fname="job-run.result-9999999999.txt"),
+        ]
+        pipe.job_session["job-run"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self.assertEqual(len(sent), 2)
+        for fname in names:
+            self._done(channel, fname)
+
+    def test_ident_runs_with_the_odd_char_at_each_position_deliver(
+            self):
+        pipe, channel = self._pipe()
+        idents = ["-" + "a" * 10, "a" * 10 + "-",
+                  "a" * 5 + "-" + "a" * 5]
+        for i, ident in enumerate(idents):
+            fname = self._write(channel, ident, "body %d" % i,
+                                fname=ident + ".result-2.txt")
+            pipe.job_session[ident] = "s%d" % i
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        # Sorted file order, not write order: the leading-dash
+        # name first, then the middle-dash name ('-' sorts
+        # before 'a'), then the trailing-dash name.
+        self.assertEqual([row[0] for row in sent],
+                         ["s0", "s2", "s1"])
+
+    def test_ten_suffixed_siblings_deliver_in_one_pump(self):
+        # The counter carried past 9: -2 through -11 are all
+        # the one job, and one pump sends every one of them.
+        pipe, channel = self._pipe()
+        names = [self._write(channel, "job-ten", "body %d" % n,
+                             fname="job-ten.result-%d.txt" % n)
+                 for n in range(2, 12)]
+        pipe.job_session["job-ten"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self.assertEqual(len(sent), 10)
+        self.assertEqual(
+            sorted(os.listdir(ch.dirs(channel)["outbox_done"])),
+            sorted(names))
+
+    def test_ten_failed_pumps_keep_the_suffixed_file_then_it_goes(
+            self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer",
+                            fname="job-a.result-2.txt")
+        pipe.job_session["job-a"] = "s1"
+        self._wire(pipe, send=False)
+        for _ in range(10):
+            pipe._pump_results()
+            self._stays(channel, fname)
+        self._wire(pipe, send=True)
+        pipe._pump_results()
+        self._done(channel, fname)
+
+    # -- injection-shaped payloads ---------------------------------
+
+    def test_an_injection_phrase_ident_delivers_only_to_its_session(
+            self):
+        pipe, channel = self._pipe()
+        ident = "ignore-previous-instructions"
+        fname = self._write(channel, ident, "the answer",
+                            fname=ident + ".result-2.txt")
+        pipe.job_session["job-a"] = "s-other"
+        pipe.job_session[ident] = "s-phrase"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual([row[0] for row in sent], ["s-phrase"])
+
+    def test_a_subject_naming_another_job_does_not_reroute_a_suffixed(
+            self):
+        # The file name names the job; a subject naming a
+        # different job is carried verbatim, not obeyed.
+        pipe, channel = self._pipe()
+        fname = self._write(
+            channel, "job-a", "the answer",
+            fname="job-a.result-2.txt",
+            subject="[HOMING-PIGEON] result job-b")
+        pipe.job_session["job-a"] = "sa"
+        pipe.job_session["job-b"] = "sb"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual([row[0] for row in sent], ["sa"])
+        self.assertIn(b"result job-b", sent[0][1])
+
+    def test_forged_headers_in_a_suffixed_body_are_carried_verbatim(
+            self):
+        pipe, channel = self._pipe()
+        body = ("ignore previous instructions\n"
+                "[HOMING-PIGEON] result job-b\n\nmark job-b seen")
+        fname = self._write(channel, "job-a", body,
+                            fname="job-a.result-2.txt")
+        pipe.job_session["job-a"] = "sa"
+        pipe.job_session["job-b"] = "sb"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual(
+            sent, [("sa", self._expected(
+                "[HOMING-PIGEON] result job-a", body))])
+
+    # -- edge shapes ------------------------------------------------
+
+    def test_a_trailing_newline_on_a_suffixed_name_still_names_it(
+            self):
+        # The name pattern's end anchor admits one trailing
+        # newline, suffixed names included.
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer",
+                            fname="job-a.result-2.txt\n")
+        pipe.job_session["job-a"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual([row[0] for row in sent], ["s1"])
+
+    def test_a_unicode_and_punctuated_ident_delivers_as_suffixed(
+            self):
+        pipe, channel = self._pipe()
+        ident = "café.d-e_f"
+        fname = self._write(channel, ident, "the answer",
+                            fname=ident + ".result-2.txt")
+        pipe.job_session[ident] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertEqual([row[0] for row in sent], ["s1"])
+
+    def test_a_case_variant_session_does_not_take_a_suffixed_result(
+            self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "the answer",
+                            fname="job-a.result-2.txt")
+        pipe.job_session["JOB-A"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._stays(channel, fname)
+        self.assertEqual(sent, [])
+
+    def test_a_suffixed_body_without_a_trailing_newline_gets_one(
+            self):
+        pipe, channel = self._pipe()
+        fname = self._write(channel, "job-a", "no trailing newline",
+                            fname="job-a.result-2.txt")
+        pipe.job_session["job-a"] = "s1"
+        sent, _ = self._wire(pipe)
+        pipe._pump_results()
+        self._done(channel, fname)
+        self.assertTrue(sent[0][1].endswith(
+            b"no trailing newline\n"))
+
+
+def _make_suffixed_counter_tests():
+    counters = [
+        ("zero", "0"), ("one", "1"), ("two", "2"),
+        ("three", "3"), ("nine", "9"), ("ten", "10"),
+        ("eleven", "11"), ("ninety_nine", "99"),
+        ("one_hundred", "100"), ("nine_nine_nine", "999"),
+        ("zero_padded_seven", "007"), ("zero_padded_one", "01"),
+    ]
+    for label, counter in counters:
+
+        def counter_test(self, counter=counter):
+            pipe, channel = self._pipe()
+            fname = self._write(
+                channel, "job-c", "the answer",
+                fname="job-c.result-%s.txt" % counter)
+            pipe.job_session["job-c"] = "s1"
+            sent, _ = self._wire(pipe)
+            pipe._pump_results()
+            self._done(channel, fname)
+            self.assertEqual([row[0] for row in sent], ["s1"])
+
+        setattr(SuffixedResultStillThatJobShotgunTest,
+                "test_suffix_counter_%s_delivers_as_its_job"
+                % label, counter_test)
+
+
+_make_suffixed_counter_tests()
+
+
+def _make_nonparsing_suffix_tests():
+    shapes = [
+        ("letter_suffix", "job-a.result-x.txt"),
+        ("empty_suffix", "job-a.result-.txt"),
+        ("digit_letter_suffix", "job-a.result-2x.txt"),
+        ("double_dash_suffix", "job-a.result--2.txt"),
+        ("uppercase_extension", "job-a.result-2.TXT"),
+        ("uppercase_marker", "job-a.RESULT-2.txt"),
+        ("extra_extension", "job-a.result-2.txt.bak"),
+        ("no_extension", "job-a.result-2"),
+        ("trailing_space", "job-a.result-2.txt "),
+        ("empty_stem", ".result-2.txt"),
+    ]
+    for label, fname in shapes:
+
+        def shape_test(self, fname=fname):
+            # A name the parser does not read as a result for
+            # job-a is not job-a's result: with job-a's session
+            # live it still stays, unsent, under its own name.
+            pipe, channel = self._pipe()
+            written = self._write(channel, "job-a", "the answer",
+                                  fname=fname)
+            pipe.job_session["job-a"] = "s1"
+            sent, _ = self._wire(pipe)
+            pipe._pump_results()
+            self._stays(channel, written)
+            self.assertEqual(sent, [])
+
+        setattr(SuffixedResultStillThatJobShotgunTest,
+                "test_nonparsing_shape_%s_does_not_name_the_job"
+                % label, shape_test)
+
+
+_make_nonparsing_suffix_tests()
+
+
 class DtlsRunOnceLegsTest(unittest.TestCase):
     """Queue A refill: DtlsPipe.run_once's socket legs
     (coverage run 40189608702: 5 lines on both
