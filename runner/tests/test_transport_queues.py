@@ -4268,5 +4268,504 @@ class LoopbackRedirectShotgunTest(unittest.TestCase):
                 q.main(["queues", channel, cfg_path], passes=1), 2,
                 repr(bad))
 
+class LongIdCollisionShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 21: two job ids
+    differing only after 120 characters collided into one
+    file, and neither result was posted (fixed 2f6502f2,
+    31-Oct-2026). The channel's deliver_job kept 120
+    characters of the ident when it named the inbox file,
+    but a queue id is 128 characters: two ids sharing the
+    first 120 landed as one <ident>.job.txt, the second
+    delivery rewriting the first, the result was named for
+    the short file rather than the id in the subject, and
+    the done-file the core wrote was not the name the ack
+    looks for -- so both jobs stayed leased and no result
+    was ever posted. The fix keeps the protocol's 128.
+    This family scattershots everything around that
+    failure: the length axis above all (ids differing at
+    every position around the old cut and around the new
+    one, the 119 / 120 / 121 and 127 / 128 / 129
+    boundaries, prefixes shared to every depth, runs of
+    one character with the odd one at the front, the back
+    and the middle), the sanitiser that maps an ident to
+    a file name (every printable ASCII symbol and the
+    non-printing characters at both ends, symbol-only
+    idents, traversal- and injection-shaped idents), each
+    field of the delivery (channel, ident, subject, body,
+    the returned path), and the whole queue pipe carrying
+    two colliding ids to two acks. One regression test
+    was never going to be enough for a bug that took
+    days of CPU to find.
+
+    Proof of work (2-Nov-2026). The unit tests are the
+    50 methods of this class: 16 hand-written seams, 8
+    generated differ-at-a-position tests (positions 118,
+    119, 120, 121, 122, 124, 126 and 127 of a 128-char
+    id), 8 per-field tests, 10 bookend sweeps, 4
+    run-length sweeps and 4 injection-shaped tests.
+    Per-field enumeration: deliver_job's surface is
+    fielded -- channel, ident, subject, body and the
+    path it returns -- and each field gets its own test,
+    the ident a second for its non-string and
+    allowed-punctuation shapes. Bookends: every
+    printable ASCII symbol (string.punctuation, all 32)
+    at the front AND the back of long and short idents,
+    as singles, matched pairs, mismatched pairs and
+    symbol-only strings, plus NUL, tab, CR and LF at
+    both ends; a symbol a file name may keep (., _, -)
+    is kept, every other symbol becomes exactly one
+    underscore, so a bookend never changes the name's
+    length and never escapes the inbox. Run lengths:
+    runs of 10 of the odd character at the front, the
+    back and the middle of a 128-char id, and single
+    odd characters at each end of a full run. The
+    fuzzing was executed, not just the tests written:
+    runner/tools/de_dust_corpus.py grow --target names
+    --rounds 400 --seed 20261122, run locally against
+    the banked names corpus (84 entries) -- the target
+    that drives the channel's naming surface. Result:
+    400 rounds, 0 crashes, 0 slow, arcs unchanged at
+    89, slowest try 3 ms; the collision did not recur.
+    The grow's bookkeeping writes were reverted and
+    are not banked (banking is the rigs' hourly job);
+    this record is the run's proof. None of this is
+    exotic: it is combinatorics -- systematically
+    trying the combinations a hand-written list would
+    never reach, then pinning each answer as a test."""
+
+    def setUp(self):
+        self.td = tempfile.TemporaryDirectory()
+        self.addCleanup(self.td.cleanup)
+        self.channel = os.path.join(self.td.name, "channel")
+        self.d = ch.dirs(self.channel)
+        self.inbox = self.d["inbox"]
+
+    # -- helpers ---------------------------------------------------
+
+    @staticmethod
+    def _safe(text):
+        # The naming rule the fix pins: alphanumerics and
+        # ._- ride verbatim, everything else becomes one
+        # underscore, the whole kept to 128, empty is job.
+        return "".join(c if (c.isalnum() or c in "._-") else "_"
+                       for c in str(text))[:128] or "job"
+
+    def _deliver(self, ident, subject=None, body=None):
+        if subject is None:
+            subject = f"[HOMING-PIGEON] job {ident}"
+        if body is None:
+            body = f"body of {ident}"
+        return ch.deliver_job(self.channel, ident, subject, body)
+
+    def _names(self):
+        return sorted(n for n in os.listdir(self.inbox) if n != "done")
+
+    def _read(self, name):
+        with open(os.path.join(self.inbox, name),
+                  encoding="utf-8") as fh:
+            return fh.read()
+
+    def _core_answers(self, ident, job_id):
+        d = ch.dirs(self.channel)
+        os.replace(os.path.join(d["inbox"], ident + ".job.txt"),
+                   os.path.join(d["inbox_done"], ident + ".job.txt"))
+        ch._atomic_write(os.path.join(d["outbox"], ident + ".result.txt"),
+                         f"[HOMING-PIGEON] result {job_id}\n\n"
+                         f"{{\"exit_code\":0,\"sig\":\"00\"}}\n")
+
+    def _pair_through_the_pipe(self, a, b):
+        with FakeWorker() as w:
+            w.state.jobs[a] = envelope(a)
+            w.state.jobs[b] = envelope(b)
+            pipe = q.QueuePipe({}, self.channel,
+                               q.QueueClient(w.url, RUNNER_TOKEN))
+            pipe.pull_jobs()
+            self.assertEqual(self._names(),
+                             sorted([a + ".job.txt", b + ".job.txt"]))
+            self.assertIn(f"job {a}", self._read(a + ".job.txt"))
+            self.assertIn(f"job {b}", self._read(b + ".job.txt"))
+            self._core_answers(a, a)
+            self._core_answers(b, b)
+            pipe.push_results()
+            self.assertEqual(sorted(w.state.acked), sorted([a, b]))
+            self.assertIn(f"result {a}", w.state.results[a])
+            self.assertIn(f"result {b}", w.state.results[b])
+            self.assertNotIn(a, pipe._pending)
+            self.assertNotIn(b, pipe._pending)
+
+    # -- hand-written seams: the length axis ------------------------
+
+    def test_the_original_pair_both_finish_through_the_pipe(self):
+        self._pair_through_the_pipe("q" * 120 + "m" * 8,
+                                    "q" * 120 + "n" * 8)
+
+    def test_a_pair_differing_only_in_the_last_character_both_finish(self):
+        self._pair_through_the_pipe("r" * 127 + "a", "r" * 127 + "b")
+
+    def test_deliver_keeps_all_128_characters_in_the_file_name(self):
+        ident = "a" * 120 + "bcdefghi"
+        self.assertEqual(len(ident), 128)
+        path = self._deliver(ident)
+        self.assertEqual(os.path.basename(path), ident + ".job.txt")
+
+    def test_deliver_keeps_119_and_120_characters_exactly(self):
+        for n in (119, 120):
+            ident = "k" * n
+            path = self._deliver(ident)
+            self.assertEqual(os.path.basename(path),
+                             ident + ".job.txt", n)
+
+    def test_deliver_keeps_121_and_127_characters_exactly(self):
+        for n in (121, 127):
+            ident = "k" * n
+            path = self._deliver(ident)
+            self.assertEqual(os.path.basename(path),
+                             ident + ".job.txt", n)
+
+    def test_a_129_character_ident_is_kept_at_128(self):
+        path = self._deliver("a" * 129)
+        self.assertEqual(os.path.basename(path),
+                         "a" * 128 + ".job.txt")
+
+    def test_a_1000_character_ident_is_kept_at_128(self):
+        ident = "ab" * 500
+        path = self._deliver(ident)
+        self.assertEqual(os.path.basename(path),
+                         ident[:128] + ".job.txt")
+
+    def test_two_129_ids_differing_before_128_get_two_files(self):
+        a = "p" * 100 + "a" + "x" * 28
+        b = "p" * 100 + "b" + "x" * 28
+        self.assertEqual((len(a), len(b)), (129, 129))
+        self._deliver(a)
+        self._deliver(b)
+        self.assertEqual(self._names(), sorted(
+            [a[:128] + ".job.txt", b[:128] + ".job.txt"]))
+
+    def test_an_empty_ident_lands_as_job(self):
+        path = self._deliver("", subject="Sub", body="b")
+        self.assertEqual(os.path.basename(path), "job.job.txt")
+        self.assertEqual(self._read("job.job.txt"), "Sub\n\nb\n")
+
+    def test_an_ident_of_only_unsafe_characters_lands_as_underscores(self):
+        self.assertEqual(os.path.basename(self._deliver("!!!")),
+                         "___.job.txt")
+        self.assertEqual(os.path.basename(self._deliver("///")),
+                         "___.job.txt")
+        self.assertEqual(os.path.basename(self._deliver("   ")),
+                         "___.job.txt")
+
+    def test_a_redelivery_of_the_same_long_id_rewrites_its_one_file(self):
+        ident = "c" * 120 + "a" * 8
+        self._deliver(ident, body="first body")
+        self._deliver(ident, body="second body")
+        self.assertEqual(self._names(), [ident + ".job.txt"])
+        text = self._read(ident + ".job.txt")
+        self.assertIn("second body", text)
+        self.assertNotIn("first body", text)
+
+    def test_three_ids_sharing_the_first_120_get_three_files(self):
+        ids = ["c" * 120 + tail * 8 for tail in "abc"]
+        for ident in ids:
+            self._deliver(ident)
+        self.assertEqual(self._names(),
+                         sorted(i + ".job.txt" for i in ids))
+        for ident in ids:
+            self.assertIn(f"body of {ident}",
+                          self._read(ident + ".job.txt"))
+
+    def test_ten_ids_sharing_the_first_127_get_ten_files(self):
+        ids = ["s" * 127 + digit for digit in "0123456789"]
+        for ident in ids:
+            self._deliver(ident)
+        self.assertEqual(self._names(),
+                         sorted(i + ".job.txt" for i in ids))
+
+    def test_prefixes_shared_to_every_depth_stay_distinct(self):
+        for depth in (1, 2, 10, 60, 100, 119, 120):
+            a = "p" * depth + "a" + "x" * (127 - depth)
+            b = "p" * depth + "b" + "x" * (127 - depth)
+            self.assertEqual((len(a), len(b)), (128, 128))
+            self._deliver(a)
+            self._deliver(b)
+            names = self._names()
+            self.assertIn(a + ".job.txt", names, depth)
+            self.assertIn(b + ".job.txt", names, depth)
+            self.assertIn(f"body of {a}", self._read(a + ".job.txt"))
+            self.assertIn(f"body of {b}", self._read(b + ".job.txt"))
+
+    def test_the_delivery_order_changes_neither_name_nor_content(self):
+        a = "c" * 120 + "a" * 8
+        b = "c" * 120 + "b" * 8
+        self._deliver(b)
+        self._deliver(a)
+        self.assertEqual(self._names(),
+                         sorted([a + ".job.txt", b + ".job.txt"]))
+        self.assertIn(f"body of {a}", self._read(a + ".job.txt"))
+        self.assertIn(f"body of {b}", self._read(b + ".job.txt"))
+
+    def test_case_variant_tails_past_120_are_distinct_files(self):
+        a = "c" * 120 + "ABCDEFGH"
+        b = "c" * 120 + "abcdefgh"
+        self._deliver(a)
+        self._deliver(b)
+        self.assertEqual(self._names(),
+                         sorted([a + ".job.txt", b + ".job.txt"]))
+
+    # -- per-field enumeration --------------------------------------
+
+    def test_channel_field_two_channels_keep_the_same_long_id_apart(self):
+        ident = "c" * 120 + "a" * 8
+        other = os.path.join(self.td.name, "other")
+        ch.dirs(other)
+        mine = self._deliver(ident, body="for this channel")
+        theirs = ch.deliver_job(other, ident,
+                                f"[HOMING-PIGEON] job {ident}",
+                                "for the other channel")
+        self.assertEqual(os.path.basename(mine), os.path.basename(theirs))
+        self.assertNotEqual(os.path.dirname(mine), os.path.dirname(theirs))
+        self.assertIn("for this channel", self._read(ident + ".job.txt"))
+        with open(theirs, encoding="utf-8") as fh:
+            self.assertIn("for the other channel", fh.read())
+
+    def test_ident_field_a_nonstring_ident_reads_as_its_text(self):
+        self.assertEqual(os.path.basename(self._deliver(12345)),
+                         "12345.job.txt")
+        self.assertEqual(os.path.basename(self._deliver(None)),
+                         "None.job.txt")
+
+    def test_ident_field_allowed_punctuation_past_120_is_kept(self):
+        ident = "a" * 121 + "._-" + "b" * 4
+        self.assertEqual(len(ident), 128)
+        path = self._deliver(ident)
+        self.assertEqual(os.path.basename(path), ident + ".job.txt")
+
+    def test_subject_field_is_carried_verbatim_for_a_long_id(self):
+        ident = "c" * 120 + "a" * 8
+        subject = f"[HOMING-PIGEON] job {ident} (retry 2) [urgent]"
+        self._deliver(ident, subject=subject, body="the body")
+        self.assertEqual(self._read(ident + ".job.txt"),
+                         subject + "\n\nthe body\n")
+
+    def test_subject_field_an_empty_subject_still_lands_the_file(self):
+        path = self._deliver("j-long", subject="", body="body")
+        self.assertEqual(self._read(os.path.basename(path)),
+                         "\n\nbody\n")
+
+    def test_body_field_a_trailing_newline_is_added_once_never_doubled(self):
+        self._deliver("j-one", subject="S", body="x")
+        self._deliver("j-two", subject="S", body="x\n")
+        self.assertEqual(self._read("j-one.job.txt"), "S\n\nx\n")
+        self.assertEqual(self._read("j-two.job.txt"), "S\n\nx\n")
+
+    def test_body_field_an_empty_body_lands_as_subject_and_blank_line(self):
+        self._deliver("j-empty", subject="Sub", body="")
+        self.assertEqual(self._read("j-empty.job.txt"), "Sub\n\n")
+
+    def test_the_returned_path_is_the_inbox_file_it_names(self):
+        ident = "c" * 120 + "a" * 8
+        path = self._deliver(ident)
+        self.assertEqual(os.path.dirname(path), self.inbox)
+        self.assertEqual(path, os.path.join(
+            self.inbox, ident + ".job.txt"))
+        self.assertTrue(os.path.isfile(path))
+
+    # -- bookends ----------------------------------------------------
+
+    def test_bookend_symbols_at_the_front_of_a_long_id(self):
+        for symbol in string.punctuation:
+            ident = symbol + "a" * 127
+            path = self._deliver(ident)
+            name = os.path.basename(path)
+            self.assertEqual(name, self._safe(ident) + ".job.txt",
+                             repr(symbol))
+            self.assertEqual(len(name), 128 + len(".job.txt"))
+
+    def test_bookend_symbols_at_the_back_of_a_long_id(self):
+        for symbol in string.punctuation:
+            ident = "a" * 127 + symbol
+            path = self._deliver(ident)
+            name = os.path.basename(path)
+            self.assertEqual(name, self._safe(ident) + ".job.txt",
+                             repr(symbol))
+            self.assertEqual(len(name), 128 + len(".job.txt"))
+
+    def test_bookend_symbols_at_the_front_of_a_short_id(self):
+        for symbol in string.punctuation:
+            ident = symbol + "j9"
+            path = self._deliver(ident)
+            self.assertEqual(os.path.basename(path),
+                             self._safe(ident) + ".job.txt",
+                             repr(symbol))
+            self.assertEqual(os.path.dirname(path), self.inbox)
+
+    def test_bookend_symbols_at_the_back_of_a_short_id(self):
+        for symbol in string.punctuation:
+            ident = "j9" + symbol
+            path = self._deliver(ident)
+            self.assertEqual(os.path.basename(path),
+                             self._safe(ident) + ".job.txt",
+                             repr(symbol))
+            self.assertEqual(os.path.dirname(path), self.inbox)
+
+    def test_bookend_matched_symbol_pairs_on_a_long_id(self):
+        for symbol in string.punctuation:
+            ident = symbol + "a" * 126 + symbol
+            self.assertEqual(len(ident), 128)
+            path = self._deliver(ident)
+            self.assertEqual(os.path.basename(path),
+                             self._safe(ident) + ".job.txt",
+                             repr(symbol))
+
+    def test_bookend_mismatched_symbol_pairs_on_a_long_id(self):
+        symbols = string.punctuation
+        rotated = symbols[7:] + symbols[:7]
+        for front, back in zip(symbols, rotated):
+            self.assertNotEqual(front, back)
+            ident = front + "a" * 126 + back
+            path = self._deliver(ident)
+            self.assertEqual(os.path.basename(path),
+                             self._safe(ident) + ".job.txt",
+                             repr((front, back)))
+
+    def test_bookend_every_symbol_alone_as_the_whole_ident(self):
+        for symbol in string.punctuation:
+            path = self._deliver(symbol)
+            self.assertEqual(os.path.basename(path),
+                             self._safe(symbol) + ".job.txt",
+                             repr(symbol))
+            self.assertEqual(os.path.dirname(path), self.inbox)
+
+    def test_bookend_symbol_only_long_ident(self):
+        ident = string.punctuation * 4
+        self.assertEqual(len(ident), 128)
+        path = self._deliver(ident)
+        self.assertEqual(os.path.basename(path),
+                         self._safe(ident) + ".job.txt")
+
+    def test_bookend_nonprinting_characters_at_the_front_of_a_long_id(self):
+        for char in ("\x00", "\t", "\r", "\n"):
+            ident = char + "a" * 127
+            path = self._deliver(ident)
+            name = os.path.basename(path)
+            self.assertEqual(name, "_" + "a" * 127 + ".job.txt",
+                             repr(char))
+            self.assertNotIn(char, name)
+
+    def test_bookend_nonprinting_characters_at_the_back_of_a_long_id(self):
+        for char in ("\x00", "\t", "\r", "\n"):
+            ident = "a" * 127 + char
+            path = self._deliver(ident)
+            name = os.path.basename(path)
+            self.assertEqual(name, "a" * 127 + "_" + ".job.txt",
+                             repr(char))
+            self.assertNotIn(char, name)
+
+    # -- run lengths -------------------------------------------------
+
+    def test_run_of_ten_odd_characters_at_the_front(self):
+        odd = "z" * 10 + "a" * 118
+        plain = "a" * 128
+        self._deliver(odd)
+        self._deliver(plain)
+        self.assertEqual(self._names(), sorted(
+            [odd + ".job.txt", plain + ".job.txt"]))
+
+    def test_run_of_ten_odd_characters_at_the_back(self):
+        odd = "a" * 118 + "z" * 10
+        plain = "a" * 128
+        self._deliver(odd)
+        self._deliver(plain)
+        self.assertEqual(self._names(), sorted(
+            [odd + ".job.txt", plain + ".job.txt"]))
+
+    def test_run_of_ten_odd_characters_in_the_middle(self):
+        odd = "a" * 59 + "z" * 10 + "a" * 59
+        self.assertEqual(len(odd), 128)
+        plain = "a" * 128
+        self._deliver(odd)
+        self._deliver(plain)
+        self.assertEqual(self._names(), sorted(
+            [odd + ".job.txt", plain + ".job.txt"]))
+
+    def test_single_odd_character_at_each_end_and_a_full_run(self):
+        ids = ["z" * 128, "z" + "a" * 127, "a" * 127 + "z",
+               "a" * 64 + "z" + "a" * 63]
+        for ident in ids:
+            self.assertEqual(len(ident), 128)
+            self._deliver(ident)
+        self.assertEqual(self._names(),
+                         sorted(i + ".job.txt" for i in ids))
+
+    # -- injection-shaped payloads -----------------------------------
+
+    def test_an_injection_shaped_ident_lands_as_one_sanitized_file(self):
+        ident = "x'; DROP TABLE jobs; --"
+        path = self._deliver(ident)
+        self.assertEqual(os.path.dirname(path), self.inbox)
+        self.assertEqual(os.path.basename(path),
+                         self._safe(ident) + ".job.txt")
+        self.assertEqual(self._names(), [self._safe(ident) + ".job.txt"])
+        self.assertNotIn("'", os.path.basename(path))
+        self.assertNotIn(";", os.path.basename(path))
+        self.assertNotIn(" ", os.path.basename(path))
+
+    def test_a_traversal_shaped_long_ident_stays_inside_the_inbox(self):
+        ident = "../" * 40 + "a" * 8
+        self.assertEqual(len(ident), 128)
+        path = self._deliver(ident)
+        self.assertEqual(os.path.dirname(path), self.inbox)
+        self.assertTrue(os.path.isfile(path))
+        self.assertEqual(os.path.basename(path),
+                         self._safe(ident) + ".job.txt")
+        self.assertFalse(os.path.exists(
+            os.path.join(self.td.name, "a" * 8 + ".job.txt")))
+
+    def test_an_injection_shaped_subject_is_carried_verbatim(self):
+        ident = "c" * 120 + "a" * 8
+        subject = f"[HOMING-PIGEON] job {ident} ' OR '1'='1 --"
+        self._deliver(ident, subject=subject, body="b")
+        self.assertTrue(self._read(ident + ".job.txt").startswith(
+            subject + "\n\n"))
+
+    def test_an_injection_shaped_body_is_carried_verbatim(self):
+        ident = "c" * 120 + "b" * 8
+        body = ('{"x":"</script><script>alert(1)</script>'
+                '; rm -rf / # $(reboot)"}')
+        self._deliver(ident, body=body)
+        text = self._read(ident + ".job.txt")
+        self.assertIn(body, text)
+        self.assertTrue(text.endswith(body + "\n"))
+
+
+def _make_differ_at_position_tests():
+    # Two 128-char ids that share everything up to one
+    # position around the old 120 cut and the new 128 end,
+    # and differ there: two files, each carrying its own
+    # job, never one file rewriting the other.
+    for pos in (118, 119, 120, 121, 122, 124, 126, 127):
+
+        def run(self, pos=pos):
+            a = "p" * pos + "a" + "x" * (127 - pos)
+            b = "p" * pos + "b" + "x" * (127 - pos)
+            self.assertEqual((len(a), len(b)), (128, 128))
+            self.assertEqual(a[:pos], b[:pos])
+            self.assertNotEqual(a[pos], b[pos])
+            self._deliver(a)
+            self._deliver(b)
+            self.assertEqual(self._names(), sorted(
+                [a + ".job.txt", b + ".job.txt"]))
+            self.assertIn(f"body of {a}", self._read(a + ".job.txt"))
+            self.assertIn(f"body of {b}", self._read(b + ".job.txt"))
+
+        setattr(LongIdCollisionShotgunTest,
+                "test_ids_differing_at_position_%d_get_two_files" % pos,
+                run)
+
+
+_make_differ_at_position_tests()
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
