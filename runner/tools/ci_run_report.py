@@ -36,6 +36,7 @@ import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 WORKFLOW = "build.yml"
 # GitHub's hosted-runner billing multipliers; the macOS/Windows legs
@@ -73,14 +74,20 @@ def _repo():
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          text=True)
     url = res.stdout.strip()
-    # Only a GitHub remote names the repo: any other URL split on a
-    # host it does not contain would come back whole, scheme included.
-    if "github.com" in url:
-        tail = url.split("github.com", 1)[-1].lstrip(":/")
-        if tail.endswith(".git"):
-            tail = tail[:-4]
-        if "/" in tail:
-            return tail
+    # Accept GitHub remotes only when the host is exactly github.com.
+    # Handle both URL-style remotes and SCP-like git syntax.
+    parsed = urlparse(url)
+    tail = ""
+    if parsed.hostname == "github.com":
+        tail = parsed.path.lstrip("/")
+    else:
+        m = re.match(r"^[^@]+@github\.com:(.+)$", url)
+        if m:
+            tail = m.group(1).lstrip("/")
+    if tail.endswith(".git"):
+        tail = tail[:-4]
+    if "/" in tail:
+        return tail
     raise SystemExit("ci_run_report: cannot determine owner/repo; "
                      "set %s=owner/repo" % REPO_ENV)
 
