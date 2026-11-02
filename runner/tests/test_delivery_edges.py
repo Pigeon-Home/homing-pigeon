@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
 
 from runner import runner as R  # noqa: E402
 from runner.ops import exec as X  # noqa: E402
+from runner.tests._compat import filename_punctuation  # noqa: E402
 
 CFG = {"mailbox_user": "runner@example.com",
        "shared_secret": "4298e27808c3de551f9432d959d041b2"
@@ -722,9 +723,10 @@ class WindowsPinsNoRecordShotgunTest(_Base):
         self._check_stays("bnpall", "\x00\t\rgarbage\n\x00\t\r")
 
     def test_bookend_stem_every_punctuation_but_the_separator(self):
-        for i, sym in enumerate(string.punctuation):
-            if sym == "/":
-                continue
+        # Every punctuation character a file name can hold on
+        # this platform; the full set runs in the Linux and
+        # macOS jobs (filename_punctuation).
+        for i, sym in enumerate(filename_punctuation()):
             self._check_stays(f"{sym}job{sym}", b"\xff")
 
     # -- run-length sweeps (4) --

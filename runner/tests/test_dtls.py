@@ -50,6 +50,7 @@ from runner import runner  # noqa: E402
 from runner.wire import dtlsproto, jobcrypto, transports  # noqa: E402
 from runner.runner import PROTOCOL_VERSION, poll_once  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
+from runner.tests._compat import filename_punctuation  # noqa: E402
 import send_dtls  # noqa: E402
 from send_job import sign_payload, verify_body  # noqa: E402
 
@@ -2799,9 +2800,12 @@ class DtlsResultStaysShotgunTest(unittest.TestCase):
     def test_bookend_ident_symbols_a_file_name_can_hold(self):
         # Every printable symbol except the path separator:
         # a "/" cannot appear in a file name at all, so it is
-        # the one symbol this surface cannot take.
+        # the one symbol this surface cannot take. On Windows
+        # the sweep covers every symbol a file name can hold
+        # there; the full set runs in the Linux and macOS
+        # jobs (filename_punctuation).
         pipe, channel = self._pipe()
-        for symbol in string.punctuation.replace("/", ""):
+        for symbol in filename_punctuation():
             for ident in (symbol + "job-bk", "job-bk" + symbol):
                 self._clear(pipe, channel)
                 sent = self._deliver_after_wait(
@@ -2899,18 +2903,23 @@ class DtlsResultStaysShotgunTest(unittest.TestCase):
         pipe, channel = self._pipe()
         for ident in ("job-x;rm-rf", "job-x$(reboot)",
                       "job-x`id`", "job-x|cat", "job..x"):
-            self._clear(pipe, channel)
-            fname = self._write(channel, ident, "the answer")
-            pipe.job_session["job-x"] = "decoy"
-            sent, _ = self._wire(pipe)
-            pipe._pump_results()
-            self._stays(channel, fname)
-            self.assertEqual(sent, [], ident)
-            pipe.job_session[ident] = "real"
-            pipe._pump_results()
-            self._done(channel, fname)
-            self.assertEqual([row[0] for row in sent],
-                             ["real"], ident)
+            with self.subTest(ident=ident):
+                if os.name == "nt" and "|" in ident:
+                    self.skipTest(
+                        "a Windows file name cannot hold "
+                        "this character")
+                self._clear(pipe, channel)
+                fname = self._write(channel, ident, "the answer")
+                pipe.job_session["job-x"] = "decoy"
+                sent, _ = self._wire(pipe)
+                pipe._pump_results()
+                self._stays(channel, fname)
+                self.assertEqual(sent, [], ident)
+                pipe.job_session[ident] = "real"
+                pipe._pump_results()
+                self._done(channel, fname)
+                self.assertEqual([row[0] for row in sent],
+                                 ["real"], ident)
 
     def test_forged_envelope_in_the_body_is_only_a_body(self):
         pipe, channel = self._pipe()
@@ -3327,9 +3336,10 @@ class SuffixedResultStillThatJobShotgunTest(unittest.TestCase):
 
     def test_bookend_ident_front_symbols_deliver_as_suffixed(self):
         pipe, channel = self._pipe()
-        for sym in string.punctuation:
-            if sym == "/":
-                continue  # a separator cannot ride in a name
+        # Every symbol a file name can hold on this platform;
+        # a separator cannot ride in a name. The full set runs
+        # in the Linux and macOS jobs (filename_punctuation).
+        for sym in filename_punctuation():
             self._clear(pipe, channel)
             sent = self._deliver_suffixed(
                 pipe, channel, sym + "job-bk")
@@ -3338,9 +3348,7 @@ class SuffixedResultStillThatJobShotgunTest(unittest.TestCase):
 
     def test_bookend_ident_back_symbols_deliver_as_suffixed(self):
         pipe, channel = self._pipe()
-        for sym in string.punctuation:
-            if sym == "/":
-                continue
+        for sym in filename_punctuation():
             self._clear(pipe, channel)
             sent = self._deliver_suffixed(
                 pipe, channel, "job-bk" + sym)
@@ -3349,9 +3357,7 @@ class SuffixedResultStillThatJobShotgunTest(unittest.TestCase):
 
     def test_bookend_ident_matched_pairs_deliver_as_suffixed(self):
         pipe, channel = self._pipe()
-        for sym in string.punctuation:
-            if sym == "/":
-                continue
+        for sym in filename_punctuation():
             self._clear(pipe, channel)
             sent = self._deliver_suffixed(
                 pipe, channel, sym + "job-bk" + sym)
@@ -3360,11 +3366,9 @@ class SuffixedResultStillThatJobShotgunTest(unittest.TestCase):
 
     def test_bookend_ident_mismatched_pairs_deliver_as_suffixed(self):
         pipe, channel = self._pipe()
-        symbols = string.punctuation
+        symbols = filename_punctuation()
         rotated = symbols[1:] + symbols[:1]
         for front, back in zip(symbols, rotated):
-            if "/" in (front, back):
-                continue
             self._clear(pipe, channel)
             sent = self._deliver_suffixed(
                 pipe, channel, front + "job-bk" + back)
@@ -3373,9 +3377,8 @@ class SuffixedResultStillThatJobShotgunTest(unittest.TestCase):
 
     def test_bookend_ident_symbol_only_delivers_as_suffixed(self):
         pipe, channel = self._pipe()
-        idents = [sym * 3 for sym in string.punctuation
-                  if sym != "/"]
-        idents.append(string.punctuation.replace("/", ""))
+        idents = [sym * 3 for sym in filename_punctuation()]
+        idents.append(filename_punctuation())
         for ident in idents:
             self._clear(pipe, channel)
             sent = self._deliver_suffixed(pipe, channel, ident)
@@ -3383,6 +3386,9 @@ class SuffixedResultStillThatJobShotgunTest(unittest.TestCase):
                              ident)
 
     def test_bookend_ident_nonprinting_delivers_as_suffixed(self):
+        if os.name == "nt":
+            self.skipTest(
+                "a Windows file name cannot hold control characters")
         # Tab and CR can ride in a file name and in the name
         # pattern, and a suffixed name carrying either still
         # names its job. LF can ride in a file name but not
@@ -3525,6 +3531,9 @@ class SuffixedResultStillThatJobShotgunTest(unittest.TestCase):
 
     def test_a_trailing_newline_on_a_suffixed_name_still_names_it(
             self):
+        if os.name == "nt":
+            self.skipTest(
+                "a Windows file name cannot hold control characters")
         # The name pattern's end anchor admits one trailing
         # newline, suffixed names included.
         pipe, channel = self._pipe()
@@ -3620,6 +3629,9 @@ def _make_nonparsing_suffix_tests():
             # A name the parser does not read as a result for
             # job-a is not job-a's result: with job-a's session
             # live it still stays, unsent, under its own name.
+            if os.name == "nt" and fname != fname.rstrip(" ."):
+                self.skipTest(
+                    "Windows strips a trailing space from a file name")
             pipe, channel = self._pipe()
             written = self._write(channel, "job-a", "the answer",
                                   fname=fname)

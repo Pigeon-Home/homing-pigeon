@@ -1086,6 +1086,9 @@ class FilePipeHeldResultShotgunTest(unittest.TestCase):
             if sym == "/":
                 continue
             with self.subTest(sym=sym):
+                if os.name == "nt" and sym in '<>:"|?*\\':
+                    self.skipTest(
+                        "a Windows file name cannot hold this character")
                 pipe, channel = self._fresh_pipe()
                 watched = self._offer(pipe=pipe)
                 self._channel_done("w", channel=channel)

@@ -37,6 +37,7 @@ from runner.guard import security as S  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
 import runner.tests.test_runner as TR  # noqa: E402
 from runner.tests.test_result_stash import Clock, StashHarness  # noqa: E402
+from runner.tests._compat import filename_punctuation  # noqa: E402
 
 SECRET = TR.SECRET
 
@@ -639,7 +640,10 @@ class RefusedCollisionSetAsideShotgunTest(StashHarness):
     def test_bookend_punctuation_ids_on_the_filesystem(self):
         root, d = self._chan()
         failed = os.path.join(d["outbox"], "failed")
-        for s in string.punctuation.replace("/", ""):
+        # Every punctuation character a file name can hold on
+        # this platform; the full set runs in the Linux and
+        # macOS jobs (filename_punctuation).
+        for s in filename_punctuation():
             for fname, stem in ((s + "kj.result-2.txt", s + "kj"),
                                 ("kj" + s + ".result-2.txt", "kj" + s)):
                 self._write_outbox(d, fname, self.BODY)

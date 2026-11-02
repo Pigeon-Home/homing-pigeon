@@ -43,6 +43,7 @@ except ImportError:  # test-only dep: runner/tests/_hypothesis_shim.py
 
 from runner import runner as R
 from runner.wire import transports as T
+from runner.tests._compat import filename_punctuation
 
 TESTKEY = "Platinum" + "Key-7f3a" + "9c1eB8d2" + "F4a6e5C7" + "b9D1a0F2"
 WRONGKEY = "Platinum" + "Wrong-1b2c" + "3d4eF5a6" + "B7c8D9e0" + "F1a2B3c4"
@@ -2422,9 +2423,10 @@ class UnreadableRefusalNameShotgunTest(unittest.TestCase):
 
     def test_symbol_bookended_stems_answer_with_a_sanitised_stub(self):
         cfg = _cfg()
-        for symbol in string.punctuation:
-            if symbol == "/":
-                continue  # a path separator cannot sit in a name
+        # A path separator cannot sit in a name; on Windows the
+        # refused characters cannot either. The full set runs
+        # in the Linux and macOS jobs (filename_punctuation).
+        for symbol in filename_punctuation():
             stem = symbol + "j1" + symbol
             base = self._base()
             _plant_sent_record(base, cfg, stem)

@@ -59,6 +59,26 @@ def project_version():
     return m.group(1)
 
 
+def filename_punctuation():
+    """The string.punctuation characters a file name can hold
+    on this platform, as one string in punctuation order.
+
+    Everywhere: all of string.punctuation except "/", the path
+    separator no single file name can contain. On Windows the
+    Win32 namespace also refuses < > : " | ? * in a name and
+    treats "\\" as a separator, so a name carrying one of those
+    cannot exist there at all. The bookend sweeps that create
+    files iterate this set: the full sweep runs in the Linux
+    and macOS jobs, and the Windows job runs every character
+    its file names can hold.
+    """
+    import string
+    chars = string.punctuation.replace("/", "")
+    if os.name == "nt":
+        chars = "".join(c for c in chars if c not in '<>:"|?*\\')
+    return chars
+
+
 def require_hypothesis():
     """Skip the calling module when hypothesis is absent off CI.
 

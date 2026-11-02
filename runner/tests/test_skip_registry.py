@@ -143,6 +143,28 @@ REGISTERED = {
     "cannot create a symlink here":
         "the host refuses symlink creation (a Windows "
         "privilege); run where symlinks can be created",
+    "a Windows file name cannot hold this character":
+        "the file-name bookend sweeps in the transport families "
+        "(test_transport_queues, test_transport_shells, test_dtls): "
+        "Win32 refuses < > : \" | ? * in a name and treats \\ as a "
+        "separator, so the fixture file cannot be created there; "
+        "the full sweep runs in the Linux and macOS jobs",
+    "a Windows file name cannot hold control characters":
+        "the DTLS suffixed-name legs that ride tab, CR or LF in "
+        "a file name; Win32 refuses every control character in a "
+        "name, so the shape cannot exist there; runs in the "
+        "Linux and macOS jobs",
+    "Windows strips a trailing space from a file name":
+        "the DTLS non-parsing suffix shape whose name ends in a "
+        "space; Windows removes it at creation, so the shape "
+        "cannot exist there; runs in the Linux and macOS jobs",
+    "os.mkfifo does not exist on this platform":
+        "test_transport_queues' FIFO result leg; Windows has no "
+        "mkfifo and no FIFOs; runs in the Linux and macOS jobs",
+    "this filesystem folds case, so case-variant names are one file":
+        "test_transport_queues' case-variant long-id leg, probed "
+        "on the test's own filesystem; runs where the filesystem "
+        "is case-sensitive, the Linux job among them",
     "job_user audit is POSIX": "run on POSIX",
     "job_user face is POSIX syscalls": "run on POSIX",
     "job_user fallback is POSIX": "run on POSIX",
