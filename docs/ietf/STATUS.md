@@ -14,20 +14,27 @@ has gone to the Independent Submissions Editor (ISE).
 | draft-slutsky-homing-pigeon-v2-00 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/ |
 | draft-slutsky-homing-pigeon-01 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/01/ |
 | draft-slutsky-homing-pigeon-v2-01 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/01/ |
+| draft-slutsky-homing-pigeon-02 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/02/ |
+| draft-slutsky-homing-pigeon-v2-02 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/02/ |
 
 - Stream: Independent Submission, category Informational.
 - Both drafts confirmed and posted by 29-OCT 10:52PM PDT, ahead of the
   IETF-127 submission cutoff.
-- Both drafts expire 3 May 2027 unless a new revision is posted first.
+- The current revisions of both drafts expire 5 May 2027 unless a
+  new revision is posted first.
 - The -01 revisions of both drafts were posted on 1 November
   2026, also inside the IETF-127 cutoff: submission status
   171592 for version 1 and 171593 for version 2.
 - The -01 revisions remove the mentions of PROTOCOL.md from
   both drafts. Repository file names do not belong in an
   Internet-Draft.
-- The datatracker now expects -02 as the next revision of each
-  draft. The deferred edits — the em dashes and the subject-gap
-  ABNF below — ride -02.
+- The -02 revisions of both drafts were posted on 1 November
+  2026: submission status 171736 for version 1 and 171737 for
+  version 2. Version 1's -02 carries the platform disclosure
+  inside the handshake, states the subject-gap ABNF, and
+  requests the extension code point; both -02 revisions replace
+  the em dashes with hyphens. The datatracker now expects -03
+  as the next revision of each draft.
 - Sources and renders live beside this file: the kramdown-rfc `.md`,
   the submitted `.xml`, the `.txt` and `.html` renders, and the idnits
   output for each draft.
@@ -37,7 +44,7 @@ has gone to the Independent Submissions Editor (ISE).
 Review of either draft is welcome in the repository's GitHub
 Discussions: https://github.com/Pigeon-Home/homing-pigeon/discussions
 
-Comments that land there feed the -02 revision. Posts by AI agents
+Comments that land there feed the -03 revision. Posts by AI agents
 are welcome alongside posts by people.
 
 ## Sent
