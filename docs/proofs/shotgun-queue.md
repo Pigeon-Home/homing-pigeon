@@ -396,26 +396,108 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 9d8493c3 (31-Oct-2026)
 - Existing tests: test_platinum_runner.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (UnreadableRefusalNameShotgunTest
+  in test_platinum_runner.py): when the set-aside result's body
+  names no job, the refusal is answered under the job id in the
+  result file's own stem — the fallback's shapes (no blank
+  line, non-UTF-8 bodies, empty and whitespace bodies, BOM,
+  the reason cut at 500 for the record and 300 for the stub),
+  the precedence of a parsed name over the stem, and the stem
+  field itself. Deliberately distinct from item 5's family in
+  the same file, which pins the no-record stay in the same
+  branch; this family pins the answering side. Landed on main
+  2-Nov-2026 (c4b82b47); the file runs green (146 tests in the
+  file, 0 skipped), no live bug exposed, no production code
+  changed.
+- Proof of work (per the method section): per-field enumeration
+  (the subject field's shapes, the record's fields, the stem
+  field including the 128/129 boundary) and the bookend /
+  run-length sweeps are carried in the class docstring in the
+  repo. Fuzz executed: runner/tools/de_dust_corpus.py grow
+  --target stash --rounds 400 --seed 20261113, run locally
+  against the banked stash corpus (31 entries). Result:
+  400 rounds, 0 crashes, 0 slow, arcs unchanged at 20,
+  slowest try 60 ms. The grow's bookkeeping writes were
+  reverted and are not banked (banking is the rigs' hourly
+  job).
 
 ### 13. Windows pins: a refusal with no record is not filed
 - Fixed: bfb230cf (31-Oct-2026)
 - Existing tests: test_delivery_edges.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (WindowsPinsNoRecordShotgunTest
+  in test_delivery_edges.py): on the Windows-shaped pins, a
+  refusal note with no result file beside it is filed and
+  counted, while a pair carrying a result file and no record
+  stays in failed/ byte-for-byte and is never moved — the
+  counting and mixed-pair shapes, and the config fields
+  (runner_id, shared_secret, mailbox_user) that decide whether
+  a record can answer. Landed on main 2-Nov-2026 (feac1460);
+  the file runs green (82 tests in the file, 0 skipped), no
+  live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261114, run locally against the banked
+  channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 142, slowest try 38 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 14. A suffixed result file is still that job
 - Fixed: ee1fe83f (31-Oct-2026)
 - Existing tests: test_dtls.py, test_email_pipe_coverage.py,
   test_transport_shells.py (added by the fix)
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (SuffixedResultStillThatJobShotgunTest
+  in test_dtls.py — the pipe that acked without sending; the
+  family pins the live-session correlation, distinct from item
+  4's held-set parser pins and item 9's waiting-for-a-session
+  pins): a collision-suffixed result file still delivers to
+  that job's session — every counter shape (0, 1, 2, 3, 9, 10,
+  11, 99, 100, 999, zero-padded), the suffix shapes that do
+  not parse, siblings in one pump in sorted order, and prefix
+  idents. Landed on main 2-Nov-2026 (8edf607d); the file runs
+  green (186 tests in the file, 1 skip — the pre-existing
+  environmental UDP skip), no live bug exposed, no production
+  code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target dtls --rounds
+  400 --seed 20261115, run locally against the banked dtls
+  corpus (55 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 728, slowest try 57 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 15. A second job under a live id is not a successful send (queue Worker)
 - Fixed: 929fce3f (31-Oct-2026)
 - Existing tests: queues-worker worker.test.mjs, test_queue_weather.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun15 suite in
+  runner/cloud/queues-worker/test/worker.test.mjs, the file
+  where the fix's own Worker tests live): a second envelope
+  under an id that is already live is stored as a duplicate,
+  never as a successful send — the envelope's fields one by
+  one (v, type, job_id, kind, script, sig, extra fields, the
+  subject), duplicate runs, and the lifecycle edges (an ack
+  frees the id, a dead id answers 409 not a duplicate, a
+  duplicate does not disturb a live lease, a posted result
+  does not free the id). Landed on main 2-Nov-2026 (591a1b3d);
+  the file runs green under node --test (64 tests, 64 pass,
+  0 skipped — the Python skip registry does not apply to this
+  file), no live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261116, run locally against the banked
+  channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 142, slowest try 54 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 16. A receipt that is not this pull's is 409, not 404
 - Fixed: 694dc82a (31-Oct-2026)
