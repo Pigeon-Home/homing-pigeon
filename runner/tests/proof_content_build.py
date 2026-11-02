@@ -69,13 +69,20 @@ def pwsh():
 def compose(n, catalog, start, pad_open, pad_close):
     min_pad = 1 + len(pad_open) + 1 + len(pad_close)
     lines = []
+    body_len = 0
     i = start
     while i - start < 1000000:
         line = catalog[i % len(catalog)]
-        trial = "\n".join(lines + [line])
-        if len(trial) + min_pad > n:
+        # The joined length if this line were added: the lines so
+        # far, one separator (unless it is the first), and the line.
+        # Tracking it keeps the builder linear; rebuilding the whole
+        # string on every line made it quadratic and pushed the
+        # suite over its wall clock at the large rungs.
+        trial_len = body_len + (1 if lines else 0) + len(line)
+        if trial_len + min_pad > n:
             break
         lines.append(line)
+        body_len = trial_len
         i += 1
     if not lines:
         raise AssertionError("catalog line longer than the rung")

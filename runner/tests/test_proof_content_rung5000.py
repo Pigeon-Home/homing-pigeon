@@ -102,13 +102,17 @@ def compose(n, catalog, start, pad_open, pad_close):
     pad line that makes the character count exact."""
     min_pad = 1 + len(pad_open) + 1 + len(pad_close)
     lines = []
+    body_len = 0
     i = start
     while i - start < 100000:
         line = catalog[i % len(catalog)]
-        trial = "\n".join(lines + [line])
-        if len(trial) + min_pad > n:
+        # Track the joined length instead of rebuilding the whole
+        # string on every line, as in proof_content_build.compose.
+        trial_len = body_len + (1 if lines else 0) + len(line)
+        if trial_len + min_pad > n:
             break
         lines.append(line)
+        body_len = trial_len
         i += 1
     if not lines:
         raise AssertionError("catalog line longer than the rung")
