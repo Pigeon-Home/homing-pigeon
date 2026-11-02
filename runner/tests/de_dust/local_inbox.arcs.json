@@ -1265,12 +1265,27 @@
   ],
   [
    "runner/oracle/senses.py",
+   325,
+   327
+  ],
+  [
+   "runner/oracle/senses.py",
    326,
    327
   ],
   [
    "runner/oracle/senses.py",
    327,
+   328
+  ],
+  [
+   "runner/oracle/senses.py",
+   327,
+   329
+  ],
+  [
+   "runner/oracle/senses.py",
+   328,
    329
   ],
   [
@@ -2595,12 +2610,27 @@
   ],
   [
    "runner/runner.py",
+   204,
+   206
+  ],
+  [
+   "runner/runner.py",
    205,
    206
   ],
   [
    "runner/runner.py",
    206,
+   207
+  ],
+  [
+   "runner/runner.py",
+   206,
+   208
+  ],
+  [
+   "runner/runner.py",
+   207,
    208
   ],
   [
