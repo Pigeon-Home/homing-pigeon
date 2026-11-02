@@ -207,6 +207,7 @@ A finding is most useful when it points at the file and the line
   content-independence series and the redo it asks for: every
   rung in order, both shells, the full construct set, and an
   honest statement of what each rung covers.
+  `content-rung-5000.md` is the first piece of that redo.
 - `thinking.md` — the reasoning behind the work: why the gate
   comes first, why size is a character count, the open
   content-independence challenge, the standing rules, and the
