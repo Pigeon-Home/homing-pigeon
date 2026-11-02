@@ -128,7 +128,33 @@ Applied to every item on this queue, item 1 included:
 - Existing tests: the result-lifecycle tests (test_transport_queues.py,
   test_transport_shells.py)
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (SecondResultTargetShotgunTest in
+  test_de_dust_corpus.py — the fix's own commit touched only
+  runner/tools/de_dust_corpus.py, so the family lives with the
+  checker's tests and pins the writer through the transports
+  module): colliding stems in every channel mode, cleaned and
+  case-variant names, poison files sharing a stem, the checker
+  refusing both an extra and a missing sidecar, and the writer's
+  suffix sequence and shared sidecar. Landed on main 2-Nov-2026
+  (39438977); the file runs green (133 tests in the file,
+  0 skipped), no live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration —
+  the writer's surface is fielded (base_dir, name, job_subject,
+  subject, body, ident_hint, target) and each field has its own
+  test, ident_hint and target a second each for their type and
+  emptiness edges; the checker's spec fields are enumerated by
+  the hand-written file shapes and the generated per-mode tests.
+  Bookends and run lengths per the method section, on every
+  text surface (the ident hint, the result subject's id, the
+  target, the body, the inbox file name). Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target stash --rounds
+  400 --seed 20261104, run locally against the banked stash
+  corpus (31 entries), and re-run at landing with the same
+  result. Result: 400 rounds, 0 crashes, 0 slow, arcs unchanged
+  at 20, slowest try about 50 ms — the shared-target miscount
+  did not recur. The grow's bookkeeping writes were not banked
+  (banking is the rigs' hourly job). The same write-up is
+  carried in the test file's class docstring in the repo.
 
 ### 4. Result stays while it is still set aside (file transport)
 - Fixed: e4c21957 (31-Oct-2026)
@@ -140,7 +166,24 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 2715bedc (31-Oct-2026)
 - Existing tests: test_platinum_runner.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (RefusedNoRecordShotgunTest in
+  test_platinum_runner.py): the stash walk's refusal shapes —
+  the record-side and channel-side halves of the set-aside pair
+  in every combination, a refused result with no record staying
+  until a record can answer it, drained and undrained states,
+  and the record read failing in every way a read can fail.
+  Landed on main 2-Nov-2026 (85b00a6b); the file runs green
+  (96 tests in the file, 0 skipped), no live bug exposed, no
+  production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target race_stash
+  --rounds 400 --seed 20261105, run locally against the banked
+  race_stash corpus (63 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 193, slowest try 58 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 6. A result the listing cannot read does not finish the job
 - Fixed: 4203d661 (31-Oct-2026)
@@ -158,13 +201,48 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 6ed7281e (31-Oct-2026)
 - Existing tests: test_email_pipe_coverage.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (UnbuildableResultShotgunTest in
+  test_email_pipe_coverage.py): a result the mail builder
+  cannot build is set aside beside its refusal, and the job is
+  not treated as sent — build-failure shapes across the
+  result's own fields, the set-aside pair written and missing,
+  and the posting retried. Landed on main 2-Nov-2026
+  (77edd0ec); the file runs green (66 tests in the file,
+  0 skipped), no live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target mail --rounds
+  400 --seed 20261106, run locally against the banked mail
+  corpus (26 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 101, slowest try 31 ms — the unbuildable-
+  result failure did not recur. The grow's bookkeeping writes
+  were reverted and are not banked (banking is the rigs' hourly
+  job).
 
 ### 9. A DTLS result stays until a session can take it
 - Fixed: 81ef9ee5 (31-Oct-2026)
 - Existing tests: test_dtls.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (DtlsResultStaysShotgunTest in
+  test_dtls.py): a result completed before any session can
+  take it stays on the pending shelf until a session acks it —
+  the shelf's keying, expiry and ack shapes, hostile job ids
+  and subjects, and the session arriving early, late and
+  never. Landed on main 2-Nov-2026 (a11ce8d5); the file runs
+  green (136 tests in the file, 1 skip — the pre-existing
+  environmental skip for unconnected UDP in this environment,
+  not from this family), no live bug exposed, no production
+  code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target dtls --rounds
+  400 --seed 20261107, run locally against the banked dtls
+  corpus (55 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 728, slowest try 62 ms — the lost-result
+  shape did not recur. The grow's bookkeeping writes were
+  reverted and are not banked (banking is the rigs' hourly job).
 
 ### 10. A NATS result is not done until the broker answers the publish
 - Fixed: a3cec2fc (31-Oct-2026)
