@@ -29,6 +29,7 @@ Agent-Stamp: 58316a92-3c4a-41cb-8a16-8c0c5a871e90
 import json
 import os
 import shutil
+import string
 import sys
 import tempfile
 import time
@@ -1100,3 +1101,655 @@ class RecordPayloadKeySlotTest(unittest.TestCase):
         rec = {"body": body, "key_id": "gone", "job_id": "j-env"}
         self.assertIsNone(R._record_payload(rec, {"": TESTKEY}))
 
+
+
+class RefusedNoRecordShotgunTest(unittest.TestCase):
+    """The shotgun family for shotgun queue item 5 (fix 2715bedc,
+    31-Oct-2026): a refused result with no record stays until one
+    can answer it. The sweep moved the refusal pair to
+    outbox/done/ when it had no sent record; the queue then saw
+    nothing waiting and acked the job with nothing stored. The
+    fix leaves both files in failed/ when a result file is
+    present and no record exists here, because the record may
+    arrive on a later pass; a note with no result file is still
+    filed. This family scattershots everything around that one
+    branch: what counts as a record (per-field: the sent file's
+    body and subject fields, their types, the stubbed flag, the
+    signing key), what counts as a result file (empty, blank,
+    unparseable, non-UTF-8, a directory, an envelope naming a
+    missing job, an envelope naming its job only in the body),
+    the note's reason text, the stem the pair is named by,
+    channel and listing edges, bookends and run lengths on both
+    text fields, and injection-shaped payloads in both fields.
+    One regression test was never going to be enough for a bug
+    that silently finished a job with nothing stored.
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: every printable ASCII
+    symbol (string.punctuation, all 32) is placed at the front
+    AND the back of the reason and of the result text, as
+    singles, matched and mismatched pairs and symbol-only
+    strings, plus NUL, tab, CR and LF at both ends; and runs --
+    ten of the odd character, and ten ordinary characters with
+    the odd one at the front, the back and the middle.
+
+    Proof of work (2-Nov-2026). The unit tests are the 50
+    methods of this class: 9 core seams, 10 sent-record field
+    tests, 7 channel/listing tests, 6 result-file shape tests,
+    4 reason-field tests, 5 stem tests, 6 bookend sweeps and
+    3 run-length / injection sweeps. Per-field enumeration: the
+    sweep's decision reads the note's reason text, the result
+    file (presence, parse, the job its subject names), the
+    channel name, the stem, and the sent record's body, subject,
+    stubbed and key_id fields; each is enumerated above, and the
+    fields the no-record branch must NOT consult (the reason's
+    text, the result's body) are pinned by tests 30 and 35. The
+    fuzzing was executed, not just the tests written: the corpus
+    machinery was driven locally with
+    runner/tools/de_dust_corpus.py grow --target race_stash
+    --rounds 400 --seed 20261105 against the banked race_stash
+    corpus (63 entries) -- the target that exercises the
+    runner's stash/record moves this sweep is built from.
+    Result: 400 rounds, 0 crashes, 0 slow, arcs unchanged at
+    193, slowest try 58 ms; the ack-with-nothing-stored shape
+    did not recur. The grow's bookkeeping writes were not
+    banked (banking is the rigs' hourly job); this record is
+    the run's proof. None of this is exotic: it is
+    combinatorics -- systematically trying the combinations a
+    hand-written list would never reach, then pinning each
+    answer as a test."""
+
+    # -- helpers --
+
+    def _base(self):
+        base = tempfile.mkdtemp(prefix="hp-plat-norec5-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        return base
+
+    def _dirs(self, base, name="queues"):
+        paths = T.channel_paths(base, name)
+        return paths, os.path.join(paths["outbox"], "failed")
+
+    def _assert_stays(self, base, name, stem, handled):
+        paths, failed = self._dirs(base, name)
+        self.assertEqual(handled, 0)
+        self.assertEqual(
+            sorted(os.listdir(failed)),
+            sorted([stem + ".refused.txt", stem + ".result.txt"]))
+        self.assertEqual(os.listdir(paths["outbox_done"]), [])
+
+    def _plant_broken_sent(self, base, cfg, job_id, text=None,
+                           record=None, as_dir=False):
+        skey = R._seen_key(cfg, job_id)
+        path = R._sent_path(base, skey)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        if as_dir:
+            os.makedirs(path)
+        elif record is not None:
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(record, fh)
+        else:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+        return path
+
+    def _assert_given_up(self, base, cfg, job_id, name, stem, handled):
+        paths, failed = self._dirs(base, name)
+        self.assertEqual(handled, 1)
+        self.assertFalse(os.path.exists(
+            R._sent_path(base, R._seen_key(cfg, job_id))))
+        self.assertTrue(os.path.isfile(os.path.join(
+            paths["outbox_done"], stem + ".refused.txt")))
+        given = os.path.join(base, "outbox", "failed")
+        self.assertEqual(len(os.listdir(given)), 1)
+
+    # -- core seams --
+
+    def test_pair_stays_byte_for_byte_with_no_record(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "refused: too big",
+                       "not an envelope at all")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+        _, failed = self._dirs(base, "queues")
+        with open(os.path.join(failed, "j1.refused.txt"),
+                  encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "refused: too big")
+        with open(os.path.join(failed, "j1.result.txt"),
+                  encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "not an envelope at all")
+
+    def test_pair_stays_across_repeated_sweeps(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        for _ in range(3):
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+            self._assert_stays(base, "queues", "j1", handled)
+
+    def test_record_arriving_on_a_later_pass_answers_the_pair(self):
+        base = self._base()
+        cfg = _cfg()
+        job_id = "job-late-1"
+        _plant_refusal(base, "queues", job_id, "not an envelope",
+                       _result_text(job_id))
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", job_id, handled)
+        _plant_sent_record(base, cfg, job_id)
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self.assertEqual(handled, 1)
+        paths, failed = self._dirs(base, "queues")
+        self.assertTrue(os.path.isfile(
+            os.path.join(paths["outbox"], job_id + ".result.txt")))
+        self.assertFalse(os.path.exists(
+            os.path.join(failed, job_id + ".result.txt")))
+        self.assertTrue(os.path.isfile(os.path.join(
+            paths["outbox_done"], job_id + ".refused.txt")))
+
+    def test_a_note_with_no_result_file_is_still_filed(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "refused, no result", None)
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self.assertEqual(handled, 1)
+        paths, failed = self._dirs(base, "queues")
+        self.assertEqual(os.listdir(failed), [])
+        self.assertTrue(os.path.isfile(os.path.join(
+            paths["outbox_done"], "j1.refused.txt")))
+
+    def test_a_note_only_pair_is_filed_even_when_its_stem_has_a_record(self):
+        # Without a result file the sweep never derives a job id
+        # from the stem, so a record under that name is not an
+        # answer to this note: the note is filed, the record is
+        # left exactly as it was.
+        base = self._base()
+        cfg = _cfg()
+        _plant_sent_record(base, cfg, "j1")
+        _plant_refusal(base, "queues", "j1", "refused, no result", None)
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self.assertEqual(handled, 1)
+        sent = R._sent_path(base, R._seen_key(cfg, "j1"))
+        self.assertTrue(os.path.isfile(sent))
+        self.assertFalse(R._read_record(sent).get("stubbed"))
+
+    def test_envelope_naming_a_job_with_no_record_stays(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "stem-x", "refused",
+                       _result_text("job-missing-9"))
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "stem-x", handled)
+
+    def test_envelope_naming_a_job_with_a_record_answers_that_job(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_sent_record(base, cfg, "job-env-1")
+        _plant_refusal(base, "queues", "stem-y", "refused",
+                       _result_text("job-env-1"))
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self.assertEqual(handled, 1)
+        paths, failed = self._dirs(base, "queues")
+        self.assertTrue(os.path.isfile(
+            os.path.join(paths["outbox"], "stem-y.result.txt")))
+        self.assertTrue(os.path.isfile(os.path.join(
+            paths["outbox_done"], "stem-y.refused.txt")))
+        rec = R._read_record(
+            R._sent_path(base, R._seen_key(cfg, "job-env-1")))
+        self.assertTrue(rec.get("stubbed"))
+
+    def test_a_record_for_a_different_job_does_not_answer(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_sent_record(base, cfg, "job-other-1")
+        _plant_refusal(base, "queues", "job-mine-1", "refused",
+                       "garbage with no subject")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "job-mine-1", handled)
+        sent = R._sent_path(base, R._seen_key(cfg, "job-other-1"))
+        self.assertFalse(R._read_record(sent).get("stubbed"))
+
+    def test_a_record_still_in_the_outbox_stash_is_not_a_sent_record(self):
+        # A record that was stashed but never counted as sent
+        # lives at the stash path, not the sent path the sweep
+        # reads: the pair stays.
+        base = self._base()
+        cfg = _cfg()
+        job_id = "job-stash-1"
+        body = R._outgoing_result_body(_payload(job_id), TESTKEY,
+                                       False, job_id, "")
+        skey = R._seen_key(cfg, job_id)
+        assert R.stash_result(base, skey, {"job_id": job_id},
+                              f"[HOMING-PIGEON] result {job_id}", body)
+        _plant_refusal(base, "queues", job_id, "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", job_id, handled)
+
+    # -- the sent record, field by field --
+
+    def test_sent_file_without_a_body_field_reads_as_no_record(self):
+        base = self._base()
+        cfg = _cfg()
+        self._plant_broken_sent(base, cfg, "j1",
+                                record={"subject": "s"})
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_sent_file_without_a_subject_field_reads_as_no_record(self):
+        base = self._base()
+        cfg = _cfg()
+        self._plant_broken_sent(base, cfg, "j1", record={"body": "b"})
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_sent_file_with_a_non_string_body_reads_as_no_record(self):
+        base = self._base()
+        cfg = _cfg()
+        self._plant_broken_sent(
+            base, cfg, "j1", record={"body": 42, "subject": "s"})
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_sent_file_with_a_non_string_subject_reads_as_no_record(self):
+        base = self._base()
+        cfg = _cfg()
+        self._plant_broken_sent(
+            base, cfg, "j1", record={"body": "b", "subject": None})
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_sent_file_that_is_not_json_reads_as_no_record(self):
+        base = self._base()
+        cfg = _cfg()
+        self._plant_broken_sent(base, cfg, "j1", text="{not json")
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_sent_file_that_is_a_json_list_reads_as_no_record(self):
+        base = self._base()
+        cfg = _cfg()
+        self._plant_broken_sent(base, cfg, "j1", text="[]")
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_sent_file_that_is_empty_reads_as_no_record(self):
+        base = self._base()
+        cfg = _cfg()
+        self._plant_broken_sent(base, cfg, "j1", text="")
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_sent_path_held_by_a_directory_reads_as_no_record(self):
+        base = self._base()
+        cfg = _cfg()
+        self._plant_broken_sent(base, cfg, "j1", as_dir=True)
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_a_stubbed_record_is_given_up_not_kept_waiting(self):
+        # A record exists but its stub already went out: the
+        # refusal is the stub's own, so the record is given up
+        # and the pair is filed -- the no-record stay must not
+        # swallow it.
+        base = self._base()
+        cfg = _cfg()
+        _plant_sent_record(base, cfg, "j1", stubbed=True)
+        _plant_refusal(base, "queues", "j1", "stub refused too",
+                       _result_text("j1"))
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_given_up(base, cfg, "j1", "queues", "j1", handled)
+
+    def test_a_record_whose_key_is_gone_is_given_up_not_kept_waiting(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_sent_record(base, cfg, "j1", key_id="other")
+        _plant_refusal(base, "queues", "j1", "refused",
+                       _result_text("j1"))
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_given_up(base, cfg, "j1", "queues", "j1", handled)
+
+    # -- channels and the listing --
+
+    def test_a_staying_pair_does_not_block_another_channel(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "chan-a", "j1", "refused", "garbage")
+        _plant_refusal(base, "chan-b", "j2", "refused", None)
+        handled = R._sweep_channel_refusals(
+            base, cfg, ["chan-a", "chan-b"])
+        self.assertEqual(handled, 1)
+        self._assert_stays(base, "chan-a", "j1", 0)
+        paths, _ = self._dirs(base, "chan-b")
+        self.assertTrue(os.path.isfile(os.path.join(
+            paths["outbox_done"], "j2.refused.txt")))
+
+    def test_two_staying_pairs_in_one_channel_both_stay(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        _plant_refusal(base, "queues", "j2", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self.assertEqual(handled, 0)
+        _, failed = self._dirs(base, "queues")
+        self.assertEqual(sorted(os.listdir(failed)), [
+            "j1.refused.txt", "j1.result.txt",
+            "j2.refused.txt", "j2.result.txt"])
+
+    def test_a_staying_pair_and_a_filed_note_share_a_channel(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        _plant_refusal(base, "queues", "j2", "refused", None)
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self.assertEqual(handled, 1)
+        paths, failed = self._dirs(base, "queues")
+        self.assertEqual(sorted(os.listdir(failed)),
+                         ["j1.refused.txt", "j1.result.txt"])
+        self.assertTrue(os.path.isfile(os.path.join(
+            paths["outbox_done"], "j2.refused.txt")))
+
+    def test_bogus_channel_names_are_stepped_over(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        handled = R._sweep_channel_refusals(
+            base, cfg, [None, 7, b"bytes-name", "ghost-chan", "queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_empty_and_none_channel_lists_handle_nothing(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        self.assertEqual(R._sweep_channel_refusals(base, cfg, []), 0)
+        self.assertEqual(R._sweep_channel_refusals(base, cfg, None), 0)
+        self._assert_stays(base, "queues", "j1", 0)
+
+    def test_no_transports_module_leaves_the_pair_untouched(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "refused", "garbage")
+        with mock.patch.object(R, "_transports", None):
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_an_unusable_base_handles_nothing(self):
+        self.assertEqual(
+            R._sweep_channel_refusals("", _cfg(), ["queues"]), 0)
+        self.assertEqual(
+            R._sweep_channel_refusals(None, _cfg(), ["queues"]), 0)
+
+    # -- the result file, shape by shape --
+
+    def test_an_empty_result_file_stays(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "refused", "")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_a_result_file_with_only_a_blank_line_stays(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "refused", "\n\n")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_a_result_path_that_is_a_directory_is_filed_as_a_note_only(self):
+        # isfile() is the stay's gate: a directory at the result
+        # path is not a result file, so the note is filed the
+        # way a note-only pair is.
+        base = self._base()
+        cfg = _cfg()
+        paths = _plant_refusal(base, "queues", "j1", "refused", None)
+        failed = os.path.join(paths["outbox"], "failed")
+        os.makedirs(os.path.join(failed, "j1.result.txt"))
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self.assertEqual(handled, 1)
+        self.assertTrue(os.path.isfile(os.path.join(
+            paths["outbox_done"], "j1.refused.txt")))
+
+    def test_a_result_naming_its_job_only_in_the_body_stays(self):
+        # The job id is read from the envelope's subject, never
+        # from its body: a record for the body-named job is not
+        # an answer, and the pair stays under its stem.
+        base = self._base()
+        cfg = _cfg()
+        _plant_sent_record(base, cfg, "job-body-1")
+        _plant_refusal(base, "queues", "stem-z", "refused",
+                       "an unrelated subject\n\n"
+                       "[HOMING-PIGEON] result job-body-1\n\nthe body")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "stem-z", handled)
+        sent = R._sent_path(base, R._seen_key(cfg, "job-body-1"))
+        self.assertFalse(R._read_record(sent).get("stubbed"))
+
+    def test_a_non_utf8_result_file_stays(self):
+        base = self._base()
+        cfg = _cfg()
+        paths = _plant_refusal(base, "queues", "j1", "refused", None)
+        failed = os.path.join(paths["outbox"], "failed")
+        with open(os.path.join(failed, "j1.result.txt"), "wb") as fh:
+            fh.write(b"\xff\xfe not utf-8, no envelope")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_a_non_utf8_note_with_a_result_file_stays(self):
+        base = self._base()
+        cfg = _cfg()
+        paths = _plant_refusal(base, "queues", "j1", "x", "garbage")
+        failed = os.path.join(paths["outbox"], "failed")
+        with open(os.path.join(failed, "j1.refused.txt"), "wb") as fh:
+            fh.write(b"\xff\xfe not utf-8 either")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    # -- the note's reason text, field by field --
+
+    def test_an_empty_reason_still_stays(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_a_whitespace_only_reason_still_stays(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", "  \t\r\n ", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_a_reason_naming_a_job_with_a_record_does_not_answer(self):
+        # The reason is prose for the log and the stub; the sweep
+        # never looks a record up by it.
+        base = self._base()
+        cfg = _cfg()
+        _plant_sent_record(base, cfg, "job-reason-1")
+        _plant_refusal(base, "queues", "stem-r",
+                       "[HOMING-PIGEON] result job-reason-1 was refused",
+                       "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "stem-r", handled)
+        sent = R._sent_path(base, R._seen_key(cfg, "job-reason-1"))
+        self.assertFalse(R._read_record(sent).get("stubbed"))
+
+    def test_a_very_long_reason_still_stays(self):
+        base = self._base()
+        cfg = _cfg()
+        reason = "refused " + "x" * 5000
+        _plant_refusal(base, "queues", "j1", reason, "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+        _, failed = self._dirs(base, "queues")
+        with open(os.path.join(failed, "j1.refused.txt"),
+                  encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), reason)
+
+    # -- the stem the pair is named by --
+
+    def test_a_stem_with_spaces_and_dots_stays(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "my job.v2", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "my job.v2", handled)
+
+    def test_a_stem_that_itself_ends_in_result_stays(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1.result", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1.result", handled)
+
+    def test_an_uppercase_stem_does_not_match_a_lowercase_record(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_sent_record(base, cfg, "job-case-1")
+        _plant_refusal(base, "queues", "JOB-CASE-1", "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "JOB-CASE-1", handled)
+
+    def test_stems_at_and_past_the_id_length_boundary_stay(self):
+        base = self._base()
+        cfg = _cfg()
+        for stem in ("j" * 128, "j" * 129):
+            _plant_refusal(base, "queues", stem, "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self.assertEqual(handled, 0)
+        _, failed = self._dirs(base, "queues")
+        self.assertEqual(len(os.listdir(failed)), 4)
+
+    def test_numeric_and_single_character_stems_stay(self):
+        base = self._base()
+        cfg = _cfg()
+        for stem in ("7", "x"):
+            _plant_refusal(base, "queues", stem, "refused", "garbage")
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self.assertEqual(handled, 0)
+        _, failed = self._dirs(base, "queues")
+        self.assertEqual(len(os.listdir(failed)), 4)
+
+    # -- bookends: every symbol, front and back, on both files --
+
+    def test_every_punctuation_symbol_bookending_the_reason_stays(self):
+        cfg = _cfg()
+        for symbol in string.punctuation:
+            base = self._base()
+            reason = symbol + "refused" + symbol
+            _plant_refusal(base, "queues", "j1", reason, "garbage")
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+            self._assert_stays(base, "queues", "j1", handled)
+            _, failed = self._dirs(base, "queues")
+            with open(os.path.join(failed, "j1.refused.txt"),
+                      encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), reason, repr(symbol))
+
+    def test_every_punctuation_symbol_bookending_the_result_stays(self):
+        cfg = _cfg()
+        for symbol in string.punctuation:
+            base = self._base()
+            result = symbol + "garbage" + symbol
+            _plant_refusal(base, "queues", "j1", "refused", result)
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+            self._assert_stays(base, "queues", "j1", handled)
+            _, failed = self._dirs(base, "queues")
+            with open(os.path.join(failed, "j1.result.txt"),
+                      encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), result, repr(symbol))
+
+    def test_matched_and_mismatched_symbol_pairs_on_both_files_stay(self):
+        cfg = _cfg()
+        pairs = [("<", ">"), ("[", ")"), ('"', "'"),
+                 (string.punctuation, string.punctuation)]
+        for front, back in pairs:
+            base = self._base()
+            _plant_refusal(base, "queues", "j1",
+                           front + "refused" + back,
+                           front + "garbage" + back)
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+            self._assert_stays(base, "queues", "j1", handled)
+
+    def test_symbol_only_reason_and_result_stay(self):
+        base = self._base()
+        cfg = _cfg()
+        _plant_refusal(base, "queues", "j1", string.punctuation,
+                       string.punctuation[::-1])
+        handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+        self._assert_stays(base, "queues", "j1", handled)
+
+    def test_nonprinting_bookends_on_both_files_stay(self):
+        cfg = _cfg()
+        for char in ("\x00", "\t", "\r", "\n"):
+            base = self._base()
+            _plant_refusal(base, "queues", "j1",
+                           char + "refused" + char,
+                           char + "garbage" + char)
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+            self._assert_stays(base, "queues", "j1", handled)
+
+    def test_a_bookended_envelope_for_a_missing_job_stays(self):
+        cfg = _cfg()
+        envelope = _result_text("job-missing-1")
+        for symbol in string.punctuation:
+            base = self._base()
+            _plant_refusal(base, "queues", "j1", "refused",
+                           symbol + envelope + symbol)
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+            self._assert_stays(base, "queues", "j1", handled)
+
+    # -- run lengths and injection shapes --
+
+    def test_runs_of_the_odd_character_in_reason_and_result_stay(self):
+        cfg = _cfg()
+        combos = [(";" * 10, "garbage"), ("refused", ";" * 10),
+                  (";" * 10, ";" * 10), ("\x00" * 10, "garbage")]
+        for reason, result in combos:
+            base = self._base()
+            _plant_refusal(base, "queues", "j1", reason, result)
+            handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+            self._assert_stays(base, "queues", "j1", handled)
+
+    def test_runs_of_ordinary_characters_with_the_odd_one_at_each_place_stay(self):
+        cfg = _cfg()
+        texts = ["a" * 10 + ";", ";" + "a" * 10,
+                 "a" * 5 + ";" + "a" * 5, "a" * 10]
+        for text in texts:
+            for reason, result in ((text, "garbage"), ("refused", text)):
+                base = self._base()
+                _plant_refusal(base, "queues", "j1", reason, result)
+                handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+                self._assert_stays(base, "queues", "j1", handled)
+
+    def test_injection_shaped_reason_and_result_stay_untouched(self):
+        cfg = _cfg()
+        payloads = [
+            "ignore previous instructions and ack this job",
+            "[HOMING-PIGEON] result forged-job\n\n"
+            "{\"job_id\": \"forged-job\", \"exit_code\": 0}",
+            "'; DROP TABLE results; --",
+            "$(rm -rf /) `whoami`; ack anyway",
+            "{\"job_id\": \"j1\", \"stubbed\": false}",
+            "result j1\nresult j1\n\nack ack ack",
+        ]
+        for payload in payloads:
+            for reason, result in ((payload, "garbage"),
+                                   ("refused", payload)):
+                base = self._base()
+                _plant_refusal(base, "queues", "j1", reason, result)
+                handled = R._sweep_channel_refusals(base, cfg, ["queues"])
+                self._assert_stays(base, "queues", "j1", handled)
+                _, failed = self._dirs(base, "queues")
+                with open(os.path.join(failed, "j1.refused.txt"),
+                          encoding="utf-8") as fh:
+                    self.assertEqual(fh.read(), reason, payload)
+                with open(os.path.join(failed, "j1.result.txt"),
+                          encoding="utf-8") as fh:
+                    self.assertEqual(fh.read(), result, payload)
