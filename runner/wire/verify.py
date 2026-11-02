@@ -499,7 +499,7 @@ def _policy_warn(msg):
         pass
 
 
-def build_key_policies(cfg) -> dict:
+def _build_key_policies(cfg) -> dict:
     """key_id -> policy dict. Keys without an entry are unrestricted
     unless key_policies_default_deny is set (additional keys only;
     the default key "" is always unrestricted).
@@ -662,6 +662,30 @@ def build_key_policies(cfg) -> dict:
                         f"({kid!r} and {other!r} are the same key); keep "
                         "one entry")
     return policies
+
+
+class _KeyPolicyBuilder:
+    """The public build_key_policies, as a callable object.
+
+    It carries last_warnings, the warnings its most recent call
+    collected: an unrecognised policy field is named in the log and
+    recorded there (the P4 contract), so a caller can read the list
+    back after building. The list lives on an object with the field
+    declared, not on a plain function, so its existence is part of
+    the stated shape; calling the builder runs _build_key_policies,
+    which resets the list at the same point it always has.
+    """
+
+    last_warnings: list[str]
+
+    def __init__(self):
+        self.last_warnings = []
+
+    def __call__(self, cfg) -> dict:
+        return _build_key_policies(cfg)
+
+
+build_key_policies = _KeyPolicyBuilder()
 
 
 def unrestricted_extra_keys(cfg) -> list:
