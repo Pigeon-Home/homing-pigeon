@@ -503,25 +503,106 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 694dc82a (31-Oct-2026)
 - Existing tests: queues-worker fatfinger.test.mjs, test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun16 suite in
+  runner/cloud/queues-worker/test/fatfinger.test.mjs, the file
+  where the fix's own Worker tests live): an ack or renew
+  carrying a receipt that is not this pull's answers 409, and
+  one naming no live job answers 404 — the receipt's fields
+  one by one (hand, attempt, the job id, the verb), their
+  numeric spellings, a missing job with plausible and
+  malformed receipts, a lease expiring on the exact
+  millisecond, and every 409 leaving the stored record
+  unchanged. Landed on main 2-Nov-2026 (3d7082d2); the file
+  runs green under node --test (83 tests, 83 pass, 0 skipped
+  — the Python skip registry does not apply to this file), no
+  live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261117, run locally against the banked
+  channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 142, slowest try 54 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 17. A result that cannot be read does not finish the job
 - Fixed: accf7b95 (31-Oct-2026)
 - Existing tests: test_transport_queues.py, test_transport_shells.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (UnreadableContentResultShotgunTest
+  in test_transport_shells.py — the channel level, deliberately
+  the content leg beside item 6's OSError leg and item 7's
+  symlink leg, whose pins it does not duplicate): a result
+  whose content cannot be read as an envelope — every
+  no-blank-line shape and every not-UTF-8 shape — is set aside
+  with its refusal and does not finish the job, while the
+  shapes that do parse are returned. Landed on main
+  2-Nov-2026 (2467787f); the file runs green (135 tests in the
+  file, 0 skipped), no live bug exposed, no production code
+  changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target stash --rounds
+  400 --seed 20261118, run locally against the banked stash
+  corpus (31 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 20, slowest try 47 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 18. A refused collision result is set aside under the job id
 - Fixed: 4931ec16 (31-Oct-2026)
 - Existing tests: test_result_size.py, test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (RefusedCollisionSetAsideShotgunTest
+  in test_result_size.py, the file where the fix's own sweep
+  test lives): a refused result under a collision name is set
+  aside under the plain job id, so the stub sweep can answer
+  it — the set-aside naming for every counter shape (past 9,
+  zero-padded), the refusal reason and body carried
+  byte-for-byte, the original kept under work/<job_id>/, and
+  primary and collision refusals answered in one pass. Landed
+  on main 2-Nov-2026 (29ead251); the file runs green (66 tests
+  in the file, 0 skipped), no live bug exposed, no production
+  code changed.
+- Proof of work (per the method section): per-field enumeration
+  (channel, id stem, collision suffix, extension, refusal
+  reason, result body) and the bookend / run-length sweeps are
+  carried in the class docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target race_stash
+  --rounds 400 --seed 20261119, run locally against the banked
+  race_stash corpus (64 entries). Result: 400 rounds,
+  0 crashes, 0 slow, arcs unchanged at 193, slowest try 7 ms.
+  The grow's bookkeeping writes were reverted and are not
+  banked (banking is the rigs' hourly job).
 
 ### 19. A URL that only starts with the loopback text is not loopback; a redirect takes the token with it
 - Fixed: dc4b7a70 (31-Oct-2026)
 - Existing tests: test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (LoopbackRedirectShotgunTest in
+  test_transport_queues.py): the queue base URL is loopback
+  only when the host really is — disguised hosts (spellings,
+  ranges, trailing dots, userinfo tricks) are refused — and a
+  redirect is never followed with the token: every redirect
+  code and Location shape against in-process loopback servers
+  that record the requests and their Authorization headers,
+  the second hop never reached, and the three doors (the
+  queue client, the queues main, send_job's queue call) each
+  gated. Landed on main 2-Nov-2026 (e6f610cb); the file runs
+  green (239 tests in the file, 0 skipped), no live bug
+  exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  (scheme, host, port, path/query/fragment, userinfo) and the
+  bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target wire --rounds
+  400 --seed 20261120, run locally against the banked wire
+  corpus (117 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 184, slowest try 312 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 20. An ack the queue refuses forgets the result, and the job stays leased
 - Fixed: fe4ec56c (31-Oct-2026)
