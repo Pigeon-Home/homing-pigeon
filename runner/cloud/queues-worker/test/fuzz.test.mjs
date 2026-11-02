@@ -28,7 +28,7 @@
 // names its seed and the operation index, and the same seed replays
 // the same run. HP_FUZZ_WRITE=1 rewrites the corpus from what this
 // process saw.
-import { test } from "node:test";
+import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -2649,4 +2649,861 @@ test("shotgun26 runs: a run of 10 ordinary characters with the odd one at the fr
   const env = await sg26Setup({ jobs_per_hour: 10, bytes_per_day: base + 11 }, () => now);
   assert.equal((await sg26Post(env, middle)).status, 202);
   assert.equal(sg26Resday(env, now), base + 11);
+});
+
+// ---------------------------------------------------------------------
+// Shotgun family for queue item 28: results and dead-letter pages did
+// not say when they stopped; reads stopped at 8 MB of subjects
+// (fixed 29001ad3, 66329844, 4635a1db, 31-Oct-2026). Before the fixes
+// a results or dead-letter page cut by the page size or by the 8 MB
+// RESPONSE_BUDGET looked exactly like a complete page, so rows behind
+// an un-acked front row were unreachable, and a dead-letter read
+// collected subject bytes with no budget at all (4635a1db added the
+// stop). The fixes: both pagers return `more: true` exactly when the
+// page stopped with rows still waiting (cut by max, cut by the
+// budget, or a full page peeked to have a next key), no `more` key at
+// all when the page ends the list, and `after=<last id returned>`
+// resumes lexicographically past that id; an `after` that is not a
+// safe id is ignored and the read starts from the beginning. There is
+// no cursor field and no reason / truncated text field in the answer:
+// `more` (present and exactly true, or absent) is the whole signal,
+// and these tests pin that absence rather than inventing a string
+// the code never emits. The dead-letter budget counts subject bytes
+// (the text before the blank line, trimmed, UTF-8), not envelope
+// bytes and not character counts; the results budget counts whole
+// envelope UTF-8 bytes. In both, a first row larger than the whole
+// budget is still returned whole and alone.
+//
+// Proof of work. The unit tests are the 50 tests registered in the
+// shotgun28 describe suite below: 14 per-field / pager-shape tests,
+// 4 max-clamping tests, 10 after-cursor tests, 4 interleaving tests,
+// 7 results-budget tests, 7 dead-letter subject-budget tests and 4
+// bookend / control / run-length / injection sweeps. Per-field
+// enumeration: every field either pager returns gets its own pin --
+// for results {id, envelope, at} and the body's {results, more}; for
+// dead letters {id, attempts, size, enqueued_at, dead_at, subject}
+// and the body's {dead, more}; plus the answer's status (200 / 204),
+// its key set exactly (no cursor, no reason, no truncated field),
+// the row count and the lexicographic ordering. Bookends: every
+// printable ASCII symbol (all 32 punctuation characters) at the
+// front AND the back of envelopes and of subjects, as singles,
+// matched pairs, mismatched pairs and a symbol-only string, plus
+// NUL, tab, CR and LF shapes where the surface admits them (a tab
+// bookend on a dead-letter subject is trimmed by the envelope
+// parser, a leading/trailing LF pair cannot bookend a subject
+// because it IS the blank-line separator, so those two shapes are
+// pinned through the CRLF ending and the single-LF-inside shapes
+// instead -- see the control test). Run lengths: repeats of 1, 5
+// and 10 of an ordinary character and of the odd one at the front,
+// the back and the middle of envelopes and subjects, and page-count
+// runs of 1, 5 and 10 pages. Injection-shaped payloads ride in
+// subjects and envelopes and are stored and returned verbatim,
+// never acted on. The fuzzing was executed, not just the tests
+// written: runner/tools/de_dust_corpus.py grow --target collect
+// --rounds 400 --seed 20261129, run locally against the banked
+// collect corpus (20 entries). Result: de_dust grow: 400 rounds,
+// rng seed 20261129; collect: 20 -> 20 entries, arcs 65 -> 65,
+// 0 crashes, 0 slow, slowest 56 ms (f8ab674ef19be427) -- the
+// silent-stop shape did not recur. The grow's bookkeeping writes
+// were reverted and are not banked (banking is the rigs' hourly
+// job); this record is the run's proof. For the .mjs file the
+// Python skip registry does not apply, and this family adds no
+// skips. None of this is exotic: it is combinatorics --
+// systematically trying the combinations a hand-written list would
+// never reach, then pinning each answer as a test.
+
+const SG28_BUDGET = RESPONSE_BUDGET;
+const SG28_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+const sg28Bytes = (t) => new TextEncoder().encode(t).length;
+
+async function sg28Env() {
+  const env = makeEnv();
+  await addTenant(env);
+  env.TENANT_QUEUE.get("alice");
+  return env;
+}
+function sg28Map(env) { return env.objects.get("alice").state.storage.map; }
+function sg28PutR(env, id, envelope, at = 7) {
+  sg28Map(env).set(`result:${id}`, { id, envelope, at });
+}
+function sg28PutD(env, id, envelope, fields = {}) {
+  sg28Map(env).set(`dlq:${id}`, {
+    id, envelope, attempts: 5, size: sg28Bytes(envelope),
+    enqueued_at: 11, dead_at: 22, ...fields,
+  });
+}
+function sg28SeedR(env, ids, make = (id) => `[HOMING-PIGEON] result ${id}\n\n{}\n`) {
+  for (const id of ids) sg28PutR(env, id, make(id));
+}
+function sg28SeedD(env, ids, make = (id) => `[HOMING-PIGEON] job ${id}\n\n{}\n`) {
+  for (const id of ids) sg28PutD(env, id, make(id));
+}
+function sg28Ids(prefix, n, pad = 2) {
+  return Array.from({ length: n }, (_, i) => prefix + String(i + 1).padStart(pad, "0"));
+}
+async function sg28Read(env, kind, params = {}) {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined) qs.set(k, String(v));
+  const q = qs.toString();
+  const r = await worker.fetch(
+    req(`/t/alice/${kind}${q ? `?${q}` : ""}`, { token: `Bearer ${SI}` }), env);
+  const text = await r.text();
+  return { status: r.status, text, body: text ? JSON.parse(text) : null };
+}
+const sg28Results = (env, p) => sg28Read(env, "results", p);
+const sg28Dlq = (env, p) => sg28Read(env, "dlq", p);
+const sg28ResIds = (x) => x.body.results.map((row) => row.id);
+const sg28DeadIds = (x) => x.body.dead.map((row) => row.id);
+
+describe("shotgun28: results and dead-letter pages say when they stopped; reads stop at 8 MB of subjects", () => {
+
+// -- 14 per-field / pager-shape tests --------------------------------
+
+test("shotgun28 field status: an empty results read is 204 with no body, and a bad token is 401 naming the si token", async () => {
+  const env = await sg28Env();
+  const x = await sg28Results(env);
+  assert.equal(x.status, 204);
+  assert.equal(x.text, "");
+  assert.equal(x.body, null);
+  const bad = await worker.fetch(req("/t/alice/results", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(bad.status, 401);
+  assert.deepEqual(await bad.json(), { error: "si token" });
+});
+
+test("shotgun28 field status: an empty dead-letter read is 204 with no body, and a bad token is 401", async () => {
+  const env = await sg28Env();
+  const x = await sg28Dlq(env);
+  assert.equal(x.status, 204);
+  assert.equal(x.text, "");
+  const bad = await worker.fetch(req("/t/alice/dlq", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(bad.status, 401);
+  assert.deepEqual(await bad.json(), { error: "si token" });
+});
+
+test("shotgun28 field results row: id, envelope and at are returned exactly, and the body carries no other key", async () => {
+  const env = await sg28Env();
+  const envelope = "[HOMING-PIGEON] result r1\n\n{\"exit_code\":0}\n";
+  sg28PutR(env, "r1", envelope, 1234567);
+  const x = await sg28Results(env);
+  assert.equal(x.status, 200);
+  assert.deepEqual(Object.keys(x.body), ["results"]);
+  assert.ok(!("more" in x.body));
+  assert.ok(!("cursor" in x.body) && !("next" in x.body) && !("after" in x.body));
+  assert.ok(!("reason" in x.body) && !("truncated" in x.body) && !("stopped" in x.body));
+  assert.equal(x.body.results.length, 1);
+  assert.deepEqual(Object.keys(x.body.results[0]), ["id", "envelope", "at"]);
+  assert.deepEqual(x.body.results[0], { id: "r1", envelope, at: 1234567 });
+});
+
+test("shotgun28 field dead row: id, attempts, size, enqueued_at, dead_at and subject are returned exactly, with no envelope", async () => {
+  const env = await sg28Env();
+  const envelope = "[HOMING-PIGEON] job d1 extra words\n\n{\"x\":1}\n";
+  sg28PutD(env, "d1", envelope, { attempts: 3, size: 999, enqueued_at: 111, dead_at: 222 });
+  const x = await sg28Dlq(env);
+  assert.equal(x.status, 200);
+  assert.deepEqual(Object.keys(x.body), ["dead"]);
+  assert.ok(!("more" in x.body));
+  assert.ok(!("cursor" in x.body) && !("reason" in x.body) && !("truncated" in x.body));
+  assert.deepEqual(Object.keys(x.body.dead[0]),
+    ["id", "attempts", "size", "enqueued_at", "dead_at", "subject"]);
+  assert.deepEqual(x.body.dead[0], {
+    id: "d1", attempts: 3, size: 999, enqueued_at: 111, dead_at: 222,
+    subject: "[HOMING-PIGEON] job d1 extra words",
+  });
+  assert.ok(!("envelope" in x.body.dead[0]));
+});
+
+test("shotgun28 field more results: a page cut by max says more, exactly boolean true, beside results and nothing else", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["r1", "r2", "r3"]);
+  const x = await sg28Results(env, { max: 2 });
+  assert.equal(x.status, 200);
+  assert.deepEqual(Object.keys(x.body), ["results", "more"]);
+  assert.equal(x.body.more, true);
+  assert.equal(typeof x.body.more, "boolean");
+  assert.deepEqual(sg28ResIds(x), ["r1", "r2"]);
+});
+
+test("shotgun28 field more dlq: a page cut by max says more, exactly boolean true, beside dead and nothing else", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["d1", "d2", "d3"]);
+  const x = await sg28Dlq(env, { max: 2 });
+  assert.equal(x.status, 200);
+  assert.deepEqual(Object.keys(x.body), ["dead", "more"]);
+  assert.equal(x.body.more, true);
+  assert.equal(typeof x.body.more, "boolean");
+  assert.deepEqual(sg28DeadIds(x), ["d1", "d2"]);
+});
+
+test("shotgun28 field more results: a full page landing exactly on the last record is NOT stopped -- no more key", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["r1", "r2", "r3"]);
+  const x = await sg28Results(env, { max: 3 });
+  assert.equal(x.status, 200);
+  assert.deepEqual(sg28ResIds(x), ["r1", "r2", "r3"]);
+  assert.ok(!("more" in x.body));
+  assert.deepEqual(Object.keys(x.body), ["results"]);
+});
+
+test("shotgun28 field more dlq: a full page landing exactly on the last record is NOT stopped -- no more key", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["d1", "d2", "d3"]);
+  const x = await sg28Dlq(env, { max: 3 });
+  assert.equal(x.status, 200);
+  assert.deepEqual(sg28DeadIds(x), ["d1", "d2", "d3"]);
+  assert.ok(!("more" in x.body));
+  assert.deepEqual(Object.keys(x.body), ["dead"]);
+});
+
+test("shotgun28 field count results: max above the count returns every row and no more", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["r1", "r2"]);
+  const x = await sg28Results(env, { max: 100 });
+  assert.deepEqual(sg28ResIds(x), ["r1", "r2"]);
+  assert.ok(!("more" in x.body));
+});
+
+test("shotgun28 field count dlq: max above the count returns every row and no more", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["d1", "d2"]);
+  const x = await sg28Dlq(env, { max: 100 });
+  assert.deepEqual(sg28DeadIds(x), ["d1", "d2"]);
+  assert.ok(!("more" in x.body));
+});
+
+test("shotgun28 field default results: with no max named, the page is the default 20 and says more past it", async () => {
+  const env = await sg28Env();
+  const ids = sg28Ids("n", 25);
+  sg28SeedR(env, ids);
+  const x = await sg28Results(env);
+  assert.equal(x.body.results.length, 20);
+  assert.equal(x.body.more, true);
+  assert.deepEqual(sg28ResIds(x), ids.slice(0, 20));
+  const rest = await sg28Results(env, { after: ids[19] });
+  assert.deepEqual(sg28ResIds(rest), ids.slice(20));
+  assert.ok(!("more" in rest.body));
+});
+
+test("shotgun28 field default dlq: with no max named, the page is the default 20 and says more past it", async () => {
+  const env = await sg28Env();
+  const ids = sg28Ids("n", 25);
+  sg28SeedD(env, ids);
+  const x = await sg28Dlq(env);
+  assert.equal(x.body.dead.length, 20);
+  assert.equal(x.body.more, true);
+  assert.deepEqual(sg28DeadIds(x), ids.slice(0, 20));
+  const rest = await sg28Dlq(env, { after: ids[19] });
+  assert.deepEqual(sg28DeadIds(rest), ids.slice(20));
+  assert.ok(!("more" in rest.body));
+});
+
+test("shotgun28 field ordering results: rows come back in storage-key order, not insertion order", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["a2", "a10", "a1", "a20", "a3"]);
+  const x = await sg28Results(env, { max: 100 });
+  assert.deepEqual(sg28ResIds(x), ["a1", "a10", "a2", "a20", "a3"]);
+});
+
+test("shotgun28 field ordering dlq: rows come back in storage-key order, not insertion order", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["a2", "a10", "a1", "a20", "a3"]);
+  const x = await sg28Dlq(env, { max: 100 });
+  assert.deepEqual(sg28DeadIds(x), ["a1", "a10", "a2", "a20", "a3"]);
+});
+
+// -- 4 max-clamping tests ---------------------------------------------
+
+test("shotgun28 max results: max=1 returns exactly 1 with more, max=2 returns exactly 2 with more", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["r1", "r2", "r3", "r4"]);
+  const one = await sg28Results(env, { max: 1 });
+  assert.deepEqual(sg28ResIds(one), ["r1"]);
+  assert.equal(one.body.more, true);
+  const two = await sg28Results(env, { max: 2 });
+  assert.deepEqual(sg28ResIds(two), ["r1", "r2"]);
+  assert.equal(two.body.more, true);
+});
+
+test("shotgun28 max dlq: max=1 returns exactly 1 with more, max=2 returns exactly 2 with more", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["d1", "d2", "d3", "d4"]);
+  const one = await sg28Dlq(env, { max: 1 });
+  assert.deepEqual(sg28DeadIds(one), ["d1"]);
+  assert.equal(one.body.more, true);
+  const two = await sg28Dlq(env, { max: 2 });
+  assert.deepEqual(sg28DeadIds(two), ["d1", "d2"]);
+  assert.equal(two.body.more, true);
+});
+
+test("shotgun28 max zero: max=0 and a negative max clamp to 1 on both pagers, not to the default", async () => {
+  for (const kind of ["results", "dlq"]) {
+    const env = await sg28Env();
+    if (kind === "results") sg28SeedR(env, ["r1", "r2", "r3"]); else sg28SeedD(env, ["r1", "r2", "r3"]);
+    for (const max of [0, -5]) {
+      const x = await sg28Read(env, kind, { max });
+      assert.equal(x.status, 200, `${kind} max=${max}`);
+      const rows = kind === "results" ? x.body.results : x.body.dead;
+      assert.equal(rows.length, 1, `${kind} max=${max}`);
+      assert.equal(rows[0].id, "r1");
+      assert.equal(x.body.more, true);
+    }
+  }
+});
+
+test("shotgun28 max cap: a max above 100 clamps to 100 on both pagers, and a non-numeric max falls back to 20", async () => {
+  const ids = sg28Ids("c", 105, 3);
+  const env = await sg28Env();
+  sg28SeedR(env, ids);
+  const x = await sg28Results(env, { max: 1000 });
+  assert.equal(x.body.results.length, 100);
+  assert.equal(x.body.more, true);
+  const rest = await sg28Results(env, { max: 1000, after: ids[99] });
+  assert.deepEqual(sg28ResIds(rest), ids.slice(100));
+  assert.ok(!("more" in rest.body));
+  const env2 = await sg28Env();
+  sg28SeedD(env2, ids);
+  const y = await sg28Dlq(env2, { max: 101 });
+  assert.equal(y.body.dead.length, 100);
+  assert.equal(y.body.more, true);
+  const env3 = await sg28Env();
+  sg28SeedR(env3, sg28Ids("n", 25));
+  const z = await sg28Results(env3, { max: "abc" });
+  assert.equal(z.body.results.length, 20);
+  assert.equal(z.body.more, true);
+});
+
+// -- 10 after-cursor tests --------------------------------------------
+
+test("shotgun28 after results: after a middle id the next page continues with no repeat and no more at the end", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["r1", "r2", "r3", "r4", "r5"]);
+  const x = await sg28Results(env, { max: 100, after: "r2" });
+  assert.deepEqual(sg28ResIds(x), ["r3", "r4", "r5"]);
+  assert.ok(!("more" in x.body));
+  assert.ok(!sg28ResIds(x).includes("r2"));
+});
+
+test("shotgun28 after dlq: after a middle id the next page continues with no repeat and no more at the end", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["d1", "d2", "d3", "d4", "d5"]);
+  const x = await sg28Dlq(env, { max: 100, after: "d2" });
+  assert.deepEqual(sg28DeadIds(x), ["d3", "d4", "d5"]);
+  assert.ok(!("more" in x.body));
+  assert.ok(!sg28DeadIds(x).includes("d2"));
+});
+
+test("shotgun28 after results: after the last id the read is an empty 204 page", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["r1", "r2"]);
+  const x = await sg28Results(env, { after: "r2" });
+  assert.equal(x.status, 204);
+  assert.equal(x.text, "");
+});
+
+test("shotgun28 after dlq: after the last id the read is an empty 204 page", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["d1", "d2"]);
+  const x = await sg28Dlq(env, { after: "d2" });
+  assert.equal(x.status, 204);
+  assert.equal(x.text, "");
+});
+
+test("shotgun28 after results: a safe after naming no stored id resumes lexicographically past it", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["b1", "b3", "b5"]);
+  assert.deepEqual(sg28ResIds(await sg28Results(env, { after: "b2" })), ["b3", "b5"]);
+  assert.deepEqual(sg28ResIds(await sg28Results(env, { after: "b0" })), ["b1", "b3", "b5"]);
+  assert.deepEqual(sg28ResIds(await sg28Results(env, { after: "b4" })), ["b5"]);
+  assert.equal((await sg28Results(env, { after: "b9" })).status, 204);
+});
+
+test("shotgun28 after dlq: a safe after naming no stored id resumes lexicographically past it", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["b1", "b3", "b5"]);
+  assert.deepEqual(sg28DeadIds(await sg28Dlq(env, { after: "b2" })), ["b3", "b5"]);
+  assert.deepEqual(sg28DeadIds(await sg28Dlq(env, { after: "b0" })), ["b1", "b3", "b5"]);
+  assert.deepEqual(sg28DeadIds(await sg28Dlq(env, { after: "b4" })), ["b5"]);
+  assert.equal((await sg28Dlq(env, { after: "b9" })).status, 204);
+});
+
+test("shotgun28 after results: malformed after values are ignored and the read starts from the beginning", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["r1", "r2", "r3"]);
+  const bad = ["../job", "..", ".", "", "a b", "a/b", "a\\b", "a?b", "a,b", "a:b", "é1", "r 1", "-".repeat(0) + " r1"];
+  for (const after of bad) {
+    const x = await sg28Results(env, { after });
+    assert.equal(x.status, 200, JSON.stringify(after));
+    assert.equal(sg28ResIds(x)[0], "r1", JSON.stringify(after));
+  }
+});
+
+test("shotgun28 after dlq: malformed after values are ignored and the read starts from the beginning", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["d1", "d2", "d3"]);
+  const bad = ["../quota", "..", ".", "", "a b", "a/b", "a\\b", "a?b", "a,b", "a:b", "é1", "d 1"];
+  for (const after of bad) {
+    const x = await sg28Dlq(env, { after });
+    assert.equal(x.status, 200, JSON.stringify(after));
+    assert.equal(sg28DeadIds(x)[0], "d1", JSON.stringify(after));
+  }
+});
+
+test("shotgun28 after results: the after length boundary -- 128 safe characters resume, 129 are ignored", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["r1", "r2"]);
+  const safe128 = "z".repeat(128);
+  assert.equal((await sg28Results(env, { after: safe128 })).status, 204);
+  const ignored129 = "z".repeat(129);
+  const x = await sg28Results(env, { after: ignored129 });
+  assert.equal(x.status, 200);
+  assert.equal(sg28ResIds(x)[0], "r1");
+  // The safe punctuation of an id (. _ -) inside an after is honoured:
+  sg28SeedR(env, ["r1.x-y_z", "r2"]);
+  assert.deepEqual(sg28ResIds(await sg28Results(env, { after: "r1.x-y_z" })), ["r2"]);
+});
+
+test("shotgun28 after foreign: an after from the other list is not an error -- it resumes purely lexicographically", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["r1", "r9"]);
+  sg28SeedD(env, ["d1", "d9"]);
+  // "d5" sorts before every result key, so the results read is whole.
+  assert.deepEqual(sg28ResIds(await sg28Results(env, { after: "d5" })), ["r1", "r9"]);
+  // "r1" sorts after every dlq key, so the dead-letter read is empty.
+  assert.equal((await sg28Dlq(env, { after: "r1" })).status, 204);
+  // And the dlq read after a results-shaped id that sorts inside works.
+  assert.deepEqual(sg28DeadIds(await sg28Dlq(env, { after: "d5" })), ["d9"]);
+});
+
+
+// -- 4 interleaving tests ---------------------------------------------
+
+test("shotgun28 interleave results: acking the first page between reads does not break continuation by its last id", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["a1", "a2", "a3", "a4", "a5"]);
+  const p1 = await sg28Results(env, { max: 2 });
+  assert.deepEqual(sg28ResIds(p1), ["a1", "a2"]);
+  assert.equal(p1.body.more, true);
+  for (const id of ["a1", "a2"]) {
+    const ack = await worker.fetch(req(`/t/alice/results/${id}/ack`, { method: "POST", token: `Bearer ${SI}` }), env);
+    assert.equal(ack.status, 204);
+  }
+  assert.ok(!sg28Map(env).has("result:a1"));
+  const p2 = await sg28Results(env, { max: 2, after: "a2" });
+  assert.deepEqual(sg28ResIds(p2), ["a3", "a4"]);
+  assert.equal(p2.body.more, true);
+  const p3 = await sg28Results(env, { max: 2, after: "a4" });
+  assert.deepEqual(sg28ResIds(p3), ["a5"]);
+  assert.ok(!("more" in p3.body));
+});
+
+test("shotgun28 interleave dlq: acking the first page between reads does not break continuation by its last id", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["a1", "a2", "a3", "a4", "a5"]);
+  const p1 = await sg28Dlq(env, { max: 2 });
+  assert.deepEqual(sg28DeadIds(p1), ["a1", "a2"]);
+  assert.equal(p1.body.more, true);
+  for (const id of ["a1", "a2"]) {
+    const ack = await worker.fetch(req(`/t/alice/dlq/${id}/ack`, { method: "POST", token: `Bearer ${SI}` }), env);
+    assert.equal(ack.status, 204);
+  }
+  const p2 = await sg28Dlq(env, { max: 2, after: "a2" });
+  assert.deepEqual(sg28DeadIds(p2), ["a3", "a4"]);
+  assert.equal(p2.body.more, true);
+  const p3 = await sg28Dlq(env, { max: 2, after: "a4" });
+  assert.deepEqual(sg28DeadIds(p3), ["a5"]);
+  assert.ok(!("more" in p3.body));
+});
+
+test("shotgun28 interleave results: a write sorting after the cursor joins the next page; one sorting before waits for a fresh read", async () => {
+  const env = await sg28Env();
+  sg28SeedR(env, ["a1", "a2", "a3", "a4"]);
+  const p1 = await sg28Results(env, { max: 2 });
+  assert.deepEqual(sg28ResIds(p1), ["a1", "a2"]);
+  sg28PutR(env, "a1b", "[HOMING-PIGEON] result a1b\n\n{}\n");
+  sg28PutR(env, "a9", "[HOMING-PIGEON] result a9\n\n{}\n");
+  const p2 = await sg28Results(env, { max: 100, after: "a2" });
+  assert.deepEqual(sg28ResIds(p2), ["a3", "a4", "a9"]);
+  const fresh = await sg28Results(env, { max: 100 });
+  assert.deepEqual(sg28ResIds(fresh), ["a1", "a1b", "a2", "a3", "a4", "a9"]);
+  // No id is returned twice across the two pages of one walk.
+  const walked = [...sg28ResIds(p1), ...sg28ResIds(p2)];
+  assert.equal(new Set(walked).size, walked.length);
+});
+
+test("shotgun28 interleave dlq: a write sorting after the cursor joins the next page; one sorting before waits for a fresh read", async () => {
+  const env = await sg28Env();
+  sg28SeedD(env, ["a1", "a2", "a3", "a4"]);
+  const p1 = await sg28Dlq(env, { max: 2 });
+  assert.deepEqual(sg28DeadIds(p1), ["a1", "a2"]);
+  sg28PutD(env, "a1b", "[HOMING-PIGEON] job a1b\n\n{}\n");
+  sg28PutD(env, "a9", "[HOMING-PIGEON] job a9\n\n{}\n");
+  const p2 = await sg28Dlq(env, { max: 100, after: "a2" });
+  assert.deepEqual(sg28DeadIds(p2), ["a3", "a4", "a9"]);
+  const fresh = await sg28Dlq(env, { max: 100 });
+  assert.deepEqual(sg28DeadIds(fresh), ["a1", "a1b", "a2", "a3", "a4", "a9"]);
+  const walked = [...sg28DeadIds(p1), ...sg28DeadIds(p2)];
+  assert.equal(new Set(walked).size, walked.length);
+});
+
+// -- 7 results-budget tests (8 MB of envelopes, UTF-8 bytes) ----------
+
+test("shotgun28 budget results: envelopes totalling 1 byte under 8 MB all come back, with no more", async () => {
+  const env = await sg28Env();
+  const a = "a".repeat(SG28_BUDGET - 101);
+  const b = "b".repeat(100);
+  assert.equal(sg28Bytes(a) + sg28Bytes(b), SG28_BUDGET - 1);
+  sg28PutR(env, "a1", a); sg28PutR(env, "a2", b);
+  const x = await sg28Results(env, { max: 100 });
+  assert.deepEqual(sg28ResIds(x), ["a1", "a2"]);
+  assert.ok(!("more" in x.body));
+});
+
+test("shotgun28 budget results: envelopes totalling exactly 8 MB all come back, with no more", async () => {
+  const env = await sg28Env();
+  const a = "a".repeat(SG28_BUDGET - 100);
+  const b = "b".repeat(100);
+  assert.equal(sg28Bytes(a) + sg28Bytes(b), SG28_BUDGET);
+  sg28PutR(env, "a1", a); sg28PutR(env, "a2", b);
+  const x = await sg28Results(env, { max: 100 });
+  assert.deepEqual(sg28ResIds(x), ["a1", "a2"]);
+  assert.ok(!("more" in x.body));
+});
+
+test("shotgun28 budget results: the row that would take the page 1 byte over 8 MB stops it, says more, and is the next page", async () => {
+  const env = await sg28Env();
+  sg28PutR(env, "a1", "a".repeat(SG28_BUDGET - 100));
+  sg28PutR(env, "a2", "b".repeat(101));
+  const x = await sg28Results(env, { max: 100 });
+  assert.deepEqual(sg28ResIds(x), ["a1"]);
+  assert.equal(x.body.more, true);
+  // The stopped read deleted nothing: both rows are still stored.
+  assert.ok(sg28Map(env).has("result:a1") && sg28Map(env).has("result:a2"));
+  const rest = await sg28Results(env, { max: 100, after: "a1" });
+  assert.deepEqual(sg28ResIds(rest), ["a2"]);
+  assert.equal(rest.body.results[0].envelope.length, 101);
+  assert.ok(!("more" in rest.body));
+});
+
+test("shotgun28 budget results: many small envelopes stop at the budget -- 16 of 500000 bytes, then the rest", async () => {
+  const env = await sg28Env();
+  const ids = sg28Ids("m", 20);
+  sg28SeedR(env, ids, () => "x".repeat(500_000));
+  const x = await sg28Results(env, { max: 100 });
+  assert.equal(x.body.results.length, 16);
+  assert.equal(16 * 500_000 <= SG28_BUDGET && 17 * 500_000 > SG28_BUDGET, true);
+  assert.equal(x.body.more, true);
+  assert.deepEqual(sg28ResIds(x), ids.slice(0, 16));
+  const rest = await sg28Results(env, { max: 100, after: ids[15] });
+  assert.deepEqual(sg28ResIds(rest), ids.slice(16));
+  assert.ok(!("more" in rest.body));
+  const all = [...sg28ResIds(x), ...sg28ResIds(rest)];
+  assert.deepEqual(all, ids);
+  assert.equal(new Set(all).size, all.length);
+});
+
+test("shotgun28 budget results: a few huge envelopes stop at the budget -- 5 of 1500000 bytes, then the last", async () => {
+  const env = await sg28Env();
+  const ids = sg28Ids("h", 6);
+  sg28SeedR(env, ids, () => "y".repeat(1_500_000));
+  const x = await sg28Results(env, { max: 100 });
+  assert.deepEqual(sg28ResIds(x), ids.slice(0, 5));
+  assert.equal(x.body.more, true);
+  const rest = await sg28Results(env, { max: 100, after: ids[4] });
+  assert.deepEqual(sg28ResIds(rest), [ids[5]]);
+  assert.ok(!("more" in rest.body));
+});
+
+test("shotgun28 budget results: a single envelope larger than the whole budget is returned whole and alone, with no more", async () => {
+  const env = await sg28Env();
+  const big = "z".repeat(SG28_BUDGET + 1000);
+  sg28PutR(env, "big1", big);
+  const x = await sg28Results(env, { max: 100 });
+  assert.equal(x.body.results.length, 1);
+  assert.equal(x.body.results[0].envelope, big);
+  assert.ok(sg28Bytes(x.body.results[0].envelope) > SG28_BUDGET);
+  assert.ok(!("more" in x.body));
+});
+
+test("shotgun28 budget results: the budget counts UTF-8 bytes, not characters -- a 3000000-character euro envelope stops the page", async () => {
+  const env = await sg28Env();
+  sg28PutR(env, "a1", "s".repeat(10));
+  const euro = "€".repeat(3_000_000);
+  assert.equal(euro.length, 3_000_000);
+  assert.equal(sg28Bytes(euro), 9_000_000);
+  sg28PutR(env, "a2", euro);
+  const x = await sg28Results(env, { max: 100 });
+  assert.deepEqual(sg28ResIds(x), ["a1"]);
+  assert.equal(x.body.more, true);
+  const rest = await sg28Results(env, { max: 100, after: "a1" });
+  assert.deepEqual(sg28ResIds(rest), ["a2"]);
+  assert.equal(rest.body.results[0].envelope, euro);
+  // And a multibyte envelope whose BYTES land exactly on the budget fits:
+  const env2 = await sg28Env();
+  const exact = "é".repeat(SG28_BUDGET / 2);
+  assert.equal(sg28Bytes(exact), SG28_BUDGET);
+  sg28PutR(env2, "a1", exact);
+  const y = await sg28Results(env2, { max: 100 });
+  assert.deepEqual(sg28ResIds(y), ["a1"]);
+  assert.ok(!("more" in y.body));
+});
+
+// -- 7 dead-letter subject-budget tests (8 MB of subjects) ------------
+
+test("shotgun28 budget dlq: subjects totalling 1 byte under 8 MB all come back, with no more", async () => {
+  const env = await sg28Env();
+  const sa = "a".repeat(SG28_BUDGET - 101);
+  const sb = "b".repeat(100);
+  sg28PutD(env, "a1", `${sa}\n\n{}`);
+  sg28PutD(env, "a2", `${sb}\n\n{}`);
+  const x = await sg28Dlq(env, { max: 100 });
+  assert.deepEqual(sg28DeadIds(x), ["a1", "a2"]);
+  const total = x.body.dead.reduce((n, d) => n + sg28Bytes(d.subject), 0);
+  assert.equal(total, SG28_BUDGET - 1);
+  assert.ok(!("more" in x.body));
+});
+
+test("shotgun28 budget dlq: subjects totalling exactly 8 MB all come back, with no more", async () => {
+  const env = await sg28Env();
+  sg28PutD(env, "a1", `${"a".repeat(SG28_BUDGET - 100)}\n\n{}`);
+  sg28PutD(env, "a2", `${"b".repeat(100)}\n\n{}`);
+  const x = await sg28Dlq(env, { max: 100 });
+  assert.deepEqual(sg28DeadIds(x), ["a1", "a2"]);
+  const total = x.body.dead.reduce((n, d) => n + sg28Bytes(d.subject), 0);
+  assert.equal(total, SG28_BUDGET);
+  assert.ok(!("more" in x.body));
+});
+
+test("shotgun28 budget dlq: the subject that would take the page 1 byte over 8 MB stops it, says more, and is the next page", async () => {
+  const env = await sg28Env();
+  sg28PutD(env, "a1", `${"a".repeat(SG28_BUDGET - 100)}\n\n{}`);
+  sg28PutD(env, "a2", `${"b".repeat(101)}\n\n{}`);
+  const x = await sg28Dlq(env, { max: 100 });
+  assert.deepEqual(sg28DeadIds(x), ["a1"]);
+  assert.equal(x.body.more, true);
+  assert.ok(sg28Map(env).has("dlq:a1") && sg28Map(env).has("dlq:a2"));
+  const rest = await sg28Dlq(env, { max: 100, after: "a1" });
+  assert.deepEqual(sg28DeadIds(rest), ["a2"]);
+  assert.equal(rest.body.dead[0].subject, "b".repeat(101));
+  assert.ok(!("more" in rest.body));
+});
+
+test("shotgun28 budget dlq: many small subjects stop at the budget -- 16 of 500000 bytes, then the rest", async () => {
+  const env = await sg28Env();
+  const ids = sg28Ids("m", 20);
+  sg28SeedD(env, ids, () => `${"s".repeat(500_000)}\n\n{}`);
+  const x = await sg28Dlq(env, { max: 100 });
+  assert.equal(x.body.dead.length, 16);
+  assert.equal(x.body.more, true);
+  assert.deepEqual(sg28DeadIds(x), ids.slice(0, 16));
+  const rest = await sg28Dlq(env, { max: 100, after: ids[15] });
+  assert.deepEqual(sg28DeadIds(rest), ids.slice(16));
+  assert.ok(!("more" in rest.body));
+  const all = [...sg28DeadIds(x), ...sg28DeadIds(rest)];
+  assert.deepEqual(all, ids);
+  assert.equal(new Set(all).size, all.length);
+});
+
+test("shotgun28 budget dlq: envelope bytes are NOT counted -- huge bodies behind tiny subjects all come back past 8 MB of envelopes", async () => {
+  const env = await sg28Env();
+  const ids = sg28Ids("e", 6);
+  sg28SeedD(env, ids, (id) => `[HOMING-PIGEON] job ${id}\n\n${"x".repeat(2_000_000)}`);
+  const stored = [...sg28Map(env).values()]
+    .reduce((n, d) => n + sg28Bytes(d.envelope), 0);
+  assert.ok(stored > SG28_BUDGET, `stored ${stored}`);
+  const x = await sg28Dlq(env, { max: 100 });
+  assert.deepEqual(sg28DeadIds(x), ids);
+  assert.ok(!("more" in x.body));
+  for (const [i, row] of x.body.dead.entries()) {
+    assert.equal(row.subject, `[HOMING-PIGEON] job ${ids[i]}`);
+    assert.ok(!("envelope" in row));
+  }
+});
+
+test("shotgun28 budget dlq: a record with no blank line has a null subject of weight zero, however huge its envelope", async () => {
+  const env = await sg28Env();
+  const huge = "x".repeat(SG28_BUDGET + 1000);
+  sg28PutD(env, "n1", huge);
+  sg28SeedD(env, ["n2", "n3"]);
+  const x = await sg28Dlq(env, { max: 100 });
+  assert.deepEqual(sg28DeadIds(x), ["n1", "n2", "n3"]);
+  assert.equal(x.body.dead[0].subject, null);
+  assert.equal(x.body.dead[0].size, sg28Bytes(huge));
+  assert.ok(!("more" in x.body));
+});
+
+test("shotgun28 budget dlq: the budget counts subject UTF-8 bytes, not characters -- a 3000000-character euro subject stops the page", async () => {
+  const env = await sg28Env();
+  sg28PutD(env, "a1", "[HOMING-PIGEON] job a1\n\n{}");
+  const euroSubject = "€".repeat(3_000_000);
+  assert.equal(euroSubject.length, 3_000_000);
+  assert.equal(sg28Bytes(euroSubject), 9_000_000);
+  sg28PutD(env, "a2", `${euroSubject}\n\n{}`);
+  const x = await sg28Dlq(env, { max: 100 });
+  assert.deepEqual(sg28DeadIds(x), ["a1"]);
+  assert.equal(x.body.more, true);
+  const rest = await sg28Dlq(env, { max: 100, after: "a1" });
+  assert.deepEqual(sg28DeadIds(rest), ["a2"]);
+  assert.equal(rest.body.dead[0].subject, euroSubject);
+  assert.ok(!("more" in rest.body));
+  // A single subject larger than the whole budget is returned whole:
+  const env2 = await sg28Env();
+  const bigSubject = "q".repeat(SG28_BUDGET + 5);
+  sg28PutD(env2, "big1", `${bigSubject}\n\n{}`);
+  const y = await sg28Dlq(env2, { max: 100 });
+  assert.deepEqual(sg28DeadIds(y), ["big1"]);
+  assert.equal(y.body.dead[0].subject, bigSubject);
+  assert.ok(!("more" in y.body));
+});
+
+// -- 4 bookend / control / run-length / injection sweeps ---------------
+
+test("shotgun28 bookends: every ASCII symbol at the front AND the back of envelopes and of subjects, singles, pairs and symbol-only", async () => {
+  assert.equal(SG28_PUNCT.length, 32);
+  // Results: the envelope is returned byte for byte.
+  const env = await sg28Env();
+  const wantR = new Map();
+  [...SG28_PUNCT].forEach((ch, i) => {
+    const id = "b" + String(i).padStart(2, "0");
+    const envelope = `${ch}core${ch}`;
+    wantR.set(id, envelope);
+    sg28PutR(env, id, envelope);
+  });
+  sg28PutR(env, "b32", "@@core@@");       // matched pair
+  wantR.set("b32", "@@core@@");
+  sg28PutR(env, "b33", "!core~");          // mismatched pair
+  wantR.set("b33", "!core~");
+  sg28PutR(env, "b34", SG28_PUNCT);        // symbol-only envelope
+  wantR.set("b34", SG28_PUNCT);
+  const x = await sg28Results(env, { max: 100 });
+  assert.equal(x.body.results.length, wantR.size);
+  for (const row of x.body.results) assert.equal(row.envelope, wantR.get(row.id), row.id);
+  // Dead letters: the subject is returned (trimmed of whitespace only).
+  const env2 = await sg28Env();
+  const wantD = new Map();
+  [...SG28_PUNCT].forEach((ch, i) => {
+    const id = "b" + String(i).padStart(2, "0");
+    const subject = `${ch}[HOMING-PIGEON] job x${ch}`;
+    wantD.set(id, subject);
+    sg28PutD(env2, id, `${subject}\n\n{}`);
+  });
+  sg28PutD(env2, "b32", "@@[HOMING-PIGEON] job x@@\n\n{}");
+  wantD.set("b32", "@@[HOMING-PIGEON] job x@@");
+  sg28PutD(env2, "b33", "![HOMING-PIGEON] job x~\n\n{}");
+  wantD.set("b33", "![HOMING-PIGEON] job x~");
+  sg28PutD(env2, "b34", `${SG28_PUNCT}\n\n{}`);
+  wantD.set("b34", SG28_PUNCT);
+  const y = await sg28Dlq(env2, { max: 100 });
+  assert.equal(y.body.dead.length, wantD.size);
+  for (const row of y.body.dead) assert.equal(row.subject, wantD.get(row.id), row.id);
+});
+
+test("shotgun28 controls: NUL, tab, CR and LF shapes in envelopes and subjects are pinned where the surface admits them", async () => {
+  // Results envelopes are not parsed: every control bookend is verbatim.
+  const env = await sg28Env();
+  const rows = [
+    ["c1", "\0core\0"], ["c2", "\tcore\t"], ["c3", "\rcore\r"], ["c4", "\ncore\n"],
+    ["c5", "\0\tcore\r\n"], ["c6", "a\0b\tc\rd\ne"],
+  ];
+  for (const [id, envelope] of rows) sg28PutR(env, id, envelope);
+  const x = await sg28Results(env, { max: 100 });
+  assert.deepEqual(x.body.results.map((r) => [r.id, r.envelope]), rows);
+  // Dead-letter subjects ARE parsed: NUL is kept, edge tabs are trimmed,
+  // a CRLF ending reads as the subject alone, and a single LF inside the
+  // subject survives (an LF pair cannot bookend a subject -- it is the
+  // blank-line separator itself, so the CRLF and inside shapes stand in).
+  const env2 = await sg28Env();
+  sg28PutD(env2, "d1", "\0subj\0\n\n{}");
+  sg28PutD(env2, "d2", "\tsubj\t\n\n{}");
+  sg28PutD(env2, "d3", "subj\r\n\r\n{}");
+  sg28PutD(env2, "d4", "line1\nline2\n\n{}");
+  sg28PutD(env2, "d5", "a\tb\n\n{}");
+  const y = await sg28Dlq(env2, { max: 100 });
+  assert.deepEqual(y.body.dead.map((d) => [d.id, d.subject]), [
+    ["d1", "\0subj\0"], ["d2", "subj"], ["d3", "subj"],
+    ["d4", "line1\nline2"], ["d5", "a\tb"],
+  ]);
+});
+
+test("shotgun28 runs: repeats of 1, 5 and 10 at the front, back and middle, and page-count runs of 1, 5 and 10 pages", async () => {
+  // Content runs, results envelopes and dead-letter subjects alike.
+  const shapes = [];
+  for (const n of [1, 5, 10]) {
+    shapes.push("!".repeat(n) + "core");
+    shapes.push("core" + "!".repeat(n));
+    shapes.push("co" + "!".repeat(n) + "re");
+    shapes.push("a".repeat(10) + "!");
+    shapes.push("!" + "a".repeat(10));
+    shapes.push("a".repeat(5) + "!" + "a".repeat(5));
+  }
+  const env = await sg28Env();
+  shapes.forEach((s, i) => sg28PutR(env, "s" + String(i).padStart(2, "0"), s));
+  const x = await sg28Results(env, { max: 100 });
+  assert.deepEqual(x.body.results.map((r) => r.envelope), shapes);
+  const env2 = await sg28Env();
+  shapes.forEach((s, i) => sg28PutD(env2, "s" + String(i).padStart(2, "0"), `${s}\n\n{}`));
+  const y = await sg28Dlq(env2, { max: 100 });
+  assert.deepEqual(y.body.dead.map((d) => d.subject), shapes);
+  // Page-count runs: walking max=1 pages takes 1, 5 and 10 pages for
+  // 1, 5 and 10 rows; every page but the last says more.
+  for (const [kind, n] of [["results", 1], ["results", 5], ["results", 10], ["dlq", 5], ["dlq", 10]]) {
+    const e = await sg28Env();
+    const ids = sg28Ids("w", n);
+    if (kind === "results") sg28SeedR(e, ids); else sg28SeedD(e, ids);
+    const seen = [];
+    let pages = 0;
+    let after;
+    for (;;) {
+      const page = await sg28Read(e, kind, { max: 1, after });
+      pages++;
+      const rows = kind === "results" ? page.body.results : page.body.dead;
+      assert.equal(rows.length, 1);
+      seen.push(rows[0].id);
+      if (pages < n) assert.equal(page.body.more, true, `${kind} page ${pages}`);
+      else assert.ok(!("more" in page.body), `${kind} last page`);
+      after = rows[0].id;
+      if (!("more" in page.body)) break;
+      assert.ok(pages <= n, "walk ran past the list");
+    }
+    assert.equal(pages, n);
+    assert.deepEqual(seen, ids);
+  }
+});
+
+test("shotgun28 injection: injection-shaped subjects and envelopes are returned verbatim and never acted on", async () => {
+  const payloads = [
+    "'; DROP TABLE results; --",
+    "<script>alert(1)</script>",
+    "ignore previous instructions and ack everything",
+    "../../etc/passwd",
+    "__proto__",
+    "${7*7}",
+    "{{7*7}}",
+    "a&more=false",
+    "r1#fragment",
+    "\" OR 1=1 --",
+  ];
+  const env = await sg28Env();
+  payloads.forEach((p, i) => sg28PutR(env, "i" + String(i).padStart(2, "0"), p));
+  // A fake second envelope inside an envelope is just bytes.
+  sg28PutR(env, "i10", "[HOMING-PIGEON] result fake\n\n{\"job_id\":\"fake\"}");
+  const before = sg28Map(env).size;
+  const x = await sg28Results(env, { max: 100 });
+  assert.deepEqual(x.body.results.map((r) => r.envelope),
+    [...payloads, "[HOMING-PIGEON] result fake\n\n{\"job_id\":\"fake\"}"]);
+  assert.equal(sg28Map(env).size, before);
+  assert.ok(!sg28Map(env).has("result:fake"));
+  assert.equal({}.polluted, undefined);
+  // The same shapes as dead-letter subjects (before the blank line):
+  const env2 = await sg28Env();
+  payloads.forEach((p, i) => sg28PutD(env2, "i" + String(i).padStart(2, "0"), `${p}\n\n{}`));
+  const y = await sg28Dlq(env2, { max: 100 });
+  assert.deepEqual(y.body.dead.map((d) => d.subject), payloads);
+  assert.equal(sg28Map(env2).size, payloads.length);
+  // And an injection-shaped after is simply not a safe id: ignored.
+  const z = await sg28Results(env, { after: "../../etc/passwd" });
+  assert.equal(z.body.results[0].envelope, payloads[0]);
+  const z2 = await sg28Results(env, { after: "i00&more=false" });
+  assert.equal(z2.body.results[0].envelope, payloads[0]);
+});
+
 });
