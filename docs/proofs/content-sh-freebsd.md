@@ -1,43 +1,39 @@
-# FreeBSD sh was not run
+# FreeBSD sh, the parser half
 
-The runner invokes `sh` on FreeBSD, the same call it
-makes on macOS and on Linux. FreeBSD's `/bin/sh` is not
-bash. It is FreeBSD's shell, in the base system. A check
-that uses bash, including bash in POSIX mode, is not a
-check of that program. dash is an Almquist shell too, and
-it was not used as a substitute. The two have diverged.
+The program was `/bin/sh` inside a FreeBSD 15.0-RELEASE-p13
+guest. The guest is the one `freebsd.yml` already boots
+(`vmactions/freebsd-vm`, release 15.0). The run is
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/41387454749
+. `freebsd-version` printed `15.0-RELEASE-p13` at
+2026-11-02 04:16:32Z. The phase was
+`HP_FREEBSD_SH=/bin/sh HP_FREEBSD_SYNTAX_ONLY=1`. That
+asks `sh -n` only. `handle_mail` was not called.
 
-## What was tried
+Both tests passed, in 0.217 seconds, and the phase
+printed `OK` at 04:17:14Z.
 
-The current `bin/sh` sources were fetched from the
-FreeBSD tree. They are not a portable program. The build
-is `bsd.prog.mk`. It links libedit and pulls in other
-base-system tools (`kill`, `test`, `printf`). That build
-does not run on the Linux toolchain here.
+| Rung | What `/bin/sh -n` did |
+|---|---|
+| 49 characters | 3,269 scripts, each at most 49 bytes, accepted as one file |
+| 5,000 | three different scripts, accepted |
+| 50,000 | three different scripts, accepted |
+| 500,000 | three different scripts, accepted |
+| 1,048,576 | three different scripts, accepted |
+| one byte over each of those | accepted, including 1,048,577 |
 
-`qemu-x86_64-static` was unpacked and it runs. It runs
-Linux binaries. A FreeBSD ELF uses FreeBSD system calls,
-and that qemu does not translate them. A FreeBSD base
-image would not have executed.
+`sh -n` does not know `max_script_bytes`. Accepting
+1,048,577 is what a parser does. The refusal of that
+length, naming the cap, is the gate's, and it was
+already recorded on the content series. It was not
+asked again here.
 
-## What the test does instead
+The job that contained this phase later failed. The
+suite reported 2 failures and 10 errors, among them a
+missing `bash` and a missing `remediation` key. Those
+are not this check. The parser phase had already
+printed `OK`, and the log has no `freebsd sh` error.
 
-`runner/tests/test_proof_sh_freebsd.py` holds the same
-rungs as the macOS file: the 49-character set, then
-5,000, 50,000, 500,000, and the production cap, one
-command per line. It runs only when `HP_FREEBSD_SH` or
-`/tmp/freebsd-sh` is a real binary. On this machine the
-tests skip, and the skip says dash was not used in its
-place. A skip is not a pass. Nothing in this record
-claims FreeBSD sh accepted a script, and nothing claims
-the gate was shown a FreeBSD-parsed script.
-
-The ladder models in stages 1 to 10 do not contain an
-operating system. There was nothing in them to re-check
-for FreeBSD. The platform difference is this shell, and
-this shell was not run.
-
-The way to run it is `content-sh-freebsd-design.md`.
-The guest FreeBSD already boots in `freebsd.yml` is the
-emulator. `/bin/sh` inside it is the parser. The gate is
-not run there again.
+A Linux machine still skips the test. dash was not
+used. bash was not used. The earlier attempts to build
+FreeBSD's `sh` on Linux, and to run it under
+`qemu-x86_64`, are why the check lives in the guest.

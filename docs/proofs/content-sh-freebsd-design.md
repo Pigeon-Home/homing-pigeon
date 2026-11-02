@@ -56,9 +56,10 @@ HP_FREEBSD_SH=/bin/sh HP_FREEBSD_SYNTAX_ONLY=1 \
 ```
 
 `HP_FREEBSD_SYNTAX_ONLY=1` is the switch, and the phase
-is in `freebsd.yml`, ahead of the roster. It has not
-reported yet. The counts are still owed by that
-guest. A skip on a Linux machine remains a skip.
+is in `freebsd.yml`, ahead of the roster. The guest
+reported on 2026-11-02. The counts are in
+`content-sh-freebsd.md`. A skip on a Linux machine
+remains a skip.
 
 The result is a log line from the guest: the `sh` version
 (`freebsd-version` is already printed), the counts, and
