@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from email.message import EmailMessage
 from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -579,12 +580,23 @@ class UnbuildableResultShotgunTest(unittest.TestCase):
         self._assert_unbuildable(to="a\ud800@b.co")
 
     def test_symbol_only_addresses(self):
-        # A lone '"' or '<' crashes the address parser itself;
-        # send_mail's build guard turns even that into the same
-        # permanent refusal, never an escape. Every other symbol
-        # alone is an odd address that still builds.
+        # A symbol that crashes the address parser itself is
+        # turned by send_mail's build guard into the same
+        # permanent refusal, never an escape; a symbol the parser
+        # accepts is an odd address that still builds. Which
+        # symbols crash is the stdlib's call, and it moved: a
+        # lone '"' or '<' raised IndexError inside the parser
+        # through 3.13 and parses (with defects, like every
+        # other symbol here) from 3.14. The invariant pinned is
+        # send_mail's own contract -- a build failure is always
+        # the permanent refusal, never a silent success -- so
+        # probe the running parser per symbol and hold send_mail
+        # to the matching outcome.
         for symbol in string.punctuation:
-            if symbol in ('"', "<"):
+            probe = EmailMessage()
+            try:
+                probe["To"] = symbol
+            except Exception:
                 self._assert_unbuildable(to=symbol)
             else:
                 smtp = self._attempt(to=symbol)
