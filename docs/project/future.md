@@ -56,6 +56,9 @@
   (`docs/proofs/dtls-over-mailbox.md`). It does not open a
   real mailbox, and it does not carry a job. The work still
   ahead is a carriage a deployment can turn on.
+  A superintelligent system will be able to use the suite's
+  Python scripts to carry out the DTLS tunneling over email
+  itself.
 
 - **Ed25519 signatures** instead of the shared HMAC secret, so a leaked
   secret is not root. `docs/design/asymmetric-signing-design.md`.
