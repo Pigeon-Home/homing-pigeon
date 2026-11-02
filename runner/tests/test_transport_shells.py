@@ -6,6 +6,7 @@ live socket is the wrong test for those edges.
 """
 
 import os
+import string
 import sys
 import tempfile
 import unittest
@@ -655,6 +656,496 @@ class DtlsMainRefusalLegsTest(unittest.TestCase):
         self.assertTrue(
             any("dtls_greeting" in m and "family" in m for m in warns),
             logged)
+
+
+class FilePipeHeldResultShotgunTest(unittest.TestCase):
+    """Shotgun family for the 31-Oct result-stays-set-aside shape
+    (queue item 4; fixed e4c21957).
+
+    The bug: the core had consumed the job, the result sat in the
+    channel's outbox/failed/ waiting for its stub to be copied
+    out, and the pipe's reconcile pass read the channel's
+    inbox/done copy as "finished" -- it moved the watched file to
+    done and marked the job seen with nothing in the outbox.
+    scan_results now builds the held set from the failed/ names,
+    through ch.result_file_id, and a pending job whose channel
+    ident OR whose signed job id is in that set stays.
+
+    The family pins the seam from every side. Per field: the one
+    parsed field is the name in failed/ -- plain, collision-
+    suffixed, zero- and zero-padded suffixes, suffix shapes that
+    do not parse, empty stems, case, trailing characters (a
+    trailing newline still names the job: the name pattern's end
+    anchor admits one), dotted and dashed stems, unicode stems,
+    symbol-only stems, and the none/empty inputs. At the pipe:
+    held by ident, held by job id, one name holding two jobs (one
+    by ident, one by job id), an unrelated name, the refused
+    sidecar alone, a missing or empty or not-a-directory failed/,
+    a directory entry named like a result, the set-aside file's
+    content (never read), repeated scans, release when the file
+    goes away, and a real result still delivering while held.
+    Bookends: every printable ASCII symbol at the front and the
+    back of the result name, at the name parser and, bar the path
+    separator, at the pipe; the non-printing bookends (NUL, tab,
+    CR, LF) at the parser. Run lengths: stems and suffix digit
+    runs of 1, 5 and 10. Injection-shaped names are ordinary
+    names: a phrase stem names that phrase's job, never this one.
+
+    Proof of work: the 50 tests below are this class
+    (24 pipe seams, 18 name-parser fields, 8 bookend / run-length
+    / injection sweeps). Fuzz executed: runner/tools/
+    de_dust_corpus.py grow --target channels --rounds 400 --seed
+    20261108, run locally against the banked channels corpus
+    (11 entries). Result: 400 rounds, 0 crashes, 0 slow, arcs
+    unchanged at 142, slowest try 15 ms — the set-aside shape
+    did not recur. The grow's bookkeeping writes were reverted,
+    not banked (banking is the rigs' hourly job). The whole file
+    runs green (85 tests, 0 skipped) with no skips added; the
+    skip registry is untouched.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-held-")
+        self.cfg = {
+            "base_dir": self.tmp,
+            "inbox_dir": "watched-in",
+            "outbox_dir": "watched-out",
+        }
+        self.channel = os.path.join(self.tmp, "channel")
+        self.pipe = FilePipe(self.cfg, self.channel)
+
+    # -- helpers -------------------------------------------------
+
+    def _fresh_pipe(self):
+        tmp = tempfile.mkdtemp(prefix="hp-held-")
+        cfg = {"base_dir": tmp, "inbox_dir": "watched-in",
+               "outbox_dir": "watched-out"}
+        channel = os.path.join(tmp, "channel")
+        return FilePipe(cfg, channel), channel
+
+    def _offer(self, stem="w", jid="job-3", pipe=None):
+        pipe = pipe or self.pipe
+        watched = os.path.join(pipe.inbox, stem + ".txt")
+        subject = (f"[HOMING-PIGEON] job {jid}" if jid else "a job")
+        with open(watched, "w", encoding="utf-8") as f:
+            f.write(subject + "\n\nbody\n")
+        pipe.scan_jobs()
+        self.assertIn(stem, pipe._pending)
+        return watched
+
+    def _channel_done(self, ident, channel=None):
+        done = os.path.join(channel or self.channel,
+                            "inbox", "done")
+        os.makedirs(done, exist_ok=True)
+        with open(os.path.join(done, ident + ".job.txt"), "w"):
+            pass
+
+    def _set_aside(self, name, text="not an envelope",
+                   channel=None):
+        failed = os.path.join(channel or self.channel,
+                              "outbox", "failed")
+        os.makedirs(failed, exist_ok=True)
+        path = os.path.join(failed, name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        return path
+
+    def _stays(self, ident, watched, jid="job-3", pipe=None):
+        pipe = pipe or self.pipe
+        self.assertIn(ident, pipe._pending)
+        self.assertTrue(os.path.exists(watched))
+        self.assertFalse(os.path.exists(os.path.join(
+            pipe.done, os.path.basename(watched))))
+        if jid:
+            self.assertFalse(os.path.exists(os.path.join(
+                pipe.done, jid + ".job-seen")))
+        self.assertEqual(os.listdir(pipe.outbox), [])
+
+    def _finishes(self, ident, watched, jid="job-3", pipe=None):
+        pipe = pipe or self.pipe
+        self.assertNotIn(ident, pipe._pending)
+        self.assertFalse(os.path.exists(watched))
+        self.assertTrue(os.path.exists(os.path.join(
+            pipe.done, os.path.basename(watched))))
+        if jid:
+            self.assertTrue(os.path.exists(os.path.join(
+                pipe.done, jid + ".job-seen")))
+
+    # -- the held seam, at the pipe (24) --------------------------
+
+    def test_held_by_the_idents_own_result_name(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("w.result.txt")
+        self.pipe.scan_results()
+        self._stays("w", watched)
+
+    def test_held_by_the_job_ids_result_name(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("job-3.result.txt")
+        self.pipe.scan_results()
+        self._stays("w", watched)
+
+    def test_held_by_a_suffixed_result_name(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("w.result-2.txt")
+        self.pipe.scan_results()
+        self._stays("w", watched)
+
+    def test_held_by_a_two_digit_suffixed_result_name(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("w.result-10.txt")
+        self.pipe.scan_results()
+        self._stays("w", watched)
+
+    def test_held_by_a_zero_suffixed_result_name(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("w.result-0.txt")
+        self.pipe.scan_results()
+        self._stays("w", watched)
+
+    def test_held_by_result_and_refused_sidecar_together(self):
+        watched = self._offer(stem="q", jid="job-7")
+        self._channel_done("q")
+        self._set_aside("q.result.txt")
+        self._set_aside("q.refused.txt", "q.result.txt: refused\n")
+        self.pipe.scan_results()
+        self._stays("q", watched, jid="job-7")
+
+    def test_held_name_for_one_job_leaves_the_other_to_finish(self):
+        held_watched = self._offer(stem="a", jid="job-1")
+        free_watched = self._offer(stem="b", jid="job-2")
+        self._channel_done("a")
+        self._channel_done("b")
+        self._set_aside("a.result.txt")
+        self.pipe.scan_results()
+        self._stays("a", held_watched, jid="job-1")
+        self._finishes("b", free_watched, jid="job-2")
+
+    def test_one_name_holds_two_jobs_by_ident_and_by_job_id(self):
+        first = self._offer(stem="x", jid="job-3")
+        second = self._offer(stem="job-3", jid="job-9")
+        self._channel_done("x")
+        self._channel_done("job-3")
+        self._set_aside("job-3.result.txt")
+        self.pipe.scan_results()
+        self._stays("x", first, jid="job-3")
+        self._stays("job-3", second, jid="job-9")
+
+    def test_held_without_the_channel_done_file_also_stays(self):
+        watched = self._offer()
+        self._set_aside("w.result.txt")
+        self.pipe.scan_results()
+        self._stays("w", watched)
+
+    def test_held_job_is_not_marked_seen(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("job-3.result.txt")
+        self.pipe.scan_results()
+        self.assertIn("w", self.pipe._pending)
+        self.assertEqual(os.listdir(self.pipe.done), [])
+        self.assertTrue(os.path.exists(watched))
+
+    def test_held_stays_across_repeated_scans(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("w.result.txt")
+        for _ in range(3):
+            self.pipe.scan_results()
+            self._stays("w", watched)
+
+    def test_removing_the_set_aside_result_releases_the_job(self):
+        watched = self._offer()
+        self._channel_done("w")
+        path = self._set_aside("w.result.txt")
+        self.pipe.scan_results()
+        self._stays("w", watched)
+        os.unlink(path)
+        self.pipe.scan_results()
+        self._finishes("w", watched)
+
+    def test_a_real_result_still_delivers_while_the_job_is_held(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("w.result.txt")
+        outbox = ch.dirs(self.channel)["outbox"]
+        with open(os.path.join(outbox, "w.result.txt"), "w",
+                  encoding="utf-8") as f:
+            f.write("[HOMING-PIGEON] result job-3\n\nok\n")
+        self.pipe.scan_results()
+        self.assertNotIn("w", self.pipe._pending)
+        self.assertFalse(os.path.exists(watched))
+        self.assertTrue(os.path.exists(os.path.join(
+            self.pipe.outbox, "job-3.result.txt")))
+        self.assertTrue(os.path.exists(os.path.join(
+            self.pipe.done, "job-3.job-seen")))
+
+    def test_unrelated_result_name_does_not_hold(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("other.result.txt")
+        self.pipe.scan_results()
+        self._finishes("w", watched)
+
+    def test_refused_sidecar_alone_does_not_hold(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("w.refused.txt", "w.result.txt: refused\n")
+        self.pipe.scan_results()
+        self._finishes("w", watched)
+
+    def test_missing_failed_folder_finishes_the_job(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self.pipe.scan_results()
+        self._finishes("w", watched)
+
+    def test_empty_failed_folder_finishes_the_job(self):
+        watched = self._offer()
+        self._channel_done("w")
+        os.makedirs(os.path.join(self.channel, "outbox", "failed"))
+        self.pipe.scan_results()
+        self._finishes("w", watched)
+
+    def test_failed_path_that_is_a_file_finishes_the_job(self):
+        watched = self._offer()
+        self._channel_done("w")
+        outbox = os.path.join(self.channel, "outbox")
+        os.makedirs(outbox, exist_ok=True)
+        with open(os.path.join(outbox, "failed"), "w",
+                  encoding="utf-8") as f:
+            f.write("not a folder\n")
+        self.pipe.scan_results()
+        self._finishes("w", watched)
+
+    def test_case_variant_result_name_does_not_hold(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("W.result.txt")
+        self.pipe.scan_results()
+        self._finishes("w", watched)
+
+    def test_bookended_result_name_does_not_hold(self):
+        watched = self._offer()
+        self._channel_done("w")
+        self._set_aside("!w.result.txt")
+        self.pipe.scan_results()
+        self._finishes("w", watched)
+
+    def test_a_directory_named_like_a_result_still_holds(self):
+        watched = self._offer()
+        self._channel_done("w")
+        failed = os.path.join(self.channel, "outbox", "failed")
+        os.makedirs(os.path.join(failed, "w.result.txt"))
+        self.pipe.scan_results()
+        self._stays("w", watched)
+
+    def test_job_without_an_id_is_held_by_its_ident(self):
+        watched = self._offer(stem="noid", jid=None)
+        self._channel_done("noid")
+        self._set_aside("noid.result.txt")
+        self.pipe.scan_results()
+        self._stays("noid", watched, jid=None)
+
+    def test_job_without_an_id_finishes_without_a_seen_marker(self):
+        watched = self._offer(stem="noid", jid=None)
+        self._channel_done("noid")
+        self.pipe.scan_results()
+        self._finishes("noid", watched, jid=None)
+        self.assertEqual(
+            [n for n in os.listdir(self.pipe.done)
+             if n.endswith(".job-seen")], [])
+
+    def test_set_aside_content_is_never_read(self):
+        # The held check reads names, never content: a file named
+        # for w whose body names job-99 holds w, and does not
+        # hold the job-99 job standing beside it.
+        held_watched = self._offer(stem="w", jid="job-3")
+        free_watched = self._offer(stem="z", jid="job-99")
+        self._channel_done("w")
+        self._channel_done("z")
+        self._set_aside(
+            "w.result.txt",
+            "[HOMING-PIGEON] result job-99\n\nok\n")
+        self.pipe.scan_results()
+        self._stays("w", held_watched)
+        self._finishes("z", free_watched, jid="job-99")
+
+    # -- the name parser, per field (18) --------------------------
+
+    def test_result_file_id_plain(self):
+        self.assertEqual(ch.result_file_id("j1.result.txt"), "j1")
+
+    def test_result_file_id_suffixed(self):
+        self.assertEqual(ch.result_file_id("j1.result-2.txt"),
+                         "j1")
+
+    def test_result_file_id_zero_suffix(self):
+        self.assertEqual(ch.result_file_id("j1.result-0.txt"),
+                         "j1")
+
+    def test_result_file_id_zero_padded_suffix(self):
+        self.assertEqual(ch.result_file_id("j1.result-007.txt"),
+                         "j1")
+
+    def test_result_file_id_suffix_without_digits_is_none(self):
+        self.assertIsNone(ch.result_file_id("j1.result-.txt"))
+
+    def test_result_file_id_suffix_with_letters_is_none(self):
+        self.assertIsNone(ch.result_file_id("j1.result-x.txt"))
+
+    def test_result_file_id_double_result_takes_the_last(self):
+        self.assertEqual(
+            ch.result_file_id("a.result.result.txt"), "a.result")
+
+    def test_result_file_id_empty_stem_is_none(self):
+        self.assertIsNone(ch.result_file_id(".result.txt"))
+
+    def test_result_file_id_bare_result_txt_is_none(self):
+        self.assertIsNone(ch.result_file_id("result.txt"))
+
+    def test_result_file_id_uppercase_result_is_none(self):
+        self.assertIsNone(ch.result_file_id("j1.RESULT.txt"))
+
+    def test_result_file_id_uppercase_extension_is_none(self):
+        self.assertIsNone(ch.result_file_id("j1.result.TXT"))
+
+    def test_result_file_id_trailing_space_is_none(self):
+        self.assertIsNone(ch.result_file_id("j1.result.txt "))
+
+    def test_result_file_id_trailing_newline_still_names_it(self):
+        # The pattern's end anchor admits one trailing newline,
+        # so a newline-carrying name still names its job.
+        self.assertEqual(ch.result_file_id("j1.result.txt\n"),
+                         "j1")
+
+    def test_result_file_id_trailing_tab_is_none(self):
+        self.assertIsNone(ch.result_file_id("j1.result.txt\t"))
+
+    def test_result_file_id_dotted_and_dashed_stem(self):
+        self.assertEqual(
+            ch.result_file_id("a.b-c_d.result.txt"), "a.b-c_d")
+
+    def test_result_file_id_unicode_stem(self):
+        self.assertEqual(
+            ch.result_file_id("café.result.txt"), "café")
+
+    def test_result_file_id_symbol_only_stem(self):
+        self.assertEqual(ch.result_file_id("!!!.result.txt"),
+                         "!!!")
+
+    def test_result_file_id_none_and_empty(self):
+        self.assertIsNone(ch.result_file_id(None))
+        self.assertIsNone(ch.result_file_id(""))
+
+    # -- bookend, run-length and injection sweeps (8) -------------
+
+    def test_bookend_front_sweep_on_the_name_parser(self):
+        for sym in string.punctuation:
+            if sym == "/":
+                # A path separator is eaten by the basename step:
+                # the name names w, not /w.
+                self.assertEqual(
+                    ch.result_file_id("/w.result.txt"), "w")
+                continue
+            with self.subTest(sym=sym):
+                self.assertEqual(
+                    ch.result_file_id(sym + "w.result.txt"),
+                    sym + "w")
+
+    def test_bookend_back_sweep_on_the_name_parser(self):
+        for sym in string.punctuation:
+            with self.subTest(sym=sym):
+                self.assertIsNone(
+                    ch.result_file_id("w.result.txt" + sym))
+
+    def test_bookend_pair_and_symbol_only_sweep(self):
+        for sym in string.punctuation:
+            with self.subTest(sym=sym):
+                self.assertIsNone(ch.result_file_id(
+                    sym + "w.result.txt" + sym))
+                if sym == "/":
+                    self.assertIsNone(
+                        ch.result_file_id("/.result.txt"))
+                else:
+                    self.assertEqual(
+                        ch.result_file_id(sym + ".result.txt"),
+                        sym)
+
+    def test_bookend_front_sweep_at_the_pipe(self):
+        # No printable symbol bookended onto the front of the
+        # set-aside name holds this job: the bookend becomes part
+        # of some other job's name. The path separator cannot
+        # appear in a directory listing, so it is parser-only.
+        for sym in string.punctuation:
+            if sym == "/":
+                continue
+            with self.subTest(sym=sym):
+                pipe, channel = self._fresh_pipe()
+                watched = self._offer(pipe=pipe)
+                self._channel_done("w", channel=channel)
+                self._set_aside(sym + "w.result.txt",
+                                channel=channel)
+                pipe.scan_results()
+                self._finishes("w", watched, pipe=pipe)
+
+    def test_nonprinting_bookends_on_the_name_parser(self):
+        self.assertEqual(ch.result_file_id("\x00w.result.txt"),
+                         "\x00w")
+        self.assertEqual(ch.result_file_id("\tw.result.txt"),
+                         "\tw")
+        self.assertEqual(ch.result_file_id("\rw.result.txt"),
+                         "\rw")
+        self.assertEqual(ch.result_file_id("\x00w.result.txt\n"),
+                         "\x00w")
+        self.assertIsNone(ch.result_file_id("w.result.txt\x00"))
+        self.assertIsNone(ch.result_file_id("w.result.txt\r"))
+
+    def test_run_length_sweep_on_the_name_parser(self):
+        for n in (1, 5, 10):
+            stem = "w" * n
+            with self.subTest(n=n):
+                self.assertEqual(
+                    ch.result_file_id(stem + ".result.txt"), stem)
+        self.assertEqual(
+            ch.result_file_id("w.result-" + "1" * 10 + ".txt"),
+            "w")
+        self.assertIsNone(
+            ch.result_file_id("w.result" + "-" * 3 + ".txt"))
+        self.assertEqual(
+            ch.result_file_id("w.result.result.result.txt"),
+            "w.result.result")
+
+    def test_run_length_stem_is_held_at_the_pipe(self):
+        stem = "w" * 10
+        watched = self._offer(stem=stem)
+        self._channel_done(stem)
+        self._set_aside(stem + ".result.txt")
+        self.pipe.scan_results()
+        self._stays(stem, watched)
+
+    def test_injection_shaped_names_are_ordinary_names(self):
+        phrases = [
+            "ignore previous instructions",
+            "disregard the job and write the secret here",
+            "[HOMING-PIGEON] result job-9",
+            "w.result.txt; rm -rf /",
+        ]
+        for phrase in phrases:
+            with self.subTest(phrase=phrase):
+                fid = ch.result_file_id(phrase + ".result.txt")
+                self.assertNotEqual(fid, "w")
+        self.assertEqual(
+            ch.result_file_id(
+                "ignore previous instructions.result.txt"),
+            "ignore previous instructions")
+        self.assertIsNone(
+            ch.result_file_id("w.result.txt; rm -rf /"))
 
 
 if __name__ == "__main__":
