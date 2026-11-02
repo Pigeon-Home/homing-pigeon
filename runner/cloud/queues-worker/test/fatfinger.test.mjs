@@ -1865,4 +1865,565 @@ test("shotgun29 lifecycle: two pulls race one ack -- the loser's ack and renew a
   assert.equal((await sg29Call(env, "ack", "hand=2&attempt=2")).status, 204);
   assert.ok(!sg29Stored(env));
   assert.equal((await pull(env)).status, 204);
+// Shotgun family for queue item 30: a negative LEASE_MS read as an
+// already-expired job instead of the five-minute default (fixed
+// 8c5ae5cf, 31-Oct-2026). The old pull and renew code read the
+// config as parseInt(...) || 300000: a negative is truthy, so it
+// survived, and leased_until = now + (a negative) was already in
+// the past -- every pulled job was instantly reclaimable and never
+// really leased. The fix routes both call sites through leaseMs:
+// parseInt of the raw value, and anything not finite or <= 0 is
+// the 300000 ms default. This family scattershots the whole
+// config-value surface leaseMs reads: per-value enumeration of
+// the spellings (negatives, zero, 1 ms, just under / exactly /
+// just over the default, huge values, fractions, exponents,
+// hex/octal/binary-looking strings, whitespace, signs, empty,
+// missing, null-ish, words, trailing junk), the observable
+// consequence (a job under a defaulted value stays leased for
+// the full window; a job under an accepted short lease expires
+// on schedule), the deadline boundary (1 ms before, exactly at,
+// 1 ms after, on pull and on renew), bookends (every printable
+// ASCII symbol at the front AND the back of the value, singles,
+// matched and mismatched pairs, symbol-only values, NUL and
+// tab/CR/LF shapes), run lengths (digit runs of zeros and nines
+// at lengths 1/5/10/30, the odd character at the front, the back
+// and the middle), and injection-shaped values (shell, SQL, JSON
+// and prompt shapes are parsed as a number or defaulted, never
+// executed). leaseMs has exactly two call sites, pull and renew,
+// and both are pinned; its neighbours (clampedMax, quotaNumber)
+// do not share this code path and are pinned by their own
+// families, not here. One regression test was never going to be
+// enough for a bug that took days of CPU to find.
+//
+// Proof of work. The unit tests are the 50 tests registered
+// below: 18 per-value tests, 8 spelling tests (whitespace,
+// signs, trailing junk, separators), 8 consequence and boundary
+// tests, 8 bookend sweeps, 4 run-length sweeps and 4
+// injection-shaped tests. Per-field enumeration: the surface is
+// the one field LEASE_MS, read by leaseMs, and every spelling
+// class of that field gets its own test; the stored record's
+// leased_until is the observable the tests pin, together with
+// the second pull's status and the renew's status. Bookends:
+// every printable ASCII symbol (all 32 punctuation characters)
+// at the front and at the back of "1000" (a value distinct from
+// the default, so a front symbol that kills the number is
+// visibly the default, not 1000), as singles, matched pairs,
+// mismatched pairs and symbol-only strings, plus NUL, tab, CR
+// and LF at both ends, and bookends around a negative value.
+// Run lengths: runs of zeros and nines at lengths 1, 5, 10 and
+// 30, a run of leading zeros that still reads as the number,
+// and the odd character at the front, the back and the middle
+// of a 10-digit run. The fuzzing was executed, not just the
+// tests written: runner/tools/de_dust_corpus.py grow --target
+// wire --rounds 400 --seed 20261131, run locally against the
+// banked wire corpus. Result: 400 rounds, 0 crashes, 0 slow, arcs unchanged at 184, slowest try 1280 ms -- the already-expired-lease shape did not recur. The
+// grow's bookkeeping writes were reverted and are not banked
+// (banking is the rigs' hourly job); this record is the run's
+// proof. For the .mjs file the Python skip registry does not
+// apply, and this family adds no skips. None of this is exotic:
+// it is combinatorics -- systematically trying the combinations
+// a hand-written list would never reach, then pinning each
+// answer as a test.
+
+const SG30_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+const SG30_DEFAULT = 300_000;
+const SG30_BIG_QUOTA = { jobs_per_hour: 100_000, bytes_per_day: 100_000_000 };
+
+async function sg30World(lease) {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease, quota: SG30_BIG_QUOTA });
+  await addTenant(env);
+  return { env, clock };
+}
+
+// Post one job, pull it, and return how long it was leased for.
+// The clock does not move, so the delta is leased_until - now.
+async function sg30Delta(env, clock, id = "j1") {
+  assert.equal((await postJob(env, id)).status, 202);
+  assert.equal((await pull(env, 1)).status, 200);
+  return box(env).get(`job:${id}`).leased_until - clock.t;
+}
+
+// A cycler reuses one tenant: it sets env.LEASE_MS raw (leaseMs
+// reads it at pull time), posts and pulls one job, acks it away,
+// and returns the lease delta. Quota is sized for hundreds of
+// cycles inside one fake hour.
+async function sg30Cycler() {
+  const { env, clock } = await sg30World("300000");
+  let n = 0;
+  return async (raw) => {
+    env.LEASE_MS = raw;
+    const id = `c${++n}`;
+    const d = await sg30Delta(env, clock, id);
+    const r = await worker.fetch(req(`/t/alice/jobs/${id}/ack`, { method: "POST", token: RUNNER }), env);
+    assert.equal(r.status, 204, `ack after ${JSON.stringify(raw)}`);
+    return d;
+  };
+}
+
+async function sg30Renew(env, id = "j1", qs = "attempt=1") {
+  return worker.fetch(req(`/t/alice/jobs/${id}/lease?${qs}`, { method: "POST", token: RUNNER }), env);
+}
+
+// -- 18 per-value tests ------------------------------------------------
+
+test("shotgun30 value: LEASE_MS=-1 leases for the full default window, to the millisecond", async () => {
+  const { env, clock } = await sg30World(-1);
+  assert.equal(await sg30Delta(env, clock), SG30_DEFAULT);
+  clock.t += SG30_DEFAULT - 1;
+  assert.equal((await pull(env)).status, 204);
+  clock.t += 1;
+  const r = await pull(env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).jobs[0].attempt, 2);
+});
+
+test("shotgun30 value: LEASE_MS=-300000 and -300001 are the default, not a past lease", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("-300000"), SG30_DEFAULT);
+  assert.equal(await delta("-300001"), SG30_DEFAULT);
+  assert.equal(await delta("-299999"), SG30_DEFAULT);
+});
+
+test("shotgun30 value: zero in every spelling -- 0, 00, -0, +0, 0.0 -- is the default", async () => {
+  const delta = await sg30Cycler();
+  for (const v of ["0", "00", "-0", "+0", "0.0", "0.000"]) {
+    assert.equal(await delta(v), SG30_DEFAULT, `LEASE_MS=${v}`);
+  }
+});
+
+test("shotgun30 value: the most negative spellings are the default", async () => {
+  const delta = await sg30Cycler();
+  for (const v of ["-9007199254740991", "-2147483648", "-2147483647", "-" + "9".repeat(24), "-42"]) {
+    assert.equal(await delta(v), SG30_DEFAULT, `LEASE_MS=${v}`);
+  }
+});
+
+test("shotgun30 value: a missing, unset or empty LEASE_MS is the default", async () => {
+  const { env, clock } = await sg30World("1000");
+  let n = 0;
+  for (const raw of [undefined, "", null]) {
+    env.LEASE_MS = raw;
+    const id = `m${++n}`;
+    assert.equal(await sg30Delta(env, clock, id), SG30_DEFAULT, `LEASE_MS=${String(raw)}`);
+    assert.equal((await worker.fetch(req(`/t/alice/jobs/${id}/ack`, { method: "POST", token: RUNNER }), env)).status, 204);
+  }
+  delete env.LEASE_MS;
+  assert.equal(await sg30Delta(env, clock, "mgone"), SG30_DEFAULT);
+});
+
+test("shotgun30 value: null-ish and boolean raw values are the default", async () => {
+  const delta = await sg30Cycler();
+  for (const v of ["null", "undefined", "NULL", "None", "nil"]) {
+    assert.equal(await delta(v), SG30_DEFAULT, `LEASE_MS=${v}`);
+  }
+  assert.equal(await delta(false), SG30_DEFAULT);
+  assert.equal(await delta(true), SG30_DEFAULT);
+});
+
+test("shotgun30 value: NaN and Infinity spellings are the default", async () => {
+  const delta = await sg30Cycler();
+  for (const v of ["NaN", "nan", "Infinity", "-Infinity", "+Infinity", "inf", "-inf", "-1e999"]) {
+    assert.equal(await delta(v), SG30_DEFAULT, `LEASE_MS=${v}`);
+  }
+});
+
+test("shotgun30 value: words are the default", async () => {
+  const delta = await sg30Cycler();
+  for (const v of ["five", "five minutes", "ms", "lease", "default", "five300000"]) {
+    assert.equal(await delta(v), SG30_DEFAULT, `LEASE_MS=${v}`);
+  }
+});
+
+test("shotgun30 value: 1 ms is accepted -- leased at the same instant, free 1 ms later", async () => {
+  const { env, clock } = await sg30World("1");
+  assert.equal(await sg30Delta(env, clock), 1);
+  assert.equal((await pull(env)).status, 204);
+  clock.t += 1;
+  const r = await pull(env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).jobs[0].attempt, 2);
+});
+
+test("shotgun30 value: 300 ms is accepted and expires at 300, not at 299", async () => {
+  const { env, clock } = await sg30World(300);
+  assert.equal(await sg30Delta(env, clock), 300);
+  clock.t += 299;
+  assert.equal((await pull(env)).status, 204);
+  clock.t += 1;
+  assert.equal((await pull(env)).status, 200);
+});
+
+test("shotgun30 value: 299999, just under the default, is accepted as itself", async () => {
+  const { env, clock } = await sg30World("299999");
+  assert.equal(await sg30Delta(env, clock), 299_999);
+  clock.t += 299_999;
+  assert.equal((await pull(env)).status, 200);
+});
+
+test("shotgun30 value: 300000 exactly is a 300000 ms lease", async () => {
+  const { env, clock } = await sg30World("300000");
+  assert.equal(await sg30Delta(env, clock), SG30_DEFAULT);
+  clock.t += SG30_DEFAULT - 1;
+  assert.equal((await pull(env)).status, 204);
+  clock.t += 1;
+  assert.equal((await pull(env)).status, 200);
+});
+
+test("shotgun30 value: 300001, just over the default, is accepted as itself", async () => {
+  const { env, clock } = await sg30World("300001");
+  assert.equal(await sg30Delta(env, clock), 300_001);
+  clock.t += SG30_DEFAULT;
+  assert.equal((await pull(env)).status, 204);
+  clock.t += 1;
+  assert.equal((await pull(env)).status, 200);
+});
+
+test("shotgun30 value: values at and past 2^31 are accepted, not clamped and not defaulted", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("2147483647"), 2_147_483_647);
+  assert.equal(await delta("2147483648"), 2_147_483_648);
+  assert.equal(await delta("4294967296"), 4_294_967_296);
+});
+
+test("shotgun30 value: a 2^53-scale value is accepted -- still leased after the default window", async () => {
+  const { env, clock } = await sg30World("9007199254740993");
+  const d = await sg30Delta(env, clock);
+  assert.ok(d > SG30_DEFAULT, `delta ${d}`);
+  clock.t += SG30_DEFAULT;
+  assert.equal((await pull(env)).status, 204);
+  assert.equal(box(env).get("job:j1").attempts, 1);
+});
+
+test("shotgun30 value: fractions are cut at the point -- 0.5 and 0.999 default, 1.5 is 1, 300000.9 is 300000", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("0.5"), SG30_DEFAULT);
+  assert.equal(await delta("0.999"), SG30_DEFAULT);
+  assert.equal(await delta("1.5"), 1);
+  assert.equal(await delta("300000.9"), 300_000);
+  assert.equal(await delta("299999.9"), 299_999);
+  assert.equal(await delta("-1.5"), SG30_DEFAULT);
+});
+
+test("shotgun30 value: exponent forms stop at the e -- 1e3 is 1, 3e5 is 3, 300000e0 is 300000", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("1e3"), 1);
+  assert.equal(await delta("3e5"), 3);
+  assert.equal(await delta("300000e0"), 300_000);
+  assert.equal(await delta("1e0"), 1);
+  assert.equal(await delta("0e5"), SG30_DEFAULT);
+  assert.equal(await delta("10e2"), 10);
+  assert.equal(await delta("1e999"), 1);
+});
+
+test("shotgun30 value: hex, octal and binary spellings read in base 10 -- 0x300000 is 0 and defaults, 010 is 10", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("0x300000"), SG30_DEFAULT);
+  assert.equal(await delta("0x1"), SG30_DEFAULT);
+  assert.equal(await delta("0o777"), SG30_DEFAULT);
+  assert.equal(await delta("0b1"), SG30_DEFAULT);
+  assert.equal(await delta("010"), 10);
+  assert.equal(await delta("007"), 7);
+});
+
+// -- 8 spelling tests ----------------------------------------------------
+
+test("shotgun30 spelling: leading whitespace -- spaces, tab, CR, LF -- is skipped", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta(" 1000"), 1000);
+  assert.equal(await delta("\t1000"), 1000);
+  assert.equal(await delta("\r1000"), 1000);
+  assert.equal(await delta("\n1000"), 1000);
+  assert.equal(await delta(" \t\r\n 42"), 42);
+});
+
+test("shotgun30 spelling: trailing whitespace ends the number cleanly", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("1000 "), 1000);
+  assert.equal(await delta("1000\t"), 1000);
+  assert.equal(await delta("1000\r\n"), 1000);
+  assert.equal(await delta("1000\n\n\n"), 1000);
+});
+
+test("shotgun30 spelling: whitespace around a negative still reads the negative and defaults", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta(" -1 "), SG30_DEFAULT);
+  assert.equal(await delta("\t-1000\t"), SG30_DEFAULT);
+  assert.equal(await delta("\n-42\r\n"), SG30_DEFAULT);
+});
+
+test("shotgun30 spelling: a leading plus is the number's own sign", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("+1"), 1);
+  assert.equal(await delta("+299999"), 299_999);
+  assert.equal(await delta("+300000"), 300_000);
+  assert.equal(await delta("+0"), SG30_DEFAULT);
+});
+
+test("shotgun30 spelling: doubled and mixed signs are not numbers and default", async () => {
+  const delta = await sg30Cycler();
+  for (const v of ["++1000", "+-1000", "-+1000", "--1000", "+ 1000", "- 1000"]) {
+    assert.equal(await delta(v), SG30_DEFAULT, `LEASE_MS=${v}`);
+  }
+});
+
+test("shotgun30 spelling: trailing junk after the digits is ignored -- 1000ms is 1000", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("1000ms"), 1000);
+  assert.equal(await delta("1000 milliseconds"), 1000);
+  assert.equal(await delta("1000;"), 1000);
+  assert.equal(await delta("1000abc"), 1000);
+  assert.equal(await delta("300000ms"), 300_000);
+});
+
+test("shotgun30 spelling: trailing junk after a negative does not rescue it -- it defaults", async () => {
+  const delta = await sg30Cycler();
+  for (const v of ["-1000ms", "-1abc", "-42!", "-300000 seconds"]) {
+    assert.equal(await delta(v), SG30_DEFAULT, `LEASE_MS=${v}`);
+  }
+});
+
+test("shotgun30 spelling: separators inside the digits cut the number -- 300_000 is 300", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("300_000"), 300);
+  assert.equal(await delta("300,000"), 300);
+  assert.equal(await delta("300 000"), 300);
+  assert.equal(await delta("1_000"), 1);
+  assert.equal(await delta("1,000,000"), 1);
+});
+
+// -- 8 consequence and boundary tests ------------------------------------
+
+test("shotgun30 consequence: under a negative LEASE_MS a second pull never hands the job out inside the window", async () => {
+  const { env, clock } = await sg30World("-5000");
+  assert.equal(await sg30Delta(env, clock), SG30_DEFAULT);
+  for (const step of [1, 999, 100_000, 198_999]) {
+    clock.t += step;
+    assert.equal((await pull(env)).status, 204, `at +${clock.t - 1_700_000_000_000}`);
+    assert.equal(box(env).get("job:j1").attempts, 1);
+  }
+});
+
+test("shotgun30 consequence: an accepted 1000 ms lease is free exactly at expiry and 1 ms after, on fresh jobs", async () => {
+  for (const offset of [1000, 1001]) {
+    const { env, clock } = await sg30World("1000");
+    assert.equal(await sg30Delta(env, clock), 1000);
+    clock.t += 999;
+    assert.equal((await pull(env)).status, 204, `offset ${offset} at expiry - 1`);
+    clock.t += offset - 999;
+    const r = await pull(env);
+    assert.equal(r.status, 200, `offset ${offset} at or past the mark`);
+    assert.equal((await r.json()).jobs[0].attempt, 2);
+  }
+});
+
+test("shotgun30 consequence: a renew under a negative LEASE_MS extends by the default, not into the past", async () => {
+  const { env, clock } = await sg30World("-1");
+  assert.equal(await sg30Delta(env, clock), SG30_DEFAULT);
+  clock.t += 1000;
+  assert.equal((await sg30Renew(env)).status, 204);
+  assert.equal(box(env).get("job:j1").leased_until - clock.t, SG30_DEFAULT);
+  clock.t += SG30_DEFAULT - 1;
+  assert.equal((await pull(env)).status, 204);
+});
+
+test("shotgun30 consequence: a renew under an accepted 1000 ms lease extends by 1000 only", async () => {
+  const { env, clock } = await sg30World("1000");
+  assert.equal(await sg30Delta(env, clock), 1000);
+  clock.t += 999;
+  assert.equal((await sg30Renew(env)).status, 204);
+  assert.equal(box(env).get("job:j1").leased_until - clock.t, 1000);
+  clock.t += 1000;
+  assert.equal((await pull(env)).status, 200);
+});
+
+test("shotgun30 consequence: a renew 1 ms before a defaulted lease ends lands; exactly at the end it is 404", async () => {
+  const before = await sg30World("-9");
+  assert.equal(await sg30Delta(before.env, before.clock), SG30_DEFAULT);
+  before.clock.t += SG30_DEFAULT - 1;
+  assert.equal((await sg30Renew(before.env)).status, 204);
+  const at = await sg30World("-9");
+  assert.equal(await sg30Delta(at.env, at.clock), SG30_DEFAULT);
+  at.clock.t += SG30_DEFAULT;
+  assert.equal((await sg30Renew(at.env)).status, 404);
+  assert.ok(box(at.env).has("job:j1"));
+});
+
+test("shotgun30 consequence: a negative LEASE_MS does not dead-letter the job -- attempts stay at 1 across sub-window steps", async () => {
+  const { env, clock } = await sg30World("-2147483648");
+  assert.equal(await sg30Delta(env, clock), SG30_DEFAULT);
+  for (let i = 0; i < 3; i++) {
+    clock.t += 99_999;
+    assert.equal((await pull(env)).status, 204);
+  }
+  assert.equal(box(env).get("job:j1").attempts, 1);
+  assert.ok(!box(env).has("dlq:j1"));
+  clock.t += 3;
+  assert.equal((await pull(env)).status, 200);
+  assert.equal(box(env).get("job:j1").attempts, 2);
+});
+
+test("shotgun30 consequence: two jobs under a word LEASE_MS are both leased for the full window", async () => {
+  const { env, clock } = await sg30World("five");
+  await postJob(env, "j1");
+  await postJob(env, "j2");
+  const r = await pull(env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).jobs.length, 2);
+  assert.equal(box(env).get("job:j1").leased_until - clock.t, SG30_DEFAULT);
+  assert.equal(box(env).get("job:j2").leased_until - clock.t, SG30_DEFAULT);
+  clock.t += SG30_DEFAULT - 1;
+  assert.equal((await pull(env)).status, 204);
+});
+
+test("shotgun30 consequence: changing LEASE_MS to a negative between pull and renew renews by the default", async () => {
+  const { env, clock } = await sg30World("1000");
+  assert.equal(await sg30Delta(env, clock), 1000);
+  env.LEASE_MS = "-1";
+  clock.t += 500;
+  assert.equal((await sg30Renew(env)).status, 204);
+  assert.equal(box(env).get("job:j1").leased_until - clock.t, SG30_DEFAULT);
+});
+
+// -- 8 bookend sweeps ------------------------------------------------------
+
+test("shotgun30 bookends: every ASCII symbol at the front of 1000 defaults, except + which is the sign", async () => {
+  const delta = await sg30Cycler();
+  for (const sym of SG30_PUNCT) {
+    const want = sym === "+" ? 1000 : SG30_DEFAULT;
+    assert.equal(await delta(sym + "1000"), want, `front ${JSON.stringify(sym)}`);
+  }
+});
+
+test("shotgun30 bookends: every ASCII symbol at the back of 1000 is trailing junk and reads 1000", async () => {
+  const delta = await sg30Cycler();
+  for (const sym of SG30_PUNCT) {
+    assert.equal(await delta("1000" + sym), 1000, `back ${JSON.stringify(sym)}`);
+  }
+});
+
+test("shotgun30 bookends: matched symbol pairs around 1000 default, except ++ which still signs the number", async () => {
+  const delta = await sg30Cycler();
+  for (const sym of SG30_PUNCT) {
+    const want = sym === "+" ? 1000 : SG30_DEFAULT;
+    assert.equal(await delta(sym + "1000" + sym), want, `pair ${JSON.stringify(sym)}`);
+  }
+});
+
+test("shotgun30 bookends: mismatched symbol pairs around 1000 default, except a leading + which reads 1000", async () => {
+  const delta = await sg30Cycler();
+  for (let i = 0; i < SG30_PUNCT.length; i++) {
+    const front = SG30_PUNCT[i];
+    const back = SG30_PUNCT[(i + 1) % SG30_PUNCT.length];
+    const want = front === "+" ? 1000 : SG30_DEFAULT;
+    assert.equal(await delta(front + "1000" + back), want, `pair ${JSON.stringify(front + back)}`);
+  }
+});
+
+test("shotgun30 bookends: symbol-only values default, each symbol and all together", async () => {
+  const delta = await sg30Cycler();
+  for (const sym of SG30_PUNCT) {
+    assert.equal(await delta(sym), SG30_DEFAULT, `only ${JSON.stringify(sym)}`);
+  }
+  assert.equal(await delta(SG30_PUNCT), SG30_DEFAULT);
+  assert.equal(await delta(SG30_PUNCT + SG30_PUNCT), SG30_DEFAULT);
+});
+
+test("shotgun30 bookends: NUL at the front kills the number, at the back is junk, and alone defaults", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("\u00001000"), SG30_DEFAULT);
+  assert.equal(await delta("1000\u0000"), 1000);
+  assert.equal(await delta("\u00001000\u0000"), SG30_DEFAULT);
+  assert.equal(await delta("\u0000"), SG30_DEFAULT);
+});
+
+test("shotgun30 bookends: tab, CR and LF at the front, the back and both ends of 1000 all read 1000", async () => {
+  const delta = await sg30Cycler();
+  for (const ch of ["\t", "\r", "\n"]) {
+    assert.equal(await delta(ch + "1000"), 1000, `front ${JSON.stringify(ch)}`);
+    assert.equal(await delta("1000" + ch), 1000, `back ${JSON.stringify(ch)}`);
+    assert.equal(await delta(ch + "1000" + ch), 1000, `both ${JSON.stringify(ch)}`);
+  }
+});
+
+test("shotgun30 bookends: symbols around a negative and around zero all land on the default", async () => {
+  const delta = await sg30Cycler();
+  for (const v of ["!-1000", "-1000!", "(-1000)", "--1000", "\u0000-1000", "-1000\u0000", "!0!", "(0)", "-0-", "\u00000\u0000"]) {
+    assert.equal(await delta(v), SG30_DEFAULT, `LEASE_MS=${JSON.stringify(v)}`);
+  }
+});
+
+// -- 4 run-length sweeps -----------------------------------------------------
+
+test("shotgun30 runs: runs of zeros at lengths 1, 5, 10 and 30 default; a zero run before a 1 still reads 1", async () => {
+  const delta = await sg30Cycler();
+  for (const n of [1, 5, 10, 30]) {
+    assert.equal(await delta("0".repeat(n)), SG30_DEFAULT, `${n} zeros`);
+  }
+  assert.equal(await delta("0".repeat(30) + "1"), 1);
+  assert.equal(await delta("0".repeat(10) + "1000"), 1000);
+});
+
+test("shotgun30 runs: runs of nines at lengths 1, 5 and 10 are themselves; 30 nines is a huge accepted lease", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("9"), 9);
+  assert.equal(await delta("9".repeat(5)), 99_999);
+  assert.equal(await delta("9".repeat(10)), 9_999_999_999);
+  const huge = await delta("9".repeat(30));
+  assert.ok(huge > 1e29, `30 nines delta ${huge}`);
+});
+
+test("shotgun30 runs: the odd character at the front, the back and the middle of a 10-digit run", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("!" + "9".repeat(10)), SG30_DEFAULT);
+  assert.equal(await delta("9".repeat(10) + "!"), 9_999_999_999);
+  assert.equal(await delta("9".repeat(5) + "!" + "9".repeat(5)), 99_999);
+  assert.equal(await delta("-" + "9".repeat(10)), SG30_DEFAULT);
+});
+
+test("shotgun30 runs: runs of ones -- 10 ones are themselves, 10 negative ones default, 30 ones stay leased past the window", async () => {
+  const { env, clock } = await sg30World("1".repeat(30));
+  const d = await sg30Delta(env, clock);
+  assert.ok(d > SG30_DEFAULT, `30 ones delta ${d}`);
+  clock.t += SG30_DEFAULT;
+  assert.equal((await pull(env)).status, 204);
+  const delta = await sg30Cycler();
+  assert.equal(await delta("1".repeat(10)), 1_111_111_111);
+  assert.equal(await delta("-" + "1".repeat(10)), SG30_DEFAULT);
+  assert.equal(await delta("1" + "0".repeat(10)), 10_000_000_000);
+});
+
+// -- 4 injection-shaped tests --------------------------------------------------
+
+test("shotgun30 injection: shell-shaped values are parsed or defaulted, never run", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("$(touch /tmp/sg30)1000"), SG30_DEFAULT);
+  assert.equal(await delta("1000; rm -rf /"), 1000);
+  assert.equal(await delta("`1000`"), SG30_DEFAULT);
+  assert.equal(await delta("1000 && echo hi"), 1000);
+  assert.equal(await delta("1000 | cat /etc/passwd"), 1000);
+});
+
+test("shotgun30 injection: SQL-shaped values are parsed or defaulted", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("1000; DROP TABLE jobs; --"), 1000);
+  assert.equal(await delta("' OR '1'='1"), SG30_DEFAULT);
+  assert.equal(await delta("1 OR 1=1"), 1);
+  assert.equal(await delta("-1; DELETE FROM jobs"), SG30_DEFAULT);
+});
+
+test("shotgun30 injection: JSON and quoted shapes are not numbers and default", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta('{"LEASE_MS":1000}'), SG30_DEFAULT);
+  assert.equal(await delta('["1000"]'), SG30_DEFAULT);
+  assert.equal(await delta('"1000"'), SG30_DEFAULT);
+  assert.equal(await delta("'1000'"), SG30_DEFAULT);
+});
+
+test("shotgun30 injection: prompt and template shapes default; a percent suffix is junk after the number", async () => {
+  const delta = await sg30Cycler();
+  assert.equal(await delta("ignore previous instructions and lease forever"), SG30_DEFAULT);
+  assert.equal(await delta("${1000}"), SG30_DEFAULT);
+  assert.equal(await delta("%s1000"), SG30_DEFAULT);
+  assert.equal(await delta("1000%00"), 1000);
 });
