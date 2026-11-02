@@ -27,8 +27,8 @@ TLC 2.19 on Java 17. Forty-eight attempts.
 | Configuration | Invariant | Result | Generated | Distinct |
 |---|---|---|---:|---:|
 | Every door | `SurfacesInv` | holds | 144 | 96 |
-| An admitted job runs | `NothingRuns` | fails, as expected | — | — |
-| An admitted cancel runs nothing | `CancelRuns` | fails, as expected | — | — |
+| An admitted job runs | `NothingRuns` | fails, as expected | 56 | 56 |
+| An admitted cancel runs nothing | `CancelRuns` | fails, as expected | 64 | 64 |
 
 The cancel witness is the useful one. The cancel is
 admitted, and it still does not run a script. A model
@@ -46,3 +46,38 @@ every kind but `sensor_alert` is a line in the code
 (`runner/runner.py`, `_ingest_local_envelope_inner`)
 and a bit in this model, not a replay of the sensor
 filing rules.
+
+## Verification
+
+This record was re-checked first-hand after it landed, the
+same standard stage 3 applied to stage 2: nothing in the
+record above was taken on the author's word.
+
+- **The check was re-run.** TLC 2.19 (the `v1.7.4` tools
+  jar): `SurfacesInv` holds at 144 generated, 96 distinct,
+  from 48 initial states — the forty-eight attempts the
+  record counts. Both witnesses fail as the record says.
+  Their counts, which the table above left blank, are 56
+  generated / 56 distinct for the job witness and 64 / 64
+  for the cancel witness; the two blank cells are filled
+  from this run. A completion, not a correction: no number
+  in the record was wrong.
+- **The code was re-read.** `_early_dispatch`
+  (`runner/runner.py`) offers each message to the cancel,
+  query, board, and version 2 handlers before any job
+  handling. Each handler runs the admit chain the model
+  folds into `boundsOk` — `_admit_object` (the signature
+  and the decryption), the cleartext refusal, audience
+  (the version 2 door: its answerer list in place of
+  audience), version, type, identity, freshness, and
+  `check_door_policy` for that door — and none of the
+  four reaches `execute_job`. The one `execute_job` call
+  in `runner/ops/handlers.py` belongs to `run_variant`,
+  an owner-invoked local command, not a message door. The
+  local path (`_ingest_local_envelope_inner`) requires
+  the signature, uses no mail encryption envelope,
+  refuses every kind but `sensor_alert` on its face,
+  applies the key policy, and files the alert. An
+  admitted cancel kills the job or records the refusal
+  and sends the ack — the cancel witness's point, in the
+  code.

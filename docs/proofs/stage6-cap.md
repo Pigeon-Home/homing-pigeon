@@ -73,3 +73,39 @@ After this raise, `test_proof_constraints.py` and
 `test_proof_conformance.py` together run 85 tests, all
 passing. The raise changed a comment in `Gate.tla` and the
 bound it declares. It changed no runner behaviour.
+
+## Verification
+
+This record was re-checked first-hand after it landed, the
+same standard stage 3 applied to stage 2: nothing in the
+record above was taken on the author's word.
+
+- **The check was re-run.** TLC 2.19 (the `v1.7.4` tools
+  jar), on Java 21 rather than the record's 17 — the
+  rung-500 record established that the counts do not move
+  with the Java version, and none did. Every number in the
+  table above reproduced exactly: enforce holds at
+  3,095,432 generated, 2,309,000 distinct; off holds at
+  3,106,576 / 2,320,144; audit holds at
+  3,106,576 / 2,320,144; the claim race holds at 7 / 5;
+  the two witnesses fail at 3,095,425 / 2,308,999 and
+  3,106,561 / 2,320,141. Each gate run starts from 786,432
+  initial states.
+- **The code was re-read.** `handle_mail`
+  (`runner/ops/mail.py`) still performs the check order
+  `Gate.tla` annotates, step for step, and the only length
+  it measures is the one at its step 7:
+  `len(script.encode("utf-8"))` against
+  `max_script_bytes`, default 1048576 (constraint C2). No
+  step branches on a script's character count or on its
+  text. The argument this record rests on — the rungs are
+  one searched set because no length-dependent check
+  appears anywhere in the order — is the code's shape on
+  current main, not only at the record's commit.
+- **The tests.** The two files named above now run 131
+  tests (67 constraints, 64 conformance), all passing.
+  The 85 in the record was the family's size on the tree
+  the record was written on; the conformance file grew
+  when stage 5 landed in full after this record. Not a
+  correction: a point-in-time count, since overtaken, with
+  the claim it supported — the family passes — unchanged.
