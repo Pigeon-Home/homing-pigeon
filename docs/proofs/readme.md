@@ -216,7 +216,9 @@ A finding is most useful when it points at the file and the line
   `content-sh-macos.md` is the same rungs under bash 3.2.57
   in POSIX mode, which is what macOS `/bin/sh` is.
   `content-sh-freebsd.md` records that FreeBSD's own `sh`
-  was not run, and why.
+  was not run, and why. `content-sh-freebsd-design.md` is
+  the split: emulate the guest, use the real shell, do
+  not emulate the gate.
 - `thinking.md` — the reasoning behind the work: why the gate
   comes first, why size is a character count, the open
   content-independence challenge, the standing rules, and the

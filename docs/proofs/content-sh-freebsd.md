@@ -36,3 +36,8 @@ The ladder models in stages 1 to 10 do not contain an
 operating system. There was nothing in them to re-check
 for FreeBSD. The platform difference is this shell, and
 this shell was not run.
+
+The way to run it is `content-sh-freebsd-design.md`.
+The guest FreeBSD already boots in `freebsd.yml` is the
+emulator. `/bin/sh` inside it is the parser. The gate is
+not run there again.
