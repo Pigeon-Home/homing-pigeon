@@ -202,6 +202,10 @@ A finding is most useful when it points at the file and the line
   witnesses, and the findings, stage by stage. The
   content-independence series is recorded in `stage7.md` to
   `stage10.md`, under the titles those records landed with.
+- `content-series-review.md` — the review of the
+  content-independence series and the redo it asks for: every
+  rung in order, both shells, the full construct set, and an
+  honest statement of what each rung covers.
 - `thinking.md` — the reasoning behind the work: why the gate
   comes first, why size is a character count, the open
   content-independence challenge, the standing rules, and the
