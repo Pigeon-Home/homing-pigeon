@@ -315,6 +315,14 @@ class SandboxShapeTest(unittest.TestCase):
             self.assertEqual(len(binds), 1)
             self.assertEqual(argv[binds[0] + 1], work)
 
+    # This leg is POSIX-only: it plants a real interpreter
+    # file and has the Linux sandbox builder resolve it and
+    # compute its POSIX prefix bind. On Windows the planted
+    # path is not a POSIX path, the name without an extension
+    # does not resolve, and the bwrap builder is not the
+    # platform's confinement at all. The pure-function pins
+    # below run in every job.
+    @unittest.skipIf(os.name == "nt", "POSIX only")
     def test_an_outside_interpreter_brings_its_prefix_read_only(self):
         with tempfile.TemporaryDirectory() as td:
             work = os.path.join(td, "work")
