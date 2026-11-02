@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.117 - 2026-11-02
+
+- Docs: the future list gains the DTLS over email transport extension note.
+- The corpus banked since 3.15.116 rides along (Germany bank 43).
+
 ## 3.15.116 - 2026-11-02
 
 - Tests: the CI run report host check gets its own test — a github.com substring is not a GitHub host.
