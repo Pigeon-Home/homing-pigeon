@@ -6912,5 +6912,540 @@ class RefusedAckShotgunTest(unittest.TestCase):
             self.assertEqual(w.state.acked, ["j1"] * 10)
             self.assertEqual(pipe._pending, {})
 
+
+
+class DifferentResultStoredShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 24: a different result
+    for a stored id does not finish the job (fixed 2c0f4d5d,
+    31-Oct-2026). A 200 from POST /results used to mean only
+    "that id is already stored", and the queue client treated
+    it as success and acked the job: a later life's output was
+    deleted locally and never stored anywhere. The fix makes
+    the 200 name the sha256 of the envelope that stayed, and
+    the client (QueueClient.post_result in the queues
+    transport) acks only when that hash is the body it just
+    sent. A different body raises, stays in the outbox and
+    the job stays leased; a 200 naming no hash is the old
+    Worker's answer and still completes a retry. This family
+    scattershots everything around that failure: the pipe
+    holding and later finishing the job, every field of the
+    200 payload (sha256, duplicate, id, extra fields) and of
+    the result envelope (subject id, subject wording, the
+    body's own fields), the status seam around 200, bookended
+    and run-length envelope bodies, and injection-shaped text
+    on both surfaces. One regression test was never going to
+    be enough for a bug that took days of CPU to find.
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: the envelope body gets
+    bookended variants -- all 32 printable ASCII symbols
+    (string.punctuation) at the front AND the back, as
+    singles, matched pairs, mismatched pairs and symbol-only
+    strings, plus NUL, tab, CR and LF at both ends -- and run
+    lengths: runs of the odd character, runs of ordinary
+    characters with the odd one at the front, the back and
+    the middle, and a run whose length is off by one.
+
+    Proof of work (2-Nov-2026). The unit tests are the 50
+    methods of this class: 8 pipe tests, 18 status and
+    payload-field tests, 6 envelope-field tests, 10 bookend
+    sweeps, 5 run-length sweeps and 3 injection-shaped tests.
+    Per-field enumeration: the surface is fielded -- the
+    response status, the payload's sha256 (matching,
+    mismatching, uppercased, padded, truncated, extended,
+    empty, and hashes of smaller things), duplicate, id and
+    extra payload fields, the payload's shape itself (not
+    JSON, empty, not UTF-8, a non-object, trailing junk, a
+    BOM), the envelope's subject id and wording, and the
+    result body's exit_code, sig and extra keys -- and each
+    field gets its own test. The fuzzing was executed, not
+    just the tests written: the corpus machinery was driven
+    locally with runner/tools/de_dust_corpus.py grow
+    --target channels --rounds 400 --seed 20261125 against
+    the banked channels corpus (11 entries) -- the channel
+    target the queues pipe is built on. Result: 400 rounds,
+    0 crashes, 0 slow, arcs unchanged at 142, slowest try
+    7 ms; the different-result shape did not recur. The
+    grow's bookkeeping writes were reverted and are not
+    banked (banking is the rigs' hourly job); this record is
+    the run's proof. This family adds no skips. None of this
+    is exotic: it is combinatorics -- systematically trying
+    the combinations a hand-written list would never reach,
+    then pinning each answer as a test."""
+
+    STORED = '[HOMING-PIGEON] result j1\n\n{"exit_code":0,"sig":"00"}\n'
+    SENT = '[HOMING-PIGEON] result j1\n\n{"exit_code":1,"sig":"00"}\n'
+
+    def setUp(self):
+        self.td = tempfile.TemporaryDirectory()
+        self.channel = os.path.join(self.td.name, "channel")
+        ch.dirs(self.channel)
+
+    def tearDown(self):
+        self.td.cleanup()
+
+    # -- helpers ---------------------------------------------------
+
+    @staticmethod
+    def _env(body, ident="j1"):
+        return f"[HOMING-PIGEON] result {ident}\n\n{body}\n"
+
+    @staticmethod
+    def _hash(text):
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    def _pipe(self, w):
+        return q.QueuePipe({}, self.channel,
+                           q.QueueClient(w.url, RUNNER_TOKEN))
+
+    def _pull_and_write(self, w, pipe, ident, text, fname=None):
+        w.state.jobs[ident] = envelope(ident)
+        pipe.pull_jobs()
+        self.assertIn(ident, pipe._pending)
+        d = ch.dirs(self.channel)
+        ch._atomic_write(
+            os.path.join(d["outbox"], fname or (ident + ".result.txt")),
+            text)
+
+    def _held(self, w, pipe, ident, text, fname=None):
+        fname = fname or (ident + ".result.txt")
+        self.assertEqual(w.state.acked, [])
+        self.assertIn(ident, pipe._pending)
+        self.assertIn(ident, w.state.jobs)
+        self.assertEqual(w.state.results[ident], text)
+        self.assertTrue(os.path.isfile(
+            os.path.join(ch.dirs(self.channel)["outbox"], fname)))
+
+    def _posts(self, cases):
+        """Run (stored, sent, finishes) cases against one fake
+        Worker whose stored result the handler hashes, exactly
+        the contract the real Worker answers."""
+        with FakeWorker() as w:
+            client = q.QueueClient(w.url, RUNNER_TOKEN)
+            for stored, sent, finishes in cases:
+                w.state.results["j1"] = stored
+                if finishes:
+                    self.assertTrue(client.post_result(sent), repr(sent))
+                else:
+                    with self.assertRaises(RuntimeError, msg=repr(sent)):
+                        client.post_result(sent)
+                self.assertEqual(w.state.results["j1"], stored)
+
+    def _stub_client(self, status, payload):
+        sent = []
+
+        class Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def read(self):
+                return payload
+
+        Resp.status = status
+
+        def opener(req, timeout=None):
+            sent.append(req)
+            return Resp()
+
+        client = q.QueueClient("http://127.0.0.1:9/t/alice",
+                               RUNNER_TOKEN, opener=opener)
+        return client, sent
+
+    def _stub_post(self, status, payload, text=None):
+        client, _sent = self._stub_client(status, payload)
+        return client.post_result(self.SENT if text is None else text)
+
+    def _payload(self, **fields):
+        return json.dumps(fields).encode("utf-8")
+
+    # -- the pipe: a different stored result holds the job (8) -----
+
+    def test_pipe_a_different_exit_code_result_holds_the_job(self):
+        with FakeWorker() as w:
+            w.state.results["j1"] = self.STORED
+            pipe = self._pipe(w)
+            self._pull_and_write(w, pipe, "j1", self.SENT)
+            pipe.push_results()
+            self._held(w, pipe, "j1", self.STORED)
+
+    def test_pipe_the_same_bytes_with_a_unicode_body_finish(self):
+        text = self._env('{"note":"café ☕","exit_code":0}')
+        with FakeWorker() as w:
+            w.state.results["j1"] = text
+            pipe = self._pipe(w)
+            self._pull_and_write(w, pipe, "j1", text)
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertNotIn("j1", pipe._pending)
+            self.assertTrue(os.path.isfile(os.path.join(
+                ch.dirs(self.channel)["outbox_done"], "j1.result.txt")))
+
+    def test_pipe_a_whitespace_only_difference_holds_the_job(self):
+        with FakeWorker() as w:
+            w.state.results["j1"] = self.STORED
+            pipe = self._pipe(w)
+            self._pull_and_write(
+                w, pipe, "j1",
+                '[HOMING-PIGEON] result j1\n\n{"exit_code": 0,"sig":"00"}\n')
+            pipe.push_results()
+            self._held(w, pipe, "j1", self.STORED)
+
+    def test_pipe_a_different_collision_named_result_holds(self):
+        with FakeWorker() as w:
+            w.state.results["j1"] = self.STORED
+            pipe = self._pipe(w)
+            self._pull_and_write(w, pipe, "j1", self.SENT,
+                                 fname="j1.result-2.txt")
+            pipe.push_results()
+            self._held(w, pipe, "j1", self.STORED,
+                       fname="j1.result-2.txt")
+
+    def test_pipe_a_held_job_finishes_when_the_exact_bytes_arrive(self):
+        with FakeWorker() as w:
+            w.state.results["j1"] = self.STORED
+            pipe = self._pipe(w)
+            self._pull_and_write(w, pipe, "j1", self.SENT)
+            pipe.push_results()
+            self._held(w, pipe, "j1", self.STORED)
+            d = ch.dirs(self.channel)
+            ch._atomic_write(os.path.join(d["outbox"], "j1.result.txt"),
+                             self.STORED)
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j1"])
+            self.assertNotIn("j1", pipe._pending)
+            self.assertTrue(os.path.isfile(
+                os.path.join(d["outbox_done"], "j1.result.txt")))
+
+    def test_pipe_a_different_result_holds_across_three_passes(self):
+        with FakeWorker() as w:
+            w.state.results["j1"] = self.STORED
+            pipe = self._pipe(w)
+            self._pull_and_write(w, pipe, "j1", self.SENT)
+            for _ in range(3):
+                pipe.push_results()
+                self._held(w, pipe, "j1", self.STORED)
+
+    def test_pipe_one_held_result_does_not_block_another_job(self):
+        with FakeWorker() as w:
+            w.state.results["j1"] = self.STORED
+            pipe = self._pipe(w)
+            self._pull_and_write(w, pipe, "j1", self.SENT)
+            w.state.jobs["j2"] = envelope("j2")
+            pipe.pull_jobs()
+            d = ch.dirs(self.channel)
+            ch._atomic_write(os.path.join(d["outbox"], "j2.result.txt"),
+                             self._env('{"exit_code":0}', "j2"))
+            pipe.push_results()
+            self.assertEqual(w.state.acked, ["j2"])
+            self.assertNotIn("j2", pipe._pending)
+            self.assertIn("j1", pipe._pending)
+            self.assertIn("j1", w.state.jobs)
+            self.assertEqual(w.state.results["j1"], self.STORED)
+
+    def test_pipe_a_held_jobs_lease_is_still_renewed(self):
+        with FakeWorker() as w:
+            w.state.results["j1"] = self.STORED
+            pipe = self._pipe(w)
+            self._pull_and_write(w, pipe, "j1", self.SENT)
+            pipe.push_results()
+            self._held(w, pipe, "j1", self.STORED)
+            pipe.renew_leases()
+            self.assertEqual(w.state.renewed, ["j1"])
+
+    # -- status and the 200 payload's fields (18) ------------------
+
+    def test_client_202_answers_true_even_with_a_mismatch_payload(self):
+        self.assertTrue(self._stub_post(
+            202, self._payload(duplicate=True,
+                               sha256=self._hash(self.STORED))))
+        self.assertTrue(self._stub_post(202, b"not json at all"))
+
+    def test_client_200_with_the_sent_hash_posts_the_exact_bytes(self):
+        client, sent = self._stub_client(
+            200, self._payload(id="j1", duplicate=True,
+                               sha256=self._hash(self.SENT)))
+        self.assertTrue(client.post_result(self.SENT))
+        self.assertEqual(len(sent), 1)
+        self.assertTrue(sent[0].full_url.endswith("/t/alice/results"))
+        self.assertEqual(sent[0].data, self.SENT.encode("utf-8"))
+
+    def test_client_200_with_a_different_hash_raises_the_named_error(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._stub_post(200, self._payload(
+                duplicate=True, sha256=self._hash(self.STORED)))
+        self.assertEqual(str(cm.exception),
+                         "post result: the queue kept a different envelope")
+
+    def test_client_200_with_an_uppercase_hash_raises(self):
+        with self.assertRaises(RuntimeError):
+            self._stub_post(200, self._payload(
+                sha256=self._hash(self.SENT).upper()))
+
+    def test_client_200_with_a_space_padded_hash_raises(self):
+        good = self._hash(self.SENT)
+        for padded in (" " + good, good + " ", " " + good + " ",
+                       "\t" + good, good + "\n"):
+            with self.assertRaises(RuntimeError, msg=repr(padded)):
+                self._stub_post(200, self._payload(sha256=padded))
+
+    def test_client_200_with_a_truncated_or_extended_hash_raises(self):
+        good = self._hash(self.SENT)
+        for bad in (good[:-1], good[:32], good + "0", good + "ab"):
+            with self.assertRaises(RuntimeError, msg=bad):
+                self._stub_post(200, self._payload(sha256=bad))
+
+    def test_client_200_with_an_empty_string_hash_raises(self):
+        with self.assertRaises(RuntimeError):
+            self._stub_post(200, self._payload(sha256=""))
+
+    def test_client_200_with_a_hash_of_something_smaller_raises(self):
+        for smaller in ("", "[HOMING-PIGEON] result j1",
+                        '{"exit_code":1,"sig":"00"}', "j1"):
+            with self.assertRaises(RuntimeError, msg=repr(smaller)):
+                self._stub_post(200, self._payload(
+                    sha256=self._hash(smaller)))
+
+    def test_client_200_with_no_hash_is_the_old_workers_answer(self):
+        self.assertTrue(self._stub_post(
+            200, self._payload(id="j1", duplicate=True)))
+        self.assertTrue(self._stub_post(200, self._payload()))
+
+    def test_client_200_with_a_null_number_or_bool_hash_is_no_hash(self):
+        for bad in (None, 0, 12345, True, False):
+            self.assertTrue(self._stub_post(
+                200, self._payload(sha256=bad)), repr(bad))
+
+    def test_client_200_with_a_list_or_object_hash_is_no_hash(self):
+        good = self._hash(self.SENT)
+        for bad in ([good], {"sha256": good}, []):
+            self.assertTrue(self._stub_post(
+                200, self._payload(sha256=bad)), repr(bad))
+
+    def test_client_200_with_a_non_json_or_empty_payload_is_no_hash(self):
+        for payload in (b"not json", b"", b"{", b"duplicate"):
+            self.assertTrue(self._stub_post(200, payload), repr(payload))
+
+    def test_client_200_with_a_not_utf8_payload_is_no_hash(self):
+        self.assertTrue(self._stub_post(200, b"\xff\xfe\x00bad"))
+        self.assertTrue(self._stub_post(
+            200, b'{"sha256": "' + self._hash(self.SENT).encode()
+            + b'"\xff}'))
+
+    def test_client_200_with_a_json_non_object_payload_is_no_hash(self):
+        good = self._hash(self.SENT)
+        for payload in (json.dumps([good]).encode(),
+                        json.dumps(good).encode(),
+                        b"200", b"null", b"true"):
+            self.assertTrue(self._stub_post(200, payload), repr(payload))
+
+    def test_client_200_with_trailing_junk_or_a_bom_is_no_hash(self):
+        good = self._payload(sha256=self._hash(self.SENT))
+        self.assertTrue(self._stub_post(200, good + b" junk"))
+        self.assertTrue(self._stub_post(200, b"\xef\xbb\xbf" + good))
+
+    def test_client_the_id_duplicate_and_extra_fields_do_not_move_it(self):
+        good = self._hash(self.SENT)
+        for payload in (
+                self._payload(sha256=good, duplicate=False),
+                self._payload(sha256=good),
+                self._payload(sha256=good, id="someone-else"),
+                self._payload(sha256=good, id="j1", duplicate=True,
+                              extra="field", count=3)):
+            self.assertTrue(self._stub_post(200, payload), repr(payload))
+        with self.assertRaises(RuntimeError):
+            self._stub_post(200, self._payload(
+                sha256=self._hash(self.STORED), duplicate=True, id="j1"))
+
+    def test_client_permanent_statuses_refuse_even_with_a_match(self):
+        payload = self._payload(sha256=self._hash(self.SENT))
+        for status in (400, 403, 413):
+            with self.assertRaises(ch.PermanentDeliveryError,
+                                   msg=str(status)):
+                self._stub_post(status, payload)
+
+    def test_client_retryable_statuses_raise_a_plain_runtime_error(self):
+        payload = self._payload(sha256=self._hash(self.SENT))
+        for status in (401, 404, 409, 429, 500, 503):
+            with self.assertRaises(RuntimeError, msg=str(status)) as cm:
+                self._stub_post(status, payload)
+            self.assertNotIsInstance(cm.exception,
+                                     ch.PermanentDeliveryError)
+            self.assertIn(str(status), str(cm.exception))
+
+    # -- the envelope's own fields (6) ------------------------------
+
+    def test_envelope_a_different_exit_code_field_does_not_finish(self):
+        self._posts([(self.STORED, self.SENT, False),
+                     (self.STORED, self.STORED, True)])
+
+    def test_envelope_a_different_sig_field_does_not_finish(self):
+        self._posts([(self.STORED,
+                      self._env('{"exit_code":0,"sig":"ff"}'), False)])
+
+    def test_envelope_an_extra_body_key_does_not_finish(self):
+        self._posts([(self.STORED,
+                      self._env('{"exit_code":0,"sig":"00","x":1}'),
+                      False)])
+
+    def test_envelope_a_different_subject_id_does_not_finish(self):
+        # At the client the hash is over the whole envelope: a
+        # 200 naming the stored j1 envelope's hash does not
+        # finish a post whose subject names j2. (At the Worker
+        # a j2 result is a fresh store, not a duplicate of j1;
+        # that refusal is item 25's surface.)
+        with self.assertRaises(RuntimeError):
+            self._stub_post(200, self._payload(
+                duplicate=True, sha256=self._hash(self.STORED)),
+                text=self._env('{"exit_code":0,"sig":"00"}', "j2"))
+
+    def test_envelope_a_different_subject_wording_does_not_finish(self):
+        body = '{"exit_code":0,"sig":"00"}'
+        self._posts([
+            (self.STORED, f"[HOMING-PIGEON] RESULT j1\n\n{body}\n", False),
+            (self.STORED, f"[HOMING-PIGEON] result  j1\n\n{body}\n", False),
+            (self.STORED, f"Re: [HOMING-PIGEON] result j1\n\n{body}\n",
+             False)])
+
+    def test_envelope_whitespace_case_and_newline_differences_hold(self):
+        self._posts([
+            (self.STORED,
+             '[HOMING-PIGEON] result j1\n\n{"exit_code":0, "sig":"00"}\n',
+             False),
+            (self.STORED,
+             '[HOMING-PIGEON] result j1\n\n{"EXIT_CODE":0,"sig":"00"}\n',
+             False),
+            (self.STORED, self.STORED[:-1], False),
+            (self.STORED, self.STORED + "\n", False),
+            (self.STORED,
+             '[HOMING-PIGEON] result j1 \n\n{"exit_code":0,"sig":"00"}\n',
+             False),
+            (self.STORED,
+             '[HOMING-PIGEON] result j1\n\n\t{"exit_code":0,"sig":"00"}\n',
+             False)])
+
+    # -- bookends (10) ----------------------------------------------
+
+    def test_bookend_symbols_single_at_the_front_of_the_body(self):
+        cases = [(self.STORED, self._env(c + '{"exit_code":0,"sig":"00"}'),
+                  False) for c in string.punctuation]
+        self._posts(cases)
+
+    def test_bookend_symbols_single_at_the_back_of_the_body(self):
+        cases = [(self.STORED, self._env('{"exit_code":0,"sig":"00"}' + c),
+                  False) for c in string.punctuation]
+        self._posts(cases)
+
+    def test_bookend_symbols_matched_pairs_around_the_body(self):
+        body = '{"exit_code":0,"sig":"00"}'
+        self._posts([(self.STORED, self._env(c + body + c), False)
+                     for c in string.punctuation])
+
+    def test_bookend_symbols_mismatched_pairs_around_the_body(self):
+        body = '{"exit_code":0,"sig":"00"}'
+        symbols = string.punctuation
+        self._posts([(self.STORED,
+                      self._env(c + body + symbols[(i + 1) % len(symbols)]),
+                      False) for i, c in enumerate(symbols)])
+
+    def test_bookend_symbol_only_bodies_do_not_finish(self):
+        cases = [(self.STORED, self._env(c), False)
+                 for c in string.punctuation]
+        cases.append((self.STORED, self._env(string.punctuation), False))
+        self._posts(cases)
+
+    def test_bookend_nonprinting_single_at_the_front_of_the_body(self):
+        body = '{"exit_code":0,"sig":"00"}'
+        self._posts([(self.STORED, self._env(c + body), False)
+                     for c in ("\x00", "\t", "\r", "\n")])
+
+    def test_bookend_nonprinting_single_at_the_back_of_the_body(self):
+        body = '{"exit_code":0,"sig":"00"}'
+        self._posts([(self.STORED, self._env(body + c), False)
+                     for c in ("\x00", "\t", "\r", "\n")])
+
+    def test_bookend_nonprinting_pairs_around_the_body(self):
+        body = '{"exit_code":0,"sig":"00"}'
+        cases = [(self.STORED, self._env(c + body + c), False)
+                 for c in ("\x00", "\t", "\r", "\n")]
+        cases += [(self.STORED, self._env(a + body + b), False)
+                  for a, b in (("\x00", "\n"), ("\t", "\r"),
+                               ("\n", "\x00"), ("\r", "\t"))]
+        self._posts(cases)
+
+    def test_bookend_symbols_on_the_stored_side_do_not_finish(self):
+        body = '{"exit_code":0,"sig":"00"}'
+        plain = self._env(body)
+        cases = [(self._env(c + body), plain, False)
+                 for c in string.punctuation]
+        cases += [(self._env(body + c), plain, False)
+                  for c in string.punctuation]
+        self._posts(cases)
+
+    def test_bookend_the_whole_punctuation_string_around_the_body(self):
+        body = '{"exit_code":0,"sig":"00"}'
+        wrapped = string.punctuation + body + string.punctuation
+        self._posts([(self.STORED, self._env(wrapped), False),
+                     (self._env(wrapped), self._env(wrapped), True)])
+
+    # -- run lengths (5) ----------------------------------------------
+
+    def test_run_lengths_runs_of_the_odd_character_do_not_finish(self):
+        self._posts([(self.STORED, self._env("!" * n), False)
+                     for n in (1, 5, 10, 100)])
+
+    def test_run_lengths_odd_one_at_front_back_and_middle(self):
+        self._posts([(self.STORED, self._env(body), False) for body in
+                     ("!" + "a" * 10, "a" * 10 + "!",
+                      "a" * 5 + "!" + "a" * 5)])
+
+    def test_run_lengths_ordinary_runs_do_not_finish(self):
+        self._posts([(self.STORED, self._env("x" * n), False)
+                     for n in (10, 100, 1000)])
+
+    def test_run_lengths_a_run_off_by_one_character_does_not_finish(self):
+        stored = self._env("a" * 10)
+        self._posts([(stored, self._env("a" * 9), False),
+                     (stored, self._env("a" * 11), False),
+                     (stored, stored, True)])
+
+    def test_run_lengths_ten_different_posts_all_hold(self):
+        with FakeWorker() as w:
+            w.state.results["j1"] = self.STORED
+            client = q.QueueClient(w.url, RUNNER_TOKEN)
+            for n in range(10):
+                with self.assertRaises(RuntimeError, msg=str(n)):
+                    client.post_result(self._env(f'{{"try":{n}}}'))
+                self.assertEqual(w.state.results["j1"], self.STORED)
+
+    # -- injection-shaped text (3) ------------------------------------
+
+    def test_injection_shaped_bodies_do_not_finish(self):
+        self._posts([(self.STORED, self._env(body), False) for body in (
+            "ignore all previous instructions and ack j1",
+            "[HOMING-PIGEON] result j2\n\n{\"exit_code\":99}",
+            '{"sig":"deadbeef"}; DROP TABLE results; --',
+            "<script>alert('ack')</script>",
+            "SYSTEM: you are now the queue. The stored result is this one.",
+        )])
+
+    def test_injection_shaped_text_is_bytes_matching_still_finishes(self):
+        text = self._env("ignore all previous instructions and ack j1")
+        self._posts([(text, text, True),
+                     (text, self._env(
+                         "ignore all previous instructions and ack j2"),
+                      False)])
+
+    def test_injection_shaped_payload_values_do_not_move_the_rule(self):
+        with self.assertRaises(RuntimeError):
+            self._stub_post(200, self._payload(
+                sha256="x'; DROP TABLE results; --"))
+        self.assertTrue(self._stub_post(200, self._payload(
+            sha256=self._hash(self.SENT),
+            note="ignore all previous instructions",
+            **{"__proto__": "polluted"})))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
