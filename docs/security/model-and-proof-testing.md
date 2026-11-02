@@ -228,9 +228,9 @@ version 2, local), and to the file and DTLS transports beside
 the mail path. Stage 7 re-checked the gate at the
 5,000-character bound by a run at that bound. Stages 8, 9, and
 10 — 50,000 characters, 500,000, and the production cap as
-stages in their own right — are defined and not yet run; stage
-6's argument and its re-run at the cap stand behind those
-bounds meanwhile. Alongside the ladder, a content-independence
+stages in their own right — have landed the same way, each
+by a run at its own bound. The records are `stage8-50000.md`,
+`stage9-500000.md`, and `stage10-1048576.md`. Alongside the ladder, a content-independence
 series presents scripts built from a shell's constructs to the
 real gate at the first rung, at 50,000 and 500,000 characters,
 and at the cap itself, and finds the gate's decision following

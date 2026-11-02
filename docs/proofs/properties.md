@@ -146,10 +146,14 @@ The family is climbed in stages:
   cap. **P1(500) is checked** (`stage6-rung500.md`). The
   rungs above it are the same searched set: the character
   count is not a state variable, and no gate step branches
-  on a script's text. **P1(1048576) was re-run**, not copied,
-  and the counts match (`stage6-cap.md`). P1(5000),
-  P1(50000), and P1(500000) are that same check. They are
-  not four additional graphs.
+  on a script's text. Each of those rungs has also been
+  run at its own declared bound, and the counts match:
+  P1(5000) in `stage7-5000.md`, P1(50000) in
+  `stage8-50000.md`, P1(500000) in `stage9-500000.md`, and
+  P1(1048576) in `stage6-cap.md` and again in
+  `stage10-1048576.md`. They are not four additional
+  graphs. The runs are the checks the ladder's stages
+  asked for.
 - **Last rung: the production cap.** The code's script cap (C2)
   is `max_script_bytes`: 1048576 UTF-8 bytes, 1 MiB. Every
   script the runner can accept satisfies that byte cap, and

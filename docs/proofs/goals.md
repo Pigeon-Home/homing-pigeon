@@ -487,11 +487,17 @@ claim race and both witnesses run as at the earlier
 rungs; the conformance family still passes; and the
 outcome is recorded in its own record.
 
-This stage is defined and not yet run. Stage 6's
-section records the same-searched-set argument covering
-this rung; this stage's own check, when it runs,
-replaces reliance on that argument for this bound, and
-its record will be named here.
+This stage has landed. The check was run at the 50,000
+bound itself, on a scratch copy whose only difference
+from the tree is the declared bound. `P1Inv` holds under
+all three audience modes, the claim race holds
+at-most-once, and both witnesses fail in the shapes they
+are supposed to fail in. The counts match the earlier
+rungs exactly. The record is `stage8-50000.md`. The
+conformance family still passes: 253 tests across the
+constraints and conformance modules, and 5 in
+`test_skip_registry.py`. No runner behaviour changed,
+and no model file on `main` changed.
 
 ## Stage 9 — The 500,000-character bound
 
@@ -513,11 +519,16 @@ with the claim race and both witnesses run as at the
 earlier rungs; the conformance family still passes; and
 the outcome is recorded in its own record.
 
-This stage is defined and not yet run. Stage 6's
-section records the same-searched-set argument covering
-this rung; this stage's own check, when it runs,
-replaces reliance on that argument for this bound, and
-its record will be named here.
+This stage has landed. The check was run at the 500,000
+bound itself, on a scratch copy whose only difference
+from the tree is the declared bound. `P1Inv` holds under
+all three audience modes, the claim race holds
+at-most-once, and both witnesses fail in the shapes they
+are supposed to fail in. The counts match the earlier
+rungs exactly. The record is `stage9-500000.md`. The
+conformance family still passes, the same 253 and 5.
+No runner behaviour changed, and no model file on `main`
+changed.
 
 ## Stage 10 — The protocol max: 1,048,576 characters
 
@@ -542,11 +553,17 @@ claim race and both witnesses run as at the earlier
 rungs; the conformance family still passes; and the
 outcome is recorded in its own record.
 
-This stage is defined and not yet run as this stage.
-The cap rung was re-run during stage 6, and that run is
-recorded in `stage6-cap.md`; stage 10's own check is
-the ladder's last step in this naming, and its record
-will be named here when it runs.
+This stage has landed. The check was run at the cap
+bound itself, on a scratch copy diffed against the tree.
+`P1Inv` holds under all three audience modes, the claim
+race holds at-most-once, and both witnesses fail in the
+shapes they are supposed to fail in. The counts match
+stage 6's cap re-run exactly. The record is
+`stage10-1048576.md`, which is the model. The
+content-independence record of the same number remains
+`stage10.md`. The conformance family still passes, the
+same 253 and 5. No runner behaviour changed, and no
+model file on `main` changed.
 
 ## Content-independence at the first rung
 

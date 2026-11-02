@@ -292,10 +292,12 @@ Stage 7 has landed: P1 re-checked at the 5,000-character
 bound by a run at that bound, its record `stage7-5000.md`,
 its counts matching the earlier rungs exactly. Stages 8
 (50,000 characters), 9 (500,000), and 10 (the production
-cap, 1048576 characters) are defined and not yet run as
-stages; stage 6's same-searched-set argument and its
-re-run at the cap stand behind those bounds until each
-stage's own run replaces reliance on them.
+cap, 1048576 characters) have landed the same way, each
+by a run on a scratch copy at its own bound. The records
+are `stage8-50000.md`, `stage9-500000.md`, and
+`stage10-1048576.md`. The counts match the earlier rungs.
+The same-searched-set argument still explains why. The
+runs are what the stages asked for.
 
 The content-independence challenge above has been taken up
 as its own series, alongside the ladder: construct-built

@@ -197,8 +197,9 @@ A finding is most useful when it points at the file and the line
   model, then each property, then the conformance tests, with the
   scope raising between stages.
 - The stage records — `stage2.md`, `stage3.md`, the
-  `stage4-*.md`, `stage5.md`, the `stage6-*.md`, and
-  `stage7-5000.md` — the checks, the state counts, the
+  `stage4-*.md`, `stage5.md`, the `stage6-*.md`,
+  `stage7-5000.md`, `stage8-50000.md`, `stage9-500000.md`,
+  and `stage10-1048576.md` — the checks, the state counts, the
   witnesses, and the findings, stage by stage. The
   content-independence series is recorded in `stage7.md` to
   `stage10.md`, under the titles those records landed with.
