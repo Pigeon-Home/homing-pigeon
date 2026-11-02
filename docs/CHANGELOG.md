@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.101 - 2026-11-01
+
+- Fix: the content-series skip reasons are registered (the PowerShell rung legs, the macOS shell parser and the FreeBSD shell), and the redo bash legs are POSIX-only, matching the earlier proof modules, so they skip on Windows instead of failing against the WSL launcher.
+- The FreeBSD shell design note and the corpus banked since 3.15.100 ride along (Germany bank 23, Menlo Park bank 219).
+
 ## 3.15.100 - 2026-11-01
 
 - Proofs: the content-series redo is complete at every rung — the first rung, 5,000, 50,000, 500,000 characters and the production cap — with stage 6 verified first-hand, and the macOS shell legs added at the content rungs.
