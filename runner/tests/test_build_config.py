@@ -212,14 +212,21 @@ class MutationGateTest(unittest.TestCase):
         # the job had no clock, and the stuck test's name was the
         # unfinished line at the end of a log nobody could read
         # from the diagnosing seat. runner/tools/suite_wall_clock.py is
-        # `python -m unittest` with a 20-minute deadline that names
-        # the running test and annotates it; the Windows shards get
+        # `python -m unittest` with a deadline that names the
+        # running test and annotates it; the Windows shards get
         # the same through --wall-clock. The workflow's timer count
-        # (the scarce-runner pin above) is unchanged by this.
+        # (the scarce-runner pin above) is unchanged by this. The
+        # Linux deadline is 30 minutes since 3.15.111: the suite
+        # outgrew 20 (the shotgun families took the identical
+        # discover run to about 23 minutes, the size python-range
+        # already budgets 30 for), and the pin moves with the
+        # workflow in the same change, as a moved reader's
+        # registry row does -- the gate is that the clock is
+        # there and names the test, not the number it started at.
         # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
         workflow = _workflow()
         linux = _uncommented(_job_block(workflow, "test"))
-        self.assertIn("python runner/tools/suite_wall_clock.py --minutes 20 -- "
+        self.assertIn("python runner/tools/suite_wall_clock.py --minutes 30 -- "
                       "discover -s runner/tests -t . -v --durations 25", linux)
         self.assertNotIn("python -m unittest discover", linux)
         windows = _uncommented(_job_block(workflow, "build-windows"))
