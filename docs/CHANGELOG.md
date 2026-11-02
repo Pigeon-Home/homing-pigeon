@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.119 - 2026-11-02
+
+- The corpus banked since 3.15.118 rides along (Germany bank 44: 2,300 entries, 0 crashes, 26 new runs).
+
 ## 3.15.118 - 2026-11-02
 
 - Fix: the python-range floor leg (3.9) gets a 75-minute wall-clock budget, so the suite is not killed on size alone; the 3.14 leg stays at 30 minutes.
