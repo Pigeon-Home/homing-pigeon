@@ -140,6 +140,61 @@ ran, and finds the challenge still open in its stated
 form — the closure was not enumerated, and the
 PowerShell half was not run.
 
+### The final position
+
+This challenge is now closed, and its end state is stated
+here in full. The series described above was redone —
+both shells, every rung — and the redo was verified
+first-hand, every count, length, and gate outcome in its
+records reproduced. The records are `content-rung-49.md`,
+`content-rung-5000.md`, `content-rung-50000.md`,
+`content-rung-500000.md`, and `content-rung-cap.md`.
+
+What carries the proof is the model argument. The gate's
+check order reads the signature, the audience, the sizes,
+and the key's policy, and no step in it branches on what
+a script says. Stage 3 walked that order against the code
+line by line, and the model checks hold at every bound on
+the ladder up to the production cap. Content-independence
+is proven there — by the shape of the code, checked — and
+that is where the claim rests.
+
+What the content series adds is demonstration, and its
+shape is now exact. At the first rung, 49 characters, the
+set is not a sample: it is every combination of the atom
+list at the stated depth — every atom kept, every pair
+joined by the shell's operators, every triple of the
+short atoms — 3,682 bash scripts and 511 PowerShell
+scripts, each presented to the real gate and admitted,
+the gate's answer never varying with the constructs
+inside. (PowerShell's parser rejected 10 of its 521
+candidates before the gate saw them; those were excluded,
+not refused.) At the higher rungs — 5,000, 50,000, and
+500,000 characters — the sets are composed samples, broad
+and catalog-cycled, and their records name them as
+samples. At the production cap, scripts of exactly
+1,048,576 bytes were admitted in both shells and scripts
+of 1,048,577 bytes were refused, the refusal naming
+`max_script_bytes`.
+
+What remains unproven is the challenge in its widest
+form. No rung enumerates the full closure: nesting deeper
+than the first rung's stated depth, and combinations
+beyond the higher rungs' catalog, were not generated, at
+any bound. The scripts were syntax-checked by the real
+shells and presented to the real gate, but they were not
+executed, so nothing here speaks to what a script does —
+only to whether the gate's answer depends on its content,
+which is the question the challenge asked.
+
+So the position is this: content-independence is
+established by the model argument and the code walk, and
+it is demonstrated empirically over an exhaustive
+fragment at the smallest rung and over broad samples at
+every rung above it, in both shells. It is not
+demonstrated by total enumeration, and no record in this
+work claims that it is.
+
 ## The boundary question
 
 Is there a size at which the answer becomes no? What is known
