@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.128 - 2026-11-02
+
+- Germany bank 48: 2,302 entries, 0 crashes, 5 new runs banked; the version 3 revision read back in the forum.
+
 ## 3.15.127 - 2026-11-02
 
 - Version 3: the DTLS via email carriage is revised under peer review -- MIME flight part, duplicate split, bounds and peek fetches in the mailbox wire, the draft revised and rendered, and the proof record dispositions for both peer reviews.
