@@ -81,4 +81,20 @@
 
 - **TLS inspection and WAF.** extensions?
 
-- **ietf homing pigeon perfect forward secrecy v3** defines transport extension for v1 doc: DTLS over email using SS
+- **ietf homing pigeon perfect forward secrecy v3** defines transport extension for v1 doc: DTLS over email using SS.
+  SS is the shared secret: it is the handshake's PSK, exactly
+  as in the version 1 DTLS profile, and the session keys are
+  ephemeral, so the mail a mailbox stores does not decrypt a
+  finished session. Built locally and not submitted: the
+  version 3 draft
+  (`docs/ietf/draft-slutsky-homing-pigeon-v3-00.md`) carries
+  the version 1 profile over the email binding -- a handshake
+  opened by an email and completed over further emails, jobs
+  and results inside the session, the platform disclosure in
+  EncryptedExtensions, and the job acceptance gate unchanged.
+  The carriage is in the suite behind the `dtls_over_email`
+  option, off by default. The build plan is
+  `docs/design/v3-dtls-over-email-plan.md`; the record of what
+  was built and tested is `docs/proofs/dtls-over-email-v3.md`.
+  This completes the carriage the mailbox harness above was
+  the first step toward.

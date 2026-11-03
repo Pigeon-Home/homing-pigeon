@@ -289,6 +289,24 @@ Agent-Stamp trailer. Nothing is pushed and nothing is submitted.
    exact operational default can be revisited after the round-trip
    tests measure real flight sizes.
 
+## Addendum, 2-Nov-2026
+
+Open question 1 is answered: `SS` is the Shared Secret. It is
+the DTLS handshake's key in the existing design -- the version
+1 profile's PSK -- so the resolution confirms the plan's
+assumption-free posture rather than changing it: no new key
+material, no second secret, and the specification says so in
+its Section 4.1. Open questions 2 and 3 stand as defaults
+taken (resumption allowed under the fresh-share rule; the
+carriage datagram limit at 262144 octets with a 32768-character
+default chunk, both tunable).
+
+As built, the wire format of D7 is 1 header line per flight
+mail -- `HP-DTLS/3 transfer=<16 hex> part=<n> parts=<m>
+bytes=<total> sha384=<digest>` -- followed by 1 base64 chunk,
+with chunk boundaries on base64 group boundaries so the
+decoded chunks concatenate to the datagram exactly.
+
 ## Definition of done
 
 The build is done when all of the following are true in this local
