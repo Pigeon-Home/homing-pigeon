@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.136 - 2026-11-03
+
+- Tests: the Decision 1 startup family — one test per config field, refuse-class fields exit at startup naming the key and default-class fields warn and carry the documented default — and the all-enforce leg of the security parity harness, with one compliant guarded job and one violation per policy feature.
+- Germany bank 53: 2,307 entries, 0 crashes, 18 new runs.
+
 ## 3.15.135 - 2026-11-02
 
 - Install this, not 3.15.134. The 134 tag builds stopped on one defaults-registry pin: a README update had moved the size-caps line from 450 to 449 without shifting the pin, and the doc-lines test failed on macOS and Windows. The pin now follows the line; nothing in the runner changed.
