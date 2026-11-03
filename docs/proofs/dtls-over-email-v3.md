@@ -1,7 +1,10 @@
 # DTLS over email, version 3: what was built and tested
 
-Local branch `together`, 2-Nov-2026. Nothing here is pushed
-and nothing is submitted; the version 3 draft is a local,
+Local branch `homing-pigeon-v3` (created as `together`,
+renamed 2-Nov-2026), 2-Nov-2026; continuation below dated
+2-Nov-2026 (run logs stamped 3-Nov-2026 UTC). The branch is
+pushed to GitHub for review; nothing is merged to main and
+nothing is submitted; the version 3 draft is a local,
 unsubmitted document.
 
 ## What was built
@@ -104,25 +107,126 @@ test-first file should):
   OK, 1 skip. The skip is pre-existing and registered; this
   build added no skip reasons and did not touch the skip
   registry.
-- Commits on `together`: 714ab9e5 (plan), 0c763bfa
-  (implementation and tests), 2b3fa4c0 (specification,
-  future entry, plan addendum), and this note.
+- Commits at that point, on `together`: 714ab9e5 (plan),
+  0c763bfa (implementation and tests), 2b3fa4c0
+  (specification, future entry, plan addendum), 99551763
+  (this note), 29364dfe (the SS answer folded into the plan).
+
+## Continuation: resumption, provider shapes, a live mailbox
+
+Commit 4cc16fe0, tests only -- no carriage code change was
+needed:
+
+- Resumption over mail (5 tests): a resumed handshake under a
+  fresh mail session-id with a fresh ephemeral share (the
+  resumed offer's share differs from the first handshake's),
+  psk modes exactly psk_dhe_ke, the platform payload
+  re-disclosed, and application data crossing on the resumed
+  session; a ticket resumes only once; a ticket with a
+  corrupted PSK is refused; an expired ticket is refused; a
+  psk_ke-only offer over mail is refused with a fatal
+  illegal_parameter alert. Resumption is also exercised end
+  to end through `EmailPipe`: a real signed job crosses
+  inside the resumed session and its result returns inside
+  it, exit code 0.
+- Loss and provider shapes (12 tests): a lost first hello, a
+  lost cookied hello, a lost server flight, and a lost client
+  Finished each recover through endpoint retransmission; a
+  lost ticket mail costs the ticket, not the session; parts
+  of 1 flight arriving reversed answer nothing until the last
+  part lands; a whole handshake with every flight segmented
+  at 48 characters and reversed still establishes and carries
+  data; a "Re: "-prefixed subject still routes; a body
+  line-wrapped every 76 characters parses byte-exact; a
+  provider footer appended to the body breaks the flight
+  closed (`dtls-invalid`, no session, no application data),
+  as does a subject suffix. Through the pipe, a
+  footer-rewritten DTLS mail is consumed and delivers no job.
+- 1 finding the tests forced: an early version of the
+  lost-HelloRetryRequest test expected the attempt to fail
+  closed, on the theory that exact-duplicate suppression
+  would not re-answer a replayed hello. That is wrong: a
+  retransmitted hello is not bit-exact -- its record sequence
+  bytes advance -- so duplicate suppression (which stops the
+  same mail delivered twice, bit for bit) does not eat it,
+  and the stateless cookie issuer answers again. The case
+  recovers, and the test pins the true behavior.
+- Results, as read from the runs:
+  `runner.tests.test_dtls_email_v3`: 45 tests, OK, 0 skips.
+  Combined touched suites (the same 7 modules as above):
+  469 tests, OK, skipped=1 -- the same pre-existing,
+  registered skip ("unconnected UDP sends are blocked in
+  this environment; a DTLS server cannot run here (the
+  pipe-level tests cover the same code over a connected
+  socket)"). No new skip reasons; the skip registry was not
+  touched.
+
+## The live mailbox run
+
+A separate throwaway runner instance was stood up from this
+branch's tree in its own directory (`~/workspace/hp-v3-live`,
+never the standing runner), with its own config, a fresh
+shared secret, and `dtls_over_email` enabled, against the
+dedicated runner mailbox over real IMAP and SMTP (OAuth
+credentials already on file; the preflight connected,
+authenticated, and selected the inbox). A client driver on
+this VM ran 1 real session end to end over that mailbox:
+
+- The handshake completed over real mail: ClientHello,
+  HelloRetryRequest, second ClientHello, server flight,
+  Finished. The platform disclosure arrived in the handshake:
+  the family-tier card for the runner's machine (linux, sh,
+  protocol versions [1]).
+- 1 real signed and encrypted ping job (`v3-live-job-4`)
+  crossed inside the session. The runner's log shows it
+  delivered from a DTLS session to the runner core, executed
+  once (exit 0), and its result sent inside its session; the
+  client verified the in-session result (type result,
+  exit code 0).
+- The throwaway instance was stopped afterwards. The
+  standing runner was never touched.
+
+3 earlier attempts failed, and what stopped them is part of
+the record:
+
+- Attempts 1 and 2 drove the client with a harness that fed
+  any DTLS mail it fetched, regardless of mail session-id.
+  Stale flight mail from earlier sessions in the same mailbox
+  poisoned the client's transcript: the server refused 1
+  handshake on a PSK binder mismatch, and records offered to
+  a live session under keys from a stale flight did not
+  decrypt and were dropped; the unanswered session was
+  abandoned after 60 seconds. The server failed closed in
+  every case; nothing was misrouted into the job path.
+- Attempt 3 filtered by mail session-id but fetched with
+  plain RFC822 fetches. An RFC822 fetch sets the \Seen flag,
+  so the harness marked its own second ClientHello seen
+  before the runner's pass could fetch it, and the runner
+  never received it: no session, no flight, no refusal -- the
+  mail was simply gone from every later UNSEEN search.
+- The working discipline, used by the successful run: the
+  client fetches with BODY.PEEK[] (no \Seen side effect),
+  binds fetched mail to its own mail session-id, and marks
+  seen only the replies it actually consumes.
+- Finding: on a shared mailbox, fetch semantics are part of
+  the carriage's correctness surface. A consumer that fetches
+  DTLS mail with side effects starves the other consumers,
+  and a sender-side harness that does not bind mail to its
+  own session-id can be poisoned by stale flights. Both
+  failure modes fail closed; neither reaches the job path.
 
 ## What is not proven here
 
-- A live mailbox: the round trips run over a fake shaped like
-  the production intake, through the production pipe and the
-  production core. No real IMAP or SMTP server, provider
-  latency, or provider rewriting of messages is exercised.
-- Loss and reordering against a live provider: reordering and
-  duplication are exercised at the carriage layer with
-  synthetic mail; a provider that rewrites bodies (wrapping,
-  re-encoding) beyond what the parser already tolerates is
-  not.
-- Resumption over email end to end: the profile and the engine
-  support it under the fresh-share rule, and the specification
-  covers it, but no test in this family resumes a session over
-  mail yet.
+- Resumption over a live mailbox: resumption is proven at
+  the carriage layer and through the production pipe, but
+  the live run exercised 1 fresh session only.
+- Provider rewriting beyond the tested shapes: the live
+  provider (Gmail) delivered the test flights without
+  rewriting them. The footer and subject-suffix cases remain
+  synthetic, as do providers other than Gmail.
+- Live scale: the live run carried 1 session and 1 job.
+  Many sessions, many jobs, and multi-job sessions over a
+  live mailbox are not exercised.
 - The unaddressed legacy harness shape remains a local testing
   shape, as the specification states; it is not a deployment
   surface.

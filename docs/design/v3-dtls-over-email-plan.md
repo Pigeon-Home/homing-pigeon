@@ -322,3 +322,32 @@ clone:
 - The negative and fuzz families above pass.
 - The proof note records only results read from full, unfiltered
   test output.
+
+## Addendum — the definition of done, met (2026-11-03)
+
+Each condition above is established, with its evidence in
+`docs/proofs/dtls-over-email-v3.md`:
+
+- Present: this plan, `docs/ietf/draft-slutsky-homing-pigeon-v3-00.md`
+  (local, unsubmitted), and the completed future entry.
+- Session and job through the production path: the `EmailPipe`
+  tests complete a handshake and carry a real signed job to
+  execution, and a live run over the dedicated mailbox did the
+  same against a throwaway instance of this branch's runner
+  (job `v3-live-job-4`, executed once, exit 0).
+- Result inside the session: verified in both the pipe tests
+  and the live run (type result, exit code 0); a result whose
+  session is gone is never downgraded to plain mail.
+- Negative and fuzz families: 45 tests in
+  `runner/tests/test_dtls_email_v3.py`, OK, 0 skips; 469 tests
+  across the touched suites, OK, with the 1 pre-existing
+  registered skip named in the proof note. Resumption under
+  the fresh-share rule and the loss / reordering / provider
+  rewriting shapes are covered by the same family.
+- The proof note records only results read from full,
+  unfiltered runs, including the 3 failed live attempts and
+  what stopped each.
+
+What remains unproven is listed in the proof note: resumption
+over a live mailbox, providers other than Gmail, and live
+scale beyond 1 session carrying 1 job.
