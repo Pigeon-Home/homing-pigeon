@@ -392,6 +392,12 @@ the platform card of a prior exchange. There is no negotiation
 message, and a failed attempt has no effect on the ordinary
 email binding, which continues to work exactly as before.
 
+A platform card MAY state, as an unauthenticated fact, that
+the runner offers this carriage. The fact is trusted for
+nothing except whether an attempt is worth making. It grants
+nothing. Admission remains the handshake's and the acceptance
+gate's (Section 10.2).
+
 # Message Format
 
 ## The flight subject
