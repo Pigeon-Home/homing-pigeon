@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.122 - 2026-11-02
+
+- Milestone: the tracked text is 16,649,029 tokens under the o200k_base tokenizer, across the text files Git tracks. Binary files are not counted.
+
 ## 3.15.121 - 2026-11-02
 
 - Milestone: the tracked tree is 1,097,252 lines across 1,181 files. Every file Git tracks is counted, including tests, corpus, docs, and CI.
