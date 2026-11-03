@@ -364,5 +364,6 @@ Each condition above is established, with its evidence in
   what stopped each.
 
 What remains unproven is listed in the proof note: resumption
-over a live mailbox, providers other than Gmail, and live
+over a live mailbox, providers other than the one the
+live run used, and live
 scale beyond 1 session carrying 1 job.

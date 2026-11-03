@@ -221,12 +221,47 @@ the record:
   the carriage layer and through the production pipe, but
   the live run exercised 1 fresh session only.
 - Provider rewriting beyond the tested shapes: the live
-  provider (Gmail) delivered the test flights without
+  provider delivered the test flights without
   rewriting them. The footer and subject-suffix cases remain
-  synthetic, as do providers other than Gmail.
+  synthetic, as do other providers.
 - Live scale: the live run carried 1 session and 1 job.
   Many sessions, many jobs, and multi-job sessions over a
   live mailbox are not exercised.
 - The unaddressed legacy harness shape remains a local testing
   shape, as the specification states; it is not a deployment
   surface.
+
+## Release-gate repair for 3.15.125 (2-Nov-2026)
+
+The 3.15.125 tag build failed on 2 assertions. Both were
+checked first-hand; the determinations are recorded here
+because one of the 2 fixes moves a proof pin.
+
+1. Provider name in live docs. The plan and this record named
+   the mail provider of the live run. Live docs name no
+   provider; both files now say "the provider" / "other
+   providers". The record is unchanged in substance: 1 live
+   provider, which delivered the flights unrewritten, and no
+   other provider tried.
+2. C20's transports pin (`test_c20_channel_envelopes_face_the
+   _core_gate`). The pin asserted that the first
+   `_dtls_secret_material` hand-over in
+   `runner/wire/transports.py` sits after the
+   `if name == "dtls":` branch head. The carriage added a
+   second hand-over site inside the email branch, above the
+   dtls branch, so the measured offsets inverted (28356 not
+   less than 28118). Determination: a structural pin, not an
+   ordering regression. The email site is guarded by
+   `if cfg.get("dtls_via_email") is True:` -- the email pipe
+   receives the secret material only under the owner's
+   literal-true opt-in, when it terminates DTLS itself, which
+   is the dtls pipe's exception under the same rule, and the
+   carriage is off otherwise with the secret boundary
+   unchanged. No session envelope reaches the core gate by a
+   new path: session application data still becomes an
+   ordinary envelope delivered to the core, and the pipe-level
+   tests (a signed job round trip inside a session, a
+   cleartext job inside a session refused, a session result
+   never downgraded) pass unchanged. The pin now counts the
+   hand-over sites (exactly 2) and orders each against its
+   branch and the guard, which is the invariant C20 states.

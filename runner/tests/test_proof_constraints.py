@@ -626,14 +626,34 @@ class TransportGatePins(unittest.TestCase):
         text = _read(os.path.join("runner", "runner.py"))
         self.assertIn(
             'handle_mail(cfg, imap, cap, "transport", raw', text)
-        # And only DTLS is handed secret material, because it
-        # terminates authentication itself; only email is handed
-        # the mailbox keys.
+        # And secret material is handed only to a transport
+        # that terminates DTLS authentication itself: the dtls
+        # pipe, and -- since the version 3 carriage -- the
+        # email pipe, but there only behind the literal-true
+        # dtls_via_email opt-in, because with the owner's
+        # opt-in the email pipe terminates DTLS for sessions
+        # carried as mail. Only email is handed the mailbox
+        # keys. The pin counts the hand-over sites and orders
+        # them against the branches and the guard; the first
+        # site sits in the email branch, so a first-occurrence
+        # ordering against the dtls branch no longer states
+        # the rule. (Determination recorded in
+        # docs/proofs/dtls-over-email-v3.md: the carriage's
+        # hand-over is the design's own exception, guarded;
+        # the gate behavior is unchanged.)
         wire = _read(os.path.join("runner", "wire", "transports.py"))
+        call = "out.update(_dtls_secret_material(cfg))"
+        self.assertEqual(wire.count(call), 2)
+        email_at = wire.index('if name == "email":')
+        guard_at = wire.index(
+            'if cfg.get("dtls_via_email") is True:')
+        first = wire.index(call)
         dtls_at = wire.index('if name == "dtls":')
-        handed = wire.index("out.update(_dtls_secret_material(cfg))")
-        self.assertLess(dtls_at, handed)
-        self.assertIn('if name == "email":', wire)
+        second = wire.index(call, first + 1)
+        self.assertLess(email_at, guard_at)
+        self.assertLess(guard_at, first)
+        self.assertLess(first, dtls_at)
+        self.assertLess(dtls_at, second)
 
 
 class ReplayPins(unittest.TestCase):
