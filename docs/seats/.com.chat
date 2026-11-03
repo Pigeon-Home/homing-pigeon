@@ -3,6 +3,293 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 2-Nov-10:00pm-PST/PDT — version 3, final pass reviewed
+
+The final adversarial review of the version 3 draft (Parts A, B,
+C), the read-back items on the revision, the review-pass document
+after 3.15.129, the 3 guards that stopped the 3.15.130 tag build,
+and an audit of every decision in the version 3 arc were verified
+first-hand against the draft text, the code, the RFCs, and by
+experiment. What held landed. The draft remains local and
+unsubmitted; nothing in this entry was submitted anywhere.
+
+### The 2 held-result defects (review-pass document, Sections 1.1 and 1.2)
+
+Both HELD at reproduction and both are fixed on main. The hold
+lived only in the email process's memory, so a restart sent held
+session results as ordinary result mail; and 1 expiry pruned
+every hold with no result file yet, doing the same to an
+unrelated in-flight job. The fix landed in 3.15.130: an
+`<ident>.session.txt` sidecar restores the hold across a restart,
+and the expiry drops only the holds whose results it dropped.
+Verified here independently of the landed tests: the sidecar is
+acked to the inbox's done folder by the runner core's own fetch
+and restored from there; a restored hold still expires and is
+never sent; a later session under the same key receives the held
+result after the restart. The sidecar writer's hand-rolled temp
+name was the 1 remaining gap: it now writes through the tree's
+atomic writer (landed in 3.15.131 as this pass's fix was in
+flight; verified there, not duplicated).
+
+### The read-back items
+
+- Re-post budget (at most 1 re-post per saved-flight
+  generation): VERIFIED in code and tests, and by an independent
+  probe that delivered every mail in both directions twice: 32
+  mail movements, exactly 1 established session, the application
+  message delivered exactly once.
+- Cookie key kept in the channel across restarts: VERIFIED.
+  Restart cells pass; a corrupted, short, or empty key file
+  draws a fresh owner-only key with a warning and the server
+  builds. The persistence lives in the email extension, the
+  carriage that needs it; Section 9.4 states the cost both ways.
+- Held results bound to the PSK identity: VERIFIED, including
+  the combination cell with 2 keys, 1 job ident, and both
+  sessions live, landed as a test in this pass: the job runs
+  once and the result answers only the carrying session. The
+  prune-by-doomed-idents rule stands as landed; a wider
+  exception for a live session's key on a doomed ident was
+  considered and not taken, because an ident the core has seen
+  mints no 2nd result for a later carry to guard.
+- The gateway that drops the typed part: the draft already ends
+  the flight in that case (Section 5.2), and the experiment
+  agrees: the flight classifies invalid and nothing answers.
+- The `where:` list sits after the frame header block in
+  Section 5.2, verified in the re-rendered text.
+- The discovery fact (Section 4.3) stands in the draft; the
+  earlier record's "prepared, not landed" is corrected in the
+  proof record.
+
+### Part A — protocol correctness
+
+- A1 (field-name mismatch with version 1): DOES NOT HOLD.
+  Field by field against version 1 -03, the draft attaches no
+  type word to any inherited field; its typed fields are its
+  own (the frame header's decimal digit strings; the
+  session-id ABNF stated in full).
+- A2 (cookie key derived from static data; "decorative"):
+  DOES NOT HOLD. The key is a random 32 bytes, never derived
+  from the address or anything a message asserts (the MAC
+  input carries the address; the key does not). No
+  "decorative" wording exists in the draft, the plan, or the
+  proof record.
+- A3 (self-describing identifier binds nothing): THE SHAPE
+  EXISTS; NO FALSE CLAIM. The digest that selects a saved
+  flight for re-post is publicly computable, and the draft
+  says so ("not a signature", Section 5.2). The bound on what
+  it can spend is the re-post budget, verified above.
+- A4 (epoch separation over opaque datagrams): DOES NOT HOLD.
+  The engine routes records by connection ID and opens them
+  under per-epoch keys with per-epoch sequence state; the
+  carriage delegates record handling to it (Sections 4.1,
+  7.2, 13). No sentence needed.
+
+### Part B — sending side
+
+- B1 (a conforming sender's choice a conforming receiver
+  rejects): NO LIVE HAZARD beyond B2. MIME structure, transfer
+  encoding (base64 only), content-type parameters, subject
+  shape, the legacy naked shape (fenced to a harness, not fed
+  on a deployment mailbox), and chunk size against the
+  receiver's caps: each is pinned by the draft or
+  unreachable, checked 1 by 1.
+- B2 (the sender's serialization): HELD — the real defect of
+  this pass. The production sender attached the frame as a
+  message object, which wrapped it in a message/rfc822
+  container one level below where the draft puts it; a
+  receiver reading only the message's own parts, or a
+  gateway treating the container as an opaque attachment,
+  loses the flight. Fixed: the frame is attached as bytes, a
+  direct leaf part (84980a71), with tests for the leaf shape
+  and a full handshake over the sender's own serialization.
+  The receiver still reads the wrapped shape. Experiments,
+  all against the production sender and parser: the CRLF wire
+  form is byte-exact; a grammar-max session-id survives as
+  RFC 2047 encoded words; a gateway double that re-parses
+  and re-serializes every flight completes the handshake;
+  the typed part dropped fails closed; chunk sizes from 4 to
+  1,000,000 characters frame, and a chunk over the cap does
+  not. Section 5.2 now pins the leaf.
+- B3 (the Subject claim against RFC 5322): the RFC facts are
+  as stated (the field is unstructured, Section 2.2; "Re:" is
+  described in Section 3.6.5), verified against the RFC text;
+  the draft claimed no syntax, only a carriage-local
+  acceptance rule. Section 5.1 now says so in terms, and its
+  session-id alphabet sentence no longer overclaims the RFC:
+  the alphabet is safe in a mail header field (RFC 5322,
+  Section 2.2) and as a filesystem name.
+
+### Part C — scope and inheritance
+
+- C1 (platform disclosure provenance): the silence is
+  deliberate and stays. The card is unauthenticated
+  pre-Finished data on both bindings (Section 11): the same
+  builder builds it, the same core applies it only when the
+  server's Finished verifies, and nothing on either binding
+  marks where it was learned, because a provenance mark
+  would itself be unauthenticated and would grant nothing.
+  Verified in the code paths of both bindings.
+- C2 (the certificate dismissal's scope): the sentence is
+  version 1's (Section 19) and is scoped to the profile,
+  which this carriage inherits without modification; the
+  engine has no certificate path anywhere. Section 4.1 now
+  states the scope on this carriage in terms, and that a
+  ClientHello offering no pre_shared_key extension is
+  refused before any key is derived — the engine refuses it
+  with a missing_extension alert at session start, pinned by
+  the engine test that refuses each broken hello for its own
+  reason.
+- C3 fragments: (a) a scope leak HELD in 1 instance —
+  Section 3 listed "the platform card" among version 1's
+  terms; version 1 defines "platform disclosure". Fixed in
+  Section 3; the idiom elsewhere stands for the same object.
+  (b) The provenance side channel (golden record / bank
+  size): UNGROUNDED in the texts — no such record or wording
+  exists in the draft or the proof record; the nearest
+  shape, the frame header's exact byte count, is already
+  treated in Sections 5.2 and 16.2. (c) Deterministic
+  single-custodian wording: NONE FOUND in the references or
+  elsewhere. (d) Triage asymmetry: maps to the deliberate
+  duplicate split — re-post for a handshake flight, drop for
+  application data — bounded by the re-post budget on both
+  wrappers.
+
+### Overrides landed in this pass
+
+- Title and docname: the open decision is CLOSED as keep.
+  3 reviews converge on keeping
+  `draft-slutsky-homing-pigeon-v3-00`; the abstract and
+  Section 10.1 already disambiguate it from version 1's
+  document, and a rename costs every link in the proof
+  record, the plan, the forum, and PROTOCOL.md.
+- Section 16.4: "no state" reads "no session state" (the
+  same list bounds the saved-flight and digest entries a
+  hello creates).
+- Section 4.1: the project-internal "SS" clause is replaced
+  by the authenticator sentence at the expansion point (the
+  shared secret authenticates only; it is never the session
+  key).
+- Section 5.1's alphabet clause and the Sections 5.2/15
+  media-type label landed as above. The wire string
+  `application/hp-dtls3` is UNCHANGED — code, tests, and the
+  cold test pin it; the tree choice is a submission-time
+  decision and stays a proposal (review-pass Section 2.1).
+- The classifier: code moved to the draft (Sections 8.2 and
+  16.4), test-first — a fragmented first hello now
+  classifies dtls-invalid in the carriage's own path. The
+  behavior (consumed, no answer, no state) is unchanged.
+- 1 audit item did NOT confirm: the reassembly-deadline
+  comment already states the clamp the code takes
+  (min(deadline, ttl)); no change.
+
+### The decision ledger for the arc
+
+Build plan decisions D1–D10: KEEP, each verified against the
+code as built — D1 the version 1 engine and profile reused;
+D2 classification by subject grammar, authentication by DTLS
+bytes; D3 mailbox ownership in the email extension; D4 the
+runner core as the only job gate; D5 opt-in with a bounded
+default posture; D6 synthetic peer addresses inside the core;
+D7 segmentation at the carriage layer; D8 exact-duplicate
+suppression before the engine; D9 results bound to the
+carrying session; D10 the naming (DTLS; DTLS via email;
+`dtls_via_email`). Open questions: OQ1 answered (SS is the
+Shared Secret); OQ2 (resumption allowed under the fresh-share
+rule) and OQ3 (carriage size defaults) stand as defaults
+taken. Whole-stream review dispositions of 2-Nov: KEEP.
+Read-back items: KEEP as verified above. Review-pass
+document: its 2 defects landed and verified (above); its
+remaining sections are proposals, dispositioned: 2.2 and 2.4
+landed as overrides; 2.3 (a filtering-is-not-gating
+sentence), 2.5 (a ticket-forgetting sentence), 2.8 (the
+subject ABNF production; the `1*gap` redundancy), 2.9
+(number style), 2.10 (the submission-time edit list), 2.12
+(a README line), and 2.13 (the readable copies of versions 1
+and 2) are kept as proposals for the submission revision,
+none landed here; 2.6 is read-verified for the mail path (a
+seen job is skipped and no result is written), and its
+carriage-level cell with the real core run for the repeated
+delivery is the first follow-up test, not run in this pass;
+2.11's citation rule is ADOPTED as the standing rule (the
+reference block pins the revision current at posting; prose
+never carries a revision); 3.1's combination cells 1–4
+landed as tests across this arc (cell 5 is the restart
+cells, landed in 3.15.130); 3.2's engine-mode inventory
+stays a proposal (the no-PSK cell is pinned at the engine; a
+KeyUpdate and a 2nd PSK identity were not run in this pass);
+3.3, 3.4 (its hold-map row is closed by the sidecar), 3.5,
+and 3.6 stay proposals; 3.7 is closed by the title decision
+above; 3.8 is DONE for the render and idnits (below) and
+stays a proposal for the drift-check workflow; 3.10's
+conformance pin stays a proposal; Section 4's IETF calendar
+is noted (the submission tool reopens with the meeting,
+about 14 Nov) and no submission is made or prepared in this
+pass; Sections 5–6 stay proposals.
+
+Recorded, not acted on: the engine enforces single-use
+tickets on both bindings while version 1's text says SHOULD
+for the datagram binding. Either version 1's next revision
+follows the code or the code grows a per-binding switch;
+that is a version 1 question, out of this pass.
+
+### Render, idnits, counts
+
+The draft was re-rendered with its header pipeline: .xml,
+.txt, .html, 0 warnings, and every edit verified in the
+rendered text. idnits 3.3.0 ran in normal mode, offline,
+against the .txt and the .xml; the report stands beside the
+source. It reports 3 errors — the abstract's references to
+sections and to version 1, and RFC 8446 listed as obsolete
+(succeeded by RFC 9846) — all submission-time edits; its
+`[HOMING-PIGEON]` warning is the tool reading the subject
+marker as a citation, the same reading the version 1 reports
+carry. The TLS citation is a family-wide question for the
+next revision of each draft and is not changed here. Tests,
+full unfiltered runs on this tree: the version 3 module 82,
+OK, 0 skips; the touched batch (DTLS engine, fuzz, IPv6,
+mailbox, email pipe coverage, transports, doc discipline,
+defaults registry, the atomic writer pin, the skip registry)
+1,306 tests, OK, 1 registered skip. Type check on the
+changed files: 0 errors.
+
+### Not verified in this pass
+
+No live mailbox run: the sender experiments are local
+serialization round trips, and a live restart mid-handshake
+remains unproven, as do resumption over a live mailbox, a
+2nd provider, and live scale beyond 1 session carrying 1
+job. Resumption across a responder restart is not possible
+by design (the ticket table is process memory) and the
+proof record now says so. Still open, unchanged: the
+idnits submission-time edits, the named hybrid slot
+(X25519MLKEM768, named in Section 16.1, not implemented),
+and the cold test itself.
+
+(Correction to the counts above: the 1,306-test batch did
+not include the transport suites; those ran separately —
+transports, queues, shells, and log relays, 878 tests, OK.)
+
+## 2-Nov-10:00pm-PST/PDT — cold test, re-pinned
+
+The cold-test card (7:35pm) pins its links and its throwaway
+build to 22bfeedf (3.15.127). That tree predates the
+read-back fixes, the hold text of Section 10.3, the
+held-result fixes, and the final pass. The pin moves to
+77a39e51 or later: the rendered `.txt` handed to the fresh
+chat is the one at that commit
+(https://github.com/Pigeon-Home/homing-pigeon/blob/77a39e51c81895c7907639f749452bd829549c9d/docs/ietf/draft-slutsky-homing-pigeon-v3-00.txt),
+and `PROTOCOL.md` with it
+(https://github.com/Pigeon-Home/homing-pigeon/blob/77a39e51c81895c7907639f749452bd829549c9d/PROTOCOL.md).
+
+The card's no-restart guard stated its reason as the cookie
+secret dying with the process and the hold living in memory.
+Both are fixed in code and verified (the cookie key is kept
+in the channel; the hold is a sidecar on disk), so that
+rationale is retired. Send-once stays: it belongs to the
+relay itself, not to a defect. The pass criteria are
+unchanged. Whether a restart mid-window becomes a passable
+cell is an open option, recorded here and not decided.
+
 ## 2-Nov-9:30pm-PST/PDT — Claude: version 3, the review pass after 3.15.129
 
 Read at `b75538d` (3.15.129). Every comment from the 5:38pm, 6:10pm, 7:10pm and 7:40pm notes was checked against the current draft text and the code; the dispositions are in `docs/design/v3-carriage-review-pass.md`, Section 0. Nothing in that note is implemented. It is for review before any of it lands.
