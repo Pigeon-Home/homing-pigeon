@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.132 - 2026-11-02
+
+- Install this, not 3.15.130 or 3.15.131. 130 failed three guards and published nothing. 131 has those fixes, but an empty GitHub release was published on that tag before the asset job, and GitHub will not publish that tag again. This tag is left for the build to release.
+- The version 3 final pass rides along: a fragmented first hello is refused by the carriage itself, the flight frame is a leaf part of the message, and the local draft was re-rendered with idnits run. The three idnits errors are submission-time edits, recorded in docs/ietf/STATUS.md. Nothing is submitted.
+
 ## 3.15.131 - 2026-11-02
 
 - The session hold is written with the one atomic writer. 3.15.130's asset build stopped on that, on the PROTOCOL.md line pins after the version 3 link, and on a seat name in the carriage review note. None of those reached PyPI. Install this release, not 3.15.130.
