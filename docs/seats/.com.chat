@@ -3,7 +3,7 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
-## 3-Nov-9:26am-PST/PDT — work streams: what the cores are doing
+## 3-Nov-9:26am-PST/PDT — tasking: what the cores are doing
 
 Snapshot from live process listings on all 3 machines, taken
 3-Nov-2026 at about 17:17 UTC. 13 cores in total: 4 on the
@@ -16,18 +16,18 @@ target everywhere: no disk over 90% used, no paging (available
 memory floor 256 MB on the 8 GB box, 128 MB on the small
 boxes), no swap.
 
-The rules every stream runs under: nothing pushes to GitHub
+The rules every tasking runs under: nothing pushes to GitHub
 by itself — lanes commit locally and the commits accumulate
 for a manual landing; the full flow is in docs/CONTRIBUTING.md
 under "Releases: who pushes, and the five-minute window". A
-failure found by any stream is finished only when the failing
+failure found by any tasking is finished only when the failing
 case stands as a unit test on main, and a fuzz-found bug gets
 a family of tests, not a single regression test. Test output
 is read in full, unfiltered, and what skipped is checked every
 time. A watchdog checks every lane every 10 minutes and
 relaunches whatever died.
 
-Stream 1, the full test suite in parallel shards, is the
+Tasking 1, the full test suite in parallel shards, is the
 largest. Every runner/tests/test_*.py file is dealt by stride
 across 6 shard lanes, each in its own private tree. A shard
 runs its files in chunks of 35 modules, re-syncs its tree to
@@ -40,7 +40,7 @@ module names go to the coordinator, which works the failure
 in the fix tree — reproduce, test first, fix — and holds the
 result as a local commit.
 
-Stream 2, the rotation lane, cycles the heavyweight batches
+Tasking 2, the rotation lane, cycles the heavyweight batches
 the shards do not carry: the security parity and lockdown
 batch (the same jobs under no modes, all off, all audit, all
 enforce, outcomes compared, plus the startup-refusal tests);
@@ -49,7 +49,7 @@ tests, the live-mail fixture replays, the hybrid post-quantum
 handshake tests); the transport suites end to end; a corpus
 fuzz grow against recent-work targets; and a pyrefly pass.
 
-Stream 3, the fuzz lanes, runs runner/tools/de_dust_corpus.py
+Tasking 3, the fuzz lanes, runs runner/tools/de_dust_corpus.py
 in 12-minute grows, cycling 6 target groups: dtls, dtls_session
 and dtls_hostile; keydir, address, wire and crypto; config,
 manifest, secret, queries and names; race_board, race_stash
@@ -62,7 +62,7 @@ sweep, and byte-level, protocol and race lanes kept separate,
 each with its own corpus. Crashes and survivors bank locally
 on the machine that found them and are landed by hand.
 
-Stream 4 is San Francisco's single core: a suite-shard lane
+Tasking 4 is San Francisco's single core: a suite-shard lane
 of its own from /opt/hp-rig/homing-pigeon, working the same
 test files in its own rotation — at snapshot time inside the
 confinement, coverage and de_dust modules. Its value is a
@@ -70,18 +70,18 @@ second, independent machine reaching the same verdicts, so a
 failure that only shows on a small, slow, memory-tight box
 gets seen at all.
 
-Stream 5 is the Windows rig's 8 cores: the Windows-side test
+Tasking 5 is the Windows rig's 8 cores: the Windows-side test
 and fuzz work that only means anything on Windows — path
 handling, PowerShell script handling, the Windows runner
 surface — driven by Python workers. The runner itself stands
 installed there on the file transport, a consumer of the
-streams' output through the remote-upgrade path, not a
+tasking's output through the remote-upgrade path, not a
 producer of pushes. One honest cost: Windows Defender's
 real-time scanner takes a large share of that box while the
 work runs, because every file the workers touch is scanned;
 the readings below include the scanner.
 
-The coordination stream uses almost no CPU: the coordinator
+The coordination tasking uses almost no CPU: the coordinator
 that set the lanes up and works the failure queue, the pump
 watchdog on its 10-minute cycle keeping the list of local
 commits awaiting a manual push, and the release watch, which
