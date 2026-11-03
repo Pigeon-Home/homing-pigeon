@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.125 - 2026-11-02
+
+- Version 3: the DTLS via email build lands -- specification (local, unsubmitted), DTLS carriage over the email pipe as dtls_via_email, resumption and provider-shape tests, and the proof record.
+- IPv6: bind support for the DTLS listener, off by default.
+
 ## 3.15.124 - 2026-11-02
 
 - Germany bank 46: 2,301 entries and 8,674 coverage edges in the merged corpus, with 5 new run records, 27,994 children tested, and 0 crashes.
