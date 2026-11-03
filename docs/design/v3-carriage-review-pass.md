@@ -12,10 +12,13 @@ restart. The tests are in `test_dtls_email_v3.py`.
 The rest of this note is not implemented. The media-type tree, the
 editorial sentences, the combination cells, the lifetime table, and
 the submission-time list wait for the submission, which is still
-weeks off. Posted drafts -01 through -03 are not revised from this
-note. idnits on those revisions reported 0 errors; the warnings are
-recorded in `docs/ietf/STATUS.md` and are not a reason to reopen a
-posted draft tonight.
+weeks off. One sentence in section 5 named an internal bank by its
+seat name; that name is not a reader's word, so the sentence now
+says what the bank does and not what the seat calls it. Posted
+drafts -01 through -03 are not revised from this note. idnits on
+those revisions reported 0 errors; the warnings are recorded in
+`docs/ietf/STATUS.md` and are not a reason to reopen a posted draft
+tonight.
 
 ## 0. Where the draft stands
 
@@ -593,7 +596,7 @@ list. Cheap, and it is how the next edit to the draft is kept honest.
   into the retrospective before it runs, so the night is not cited
   as coverage it is not.
 - Turn the combination cells of 3.1 into the carriage's own bank,
-  the way de_aztec banks the corpus: a run record per cell, counts
+  the way the content bank records the corpus: a run record per cell, counts
   of jobs and mails as the assertions, committed as proof of work.
 - The conformance pin of 3.10, so the draft cannot drift under a
   later edit.

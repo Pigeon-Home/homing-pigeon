@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.131 - 2026-11-02
+
+- The session hold is written with the one atomic writer. 3.15.130's asset build stopped on that, on the PROTOCOL.md line pins after the version 3 link, and on a seat name in the carriage review note. None of those reached PyPI. Install this release, not 3.15.130.
+
 ## 3.15.130 - 2026-11-02
 
 - Fix: a restart of the email process no longer sends a held session result as ordinary mail. The hold is a sidecar beside the job and is read back when the process starts.

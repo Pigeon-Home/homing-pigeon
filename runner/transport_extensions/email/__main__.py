@@ -62,6 +62,7 @@ from runner.wire import dtlsproto as _dtlsproto  # noqa: E402
 from runner.wire import mailbox as _mailbox  # noqa: E402
 from runner.wire import subject as _subject  # noqa: E402
 from runner.guard import confval as _confval  # noqa: E402
+from runner.guard import atomicio as _atomicio  # noqa: E402
 
 _mailbox.set_logger(ch.log)
 
@@ -385,10 +386,7 @@ class EmailPipe:
             % (self._encode_hold_token(cid),
                self._encode_hold_token(identity),
                since))
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
-            fh.write(text)
-        os.replace(tmp, path)
+        _atomicio.write_text(path, text)
 
     def _read_session_hold(self, path):
         try:
