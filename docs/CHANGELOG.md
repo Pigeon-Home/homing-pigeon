@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.126 - 2026-11-02
+
+- Fix: the release gate for 3.15.125 is cleared — the provider name is out of the version 3 live docs, and the C20 transports pin is restated to its invariant (exactly 2 secret-material hand-over sites, each ordered against its branch and, for the email carriage, its literal-true opt-in guard).
+
 ## 3.15.125 - 2026-11-02
 
 - Version 3: the DTLS via email build lands -- specification (local, unsubmitted), DTLS carriage over the email pipe as dtls_via_email, resumption and provider-shape tests, and the proof record.
