@@ -20,6 +20,7 @@ import os
 import string
 import sys
 import tempfile
+import time
 import unittest
 from argparse import Namespace
 from datetime import datetime, timezone
@@ -1228,6 +1229,76 @@ class EmailPipeIntegrationTest(unittest.TestCase):
         self.assertFalse(self.pipe._dtls_server.core.sessions)
         self.assertEqual(len(self.client_box.messages), before)
         self.assertTrue(self.runner_box.messages[0]["seen"])
+
+    def test_a_restart_does_not_downgrade_a_held_session_result(self):
+        self._pump_pipe()
+        envelope = _job_envelope("v3-job-restart")
+        self._post_client_mails(self.client.send_app_mails(envelope))
+        self.pipe.pass_once()
+        executed = []
+        self._run_channel_core(executed)
+        self.assertEqual(len(executed), 1)
+        self._rebuild_pipe()
+        before = len(self.client_box.messages)
+        self.pipe.flush_results(self.runner_box)
+        self.assertEqual(len(self.client_box.messages), before)
+        self.assertIn(
+            "v3-job-restart.result.txt",
+            os.listdir(os.path.join(self.channel, "outbox")))
+        self.assertTrue(self.pipe._session_bound("v3-job-restart"))
+
+    def test_a_restart_keeps_a_hold_for_a_job_still_running(self):
+        self._pump_pipe()
+        envelope = _job_envelope("v3-job-inflight")
+        self._post_client_mails(self.client.send_app_mails(envelope))
+        self.pipe.pass_once()
+        self._rebuild_pipe()
+        self.assertTrue(self.pipe._session_bound("v3-job-inflight"))
+        executed = []
+        self._run_channel_core(executed)
+        self.assertEqual(len(executed), 1)
+        before = len(self.client_box.messages)
+        self.pipe.flush_results(self.runner_box)
+        self.assertEqual(len(self.client_box.messages), before)
+        self.assertIn(
+            "v3-job-inflight.result.txt",
+            os.listdir(os.path.join(self.channel, "outbox")))
+
+    def test_expiry_of_one_result_leaves_an_in_flight_hold(self):
+        self._pump_pipe()
+        self._post_client_mails(
+            self.client.send_app_mails(_job_envelope("v3-held-b")))
+        self.pipe.pass_once()
+        executed = []
+        self._run_channel_core(executed)
+        self.assertEqual(len(executed), 1)
+        # Deliver A without flushing, so B's result is still
+        # held when the session dies. A flush while the
+        # session is up would send B and hide the bug.
+        self.pipe.flush_results = lambda imap: None
+        self._post_client_mails(
+            self.client.send_app_mails(_job_envelope("v3-held-a")))
+        self.pipe.pass_once()
+        del self.pipe.flush_results
+        self.assertTrue(self.pipe._session_bound("v3-held-a"))
+        self.pipe._dtls_server.core.sessions.clear()
+        self.pipe._dtls_server.core.by_addr.clear()
+        self.pipe._session_result_ttl = 10.0
+        for key in list(self.pipe._job_session):
+            if key[1] == "v3-held-b":
+                self.pipe._result_wait_since[key] = time.time() - 100
+        self.pipe.flush_results(self.runner_box)
+        self.assertTrue(self.pipe._session_bound("v3-held-a"))
+        self.assertFalse(self.pipe._session_bound("v3-held-b"))
+        executed = []
+        self._run_channel_core(executed)
+        self.assertEqual(len(executed), 1)
+        before = len(self.client_box.messages)
+        self.pipe.flush_results(self.runner_box)
+        self.assertEqual(len(self.client_box.messages), before)
+        self.assertIn(
+            "v3-held-a.result.txt",
+            os.listdir(os.path.join(self.channel, "outbox")))
 
     def test_resumption_over_the_pipe(self):
         self._pump_pipe()

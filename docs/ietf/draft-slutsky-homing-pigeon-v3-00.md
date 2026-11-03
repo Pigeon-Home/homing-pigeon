@@ -964,7 +964,11 @@ carriage remembers, for each job it delivered from a session,
 the session's connection ID and the job ident together, and
 the PSK identity the session authenticated under -- never the
 job ident alone, which the submitter chooses and which
-collides across submitters. If that session no longer exists
+collides across submitters. The hold is kept as the result
+is kept, in the responder's own state and across a restart
+of the process. A hold that died with the process would send
+the result by the ordinary path on the next pass, which
+Section 12 forbids. If that session no longer exists
 when the result is ready, the result waits, and it can still
 leave on this carriage in exactly 1 way: inside a later
 session that authenticated under the same PSK identity and

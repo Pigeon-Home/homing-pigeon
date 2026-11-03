@@ -1,17 +1,33 @@
 # Version 3 carriage: review pass after 3.15.129
 
-Read against `main` at `b75538d` (release 3.15.129), 02-NOV 9:30PM PST.
+Decision, 2 November, after this note landed. The two defects in
+section 1 are real and they are fixed. A session hold is a sidecar
+beside the job (`<ident>.session.txt`), read back when the email
+process starts, so a restart does not send the result as ordinary
+mail. An expiry deletes only the holds whose result files it just
+dropped, so a job that has not produced a result yet keeps its hold.
+Section 10.3 of the local draft now says the hold is kept across a
+restart. The tests are in `test_dtls_email_v3.py`.
 
-Nothing in this note is implemented. It is the list of what I would
-change, each described far enough to review without opening the code,
-in the order I would do it. Section 1 is two defects I found and
-demonstrated by running the carriage. Section 2 is the rest of what
-this read turned up. Section 3 is the work the two reviews and the
-revision passes left open, described. Section 4 is the IETF side.
-Section 5 is a longer list of ideas toward the goals, in no particular
-order. Section 6 is what I would do first.
+The rest of this note is not implemented. The media-type tree, the
+editorial sentences, the combination cells, the lifetime table, and
+the submission-time list wait for the submission, which is still
+weeks off. Posted drafts -01 through -03 are not revised from this
+note. idnits on those revisions reported 0 errors; the warnings are
+recorded in `docs/ietf/STATUS.md` and are not a reason to reopen a
+posted draft tonight.
 
 ## 0. Where the draft stands
+
+Read against `main` at `b75538d` (release 3.15.129), 02-NOV 9:30PM PST.
+
+Section 1 is implemented; see the decision at the top. The rest of
+this note is the list of what I would change, each described far
+enough to review without opening the code. Section 2 is the rest of
+what this read turned up. Section 3 is the work the two reviews and
+the revision passes left open, described. Section 4 is the IETF side.
+Section 5 is a longer list of ideas toward the goals, in no particular
+order. Section 6 is what I would do first.
 
 The question this pass had to answer first was whether every comment
 from the two reviews is in the draft. Checked against the text at
