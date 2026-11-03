@@ -260,8 +260,9 @@ protocol defines only that the threshold exists (Section 6).
 
 A version 2 message is a JSON object carried on any binding that
 carries version 1 messages, byte for byte the same treatment: the
-subject conventions of draft-slutsky-homing-pigeon-00 Section 6, with the
-message type in the subject; the signature and MAC construction of
+marker and gap conventions of draft-slutsky-homing-pigeon-00 Section 6,
+with the message type in the subject as Sections 6, 7, and 8 of this
+document specify; the signature and MAC construction of
 Section 7 of that document; the per-job encryption of its
 Section 16 applied to the whole object; and the common members of
 its Section 9, including `v`, which is 2 for the messages this
@@ -273,10 +274,9 @@ rejection is the correct and only interaction between a version 2
 message and a version 1 receiver, and senders MUST NOT send a
 version 2 message on a path where a version 1 receiver is expected
 to process it as a job. Version 2 messages are addressed to the
-job's `reply_to`, never to the mailbox a runner polls for jobs,
-except where the deployment's bindings make the two the same and
-the receiving implementation separates them by type before any
-job processing.
+job's `reply_to`. Where a deployment's bindings make that address
+and the mailbox a runner polls for jobs the same, the receiving
+implementation separates them by type before any job processing.
 
 Every version 2 message names the job it concerns (`job_id`) and
 its own identifier (`msg_id`), and carries `issued_at` as in
@@ -284,8 +284,9 @@ version 1. Replay handling follows the seen-set discipline of
 version 1: an identifier is recorded once the message has been
 acted on, and a duplicate is dropped silently. A receiver MUST
 hold `issued_at` to the same window as a version 1 job (its past
-window, and at most five minutes into the future) and MUST drop a
-message outside it. In the reference the identifier is recorded
+window, and the future allowance of version 1 Section 11.1: 300
+seconds in the reference software) and MUST drop a message
+outside it. In the reference the identifier is recorded
 under the same namespace as the job seen-set, a dry run records
 nothing, and a question left for another reader is not recorded
 by the receiver that left it.
@@ -363,7 +364,10 @@ never by itself refuses a job.
 ```
 
 `msg_id` in the reference software is `q.` plus the job id,
-truncated so the identifier stays safe. `deadline_sec` is an
+shortened when the pair would pass the limit: the shortened form
+keeps a head of the job id plus a short digest of the whole id,
+so the identifier stays inside the limit and two different job
+ids never share one. `deadline_sec` is an
 integer from 0 to 30. `question` is a non-empty string of at
 most 500 characters. `local_default` is a non-empty string of
 at most 64 characters. The reference software uses `proceed`.
@@ -391,8 +395,9 @@ which trusted holder produced the answer.
 ```
 
 `question_id` is the question's `msg_id`. `msg_id` in the
-reference software is `a.` plus that question id, truncated so
-the identifier stays safe. `answer` is a non-empty string of at
+reference software is `a.` plus that question id, shortened in
+the same way when needed so the identifier stays inside the
+limit. `answer` is a non-empty string of at
 most 500 characters. It is data. A runner MUST NOT execute it,
 and MUST NOT treat it as admitting the job.
 

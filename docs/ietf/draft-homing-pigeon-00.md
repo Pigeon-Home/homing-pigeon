@@ -10,7 +10,7 @@ Document: draft-slutsky-homing-pigeon-00
 
 ## Abstract
 
-This document specifies the Homing Pigeon message protocol, version 1: signed JSON job and result objects exchanged over a transport binding. On the email binding, a submitter sends one HMAC-SHA-384 signed JSON object to a mailbox; a runner polls that mailbox, verifies the signature, executes the job, and returns a signed result; the other bindings carry the same objects unchanged. The signature is the only authorization. The job object is protected end to end by per-job AEAD encryption (Section 16), a required part of the protocol: implementations MUST support it, the reference software sends encrypted by default, and a receiver refuses a cleartext job unless the operator has explicitly enabled cleartext acceptance — in the reference software, only by a command-line parameter. The store-and-forward bindings open no inbound listener on the host that runs the job.
+This document specifies the Homing Pigeon message protocol, version 1: signed JSON job and result objects exchanged over a transport binding. On the email binding, a submitter sends one HMAC-SHA-384 signed JSON object to a mailbox; a runner polls that mailbox, verifies the signature, executes the job, and returns a signed result; the other bindings carry the same objects unchanged. The signature is the object's only authorization: a binding may add a gate of its own (Section 5.2), but no gate replaces it. The job object is protected end to end by per-job AEAD encryption (Section 16), a required part of the protocol: implementations MUST support it, the reference software sends encrypted by default, and a receiver refuses a cleartext job unless the operator has explicitly enabled cleartext acceptance — in the reference software, only by a command-line parameter. The store-and-forward bindings open no inbound listener on the host that runs the job.
 
 The DTLS binding (Section 19) changes the binding and not the messages: the same signed objects travel inside a direct DTLS 1.3 session between the submitter and the runner. It is a binding of version 1, not a new version of the protocol. The shared secret is the session's external pre-shared key; key exchange is ephemeral-only, so sessions have perfect forward secrecy; and once the handshake has authenticated the submitter, the runner opens the session with a greeting that discloses a tiered, responder-chosen summary of its platform. The binding opens an inbound listener on the runner's host and is off unless the owner enables it. It is an addition, never a replacement: the store-and-forward bindings remain the ones every submitter can reach.
 
@@ -230,7 +230,7 @@ The compare covers all 96 digits. It MUST NOT stop at the first differing digit 
 
 A receiver MUST ignore object members it does not implement, except:
 
-* `v` other than 1 MUST be rejected
+* `v` other than 1 MUST be rejected (a receiver that implements the version 2 document opens version 2 messages under that document, never as jobs)
 * `type` other than `job`, on a message the receiver is executing as a job, MUST be rejected
 * `kind` other than `exec` or `ping` MUST NOT be executed; the reference receiver rejects any other value except `sensor_alert`, which it files as a signed alert for its Oracle (PROTOCOL.md, "Senses") and never executes
 
@@ -582,7 +582,7 @@ The submitter initiates. The runner listens on a UDP port (LOCAL; the reference 
 This binding is a bounded profile of DTLS 1.3 [RFC9147]. An implementation of this binding implements exactly this profile; a peer proposing anything outside it is refused, and the refusal ends that handshake, not the listener.
 
 - Transport: DTLS 1.3 [RFC9147] over UDP. DTLS 1.2 MUST NOT be negotiated.
-- Ciphersuite: TLS_AES_256_GCM_SHA384 [RFC8446] only. No other suite is offered or accepted.
+- Ciphersuite: TLS_AES_256_GCM_SHA384 [RFC9846] only. No other suite is offered or accepted.
 - Authentication: pre-shared key only. The external PSK is the shared secret, under the identities of Section 3. Certificates are not part of this profile, in either direction. The shared secret MUST meet the minimum-entropy floor of this protocol (Section 17.3); a secret below the floor MUST NOT be offered as a PSK.
 - Key exchange: `psk_dhe_ke` only. The `psk_key_exchange_modes` extension MUST offer mode 1 and MUST NOT offer mode 0 (`psk_ke`); a responder MUST refuse a handshake that does not offer `psk_dhe_ke`. An ephemeral X25519 [RFC7748] key share MUST ride every handshake, full or resumed. Section 22.1 gives the reason: this is the profile's perfect-forward-secrecy requirement, and it is not negotiable within the profile.
 - Address validation: the responder MUST perform the HelloRetryRequest cookie exchange of [RFC9147] before allocating session state, and MUST NOT send any flight larger than the retry itself before the cookie returns. The cookie is stateless and is bound to the initiator's address.
@@ -648,7 +648,7 @@ None of this is required of a submitter that uses only the store-and-forward bin
 
 ### 22.1. Forward secrecy is a requirement, not a property
 
-The profile's load-bearing rule is that `psk_ke` is prohibited. In `psk_ke`, session keys derive from the pre-shared key alone; anyone who later obtains the secret and has recorded the session decrypts it in full. Because this protocol's shared secret is long-lived and is also the job-signing key, that failure mode would be catastrophic and silent. In `psk_dhe_ke`, every session -- full or resumed -- mixes a fresh ephemeral X25519 secret into its keys, so a later compromise of the shared secret yields the ability to impersonate going forward (which the version 1 analysis already grants a secret-holder) but decrypts no recorded session. An implementation MUST NOT offer, accept, or fall back to `psk_ke`, including on resumption and including when a peer insists. One limit is stated plainly: forward secrecy here is not post-quantum secrecy. The ephemeral exchange is X25519, so a recorded session is exposed to a future cryptographically relevant quantum computer in a way the symmetric constructions of this protocol (the object MAC of Section 7.1 and the per-job encryption of Section 16) are not. A hybrid post-quantum key exchange is the known remedy and is future work for this profile.
+The profile's load-bearing rule is that `psk_ke` is prohibited. In `psk_ke`, session keys derive from the pre-shared key alone; anyone who later obtains the secret and has recorded the session decrypts it in full. Because this protocol's shared secret is long-lived and is also the job-signing key, that failure mode would be catastrophic and silent. In `psk_dhe_ke`, every session -- full or resumed -- mixes a fresh ephemeral X25519 secret into its keys, so a later compromise of the shared secret yields the ability to impersonate going forward (which the version 1 analysis already grants a secret-holder) but decrypts no recorded session. An implementation MUST NOT offer, accept, or fall back to `psk_ke`, including on resumption and including when a peer insists. One limit is stated plainly: forward secrecy here is not post-quantum secrecy. The ephemeral exchange is X25519, so a recorded session is exposed to a future cryptographically relevant quantum computer in a way the symmetric constructions of this protocol (the object MAC of Section 7.1 and the per-job encryption of Section 16) are not. A hybrid post-quantum key exchange is the known remedy. It is future work for this profile; for the email carriage it is specified, as an option, by the version 3 document (X25519MLKEM768).
 
 ### 22.2. One secret, two constructions
 
@@ -692,7 +692,7 @@ The confidentiality claim is end to end between the submitter and the runner pro
 
 [SP800-38D] Dworkin, M., "Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC", NIST SP 800-38D, DOI 10.6028/NIST.SP.800-38D, November 2007, <https://doi.org/10.6028/NIST.SP.800-38D>.
 
-[RFC8446] Rescorla, E., "The Transport Layer Security (TLS) Protocol Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018, <https://www.rfc-editor.org/info/rfc8446>.
+[RFC9846] Rescorla, E., "The Transport Layer Security (TLS) Protocol Version 1.3", RFC 9846, DOI 10.17487/RFC9846, July 2026, <https://www.rfc-editor.org/info/rfc9846>.
 
 [RFC8314] Newman, C. and A. Melnikov, "Cleartext Considered Obsolete: Use of Transport Layer Security (TLS) for Email Submission and Access", RFC 8314, DOI 10.17487/RFC8314, January 2018, <https://www.rfc-editor.org/info/rfc8314>.
 
