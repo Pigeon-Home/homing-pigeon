@@ -95,14 +95,26 @@ because each one closes a hole the earlier text left open:
   peers that share one secret are one submitter, and distinct
   submitters are distinct keys. A mail session-id is not a submitter.
   That last sentence is the limit on the rule, not a second rule.
+- The hold itself is kept on disk, as a `<ident>.session.txt` sidecar
+  written when the job is delivered from the session, so a restart of
+  the email process does not send the held result as ordinary mail on
+  the next pass. An expiry of held results drops only the holds whose
+  results it dropped; a hold whose job is still in flight survives
+  another result's expiry.
 
 Two further closures are in the same draft. A fragmented first
 handshake is consumed and draws no HelloRetryRequest. The unaddressed
 test shape is not fed to DTLS on a deployment mailbox.
 
 The rendered `.txt`, `.html`, and `.xml` beside the version 3 source
-are older than the source. They were not regenerated with this text.
-The markdown is the text. idnits has not been run on it.
+were regenerated with the final-pass text (2-Nov-2026) and match the
+source. idnits 3.3.0 has been run on the render; its report stands
+beside the source as `draft-slutsky-homing-pigeon-v3-00.idnits.txt`.
+It reports 3 errors -- the abstract's references to sections and to
+version 1, and RFC 8446 listed as obsolete (succeeded by RFC 9846) --
+all submission-time edits, recorded in the forum. Its other warning
+is the tool reading the `[HOMING-PIGEON]` subject marker as a
+citation, the same reading the version 1 reports carry.
 
 ## Discussion
 

@@ -387,3 +387,89 @@ protocol suites) is green unfiltered.
 Still unproven, unchanged from the continuation: resumption
 over a live mailbox, providers other than the 1 live
 provider, and live scale beyond 1 session carrying 1 job.
+
+## Final pass (2-Nov-2026)
+
+A final adversarial review of the draft (protocol
+correctness, sending-side implementability, scope and
+upstream inheritance), the read-back items on the revision
+(re-post budget, cookie key across restarts, held results
+bound to the PSK identity), a review-pass document reporting
+2 defects in the held-result path, and an audit of every
+decision in this arc were each verified first-hand. The
+forum entry of this date carries the decision ledger; this
+section records the behavior changes and the corrections to
+this record.
+
+Corrections to the record above:
+
+- The discovery hint is LANDED, not prepared: the sentence
+  stands in the draft's Section 4.3 (a platform card may
+  state, as an unauthenticated fact, that the runner offers
+  this carriage; the fact is trusted for nothing except
+  whether an attempt is worth making), and `PROTOCOL.md`
+  links the draft as local and unsubmitted. The review-pass
+  section's "PREPARED, NOT LANDED" line is superseded.
+- Test counts: the module stood at 62 at the review pass,
+  74 after the held-result fixes released in 3.15.130, and
+  82 after this pass, each count from a full unfiltered run
+  of `runner/tests/test_dtls_email_v3.py`, 0 skips.
+
+Behavior changes in this pass:
+
+- The production sender's frame part is a leaf part.
+  `build_flight_message` attached the frame as a whole
+  message object, which wrapped it in a `message/rfc822`
+  container one level below where Section 5.2 puts it; it
+  now attaches the frame as bytes, a direct leaf part. The
+  receiver is unchanged and reads the wrapped shape where
+  it is met. Tests pin the leaf shape and a full handshake
+  carried entirely over the sender's own serialization.
+- A fragmented first ClientHello is refused by the carriage
+  itself: the classifier no longer calls it an
+  initialization, and the datagram classifies `dtls-invalid`
+  (no answer, no state), where before it was fed to the
+  engine and refused there. The outcome is unchanged; the
+  refusal now sits where Sections 8.2 and 16.4 put it. A
+  test pins the parse kind and the silent pipe.
+- The session-hold sidecar writes through the tree's one
+  atomic writer (`runner/guard/atomicio.py`), not a
+  hand-rolled temp name.
+
+Verified, not changed:
+
+- The held-result fixes of 3.15.130 (a `<ident>.session.txt`
+  sidecar restores the hold across a restart; an expiry
+  drops only the holds whose results it dropped) were
+  probed independently of their landed tests: the sidecar
+  survives the runner core's own inbox fetch (it is acked
+  to the inbox's done folder with the job file and restored
+  from there), a restored hold still expires and is never
+  sent, and a later session under the same key receives the
+  held result after the restart.
+- The re-post budget and the cookie key kept in the channel
+  (both landed with the read-back fixes) hold under an
+  independent duplication probe -- every mail in both
+  directions delivered twice: 32 mail movements, exactly 1
+  established session, the application message delivered
+  exactly once -- and under cookie-key corruption cases
+  (garbage, short, and empty key files each draw a fresh
+  owner-only key with a warning, and the server builds).
+- Combination cells landed as tests: a gateway-shaped
+  flight (segmented, text-part footer, parts reversed, 1
+  part delivered twice) frames 1 datagram; early data
+  spliced into a segmented, prefixed hello is rejected as a
+  property of the reassembled datagram; 1 `Re:` prefix on a
+  quoted-printable typed part classifies `dtls-invalid`;
+  2 keys carrying 1 job ident with both sessions live run
+  the job once and answer only the carrying session.
+
+Still unproven, updated: resumption over a live mailbox,
+providers other than the 1 live provider, live scale
+beyond 1 session carrying 1 job, the production MIME
+sender on a live mailbox (this pass's sender experiments
+are local serialization round trips), and a restart in the
+middle of a live handshake. Resumption across a responder
+restart is not possible by design -- the ticket table is
+process memory -- and is recorded here so the unproven
+list is not read as awaiting that run.
