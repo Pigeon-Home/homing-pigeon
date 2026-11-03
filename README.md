@@ -37,6 +37,8 @@ Run a job that retrieves the system clock and then display it here.
 IETF Internet-Drafts:
 - Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
+- Homing Pigeon v3 (local draft in this repository, not yet submitted): https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3-00.md
+Version 3 is DTLS via email. A cloud SI may use it with any runner configured to accept it; there is no working-group document for it yet because the IETF submission window is currently closed, and none is needed to use it.
 
 **No mailbox yet?** `python3 runner/runner.py --config config.json
 --local-test` runs the whole loop in process: you play the SI in a
@@ -512,5 +514,6 @@ says so. [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) has the rest.
 - "I once saw a forklift lift a crate of forks. And it was way to literal for me" - Mitch Hedberg
 - IETF datatracker, Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - IETF datatracker, Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
+- IETF draft v3, local in this repository: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3-00.md
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/RESUME.txt
 The security model — the gate, the key fences, the ceilings a job cannot raise, and the configuration rules — and the formal proof testing that checks it, property by property, are described in [docs/security/model-and-proof-testing.md](docs/security/model-and-proof-testing.md).

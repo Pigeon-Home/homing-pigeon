@@ -512,6 +512,16 @@ implemented as a bounded pure-Python profile
   secret, and every job that arrives over DTLS still faces
   the core's signature check like any other transport's.
 
+**DTLS via email (version 3).** The same session binding can ride the
+email transport instead of a UDP socket: no inbound network path,
+no firewall rule. It is defined by the local version 3 draft,
+[draft-slutsky-homing-pigeon-v3-00](https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3-00.md),
+and enabled on a runner with `dtls_via_email` set to true. A cloud
+SI may use it with any runner configured to accept it. The draft is
+local — the IETF submission window is currently closed and there
+is no working-group document — and using the carriage does not
+wait on either.
+
 ## MQTT — the IoT pick
 
 MQTT is the protocol your smart lightbulbs speak, and that's not an
