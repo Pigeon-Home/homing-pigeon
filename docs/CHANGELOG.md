@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.139 - 2026-11-03
+
+- Lockdown by default: security modes read enforce when unset, for all 6 features (policy_env, policy_files, policy_args, audience, confinement, job_user). A mode a config sets always wins; a malformed block or value still reads off. Posture states the effective modes, and the security docs and config example state the enforce default.
+
 ## 3.15.138 - 2026-11-03
 
 - Germany bank 54: 2,308 entries, 0 crashes, 10 new runs.
