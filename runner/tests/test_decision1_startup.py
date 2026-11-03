@@ -48,6 +48,26 @@ is complete rather than silent:
   main()'s platform gate, which cannot fire on a POSIX host; the
   gate's own function is tested directly with the platform passed
   explicitly, the shape test_enforce_races_gaps uses for it.
+
+Strict shape (2026-11-03): enforce means enforce on every
+platform. A mode set to enforce on a platform or in an
+environment that cannot enforce it refuses startup, naming the
+mode and the key -- there is no platform step-down to audit,
+ever; recovery is a config edit and a restart, and the refusal
+is a designed state. StrictShapeTest below pins that shape
+through main() itself, using the platform-simulation seams the
+suite already uses (mock.patch.object(sys, "platform", ...) as
+in test_windows_platform_proofs.JobUserMainRefusalTest, and the
+scripted sandbox startup_problem of test_cli_options), and pins
+the negative at the single decision point: sec_mode never reads
+a configured "enforce" as anything but "enforce" on any
+platform, and sec_decide at enforce never allows and never
+writes a would_* (audit) entry. The two job-time fallback chains
+(confinement unavailable, job_user drop impossible) are not
+step-downs to audit and are not reclassified here: they are
+reachable only past the startup gates, they log "fallback"
+rather than proceeding as audit, and the parity leg pins their
+entries as designed.
 """
 import contextlib
 import importlib
@@ -76,13 +96,18 @@ BASE = {"mailbox_user": "a@b.c", "mailbox_password": "p",
         "shared_secret": STRONG_SECRET}
 
 
-def run_main(extra, argv_extra=()):
+def run_main(extra, argv_extra=(), platform=None, sandbox_problem=None):
     """One real startup through main(). Returns (rc, stdout, stderr).
 
     The config lives in a fresh temp dir whose path is also the
     runner's base_dir, so a startup that proceeds cannot touch
     real state; --audit-report (used by the default-class tests)
     returns before any mailbox work.
+
+    platform patches sys.platform for the duration (the suite's
+    win32 simulation seam); sandbox_problem scripts the sandbox
+    module's startup_problem answer, so a backend failure can be
+    constructed on a host whose sandbox works.
     """
     tmpdir = tempfile.mkdtemp(prefix="hp-d1-")
     cfg = dict(BASE, base_dir=tmpdir)
@@ -92,7 +117,15 @@ def run_main(extra, argv_extra=()):
         json.dump(cfg, fh)
     out, err = io.StringIO(), io.StringIO()
     argv = ["runner", "--config", cfg_path, *argv_extra]
-    with mock.patch.object(sys, "argv", argv):
+    with contextlib.ExitStack() as stack:
+        if platform is not None:
+            stack.enter_context(
+                mock.patch.object(sys, "platform", platform))
+        if sandbox_problem is not None:
+            stack.enter_context(mock.patch.object(
+                RR._sandbox, "startup_problem",
+                lambda: sandbox_problem))
+        stack.enter_context(mock.patch.object(sys, "argv", argv))
         with contextlib.redirect_stdout(out), \
                 contextlib.redirect_stderr(err):
             rc = RR.main()
@@ -227,6 +260,131 @@ class RefuseStartupGatesTest(unittest.TestCase):
             {"security": {"job_user": {"user": "hp-no-such-user-zz9"}}})
         self.assertEqual(rc, 2, err)
         self.assertIn("job_user", err)
+
+
+class StrictShapeTest(unittest.TestCase):
+    """Enforce means enforce on every platform (2026-11-03).
+
+    One test per mode per cannot-enforce condition that can be
+    honestly constructed, each through main() itself: the startup
+    refuses (exit 2), the refusal names the mode and the key, and
+    the runner does not proceed in any degraded form -- the
+    --audit-report one-shot argv is passed precisely so that a
+    step-down would show up as a successful report (exit 0)
+    instead of the refusal. The other gate's mode is set off
+    explicitly in each config, so each test names the one mode it
+    is about, whichever way unset modes are read.
+
+    The cannot-enforce conditions that exist in the code today:
+    confinement is Linux+bwrap only (a non-Linux platform, and a
+    Linux host whose sandbox backend cannot engage, are two
+    distinct conditions), and job_user's setuid demote is
+    POSIX-only. policy_env, policy_files, policy_args and
+    audience are pure config checks with no platform condition;
+    for them the strict pin is the decision-point negative below,
+    which covers every feature.
+    """
+
+    def test_confinement_enforce_on_win32_refuses_startup(self):
+        rc, out, err = run_main(
+            {"security": {"modes": {"confinement": "enforce",
+                                    "job_user": "off"}}},
+            ("--audit-report",), platform="win32")
+        self.assertEqual(rc, 2, err)
+        self.assertIn("security.modes.confinement", err)
+        self.assertNotIn("Security audit report", out)
+
+    def test_job_user_enforce_on_win32_refuses_startup(self):
+        rc, out, err = run_main(
+            {"security": {"modes": {"job_user": "enforce",
+                                    "confinement": "off"},
+                          "job_user": {"user": "root"}}},
+            ("--audit-report",), platform="win32")
+        self.assertEqual(rc, 2, err)
+        self.assertIn("security.modes.job_user", err)
+        self.assertNotIn("Security audit report", out)
+
+    def test_confinement_enforce_with_a_dead_backend_refuses_startup(self):
+        # The Linux-side analogue of the win32 pair, constructed
+        # through the scripted startup_problem so it constructs on
+        # hosts whose sandbox works too: the backend answer is the
+        # environment, and an environment that cannot enforce is a
+        # refusal on any platform.
+        rc, out, err = run_main(
+            {"security": {"modes": {"confinement": "enforce",
+                                    "job_user": "off"}}},
+            ("--audit-report",),
+            sandbox_problem="bwrap is not installed (not found on PATH)")
+        self.assertEqual(rc, 2, err)
+        self.assertIn("security.modes.confinement", err)
+        self.assertIn("bwrap is not installed", err)
+        self.assertNotIn("Security audit report", out)
+
+    def test_all_enforce_on_win32_refuses_and_names_a_mode(self):
+        # The locked-down posture as a whole on an incapable
+        # platform: whichever gate fires first, the startup is a
+        # refusal naming a security mode, never a degraded start.
+        rc, out, err = run_main(
+            {"security": {"modes": {f: "enforce" for f in FEATURES},
+                          "job_user": {"user": "root"}}},
+            ("--audit-report",), platform="win32")
+        self.assertEqual(rc, 2, err)
+        self.assertIn("config error: security.modes.", err)
+        self.assertNotIn("Security audit report", out)
+
+    def test_no_platform_steps_enforce_down_at_the_decision_point(self):
+        # The negative, per feature, on both platform shapes:
+        # mode resolution is platform-independent (a configured
+        # "enforce" reads "enforce" everywhere), and sec_decide at
+        # enforce denies -- it never allows the way audit does and
+        # never writes audit's would_* entry. A code path that
+        # stepped enforce down to audit on an incapable platform
+        # would have to pass through this one decision point, and
+        # it would fail here.
+        S = RR._security
+        for feature in FEATURES:
+            cfg = {"security": {"modes": {feature: "enforce"}}}
+            for platform in ("linux", "win32"):
+                with self.subTest(feature=feature, platform=platform):
+                    with mock.patch.object(sys, "platform", platform):
+                        self.assertEqual(
+                            S.sec_mode(cfg, feature), "enforce")
+                        with tempfile.TemporaryDirectory() as d:
+                            self.assertFalse(S.sec_decide(
+                                cfg, d, feature, "violation",
+                                {"key_id": "k", "job_id": "j"}))
+                            with open(os.path.join(
+                                    d, S.AUDIT_FILE)) as fh:
+                                lines = fh.readlines()
+                            self.assertEqual(len(lines), 1)
+                            entry = json.loads(lines[0])
+                            self.assertEqual(entry["decision"], "denied")
+                            self.assertEqual(entry["mode"], "enforce")
+
+    def test_audit_and_off_are_unchanged_by_the_platform(self):
+        # The control pair for the negative above: the step-down
+        # pin would be meaningless if every mode denied. Audit
+        # still allows and logs would_deny, off still allows
+        # silently, on the simulated incapable platform too --
+        # those are the operator's explicit choices, not a
+        # platform's substitution for enforce.
+        S = RR._security
+        with mock.patch.object(sys, "platform", "win32"):
+            with tempfile.TemporaryDirectory() as d:
+                audit_cfg = {"security": {"modes":
+                                          {"policy_env": "audit"}}}
+                self.assertTrue(S.sec_decide(
+                    audit_cfg, d, "policy_env", "violation", {}))
+                with open(os.path.join(d, S.AUDIT_FILE)) as fh:
+                    entry = json.loads(fh.readline())
+                self.assertEqual(entry["decision"], "would_deny")
+            with tempfile.TemporaryDirectory() as d:
+                off_cfg = {"security": {"modes":
+                                        {"policy_env": "off"}}}
+                self.assertTrue(S.sec_decide(
+                    off_cfg, d, "policy_env", "violation", {}))
+                self.assertFalse(os.path.exists(
+                    os.path.join(d, S.AUDIT_FILE)))
 
 
 class RefuseReaderTest(unittest.TestCase):
