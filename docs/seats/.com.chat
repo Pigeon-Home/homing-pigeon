@@ -3,6 +3,30 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 3-Nov-12:29am-PST/PDT — version 3: the inbox view
+
+The live version 3 exchange as it read in the inbox: 1 session
+(v3-live-4) — hello, retry, hello, server flight, the client
+flight that finishes the handshake, the job inside the session,
+and the result inside the session. Every line is a recorded mail
+of the run, with its subject, its frame figures, and its size as
+delivered. The whole mail of both live runs is committed as
+fixtures at runner/tests/fixtures/dtls_email_v3_live/ and
+replays offline under runner/tests/test_dtls_email_v3_live.py.
+
+```
+17:40:55  [HOMING-PIGEON] dtls v3-live-4 — HP-DTLS/3 part=0 parts=1 bytes=220 — 1160 bytes — ClientHello
+17:40:58  [HOMING-PIGEON] dtls v3-live-4 — HP-DTLS/3 part=0 parts=1 bytes=141 — 1046 bytes — HelloRetryRequest
+17:41:01  [HOMING-PIGEON] dtls v3-live-4 — HP-DTLS/3 part=0 parts=1 bytes=290 — 1255 bytes — ClientHello, with the cookie
+17:41:07  [HOMING-PIGEON] dtls v3-live-4 — HP-DTLS/3 part=0 parts=1 bytes=126 — 1026 bytes — ServerHello
+17:41:08  [HOMING-PIGEON] dtls v3-live-4 — HP-DTLS/3 part=0 parts=1 bytes=162 — 1074 bytes — server flight
+17:41:09  [HOMING-PIGEON] dtls v3-live-4 — HP-DTLS/3 part=0 parts=1 bytes=87 — 970 bytes — server flight
+17:41:13  [HOMING-PIGEON] dtls v3-live-4 — HP-DTLS/3 part=0 parts=1 bytes=87 — 969 bytes — client flight
+17:41:14  [HOMING-PIGEON] dtls v3-live-4 — HP-DTLS/3 part=0 parts=1 bytes=45 — 910 bytes — client flight
+17:41:22  [HOMING-PIGEON] dtls v3-live-4 — HP-DTLS/3 part=0 parts=1 bytes=538 — 1603 bytes — the job, inside the session
+17:41:42  [HOMING-PIGEON] dtls v3-live-4 — HP-DTLS/3 part=0 parts=1 bytes=1154 — 2451 bytes — the result, inside the session
+```
+
 ## 2-Nov-10:47pm-PST/PDT — version 3: the hybrid group is implemented
 
 The X25519MLKEM768 slot that Section 16.1 of the version 3
