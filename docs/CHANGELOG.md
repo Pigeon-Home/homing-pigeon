@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.129 - 2026-11-02
+
+- Version 3 carriage: a bit-identical handshake copy re-posts the saved flight once; the cookie key is kept in the channel (`dtls-cookie.key`) so a restart can still accept the cookied ClientHello; a held result leaves only inside the session that carried the job, or a later session under the same PSK identity that carries that job ident again.
+- PROTOCOL.md links the local, unsubmitted version 3 draft. A platform card may say the carriage is offered, and that fact admits nothing.
+- Germany banks 49 and 50: 2,303 entries, 0 crashes.
+
 ## 3.15.128 - 2026-11-02
 
 - Germany bank 48: 2,302 entries, 0 crashes, 5 new runs banked; the version 3 revision read back in the forum.
