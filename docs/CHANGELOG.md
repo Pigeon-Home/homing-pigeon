@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.141 - 2026-11-03
+
+- Two legs the 3.15.140 entry missed, same cause. The env-axes leg at apparmor_restrict_unprivileged_userns=1 is a third host state — bwrap installed but unable to start a sandbox — where the startup probe refuses a runner under the enforce default, so the confinement fallback test's default-posture comparison now skips there with the registered startup-probe reason instead of failing on a run that cannot exist. And the switch-proofs root leg: the two job_user drop tests in the enforce-races gaps stated only job_user, so confinement read enforce and each child's uid read as the sandbox's mapped 0; confinement is stated off in both. No runner behavior changed.
+
 ## 3.15.140 - 2026-11-03
 
 - Install this, not 3.15.139. The 139 tag builds stopped in CI: with security modes reading enforce when unset, suites and build smokes whose fixtures never stated confinement ran their jobs sandboxed on hosts where the sandbox engages (markers and planted files beside the workdir walled off, the confinement suite's own off legs confined), and bare smoke configs refused to start on hosts that cannot enforce (no bwrap in the build jobs, no user namespaces in a plain docker run, job_user on Windows). Each fixture and smoke now states the gate it is not about; the "default posture" outside-workdir tests are renamed to the confinement-off posture they pin. No runner behavior changed.
