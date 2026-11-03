@@ -8,6 +8,7 @@ facts a reader may need to cite. Git history carries the rest.
 
 - Version 3 carriage: a bit-identical handshake copy re-posts the saved flight once, and a real retransmission is a new record the budget does not limit; the cookie key is kept in the channel (`dtls-cookie.key`) so a restart can still accept the cookied ClientHello; a held result leaves only inside the session that carried the job, or a later session under the same PSK identity that carries that job ident again. That identity is only as fine as the key directory. The saved-flight table is bounded at 4096. A key's policy, not the session, is what narrows what a job may do. A fragmented first hello is dropped and not answered. The unaddressed test shape is not fed to DTLS on a deployment mailbox.
 - PROTOCOL.md links the local, unsubmitted version 3 draft. A platform card may say the carriage is offered, and that fact admits nothing.
+- The -01 renders and the idnits runs for -01 and -02 are in the tree. idnits reported 0 errors. The warnings are recorded in docs/ietf/STATUS.md and are not a revision of a posted draft.
 - Germany banks 49 and 50: 2,303 entries, 0 crashes.
 
 ## 3.15.128 - 2026-11-02

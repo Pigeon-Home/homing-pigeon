@@ -56,6 +56,53 @@ has gone to the Independent Submissions Editor (ISE).
 - Sources and renders live beside this file: the kramdown-rfc `.md`,
   the submitted `.xml`, the `.txt` and `.html` renders, and the idnits
   output for each draft.
+- The -01 renders, and the idnits runs for -01 and -02, were produced
+  by Claude on 1 November (kramdown-rfc 1.7.43, xml2rfc 3.35.0, idnits
+  3.3.0, offline) and landed on 2 November. The sources of those
+  revisions have not changed since the render, so the files were taken
+  as they stand. idnits reported 0 errors on each. The warnings that
+  remain are not a reason to revise a posted draft: an em dash or a
+  u-umlaut, a `[HOMING-PIGEON]` citation that is not a reference, one
+  artwork line past 72 columns, and version 2's normative citation of
+  the version 1 draft. The `/rfc/rfcN` links are how xml2rfc renders a
+  reference that has no explicit target; the source does not need a
+  change for them. Offline downref and status lines are lookups the
+  host could not make.
+
+## Version 3, local
+
+Version 3 is not posted and will not be submitted for at least several
+weeks. `PROTOCOL.md` links the local source
+`draft-slutsky-homing-pigeon-v3-00.md`. There is no datatracker URL.
+
+The carriage behavior in that draft is the behavior on `main`. Three
+of its rules were taken from Claude's carriage pass on 2 November,
+because each one closes a hole the earlier text left open:
+
+- A bit-identical copy of a handshake flight re-posts the saved answer
+  once. Further copies of those same bytes are dropped. That is the
+  repair RFC 9147 Section 5.8.1 asks for, without letting a captured
+  hello spend a mail per copy. A retransmission is a new record
+  (RFC 9147 Section 5.2). It misses the digest cache and is not
+  limited by the budget.
+- The cookie is an HMAC under a key kept in the channel. Keeping that
+  key is enough for a cookied ClientHello to survive a restart of the
+  process. Traffic keys are not kept in order to save it.
+- A held result leaves only inside the session that carried the job,
+  or inside a later session under the same PSK identity that carries
+  the same job ident again. A different identity using that ident is
+  dropped. The identity is only as fine as the key directory: two
+  peers that share one secret are one submitter, and distinct
+  submitters are distinct keys. A mail session-id is not a submitter.
+  That last sentence is the limit on the rule, not a second rule.
+
+Two further closures are in the same draft. A fragmented first
+handshake is consumed and draws no HelloRetryRequest. The unaddressed
+test shape is not fed to DTLS on a deployment mailbox.
+
+The rendered `.txt`, `.html`, and `.xml` beside the version 3 source
+are older than the source. They were not regenerated with this text.
+The markdown is the text. idnits has not been run on it.
 
 ## Discussion
 
