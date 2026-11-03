@@ -191,8 +191,12 @@ class DropConcurrentRaceTest(unittest.TestCase):
                          "needs root and the pigeon-test user")
     def test_two_drops_each_child_is_the_job_user(self):
         base = tempfile.mkdtemp(prefix="hp-r6-")
+        # Confinement stated off, as in TwoJobsRaceTest: inside
+        # a sandbox the child's uid reads as the sandbox's
+        # mapped 0, not the job user's.
         cfg = {"base_dir": base,
-               "security": {"modes": {"job_user": "enforce"},
+               "security": {"modes": {"job_user": "enforce",
+                                      "confinement": "off"},
                             "job_user": {"user": "pigeon-test"}}}
         scripts = {
             "r6-a": "import os\nprint('uid:', os.getuid())",
@@ -280,7 +284,11 @@ class NoWideningCageTest(unittest.TestCase):
                "oracle_opinion_predict": "always",
                "inference": {"endpoint": "http://127.0.0.1:9/v1",
                              "model": "fake-model"},
-               "security": {"modes": {"job_user": "enforce"},
+               # Confinement stated off: inside a sandbox
+               # `id -u` reads the sandbox's mapped 0, not the
+               # dropped uid this test pins.
+               "security": {"modes": {"job_user": "enforce",
+                                      "confinement": "off"},
                             "job_user": {"user": "pigeon-test"}}}
         job = _payload("cage-drop", kind="exec", script="id -u")
         executed, audit, called, result, _t = self._drive(

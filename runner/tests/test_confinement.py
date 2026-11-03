@@ -232,6 +232,15 @@ class FallbackTest(unittest.TestCase):
         self.assertEqual(audit, [])
 
     def test_default_is_enforce_and_falls_back_loudly(self):
+        if BWRAP_HERE and not ENGAGES:
+            # bwrap is installed but cannot start (the env-axes
+            # restriction-1 leg): the startup probe refuses this
+            # host under enforce (Q9/Q10 above), so no default-
+            # posture run exists here to compare -- the attempt
+            # dies inside bwrap, which is neither the fallback
+            # below nor a working sandbox.
+            self.skipTest("sandbox cannot engage on this machine "
+                          "(startup probe)")
         # No security block: confinement reads enforce (the
         # lockdown default). On a host without a sandbox the job
         # still runs -- the fallback -- but the audit log carries
