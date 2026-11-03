@@ -358,6 +358,12 @@ jobs:
             'protected_paths': [str(desk)],
             'redact_patterns_extra': {'flag': 'FLAG-CRED-[A-Z0-9-]+'},
             'base_dir': str(root / 'state'),
+            # Stated off: under the lockdown default an unstated
+            # confinement or job_user reads enforce and refuses
+            # to start on Windows; the smoke proves the binary
+            # starts and inspects, not the gates.
+            'security': {'modes': {'confinement': 'off',
+                                   'job_user': 'off'}},
           }
           (root / 'config.json').write_text(json.dumps(cfg), encoding='utf-8')
           print(root / 'config.json')
@@ -612,6 +618,12 @@ jobs:
             'protected_paths': [str(desk)],
             'redact_patterns_extra': {'flag': 'FLAG-CRED-[A-Z0-9-]+'},
             'base_dir': str(root / 'state'),
+            # Stated off: under the lockdown default an unstated
+            # confinement or job_user reads enforce and refuses
+            # to start on Windows; the smoke proves the binary
+            # starts and inspects, not the gates.
+            'security': {'modes': {'confinement': 'off',
+                                   'job_user': 'off'}},
           }
           (root / 'config.json').write_text(json.dumps(cfg), encoding='utf-8')
           print(root / 'config.json')

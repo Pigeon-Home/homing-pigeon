@@ -75,6 +75,12 @@ class StashHarness(unittest.TestCase):
         self.h = TR.RunnerTest("test_ping_roundtrip")
         self.h.setUp()
         self.cfg = self.h.cfg
+        # Confinement stated off: the counter job's marker sits
+        # beside its workdir, and unstated the mode reads
+        # enforce under the lockdown default and the sandbox
+        # walls that path off, so the run count this suite
+        # pins would never be written.
+        self.cfg["security"] = {"modes": {"confinement": "off"}}
         self.tmp = self.h.tmp
         self.seen_path = self.h.seen_path
         self.clock = Clock()

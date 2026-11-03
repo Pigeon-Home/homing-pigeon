@@ -112,8 +112,14 @@ class CampaignCoreScenarioTests(unittest.TestCase):
         job = {"v": 1, "type": "job", "job_id": job_id,
                "issued_at": "2026-10-23T00:00:00Z", "kind": "exec",
                "interpreter": ["sh"], "script": script, "env": env}
-        result = R.execute_job({"base_dir": self._tmpdir}, job,
-                               self._tmpdir)
+        # Confinement stated off: these shapes record the
+        # executor's own behavior, and unstated the mode reads
+        # enforce under the lockdown default, which sandboxes
+        # the job and walls off the planted flag beside it.
+        result = R.execute_job(
+            {"base_dir": self._tmpdir,
+             "security": {"modes": {"confinement": "off"}}}, job,
+            self._tmpdir)
         self.assertEqual(result["exit_code"],
                          EXPECTED_EXIT.get(variant, 0))
         self.assertFalse(result["timed_out"])

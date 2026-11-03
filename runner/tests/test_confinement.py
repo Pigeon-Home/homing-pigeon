@@ -63,7 +63,13 @@ def _run(cfg_extra, job):
 
 
 def _conf(mode, **kw):
-    cfg = {"security": {"modes": {"confinement": mode}}}
+    # job_user is stated off throughout: this suite is about
+    # confinement, and an unstated job_user reads enforce under
+    # the lockdown default and adds its own audit rows (on win32
+    # an unsupported_platform row per job), which is not what
+    # these audit assertions are counting.
+    cfg = {"security": {"modes": {"confinement": mode,
+                                  "job_user": "off"}}}
     if kw:
         cfg["security"]["confinement"] = kw
     return cfg
@@ -236,9 +242,14 @@ class FallbackTest(unittest.TestCase):
         self.assertEqual(r1["exit_code"], r2["exit_code"])
         self.assertEqual(a2, [])
         if not SB.sandbox_available():
-            self.assertEqual(len(a1), 1)
-            self.assertEqual(a1[0]["decision"], "fallback")
-            self.assertEqual(a1[0]["mode"], "enforce")
+            # Count confinement's rows only: the default leg
+            # leaves the other features unstated too, and their
+            # rows are not this test's subject.
+            conf_rows = [r for r in a1
+                         if r.get("feature") == "confinement"]
+            self.assertEqual(len(conf_rows), 1)
+            self.assertEqual(conf_rows[0]["decision"], "fallback")
+            self.assertEqual(conf_rows[0]["mode"], "enforce")
 
     def test_audit_runs_and_logs(self):
         result, audit, _ = _run(
@@ -477,7 +488,7 @@ class EnforceTest(unittest.TestCase):
 
     def test_enforce_result_matches_unsandboxed(self):
         script = "print(6 * 7)"
-        r1, _, _ = _run({}, _job("m6-c1", script))
+        r1, _, _ = _run(_conf("off"), _job("m6-c1", script))
         r2, _, _ = _run(_conf("enforce"), _job("m6-c2", script))
         self.assertEqual(r1["stdout"], r2["stdout"])
         self.assertEqual(r1["exit_code"], r2["exit_code"])
@@ -488,11 +499,11 @@ class EnforceTest(unittest.TestCase):
                      "(startup probe)")
 class EnforceNegativeControl(unittest.TestCase):
     """Phase 2.2 negative control for EnforceTest: the same
-    escape-shaped probes with confinement OFF (the default
-    posture) must SUCCEED -- if they also failed unsandboxed,
-    EnforceTest's denials would prove nothing about the
-    sandbox. UID: same-uid on both sides (see module note);
-    the only difference is whether the sandbox is in force."""
+    escape-shaped probes with confinement stated OFF must
+    SUCCEED -- if they also failed unsandboxed, EnforceTest's
+    denials would prove nothing about the sandbox. UID:
+    same-uid on both sides (see module note); the only
+    difference is whether the sandbox is in force."""
 
     _SCRIPT = (
         "import os\n"
@@ -509,7 +520,7 @@ class EnforceNegativeControl(unittest.TestCase):
         with open(secret, "w", encoding="utf-8") as fh:
             fh.write("host-data")
         script = self._SCRIPT % secret
-        off, _, _ = _run({}, _job("m6-off", script))
+        off, _, _ = _run(_conf("off"), _job("m6-off", script))
         self.assertEqual(off["exit_code"], 0, off["stderr"])
         self.assertIn("home-seen: True", off["stdout"])
         self.assertIn("host-read: host-data", off["stdout"])
@@ -582,7 +593,8 @@ class WallNetworkTest(unittest.TestCase):
             "except Exception as e:\n"
             "    print('net: blocked', type(e).__name__)\n" % port)
         try:
-            off, _, _ = _run({}, _job("m6-wall-net-off", script))
+            off, _, _ = _run(_conf("off"),
+                             _job("m6-wall-net-off", script))
             self.assertEqual(off["exit_code"], 0, off["stderr"])
             self.assertIn("net: hp-wall-token", off["stdout"])
             on, _, _ = _run(_conf("enforce"),
@@ -620,7 +632,8 @@ class WallHomeTest(unittest.TestCase):
             "    print('home: blocked')\n"
             "print('base-seen:', os.path.exists(%r))\n"
             % (marker, base))
-        off, _ = _run_in(base, {}, _job("m6-wall-home-off", script))
+        off, _ = _run_in(base, _conf("off"),
+                         _job("m6-wall-home-off", script))
         self.assertEqual(off["exit_code"], 0, off["stderr"])
         self.assertIn("home: runner-home-data", off["stdout"])
         self.assertIn("base-seen: True", off["stdout"])
@@ -656,7 +669,7 @@ class WallUsrTest(unittest.TestCase):
         self.assertFalse(os.path.exists("/usr/hp-wall-probe.txt"))
         scratch = tempfile.mkdtemp(prefix="hp-m6-usr-")
         target = os.path.join(scratch, "hp-wall-probe.txt")
-        off, _, _ = _run({}, _job("m6-wall-usr-off", (
+        off, _, _ = _run(_conf("off"), _job("m6-wall-usr-off", (
             "open(%r, 'w').write('landed')\n"
             "print('usr: wrote')\n" % target)))
         self.assertEqual(off["exit_code"], 0, off["stderr"])
@@ -706,7 +719,8 @@ class WallWorkTest(unittest.TestCase):
             "except Exception:\n"
             "    print('sibling: blocked')\n"
             % (outside, sibling))
-        off, _ = _run_in(base, {}, _job("m6-wall-work-off", script))
+        off, _ = _run_in(base, _conf("off"),
+                         _job("m6-wall-work-off", script))
         self.assertEqual(off["exit_code"], 0, off["stderr"])
         self.assertIn("outside: outside-data", off["stdout"])
         self.assertIn("sibling: sibling-data", off["stdout"])

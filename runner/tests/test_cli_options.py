@@ -1424,7 +1424,13 @@ class HandleMailFailureBranchesTest(_VerbosityGuard):
             cfg = {"mailbox_user": "t@example.com",
                    "shared_secret": SECRET,
                    "workspace_root": ws,
-                   "protected_paths": [guarded]}
+                   "protected_paths": [guarded],
+                   # Confinement stated off: the job rewrites
+                   # the guarded sibling file itself, and
+                   # unstated the mode reads enforce under the
+                   # lockdown default and the sandbox walls it
+                   # off, so the followup branch never runs.
+                   "security": {"modes": {"confinement": "off"}}}
             script = ("open(%r, 'a').write('changed\\n')"
                       % guarded)
             raw = self._exec_mail("rem-fail-1", script)

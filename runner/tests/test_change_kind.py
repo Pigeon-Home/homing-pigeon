@@ -64,7 +64,13 @@ class ChangeRunTest(unittest.TestCase):
         _git(self.repo, "commit", "-q", "-m", "second")
         self.base = tempfile.mkdtemp(prefix="hp-change-base-")
         self.addCleanup(shutil.rmtree, self.base, True)
-        self.cfg = {"recipes": RECIPES, "change_repos": {"app": self.repo}}
+        # Confinement stated off: a change run checks the repo
+        # out beside the workdir and the recipe reads it there;
+        # unstated the mode reads enforce under the lockdown
+        # default and the sandbox walls the checkout off.
+        self.cfg = {"recipes": RECIPES,
+                    "change_repos": {"app": self.repo},
+                    "security": {"modes": {"confinement": "off"}}}
 
     def run_change(self, **job):
         job = dict({"job_id": "c-" + uuid.uuid4().hex[:8], "kind": "change",

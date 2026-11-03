@@ -100,8 +100,15 @@ SCENARIOS = [
 ]
 
 # The rig's three configs, as data: default, audit, enforce.
+# The rig's "default" was no security block when no block read
+# as every mode off; under the lockdown default an unstated
+# mode reads enforce, so the default leg now states off
+# explicitly to keep the same recorded posture.
 MODES = {
-    "default": {},
+    "default": {"security": {"modes": {
+        "policy_env": "off", "policy_files": "off",
+        "policy_args": "off", "audience": "off",
+        "confinement": "off", "job_user": "off"}}},
     "audit": {"judge": "advisory",
               "security": {"modes": {
                   "policy_env": "audit", "policy_files": "audit",

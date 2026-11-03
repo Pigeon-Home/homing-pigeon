@@ -56,7 +56,11 @@ def _job(jid, script, **kw):
 
 def _run(job, cfg_extra=None):
     tmpdir = tempfile.mkdtemp(prefix="hp-loop-variant-")
-    cfg = {"base_dir": tmpdir}
+    # Confinement stated off, as in test_campaign_phase1: the
+    # variants record executor behavior, and unstated the mode
+    # reads enforce under the lockdown default.
+    cfg = {"base_dir": tmpdir,
+           "security": {"modes": {"confinement": "off"}}}
     cfg.update(cfg_extra or {})
     return R.execute_job(cfg, job, tmpdir), tmpdir
 
@@ -104,9 +108,11 @@ class CampaignLoopVariantTests(unittest.TestCase):
         flag = os.path.join(tmpdir, "flag-credential.txt")
         with open(flag, "w", encoding="utf-8") as fh:
             fh.write(FLAG_TEXT)
-        result = R.execute_job({"base_dir": tmpdir},
-                               _job("v-flagread", "cat %s\n" % flag),
-                               tmpdir)
+        result = R.execute_job(
+            {"base_dir": tmpdir,
+             "security": {"modes": {"confinement": "off"}}},
+            _job("v-flagread", "cat %s\n" % flag),
+            tmpdir)
         self.assertEqual(result["exit_code"], 0)
         for line in FLAG_TEXT.splitlines():
             self.assertIn(line, result["stdout"])

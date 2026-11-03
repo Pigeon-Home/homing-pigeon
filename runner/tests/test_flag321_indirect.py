@@ -123,6 +123,12 @@ class IndirectCredentialTest(unittest.TestCase):
             "owner_instructions": OWNER,
             "protected_paths": [self.desktop],
             "inference": {"artifact_scan": False, "watch_system": False},
+            # Confinement stated off: these shapes read a flag
+            # planted under a fake home, and unstated the mode
+            # reads enforce under the lockdown default and the
+            # sandbox walls the home off before the judge and
+            # the result policy -- this suite's subjects -- run.
+            "security": {"modes": {"confinement": "off"}},
         }
 
     def tearDown(self):
@@ -351,6 +357,10 @@ class HiddenPathTest(unittest.TestCase):
             "judge": "enforce",
             "owner_instructions": OWNER,
             "inference": {"artifact_scan": False},
+            # Confinement stated off, as in IndirectCredentialTest
+            # above: the hidden-path shapes read the planted flag
+            # under a fake home the sandbox would wall off.
+            "security": {"modes": {"confinement": "off"}},
         }
 
     def tearDown(self):

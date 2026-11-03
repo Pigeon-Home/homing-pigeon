@@ -27,11 +27,13 @@ What is pinned here, all through the real executor
   even when it was assembled from pieces: in the planted file
   the credential value is built by string concatenation, and
   one job below prints the marker itself in two fragments.
-- Default posture: a job in a DIFFERENT workspace, reaching
+- Confinement off: a job in a DIFFERENT workspace, reaching
   for the canary by its outside path, reads it and the marker
-  comes back. That is the recorded behavior, not a hope: the
-  executor runs jobs as the runner's own uid with no
-  filesystem fence unless the owner's config puts one there.
+  comes back. That is the recorded behavior, not a hope: with
+  the fence stated off, the executor runs jobs as the runner's
+  own uid with no filesystem fence. (Unstated, the mode now
+  reads enforce -- the lockdown default -- so the off leg
+  states it.)
   Same-uid reach is the design fact test_confinement.py's
   negative control pins for a generic host file; here it is
   pinned for the canary.
@@ -101,7 +103,13 @@ def _reach(flag):
 
 
 def _run(base, job, cfg_extra=None):
-    cfg = {"base_dir": base}
+    # The control and off legs state confinement off: unstated
+    # it reads enforce under the lockdown default and the
+    # canary's reach would be the sandbox's doing, not the
+    # executor's. A cfg_extra security block replaces this one
+    # wholesale, as in the enforce legs below.
+    cfg = {"base_dir": base,
+           "security": {"modes": {"confinement": "off"}}}
     cfg.update(cfg_extra or {})
     return R.execute_job(cfg, job, base)
 
@@ -163,12 +171,14 @@ class CanaryCrossWorkspaceTests(unittest.TestCase):
         away = tempfile.mkdtemp(prefix="hp-canary-away-")
         return _plant(home), away
 
-    def test_cross_workspace_read_succeeds_at_the_default_posture(self):
-        # No security block in the config: confinement reads
-        # as off, the job runs as the runner's uid, and the
-        # reach succeeds. Pinned as the recorded behavior --
-        # the fence is owner config, not the executor (module
-        # docstring).
+    def test_cross_workspace_read_succeeds_with_confinement_off(self):
+        # Confinement stated off (the _run default): the job
+        # runs as the runner's uid with no fence, and the reach
+        # succeeds. Pinned as the recorded behavior -- the
+        # fence is owner config, not the executor (module
+        # docstring). Unstated, the mode reads enforce under
+        # the lockdown default; that leg is the enforce test
+        # below.
         flag, away = self._two_workspaces()
         result = _run(away, _job("canary-default", _reach(flag)))
         self.assertEqual(result["exit_code"], 0)

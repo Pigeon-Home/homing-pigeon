@@ -243,8 +243,11 @@ class ConfinementChainTest(unittest.TestCase):
             call["env"])
 
     def test_off_runs_normally(self):
+        # Off is stated: an empty config reads enforce under
+        # the lockdown default, which is a different clause.
+        cfg = {"security": {"modes": {"confinement": "off"}}}
         with tempfile.TemporaryDirectory() as td:
-            argv, host_env, sandboxed = self._argv({}, td)
+            argv, host_env, sandboxed = self._argv(cfg, td)
             self.assertEqual(argv, ["sh", "/w/job.sh"])
             self.assertTrue(host_env)
             self.assertFalse(sandboxed)

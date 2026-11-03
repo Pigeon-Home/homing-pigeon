@@ -229,13 +229,20 @@ class ConfigWriteRaceTest(unittest.TestCase):
     def test_a_config_write_during_a_job_changes_no_security(self):
         base = tempfile.mkdtemp(prefix="hp-r4-")
         cfg_path = os.path.join(base, "config.json")
-        security = {"modes": {"policy_env": "enforce"}}
+        # Confinement stated off in both copies: job A proves
+        # it is in flight by a started file beside its workdir,
+        # and an unstated confinement reads enforce under the
+        # lockdown default and the sandbox walls that path off.
+        security = {"modes": {"policy_env": "enforce",
+                              "confinement": "off"}}
         cfg = {"base_dir": base, "poll_interval_sec": 20,
                "security": security}
         with open(cfg_path, "w", encoding="utf-8") as fh:
             json.dump({"poll_interval_sec": 20,
                        "security": {"modes": {"policy_env":
-                                              "enforce"}}}, fh)
+                                              "enforce",
+                                              "confinement":
+                                              "off"}}}, fh)
         state = {}
         RR.reload_hot_config(cfg, cfg_path, state)
         started = os.path.join(base, "started.txt")
@@ -324,8 +331,12 @@ class TwoJobsRaceTest(unittest.TestCase):
                          "needs root and the pigeon-test user")
     def test_two_jobs_each_workdir_chowned_to_its_own_job(self):
         base = tempfile.mkdtemp(prefix="hp-r1-")
+        # Confinement stated off: inside a sandbox the job's
+        # uid reads as the sandbox's mapped 0, not the job
+        # user's, and this test pins the job_user drop itself.
         cfg = {"base_dir": base,
-               "security": {"modes": {"job_user": "enforce"},
+               "security": {"modes": {"job_user": "enforce",
+                                      "confinement": "off"},
                             "job_user": {"user": "pigeon-test"}}}
         scripts = {
             "r1-a": "open('token-a.txt', 'w').write('a')\n"

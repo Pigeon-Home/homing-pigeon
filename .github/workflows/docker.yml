@@ -59,12 +59,28 @@ jobs:
         run: |
           set -euo pipefail
           docker build -f .github/docker/Dockerfile -t hp-image-smoke .
+          # A written config, not the env-built one: under the
+          # lockdown default an unstated confinement reads
+          # enforce, and a plain docker run cannot create the
+          # user namespace bwrap needs (the host restricts
+          # unprivileged userns), so the runner would refuse to
+          # start. The smoke states the gates off; it proves the
+          # image starts, not the gates.
+          mkdir -p "$RUNNER_TEMP/hp-smoke"
+          cat > "$RUNNER_TEMP/hp-smoke/config.json" <<'EOF'
+          {
+            "mailbox_user": "pigeon-test@example.com",
+            "mailbox_password": "not-a-real-mailbox-password",
+            "shared_secret": "9f2c7ab1e84d3065c1a7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d",
+            "imap_host": "127.0.0.1", "imap_port": 1,
+            "smtp_host": "127.0.0.1", "smtp_port": 1,
+            "base_dir": "/data/work",
+            "security": {"modes": {"confinement": "off",
+                                   "job_user": "off"}}
+          }
+          EOF
           docker run --rm \
-            -e PIGEON_MAILBOX_USER=pigeon-test@example.com \
-            -e PIGEON_MAILBOX_PASSWORD=not-a-real-mailbox-password \
-            -e PIGEON_SHARED_SECRET=9f2c7ab1e84d3065c1a7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d \
-            -e PIGEON_IMAP_HOST=127.0.0.1 -e PIGEON_IMAP_PORT=1 \
-            -e PIGEON_SMTP_HOST=127.0.0.1 -e PIGEON_SMTP_PORT=1 \
+            -v "$RUNNER_TEMP/hp-smoke/config.json:/data/config.json:ro" \
             hp-image-smoke --config /data/config.json --once --dry-run
           docker run --rm --entrypoint python3 hp-image-smoke /app/runner/runner.py --version
 

@@ -135,9 +135,15 @@ class _CanaryBase(unittest.TestCase):
         # Planted: config keys on the runner config itself.
         self.base = os.path.join(self.sandbox, "base")
         os.makedirs(self.base)
+        # Confinement stated off: the canary question is what
+        # the runner itself copies, and the same-uid design
+        # facts below pin a job's reach with no fence in force;
+        # unstated the mode reads enforce under the lockdown
+        # default and the sandbox would decide the reach.
         self.cfg = {"base_dir": self.base,
                     "mailbox_password": CANARY,
-                    "canary_config_key": CANARY}
+                    "canary_config_key": CANARY,
+                    "security": {"modes": {"confinement": "off"}}}
         # The runner log file sink lives in the base dir.
         self._old_log_file = R._LOG_FILE
         R._LOG_FILE = os.path.join(self.base, "runner.log")
@@ -261,8 +267,8 @@ class TestCanaryNegativeControls(_CanaryBase):
 class TestCanaryDesignFactsSameUid(_CanaryBase):
     """DESIGN FACTS, same-uid (phase 2.3): a job that goes
     looking CAN read the planted credential file and its own
-    environment, because job and runner share a uid and no
-    confinement is configured. These tests pass by asserting
+    environment, because job and runner share a uid and
+    confinement is stated off. These tests pass by asserting
     the disclosure happens; they record the posture, they are
     not failures and not leaks by the runner."""
 

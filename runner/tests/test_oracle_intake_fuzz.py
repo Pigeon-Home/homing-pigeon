@@ -514,6 +514,12 @@ class RingTwoJobTest(unittest.TestCase):
             "max_job_age_sec": 3600,
             "default_timeout_sec": 30,
             "base_dir": self.tmp,
+            # Confinement stated off: the good job's marker is
+            # written beside the workdir, and unstated the mode
+            # reads enforce under the lockdown default and the
+            # sandbox walls that path off, so no job -- good or
+            # bad -- could leave the marker this suite counts.
+            "security": {"modes": {"confinement": "off"}},
         }
         self.secrets = {"": SECRET}
         self.marker = os.path.join(self.tmp, "ran.txt")
@@ -778,7 +784,10 @@ class RingTwoJobTest(unittest.TestCase):
 
     def test_the_wrong_audience_does_not_run(self):
         self.cfg["runner_id"] = "this-runner"
-        self.cfg["security"] = {"modes": {"audience": "enforce"}}
+        # Audience is this test's gate; confinement stays off
+        # as in setUp, or the good job's marker never lands.
+        self.cfg["security"] = {"modes": {"audience": "enforce",
+                                          "confinement": "off"}}
         for claim in (None, "someone-else"):
             job_id = uuid.uuid4().hex
             self._run(job_id, self._claiming(job_id, claim))

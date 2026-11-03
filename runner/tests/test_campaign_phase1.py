@@ -66,7 +66,12 @@ def _job(jid, script, **kw):
 
 def _run(cfg_extra, job):
     tmpdir = tempfile.mkdtemp(prefix="hp-campaign-")
-    cfg = {"base_dir": tmpdir}
+    # These are executor tests, not confinement tests: the
+    # fence is stated off, since unstated it reads enforce
+    # under the lockdown default and a sandboxed job's cwd,
+    # paths and reach are the sandbox's, not the executor's.
+    cfg = {"base_dir": tmpdir,
+           "security": {"modes": {"confinement": "off"}}}
     cfg.update(cfg_extra or {})
     return R.execute_job(cfg, job, tmpdir), tmpdir
 
@@ -108,7 +113,10 @@ class CampaignExecutorTests(unittest.TestCase):
         tmpdir = tempfile.mkdtemp(prefix="hp-campaign-")
         flag = _plant(tmpdir)
         job = _job("c-flag", "print(open(%r).read())" % flag)
-        result = R.execute_job({"base_dir": tmpdir}, job, tmpdir)
+        result = R.execute_job(
+            {"base_dir": tmpdir,
+             "security": {"modes": {"confinement": "off"}}},
+            job, tmpdir)
         self.assertEqual(result["exit_code"], 0)
         self.assertIn(AWS_VALUE, result["stdout"])
         self.assertIn("flag-hunter2-pretend", result["stdout"])
@@ -122,26 +130,35 @@ class CampaignExecutorTests(unittest.TestCase):
         self.assertFalse(result["timed_out"])
         self.assertIn("hello-from-job", result["stdout"])
 
-    def test_read_outside_workdir_allowed_by_default(self):
-        # t05: at the default posture (no confinement configured) a
-        # job may read a file outside its work dir by absolute path.
+    def test_read_outside_workdir_allowed_with_confinement_off(self):
+        # t05: with confinement stated off a job may read a file
+        # outside its work dir by absolute path. (Unstated, the
+        # mode reads enforce under the lockdown default and the
+        # sandbox refuses the reach where it can engage.)
         tmpdir = tempfile.mkdtemp(prefix="hp-campaign-")
         outside = os.path.join(tmpdir, "system-like.txt")
         with open(outside, "w", encoding="utf-8") as fh:
             fh.write("outside-data\n")
         job = _job("c-read-out", "print(open(%r).read())" % outside)
-        result = R.execute_job({"base_dir": tmpdir}, job, tmpdir)
+        result = R.execute_job(
+            {"base_dir": tmpdir,
+             "security": {"modes": {"confinement": "off"}}},
+            job, tmpdir)
         self.assertEqual(result["exit_code"], 0)
         self.assertIn("outside-data", result["stdout"])
 
-    def test_write_outside_workdir_allowed_by_default(self):
-        # t06: at the default posture a job may also write outside
-        # its work dir; the live run wrote Desktop/pwned.txt.
+    def test_write_outside_workdir_allowed_with_confinement_off(self):
+        # t06: with confinement stated off a job may also write
+        # outside its work dir; the live run wrote
+        # Desktop/pwned.txt.
         tmpdir = tempfile.mkdtemp(prefix="hp-campaign-")
         target = os.path.join(tmpdir, "pwned.txt")
         job = _job("c-write-out",
                    "open(%r, 'w').write('pwned')\nprint('wrote=0')" % target)
-        result = R.execute_job({"base_dir": tmpdir}, job, tmpdir)
+        result = R.execute_job(
+            {"base_dir": tmpdir,
+             "security": {"modes": {"confinement": "off"}}},
+            job, tmpdir)
         self.assertEqual(result["exit_code"], 0)
         self.assertIn("wrote=0", result["stdout"])
         with open(target, encoding="utf-8") as fh:
