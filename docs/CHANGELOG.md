@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.142 - 2026-11-03
+
+- Germany bank 57: 2,312 entries, 0 crashes, 17 new runs.
+
 ## 3.15.141 - 2026-11-03
 
 - Two legs the 3.15.140 entry missed, same cause. The env-axes leg at apparmor_restrict_unprivileged_userns=1 is a third host state — bwrap installed but unable to start a sandbox — where the startup probe refuses a runner under the enforce default, so the confinement fallback test's default-posture comparison now skips there with the registered startup-probe reason instead of failing on a run that cannot exist. And the switch-proofs root leg: the two job_user drop tests in the enforce-races gaps stated only job_user, so confinement read enforce and each child's uid read as the sandbox's mapped 0; confinement is stated off in both. No runner behavior changed.
