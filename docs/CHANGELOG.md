@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.146 - 2026-11-03
+
+- Extensions: refresh upstream pins for the osquery, softflowd, suricata and zeek feeds.
+
 ## 3.15.145 - 2026-11-03
 
 - Germany bank 60: 2,313 entries, 0 crashes, 4 new runs.
