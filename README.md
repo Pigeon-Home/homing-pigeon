@@ -450,6 +450,9 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   before its signature is checked.
 - Optional hardening controls (off by default, except the size caps
   above, which are on by default and turned off by 0): see [SECURITY.md](SECURITY.md).
+- The security model — the gate, the key fences, the ceilings a job cannot raise,
+  and the configuration rules — and the formal proof testing that checks it,
+  property by property, are described in [docs/security/model-and-proof-testing.md](docs/security/model-and-proof-testing.md).
 
 ## Questions people ask
 
@@ -515,4 +518,3 @@ says so. [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) has the rest.
 - IETF datatracker, Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 - IETF draft v3, local in this repository: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3-00.md
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/RESUME.txt
-The security model — the gate, the key fences, the ceilings a job cannot raise, and the configuration rules — and the formal proof testing that checks it, property by property, are described in [docs/security/model-and-proof-testing.md](docs/security/model-and-proof-testing.md).
