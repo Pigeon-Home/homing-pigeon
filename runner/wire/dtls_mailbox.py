@@ -482,7 +482,8 @@ class DtlsMailServer:
     def __init__(self, secret_lookup=None, platform_payload=None,
                  platform_for=None, log=None, rng=None,
                  max_datagram_bytes=DEFAULT_MAX_DATAGRAM_BYTES,
-                 dedup_entries=4096, hybrid=True):
+                 dedup_entries=4096, hybrid=True,
+                 poll_period_sec=None):
         self.log = log or _log_noop
         if platform_for is None:
             if callable(platform_payload):
@@ -499,9 +500,18 @@ class DtlsMailServer:
                 payload = json.dumps(
                     platform_payload, sort_keys=True).encode("utf-8")
                 platform_for = lambda session: payload
+        # Section 7.1 of the draft: on this carriage the
+        # retransmission timers stretch to the poll rhythm.
+        # A driver that knows its poll period hands it over;
+        # without one the core keeps its datagram profile.
+        profile = None
+        if poll_period_sec is not None:
+            profile = dtlsproto.mail_retransmit_profile(
+                poll_period_sec)
         self.core = dtlsproto.DtlsServerCore(
             secret_lookup=secret_lookup, platform_for=platform_for,
-            log=self.log, rng=rng, hybrid=hybrid)
+            log=self.log, rng=rng, hybrid=hybrid,
+            retransmit_profile=profile)
         self.max_datagram_bytes = max_datagram_bytes
         self.reassembler = FlightReassembler(
             max_total_bytes=max_datagram_bytes)
@@ -707,15 +717,23 @@ class DtlsMailClient:
     def __init__(self, secret, session_id=None, key_id=None,
                  log=None, rng=None, ticket=None,
                  max_datagram_bytes=DEFAULT_MAX_DATAGRAM_BYTES,
-                 dedup_entries=4096, hybrid=True):
+                 dedup_entries=4096, hybrid=True,
+                 poll_period_sec=None):
         self.log = log or _log_noop
         self.session_id = session_id or _secrets.token_hex(16)
         if not valid_session_id(self.session_id):
             raise ValueError(
                 "bad dtls mail session id: %r" % (session_id,))
+        # The Section 7.1 stretch, as on the server: with a
+        # poll period the timers follow the poll rhythm.
+        profile = None
+        if poll_period_sec is not None:
+            profile = dtlsproto.mail_retransmit_profile(
+                poll_period_sec)
         self.core = dtlsproto.DtlsClientCore(
             secret, key_id=key_id, log=self.log, rng=rng,
-            ticket=ticket, hybrid=hybrid)
+            ticket=ticket, hybrid=hybrid,
+            retransmit_profile=profile)
         self.max_datagram_bytes = max_datagram_bytes
         self.reassembler = FlightReassembler(
             max_total_bytes=max_datagram_bytes)

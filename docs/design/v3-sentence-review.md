@@ -400,6 +400,46 @@ change with its own test family), soften the paragraph's numbers,
 or let both SHOULDs stand as guidance other implementations may
 follow more literally. The text is unchanged.
 
+### Disposition: the code was stretched (same day)
+
+The call was the code change. Rows 67 and 68 are closed: the
+draft text stands as written, and the reference implementation
+now follows it on this carriage.
+
+- `runner/wire/dtlsproto.py` gained
+  `mail_retransmit_profile(poll_period_sec)`: a (first,
+  max_interval, give_up_sec, max_retries) profile with first =
+  2 poll periods, the intervals doubling (2, 4, 8 poll periods)
+  and then holding at 8 poll periods, no wall-clock bound, and
+  a give-up after 8 retransmissions. An attempt spans at most
+  54 poll periods. Endpoints carry the profile per session;
+  the module constants remain the datagram profile and are
+  unchanged when no profile is applied.
+- The mail wrappers (`DtlsMailServer`, `DtlsMailClient` in
+  `runner/wire/dtls_mailbox.py`) take `poll_period_sec` and
+  build the profile from it. The email transport hands the
+  server the poll interval it actually polls at
+  (`poll_interval_sec`, default 20 seconds), so the profile
+  in force on a live runner is the draft's.
+- As built, at a 10 second poll period a client's flight is
+  retransmitted at +20, +60, +140, +220, +300, +380, +460 and
+  +540 seconds, and the attempt dies at the 9th due time
+  (+620) with no 9th retransmission. The server's flight
+  follows the same schedule.
+- One measurement correction to row 68's note: the core's gap
+  arithmetic gives the datagram profile's retransmissions at
+  +1, +3, +9, +25, +41 and +57 seconds, not the idealized
+  doubling series the row recorded. The row's verdict is
+  unaffected: 6 retransmissions, bounded by the 60 second
+  clock, not by count.
+- Tests: `runner/tests/test_dtls_mail_retransmit.py`, 14
+  tests -- the profile's shape, the client and server
+  schedules, the count give-up on both sides, the fresh-flight
+  budget restart after a HelloRetryRequest, the datagram
+  profile pinned unchanged without a poll period, a full
+  handshake with the profile on, and the email transport's
+  wiring of its configured and default poll intervals.
+
 ## Render and idnits
 
 The corrected draft was re-rendered. 1 tooling note: the

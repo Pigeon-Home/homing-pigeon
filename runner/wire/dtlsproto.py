@@ -163,6 +163,28 @@ RETRANSMIT_FIRST = 1.0       # seconds; doubles per retry
 RETRANSMIT_MAX = 16.0
 RETRANSMIT_GIVE_UP = 60.0    # total seconds before the flight dies
 
+# The store-and-forward profile the version 3 draft's
+# Section 7.1 recommends for the mail carriage: the initial
+# retransmission interval is at least 2 mailbox poll periods,
+# and an attempt is given up after about 8 retransmissions
+# rather than after a span of wall clock. The intervals
+# double (2, 4, 8 poll periods) and then hold at 8 poll
+# periods, so an attempt spans at most 54 poll periods.
+MAIL_RETRANSMIT_RETRIES = 8
+
+
+def mail_retransmit_profile(poll_period_sec):
+    """The retransmission profile of the mail carriage, as a
+    (first, max_interval, give_up_sec, max_retries) tuple for
+    _Endpoint.apply_retransmit_profile. give_up_sec is None:
+    on this carriage the count, not the clock, ends an
+    attempt."""
+    period = float(poll_period_sec)
+    if not period > 0:
+        raise ValueError("poll period must be positive")
+    return (2.0 * period, 8.0 * period, None,
+            MAIL_RETRANSMIT_RETRIES)
+
 TICKET_LIFETIME = 3600       # seconds a resumption ticket lives
 
 _P = 2 ** 255 - 19
@@ -768,6 +790,16 @@ class _Endpoint:
         self._flight = None        # [(epoch, ctype, content)]
         self._flight_next = 0.0
         self._flight_first = 0.0
+        # The retransmission profile this endpoint runs. The
+        # defaults are the module constants -- the datagram
+        # profile. A store-and-forward carriage stretches
+        # them per session through apply_retransmit_profile
+        # (see mail_retransmit_profile).
+        self.retrans_first = RETRANSMIT_FIRST
+        self.retrans_max = RETRANSMIT_MAX
+        self.retrans_give_up = RETRANSMIT_GIVE_UP
+        self.retrans_max_retries = None
+        self._flight_retries = 0
         self._acks_wanted = []     # (epoch, seq) to acknowledge
         self._app_buf = bytearray()
         self.app_messages = []     # whole messages, in order
@@ -796,10 +828,21 @@ class _Endpoint:
         self.record_log.append(("out", epoch, content_type))
         return record
 
+    def apply_retransmit_profile(self, profile):
+        """Adopt a (first, max_interval, give_up_sec,
+        max_retries) retransmission profile. give_up_sec or
+        max_retries may be None to leave that bound off: the
+        datagram profile bounds an attempt by the clock, the
+        mail carriage's by the retransmission count."""
+        (self.retrans_first, self.retrans_max,
+         self.retrans_give_up,
+         self.retrans_max_retries) = profile
+
     def _set_flight(self, items, now):
         self._flight = list(items)
         self._flight_first = now
-        self._flight_next = now + RETRANSMIT_FIRST
+        self._flight_next = now + self.retrans_first
+        self._flight_retries = 0
         return [self._emit(e, t, c) for e, t, c in items]
 
     def _clear_flight(self):
@@ -810,21 +853,34 @@ class _Endpoint:
         ACKs. Callers pass a monotonic clock."""
         out = []
         if self._flight is not None and not self.dead:
-            if now - self._flight_first > RETRANSMIT_GIVE_UP:
+            if self.retrans_give_up is not None and \
+                    now - self._flight_first > self.retrans_give_up:
                 self.dead = True
                 self.state = "dead"
                 self.log("dtls: handshake flight unanswered for "
-                         f"{RETRANSMIT_GIVE_UP:.0f}s; session "
+                         f"{self.retrans_give_up:.0f}s; session "
                          "abandoned", "WARN")
                 self._flight = None
             elif now >= self._flight_next:
-                out.extend(self._emit(e, t, c)
-                           for e, t, c in self._flight)
-                gap = min(RETRANSMIT_MAX,
-                          (self._flight_next - self._flight_first)
-                          or RETRANSMIT_FIRST)
-                self._flight_next = now + min(
-                    RETRANSMIT_MAX, max(RETRANSMIT_FIRST, gap * 2))
+                if self.retrans_max_retries is not None and \
+                        self._flight_retries >= \
+                        self.retrans_max_retries:
+                    self.dead = True
+                    self.state = "dead"
+                    self.log("dtls: handshake flight retransmitted "
+                             f"{self._flight_retries} times without "
+                             "an answer; session abandoned", "WARN")
+                    self._flight = None
+                else:
+                    out.extend(self._emit(e, t, c)
+                               for e, t, c in self._flight)
+                    self._flight_retries += 1
+                    gap = min(self.retrans_max,
+                              (self._flight_next - self._flight_first)
+                              or self.retrans_first)
+                    self._flight_next = now + min(
+                        self.retrans_max,
+                        max(self.retrans_first, gap * 2))
         if self._acks_wanted and self.senders and not self.dead:
             out.extend(self._send_ack())
         return out
@@ -925,14 +981,21 @@ class DtlsClientCore(_Endpoint):
     is populated from there."""
 
     def __init__(self, secret, key_id=None, log=None, rng=None,
-                 ticket=None, *, hybrid=False):
+                 ticket=None, *, hybrid=False,
+                 retransmit_profile=None):
         """`ticket` is a (ticket_bytes, resumption_psk) pair
         from a previous session's .ticket property, if any.
         `hybrid` is the profile option: offer the
         X25519MLKEM768 hybrid group beside X25519 (the
         version 3 carriage profile). The version 1 profile
-        leaves it off and its wire is unchanged."""
+        leaves it off and its wire is unchanged.
+        `retransmit_profile` is a stretched retransmission
+        profile for a store-and-forward carriage (see
+        mail_retransmit_profile); None keeps the datagram
+        profile."""
         super().__init__(log=log, rng=rng)
+        if retransmit_profile is not None:
+            self.apply_retransmit_profile(retransmit_profile)
         self.hybrid_enabled = bool(hybrid)
         self.negotiated_group = None
         self._eph_hyb = None
@@ -1373,6 +1436,8 @@ class _ServerSession(_Endpoint):
 
     def __init__(self, core, addr):
         super().__init__(log=core.log, rng=core.rng)
+        if core.retransmit_profile is not None:
+            self.apply_retransmit_profile(core.retransmit_profile)
         self.core = core
         self.peer_addr = addr
         self.identity = None
@@ -1772,14 +1837,19 @@ class DtlsServerCore:
 
     def __init__(self, secret_lookup=None, greeting_for=None,
                  log=None, rng=None, secrets_map=None, *,
-                 platform_for=None, hybrid=False):
+                 platform_for=None, hybrid=False,
+                 retransmit_profile=None):
         """`hybrid` is the profile option: select the
         X25519MLKEM768 hybrid group when a client offers it
         (the version 3 carriage profile). The version 1
         profile leaves it off; a hybrid share offered to it
         is not selected -- the X25519 share is, exactly as
-        before."""
+        before. `retransmit_profile` is a stretched
+        retransmission profile every session this core
+        creates adopts (see mail_retransmit_profile); None
+        keeps the datagram profile."""
         self.hybrid_enabled = bool(hybrid)
+        self.retransmit_profile = retransmit_profile
         self.log = log or (lambda msg, level="INFO": None)
         if secrets_map is not None:
             secret_lookup = secrets_map.get

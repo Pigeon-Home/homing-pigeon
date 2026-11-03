@@ -189,6 +189,14 @@ class EmailPipe:
             self._load_session_holds()
             self._dtls_server = self._build_dtls_server()
 
+    def _poll_interval_sec(self):
+        # FAQ.md: poll_interval_sec default 20. A usable number
+        # is floored at 1s; a boolean, a huge integer (once a raw
+        # OverflowError out of this loop), infinity or NaN is not
+        # an interval and polls at the documented default.
+        return max(1.0, float(_confval.number(
+            self.cfg.get("poll_interval_sec"), 20.0, lo=0)))
+
     def _build_dtls_server(self):
         if not self.cfg.get("shared_secret") \
                 and not self.cfg.get("additional_secrets"):
@@ -209,7 +217,8 @@ class EmailPipe:
             secret_lookup=lookup,
             platform_payload=_dtls_ext.build_platform_payload(
                 tier, self.cfg),
-            log=ch.log)
+            log=ch.log,
+            poll_period_sec=self._poll_interval_sec())
         key = self._cookie_key()
         if key is not None:
             server.core.cookie_secret = key
@@ -777,12 +786,7 @@ class EmailPipe:
                 pass
 
     def run(self):
-        # FAQ.md: poll_interval_sec default 20. A usable number
-        # is floored at 1s; a boolean, a huge integer (once a raw
-        # OverflowError out of this loop), infinity or NaN is not an
-        # interval and polls at the documented default.
-        interval = max(1.0, float(_confval.number(
-            self.cfg.get("poll_interval_sec"), 20.0, lo=0)))
+        interval = self._poll_interval_sec()
         ch.log(f"email transport: polling "
                f"{self.mailbox_addr or 'mailbox'} every "
                f"{interval:.0f}s")
