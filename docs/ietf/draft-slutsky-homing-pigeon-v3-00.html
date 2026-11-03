@@ -1635,7 +1635,7 @@ when, they appear in all capitals, as shown here.<a href="#section-2-1" class="p
       </h2>
 <p id="section-3-1">The terms of version 1 apply: the runner, the submitter, the
 shared secret, the job object, the result object, the
-acceptance gate, and the platform card. This document adds:<a href="#section-3-1" class="pilcrow">¶</a></p>
+acceptance gate, and the platform disclosure. This document adds:<a href="#section-3-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-3-2">
         <dt id="section-3-2.1">flight mail:</dt>
         <dd style="margin-left: 1.5em" id="section-3-2.2">
@@ -1687,11 +1687,12 @@ particular:<a href="#section-4.1-1" class="pilcrow">¶</a></p>
 suite is TLS_AES_256_GCM_SHA384.<a href="#section-4.1-2.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-4.1-2.2">
-            <p id="section-4.1-2.2.1">The pre-shared key is the shared secret of version 1 -- the
-"SS" of this version's name for the work, DTLS via email
-using SS. The handshake key is the one version 1 already
-defines; there is no second secret and no new key material
-in this document.<a href="#section-4.1-2.2.1" class="pilcrow">¶</a></p>
+            <p id="section-4.1-2.2.1">The pre-shared key is the shared secret of version 1. The
+shared secret is an authenticator and only an
+authenticator; it is never the session key, which is
+derived from the ephemeral exchange of every handshake.
+There is no second secret and no new key material in
+this document.<a href="#section-4.1-2.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-4.1-2.3">
             <p id="section-4.1-2.3.1">Only the <code>psk_dhe_ke</code> key exchange mode is used. <code>psk_ke</code>
@@ -1720,9 +1721,20 @@ EncryptedExtensions only, exactly as version 1 Section 20
 states (Section 11 of this document).<a href="#section-4.1-2.7.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-4.1-3">The UDP port 20220 of version 1 is a local default of the
+<p id="section-4.1-3">Certificates are not part of this profile, in either
+direction: version 1 Section 19 says so of the profile, and
+the profile applies here without modification, so the
+exclusion covers this carriage as it covers the datagram
+binding. Nothing in this document adds a certificate path
+or any other authentication mechanism; the shared secret is
+the only credential the handshake knows, on this carriage
+as on the other. A ClientHello that offers no
+pre_shared_key extension is refused before any key is
+derived: there is no other credential for it to fall back
+to.<a href="#section-4.1-3" class="pilcrow">¶</a></p>
+<p id="section-4.1-4">The UDP port 20220 of version 1 is a local default of the
 datagram binding. This carriage has no port: its addresses are
-mailboxes.<a href="#section-4.1-3" class="pilcrow">¶</a></p>
+mailboxes.<a href="#section-4.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="what-the-carriage-changes-and-what-it-does-not">
@@ -1762,6 +1774,11 @@ platform: by attempting it and reading the outcome, or from
 the platform card of a prior exchange. There is no negotiation
 message, and a failed attempt has no effect on the ordinary
 email binding, which continues to work exactly as before.<a href="#section-4.3-2" class="pilcrow">¶</a></p>
+<p id="section-4.3-3">A platform card MAY state, as an unauthenticated fact, that
+the runner offers this carriage. The fact is trusted for
+nothing except whether an attempt is worth making. It grants
+nothing. Admission remains the handshake's and the acceptance
+gate's (Section 10.2).<a href="#section-4.3-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1797,9 +1814,9 @@ session-id-char = ALPHA / DIGIT / "." / "_" / "-"
 </pre><a href="#section-5.1-4" class="pilcrow">¶</a>
 </div>
 <p id="section-5.1-5">The session-id alphabet is stated here in full and does not
-inherit version 1's <code>word-char</code>: it is the alphabet a mail
-header field can carry (<span>[<a href="#RFC5322" class="cite xref">RFC5322</a>]</span>, Section 2.2) and a
-filesystem can name, and a future widening of version 1's
+inherit version 1's <code>word-char</code>: it is an alphabet safe in
+a mail header field (<span>[<a href="#RFC5322" class="cite xref">RFC5322</a>]</span>, Section 2.2) and as a
+filesystem name, and a future widening of version 1's
 production MUST NOT widen it.<a href="#section-5.1-5" class="pilcrow">¶</a></p>
 <p id="section-5.1-6">The mail session-id is chosen by the initiator, 1 per session
 attempt; a resumption attempt is a new attempt and takes a new
@@ -1810,17 +1827,28 @@ reply prefix to its subject. A receiver MAY accept at most 1
 leading "Re:" or "Fwd:" (case-insensitive), and only when the
 remainder is exactly a flight subject. A chain of prefixes,
 or any other text before the marker, is not a flight subject.<a href="#section-5.1-7" class="pilcrow">¶</a></p>
-<p id="section-5.1-8">Subjects route; they never authenticate. A receiver MUST NOT
+<p id="section-5.1-8">The prefixes are mail user agent convention, not subject
+syntax: the Subject field is unstructured, and <span>[<a href="#RFC5322" class="cite xref">RFC5322</a>]</span>
+Section 3.6.5 describes "Re:" as something a reply's field
+body may start with. The acceptance rule here is this
+carriage's own, stated so a receiver's tolerance is a
+decision of this document and not a claim about the message
+format.<a href="#section-5.1-8" class="pilcrow">¶</a></p>
+<p id="section-5.1-9">Subjects route; they never authenticate. A receiver MUST NOT
 treat a flight subject, a mail session-id, or any mail header
 (<code>From</code>, <code>To</code>, <code>Reply-To</code>, <code>Message-ID</code>, the mailbox UID, or
 arrival order) as evidence of who sent a flight. Authentication
 is the DTLS handshake's, applied to the datagram after
-reassembly (Section 6), and to nothing else.<a href="#section-5.1-8" class="pilcrow">¶</a></p>
-<p id="section-5.1-9">An implementation MAY also accept the unaddressed harness
+reassembly (Section 6), and to nothing else.<a href="#section-5.1-9" class="pilcrow">¶</a></p>
+<p id="section-5.1-10">An implementation MAY also accept the unaddressed harness
 shape -- subject exactly <code>[HOMING-PIGEON] dtls</code> and a body that
-is the base64 of 1 datagram -- for local testing. That shape
-carries no mail session-id, cannot be bound to a session under
-Section 9.2, and MUST NOT be required by any deployment.<a href="#section-5.1-9" class="pilcrow">¶</a></p>
+is the base64 of 1 datagram -- inside an in-process test
+harness that is not a mailbox. That shape carries no mail
+session-id, cannot be bound to a session under Section 9.2,
+and MUST NOT be required by any deployment. A deployment
+mailbox MUST NOT feed it to a DTLS stack. On that mailbox it
+is malformed flight mail (Section 8.3): consumed, dropped,
+and worth no answer.<a href="#section-5.1-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="the-flight-frame">
@@ -1830,9 +1858,9 @@ Section 9.2, and MUST NOT be required by any deployment.<a href="#section-5.1-9"
         </h3>
 <p id="section-5.2-1">The frame of a flight mail is carried in a dedicated MIME
 part of the message, whose content type is
-<code>application/hp-dtls3</code> -- a private type: this document is
-local and requests no media type registration for it
-(Section 15). The part's content, under
+<code>application/hp-dtls3</code> -- a name in the standards tree that
+no registration backs: this document is local and requests
+no media type registration for it (Section 15). The part's content, under
 Content-Transfer-Encoding base64, is 1 header line, 1 line
 break, and 1 base64 chunk:<a href="#section-5.2-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-5.2-2">
@@ -1841,63 +1869,89 @@ HP-DTLS/3 transfer=&lt;t&gt; part=&lt;i&gt; parts=&lt;n&gt; bytes=&lt;b&gt; sha3
 &lt;base64 chunk&gt;
 </pre><a href="#section-5.2-2" class="pilcrow">¶</a>
 </div>
-<p id="section-5.2-3">The frame rides as its own part, and not as text in the
+<p id="section-5.2-3">where:<a href="#section-5.2-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-5.2-4.1">
+            <p id="section-5.2-4.1.1"><code>t</code> is the transfer identifier: 16 lowercase hexadecimal
+digits, chosen fresh by the sender for each datagram it
+sends under this carriage.<a href="#section-5.2-4.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-5.2-4.2">
+            <p id="section-5.2-4.2.1"><code>i</code> and <code>n</code> are the 0-based index of this part and the total
+number of parts, in decimal. An unsegmented datagram is
+part 0 of 1.<a href="#section-5.2-4.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-5.2-4.3">
+            <p id="section-5.2-4.3.1"><code>b</code> is the total length of the datagram in octets, in
+decimal. The field publishes the datagram's exact length,
+which is consistent while this document specifies no
+padding (Section 16.2); if padding is ever added, <code>b</code> is
+the padded length, or the field would undo the padding.<a href="#section-5.2-4.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-5.2-4.4">
+            <p id="section-5.2-4.4.1"><code>d</code> is the SHA-384 digest of the whole datagram, as 96
+lowercase hexadecimal digits.<a href="#section-5.2-4.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-5.2-4.5">
+            <p id="section-5.2-4.5.1">the chunk is a slice of the base64 encoding (<span>[<a href="#RFC4648" class="cite xref">RFC4648</a>]</span>
+Section 4, with padding) of the whole datagram. Slices are
+cut on base64 group boundaries, so each chunk decodes on its
+own and the decoded chunks, concatenated in index order,
+are the datagram exactly.<a href="#section-5.2-4.5.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-5.2-5">The digest binds the parts of a transfer to each other and to
+the datagram they claim to carry. It is not a signature and
+MUST NOT be treated as authentication: a receiver verifies it
+to know the datagram is whole, and authenticates the datagram
+afterwards, by DTLS.<a href="#section-5.2-5" class="pilcrow">¶</a></p>
+<p id="section-5.2-6">The frame rides as its own part, and not as text in the
 message's text part, precisely so that what intermediate
 agents do to text cannot reach it: a mail gateway that
 appends a disclaimer or a banner to the text part -- the
 routine rewriting of real mail paths -- does not touch the
 flight. This is the dedicated-part practice <span>[<a href="#RFC8551" class="cite xref">RFC8551</a>]</span>
 records for the same reason. Text outside the part is not
-the frame and MUST be ignored for framing.<a href="#section-5.2-3" class="pilcrow">¶</a></p>
-<p id="section-5.2-4">The header line is the part's 1st line. Base64 folding at
+the frame and MUST be ignored for framing.<a href="#section-5.2-6" class="pilcrow">¶</a></p>
+<p id="section-5.2-7">The part is a leaf part: a direct part of the message's
+multipart structure, not the content of a message/rfc822
+part. A sender MUST NOT wrap it in one. A receiver finds
+the frame part by its content type wherever it sits in the
+part tree, and the wrapped shape is read where it is met --
+but an intermediary that treats a message/rfc822 container
+as an opaque attachment can drop the flight with the
+container, and a sender has no reason to hand it the
+chance: the serialization this document pins is the leaf.<a href="#section-5.2-7" class="pilcrow">¶</a></p>
+<p id="section-5.2-8">The header line is the part's 1st line. Base64 folding at
 76 columns inside the part is accepted: the chunk is read
 with its whitespace removed. Quoted-printable MUST NOT be
 used for the part and MUST NOT be accepted for it: a part
-whose transfer encoding is not base64 carries no frame.<a href="#section-5.2-4" class="pilcrow">¶</a></p>
-<p id="section-5.2-5">A message with no <code>application/hp-dtls3</code> part is read in
+whose transfer encoding is not base64 carries no frame.<a href="#section-5.2-8" class="pilcrow">¶</a></p>
+<p id="section-5.2-9">A message with no <code>application/hp-dtls3</code> part is read in
 the naked shape this carriage began with: the frame as the
 1st text/plain part's text, as a job body under version 1
 is read, with no preamble and no trailer. When a typed part
 is present it is the only frame source: a frame-shaped text
 part does not rescue a typed part that does not frame, and
 a part that does not frame is malformed flight mail
-(Section 8.3).<a href="#section-5.2-5" class="pilcrow">¶</a></p>
-<p id="section-5.2-6">where:<a href="#section-5.2-6" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-5.2-7.1">
-            <p id="section-5.2-7.1.1"><code>t</code> is the transfer identifier: 16 lowercase hexadecimal
-digits, chosen fresh by the sender for each datagram it
-sends under this carriage.<a href="#section-5.2-7.1.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-5.2-7.2">
-            <p id="section-5.2-7.2.1"><code>i</code> and <code>n</code> are the 0-based index of this part and the total
-number of parts, in decimal. An unsegmented datagram is
-part 0 of 1.<a href="#section-5.2-7.2.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-5.2-7.3">
-            <p id="section-5.2-7.3.1"><code>b</code> is the total length of the datagram in octets, in
-decimal. The field publishes the datagram's exact length,
-which is consistent while this document specifies no
-padding (Section 16.2); if padding is ever added, <code>b</code> is
-the padded length, or the field would undo the padding.<a href="#section-5.2-7.3.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-5.2-7.4">
-            <p id="section-5.2-7.4.1"><code>d</code> is the SHA-384 digest of the whole datagram, as 96
-lowercase hexadecimal digits.<a href="#section-5.2-7.4.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-5.2-7.5">
-            <p id="section-5.2-7.5.1">the chunk is a slice of the base64 encoding (<span>[<a href="#RFC4648" class="cite xref">RFC4648</a>]</span>
-Section 4, with padding) of the whole datagram. Slices are
-cut on base64 group boundaries, so each chunk decodes on its
-own and the decoded chunks, concatenated in index order,
-are the datagram exactly.<a href="#section-5.2-7.5.1" class="pilcrow">¶</a></p>
-</li>
-        </ul>
-<p id="section-5.2-8">The digest binds the parts of a transfer to each other and to
-the datagram they claim to carry. It is not a signature and
-MUST NOT be treated as authentication: a receiver verifies it
-to know the datagram is whole, and authenticates the datagram
-afterwards, by DTLS.<a href="#section-5.2-8" class="pilcrow">¶</a></p>
+(Section 8.3).<a href="#section-5.2-9" class="pilcrow">¶</a></p>
+<p id="section-5.2-10">The naked shape is read for senders that never used the
+typed part: a local harness, and senders that predate the
+part. It is not a 2nd copy of the frame. A sender that uses
+the typed part places the frame there and nowhere else; its
+text part carries at most a note for a human, and MUST NOT
+carry the frame. A receiver cannot tell that a typed part
+was removed on the way. It applies the rule it can check:
+no typed part means the naked shape, and a naked body that
+does not frame is malformed flight mail (Section 8.3). A
+conforming sender's text does not frame, so an intermediary
+that removes the typed part ends that flight. The flight is
+repaired, if at all, by the DTLS retransmission of Section
+7.1 as a new flight mail, never by a reading of the text
+part. An intermediary that drops the typed part from every
+flight ends every attempt through it: this carriage does
+not pass such an intermediary, and says so rather than
+pretending the text part is a fallback.<a href="#section-5.2-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="size-gates">
@@ -2038,10 +2092,29 @@ on a handshake-phase datagram is not fed to the DTLS stack
 again -- nothing is derived twice -- and the receiver
 instead re-posts its saved last outbound flight, under a
 new transfer identifier: the duplicate is the signal that
-the answer was lost (<span>[<a href="#RFC9147" class="cite xref">RFC9147</a>]</span> Section 5.8.1). A digest
+the answer was lost (<span>[<a href="#RFC9147" class="cite xref">RFC9147</a>]</span> Section 5.8.1). The
+re-post is budgeted, because on this carriage it costs an
+outbound mail that an unauthenticated sender can provoke
+with a captured hello: a receiver MUST re-post a saved
+flight at most once per generation of that flight. A
+digest hit spends the 1 re-post the saved flight carries;
+only a new flight from the DTLS stack -- a new answer, or
+the stack's own retransmission on its timer -- arms
+another; further bit-identical copies of a handshake-phase
+datagram are dropped. A thousand copies of 1 ClientHello
+therefore cost the responder at most 1 HelloRetryRequest
+mail beyond the 1 it already sent (Section 16.4). A digest
 hit on application data is dropped and does nothing. A
 replayed mail is therefore not a new record at either
-layer, and a lost flight is still repaired.<a href="#section-7.2-2.1.1" class="pilcrow">¶</a></p>
+layer, and a lost flight is still repaired. A
+retransmission under <span>[<a href="#RFC9147" class="cite xref">RFC9147</a>]</span> Section 5.2 is not this
+case. It is a new record, with a new record sequence
+number, carrying the same handshake message, so it is not
+bit-identical to the datagram already accepted. It misses
+this cache, enters the stack, and is answered by the
+stack. The budget does not limit it, and if the single
+re-post was itself lost, that retransmission is what
+repairs the attempt.<a href="#section-7.2-2.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-7.2-2.2">
             <p id="section-7.2-2.2.1">DTLS layer: records are protected and sequenced by the
@@ -2095,9 +2168,11 @@ delivered anywhere. The classification is by subject grammar
 and body shape, in this order:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-8.1-2">
 <li id="section-8.1-2.1">
-            <p id="section-8.1-2.1.1">A message whose subject matches the flight subject, or the
-unaddressed harness subject, is DTLS input. It goes to the
-carriage, and to nothing else.<a href="#section-8.1-2.1.1" class="pilcrow">¶</a></p>
+            <p id="section-8.1-2.1.1">A message whose subject matches the flight subject is DTLS
+input. It goes to the carriage, and to nothing else. The
+unaddressed harness subject is not this case on a
+deployment mailbox: it is malformed flight mail (Section
+5.1) and is not fed to a DTLS stack.<a href="#section-8.1-2.1.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-8.1-2.2">
             <p id="section-8.1-2.2.1">A message whose subject is a version 1 job subject is a job
@@ -2120,16 +2195,22 @@ gate -- never sees flight mail.<a href="#section-8.1-3" class="pilcrow">¶</a></
 <a href="#section-8.2" class="section-number selfRef">8.2. </a><a href="#name-recognizing-the-initializat" class="section-name selfRef">Recognizing the initialization flight</a>
         </h3>
 <p id="section-8.2-1">A complete datagram is an initialization flight when its 1st
-record is a plaintext handshake record whose handshake message
-is a ClientHello -- including a fragmented ClientHello whose
-message type is ClientHello. A complete datagram that parses
-as DTLS records but is not an initialization is a session
-datagram. The recognition is of the DTLS bytes, not of the
-subject: the subject routes a message to the carriage, and the
-bytes decide what the carriage does with it.<a href="#section-8.2-1" class="pilcrow">¶</a></p>
+record is a plaintext handshake record whose handshake
+message is one complete ClientHello. A fragmented or
+incomplete first handshake message is not an initialization.
+It is malformed flight mail: consumed, dropped, not answered,
+and allocated no reassembly state. The profile's ClientHello
+is one message, and this carriage does not reassemble
+handshake fragments before a cookie has validated. A complete
+datagram that parses as DTLS records but is not an
+initialization is a session datagram. The recognition is of
+the DTLS bytes, not of the subject: the subject routes a
+message to the carriage, and the bytes decide what the
+carriage does with it.<a href="#section-8.2-1" class="pilcrow">¶</a></p>
 <p id="section-8.2-2">An initialization flight is answered as version 1's profile
 answers it: statelessly, with a HelloRetryRequest, before any
-session state exists.<a href="#section-8.2-2" class="pilcrow">¶</a></p>
+session state exists. A first flight that is not a complete
+ClientHello draws no HelloRetryRequest.<a href="#section-8.2-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="fail-closed">
@@ -2242,8 +2323,9 @@ mailbox identity, and not a key selector. The cookie key is a
 secret of the responder, generated by the responder and not
 derived from the address or from anything the message
 asserts, so binding the cookie to an attacker-chosen label is
-safe exactly while that key stays secret. The PSK identity
-inside the handshake selects the shared secret, including any
+safe exactly while that key stays secret. The key's lifetime
+is the matter of Section 9.4. The PSK identity inside the
+handshake selects the shared secret, including any
 additional secret, exactly as version 1 specifies; the mail
 session-id never selects a key.<a href="#section-9.2-1" class="pilcrow">¶</a></p>
 <p id="section-9.2-2">When a session establishes, the carriage binds the mail
@@ -2271,9 +2353,9 @@ the session's keys satisfy.<a href="#section-9.2-4" class="pilcrow">¶</a></p>
 <a href="#section-9.3" class="section-number selfRef">9.3. </a><a href="#name-resumption" class="section-name selfRef">Resumption</a>
         </h3>
 <p id="section-9.3-1">Resumption over this carriage follows the profile: tickets
-MAY be issued and, on this carriage, MUST be single-use --
-a ticket is stored mail like any other flight, in the same
-archive as the transcript, and a replayed ticket must not
+MAY be issued and, on this carriage, MUST be single-use.
+A ticket is stored mail like any other flight, in the same
+archive as the transcript, and a replayed ticket MUST NOT
 become a second long-lived secret. (Version 1's SHOULD for
 the datagram binding is unchanged.) A resumed handshake
 is a full handshake in everything that matters here -- a fresh
@@ -2296,6 +2378,28 @@ cache entries, the mail session-id binding) expires with the
 bounds of Sections 6 and 7.2. A failed attempt leaves the
 ordinary email binding untouched and has no effect on any
 other attempt.<a href="#section-9.4-1" class="pilcrow">¶</a></p>
+<p id="section-9.4-2">The cookie key of Section 9.2 has a lifetime this path tests
+and the datagram path never did. On the datagram binding a
+HelloRetryRequest is answered within a round trip, inside 1
+process lifetime of the responder. On this carriage it is
+answered on a later poll -- an hour later on a slow poller --
+which may be after the responder's process has restarted. A
+responder SHOULD keep its cookie key across its own restarts
+for at least the attempt deadline, kept as the shared secret
+is kept: in the responder's own state, never in a flight, and
+never derived from the address or from anything a message
+asserts (Section 9.2). The reference implementation keeps it
+beside the mailbox's own state, readable by its owner only.
+A responder whose cookie key does not survive a restart
+abandons every attempt in flight at that restart: the cookied
+ClientHello fails the cookie check and is ignored, each
+retransmission of it fails the same way, and the initiator
+abandons the attempt when its retransmission gives up.
+Recovery is a fresh attempt under a new mail session-id,
+never a repair of the old one. Established sessions do not
+survive a restart of either end on any binding -- their keys
+are erased with the process, as Section 16.1 requires -- and
+a result held for such a session follows Section 10.3.<a href="#section-9.4-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="session-end">
@@ -2365,6 +2469,19 @@ and the version 1 rule stands verbatim on this carriage: a
 cleartext object inside a session is still refused unless the
 operator has enabled cleartext acceptance, because the
 session's confidentiality is not the object's provenance.<a href="#section-10.2-2" class="pilcrow">¶</a></p>
+<p id="section-10.2-3">The 2 keys are checked independently. The PSK identity that
+opened the session and the key id that signed a job inside
+it need not name the same key: the gate reads the job's own
+key id and applies that key's policy, and the session's key
+confers nothing on the job and takes nothing from it. A job
+signed under 1 key MAY be carried by a session opened under
+another, exactly as a signed job may be carried by any
+mailbox. An implementation MUST NOT admit, widen, or narrow
+a job on the strength of the PSK identity of the session
+that carried it: the session does not authorize the job,
+and the job does not authorize the session. (The session's
+key does decide 1 thing, which is not admission: where the
+job's result may go, Section 10.3.)<a href="#section-10.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="results-are-session-bound">
@@ -2373,23 +2490,47 @@ session's confidentiality is not the object's provenance.<a href="#section-10.2-
 <a href="#section-10.3" class="section-number selfRef">10.3. </a><a href="#name-results-are-session-bound" class="section-name selfRef">Results are session-bound</a>
         </h3>
 <p id="section-10.3-1">A result for a job that arrived inside a session is sent
-inside that session, sealed as application data. If the
-session no longer exists when the result is ready, the result
-waits: it is held for a fresh session from the same submitter,
-and it is identified for that session by the session's
-connection ID and its job ident together -- never by the job
-ident alone, which the submitter chooses and which collides
-across submitters. It MUST NOT be sent as an ordinary mail
-result, and it MUST NOT be sent inside a different job's
-session as if it were that job's. Section 12 states the
-general rule this follows from.<a href="#section-10.3-1" class="pilcrow">¶</a></p>
-<p id="section-10.3-2">The hold is bounded, as the hold of any state on this
+inside that session, sealed as application data. The
+carriage remembers, for each job it delivered from a session,
+the session's connection ID and the job ident together, and
+the PSK identity the session authenticated under -- never the
+job ident alone, which the submitter chooses and which
+collides across submitters. The hold is kept as the result
+is kept, in the responder's own state and across a restart
+of the process. A hold that died with the process would send
+the result by the ordinary path on the next pass, which
+Section 12 forbids. If that session no longer exists
+when the result is ready, the result waits, and it can still
+leave on this carriage in exactly 1 way: inside a later
+session that authenticated under the same PSK identity and
+that carries the same job ident again. The acceptance gate
+refuses the repeated job as a replay (Section 13); the held
+result is what answers it. A job whose ident is held for
+another PSK identity's job is not delivered: it is logged and
+dropped, because the hold belongs to the submitter whose job
+it was, and delivering it would put that submitter's result,
+or that submitter's job file, in the wrong hands. A held
+result MUST NOT be sent as an ordinary mail result, MUST NOT
+be sent inside a session under a different PSK identity, and
+MUST NOT be sent inside a different job's session as if it
+were that job's. Section 12 states the general rule this
+follows from.<a href="#section-10.3-1" class="pilcrow">¶</a></p>
+<p id="section-10.3-2">The PSK identity distinguishes submitters only as finely as
+the key directory. Two peers that authenticate with the same
+secret are the same identity, and a later session of that
+identity which carries the job ident again is a legitimate
+destination for the held result. Distinct submitters are
+distinct keys, which version 1's additional secrets already
+are. This carriage does not invent a finer name for a
+submitter, and a mail session-id is not one: the initiator
+chooses it, and a resumption uses a fresh one (Section 9.3).<a href="#section-10.3-2" class="pilcrow">¶</a></p>
+<p id="section-10.3-3">The hold is bounded, as the hold of any state on this
 carriage is bounded. A held result expires by age -- the
 reference implementation's bound is 7 days -- and the held
 set as a whole is bounded in count and in total bytes,
 oldest first. An expired result is dropped and the expiry
 is logged; it is never sent. Dropping is not downgrade:
-downgrade would be sending the result by a weaker path.<a href="#section-10.3-2" class="pilcrow">¶</a></p>
+downgrade would be sending the result by a weaker path.<a href="#section-10.3-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2493,8 +2634,9 @@ layer is asked to do another's work:<a href="#section-13-1" class="pilcrow">¶</
 <li class="normal" id="section-13-2.1">
           <p id="section-13-2.1.1">A replayed flight mail meets the mail layer's rule, split
 by phase (Section 7.2): a handshake-phase replay re-posts
-the saved flight without re-entering the stack, and an
-application-data replay is dropped before it. A replayed
+the saved flight without re-entering the stack -- once per
+generation of that flight, and then it is dropped -- and
+an application-data replay is dropped before it. A replayed
 initialization therefore cannot create a duplicate
 session: at worst, a replay that evades the cache meets the
 cookie exchange and the handshake state machine, which
@@ -2578,10 +2720,11 @@ not request a 2nd value, a new registry, a port, a service
 name, a media type, or an OID. The DTLS reference port 20220
 remains version 1's local default for the datagram binding and
 is not used by this carriage.<a href="#section-15-2" class="pilcrow">¶</a></p>
-<p id="section-15-3">The carriage's MIME content type (Section 5.2) is a
-private-use type in a local draft; this document requests no
-media type registration for it. A future standards-track
-revision is where such a request would belong.<a href="#section-15-3" class="pilcrow">¶</a></p>
+<p id="section-15-3">The carriage's MIME content type (Section 5.2) is an
+unregistered name in the standards tree, used by a local
+draft; this document requests no media type registration
+for it. A future standards-track revision is where such a
+request would belong.<a href="#section-15-3" class="pilcrow">¶</a></p>
 <p id="section-15-4">As a local, unsubmitted draft, this document could not ground
 an assignment in any case: nothing in it is to be read as
 requesting that IANA act, early or otherwise.<a href="#section-15-4" class="pilcrow">¶</a></p>
@@ -2687,20 +2830,65 @@ carries no sender gate and claims none.<a href="#section-16.3-1" class="pilcrow"
         </h3>
 <p id="section-16.4-1">Everything a receiver does before a binder verifies is a
 resource an unauthenticated sender can spend, so the
-pre-authentication surface is bounded at each step: the mail
-size cap applies before decoding (Section 5.3); reassembly
-holds bounded count, size, and age, and a contradiction
-destroys a transfer rather than arbitrating it (Section 6);
-the digest cache is bounded (Section 7.2); the cookie exchange
-keeps the responder stateless until a cookie validates
-(Section 4.1); and a malformed flight is consumed in 1 pass,
-not re-offered on every poll (Section 8.3). The platform
+pre-authentication surface is bounded at each step, and
+each action such a sender can cause is listed here with the
+number that bounds it:<a href="#section-16.4-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-16.4-2.1">
+            <p id="section-16.4-2.1.1">A fresh ClientHello costs the responder 1 HelloRetryRequest
+mail and no session state: the cookie exchange keeps the
+responder stateless until a cookie validates (Section 4.1). That is
+1 small mail out for 1 mail in -- the price of a stateless
+responder on any binding, with no amplification.<a href="#section-16.4-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-16.4-2.2">
+            <p id="section-16.4-2.2.1">A bit-identical copy of a handshake-phase flight costs at
+most 1 re-post of the saved flight per generation of that
+flight (Section 7.2), so a captured hello is worth at most
+1 extra outbound mail and never a mail per copy.<a href="#section-16.4-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-16.4-2.3">
+            <p id="section-16.4-2.3.1">A flight mail is refused above the mail size cap before any
+decoding (Section 5.3).<a href="#section-16.4-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-16.4-2.4">
+            <p id="section-16.4-2.4.1">A reassembly slot is 1 of at most 64, bounded in total
+size, and held at most 3600 seconds from its first part and
+from its last; a contradiction destroys the transfer rather
+than arbitrating it (Section 6).<a href="#section-16.4-2.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-16.4-2.5">
+            <p id="section-16.4-2.5.1">A digest-cache entry is 1 of 4096, first in first out
+(Section 7.2).<a href="#section-16.4-2.5.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-16.4-2.6">
+            <p id="section-16.4-2.6.1">A saved outbound flight is 1 of 4096, first in first out,
+the same bound as the digest cache. Evicting one drops
+only the spare re-post for that peer. A retransmission is
+a new record and is answered by the stack without the
+saved flight (Section 7.2).<a href="#section-16.4-2.6.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-16.4-2.7">
+            <p id="section-16.4-2.7.1">A malformed flight is consumed in 1 pass and 1 log line,
+not re-offered on every poll (Section 8.3). A fragmented
+or incomplete first handshake message is this case: it
+draws no HelloRetryRequest and no reassembly state
+(Section 8.2).<a href="#section-16.4-2.7.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-16.4-2.8">
+            <p id="section-16.4-2.8.1">The unaddressed harness subject, on a deployment mailbox,
+is this case too: consumed, not fed to a DTLS stack, and
+worth no answer (Section 5.1).<a href="#section-16.4-2.8.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-16.4-3">An action an unauthenticated sender can cause that has no
+number in this list is a defect in this document. The platform
 disclosure's cost -- disclosure before the initiator's
 Finished is verified -- is inherited from version 1
 Section 20 and bounded by its tiers; a responder that
 discloses at the <code>none</code> or <code>family</code> tier spends little on an
 unauthenticated peer, and the choice of tier is the
-responder's.<a href="#section-16.4-1" class="pilcrow">¶</a></p>
+responder's.<a href="#section-16.4-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="downgrade-and-substitution">
@@ -2738,6 +2926,17 @@ forward secrecy; it changes its admission not at all. Any
 future extension of this carriage that proposes to admit a
 job on the session's authority alone is proposing to remove
 the gate, and should be reviewed as such.<a href="#section-16.6-1" class="pilcrow">¶</a></p>
+<p id="section-16.6-2">The constraint that narrows what a session may cause is the
+key policy of the key that signs the job, which is version
+1's and is unchanged here. A deployment that wants one key
+to run only a pinned script states that on the key: the
+kinds it may name, the interpreters it may name, and the
+digest of the script it may carry. The session does not
+widen that policy, and the policy does not depend on this
+carriage. A holder of a different key, or of only the
+traffic keys of the session, does not inherit it. The gate
+reads the job's own key and applies that key's policy
+(Section 10.2).<a href="#section-16.6-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>

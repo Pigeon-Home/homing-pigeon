@@ -90,22 +90,22 @@ Table of Contents
    4.  The DTLS Profile on This Carriage . . . . . . . . . . . . . .   5
      4.1.  The profile is version 1's, unchanged . . . . . . . . . .   5
      4.2.  What the carriage changes, and what it does not . . . . .   6
-     4.3.  Enablement  . . . . . . . . . . . . . . . . . . . . . . .   6
+     4.3.  Enablement  . . . . . . . . . . . . . . . . . . . . . . .   7
    5.  Message Format  . . . . . . . . . . . . . . . . . . . . . . .   7
      5.1.  The flight subject  . . . . . . . . . . . . . . . . . . .   7
      5.2.  The flight frame  . . . . . . . . . . . . . . . . . . . .   8
-     5.3.  Size gates  . . . . . . . . . . . . . . . . . . . . . . .   9
-   6.  Segmentation and Reassembly . . . . . . . . . . . . . . . . .   9
-   7.  Retransmission, Duplicates, and Ordering  . . . . . . . . . .  10
-     7.1.  Retransmission is DTLS's  . . . . . . . . . . . . . . . .  10
-     7.2.  Duplicates, at each layer . . . . . . . . . . . . . . . .  11
-     7.3.  Ordering  . . . . . . . . . . . . . . . . . . . . . . . .  12
-   8.  The Mailbox Parser: Lane Dispatch and Recognition . . . . . .  12
-     8.1.  Dispatch order  . . . . . . . . . . . . . . . . . . . . .  12
-     8.2.  Recognizing the initialization flight . . . . . . . . . .  12
-     8.3.  Fail closed . . . . . . . . . . . . . . . . . . . . . . .  13
-     8.4.  Seen flags and fetches  . . . . . . . . . . . . . . . . .  13
-   9.  Session Establishment . . . . . . . . . . . . . . . . . . . .  13
+     5.3.  Size gates  . . . . . . . . . . . . . . . . . . . . . . .  10
+   6.  Segmentation and Reassembly . . . . . . . . . . . . . . . . .  11
+   7.  Retransmission, Duplicates, and Ordering  . . . . . . . . . .  11
+     7.1.  Retransmission is DTLS's  . . . . . . . . . . . . . . . .  12
+     7.2.  Duplicates, at each layer . . . . . . . . . . . . . . . .  12
+     7.3.  Ordering  . . . . . . . . . . . . . . . . . . . . . . . .  13
+   8.  The Mailbox Parser: Lane Dispatch and Recognition . . . . . .  13
+     8.1.  Dispatch order  . . . . . . . . . . . . . . . . . . . . .  14
+     8.2.  Recognizing the initialization flight . . . . . . . . . .  14
+     8.3.  Fail closed . . . . . . . . . . . . . . . . . . . . . . .  15
+     8.4.  Seen flags and fetches  . . . . . . . . . . . . . . . . .  15
+   9.  Session Establishment . . . . . . . . . . . . . . . . . . . .  15
 
 
 
@@ -114,31 +114,31 @@ Slutsky                    Expires 6 May 2027                   [Page 2]
 Internet-Draft              Homing Pigeon v3               November 2026
 
 
-     9.1.  The attempt, flight by flight . . . . . . . . . . . . . .  13
-     9.2.  Identity binding at establishment . . . . . . . . . . . .  14
-     9.3.  Resumption  . . . . . . . . . . . . . . . . . . . . . . .  15
-     9.4.  Attempt deadline and failure  . . . . . . . . . . . . . .  15
-     9.5.  Session end . . . . . . . . . . . . . . . . . . . . . . .  15
-   10. Jobs and Results Inside a Session . . . . . . . . . . . . . .  15
-     10.1.  Framing  . . . . . . . . . . . . . . . . . . . . . . . .  15
-     10.2.  The acceptance gate, in full, inside the session . . . .  16
-     10.3.  Results are session-bound  . . . . . . . . . . . . . . .  16
-   11. Platform Disclosure on This Carriage  . . . . . . . . . . . .  17
-   12. No-Downgrade Rules  . . . . . . . . . . . . . . . . . . . . .  18
-   13. Replay Handling . . . . . . . . . . . . . . . . . . . . . . .  18
-   14. Operational Considerations  . . . . . . . . . . . . . . . . .  19
-   15. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  20
-   16. Security Considerations . . . . . . . . . . . . . . . . . . .  20
-     16.1.  Perfect forward secrecy  . . . . . . . . . . . . . . . .  20
-     16.2.  The mailbox as intermediary  . . . . . . . . . . . . . .  21
-     16.3.  Headers are not authentication . . . . . . . . . . . . .  22
-     16.4.  Pre-authentication resource bounds . . . . . . . . . . .  22
-     16.5.  Downgrade and substitution . . . . . . . . . . . . . . .  22
-     16.6.  The gate is the security boundary for execution  . . . .  22
-   17. References  . . . . . . . . . . . . . . . . . . . . . . . . .  23
-     17.1.  Normative References . . . . . . . . . . . . . . . . . .  23
-     17.2.  Informative References . . . . . . . . . . . . . . . . .  24
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  24
+     9.1.  The attempt, flight by flight . . . . . . . . . . . . . .  15
+     9.2.  Identity binding at establishment . . . . . . . . . . . .  16
+     9.3.  Resumption  . . . . . . . . . . . . . . . . . . . . . . .  17
+     9.4.  Attempt deadline and failure  . . . . . . . . . . . . . .  17
+     9.5.  Session end . . . . . . . . . . . . . . . . . . . . . . .  18
+   10. Jobs and Results Inside a Session . . . . . . . . . . . . . .  18
+     10.1.  Framing  . . . . . . . . . . . . . . . . . . . . . . . .  18
+     10.2.  The acceptance gate, in full, inside the session . . . .  18
+     10.3.  Results are session-bound  . . . . . . . . . . . . . . .  19
+   11. Platform Disclosure on This Carriage  . . . . . . . . . . . .  20
+   12. No-Downgrade Rules  . . . . . . . . . . . . . . . . . . . . .  21
+   13. Replay Handling . . . . . . . . . . . . . . . . . . . . . . .  21
+   14. Operational Considerations  . . . . . . . . . . . . . . . . .  22
+   15. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  23
+   16. Security Considerations . . . . . . . . . . . . . . . . . . .  23
+     16.1.  Perfect forward secrecy  . . . . . . . . . . . . . . . .  23
+     16.2.  The mailbox as intermediary  . . . . . . . . . . . . . .  24
+     16.3.  Headers are not authentication . . . . . . . . . . . . .  25
+     16.4.  Pre-authentication resource bounds . . . . . . . . . . .  25
+     16.5.  Downgrade and substitution . . . . . . . . . . . . . . .  26
+     16.6.  The gate is the security boundary for execution  . . . .  26
+   17. References  . . . . . . . . . . . . . . . . . . . . . . . . .  27
+     17.1.  Normative References . . . . . . . . . . . . . . . . . .  27
+     17.2.  Informative References . . . . . . . . . . . . . . . . .  28
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  28
 
 1.  Introduction
 
@@ -238,7 +238,7 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
    The terms of version 1 apply: the runner, the submitter, the shared
    secret, the job object, the result object, the acceptance gate, and
-   the platform card.  This document adds:
+   the platform disclosure.  This document adds:
 
    flight mail:  1 email message carrying all or part of exactly 1 DTLS
       datagram under this carriage.
@@ -266,14 +266,14 @@ Internet-Draft              Homing Pigeon v3               November 2026
    *  DTLS 1.3 [RFC9147] is the session protocol.  The 1 cipher suite is
       TLS_AES_256_GCM_SHA384.
 
-   *  The pre-shared key is the shared secret of version 1 -- the "SS"
-      of this version's name for the work, DTLS via email using SS.  The
-      handshake key is the one version 1 already defines; there is no
-      second secret and no new key material in this document.
+   *  The pre-shared key is the shared secret of version 1.  The shared
+      secret is an authenticator and only an authenticator; it is never
+      the session key, which is derived from the ephemeral exchange of
+      every handshake.  There is no second secret and no new key
+      material in this document.
 
-   *  Only the psk_dhe_ke key exchange mode is used. psk_ke MUST NOT be
-      offered, accepted, or fallen back to, in a full handshake or in
-      resumption.  Every handshake, full or resumed, carries a fresh
+
+
 
 
 
@@ -282,6 +282,9 @@ Slutsky                    Expires 6 May 2027                   [Page 5]
 Internet-Draft              Homing Pigeon v3               November 2026
 
 
+   *  Only the psk_dhe_ke key exchange mode is used. psk_ke MUST NOT be
+      offered, accepted, or fallen back to, in a full handshake or in
+      resumption.  Every handshake, full or resumed, carries a fresh
       ephemeral X25519 share.  This is the rule the perfect forward
       secrecy property of Section 16.1 rests on, and this carriage does
       not relax it.
@@ -299,6 +302,16 @@ Internet-Draft              Homing Pigeon v3               November 2026
       and, when offered, MAY be answered in EncryptedExtensions only,
       exactly as version 1 Section 20 states (Section 11 of this
       document).
+
+   Certificates are not part of this profile, in either direction:
+   version 1 Section 19 says so of the profile, and the profile applies
+   here without modification, so the exclusion covers this carriage as
+   it covers the datagram binding.  Nothing in this document adds a
+   certificate path or any other authentication mechanism; the shared
+   secret is the only credential the handshake knows, on this carriage
+   as on the other.  A ClientHello that offers no pre_shared_key
+   extension is refused before any key is derived: there is no other
+   credential for it to fall back to.
 
    The UDP port 20220 of version 1 is a local default of the datagram
    binding.  This carriage has no port: its addresses are mailboxes.
@@ -318,6 +331,13 @@ Internet-Draft              Homing Pigeon v3               November 2026
    acceptance gate.  An implementation MUST NOT use this carriage as a
    reason to alter any of those.
 
+
+
+Slutsky                    Expires 6 May 2027                   [Page 6]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
+
 4.3.  Enablement
 
    This carriage is opt-in.  A runner enables it by explicit
@@ -330,19 +350,16 @@ Internet-Draft              Homing Pigeon v3               November 2026
    handed to the datagram binding's listener when that binding is
    enabled.
 
-
-
-
-Slutsky                    Expires 6 May 2027                   [Page 6]
-
-Internet-Draft              Homing Pigeon v3               November 2026
-
-
    A submitter discovers the carriage the way it discovers the platform:
    by attempting it and reading the outcome, or from the platform card
    of a prior exchange.  There is no negotiation message, and a failed
    attempt has no effect on the ordinary email binding, which continues
    to work exactly as before.
+
+   A platform card MAY state, as an unauthenticated fact, that the
+   runner offers this carriage.  The fact is trusted for nothing except
+   whether an attempt is worth making.  It grants nothing.  Admission
+   remains the handshake's and the acceptance gate's (Section 10.2).
 
 5.  Message Format
 
@@ -363,9 +380,19 @@ Internet-Draft              Homing Pigeon v3               November 2026
    session-id-char = ALPHA / DIGIT / "." / "_" / "-"
 
    The session-id alphabet is stated here in full and does not inherit
-   version 1's word-char: it is the alphabet a mail header field can
-   carry ([RFC5322], Section 2.2) and a filesystem can name, and a
-   future widening of version 1's production MUST NOT widen it.
+   version 1's word-char: it is an alphabet safe in a mail header field
+   ([RFC5322], Section 2.2) and as a filesystem name, and a future
+   widening of version 1's production MUST NOT widen it.
+
+
+
+
+
+
+Slutsky                    Expires 6 May 2027                   [Page 7]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
 
    The mail session-id is chosen by the initiator, 1 per session
    attempt; a resumption attempt is a new attempt and takes a new mail
@@ -378,6 +405,13 @@ Internet-Draft              Homing Pigeon v3               November 2026
    a flight subject.  A chain of prefixes, or any other text before the
    marker, is not a flight subject.
 
+   The prefixes are mail user agent convention, not subject syntax: the
+   Subject field is unstructured, and [RFC5322] Section 3.6.5 describes
+   "Re:" as something a reply's field body may start with.  The
+   acceptance rule here is this carriage's own, stated so a receiver's
+   tolerance is a decision of this document and not a claim about the
+   message format.
+
    Subjects route; they never authenticate.  A receiver MUST NOT treat a
    flight subject, a mail session-id, or any mail header (From, To,
    Reply-To, Message-ID, the mailbox UID, or arrival order) as evidence
@@ -385,62 +419,28 @@ Internet-Draft              Homing Pigeon v3               November 2026
    applied to the datagram after reassembly (Section 6), and to nothing
    else.
 
-
-
-
-
-Slutsky                    Expires 6 May 2027                   [Page 7]
-
-Internet-Draft              Homing Pigeon v3               November 2026
-
-
    An implementation MAY also accept the unaddressed harness shape --
    subject exactly [HOMING-PIGEON] dtls and a body that is the base64 of
-   1 datagram -- for local testing.  That shape carries no mail session-
-   id, cannot be bound to a session under Section 9.2, and MUST NOT be
-   required by any deployment.
+   1 datagram -- inside an in-process test harness that is not a
+   mailbox.  That shape carries no mail session-id, cannot be bound to a
+   session under Section 9.2, and MUST NOT be required by any
+   deployment.  A deployment mailbox MUST NOT feed it to a DTLS stack.
+   On that mailbox it is malformed flight mail (Section 8.3): consumed,
+   dropped, and worth no answer.
 
 5.2.  The flight frame
 
    The frame of a flight mail is carried in a dedicated MIME part of the
-   message, whose content type is application/hp-dtls3 -- a private
-   type: this document is local and requests no media type registration
-   for it (Section 15).  The part's content, under Content-Transfer-
-   Encoding base64, is 1 header line, 1 line break, and 1 base64 chunk:
+   message, whose content type is application/hp-dtls3 -- a name in the
+   standards tree that no registration backs: this document is local and
+   requests no media type registration for it (Section 15).  The part's
+   content, under Content-Transfer-Encoding base64, is 1 header line, 1
+   line break, and 1 base64 chunk:
 
    HP-DTLS/3 transfer=<t> part=<i> parts=<n> bytes=<b> sha384=<d>
    <base64 chunk>
 
-   The frame rides as its own part, and not as text in the message's
-   text part, precisely so that what intermediate agents do to text
-   cannot reach it: a mail gateway that appends a disclaimer or a banner
-   to the text part -- the routine rewriting of real mail paths -- does
-   not touch the flight.  This is the dedicated-part practice [RFC8551]
-   records for the same reason.  Text outside the part is not the frame
-   and MUST be ignored for framing.
-
-   The header line is the part's 1st line.  Base64 folding at 76 columns
-   inside the part is accepted: the chunk is read with its whitespace
-   removed.  Quoted-printable MUST NOT be used for the part and MUST NOT
-   be accepted for it: a part whose transfer encoding is not base64
-   carries no frame.
-
-   A message with no application/hp-dtls3 part is read in the naked
-   shape this carriage began with: the frame as the 1st text/plain
-   part's text, as a job body under version 1 is read, with no preamble
-   and no trailer.  When a typed part is present it is the only frame
-   source: a frame-shaped text part does not rescue a typed part that
-   does not frame, and a part that does not frame is malformed flight
-   mail (Section 8.3).
-
    where:
-
-   *  t is the transfer identifier: 16 lowercase hexadecimal digits,
-      chosen fresh by the sender for each datagram it sends under this
-      carriage.
-
-   *  i and n are the 0-based index of this part and the total number of
-      parts, in decimal.  An unsegmented datagram is part 0 of 1.
 
 
 
@@ -449,6 +449,13 @@ Slutsky                    Expires 6 May 2027                   [Page 8]
 
 Internet-Draft              Homing Pigeon v3               November 2026
 
+
+   *  t is the transfer identifier: 16 lowercase hexadecimal digits,
+      chosen fresh by the sender for each datagram it sends under this
+      carriage.
+
+   *  i and n are the 0-based index of this part and the total number of
+      parts, in decimal.  An unsegmented datagram is part 0 of 1.
 
    *  b is the total length of the datagram in octets, in decimal.  The
       field publishes the datagram's exact length, which is consistent
@@ -470,6 +477,65 @@ Internet-Draft              Homing Pigeon v3               November 2026
    datagram is whole, and authenticates the datagram afterwards, by
    DTLS.
 
+   The frame rides as its own part, and not as text in the message's
+   text part, precisely so that what intermediate agents do to text
+   cannot reach it: a mail gateway that appends a disclaimer or a banner
+   to the text part -- the routine rewriting of real mail paths -- does
+   not touch the flight.  This is the dedicated-part practice [RFC8551]
+   records for the same reason.  Text outside the part is not the frame
+   and MUST be ignored for framing.
+
+   The part is a leaf part: a direct part of the message's multipart
+   structure, not the content of a message/rfc822 part.  A sender MUST
+   NOT wrap it in one.  A receiver finds the frame part by its content
+   type wherever it sits in the part tree, and the wrapped shape is read
+   where it is met -- but an intermediary that treats a message/rfc822
+   container as an opaque attachment can drop the flight with the
+   container, and a sender has no reason to hand it the chance: the
+   serialization this document pins is the leaf.
+
+
+
+
+
+
+
+
+Slutsky                    Expires 6 May 2027                   [Page 9]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
+
+   The header line is the part's 1st line.  Base64 folding at 76 columns
+   inside the part is accepted: the chunk is read with its whitespace
+   removed.  Quoted-printable MUST NOT be used for the part and MUST NOT
+   be accepted for it: a part whose transfer encoding is not base64
+   carries no frame.
+
+   A message with no application/hp-dtls3 part is read in the naked
+   shape this carriage began with: the frame as the 1st text/plain
+   part's text, as a job body under version 1 is read, with no preamble
+   and no trailer.  When a typed part is present it is the only frame
+   source: a frame-shaped text part does not rescue a typed part that
+   does not frame, and a part that does not frame is malformed flight
+   mail (Section 8.3).
+
+   The naked shape is read for senders that never used the typed part: a
+   local harness, and senders that predate the part.  It is not a 2nd
+   copy of the frame.  A sender that uses the typed part places the
+   frame there and nowhere else; its text part carries at most a note
+   for a human, and MUST NOT carry the frame.  A receiver cannot tell
+   that a typed part was removed on the way.  It applies the rule it can
+   check: no typed part means the naked shape, and a naked body that
+   does not frame is malformed flight mail (Section 8.3).  A conforming
+   sender's text does not frame, so an intermediary that removes the
+   typed part ends that flight.  The flight is repaired, if at all, by
+   the DTLS retransmission of Section 7.1 as a new flight mail, never by
+   a reading of the text part.  An intermediary that drops the typed
+   part from every flight ends every attempt through it: this carriage
+   does not pass such an intermediary, and says so rather than
+   pretending the text part is a fallback.
+
 5.3.  Size gates
 
    A flight mail is subject to the version 1 size cap for mail on this
@@ -485,6 +551,17 @@ Internet-Draft              Homing Pigeon v3               November 2026
    does not know the receiver's limits SHOULD keep a datagram within the
    reference limit.  A part count MUST NOT exceed 1024.
 
+
+
+
+
+
+
+Slutsky                    Expires 6 May 2027                  [Page 10]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
+
 6.  Segmentation and Reassembly
 
    A sender segments a datagram when its base64 form exceeds 1 chunk.
@@ -498,13 +575,6 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
    *  Parts MAY arrive in any order.  Duplicate parts are idempotent:
       the same index with the same chunk changes nothing.
-
-
-
-Slutsky                    Expires 6 May 2027                   [Page 9]
-
-Internet-Draft              Homing Pigeon v3               November 2026
-
 
    *  A part that contradicts its transfer -- a different chunk for an
       index already held, or different header fields for the transfer --
@@ -534,6 +604,20 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
 7.  Retransmission, Duplicates, and Ordering
 
+
+
+
+
+
+
+
+
+
+Slutsky                    Expires 6 May 2027                  [Page 11]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
+
 7.1.  Retransmission is DTLS's
 
    The carriage defines no acknowledgement and no retransmission timer
@@ -554,14 +638,6 @@ Internet-Draft              Homing Pigeon v3               November 2026
    concretely, the initial retransmission interval SHOULD be at least 2
    of the implementation's mailbox poll periods, and an attempt SHOULD
    be given up after about 8 retransmissions -- that give-up is the
-
-
-
-Slutsky                    Expires 6 May 2027                  [Page 10]
-
-Internet-Draft              Homing Pigeon v3               November 2026
-
-
    attempt deadline of Section 9.4.  [RFC9147] Section 5.8.2 permits a
    profile to recommend longer timer values than its defaults; this
    paragraph is that recommendation for a store-and-forward path.
@@ -590,9 +666,34 @@ Internet-Draft              Homing Pigeon v3               November 2026
       nothing is derived twice -- and the receiver instead re-posts its
       saved last outbound flight, under a new transfer identifier: the
       duplicate is the signal that the answer was lost ([RFC9147]
-      Section 5.8.1).  A digest hit on application data is dropped and
+
+
+
+Slutsky                    Expires 6 May 2027                  [Page 12]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
+
+      Section 5.8.1).  The re-post is budgeted, because on this carriage
+      it costs an outbound mail that an unauthenticated sender can
+      provoke with a captured hello: a receiver MUST re-post a saved
+      flight at most once per generation of that flight.  A digest hit
+      spends the 1 re-post the saved flight carries; only a new flight
+      from the DTLS stack -- a new answer, or the stack's own
+      retransmission on its timer -- arms another; further bit-identical
+      copies of a handshake-phase datagram are dropped.  A thousand
+      copies of 1 ClientHello therefore cost the responder at most 1
+      HelloRetryRequest mail beyond the 1 it already sent
+      (Section 16.4).  A digest hit on application data is dropped and
       does nothing.  A replayed mail is therefore not a new record at
-      either layer, and a lost flight is still repaired.
+      either layer, and a lost flight is still repaired.  A
+      retransmission under [RFC9147] Section 5.2 is not this case.  It
+      is a new record, with a new record sequence number, carrying the
+      same handshake message, so it is not bit-identical to the datagram
+      already accepted.  It misses this cache, enters the stack, and is
+      answered by the stack.  The budget does not limit it, and if the
+      single re-post was itself lost, that retransmission is what
+      repairs the attempt.
 
    *  DTLS layer: records are protected and sequenced by the record
       layer as [RFC9147] specifies; a record that does not authenticate
@@ -607,17 +708,6 @@ Internet-Draft              Homing Pigeon v3               November 2026
    deliver an application message twice, and MUST NOT cause a job to run
    twice.  A duplicate part MUST NOT complete a transfer twice.
 
-
-
-
-
-
-
-Slutsky                    Expires 6 May 2027                  [Page 11]
-
-Internet-Draft              Homing Pigeon v3               November 2026
-
-
 7.3.  Ordering
 
    No ordering is assumed anywhere in this carriage.  Flight mails of 1
@@ -630,6 +720,16 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
 8.  The Mailbox Parser: Lane Dispatch and Recognition
 
+
+
+
+
+
+Slutsky                    Expires 6 May 2027                  [Page 13]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
+
 8.1.  Dispatch order
 
    On a runner that has enabled this carriage, the mailbox parser
@@ -637,9 +737,11 @@ Internet-Draft              Homing Pigeon v3               November 2026
    anywhere.  The classification is by subject grammar and body shape,
    in this order:
 
-   1.  A message whose subject matches the flight subject, or the
-       unaddressed harness subject, is DTLS input.  It goes to the
-       carriage, and to nothing else.
+   1.  A message whose subject matches the flight subject is DTLS input.
+       It goes to the carriage, and to nothing else.  The unaddressed
+       harness subject is not this case on a deployment mailbox: it is
+       malformed flight mail (Section 5.1) and is not fed to a DTLS
+       stack.
 
    2.  A message whose subject is a version 1 job subject is a job for
        the acceptance gate, as before.
@@ -655,21 +757,31 @@ Internet-Draft              Homing Pigeon v3               November 2026
 8.2.  Recognizing the initialization flight
 
    A complete datagram is an initialization flight when its 1st record
-   is a plaintext handshake record whose handshake message is a
-   ClientHello -- including a fragmented ClientHello whose message type
-   is ClientHello.  A complete datagram that parses as DTLS records but
-   is not an initialization is a session datagram.  The recognition is
-   of the DTLS bytes, not of the subject: the subject routes a message
-   to the carriage, and the bytes decide what the carriage does with it.
+   is a plaintext handshake record whose handshake message is one
+   complete ClientHello.  A fragmented or incomplete first handshake
+   message is not an initialization.  It is malformed flight mail:
+   consumed, dropped, not answered, and allocated no reassembly state.
+   The profile's ClientHello is one message, and this carriage does not
+   reassemble handshake fragments before a cookie has validated.  A
+   complete datagram that parses as DTLS records but is not an
+   initialization is a session datagram.  The recognition is of the DTLS
+   bytes, not of the subject: the subject routes a message to the
+   carriage, and the bytes decide what the carriage does with it.
 
    An initialization flight is answered as version 1's profile answers
    it: statelessly, with a HelloRetryRequest, before any session state
-   exists.
+   exists.  A first flight that is not a complete ClientHello draws no
+   HelloRetryRequest.
 
 
 
 
-Slutsky                    Expires 6 May 2027                  [Page 12]
+
+
+
+
+
+Slutsky                    Expires 6 May 2027                  [Page 14]
 
 Internet-Draft              Homing Pigeon v3               November 2026
 
@@ -725,7 +837,7 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
 
 
-Slutsky                    Expires 6 May 2027                  [Page 13]
+Slutsky                    Expires 6 May 2027                  [Page 15]
 
 Internet-Draft              Homing Pigeon v3               November 2026
 
@@ -756,10 +868,10 @@ Internet-Draft              Homing Pigeon v3               November 2026
    cookie key is a secret of the responder, generated by the responder
    and not derived from the address or from anything the message
    asserts, so binding the cookie to an attacker-chosen label is safe
-   exactly while that key stays secret.  The PSK identity inside the
-   handshake selects the shared secret, including any additional secret,
-   exactly as version 1 specifies; the mail session-id never selects a
-   key.
+   exactly while that key stays secret.  The key's lifetime is the
+   matter of Section 9.4.  The PSK identity inside the handshake selects
+   the shared secret, including any additional secret, exactly as
+   version 1 specifies; the mail session-id never selects a key.
 
    When a session establishes, the carriage binds the mail session-id to
    the session's connection ID.  From then on:
@@ -781,7 +893,7 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
 
 
-Slutsky                    Expires 6 May 2027                  [Page 14]
+Slutsky                    Expires 6 May 2027                  [Page 16]
 
 Internet-Draft              Homing Pigeon v3               November 2026
 
@@ -789,13 +901,13 @@ Internet-Draft              Homing Pigeon v3               November 2026
 9.3.  Resumption
 
    Resumption over this carriage follows the profile: tickets MAY be
-   issued and, on this carriage, MUST be single-use -- a ticket is
-   stored mail like any other flight, in the same archive as the
-   transcript, and a replayed ticket must not become a second long-lived
-   secret.  (Version 1's SHOULD for the datagram binding is unchanged.)
-   A resumed handshake is a full handshake in everything that matters
-   here -- a fresh mail session-id, a fresh ephemeral share, psk_dhe_ke
-   only, and a fresh platform disclosure (Section 11).  A deployment MAY
+   issued and, on this carriage, MUST be single-use.  A ticket is stored
+   mail like any other flight, in the same archive as the transcript,
+   and a replayed ticket MUST NOT become a second long-lived secret.
+   (Version 1's SHOULD for the datagram binding is unchanged.)  A
+   resumed handshake is a full handshake in everything that matters here
+   -- a fresh mail session-id, a fresh ephemeral share, psk_dhe_ke only,
+   and a fresh platform disclosure (Section 11).  A deployment MAY
    disable resumption on this carriage by configuration; doing so
    changes no message, only how often full handshakes happen.
 
@@ -808,6 +920,39 @@ Internet-Draft              Homing Pigeon v3               November 2026
    mail session-id binding) expires with the bounds of Sections 6 and
    7.2.  A failed attempt leaves the ordinary email binding untouched
    and has no effect on any other attempt.
+
+   The cookie key of Section 9.2 has a lifetime this path tests and the
+   datagram path never did.  On the datagram binding a HelloRetryRequest
+   is answered within a round trip, inside 1 process lifetime of the
+   responder.  On this carriage it is answered on a later poll -- an
+   hour later on a slow poller -- which may be after the responder's
+   process has restarted.  A responder SHOULD keep its cookie key across
+   its own restarts for at least the attempt deadline, kept as the
+   shared secret is kept: in the responder's own state, never in a
+   flight, and never derived from the address or from anything a message
+   asserts (Section 9.2).  The reference implementation keeps it beside
+   the mailbox's own state, readable by its owner only.  A responder
+   whose cookie key does not survive a restart abandons every attempt in
+   flight at that restart: the cookied ClientHello fails the cookie
+   check and is ignored, each retransmission of it fails the same way,
+   and the initiator abandons the attempt when its retransmission gives
+   up.  Recovery is a fresh attempt under a new mail session-id, never a
+   repair of the old one.  Established sessions do not survive a restart
+   of either end on any binding -- their keys are erased with the
+   process, as Section 16.1 requires -- and a result held for such a
+   session follows Section 10.3.
+
+
+
+
+
+
+
+
+Slutsky                    Expires 6 May 2027                  [Page 17]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
 
 9.5.  Session end
 
@@ -831,17 +976,6 @@ Internet-Draft              Homing Pigeon v3               November 2026
    channel envelope uses.  A job travels as the envelope of its job
    object.  A result travels as the envelope of its result object.
 
-
-
-
-
-
-
-Slutsky                    Expires 6 May 2027                  [Page 15]
-
-Internet-Draft              Homing Pigeon v3               November 2026
-
-
    On the runner, a completed application message is converted back into
    that ordinary envelope and delivered to the runner core through the
    same channel an ordinary mail job crosses.  The core cannot tell, and
@@ -864,6 +998,18 @@ Internet-Draft              Homing Pigeon v3               November 2026
    -- staleness, key policy, and the rest of version 1 Section 14's
    checks -- as any other job.
 
+
+
+
+
+
+
+
+Slutsky                    Expires 6 May 2027                  [Page 18]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
+
    The session authenticates the channel; the signature authenticates
    the object.  Neither stands in for the other, and the version 1 rule
    stands verbatim on this carriage: a cleartext object inside a session
@@ -871,32 +1017,60 @@ Internet-Draft              Homing Pigeon v3               November 2026
    acceptance, because the session's confidentiality is not the object's
    provenance.
 
+   The 2 keys are checked independently.  The PSK identity that opened
+   the session and the key id that signed a job inside it need not name
+   the same key: the gate reads the job's own key id and applies that
+   key's policy, and the session's key confers nothing on the job and
+   takes nothing from it.  A job signed under 1 key MAY be carried by a
+   session opened under another, exactly as a signed job may be carried
+   by any mailbox.  An implementation MUST NOT admit, widen, or narrow a
+   job on the strength of the PSK identity of the session that carried
+   it: the session does not authorize the job, and the job does not
+   authorize the session.  (The session's key does decide 1 thing, which
+   is not admission: where the job's result may go, Section 10.3.)
+
 10.3.  Results are session-bound
 
    A result for a job that arrived inside a session is sent inside that
-   session, sealed as application data.  If the session no longer exists
-   when the result is ready, the result waits: it is held for a fresh
-   session from the same submitter, and it is identified for that
-   session by the session's connection ID and its job ident together --
-   never by the job ident alone, which the submitter chooses and which
-   collides across submitters.  It MUST NOT be sent as an ordinary mail
-   result, and it MUST NOT be sent inside a different job's session as
-   if it were that job's.  Section 12 states the general rule this
-   follows from.
+   session, sealed as application data.  The carriage remembers, for
+   each job it delivered from a session, the session's connection ID and
+   the job ident together, and the PSK identity the session
+   authenticated under -- never the job ident alone, which the submitter
+   chooses and which collides across submitters.  The hold is kept as
+   the result is kept, in the responder's own state and across a restart
+   of the process.  A hold that died with the process would send the
+   result by the ordinary path on the next pass, which Section 12
+   forbids.  If that session no longer exists when the result is ready,
+   the result waits, and it can still leave on this carriage in exactly
+   1 way: inside a later session that authenticated under the same PSK
+   identity and that carries the same job ident again.  The acceptance
+   gate refuses the repeated job as a replay (Section 13); the held
+   result is what answers it.  A job whose ident is held for another PSK
+   identity's job is not delivered: it is logged and dropped, because
+   the hold belongs to the submitter whose job it was, and delivering it
+   would put that submitter's result, or that submitter's job file, in
+   the wrong hands.  A held result MUST NOT be sent as an ordinary mail
+   result, MUST NOT be sent inside a session under a different PSK
+   identity, and MUST NOT be sent inside a different job's session as if
+   it were that job's.  Section 12 states the general rule this follows
+   from.
+
+   The PSK identity distinguishes submitters only as finely as the key
+   directory.  Two peers that authenticate with the same secret are the
+   same identity, and a later session of that identity which carries the
 
 
 
-
-
-
-
-
-
-
-Slutsky                    Expires 6 May 2027                  [Page 16]
+Slutsky                    Expires 6 May 2027                  [Page 19]
 
 Internet-Draft              Homing Pigeon v3               November 2026
 
+
+   job ident again is a legitimate destination for the held result.
+   Distinct submitters are distinct keys, which version 1's additional
+   secrets already are.  This carriage does not invent a finer name for
+   a submitter, and a mail session-id is not one: the initiator chooses
+   it, and a resumption uses a fresh one (Section 9.3).
 
    The hold is bounded, as the hold of any state on this carriage is
    bounded.  A held result expires by age -- the reference
@@ -940,19 +1114,17 @@ Internet-Draft              Homing Pigeon v3               November 2026
    ClientHello is not enough to extract a platform card.  The accepted
    cost of version 1 Section 20 stands on this carriage too: the
    disclosure is made a half-step earlier than a post-handshake
-   mechanism would make it, before the responder has verified the
-   initiator's Finished.  Version 1's security considerations argue the
-   point; this document adopts the argument.
 
 
 
-
-
-
-Slutsky                    Expires 6 May 2027                  [Page 17]
+Slutsky                    Expires 6 May 2027                  [Page 20]
 
 Internet-Draft              Homing Pigeon v3               November 2026
 
+
+   mechanism would make it, before the responder has verified the
+   initiator's Finished.  Version 1's security considerations argue the
+   point; this document adopts the argument.
 
 12.  No-Downgrade Rules
 
@@ -994,22 +1166,23 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
    *  A replayed flight mail meets the mail layer's rule, split by phase
       (Section 7.2): a handshake-phase replay re-posts the saved flight
-      without re-entering the stack, and an application-data replay is
-      dropped before it.  A replayed initialization therefore cannot
+      without re-entering the stack -- once per generation of that
+      flight, and then it is dropped -- and an application-data replay
+      is dropped before it.  A replayed initialization therefore cannot
       create a duplicate session: at worst, a replay that evades the
+
+
+
+Slutsky                    Expires 6 May 2027                  [Page 21]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
+
       cache meets the cookie exchange and the handshake state machine,
       which answer a retransmitted ClientHello with the flight it
       already produced and derive nothing twice.  Early data has no
       layer here at all: a ClientHello carrying early data is rejected
       as a malformed flight (Section 4.1), and this profile derives no
-
-
-
-Slutsky                    Expires 6 May 2027                  [Page 18]
-
-Internet-Draft              Homing Pigeon v3               November 2026
-
-
       epoch-1 keys for a replay to use.  [RFC8446] is the reason the
       rule is a rejection and not a quiet skip: 0-RTT data is not
       forward secret, is replayable between connections, and an
@@ -1056,12 +1229,7 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
 
 
-
-
-
-
-
-Slutsky                    Expires 6 May 2027                  [Page 19]
+Slutsky                    Expires 6 May 2027                  [Page 22]
 
 Internet-Draft              Homing Pigeon v3               November 2026
 
@@ -1086,10 +1254,10 @@ Internet-Draft              Homing Pigeon v3               November 2026
    port 20220 remains version 1's local default for the datagram binding
    and is not used by this carriage.
 
-   The carriage's MIME content type (Section 5.2) is a private-use type
-   in a local draft; this document requests no media type registration
-   for it.  A future standards-track revision is where such a request
-   would belong.
+   The carriage's MIME content type (Section 5.2) is an unregistered
+   name in the standards tree, used by a local draft; this document
+   requests no media type registration for it.  A future standards-track
+   revision is where such a request would belong.
 
    As a local, unsubmitted draft, this document could not ground an
    assignment in any case: nothing in it is to be read as requesting
@@ -1117,7 +1285,7 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
 
 
-Slutsky                    Expires 6 May 2027                  [Page 20]
+Slutsky                    Expires 6 May 2027                  [Page 23]
 
 Internet-Draft              Homing Pigeon v3               November 2026
 
@@ -1173,7 +1341,7 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
 
 
-Slutsky                    Expires 6 May 2027                  [Page 21]
+Slutsky                    Expires 6 May 2027                  [Page 24]
 
 Internet-Draft              Homing Pigeon v3               November 2026
 
@@ -1194,14 +1362,58 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
    Everything a receiver does before a binder verifies is a resource an
    unauthenticated sender can spend, so the pre-authentication surface
-   is bounded at each step: the mail size cap applies before decoding
-   (Section 5.3); reassembly holds bounded count, size, and age, and a
-   contradiction destroys a transfer rather than arbitrating it
-   (Section 6); the digest cache is bounded (Section 7.2); the cookie
-   exchange keeps the responder stateless until a cookie validates
-   (Section 4.1); and a malformed flight is consumed in 1 pass, not re-
-   offered on every poll (Section 8.3).  The platform disclosure's cost
-   -- disclosure before the initiator's Finished is verified -- is
+   is bounded at each step, and each action such a sender can cause is
+   listed here with the number that bounds it:
+
+   *  A fresh ClientHello costs the responder 1 HelloRetryRequest mail
+      and no session state: the cookie exchange keeps the responder
+      stateless until a cookie validates (Section 4.1).  That is 1 small
+      mail out for 1 mail in -- the price of a stateless responder on
+      any binding, with no amplification.
+
+   *  A bit-identical copy of a handshake-phase flight costs at most 1
+      re-post of the saved flight per generation of that flight
+      (Section 7.2), so a captured hello is worth at most 1 extra
+      outbound mail and never a mail per copy.
+
+   *  A flight mail is refused above the mail size cap before any
+      decoding (Section 5.3).
+
+   *  A reassembly slot is 1 of at most 64, bounded in total size, and
+      held at most 3600 seconds from its first part and from its last; a
+      contradiction destroys the transfer rather than arbitrating it
+      (Section 6).
+
+   *  A digest-cache entry is 1 of 4096, first in first out
+      (Section 7.2).
+
+   *  A saved outbound flight is 1 of 4096, first in first out, the same
+      bound as the digest cache.  Evicting one drops only the spare re-
+      post for that peer.  A retransmission is a new record and is
+      answered by the stack without the saved flight (Section 7.2).
+
+
+
+
+
+
+Slutsky                    Expires 6 May 2027                  [Page 25]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
+
+   *  A malformed flight is consumed in 1 pass and 1 log line, not re-
+      offered on every poll (Section 8.3).  A fragmented or incomplete
+      first handshake message is this case: it draws no
+      HelloRetryRequest and no reassembly state (Section 8.2).
+
+   *  The unaddressed harness subject, on a deployment mailbox, is this
+      case too: consumed, not fed to a DTLS stack, and worth no answer
+      (Section 5.1).
+
+   An action an unauthenticated sender can cause that has no number in
+   this list is a defect in this document.  The platform disclosure's
+   cost -- disclosure before the initiator's Finished is verified -- is
    inherited from version 1 Section 20 and bounded by its tiers; a
    responder that discloses at the none or family tier spends little on
    an unauthenticated peer, and the choice of tier is the responder's.
@@ -1226,20 +1438,30 @@ Internet-Draft              Homing Pigeon v3               November 2026
    additional secrets and key policies distinguish them).  The
    acceptance gate -- signature, audience, caps, key policy, seen-set --
    is what decides whether a job runs, whose it is, and whether it has
-
-
-
-Slutsky                    Expires 6 May 2027                  [Page 22]
-
-Internet-Draft              Homing Pigeon v3               November 2026
-
-
    run before.  Carrying a job inside a session changes the
    confidentiality and integrity of its transport and adds forward
    secrecy; it changes its admission not at all.  Any future extension
    of this carriage that proposes to admit a job on the session's
    authority alone is proposing to remove the gate, and should be
    reviewed as such.
+
+   The constraint that narrows what a session may cause is the key
+   policy of the key that signs the job, which is version 1's and is
+   unchanged here.  A deployment that wants one key to run only a pinned
+   script states that on the key: the kinds it may name, the
+   interpreters it may name, and the digest of the script it may carry.
+
+
+
+Slutsky                    Expires 6 May 2027                  [Page 26]
+
+Internet-Draft              Homing Pigeon v3               November 2026
+
+
+   The session does not widen that policy, and the policy does not
+   depend on this carriage.  A holder of a different key, or of only the
+   traffic keys of the session, does not inherit it.  The gate reads the
+   job's own key and applies that key's policy (Section 10.2).
 
 17.  References
 
@@ -1285,7 +1507,9 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
 
 
-Slutsky                    Expires 6 May 2027                  [Page 23]
+
+
+Slutsky                    Expires 6 May 2027                  [Page 27]
 
 Internet-Draft              Homing Pigeon v3               November 2026
 
@@ -1341,4 +1565,4 @@ Author's Address
 
 
 
-Slutsky                    Expires 6 May 2027                  [Page 24]
+Slutsky                    Expires 6 May 2027                  [Page 28]

@@ -301,7 +301,7 @@ when, they appear in all capitals, as shown here.
 
 The terms of version 1 apply: the runner, the submitter, the
 shared secret, the job object, the result object, the
-acceptance gate, and the platform card. This document adds:
+acceptance gate, and the platform disclosure. This document adds:
 
 flight mail:
 : 1 email message carrying all or part of exactly 1 DTLS
@@ -333,11 +333,12 @@ particular:
 
 * DTLS 1.3 {{RFC9147}} is the session protocol. The 1 cipher
   suite is TLS_AES_256_GCM_SHA384.
-* The pre-shared key is the shared secret of version 1 -- the
-  "SS" of this version's name for the work, DTLS via email
-  using SS. The handshake key is the one version 1 already
-  defines; there is no second secret and no new key material
-  in this document.
+* The pre-shared key is the shared secret of version 1. The
+  shared secret is an authenticator and only an
+  authenticator; it is never the session key, which is
+  derived from the ephemeral exchange of every handshake.
+  There is no second secret and no new key material in
+  this document.
 * Only the `psk_dhe_ke` key exchange mode is used. `psk_ke`
   MUST NOT be offered, accepted, or fallen back to, in a full
   handshake or in resumption. Every handshake, full or resumed,
@@ -354,6 +355,18 @@ particular:
   ClientHello and, when offered, MAY be answered in
   EncryptedExtensions only, exactly as version 1 Section 20
   states (Section 11 of this document).
+
+Certificates are not part of this profile, in either
+direction: version 1 Section 19 says so of the profile, and
+the profile applies here without modification, so the
+exclusion covers this carriage as it covers the datagram
+binding. Nothing in this document adds a certificate path
+or any other authentication mechanism; the shared secret is
+the only credential the handshake knows, on this carriage
+as on the other. A ClientHello that offers no
+pre_shared_key extension is refused before any key is
+derived: there is no other credential for it to fall back
+to.
 
 The UDP port 20220 of version 1 is a local default of the
 datagram binding. This carriage has no port: its addresses are
@@ -423,9 +436,9 @@ session-id-char = ALPHA / DIGIT / "." / "_" / "-"
 ~~~
 
 The session-id alphabet is stated here in full and does not
-inherit version 1's `word-char`: it is the alphabet a mail
-header field can carry ({{RFC5322}}, Section 2.2) and a
-filesystem can name, and a future widening of version 1's
+inherit version 1's `word-char`: it is an alphabet safe in
+a mail header field ({{RFC5322}}, Section 2.2) and as a
+filesystem name, and a future widening of version 1's
 production MUST NOT widen it.
 
 The mail session-id is chosen by the initiator, 1 per session
@@ -438,6 +451,14 @@ reply prefix to its subject. A receiver MAY accept at most 1
 leading "Re:" or "Fwd:" (case-insensitive), and only when the
 remainder is exactly a flight subject. A chain of prefixes,
 or any other text before the marker, is not a flight subject.
+
+The prefixes are mail user agent convention, not subject
+syntax: the Subject field is unstructured, and {{RFC5322}}
+Section 3.6.5 describes "Re:" as something a reply's field
+body may start with. The acceptance rule here is this
+carriage's own, stated so a receiver's tolerance is a
+decision of this document and not a claim about the message
+format.
 
 Subjects route; they never authenticate. A receiver MUST NOT
 treat a flight subject, a mail session-id, or any mail header
@@ -460,9 +481,9 @@ and worth no answer.
 
 The frame of a flight mail is carried in a dedicated MIME
 part of the message, whose content type is
-`application/hp-dtls3` -- a private type: this document is
-local and requests no media type registration for it
-(Section 15). The part's content, under
+`application/hp-dtls3` -- a name in the standards tree that
+no registration backs: this document is local and requests
+no media type registration for it (Section 15). The part's content, under
 Content-Transfer-Encoding base64, is 1 header line, 1 line
 break, and 1 base64 chunk:
 
@@ -506,6 +527,16 @@ routine rewriting of real mail paths -- does not touch the
 flight. This is the dedicated-part practice {{RFC8551}}
 records for the same reason. Text outside the part is not
 the frame and MUST be ignored for framing.
+
+The part is a leaf part: a direct part of the message's
+multipart structure, not the content of a message/rfc822
+part. A sender MUST NOT wrap it in one. A receiver finds
+the frame part by its content type wherever it sits in the
+part tree, and the wrapped shape is read where it is met --
+but an intermediary that treats a message/rfc822 container
+as an opaque attachment can drop the flight with the
+container, and a sender has no reason to hand it the
+chance: the serialization this document pins is the leaf.
 
 The header line is the part's 1st line. Base64 folding at
 76 columns inside the part is accepted: the chunk is read
@@ -1156,10 +1187,11 @@ name, a media type, or an OID. The DTLS reference port 20220
 remains version 1's local default for the datagram binding and
 is not used by this carriage.
 
-The carriage's MIME content type (Section 5.2) is a
-private-use type in a local draft; this document requests no
-media type registration for it. A future standards-track
-revision is where such a request would belong.
+The carriage's MIME content type (Section 5.2) is an
+unregistered name in the standards tree, used by a local
+draft; this document requests no media type registration
+for it. A future standards-track revision is where such a
+request would belong.
 
 As a local, unsubmitted draft, this document could not ground
 an assignment in any case: nothing in it is to be read as
@@ -1255,8 +1287,8 @@ each action such a sender can cause is listed here with the
 number that bounds it:
 
 * A fresh ClientHello costs the responder 1 HelloRetryRequest
-  mail and no state: the cookie exchange keeps the responder
-  stateless until a cookie validates (Section 4.1). That is
+  mail and no session state: the cookie exchange keeps the
+  responder stateless until a cookie validates (Section 4.1). That is
   1 small mail out for 1 mail in -- the price of a stateless
   responder on any binding, with no amplification.
 * A bit-identical copy of a handshake-phase flight costs at

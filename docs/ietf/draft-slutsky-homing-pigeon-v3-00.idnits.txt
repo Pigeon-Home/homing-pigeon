@@ -1,0 +1,80 @@
+# idnits 3.3.0 (library run, offline: the RFC status lookups cannot leave this host, so the
+# downref and status lines are noise, as in the -00 runs). 2026-11-03T05:52:22Z
+
+$ idnits --offline --no-progress --no-color -o simple draft-slutsky-homing-pigeon-v3-00.txt
+FAIL - Document /home/hatch/workspace/hp-v3final/docs/ietf/draft-slutsky-homing-pigeon-v3-00.txt has nits. (mode: normal)
+
+[1] Error | INVALID_ABSTRACT_SECTION_REF | The abstract section should not contain references to sections or appendices. | Ln 41 Col 4, Ln 46 Col 5
+[2] Error | INVALID_ABSTRACT_SECTION_ID_REF | The abstract section should not contain references to Internet-Drafts. | Ln 18 Col 4
+[3] Warning | NORMATIVE_REFERENCE_TO_DRAFT | Normative reference to the Internet-Draft draft-slutsky-homing-pigeon-03. A document is not published as an RFC before the drafts it references normatively. | Ln 1474 Col 54
+[4] Error | OBSOLETE_REFERENCE | RFC 8446 is obsolete and has been replaced by: RFC9846. | Ln 1497 Col 4
+[5] Warning | REFERENCE_MISSING_IN_REFERENCE_SECTION | Document has [HOMING-PIGEON] but does not occur in any reference section.
+
+$ idnits --offline --no-progress --no-color -o simple draft-slutsky-homing-pigeon-v3-00.xml
+FAIL - Document /home/hatch/workspace/hp-v3final/docs/ietf/draft-slutsky-homing-pigeon-v3-00.xml has nits. (mode: normal)
+
+[1] Error | INVALID_ABSTRACT_SECTION_REF | The abstract section should not contain references. | Abstract, paragraph 1 (rfc.front.abstract.t[0].xref) | Ln 32 Col 1
+[2] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MAY" should be enclosed in <bcp14></bcp14> tags. | Section 1 (Introduction), paragraph 5 (rfc.middle.section[0].t[4].#text) | Ln 117 Col 7
+[3] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 4.1 (The profile is version 1's, unchanged), list item 3, paragraph 1 (rfc.middle.section[3].section[0].ul.li[2].t.#text) | Ln 200 Col 13
+[4] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST" should be enclosed in <bcp14></bcp14> tags. | Section 4.1 (The profile is version 1's, unchanged), list item 6, paragraph 1 (rfc.middle.section[3].section[0].ul.li[5].t) | Ln 215 Col 13
+[5] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MAY" should be enclosed in <bcp14></bcp14> tags. | Section 4.1 (The profile is version 1's, unchanged), list item 7, paragraph 1 (rfc.middle.section[3].section[0].ul.li[6].t) | Ln 220 Col 13
+[6] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 4.2 (What the carriage changes, and what it does not), paragraph 2 (rfc.middle.section[3].section[1].t[1]) | Ln 250 Col 9
+[7] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MAY" should be enclosed in <bcp14></bcp14> tags. | Section 4.3 (Enablement), paragraph 3 (rfc.middle.section[3].section[2].t[2]) | Ln 271 Col 9
+[8] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.1 (The flight subject), paragraph 3 (rfc.middle.section[4].section[0].t[2].#text) | Ln 298 Col 9
+[9] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MAY" should be enclosed in <bcp14></bcp14> tags. | Section 5.1 (The flight subject), paragraph 5 (rfc.middle.section[4].section[0].t[4]) | Ln 307 Col 9
+[10] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.1 (The flight subject), paragraph 7 (rfc.middle.section[4].section[0].t[6].#text) | Ln 319 Col 9
+[11] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MAY" should be enclosed in <bcp14></bcp14> tags. | Section 5.1 (The flight subject), paragraph 8 (rfc.middle.section[4].section[0].t[7].#text) | Ln 325 Col 9
+[12] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.1 (The flight subject), paragraph 8 (rfc.middle.section[4].section[0].t[7].#text) | Ln 325 Col 9
+[13] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.1 (The flight subject), paragraph 8 (rfc.middle.section[4].section[0].t[7].#text) | Ln 325 Col 9
+[14] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.2 (The flight frame), paragraph 3 (rfc.middle.section[4].section[1].t[2]) | Ln 379 Col 9
+[15] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST" should be enclosed in <bcp14></bcp14> tags. | Section 5.2 (The flight frame), paragraph 4 (rfc.middle.section[4].section[1].t[3].#text) | Ln 384 Col 9
+[16] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.2 (The flight frame), paragraph 5 (rfc.middle.section[4].section[1].t[4]) | Ln 392 Col 9
+[17] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.2 (The flight frame), paragraph 6 (rfc.middle.section[4].section[1].t[5]) | Ln 401 Col 9
+[18] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.2 (The flight frame), paragraph 6 (rfc.middle.section[4].section[1].t[5]) | Ln 401 Col 9
+[19] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.2 (The flight frame), paragraph 8 (rfc.middle.section[4].section[1].t[7]) | Ln 414 Col 9
+[20] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST" should be enclosed in <bcp14></bcp14> tags. | Section 5.3 (Size gates), paragraph 1 (rfc.middle.section[4].section[2].t[0]) | Ln 434 Col 9
+[21] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.3 (Size gates), paragraph 2 (rfc.middle.section[4].section[2].t[1]) | Ln 439 Col 9
+[22] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "SHOULD" should be enclosed in <bcp14></bcp14> tags. | Section 5.3 (Size gates), paragraph 2 (rfc.middle.section[4].section[2].t[1]) | Ln 439 Col 9
+[23] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 5.3 (Size gates), paragraph 2 (rfc.middle.section[4].section[2].t[1]) | Ln 439 Col 9
+[24] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 6 (Segmentation and Reassembly), paragraph 1 (rfc.middle.section[5].t[0]) | Ln 451 Col 7
+[25] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 6 (Segmentation and Reassembly), paragraph 1 (rfc.middle.section[5].t[0]) | Ln 451 Col 7
+[26] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MAY" should be enclosed in <bcp14></bcp14> tags. | Section 6 (Segmentation and Reassembly), list item 1, paragraph 1 (rfc.middle.section[5].ul.li[0].t) | Ln 461 Col 11
+[27] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "SHOULD NOT" should be enclosed in <bcp14></bcp14> tags. | Section 7.1 (Retransmission is DTLS's), paragraph 1 (rfc.middle.section[6].section[0].t[0].#text) | Ln 501 Col 9
+[28] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "SHOULD" should be enclosed in <bcp14></bcp14> tags. | Section 7.1 (Retransmission is DTLS's), paragraph 2 (rfc.middle.section[6].section[0].t[1].#text) | Ln 514 Col 9
+[29] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "SHOULD" should be enclosed in <bcp14></bcp14> tags. | Section 7.1 (Retransmission is DTLS's), paragraph 2 (rfc.middle.section[6].section[0].t[1].#text) | Ln 514 Col 9
+[30] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "SHOULD" should be enclosed in <bcp14></bcp14> tags. | Section 7.1 (Retransmission is DTLS's), paragraph 2 (rfc.middle.section[6].section[0].t[1].#text) | Ln 514 Col 9
+[31] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 7.2 (Duplicates, at each layer), paragraph 2 (rfc.middle.section[6].section[1].t[1]) | Ln 589 Col 9
+[32] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 7.2 (Duplicates, at each layer), paragraph 2 (rfc.middle.section[6].section[1].t[1]) | Ln 589 Col 9
+[33] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 7.2 (Duplicates, at each layer), paragraph 2 (rfc.middle.section[6].section[1].t[1]) | Ln 589 Col 9
+[34] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 7.2 (Duplicates, at each layer), paragraph 2 (rfc.middle.section[6].section[1].t[1]) | Ln 589 Col 9
+[35] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST" should be enclosed in <bcp14></bcp14> tags. | Section 7.2 (Duplicates, at each layer), list item 1, paragraph 1 (rfc.middle.section[6].section[1].ul.li[0].t.#text) | Ln 536 Col 13
+[36] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 8.3 (Fail closed), paragraph 2 (rfc.middle.section[7].section[2].t[1]) | Ln 674 Col 9
+[37] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST" should be enclosed in <bcp14></bcp14> tags. | Section 8.4 (Seen flags and fetches), paragraph 1 (rfc.middle.section[7].section[3].t.#text) | Ln 681 Col 9
+[38] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 8.4 (Seen flags and fetches), paragraph 1 (rfc.middle.section[7].section[3].t.#text) | Ln 681 Col 9
+[39] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST" should be enclosed in <bcp14></bcp14> tags. | Section 8.4 (Seen flags and fetches), paragraph 1 (rfc.middle.section[7].section[3].t.#text) | Ln 681 Col 9
+[40] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MAY" should be enclosed in <bcp14></bcp14> tags. | Section 9.3 (Resumption), paragraph 1 (rfc.middle.section[8].section[2].t.#text) | Ln 769 Col 9
+[41] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST" should be enclosed in <bcp14></bcp14> tags. | Section 9.3 (Resumption), paragraph 1 (rfc.middle.section[8].section[2].t.#text) | Ln 769 Col 9
+[42] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 9.3 (Resumption), paragraph 1 (rfc.middle.section[8].section[2].t.#text) | Ln 769 Col 9
+[43] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "SHOULD" should be enclosed in <bcp14></bcp14> tags. | Section 9.3 (Resumption), paragraph 1 (rfc.middle.section[8].section[2].t.#text) | Ln 769 Col 9
+[44] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MAY" should be enclosed in <bcp14></bcp14> tags. | Section 9.3 (Resumption), paragraph 1 (rfc.middle.section[8].section[2].t.#text) | Ln 769 Col 9
+[45] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "SHOULD" should be enclosed in <bcp14></bcp14> tags. | Section 9.4 (Attempt deadline and failure), paragraph 2 (rfc.middle.section[8].section[3].t[1]) | Ln 791 Col 9
+[46] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 9.5 (Session end), paragraph 1 (rfc.middle.section[8].section[4].t) | Ln 816 Col 9
+[47] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 10.2 (The acceptance gate, in full, inside the session), paragraph 1 (rfc.middle.section[9].section[1].t[0]) | Ln 851 Col 9
+[48] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MAY" should be enclosed in <bcp14></bcp14> tags. | Section 10.2 (The acceptance gate, in full, inside the session), paragraph 3 (rfc.middle.section[9].section[1].t[2]) | Ln 866 Col 9
+[49] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 10.2 (The acceptance gate, in full, inside the session), paragraph 3 (rfc.middle.section[9].section[1].t[2]) | Ln 866 Col 9
+[50] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 10.3 (Results are session-bound), paragraph 1 (rfc.middle.section[9].section[2].t[0]) | Ln 882 Col 9
+[51] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 10.3 (Results are session-bound), paragraph 1 (rfc.middle.section[9].section[2].t[0]) | Ln 882 Col 9
+[52] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 10.3 (Results are session-bound), paragraph 1 (rfc.middle.section[9].section[2].t[0]) | Ln 882 Col 9
+[53] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MAY" should be enclosed in <bcp14></bcp14> tags. | Section 11 (Platform Disclosure on This Carriage), paragraph 1 (rfc.middle.section[10].t[0]) | Ln 928 Col 7
+[54] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 11 (Platform Disclosure on This Carriage), paragraph 1 (rfc.middle.section[10].t[0]) | Ln 928 Col 7
+[55] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 12 (No-Downgrade Rules), list item 1, paragraph 1 (rfc.middle.section[11].ul.li[0].t.#text) | Ln 972 Col 11
+[56] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 12 (No-Downgrade Rules), list item 6, paragraph 1 (rfc.middle.section[11].ul.li[5].t) | Ln 999 Col 11
+[57] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST" should be enclosed in <bcp14></bcp14> tags. | Section 13 (Replay Handling), paragraph 2 (rfc.middle.section[12].t[1]) | Ln 1049 Col 7
+[58] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "SHOULD" should be enclosed in <bcp14></bcp14> tags. | Section 13 (Replay Handling), paragraph 2 (rfc.middle.section[12].t[1]) | Ln 1049 Col 7
+[59] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "SHOULD" should be enclosed in <bcp14></bcp14> tags. | Section 14 (Operational Considerations), paragraph 2 (rfc.middle.section[13].t[1]) | Ln 1064 Col 7
+[60] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "SHOULD" should be enclosed in <bcp14></bcp14> tags. | Section 14 (Operational Considerations), paragraph 3 (rfc.middle.section[13].t[2]) | Ln 1073 Col 7
+[61] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 14 (Operational Considerations), paragraph 3 (rfc.middle.section[13].t[2]) | Ln 1073 Col 7
+[62] Comment | MISSING_BCP14_TAGS | The BCP14 keyword "MUST NOT" should be enclosed in <bcp14></bcp14> tags. | Section 16.3 (Headers are not authentication), paragraph 1 (rfc.middle.section[15].section[2].t.#text) | Ln 1168 Col 9
+[63] Warning | NORMATIVE_REFERENCE_TO_DRAFT | Normative reference to the Internet-Draft draft-slutsky-homing-pigeon-03. A document is not published as an RFC before the drafts it references normatively.
+[64] Error | OBSOLETE_REFERENCE | RFC 8446 is obsolete and has been replaced by: RFC9846.
+[65] Comment | LINE_PI | Document contains <?line 123?> processing instruction tags.
