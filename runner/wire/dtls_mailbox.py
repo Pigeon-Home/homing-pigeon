@@ -209,8 +209,26 @@ def _is_client_hello(datagram):
     if parsed is None:
         return False
     if parsed[0] == "fragment":
-        return parsed[1] == dtlsproto.HS_CLIENT_HELLO
+        # A fragmented first message is not an initialization
+        # (draft Sections 8.2 and 16.4); _datagram_kind names
+        # it malformed flight mail instead.
+        return False
     return parsed[0] == dtlsproto.HS_CLIENT_HELLO
+
+
+def _is_fragmented_client_hello(datagram):
+    records = dtlsproto._split_records(datagram)
+    if not records:
+        return False
+    record = records[0]
+    if not dtlsproto._is_plaintext_record(record):
+        return False
+    if record[0] != dtlsproto.CT_HANDSHAKE:
+        return False
+    length = int.from_bytes(record[11:13], "big")
+    parsed = dtlsproto._parse_handshake(record[13:13 + length])
+    return (parsed is not None and parsed[0] == "fragment"
+            and parsed[1] == dtlsproto.HS_CLIENT_HELLO)
 
 
 def _looks_like_dtls(datagram):
@@ -227,6 +245,11 @@ def _looks_like_dtls(datagram):
 def _datagram_kind(datagram):
     if _is_client_hello(datagram):
         return "dtls-init"
+    if _is_fragmented_client_hello(datagram):
+        # Malformed flight mail on this carriage: consumed,
+        # dropped, worth no answer -- refused here, in the
+        # carriage's own fail-closed path, not by the engine.
+        return "dtls-invalid"
     if _looks_like_dtls(datagram):
         return "dtls"
     return "dtls-invalid"
@@ -839,17 +862,22 @@ def build_flight_message(cfg, subject, body):
     application/hp-dtls3 part with base64 transfer encoding.
     Text a provider adds anywhere else in the message -- a
     footer in the text part above all -- is not the frame and
-    cannot break the flight."""
+    cannot break the flight.
+
+    The frame part is attached as bytes, so it lands as a
+    direct leaf part of the multipart. Attaching a whole
+    message object instead would wrap it in a message/rfc822
+    container, one level down from where the draft puts it:
+    a receiver reading the message's own parts would not
+    find it there, and a gateway that treats the container
+    as an opaque attachment can drop the flight with it."""
     msg = EmailMessage()
     msg["From"] = str(cfg.get("mailbox_user") or "")
     msg["To"] = str(cfg.get("mailbox_user") or "")
     msg["Subject"] = " ".join(str(subject or "").splitlines())
     msg.set_content(_FLIGHT_NOTE)
-    part = EmailMessage()
-    part.set_content((body or "").encode("utf-8"),
-                     maintype="application", subtype="hp-dtls3",
-                     cte="base64")
-    msg.add_attachment(part)
+    msg.add_attachment((body or "").encode("utf-8"),
+                       maintype="application", subtype="hp-dtls3")
     return msg
 
 

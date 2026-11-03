@@ -1366,6 +1366,85 @@ class EmailPipeIntegrationTest(unittest.TestCase):
         self.assertFalse(self.pipe._dtls_server.core.sessions)
 
 
+    def test_two_keys_one_ident_both_sessions_live(self):
+        # The combination cell with both sessions live when
+        # the result is ready: the default key's session
+        # carries the job; a session under the other key
+        # carries the same ident and is refused at delivery
+        # (the hold belongs to the first key); the result
+        # goes inside the carrying session and nowhere else.
+        self.cfg["additional_secrets"] = {"ops": OPS_SECRET}
+        self._rebuild_pipe()
+        self._pump_pipe()
+        self.assertEqual(self.client.state, "established")
+        ops = DtlsMailClient(OPS_SECRET, session_id="v3-session-ops",
+                             key_id="ops")
+        self._pump_pipe(ops)
+        self.assertEqual(ops.state, "established")
+        self._post_client_mails(
+            self.client.send_app_mails(_job_envelope("v3-job-both")))
+        self.pipe.pass_once()
+        self._post_client_mails(ops.send_app_mails(_job_envelope(
+            "v3-job-both", secret=OPS_SECRET, key_id="ops")))
+        self.pipe.pass_once()
+        inbox = os.path.join(self.channel, "inbox")
+        names = [n for n in os.listdir(inbox)
+                 if n == "v3-job-both.job.txt"]
+        self.assertEqual(len(names), 1)
+        executed = []
+        self._run_channel_core(executed)
+        self.assertEqual(len(executed), 1)
+        self.pipe.flush_results(self.runner_box)
+        self._client_receive_all()
+        self._assert_session_result_ok(self.client, "v3-job-both")
+        self._client_receive_all(ops)
+        self.assertEqual(ops.core.app_messages, [])
+
+    def test_a_restored_hold_still_expires(self):
+        self._pump_pipe()
+        self._post_client_mails(self.client.send_app_mails(
+            _job_envelope("v3-job-restore-exp")))
+        self.pipe.pass_once()
+        executed = []
+        self._run_channel_core(executed)
+        self.assertEqual(len(executed), 1)
+        self._rebuild_pipe()
+        self.assertTrue(self.pipe._session_bound("v3-job-restore-exp"))
+        # Age the restored wait past the bound, on both clocks
+        # the sweep can read, and let it meet the result.
+        for key in list(self.pipe._result_wait_since):
+            self.pipe._result_wait_since[key] = 0.0
+        result_path = os.path.join(
+            self.channel, "outbox", "v3-job-restore-exp.result.txt")
+        old = time.time() - 100000.0
+        os.utime(result_path, (old, old))
+        self.pipe._session_result_ttl = 60.0
+        before = len(self.client_box.messages)
+        self.pipe.flush_results(self.runner_box)
+        self.assertEqual(len(self.client_box.messages), before)
+        self.assertNotIn(
+            "v3-job-restore-exp.result.txt",
+            os.listdir(os.path.join(self.channel, "outbox")))
+        self.assertFalse(self.pipe._session_bound("v3-job-restore-exp"))
+
+    def test_a_fragmented_first_hello_draws_no_answer(self):
+        client = DtlsMailClient(SECRET, session_id="v3-session-frag")
+        datagram = client.core.start(NOW)[0]
+        hello_len = int.from_bytes(datagram[14:17], "big")
+        frag_len = hello_len - 8
+        frag = bytearray(datagram[:13 + 12 + frag_len])
+        frag[11:13] = (12 + frag_len).to_bytes(2, "big")
+        frag[22:25] = frag_len.to_bytes(3, "big")
+        subject, body = encode_flight(
+            bytes(frag), "v3-session-frag")[0]
+        parsed = parse_message(_mime_flight_raw(subject, body))
+        self.assertEqual(parsed.kind, "dtls-invalid")
+        before = len(self.client_box.messages)
+        self._post_client_mails([(subject, body)])
+        self.pipe.pass_once()
+        self.assertEqual(len(self.client_box.messages), before)
+        self.assertEqual(self.pipe._dtls_server.core.sessions, {})
+
 class ParserFuzzTest(unittest.TestCase):
     """Bookend doctrine: every ASCII symbol, plus NUL, tab, CR and
     LF, at the front and the back, in runs, and in the middle. The
@@ -1699,6 +1778,118 @@ class MimeFrameTest(unittest.TestCase):
         self.assertEqual(client.greeting, {"disclosure": "none"})
 
 
+    def test_the_senders_frame_part_is_a_leaf_part(self):
+        # The sender this tree ships builds every flight mail
+        # with build_flight_message. The frame part it emits
+        # is a direct, leaf part of the message: a receiver
+        # that reads the message's own parts -- the reading
+        # Section 5.2 describes -- finds it there. Wrapped in
+        # a message/rfc822 container it would sit one level
+        # down, where a gateway that treats the container as
+        # an opaque attachment, or a reader that does not
+        # descend into one, loses the flight.
+        core = dtlsproto.DtlsClientCore(SECRET)
+        datagram = core.start(NOW)[0]
+        subject, body = encode_flight(datagram, SID)[0]
+        msg = dtls_mailbox.build_flight_message(CFG, subject, body)
+
+        def walk(part, parent=None):
+            yield part, parent
+            if part.is_multipart():
+                for sub in part.get_payload():
+                    yield from walk(sub, part)
+
+        typed = [(part, parent) for part, parent in walk(msg)
+                 if part.get_content_type()
+                 == dtls_mailbox.FLIGHT_CONTENT_TYPE]
+        self.assertEqual(len(typed), 1)
+        part, parent = typed[0]
+        self.assertIsNotNone(parent)
+        self.assertTrue(parent.get_content_type()
+                        .startswith("multipart/"))
+        self.assertFalse(part.is_multipart())
+        self.assertEqual(
+            str(part.get("Content-Transfer-Encoding")), "base64")
+        parsed = parse_message(msg.as_bytes())
+        self.assertEqual(parsed.kind, "dtls-init")
+        self.assertEqual(parsed.datagram, datagram)
+
+    def test_a_handshake_completes_over_the_senders_serialization(
+            self):
+        # Every flight serialized by the production sender --
+        # build_flight_message to bytes -- and read back by
+        # the production parser, in both directions: the exact
+        # bytes the email extension puts on the wire.
+        server = DtlsMailServer(
+            dtlsproto.make_secret_lookup(SECRET),
+            platform_payload=b'{"disclosure":"none"}')
+        client = DtlsMailClient(SECRET, session_id=SID)
+
+        def wire(mails):
+            return [dtls_mailbox.build_flight_message(
+                CFG, s, b).as_bytes() for s, b in mails]
+
+        outgoing = client.start_mails(NOW)
+        for _ in range(12):
+            if not outgoing:
+                break
+            responses = []
+            for raw in wire(outgoing):
+                responses.extend(server.receive_raw(raw, NOW))
+            outgoing = []
+            for raw in wire(responses):
+                outgoing.extend(client.receive_raw(raw, NOW))
+        self.assertEqual(client.state, "established")
+        self.assertEqual(client.greeting, {"disclosure": "none"})
+        self.assertEqual(
+            len([s for s in server.core.sessions.values()
+                 if s.established]), 1)
+        for raw in wire(client.send_app_mails(b"ping")):
+            server.receive_raw(raw, NOW)
+        self.assertEqual(
+            [a[2] for a in server.drain_app_messages()], [b"ping"])
+
+    def test_a_gateway_shaped_flight_still_frames(self):
+        # The product of the provider shapes, in 1 message
+        # sequence: the frame segmented into small parts, a
+        # footer in the text part of every mail, the parts
+        # delivered in reverse order, and 1 part delivered
+        # twice. The reassembled datagram is the hello, and
+        # the answer is the retry a clean delivery draws.
+        client = DtlsMailClient(SECRET, session_id=SID)
+        first = client.start_mails(NOW)[0]
+        datagram = parse_message(_raw_mail(*first)).datagram
+        parts = encode_flight(datagram, SID, max_chunk_chars=64)
+        self.assertGreater(len(parts), 1)
+        control = DtlsMailServer(dtlsproto.make_secret_lookup(SECRET))
+        expected = []
+        for subject, body in parts:
+            expected.extend(control.receive_raw(
+                _mime_flight_raw(subject, body), NOW))
+        self.assertTrue(expected)
+        server = DtlsMailServer(dtlsproto.make_secret_lookup(SECRET))
+        mails = [_mime_flight_raw(
+            subject, body,
+            extra_text="A note for a human.\n\n-- \nGateway footer")
+            for subject, body in parts]
+        mails.reverse()
+        mails.append(mails[0])
+        answers = []
+        for raw in mails:
+            answers.extend(server.receive_raw(raw, NOW))
+        # Reassembly delivers the datagram upward exactly
+        # once, and only whole: the digest check is what a
+        # mangled part would fail, and a failed transfer is
+        # never answered. The answer's count matches the
+        # clean delivery's, and the client takes the answer
+        # as its retry and produces the cookied hello.
+        self.assertEqual(len(answers), len(expected))
+        follow = []
+        for raw in _mails_to_raw(answers):
+            follow.extend(client.receive_raw(raw, NOW))
+        self.assertTrue(follow)
+
+
 def _hello_with_early_data(datagram):
     """A copy of one ClientHello datagram with an empty
     early_data extension (42) spliced in just before the
@@ -1761,6 +1952,37 @@ class EarlyDataRejectionTest(unittest.TestCase):
             server.receive_raw(_raw_mail(subject, body), NOW))
 
 
+    def test_early_data_is_rejected_through_segmentation(self):
+        # The rejection is a property of the reassembled
+        # datagram, not of the single mail that carries it:
+        # the same hello, segmented into parts that each
+        # carry 1 reply prefix, is reassembled whole and
+        # still rejected -- no retry, no session. The control
+        # is the same segmentation and prefixes without the
+        # spliced extension, which is answered.
+        server = DtlsMailServer(
+            dtlsproto.make_secret_lookup(SECRET),
+            platform_payload=b'{"disclosure":"none"}')
+        core = dtlsproto.DtlsClientCore(SECRET)
+        datagram = core.start(NOW)[0]
+        offered = _hello_with_early_data(datagram)
+        answers = []
+        for subject, body in encode_flight(
+                offered, SID, max_chunk_chars=96):
+            answers.extend(server.receive_raw(
+                _raw_mail("Re: " + subject, body), NOW))
+        self.assertEqual(answers, [])
+        self.assertEqual(server.core.sessions, {})
+        control = DtlsMailServer(
+            dtlsproto.make_secret_lookup(SECRET),
+            platform_payload=b'{"disclosure":"none"}')
+        answers = []
+        for subject, body in encode_flight(
+                datagram, SID, max_chunk_chars=96):
+            answers.extend(control.receive_raw(
+                _raw_mail("Re: " + subject, body), NOW))
+        self.assertTrue(answers)
+
 class SubjectPrefixTest(unittest.TestCase):
     """At most 1 leading Re: or Fwd:, case-insensitive, and
     only when the remainder is exactly a flight subject. A
@@ -1792,6 +2014,23 @@ class SubjectPrefixTest(unittest.TestCase):
         self.assertEqual(
             self._kind("Automatic reply: " + subject), "other")
 
+
+    def test_one_prefix_on_a_badly_encoded_part_is_invalid(self):
+        # The prefix tolerance and the encoding rule compose:
+        # 1 reply prefix on a flight whose typed part is
+        # quoted-printable still routes to the carriage, and
+        # is still invalid there -- the part carries no frame
+        # (Section 5.2), so nothing is fed and no session is
+        # minted.
+        core = dtlsproto.DtlsClientCore(SECRET)
+        datagram = core.start(NOW)[0]
+        subject, body = encode_flight(datagram, SID)[0]
+        raw = _mime_flight_raw("Re: " + subject, body,
+                               cte="quoted-printable")
+        self.assertEqual(parse_message(raw).kind, "dtls-invalid")
+        server = DtlsMailServer(dtlsproto.make_secret_lookup(SECRET))
+        self.assertEqual(server.receive_raw(raw, NOW), [])
+        self.assertEqual(server.core.sessions, {})
 
 class _RecordingImap:
     """An IMAP double that records the FETCH item string of
