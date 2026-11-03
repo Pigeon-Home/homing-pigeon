@@ -661,7 +661,15 @@ duplicate handling separate, and each layer's rule is its own:
   mail beyond the 1 it already sent (Section 16.4). A digest
   hit on application data is dropped and does nothing. A
   replayed mail is therefore not a new record at either
-  layer, and a lost flight is still repaired.
+  layer, and a lost flight is still repaired. A
+  retransmission under {{RFC9147}} Section 5.2 is not this
+  case. It is a new record, with a new record sequence
+  number, carrying the same handshake message, so it is not
+  bit-identical to the datagram already accepted. It misses
+  this cache, enters the stack, and is answered by the
+  stack. The budget does not limit it, and if the single
+  re-post was itself lost, that retransmission is what
+  repairs the attempt.
 * DTLS layer: records are protected and sequenced by the
   record layer as {{RFC9147}} specifies; a record that does
   not authenticate is dropped by the stack, whether it is a
@@ -960,6 +968,16 @@ MUST NOT be sent inside a different job's session as if it
 were that job's. Section 12 states the general rule this
 follows from.
 
+The PSK identity distinguishes submitters only as finely as
+the key directory. Two peers that authenticate with the same
+secret are the same identity, and a later session of that
+identity which carries the job ident again is a legitimate
+destination for the held result. Distinct submitters are
+distinct keys, which version 1's additional secrets already
+are. This carriage does not invent a finer name for a
+submitter, and a mail session-id is not one: the initiator
+chooses it, and a resumption uses a fresh one (Section 9.3).
+
 The hold is bounded, as the hold of any state on this
 carriage is bounded. A held result expires by age -- the
 reference implementation's bound is 7 days -- and the held
@@ -1236,6 +1254,11 @@ number that bounds it:
   than arbitrating it (Section 6).
 * A digest-cache entry is 1 of 4096, first in first out
   (Section 7.2).
+* A saved outbound flight is 1 of 4096, first in first out,
+  the same bound as the digest cache. Evicting one drops
+  only the spare re-post for that peer. A retransmission is
+  a new record and is answered by the stack without the
+  saved flight (Section 7.2).
 * A malformed flight is consumed in 1 pass and 1 log line,
   not re-offered on every poll (Section 8.3).
 
@@ -1276,3 +1299,15 @@ forward secrecy; it changes its admission not at all. Any
 future extension of this carriage that proposes to admit a
 job on the session's authority alone is proposing to remove
 the gate, and should be reviewed as such.
+
+The constraint that narrows what a session may cause is the
+key policy of the key that signs the job, which is version
+1's and is unchanged here. A deployment that wants one key
+to run only a pinned script states that on the key: the
+kinds it may name, the interpreters it may name, and the
+digest of the script it may carry. The session does not
+widen that policy, and the policy does not depend on this
+carriage. A holder of a different key, or of only the
+traffic keys of the session, does not inherit it. The gate
+reads the job's own key and applies that key's policy
+(Section 10.2).

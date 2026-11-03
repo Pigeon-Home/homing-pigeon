@@ -6,7 +6,7 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.15.129 - 2026-11-02
 
-- Version 3 carriage: a bit-identical handshake copy re-posts the saved flight once; the cookie key is kept in the channel (`dtls-cookie.key`) so a restart can still accept the cookied ClientHello; a held result leaves only inside the session that carried the job, or a later session under the same PSK identity that carries that job ident again.
+- Version 3 carriage: a bit-identical handshake copy re-posts the saved flight once, and a real retransmission is a new record the budget does not limit; the cookie key is kept in the channel (`dtls-cookie.key`) so a restart can still accept the cookied ClientHello; a held result leaves only inside the session that carried the job, or a later session under the same PSK identity that carries that job ident again. That identity is only as fine as the key directory. The saved-flight table is bounded at 4096. A key's policy, not the session, is what narrows what a job may do.
 - PROTOCOL.md links the local, unsubmitted version 3 draft. A platform card may say the carriage is offered, and that fact admits nothing.
 - Germany banks 49 and 50: 2,303 entries, 0 crashes.
 
