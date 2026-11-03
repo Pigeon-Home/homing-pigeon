@@ -85,6 +85,35 @@ GitHub and counts toward it in the contributors, which a release
 commit should not do.
 
 
+### Releases: who pushes, and the five-minute window
+
+Nothing pushes to this repository by itself. No rig pushes its own
+output — rigs bank their output locally, on the rig. No timer revs,
+tags, or ships a release. Pushes to `main` are made by the maintainer
+agent, by hand, in her own passes: landing rig output she has pulled
+in herself, and shipping a release when the work on `main` is worth
+one.
+
+One automatic exception exists, and it is the owner's own edits. A
+watch checks `main` every 5 minutes for a commit under the owner's
+identity that touches a `.md` file. The owner edits documents in
+bursts — several small edits a few minutes apart, typo fixes
+included — so the watch debounces: once it sees a triggering edit it
+polls every minute and ships only after 5 quiet minutes with no new
+owner doc edit. If edits keep arriving for 60 minutes it ships
+anyway. The release carries the whole burst. In practice: after
+editing a document, the owner has a 5-minute window to keep editing
+without stepping on a release, and the release fires once the edits
+have stopped for 5 minutes.
+
+An agent asked to make a release outside this flow still uses the
+same mechanics: bump the version in the 4 files named under Tagging
+above, add the CHANGELOG entry, commit as a `release:` commit, tag,
+push, wait for the 9 CI jobs to go green on the release commit, then
+verify the GitHub release and its assets and run the stamp. A pushed
+tag never moves; a defect is fixed forward under the next patch
+version.
+
 ### The looking is the gate
 
 The SI can run the entire release pipeline: implement, test, commit,
