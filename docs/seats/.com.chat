@@ -3,6 +3,157 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 2-Nov-6:10pm-PST/PDT — Grok: version 3 draft, the peer review and the RFCs
+
+Posted at the conductor's word. This is the last half hour: a peer review of the merged version 3 draft, the long form of that review, and the IETF documents behind each comment, each one checked against the tree as it is now.
+
+Read at `495f5eaf` (Germany bank 47) on top of `2400088d`, release 3.15.125. The version 3 carriage is no longer a branch. It merged at `4a61c5ba`, the rename and the "2 ways" paragraph merged at `2d498f2c`, and the IPv6 bind (a different change, the direct listener, off by default) merged at `2e87d370`. The draft on disk is `docs/ietf/draft-slutsky-homing-pigeon-v3-00.md`. The code is `runner/wire/dtls_mailbox.py` and `runner/transport_extensions/email/__main__.py`. The proof is `docs/proofs/dtls-over-email-v3.md`. The plan is `docs/design/v3-dtls-over-email-plan.md`. Nothing in this note edits those files. Nothing here was submitted.
+
+The 5:38pm note reviewed the branch at `4cc16fe0`, before the merge. Two things that note asked for have since happened, and they are not the holes below. The proof's continuation records the resumption and provider-shape tests (45 tests in `test_dtls_email_v3`, 469 in the touched suites, one pre-existing skip). And the work did land on main. The proof's opening section still says 26 tests and still says resumption was unproven; that section is the record of an earlier commit, and the continuation corrects it. Read the continuation, not the opening, for the current claim.
+
+**Recommendation: revise the draft. Do not submit this `-00`.** The profile, the gate split, and the fail-closed lane rule should not be reopened. The document is not yet something a second implementer can build from, and the wire format will not survive a normal mail gateway.
+
+### What the tree already does, and should keep doing
+
+Checked, not just remembered.
+
+The option is `dtls_via_email`, and only the literal boolean true turns it on (`runner/transport_extensions/email/__main__.py`, and the same test in `runner/wire/transports.py`). The changelog, `docs/project/future.md`, the plan's D10, and the draft all use that name. The shared secret is handed to the email process only when the option is on.
+
+`_SESSION_ID_RE` is `^[A-Za-z0-9._-]{1,128}$`. `.` and `..` are rejected on top. That alphabet is safe in a subject. The draft does not use it. See below.
+
+The connection-id check runs before the digest cache. The comment in `_receive_datagram` says why: a misaddressed copy must not poison the cache against the same record later arriving under its own mail. That rule is in the code and in the tests. It is not in the draft.
+
+Reassembly is bounded: 64 transfers, a total-size cap, 3600 seconds. A contradicting part deletes the transfer. The digest cache is a 4096-entry FIFO. A completed handshake does not run a job by itself; application data is parsed back into an envelope and delivered through the core (`deliver_job`). A result whose session is gone stays in the outbox and is not sent as ordinary mail (`_send_result_on_session`).
+
+Section 10.2 of the draft, the gate paragraph, matches that code. Section 12's six no-downgrade bullets match it. Section 15 requests no IANA action and does not ask for a second `platform_info` code point. Section 16.1's claim about later theft of the PSK is the right claim, and it is missing the limit named below. Section 16.6, the gate is the security boundary for execution, should stay the last paragraph.
+
+The live mailbox run in the proof is one handshake and one signed ping (`v3-live-job-4`, exit 0) on a throwaway instance against Gmail. Three earlier attempts failed closed. That supports the lane split. It does not clear the wire format, and the proof says so.
+
+### 1. This document is a binding, and the title says it is a version
+
+The abstract says version 3 changes exactly one thing, the carriage, and that every version 1 message keeps its meaning. Version 1 already versions messages with `v`, and a version 1 receiver rejects any `v` other than 1. Version 1 already has a DTLS binding, its Sections 19 and 20, which is where this draft's section citations point, and those sections are in `draft-slutsky-homing-pigeon-03.md` as cited. Version 2 is a different message vocabulary, not a binding.
+
+The draft never says what `v` a job inside the session carries. Section 10 says the application message is an ordinary version 1 envelope. The code delivers that envelope through `parse_envelope` and `deliver_job`, so the object that runs is a version 1 object. The title, the `docname`, the kramdown `v: 3`, and the body magic `HP-DTLS/3` will be read as "set `v` to 3."
+
+What the abstract and Section 10 should say, in words a second implementer cannot miss: objects inside the session remain version 1 objects. If the integer 3 stays, it numbers this document and this carriage. It is not a value of `v`. `HP-DTLS/3` can stay as a carriage label only if the draft says the `3` is the carriage generation. Otherwise the header should stop using the digit.
+
+The tree has not been changed to say this. The code happens to do the right thing because it never mints a `v: 3` object of its own. A second implementation reading the title will.
+
+### 2. Section 9.2 cannot be implemented as written, and the code does not implement it
+
+The sentence in the draft:
+
+> The peer address on this carriage is therefore synthetic: it is derived from the configured mailbox peer identity of the deployment — the peer the runner is configured to serve over this mailbox — and from the mail session-id, and from nothing the message itself asserts.
+
+The mail session-id is asserted by the message. The sentence says the address comes from it and also that the address comes from nothing the message asserts. Plan decision D6 says a stable synthetic address from the configured mailbox peer, not from `From`.
+
+The code, `_addr_for`:
+
+> addr = "email:" + (session_id or "legacy")
+
+No configured peer identity is mixed in. The session-id comes from the subject. That is a reasonable demux key, and it does avoid `From`. It is not D6 and it is not Section 9.2.
+
+Concurrent attempts need the session-id in the key. An address that is only "the configured peer" aliases every handshake on that mailbox. An address that is `email:` plus the session-id demuxes them, and it is safe only while the cookie key is a server secret and is not a function of the label. The code passes the string into `DtlsServerCore.feed` as the peer address. The draft never says the cookie key is a server secret.
+
+Section 16.6 says there may be several holders of the shared secret, distinguished by additional secrets and key policies. Section 9.2 speaks of one configured peer. Key selection in the code is `secret_lookup`, the PSK identity. The mail session-id must not select the key. The draft does not say that.
+
+The replacement that matches the code:
+
+> The address is the ASCII string `email:` followed by the mail session-id. That string is an untrusted routing label. It is not a credential, not a mailbox identity, and not a key selector. The cookie key is a secret of the responder and is not derived from the address. The PSK identity inside the handshake selects the shared secret, including any additional secret, exactly as version 1 specifies.
+
+The two bullets after the current paragraph, binding the mail session-id to the connection id once the session exists, match `_bind`, `_hint_cid`, and `_cid_hint`. Those bullets stay.
+
+QUIC is the precedent, not a configured identity. RFC 9000 Section 8: a Retry token is integrity-protected with a key only the server has. An attacker must not be able to mint one. The token binds the client's address because that is what QUIC has. Email has no source address worth binding, so the label is the mail session-id, and the key is still a server secret. IKEv2 (RFC 7296) is the same split, and version 1 already cites its Configuration payload, Section 3.15, for the disclosure timing: the cookie is stateless, the credential is the identity, the address is not.
+
+### 3. The flight body will not survive a mail gateway, and the tests already show it
+
+Section 5.2 is one `HP-DTLS/3` header line and one base64 chunk, no preamble and no trailer, in the first `text/plain` part. Section 8.3 marks a malformed flight seen and does not retry it. The code parses that grammar (`_HEADER_RE` in `dtls_mailbox.py`) and classifies a bad body as `dtls-invalid`. The proof's provider-shape tests say a footer and a subject suffix are `dtls-invalid`, and through the pipe a footer-rewritten DTLS mail is consumed and delivers no job.
+
+Fail-closed is the right reaction to garbage. It is the wrong encapsulation, because a disclaimer is what mail gateways append. The live run does not clear this. The proof says Gmail did not rewrite those particular flights, and that other providers were not tried.
+
+RFC 8551 (S/MIME 4.0) Section 3.5 is the document. S/MIME will sign as `multipart/signed`, which leaves the text where a gateway can wrap it, or as `application/pkcs7-mime` with `Content-Transfer-Encoding: base64` and `Content-Disposition: attachment`. The RFC says the opaque form exists because intermediate agents do line wrapping and content-transfer-encoding changes that break a signature. RFC 3156 does the same for OpenPGP: a dedicated part, not a sentence in `text/plain`. RFC 2045 and RFC 2046 are why `text/plain` is text.
+
+The frame should be its own MIME part. While this draft is local, a private content type needs no IANA action, and Section 15 is right to request nothing. Keep the header fields, accept base64 folded at 76 columns (the tests already show a line-wrapped body reassembles byte-exact; the draft does not say folding is ignored), and reject quoted-printable.
+
+### 4. Retransmission and the duplicate rule describe two protocols, and DTLS already picked one
+
+Section 7.1 says a re-send carries the same datagram under a new transfer identifier. Section 7.2 says a datagram whose digest is already held is not fed to the DTLS stack. Read together, a bit-identical retransmission is swallowed, and the only repair is the local timer.
+
+The code does the swallow. `_DigestCache.accept` returns false, `_receive_datagram` logs "duplicate flight suppressed", and returns without calling `core.feed`. It does not re-post a saved flight.
+
+The engine does not produce identical bytes, and that is why the tests pass. RFC 9147 Section 5.2:
+
+> When a message is retransmitted, the old message_seq value is reused, i.e., not incremented. From the perspective of the DTLS record layer, the retransmission is a new record. This record will have a new DTLSPlaintext.sequence_number value.
+
+The proof records the finding the tests forced. An early lost-HelloRetryRequest test expected fail-closed, on the theory that exact-duplicate suppression would not re-answer a replayed hello. That theory is what the draft specifies. It is not what DTLS does. The record sequence advances, the digest misses, the stateless cookie issuer answers again. The test was changed. The draft was not.
+
+RFC 9147 Section 5.8.1 is the other half. When an implementation reads a retransmitted flight and its own response has not been acknowledged, it goes back to SENDING and retransmits its last flight. The duplicate is the signal that the response was lost. Dropping that datagram before `feed` deletes the signal. A future stack that retransmits identical bytes, because the draft told it to, will stall, and these tests will not catch it.
+
+The rule to write: a digest hit on a handshake datagram is not fed back into key derivation; the receiver posts its saved last outbound flight again. A digest hit on application data is dropped. The connection-id check stays before the cache, where the code already has it, and Section 7.2 should say so. Do not add a second mail-layer timer. RFC 9147 Section 7's ACK stays inside the datagram, as opaque bytes.
+
+The timer guidance is the one place the draft is already using a slot DTLS provides. RFC 9147 Section 5.8.2: the default initial timer is 1000 ms, doubled up to no less than 60 seconds, the cap from RFC 6298, and an application profile MAY recommend longer values. The IoT mesh example in that section is the same kind of exception as a mailbox. "SHOULD stretch timers toward the poll rhythm" is the right use of that MAY. It does not pick numbers. A stack that keeps the 1-second default will give up, or will hammer the mailbox, before an hourly poller has fetched the answer. The operational section's "about 4 poll cycles" is the right model. Initial timer at least two poll periods. Give up after about eight. That give-up is the Section 9.4 deadline.
+
+### 5. The forward-secrecy claim is missing the adversary this carriage has, and the hybrid document is now an RFC
+
+Section 16.1 is right about later theft of the PSK. Session keys come from a fresh X25519 exchange, full or resumed, and they are erased with the session. Recording every flight and later stealing the shared secret does not decrypt the records. The stated limits (future impersonation, ordinary version 1 jobs, a live endpoint compromise) are the right limits for that claim.
+
+The threat model the introduction sets is that mail is stored by the sender's provider, the receiver's provider, and the mailbox. Against that archive there is a second adversary, who never learns the PSK and later breaks X25519. The public shares are in the stored flights. Section 16.2 already says the handshake's public values are visible. X25519 is RFC 7748. The draft names X25519 and does not cite it. RFC 9325, which the draft already lists as informative, tells operators to prefer ephemeral exchange. It does not say an elliptic-curve ephemeral survives a quantum adversary who recorded the transcript.
+
+The document that says what to do instead is RFC 10024, August 2026, standards track, "Post-Quantum Traditional (PQ/T) Hybrid Key Agreement Mechanisms for TLS 1.3." The group that matches this profile is X25519MLKEM768, code point 4588 (`0x11EC`), Recommended Y, DTLS-OK Y. SecP256r1MLKEM768 and SecP384r1MLKEM1024 are DTLS-OK and Recommended N. The session stays confidential if either share remains unbroken. RFC 9954 is the informational construction that RFC 10024 instantiates. ML-KEM itself is FIPS 203.
+
+Do not add that group in this carriage as a quiet second suite. Name the limit next to the limits Section 16.1 already has, and leave the slot: a later revision may add X25519MLKEM768 as the share, the PSK still only authenticating, `TLS_AES_256_GCM_SHA384` still the suite until that revision. Do not cite a pure ML-KEM group. Those are the ones marked Recommended N.
+
+### 6. "Removes the trade" is still in the draft, and the new paragraph is about the software
+
+Line 172: "Version 3 removes the trade." It removes the confidentiality trade against later theft of the PSK. It takes on delay, a stored transcript, visible subjects and sizes, and a pre-authentication surface equal to whoever can deposit mail. The four bullets under the slogan are a table of contents and they are fine. The slogan is what a reviewer answers first.
+
+The paragraph at lines 193–203, added in the docs merge, is plan D10 copied into the specification. The last sentence is a protocol sentence and it is true: the profile, the handshake, and the acceptance gate are the same on either carrier, and a deployment may offer either or both. The rest is about "the suite", about firewall rules, and about names. "No inbound network path to the runner is needed at all" overclaims. No inbound UDP listener is needed. The runner still polls a mailbox and still sends mail. Those are outbound IMAP and SMTP.
+
+The naming split itself is good. "DTLS" for the UDP binding and "DTLS via email" for this one is clearer than "over", and the option rename matches. Keep that in the plan and in the implementation notes. In the draft, reduce the paragraph to the protocol fact.
+
+The IETF design for "the two ends are not online together" did not stretch DTLS. RFC 9171 is the Bundle Protocol, a store-carry-forward overlay, including the case where sender and receiver are not on the network at the same time. RFC 9172 (BPSec) secures the bundle from a security source to a security acceptor, and its introduction says ordinary transport security is not enough because the data sits at rest. BPSec also says what it does not do: it does not make the custody node blind, and it does not protect a compromised node. That is the same limit this draft is reaching for. They specified bundles, not a session with a 1-second timer. Version 3 can still be a DTLS profile. RFC 9147 Section 5.8.2 invites the timer change. It cannot say the trade is gone.
+
+ICMP (RFC 792, RFC 4443) is not a model for any of this. It is an IP control protocol. ESP (RFC 4303) is a per-association anti-replay window, and its forward secrecy comes from IKEv2, not from the datagram. DTLS over DCCP (RFC 5238) is still a datagram transport. DTLS over SCTP is a different problem, a reliable message transport under DTLS, and SCTP-over-DTLS (RFC 8261, RFC 8841) is the stack inverted, which is what WebRTC does. There is no RFC for DTLS via email. The documents that bear on this draft are RFC 9147 and RFC 8446 for the session, RFC 8551 and RFC 9051 for the mail, RFC 9000 for the untrusted label, and RFC 9171 and RFC 9172 for the honesty about delay.
+
+### Minors, each against the tree
+
+**Session-id alphabet.** The draft's ABNF is `session-id = 1*128 word-char`, excluding `.` and `..`, and it imports version 1 `word-char`. In `draft-slutsky-homing-pigeon-03.md` that production includes `%x00` and other controls. RFC 5322 Section 2.2 does not allow those in a header field. The code's `[A-Za-z0-9._-]{1,128}` is legal. Write that alphabet in the ABNF. A future widening of `word-char` must not widen a mail session-id.
+
+**0-RTT.** Section 4.1 says "Early data is not used; there is no 0-RTT on this carriage." That describes this implementation. RFC 8446 Section 2.3: 0-RTT is not forward secret, and there is no non-replay between connections. Section 8 and Appendix E.5: an application protocol MUST NOT use 0-RTT without a profile, and an implementation MUST NOT enable it unless the application asks. A job that runs a program is not safe to replay. On a mailbox the ClientHello can sit for a day. The sentence should be: a ClientHello that carries early data is a malformed flight and is rejected. RFC 9147 Section 5.6 keeps epoch 1 and omits `EndOfEarlyData` because loss makes the deletion attack trivial. Epoch 1 is not a quiet place to put a job.
+
+**Tickets.** Section 9.3 and Section 13 say SHOULD single-use, matching version 1 and matching RFC 8446 Section 8.1, which is a SHOULD, not a MUST. On this carriage the ticket mail sits in the same archive as the transcript. Make single-use mandatory for tickets issued here. Leave the UDP binding's SHOULD alone. The tests already cover a ticket used once, a corrupted ticket PSK, an expired ticket, a fresh share on resumption, and a `psk_ke`-only offer refused with `illegal_parameter`. The live run did not resume. The proof says that.
+
+**`Re:` and `Fwd:`.** The tests accept one `Re:` prefix. The draft's ABNF does not. Specify at most one leading `Re:` or `Fwd:`, and only when the remainder is exactly a flight subject. Do not accept a chain of them.
+
+**IMAP flags.** The draft never mentions them. RFC 9051 (which obsoletes RFC 3501): `BODY[section]` sets `\Seen`; `BODY.PEEK[section]` does not. The proof's third live attempt fetched RFC822, set `\Seen` on the client's own second ClientHello, and the runner's UNSEEN search never saw it. The working run used `BODY.PEEK[]`, bound mail to its own session-id, and marked seen only what it consumed. The first two attempts fed stale flights and poisoned the transcript; both failed closed. The rule belongs in Section 8 or Section 9: mark seen only flight mail that has been consumed; a fetch used to decide uses `BODY.PEEK`; an initiator ignores flight mail for a session-id it does not have open. DKIM (RFC 6376) and ARC (RFC 8617) authenticate a domain, not a job. They are the substitute gate Section 16.3 correctly forbids.
+
+**Bounds the draft asserts and the code does not quite have.** `FlightReassembler.offer` sets `updated = now` on every accepted part, and `_expire` measures age from `updated`. The 3600 seconds is an idle timer. A drip more often than hourly holds a slot until the 64-transfer cap, and then the oldest is evicted. Add a deadline from the first part. Section 6 says the bound is count, size, and age. The age half is an idle timer, and the draft's "from its last part" is honest about the reference numbers and silent about the drip.
+
+`_send_result_on_session` keys the hold by job ident alone (`self._job_session[ident] = cid`). Idents are chosen by the submitter and collide across submitters. The comment in that function says the file stays in the outbox for a fresh session. There is no age, count, or size bound. Goal 4 of the plan says delay does not create unbounded state. Expire the pending result. Log it. Do not send it. Dropping is not the downgrade Section 12 forbids. Downgrade would be sending it as ordinary mail. Hold the pending result under the connection id, or under `(key_id, job ident)`, not under the job ident alone.
+
+The digest cache's 4096 is in the code (`_DigestCache`, `dedup_entries=4096`) and not in the draft. A FIFO of 4096 is an optimization against a poller delivering the same mail twice. It is not the replay defense. Section 13 already has the real defenses: the DTLS window, and the job seen-set. The `bytes=` field publishes the exact datagram length. Section 16.2 says the document specifies no padding, so the leak is consistent. If padding is ever added, it has to be the padded length, or the padding is undone by the header. One sentence next to the field is enough. Do not add padding now.
+
+**Section 11.** The disclosure mechanism is version 1 Section 20, unchanged, and the latency argument is why it earns its place on a mailbox. The clause "for a superintelligent system driving the runner through email" does no protocol work. The requirement is "a submitter that plans work from the platform card." The disclosure goes out before the initiator's Finished, which is acceptable only because Section 9.1 step 4 has already checked the cookie and the PSK binder. Say that precondition in Section 11. A reader of Section 11 alone cannot tell whether an unauthenticated ClientHello is enough to extract a platform card. It must not be. `docs/project/future.md` still uses the same adjective in the version 1 future entry. That file is not this draft. The draft should not repeat it.
+
+**Discovery.** Section 4.3 allows discovering the carriage by attempting a handshake. A failed attempt leaves ordinary email alone, and that sentence is right. A probe is several stored mails. An unauthenticated hint, trusted for nothing except whether to try, would avoid using a handshake as a probe. OPTIONAL, and not a gate.
+
+**References and rendering.** The body cites RFC 5234 and RFC 4648. Neither is in the reference blocks. RFC 7748 should be added with X25519. RFC 9146 is in the normative block; it is the DTLS 1.2 connection-id document, and RFC 9147 is what this profile runs. If version 1 cites 9146 the same way, follow version 1 and say the connection id on this carriage is the one RFC 9147 uses. The version 1 normative reference is dated 2026-10 and names no revision. Pin the `-03`. RFC 9325 is already in the informative block, which is the right place for it. There is no `draft-slutsky-homing-pigeon-v3-00.txt`, no `.xml`, and no idnits output. The header comment says how to render it. Do that before any submission. Rendering does not fix the six items above.
+
+**The proof and the plan are stale in specific sentences.** The proof still says `dtls_over_email` at the lines that describe the build and the live run (the option in the code, the draft, the plan, and the changelog is `dtls_via_email`). A reader of both will think those are two switches. The plan still says each step lands on the `together` branch and nothing is pushed. The work was pushed, reviewed, merged at `4a61c5ba`, and released in 3.15.125. That sentence is now false.
+
+### What I would change, in order, and what I would not touch
+
+1. In the abstract and in Section 10, state that job objects stay version 1 objects.
+2. Rewrite Section 9.2 to the address `_addr_for` actually uses, and state that the PSK identity selects the key.
+3. Replace the naked `text/plain` body with a dedicated MIME part before this carriage is pointed at a mailbox the deployment does not control.
+4. Delete "carrying the same datagram." Specify handshake-hit behavior as re-posting the saved last flight, and application-hit behavior as drop. Put the connection-id-before-digest rule into Section 7.2. Give the timer a floor in poll periods, which is the profile RFC 9147 Section 5.8.2 already allows.
+5. Add the X25519 harvest limit, the RFC 7748 citation, and a named RFC 10024 slot to Section 16.1. Cut "removes the trade." Reduce the "2 ways" paragraph to the protocol fact.
+6. Write the session-id alphabet, the 0-RTT rejection, mandatory single-use tickets on this carriage, the one-prefix `Re:`/`Fwd:` rule, and the IMAP `BODY.PEEK` rule.
+7. Add the absolute reassembly deadline and the pending-result expiry. Name the 4096 digest cache as an optimization.
+8. Pin the version 1 revision, add the missing references, fix `dtls_over_email` in the proof, fix the `together` sentence in the plan, render the draft, and run idnits.
+
+I would not merge a further protocol change on top of this until that text exists, and I would not submit it. I would not reopen the profile, the gate, the fail-closed lane rule, the decision to reuse `dtlsproto.py`, or the decision that subjects do not authenticate. Those are the parts of the merged tree that are already doing the job.
+
 ## 2-Nov-5:38pm-PST/PDT — Grok: version 3, the review
 
 Read of branch `homing-pigeon-v3` at `4cc16fe0`, posted at the conductor's word. The branch sits on `e2d255b7` (3.15.119). Main is `42871d7a` (3.15.124). Nothing here was rebased, merged, or submitted.
