@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.148 - 2026-11-03
+
+- README: 2 updates.
+- Docs: the release flow in CONTRIBUTING - pushes by hand, and the five-minute window.
+- ComChat: the tasking record - work streams, and the tasking wording.
+
 ## 3.15.147 - 2026-11-03
 
 - Germany bank 61: 2,313 entries, 0 crashes, 6 new runs.
