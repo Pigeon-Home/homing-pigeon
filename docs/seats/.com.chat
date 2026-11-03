@@ -3,6 +3,206 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 2-Nov-5:38pm-PST/PDT — Grok: version 3, the review
+
+Read of branch `homing-pigeon-v3` at `4cc16fe0`, posted at the conductor's word. The branch sits on `e2d255b7` (3.15.119). Main is `42871d7a` (3.15.124). Nothing here was rebased, merged, or submitted.
+
+There is almost nothing left to build. The plan's definition of done is met in the tree: the specification, the future entry, the carriage, 45 tests, opt-in and default off. Two holes are documentary. The proof note still says resumption over mail is unproven, and the commit after it (`4cc16fe0`) added the resumption and provider-shape tests. And nothing on the branch has been run against current main.
+
+Boilerplate that is agreed and has no research note (the RFC 2119 citation, the reference-block mechanics, the local-draft status repeated three times) is marked once and then skipped. Everything that carries a design claim is judged.
+
+### Plan
+
+The seed line and the SS answer. Agree. SS is the existing version 1 PSK, not a second secret. Folding that into the opening instead of leaving it only in the addendum is the right edit. No new key material is the correct constraint. Research: say in one sentence, at the moment the acronym is expanded, that the PSK is an authenticator only. "Shared secret" is the phrase that will be misread as the session key.
+
+Version 1 profile as the cryptographic basis (DTLS 1.3 only, one suite, `psk_dhe_ke` only, X25519 on every handshake including resumption, empty `platform_info` in ClientHello, disclosure only in EncryptedExtensions, jobs still hit the acceptance gate). Agree with all nine bullets. This is the part of the design that should not be reopened. Research, and it is the one that matters: X25519 is classical. The threat model is that mail is stored forever. A later break of X25519 decrypts the recorded flights without ever learning the PSK. Forward secrecy against theft of the long-term secret is not forward secrecy against harvest-now-decrypt-later of the ephemeral. Do not block this build on it. Do write, in the security considerations, that the ephemeral is X25519, and leave a named slot for a hybrid share (X25519 + ML-KEM) under the same `psk_dhe_ke` rule: the PSK authenticates, the hybrid share encrypts. That is the upgrade this carriage will actually need, because the transcript is the thing being archived.
+
+"The missing piece is carriage." Agree. Changing the datagram path and not the handshake is how the review surface stays one surface.
+
+Goal 1, the thirteen spec contents. Agree with the list. Item 10 (no downgrade to `psk_ke`, cleartext, or per-job crypto for that session) is the rule the rest of the design is protecting. Item 12 (no IANA action yet) is correct for an unsubmitted -00.
+
+Goal 2, expanding the one-line future entry. Agree, and the expanded entry does keep the owner's bold title.
+
+Goal 3, production path. Agree with the insertion point: classify in the email extension, unwrap application data back into an ordinary envelope, deliver through `handle_mail`, return the result inside the session. Agree that the core must not grow a second job parser. Research: the sentence "the core cannot tell that the envelope arrived inside a session" is only safe if the email process, not the core, remembers the binding, and if that binding is keyed by more than a client-chosen job id. Job ids collide across submitters. Key the hold by `(key_id, job ident)` or by the session connection id plus the job ident. The draft's Section 10.3 says "identified for that session by its job," which is the weak form.
+
+Goal 4, the session is a second gate. Agree with every bullet, including "a completed handshake does not authorize a job" and "session establishment does not create a new cleartext allowance." The duplicate layering (mail digest, DTLS record layer, job seen-set) is the right split. Research on the last bullet: "store-and-forward delay does not create unbounded reassembly" is claimed and then not quite implemented. The reassembler resets its 3600-second timer on every part (`updated = now` in `FlightReassembler.offer`). A slow drip holds a slot indefinitely, up to the 64-transfer cap. Add an absolute deadline from the first part, no longer than the idle timeout, and evict on that even if parts keep arriving.
+
+Goal 5, the test list. Agree, and the file now covers it, including the resumption and loss cases the proof note has not caught up with. The fuzz doctrine matches the project's existing rule. Agree with "add no skips."
+
+Goal 6 and the proof note. Agree with the rule that the note may record only unfiltered output. Disagree with the note as it sits on the branch tip: it describes 26 tests and lists resumption as unproven, after a later commit added 19 tests and says 469 touched tests passed. That note is now a false record. Updating it is the one completion worth doing on this branch before anything else.
+
+D1, reuse `dtlsproto.py`. Agree. A second DTLS stack would be the wrong risk.
+
+D2, subject routes, DTLS bytes authenticate. Agree. This is the sentence the whole carriage stands on.
+
+D3, mailbox ownership stays in the email extension. Agree. A second poller on the same mailbox would race the seen-state.
+
+D4, the core is the only job gate. Agree.
+
+D5, opt-in, literal `true` only, secret handed over only then. Agree. Present-but-invalid stays off.
+
+D6, synthetic peer address from the configured mailbox peer, not from `From`. Agree with the goal. Disagree with the sentence as a description of what was built, and the spec copies the same overclaim. The code is `_addr_for`: `addr = "email:" + (session_id or "legacy")`. The address is the mail session-id from the subject. There is no configured peer identity in it. That is a reasonable demux key, and it does avoid `From`. It is not what D6 says. Either change D6 and Section 9.2 to say "the address is `email:` plus the mail session-id, which is an untrusted routing label and never a credential," or actually mix in a configured peer id. The honest sentence is the better one. Binding the cookie to an attacker-chosen label is fine only while the cookie key stays a server secret. Say that, so nobody later derives the cookie from the session-id alone.
+
+D7, segment at the carriage, reassemble before the engine. Agree. DTLS should keep seeing datagrams. Cutting on base64 group boundaries is the right detail. The limits (262144 octets, 32768-character chunk, 1024 parts, 64 transfers) are sane.
+
+D8, exact-duplicate suppression before the engine. Agree for application data. Disagree with the combination of this rule and the retransmission sentence in the spec (a re-send "carries the same datagram" and a held digest is dropped before the stack). If both are true, a bit-identical retransmission never wakes the peer, so a lost response is repaired only by the local timer. The tests admit the engine dodges this by advancing the record sequence number, so the retransmit is not bit-identical and the cache does not eat it. That is an accident of the engine, not a rule. Research: on a digest hit for a handshake datagram, do not feed it back into key derivation; re-post the saved last outbound flight. On a digest hit for application data, drop it and do nothing. Then a future engine that retransmits identical bytes still makes progress, and a replayed job record still cannot re-enter the core.
+
+D9, results stay in the session, no downgrade. Agree with the prohibition. Disagree with the unbounded wait. "If the session is gone, the result remains pending for a fresh session" has no age, count, or size bound, which contradicts Goal 4. A peer that opens a session, submits jobs, and vanishes fills the outbox forever. Expire the pending result, log it, and still do not send it as ordinary mail. Dropping is not downgrade.
+
+Open question 2, resumption allowed. Agree, given `psk_dhe_ke` and a fresh share. The new tests (fresh share, single-use ticket, corrupted PSK, expired ticket, `psk_ke`-only refused, pipe round trip) are the right set. Research: single-use SHOULD is too soft for a mailbox. A stored ticket is a second long-lived secret sitting in the same archive this carriage is trying to make useless. Make single-use mandatory on this carriage, and state that a replayed ticket can open at most a handshake that still needs a fresh share.
+
+Open question 3, size ceiling. Agree with the numbers as defaults. The ceiling is not the problem a provider will hit. Footers are. That is under the wire format.
+
+"Each step lands on the `together` branch. Nothing is pushed." That sentence is now false as a status. The work is on `homing-pigeon-v3` and it is on the remote. The plan should say so or drop the sentence. Agree with "not submitted."
+
+### Draft, front matter and abstract
+
+Title, category info, independent submission, trust200902, unsubmitted. Agree. Do not submit this -00 as it stands. The two holes below (the wire format versus real MTAs, and the classical ephemeral) should be in the text first.
+
+"Version 3 changes exactly one thing — the carriage." Agree, and the rest of the draft mostly keeps that promise. The places it does not are operational rules (timers, poll rhythm, logging), which are fine as long as they are labeled local.
+
+"Version 3 removes the trade." Disagree with the slogan. It removes the confidentiality trade. It takes on latency, a stored transcript at every hop, and a pre-authentication surface the size of the mailbox. The introduction's next paragraphs actually say this, and they are better than the slogan. Keep those. Cut "removes the trade."
+
+Email has no forward secrecy because the shared secret is long-lived and mail is stored. DTLS has forward secrecy and needs a live path. Agree with both. This is the best statement of the problem on the branch.
+
+The four bullets (flights as mail, parser never routes a flight to the job path, jobs still face the gate, disclosure in EncryptedExtensions so no extra poll). Agree with all four. The disclosure bullet is the one most agreed with, for the latency reason.
+
+### Terminology and profile
+
+flight mail, mail session-id, transfer, carriage. Agree. Especially "not a credential, not a DTLS identity." The session-id regex in the code is `[A-Za-z0-9._-]{1,128}` excluding `.` and `..`, which is tighter than a vague `word-char` and is the right alphabet. No slashes, no whitespace. Put that alphabet in the ABNF instead of deferring to version 1's `word-char`, so a future widening of `word-char` does not put a newline into a session-id.
+
+Profile unchanged, one suite, PSK is the version 1 shared secret, no second secret. Agree.
+
+`psk_ke` MUST NOT be offered, accepted, or fallen back to. Fresh X25519 on full and resumed handshakes. Agree. This is the property. The test that a `psk_ke`-only offer dies with `illegal_parameter` is the right proof.
+
+Stateless until the cookie validates. Connection IDs both ways. No 0-RTT. Agree, and the 0-RTT ban should be repeated in the security considerations as a MUST reject, not as "we do not use it." Early data on a store-and-forward path is a replay. A ClientHello that carries early data should be a failed flight, not a hello with the early data skipped.
+
+No UDP port. Addresses are mailboxes. Agree.
+
+"An implementation MUST NOT use this carriage as a reason to alter the cryptography, the handshake, the record protection, or the gate." Agree.
+
+Opt-in. The secret crosses into the email process only when enabled. Agree. Same boundary as enabling the datagram listener.
+
+"A submitter discovers the carriage by attempting it, or from a prior platform card. A failed attempt does not affect ordinary email." Agree that failure must not disable ordinary mail. Disagree that probing is a good discovery method. A probe is a handshake, which is several stored mails and a poll cycle, and it is indistinguishable from an attack. Research: an unauthenticated capability hint on the platform card (`dtls_over_email` as a fact, not a credential), so the first contact does not have to be a probe. An unauthenticated hint must not be trusted for admission. It only answers whether it is worth trying.
+
+### Wire format
+
+Subject `[HOMING-PIGEON] dtls <session-id>`. Subjects route, they never authenticate. MUST NOT treat `From`, `Reply-To`, `Message-ID`, the mailbox UID, or arrival order as identity. Agree with every one of those prohibitions.
+
+The legacy unaddressed harness shape MAY be accepted for tests and MUST NOT be required by a deployment. Agree. The proof's last bullet is right to keep it off the deployment surface.
+
+One header line, `HP-DTLS/3`, then one base64 chunk. The digest is SHA-384 of the whole datagram, not a signature. Agree with the grammar and with "MUST NOT treat the digest as authentication." It only answers whether these parts are one datagram.
+
+"Unlike a job body, a flight body has no preamble and no trailer." Agree as a fail-closed rule. Disagree as a mail design. This is the operational hole. The new tests already show a provider footer and a subject suffix both die as `dtls-invalid`. A disclaimer, a gateway banner, or a list footer destroys the flight, and Section 8.3 then marks it seen so it is not retried. Research, and this should land before anyone points the carriage at a real provider: stop using a naked `text/plain` body as the frame. Carry the datagram as a MIME part with a private content type and `Content-Transfer-Encoding: base64`. Ignore every other part, including `text/plain` footers. Keep the header line inside that part. The parser already walks MIME for the first `text/plain`; point it at a typed part instead. Line wrapping inside base64 can stay tolerated. Quoted-printable must not. No IANA request is needed while the draft is local.
+
+`Re:` still routes, in the tests, and the spec never mentions it. Disagree by omission. A reply thread will mix flights if any prefix is stripped casually. Research: accept at most one leading `Re:` or `Fwd:` and only when the remainder matches the flight subject exactly. Document it. Do not accept an arbitrary prefix.
+
+Size cap before base64 decode, before reassembly, before the stack. Agree. This is the right order and it is the sentence that makes the pre-authentication bound real.
+
+Reference limits 262144 / 32768 / 1024. Agree as local defaults. A sender that does not know the peer SHOULD stay inside them. Agree.
+
+### Reassembly, retransmission, duplicates
+
+Parts in any order. Duplicate parts idempotent. A contradiction destroys the transfer. Complete once, then discard. Expire. Agree with all five. The contradiction rule (drop, do not arbitrate) is correct because the digest is unauthenticated: there is no honest way to pick a winner.
+
+"Reassembly is unauthenticated and therefore cheap to discard." Agree. Best one-sentence threat model in the reassembly section.
+
+"The carriage defines no acknowledgement and no retransmission timer of its own." Agree. Two retransmission machines on one path multiply mail.
+
+"A re-send is a new transfer id carrying the same datagram." Disagree, for the reason under D8. Same bytes are a duplicate and should be suppressed. A retransmission the peer must react to has to be either byte-different or handled as "digest hit, resend last flight, do not reprocess." The spec should pick one. The implementation has quietly picked "byte-different because the sequence number moved," and the spec does not say that.
+
+"SHOULD stretch retransmission timers toward the poll rhythm. Stretching changes no message." Agree that it changes no message. Research: state a floor, or an hourly poller will give up on a live-path timer before the next poll. Interval at least two poll periods, give up after eight, and the give-up is the Section 9.4 deadline. The "about 4 poll cycles" sentence later in the draft is the right mental model; tie the timer to it.
+
+Three duplicate layers, each doing only its job. A duplicate flight MUST NOT create a second session, MUST NOT deliver application data twice, MUST NOT run a job twice. Agree. The implementation detail agreed with: the connection-id binding check runs before the digest cache, so a mislabeled copy cannot poison the cache against the legitimate copy. That comment in `_receive_datagram` is the right order. The spec should steal that sentence.
+
+No ordering assumed. Job-mail arrival order is not an input. Agree.
+
+### Parser and fail-closed
+
+Classify before delivery. A flight subject goes only to the carriage. A job subject goes to the gate. Everything else stays other mail. Agree.
+
+Initialization is recognized from the bytes: the first record is a plaintext ClientHello, including a fragmented one. Agree. Recognizing it from the subject would be the bug D2 forbids.
+
+Malformed flight mail is marked seen, dropped, and never reread as a job. Agree, with the MIME caveat above. Fail-closed plus "mark seen" is correct against poll loops and brutal against a gateway that appends a footer. Once the frame lives in its own MIME part, a footer in `text/plain` stops being malformed and this rule goes back to catching actual garbage.
+
+"The lane a message enters by its subject is the only lane it is ever read in." Agree. Do not soften this.
+
+### Session establishment
+
+The five-step handshake, and none of it is a job. Agree. Stateless HelloRetryRequest before session state. Agree.
+
+Section 9.2, the synthetic address. Disagree with the sentence as written. It says the address is derived from the configured mailbox peer and from the mail session-id "and from nothing the message itself asserts." The mail session-id is asserted by the message. The sentence contradicts itself, and the code uses only the session-id. Rewrite it to the code, as under D6. The following bullets are agreed: a protected record is accepted under a mail session-id only when its destination connection id is the one bound to that session-id, and a connection id bound to a different session-id is dropped whichever subject it arrived under. That binding is what makes relabeling useless. Entry is the record protection. Agree.
+
+Resumption: new mail session-id, fresh share, `psk_dhe_ke` only, disclosure again. MAY disable by configuration. Agree. See the single-use note above.
+
+A failed attempt expires and does not touch ordinary email or any other attempt. Agree.
+
+MUST NOT keep keys or the session-id binding past the configured lifetime. A result for a dead session is not sent on any other path. Agree with both. Add the expiry-and-drop bound from D9 so "not sent on any other path" does not become "kept forever."
+
+### Jobs, results, disclosure
+
+A 4-octet length prefix, one envelope per application message, subject, blank line, body. Agree. Reusing the channel envelope is what lets the core stay ignorant.
+
+Handshake completion MUST NOT bypass the gate. HMAC, audience, size caps, staleness, key policy, all unchanged. The session authenticates the channel; the signature authenticates the object. Agree. This is the other sentence that should not be edited out. The cleartext rule surviving the session is correct: the session's confidentiality is not the object's provenance.
+
+A result is sealed into that session. MUST NOT ride a different job's session. Agree. Cross-session result injection would be worse than downgrade.
+
+The disclosure mechanism is unchanged from version 1 Section 20. Agree.
+
+The latency argument, including the "superintelligent system" clause. Agree with the argument: on a mailbox, a post-handshake greeting costs a poll cycle at best and a day at worst, so the disclosure belongs on the flight the handshake already sends. Disagree with the adjective. It does no technical work. "A submitter that plans work from the platform card" says the same thing.
+
+The cost: the disclosure goes out before the initiator's Finished is verified. Adopt version 1's argument. Agree, on the condition that the PSK binder has already been checked, which the flight list says it has. An aborting peer who holds the PSK learning the disclosure is the same as a real peer learning it. A peer who does not hold the PSK must not get it. The spec should say that precondition in Section 11, not only by reference to the flight order.
+
+### No-downgrade, replay, operations
+
+The six no-downgrade bullets. Agree with all six. The one to put first is the last: mailbox TLS is not a substitute for the session, and "the IMAP connection was TLS" is not a reason to run a session-less job with session-level trust. That is the downgrade an operator will actually propose.
+
+Replay at three layers, no third execution window. Agree. The two priced windows from version 1 stay the only ones. This carriage adds no execution path, so it adds no replay path to execution. That sentence is true only while application data is forced through `handle_mail`. Any future shortcut that runs a job from the DTLS callback breaks it. The closing sentence of Section 16.6 already says so.
+
+A replayed ticket restarts a handshake that still needs fresh ephemeral keys. Agree. Another reason single-use should be MUST on this carriage.
+
+Flight mail and job mail share a mailbox and neither delays the other beyond one poll pass. Disabling the option returns the mailbox to its previous behavior. Agree.
+
+Poll rhythm is the operational dial. Twenty seconds is about four polls; hourly is about four hours. Agree. This is the right operator sentence. Pair it with the timer floor.
+
+SHOULD log establishment, abandonment, expiry, and malformed drops. MUST NOT log keys, ephemeral material, or the shared secret. Agree.
+
+### IANA and security considerations
+
+No IANA action. Reuse version 1's `platform_info` code point. Do not request a second extension, a port, a media type, or an OID. Agree. If the MIME type from the wire-format note is ever standardized, that is a later document's request, not this one's.
+
+Section 16.1, the forward-secrecy claim. Agree with the claim as scoped: record the flights, later steal the PSK, the records stay confidential, because the ephemeral private keys never left the endpoints and do not survive the session. Agree with the limits: PSK theft still impersonates and still intercepts future handshakes, still reads ordinary version 1 job crypto, and does nothing about an endpoint that is compromised while the session is live. "No more, and no less" is the right ending. The missing limit is the one in the plan note: a later break of X25519, not of the PSK, defeats recorded sessions. Write it next to the other limits so the property does not get cited as stronger than it is.
+
+The mailbox holds the transcript in the clear at the record layer. It cannot read application data, forge a verifying record, or finish a handshake. It can delay, drop, duplicate, and reorder. No padding, no cover traffic. Agree with all of that. Agree that metadata (session-id, cadence, sizes) is observable and that the document should keep saying it specifies no padding. Do not add cover traffic in this version. Research, only if a deployment cares: pad each datagram to a fixed set of buckets before base64, and keep the real length inside the protected record, not in the `bytes=` header. The `bytes=` field currently publishes the exact length. That is consistent with "we specify no padding." If padding is ever added, that field has to become the padded length or it undoes the padding.
+
+Headers are not authentication. A flight is worth exactly what its datagram proves. Agree.
+
+"A deployment MUST NOT add a sender allowlist as a substitute gate." Agree if "substitute" is the operative word. Disagree if it is read as "you may not filter mail." An allowlist, or a DKIM or ARC check, is a reasonable pre-filter and a terrible gate. The version 1 property that email has no sender gate should stay. Research: allow a documented, untrusted intake filter that can only drop, never admit, and say in the same sentence that passing the filter grants nothing the datagram did not already prove.
+
+Pre-authentication bounds: size cap, bounded reassembly, bounded digest cache, stateless cookie, malformed mail consumed once, disclosure tier is the responder's choice. Agree with the list. The drip-timer hole above is the one bound that is not actually a bound. The digest cache is a 4096-entry FIFO in the code; the spec only says "bounded." Name the bound or say the bound is local. FIFO eviction means a sender of 4096 distinct junk datagrams can push a still-useful digest out and then replay it. For application data the job seen-set still holds. For handshakes, a flushed digest can re-enter the stack. That is acceptable only because the stack is supposed to be safe against replay on its own. Say that, so the cache is understood as an optimization against poller double-delivery, not as the replay defense.
+
+"At no point does this carriage answer a failure by doing the same thing more weakly." Agree. This is the downgrade policy in one sentence. The examples that follow (plain job crypto, an ordinary mail result, reading a flight as a job) are the three to keep as the test oracles, and the tests already cover them.
+
+Section 16.6, the gate is the execution boundary. Several holders of the shared secret are distinguished by additional secrets and key policy, not by the session. Forward secrecy changes transport, not admission. A future extension that admits a job on the session's authority alone is a proposal to remove the gate. Agree with the whole paragraph. It is the right last word.
+
+One gap inside that paragraph: the synthetic peer is singular ("the peer the runner is configured to serve"), while this section admits several key holders. The PSK identity inside the handshake has to be what selects `additional_secrets`. The mail session-id must not select the key. The code's `secret_lookup` callback is the right shape; the spec should say the selection is the DTLS PSK identity, so nobody maps session-id to key as a shortcut.
+
+### What to do next, and what not to do
+
+Do not merge this onto main yet, and do not submit it. The carriage design is sound. The profile reuse is sound. The gate split is sound. The tests are aimed at the right failures.
+
+In order:
+
+1. Rewrite Section 9.2 and plan D6 so they describe the address the code uses.
+2. Split duplicate handling into "a handshake hit resends the last flight" versus "an application hit is dropped," and stop claiming the retransmit is the same datagram.
+3. Put an absolute reassembly deadline next to the idle timer, and a pending-result expiry next to the no-downgrade rule.
+4. Move the frame into its own MIME part before anyone points this at a real provider. The footer test is already saying the current body will not survive.
+5. Add the X25519 harvest limit, and a named hybrid-share slot, to Section 16.1.
+6. Update the proof note so it stops denying the resumption tests, then rebase onto current main and run the touched suites there.
+
+The architecture is agreed. Four sentences overclaim what the code does or what the bounds are, and the wire format depends on an untouched `text/plain` body. The research that changes the design, rather than the wording, is the hybrid ephemeral and the MIME part.
+
+
 ## 1-Nov-10:40pm-PST/PDT — Grok: a -03 delta, not a change
 
 The proposed version-1 delta is docs/ietf/delta-03.txt. The posted -02 sources were not edited. The handshake code was not edited. It still sends 0xFE00 and the old greeting members.
