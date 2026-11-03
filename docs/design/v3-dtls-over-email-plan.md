@@ -223,12 +223,21 @@ boundary unchanged.
 ### D6. Use synthetic peer addresses inside the DTLS core
 
 The DTLS core keys its stateless cookie and sessions to a peer
-address. Email has no UDP address. The carriage will use a stable
-synthetic address derived from the authenticated mailbox peer
-identity configured for the session, not from a spoofable `From`
-header. The cookie therefore still binds a handshake attempt to
-the peer context that started it, while mail headers remain
-untrusted routing data.
+address. Email has no UDP address. The address the carriage
+uses is the string `email:` followed by the mail session-id --
+an untrusted routing label that demultiplexes concurrent
+attempts on 1 mailbox, never a credential and never a key
+selector. There is no configured peer identity in it, and none
+is needed: the cookie's key is a secret the responder
+generates for itself and never derives from the address, so
+binding the cookie to an attacker-chosen label is safe exactly
+while that key stays secret, and the PSK identity inside the
+handshake is what selects the shared secret. Mail headers
+remain untrusted routing data throughout. (This decision's
+first text claimed a configured mailbox peer identity; the
+code never mixed one in, and the review of 2-Nov-2026
+corrected the sentence to the code. The specification's
+Section 9.2 says the same.)
 
 ### D7. Segment at the carriage layer, not inside DTLS
 
@@ -243,20 +252,35 @@ parts are idempotent.
 
 A mailbox poll or a sender retry can deliver the same RFC822
 message more than once. The carriage records a digest of each
-accepted DTLS mail payload for the life of its session state and
-drops an exact repeat. This is a carriage dedup rule, separate from
-DTLS record protection and separate from the job seen-set. It stops
+accepted DTLS mail payload for the life of its session state.
+The rule is split by phase (the review of 2-Nov-2026 settled
+the split): an exact repeat of a handshake-phase datagram is
+not fed to the engine again -- nothing is derived twice --
+and instead re-posts the saved last outbound flight, since
+the duplicate is the signal the peer's answer was lost; an
+exact repeat of application data is dropped and does nothing.
+This is a carriage dedup rule, separate from DTLS record
+protection and separate from the job seen-set. It stops
 a replayed protected record from being presented to the engine as
 a new application message.
 
 ### D9. Bind results to the session that carried the job
 
-The email extension will remember, for each job ident delivered
-from a session, which local session carried it. When the matching
+The email extension will remember, for each job delivered
+from a session, which local session carried it, keyed by the
+session's connection ID together with the job ident -- never
+by the job ident alone, which the submitter chooses and which
+collides across submitters. When the matching
 result appears in the channel outbox, the extension seals it as
 application data for that session and posts it as DTLS mail. If the
 session is gone, the result remains pending for a fresh session;
 it is not downgraded to an ordinary email result by this carriage.
+The pending hold is bounded (the review of 2-Nov-2026 made the
+bound explicit): a held result expires by age -- 7 days in the
+reference implementation -- and the held set is bounded in
+count and in total bytes, oldest first. An expired result is
+dropped and the expiry logged; dropping is not downgrade,
+because downgrade would be sending it by a weaker path.
 
 ### D10. The naming: DTLS, and DTLS via email
 
@@ -286,9 +310,16 @@ name everywhere else is the one this decision states.
 8. Parser fuzz family.
 9. Full touched-suite runs and the proof note.
 
-Each step lands as its own local commit on the `together` branch,
-with author and committer `Muse <muse@localhost>` and the project
-Agent-Stamp trailer. Nothing is pushed and nothing is submitted.
+Each step landed as its own commit on the `homing-pigeon-v3`
+branch, with author and committer `Muse <muse@localhost>` and
+the project Agent-Stamp trailer. The branch was pushed for
+review, then merged to main (merge `4a61c5ba`, with the
+`dtls_via_email` rename at `2d498f2c`) and released in
+3.15.125. Nothing has been submitted to the IETF. (This
+paragraph's first text said the work sat unpushed on a
+`together` branch; that was true when it was written and
+false after the merge, and the review of 2-Nov-2026 flagged
+it. It now says what happened.)
 
 ## Open questions
 
@@ -313,7 +344,11 @@ the DTLS handshake's key in the existing design -- the version
 1 profile's PSK -- so the resolution confirms the plan's
 assumption-free posture rather than changing it: no new key
 material, no second secret, and the specification says so in
-its Section 4.1. Open questions 2 and 3 stand as defaults
+its Section 4.1. One sentence belongs next to the expansion,
+because "shared secret" is the phrase that will be misread as
+the session key: the PSK is an authenticator only. It
+authenticates the handshake; it does not encrypt the session
+-- the ephemeral share does. Open questions 2 and 3 stand as defaults
 taken (resumption allowed under the fresh-share rule; the
 carriage datagram limit at 262144 octets with a 32768-character
 default chunk, both tunable).
@@ -323,6 +358,24 @@ mail -- `HP-DTLS/3 transfer=<16 hex> part=<n> parts=<m>
 bytes=<total> sha384=<digest>` -- followed by 1 base64 chunk,
 with chunk boundaries on base64 group boundaries so the
 decoded chunks concatenate to the datagram exactly.
+
+## Review pass, 2-Nov-2026
+
+2 peer reviews (the forum entries of 2-Nov-2026, 5:38pm and
+6:10pm) were verified first-hand against the merged tree,
+and what held landed on main. The wire format moved: the
+frame of D7 now rides in its own MIME part
+(`application/hp-dtls3`, base64), so a provider footer in the
+text part no longer kills a flight; the naked shape remains
+readable when no typed part is present. D8's split and D9's
+bound and keying are stated in their sections above.
+Reassembly gained an absolute deadline from the first part.
+The engine now rejects a ClientHello that carries early
+data. Mail fetches are BODY.PEEK fetches, so a decision
+fetch no longer marks a peer's flight seen. The
+specification carries the same changes; the proof note's
+review section records each item's disposition, and the
+forum carries the decision record.
 
 ## Definition of done
 

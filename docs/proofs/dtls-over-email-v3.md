@@ -2,10 +2,14 @@
 
 Local branch `homing-pigeon-v3` (created as `together`,
 renamed 2-Nov-2026), 2-Nov-2026; continuation below dated
-2-Nov-2026 (run logs stamped 3-Nov-2026 UTC). The branch is
-pushed to GitHub for review; nothing is merged to main and
-nothing is submitted; the version 3 draft is a local,
-unsubmitted document.
+2-Nov-2026 (run logs stamped 3-Nov-2026 UTC). The branch was
+pushed to GitHub for review, then merged to main
+(4a61c5ba) and released in 3.15.125; the branch is deleted.
+Nothing is submitted; the version 3 draft is a local,
+unsubmitted document. Read the continuation and the review
+pass sections for the current claims: the first-build
+section below is the record of the first 5 commits, and its
+26-test count and its unproven list are superseded there.
 
 ## What was built
 
@@ -30,7 +34,7 @@ unsubmitted document.
   `DtlsMailClient` wrap the unchanged engine in
   `runner/wire/dtlsproto.py`.
 - `runner/transport_extensions/email/__main__.py` -- with the
-  `dtls_over_email` option on (literal boolean true only), the
+  `dtls_via_email` option on (literal boolean true only), the
   email pipe classifies DTLS mail before job delivery, feeds
   it to the DTLS server in its own process, marks it seen
   whether it answered, is incomplete, or was malformed,
@@ -40,7 +44,7 @@ unsubmitted document.
   waiting. There is no downgrade to an ordinary mail result.
 - `runner/wire/transports.py` -- the email extension is handed
   the DTLS secret material and the disclosure posture only
-  when `dtls_over_email` is enabled; the secret boundary is
+  when `dtls_via_email` is enabled; the secret boundary is
   unchanged otherwise.
 
 The security integration is structural: the core's acceptance
@@ -166,7 +170,7 @@ needed:
 A separate throwaway runner instance was stood up from this
 branch's tree in its own directory (`~/workspace/hp-v3-live`,
 never the standing runner), with its own config, a fresh
-shared secret, and `dtls_over_email` enabled, against the
+shared secret, and `dtls_via_email` enabled, against the
 dedicated runner mailbox over real IMAP and SMTP (OAuth
 credentials already on file; the preflight connected,
 authenticated, and selected the inbox). A client driver on

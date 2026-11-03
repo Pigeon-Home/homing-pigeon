@@ -31,9 +31,9 @@ normative:
     author:
       - name: "Andrew Slutsky"
         ins: "A. Slutsky"
-    date: 2026-10
+    date: 2026-11
     seriesinfo:
-      Internet-Draft: draft-slutsky-homing-pigeon
+      Internet-Draft: draft-slutsky-homing-pigeon-03
   RFC2119:
     title: "Key words for use in RFCs to Indicate Requirement Levels"
     author:
@@ -61,6 +61,36 @@ normative:
       RFC: 8446
       DOI: 10.17487/RFC8446
     target: https://www.rfc-editor.org/info/rfc8446
+  RFC5234:
+    title: "Augmented BNF for Syntax Specifications: ABNF"
+    author:
+      - name: "D. Crocker"
+      - name: "P. Overell"
+    date: 2008-01
+    seriesinfo:
+      RFC: 5234
+      DOI: 10.17487/RFC5234
+    target: https://www.rfc-editor.org/info/rfc5234
+  RFC4648:
+    title: "The Base16, Base32, and Base64 Data Encodings"
+    author:
+      - name: "S. Josefsson"
+    date: 2006-10
+    seriesinfo:
+      RFC: 4648
+      DOI: 10.17487/RFC4648
+    target: https://www.rfc-editor.org/info/rfc4648
+  RFC7748:
+    title: "Elliptic Curves for Security"
+    author:
+      - name: "A. Langley"
+      - name: "M. Hamburg"
+      - name: "S. Turner"
+    date: 2016-01
+    seriesinfo:
+      RFC: 7748
+      DOI: 10.17487/RFC7748
+    target: https://www.rfc-editor.org/info/rfc7748
   RFC9146:
     title: "Connection Identifier for DTLS 1.2"
     author:
@@ -86,6 +116,47 @@ normative:
     target: https://www.rfc-editor.org/info/rfc9147
 
 informative:
+  RFC5322:
+    title: "Internet Message Format"
+    author:
+      - name: "P. Resnick"
+    date: 2008-10
+    seriesinfo:
+      RFC: 5322
+      DOI: 10.17487/RFC5322
+    target: https://www.rfc-editor.org/info/rfc5322
+  RFC8551:
+    title: "Secure/Multipurpose Internet Mail Extensions (S/MIME) Version 4.0 Message Specification"
+    author:
+      - name: "B. Ramsdell"
+      - name: "S. Turner"
+    date: 2019-04
+    seriesinfo:
+      RFC: 8551
+      DOI: 10.17487/RFC8551
+    target: https://www.rfc-editor.org/info/rfc8551
+  RFC9051:
+    title: "Internet Message Access Protocol (IMAP) - Version 4rev2"
+    author:
+      - name: "A. Melnikov"
+      - name: "B. Leiba"
+    date: 2021-08
+    seriesinfo:
+      RFC: 9051
+      DOI: 10.17487/RFC9051
+    target: https://www.rfc-editor.org/info/rfc9051
+  RFC10024:
+    title: "Post-Quantum Traditional (PQ/T) Hybrid Key Agreement Mechanisms for TLS 1.3"
+    author:
+      - name: "K. Kwiatkowski"
+      - name: "P. Kampanakis"
+      - name: "B. Westerbaan"
+      - name: "D. Stebila"
+    date: 2026-08
+    seriesinfo:
+      RFC: 10024
+      DOI: 10.17487/RFC10024
+    target: https://www.rfc-editor.org/info/rfc10024
   RFC7296:
     title: "Internet Key Exchange Protocol Version 2 (IKEv2)"
     author:
@@ -99,16 +170,6 @@ informative:
       RFC: 7296
       DOI: 10.17487/RFC7296
     target: https://www.rfc-editor.org/info/rfc7296
-  RFC8996:
-    title: "Deprecating TLS 1.0 and TLS 1.1"
-    author:
-      - name: "K. Moriarty"
-      - name: "S. Farrell"
-    date: 2021-03
-    seriesinfo:
-      RFC: 8996
-      DOI: 10.17487/RFC8996
-    target: https://www.rfc-editor.org/info/rfc8996
   RFC9325:
     title: "Recommendations for Secure Use of Transport Layer Security (TLS) and Datagram Transport Layer Security (DTLS)"
     author:
@@ -125,7 +186,7 @@ informative:
 
 This document specifies version 3 of the Homing Pigeon message
 protocol. Version 3 is a transport extension to version 1
-(draft-slutsky-homing-pigeon), not a replacement for it: every
+{{I-D.slutsky-homing-pigeon}}, not a replacement for it: every
 version 1 message keeps its meaning, the version 1 job
 acceptance gate is unchanged, and version 3 changes exactly one
 thing -- the carriage of the version 1 DTLS session profile.
@@ -142,6 +203,16 @@ so a session can be opened by an email, completed over further
 emails, and then carry jobs and results inside it, with the
 perfect forward secrecy of the version 1 profile intact on a
 carrier that has no live path at all.
+
+The objects carried inside the session remain version 1
+objects: a job or a result inside a session is the version 1
+object, unchanged, carrying the version value version 1
+defines. The 3 of this document's title numbers this document
+and its carriage; it is not a value of any object's version
+field, and nothing in this document mints a version 3 object.
+HP-DTLS/3, the frame header of Section 5.2, is a carriage
+label whose digit is the carriage generation, not a protocol
+version.
 
 This document is a local, unsubmitted draft. It has not been
 posted to the Internet-Drafts directory, and it requests no
@@ -169,8 +240,14 @@ derived from an ephemeral exchange and erased with the
 session, but it needs a live path, and a runner behind a
 mailbox has none.
 
-Version 3 removes the trade. It carries the version 1 DTLS
-profile, unchanged, over the email binding:
+Version 3 carries the version 1 DTLS profile, unchanged,
+over the email binding. What it removes is the
+confidentiality side of the trade: a runner reachable only
+through a mailbox gains the session's forward secrecy. What
+it does not remove is the rest of the trade -- store-and-
+forward delay, a transcript stored at every hop, visible
+subjects and sizes, and a pre-authentication surface the
+size of the mailbox:
 
 * A DTLS handshake flight is carried as 1 or more email
   messages (Sections 5 and 6).
@@ -190,17 +267,16 @@ Nothing else in version 1 changes. The deltas in this document
 are stated as deltas: where this document says a version 1 rule
 applies, it applies as written there.
 
-The suite therefore offers 2 ways to reach a runner with this
-profile, and their names are kept distinct. The version 1
-datagram binding is DTLS, with no qualifier: the submitter is
-told the runner's IP address and port, DTLS runs over UDP
-datagrams as {{RFC9147}} defines, the network admits the
-traffic under its firewall rules, and the runner is
-configured to accept it. This document's carriage is DTLS via
-email: the same profile's datagrams ride email messages, so
-no inbound network path to the runner is needed at all. A
-deployment MAY offer either way, or both; the profile, the
-handshake, and the acceptance gate are the same on each.
+The same profile therefore runs on 2 bindings, and their
+names are kept distinct. On the version 1 datagram binding
+it is DTLS, with no qualifier: the submitter is told the
+runner's IP address and port, and DTLS runs over UDP
+datagrams as {{RFC9147}} defines. On this document's
+binding it is DTLS via email: the same profile's datagrams
+ride email messages, and no inbound UDP listener -- and no
+firewall hole for one -- is needed. A deployment MAY offer
+either binding, or both; the profile, the handshake, and
+the acceptance gate are the same on each.
 
 ## Status of this document
 
@@ -272,6 +348,8 @@ particular:
   validates, exactly as on the datagram binding.
 * Connection IDs {{RFC9146}} are used in both directions.
 * Early data is not used; there is no 0-RTT on this carriage.
+  A ClientHello that carries early data is a malformed
+  flight on this carriage and MUST be rejected (Section 13).
 * The platform_info extension is offered empty in the
   ClientHello and, when offered, MAY be answered in
   EncryptedExtensions only, exactly as version 1 Section 20
@@ -327,19 +405,33 @@ subjects). The flight subject is:
 [HOMING-PIGEON] dtls <mail session-id>
 ~~~
 
-In ABNF {{RFC5234}}, with `word-char` and the separator set as
-version 1 defines them:
+In ABNF {{RFC5234}}, with the separator set as version 1
+defines it:
 
 ~~~
-flight-subject = "[HOMING-PIGEON]" 1*gap "dtls" 1*gap session-id
-session-id     = 1*128 word-char
-                 ; and not "." or ".."
+flight-subject  = "[HOMING-PIGEON]" 1*gap "dtls" 1*gap
+                  session-id
+session-id      = 1*128 session-id-char
+                  ; and not "." or ".."
+session-id-char = ALPHA / DIGIT / "." / "_" / "-"
 ~~~
+
+The session-id alphabet is stated here in full and does not
+inherit version 1's `word-char`: it is the alphabet a mail
+header field can carry ({{RFC5322}}, Section 2.2) and a
+filesystem can name, and a future widening of version 1's
+production MUST NOT widen it.
 
 The mail session-id is chosen by the initiator, 1 per session
 attempt; a resumption attempt is a new attempt and takes a new
 mail session-id. The responder answers flight mail for an
 attempt under the same mail session-id it arrived under.
+
+A mail user agent that replies to flight mail may prepend a
+reply prefix to its subject. A receiver MAY accept at most 1
+leading "Re:" or "Fwd:" (case-insensitive), and only when the
+remainder is exactly a flight subject. A chain of prefixes,
+or any other text before the marker, is not a flight subject.
 
 Subjects route; they never authenticate. A receiver MUST NOT
 treat a flight subject, a mail session-id, or any mail header
@@ -354,15 +446,44 @@ is the base64 of 1 datagram -- for local testing. That shape
 carries no mail session-id, cannot be bound to a session under
 Section 9.2, and MUST NOT be required by any deployment.
 
-## The flight body
+## The flight frame
 
-The body of a flight mail is 1 header line, 1 line break, and
-1 base64 chunk:
+The frame of a flight mail is carried in a dedicated MIME
+part of the message, whose content type is
+`application/hp-dtls3` -- a private type: this document is
+local and requests no media type registration for it
+(Section 15). The part's content, under
+Content-Transfer-Encoding base64, is 1 header line, 1 line
+break, and 1 base64 chunk:
 
 ~~~
 HP-DTLS/3 transfer=<t> part=<i> parts=<n> bytes=<b> sha384=<d>
 <base64 chunk>
 ~~~
+
+The frame rides as its own part, and not as text in the
+message's text part, precisely so that what intermediate
+agents do to text cannot reach it: a mail gateway that
+appends a disclaimer or a banner to the text part -- the
+routine rewriting of real mail paths -- does not touch the
+flight. This is the dedicated-part practice {{RFC8551}}
+records for the same reason. Text outside the part is not
+the frame and MUST be ignored for framing.
+
+The header line is the part's 1st line. Base64 folding at
+76 columns inside the part is accepted: the chunk is read
+with its whitespace removed. Quoted-printable MUST NOT be
+used for the part and MUST NOT be accepted for it: a part
+whose transfer encoding is not base64 carries no frame.
+
+A message with no `application/hp-dtls3` part is read in
+the naked shape this carriage began with: the frame as the
+1st text/plain part's text, as a job body under version 1
+is read, with no preamble and no trailer. When a typed part
+is present it is the only frame source: a frame-shaped text
+part does not rescue a typed part that does not frame, and
+a part that does not frame is malformed flight mail
+(Section 8.3).
 
 where:
 
@@ -373,7 +494,10 @@ where:
   number of parts, in decimal. An unsegmented datagram is
   part 0 of 1.
 * `b` is the total length of the datagram in octets, in
-  decimal.
+  decimal. The field publishes the datagram's exact length,
+  which is consistent while this document specifies no
+  padding (Section 16.2); if padding is ever added, `b` is
+  the padded length, or the field would undo the padding.
 * `d` is the SHA-384 digest of the whole datagram, as 96
   lowercase hexadecimal digits.
 * the chunk is a slice of the base64 encoding ({{RFC4648}}
@@ -387,13 +511,6 @@ the datagram they claim to carry. It is not a signature and
 MUST NOT be treated as authentication: a receiver verifies it
 to know the datagram is whole, and authenticates the datagram
 afterwards, by DTLS.
-
-The body is the 1st text/plain part that is not an attachment
-where the message is multipart, as on version 1's email
-binding. Unlike a job body under version 1, a flight body has
-no preamble and no trailer: a body whose 1st line is not the
-header line above, or whose chunk is not base64, is malformed
-flight mail (Section 8.3).
 
 ## Size gates
 
@@ -438,10 +555,15 @@ transfer identifier). Its rules are:
   once, and the state is discarded.
 * Incomplete state is bounded in count, in total size, and in
   age, and expires. The reference implementation holds at most
-  64 transfers, each for at most 3600 seconds from its last
-  part. Expired parts complete nothing: a part that arrives
-  after its transfer expired starts a new, incomplete
-  transfer.
+  64 transfers. A transfer's age runs from its FIRST part as
+  well as its last: the reference implementation keeps a
+  transfer for at most 3600 seconds from its first part, and
+  3600 seconds from its last part, and no arriving part
+  extends the first-part deadline -- a sender dripping 1 part
+  just inside the idle window would otherwise hold a transfer
+  slot indefinitely. Expired parts complete nothing: a part
+  that arrives after its transfer expired starts a new,
+  incomplete transfer.
 
 Reassembly is deliberately unauthenticated and therefore
 deliberately cheap to discard: it holds bytes, it decides
@@ -457,8 +579,11 @@ timer of its own. Retransmission is the DTLS handshake's, as
 version 1's profile inherits it from {{RFC9147}}: each side
 re-sends its current flight when its timer expires, and the
 timers' values are the profile's. On this carriage a flight's
-re-send is a new flight mail, under a new transfer identifier,
-carrying the same datagram. A sender SHOULD NOT re-send a
+re-send is a new flight mail, under a new transfer identifier.
+The re-sent flight is the DTLS stack's own retransmission --
+from the record layer's perspective a new record, with a new
+record sequence number ({{RFC9147}} Section 5.2) -- not a
+copy of the earlier mail. A sender SHOULD NOT re-send a
 flight mail at the mail layer on its own schedule: 2
 retransmission machines on 1 path multiply mail without adding
 reliability.
@@ -466,9 +591,15 @@ reliability.
 Timers that are reasonable on a live path are short on a
 store-and-forward one. An implementation on this carriage
 SHOULD stretch its retransmission timers toward the mailbox
-poll rhythm it operates on, and MUST still give up on an
-attempt that cannot complete (Section 9.4). Stretching a timer
-changes no message and no state machine; it is a local matter.
+poll rhythm it operates on: concretely, the initial
+retransmission interval SHOULD be at least 2 of the
+implementation's mailbox poll periods, and an attempt SHOULD
+be given up after about 8 retransmissions -- that give-up is
+the attempt deadline of Section 9.4. {{RFC9147}} Section
+5.8.2 permits a profile to recommend longer timer values
+than its defaults; this paragraph is that recommendation for
+a store-and-forward path. Stretching a timer changes no
+message and no state machine; it is a local matter.
 
 ## Duplicates, at each layer
 
@@ -478,13 +609,25 @@ that duplicates datagrams; and the job layer is written to run
 each job at most once. The carriage keeps the 3 layers'
 duplicate handling separate, and each layer's rule is its own:
 
-* Mail layer: the carriage suppresses exact duplicates. A
-  receiver keeps a digest of each datagram it has accepted
-  from flight mail, for the life of its session state, bounded
-  and in arrival order; a flight mail whose datagram's digest
-  is already held is dropped without being fed to the DTLS
-  stack again. A replayed mail is therefore not a new record,
-  at either the handshake layer or the application layer.
+* Mail layer: the carriage suppresses exact duplicates,
+  split by phase. A receiver keeps a digest of each datagram
+  it has accepted from flight mail, bounded and in arrival
+  order; the reference implementation's cache holds 4096
+  digests, first in first out. The cache is an optimization
+  against a poller or a sender delivering the same mail
+  twice; it is not the replay defense (Section 13 names the
+  defenses). The connection-id binding check of Section 9.2
+  runs before a datagram's digest is recorded, so a
+  misaddressed copy cannot poison the cache against the same
+  record arriving under its own session's mail. A digest hit
+  on a handshake-phase datagram is not fed to the DTLS stack
+  again -- nothing is derived twice -- and the receiver
+  instead re-posts its saved last outbound flight, under a
+  new transfer identifier: the duplicate is the signal that
+  the answer was lost ({{RFC9147}} Section 5.8.1). A digest
+  hit on application data is dropped and does nothing. A
+  replayed mail is therefore not a new record at either
+  layer, and a lost flight is still repaired.
 * DTLS layer: records are protected and sequenced by the
   record layer as {{RFC9147}} specifies; a record that does
   not authenticate is dropped by the stack, whether it is a
@@ -566,6 +709,21 @@ failure to any other reading of the same message. The lane a
 message enters by its subject is the only lane it is ever read
 in.
 
+## Seen flags and fetches
+
+Flight mail is consumed by the component that owns the
+mailbox, and consumption is what marks it seen. A party MUST
+mark a flight message seen only when it has consumed it --
+fed it to the carriage, or determined it malformed under
+Section 8.3. A fetch made to decide, before consumption,
+MUST NOT set the seen flag: over IMAP {{RFC9051}} that is a
+BODY.PEEK fetch, because a plain body fetch sets the flag as
+a side effect, and a fetcher that marks its peer's flights
+seen starves every other consumer of the same mailbox. An
+initiator MUST ignore flight mail whose mail session-id is
+not an attempt it has open: on a shared mailbox, stale
+flights of dead attempts are normal, and they are not input.
+
 # Session Establishment
 
 ## The attempt, flight by flight
@@ -598,11 +756,18 @@ cookie and its session to. On the datagram binding that is the
 datagram's source address. On this carriage there is no source
 address a receiver may trust: the `From` header is a claim any
 sender can write, and the mailbox's identifiers are local to
-the mailbox. The peer address on this carriage is therefore
-synthetic: it is derived from the configured mailbox peer
-identity of the deployment -- the peer the runner is
-configured to serve over this mailbox -- and from the mail
-session-id, and from nothing the message itself asserts.
+the mailbox. The peer address on this carriage is the ASCII
+string `email:` followed by the mail session-id. That string
+is an untrusted routing label: it demultiplexes concurrent
+attempts on 1 mailbox, and it is not a credential, not a
+mailbox identity, and not a key selector. The cookie key is a
+secret of the responder, generated by the responder and not
+derived from the address or from anything the message
+asserts, so binding the cookie to an attacker-chosen label is
+safe exactly while that key stays secret. The PSK identity
+inside the handshake selects the shared secret, including any
+additional secret, exactly as version 1 specifies; the mail
+session-id never selects a key.
 
 When a session establishes, the carriage binds the mail
 session-id to the session's connection ID. From then on:
@@ -621,7 +786,11 @@ the session's keys satisfy.
 ## Resumption
 
 Resumption over this carriage follows the profile: tickets
-MAY be issued, SHOULD be single-use, and a resumed handshake
+MAY be issued and, on this carriage, MUST be single-use --
+a ticket is stored mail like any other flight, in the same
+archive as the transcript, and a replayed ticket must not
+become a second long-lived secret. (Version 1's SHOULD for
+the datagram binding is unchanged.) A resumed handshake
 is a full handshake in everything that matters here -- a fresh
 mail session-id, a fresh ephemeral share, `psk_dhe_ke` only,
 and a fresh platform disclosure (Section 11). A deployment MAY
@@ -647,7 +816,9 @@ without a farewell, and an implementation MUST NOT keep a
 session's keys, or its mail session-id binding, past the
 session's configured lifetime. Keys are erased with the
 session (Section 16.1). A result that is waiting for a dead
-session is not sent on any other path (Section 12).
+session is not sent on any other path (Section 12); it is
+held under Section 10.3's bounds and expires under them --
+it is not kept forever, and expiry never sends it.
 
 # Jobs and Results Inside a Session
 
@@ -666,6 +837,12 @@ back into that ordinary envelope and delivered to the runner
 core through the same channel an ordinary mail job crosses.
 The core cannot tell, and does not need to tell, that the
 envelope arrived inside a session.
+
+The objects are version 1 objects. A job inside a session is
+a version 1 job object and a result inside a session is a
+version 1 result object, with the version value version 1
+defines; the 3 of this document numbers the document and its
+carriage only, and no object in a session carries it.
 
 ## The acceptance gate, in full, inside the session
 
@@ -692,10 +869,21 @@ A result for a job that arrived inside a session is sent
 inside that session, sealed as application data. If the
 session no longer exists when the result is ready, the result
 waits: it is held for a fresh session from the same submitter,
-and it is identified for that session by its job. It MUST NOT
-be sent as an ordinary mail result, and it MUST NOT be sent
-inside a different job's session as if it were that job's.
-Section 12 states the general rule this follows from.
+and it is identified for that session by the session's
+connection ID and its job ident together -- never by the job
+ident alone, which the submitter chooses and which collides
+across submitters. It MUST NOT be sent as an ordinary mail
+result, and it MUST NOT be sent inside a different job's
+session as if it were that job's. Section 12 states the
+general rule this follows from.
+
+The hold is bounded, as the hold of any state on this
+carriage is bounded. A held result expires by age -- the
+reference implementation's bound is 7 days -- and the held
+set as a whole is bounded in count and in total bytes,
+oldest first. An expired result is dropped and the expiry
+is logged; it is never sent. Dropping is not downgrade:
+downgrade would be sending the result by a weaker path.
 
 # Platform Disclosure on This Carriage
 
@@ -711,8 +899,8 @@ and a resumed session carries the disclosure again.
 The carriage is why the mechanism matters most here. On a live
 path, a post-handshake greeting costs a round trip of
 milliseconds. Over a mailbox, it costs a poll cycle at best
-and a day of latency at worst -- and for a superintelligent
-system driving the runner through email, it costs that on
+and a day of latency at worst -- and for a submitter that
+plans work from the platform card, it costs that on
 every session, before any work can be planned against the
 platform it is about to address. Riding the final handshake
 flight -- the pattern version 1 lifts from IKEv2's
@@ -723,10 +911,18 @@ handshake already needed. Even a rudimentary exchange counts:
 a responder that can say only its disclosure tier and its
 operating system family has still saved the round trip.
 
-The accepted cost of version 1 Section 20 stands on this
-carriage too: the disclosure is made a half-step earlier than
-a post-handshake mechanism would make it, before the responder
-has verified the initiator's Finished. Version 1's security
+The precondition that makes the early disclosure acceptable
+is stated here, not left to the flight order alone: the
+responder sends EncryptedExtensions only in a flight it
+builds after the cookie has validated and the PSK binder has
+verified (Section 9.1, step 4). A peer that does not hold the
+shared secret cannot produce a verifying binder, and never
+receives the disclosure; an unauthenticated ClientHello is
+not enough to extract a platform card. The accepted cost of
+version 1 Section 20 stands on this carriage too: the
+disclosure is made a half-step earlier than a post-handshake
+mechanism would make it, before the responder has verified
+the initiator's Finished. Version 1's security
 considerations argue the point; this document adopts the
 argument.
 
@@ -763,13 +959,25 @@ rule already exists somewhere above or in version 1:
 Replay is handled at 3 layers, each in its own terms, and no
 layer is asked to do another's work:
 
-* A replayed flight mail meets the mail layer's digest cache
-  and is dropped before the DTLS stack (Section 7.2). A
-  replayed initialization therefore cannot create a duplicate
+* A replayed flight mail meets the mail layer's rule, split
+  by phase (Section 7.2): a handshake-phase replay re-posts
+  the saved flight without re-entering the stack, and an
+  application-data replay is dropped before it. A replayed
+  initialization therefore cannot create a duplicate
   session: at worst, a replay that evades the cache meets the
   cookie exchange and the handshake state machine, which
   answer a retransmitted ClientHello with the flight it
-  already produced and derive nothing twice.
+  already produced and derive nothing twice. Early data has
+  no layer here at all: a ClientHello carrying early data is
+  rejected as a malformed flight (Section 4.1), and this
+  profile derives no epoch-1 keys for a replay to use.
+  {{RFC8446}} is the reason the rule is a rejection and not
+  a quiet skip: 0-RTT data is not forward secret, is
+  replayable between connections, and an application
+  protocol must not use it without a profile that says how
+  ({{RFC8446}} Sections 2.3 and 8, Appendix E.5). A job that
+  runs a program is not safe to replay, and on a mailbox the
+  ClientHello can sit for a day.
 * A replayed record meets the record layer: sequence numbers
   and AEAD verification under {{RFC9147}} decide, and a record
   that does not verify is dropped. A replayed application
@@ -782,8 +990,9 @@ layer is asked to do another's work:
   carriage adds no execution path, so it adds no replay path
   to execution.
 
-Resumption tickets SHOULD be single-use, as the profile
-states; a replayed ticket can at most restart a handshake
+Resumption tickets on this carriage MUST be single-use
+(Section 9.3); version 1's SHOULD stands for the datagram
+binding. A replayed ticket can at most restart a handshake
 that still demands fresh ephemeral keys and a fresh binder
 under the ticket's key.
 
@@ -828,6 +1037,11 @@ name, a media type, or an OID. The DTLS reference port 20220
 remains version 1's local default for the datagram binding and
 is not used by this carriage.
 
+The carriage's MIME content type (Section 5.2) is a
+private-use type in a local draft; this document requests no
+media type registration for it. A future standards-track
+revision is where such a request would belong.
+
 As a local, unsubmitted draft, this document could not ground
 an assignment in any case: nothing in it is to be read as
 requesting that IANA act, early or otherwise.
@@ -864,6 +1078,26 @@ session is live. Forward secrecy is a property of recorded
 sessions against later key compromise, and that is the
 property claimed -- no more, and no less.
 
+One further limit belongs to this carriage in particular,
+because mail is archived by design. The ephemeral exchange
+is X25519 {{RFC7748}} -- the ephemeral exchange {{RFC9325}}
+tells operators to prefer, and the right choice against the
+adversary above. A party that records a session's
+flights -- and on this carriage the sender's provider, the
+receiver's provider, and the mailbox all hold them -- and
+that later breaks X25519, by whatever means, decrypts the
+recorded session without ever learning the shared secret.
+Forward secrecy here is secrecy against later compromise of
+the long-term secret; it is not secrecy against a later
+break of the ephemeral's algorithm. The slot for the remedy
+is named now, so a later revision does not have to argue
+for its shape: a hybrid share, X25519MLKEM768 {{RFC10024}},
+in place of the bare X25519 share, under the same
+`psk_dhe_ke` rule -- the PSK still only authenticates, the
+hybrid share is what encrypts, and TLS_AES_256_GCM_SHA384
+remains the suite until that revision. This document does
+not add the group; it reserves the shape.
+
 ## The mailbox as intermediary
 
 On this carriage the mailbox provider, and any hop that stores
@@ -885,7 +1119,7 @@ specifies no padding or cover traffic.
 Every routing decision in this carriage is made from
 untrusted text -- the subject -- and every authentication
 decision is made from protected bytes. The synthetic peer
-identity of Section 9.2 exists precisely so that no spoofable
+address of Section 9.2 exists precisely so that no spoofable
 header becomes a security input: a flight mail that claims
 any `From` whatsoever is treated identically, and is worth
 exactly what its datagram proves. A deployment MUST NOT add a
