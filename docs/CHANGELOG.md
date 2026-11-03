@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.135 - 2026-11-02
+
+- Install this, not 3.15.134. The 134 tag builds stopped on one defaults-registry pin: a README update had moved the size-caps line from 450 to 449 without shifting the pin, and the doc-lines test failed on macOS and Windows. The pin now follows the line; nothing in the runner changed.
+- Everything 3.15.134 carried rides here: the hybrid group X25519MLKEM768 implemented in the DTLS engine, and the version 3 live runs' mail recorded as fixtures.
+
 ## 3.15.134 - 2026-11-02
 
 - Hybrid group X25519MLKEM768 (4588, RFC 10024) implemented: ML-KEM-768 (FIPS 203) in pure Python, pinned by the NIST ACVP vectors, wired into the DTLS engine as a version 3 carriage profile option, off by default so the version 1 wire is unchanged. Pure-Python ML-KEM is not constant-time. The version 3 draft states the hybrid as implemented in Section 4.4; the draft remains local and unsubmitted.
