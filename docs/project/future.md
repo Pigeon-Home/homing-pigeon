@@ -85,14 +85,30 @@
   SS is the shared secret: it is the handshake's PSK, exactly
   as in the version 1 DTLS profile, and the session keys are
   ephemeral, so the mail a mailbox stores does not decrypt a
-  finished session. Built locally and not submitted: the
+  finished session.
+
+  The suite supports 2 ways of reaching a runner with DTLS,
+  and the names keep them apart. The direct way is just DTLS,
+  with no other name attached: you are told the runner's IP
+  address and port, and DTLS already means UDP datagrams
+  underneath, so the runner's network needs a firewall rule
+  letting that traffic in, and the runner must be configured
+  to accept DTLS. That is the version 1 binding. The second
+  way is DTLS via email, this version's transport extension:
+  the same handshake's datagrams ride email instead of a live
+  network path, so a runner that is only reachable through a
+  mailbox can still hold a forward-secret session -- a
+  handshake opened by an email and completed over further
+  emails, jobs and results inside the session, the platform
+  disclosure in EncryptedExtensions, and the job acceptance
+  gate unchanged. If a runner is configured to accept DTLS,
+  in either form, you may fire it up and use it; the
+  cryptography and the gate are the same both ways.
+
+  Built locally and not submitted: the specification is the
   version 3 draft
-  (`docs/ietf/draft-slutsky-homing-pigeon-v3-00.md`) carries
-  the version 1 profile over the email binding -- a handshake
-  opened by an email and completed over further emails, jobs
-  and results inside the session, the platform disclosure in
-  EncryptedExtensions, and the job acceptance gate unchanged.
-  The carriage is in the suite behind the `dtls_over_email`
+  (`docs/ietf/draft-slutsky-homing-pigeon-v3-00.md`). The
+  carriage is in the suite behind the `dtls_via_email`
   option, off by default. The build plan is
   `docs/design/v3-dtls-over-email-plan.md`; the record of what
   was built and tested is `docs/proofs/dtls-over-email-v3.md`.
