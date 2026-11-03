@@ -123,7 +123,7 @@ class EmailPipe:
         # gate, and a session's jobs cross the channel as
         # ordinary envelopes under their own job ids.
         self.dtls_enabled = isinstance(cfg, dict) \
-            and cfg.get("dtls_over_email") is True
+            and cfg.get("dtls_via_email") is True
         self._dtls_server = None
         self._job_session = {}  # channel ident -> DTLS session CID
         self._waiting_session = set()
@@ -133,7 +133,7 @@ class EmailPipe:
     def _build_dtls_server(self):
         if not self.cfg.get("shared_secret") \
                 and not self.cfg.get("additional_secrets"):
-            ch.log("email transport: dtls_over_email is on but "
+            ch.log("email transport: dtls_via_email is on but "
                    "no shared_secret was handed over; the "
                    "shared secret is the DTLS PSK -- there is "
                    "nothing to authenticate with, so DTLS mail "

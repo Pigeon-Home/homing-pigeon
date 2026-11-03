@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Version 3: DTLS over email, through the production mail shape.
+"""Version 3: DTLS via email, through the production mail shape.
 
 The carriage under test is runner/wire/dtls_mailbox.py grown past
 the local harness, plus the email transport extension's routing:
@@ -814,7 +814,7 @@ class EmailPipeIntegrationTest(unittest.TestCase):
         self.cfg = {
             "mailbox_user": "runner@example.com",
             "shared_secret": SECRET,
-            "dtls_over_email": True,
+            "dtls_via_email": True,
             "dtls_greeting": "none",
             "oracle_opinion_mode": "off",
             "base_dir": self.tmp,

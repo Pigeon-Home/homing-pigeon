@@ -1,4 +1,4 @@
-# Version 3 plan — DTLS over email with perfect forward secrecy
+# Version 3 plan — DTLS via email with perfect forward secrecy
 
 *Local build plan. The specification produced under this plan is a
 local, unsubmitted draft. Nothing in this plan authorizes submission
@@ -197,7 +197,7 @@ a job.
 
 The email extension is the only production process that polls the
 mailbox. Version 3 therefore belongs beside that poll, not in the
-UDP-only DTLS extension. The DTLS-over-email server core runs in the
+UDP-only DTLS extension. The DTLS-via-email server core runs in the
 email carriage path when the owner enables it.
 
 ### D4. Keep the runner core as the only job gate
@@ -211,7 +211,7 @@ authority or execute job content.
 ### D5. Make the feature opt-in, with a bounded default posture
 
 The carriage will be controlled by a transport-email option,
-`dtls_over_email`, whose default is off. A present but unusable
+`dtls_via_email`, whose default is off. A present but unusable
 value follows the project's present-but-invalid rule for this kind
 of switch: only the literal boolean `true` enables it; other values
 leave it off and are named in a startup warning where the hosting
@@ -257,6 +257,21 @@ result appears in the channel outbox, the extension seals it as
 application data for that session and posts it as DTLS mail. If the
 session is gone, the result remains pending for a fresh session;
 it is not downgraded to an ordinary email result by this carriage.
+
+### D10. The naming: DTLS, and DTLS via email
+
+The suite supports 2 ways of reaching a runner with DTLS, and
+the names keep them apart. The direct way is just DTLS, with
+no other mnemonic attached: the submitter is told the runner's
+IP address and port, DTLS already means UDP datagrams
+underneath, the network needs a firewall rule letting that
+traffic in, and the runner must be configured to accept it.
+The way this plan builds is DTLS via email: under the version
+3 protocol the datagrams ride email, so no inbound network
+path is needed. The carriage's prose name is "DTLS via email"
+and its option is `dtls_via_email`. The seed line quoted at
+the top of this plan keeps the words it was written with; the
+name everywhere else is the one this decision states.
 
 ## Sub-goal sequence
 

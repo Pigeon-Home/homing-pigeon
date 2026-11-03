@@ -8,7 +8,7 @@
 #         text dated 2026-11-02. It has not been submitted to the
 #         IETF, has not been posted to the Internet-Drafts directory,
 #         and requests no IANA action (Section 15).
-title: "Homing Pigeon Message Protocol, Version 3: DTLS 1.3 over Email"
+title: "Homing Pigeon Message Protocol, Version 3: DTLS 1.3 via Email"
 abbrev: "Homing Pigeon v3"
 docname: draft-slutsky-homing-pigeon-v3-00
 category: info
@@ -190,6 +190,18 @@ Nothing else in version 1 changes. The deltas in this document
 are stated as deltas: where this document says a version 1 rule
 applies, it applies as written there.
 
+The suite therefore offers 2 ways to reach a runner with this
+profile, and their names are kept distinct. The version 1
+datagram binding is DTLS, with no qualifier: the submitter is
+told the runner's IP address and port, DTLS runs over UDP
+datagrams as {{RFC9147}} defines, the network admits the
+traffic under its firewall rules, and the runner is
+configured to accept it. This document's carriage is DTLS via
+email: the same profile's datagrams ride email messages, so
+no inbound network path to the runner is needed at all. A
+deployment MAY offer either way, or both; the profile, the
+handshake, and the acceptance gate are the same on each.
+
 ## Status of this document
 
 This is a local working draft, revision -00, dated 2026-11-02.
@@ -246,7 +258,7 @@ particular:
 * DTLS 1.3 {{RFC9147}} is the session protocol. The 1 cipher
   suite is TLS_AES_256_GCM_SHA384.
 * The pre-shared key is the shared secret of version 1 -- the
-  "SS" of this version's name for the work, DTLS over email
+  "SS" of this version's name for the work, DTLS via email
   using SS. The handshake key is the one version 1 already
   defines; there is no second secret and no new key material
   in this document.
@@ -288,7 +300,7 @@ carriage as a reason to alter any of those.
 
 This carriage is opt-in. A runner enables it by explicit
 configuration (in the reference implementation, the
-`dtls_over_email` option, which only the literal boolean true
+`dtls_via_email` option, which only the literal boolean true
 enables). A runner that has not enabled it treats flight mail
 as it treats any other mail its parser does not dispatch, and
 its existing secret boundary is unchanged: the shared secret
