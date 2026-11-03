@@ -264,6 +264,14 @@ class EmailPipe:
         if server is None:
             ch.log("email transport: DTLS mail refused; no "
                    "DTLS server is running", "WARN")
+        elif classified.session_id is None and classified.kind in (
+                "dtls", "dtls-init"):
+            # The unaddressed harness shape has no mail
+            # session-id. It is a test-harness input, not a
+            # flight a deployment mailbox feeds to DTLS.
+            ch.log("email transport: unaddressed DTLS mail "
+                   "is not a flight on this mailbox; dropped",
+                   "WARN")
         else:
             responses = server.receive_classified(
                 classified, time.time())

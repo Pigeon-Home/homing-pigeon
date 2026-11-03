@@ -448,9 +448,13 @@ reassembly (Section 6), and to nothing else.
 
 An implementation MAY also accept the unaddressed harness
 shape -- subject exactly `[HOMING-PIGEON] dtls` and a body that
-is the base64 of 1 datagram -- for local testing. That shape
-carries no mail session-id, cannot be bound to a session under
-Section 9.2, and MUST NOT be required by any deployment.
+is the base64 of 1 datagram -- inside an in-process test
+harness that is not a mailbox. That shape carries no mail
+session-id, cannot be bound to a session under Section 9.2,
+and MUST NOT be required by any deployment. A deployment
+mailbox MUST NOT feed it to a DTLS stack. On that mailbox it
+is malformed flight mail (Section 8.3): consumed, dropped,
+and worth no answer.
 
 ## The flight frame
 
@@ -523,17 +527,18 @@ typed part: a local harness, and senders that predate the
 part. It is not a 2nd copy of the frame. A sender that uses
 the typed part places the frame there and nowhere else; its
 text part carries at most a note for a human, and MUST NOT
-carry the frame. A message built with a typed part that
-reaches its receiver without one -- an intermediary dropped
-the part it did not recognize -- is therefore read in the
-naked shape, is found not to frame, and ends that flight
-under Section 8.3. The flight is repaired, if at all, by the
-DTLS retransmission of Section 7.1 as a new flight mail,
-never by a reading of the text part. An intermediary that
-drops the typed part from every flight ends every attempt
-through it: this carriage does not pass such an
-intermediary, and says so rather than pretending the text
-part is a fallback.
+carry the frame. A receiver cannot tell that a typed part
+was removed on the way. It applies the rule it can check:
+no typed part means the naked shape, and a naked body that
+does not frame is malformed flight mail (Section 8.3). A
+conforming sender's text does not frame, so an intermediary
+that removes the typed part ends that flight. The flight is
+repaired, if at all, by the DTLS retransmission of Section
+7.1 as a new flight mail, never by a reading of the text
+part. An intermediary that drops the typed part from every
+flight ends every attempt through it: this carriage does
+not pass such an intermediary, and says so rather than
+pretending the text part is a fallback.
 
 ## Size gates
 
@@ -704,9 +709,11 @@ classifies each message it fetches before anything is
 delivered anywhere. The classification is by subject grammar
 and body shape, in this order:
 
-1. A message whose subject matches the flight subject, or the
-   unaddressed harness subject, is DTLS input. It goes to the
-   carriage, and to nothing else.
+1. A message whose subject matches the flight subject is DTLS
+   input. It goes to the carriage, and to nothing else. The
+   unaddressed harness subject is not this case on a
+   deployment mailbox: it is malformed flight mail (Section
+   5.1) and is not fed to a DTLS stack.
 2. A message whose subject is a version 1 job subject is a job
    for the acceptance gate, as before.
 3. Everything else is other mail, handled as before.
@@ -720,17 +727,23 @@ gate -- never sees flight mail.
 ## Recognizing the initialization flight
 
 A complete datagram is an initialization flight when its 1st
-record is a plaintext handshake record whose handshake message
-is a ClientHello -- including a fragmented ClientHello whose
-message type is ClientHello. A complete datagram that parses
-as DTLS records but is not an initialization is a session
-datagram. The recognition is of the DTLS bytes, not of the
-subject: the subject routes a message to the carriage, and the
-bytes decide what the carriage does with it.
+record is a plaintext handshake record whose handshake
+message is one complete ClientHello. A fragmented or
+incomplete first handshake message is not an initialization.
+It is malformed flight mail: consumed, dropped, not answered,
+and allocated no reassembly state. The profile's ClientHello
+is one message, and this carriage does not reassemble
+handshake fragments before a cookie has validated. A complete
+datagram that parses as DTLS records but is not an
+initialization is a session datagram. The recognition is of
+the DTLS bytes, not of the subject: the subject routes a
+message to the carriage, and the bytes decide what the
+carriage does with it.
 
 An initialization flight is answered as version 1's profile
 answers it: statelessly, with a HelloRetryRequest, before any
-session state exists.
+session state exists. A first flight that is not a complete
+ClientHello draws no HelloRetryRequest.
 
 ## Fail closed
 
@@ -829,9 +842,9 @@ the session's keys satisfy.
 ## Resumption
 
 Resumption over this carriage follows the profile: tickets
-MAY be issued and, on this carriage, MUST be single-use --
-a ticket is stored mail like any other flight, in the same
-archive as the transcript, and a replayed ticket must not
+MAY be issued and, on this carriage, MUST be single-use.
+A ticket is stored mail like any other flight, in the same
+archive as the transcript, and a replayed ticket MUST NOT
 become a second long-lived secret. (Version 1's SHOULD for
 the datagram binding is unchanged.) A resumed handshake
 is a full handshake in everything that matters here -- a fresh
@@ -1260,7 +1273,13 @@ number that bounds it:
   a new record and is answered by the stack without the
   saved flight (Section 7.2).
 * A malformed flight is consumed in 1 pass and 1 log line,
-  not re-offered on every poll (Section 8.3).
+  not re-offered on every poll (Section 8.3). A fragmented
+  or incomplete first handshake message is this case: it
+  draws no HelloRetryRequest and no reassembly state
+  (Section 8.2).
+* The unaddressed harness subject, on a deployment mailbox,
+  is this case too: consumed, not fed to a DTLS stack, and
+  worth no answer (Section 5.1).
 
 An action an unauthenticated sender can cause that has no
 number in this list is a defect in this document. The platform

@@ -1215,6 +1215,20 @@ class EmailPipeIntegrationTest(unittest.TestCase):
         server = self.pipe._dtls_server
         self.assertFalse(server.core.sessions)
 
+    def test_an_unaddressed_flight_is_not_fed_on_the_mailbox(self):
+        import base64
+        core = dtlsproto.DtlsClientCore(SECRET)
+        datagram = core.start(NOW)[0]
+        raw = _raw_mail(
+            dtls_mailbox.FLIGHT_SUBJECT,
+            base64.b64encode(datagram).decode("ascii"))
+        self.runner_box.add(raw)
+        before = len(self.client_box.messages)
+        self.pipe.pass_once()
+        self.assertFalse(self.pipe._dtls_server.core.sessions)
+        self.assertEqual(len(self.client_box.messages), before)
+        self.assertTrue(self.runner_box.messages[0]["seen"])
+
     def test_resumption_over_the_pipe(self):
         self._pump_pipe()
         self.assertEqual(self.client.state, "established")
