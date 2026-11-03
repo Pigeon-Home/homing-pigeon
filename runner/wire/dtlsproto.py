@@ -24,6 +24,17 @@ side), and the profile is deliberately narrow:
   resumed. psk_ke is never offered and never accepted, so a
   recorded session stays sealed even if the secret later
   leaks -- perfect forward secrecy is enforced, not offered.
+- The hybrid group X25519MLKEM768 (RFC 10024, value 4588)
+  is a profile option, off by default: the version 1
+  profile's wire is exactly as it was, X25519 only. A
+  profile that enables it (the version 3 carriage does)
+  offers the hybrid share beside the X25519 share; the
+  responder selects the hybrid when it too has the option
+  on, and the shared secret is the ML-KEM secret followed
+  by the X25519 secret (RFC 10024 section 4.3), fed into
+  the same key schedule. The ML-KEM half is
+  runner.wire.mlkem, pinned byte-exact against the NIST
+  ACVP vectors.
 - HelloRetryRequest with a stateless cookie on EVERY first
   contact: address validation before the server sends
   anything larger than the retry itself (anti-amplification:
@@ -67,11 +78,14 @@ import secrets
 
 try:  # package context (runner.wire.dtlsproto)
     from runner.wire import jobcrypto
+    from runner.wire import mlkem
 except Exception:  # pragma: no cover - sibling context
     try:
         from . import jobcrypto  # type: ignore
+        from . import mlkem  # type: ignore
     except Exception:
         from wire import jobcrypto  # type: ignore
+        from wire import mlkem  # type: ignore
 
 # ------------------------------------------------------------------
 # Constants
@@ -81,6 +95,15 @@ DTLS_1_3 = 0xFEFC            # supported_versions value for DTLS 1.3
 LEGACY_VERSION = 0xFEFD      # the version field every record carries
 SUITE_AES256 = 0x1302      # TLS_AES_256_GCM_SHA384
 GROUP_X25519 = 0x001D
+# X25519MLKEM768 (RFC 10024 section 7.1): the hybrid of an
+# ML-KEM-768 encapsulation with an X25519 exchange. Offered
+# and accepted only under the hybrid profile option (the
+# version 3 carriage enables it; the version 1 profile keeps
+# X25519 only, so a version 1 peer's wire is unchanged).
+GROUP_X25519MLKEM768 = 4588        # 0x11EC
+HYBRID_CLIENT_SHARE_BYTES = 1216   # 1184 ek + 32 X25519
+HYBRID_SERVER_SHARE_BYTES = 1120   # 1088 ct + 32 X25519
+HYBRID_SECRET_BYTES = 64           # 32 ML-KEM + 32 X25519
 HASH = hashlib.sha384
 HASH_LEN = 48
 
@@ -609,6 +632,36 @@ def _key_share_entry(data, server_form=False):
     return group, inner[4:4 + klen]
 
 
+def _key_share_entries(data, server_form=False):
+    """All (group, public) pairs of a key_share extension
+    value, in wire order. The client form is a list; the
+    server form is the single selected entry."""
+    if server_form:
+        group, key = _key_share_entry(data, server_form=True)
+        return [(group, key)]
+    if len(data) < 2:
+        raise DtlsError("truncated key_share list")
+    total = int.from_bytes(data[0:2], "big")
+    inner = data[2:2 + total]
+    if len(inner) < total:
+        raise DtlsError("truncated key_share entry")
+    out = []
+    pos = 0
+    while pos < len(inner):
+        if pos + 4 > len(inner):
+            raise DtlsError("truncated key_share entry")
+        group = int.from_bytes(inner[pos:pos + 2], "big")
+        klen = int.from_bytes(inner[pos + 2:pos + 4], "big")
+        pos += 4
+        if pos + klen > len(inner):
+            raise DtlsError("truncated key_share key")
+        out.append((group, inner[pos:pos + klen]))
+        pos += klen
+    if not out:
+        raise DtlsError("empty key_share list")
+    return out
+
+
 def _parse_psk_extension(data):
     """(identities [bytes], binders [bytes]) of a
     pre_shared_key extension value."""
@@ -872,10 +925,18 @@ class DtlsClientCore(_Endpoint):
     is populated from there."""
 
     def __init__(self, secret, key_id=None, log=None, rng=None,
-                 ticket=None):
+                 ticket=None, *, hybrid=False):
         """`ticket` is a (ticket_bytes, resumption_psk) pair
-        from a previous session's .ticket property, if any."""
+        from a previous session's .ticket property, if any.
+        `hybrid` is the profile option: offer the
+        X25519MLKEM768 hybrid group beside X25519 (the
+        version 3 carriage profile). The version 1 profile
+        leaves it off and its wire is unchanged."""
         super().__init__(log=log, rng=rng)
+        self.hybrid_enabled = bool(hybrid)
+        self.negotiated_group = None
+        self._eph_hyb = None
+        self._mlkem_dk = None
         self._psk = secret.encode("utf-8") if secret else b""
         self._key_id = key_id
         self._identity = identity_for(key_id)
@@ -905,12 +966,29 @@ class DtlsClientCore(_Endpoint):
         eph_pub = x25519_public(self._eph)
         share = (GROUP_X25519.to_bytes(2, "big")
                  + (32).to_bytes(2, "big") + eph_pub)
+        groups = GROUP_X25519.to_bytes(2, "big")
+        if self.hybrid_enabled:
+            # RFC 10024 section 4.1: the hybrid client share
+            # is the ML-KEM-768 encapsulation key followed by
+            # the X25519 share -- its own ephemeral, not the
+            # standalone share's. The standalone X25519 share
+            # still rides, so a responder without the hybrid
+            # selects it and the handshake is an ordinary one.
+            ek, self._mlkem_dk = mlkem.keygen(rng=self.rng)
+            self._eph_hyb = self.rng(32)
+            hyb_share = (
+                GROUP_X25519MLKEM768.to_bytes(2, "big")
+                + HYBRID_CLIENT_SHARE_BYTES.to_bytes(2, "big")
+                + ek + x25519_public(self._eph_hyb))
+            share = hyb_share + share
+            groups = (GROUP_X25519MLKEM768.to_bytes(2, "big")
+                      + groups)
         shares = len(share).to_bytes(2, "big") + share
         exts = [
             (EXT_SUPPORTED_VERSIONS,
              b"\x02" + DTLS_1_3.to_bytes(2, "big")),
             (EXT_SUPPORTED_GROUPS,
-             b"\x00\x02" + GROUP_X25519.to_bytes(2, "big")),
+             len(groups).to_bytes(2, "big") + groups),
             (EXT_KEY_SHARE, shares),
             (EXT_PSK_MODES, bytes([1, PSK_MODE_DHE_KE])),
             (EXT_CONNECTION_ID, b"\x04" + self._our_cid()),
@@ -1106,15 +1184,19 @@ class DtlsClientCore(_Endpoint):
             raise DtlsError("server did not accept our PSK")
         group, peer_pub = _key_share_entry(
             exts[EXT_KEY_SHARE], server_form=True)
-        if group != GROUP_X25519:
+        if group == GROUP_X25519:
+            shared = _ecdh(self._eph, peer_pub)
+        elif group == GROUP_X25519MLKEM768:
+            shared = self._hybrid_shared(peer_pub)
+        else:
             raise DtlsError("server picked a foreign group")
+        self.negotiated_group = group
         if EXT_CONNECTION_ID in exts:
             cid_ext = exts[EXT_CONNECTION_ID]
             if cid_ext:
                 self._peer_cid = cid_ext[1:1 + cid_ext[0]]
         self._clear_flight()
         self.transcript.add(raw)
-        shared = _ecdh(self._eph, peer_pub)
         early = _hkdf_extract(b"\x00" * HASH_LEN, self._psk)
         self._hs = _hkdf_extract(
             _derive_secret(early, b"derived", HASH(b"").digest()),
@@ -1126,6 +1208,26 @@ class DtlsClientCore(_Endpoint):
         self.receivers[2] = _RecordSealer(self._s_hs)
         self.state = "handshake-keys"
         return []
+
+    def _hybrid_shared(self, peer_pub):
+        """The shared secret for a hybrid ServerHello share:
+        RFC 10024 sections 4.2 and 4.3 -- the share is the
+        ML-KEM ciphertext followed by the server's X25519
+        share, and the secret is the ML-KEM secret followed
+        by the X25519 secret. A share of any other size, or a
+        hybrid selection this client never offered, fails the
+        handshake closed."""
+        if not self.hybrid_enabled or self._mlkem_dk is None \
+                or self._eph_hyb is None:
+            raise DtlsError(
+                "server picked the hybrid group we did not offer")
+        if len(peer_pub) != HYBRID_SERVER_SHARE_BYTES:
+            raise DtlsError(
+                "hybrid server share is not 1120 octets")
+        mlkem_secret = mlkem.decaps(
+            self._mlkem_dk, peer_pub[:mlkem.CT_BYTES])
+        return mlkem_secret + _ecdh(
+            self._eph_hyb, peer_pub[mlkem.CT_BYTES:])
 
     def _set_greeting(self, payload):
         """Populate .greeting from a platform payload, whether
@@ -1275,6 +1377,7 @@ class _ServerSession(_Endpoint):
         self.peer_addr = addr
         self.identity = None
         self.issuer = None          # the key identity behind the session
+        self.negotiated_group = None
         self.resumed = False
         self.established = False
         self.platform_sent = False
@@ -1342,10 +1445,26 @@ class _ServerSession(_Endpoint):
         if EXT_KEY_SHARE not in exts:
             return refuse(ALERT_ILLEGAL_PARAMETER)
         try:
-            group, peer_pub = _key_share_entry(exts[EXT_KEY_SHARE])
+            entries = _key_share_entries(exts[EXT_KEY_SHARE])
         except DtlsError:
             return refuse(ALERT_ILLEGAL_PARAMETER)
-        if group != GROUP_X25519:
+        offered_shares = {}
+        for entry_group, entry_key in entries:
+            offered_shares.setdefault(entry_group, entry_key)
+        # Selection: the hybrid only under the hybrid profile
+        # option, and only when offered; otherwise the X25519
+        # share, which is the version 1 profile's whole world.
+        # A hello offering neither is refused.
+        if self.core.hybrid_enabled \
+                and GROUP_X25519MLKEM768 in offered_shares:
+            selected_group = GROUP_X25519MLKEM768
+        elif GROUP_X25519 in offered_shares:
+            selected_group = GROUP_X25519
+        else:
+            return refuse(ALERT_ILLEGAL_PARAMETER)
+        peer_pub = offered_shares[selected_group]
+        if selected_group == GROUP_X25519MLKEM768 \
+                and len(peer_pub) != HYBRID_CLIENT_SHARE_BYTES:
             return refuse(ALERT_ILLEGAL_PARAMETER)
         if EXT_PRE_SHARED_KEY not in exts:
             return refuse(ALERT_MISSING_EXTENSION)
@@ -1412,10 +1531,26 @@ class _ServerSession(_Endpoint):
         self.core.by_addr[self.peer_addr] = self
         # The retry held message_seq 0; ours start at 1.
         self._next_hs_seq = 1
-        eph = self.core.rng(32)
-        eph_pub = x25519_public(eph)
-        share = (GROUP_X25519.to_bytes(2, "big")
-                 + (32).to_bytes(2, "big") + eph_pub)
+        self.negotiated_group = selected_group
+        if selected_group == GROUP_X25519MLKEM768:
+            try:
+                share, shared = self._hybrid_answer(peer_pub)
+            except DtlsError:
+                # RFC 10024 section 4.2: a hybrid share that
+                # fails its checks aborts with
+                # illegal_parameter. The session registered
+                # above is taken back out; a refused handshake
+                # leaves no session behind.
+                self.core.sessions.pop(self._our_cid, None)
+                if self.core.by_addr.get(self.peer_addr) is self:
+                    self.core.by_addr.pop(self.peer_addr, None)
+                return refuse(ALERT_ILLEGAL_PARAMETER)
+        else:
+            eph = self.core.rng(32)
+            eph_pub = x25519_public(eph)
+            share = (GROUP_X25519.to_bytes(2, "big")
+                     + (32).to_bytes(2, "big") + eph_pub)
+            shared = _ecdh(eph, peer_pub)
         sh_exts = [
             (EXT_SUPPORTED_VERSIONS, DTLS_1_3.to_bytes(2, "big")),
             (EXT_KEY_SHARE, share),
@@ -1430,7 +1565,6 @@ class _ServerSession(_Endpoint):
         sh_raw = _hs_message(HS_SERVER_HELLO, sh_body,
                              self._alloc_seq())
         self.transcript.add(sh_raw)
-        shared = _ecdh(eph, peer_pub)
         early = _hkdf_extract(b"\x00" * HASH_LEN, psk)
         hs = _hkdf_extract(
             _derive_secret(early, b"derived", HASH(b"").digest()),
@@ -1461,6 +1595,32 @@ class _ServerSession(_Endpoint):
             [(0, CT_HANDSHAKE, sh_raw),
              (2, CT_HANDSHAKE, ee_raw),
              (2, CT_HANDSHAKE, sfin_raw)], now)
+
+    def _hybrid_answer(self, client_share):
+        """The responder half of the hybrid exchange (RFC
+        10024 sections 4.2 and 4.3): check the client's
+        encapsulation key as FIPS 203 section 7.2 requires,
+        encapsulate to it, and answer with the ciphertext
+        followed by this side's X25519 share. Returns
+        (server share value, shared secret). Any defect
+        raises DtlsError and the handshake fails closed --
+        begin()'s caller drops the half-built session."""
+        ek = client_share[:mlkem.EK_BYTES]
+        client_x = client_share[mlkem.EK_BYTES:]
+        if not mlkem.encapsulation_key_check(ek):
+            raise DtlsError(
+                "hybrid encapsulation key fails the FIPS 203 "
+                "check")
+        try:
+            mlkem_secret, ct = mlkem.encaps_internal(
+                ek, self.core.rng(32))
+        except mlkem.MlkemError as exc:
+            raise DtlsError(str(exc))
+        eph = self.core.rng(32)
+        share = (GROUP_X25519MLKEM768.to_bytes(2, "big")
+                 + HYBRID_SERVER_SHARE_BYTES.to_bytes(2, "big")
+                 + ct + x25519_public(eph))
+        return share, mlkem_secret + _ecdh(eph, client_x)
 
     # -- established traffic -------------------------------------------
 
@@ -1612,7 +1772,14 @@ class DtlsServerCore:
 
     def __init__(self, secret_lookup=None, greeting_for=None,
                  log=None, rng=None, secrets_map=None, *,
-                 platform_for=None):
+                 platform_for=None, hybrid=False):
+        """`hybrid` is the profile option: select the
+        X25519MLKEM768 hybrid group when a client offers it
+        (the version 3 carriage profile). The version 1
+        profile leaves it off; a hybrid share offered to it
+        is not selected -- the X25519 share is, exactly as
+        before."""
+        self.hybrid_enabled = bool(hybrid)
         self.log = log or (lambda msg, level="INFO": None)
         if secrets_map is not None:
             secret_lookup = secrets_map.get

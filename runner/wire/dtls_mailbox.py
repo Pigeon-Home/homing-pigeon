@@ -472,12 +472,17 @@ def _encode_outgoing(datagram, session_id):
 
 class DtlsMailServer:
     """The responder side of the carriage: one DtlsServerCore,
-    fed datagrams recovered from mail, answering in mail."""
+    fed datagrams recovered from mail, answering in mail.
+
+    The carriage is the hybrid profile's home: the core is
+    built with hybrid=True unless told otherwise, so a
+    client offering X25519MLKEM768 (RFC 10024) negotiates
+    the hybrid group on this carriage, and X25519 otherwise."""
 
     def __init__(self, secret_lookup=None, platform_payload=None,
                  platform_for=None, log=None, rng=None,
                  max_datagram_bytes=DEFAULT_MAX_DATAGRAM_BYTES,
-                 dedup_entries=4096):
+                 dedup_entries=4096, hybrid=True):
         self.log = log or _log_noop
         if platform_for is None:
             if callable(platform_payload):
@@ -496,7 +501,7 @@ class DtlsMailServer:
                 platform_for = lambda session: payload
         self.core = dtlsproto.DtlsServerCore(
             secret_lookup=secret_lookup, platform_for=platform_for,
-            log=self.log, rng=rng)
+            log=self.log, rng=rng, hybrid=hybrid)
         self.max_datagram_bytes = max_datagram_bytes
         self.reassembler = FlightReassembler(
             max_total_bytes=max_datagram_bytes)
@@ -693,12 +698,16 @@ class DtlsMailServer:
 
 class DtlsMailClient:
     """The initiator side of the carriage: one DtlsClientCore,
-    fed datagrams recovered from mail, answering in mail."""
+    fed datagrams recovered from mail, answering in mail.
+
+    The core is built with hybrid=True unless told otherwise:
+    this carriage offers the X25519MLKEM768 hybrid share
+    beside the X25519 share (see DtlsMailServer)."""
 
     def __init__(self, secret, session_id=None, key_id=None,
                  log=None, rng=None, ticket=None,
                  max_datagram_bytes=DEFAULT_MAX_DATAGRAM_BYTES,
-                 dedup_entries=4096):
+                 dedup_entries=4096, hybrid=True):
         self.log = log or _log_noop
         self.session_id = session_id or _secrets.token_hex(16)
         if not valid_session_id(self.session_id):
@@ -706,7 +715,7 @@ class DtlsMailClient:
                 "bad dtls mail session id: %r" % (session_id,))
         self.core = dtlsproto.DtlsClientCore(
             secret, key_id=key_id, log=self.log, rng=rng,
-            ticket=ticket)
+            ticket=ticket, hybrid=hybrid)
         self.max_datagram_bytes = max_datagram_bytes
         self.reassembler = FlightReassembler(
             max_total_bytes=max_datagram_bytes)
