@@ -697,6 +697,21 @@ def _runtime_config(cfg, name, base_dir, paths):
             for key in _MAILBOX_KEYS:
                 if key in cfg:
                     out[key] = cfg[key]
+            if cfg.get("dtls_over_email") is True:
+                # Version 3 carriage: with the owner's opt-in the
+                # email pipe also terminates DTLS-PSK
+                # authentication for sessions carried as mail,
+                # so -- only then -- it is handed the secret
+                # material and the disclosure posture, exactly
+                # the dtls pipe's exception, under the same rule:
+                # a job inside a session still faces the core's
+                # signature check like any other transport's.
+                out["dtls_over_email"] = True
+                out.update(_dtls_secret_material(cfg))
+                for key in ("dtls_greeting", "default_interpreter",
+                            "protocol_v2"):
+                    if key in cfg:
+                        out[key] = cfg[key]
         if name == "dtls":
             out.update(_dtls_secret_material(cfg))
             # The handshake payload's platform card names the
