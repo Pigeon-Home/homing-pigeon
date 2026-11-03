@@ -1,0 +1,414 @@
+{
+ "runs": [
+  {
+   "name": "run1",
+   "session_id": "v3-live-4",
+   "job_id": "v3-live-job-4",
+   "recorded_in": "docs/proofs/dtls-over-email-v3.md, the live mailbox run section",
+   "files": [
+    {
+     "file": "run1-01-1a19f1104e1e022e.eml",
+     "gmail_id": "1a19f1104e1e022e",
+     "direction": "client",
+     "role": "client-hello",
+     "fixture_sha384": "209a41eaa3435ad97fa34499f591ead59bfef07978be4d34404263fecd9803acd8e044f236d9d920d4e8f5e678c1cb66"
+    },
+    {
+     "file": "run1-02-1a19f11120b73c78.eml",
+     "gmail_id": "1a19f11120b73c78",
+     "direction": "server",
+     "role": "hello-retry-request",
+     "fixture_sha384": "d6945fa7cf4ee33f887ffd89b88b16b7dab79270a975ffefcf44b7812df1a66de93c9c4cf30b46255d92555ec63e7620"
+    },
+    {
+     "file": "run1-03-1a19f111f7d10f3a.eml",
+     "gmail_id": "1a19f111f7d10f3a",
+     "direction": "client",
+     "role": "cookied-client-hello",
+     "fixture_sha384": "9d18050fafb8028222da43a7f030bcc103f5f77d47ce5938db5a86f4e064174ec09f85088f7b82237b59f5041c275b1d"
+    },
+    {
+     "file": "run1-04-1a19f11352d41434.eml",
+     "gmail_id": "1a19f11352d41434",
+     "direction": "server",
+     "role": "server-hello",
+     "fixture_sha384": "bdf06f277072203bd0cd5f7f27fbc4438e945ed8621b6838c58dff9a9e6aa7d0310e6f5fc24ead06f98fde75220b592e"
+    },
+    {
+     "file": "run1-05-1a19f1139c7d6d57.eml",
+     "gmail_id": "1a19f1139c7d6d57",
+     "direction": "server",
+     "role": "server-flight",
+     "fixture_sha384": "5a6a86f2c2fb9d9fb6249a896565eb8121c71ce47b41b9381bc6c2905dd3baea6816f2b626d53e03a1424b58657ad591"
+    },
+    {
+     "file": "run1-06-1a19f113b7292073.eml",
+     "gmail_id": "1a19f113b7292073",
+     "direction": "server",
+     "role": "server-flight",
+     "fixture_sha384": "44d9521ec9866303b0b6dc65ca271bd2cd45d0c5832d30b29941fdde64f10a477aec6b57f316c9aeb4002bc513553098"
+    },
+    {
+     "file": "run1-07-1a19f11440cce188.eml",
+     "gmail_id": "1a19f11440cce188",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "654f902e9aa359363c6d8bdeeb3c260af6a18c3b7887347456ee37fe22703f196305d19c1b06e539b0fb8ef69bc6deac"
+    },
+    {
+     "file": "run1-08-1a19f11497c768f2.eml",
+     "gmail_id": "1a19f11497c768f2",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "d96899324bae960a780a1edc7405d40c28b30141d664811ded33ac0f9953fa7e8c589c0ab56c72af907d8b141c1347fb"
+    },
+    {
+     "file": "run1-09-1a19f114aa7f00d0.eml",
+     "gmail_id": "1a19f114aa7f00d0",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "8f7a103765902c621eb2540591d607cda4cf876044b56e533e283878c263732646ec66bdf37430c0da7535d322a94505"
+    },
+    {
+     "file": "run1-10-1a19f114c7208a8d.eml",
+     "gmail_id": "1a19f114c7208a8d",
+     "direction": "client",
+     "role": "client-flight",
+     "fixture_sha384": "54b6603f8ab2d24bb86403883df64706e6da8d2d68b90ea30418fdd0d0aca0ed3a27446c914bc43ef36bebaccf781102"
+    },
+    {
+     "file": "run1-11-1a19f11501a7eddb.eml",
+     "gmail_id": "1a19f11501a7eddb",
+     "direction": "client",
+     "role": "client-flight",
+     "fixture_sha384": "55b84228a061e692c5d2327e633c8740ff2b19fe97ef174b31e12402d1e41d1e8e95b8ce19c8582c4cdd78a3ab173597"
+    },
+    {
+     "file": "run1-12-1a19f116229b983a.eml",
+     "gmail_id": "1a19f116229b983a",
+     "direction": "client",
+     "role": "protected-record",
+     "fixture_sha384": "65e42103ec45ea4a64a7b32143e62c244947e1c1a4c4f2bacff216ab64423640cf5d5f8d3334c4bda41ac0c3c9b5ccb2"
+    },
+    {
+     "file": "run1-13-1a19f11657a08031.eml",
+     "gmail_id": "1a19f11657a08031",
+     "direction": "client",
+     "role": "protected-record",
+     "fixture_sha384": "8b12ad7a9835db98be511d8e63a87f860b58bfb1077d76f82071a6f3c7337c52c24c5b0b92a505f11ee61d7e325b3e64"
+    },
+    {
+     "file": "run1-14-1a19f117136c02e1.eml",
+     "gmail_id": "1a19f117136c02e1",
+     "direction": "client",
+     "role": "job-flight",
+     "fixture_sha384": "d2787949c2170c993d3435166440c2599fb29e1f3c5e64288a44c0ad8d1d5e51f3315c34fde9b30df9e85fc5a1858028"
+    },
+    {
+     "file": "run1-15-1a19f117688b9055.eml",
+     "gmail_id": "1a19f117688b9055",
+     "direction": "server",
+     "role": "protected-record",
+     "fixture_sha384": "23fef88936dfe20a5b6cbbe8ef28024602001ae72d4933c95b5c3e9c15d9119fdbd892cee770a5f9e8f8b54fe20421a5"
+    },
+    {
+     "file": "run1-16-1a19f117ae311e69.eml",
+     "gmail_id": "1a19f117ae311e69",
+     "direction": "server",
+     "role": "protected-record",
+     "fixture_sha384": "68f96de7e958f97e2955ac646df29333c689bdc7ca6c9d3364d0dbb0a3fc50b591620bbef74247eab771c5c7a41ccb72"
+    },
+    {
+     "file": "run1-17-1a19f11864c9381a.eml",
+     "gmail_id": "1a19f11864c9381a",
+     "direction": "client",
+     "role": "protected-record",
+     "fixture_sha384": "4bff9690e6138a622e24c9344e01d79fc27ac882e7e55afa8715220ae8b44375e172101c64c3ebc20c9ef8b52f39fabc"
+    },
+    {
+     "file": "run1-18-1a19f11bea72eba3.eml",
+     "gmail_id": "1a19f11bea72eba3",
+     "direction": "server",
+     "role": "result-flight",
+     "fixture_sha384": "d79e0f2dafcdd7f45c87e15f5fa5099e344392335b8aab02f054cb5c11990915be2b198a2e3ed0342e0b65b05fc979af"
+    }
+   ]
+  },
+  {
+   "name": "run4",
+   "session_id": "7f57fb2802395abcd64eff696769e813",
+   "job_id": "76afac0d-f002-4532-8b22-9444233b5700",
+   "recorded_in": "the run 4 evidence log kept with the live-run driver",
+   "job_envelope_bytes": 729,
+   "result_payload_bytes": 1072,
+   "files": [
+    {
+     "file": "run4-01-1a19f6255d8734f5.eml",
+     "gmail_id": "1a19f6255d8734f5",
+     "direction": "client",
+     "role": "client-hello",
+     "fixture_sha384": "fca2d4db5e04d011559588614c61628012d1e9cba92604229ce5b83f066499d439bbe2c9a33de7cfdd00e29b1e0c9de9"
+    },
+    {
+     "file": "run4-02-1a19f625e2b78936.eml",
+     "gmail_id": "1a19f625e2b78936",
+     "direction": "client",
+     "role": "client-hello-retransmit",
+     "fixture_sha384": "3273fcb4cca27b6d2562f0475889556c0c67663d126ae8fa82368bb48ea3dbfa1fa5c54fe2c25cb61e12db5aae4a3a2b"
+    },
+    {
+     "file": "run4-03-1a19f62880512954.eml",
+     "gmail_id": "1a19f62880512954",
+     "direction": "client",
+     "role": "client-hello-retransmit",
+     "fixture_sha384": "28ac732b420907c1eca645afeb011b5e593e2cfb2c4eb53a8b52cb352b299478c89ba296c6bc7eef6fb62ae0343043e4"
+    },
+    {
+     "file": "run4-04-1a19f628e6f6ef74.eml",
+     "gmail_id": "1a19f628e6f6ef74",
+     "direction": "server",
+     "role": "hello-retry-request",
+     "fixture_sha384": "b71e2dc427785ae0a502e625a6319e895a8bfef38a2d6de320cd371cfa0e35d0cf5c7313a9ab2c4f17ad3d7d54a30108"
+    },
+    {
+     "file": "run4-05-1a19f62b989e15da.eml",
+     "gmail_id": "1a19f62b989e15da",
+     "direction": "client",
+     "role": "cookied-client-hello",
+     "fixture_sha384": "d8476f49293506ea966af5ab515986a850896abcdf2b7b89afde4d8abdd174ab9f1e404eba7762bf46438f1cad0b477e"
+    },
+    {
+     "file": "run4-06-1a19f62c0efed1ce.eml",
+     "gmail_id": "1a19f62c0efed1ce",
+     "direction": "client",
+     "role": "cookied-client-hello-retransmit",
+     "fixture_sha384": "6f425056e93f404b81ddb3a37729318077e6c99fc253f0dd3308b755e6fb2cede11d5958eebf0f44f5eb630966644249"
+    },
+    {
+     "file": "run4-07-1a19f62d83d3a978.eml",
+     "gmail_id": "1a19f62d83d3a978",
+     "direction": "server",
+     "role": "hello-retry-request-retransmit",
+     "fixture_sha384": "1364d2d040964b9a885a02e031c64af2bf242d866d2f1ef62847f592818c025e6aaf8e9a65db97c05e8252163e08acd5"
+    },
+    {
+     "file": "run4-08-1a19f62e973a0ba0.eml",
+     "gmail_id": "1a19f62e973a0ba0",
+     "direction": "server",
+     "role": "hello-retry-request-retransmit",
+     "fixture_sha384": "05888fee563d9fe215306a49112a0c5d14073c38391dd86f809e7a6d3411eb47a882659e426123339374c4e54e239985"
+    },
+    {
+     "file": "run4-09-1a19f62ee2c9621e.eml",
+     "gmail_id": "1a19f62ee2c9621e",
+     "direction": "client",
+     "role": "cookied-client-hello-retransmit",
+     "fixture_sha384": "ff158b8db20cc1e85ebb7d173c8ade785a33f4a36c0b9e940880cfeb70bd36d6210bc6fe5a536621bf95108d314e6581"
+    },
+    {
+     "file": "run4-10-1a19f62f30e1d566.eml",
+     "gmail_id": "1a19f62f30e1d566",
+     "direction": "server",
+     "role": "server-hello",
+     "fixture_sha384": "1098100b4602450643fc0311c9b07126f33988c4d31ec4db0a5d9b8a560446d787f4a66c599c84db9ebc0ead8b94a597"
+    },
+    {
+     "file": "run4-11-1a19f62f819c2c9f.eml",
+     "gmail_id": "1a19f62f819c2c9f",
+     "direction": "server",
+     "role": "server-flight",
+     "fixture_sha384": "56b66a911d6c58c171a9a7365fd01540a280dc91dbc2ac43d97f2915a86de872e32cd38776ec9f29eab1d6e9edd6f2bb"
+    },
+    {
+     "file": "run4-12-1a19f62fd34593a6.eml",
+     "gmail_id": "1a19f62fd34593a6",
+     "direction": "server",
+     "role": "server-flight",
+     "fixture_sha384": "2acd5dc919b2f6fd1d8fe56cf2a0140120ded2e9693c01b7f8a76499f274cc8214a02788319531c6482d937212220882"
+    },
+    {
+     "file": "run4-13-1a19f63076a6e29e.eml",
+     "gmail_id": "1a19f63076a6e29e",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "cc72485e0511b30bcb6876f655ed88ec4fa6da59d15814bd6bc26d14bdbf0e8a7a911f60183be45ff25615f17928dbc8"
+    },
+    {
+     "file": "run4-14-1a19f630c963ba8d.eml",
+     "gmail_id": "1a19f630c963ba8d",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "636502a75717e5af065329fb61173879f56b55c29a2462b386ee4fa030b9e1af41b4df6231133e0c813b1c5f9c23ae87"
+    },
+    {
+     "file": "run4-15-1a19f6311d3e4b51.eml",
+     "gmail_id": "1a19f6311d3e4b51",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "639320c411d5bbf27f7addfcddd766c40167f600d66942b0a07ae3d264b926d0df6f021f0e694409b8d45fdbac3fdcd8"
+    },
+    {
+     "file": "run4-16-1a19f631cd34fcd9.eml",
+     "gmail_id": "1a19f631cd34fcd9",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "8bcf5bf7e400644913086d57795a7a0aaa1ed03b75e91678e4f6877fe21a93e1cc1b14433937a48ddefba5fb84b2ae2c"
+    },
+    {
+     "file": "run4-17-1a19f6322f12eba7.eml",
+     "gmail_id": "1a19f6322f12eba7",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "17f1a3b215234df1dd3bb3042af6e579325c39c51ae543d249e650547ae1ed0760084a99f534a6f64ffd01ece7e4e0a5"
+    },
+    {
+     "file": "run4-18-1a19f6324d03e539.eml",
+     "gmail_id": "1a19f6324d03e539",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "a8eca91a456795034d3d6df8551211a5445eaa7c1cbfc223cd8d1d4c3863d825300063e041bae08faad7647d90bf57b3"
+    },
+    {
+     "file": "run4-19-1a19f633757fcabb.eml",
+     "gmail_id": "1a19f633757fcabb",
+     "direction": "client",
+     "role": "client-flight",
+     "fixture_sha384": "78160e545ee614ddaec9f3376f43953cf2ac104a2e93b6f4c5227d737a4a994afdfca52f8b0a88aac5cd777c405d94aa"
+    },
+    {
+     "file": "run4-20-1a19f633dfe32f9e.eml",
+     "gmail_id": "1a19f633dfe32f9e",
+     "direction": "client",
+     "role": "client-flight",
+     "fixture_sha384": "f5de3cff9394ccf62edbb775d582c15c9ff572d430c8f466d4458f4b771922879603fab172973ddde2cc2c3ff3f4e84b"
+    },
+    {
+     "file": "run4-21-1a19f6342b2c039c.eml",
+     "gmail_id": "1a19f6342b2c039c",
+     "direction": "client",
+     "role": "protected-record",
+     "fixture_sha384": "73fb55f3b5ec60cdd79daa7cac433e9b53c64b80cc9cbc5ec12fe23b3fb175eb93d7258c14d890666bbc675fd6f10628"
+    },
+    {
+     "file": "run4-22-1a19f634b38fd9e1.eml",
+     "gmail_id": "1a19f634b38fd9e1",
+     "direction": "client",
+     "role": "client-flight-retransmit",
+     "fixture_sha384": "b4d180743eb8dac35632b334d4bbf5623a8dd9e18c75b24c7c9d4d0a1a27a182aababf05b01c8bb8d811c0994a592c17"
+    },
+    {
+     "file": "run4-23-1a19f63527703b61.eml",
+     "gmail_id": "1a19f63527703b61",
+     "direction": "client",
+     "role": "job-flight",
+     "fixture_sha384": "c46a4f41e237828fe85c48fc10b78ffb9ec7dc0e122859e05389893c7ae6d9c1f9d6a5ce65c382fcc83da99bfce0badd"
+    },
+    {
+     "file": "run4-24-1a19f636bea7274f.eml",
+     "gmail_id": "1a19f636bea7274f",
+     "direction": "client",
+     "role": "protected-record",
+     "fixture_sha384": "3e861689d31c2c9284a3cc50fef81045a5ead6c9c97ee3ec8033fdfb94525ef92ea85dd11adc7c096c6b7ff759409c26"
+    },
+    {
+     "file": "run4-25-1a19f636e7bc5e9a.eml",
+     "gmail_id": "1a19f636e7bc5e9a",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "1462012227cd4862c84d9347753f18ab584fe92d0cb6e187d14a5953c3ae51ac4ee97080c3f8dba4bc7d6dc37a450c7c"
+    },
+    {
+     "file": "run4-26-1a19f637274dd7b6.eml",
+     "gmail_id": "1a19f637274dd7b6",
+     "direction": "client",
+     "role": "protected-record",
+     "fixture_sha384": "0bc7b626a028482b36b465ba7f54a3b96b9e74373ecf595f9944b0e938e941d087114074aa7105eb5fcc2febe2abfc5c"
+    },
+    {
+     "file": "run4-27-1a19f63727c39110.eml",
+     "gmail_id": "1a19f63727c39110",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "70b096d88bc11aabc90fa75b26230621833f552d673d74b9bddcfc8ff6ff4e62ebd751c0cc9eb2c10fd5e6486dc0d163"
+    },
+    {
+     "file": "run4-28-1a19f6378fe5fcd8.eml",
+     "gmail_id": "1a19f6378fe5fcd8",
+     "direction": "server",
+     "role": "server-flight-retransmit",
+     "fixture_sha384": "03ad9146461d0089425a110fbc55390d0882e27b2f8bc09647751ad8c1748ebf348349bcebaea9ab6ca34da79a719006"
+    },
+    {
+     "file": "run4-29-1a19f637b0a930e1.eml",
+     "gmail_id": "1a19f637b0a930e1",
+     "direction": "client",
+     "role": "protected-record",
+     "fixture_sha384": "2c8d131ebc2787b73281db04235b3570f35d4fd99fb940b371d749bfd786f06211b9714d5c30fb060c2f674e1a9ead18"
+    },
+    {
+     "file": "run4-30-1a19f6382e5ff525.eml",
+     "gmail_id": "1a19f6382e5ff525",
+     "direction": "client",
+     "role": "client-flight-retransmit",
+     "fixture_sha384": "b9c4617355add5da59a30ae89a8222b5177630809bf9d6525fb8262d6d9224bb196de78c831dede1fc5281741f84e7ec"
+    },
+    {
+     "file": "run4-31-1a19f6384b4c0f57.eml",
+     "gmail_id": "1a19f6384b4c0f57",
+     "direction": "server",
+     "role": "protected-record",
+     "fixture_sha384": "23fde65f046297a1eb971eb5972033f964f8b31d7cd6919f453081288668ab5ba5a48f7a1a9509aaf4155535c1a3b635"
+    },
+    {
+     "file": "run4-32-1a19f6389b8151d4.eml",
+     "gmail_id": "1a19f6389b8151d4",
+     "direction": "server",
+     "role": "protected-record",
+     "fixture_sha384": "e9dd51ea789dcdce4ef83a68777ed504b893824e93e37d9891f1a24ab237b00608dbc751c534b61544dbebaee2515e02"
+    },
+    {
+     "file": "run4-33-1a19f639328d14ba.eml",
+     "gmail_id": "1a19f639328d14ba",
+     "direction": "server",
+     "role": "protected-record",
+     "fixture_sha384": "66b0f805d8c6c84a217db169f306b018223c616952a69a6011e8f9801351681702669defba5740323a078aa71f5c10cd"
+    },
+    {
+     "file": "run4-34-1a19f63c0104ed11.eml",
+     "gmail_id": "1a19f63c0104ed11",
+     "direction": "client",
+     "role": "protected-record",
+     "fixture_sha384": "73378221f5b6e23ac4e990559e233ce37cd27b9a721cdd03bd33d119f9e8120bf05e6ff467e4b94c660cfef80b9dbef2"
+    },
+    {
+     "file": "run4-35-1a19f63c8e6029de.eml",
+     "gmail_id": "1a19f63c8e6029de",
+     "direction": "client",
+     "role": "protected-record",
+     "fixture_sha384": "c108749a5acd597c1d84c7fdb84580ea09976995102ca000a7aef1e155c0e99c244f54852fdd5bf7d6449c8b844fd4f3"
+    },
+    {
+     "file": "run4-36-1a19f63cf5c6dd25.eml",
+     "gmail_id": "1a19f63cf5c6dd25",
+     "direction": "client",
+     "role": "protected-record",
+     "fixture_sha384": "d10952280db2f892be6f3a51dd4a2f727c6e3bf03c5d7200669cb9df2e1effa4bc3c528e08cca6ffa0ee38aec4f896ca"
+    },
+    {
+     "file": "run4-37-1a19f63e0bfd1c7d.eml",
+     "gmail_id": "1a19f63e0bfd1c7d",
+     "direction": "server",
+     "role": "protected-record",
+     "fixture_sha384": "1a6b84524bc12f330810daf2caacb490000fdcde1598a461c5e70ed4c03164383b80ba8d839aa031cc88ac64d1ca79a6"
+    },
+    {
+     "file": "run4-38-1a19f63eee069cc4.eml",
+     "gmail_id": "1a19f63eee069cc4",
+     "direction": "server",
+     "role": "result-flight",
+     "fixture_sha384": "820fcc8b6c11a443eb39d467d995c93f9c01451582255c6c8fd03d933b2c98a17179368880ee2f349b47bf0d51bfb752"
+    }
+   ]
+  }
+ ]
+}

@@ -473,3 +473,38 @@ middle of a live handshake. Resumption across a responder
 restart is not possible by design -- the ticket table is
 process memory -- and is recorded here so the unproven
 list is not read as awaiting that run.
+
+## Addendum: the live runs' mail, recorded as fixtures (2-Nov-2026)
+
+The exact flight mail of the 2 live mailbox runs is now
+recorded in the tree at
+`runner/tests/fixtures/dtls_email_v3_live/`: run 1 (mail
+session `v3-live-4`, job `v3-live-job-4`, 18 mails) and
+run 4 (mail session `7f57fb2802395abcd64eff696769e813`,
+job `76afac0d-f002-4532-8b22-9444233b5700`, 38 mails), in
+mailbox order, with a manifest naming the session id, the
+job id, the direction, and a role for every file, and a
+README recording the recording's fidelity: every header
+in its stored order and the exact decoded body — the body
+the receiver path consumes; the stored messages carry the
+body quoted-printable, and the fixture labels the decoded
+body it holds as 8bit.
+
+The tests in `runner/tests/test_dtls_email_v3_live.py`
+replay the recorded mail through the carriage parser
+offline: every flight classifies and parses under its own
+session (`test_every_recorded_mail_parses_as_a_flight_of_its_session`),
+the handshake sequence assembles in the recorded order
+(`test_the_handshake_sequence_assembles_in_recorded_order`),
+with the HelloRetryRequest cookie checked against the
+first ClientHello by its SHA-384 and the cookied
+ClientHello carrying the same cookie back, the fixtures
+check against the manifest's digests
+(`test_the_fixtures_match_the_recorded_manifest`), and the
+job and result flights are pinned to their session by
+subject, order, and — for run 4 — exact size against the
+recorded payload sizes
+(`test_the_job_and_result_flights_bind_to_their_session`).
+The live runs are replayable offline from the fixtures
+alone; the runs' shared secrets are not recorded and are
+not needed for the replay.

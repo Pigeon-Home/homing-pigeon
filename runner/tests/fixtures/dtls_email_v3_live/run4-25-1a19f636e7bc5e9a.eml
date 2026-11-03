@@ -1,0 +1,13 @@
+Return-Path: <slutsky5544@gmail.com>
+Received: from [127.0.0.1] ([2a04:4e41:20:5b8a::fd9a:db8a])        by smtp.gmail.com with ESMTPSA id 46e09a7af769-85d355295fbsm10914473a34.25.2026.11.02.19.10.55        for <slutsky5544@gmail.com>        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);        Mon, 02 Nov 2026 19:10:56 -0800 (PST)
+Message-ID: <6ae950c0.d643d4e7.f723c.f3b7@mx.google.com>
+Date: Mon, 02 Nov 2026 19:10:56 -0800 (PST)
+From: slutsky5544@gmail.com
+To: slutsky5544@gmail.com
+Subject: [HOMING-PIGEON] dtls 7f57fb2802395abcd64eff696769e813
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+
+HP-DTLS/3 transfer=1bccb21a320a46cc part=0 parts=1 bytes=126 sha384=4d9c2325504e4f1d9152030c8828bd80de26baae8ed3ac3986d5ad6acf9070faa066e8c177a52daf2d8e2ede82fa65c7
+Fv79AAAAAAAAAAMAcQIAAGUAAQAAAAAAZf794exQhe1DPIGIucyKvtn7Bbq2XLICKuA+wrrYfeJDUacAEwIAAD0AKwAC/vwAMwAkAB0AIBlsGgY1ncIQcWekgX77afDEOE3I+KsDTh59D6jfYCxuACkAAgAAADYABQT5Z87T
