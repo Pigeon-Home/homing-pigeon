@@ -37,7 +37,7 @@ Run a job that retrieves the system clock and then display it here.
 IETF Internet-Drafts:
 - Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
-- Homing Pigeon v3 (Post-quantum cryptography in DTLS with perfect forward secrecy over email): https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3-00.md
+- Homing Pigeon v3 (Post-quantum cryptography [RFC10024] in DTLS with perfect forward secrecy over email): https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3-00.md
 
 **No mailbox yet?** `python3 runner/runner.py --config config.json
 --local-test` runs the whole loop in process: you play the SI in a
