@@ -13,25 +13,35 @@ grammar (runner/wire/subject.py):
 
     [HOMING-PIGEON] dtls <session-id>
 
-and frames the body so a datagram can be segmented across
-messages and reassembled exactly:
+and frames the datagram so it can be segmented across messages
+and reassembled exactly. The frame --
 
     HP-DTLS/3 transfer=<16 hex> part=<n> parts=<m> bytes=<total>
         sha384=<hex digest of the whole datagram>
     <one base64 chunk>
 
+-- travels in its own MIME part (content type
+application/hp-dtls3, base64 transfer encoding), so text a
+provider adds around it, a footer in the text part above all,
+is not the frame and cannot break it. A message with no typed
+part is read in the original naked shape, the frame as the
+text/plain body; a message with a typed part is read from
+that part alone.
+
 Subjects route; they never authenticate. A datagram still has to
 parse and authenticate under runner/wire/dtlsproto.py. A message
-with a DTLS subject whose body does not frame a datagram is
+with a DTLS subject whose frame does not yield a datagram is
 "dtls-invalid": it is consumed as DTLS input or dropped, and it
 is never reinterpreted as a job.
 
 The server and client wrappers in this module own the carriage
 rules the DTLS core does not: segmentation and reassembly,
-exact-duplicate mail suppression (a replayed mail is not a new
-record), binding a mail session-id to the DTLS connection ID it
-establishes (a record addressed to one session is not accepted
-under another session's mail), and expiry of partial state.
+exact-duplicate mail suppression split by phase (a replayed
+handshake flight re-posts the saved answer; a replayed
+application record is dropped), binding a mail session-id to
+the DTLS connection ID it establishes (a record addressed to
+one session is not accepted under another session's mail), and
+expiry of partial state.
 
 The box at the bottom is in-process. It speaks the UID commands
 fetch_job_mails uses. It is not an IMAP server, and nothing in
@@ -42,6 +52,7 @@ from __future__ import annotations
 import base64
 import email
 import email.policy
+from email.message import EmailMessage
 import hashlib
 import json
 import re
@@ -50,9 +61,22 @@ from collections import OrderedDict, namedtuple
 
 from runner.wire import dtlsproto
 from runner.wire import subject as _subject_grammar
-from runner.wire.mailbox import fetch_job_mails, mark_seen, send_mail
+from runner.wire.mailbox import (
+    fetch_job_mails, mark_seen, send_built_message, send_mail)
 
 FLIGHT_SUBJECT = "[HOMING-PIGEON] dtls"
+
+# The MIME content type of the part that carries one flight
+# frame. A private type in a local, unsubmitted draft: it
+# requests no registration, and a receiver treats a part of
+# this type as the only frame source in its message.
+FLIGHT_CONTENT_TYPE = "application/hp-dtls3"
+
+_FLIGHT_NOTE = (
+    "This message carries one DTLS flight in its "
+    "application/hp-dtls3 part. The flight is data for the "
+    "Homing Pigeon runner's DTLS-over-mail carriage; this "
+    "text part is not the flight.")
 
 DEFAULT_MAX_DATAGRAM_BYTES = 256 * 1024
 DEFAULT_CHUNK_CHARS = 32768
@@ -98,10 +122,35 @@ def flight_subject(session_id):
     return FLIGHT_SUBJECT + " " + session_id
 
 
+def _typed_flight_text(message):
+    """The flight frame's text when the message carries a
+    dedicated flight part, else None. A present flight part is
+    authoritative: its content is the frame source even when it
+    is unusable -- a non-base64 transfer encoding, an
+    undecodable payload -- in which case the frame is empty
+    and the message fails closed downstream. Nothing outside
+    the part, a provider footer in the text part above all, is
+    ever the frame."""
+    for part in message.walk():
+        if part.get_content_type() != FLIGHT_CONTENT_TYPE:
+            continue
+        cte = str(part.get("Content-Transfer-Encoding")
+                  or "").strip().lower()
+        if cte != "base64":
+            return ""
+        payload = part.get_payload(decode=True)
+        if payload is None:
+            return ""
+        return payload.decode("utf-8", "replace")
+    return None
+
+
 def _subject_body(raw):
-    """(subject, text body) from one raw RFC822 message, the same
-    extraction the email extension applies: the Subject header and
-    the first text/plain part's text."""
+    """(subject, text body) from one raw RFC822 message: the
+    Subject header, and the body the carriage reads -- the
+    dedicated flight part's text when the message carries one,
+    else the first text/plain part's text, the extraction the
+    email extension applies to ordinary mail."""
     if isinstance(raw, str):
         raw = raw.encode("utf-8", "replace")
     try:
@@ -111,6 +160,9 @@ def _subject_body(raw):
         return "", ""
     subject = str(message.get("Subject") or "")
     try:
+        typed = _typed_flight_text(message)
+        if typed is not None:
+            return subject, typed
         if message.is_multipart():
             for part in message.walk():
                 if part.get_content_type() == "text/plain" \
@@ -126,6 +178,21 @@ def _subject_body(raw):
     if isinstance(payload, bytes):
         return subject, payload.decode("utf-8", "replace")
     return subject, str(message.get_payload() or "")
+
+
+def _flight_subject_match(subject):
+    """The regex match when a subject is exactly a flight
+    subject, else None. At most 1 leading "Re:" or "Fwd:"
+    (any case) is stripped first, and only when the remainder
+    is exactly the flight subject: a chain of prefixes, or
+    any other text before the marker, is not flight mail."""
+    text = (subject or "").strip()
+    lowered = text.lower()
+    for prefix in ("re:", "fwd:"):
+        if lowered.startswith(prefix):
+            text = text[len(prefix):].strip()
+            break
+    return _V3_SUBJECT_RE.fullmatch(text)
 
 
 def _is_client_hello(datagram):
@@ -248,7 +315,7 @@ def parse_message(raw):
         return ClassifiedMail(kind, subject, body, session_id,
                               datagram, part, reason)
 
-    match = _V3_SUBJECT_RE.search(subject or "")
+    match = _flight_subject_match(subject)
     if match is not None:
         session_id = match.group(1)
         if not valid_session_id(session_id):
@@ -293,10 +360,17 @@ class FlightReassembler:
 
     def __init__(self, max_transfers=64,
                  max_total_bytes=DEFAULT_MAX_DATAGRAM_BYTES,
-                 ttl_sec=3600):
+                 ttl_sec=3600, deadline_sec=None):
         self.max_transfers = max_transfers
         self.max_total_bytes = max_total_bytes
         self.ttl_sec = ttl_sec
+        # An absolute deadline from a transfer's first part,
+        # never longer than the idle timeout unless a caller
+        # says otherwise. The idle timer alone is not a bound:
+        # a sender dripping 1 part just inside it would hold a
+        # transfer slot for as long as it cared to drip.
+        self.deadline_sec = ttl_sec if deadline_sec is None \
+            else min(deadline_sec, ttl_sec)
         self._transfers = OrderedDict()
 
     @property
@@ -305,7 +379,8 @@ class FlightReassembler:
 
     def _expire(self, now):
         stale = [key for key, entry in self._transfers.items()
-                 if now - entry["updated"] > self.ttl_sec]
+                 if now - entry["updated"] > self.ttl_sec
+                 or now - entry["created"] > self.deadline_sec]
         for key in stale:
             del self._transfers[key]
 
@@ -324,7 +399,7 @@ class FlightReassembler:
                 self._transfers.popitem(last=False)
             entry = {"count": part.count, "total": part.total_bytes,
                      "sha384": part.sha384, "parts": {},
-                     "updated": now}
+                     "created": now, "updated": now}
             self._transfers[key] = entry
         if (entry["count"] != part.count
                 or entry["total"] != part.total_bytes
@@ -408,6 +483,7 @@ class DtlsMailServer:
         self._cid_hint = {}
         self.established = {}
         self._app = []
+        self._last_flight = {}   # peer addr -> [datagram]
 
     # -- intake ----------------------------------------------------
 
@@ -455,17 +531,17 @@ class DtlsMailServer:
         # a misaddressed copy must not poison the digest cache
         # against the same record arriving under its own
         # session's mail, where it is legitimate.
-        if not self._dedup.accept(datagram):
-            self.log("dtls-mail: duplicate flight suppressed",
-                     "WARN")
-            return []
         addr = self._addr_for(session_id)
+        if not self._dedup.accept(datagram):
+            return self._repost_last_flight(session_id, addr)
         try:
             out = self.core.feed(datagram, addr, now)
         except Exception as e:
             self.log("dtls-mail: session input failed: %r" % (e,),
                      "WARN")
             return []
+        if out:
+            self._last_flight[addr] = list(out)
         session = self.core.by_addr.get(addr)
         if session is not None and session.session_id is not None:
             self._bind(session_id, session.session_id)
@@ -473,6 +549,33 @@ class DtlsMailServer:
         mails = []
         for datagram_out in out:
             mails.extend(_encode_outgoing(datagram_out, session_id))
+        return mails
+
+    def _repost_last_flight(self, session_id, addr):
+        """A bit-identical duplicate of a handshake-phase
+        datagram. The duplicate is the signal the peer's
+        retransmission gives that our answer was lost
+        (RFC 9147 Section 5.8.1), so the saved last outbound
+        flight is posted again -- re-encoded under fresh
+        transfer identifiers, and the duplicate itself is
+        never fed to the stack again, so nothing is derived
+        twice. Once the session is established, a duplicate
+        is application data or a replay of it: it is dropped
+        and does nothing."""
+        session = self.core.by_addr.get(addr)
+        if session is not None and session.established:
+            self.log("dtls-mail: duplicate application record "
+                     "suppressed", "WARN")
+            return []
+        saved = self._last_flight.get(addr)
+        if not saved:
+            return []
+        self.log("dtls-mail: duplicate handshake flight; "
+                 "re-posting the last flight", "WARN")
+        mails = []
+        for datagram_out in saved:
+            mails.extend(_encode_outgoing(datagram_out,
+                                          session_id))
         return mails
 
     def _bind(self, session_id, cid):
@@ -503,9 +606,13 @@ class DtlsMailServer:
 
     def tick_mails(self, now):
         mails = []
+        flights = {}
         for addr, datagram in self.core.tick(now):
+            flights.setdefault(addr, []).append(datagram)
             hint = self._addr_hint.get(addr)
             mails.extend(_encode_outgoing(datagram, hint))
+        for addr, datagrams in flights.items():
+            self._last_flight[addr] = datagrams
         self._drain_events(None)
         return mails
 
@@ -537,6 +644,7 @@ class DtlsMailClient:
         self.reassembler = FlightReassembler(
             max_total_bytes=max_datagram_bytes)
         self._dedup = _DigestCache(dedup_entries)
+        self._last_flight = []   # [datagram] of the last flight
 
     @property
     def state(self):
@@ -551,6 +659,8 @@ class DtlsMailClient:
         return self.core.app_messages
 
     def _wrap(self, datagrams):
+        if datagrams and self.core.state != "established":
+            self._last_flight = list(datagrams)
         mails = []
         for datagram in datagrams:
             mails.extend(encode_flight(datagram, self.session_id))
@@ -591,7 +701,17 @@ class DtlsMailClient:
         if not datagram or len(datagram) > self.max_datagram_bytes:
             return []
         if not self._dedup.accept(datagram):
-            return []
+            # The split, on the initiator side: a duplicate
+            # from the handshake phase re-posts the saved last
+            # flight (the responder's answer was likely lost);
+            # a duplicate at or after establishment does
+            # nothing.
+            if self.core.state == "established" \
+                    or not self._last_flight:
+                return []
+            self.log("dtls-mail: duplicate handshake flight; "
+                     "re-posting the last flight", "WARN")
+            return self._wrap(list(self._last_flight))
         try:
             out = self.core.feed(datagram, now)
         except Exception as e:
@@ -659,14 +779,35 @@ class Deposit:
         self.sent += 1
 
 
+def build_flight_message(cfg, subject, body):
+    """One flight mail as a message object: a short text part
+    a human can read, and the frame in its own
+    application/hp-dtls3 part with base64 transfer encoding.
+    Text a provider adds anywhere else in the message -- a
+    footer in the text part above all -- is not the frame and
+    cannot break the flight."""
+    msg = EmailMessage()
+    msg["From"] = str(cfg.get("mailbox_user") or "")
+    msg["To"] = str(cfg.get("mailbox_user") or "")
+    msg["Subject"] = " ".join(str(subject or "").splitlines())
+    msg.set_content(_FLIGHT_NOTE)
+    part = EmailMessage()
+    part.set_content((body or "").encode("utf-8"),
+                     maintype="application", subtype="hp-dtls3",
+                     cte="base64")
+    msg.add_attachment(part)
+    return msg
+
+
 def send_flight(smtp, cfg, datagram, session_id=None, transfer_id=None,
                 max_chunk_chars=DEFAULT_CHUNK_CHARS):
-    """One datagram, through send_mail, into whatever smtp deposits.
+    """One datagram, as mail, into whatever smtp deposits.
 
     Without a session id this is the legacy harness shape: one
     message, subject "[HOMING-PIGEON] dtls", body the base64 of
     the datagram. With one, it is the version 3 shape of
-    encode_flight, one message per part."""
+    encode_flight, one message per part, each carrying its
+    frame in the dedicated MIME part."""
     if session_id is None:
         body = base64.b64encode(datagram).decode("ascii")
         send_mail(smtp, cfg, FLIGHT_SUBJECT, body)
@@ -674,7 +815,8 @@ def send_flight(smtp, cfg, datagram, session_id=None, transfer_id=None,
     for subject, body in encode_flight(
             datagram, session_id, transfer_id=transfer_id,
             max_chunk_chars=max_chunk_chars):
-        send_mail(smtp, cfg, subject, body)
+        send_built_message(
+            smtp, build_flight_message(cfg, subject, body))
 
 
 def classify(raw):

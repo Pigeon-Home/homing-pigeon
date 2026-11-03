@@ -104,6 +104,7 @@ EXT_PRE_SHARED_KEY = 41
 EXT_PSK_MODES = 45
 EXT_COOKIE = 47
 EXT_CONNECTION_ID = 54
+EXT_EARLY_DATA = 42
 # Interim code point for platform_info, until IANA assigns
 # one. RFC 8446 and RFC 8447 reserve values whose first byte
 # is 255 (0xFF00-0xFFFF) for Private Use, except 0xFF01,
@@ -1706,6 +1707,18 @@ class DtlsServerCore:
             fields = _parse_client_hello(body)
         except DtlsError:
             self.log("dtls: malformed ClientHello; dropped",
+                     "WARN")
+            return []
+        if EXT_EARLY_DATA in fields["exts"]:
+            # This profile has no 0-RTT, ever: early data is
+            # not forward secret and is replayable between
+            # connections, and a job is not safe to replay. A
+            # ClientHello that carries early data is a
+            # malformed flight for this profile and is
+            # rejected -- not answered, and not processed with
+            # the early data quietly skipped.
+            self.log("dtls: ClientHello carries early data; "
+                     "rejected (no 0-RTT in this profile)",
                      "WARN")
             return []
         cookie_ext = fields["exts"].get(EXT_COOKIE)

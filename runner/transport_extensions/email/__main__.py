@@ -27,6 +27,13 @@ Delivery discipline mirrors the pre-extension mail path:
     (this process cannot read it out of an encrypted job, and
     never holds the secret); the in-body parse below remains
     the fallback for results that arrive without one.
+  - a result held for a DTLS session that never returns
+    expires: past its age bound (or the count / size bounds
+    on held results) it is dropped with a log line, and it is
+    never sent as ordinary mail -- dropping is not the
+    downgrade the no-downgrade rule forbids. The hold is
+    keyed by (session connection id, job ident), never by
+    the submitter-chosen job ident alone.
 """
 
 import json
@@ -125,8 +132,21 @@ class EmailPipe:
         self.dtls_enabled = isinstance(cfg, dict) \
             and cfg.get("dtls_via_email") is True
         self._dtls_server = None
-        self._job_session = {}  # channel ident -> DTLS session CID
+        # (DTLS session CID, channel ident) -> None. Keyed by
+        # the connection id as well as the ident: a job ident
+        # is chosen by the submitter and collides across
+        # submitters, so it never keys a hold on its own.
+        self._job_session = {}
         self._waiting_session = set()
+        self._result_wait_since = {}  # (CID, ident) -> epoch
+        ttl = cfg.get("dtls_result_ttl_sec") \
+            if isinstance(cfg, dict) else None
+        self._session_result_ttl = (
+            float(ttl) if isinstance(ttl, (int, float))
+            and not isinstance(ttl, bool) and ttl > 0
+            else 7 * 86400.0)
+        self._session_result_max_count = 64
+        self._session_result_max_bytes = 16 * 1024 * 1024
         if self.dtls_enabled:
             self._dtls_server = self._build_dtls_server()
 
@@ -160,7 +180,9 @@ class EmailPipe:
         smtp = self._smtp_factory(self.cfg)
         try:
             for subject, body in mails:
-                _mailbox.send_mail(smtp, self.cfg, subject, body)
+                _mailbox.send_built_message(
+                    smtp, _dtls_mailbox.build_flight_message(
+                        self.cfg, subject, body))
         finally:
             try:
                 smtp.quit()
@@ -218,36 +240,103 @@ class EmailPipe:
                        "subject; dropped", "WARN")
                 continue
             ch.deliver_job(self.channel, ident, subject, body)
-            self._job_session[ident] = cid
+            self._job_session[(cid, ident)] = None
             ch.log(f"email transport: job {ident} delivered "
                    f"from a DTLS session to the runner core")
+
+    def _session_bound(self, ident):
+        return any(key[1] == ident for key in self._job_session)
 
     def _send_result_on_session(self, ident, subject, body):
         """Send one result inside the session that carried its
         job. False when that cannot happen -- no session, or
         the session is gone: the file stays in the outbox for
-        a fresh session, and the result is never downgraded
-        to an ordinary mail result."""
+        a fresh session (bounded by the expiry sweep below),
+        and the result is never downgraded to an ordinary
+        mail result."""
         server = self._dtls_server
-        cid = self._job_session.get(ident)
-        if server is None or cid is None:
+        keys = [key for key in self._job_session
+                if key[1] == ident]
+        if server is None or not keys:
             return False
         text = ch.envelope(subject, body)
         if body and not body.endswith("\n"):
             text += "\n"
-        mails = server.send_app_mails(cid, text.encode("utf-8"))
-        if not mails:
-            if ident not in self._waiting_session:
+        for key in keys:
+            mails = server.send_app_mails(
+                key[0], text.encode("utf-8"))
+            if mails:
+                self._waiting_session.discard(ident)
+                self._send_dtls_mails(mails)
                 ch.log(f"email transport: result for {ident} "
-                       f"is not on a session yet; it stays "
-                       f"until the peer is back", "WARN")
-                self._waiting_session.add(ident)
-            return False
-        self._waiting_session.discard(ident)
-        self._send_dtls_mails(mails)
-        ch.log(f"email transport: result for {ident} sent "
-               f"inside its DTLS session")
-        return True
+                       f"sent inside its DTLS session")
+                return True
+        now = time.time()
+        for key in keys:
+            self._result_wait_since.setdefault(key, now)
+        if ident not in self._waiting_session:
+            ch.log(f"email transport: result for {ident} "
+                   f"is not on a session yet; it stays "
+                   f"until the peer is back", "WARN")
+            self._waiting_session.add(ident)
+        return False
+
+    def _expire_session_results(self):
+        """Drop held session results that outlived their
+        bounds: older than the pending-result TTL, or beyond
+        the count / total-size bounds on held results (oldest
+        first). An expired result is acked into done and
+        logged. It is never sent -- expiry is not the
+        downgrade Section 12 forbids; sending it as ordinary
+        mail would be."""
+        if not self.dtls_enabled or not self._job_session:
+            return
+        now = time.time()
+        held = []   # (since, fname, ident, size in bytes)
+        for fname, _subject, body in ch.pending_results(
+                self.channel):
+            ident = ch.result_file_id(fname) or fname
+            keys = [key for key in self._job_session
+                    if key[1] == ident]
+            if not keys:
+                continue
+            since = min(
+                (self._result_wait_since.get(key, now)
+                 for key in keys), default=now)
+            held.append((since, fname, ident,
+                         len((body or "").encode("utf-8"))))
+        if not held:
+            return
+        held.sort()
+        doomed = []
+        remaining = []
+        for since, fname, ident, size in held:
+            if now - since > self._session_result_ttl:
+                doomed.append((fname, ident, "its age bound"))
+            else:
+                remaining.append((since, fname, ident, size))
+        total = sum(entry[3] for entry in remaining)
+        while len(remaining) > self._session_result_max_count \
+                or total > self._session_result_max_bytes:
+            _since, fname, ident, size = remaining.pop(0)
+            doomed.append((fname, ident, "the held-result "
+                                        "bounds"))
+            total -= size
+        if not doomed:
+            return
+        still = {entry[2] for entry in remaining}
+        for fname, ident, why in doomed:
+            ch.ack_result(self.channel, fname)
+            self._ack_sidecar(ident)
+            ch.log(f"email transport: session result for "
+                   f"{ident} expired past {why}; dropped, "
+                   f"not sent", "WARN")
+        for key in list(self._job_session):
+            if key[1] not in still:
+                del self._job_session[key]
+                self._result_wait_since.pop(key, None)
+        for ident in {entry[1] for entry in doomed} - still:
+            self._waiting_session.discard(ident)
 
     def pass_once(self):
         imap = self._imap_factory(self.cfg)
@@ -354,13 +443,17 @@ class EmailPipe:
             for fname, subject, body in pending:
                 ident = ch.result_file_id(fname) or fname
                 if self.dtls_enabled \
-                        and ident in self._job_session:
+                        and self._session_bound(ident):
                     # A session's result is session-bound: it
                     # goes out inside the session or it stays.
                     if self._send_result_on_session(
                             ident, subject, body):
                         ch.ack_result(self.channel, fname)
                         self._ack_sidecar(ident)
+                        for key in list(
+                                self._result_wait_since):
+                            if key[1] == ident:
+                                del self._result_wait_since[key]
                     continue
                 to = self._sidecar_target(ident)
                 waiting = self._result_waiting(ident, ignore=fname)
@@ -397,6 +490,7 @@ class EmailPipe:
                     if dident == ident:
                         _mailbox.mark_seen(imap, seq)
                         del self._delivered[seq]
+            self._expire_session_results()
         finally:
             try:
                 smtp.quit()

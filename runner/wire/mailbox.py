@@ -324,12 +324,21 @@ def fetch_job_mails(imap):
                     except Exception:
                         continue
                     try:
+                        # BODY.PEEK[]: a fetch used to decide
+                        # must not mark the message seen as a
+                        # side effect. An RFC822 fetch sets
+                        # \Seen, which once starved the DTLS
+                        # carriage's own handshake (the fetcher
+                        # consumed its peer's flight before the
+                        # poller saw it). Marking seen is the
+                        # consumer's explicit act, after
+                        # consumption (mark_seen, below).
                         if use_uid:
                             ftyp, fetched = imap.uid(
-                                "FETCH", num, "(RFC822)")
+                                "FETCH", num, "(BODY.PEEK[])")
                         else:
                             ftyp, fetched = imap.fetch(
-                                num, "(RFC822)")
+                                num, "(BODY.PEEK[])")
                     except Exception as e:
                         note(f"IMAP FETCH {seq} failed: {e}")
                         continue
@@ -402,6 +411,16 @@ def send_mail(smtp, cfg, subject: str, body: str, to: str | None = None):
             "result message not built: %s" % e) from None
     with _MAIL_LOCK:
         smtp.send_message(msg)
+
+
+def send_built_message(smtp, message):
+    """Send one already-built message object, under the same
+    lock send_mail holds: SMTP connections are not thread-safe.
+    The caller built the message (the DTLS carriage builds its
+    flight mail as a MIME message with the frame in its own
+    part); this is only the serialized send."""
+    with _MAIL_LOCK:
+        smtp.send_message(message)
 
 
 _REPLY_TO_RE = re.compile(
