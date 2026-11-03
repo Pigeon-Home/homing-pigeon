@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.140 - 2026-11-03
+
+- Install this, not 3.15.139. The 139 tag builds stopped in CI: with security modes reading enforce when unset, suites and build smokes whose fixtures never stated confinement ran their jobs sandboxed on hosts where the sandbox engages (markers and planted files beside the workdir walled off, the confinement suite's own off legs confined), and bare smoke configs refused to start on hosts that cannot enforce (no bwrap in the build jobs, no user namespaces in a plain docker run, job_user on Windows). Each fixture and smoke now states the gate it is not about; the "default posture" outside-workdir tests are renamed to the confinement-off posture they pin. No runner behavior changed.
+
 ## 3.15.139 - 2026-11-03
 
 - Lockdown by default: security modes read enforce when unset, for all 6 features (policy_env, policy_files, policy_args, audience, confinement, job_user). A mode a config sets always wins; a malformed block or value still reads off. Posture states the effective modes, and the security docs and config example state the enforce default.
