@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.137 - 2026-11-03
+
+- Tests: the strict shape for the Decision 1 family — a mode at enforce on a platform or in an environment that cannot enforce it refuses startup, naming the mode and the key, with no step-down to audit; the negative is pinned at the single decision point for all 6 features on both platform shapes.
+- ComChat: the version 3 inbox view — the live exchange of session v3-live-4 as it read in the inbox, 10 recorded mails in order from the ClientHello through the job and the result inside the session.
+
 ## 3.15.136 - 2026-11-03
 
 - Tests: the Decision 1 startup family — one test per config field, refuse-class fields exit at startup naming the key and default-class fields warn and carry the documented default — and the all-enforce leg of the security parity harness, with one compliant guarded job and one violation per policy feature.
