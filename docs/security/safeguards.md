@@ -8,9 +8,11 @@ covers what **you** do, step by step, to keep a deployment safe.
 ## 1. Know what you're holding
 
 - The runner executes **arbitrary code** as the user it was installed
-  as. There is no confirmation prompt. A sandbox exists only if you
-  turn on Linux bubblewrap (`security.modes.confinement` set to
-  `enforce`, and `bwrap` installed). It is off by default.
+  as. There is no confirmation prompt. A sandbox exists only where
+  Linux bubblewrap can engage (`security.modes.confinement` runs at
+  `enforce` by default, and `bwrap` installed). Where `bwrap` cannot
+  engage, the runner refuses to start at that default; set
+  `confinement` to `audit` or `off` there to run without the sandbox.
 - The shared secret (a dedicated high-entropy string, by your explicit choice)
   **is root on that box**. Anyone who can sign a job message owns the
   machine: install software, read files, add users, pivot to your

@@ -274,7 +274,13 @@ class FlagIntegrationTest(unittest.TestCase):
         from runner.runner import main
         with tempfile.TemporaryDirectory() as d:
             cfg_path = os.path.join(d, "config.json")
-            json.dump({"base_dir": d}, open(cfg_path, "w"))
+            # The platform gates are stated off: under the
+            # lockdown default they would refuse this host
+            # before the audit-report dispatch is reached.
+            json.dump({"base_dir": d,
+                       "security": {"modes": {"confinement": "off",
+                                              "job_user": "off"}}},
+                      open(cfg_path, "w"))
             buf = io.StringIO()
             with mock.patch.object(sys, "argv", ["runner", "--config",
                                                  cfg_path, "--audit-report",

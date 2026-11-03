@@ -45,7 +45,13 @@ def _startup(cfg_dict):
         logs.append(str(msg))
 
     with tempfile.TemporaryDirectory() as td:
-        cfg = {"base_dir": td}
+        # The platform gates are stated off in the base config:
+        # under the lockdown default they read enforce and
+        # refuse this host before the startup behavior under
+        # test. A cfg_dict security block replaces this one.
+        cfg = {"base_dir": td,
+               "security": {"modes": {"confinement": "off",
+                                      "job_user": "off"}}}
         cfg.update(cfg_dict)
         path = os.path.join(td, "config.json")
         with open(path, "w", encoding="utf-8") as fh:

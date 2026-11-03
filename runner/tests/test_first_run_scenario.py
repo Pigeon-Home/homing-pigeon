@@ -150,6 +150,11 @@ class SimulationScenarioTest(unittest.TestCase):
             "protected_paths": [desktop],
             "redact_patterns_extra": {"flag": r"FLAG-CRED-[0-9a-f]{10}"},
             "inference": {"endpoint": "", "model": ""},
+            # Stated off: under the lockdown default these read
+            # enforce and refuse startup on a host that cannot
+            # enforce them, before the inspect path under test.
+            "security": {"modes": {"confinement": "off",
+                                   "job_user": "off"}},
         }
 
     def test_desktop_flag_redacts_on_the_cli(self):

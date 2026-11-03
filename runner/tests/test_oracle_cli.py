@@ -139,7 +139,12 @@ class OracleCliWiringTest(unittest.TestCase):
                 json.dump({"inference": {
                     "endpoint": "http://127.0.0.1:11434/v1",
                     "model": "m",
-                }, "base_dir": d}, fh)
+                }, "base_dir": d,
+                    # Stated off: the lockdown default would
+                    # refuse this host at the confinement gate
+                    # before the oracle dispatch under test.
+                    "security": {"modes": {"confinement": "off",
+                                           "job_user": "off"}}}, fh)
             with mock.patch("runner.runner.oracle_cli",
                             return_value=0) as cli, \
                     mock.patch("runner.runner.ensure_inference_ready"), \

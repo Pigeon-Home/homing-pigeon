@@ -593,7 +593,10 @@ def _audit_rows(base):
 class ConfinementDecisionTest(unittest.TestCase):
     def test_off_and_a_bad_mode_stay_on_the_host(self):
         with tempfile.TemporaryDirectory() as d:
-            for cfg in ({}, _conf("off"), _conf("sometimes"),
+            # No bare {} here: under the lockdown default an
+            # unset confinement mode reads enforce (its fallback
+            # row is pinned in test_confinement), not off.
+            for cfg in (_conf("off"), _conf("sometimes"),
                         {"security": []}, None):
                 argv, host, boxed = _confinement_argv(
                     cfg, d, "j", ["python3"], "/w/s.sh", "/w", [], {})
@@ -1182,7 +1185,10 @@ class PosixModeTest(unittest.TestCase):
         text = " ".join(row[2] for row in results)
         self.assertIn("audience is off", text)
         self.assertIn("policy_files is off", text)
-        self.assertNotIn("policy_env is off", text)
+        # Mode values are case-sensitive (the sec_mode contract):
+        # "Audit" is not a mode, reads as off, and the posture
+        # check now reports the effective mode, so it warns.
+        self.assertIn("policy_env is off", text)
         self.assertNotIn("policy_args is off", text)
 
 

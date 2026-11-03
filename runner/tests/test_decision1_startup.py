@@ -92,8 +92,15 @@ from runner.oracle.resources import parse_resources  # noqa: E402
 
 STRONG_SECRET = ("9f86d081884c7d659a2feaa0c55ad015"
                  "a3bf4f1b2b0b822cd15d6c15b0f00a08")
+# The platform gates are stated off in the base config: under
+# the lockdown default confinement and job_user read enforce and
+# refuse first on a host that cannot enforce them, which would
+# mask the field each test is about. A test whose extra carries
+# its own security block replaces this one wholesale.
 BASE = {"mailbox_user": "a@b.c", "mailbox_password": "p",
-        "shared_secret": STRONG_SECRET}
+        "shared_secret": STRONG_SECRET,
+        "security": {"modes": {"confinement": "off",
+                               "job_user": "off"}}}
 
 
 def run_main(extra, argv_extra=(), platform=None, sandbox_problem=None):

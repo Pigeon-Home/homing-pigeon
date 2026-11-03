@@ -24,6 +24,12 @@ def _cfg(**extra):
         "shared_secret": SECRET,
         "mailbox_user": "a@b.c",
         "mailbox_password": "pw",
+        # Stated off: under the lockdown default these read
+        # enforce and refuse startup on a host that cannot
+        # enforce them, which is not what these tests drive. An
+        # extra "security" block replaces this one wholesale.
+        "security": {"modes": {"confinement": "off",
+                               "job_user": "off"}},
     }
     cfg.update(extra)
     return cfg
@@ -759,7 +765,13 @@ class RunnerMainOnceTest(unittest.TestCase):
     def test_audience_without_a_runner_id_still_starts(self):
         code, poll, _wizard = self._run(
             ["--once"],
-            cfg=_cfg(security={"modes": {"audience": "audit"}}))
+            # The platform gates are stated off alongside: this
+            # block replaces _cfg's wholesale, and under the
+            # lockdown default an unstated confinement mode
+            # would refuse this host before the poll.
+            cfg=_cfg(security={"modes": {"audience": "audit",
+                                         "confinement": "off",
+                                         "job_user": "off"}}))
         self.assertEqual(code, 0)
         self.assertTrue(poll.called)
 

@@ -196,9 +196,9 @@ refuse-class setting it stops the runner before any job is read.
   SHA-384 digest — computed **not** over the secret alone, but
   over a fixed label followed by the secret: the label is
   `homing-pigeon key id v1` plus a newline, as bytes.
-- **Where:** `runner/guard/security.py`, line 155 —
+- **Where:** `runner/guard/security.py`, line 161 —
   `KEY_ID_LABEL = b"homing-pigeon key id v1\n"` — and
-  `key_fingerprint`, line 158, where line 173 computes
+  `key_fingerprint`, line 164, where line 179 computes
   `hashlib.sha384(KEY_ID_LABEL + secret.encode("utf-8"))` and
   returns `"k-" + digest[:8]`.
 - **Class:** not a configuration setting; a derived name.
@@ -298,17 +298,18 @@ refuse-class setting it stops the runner before any job is read.
   `off` would and writes what `enforce` would have decided to the
   audit log. `enforce` refuses a violating job through the
   ordinary reject path. A missing security block leaves every
-  feature `off`. Changing a mode requires a restart: the
+  feature at the default, `enforce`; a mode a config sets is the
+  mode that runs. Changing a mode requires a restart: the
   configuration is read once at startup.
 - **Value:** features, in the order the code declares them —
   `policy_env`, `policy_files`, `policy_args`, `audience`,
   `confinement`, `job_user`. Modes — `off`, `audit`, `enforce`.
-  Default for every feature: `off`.
-- **Where:** `runner/guard/security.py` — `MODES`, line 33;
-  `FEATURES`, line 38; `sec_mode`, line 281, which reads a missing
-  or malformed value defensively as `off`; `sec_decide`, line
-  532, the single decision point; `validate_security_config`,
-  line 309, the startup validator.
+  Default for every feature: `enforce`.
+- **Where:** `runner/guard/security.py` — `MODES`, line 39;
+  `FEATURES`, line 44; `sec_mode`, line 287, which reads a missing
+  mode as the `enforce` default and a malformed value defensively
+  as `off`; `sec_decide`, line 562, the single decision point;
+  `validate_security_config`, line 338, the startup validator.
 - **Class:** refuse class. Security modes are named in Decision 1
   itself, and `validate_security_config` raises `RuntimeError` for
   a security block that is not an object, a feature name it does
@@ -818,7 +819,7 @@ refuse-class setting it stops the runner before any job is read.
 | C8 | Cleartext | refused; `--allow-cleartext` only | no config key exists |
 | C9 | AEAD | AES-256-GCM, `aes-256-gcm/hkdf-sha384` | not a setting |
 | C10 | Audience | configured `runner_id`; `aud` wins | refuse (as a security mode) |
-| C11 | Six security modes | each `off` by default | refuse (malformed block) |
+| C11 | Six security modes | each `enforce` by default | refuse (malformed block) |
 | C12 | `max_job_age_sec` | 3600; future bound 300 | default class |
 | C13 | Protocol version | integer 1 only | not a setting |
 | C14 | Key policies | per-key; script pin is SHA-384 | refuse (malformed policy) |

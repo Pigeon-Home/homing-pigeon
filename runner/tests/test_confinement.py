@@ -219,16 +219,26 @@ class BuildCommandTest(unittest.TestCase):
 
 
 class FallbackTest(unittest.TestCase):
-    def test_off_by_default_runs_normally(self):
-        result, audit, _ = _run({}, _job("m6-off", "print('hi')"))
+    def test_off_runs_normally(self):
+        result, audit, _ = _run(
+            _conf("off"), _job("m6-off", "print('hi')"))
         self.assertEqual(result["stdout"].strip(), "hi")
         self.assertEqual(audit, [])
 
-    def test_explicit_off_identical(self):
-        r1, _, _ = _run({}, _job("m6-a", "print(40 + 2)"))
-        r2, _, _ = _run(_conf("off"), _job("m6-b", "print(40 + 2)"))
+    def test_default_is_enforce_and_falls_back_loudly(self):
+        # No security block: confinement reads enforce (the
+        # lockdown default). On a host without a sandbox the job
+        # still runs -- the fallback -- but the audit log carries
+        # the fallback row, where explicit off stays silent.
+        r1, a1, _ = _run({}, _job("m6-a", "print(40 + 2)"))
+        r2, a2, _ = _run(_conf("off"), _job("m6-b", "print(40 + 2)"))
         self.assertEqual(r1["stdout"], r2["stdout"])
         self.assertEqual(r1["exit_code"], r2["exit_code"])
+        self.assertEqual(a2, [])
+        if not SB.sandbox_available():
+            self.assertEqual(len(a1), 1)
+            self.assertEqual(a1[0]["decision"], "fallback")
+            self.assertEqual(a1[0]["mode"], "enforce")
 
     def test_audit_runs_and_logs(self):
         result, audit, _ = _run(

@@ -453,6 +453,11 @@ class FasterFlagTest(unittest.TestCase):
                     "shared_secret": "0123456789abcdef" * 4,
                     "mailbox_user": "a@b.c",
                     "mailbox_password": "pw",
+                    # Stated off: the lockdown default would
+                    # refuse this host at the confinement gate
+                    # before the oracle dispatch under test.
+                    "security": {"modes": {"confinement": "off",
+                                           "job_user": "off"}},
                 }, fh)
             stack.enter_context(mock.patch.object(
                 sys, "argv", ["runner", "--config", path, "--faster", "--oracle"]))

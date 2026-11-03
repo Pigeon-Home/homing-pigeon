@@ -102,8 +102,10 @@ class SecurityInputMutations(unittest.TestCase):
         self.assertEqual(S.sec_mode(
             {"security": {"modes": {"audience": "sometimes"}}},
             "audience"), "off")
+        # An empty modes block is not a mutation: it is a valid
+        # config that sets nothing, so the lockdown default applies.
         self.assertEqual(S.sec_mode(
-            {"security": {"modes": {}}}, "audience"), "off")
+            {"security": {"modes": {}}}, "audience"), "enforce")
         self.assertEqual(S.sec_mode(
             {"security": {"modes": {"audience": "audit"}}},
             "audience"), "audit")
@@ -158,7 +160,9 @@ class _Boom:
 class SecDecideMutations(unittest.TestCase):
     def test_off_audit_and_enforce_and_a_hostile_context(self):
         with tempfile.TemporaryDirectory() as d:
-            cfg_off = {}
+            # Off is stated explicitly: under the lockdown default a
+            # bare {} would read enforce, not off.
+            cfg_off = {"security": {"modes": {"audience": "off"}}}
             self.assertTrue(S.sec_decide(cfg_off, d, "audience", "because"))
             self.assertFalse(os.path.exists(
                 os.path.join(d, S.AUDIT_FILE)))

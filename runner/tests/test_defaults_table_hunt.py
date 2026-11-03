@@ -564,6 +564,11 @@ class Decision1WarningLineProbes(unittest.TestCase):
         td = tempfile.mkdtemp(prefix="hp-q5-")
         path = os.path.join(td, "config.json")
         cfg = dict(cfg_extra, base_dir=td)
+        # The platform gates are stated off: under the lockdown
+        # default they refuse this host before the inspect
+        # dispatch whose startup line is under test.
+        cfg.setdefault("security", {"modes": {"confinement": "off",
+                                              "job_user": "off"}})
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(cfg, fh)
         out = io.StringIO()

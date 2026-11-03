@@ -51,7 +51,7 @@ workspace after the fact, and remediation (default
 that finding; the write itself has happened. An ACL — or bwrap where it exists — makes
 the write *fail*. On Linux, bwrap (`security.modes.confinement`) is
 the better tool and should stay the confinement backend. ACLs matter
-for the default (confinement off) and for macOS, FreeBSD, and
+where confinement is set to `off`, and for macOS, FreeBSD, and
 Windows, where bwrap doesn't exist. The Pi profile already lists
 `/etc/shadow` as a protected path; that path should be *denied* to
 the job user, not only watched.
@@ -83,8 +83,9 @@ where each one stands. Items marked absent are listed in docs/project/future.md.
 - **Network egress control.** The canonical agent attack is
   exfiltration — the job `curl`s secrets straight out, bypassing
   every redaction rule (those only cover what comes *back* in the
-  result email). Only bwrap in enforce mode (Linux, off by default)
-  blocks it. Status: mechanism exists, default-off.
+  result email). Only bwrap in enforce mode (Linux, the default)
+  blocks it. Status: mechanism exists, on by default where bwrap
+  can engage.
 - **Audit log integrity.** Neither log is append-only in the
   runner's own hands: past 5,000 lines `security-events.jsonl` is
   rewritten to its last 5,000 (by atomic replace), and

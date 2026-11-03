@@ -2,14 +2,15 @@
 """Parity harness for the hardening milestones (M0).
 
 Runs a fixed corpus of jobs through poll_once under config
-variants -- no security block, all features off, all features audit,
-and all features enforce -- and compares normalized outputs. The
-first three must be identical; the enforce variant's per-job
-expectations are recorded explicitly in
-runner/tests/test_security_parity.py (AllEnforceParityTest): jobs
-that comply still execute, jobs that violate a mode are refused by
-that mode. Later milestones extend the corpus with jobs that
-exercise their features.
+variants -- no security block, all features off, all features
+audit, and all features enforce -- and compares normalized
+outputs. Under the lockdown default the no-block variant
+resolves to the all-enforce one (ParityTest pins that equality);
+the enforce variant's per-job expectations are recorded
+explicitly in runner/tests/test_security_parity.py
+(AllEnforceParityTest): jobs that comply still execute, jobs
+that violate a mode are refused by that mode. Later milestones
+extend the corpus with jobs that exercise their features.
 """
 import base64
 import copy

@@ -137,13 +137,17 @@ def _run(cfg_extra, job):
 
 
 def _ju(mode, user="pigeon-test"):
-    return {"security": {"modes": {"job_user": mode},
+    # Confinement is stated off alongside: these tests are about
+    # job_user, and under the lockdown default an unstated
+    # confinement mode reads enforce and adds its own audit rows.
+    return {"security": {"modes": {"job_user": mode,
+                                   "confinement": "off"},
                          "job_user": {"user": user}}}
 
 
 class JobUserTest(unittest.TestCase):
-    def test_off_by_default(self):
-        result, audit = _run({}, _job("m8-off", "print('hi')"))
+    def test_off_writes_nothing(self):
+        result, audit = _run(_ju("off"), _job("m8-off", "print('hi')"))
         self.assertEqual(result["stdout"].strip(), "hi")
         self.assertEqual(audit, [])
 
@@ -157,7 +161,7 @@ class JobUserTest(unittest.TestCase):
         # result would prove nothing.
         script = chr(10).join(
             ["import os", "print('uid:', os.getuid())", ""])
-        result, _audit = _run({}, _job("m8-off-uid", script))
+        result, _audit = _run(_ju("off"), _job("m8-off-uid", script))
         self.assertEqual(result["exit_code"], 0, result["stderr"])
         self.assertIn("uid: %d" % os.getuid(), result["stdout"])
 

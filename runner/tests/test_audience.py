@@ -331,7 +331,9 @@ class BoardAudienceTest(unittest.TestCase):
 
 class ParityWithRunnerIdTest(unittest.TestCase):
     """Corpus jobs carry no runner_id; with the feature off and a
-    runner_id configured, outcomes must match the no-block baseline."""
+    runner_id configured, outcomes must match the no-block baseline
+    (under the lockdown default the baseline runs every other
+    feature at enforce, exactly as this leg does)."""
 
     def test_off_with_runner_id_matches_baseline(self):
         corpus = build_corpus()

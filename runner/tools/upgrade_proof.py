@@ -47,11 +47,15 @@ exit 0
 _SERVICE_TOOLS = ("systemctl", "launchctl")
 
 # What an owner sets by hand after the first install, and must
-# still find after an upgrade.
+# still find after an upgrade. The security edit is the one the
+# lockdown default asks of an owner on a host without a sandbox:
+# confinement reads enforce when unset and refuses to start
+# there, so the owner sets it to audit by hand.
 OWNER_EDITS = {
     "mailbox_user": "pigeon-upgrade@example.com",
     "owner_instructions": "upgrade proof: keep this sentence",
     "poll_interval_sec": 47,
+    "security": {"modes": {"confinement": "audit"}},
 }
 STATE_FILES = {
     "seen.json": '{"upgrade-proof-job": 1}',

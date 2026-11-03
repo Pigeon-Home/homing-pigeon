@@ -59,6 +59,14 @@ def run_job(cfg_extra, payload, secret=SECRET):
     tmpdir = tempfile.mkdtemp(prefix="hp-m2-")
     cfg = base_config(tmpdir)
     cfg.update(cfg_extra)
+    # The platform modes are stated off unless a test sets them:
+    # under the lockdown default confinement reads enforce and
+    # its fallback row would land in the audit list these tests
+    # assert on. The policy modes under test stay exactly as
+    # each test states (or leaves to the default) them.
+    modes = cfg.setdefault("security", {}).setdefault("modes", {})
+    modes.setdefault("confinement", "off")
+    modes.setdefault("job_user", "off")
     mail = _email(payload, secret)
     imap = FakeIMAP([mail])
     smtp = FakeSMTP()

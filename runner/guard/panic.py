@@ -43,6 +43,14 @@ except ImportError:  # running from inside runner/ as __main__
         _atomicio = _ilu.module_from_spec(_spec)  # type: ignore[arg-type]
         _spec.loader.exec_module(_atomicio)  # type: ignore[union-attr]
 
+try:
+    from runner.guard import security as _security
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        from guard import security as _security  # type: ignore
+    except ImportError:  # loaded by path (the frozen installer)
+        _security = None  # type: ignore
+
 LABEL = b"homing-pigeon panic v1\n"
 PREFIX = "[homing-pigeon]"
 VERB = "panic"
@@ -268,10 +276,14 @@ def protection(cfg) -> str:
     a leaked secret only when the job runs as another user."""
     sec = cfg.get("security") if isinstance(cfg, dict) else None
     sec = sec if isinstance(sec, dict) else {}
-    modes = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
     ju = sec.get("job_user") if isinstance(sec.get("job_user"), dict) else {}
     user = ju.get("user")
-    if os.name != "nt" and modes.get("job_user") == "enforce" \
+    # The effective mode, not the raw block: job_user a config does
+    # not set runs at enforce under the default, and the word holds
+    # exactly when the demote will actually happen.
+    ju_mode = _security.sec_mode(cfg, "job_user") \
+        if _security is not None else "off"
+    if os.name != "nt" and ju_mode == "enforce" \
             and isinstance(user, str) and user.strip():
         return ("jobs run as another user; a job cannot reach the "
                 "panic file")

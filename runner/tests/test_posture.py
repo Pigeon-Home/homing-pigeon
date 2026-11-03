@@ -43,7 +43,14 @@ def _full_cfg(d):
             "security": {"modes": {"audience": "audit",
                                    "policy_env": "audit",
                                    "policy_files": "audit",
-                                   "policy_args": "audit"}}}
+                                   "policy_args": "audit",
+                                   # Stated off: unset, these
+                                   # read enforce under the
+                                   # lockdown default and main()
+                                   # refuses this host before the
+                                   # posture dispatch.
+                                   "confinement": "off",
+                                   "job_user": "off"}}}
 
 
 class PostureTest(unittest.TestCase):
@@ -66,8 +73,15 @@ class PostureTest(unittest.TestCase):
 
     def test_recommended_features_off_warn(self):
         with tempfile.TemporaryDirectory() as d:
+            # The modes are stated off: unset, they read
+            # enforce under the lockdown default and there is
+            # no off warning to assert on.
             cfg = {"base_dir": d, "shared_secret": STRONG,
-                   "workspace_root": d}
+                   "workspace_root": d,
+                   "security": {"modes": {
+                       "policy_env": "off", "policy_files": "off",
+                       "policy_args": "off", "audience": "off",
+                       "confinement": "off", "job_user": "off"}}}
             path = _cfg_file(d, cfg, 0o600)
             rc, out = _run(cfg, path, d)
         self.assertEqual(rc, 1)

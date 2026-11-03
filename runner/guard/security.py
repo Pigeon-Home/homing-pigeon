@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""Optional, off-by-default security controls (hardening M0).
+"""Optional security controls (hardening M0), on by default.
 
 Every feature has three modes: off, audit, enforce.
 
-- off: the feature does nothing. This is the default for everything.
+- enforce: violations are rejected through the existing reject path.
+  This is the default for every feature: a feature a config does not
+  set runs at enforce.
 - audit: the job proceeds exactly as it would with the feature off,
   but a line is written to security-audit.jsonl describing what
   enforce mode would have decided.
-- enforce: violations are rejected through the existing reject path.
+- off: the feature does nothing.
 
-With no "security" block in config.json the runner behaves exactly
-as before. Changing a mode requires a restart: the config is read
-once at startup, not re-read each poll cycle.
+A mode set in config.json always wins over the default; the default
+only fills in what a config leaves unset. A mode whose mechanism
+cannot engage on this platform (confinement without a sandbox
+backend, job_user on Windows) refuses startup at enforce rather
+than running weaker than configured. Changing a mode requires a
+restart: the config is read once at startup, not re-read each poll
+cycle.
 
 Python 3.9 compatible. Standard library only.
 """
@@ -279,20 +285,43 @@ def regex_backtracks(pattern) -> str | None:
 
 
 def sec_mode(cfg, feature):
-    """Return the mode for a feature: off, audit, or enforce.
+    """Return the effective mode for a feature: off, audit, or enforce.
 
-    Anything missing or malformed reads as off. Malformed config is
-    rejected at startup by validate_security_config; this stays
-    defensive so a bad value can never silently enable enforcement.
+    A mode set in the config is returned exactly as set. A feature
+    the config does not set reads as enforce: the controls are on by
+    default, so an absent "security" block, a null one, an empty one,
+    and a partial modes block all mean the same thing -- everything
+    unset is enforced. Malformed shapes read as off instead: a
+    security value, modes value, or mode value of the wrong shape
+    never widens enforcement, and validate_security_config refuses
+    those same shapes at startup, naming the key.
     """
-    sec = cfg.get("security") if isinstance(cfg, dict) else None
+    if not isinstance(cfg, dict):
+        return "off"
+    if "security" not in cfg or cfg["security"] is None:
+        return "enforce"
+    sec = cfg["security"]
     if not isinstance(sec, dict):
         return "off"
-    modes = sec.get("modes")
+    if "modes" not in sec:
+        return "enforce"
+    modes = sec["modes"]
     if not isinstance(modes, dict):
         return "off"
-    mode = modes.get(feature, "off")
+    if feature not in modes:
+        return "enforce"
+    mode = modes[feature]
     return mode if mode in MODES else "off"
+
+
+def effective_modes(cfg):
+    """The effective mode of every feature, defaults filled in.
+
+    The posture surface reports this map so the modes in force are
+    stated outright, never guessed from which keys a config happens
+    to carry.
+    """
+    return {feature: sec_mode(cfg, feature) for feature in FEATURES}
 
 
 def audit_max_lines(cfg):
@@ -310,7 +339,8 @@ def validate_security_config(cfg):
     """Raise RuntimeError for a malformed security block.
 
     Names the key and the bad value. A missing block is fine:
-    everything stays off. Call at startup, before any job runs.
+    every feature takes its default (enforce). Call at startup,
+    before any job runs.
     """
     if not isinstance(cfg, dict):
         return

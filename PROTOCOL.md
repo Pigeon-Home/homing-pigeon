@@ -969,13 +969,15 @@ created or modified during the job. Best-effort: a write that was
 reverted before the post-snapshot is not caught, and a write
 elsewhere on the disk is outside the walk.
 
-OS containment is a separate switch, off by default. Set
-`security.modes.confinement` to `enforce` on Linux with `bwrap`
-installed and the job runs inside bubblewrap: `/usr` read-only, no
-network, and only the job workdir writable at `/work`. If `bwrap` is
-missing, or the machine is not Linux, the job runs normally and the
-audit log records the fallback. `audit` mode runs normally and
-records `would_run_sandboxed`. See SECURITY.md. The attestation
+OS containment is a separate switch, `security.modes.confinement`,
+at `enforce` by default. On Linux with `bwrap` installed the job
+runs inside bubblewrap: `/usr` read-only, no network, and only the
+job workdir writable at `/work`. At startup, a sandbox that cannot
+engage (no `bwrap`, not Linux) refuses to start the runner at
+`enforce`; a sandbox that breaks after a good start falls back
+loudly and the audit log records the fallback. `audit` mode runs
+normally and records `would_run_sandboxed`. See SECURITY.md. The
+attestation
 format does not change when the sandbox is on.
 
 Like everything the Oracle does, the ceiling is the runner owner's:

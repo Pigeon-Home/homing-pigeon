@@ -184,9 +184,11 @@ class AudienceAndModePins(unittest.TestCase):
              "audience", "confinement", "job_user"))
         self.assertEqual(S.MODES, ("off", "audit", "enforce"))
 
-    def test_c11_modes_default_off_and_bad_block_refused(self):
+    def test_c11_modes_default_enforce_and_bad_block_refused(self):
+        # The lockdown default: unset modes read enforce (the flip
+        # superseded this pin's original off default).
         for feature in S.FEATURES:
-            self.assertEqual(S.sec_mode({}, feature), "off")
+            self.assertEqual(S.sec_mode({}, feature), "enforce")
         S.validate_security_config({})
         S.validate_security_config(
             {"security": {"modes": {"audience": "enforce"}}})

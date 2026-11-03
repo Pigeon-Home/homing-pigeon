@@ -37,9 +37,10 @@ It could even work as a marketable service.
 - Run the agent as a locked-down user, on a throwaway account, on a
   box you can wipe. The README's security notes are not boilerplate.
 - The Oracle reviews and attests. It does not contain a job unless
-  you turn on Linux bubblewrap (`security.modes.confinement` set to
-  `enforce`, and `bwrap` installed). That switch is off by default.
-  A VM, a locked-down user, and the OS policy still do the real
+  Linux bubblewrap engages (`security.modes.confinement` runs at
+  `enforce` by default, and `bwrap` installed). Where `bwrap` cannot
+  engage, the runner refuses to start at that default rather than
+  run uncontained. A VM, a locked-down user, and the OS policy still do the real
   containment. AppArmor and SELinux profiles live under `docs/security/hardening/`
   and are opt-in. They are not installed for you.
 - Every new sense, transport, and job kind added to this project
@@ -52,8 +53,8 @@ It could even work as a marketable service.
 `docs/security/security-gaps.md` is the companion to this file: the ordered
 story (split identities, then ACL the secrets, then cage the
 workspace), the per-platform ACL gaps, and the inventory of basic
-technologies still missing or default-off — runner code integrity,
-egress control, audit log integrity, supply chain, revocation, the
+technologies still missing or not covered by the defaults — runner
+code integrity, audit log integrity, supply chain, revocation, the
 Windows SYSTEM default. Read it before deciding the defaults are fine
 for your box.
 

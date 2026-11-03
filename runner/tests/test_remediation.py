@@ -1034,7 +1034,14 @@ class ReleaseDoorTest(unittest.TestCase):
             cfg_path = os.path.join(base, "config.json")
             with open(cfg_path, "w", encoding="utf-8") as fh:
                 json.dump({"shared_secret": "x" * 32,
-                           "base_dir": base}, fh)
+                           "base_dir": base,
+                           # Stated off: the lockdown default
+                           # would refuse this host at the
+                           # confinement gate before the release
+                           # door is reached.
+                           "security": {"modes": {
+                               "confinement": "off",
+                               "job_user": "off"}}}, fh)
             with mock.patch.object(setup, "is_tty",
                                    return_value=False), \
                     mock.patch.object(sys, "argv", [
@@ -1056,7 +1063,14 @@ class ReleaseDoorTest(unittest.TestCase):
             cfg_path = os.path.join(base, "config.json")
             with open(cfg_path, "w", encoding="utf-8") as fh:
                 json.dump({"shared_secret": "x" * 32,
-                           "base_dir": base}, fh)
+                           "base_dir": base,
+                           # Stated off: the lockdown default
+                           # would refuse this host at the
+                           # confinement gate before the release
+                           # door is reached.
+                           "security": {"modes": {
+                               "confinement": "off",
+                               "job_user": "off"}}}, fh)
             with mock.patch.object(setup, "is_tty",
                                    return_value=False), \
                     mock.patch.object(sys, "argv", [

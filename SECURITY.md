@@ -102,28 +102,30 @@ the `SHA384SUMS` file attached to the release, or build from source
 
 ## Optional security controls
 
-Homing Pigeon ships with optional, off-by-default security controls.
-With no `security` block in `config.json`, the runner behaves exactly
-as it always has. Every control has three modes:
+Homing Pigeon ships with optional security controls, on by default.
+With no `security` block in `config.json`, every control runs at
+`enforce`. A control a config sets runs at the mode it is set to;
+the default fills in only what a config leaves unset. Every control
+has three modes:
 
-- `off` — the control does nothing. This is the default.
-- `audit` — the job proceeds exactly as with `off`, but a line is
-  written to `security-audit.jsonl` describing what `enforce` mode
-  would have decided.
 - `enforce` — for the `policy_*` features and `audience`,
   violations are rejected through the existing reject path. For
   `confinement` and `job_user`, enforce changes how the job runs, as
-  described under each below.
+  described under each below. This is the default.
+- `audit` — the job proceeds exactly as with `off`, but a line is
+  written to `security-audit.jsonl` describing what `enforce` mode
+  would have decided.
+- `off` — the control does nothing.
 
 ```json
 "security": {
   "modes": {
-    "policy_env": "off",
-    "policy_files": "off",
-    "policy_args": "off",
-    "audience": "off",
-    "confinement": "off",
-    "job_user": "off"
+    "policy_env": "enforce",
+    "policy_files": "enforce",
+    "policy_args": "enforce",
+    "audience": "enforce",
+    "confinement": "enforce",
+    "job_user": "enforce"
   },
   "audit_max_lines": 20000
 }

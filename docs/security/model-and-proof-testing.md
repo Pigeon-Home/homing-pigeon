@@ -30,11 +30,11 @@ at all.
   under the same key. Encryption is on by default. A cleartext
   job executes only in a process started with
   `--allow-cleartext`; cleartext is refused by default.
-- Where the audience feature is in `enforce` mode, the job's
-  claimed audience must equal the configured runner id. In
-  `audit` mode a mismatch is recorded; with the feature `off` —
-  the fresh-install default — there is no binding to check, and
-  the model says so rather than claiming otherwise.
+- Where the audience feature is in `enforce` mode — the default —
+  the job's claimed audience must equal the configured runner id.
+  In `audit` mode a mismatch is recorded; with the feature `off`,
+  or with no runner id configured, there is no binding to check,
+  and the model says so rather than claiming otherwise.
 - The script must fit `max_script_bytes` (default 1 MiB, measured
   in UTF-8 bytes), checked after the signature. The body's
   version, type, and job id must match the message's, and the job

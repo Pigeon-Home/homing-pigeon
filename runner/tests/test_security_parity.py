@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """Parity tests for the hardening milestones (M0).
 
-Default behavior must not change: no security block, all features
-off, and all features audit must produce identical mail outputs.
-At M0 no feature calls sec_decide, so the audit log must stay absent.
-From M6, confinement in audit mode logs would_* decisions; the mail
-outputs must still be identical.
+Two parities are pinned. Audit never changes an outcome: all
+features off and all features audit produce identical mail
+outputs. And the lockdown default is real end to end: no
+security block at all produces exactly the all-features-enforce
+outputs. At M0 no feature calls sec_decide, so with every
+feature off the audit log must stay absent. From M6, confinement
+in audit mode logs would_* decisions; the mail outputs must
+still be identical.
 
-The all-enforce leg (AllEnforceParityTest, 2026-11-02) is the
-locked-down posture prepared as a candidate default: all six modes
-at enforce, with the binding config that gives two of them
-something to bind (a runner_id for audience, a user for job_user).
-Its expectations are recorded per job, not snapshotted: compliant
-jobs still execute, and each violating job is refused by the one
-mode it violates.
+The all-enforce leg (AllEnforceParityTest) is the locked-down
+posture as the shipped default: all six modes at enforce, with
+the binding config that gives two of them something to bind (a
+runner_id for audience, a user for job_user). Its expectations
+are recorded per job, not snapshotted: compliant jobs still
+execute, and each violating job is refused by the one mode it
+violates.
 """
 import copy
 import json
@@ -520,19 +523,24 @@ _make_per_feature_tests()
 
 
 class ParityTest(unittest.TestCase):
-    def test_no_block_off_audit_identical(self):
+    def test_no_block_is_all_enforce_and_off_audit_identical(self):
         corpus = build_corpus()
         base = run_variant(None, corpus)
         off = run_variant(all_off_block(), corpus)
         audit = run_variant(all_audit_block(), corpus)
-        self.assertEqual(base["sent"], off["sent"])
-        self.assertEqual(base["flagged"], off["flagged"])
-        self.assertEqual(base["seen"], off["seen"])
+        enforce = run_variant(all_enforce_block(), corpus)
+        # The lockdown default, end to end: a config with no
+        # security block behaves exactly as the explicit
+        # all-enforce block, in mail, flags, and the seen set.
+        self.assertEqual(base["sent"], enforce["sent"])
+        self.assertEqual(base["flagged"], enforce["flagged"])
+        self.assertEqual(base["seen"], enforce["seen"])
+        # Audit never changes an outcome: off and audit agree.
         self.assertEqual(off["sent"], audit["sent"])
         self.assertEqual(off["flagged"], audit["flagged"])
         self.assertEqual(off["seen"], audit["seen"])
-        # M0: nothing calls sec_decide yet; no audit log may exist.
-        self.assertIsNone(base["audit_lines"])
+        # M0: nothing calls sec_decide yet; with every feature off
+        # no audit log may exist.
         self.assertIsNone(off["audit_lines"])
         # M6: confinement in audit mode records would_run_sandboxed for
         # every exec job -- the outcomes above are still identical, and

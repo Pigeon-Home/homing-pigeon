@@ -94,12 +94,13 @@ def _check_key_policies(cfg, results):
 
 
 def _check_recommended_features(cfg, results):
-    sec = cfg.get("security")
-    sec = sec if isinstance(sec, dict) else {}
-    modes = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
+    # Effective modes, not the raw block: a feature the config does
+    # not set runs at enforce under the default, which satisfies the
+    # recommendation; only an explicit off warns.
     for feat in RECOMMENDED_FEATURES:
-        mode = modes.get(feat, "off")
-        if not isinstance(mode, str) or mode.lower() == "off":
+        mode = _security.sec_mode(cfg, feat) \
+            if _security is not None else "off"
+        if mode == "off":
             results.append(("WARN", "security modes",
                             "%s is off (recommended: audit or enforce)"
                             % feat))
@@ -340,18 +341,29 @@ def build_posture(cfg, cfg_path, base_dir):
         results.append(("FAIL", "base dir",
                         "does not exist: %s" % base_dir))
 
-    sec = cfg.get("security")
-    sec = sec if isinstance(sec, dict) else {}
-    modes = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
-    on = sorted(k for k, v in modes.items()
-                if isinstance(v, str) and v.lower() != "off")
-    if on:
+    # State the effective modes outright: a config that sets nothing
+    # still has modes in force (every feature at enforce under the
+    # default), so listing only the keys a config happens to carry
+    # would understate the posture.
+    if _security is not None:
+        eff = _security.effective_modes(cfg)
         results.append(("OK", "security modes",
-                        "active: %s" % ", ".join(
-                            "%s=%s" % (k, modes[k]) for k in on)))
+                        "effective: %s" % ", ".join(
+                            "%s=%s" % (f, eff[f])
+                            for f in _security.FEATURES)))
     else:
-        results.append(("OK", "security modes",
-                        "all features off (default)"))
+        sec = cfg.get("security")
+        sec = sec if isinstance(sec, dict) else {}
+        modes = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
+        on = sorted(k for k, v in modes.items()
+                    if isinstance(v, str) and v.lower() != "off")
+        if on:
+            results.append(("OK", "security modes",
+                            "active: %s" % ", ".join(
+                                "%s=%s" % (k, modes[k]) for k in on)))
+        else:
+            results.append(("OK", "security modes",
+                            "no modes set (defaults apply)"))
 
     policies = cfg.get("key_policies")
     if isinstance(policies, dict) and policies:

@@ -50,7 +50,7 @@ names it.*
 - `max_queries_per_hour` — rate limit on query follow-ups. Zero means no limit.
 - `output_retention_days` — how long retained outputs are kept for later queries. Default 7. Zero (or negative) keeps them indefinitely: nothing is pruned and no retained output is reported expired.
 - `judge` — `off` (default), `advisory` (attach reasons, still run), or `enforce` (block denylisted jobs before execution).
-- `workspace_root` — directory the confinement snapshot treats as the job's allowed workspace. Empty means the snapshot is unconfigured. That snapshot does not stop a write. Linux bubblewrap is a separate switch, `security.modes.confinement`, off by default. See SECURITY.md.
+- `workspace_root` — directory the confinement snapshot treats as the job's allowed workspace. Empty means the snapshot is unconfigured. That snapshot does not stop a write. Linux bubblewrap is a separate switch, `security.modes.confinement`, at `enforce` by default. See SECURITY.md.
 - `protected_paths` — list of absolute paths the confinement snapshot watches closely. Any create/modify/delete under these paths is reported in the attestation detail even if the overall `confined_to_workspace` verdict is unchanged. Default empty (least restrictive).
 - `redact_patterns_extra` — additional named regexes treated as secrets in the `redacted` view and in sanitization. Built-in families (`aws_key`, `private_key`, `bearer_token`) are always present.
 - `worker_allowlist` — worker IDs allowed to pull tasks. Empty means any signed worker.

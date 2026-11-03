@@ -290,12 +290,13 @@ of thing:
 - **The sandbox** (Linux only) actually walls the job in:
   bubblewrap runs it with `/usr` read-only, no network, and only
   the job workdir (at `/work`) and a throwaway tmpfs `/tmp`
-  writable. It is off by default. Under `enforce`
-  a sandbox that cannot engage (no `bwrap`, user namespaces
-  blocked, not Linux) refuses to start the runner; one that
-  breaks after a good start falls back loudly and the audit log
-  records the fallback. The key is `security.modes.confinement`
-  set to `enforce`. See SECURITY.md.
+  writable. It runs at `enforce` by default.
+  A sandbox that cannot engage (no `bwrap`, user namespaces
+  blocked, not Linux) refuses to start the runner at that
+  default; set the key to `audit` or `off` to run without it.
+  One that breaks after a good start falls back loudly and the
+  audit log records the fallback. The key is
+  `security.modes.confinement`. See SECURITY.md.
 
 **Local inference.** Point the Oracle at a model running on your
 own box and the SI can `ask` questions in plain English — *"why
@@ -448,8 +449,8 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   section 5).
 - Size caps: `max_job_bytes` (default 4 MiB) bounds a raw job mail
   before its signature is checked.
-- Optional hardening controls (off by default, except the size caps
-  above, which are on by default and turned off by 0): see [SECURITY.md](SECURITY.md).
+- Optional hardening controls (on by default at `enforce`; the size
+  caps above are also on by default and turned off by 0): see [SECURITY.md](SECURITY.md).
 - The security model — the gate, the key fences, the ceilings a job cannot raise,
   and the configuration rules — and the formal proof testing that checks it,
   property by property, are described in [docs/security/model-and-proof-testing.md](docs/security/model-and-proof-testing.md).

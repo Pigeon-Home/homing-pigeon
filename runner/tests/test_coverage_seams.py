@@ -509,6 +509,11 @@ class RunnerMainTest(unittest.TestCase):
         "shared_secret": "0123456789abcdef" * 4,
         "mailbox_user": "a@b.c",
         "mailbox_password": "pw",
+        # Stated off: under the lockdown default these read
+        # enforce and refuse startup on a host that cannot
+        # enforce them, before the dispatch under test.
+        "security": {"modes": {"confinement": "off",
+                               "job_user": "off"}},
     }
 
     def _main(self, argv, text=None, present=True):

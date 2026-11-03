@@ -9649,13 +9649,14 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
         (default true), `threshold` (default 0.95,
         must be in (0, 1]) and `cooldown_sec`
         (default 900), and "A malformed block is a
-        startup config error." SECURITY.md (lines
-        107-139): every security control defaults
-        to `off`, `audit_max_lines` defaults to
-        20000, and (line 134) "A malformed security
-        block stops startup with an error naming
-        the key and the bad value. It never silently
-        falls back to `off`." docs/oracle/dri-playbook.md
+        startup config error." SECURITY.md (the
+        security-controls section): every security
+        control defaults to `enforce`,
+        `audit_max_lines` defaults to 20000, and
+        "A malformed security block stops startup
+        with an error naming the key and the bad
+        value. It never silently falls back to
+        `off`." docs/oracle/dri-playbook.md
         (lines 129-145, the config sketch and the
         defaults beneath it): `dri.enabled` defaults
         false, `channel` is "telegram", the trigger
@@ -9700,11 +9701,14 @@ class TestNestedObjectsWithEverySubKeyNull(unittest.TestCase):
         modes object and a lone null audit_max_lines
         each refuse by name; a null or empty
         security block is accepted (all controls
-        off, as documented). The defensive readers
-        keep their own documented contract on the
-        all-null block: sec_mode reads off and
-        audit_max_lines reads 20000, so a bad value
-        can never silently enable enforcement.
+        at their enforce default, as documented).
+        The defensive readers keep their own
+        documented contract on the all-null block:
+        sec_mode reads off there -- every value in
+        it is null, a malformed shape, not an unset
+        one -- and audit_max_lines reads 20000, so
+        a bad value can never stand in for a mode
+        the config actually set.
         dri with every top-level sub-key null is a
         startup config error naming dri.enabled;
         a trigger object whose threshold and

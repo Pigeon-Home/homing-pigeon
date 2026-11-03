@@ -57,6 +57,13 @@ def _main_rig(argv, body):
         runner, "reload_hot_config", return_value=[]))
     directory = stack.enter_context(tempfile.TemporaryDirectory())
     body = dict(body, shared_secret=SECRET, base_dir=directory)
+    # A body that states no security block gets the platform
+    # gates stated off: under the lockdown default they read
+    # enforce and refuse this host before the gate under test.
+    # A body that states its own block (the job_user refusal
+    # tests) keeps it untouched.
+    body.setdefault("security", {"modes": {"confinement": "off",
+                                           "job_user": "off"}})
     path = os.path.join(directory, "config.json")
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(body, fh)
@@ -156,7 +163,11 @@ class JobUserStartupProblemTest(unittest.TestCase):
 
 class JobUserMainRefusalTest(unittest.TestCase):
     CFG = {"transports": ["file"],
-           "security": {"modes": {"job_user": "enforce"},
+           # Confinement stated off: it is checked first, and
+           # these tests are about the job_user refusal naming
+           # job_user, on win32 and at startup on Linux.
+           "security": {"modes": {"job_user": "enforce",
+                                  "confinement": "off"},
                         "job_user": {"user": "root"}}}
 
     def test_enforce_on_win32_refuses_to_start(self):

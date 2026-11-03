@@ -75,22 +75,105 @@ class ValidateTest(unittest.TestCase):
 
 
 class SecModeTest(unittest.TestCase):
-    def test_default_off(self):
-        self.assertEqual(S.sec_mode({}, "policy_env"), "off")
-        self.assertEqual(S.sec_mode({"security": None}, "policy_env"), "off")
+    def test_default_enforce(self):
+        # The lockdown default: a feature a config does not set runs
+        # at enforce. Absent, null, and empty blocks are all "not
+        # set"; so is an empty modes block.
+        self.assertEqual(S.sec_mode({}, "policy_env"), "enforce")
+        self.assertEqual(
+            S.sec_mode({"security": None}, "policy_env"), "enforce")
+        self.assertEqual(S.sec_mode({"security": {}}, "policy_env"),
+                         "enforce")
         self.assertEqual(S.sec_mode(
-            {"security": {"modes": {}}}, "policy_env"), "off")
+            {"security": {"modes": {}}}, "policy_env"), "enforce")
 
     def test_reads_mode(self):
         cfg = {"security": {"modes": {"policy_env": "enforce"}}}
         self.assertEqual(S.sec_mode(cfg, "policy_env"), "enforce")
-        self.assertEqual(S.sec_mode(cfg, "audience"), "off")
+        # Unset beside a set mode: the default fills in only the gap.
+        self.assertEqual(S.sec_mode(cfg, "audience"), "enforce")
 
     def test_bad_value_reads_off(self):
         # validate_security_config rejects this at startup; sec_mode
-        # stays defensive so a bad value can never enable enforcement.
+        # stays defensive so a bad value can never widen enforcement.
         cfg = {"security": {"modes": {"policy_env": "maybe"}}}
         self.assertEqual(S.sec_mode(cfg, "policy_env"), "off")
+
+
+class DefaultFlipTest(unittest.TestCase):
+    """The lockdown default flip: every feature defaults to enforce,
+    a set mode always wins, and the platform refusals still refuse.
+
+    The flip is a change of the default only. These tests pin the
+    whole shape: fresh configs (no security block at all), empty and
+    partial blocks, and the win32 unit forms of the two mechanisms
+    that cannot engage there.
+    """
+
+    def test_fresh_config_every_feature_enforce(self):
+        for feature in S.FEATURES:
+            with self.subTest(feature=feature):
+                self.assertEqual(S.sec_mode({}, feature), "enforce")
+
+    def test_null_and_empty_blocks_every_feature_enforce(self):
+        for cfg in ({"security": None}, {"security": {}},
+                    {"security": {"modes": {}}}):
+            for feature in S.FEATURES:
+                with self.subTest(cfg=cfg, feature=feature):
+                    self.assertEqual(
+                        S.sec_mode(cfg, feature), "enforce")
+
+    def test_partial_block_set_wins_unset_defaults(self):
+        cfg = {"security": {"modes": {
+            "audience": "off", "confinement": "audit"}}}
+        self.assertEqual(S.sec_mode(cfg, "audience"), "off")
+        self.assertEqual(S.sec_mode(cfg, "confinement"), "audit")
+        for feature in ("policy_env", "policy_files", "policy_args",
+                        "job_user"):
+            with self.subTest(feature=feature):
+                self.assertEqual(
+                    S.sec_mode(cfg, feature), "enforce")
+
+    def test_every_feature_set_explicitly_is_kept(self):
+        for mode in S.MODES:
+            cfg = {"security": {"modes": {f: mode for f in S.FEATURES}}}
+            for feature in S.FEATURES:
+                with self.subTest(mode=mode, feature=feature):
+                    self.assertEqual(S.sec_mode(cfg, feature), mode)
+
+    def test_effective_modes_reports_the_whole_map(self):
+        self.assertEqual(
+            S.effective_modes({}),
+            {feature: "enforce" for feature in S.FEATURES})
+        cfg = {"security": {"modes": {"job_user": "audit"}}}
+        eff = S.effective_modes(cfg)
+        self.assertEqual(eff["job_user"], "audit")
+        self.assertEqual(eff["audience"], "enforce")
+
+    def test_malformed_shapes_still_read_off(self):
+        # Present-but-invalid never widens enforcement; startup
+        # validation refuses the same shapes by name.
+        for cfg in ({"security": []}, {"security": "enforce"},
+                    {"security": {"modes": []}},
+                    {"security": {"modes": {"audience": None}}},
+                    {"security": {"modes": {"audience": "ENFORCE"}}}):
+            with self.subTest(cfg=cfg):
+                self.assertEqual(S.sec_mode(cfg, "audience"), "off")
+
+    def test_win32_job_user_default_enforce_still_refuses(self):
+        # Unit form of the platform refusal: under the flip the
+        # default config carries job_user at enforce, and on win32
+        # the mechanism cannot engage, so the startup problem must
+        # still be reported (ops/main turns it into a refusal).
+        from runner.ops.remediation_ops import job_user_startup_problem
+        self.assertIsNotNone(job_user_startup_problem({}, "win32"))
+        self.assertIsNotNone(
+            job_user_startup_problem({"security": {}}, "win32"))
+        self.assertIsNone(
+            job_user_startup_problem(
+                {"security": {"modes": {"job_user": "audit"}}},
+                "win32"))
+        self.assertIsNone(job_user_startup_problem({}, "linux"))
 
 
 class SecDecideTest(unittest.TestCase):
