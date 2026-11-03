@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.134 - 2026-11-02
+
+- Hybrid group X25519MLKEM768 (4588, RFC 10024) implemented: ML-KEM-768 (FIPS 203) in pure Python, pinned by the NIST ACVP vectors, wired into the DTLS engine as a version 3 carriage profile option, off by default so the version 1 wire is unchanged. Pure-Python ML-KEM is not constant-time. The version 3 draft states the hybrid as implemented in Section 4.4; the draft remains local and unsubmitted.
+- Germany bank 52: 2,306 entries, 0 crashes, 16 new runs.
+- Tests: the version 3 live runs' mail is recorded as fixtures.
+
 ## 3.15.133 - 2026-11-02
 
 - The version 3 documentation pointer: README.md and PROTOCOL.md link the local version 3 draft, and the tip stands in the open in README, PROTOCOL, and the transports guide — a cloud SI may use DTLS via email with any runner configured to accept it; the draft is local because the IETF submission window is currently closed, there is no working-group document for it, and none is needed to use it. This release is the first published one carrying that update; the 132 tag predates it.
