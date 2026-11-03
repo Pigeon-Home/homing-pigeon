@@ -114,20 +114,33 @@ def _pump_batches(client, server, outgoing, rounds=12):
     return outgoing
 
 
-def _job_envelope(job_id, encrypt=True, kind="ping", **extra):
+def _job_envelope(job_id, encrypt=True, kind="ping", secret=SECRET,
+                  key_id="", **extra):
     job = {
         "v": 1, "type": "job", "job_id": job_id,
         "issued_at": datetime.now(timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"),
         "kind": kind,
     }
+    if key_id:
+        job["key_id"] = key_id
     job.update(extra)
-    body = sign_payload(job, SECRET)
+    body = sign_payload(job, secret)
     if encrypt:
         body = jobcrypto.encrypt_body(
-            body, SECRET, job_id=job_id, key_id="", sign=sign_payload)
+            body, secret, job_id=job_id, key_id=key_id,
+            sign=sign_payload)
     return ("[HOMING-PIGEON] job " + job_id + "\n\n" + body).encode(
         "utf-8")
+
+
+# A second key, for the sessions that must not share a result.
+OPS_SECRET = (
+    "a1b2c3d4e5f60718"
+    "293a4b5c6d7e8f90"
+    "0f1e2d3c4b5a6978"
+    "8796a5b4c3d2e1f0"
+)
 
 
 class ParserRoutingTest(unittest.TestCase):
@@ -1032,6 +1045,149 @@ class EmailPipeIntegrationTest(unittest.TestCase):
         self.assertIn("v3-job-cap-a.result.txt",
                       os.listdir(os.path.join(outbox, "done")))
 
+    def _rebuild_pipe(self):
+        """The email process restarted: a fresh EmailPipe on the
+        same channel directory and config, nothing carried over
+        in memory."""
+        self.pipe = email_ext.EmailPipe(
+            self.cfg, self.channel,
+            imap_factory=lambda cfg: self.runner_box,
+            smtp_factory=lambda cfg: Deposit(self.client_box))
+
+    def _drive_to_established(self, client, rounds=6):
+        for _ in range(rounds):
+            self.pipe.pass_once()
+            self._client_receive_all(client)
+            server = self.pipe._dtls_server
+            if client.state == "established" and any(
+                    s.established
+                    for s in server.core.sessions.values()):
+                break
+
+    def test_a_responder_restart_between_retry_and_cookied_hello_completes(
+            self):
+        # The store-and-forward cell the datagram binding never
+        # had: the HelloRetryRequest goes out, the process
+        # restarts before the cookied hello comes back on a
+        # later poll, and the attempt still completes because
+        # the cookie key was kept beside the channel's state.
+        self._post_client_mails(self.client.start_mails(NOW))
+        self.pipe.pass_once()          # the retry is sent
+        key_path = os.path.join(self.channel, "dtls-cookie.key")
+        self.assertTrue(os.path.exists(key_path))
+        if os.name == "posix":
+            self.assertEqual(os.stat(key_path).st_mode & 0o777, 0o600)
+        kept = self.pipe._dtls_server.core.cookie_secret
+        self._client_receive_all()     # the cookied hello is posted
+        self._rebuild_pipe()           # the process restarted
+        self.assertEqual(self.pipe._dtls_server.core.cookie_secret,
+                         kept)
+        self._drive_to_established(self.client)
+        self.assertEqual(self.client.state, "established")
+        self.assertTrue(any(
+            s.established
+            for s in self.pipe._dtls_server.core.sessions.values()))
+
+    def test_without_the_kept_cookie_key_a_restart_abandons_the_attempt(
+            self):
+        # The control: the same restart with the kept key gone
+        # draws a fresh key, the cookied hello fails the cookie
+        # check and is ignored, and no session is minted. The
+        # ordinary email binding is untouched.
+        self._post_client_mails(self.client.start_mails(NOW))
+        self.pipe.pass_once()
+        self._client_receive_all()
+        os.unlink(os.path.join(self.channel, "dtls-cookie.key"))
+        self._rebuild_pipe()
+        self._drive_to_established(self.client)
+        self.assertNotEqual(self.client.state, "established")
+        self.assertEqual(self.pipe._dtls_server.core.sessions, {})
+
+    def test_a_result_never_enters_another_keys_session(self):
+        # Two keys, one job ident. The default key's session
+        # carries the job and dies before the result is
+        # flushed. A session under the other key then carries
+        # the same ident: the job is not delivered (the hold
+        # belongs to the first key), and the held result is not
+        # sent into the second key's session.
+        self.cfg["additional_secrets"] = {"ops": OPS_SECRET}
+        self._rebuild_pipe()
+        self._pump_pipe()
+        self.assertEqual(self.client.state, "established")
+        self._post_client_mails(
+            self.client.send_app_mails(_job_envelope("v3-job-shared")))
+        self.pipe.pass_once()
+        executed = []
+        self._run_channel_core(executed)
+        self.assertEqual(len(executed), 1)
+        self.pipe._dtls_server.core.sessions.clear()
+        self.pipe._dtls_server.core.by_addr.clear()
+        ops = DtlsMailClient(OPS_SECRET, session_id="v3-session-ops",
+                             key_id="ops")
+        self._pump_pipe(ops)
+        self.assertEqual(ops.state, "established")
+        self._post_client_mails(ops.send_app_mails(_job_envelope(
+            "v3-job-shared", secret=OPS_SECRET, key_id="ops")))
+        self.pipe.pass_once()
+        inbox = os.path.join(self.channel, "inbox")
+        self.assertNotIn("v3-job-shared.job.txt", os.listdir(inbox))
+        before = len(self.client_box.messages)
+        self.pipe.flush_results(self.runner_box)
+        self.assertEqual(len(self.client_box.messages), before)
+        outbox = os.path.join(self.channel, "outbox")
+        self.assertIn("v3-job-shared.result.txt", os.listdir(outbox))
+        self._client_receive_all(ops)
+        self.assertEqual(ops.core.app_messages, [])
+
+    def test_a_same_key_session_carrying_the_ident_again_gets_the_result(
+            self):
+        # The one way a held result still leaves on this
+        # carriage: a later session under the same key carries
+        # the same job ident again, and the held result answers
+        # it inside that session.
+        self._pump_pipe()
+        self.assertEqual(self.client.state, "established")
+        envelope = _job_envelope("v3-job-again")
+        self._post_client_mails(self.client.send_app_mails(envelope))
+        self.pipe.pass_once()
+        executed = []
+        self._run_channel_core(executed)
+        self.assertEqual(len(executed), 1)
+        self.pipe._dtls_server.core.sessions.clear()
+        self.pipe._dtls_server.core.by_addr.clear()
+        later = DtlsMailClient(SECRET, session_id="v3-session-again")
+        self._pump_pipe(later)
+        self.assertEqual(later.state, "established")
+        self._post_client_mails(later.send_app_mails(envelope))
+        self.pipe.pass_once()
+        self.pipe.flush_results(self.runner_box)
+        outbox = os.path.join(self.channel, "outbox")
+        self.assertNotIn("v3-job-again.result.txt", os.listdir(outbox))
+        self._client_receive_all(later)
+        self._assert_session_result_ok(later, "v3-job-again")
+
+    def test_the_session_key_does_not_authorize_the_job(self):
+        # A session under one key carries a job signed under
+        # another. The gate reads the job's own key; the
+        # session's key confers nothing on it and takes nothing
+        # from it. The job runs, and its result returns inside
+        # the session that carried it.
+        self.cfg["additional_secrets"] = {"ops": OPS_SECRET}
+        self._rebuild_pipe()
+        ops = DtlsMailClient(OPS_SECRET, session_id="v3-session-ops",
+                             key_id="ops")
+        self._pump_pipe(ops)
+        self.assertEqual(ops.state, "established")
+        self._post_client_mails(
+            ops.send_app_mails(_job_envelope("v3-job-crosskey")))
+        self.pipe.pass_once()
+        executed = []
+        self._run_channel_core(executed)
+        self.assertEqual(len(executed), 1)
+        self.pipe.flush_results(self.runner_box)
+        self._client_receive_all(ops)
+        self._assert_session_result_ok(ops, "v3-job-crosskey")
+
     def test_a_cleartext_job_inside_a_session_is_refused(self):
         self._pump_pipe()
         self.assertEqual(self.client.state, "established")
@@ -1305,6 +1461,76 @@ class DuplicateSplitTest(unittest.TestCase):
         self.assertEqual(server.receive_raw(raw, NOW), [])
         self.assertEqual(
             [a[2] for a in server.drain_app_messages()], [b"ping"])
+
+    def test_a_thousand_copies_of_a_hello_cost_one_repost(self):
+        # The amplification cell: an unauthenticated sender who
+        # can deposit mail deposits one captured ClientHello a
+        # thousand times. The first copy draws the
+        # HelloRetryRequest; the second re-posts it once (the
+        # retry may be the signal the answer was lost); the
+        # other 998 cost nothing. The count of outbound mails
+        # is the assertion, not the session's final state.
+        server = self._server()
+        client = DtlsMailClient(SECRET, session_id=SID)
+        raw = _mails_to_raw(client.start_mails(NOW))[0]
+        first = server.receive_raw(raw, NOW)
+        self.assertTrue(first)
+        sent = []
+        for _ in range(1000):
+            sent.extend(server.receive_raw(raw, NOW))
+        self.assertEqual(len(sent), len(first))
+        self.assertEqual(self._datagrams(sent),
+                         self._datagrams(first))
+        self.assertEqual(server.core.sessions, {})
+
+    def test_a_new_flight_arms_one_more_repost(self):
+        # The budget is per generation of the saved flight: once
+        # the stack answers the cookied hello with a new flight,
+        # a duplicate of that hello draws one re-post of the
+        # new flight, and a further copy draws nothing.
+        server = self._server()
+        client = DtlsMailClient(SECRET, session_id=SID)
+        hello = _mails_to_raw(client.start_mails(NOW))[0]
+        answers = server.receive_raw(hello, NOW)
+        self.assertTrue(server.receive_raw(hello, NOW))   # 1 re-post
+        self.assertEqual(server.receive_raw(hello, NOW), [])
+        follow = []
+        for raw in _mails_to_raw(answers):
+            follow.extend(client.receive_raw(raw, NOW))
+        cookied = _mails_to_raw(follow)[0]
+        flight = server.receive_raw(cookied, NOW)
+        self.assertTrue(flight)
+        again = server.receive_raw(cookied, NOW)
+        self.assertEqual(self._datagrams(again),
+                         self._datagrams(flight))
+        self.assertEqual(server.receive_raw(cookied, NOW), [])
+        # The old generation stays spent: the first hello buys
+        # nothing more either.
+        self.assertEqual(server.receive_raw(hello, NOW), [])
+
+    def test_the_initiator_reposts_once_per_generation(self):
+        # The same budget on the initiator: a duplicated
+        # HelloRetryRequest re-posts the cookied hello once,
+        # and a third copy is dropped.
+        server = self._server()
+        client = DtlsMailClient(SECRET, session_id=SID)
+        answers = []
+        for raw in _mails_to_raw(client.start_mails(NOW)):
+            answers.extend(server.receive_raw(raw, NOW))
+        retry = _mails_to_raw(answers)[0]
+        follow = client.receive_raw(retry, NOW)
+        self.assertTrue(follow)
+        again = client.receive_raw(retry, NOW)
+        self.assertEqual(self._datagrams(again),
+                         self._datagrams(follow))
+        self.assertEqual(client.receive_raw(retry, NOW), [])
+        self.assertEqual(client.receive_raw(retry, NOW), [])
+        # And the attempt still completes, exactly once.
+        _pump_batches(client, server, follow)
+        self.assertEqual(client.state, "established")
+        self.assertEqual(
+            len([s for s in server.core.sessions.values()
+                 if s.established]), 1)
 
 
 def _mime_flight_raw(subject, frame_text, extra_text=None,

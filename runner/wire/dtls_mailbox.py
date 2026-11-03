@@ -365,10 +365,10 @@ class FlightReassembler:
         self.max_total_bytes = max_total_bytes
         self.ttl_sec = ttl_sec
         # An absolute deadline from a transfer's first part,
-        # never longer than the idle timeout unless a caller
-        # says otherwise. The idle timer alone is not a bound:
-        # a sender dripping 1 part just inside it would hold a
-        # transfer slot for as long as it cared to drip.
+        # never longer than the idle timeout: a caller's longer
+        # value is clamped to it. The idle timer alone is not a
+        # bound: a sender dripping 1 part just inside it would
+        # hold a transfer slot for as long as it cared to drip.
         self.deadline_sec = ttl_sec if deadline_sec is None \
             else min(deadline_sec, ttl_sec)
         self._transfers = OrderedDict()
@@ -478,12 +478,35 @@ class DtlsMailServer:
         self.reassembler = FlightReassembler(
             max_total_bytes=max_datagram_bytes)
         self._dedup = _DigestCache(dedup_entries)
-        self._addr_hint = {}
         self._hint_cid = {}
         self._cid_hint = {}
         self.established = {}
         self._app = []
-        self._last_flight = {}   # peer addr -> [datagram]
+        # peer addr -> [datagram]: the last outbound flight per
+        # peer, kept so a duplicate of the flight it answered
+        # can re-post it. Bounded first in first out, because a
+        # fresh hello under a fresh session-id is free to
+        # anyone who can deposit mail and the core keeps no
+        # state for it; an evicted entry costs only the re-post
+        # (a real retransmission is a new record and is
+        # answered by the stack regardless).
+        self.max_saved_flights = dedup_entries
+        self._last_flight = OrderedDict()
+        # peer addr -> True while the saved flight still has its
+        # 1 re-post. A re-post costs an outbound mail that an
+        # unauthenticated sender can provoke with a captured
+        # hello, so each generation of a saved flight is good
+        # for 1 re-post; only a new flight from the stack arms
+        # another.
+        self._repost_armed = {}
+
+    def _save_flight(self, addr, datagrams):
+        self._last_flight[addr] = list(datagrams)
+        self._last_flight.move_to_end(addr)
+        self._repost_armed[addr] = True
+        while len(self._last_flight) > self.max_saved_flights:
+            old, _flight = self._last_flight.popitem(last=False)
+            self._repost_armed.pop(old, None)
 
     # -- intake ----------------------------------------------------
 
@@ -506,10 +529,21 @@ class DtlsMailServer:
                 classified.datagram, classified.session_id, now)
         return []
 
-    def _addr_for(self, session_id):
-        addr = "email:" + (session_id or "legacy")
-        self._addr_hint[addr] = session_id
-        return addr
+    @staticmethod
+    def _addr_for(session_id):
+        return "email:" + (session_id or "legacy")
+
+    @staticmethod
+    def _hint_for(addr):
+        """The mail session-id an address was made from, or None
+        for the unaddressed harness shape. Derived, not stored:
+        an address is a function of the session-id and nothing
+        else, so no table grows with the hellos a stranger
+        deposits."""
+        if not isinstance(addr, str) or not addr.startswith("email:"):
+            return None
+        hint = addr[len("email:"):]
+        return None if hint == "legacy" else hint
 
     def _receive_datagram(self, datagram, session_id, now):
         if not datagram or len(datagram) > self.max_datagram_bytes:
@@ -541,7 +575,7 @@ class DtlsMailServer:
                      "WARN")
             return []
         if out:
-            self._last_flight[addr] = list(out)
+            self._save_flight(addr, out)
         session = self.core.by_addr.get(addr)
         if session is not None and session.session_id is not None:
             self._bind(session_id, session.session_id)
@@ -559,9 +593,13 @@ class DtlsMailServer:
         flight is posted again -- re-encoded under fresh
         transfer identifiers, and the duplicate itself is
         never fed to the stack again, so nothing is derived
-        twice. Once the session is established, a duplicate
-        is application data or a replay of it: it is dropped
-        and does nothing."""
+        twice. The re-post is budgeted: each generation of a
+        saved flight is re-posted at most once, and further
+        bit-identical copies are dropped, so a captured hello
+        is worth at most 1 extra outbound mail and never a
+        mail per copy. Once the session is established, a
+        duplicate is application data or a replay of it: it
+        is dropped and does nothing."""
         session = self.core.by_addr.get(addr)
         if session is not None and session.established:
             self.log("dtls-mail: duplicate application record "
@@ -570,6 +608,12 @@ class DtlsMailServer:
         saved = self._last_flight.get(addr)
         if not saved:
             return []
+        if not self._repost_armed.get(addr):
+            self.log("dtls-mail: duplicate handshake flight; the "
+                     "saved flight was already re-posted once; "
+                     "dropped", "WARN")
+            return []
+        self._repost_armed[addr] = False
         self.log("dtls-mail: duplicate handshake flight; "
                  "re-posting the last flight", "WARN")
         mails = []
@@ -588,8 +632,8 @@ class DtlsMailServer:
             if event[0] == "established":
                 cid = event[1]
                 info = event[2] or {}
-                hint = self._addr_hint.get(
-                    info.get("addr"), default_hint)
+                hint = self._hint_for(info.get("addr")) \
+                    if info.get("addr") is not None else default_hint
                 self._bind(hint, cid)
                 self.established[hint] = cid
             elif event[0] == "app":
@@ -609,10 +653,10 @@ class DtlsMailServer:
         flights = {}
         for addr, datagram in self.core.tick(now):
             flights.setdefault(addr, []).append(datagram)
-            hint = self._addr_hint.get(addr)
-            mails.extend(_encode_outgoing(datagram, hint))
+            mails.extend(_encode_outgoing(datagram,
+                                          self._hint_for(addr)))
         for addr, datagrams in flights.items():
-            self._last_flight[addr] = datagrams
+            self._save_flight(addr, datagrams)
         self._drain_events(None)
         return mails
 
@@ -645,6 +689,9 @@ class DtlsMailClient:
             max_total_bytes=max_datagram_bytes)
         self._dedup = _DigestCache(dedup_entries)
         self._last_flight = []   # [datagram] of the last flight
+        # True while the saved flight still has its 1 re-post
+        # (the same budget the responder keeps).
+        self._repost_armed = False
 
     @property
     def state(self):
@@ -658,9 +705,10 @@ class DtlsMailClient:
     def app_messages(self):
         return self.core.app_messages
 
-    def _wrap(self, datagrams):
-        if datagrams and self.core.state != "established":
+    def _wrap(self, datagrams, fresh=True):
+        if fresh and datagrams and self.core.state != "established":
             self._last_flight = list(datagrams)
+            self._repost_armed = True
         mails = []
         for datagram in datagrams:
             mails.extend(encode_flight(datagram, self.session_id))
@@ -703,15 +751,21 @@ class DtlsMailClient:
         if not self._dedup.accept(datagram):
             # The split, on the initiator side: a duplicate
             # from the handshake phase re-posts the saved last
-            # flight (the responder's answer was likely lost);
-            # a duplicate at or after establishment does
-            # nothing.
+            # flight (the responder's answer was likely lost),
+            # once per generation of that flight; a duplicate
+            # at or after establishment does nothing.
             if self.core.state == "established" \
                     or not self._last_flight:
                 return []
+            if not self._repost_armed:
+                self.log("dtls-mail: duplicate handshake flight; "
+                         "the saved flight was already re-posted "
+                         "once; dropped", "WARN")
+                return []
+            self._repost_armed = False
             self.log("dtls-mail: duplicate handshake flight; "
                      "re-posting the last flight", "WARN")
-            return self._wrap(list(self._last_flight))
+            return self._wrap(list(self._last_flight), fresh=False)
         try:
             out = self.core.feed(datagram, now)
         except Exception as e:

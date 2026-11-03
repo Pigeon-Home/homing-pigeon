@@ -33,11 +33,22 @@ Delivery discipline mirrors the pre-extension mail path:
     never sent as ordinary mail -- dropping is not the
     downgrade the no-downgrade rule forbids. The hold is
     keyed by (session connection id, job ident), never by
-    the submitter-chosen job ident alone.
+    the submitter-chosen job ident alone, and it remembers
+    the PSK identity the session authenticated under: the
+    result leaves only inside that session, or inside a later
+    session under the same identity that carries the same
+    job ident again; a job with a held ident from a session
+    under another identity is not delivered.
+  - the DTLS cookie key is kept beside this channel's own
+    state (dtls-cookie.key, owner-readable only), so a
+    HelloRetryRequest answered on a later poll still validates
+    after this process restarted. It is a secret of the
+    responder, never derived from a mail session-id.
 """
 
 import json
 import os
+import secrets as _secrets
 import sys
 import time
 
@@ -53,6 +64,11 @@ from runner.wire import subject as _subject  # noqa: E402
 from runner.guard import confval as _confval  # noqa: E402
 
 _mailbox.set_logger(ch.log)
+
+# "Nothing is held for this ident": distinct from a hold whose
+# session identity is unknown (None).
+_NO_HOLD = object()
+
 
 def _subject_body(raw):
     """(subject, text body) from one raw RFC822 message -- the
@@ -132,10 +148,14 @@ class EmailPipe:
         self.dtls_enabled = isinstance(cfg, dict) \
             and cfg.get("dtls_via_email") is True
         self._dtls_server = None
-        # (DTLS session CID, channel ident) -> None. Keyed by
-        # the connection id as well as the ident: a job ident
-        # is chosen by the submitter and collides across
-        # submitters, so it never keys a hold on its own.
+        # (DTLS session CID, channel ident) -> the PSK identity
+        # the session authenticated under. Keyed by the
+        # connection id as well as the ident: a job ident is
+        # chosen by the submitter and collides across
+        # submitters, so it never keys a hold on its own. The
+        # identity is who the hold belongs to: every hold for
+        # one ident is the same identity's, and the result
+        # leaves only inside a session under that identity.
         self._job_session = {}
         self._waiting_session = set()
         self._result_wait_since = {}  # (CID, ident) -> epoch
@@ -166,11 +186,55 @@ class EmailPipe:
                 self.cfg.get("shared_secret"),
                 self.cfg.get("additional_secrets")),
             log=ch.log)
-        return _dtls_mailbox.DtlsMailServer(
+        server = _dtls_mailbox.DtlsMailServer(
             secret_lookup=lookup,
             platform_payload=_dtls_ext.build_platform_payload(
                 tier, self.cfg),
             log=ch.log)
+        key = self._cookie_key()
+        if key is not None:
+            server.core.cookie_secret = key
+        return server
+
+    def _cookie_key(self):
+        """The responder's cookie key, kept across restarts of
+        this process. On this carriage a HelloRetryRequest is
+        answered on a later poll -- an hour later on a slow
+        poller, and after a deploy or a crash often enough --
+        and a key drawn per process would fail every cookied
+        hello that crossed the restart. The key lives beside
+        the channel's own state, created once with 32 random
+        bytes, owner-readable only, and is never derived from
+        anything a message asserts. When the file cannot be
+        kept, the per-process key stands and a log line says
+        so."""
+        path = os.path.join(self.channel, "dtls-cookie.key")
+        try:
+            with open(path, "rb") as f:
+                raw = f.read().strip()
+            key = bytes.fromhex(raw.decode("ascii"))
+            if len(key) == 32:
+                return key
+            ch.log("email transport: dtls-cookie.key is not 32 "
+                   "bytes; drawing a fresh cookie key", "WARN")
+        except FileNotFoundError:
+            pass
+        except (OSError, ValueError) as e:
+            ch.log(f"email transport: cannot read dtls-cookie.key "
+                   f"({e}); drawing a fresh cookie key", "WARN")
+        key = _secrets.token_bytes(32)
+        try:
+            os.makedirs(self.channel, exist_ok=True)
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                         0o600)
+            with os.fdopen(fd, "w", encoding="ascii") as f:
+                f.write(key.hex() + "\n")
+        except OSError as e:
+            ch.log(f"email transport: cannot keep dtls-cookie.key "
+                   f"({e}); the cookie key lives for this process "
+                   f"only, and a restart abandons attempts in "
+                   f"flight", "WARN")
+        return key
 
     # -- version 3 DTLS carriage --------------------------------
 
@@ -239,30 +303,69 @@ class EmailPipe:
                        "message carries no job id in its "
                        "subject; dropped", "WARN")
                 continue
+            identity = self._session_identity(cid)
+            owner = self._hold_owner(ident)
+            if owner is not _NO_HOLD and owner != identity:
+                # The ident is held for another identity's job.
+                # Delivering this one would rewrite that job's
+                # inbox file or route that job's result into
+                # this session; the hold belongs to the
+                # submitter whose job it was.
+                ch.log(f"email transport: job {ident} from a "
+                       f"DTLS session is an ident another key's "
+                       f"session already carries; dropped", "WARN")
+                continue
             ch.deliver_job(self.channel, ident, subject, body)
-            self._job_session[(cid, ident)] = None
+            self._job_session[(cid, ident)] = identity
             ch.log(f"email transport: job {ident} delivered "
                    f"from a DTLS session to the runner core")
+
+    def _session_identity(self, cid):
+        """The key identity behind a live session: the PSK
+        identity of a full handshake, or the issuing key's
+        identity behind a resumed one. None for a session the
+        core no longer holds."""
+        server = self._dtls_server
+        session = server.core.sessions.get(cid) if server else None
+        if session is None:
+            return None
+        issuer = getattr(session, "issuer", None)
+        return issuer if issuer is not None \
+            else getattr(session, "identity", None)
+
+    def _hold_owner(self, ident):
+        """The PSK identity every hold for this ident belongs
+        to, or _NO_HOLD when nothing is held for it."""
+        for key, identity in self._job_session.items():
+            if key[1] == ident:
+                return identity
+        return _NO_HOLD
 
     def _session_bound(self, ident):
         return any(key[1] == ident for key in self._job_session)
 
     def _send_result_on_session(self, ident, subject, body):
         """Send one result inside the session that carried its
-        job. False when that cannot happen -- no session, or
-        the session is gone: the file stays in the outbox for
-        a fresh session (bounded by the expiry sweep below),
-        and the result is never downgraded to an ordinary
-        mail result."""
+        job, or inside a later session under the same PSK
+        identity that carried the same ident again. False when
+        neither exists: the file stays in the outbox (bounded
+        by the expiry sweep below), and the result is never
+        downgraded to an ordinary mail result and never sent
+        into a session under another identity."""
         server = self._dtls_server
         keys = [key for key in self._job_session
                 if key[1] == ident]
         if server is None or not keys:
             return False
+        owner = self._job_session[keys[0]]
+        keys = [key for key in keys
+                if self._job_session[key] == owner]
         text = ch.envelope(subject, body)
         if body and not body.endswith("\n"):
             text += "\n"
         for key in keys:
+            if self._session_identity(key[0]) != owner:
+                continue
             mails = server.send_app_mails(
                 key[0], text.encode("utf-8"))
             if mails:
