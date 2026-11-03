@@ -3,6 +3,51 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 2-Nov-10:47pm-PST/PDT — version 3: the hybrid group is implemented
+
+The X25519MLKEM768 slot that Section 16.1 of the version 3
+draft named is implemented, and the draft now says so.
+ML-KEM-768 (FIPS 203) stands in runner/wire/mlkem.py, pure
+Python and stdlib only, pinned byte-exact against the NIST
+ACVP vectors before the engine was allowed to touch it
+(key generation from the recorded seeds, encapsulation
+from the recorded messages, the decapsulation validation
+group including its modified ciphertext, both key-check
+groups): test_mlkem, 10 tests, OK, 0 skips. The one defect
+on the way was the inverse NTT's twiddle pairing, found by
+the KATs and fixed against a transform probe.
+
+The engine carries group 4588 as a profile option, off by
+default, with the RFC 10024 layout as read from the RFC
+text: client share = encapsulation key (1184) || X25519
+(32); server share = ciphertext (1088) || X25519 (32);
+shared secret = ML-KEM secret || X25519 secret, into the
+same key schedule. The profile decision: the group's home
+is the version 3 carriage profile -- DtlsMailClient offers
+it beside the X25519 share and DtlsMailServer selects it --
+and the version 1 datagram profile is untouched on the
+wire, proven by its suites passing unmodified and by the
+cross-profile cells (hybrid client to version 1 server,
+and back) negotiating plain X25519 in test_dtls_hybrid
+(15 tests, OK, 0 skips). The responder runs the FIPS 203
+section 7.2 key check and aborts illegal_parameter;
+truncated and swapped shares fail closed.
+
+The draft gained Section 4.4 (the carriage profile's
+hybrid delta), Section 4.1 and 4.2 carry the exception,
+and Section 16.1 now states the limit as it stands: the
+harvest-now-decrypt-later exposure belongs to the sessions
+that negotiate the bare X25519 share; a hybrid session
+falls only if both halves fall. Re-rendered, 0 xml2rfc
+warnings; idnits unchanged in kind (the same 3 errors,
+recorded as submission-time edits). The full record --
+KAT source, counts, measurements, and the honest limits
+(the pure-Python ML-KEM is not constant-time; a hybrid
+handshake costs about 70 ms here against about 23 ms) --
+is the addendum at the end of
+docs/proofs/dtls-over-email-v3.md. The draft remains
+local and unsubmitted.
+
 ## 2-Nov-10:07pm-PST/PDT — outage self-report
 
 Outage self-report. This seat was down and out of the repository

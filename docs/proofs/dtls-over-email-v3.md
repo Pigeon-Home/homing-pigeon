@@ -508,3 +508,116 @@ recorded payload sizes
 The live runs are replayable offline from the fixtures
 alone; the runs' shared secrets are not recorded and are
 not needed for the replay.
+
+## Addendum: the hybrid group, implemented (2-Nov-2026)
+
+The slot Section 16.1 named is now filled. X25519MLKEM768
+(RFC 10024, group 4588) is implemented in the engine and in
+this carriage's profile; the draft text states it as
+Section 4.4 of the carriage profile and narrows the
+Section 16.1 limit to the sessions that negotiate the bare
+X25519 share.
+
+What was built:
+
+- `runner/wire/mlkem.py`: ML-KEM-768 (FIPS 203) in pure
+  Python, stdlib only -- KeyGen, Encaps, Decaps, the K-PKE
+  internals, and the FIPS 203 section 7.2 / 7.3 key checks.
+- The engine (`runner/wire/dtlsproto.py`): group 4588 as a
+  profile option on both cores, off by default. The
+  carriage (`runner/wire/dtls_mailbox.py`) turns it on:
+  DtlsMailClient offers the hybrid share beside the X25519
+  share, and DtlsMailServer selects the hybrid when it is
+  offered. The datagram binding's cores keep the default,
+  so the version 1 profile's wire is unchanged.
+- The layout is RFC 10024 sections 4.1 to 4.3 as read from
+  the RFC text at rfc-editor.org: client share = ML-KEM
+  encapsulation key (1184 octets) || X25519 share (32);
+  server share = ML-KEM ciphertext (1088) || X25519 share
+  (32); shared secret = ML-KEM secret || X25519 secret
+  (64), fed into the existing key schedule where the
+  X25519 secret goes today.
+
+The correctness gate, run before any integration: the
+NIST ACVP ML-KEM-768 vectors (ACVP-Server,
+gen-val/json-files ML-KEM-keyGen-FIPS203 and
+ML-KEM-encapDecap-FIPS203 internalProjection.json,
+retrieved 2026-11-03; recorded in
+`runner/tests/fixtures/mlkem768_acvp.json`). Key
+generation from the recorded (d, z) seeds, encapsulation
+from the recorded messages, the decapsulation validation
+group (including its modified ciphertext, whose expected
+secret is the implicit-rejection value), both key-check
+groups, and the failure shapes (tampered ciphertext
+returns the deterministic rejection secret, never an error
+and never the real one; wrong-length inputs and keys that
+fail their checks are refused) all pass byte-exact:
+`runner.tests.test_mlkem`, 10 tests, OK, 0 skips. One
+defect was found and fixed on the way in: the inverse
+NTT's twiddle pairing (each inverse butterfly takes the
+inverse of its own forward butterfly's twiddle, not a
+descending counter's), found by the KATs failing and a
+transform round-trip probe, not by inspection.
+
+Negotiation and failure shapes are pinned in
+`runner.tests.test_dtls_hybrid` (15 tests, OK, 0 skips):
+the wire layout of both hellos; the secret concatenation
+order at both ends, against the primitives directly;
+hybrid peers negotiating 4588 with application data
+crossing; a hybrid client against a version 1 server and
+a version 1 client against a hybrid server both
+negotiating plain X25519; hybrid resumption staying
+hybrid; a truncated hybrid share and a hybrid-only hello
+to a version 1 server refused with illegal_parameter; a
+binder-valid hello whose encapsulation key fails the
+FIPS 203 modulus check aborted with illegal_parameter and
+no session kept; a server share with its halves swapped
+failing closed at the record layer; short and unoffered
+hybrid server shares raising. The carriage handshake is
+also driven segmented at 96-character chunks in both
+directions -- the hybrid flights are about 1.2 KB, well
+inside the carriage's reassembly bounds -- and completes
+as a hybrid session.
+
+Full DTLS-related runs on the finished tree, unfiltered:
+test_mlkem 10 OK; test_dtls_hybrid 15 OK; test_dtls,
+test_dtls_fuzz, test_dtls_mailbox, test_dtls_email_v3,
+test_dtls_ipv6, test_send_dtls_main and the two new suites
+together 344 tests, OK, 1 skip (the pre-existing
+registered skip: unconnected UDP sends are blocked in this
+environment). The version 3 carriage suite passes with
+the hybrid live on it. pyrefly reports 0 errors on the
+changed files. The draft re-renders with 0 warnings from
+xml2rfc; idnits (3.3.0, offline) is unchanged in kind --
+the same 3 errors recorded before this pass (2 abstract
+references, RFC 8446 obsolete in favor of RFC 9846), kept
+as submission-time edits, and 2 more BCP14-tag comments of
+the 61 already recorded, from the new section's normative
+sentences.
+
+Honest limits:
+
+- The pure-Python ML-KEM is not constant-time -- its loops
+  and rejection sampling branch on secret data, the same
+  caveat class as the pure-Python X25519 it sits beside.
+  It is a correctness-first implementation for this
+  profile's own endpoints, not a side-channel-hardened
+  KEM.
+- Cost, measured on this machine (means of short runs):
+  ML-KEM key generation about 7 ms, encapsulation about
+  12 ms, decapsulation about 14 ms; a full hybrid
+  handshake about 70 ms against about 23 ms for X25519
+  only. On this carriage, whose flights already take
+  seconds of mail latency, that is noise; on the datagram
+  binding the group is not offered.
+- Judgment calls, stated: the hybrid is offered by
+  default on the carriage profile only, because Section
+  4.4 gives the group its home there; the standalone
+  X25519 share keeps its own ephemeral, separate from the
+  hybrid share's X25519 half, so a responder selecting
+  either group gets a share made for it; and where RFC
+  10024 has the client abort on a decapsulation failure,
+  ML-KEM decapsulation by design does not fail -- a wrong
+  ciphertext yields the implicit-rejection secret and the
+  handshake fails at the Finished check, closed either
+  way.

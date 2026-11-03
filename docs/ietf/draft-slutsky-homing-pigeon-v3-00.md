@@ -342,7 +342,8 @@ particular:
 * Only the `psk_dhe_ke` key exchange mode is used. `psk_ke`
   MUST NOT be offered, accepted, or fallen back to, in a full
   handshake or in resumption. Every handshake, full or resumed,
-  carries a fresh ephemeral X25519 share. This is the rule the
+  carries a fresh ephemeral share -- X25519, or the hybrid
+  share of Section 4.4 where that section applies. This is the rule the
   perfect forward secrecy property of Section 16.1 rests on,
   and this carriage does not relax it.
 * The responder is stateless until a HelloRetryRequest cookie
@@ -384,8 +385,12 @@ ordering, duplication, delay -- and nothing else.
 
 The carriage does not change the cryptography, the handshake,
 the record protection, the session's authentication, or the
-job acceptance gate. An implementation MUST NOT use this
-carriage as a reason to alter any of those.
+job acceptance gate -- with the single exception stated in
+Section 4.4, the hybrid ephemeral share, which changes what
+the ephemeral exchange is made of and nothing around it. An
+implementation MUST NOT use this
+carriage as a reason to alter any of those beyond that
+stated exception.
 
 ## Enablement
 
@@ -410,6 +415,43 @@ the runner offers this carriage. The fact is trusted for
 nothing except whether an attempt is worth making. It grants
 nothing. Admission remains the handshake's and the acceptance
 gate's (Section 10.2).
+
+## The hybrid share
+
+The one delta this document states against the profile of
+Section 4.1 concerns the ephemeral share itself. On this
+carriage, a client offers, beside the X25519 share, the
+hybrid share X25519MLKEM768 {{RFC10024}}: in the client
+share, the ML-KEM-768 encapsulation key followed by an
+X25519 share; in the server share, the ML-KEM ciphertext
+followed by an X25519 share; and a shared secret that is
+the ML-KEM secret followed by the X25519 secret, fed into
+the same key schedule the X25519 secret feeds on the
+datagram binding. A responder on this carriage that is
+offered the hybrid share selects it. A responder that does
+not implement this section -- and every peer on the
+datagram binding, where the version 1 profile stands
+unchanged -- selects the X25519 share, and the session is
+an ordinary version 1 session. The hybrid rides under the
+same `psk_dhe_ke` rule: a fresh hybrid share in every
+handshake, full or resumed, the shared secret still only
+authenticating, and TLS_AES_256_GCM_SHA384 still the
+suite. The home of the group is this carriage's profile;
+the datagram binding does not offer it.
+
+The responder MUST perform the encapsulation-key check of
+FIPS 203 Section 7.2 on a hybrid client share and MUST
+abort the handshake with an illegal_parameter alert when
+it fails, as {{RFC10024}} requires. A hybrid share of any
+size other than the one {{RFC10024}} fixes, and a hybrid
+session whose Finished does not verify, fail the handshake
+closed; nothing falls back to a weaker exchange in answer
+to a failure (Section 12).
+
+What the hybrid buys is stated in Section 16.1: it narrows
+the recorded-session limit of the bare X25519 exchange. It
+changes nothing else in this document: not the gate, not
+the framing, not the disclosure, not the bounds.
 
 # Message Format
 
@@ -1202,9 +1244,10 @@ requesting that IANA act, early or otherwise.
 ## Perfect forward secrecy
 
 The property this version exists for: a session's keys are
-derived from an ephemeral X25519 exchange performed fresh in
-that session's handshake -- full or resumed, without exception
-(Section 4.1) -- combined with the pre-shared key, and are
+derived from an ephemeral exchange performed fresh in
+that session's handshake -- X25519, or the hybrid exchange
+of Section 4.4 -- combined with the pre-shared key
+(Section 4.1), and are
 erased when the session ends. The shared secret authenticates;
 it does not encrypt the session.
 
@@ -1230,24 +1273,34 @@ sessions against later key compromise, and that is the
 property claimed -- no more, and no less.
 
 One further limit belongs to this carriage in particular,
-because mail is archived by design. The ephemeral exchange
-is X25519 {{RFC7748}} -- the ephemeral exchange {{RFC9325}}
+because mail is archived by design. Where the ephemeral
+exchange is the bare X25519 {{RFC7748}} -- the ephemeral
+exchange {{RFC9325}}
 tells operators to prefer, and the right choice against the
-adversary above. A party that records a session's
-flights -- and on this carriage the sender's provider, the
-receiver's provider, and the mailbox all hold them -- and
+adversary above -- a party that records a session's
+flights (and on this carriage the sender's provider, the
+receiver's provider, and the mailbox all hold them) and
 that later breaks X25519, by whatever means, decrypts the
 recorded session without ever learning the shared secret.
-Forward secrecy here is secrecy against later compromise of
+Forward secrecy there is secrecy against later compromise of
 the long-term secret; it is not secrecy against a later
-break of the ephemeral's algorithm. The slot for the remedy
-is named now, so a later revision does not have to argue
-for its shape: a hybrid share, X25519MLKEM768 {{RFC10024}},
-in place of the bare X25519 share, under the same
-`psk_dhe_ke` rule -- the PSK still only authenticates, the
-hybrid share is what encrypts, and TLS_AES_256_GCM_SHA384
-remains the suite until that revision. This document does
-not add the group; it reserves the shape.
+break of the ephemeral's algorithm.
+
+The remedy is the hybrid share of Section 4.4,
+X25519MLKEM768 {{RFC10024}}, and it is part of this
+profile, not a shape reserved for a later revision: the
+reference implementation implements it, and a session on
+this carriage negotiates it whenever both endpoints offer
+it. In a hybrid session the ephemeral secret is the ML-KEM
+secret and the X25519 secret together, so the limit above
+narrows to the sessions that negotiated the bare share: a
+later break of X25519 alone does not decrypt a hybrid
+session, and neither does a later break of ML-KEM alone;
+the recorded session falls only if both halves fall, or
+the endpoint itself does. The `psk_dhe_ke` rule is
+unchanged -- the PSK still only authenticates, the
+ephemeral share, bare or hybrid, is what encrypts, and
+TLS_AES_256_GCM_SHA384 remains the suite.
 
 ## The mailbox as intermediary
 
