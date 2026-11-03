@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.120 - 2026-11-02
+
+- The corpus banked since 3.15.119 rides along (Germany bank 45: 2,301 entries, 0 crashes, 23 new runs).
+
 ## 3.15.119 - 2026-11-02
 
 - The corpus banked since 3.15.118 rides along (Germany bank 44: 2,300 entries, 0 crashes, 26 new runs).
