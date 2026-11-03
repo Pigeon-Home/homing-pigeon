@@ -57,6 +57,10 @@ REGISTERED = {
     "no SIGALRM on this platform":
         "test_de_dust_survivors' timeout verdict rides on SIGALRM, "
         "which Windows does not have; the Linux and macOS legs run it",
+    "IPv6 loopback is not available on this host":
+        "test_dtls_ipv6's real-socket legs bind ::1; a host with no "
+        "IPv6 loopback cannot run them, and every parser/refusal leg "
+        "still runs there; runs on this VM and on hosts with ::1",
     # ---- platform splits: each side runs in its own CI job ----------
     "Linux-only suite: it pins POSIX modes, nofollow opens, signals, "
     "and systemd units, and runs in the Linux test job":

@@ -56,6 +56,23 @@ from runner.wire import dtlsproto, jobcrypto  # noqa: E402
 DEFAULT_PORT = 20220
 
 
+def _open_socket(host, port):
+    """A UDP socket connected to (host, port), in the address
+    family of the target: the family follows the address the
+    SI was given, so a runner bound to an IPv6 address is
+    reachable at its IPv6 address and an IPv4 target keeps an
+    AF_INET socket, exactly as before."""
+    infos = socket.getaddrinfo(host, port, 0, socket.SOCK_DGRAM)
+    family, _type, _proto, _canon, sockaddr = infos[0]
+    sock = socket.socket(family, socket.SOCK_DGRAM)
+    try:
+        sock.connect(sockaddr)
+    except Exception:
+        sock.close()
+        raise
+    return sock
+
+
 def _open_session(args, secret, ticket, deadline, log):
     """A connected UDP socket and an established client core, or
     (None, None). A session first tries the saved resumption ticket;
@@ -67,8 +84,7 @@ def _open_session(args, secret, ticket, deadline, log):
     for attempt in attempts:
         client = dtlsproto.DtlsClientCore(
             secret, key_id=args.key_id, ticket=attempt, log=log)
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.connect((args.host, args.port))
+        sock = _open_socket(args.host, args.port)
         try:
             for dg in client.start(time.monotonic()):
                 sock.send(dg)
