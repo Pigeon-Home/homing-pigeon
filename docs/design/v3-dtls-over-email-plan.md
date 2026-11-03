@@ -11,9 +11,10 @@ The seed is the owner-written entry in `docs/project/future.md`:
 > **ietf homing pigeon perfect forward secrecy v3** defines transport
 > extension for v1 doc: DTLS over email using SS
 
-That sentence ends at `SS`. This plan does not guess what `SS` means,
-and no part of the design depends on it. It is recorded below as an
-open question.
+That sentence ends at `SS`. The question it raised is answered:
+`SS` is the Shared Secret, the same secret the DTLS handshake
+already uses as its key — see the addendum at the end of this
+plan. No part of the design had to guess at it.
 
 Version 1 already defines a direct DTLS 1.3 binding. Its profile is
 narrow and remains the cryptographic basis for this build:
@@ -276,8 +277,9 @@ Agent-Stamp trailer. Nothing is pushed and nothing is submitted.
 
 ## Open questions
 
-1. **What does `SS` mean in the seed line?** The sentence ends
-   mid-word. The build does not guess and does not depend on it.
+1. **What does `SS` mean in the seed line?** Answered: `SS` is
+   the Shared Secret, the DTLS handshake's key in the existing
+   design. See the addendum.
 2. **Should resumption be allowed over email?** The default taken
    here is yes, under the version 1 rule that resumption still uses
    a fresh ephemeral key share. Disabling it is a configuration
