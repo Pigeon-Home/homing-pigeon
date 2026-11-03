@@ -269,3 +269,121 @@ because one of the 2 fixes moves a proof pin.
    never downgraded) pass unchanged. The pin now counts the
    hand-over sites (exactly 2) and orders each against its
    branch and the guard, which is the invariant C20 states.
+
+## Review pass over the 2 peer reviews (2-Nov-2026)
+
+2 peer reviews of this build were posted in the forum on
+2-Nov-2026 (5:38pm, a read of branch commit `4cc16fe0`;
+6:10pm, a full review of the merged draft with an RFC
+companion). Every item was verified first-hand against the
+merged tree or a primary source; what held landed on main.
+The forum entry of this date carries the full decision
+record with justifications; this section records the
+dispositions and the code evidence.
+
+Short review (5:38pm):
+
+- Section 9.2 / plan D6 overclaim: HELD. `_addr_for` builds
+  `"email:" + (session_id or "legacy")`; no configured peer
+  identity exists in the code. Section 9.2 and D6 rewritten
+  to the code (cookie key is the responder's own secret;
+  the handshake's PSK identity selects the key).
+- Duplicate split: HELD. The digest cache dropped every
+  repeat in both wrappers; the engine escaped only because
+  retransmits advance record sequence numbers. Implemented:
+  a handshake-phase digest hit re-posts the saved last
+  flight under a fresh transfer id; application data drops.
+  The connection-ID binding check already ran before the
+  digest cache and is now stated in Section 7.2.
+- Absolute reassembly deadline: HELD. `offer` refreshed the
+  idle stamp on every part. `created` + deadline added; a
+  drip test pins it.
+- Pending-result expiry: HELD, and the keying was weaker
+  than the review's minimum: results were held by job ident
+  alone. Keyed by (connection ID, job ident); expiry by age
+  (7 days default), count (64), and total bytes (16 MiB);
+  expiry drops and logs, never sends.
+- MIME frame: JUDGMENT CALL, taken as the review proposed:
+  the frame now rides in a dedicated
+  `application/hp-dtls3` part, base64; a present typed part
+  is the only frame source and quoted-printable is refused;
+  the naked shape is still read when no typed part exists.
+  Justification: fail-closed was a reaction to a broken
+  frame, and the failure it guarded (garbage reaching the
+  engine) is still closed -- the typed part is the frame,
+  garbage in it still classifies `dtls-invalid`, and the
+  naked-shape footer test still delivers no job. The
+  full-handshake-over-MIME test carries a signed job end to
+  end.
+- Section 16.1 harvest limit and hybrid slot: HELD. The
+  limit is stated; RFC 7748 is cited; the slot is named
+  (X25519MLKEM768, RFC 10024) after verification against
+  the primary source: Standards Track, August 2026, IANA
+  value 4588 (0x11EC), DTLS-OK Y, Recommended Y.
+- Proof staleness: PARTLY SUPERSEDED at the review's read
+  (the continuation commit already covered resumption and
+  updated counts); the residue -- the plan's false status
+  sentence and this record's header -- is fixed in this
+  pass. The suggested rebase was not followed: the build
+  was merged at the owner's word instead.
+
+Full review (6:10pm), in its order:
+
+1. Version 1 objects text: ACCEPTED (abstract, Section
+   10.1). Title/docname rename: NOT LANDED -- the owner's
+   call, recorded open in the forum entry. The review's
+   worry about `v: 3` does not hold: that field is the
+   drafting toolchain's XML vocabulary version and version
+   1's -03 source carries the same value.
+2. Section 9.2 replacement: ACCEPTED; verified clause by
+   clause against `dtlsproto.py` and `dtls_mailbox.py`.
+3. MIME part: ACCEPTED (see the judgment call above).
+4. Retransmission/duplicates: ACCEPTED. "Carrying the
+   same datagram" deleted (RFC 9147 Section 5.2); the
+   split implemented (item above); timer floor in Section
+   7.1 under Section 5.8.2 of RFC 9147.
+5. Section 16.1, the slogan, "2 ways", the firewall
+   sentence: ACCEPTED; specifics verified as above.
+6. Minors: session-id ABNF ACCEPTED (the code already
+   enforced it: `_SESSION_ID_RE`, `valid_session_id`);
+   0-RTT rejection ACCEPTED WITH A CODE CHANGE (the engine
+   previously ignored the extension; `_on_hello_bytes` now
+   drops an early-data ClientHello before cookie handling);
+   ticket single-use MUST ACCEPTED (code already one-shot:
+   `del self.core.tickets[identity]`); Re:/Fwd: rule
+   ACCEPTED WITH A CODE CHANGE (the subject regex was used
+   with `search()`; routing now strips at most 1 prefix and
+   full-matches); IMAP BODY.PEEK ACCEPTED WITH A CODE
+   CHANGE (`fetch_job_mails` fetched `(RFC822)`, which
+   sets \Seen); bounds ACCEPTED (items above); Section 11
+   precondition ACCEPTED (verified in `begin`: the binder
+   comparison precedes key derivation, and the platform
+   payload is consulted only after it).
+7. Bounds: ACCEPTED (reassembly deadline, result expiry,
+   digest cache named as an optimization, `bytes=` 1
+   sentence).
+8. References and rendering: ACCEPTED. RFC 5234, RFC
+   4648, RFC 7748, RFC 5322, RFC 8551, RFC 9051, RFC 10024
+   added; RFC 9146 kept, following version 1 -03's own
+   citation of it; the version 1 reference is pinned to
+   -03. `dtls_over_email` corrected to `dtls_via_email`
+   (3 strings). Rendered with kramdown-rfc 1.7.43 and
+   xml2rfc 3.35.0: `.xml`, `.txt`, `.html`, 0 warnings.
+   idnits was NOT run: it is not installed on this machine
+   and the npm registry has no package under that name
+   (404) -- recorded as not run rather than claimed.
+   Discovery hint: PREPARED, NOT LANDED (forum entry
+   carries the text; the owner's call).
+
+Tests: `runner/tests/test_dtls_email_v3.py` grew from 45 to
+62 tests; the 13 new-behavior assertions failed before the
+implementation and pass after (2 test bugs of this pass's
+own were caught by running and fixed). The release-gate
+batch (this record's constraints module, the provider-name
+discipline, the skip registry, the version 3 module) runs
+121 tests green, 0 skips, and every touched-surface suite
+(mailbox, transports, the email pipe, the TLS 1.3 and DTLS
+protocol suites) is green unfiltered.
+Still unproven, unchanged from the continuation: resumption
+over a live mailbox, providers other than the 1 live
+provider, and live scale beyond 1 session carrying 1 job.
