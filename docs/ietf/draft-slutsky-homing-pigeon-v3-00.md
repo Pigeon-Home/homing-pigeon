@@ -52,15 +52,15 @@ normative:
       RFC: 8174
       DOI: 10.17487/RFC8174
     target: https://www.rfc-editor.org/info/rfc8174
-  RFC8446:
+  RFC9846:
     title: "The Transport Layer Security (TLS) Protocol Version 1.3"
     author:
       - name: "E. Rescorla"
-    date: 2018-08
+    date: 2026-07
     seriesinfo:
-      RFC: 8446
-      DOI: 10.17487/RFC8446
-    target: https://www.rfc-editor.org/info/rfc8446
+      RFC: 9846
+      DOI: 10.17487/RFC9846
+    target: https://www.rfc-editor.org/info/rfc9846
   RFC5234:
     title: "Augmented BNF for Syntax Specifications: ABNF"
     author:
@@ -185,8 +185,8 @@ informative:
 --- abstract
 
 This document specifies version 3 of the Homing Pigeon message
-protocol. Version 3 is a transport extension to version 1
-{{I-D.slutsky-homing-pigeon}}, not a replacement for it: every
+protocol. Version 3 is a transport extension to version 1,
+not a replacement for it: every
 version 1 message keeps its meaning, the version 1 job
 acceptance gate is unchanged, and version 3 changes exactly one
 thing -- the carriage of the version 1 DTLS session profile.
@@ -210,13 +210,13 @@ object, unchanged, carrying the version value version 1
 defines. The 3 of this document's title numbers this document
 and its carriage; it is not a value of any object's version
 field, and nothing in this document mints a version 3 object.
-HP-DTLS/3, the frame header of Section 5.2, is a carriage
-label whose digit is the carriage generation, not a protocol
-version.
+HP-DTLS/3, the frame header this document defines, is a
+carriage label whose digit is the carriage generation, not a
+protocol version.
 
 This document is a local, unsubmitted draft. It has not been
 posted to the Internet-Drafts directory, and it requests no
-IANA action (Section 15).
+IANA action.
 
 --- middle
 
@@ -623,7 +623,7 @@ any octet to a DTLS stack.
 
 Within the carriage, a datagram MUST NOT exceed the carriage
 datagram limit. The reference implementation's limit is 262144
-octets, and its default chunk is 32768 base64 characters (8192
+octets, and its default chunk is 32768 base64 characters (24576
 decoded octets at most per part before the header). Both are
 local limits, configurable within the bounds of Sections 6
 and 16.4; a sender that does not know the receiver's limits
@@ -714,7 +714,8 @@ duplicate handling separate, and each layer's rule is its own:
   split by phase. A receiver keeps a digest of each datagram
   it has accepted from flight mail, bounded and in arrival
   order; the reference implementation's cache holds 4096
-  digests, first in first out. The cache is an optimization
+  digests, evicting the least recently seen (a hit refreshes
+  an entry's place). The cache is an optimization
   against a poller or a sender delivering the same mail
   twice; it is not the replay defense (Section 13 names the
   defenses). The connection-id binding check of Section 9.2
@@ -1163,11 +1164,11 @@ layer is asked to do another's work:
   no layer here at all: a ClientHello carrying early data is
   rejected as a malformed flight (Section 4.1), and this
   profile derives no epoch-1 keys for a replay to use.
-  {{RFC8446}} is the reason the rule is a rejection and not
+  {{RFC9846}} is the reason the rule is a rejection and not
   a quiet skip: 0-RTT data is not forward secret, is
   replayable between connections, and an application
   protocol must not use it without a profile that says how
-  ({{RFC8446}} Sections 2.3 and 8, Appendix E.5). A job that
+  ({{RFC9846}} Sections 2.3 and 8, Appendix F.5). A job that
   runs a program is not safe to replay, and on a mailbox the
   ClientHello can sit for a day.
 * A replayed record meets the record layer: sequence numbers
@@ -1354,8 +1355,8 @@ number that bounds it:
   size, and held at most 3600 seconds from its first part and
   from its last; a contradiction destroys the transfer rather
   than arbitrating it (Section 6).
-* A digest-cache entry is 1 of 4096, first in first out
-  (Section 7.2).
+* A digest-cache entry is 1 of 4096, the least recently seen
+  evicted first (Section 7.2).
 * A saved outbound flight is 1 of 4096, first in first out,
   the same bound as the digest cache. Evicting one drops
   only the spare re-post for that peer. A retransmission is

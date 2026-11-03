@@ -14,11 +14,11 @@ Expires: 6 May 2027
 Abstract
 
    This document specifies version 3 of the Homing Pigeon message
-   protocol.  Version 3 is a transport extension to version 1
-   [I-D.slutsky-homing-pigeon], not a replacement for it: every version
-   1 message keeps its meaning, the version 1 job acceptance gate is
-   unchanged, and version 3 changes exactly one thing -- the carriage of
-   the version 1 DTLS session profile.
+   protocol.  Version 3 is a transport extension to version 1, not a
+   replacement for it: every version 1 message keeps its meaning, the
+   version 1 job acceptance gate is unchanged, and version 3 changes
+   exactly one thing -- the carriage of the version 1 DTLS session
+   profile.
 
    Version 1 defines a DTLS 1.3 session profile (its Sections 19 and
    20): one cipher suite, a pre-shared key taken from the protocol's
@@ -37,18 +37,18 @@ Abstract
    carrying the version value version 1 defines.  The 3 of this
    document's title numbers this document and its carriage; it is not a
    value of any object's version field, and nothing in this document
-   mints a version 3 object.  HP-DTLS/3, the frame header of
-   Section 5.2, is a carriage label whose digit is the carriage
-   generation, not a protocol version.
+   mints a version 3 object.  HP-DTLS/3, the frame header this document
+   defines, is a carriage label whose digit is the carriage generation,
+   not a protocol version.
 
    This document is a local, unsubmitted draft.  It has not been posted
-   to the Internet-Drafts directory, and it requests no IANA action
-   (Section 15).
+   to the Internet-Drafts directory, and it requests no IANA action.
 
 Status of This Memo
 
    This Internet-Draft is submitted in full conformance with the
    provisions of BCP 78 and BCP 79.
+
 
 
 
@@ -595,7 +595,7 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
    Within the carriage, a datagram MUST NOT exceed the carriage datagram
    limit.  The reference implementation's limit is 262144 octets, and
-   its default chunk is 32768 base64 characters (8192 decoded octets at
+   its default chunk is 32768 base64 characters (24576 decoded octets at
    most per part before the header).  Both are local limits,
    configurable within the bounds of Sections 6 and 16.4; a sender that
    does not know the receiver's limits SHOULD keep a datagram within the
@@ -697,31 +697,31 @@ Internet-Draft              Homing Pigeon v3               November 2026
    *  Mail layer: the carriage suppresses exact duplicates, split by
       phase.  A receiver keeps a digest of each datagram it has accepted
       from flight mail, bounded and in arrival order; the reference
-      implementation's cache holds 4096 digests, first in first out.
-      The cache is an optimization against a poller or a sender
-      delivering the same mail twice; it is not the replay defense
-      (Section 13 names the defenses).  The connection-id binding check
-      of Section 9.2 runs before a datagram's digest is recorded, so a
-      misaddressed copy cannot poison the cache against the same record
-      arriving under its own session's mail.  A digest hit on a
-      handshake-phase datagram is not fed to the DTLS stack again --
-      nothing is derived twice -- and the receiver instead re-posts its
-      saved last outbound flight, under a new transfer identifier: the
-      duplicate is the signal that the answer was lost ([RFC9147]
-      Section 5.8.1).  The re-post is budgeted, because on this carriage
-      it costs an outbound mail that an unauthenticated sender can
-      provoke with a captured hello: a receiver MUST re-post a saved
-      flight at most once per generation of that flight.  A digest hit
-      spends the 1 re-post the saved flight carries; only a new flight
-      from the DTLS stack -- a new answer, or the stack's own
-      retransmission on its timer -- arms another; further bit-identical
-      copies of a handshake-phase datagram are dropped.  A thousand
-      copies of 1 ClientHello therefore cost the responder at most 1
-      HelloRetryRequest mail beyond the 1 it already sent
-      (Section 16.4).  A digest hit on application data is dropped and
-      does nothing.  A replayed mail is therefore not a new record at
-      either layer, and a lost flight is still repaired.  A
-      retransmission under [RFC9147] Section 5.2 is not this case.  It
+      implementation's cache holds 4096 digests, evicting the least
+      recently seen (a hit refreshes an entry's place).  The cache is an
+      optimization against a poller or a sender delivering the same mail
+      twice; it is not the replay defense (Section 13 names the
+      defenses).  The connection-id binding check of Section 9.2 runs
+      before a datagram's digest is recorded, so a misaddressed copy
+      cannot poison the cache against the same record arriving under its
+      own session's mail.  A digest hit on a handshake-phase datagram is
+      not fed to the DTLS stack again -- nothing is derived twice -- and
+      the receiver instead re-posts its saved last outbound flight,
+      under a new transfer identifier: the duplicate is the signal that
+      the answer was lost ([RFC9147] Section 5.8.1).  The re-post is
+      budgeted, because on this carriage it costs an outbound mail that
+      an unauthenticated sender can provoke with a captured hello: a
+      receiver MUST re-post a saved flight at most once per generation
+      of that flight.  A digest hit spends the 1 re-post the saved
+      flight carries; only a new flight from the DTLS stack -- a new
+      answer, or the stack's own retransmission on its timer -- arms
+      another; further bit-identical copies of a handshake-phase
+      datagram are dropped.  A thousand copies of 1 ClientHello
+      therefore cost the responder at most 1 HelloRetryRequest mail
+      beyond the 1 it already sent (Section 16.4).  A digest hit on
+      application data is dropped and does nothing.  A replayed mail is
+      therefore not a new record at either layer, and a lost flight is
+      still repaired.  A retransmission under [RFC9147] Section 5.2 is
 
 
 
@@ -730,12 +730,12 @@ Slutsky                    Expires 6 May 2027                  [Page 13]
 Internet-Draft              Homing Pigeon v3               November 2026
 
 
-      is a new record, with a new record sequence number, carrying the
-      same handshake message, so it is not bit-identical to the datagram
-      already accepted.  It misses this cache, enters the stack, and is
-      answered by the stack.  The budget does not limit it, and if the
-      single re-post was itself lost, that retransmission is what
-      repairs the attempt.
+      not this case.  It is a new record, with a new record sequence
+      number, carrying the same handshake message, so it is not bit-
+      identical to the datagram already accepted.  It misses this cache,
+      enters the stack, and is answered by the stack.  The budget does
+      not limit it, and if the single re-post was itself lost, that
+      retransmission is what repairs the attempt.
 
    *  DTLS layer: records are protected and sequenced by the record
       layer as [RFC9147] specifies; a record that does not authenticate
@@ -1235,11 +1235,11 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
 
       as a malformed flight (Section 4.1), and this profile derives no
-      epoch-1 keys for a replay to use.  [RFC8446] is the reason the
+      epoch-1 keys for a replay to use.  [RFC9846] is the reason the
       rule is a rejection and not a quiet skip: 0-RTT data is not
       forward secret, is replayable between connections, and an
       application protocol must not use it without a profile that says
-      how ([RFC8446] Sections 2.3 and 8, Appendix E.5).  A job that runs
+      how ([RFC9846] Sections 2.3 and 8, Appendix F.5).  A job that runs
       a program is not safe to replay, and on a mailbox the ClientHello
       can sit for a day.
 
@@ -1443,8 +1443,8 @@ Internet-Draft              Homing Pigeon v3               November 2026
       contradiction destroys the transfer rather than arbitrating it
       (Section 6).
 
-   *  A digest-cache entry is 1 of 4096, first in first out
-      (Section 7.2).
+   *  A digest-cache entry is 1 of 4096, the least recently seen evicted
+      first (Section 7.2).
 
    *  A saved outbound flight is 1 of 4096, first in first out, the same
       bound as the digest cache.  Evicting one drops only the spare re-
@@ -1550,15 +1550,15 @@ Internet-Draft              Homing Pigeon v3               November 2026
               2119 Key Words", RFC 8174, DOI 10.17487/RFC8174, May 2017,
               <https://www.rfc-editor.org/info/rfc8174>.
 
-   [RFC8446]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
-              Version 1.3", RFC 8446, DOI 10.17487/RFC8446, August 2018,
-              <https://www.rfc-editor.org/info/rfc8446>.
-
    [RFC9146]  Rescorla, E., Tschofenig, H., Fossati, T., and A. Kraus,
               "Connection Identifier for DTLS 1.2", RFC 9146,
               DOI 10.17487/RFC9146, March 2022,
               <https://www.rfc-editor.org/info/rfc9146>.
 
+   [RFC9147]  Rescorla, E., Tschofenig, H., and N. Modadugu, "The
+              Datagram Transport Layer Security (DTLS) Protocol Version
+              1.3", RFC 9147, DOI 10.17487/RFC9147, April 2022,
+              <https://www.rfc-editor.org/info/rfc9147>.
 
 
 
@@ -1570,10 +1570,9 @@ Slutsky                    Expires 6 May 2027                  [Page 28]
 Internet-Draft              Homing Pigeon v3               November 2026
 
 
-   [RFC9147]  Rescorla, E., Tschofenig, H., and N. Modadugu, "The
-              Datagram Transport Layer Security (DTLS) Protocol Version
-              1.3", RFC 9147, DOI 10.17487/RFC9147, April 2022,
-              <https://www.rfc-editor.org/info/rfc9147>.
+   [RFC9846]  Rescorla, E., "The Transport Layer Security (TLS) Protocol
+              Version 1.3", RFC 9846, DOI 10.17487/RFC9846, July 2026,
+              <https://www.rfc-editor.org/info/rfc9846>.
 
 17.2.  Informative References
 
@@ -1613,6 +1612,7 @@ Author's Address
    Andrew Slutsky
    Independent
    Email: slutsky5544@gmail.com
+
 
 
 

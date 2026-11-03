@@ -28,8 +28,8 @@
       <?line 185?>
 
 <t>This document specifies version 3 of the Homing Pigeon message
-protocol. Version 3 is a transport extension to version 1
-<xref target="I-D.slutsky-homing-pigeon"/>, not a replacement for it: every
+protocol. Version 3 is a transport extension to version 1,
+not a replacement for it: every
 version 1 message keeps its meaning, the version 1 job
 acceptance gate is unchanged, and version 3 changes exactly one
 thing -- the carriage of the version 1 DTLS session profile.</t>
@@ -51,12 +51,12 @@ object, unchanged, carrying the version value version 1
 defines. The 3 of this document's title numbers this document
 and its carriage; it is not a value of any object's version
 field, and nothing in this document mints a version 3 object.
-HP-DTLS/3, the frame header of Section 5.2, is a carriage
+HP-DTLS/3, the frame header this document defines, is a carriage
 label whose digit is the carriage generation, not a protocol
 version.</t>
       <t>This document is a local, unsubmitted draft. It has not been
 posted to the Internet-Drafts directory, and it requests no
-IANA action (Section 15).</t>
+IANA action.</t>
     </abstract>
   </front>
   <middle>
@@ -478,7 +478,7 @@ decodes any base64, allocates any reassembly state, or feeds
 any octet to a DTLS stack.</t>
         <t>Within the carriage, a datagram MUST NOT exceed the carriage
 datagram limit. The reference implementation's limit is 262144
-octets, and its default chunk is 32768 base64 characters (8192
+octets, and its default chunk is 32768 base64 characters (24576
 decoded octets at most per part before the header). Both are
 local limits, configurable within the bounds of Sections 6
 and 16.4; a sender that does not know the receiver's limits
@@ -577,7 +577,7 @@ duplicate handling separate, and each layer's rule is its own:</t>
 split by phase. A receiver keeps a digest of each datagram
 it has accepted from flight mail, bounded and in arrival
 order; the reference implementation's cache holds 4096
-digests, first in first out. The cache is an optimization
+digests, evicting the least recently seen (a hit refreshes an entry's place). The cache is an optimization
 against a poller or a sender delivering the same mail
 twice; it is not the replay defense (Section 13 names the
 defenses). The connection-id binding check of Section 9.2
@@ -1062,11 +1062,11 @@ already produced and derive nothing twice. Early data has
 no layer here at all: a ClientHello carrying early data is
 rejected as a malformed flight (Section 4.1), and this
 profile derives no epoch-1 keys for a replay to use.
-<xref target="RFC8446"/> is the reason the rule is a rejection and not
+<xref target="RFC9846"/> is the reason the rule is a rejection and not
 a quiet skip: 0-RTT data is not forward secret, is
 replayable between connections, and an application
 protocol must not use it without a profile that says how
-(<xref target="RFC8446"/> Sections 2.3 and 8, Appendix E.5). A job that
+(<xref target="RFC9846"/> Sections 2.3 and 8, Appendix F.5). A job that
 runs a program is not safe to replay, and on a mailbox the
 ClientHello can sit for a day.</t>
         </li>
@@ -1258,7 +1258,7 @@ from its last; a contradiction destroys the transfer rather
 than arbitrating it (Section 6).</t>
           </li>
           <li>
-            <t>A digest-cache entry is 1 of 4096, first in first out
+            <t>A digest-cache entry is 1 of 4096, the least recently seen evicted first
 (Section 7.2).</t>
           </li>
           <li>
@@ -1369,16 +1369,16 @@ reads the job's own key and applies that key's policy
           <seriesInfo name="RFC" value="8174"/>
           <seriesInfo name="DOI" value="10.17487/RFC8174"/>
         </reference>
-        <reference anchor="RFC8446" target="https://www.rfc-editor.org/info/rfc8446">
+        <reference anchor="RFC9846" target="https://www.rfc-editor.org/info/rfc9846">
           <front>
             <title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
             <author initials="E." surname="Rescorla" fullname="E. Rescorla">
               <organization/>
             </author>
-            <date year="2018" month="August"/>
+            <date year="2026" month="July"/>
           </front>
-          <seriesInfo name="RFC" value="8446"/>
-          <seriesInfo name="DOI" value="10.17487/RFC8446"/>
+          <seriesInfo name="RFC" value="9846"/>
+          <seriesInfo name="DOI" value="10.17487/RFC9846"/>
         </reference>
         <reference anchor="RFC5234" target="https://www.rfc-editor.org/info/rfc5234">
           <front>

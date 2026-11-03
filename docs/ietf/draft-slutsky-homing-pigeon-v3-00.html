@@ -8,8 +8,8 @@
 <meta content="Andrew Slutsky" name="author">
 <meta content="
        This document specifies version 3 of the Homing Pigeon message
-protocol. Version 3 is a transport extension to version 1
- , not a replacement for it: every
+protocol. Version 3 is a transport extension to version 1,
+not a replacement for it: every
 version 1 message keeps its meaning, the version 1 job
 acceptance gate is unchanged, and version 3 changes exactly one
 thing -- the carriage of the version 1 DTLS session profile. 
@@ -31,12 +31,12 @@ object, unchanged, carrying the version value version 1
 defines. The 3 of this document's title numbers this document
 and its carriage; it is not a value of any object's version
 field, and nothing in this document mints a version 3 object.
-HP-DTLS/3, the frame header of Section 5.2, is a carriage
+HP-DTLS/3, the frame header this document defines, is a carriage
 label whose digit is the carriage generation, not a protocol
 version. 
        This document is a local, unsubmitted draft. It has not been
 posted to the Internet-Drafts directory, and it requests no
-IANA action (Section 15). 
+IANA action. 
     " name="description">
 <meta content="xml2rfc 3.35.0" name="generator">
 <meta content="DTLS" name="keyword">
@@ -1293,8 +1293,8 @@ li > p:last-of-type:only-child {
 <section id="section-abstract">
       <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
 <p id="section-abstract-1">This document specifies version 3 of the Homing Pigeon message
-protocol. Version 3 is a transport extension to version 1
-<span>[<a href="#I-D.slutsky-homing-pigeon" class="cite xref">I-D.slutsky-homing-pigeon</a>]</span>, not a replacement for it: every
+protocol. Version 3 is a transport extension to version 1,
+not a replacement for it: every
 version 1 message keeps its meaning, the version 1 job
 acceptance gate is unchanged, and version 3 changes exactly one
 thing -- the carriage of the version 1 DTLS session profile.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
@@ -1316,12 +1316,12 @@ object, unchanged, carrying the version value version 1
 defines. The 3 of this document's title numbers this document
 and its carriage; it is not a value of any object's version
 field, and nothing in this document mints a version 3 object.
-HP-DTLS/3, the frame header of Section 5.2, is a carriage
+HP-DTLS/3, the frame header this document defines, is a carriage
 label whose digit is the carriage generation, not a protocol
 version.<a href="#section-abstract-3" class="pilcrow">¶</a></p>
 <p id="section-abstract-4">This document is a local, unsubmitted draft. It has not been
 posted to the Internet-Drafts directory, and it requests no
-IANA action (Section 15).<a href="#section-abstract-4" class="pilcrow">¶</a></p>
+IANA action.<a href="#section-abstract-4" class="pilcrow">¶</a></p>
 </section>
 <div id="status-of-memo">
 <section id="section-boilerplate.1">
@@ -2013,7 +2013,7 @@ decodes any base64, allocates any reassembly state, or feeds
 any octet to a DTLS stack.<a href="#section-5.3-1" class="pilcrow">¶</a></p>
 <p id="section-5.3-2">Within the carriage, a datagram MUST NOT exceed the carriage
 datagram limit. The reference implementation's limit is 262144
-octets, and its default chunk is 32768 base64 characters (8192
+octets, and its default chunk is 32768 base64 characters (24576
 decoded octets at most per part before the header). Both are
 local limits, configurable within the bounds of Sections 6
 and 16.4; a sender that does not know the receiver's limits
@@ -2128,7 +2128,7 @@ duplicate handling separate, and each layer's rule is its own:<a href="#section-
 split by phase. A receiver keeps a digest of each datagram
 it has accepted from flight mail, bounded and in arrival
 order; the reference implementation's cache holds 4096
-digests, first in first out. The cache is an optimization
+digests, evicting the least recently seen (a hit refreshes an entry's place). The cache is an optimization
 against a poller or a sender delivering the same mail
 twice; it is not the replay defense (Section 13 names the
 defenses). The connection-id binding check of Section 9.2
@@ -2692,11 +2692,11 @@ already produced and derive nothing twice. Early data has
 no layer here at all: a ClientHello carrying early data is
 rejected as a malformed flight (Section 4.1), and this
 profile derives no epoch-1 keys for a replay to use.
-<span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span> is the reason the rule is a rejection and not
+<span>[<a href="#RFC9846" class="cite xref">RFC9846</a>]</span> is the reason the rule is a rejection and not
 a quiet skip: 0-RTT data is not forward secret, is
 replayable between connections, and an application
 protocol must not use it without a profile that says how
-(<span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span> Sections 2.3 and 8, Appendix E.5). A job that
+(<span>[<a href="#RFC9846" class="cite xref">RFC9846</a>]</span> Sections 2.3 and 8, Appendix F.5). A job that
 runs a program is not safe to replay, and on a mailbox the
 ClientHello can sit for a day.<a href="#section-13-2.1.1" class="pilcrow">¶</a></p>
 </li>
@@ -2915,7 +2915,7 @@ from its last; a contradiction destroys the transfer rather
 than arbitrating it (Section 6).<a href="#section-16.4-2.4.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-16.4-2.5">
-            <p id="section-16.4-2.5.1">A digest-cache entry is 1 of 4096, first in first out
+            <p id="section-16.4-2.5.1">A digest-cache entry is 1 of 4096, the least recently seen evicted first
 (Section 7.2).<a href="#section-16.4-2.5.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-16.4-2.6">
@@ -3033,17 +3033,17 @@ reads the job's own key and applies that key's policy
         <dd>
 <span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
 <dd class="break"></dd>
-<dt id="RFC8446">[RFC8446]</dt>
-        <dd>
-<span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"The Transport Layer Security (TLS) Protocol Version 1.3"</span>, <span class="seriesInfo">RFC 8446</span>, <span class="seriesInfo">DOI 10.17487/RFC8446</span>, <time datetime="2018-08" class="refDate">August 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8446">https://www.rfc-editor.org/info/rfc8446</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 <dt id="RFC9146">[RFC9146]</dt>
         <dd>
 <span class="refAuthor">Rescorla, E.</span>, <span class="refAuthor">Tschofenig, H.</span>, <span class="refAuthor">Fossati, T.</span>, and <span class="refAuthor">A. Kraus</span>, <span class="refTitle">"Connection Identifier for DTLS 1.2"</span>, <span class="seriesInfo">RFC 9146</span>, <span class="seriesInfo">DOI 10.17487/RFC9146</span>, <time datetime="2022-03" class="refDate">March 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9146">https://www.rfc-editor.org/info/rfc9146</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC9147">[RFC9147]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Rescorla, E.</span>, <span class="refAuthor">Tschofenig, H.</span>, and <span class="refAuthor">N. Modadugu</span>, <span class="refTitle">"The Datagram Transport Layer Security (DTLS) Protocol Version 1.3"</span>, <span class="seriesInfo">RFC 9147</span>, <span class="seriesInfo">DOI 10.17487/RFC9147</span>, <time datetime="2022-04" class="refDate">April 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9147">https://www.rfc-editor.org/info/rfc9147</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9846">[RFC9846]</dt>
+      <dd>
+<span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"The Transport Layer Security (TLS) Protocol Version 1.3"</span>, <span class="seriesInfo">RFC 9846</span>, <span class="seriesInfo">DOI 10.17487/RFC9846</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9846">https://www.rfc-editor.org/info/rfc9846</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 </dl>
 </section>
