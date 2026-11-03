@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 """Parity harness for the hardening milestones (M0).
 
-Runs a fixed corpus of jobs through poll_once under three config
-variants -- no security block, all features off, all features audit --
-and compares normalized outputs. Later milestones extend the corpus
-with jobs that exercise their features.
+Runs a fixed corpus of jobs through poll_once under config
+variants -- no security block, all features off, all features audit,
+and all features enforce -- and compares normalized outputs. The
+first three must be identical; the enforce variant's per-job
+expectations are recorded explicitly in
+runner/tests/test_security_parity.py (AllEnforceParityTest): jobs
+that comply still execute, jobs that violate a mode are refused by
+that mode. Later milestones extend the corpus with jobs that
+exercise their features.
 """
+import base64
 import copy
 import os
 import re
@@ -29,7 +35,14 @@ from runner.tests.test_runner import FakeIMAP, FakeSMTP  # noqa: E402
 SECRET = secrets.token_hex(32)
 WRONG_SECRET = secrets.token_hex(32)
 EXTRA_SECRET = secrets.token_hex(32)
+GUARDED_SECRET = secrets.token_hex(32)
 SENDER = "runner@example.com"
+# The audience the corpus jobs are addressed to. The base config
+# deliberately carries no runner_id (audience binding is then a
+# documented no-op, so the no-block / off / audit variants are
+# unaffected); the enforce variant supplies it through run_variant's
+# cfg_extra, which is what turns audience enforce into a real check.
+PARITY_RUNNER_ID = "parity-runner-001"
 
 
 def base_config(tmpdir):
@@ -37,8 +50,20 @@ def base_config(tmpdir):
         "mailbox_user": SENDER,
         "mailbox_password": "test-gmail-password",
         "shared_secret": SECRET,
-        "additional_secrets": {"restricted": EXTRA_SECRET},
-        "key_policies": {"restricted": {"allowed_kinds": ["ping"]}},
+        "additional_secrets": {"restricted": EXTRA_SECRET,
+                               "guarded": GUARDED_SECRET},
+        "key_policies": {
+            "restricted": {"allowed_kinds": ["ping"]},
+            # The M2-guarded key: exec is allowed, but env, files
+            # and args are constrained, so the corpus can carry one
+            # compliant guarded job and one violation per policy
+            # feature. Keys without a policy entry (the default
+            # key) stay unrestricted, exactly as before.
+            "guarded": {"allowed_kinds": ["exec", "ping"],
+                        "denied_env": ["EVIL_VAR"],
+                        "allowed_files": ["good.txt"],
+                        "args_pattern": "[a-z]+"},
+        },
         "imap_host": "fake", "imap_port": 993,
         "smtp_host": "fake", "smtp_port": 587,
         "poll_interval_sec": 20,
@@ -80,32 +105,84 @@ def build_corpus():
     """Return a list of (name, raw_email_bytes). Built once and shared
     across variants so timestamps inside the corpus are identical."""
     stale_at = datetime.now(timezone.utc) - timedelta(days=2)
+    # Every corpus job is addressed to PARITY_RUNNER_ID, so under an
+    # audience-enforcing config that names that runner_id the jobs
+    # comply -- except audience_wrong, which is addressed elsewhere
+    # on purpose. In the variants without a configured runner_id the
+    # field changes nothing.
     corpus = [
-        ("ping", _email(_payload("parity-01"))),
+        ("ping", _email(_payload("parity-01",
+                                 runner_id=PARITY_RUNNER_ID))),
         ("exec_plain", _email(_payload(
-            "parity-02", kind="exec", script="echo hello-parity"))),
+            "parity-02", kind="exec", script="echo hello-parity",
+            runner_id=PARITY_RUNNER_ID))),
         ("exec_env", _email(_payload(
             "parity-03", kind="exec", script="echo $MYAPP_VAR",
-            env={"MYAPP_VAR": "parity"}))),
+            env={"MYAPP_VAR": "parity"},
+            runner_id=PARITY_RUNNER_ID))),
         ("exec_args", _email(_payload(
-            "parity-04", kind="exec", script="echo", args=["parity-arg"]))),
+            "parity-04", kind="exec", script="echo", args=["parity-arg"],
+            runner_id=PARITY_RUNNER_ID))),
         ("exec_files_rejected", _email(_payload(
             "parity-05", kind="exec", script="echo hi",
-            files=[{"name": "note.txt"}]))),  # no url -> rejected
+            files=[{"name": "note.txt"}],
+            runner_id=PARITY_RUNNER_ID))),  # no url -> rejected
         ("exec_timeout", _email(_payload(
-            "parity-06", kind="exec", script="echo hi", timeout_sec=30))),
-        ("bad_signature", _email(_payload("parity-07"), secret=WRONG_SECRET)),
-        ("stale", _email(_payload("parity-08", issued_at=stale_at))),
-        ("replay_a", _email(_payload("parity-09"))),
-        ("replay_b", _email(_payload("parity-09"))),  # same id: replay
+            "parity-06", kind="exec", script="echo hi", timeout_sec=30,
+            runner_id=PARITY_RUNNER_ID))),
+        ("bad_signature", _email(_payload(
+            "parity-07", runner_id=PARITY_RUNNER_ID),
+            secret=WRONG_SECRET)),
+        ("stale", _email(_payload(
+            "parity-08", issued_at=stale_at,
+            runner_id=PARITY_RUNNER_ID))),
+        ("replay_a", _email(_payload("parity-09",
+                                     runner_id=PARITY_RUNNER_ID))),
+        ("replay_b", _email(_payload("parity-09",
+                                     runner_id=PARITY_RUNNER_ID))),
         ("oversized_legal", _email(_payload(
-            "parity-10", kind="exec", script="echo " + "x" * 50000))),
+            "parity-10", kind="exec", script="echo " + "x" * 50000,
+            runner_id=PARITY_RUNNER_ID))),
         ("key_policy_reject", _email(_payload(
             "parity-11", kind="exec", script="echo hi",
-            key_id="restricted"), secret=EXTRA_SECRET)),
+            key_id="restricted", runner_id=PARITY_RUNNER_ID),
+            secret=EXTRA_SECRET)),
         ("sensor_alert", _email(_payload(
             "parity-12", kind="sensor_alert", sensor="nope",
-            alert={"msg": "test"}))),
+            alert={"msg": "test"}, runner_id=PARITY_RUNNER_ID))),
+        # The guarded key's compliant job: env is allowed, the file
+        # is in allowed_files, the arg matches args_pattern. It must
+        # execute under every variant, enforce included.
+        ("guarded_compliant", _email(_payload(
+            "parity-13", kind="exec", script="echo guarded-ok",
+            env={"HARMLESS": "1"}, args=["good"],
+            files=[{"name": "good.txt",
+                    "content_b64": base64.b64encode(
+                        b"parity file\n").decode("ascii")}],
+            key_id="guarded", runner_id=PARITY_RUNNER_ID),
+            secret=GUARDED_SECRET)),
+        # One violation per M2 policy feature, each otherwise
+        # compliant, so enforce refuses it by that feature alone.
+        ("guarded_env_denied", _email(_payload(
+            "parity-14", kind="exec", script="echo hi",
+            env={"EVIL_VAR": "x"},
+            key_id="guarded", runner_id=PARITY_RUNNER_ID),
+            secret=GUARDED_SECRET)),
+        ("guarded_args_denied", _email(_payload(
+            "parity-15", kind="exec", script="echo", args=["BAD"],
+            key_id="guarded", runner_id=PARITY_RUNNER_ID),
+            secret=GUARDED_SECRET)),
+        ("guarded_files_denied", _email(_payload(
+            "parity-16", kind="exec", script="echo hi",
+            files=[{"name": "evil.txt",
+                    "content_b64": base64.b64encode(
+                        b"parity file\n").decode("ascii")}],
+            key_id="guarded", runner_id=PARITY_RUNNER_ID),
+            secret=GUARDED_SECRET)),
+        # Addressed to a different runner: audience enforce refuses
+        # it; everywhere else it is an ordinary ping.
+        ("audience_wrong", _email(_payload(
+            "parity-17", runner_id="parity-other-runner"))),
     ]
     return corpus
 
@@ -143,7 +220,12 @@ def _unwrap_envelope(text, job_id, extra_secrets=()):
 
 def normalize(text, tmpdir, job_id=None, extra_secrets=()):
     if job_id is not None:
-        text = _unwrap_envelope(text, job_id, extra_secrets)
+        # The harness's own guarded key is always part of the
+        # unwrapping keyring: a caller that hand-rolls its variant
+        # (test_audience's runner_id leg) gets guarded-key results
+        # unwrapped without having to know the key exists.
+        text = _unwrap_envelope(
+            text, job_id, (GUARDED_SECRET, *extra_secrets))
     # JSON escapes backslashes. Windows also rewrites the parent of
     # the temp dir (short name versus long name), so match the unique
     # directory name as well as the full path.
@@ -185,12 +267,20 @@ def read_audit_lines(tmpdir):
         return None
 
 
-def run_variant(security_block, corpus):
-    """Run the corpus through one poll cycle. Returns normalized outputs."""
+def run_variant(security_block, corpus, cfg_extra=None):
+    """Run the corpus through one poll cycle. Returns normalized outputs.
+
+    cfg_extra carries a variant's binding config on top of
+    base_config -- the enforce variant's runner_id, without which
+    audience enforce is a documented no-op. It never carries modes;
+    those are the security_block's whole job.
+    """
     tmpdir = tempfile.mkdtemp(prefix="hp-parity-")
     cfg = base_config(tmpdir)
     if security_block is not None:
         cfg["security"] = copy.deepcopy(security_block)
+    if cfg_extra:
+        cfg.update(copy.deepcopy(cfg_extra))
     mails = [raw for _, raw in corpus]
     imap = FakeIMAP(mails)
     smtp = FakeSMTP()
@@ -217,3 +307,7 @@ def all_off_block():
 
 def all_audit_block():
     return {"modes": {f: "audit" for f in _security.FEATURES}}
+
+
+def all_enforce_block():
+    return {"modes": {f: "enforce" for f in _security.FEATURES}}

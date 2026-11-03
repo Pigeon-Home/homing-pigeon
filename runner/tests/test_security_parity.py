@@ -6,6 +6,14 @@ off, and all features audit must produce identical mail outputs.
 At M0 no feature calls sec_decide, so the audit log must stay absent.
 From M6, confinement in audit mode logs would_* decisions; the mail
 outputs must still be identical.
+
+The all-enforce leg (AllEnforceParityTest, 2026-11-02) is the
+locked-down posture prepared as a candidate default: all six modes
+at enforce, with the binding config that gives two of them
+something to bind (a runner_id for audience, a user for job_user).
+Its expectations are recorded per job, not snapshotted: compliant
+jobs still execute, and each violating job is refused by the one
+mode it violates.
 """
 import copy
 import json
@@ -18,13 +26,38 @@ from collections import OrderedDict
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
+try:
+    import pwd
+except ImportError:  # Windows has no pwd; the drop test is POSIX.
+    pwd = None
+
 from runner.tests.security_parity import (  # noqa: E402
+    PARITY_RUNNER_ID,
+    _email,
+    _payload,
     all_audit_block,
+    all_enforce_block,
     all_off_block,
     build_corpus,
     run_variant,
 )
+from runner.guard import sandbox as _sandbox  # noqa: E402
 from runner.guard.security import FEATURES  # noqa: E402
+
+IS_ROOT = hasattr(os, "geteuid") and os.geteuid() == 0
+HAS_TEST_USER = False
+if pwd is not None:
+    try:
+        pwd.getpwnam("pigeon-test")
+        HAS_TEST_USER = True
+    except KeyError:
+        HAS_TEST_USER = False
+# The confinement trial run, once, as in test_confinement: the
+# dedicated sandboxed-execution test below runs only where the
+# sandbox can actually engage here. (The corpus leg's expected
+# confinement decision is keyed to sandbox_available(), the
+# runner's own gate in _confinement_argv.)
+ENGAGES = _sandbox.startup_problem() is None
 
 
 def audit_entry_is_audit_only(entry):
@@ -519,6 +552,244 @@ class ParityTest(unittest.TestCase):
         # The corpus actually exercised the runner.
         self.assertTrue(base["sent"], "corpus produced no mail output")
         self.assertIn("parity-01", base["seen"])
+
+
+def _sent_by_id(run):
+    return {subject.rsplit(" ", 1)[-1]: body
+            for subject, body in run["sent"]}
+
+
+def _audit_entries(run):
+    return [json.loads(line) for line in run["audit_lines"] or []]
+
+
+def _unprefix(seen, runner_id=PARITY_RUNNER_ID):
+    prefix = runner_id + ":"
+    return sorted(k[len(prefix):] if k.startswith(prefix) else k
+                  for k in seen)
+
+
+class AllEnforceParityTest(unittest.TestCase):
+    """The all-enforce leg: every one of the six modes at enforce.
+
+    The expectations below were written from what each mode is
+    FOR, then checked against the run -- not copied from it:
+
+    - A job that complies with every mode produces the same result
+      it produces with the features off (ENFORCE_RESULTS: the exit
+      code and, where the script's output is portable, its stdout).
+    - A job that violates exactly one mode produces no result, is
+      not recorded as seen, and leaves exactly one audit entry:
+      decision "denied", that mode's feature, that mode's reason
+      (ENFORCE_REFUSED). The same job under all-audit produces its
+      result and the matching "would_deny" entry -- the paired
+      control that the denial is the mode's, not the job's shape.
+    - Jobs the base gates already refuse (bad signature, stale,
+      a key policy that forbids the kind) are refused exactly as
+      before, with no security denial added (ENFORCE_NO_RESULT).
+    - The sensor alert is ingested, as before: seen, no result.
+    - confinement and job_user at enforce wrap every exec job that
+      reaches execution (ENFORCE_EXEC_JOBS). Neither is a refusal
+      gate on the poll path: confinement's documented fallback
+      chain runs the job unsandboxed and audits "fallback" when
+      the sandbox cannot engage, and job_user likewise falls back
+      when the drop cannot happen (no root, no such user, or a
+      platform with no setuid demote, where the entry is
+      "unsupported_platform"). The expected decision is therefore
+      keyed to the same capability probes the runner itself uses.
+    """
+
+    # job_id -> (exit_code, stdout/stderr substring or None)
+    ENFORCE_RESULTS = {
+        "parity-01": (0, "pong"),
+        "parity-02": (0, "hello-parity"),
+        "parity-03": (0, None),  # $MYAPP_VAR expansion is shell-shaped
+        "parity-04": (0, None),
+        "parity-05": (-2, "job rejected: each file needs exactly one of"),
+        "parity-06": (0, "hi"),
+        "parity-09": (0, "pong"),  # replay_a; replay_b adds no result
+        "parity-10": (0, "xxxx"),
+        "parity-13": (0, "guarded-ok"),
+    }
+    # Refused before any security mode is consulted, as in every
+    # other variant, and with no security audit entry.
+    ENFORCE_NO_RESULT = {"parity-07", "parity-08", "parity-11"}
+    # job_id -> (feature, reason): refused by that mode alone.
+    ENFORCE_REFUSED = {
+        "parity-14": ("policy_env", "denied_env"),
+        "parity-15": ("policy_args", "arg_pattern_mismatch"),
+        "parity-16": ("policy_files", "file_not_allowed"),
+        "parity-17": ("audience", "runner_id_mismatch"),
+    }
+    # Exec jobs that reach execution under enforce: each carries a
+    # confinement entry and a job_user entry. (parity-05 is refused
+    # by file staging before either wrap is consulted; the refused
+    # jobs above never reach execution at all.)
+    ENFORCE_EXEC_JOBS = {"parity-02", "parity-03", "parity-04",
+                         "parity-06", "parity-10", "parity-13"}
+
+    def _enforce_block(self):
+        block = all_enforce_block()
+        # job_user enforce binds only with a configured user (the
+        # same shape the startup validator requires). The user is
+        # the suite's dedicated test user; where it does not exist
+        # the feature's documented fallback applies and the entry
+        # below says so.
+        block["job_user"] = {"user": "pigeon-test"}
+        return block
+
+    def test_all_enforce_outcomes_match_recorded_expectations(self):
+        corpus = build_corpus()
+        off = run_variant(all_off_block(), corpus)
+        audit = run_variant(all_audit_block(), corpus,
+                            cfg_extra={"runner_id": PARITY_RUNNER_ID})
+        enf = run_variant(self._enforce_block(), corpus,
+                          cfg_extra={"runner_id": PARITY_RUNNER_ID})
+        enf_sent = _sent_by_id(enf)
+        aud_sent = _sent_by_id(audit)
+        enf_entries = _audit_entries(enf)
+        aud_entries = _audit_entries(audit)
+        enf_seen = _unprefix(enf["seen"])
+
+        # Every message was handled exactly once in every variant.
+        self.assertEqual(enf["flagged"], off["flagged"])
+        self.assertEqual(len(enf["flagged"]), len(corpus))
+
+        # Compliant jobs: the same result as with the features off,
+        # byte for byte after normalization (the denied jobs sit
+        # after every compliant one in the corpus, so no result
+        # sequence number shifts), carrying the recorded exit code
+        # and output.
+        off_sent = _sent_by_id(off)
+        for job_id, (exit_code, text) in self.ENFORCE_RESULTS.items():
+            with self.subTest(job_id=job_id):
+                self.assertIn(job_id, enf_sent)
+                self.assertEqual(enf_sent[job_id], off_sent[job_id])
+                self.assertIn('"exit_code":%d' % exit_code,
+                              enf_sent[job_id])
+                if text is not None:
+                    self.assertIn(text, enf_sent[job_id])
+                self.assertIn(job_id, enf_seen)
+        # The replayed second copy produced no second result.
+        self.assertEqual(
+            len([s for s, _ in enf["sent"] if "parity-09" in s]), 1)
+
+        # Pre-security refusals are unchanged and add no denial.
+        for job_id in self.ENFORCE_NO_RESULT:
+            with self.subTest(job_id=job_id):
+                self.assertNotIn(job_id, enf_sent)
+                self.assertNotIn(job_id, enf_seen)
+                self.assertFalse(
+                    [e for e in enf_entries
+                     if e.get("job_id") == job_id
+                     and e.get("decision") == "denied"],
+                    "no security denial may be added for %s" % job_id)
+
+        # The sensor alert is ingested: seen, no result, no denial.
+        self.assertNotIn("parity-12", enf_sent)
+        self.assertIn("parity-12", enf_seen)
+
+        # Each violating job is refused by its own mode, and the
+        # all-audit run of the same job is the paired control: it
+        # executes, with a would_deny entry naming the same
+        # feature and reason.
+        for job_id, (feature, reason) in self.ENFORCE_REFUSED.items():
+            with self.subTest(job_id=job_id):
+                self.assertNotIn(job_id, enf_sent)
+                self.assertNotIn(job_id, enf_seen)
+                denied = [e for e in enf_entries
+                          if e.get("job_id") == job_id
+                          and e.get("decision") == "denied"]
+                self.assertEqual(len(denied), 1, denied)
+                self.assertEqual(denied[0]["feature"], feature)
+                self.assertEqual(denied[0]["reason"], reason)
+                self.assertEqual(denied[0]["mode"], "enforce")
+                self.assertIn(job_id, aud_sent)
+                would = [e for e in aud_entries
+                         if e.get("job_id") == job_id
+                         and e.get("decision") == "would_deny"]
+                self.assertTrue(
+                    any(e["feature"] == feature
+                        and e["reason"] == reason for e in would),
+                    (job_id, would))
+
+        # Those four are the only denials, and enforce never logs
+        # an audit-mode would_* decision.
+        self.assertEqual(
+            {(e["job_id"], e["feature"]) for e in enf_entries
+             if e.get("decision") == "denied"},
+            {(j, f) for j, (f, _r) in self.ENFORCE_REFUSED.items()})
+        self.assertFalse([e for e in enf_entries
+                          if str(e.get("decision", "")).startswith(
+                              "would_")])
+
+        # The seen set is the off variant's, minus the refused
+        # jobs, under the runner_id namespace.
+        self.assertEqual(
+            enf_seen,
+            sorted(j for j in off["seen"]
+                   if j not in self.ENFORCE_REFUSED))
+
+        # confinement and job_user wrapped every exec job that
+        # reached execution, with the decision this machine's
+        # capabilities dictate.
+        conf = {e["job_id"]: e["decision"] for e in enf_entries
+                if e.get("feature") == "confinement"}
+        self.assertEqual(set(conf), self.ENFORCE_EXEC_JOBS)
+        want_conf = ("sandboxed" if _sandbox.sandbox_available()
+                     else "fallback")
+        self.assertEqual(set(conf.values()), {want_conf})
+        ju = {e["job_id"]: e["decision"] for e in enf_entries
+              if e.get("feature") == "job_user"}
+        self.assertEqual(set(ju), self.ENFORCE_EXEC_JOBS)
+        if os.name == "nt":
+            want_ju = "unsupported_platform"
+        elif IS_ROOT and HAS_TEST_USER:
+            want_ju = "run_as"
+        else:
+            want_ju = "fallback"
+        self.assertEqual(set(ju.values()), {want_ju})
+
+    @unittest.skipUnless(IS_ROOT and HAS_TEST_USER and os.name != "nt",
+                         "needs root and the pigeon-test user")
+    def test_enforce_job_user_drop_runs_the_job_as_the_job_user(self):
+        # The real drop, on the real (signed, poll_once) path: the
+        # job's own uid report is the job user's, and the audit
+        # entry says run_as.
+        corpus = [("whoami", _email(_payload(
+            "parity-drop", kind="exec", script="id -u",
+            runner_id=PARITY_RUNNER_ID)))]
+        enf = run_variant(self._enforce_block(), corpus,
+                          cfg_extra={"runner_id": PARITY_RUNNER_ID})
+        sent = _sent_by_id(enf)
+        self.assertIn("parity-drop", sent)
+        uid = pwd.getpwnam("pigeon-test").pw_uid
+        self.assertIn('"stdout":"%d' % uid, sent["parity-drop"])
+        entries = [e for e in _audit_entries(enf)
+                   if e.get("feature") == "job_user"
+                   and e.get("job_id") == "parity-drop"]
+        self.assertEqual([e["decision"] for e in entries], ["run_as"])
+
+    @unittest.skipUnless(ENGAGES,
+                         "sandbox cannot engage on this machine "
+                         "(startup probe)")
+    def test_enforce_confinement_sandboxes_a_compliant_job(self):
+        # The real sandbox, on the real path: a compliant exec job
+        # runs inside bwrap and the audit entry says sandboxed.
+        corpus = [("confined", _email(_payload(
+            "parity-conf", kind="exec", script="echo confined-ok",
+            runner_id=PARITY_RUNNER_ID)))]
+        enf = run_variant(all_enforce_block(), corpus,
+                          cfg_extra={"runner_id": PARITY_RUNNER_ID})
+        sent = _sent_by_id(enf)
+        self.assertIn("parity-conf", sent)
+        self.assertIn('"exit_code":0', sent["parity-conf"])
+        self.assertIn("confined-ok", sent["parity-conf"])
+        entries = [e for e in _audit_entries(enf)
+                   if e.get("feature") == "confinement"
+                   and e.get("job_id") == "parity-conf"]
+        self.assertEqual([e["decision"] for e in entries],
+                         ["sandboxed"])
 
 
 if __name__ == "__main__":
