@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.138 - 2026-11-03
+
+- Germany bank 54: 2,308 entries, 0 crashes, 10 new runs.
+
 ## 3.15.137 - 2026-11-03
 
 - Tests: the strict shape for the Decision 1 family — a mode at enforce on a platform or in an environment that cannot enforce it refuses startup, naming the mode and the key, with no step-down to audit; the negative is pinned at the single decision point for all 6 features on both platform shapes.
