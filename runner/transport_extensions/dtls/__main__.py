@@ -7,13 +7,18 @@ Config (handed over by the runner):
                 the kernel for a free port)
         bind    local address to bind (default "0.0.0.0" --
                 this transport LISTENS, unlike the others;
-                it is off unless enabled in `transports`)
+                it is off unless enabled in `transports`).
+                The bind value is also the IPv6 switch: an
+                IPv6 literal ("::", "::1", ...) opens an
+                AF_INET6 listener; IPv4 is the default and
+                IPv6 is off unless an IPv6 bind is configured.
         Either one present but not usable (a port that is not
-        a whole number 0..65535, a bind that is not an address
-        string) is a startup config error: the extension
-        refuses to start and names the key. An address is
-        never substituted (docs/design/present-but-invalid-
-        config.md, the refuse class).
+        a whole number 0..65535, a bind that is not an IPv4
+        or IPv6 address) is a startup config error: the
+        extension refuses to start and names the key. An
+        address is never substituted
+        (docs/design/present-but-invalid-config.md, the
+        refuse class).
     dtls_greeting (top-level runner key, handed over for this
     extension): the platform disclosure tier --
         none / family (default) / standard / full
@@ -53,6 +58,7 @@ done/ here threw the only copy away, and the seen-set would
 not run the job again.
 """
 
+import ipaddress
 import json
 import os
 import platform
@@ -200,8 +206,11 @@ def listen_port(cfg):
 
 def bind_address(cfg):
     """transport_dtls.bind: default 0.0.0.0 when absent; a config
-    error when present but not an address string. The empty
-    string is every interface."""
+    error when present but not an IPv4 or IPv6 address. The
+    empty string is every interface. The value is an address
+    literal, never a name: a string the address parser cannot
+    read is refused here, naming the key, rather than failing
+    later at the socket wearing the wrong label."""
     if not isinstance(cfg, dict) or "bind" not in cfg:
         return "0.0.0.0"
     raw = cfg["bind"]
@@ -209,7 +218,24 @@ def bind_address(cfg):
         raise RuntimeError(
             "config error: transport_dtls.bind must be an address "
             "string, not %s" % _shown(raw))
-    return raw.strip() or "0.0.0.0"
+    text = raw.strip() or "0.0.0.0"
+    try:
+        ipaddress.ip_address(text)
+    except ValueError:
+        raise RuntimeError(
+            "config error: transport_dtls.bind must be an IPv4 "
+            "or IPv6 address, not %s" % _shown(raw))
+    return text
+
+
+def bind_family(bind):
+    """The socket family for a validated bind address:
+    AF_INET6 when the literal is IPv6, AF_INET otherwise.
+    IPv6 is off by default -- only an IPv6 bind value,
+    configured on purpose, turns it on."""
+    return (socket.AF_INET6
+            if ipaddress.ip_address(bind).version == 6
+            else socket.AF_INET)
 
 
 class DtlsPipe:
@@ -239,7 +265,8 @@ class DtlsPipe:
             platform_for=lambda session: build_platform_payload(
                 self.tier, self.cfg),
             log=ch.log)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock = socket.socket(bind_family(self.bind),
+                                  socket.SOCK_DGRAM)
         # bind is config, default every interface. This is how jobs arrive.
         # codeql[py/bind-socket-all-network-interfaces]
         self.sock.bind((self.bind, self.port))
@@ -381,8 +408,10 @@ def main(argv=None):
     except (OSError, TypeError, ValueError) as e:
         ch.log(f"dtls transport: cannot listen: {e!r}", "ERROR")
         return 2
+    shown_bind = (f"[{pipe.bind}]" if ":" in pipe.bind
+                  else pipe.bind)
     ch.log(f"dtls transport: listening on udp "
-           f"{pipe.bind}:{pipe.port}; platform disclosure "
+           f"{shown_bind}:{pipe.port}; platform disclosure "
            f"tier {tier}")
     while True:
         try:
