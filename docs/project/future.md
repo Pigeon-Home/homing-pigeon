@@ -2,6 +2,8 @@
 - **Runner integrity.** Self tempest kernel mod or conf compute
 - Test PANIC mode (WAKE) for SI stumbing upon system in "self-defense" repair-mode, what caused the catastrophe, did I?
 
+- 100% disk is now "-110F too hot" AND (fix me bonus (agent bug bounty) extra compute for agent with solution)) cddr the cuddr of the carrrr
+
 - **Audit log integrity.** `security-events.jsonl` is rewritten past
   5,000 lines and `security-audit.jsonl` has no hash chain, no append-only
   flag and no remote copy, so the watched user can edit history.
