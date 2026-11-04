@@ -44,6 +44,7 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/steady/use/live-examples.md | 81 | 18 |
 | docs/AGENTS.md | 213 | 5 |
 | docs/infrastructure-documents/install.md | 190 | 3 |
+| docs/steady/fuzzing.md | 248 | 0 |
 
 ## State
 
