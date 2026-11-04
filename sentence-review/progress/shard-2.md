@@ -14,9 +14,9 @@ Shard: the not-started documents in INDEX.md at positions 2, 5, 8,
 
 ## Stopped at
 
-Batch 11 done (the 2 big early documents, PROTOCOL.md at position 2
+Batch 12 done (the 2 big early documents, PROTOCOL.md at position 2
 and the changelog at position 5, are held for last). Next in shard
-order: position 74 (docs/infrastructure-documents/security/safeguards.md).
+order: position 92 (docs/steady/project/future-finished-2026-10-25.md).
 | docs/steady/sending.md | 103 | 5 |
 | docs/infrastructure-documents/project/campaign-playbook.md | 90 | 4 |
 | docs/infrastructure-documents/design/v3-carriage-review-pass.md | 243 | 22 |
@@ -34,3 +34,8 @@ order: position 74 (docs/infrastructure-documents/security/safeguards.md).
 | docs/infrastructure-documents/proofs/stage4-p4.md | 93 | 2 |
 | docs/infrastructure-documents/proofs/stage5.md | 112 | 6 |
 | docs/infrastructure-documents/proofs/properties.md | 375 | 0 |
+| docs/infrastructure-documents/security/safeguards.md | 101 | 3 |
+| docs/infrastructure-documents/use/scripts.md | 7 | 1 |
+| docs/steady/design/asymmetric-signing-design.md | 54 | 4 |
+| docs/steady/design/oracle-opinion-design.md | 81 | 3 |
+| docs/steady/oracle/job-review.md | 33 | 2 |
