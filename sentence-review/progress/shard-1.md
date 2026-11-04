@@ -33,6 +33,7 @@ flagged, as phase 1 did.
 | docs/infrastructure-documents/security/threat-model.md | 32 | 0 | 26 | 6 |
 | docs/infrastructure-documents/project/duplication-audit.md | 131 | 0 | 131 | 0 |
 | docs/infrastructure-documents/oracle/configuring-oracle.md | 244 | 1 | 239 | 5 |
+| docs/infrastructure-documents/design/v3-sentence-review.md | 293 | 11 | 290 | 3 |
 
 ## Remaining in this shard (in shard order)
 
@@ -93,6 +94,6 @@ docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.m
 
 ## Stopped at
 
-16 documents done, 1,102 units. Next in line: the 2
-infrastructure design sentence reviews (positions 22 and 25,
-347 and 293 units), then the remaining proofs documents.
+17 documents done, 1,395 units. Next in line: the v1-v2
+sentence review (position 22, 347 units), then the remaining
+proofs documents.
