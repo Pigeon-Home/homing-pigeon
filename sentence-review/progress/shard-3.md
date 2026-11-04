@@ -52,7 +52,10 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/infrastructure-documents/extend/worker-agents.md | 48 | 0 |
 | docs/infrastructure-documents/project/testing.md | 66 | 5 |
 | docs/infrastructure-documents/proofs/readme.md | 95 | 0 |
-| docs/infrastructure-documents/proofs/stage10.md | 30 | 0 |
+| docs/infrastructure-documents/proofs/stage10.md | 57 | 0 |
+| docs/infrastructure-documents/proofs/stage4-p2.md | 76 | 1 |
+| docs/infrastructure-documents/proofs/stage4-p5.md | 92 | 1 |
+| docs/infrastructure-documents/proofs/stage7.md | 68 | 0 |
 
 ## State
 
