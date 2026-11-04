@@ -30,7 +30,7 @@ Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 
 ```
 Use the Homing Pigeon protocol (pigeon-home.ai)
-Send an email to YOUR@RUNNER.EMAIL
+Send an email to YOUR@RUNNER.EMAIL (reply_to self)
 Shared Secret: "YOUR_SECRET_STRING"
 Run a job that retrieves the system clock and then display it here.
 ```
