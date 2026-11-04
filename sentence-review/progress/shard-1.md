@@ -61,6 +61,10 @@ flagged, as phase 1 did.
 | docs/steady/reports/v3.13.27-coverage-gaps.md | 51 | 1 | 51 | 0 |
 | docs/steady/reports/v3.13.38-coverage-gaps.md | 25 | 1 | 24 | 1 |
 | docs/steady/reports/v3.15.1-coverage.md | 65 | 2 | 65 | 0 |
+| docs/steady/reports/v3.13.29-coverage.md | 75 | 7 | 75 | 0 |
+| docs/steady/reports/v3.13.8-coverage-gaps.md | 57 | 1 | 57 | 0 |
+| docs/steady/reports/v3.13.42-coverage.md | 78 | 7 | 78 | 0 |
+| docs/steady/reports/v3.7.30-coverage.md | 84 | 2 | 84 | 0 |
 
 ## Remaining in this shard (in shard order)
 
@@ -121,7 +125,7 @@ docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.m
 
 ## Stopped at
 
-44 documents done, 3,117 units. Next in line: the remaining
-coverage reports (v3.12.20 at 373 units, v3.13.29, v3.13.42,
-v3.13.8-gaps, v3.7.30), then the big prose documents and the
-use trio.
+48 documents done, 3,411 units. Next in line: v3.12.20-coverage
+(373 units), the use trio, security-test-plan, then the big
+prose documents (constraints, goals, shotgun-queue,
+contributing, de_dust2) and the 3 IETF drafts.
