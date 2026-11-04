@@ -1,5 +1,6 @@
 
-- **Runner integrity.** Self tempest kernel mod or conf compute
+- **Runner integrity.** Self tempest kernel mod (conf compute v2 hompo) as a self-hosted confidentially computed fuzzing-As-A-Service platform as a service platform black box dist with no infra
+
 - Test PANIC mode (WAKE) for SI stumbing upon system in "self-defense" repair-mode, what caused the catastrophe, did I?
 
 - 100% disk is now "-110F too hot" AND (fix me bonus (agent bug bounty) extra compute for agent with solution)) cddr the cuddr of the carrrr
