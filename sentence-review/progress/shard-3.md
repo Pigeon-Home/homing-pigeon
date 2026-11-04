@@ -26,6 +26,9 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/infrastructure-documents/proofs/content-rung-cap.md | 48 | 0 |
 | docs/infrastructure-documents/proofs/content-rung-5000.md | 44 | 0 |
 | docs/infrastructure-documents/proofs/stage6-cap.md | 51 | 1 |
+| docs/steady/reports/v3.15.1-coverage-gaps.md | 103 | 1 |
+| docs/steady/design/agent-stamp-design.md | 49 | 3 |
+| docs/steady/reports/audit-2026-10-15.md | 100 | 0 |
 
 ## State
 
