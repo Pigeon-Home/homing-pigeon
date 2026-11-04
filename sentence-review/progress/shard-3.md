@@ -46,6 +46,7 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/infrastructure-documents/install.md | 190 | 3 |
 | docs/steady/fuzzing.md | 248 | 0 |
 | docs/steady/present-but-invalid-config.md | 46 | 1 |
+| docs/steady/start-here.md | 190 | 0 |
 
 ## State
 
