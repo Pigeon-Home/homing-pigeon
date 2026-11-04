@@ -51,6 +51,8 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/infrastructure-documents/design/v3-dtls-over-email-plan.md | 168 | 0 |
 | docs/infrastructure-documents/extend/worker-agents.md | 48 | 0 |
 | docs/infrastructure-documents/project/testing.md | 66 | 5 |
+| docs/infrastructure-documents/proofs/readme.md | 95 | 0 |
+| docs/infrastructure-documents/proofs/stage10.md | 30 | 0 |
 
 ## State
 
