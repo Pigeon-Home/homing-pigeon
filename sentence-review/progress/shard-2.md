@@ -14,5 +14,7 @@ Shard: the not-started documents in INDEX.md at positions 2, 5, 8,
 
 ## Stopped at
 
-Position 14 of the shard (docs/steady/sending.md) not yet begun in
-this batch; work continues in shard order.
+Batch 2 done. Next in shard order: position 23
+(docs/infrastructure-documents/design/v3-carriage-review-pass.md).
+| docs/steady/sending.md | 103 | 5 |
+| docs/infrastructure-documents/project/campaign-playbook.md | 90 | 4 |
