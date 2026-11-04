@@ -14,9 +14,9 @@ Shard: the not-started documents in INDEX.md at positions 2, 5, 8,
 
 ## Stopped at
 
-Batch 8 done (the 2 big early documents, PROTOCOL.md at position 2
+Batch 9 done (the 2 big early documents, PROTOCOL.md at position 2
 and the changelog at position 5, are held for last). Next in shard
-order: position 50 (docs/infrastructure-documents/proofs/stage10-1048576.md).
+order: position 53 (docs/infrastructure-documents/proofs/stage4-p4.md).
 | docs/steady/sending.md | 103 | 5 |
 | docs/infrastructure-documents/project/campaign-playbook.md | 90 | 4 |
 | docs/infrastructure-documents/design/v3-carriage-review-pass.md | 243 | 22 |
@@ -27,3 +27,7 @@ order: position 50 (docs/infrastructure-documents/proofs/stage10-1048576.md).
 | docs/infrastructure-documents/proofs/dtls-over-email-v3.md | 162 | 1 |
 | docs/infrastructure-documents/proofs/stage3.md | 137 | 4 |
 | docs/infrastructure-documents/proofs/thinking.md | 127 | 0 |
+| docs/infrastructure-documents/proofs/stage10-1048576.md | 36 | 2 |
+| docs/infrastructure-documents/proofs/stage6-rung500.md | 39 | 2 |
+| docs/infrastructure-documents/proofs/stage7-5000.md | 32 | 2 |
+| docs/infrastructure-documents/proofs/stage8.md | 46 | 0 |
