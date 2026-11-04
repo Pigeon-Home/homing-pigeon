@@ -46,6 +46,13 @@ flagged, as phase 1 did.
 | docs/infrastructure-documents/security/model-and-proof-testing.md | 110 | 0 | 110 | 0 |
 | docs/steady/project/industry-map.md | 72 | 0 | 65 | 7 |
 | docs/steady/proofs/verify-v31.md | 120 | 1 | 120 | 0 |
+| docs/steady/reports/ci-failures.md | 70 | 1 | 58 | 12 |
+| docs/steady/reports/germany-control-2026-10-27.md | 25 | 0 | 25 | 0 |
+| docs/steady/reports/guard-wire-oracle-2026-10-27.md | 24 | 3 | 24 | 0 |
+| docs/steady/reports/live-2026-10-25-readme.md | 35 | 0 | 35 | 0 |
+| docs/steady/reports/mutation.md | 59 | 0 | 58 | 1 |
+| docs/steady/reports/release-blocked-windows.md | 87 | 1 | 87 | 0 |
+| docs/steady/reports/v3.14.46-release-retrospective.md | 40 | 1 | 39 | 1 |
 
 ## Remaining in this shard (in shard order)
 
@@ -106,6 +113,6 @@ docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.m
 
 ## Stopped at
 
-29 documents done, 2,487 units. Next in line: the big prose
-documents (constraints 285, goals 247, shotgun-queue 400,
-contributing 279, de_dust2 215), then the steady reports.
+36 documents done, 2,827 units. Next in line: the coverage
+reports, then the big prose documents (constraints, goals,
+shotgun-queue, contributing, de_dust2) and the use trio.
