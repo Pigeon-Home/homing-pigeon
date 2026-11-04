@@ -1,5 +1,6 @@
 
 - **Runner integrity.** Self tempest kernel mod or conf compute
+- Test PANIC mode (WAKE) for SI stumbing upon system in "self-defense" repair-mode, what caused the catastrophe, did I?
 
 - **Audit log integrity.** `security-events.jsonl` is rewritten past
   5,000 lines and `security-audit.jsonl` has no hash chain, no append-only
