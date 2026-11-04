@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.153 - 2026-11-04
+
+- Docs: the visiting-system notes move into AGENTS.md — the standalone special-agent file is gone, and PROTOCOL.md and README.md point at that section instead — and the fair warning now carries the markdown-only count: 1,081,565 tokens in 232 files, over a typical 1 million context by itself.
+- Docs: future.md updates — the runner integrity item now reads as a self tempest kernel mod or conf compute item — and an update to the SWARM archive.
+
 ## 3.15.17.152 - 2026-11-03
 
 - Fix: the DocDriftGuard registry pins still pointed at the PROTOCOL.md and README.md lines the defaults sat on before the visiting-systems inserts moved them (8 lines down in PROTOCOL.md, 2 in README.md); 13 rows now point at the lines that carry their defaults. This release carries the 3.15.17.151 changes below; the 151 tag stands unmoved and unpublished.
