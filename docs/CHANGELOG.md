@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.151 - 2026-11-03
+
+- Docs: a fair warning for visiting systems about the repository's token size — 17 million tokens, more than a visiting system can hold in view at once — and the policy of measuring security in tokens, the token figure riding in every version number. Notes written for visiting systems live at docs/project/special-agent.md, and the duplication audit holds duplicate or latent code at under 5% of the tree.
+
 ## 3.15.17.150 - 2026-11-03
 
 - Fix: the version4 standing test pinned the release counter at 148, the value the 3.15.148 conversion carried over, so every later release failed it. The conversion stays pinned by the convert_legacy tests with fixed inputs; the standing test now asserts the shape every release keeps. This release carries the 3.15.17.149 changes below; the 149 tag stands unmoved and unpublished.
