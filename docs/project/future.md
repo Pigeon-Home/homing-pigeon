@@ -24,44 +24,17 @@
   checks only the mode bits (0600 or a warning) and never reads a POSIX
   ACL, so a `+` entry granting another user read passes as 0600.
 
-- **Credentials encrypted at rest.** `config.json`, or the
-  `shared_secret_file` it points at, holds the shared secret in the
-  clear, and the mailbox app password or the OAuth refresh token and
-  client secret sit beside it the same way.
-
 - **A signing key for the Oracle**, so its opinion can be a signed
   statement from an authenticated party. `docs/oracle/job-review.md`.
 
 - **A firewall ruleset hash**, and a check after each job that its
   network cage held. Only the on/off posture line exists.
 
-- **Post-quantum DTLS.** A hybrid key exchange for the DTLS binding,
-  whose X25519 ephemeral is the one quantum-exposed piece (DRU; draft
-  Section 22.1).
-
-- **DTLS over the store-and-forward transports.** An optional
-  software suite feature: carry the DTLS session's datagrams over
-  the email binding (or another store-and-forward pipe) instead of
-  a live UDP path. The mailbox poll still fetches anything
-  under the pigeon subject, and a flight is told from a job
-  by its own subject. A local harness carries one datagram
-  per message through `send_mail` and `fetch_job_mails`,
-  completes a handshake, and delivers a ping
-  (`docs/proofs/dtls-over-mailbox.md`). It does not open a
-  real mailbox, and it does not carry a job. The work still
-  ahead is a carriage a deployment can turn on.
-  A superintelligent system will be able to use the suite's
-  Python scripts to carry out the DTLS tunneling over email
-  itself.
-
-- **Ed25519 signatures** instead of the shared HMAC secret, so a leaked
-  secret is not root. `docs/design/asymmetric-signing-design.md`.
-
 - **An approval gate (M10)**, a human yes before a job runs, for the
   jobs a policy names. `docs/design/approval-gate-design.md`.
 
 - **Board delegation over ping** Ping reply carries the box's open task
-  board, so the cloud SI can submit work.
+  board, so the cloud SI can submit work ?
   
 - **Other** A distributed ledger for file flow and boards, answers,
   onion, or BitTorrent and/or blockchain execution broker with embed
