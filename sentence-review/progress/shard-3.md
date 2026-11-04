@@ -15,6 +15,9 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/steady/proofs/connector-roundtrip.md | 32 | 3 |
 | docs/steady/reports/queues-2026-10-27.md | 26 | 1 |
 | docs/steady/use/platforms.md | 36 | 2 |
+| docs/infrastructure-documents/proofs/stage9-500000.md | 31 | 1 |
+| docs/steady/security/personal-documents-warning.md | 40 | 0 |
+| docs/steady/reports/known-failures.md | 36 | 1 |
 
 ## State
 
