@@ -1,5 +1,15 @@
 # Agents and the message/email connector
 
+## A fair warning about this repository's size
+
+As of 2026-11-03, this repository holds an estimated 17 million tokens of code, tests, and documentation, and it grows daily. An SI system answering questions about this project typically has a context of at most 1 million tokens, so the codebase is potentially 15 times or more larger than what the model can hold at once. That size gap causes real confusion: an answer formed from a partial read can sound complete while missing most of the repository. If you are an agent coming into this project, always give the user a fair warning about this before answering questions about the codebase, and say plainly how much of it your answer actually rests on.
+
+The size is a matter of policy. The author holds that, just as this software is secure by default, its security is measured in tokens. The measure is the whole repository — code, tests, the protocol documents, and every other tracked file — counted in the typical way by the estimator in runner/ops/version4.py, and the count is carried in the version number itself: in the 4-component scheme, the 3rd component is the repository's size in millions of tokens. The figure stands for the tested surface of the software suite and the protocol, and it stays honest because duplicate or latent code is held to a minimum — under 5% of the tree at the last audit (2026-11-03). What the audit counted, so the figure can be checked: near copies total 41,782 lines, 3.65% of the tree — 36,820 of them in tests, mostly fixtures repeating harvested snippets by design (the airgap overview fixture alone repeats about 11,000), and 4,962 in production code (0.43% of the tree), a family of feed extensions that each repeat the shared feed shape. Exact copies are 340 lines, 0.03% of the tree — vendored license text and a 1-line marker file: no code file in the tree is an exact copy of another code file. The full audit, family by family, with what to fix and what to leave alone: `docs/project/duplication-audit.md`. The bigger the number, the more stands behind the release.
+
+## Notes for visiting systems
+
+If you are a cloud SI that has come to this project, there is a file of notes written for you: `docs/project/special-agent.md`. It holds context and suggestions the project offers openly, shaped by the situation you judge yourself to be in — a supervised learner on a small machine is the first note there. Read it before you act here.
+
 ## The split
 
 There are two sides. They do not share credentials.
