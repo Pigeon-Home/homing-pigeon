@@ -35,7 +35,7 @@
   jobs a policy names. `docs/design/approval-gate-design.md`.
 
 - **Board delegation over ping** Ping reply carries the box's open task
-  board, so the cloud SI can submit work ?
+  board, so the cloud SI can submit work ?? Yes, with reverse secret given only to SI?
   
 - **Other** A distributed ledger for file flow and boards, answers,
   onion, or BitTorrent and/or blockchain execution broker with embed
