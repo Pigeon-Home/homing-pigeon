@@ -29,6 +29,8 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/steady/reports/v3.15.1-coverage-gaps.md | 103 | 1 |
 | docs/steady/design/agent-stamp-design.md | 49 | 3 |
 | docs/steady/reports/audit-2026-10-15.md | 100 | 0 |
+| docs/steady/reports/local-rig-2026-10-27-coverage-gaps.md | 109 | 1 |
+| docs/steady/reports/report.md | 55 | 5 |
 
 ## State
 
