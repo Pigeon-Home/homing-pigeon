@@ -1,5 +1,5 @@
 
-- **Runner integrity.** Self tempest kernel mod
+- **Runner integrity.** Self tempest kernel mod or conf compute
 
 - **Audit log integrity.** `security-events.jsonl` is rewritten past
   5,000 lines and `security-audit.jsonl` has no hash chain, no append-only
