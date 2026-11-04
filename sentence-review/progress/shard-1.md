@@ -20,11 +20,13 @@ flagged, as phase 1 did.
 | docs/ietf/draft-slutsky-homing-pigeon/status.md | 5 | 0 | 5 | 0 |
 | docs/steady/networking.md | 37 | 3 | 37 | 0 |
 | docs/steady/project/telephone-pole-words.md | 7 | 0 | 7 | 0 |
+| docs/steady/emergency.md | 66 | 2 | 66 | 0 |
+| docs/steady/secret-rotation.md | 55 | 1 | 52 | 3 |
+| docs/steady/verification.md | 42 | 0 | 42 | 0 |
 
 ## Remaining in this shard (in shard order)
 
 AGENTS.md; docs/ietf/status.md; docs/steady/emergency.md;
-docs/steady/secret-rotation.md; docs/steady/verification.md;
 docs/infrastructure-documents/design/v1-v2-sentence-review.md;
 docs/infrastructure-documents/design/v3-sentence-review.md;
 docs/infrastructure-documents/oracle/configuring-oracle.md;
@@ -81,6 +83,5 @@ docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.m
 
 ## Stopped at
 
-Batch 1 landed the 3 smallest documents first to pin the format
-against phase 1. Next in line: docs/steady/emergency.md, then the
-rest in shard order.
+6 documents done. Next in line: docs/ietf/status.md (108 units),
+then AGENTS.md, then the rest in shard order.
