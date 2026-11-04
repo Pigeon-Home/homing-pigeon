@@ -23,6 +23,9 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/steady/reports/san-francisco-rig-2026-10-28.md | 29 | 2 |
 | docs/infrastructure-documents/proofs/stage6-surfaces.md | 37 | 2 |
 | docs/steady/reports/germany-rig-driving-2026-10-27.md | 47 | 1 |
+| docs/infrastructure-documents/proofs/content-rung-cap.md | 48 | 0 |
+| docs/infrastructure-documents/proofs/content-rung-5000.md | 44 | 0 |
+| docs/infrastructure-documents/proofs/stage6-cap.md | 51 | 1 |
 
 ## State
 
