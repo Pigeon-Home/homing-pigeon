@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.150 - 2026-11-03
+
+- Fix: the version4 standing test pinned the release counter at 148, the value the 3.15.148 conversion carried over, so every later release failed it. The conversion stays pinned by the convert_legacy tests with fixed inputs; the standing test now asserts the shape every release keeps. This release carries the 3.15.17.149 changes below; the 149 tag stands unmoved and unpublished.
+
 ## 3.15.17.149 - 2026-11-03
 
 - IETF drafts: the folder is organized 1 folder per draft — each draft keeps its living text in source/ and its frozen posted revisions in submitted/, the shared delta and trim records sit in notes/, and a status file per draft sits under the top STATUS.md cover.
