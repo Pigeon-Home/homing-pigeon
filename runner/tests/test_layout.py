@@ -36,15 +36,15 @@ RETIRED = {
     "extensions": "runner/extensions/",
     "cloud": "runner/cloud/",
     "cloudflare": "runner/cloud/queues-worker/",
-    "hardening": "docs/security/hardening/",
+    "hardening": "docs/steady/security/",
     "docker": ".github/docker/",
     "Dockerfile": ".github/docker/Dockerfile",
     ".dockerignore": ".github/docker/Dockerfile.dockerignore",
     ".gitattributes": "runner/extensions/.gitattributes",
     "requirements-ci.txt": ".github/requirements-ci.txt",
     "pyrefly.toml": "[tool.pyrefly] in pyproject.toml",
-    "CONTRIBUTING.md": "docs/CONTRIBUTING.md",
-    "CHANGELOG.md": "docs/CHANGELOG.md",
+    "CONTRIBUTING.md": "docs/steady/project/contributing.md",
+    "CHANGELOG.md": "docs/infrastructure-documents/changelog.md",
     "tests": "runner/tests/",
     "tools": "runner/tools/ (the CI scripts), runner/tests/airgap/ (the work area)",
     ".github/tools": "runner/tools/",
@@ -72,7 +72,7 @@ STALE = [
     (re.compile(r'["\']\.github["\'],\s*["\']tools["\']'),
      '"runner", "tools"'),
     (re.compile(_EDGE + r"hardening/(systemd|apparmor|selinux|README|windows)"),
-     "docs/security/hardening/"),
+     "docs/steady/security/"),
     (re.compile(_EDGE + r"docker/(entrypoint|minimal-userland)"),
      ".github/docker/"),
     # the FAQ moved to the root (the owner's own page, 2026-10-26)
@@ -85,8 +85,8 @@ STALE = [
      '"runner", "tools"'),
     (re.compile(r'(?<!"runner", )(?:(?<=, )|(?<=join\())["\']cloud["\']'
                 r'(?=\s*[,)])'), '"runner", "cloud"'),
-    (re.compile(r'(?<!"docs", )(?<!"security", )(?<=, )["\']hardening["\'](?=\s*[,)])'),
-     '"docs", "security", "hardening"'),
+    (re.compile(r'(?<!"docs", )(?<!"steady", )(?<=, )["\']hardening["\'](?=\s*[,)])'),
+     '"docs", "steady", "security"'),
     # the suite: a file path, a module id, a discovery start, a join
     (re.compile(_EDGE + r"tests/(test_\w+\.py|defaults_registry|conftest"
                 r"|security_parity|archive/|airgap/)"), "runner/tests/"),
@@ -101,9 +101,20 @@ STALE = [
 # History is kept as it was written; vendored upstream bytes are pinned.
 _SKIP_DIRS = {".git", "__pycache__", "mutants", "build", "dist",
               ".hypothesis", ".mypy_cache", ".ruff_cache"}
-_SKIP_PREFIXES = ("docs/archive/", "docs/reports/",
-                  "runner/tests/airgap/archive/")
-_SKIP_FILES = {"docs/CHANGELOG.md", "runner/tests/test_layout.py"}
+_SKIP_PREFIXES = ("docs/archive/", "docs/steady/reports/",
+                  "docs/steady/specimens/", "runner/tests/airgap/archive/")
+_SKIP_FILES = {"docs/infrastructure-documents/changelog.md",
+               "runner/tests/test_layout.py",
+               # Dated records the reorganization moved out of
+               # docs/archive/ into the steady drawers; their text
+               # still names the paths of their day, as written.
+               "docs/steady/project/roadmap-spec.md",
+               "docs/steady/proofs/connector-roundtrip.md",
+               "docs/steady/proofs/verify-v31.md",
+               "docs/steady/security/hardening_report.md",
+               "docs/steady/security/security-test-plan.md",
+               "docs/steady/use/docker.md",
+               "docs/steady/use/handoff-local-si.md"}
 _TEXT = (".py", ".md", ".sh", ".yml", ".yaml", ".toml", ".json", ".txt",
          ".cmd", ".ps1", ".cfg", ".ini", ".te", ".service")
 
@@ -143,22 +154,23 @@ class RootLayoutTest(unittest.TestCase):
         import subprocess
         out = subprocess.run(["git", "ls-files", "docs"], cwd=REPO,
                              capture_output=True, text=True).stdout.split()
-        skip = ("docs/archive/", "docs/reports/", "docs/ietf/",
-                "docs/design/idea321/", "docs/security/hardening/",
-                "docs/specimens/")
+        skip = ("docs/archive/", "docs/steady/reports/", "docs/ietf/",
+                "docs/steady/specimens/")
         bad = [f for f in out if f.endswith(".md")
                and not f.startswith(skip)
+               and os.path.dirname(f) != "docs"
                and os.path.basename(f) not in ("CHANGELOG.md", "CONTRIBUTING.md")
                and os.path.basename(f) != os.path.basename(f).lower()]
         self.assertEqual(bad, [])
 
     def test_the_moved_homes_exist(self):
         for rel in ("runner/extensions", "runner/cloud/send_job.py",
-                    "runner/tools", "docs/security/hardening",
+                    "runner/tools", "docs/steady/security",
                     ".github/docker/Dockerfile",
                     ".github/requirements-ci.txt",
                     "runner/extensions/.gitattributes",
-                    "docs/CONTRIBUTING.md", "docs/CHANGELOG.md",
+                    "docs/steady/project/contributing.md",
+                    "docs/infrastructure-documents/changelog.md",
                     "runner/tests/__init__.py", "runner/tests/airgap"):
             with self.subTest(path=rel):
                 self.assertTrue(os.path.exists(

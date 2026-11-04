@@ -350,7 +350,7 @@ def build_parser():
     g.add_argument("--diagnose", action="store_true",
                    help="run the diagnostic harness against this "
                         "config and exit (see "
-                        "docs/use/local-si-test.md)")
+                        "docs/steady/use/local-si-test.md)")
     g.add_argument("--diagnose-timeout", type=int, default=None,
                    metavar="SECONDS",
                    help="with --diagnose: seconds to wait for "

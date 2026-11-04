@@ -2,7 +2,8 @@
 """Bank one rig's de_dust corpus into main, under the bank contract.
 
 The contract is section M item 7 of the campaign standing orders
-(docs/project/campaign-standing-orders.md): corpus entry files
+(docs/infrastructure-documents/project/campaign-standing-orders.md):
+corpus entry files
 merge by union on the entry id; runs.jsonl merges by union,
 stable-sorted on when, with exactly one header line; totals
 quoted in a ledger line come from the merged tree; grow numbers
@@ -40,7 +41,7 @@ Usage:
 
 Exit codes: 0 banked (or nothing new to bank), 2 refusal of
 shape, 3 torn read past the tail, 4 the push did not land,
-75 a muster holds (docs/seats/muster.hold stands on main): nothing
+75 a muster holds (docs/infrastructure-documents/seats/muster.hold stands on main): nothing
 merged, nothing pushed, retry next cycle (Q109).
 """
 
@@ -60,7 +61,7 @@ CAMPAIGN = "de_aztec"
 
 STAMP = "00000000-muse-7e57-d0c5-58316a922026"
 REPO_URL = "https://github.com/Pigeon-Home/homing-pigeon.git"
-ORDERS_REL = "docs/project/campaign-standing-orders.md"
+ORDERS_REL = "docs/infrastructure-documents/project/campaign-standing-orders.md"
 CORPUS_REL = "runner/tests/de_dust"
 
 
@@ -469,7 +470,7 @@ def _git(args, cwd, pat=None):
 
 
 HOLD_EXIT = 75
-"""Exit when docs/seats/muster.hold stands on main: retry next cycle."""
+"""Exit when docs/infrastructure-documents/seats/muster.hold stands on main: retry next cycle."""
 
 
 def muster_holds(clone):
@@ -478,7 +479,7 @@ def muster_holds(clone):
     The flag is the file's presence (Q109). A line in status.txt is a
     seat's own line and does not carry a global hold.
     """
-    return os.path.exists(os.path.join(clone, "docs", "seats", "muster.hold"))
+    return os.path.exists(os.path.join(clone, "docs", "infrastructure-documents", "seats", "muster.hold"))
 
 
 def _mkdtemp(prefix):

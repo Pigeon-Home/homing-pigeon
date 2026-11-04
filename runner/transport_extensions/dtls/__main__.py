@@ -17,7 +17,7 @@ Config (handed over by the runner):
         or IPv6 address) is a startup config error: the
         extension refuses to start and names the key. An
         address is never substituted
-        (docs/design/present-but-invalid-config.md, the
+        (docs/steady/present-but-invalid-config.md, the
         refuse class).
     dtls_greeting (top-level runner key, handed over for this
     extension): the platform disclosure tier --
@@ -244,12 +244,12 @@ class DtlsPipe:
     def __init__(self, cfg, channel_dir):
         self.cfg = cfg
         self.channel = channel_dir
-        # docs/oracle/configuring-oracle.md: dtls_greeting default family
+        # docs/infrastructure-documents/oracle/configuring-oracle.md: dtls_greeting default family
         # (a value that is not a tier reads as the default), and
         # transport_dtls.port default 20220, bind default 0.0.0.0
         # when the key is absent. The port and the bind address are
         # addressing values, the refuse class of
-        # docs/design/present-but-invalid-config.md: present but not
+        # docs/steady/present-but-invalid-config.md: present but not
         # usable is a config error that names the key, never a
         # substituted address ("2O220" must not listen on 20220).
         # Port 0 is usable: it asks the kernel for a free port. An

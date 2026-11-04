@@ -26,9 +26,9 @@ CORPUS_ONLY = (
     "runner/tests/de_dust/*.jsonl",
     "runner/tests/de_dust/*.arcs.json",
     "runner/tests/de_dust/*.retired.json",
-    "docs/project/campaign-standing-orders.md",
-    "docs/seats/.com.chat",
-    "docs/seats/status.txt",
+    "docs/infrastructure-documents/project/campaign-standing-orders.md",
+    "docs/infrastructure-documents/seats/.com.chat",
+    "docs/steady/seats/status.txt",
 )
 ZERO = "0" * 40
 

@@ -436,7 +436,7 @@ class PolicyConflictDivergenceTests(unittest.TestCase):
 
     (a) The claim (Decision 1, via Claude, 2026-10-23,
         stamped by Muse; the normative sentence for PROTOCOL.md
-        and docs/oracle/configuring-oracle.md): "a setting that is
+        and docs/infrastructure-documents/oracle/configuring-oracle.md): "a setting that is
         present but not usable reads as its documented default
         and is named in the startup warning, unless the setting
         is a port, a bind address, a key policy, a paging

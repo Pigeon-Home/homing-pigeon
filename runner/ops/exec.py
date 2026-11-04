@@ -60,7 +60,7 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     if cap < 0:
         cap = 0
     timeout = _runner()._inference_timeout(cfg)
-    # docs/oracle/configuring-oracle.md: agent_wall_clock_sec default 300. A
+    # docs/infrastructure-documents/oracle/configuring-oracle.md: agent_wall_clock_sec default 300. A
     # boolean is not a wall clock (true once gave the agent loop one
     # second).
     wall_clock = _confval.integer(cfg.get("agent_wall_clock_sec"),
@@ -644,7 +644,7 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     except Exception:
         owner = ""
     _runner()._cancel.register(job_id, owner, proc)
-    # Remediation watches the run (docs/design/remediation-design.md).
+    # Remediation watches the run (docs/steady/design/remediation-design.md).
     # A monitor that fails to start changes nothing: the job runs
     # exactly as it did before remediation existed.
     monitor = None

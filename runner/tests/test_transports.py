@@ -1830,7 +1830,7 @@ class ChannelEdgeTest(unittest.TestCase):
             self.assertTrue(any("cannot move" in m for m in lines))
 
     def test_a_failed_ack_must_roll_back_probe(self):
-        # FAILING BY DESIGN -- Q25 in docs/seats/questions.md.
+        # FAILING BY DESIGN -- Q25 in docs/steady/seats/questions.md.
         #
         # (1) The claim, from service_channel's code and
         # docstring in runner/wire/transports.py: "rollback

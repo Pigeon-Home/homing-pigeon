@@ -1,7 +1,7 @@
 # Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab
 """The agent stamp record matches the tree.
 
-docs/archive/RESEARCHER_IDENT.md lists every agent stamp and, in its
+docs/archive/researcher_ident.md lists every agent stamp and, in its
 status table, whether each is active or recycled and who carries a
 recycled stamp's roles. This holds that record honest: every stamp
 written after a stamp label anywhere in the tracked tree is listed,
@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-IDENT = ROOT / "docs" / "archive" / "RESEARCHER_IDENT.md"
+IDENT = ROOT / "docs" / "archive" / "researcher_ident.md"
 UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 # The campaigns seat's named stamp (registered 2026-10-27 at the
 # conductor's word): a zero block, the seat's name, and hex for the

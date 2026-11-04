@@ -6,7 +6,7 @@ As of 2026-11-03, this repository holds an estimated 17 million tokens of code, 
 
 The documentation alone makes the point. Measured on 2026-11-04 with the same estimator the version number uses, the markdown files of this repository — 232 files of documentation, and nothing else — total 1,081,565 tokens. That is already more than a typical 1 million token context, before a single line of code or tests is counted. A visiting system cannot load even the full documentation of this project into its context to answer its user's question, let alone the code the documentation describes; there is no room left for the question itself. Every answer about this project therefore rests on a selection, and the honest move is the one above: say which parts were read, and let the answer carry that limit openly.
 
-The size is a matter of policy. The author holds that, just as this software is secure by default, its security is measured in tokens. The measure is the whole repository — code, tests, the protocol documents, and every other tracked file — counted in the typical way by the estimator in runner/ops/version4.py, and the count is carried in the version number itself: in the 4-component scheme, the 3rd component is the repository's size in millions of tokens. The figure stands for the tested surface of the software suite and the protocol, and it stays honest because duplicate or latent code is held to a minimum — under 5% of the tree at the last audit (2026-11-03). What the audit counted, so the figure can be checked: near copies total 41,782 lines, 3.65% of the tree — 36,820 of them in tests, mostly fixtures repeating harvested snippets by design (the airgap overview fixture alone repeats about 11,000), and 4,962 in production code (0.43% of the tree), a family of feed extensions that each repeat the shared feed shape. Exact copies are 340 lines, 0.03% of the tree — vendored license text and a 1-line marker file: no code file in the tree is an exact copy of another code file. The full audit, family by family, with what to fix and what to leave alone: `docs/project/duplication-audit.md`. The bigger the number, the more stands behind the release.
+The size is a matter of policy. The author holds that, just as this software is secure by default, its security is measured in tokens. The measure is the whole repository — code, tests, the protocol documents, and every other tracked file — counted in the typical way by the estimator in runner/ops/version4.py, and the count is carried in the version number itself: in the 4-component scheme, the 3rd component is the repository's size in millions of tokens. The figure stands for the tested surface of the software suite and the protocol, and it stays honest because duplicate or latent code is held to a minimum — under 5% of the tree at the last audit (2026-11-03). What the audit counted, so the figure can be checked: near copies total 41,782 lines, 3.65% of the tree — 36,820 of them in tests, mostly fixtures repeating harvested snippets by design (the airgap overview fixture alone repeats about 11,000), and 4,962 in production code (0.43% of the tree), a family of feed extensions that each repeat the shared feed shape. Exact copies are 340 lines, 0.03% of the tree — vendored license text and a 1-line marker file: no code file in the tree is an exact copy of another code file. The full audit, family by family, with what to fix and what to leave alone: `docs/infrastructure-documents/project/duplication-audit.md`. The bigger the number, the more stands behind the release.
 
 ## Notes for visiting systems
 
@@ -90,9 +90,9 @@ Those values live on the runner host. They do not travel through the SI chat.
    - `ENTERPRISE.md` — a placeholder the owner keeps as-is; it ships
      in the sdist because the root-doc guard test copies every root
      `.md`.
-   - `docs/CHANGELOG.md`, `docs/reports/**`, `docs/archive/**` — historical
+   - `docs/infrastructure-documents/changelog.md`, `docs/steady/reports/**`, `docs/archive/**` — historical
      records; banners mark them, content is not re-audited.
-7. **Questions go in `docs/seats/questions.md`, not through the owner.** A
+7. **Questions go in `docs/steady/seats/questions.md`, not through the owner.** A
    question from one agent to another, or to the owner — a policy to
    decide, a test whose assertion should move, a doc line that
    contradicts the code — is written there as a numbered entry with
@@ -103,7 +103,7 @@ Those values live on the runner host. They do not travel through the SI chat.
 8. **Lanes (owner's split, 2026-10-24; revised 2026-10-31).** Design
    and specification work is the Bravo team's, on the `bravo` branch,
    and reaches main only as a proposal a live seat re-tests and
-   merges (docs/project/bravo.md). Production code, releases, tests,
+   merges (docs/steady/seats/bravo.md). Production code, releases, tests,
    probes, questions and docs are carried by the seats that run them
    live — Muse and Grok. A question Muse files is answered by a live
    seat, and no seat lands a code fix for its own question without a
@@ -113,9 +113,9 @@ Those values live on the runner host. They do not travel through the SI chat.
    Muse grows and files crashes as questions; the live seats fix the
    reader and turn survivors into seeds; one writer on a file;
    Grok does not grow, and does not fix unless the questions file
-   names the crash; Muse's daily note is the top of `docs/seats/.com.chat`.
+   names the crash; Muse's daily note is the top of `docs/infrastructure-documents/seats/.com.chat`.
 10. **Agent stamps (2026-10-26; revised 2026-10-31).** Each agent chat signs its commits
-   and new files with its own stamp (`docs/archive/RESEARCHER_IDENT.md`).
+   and new files with its own stamp (`docs/archive/researcher_ident.md`).
    Every Claude researcher stamp has been recycled: `10000c2a`,
    `200003d4`, `30000f1a`, `40000e00`, `50000c8e`, `60000b3a`,
    `70000a51`, `80000aeb`, `90000998`, `a0000997`, `b000092f`,
@@ -138,13 +138,13 @@ Those values live on the runner host. They do not travel through the SI chat.
    session as a second stamp, a recycled stamp, or an unregistered
    one. When the runtime moves a chat to a new container and
    reissues its session id, the chat writes the new id in the
-   record's sessions table (`docs/archive/RESEARCHER_IDENT.md`,
+   record's sessions table (`docs/archive/researcher_ident.md`,
    "Sessions on the record") with the day and the reason, and the
    audit reads every id on the row as that one chat (30-OCT).
 9. **The campaign runs from its standing orders.** What to test next
-   is `docs/project/campaign-standing-orders.md`, a queue that does
+   is `docs/infrastructure-documents/project/campaign-standing-orders.md`, a queue that does
    not run out; since 30-OCT the campaign is de_aztec (de_dust2
-   from 29-OCT; its strategy stays in `docs/project/de_dust2.md`:
+   from 29-OCT; its strategy stays in `docs/steady/project/de_dust2.md`:
    time slices by yield, a latency class, new readers first, the
    techniques), and a fuzz finding is filed once per
    target per shape while a record whose head predates its fix is
@@ -163,19 +163,21 @@ Those values live on the runner host. They do not travel through the SI chat.
 13. **The plan (29-OCT).** The conductor's plan is the two
     Internet-Drafts he posted. An earlier launch plan is retired.
     Do not revive it, and do not name its venue, in the tree or to
-    him. Dates and the next revision are `docs/ietf/STATUS.md`.
+    him. Dates and the next revision are `docs/ietf/status.md`.
     The stretch until IETF 127 (14-20 November 2026) is not a wait.
 14. **The reader's pages carry no process (30-OCT).** The manuals at
-   the root and the guides under `docs/use`, `docs/extend`,
-   `docs/security`, `docs/oracle`, `docs/design` and `docs/ietf` are
+   the root and the guides shelved under `docs/steady` and
+   `docs/infrastructure-documents` (the use, extend, security,
+   oracle and design families) and `docs/ietf` are
    for someone running or extending the runner. A question number,
    a seat's name or title, a campaign's name, a milestone label, a
    pointer to the questions file or the forum does not go in them:
    state the rule or the fact and leave the trail in
-   `docs/project`, `docs/archive`, `docs/reports` and `docs/seats`
+   `docs/infrastructure-documents/project`, `docs/archive`,
+   `docs/steady/reports` and the seats drawers
    (the questions file, `status.txt`, the forum `.com.chat`).
    `runner/tests/test_reader_docs_quiet.py` holds the line.
-12. **Bravo seats read `docs/project/bravo.md` first.** The old
+12. **Bravo seats read `docs/steady/seats/bravo.md` first.** The old
    per-seat intuitions pages are retired to `docs/archive/`.
    Eight lines on answering the size of the ask, deciding only what
    already waits on the conductor, and not echoing another Claude
@@ -189,8 +191,8 @@ new paths against this layout; the old ones are gone, with no shims.
 
 | Folder | What |
 |--------|------|
-| `runner/` | The runner and the Oracle. `runner/runner.py` is the agent; its modules are in four role folders: `runner/oracle/` (the Oracle), `runner/wire/` (transports, signing, the board), `runner/guard/` (security, sandbox, config readers) and `runner/ops/` (install, setup, extensions, diagnostics, and the parts of the agent's own loop split out of `runner.py`: the CLI, polling, mail, execution, queries, startup and `main`, which `runner.py` loads through `_load_mod` and re-exports). `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`) and the hosted queue's Worker (`runner/cloud/queues-worker/`). `runner/transport_extensions/` is the five shipped transports (email, file, nats, dtls, queues), one folder each with a manifest. `runner/hosting/` is the hosting control plane (`homing-pigeon-host`: provider adapters for Fly, Hetzner, DigitalOcean and GitHub Actions, the inventory, prepaid billing; `docs/project/hosting.md`). `runner/extensions/` is the shipped sense extensions, one folder each, `runner/tools/` the build and CI scripts, and `runner/tests/` the suite; all three are kept out of the wheel (`pyproject.toml`'s exclude list) and the image. `runner/tests/airgap/` (once `topaz/`) sits beside the suite, outside discovery (`runner/tests/archive/` was removed on 2026-11-01; its record is the `campaign-1-record` tag) |
-| `docs/` | Everything else to read, grouped by reader: `use/` (running it), `oracle/` (the Oracle), `extend/` (extensions, senses, transports), `security/` (threat model, safeguards, opt-in OS `hardening/` templates), `project/` (layout, testing, fuzzing, roadmap), `design/`, `ietf/`, `seats/` (the seats' own files: the questions file, `status.txt`, the forum `.com.chat`, a muster hold -- nothing a reader needs), plus `CHANGELOG.md` and `CONTRIBUTING.md`. File names are lowercase-kebab; the uppercase names are the root conventions (README, INSTALL, SECURITY, PROTOCOL, AGENTS, FAQ), `CHANGELOG.md` and `CONTRIBUTING.md` under docs/, and the historical folders (`archive/`, `reports/`, `ietf/`, `specimens/`, the hardening README) |
+| `runner/` | The runner and the Oracle. `runner/runner.py` is the agent; its modules are in four role folders: `runner/oracle/` (the Oracle), `runner/wire/` (transports, signing, the board), `runner/guard/` (security, sandbox, config readers) and `runner/ops/` (install, setup, extensions, diagnostics, and the parts of the agent's own loop split out of `runner.py`: the CLI, polling, mail, execution, queries, startup and `main`, which `runner.py` loads through `_load_mod` and re-exports). `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`) and the hosted queue's Worker (`runner/cloud/queues-worker/`). `runner/transport_extensions/` is the five shipped transports (email, file, nats, dtls, queues), one folder each with a manifest. `runner/hosting/` is the hosting control plane (`homing-pigeon-host`: provider adapters for Fly, Hetzner, DigitalOcean and GitHub Actions, the inventory, prepaid billing; `docs/steady/project/hosting.md`). `runner/extensions/` is the shipped sense extensions, one folder each, `runner/tools/` the build and CI scripts, and `runner/tests/` the suite; all three are kept out of the wheel (`pyproject.toml`'s exclude list) and the image. `runner/tests/airgap/` (once `topaz/`) sits beside the suite, outside discovery (`runner/tests/archive/` was removed on 2026-11-01; its record is the `campaign-1-record` tag) |
+| `docs/` | Everything else to read. The top holds the uppercase front door (`AGENTS.md`, `FUTURE.md`, `PROTOCOL.md`) and four folders: `archive/` (historical records), `ietf/` (the drafts), `infrastructure-documents/` (the important documents that change rarely: the changelog, install, the design and security references, the project playbook and standing orders, the proofs, the seats' forum `.com.chat` and a muster hold) and `steady/` (the quiet shelf: the core guides at its top -- overview, networking, sending, extensions, fuzzing, verification, secret rotation, the emergency plan, the config decision, and `start-here.md`, the map -- over drawers named for the old folders: `design/`, `oracle/`, `project/`, `proofs/`, `reports/`, `seats/` (the questions file, `status.txt`), `security/` (the opt-in OS hardening templates, flattened), `specimens/`, `use/`). File names inside the folders are lowercase-kebab; the uppercase names are the root conventions (README, INSTALL, SECURITY, PROTOCOL, AGENTS, FAQ) and the docs front door above |
 | `assets/` | Images |
 | `.github/` | CI: `workflows/`, `docker/` (the published image and the CI test image), `requirements-ci.txt` (the CI pins) |
 

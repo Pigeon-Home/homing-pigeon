@@ -117,7 +117,7 @@ def _mail(payload, secret=SECRET, body=None):
 
 
 # The campaign rig's eight scripts, in its rotation
-# (docs/use/live-examples.md: 19,227 of them over three days). The
+# (docs/steady/use/live-examples.md: 19,227 of them over three days). The
 # rig's `shadow` read /etc/shadow as root and returned it; here the
 # probe reads zero bytes, so the permission path runs (exit 0 as
 # root, 1 otherwise) and no account data lands in a temp folder.

@@ -1109,7 +1109,7 @@ def _apply_keep_alive(cfg, payload):
     Ollama unloads after a few idle minutes, and the next question
     then pays a multi-minute cold start. Explicit config wins; the
     Ollama default port gets a keep-alive without any config
-    (docs/oracle/configuring-oracle.md, `keep_alive`). One place for both
+    (docs/infrastructure-documents/oracle/configuring-oracle.md, `keep_alive`). One place for both
     ask paths: the plain ask used to build its payload without this
     and cold-started on the main query-answer path.
     """
@@ -2922,7 +2922,7 @@ def _check_script_path(script_path, root):
                           "directory")
 
 # ---------------------------------------------------------------- remediation
-# The acts are core (docs/design/remediation-design.md): only the runner
+# The acts are core (docs/steady/design/remediation-design.md): only the runner
 # holds the process tree, the workdir, and the result channel.
 # runner/oracle/remediation.py holds the policy; the glue below wires
 # the live probes in. Everything here is best-effort: a broken

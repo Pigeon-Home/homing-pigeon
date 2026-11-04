@@ -9,7 +9,7 @@ offline forever. The tests that replay them are in
 
 - **run1** — mail session `v3-live-4`, job `v3-live-job-4`.
   The live mailbox run recorded in
-  `docs/proofs/dtls-over-email-v3.md`: a full handshake with
+  `docs/infrastructure-documents/proofs/dtls-over-email-v3.md`: a full handshake with
   a HelloRetryRequest, the family platform card carried
   in-handshake, a signed and encrypted ping executed once,
   and the result returned inside the session. 18 mails.

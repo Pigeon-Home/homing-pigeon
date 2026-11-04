@@ -4,7 +4,7 @@
 # the proofs on every push and names the controls that have none.
 # Agent-Stamp: 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c
 """The roster is the ledger for queues S and R of
-docs/project/campaign-standing-orders.md (owner's target, Q24,
+docs/infrastructure-documents/project/campaign-standing-orders.md (owner's target, Q24,
 2026-10-25): an item there is done when its entry here lists tests
 that run and pass on the leg where the control applies.
 

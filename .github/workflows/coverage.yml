@@ -4,9 +4,10 @@ name: coverage
 # The map of code no test runs, on Linux and Windows, kept current.
 # Percentages say how much ran; runner/tools/coverage_gaps.py says
 # what did not, by function, which is what a test is written against
-# and what a campaign hunt aims at (docs/reports/v3.12.65/
-# coverage-gaps.md, docs/seats/questions.md Q11 on). Signal, not a gate:
-# it never blocks a build or a release. The gaps report is uploaded
+# and what a campaign hunt aims at (docs/steady/reports/
+# coverage-gaps.md, docs/steady/seats/questions.md Q11 on). Signal,
+# not a gate: it never blocks a build or a release. The gaps report
+# is uploaded
 # per platform and its ten largest gaps are annotated on the run.
 #
 # On a schedule, not on push (the conductor, 2026-10-27): with a

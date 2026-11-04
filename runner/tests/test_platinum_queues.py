@@ -1,7 +1,7 @@
 """Project Platinum, cycle 2: the queues transport extension.
 
 Targets from the cycle-1 refreshed table
-(`docs/reports/v3.13.21/coverage-gaps.md`):
+(`docs/steady/reports/v3.13.21-coverage-gaps.md`):
 
   logic  transport_extensions/queues/__main__.py:main (5) --
          the refusal with no channel directory, a clean pass,

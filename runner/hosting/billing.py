@@ -6,7 +6,7 @@ card after the fact.
 
 DORMANT. Nothing in the runner, the Worker or the CLI calls this
 module yet; it is tested so it is ready, not because it runs. It is
-wired in only when a user asks to pay (docs/project/hosting.md,
+wired in only when a user asks to pay (docs/steady/project/hosting.md,
 "Not yet"), and the price table is a placeholder until then.
 
 Amounts are integer cents. Stripe signatures are verified with the
@@ -23,7 +23,7 @@ import time
 
 # Cents. Linux resident is a flat monthly rate per machine; ephemeral
 # targets are per minute. Placeholder values: the operator sets the
-# real table outside the code (docs/project/hosting.md, "Billing").
+# real table outside the code (docs/steady/project/hosting.md, "Billing").
 PRICES = {
     "linux-resident": {"unit": "month", "cents": 500},
     "linux-ephemeral": {"unit": "minute", "cents": 1},

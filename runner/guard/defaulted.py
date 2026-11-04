@@ -1,6 +1,6 @@
 """Which present settings read as their documented default.
 
-Decision 1 (docs/design/present-but-invalid-config.md): an unusable
+Decision 1 (docs/steady/present-but-invalid-config.md): an unusable
 value reads as the documented default, and the runner says so
 instead of doing it silently. This module is the one place that
 knows which top-level settings are default-class and what usable

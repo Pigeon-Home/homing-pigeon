@@ -8,8 +8,9 @@ operates on -- the initial retransmission interval SHOULD be
 at least 2 of the implementation's mailbox poll periods, and
 an attempt SHOULD be given up after about 8 retransmissions.
 
-The sentence-by-sentence review (docs/design/
-v3-sentence-review.md, rows 67 and 68) found the reference
+The sentence-by-sentence review
+(docs/infrastructure-documents/design/v3-sentence-review.md,
+rows 67 and 68) found the reference
 core did neither: its first retransmission interval is 1.0
 second whatever the poll period is, and it bounds an attempt
 by 60 seconds of wall clock (6 retransmissions), not by

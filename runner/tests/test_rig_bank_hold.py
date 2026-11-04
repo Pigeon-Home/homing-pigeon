@@ -47,7 +47,7 @@ def _run(when, entries_after):
 class _Git:
     """git, scripted: a clone writes a main with one entry, a push is
     refused `refuse` times, and `hold_at` names the step after which
-    main carries docs/seats/muster.hold."""
+    main carries docs/infrastructure-documents/seats/muster.hold."""
 
     def __init__(self, refuse=0, hold_at=None):
         self.calls = []
@@ -56,7 +56,7 @@ class _Git:
         self.clone = None
 
     def _hold(self):
-        path = os.path.join(self.clone, "docs", "seats", "muster.hold")
+        path = os.path.join(self.clone, "docs", "infrastructure-documents", "seats", "muster.hold")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         open(path, "w").close()
 
@@ -65,7 +65,7 @@ class _Git:
         self.calls.append(verb)
         if verb == "clone":
             self.clone = args[-1]
-            os.makedirs(os.path.join(self.clone, "docs", "project"))
+            os.makedirs(os.path.join(self.clone, "docs", "infrastructure-documents", "project"))
             with open(os.path.join(self.clone, RB.ORDERS_REL), "w",
                       encoding="utf-8") as fh:
                 fh.write(ORDERS)

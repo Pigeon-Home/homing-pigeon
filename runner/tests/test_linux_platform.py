@@ -1943,7 +1943,7 @@ class InstallModeFuzzTest(unittest.TestCase):
 
 
 _HARDENING = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "docs", "security", "hardening")
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "docs", "steady", "security")
 _POLICY_TOKENS = ("@PYTHON@", "@RUNNER_DIR@", "@BASE_DIR@", "@CONFIG@", "@USER@")
 
 
@@ -2017,16 +2017,16 @@ def re_caps(text):
 
 class LinuxPolicyTest(unittest.TestCase):
     NAMES = (
-        "apparmor/homing-pigeon",
-        "systemd/homing-pigeon.service",
-        "selinux/homing_pigeon.te",
+        "homing-pigeon",
+        "homing-pigeon.service",
+        "homing_pigeon.te",
     )
 
     def test_shipped_policies_stay_in_complain_and_drop_capabilities(self):
         for name in self.NAMES:
             text = _policy(name)
             self.assertTrue(_policy_ok(name, text), name)
-        unit = _policy("systemd/homing-pigeon.service")
+        unit = _policy("homing-pigeon.service")
         self.assertIn("CapabilityBoundingSet=\n", unit)
         self.assertIn("AmbientCapabilities=\n", unit)
         self.assertNotIn("CapabilityBoundingSet=CAP_", unit)
@@ -2046,7 +2046,7 @@ class LinuxPolicyTest(unittest.TestCase):
                 self.assertNotIn(token, "\n".join(
                     line for line in rendered.splitlines()
                     if not line.lstrip().startswith(("#", "!"))))
-        raw = _policy("apparmor/homing-pigeon")
+        raw = _policy("homing-pigeon")
         for bad in ("", "python3", "/usr/bin/python3\n/tmp/x rw,",
                     "/opt/{x}", "/opt/@X@", "/opt/a b", "p igeon"):
             with self.assertRaises(ValueError):

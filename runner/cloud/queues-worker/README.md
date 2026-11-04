@@ -2,8 +2,8 @@
 
 <!-- Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f -->
 
-The Cloudflare side of the `queues` transport (`docs/extend/transports.md`,
-"Queues"; `docs/project/hosting.md`, Phase 2). One Worker fronts one
+The Cloudflare side of the `queues` transport (`docs/infrastructure-documents/extend/transports.md`,
+"Queues"; `docs/steady/project/hosting.md`, Phase 2). One Worker fronts one
 Durable Object per tenant: the tenant's job queue, result box and
 quota counters in one transactional store.
 

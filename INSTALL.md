@@ -22,7 +22,7 @@ docker run -d --name pigeon --restart unless-stopped \
   ghcr.io/pigeon-home/homing-pigeon:latest
 ```
 
-No Python, no git, nothing else. See [DOCKER.md](docs/archive/DOCKER.md) for
+No Python, no git, nothing else. See [DOCKER.md](docs/steady/use/docker.md) for
 dry-run mode, config options, and updating.
 
 ### The Python floor on older enterprise distributions
@@ -384,7 +384,7 @@ and that board does not need Python either.
    (step 5 above), and on Windows `install.exe --check` prints the key
    ids this runner holds and never the values (elsewhere,
    `send_job.py key-id --secret <secret>`). Rotation and the policy
-   details: `docs/use/secret-rotation.md`, PROTOCOL.md section 14.
+   details: `docs/steady/secret-rotation.md`, PROTOCOL.md section 14.
 
 **From source** (needs Python 3.9+):
 
@@ -466,7 +466,7 @@ the simulation used.
 ---
 
 Whichever path you pick, **verify** with the clock check from
-[docs/use/runbook.md](docs/use/runbook.md) Job 7. If the runner replies with the time,
+[docs/steady/use/use-runbook.md](docs/steady/use/use-runbook.md) Job 7. If the runner replies with the time,
 you're live.
 
 > **Note:** the runner re-reads `config.json` every poll cycle and

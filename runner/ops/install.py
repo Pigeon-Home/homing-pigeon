@@ -1711,8 +1711,9 @@ BUILTIN_PROFILES = {
         "max_result_view": "attested",
         "judge": "advisory",
     },
-    # A box somebody else provisions for a tenant (docs/project/
-    # hosting.md): password-only's redaction and ceiling, plus the
+    # A box somebody else provisions for a tenant (docs/steady/
+    # project/hosting.md): password-only's redaction and ceiling,
+    # plus the
     # sandbox enforced, the audience check auditing, and no local
     # signal listener (nothing else runs on a hosted box). The
     # workspace root and runner_id come from the one-blob config
@@ -2358,7 +2359,7 @@ def apply_profile(cfg_path: str, profile: str) -> None:
 
 # --- sense collectors -------------------------------------------------
 #
-# The collectors docs/extend/senses.md names as sense suppliers: the
+# The collectors docs/steady/oracle/senses.md names as sense suppliers: the
 # installer can set them up next to the runner, and the matching
 # runner/extensions/<name>-feed producer turns each one's
 # output into signed alerts. The measured comparison behind
@@ -2540,7 +2541,7 @@ def install_collectors(names, args) -> list:
                 line = _install_collector_windows(name, args)
             else:
                 line = (f"collector {name}: no install channel "
-                        f"on this platform; see docs/extend/senses.md")
+                        f"on this platform; see docs/steady/oracle/senses.md")
         except Exception as e:
             line = f"collector {name}: install failed: {e}"
         lines.append(line)
@@ -2796,7 +2797,7 @@ def _install_collector_linux(name, args) -> str:
                 f"enroll against manager {args.wazuh_manager}. "
                 f"Its alerts live on that manager, not on this "
                 f"box; wazuh-feed reads an alerts.json the "
-                f"owner lands here (see docs/extend/senses.md).")
+                f"owner lands here (see docs/steady/oracle/senses.md).")
     return f"collector {name}: unknown collector"
 
 
@@ -2839,7 +2840,7 @@ def _install_collector_darwin(name, args) -> str:
                 "installer does not fetch. sysmon-feed reads "
                 "its events once it is in place.")
     return (f"collector {name}: no first-class macOS install "
-            f"channel in this installer; see docs/extend/senses.md "
+            f"channel in this installer; see docs/steady/oracle/senses.md "
             f"for what upstream offers.")
 
 
@@ -2893,7 +2894,7 @@ def _install_collector_windows(name, args) -> str:
                 f"live on that manager; wazuh-feed reads an "
                 f"alerts.json the owner lands on this box.")
     return (f"collector {name}: Linux/BSD-only upstream; no "
-            f"Windows install channel. See docs/extend/senses.md.")
+            f"Windows install channel. See docs/steady/oracle/senses.md.")
 
 
 # --- collector health (the --check rows) ------------------------------
@@ -3170,7 +3171,7 @@ def collector_health_rows(facts) -> list:
     if not inst.get("wazuh"):
         rows.append(("wazuh", "ABSENT",
                      "not installed (it needs a manager; see "
-                     "docs/extend/senses.md)"))
+                     "docs/steady/oracle/senses.md)"))
     elif not facts.get("wazuh_manager"):
         rows.append(("wazuh", "INSTALLED-BUT-CANNOT-RUN",
                      "agent installed with no manager configured: "
@@ -3497,7 +3498,7 @@ def main() -> int:
                         "--inference-model still wins.")
     g = ap.add_argument_group(
         "collectors",
-        "Sense collectors (docs/extend/senses.md) set up next to\n"
+        "Sense collectors (docs/steady/oracle/senses.md) set up next to\n"
         "the runner on a fresh install. On an existing\n"
         "install, naming collectors performs just that\n"
         "setup and exits, like --inference-only.")

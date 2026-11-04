@@ -2,7 +2,7 @@
 # Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
 """Decision 1 startup family: one test per config field.
 
-Decision 1 (docs/design/present-but-invalid-config.md, settled
+Decision 1 (docs/steady/present-but-invalid-config.md, settled
 2026-10-23): a present-but-invalid config value REFUSES startup
 when the wrong value changes who can reach the box, what it will
 execute, or what it protects -- ports and bind addresses, key

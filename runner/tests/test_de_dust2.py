@@ -1,5 +1,5 @@
 # Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587
-"""Campaign de_dust2 (docs/project/de_dust2.md): the tool's side.
+"""Campaign de_dust2 (docs/steady/project/de_dust2.md): the tool's side.
 
 P1 and P2: under --minutes each target's rounds come from a time
 slice and its measured rate, the slice tilted by the target's recent
@@ -574,11 +574,11 @@ class CiScopeTest(unittest.TestCase):
                                        "runner/tests/de_dust/runs.jsonl",
                                        "runner/tests/de_dust/query.arcs.json",
                                        "runner/tests/de_dust/query.retired.json",
-                                       "docs/project/campaign-standing-orders.md",
-                                       "docs/seats/.com.chat", "docs/seats/status.txt", ""]))
+                                       "docs/infrastructure-documents/project/campaign-standing-orders.md",
+                                       "docs/infrastructure-documents/seats/.com.chat", "docs/steady/seats/status.txt", ""]))
         self.assertFalse(C.corpus_only(["runner/tests/de_dust/query.jsonl",
                                         "runner/tools/de_dust_corpus.py"]))
-        self.assertFalse(C.corpus_only(["docs/seats/questions.md"]))
+        self.assertFalse(C.corpus_only(["docs/steady/seats/questions.md"]))
         self.assertFalse(C.corpus_only(["runner/tests/de_dust/queries.crashes.jsonl",
                                         "PROTOCOL.md"]))
         self.assertFalse(C.corpus_only([]))

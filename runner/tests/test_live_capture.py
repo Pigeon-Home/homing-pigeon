@@ -1,8 +1,9 @@
 # Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab
 """The live capture: honest docs, a clean scrub, and the runner reads it.
 
-docs/reports/live-2026-10-25/ is three days of a real box. This holds
-it to four promises:
+The live capture (was docs/reports/live-2026-10-25/, now shelved
+flat in docs/steady/reports and docs/steady/specimens) is three
+days of a real box. This holds it to four promises:
 
 1. The capture stays small and whole. The release snapshot carries
    every tracked file onto every box, so the 19,227 campaign records
@@ -11,7 +12,8 @@ it to four promises:
 2. The scrub holds across every file, not only runner.log: no address
    outside the example domains, no other home directory, no key but
    AWS's published dummy, no password hash.
-3. docs/use/live-examples.md quotes, it does not paraphrase: every
+3. docs/steady/use/live-examples.md quotes, it does not paraphrase:
+   every
    line in a sourced excerpt is a line of the file it names, and its
    facts block is what runner/tools/live_capture.py computes.
 4. The runner's own readers take the real files: the learning ledger
@@ -33,8 +35,33 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
-LIVE = os.path.join(ROOT, "docs", "reports", "live-2026-10-25")
-PAGE = os.path.join(ROOT, "docs", "use", "live-examples.md")
+# The capture's files, at the homes the docs reorganization gave
+# them: the text files in the reports drawer, the data files in
+# the specimens drawer, flat.
+CAPTURE_FILES = [
+    "docs/steady/reports/audit-report-since-7d.txt",
+    "docs/steady/reports/audit-report.txt",
+    "docs/steady/reports/job-campaign.txt",
+    "docs/steady/reports/job-connector-test.txt",
+    "docs/steady/reports/live-2026-10-25-readme.md",
+    "docs/steady/reports/mutation-survivors.txt",
+    "docs/steady/reports/posture.txt",
+    "docs/steady/reports/result-campaign.txt",
+    "docs/steady/reports/result-connector-test.txt",
+    "docs/steady/reports/rig-facts.txt",
+    "docs/steady/reports/transport-extensions-email-inbox-done.txt",
+    "docs/steady/reports/transport-extensions-email-outbox-done.txt",
+    "docs/steady/specimens/campaign-results.jsonl.gz",
+    "docs/steady/specimens/canary-watch.json",
+    "docs/steady/specimens/oracle-learning.jsonl",
+    "docs/steady/specimens/runner.log",
+    "docs/steady/specimens/security-events.jsonl",
+    "docs/steady/specimens/transport-extensions-file-inbox-done.txt.gz",
+    "docs/steady/specimens/transport-extensions-file-outbox-done.txt.gz",
+    "docs/steady/specimens/transport-file-inbox-done.txt.gz",
+    "docs/steady/specimens/transport-file-outbox.txt.gz",
+]
+PAGE = os.path.join(ROOT, "docs", "steady", "use", "live-examples.md")
 
 
 def _load_tool():
@@ -51,9 +78,8 @@ SIZE_BUDGET = 8 * 1024 * 1024
 
 
 def _all_files():
-    for dirpath, _dirs, names in os.walk(LIVE):
-        for name in names:
-            yield os.path.join(dirpath, name)
+    for rel in CAPTURE_FILES:
+        yield os.path.join(ROOT, *rel.split("/"))
 
 
 def _text_of(path):
@@ -66,7 +92,10 @@ def _text_of(path):
 
 class CaptureLayoutTest(unittest.TestCase):
     def test_the_records_are_one_file_in_loop_order(self):
-        self.assertFalse(os.path.exists(os.path.join(LIVE, "campaign-results")))
+        self.assertTrue(os.path.isfile(
+            LC.path("campaign-results.jsonl.gz")))
+        self.assertFalse(os.path.isdir(os.path.join(
+            LC.CAPTURE_DATA, "campaign-results")))
         self.assertEqual(len(RECORDS), 19227)
         names = [r["name"] for r in RECORDS]
         self.assertEqual(len(set(names)), len(names))
@@ -99,7 +128,7 @@ class ScrubTest(unittest.TestCase):
     def test_every_file_is_scrubbed(self):
         for path in _all_files():
             text = _text_of(path)
-            rel = os.path.relpath(path, LIVE)
+            rel = os.path.relpath(path, ROOT)
             with self.subTest(file=rel):
                 for m in self.EMAIL.finditer(text):
                     self.assertRegex(m.group(0), r"@example\.(test|com)$")
@@ -141,11 +170,12 @@ class LivePageTest(unittest.TestCase):
     def test_the_facts_block_is_what_the_tool_computes(self):
         self.assertIn(LC.markdown(LC.facts()), self.page,
                       "run runner/tools/live_capture.py --write-doc "
-                      "docs/use/live-examples.md")
+                      "docs/steady/use/live-examples.md")
 
     def test_the_pointers_lead_to_the_page(self):
-        for doc in ("FAQ.md", "docs/use/runbook.md", "SECURITY.md",
-                    "docs/oracle/configuring-oracle.md"):
+        for doc in ("FAQ.md", "docs/steady/use/use-runbook.md",
+                    "SECURITY.md",
+                    "docs/infrastructure-documents/oracle/configuring-oracle.md"):
             with open(os.path.join(ROOT, doc), encoding="utf-8") as fh:
                 self.assertIn("live-examples.md", fh.read(), doc)
 
@@ -154,7 +184,7 @@ class TheRunnerReadsTheRealFilesTest(unittest.TestCase):
     def setUp(self):
         self.base = tempfile.mkdtemp(prefix="hp-live-")
         for name in ("oracle-learning.jsonl", "security-events.jsonl"):
-            shutil.copy(os.path.join(LIVE, name), self.base)
+            shutil.copy(LC.path(name), self.base)
 
     def tearDown(self):
         shutil.rmtree(self.base, ignore_errors=True)
@@ -250,7 +280,8 @@ class ShapeTest(unittest.TestCase):
 
     def test_envelopes_are_hp_enc_with_a_gcm_nonce(self):
         import base64
-        for name in sorted(os.listdir(os.path.join(LIVE, "envelopes"))):
+        for name in ("job-campaign.txt", "job-connector-test.txt",
+                     "result-campaign.txt", "result-connector-test.txt"):
             text = LC.read_text("envelopes/" + name)
             with self.subTest(envelope=name):
                 self.assertRegex(text, r"^\[HOMING-PIGEON\] (job|result) "

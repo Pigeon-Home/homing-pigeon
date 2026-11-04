@@ -817,7 +817,7 @@ class DefaultRepairTests(unittest.TestCase):
 class PredictDisciplineTests(unittest.TestCase):
     """Claims audit round 2, B46: predictions ride only on an
     advise-or-repair EFFECTIVE latitude -- the job's request
-    clamped to the owner's ceiling (docs/oracle/configuring-oracle.md:
+    clamped to the owner's ceiling (docs/infrastructure-documents/oracle/configuring-oracle.md:
     "only when the job requests advise or repair within the
     ceiling"). The leak: plan_before keyed want_attach off the
     raw request, so with the ceiling at diagnose a job asking
@@ -971,7 +971,7 @@ class CliOverrideTests(unittest.TestCase):
 class RepairSpecimenTests(unittest.TestCase):
     def test_specimens_match_the_code(self):
         path = os.path.join(os.path.dirname(__file__), "..", "..",
-                            "docs", "specimens", "repair-results.json")
+                            "docs", "steady", "specimens", "repair-results.json")
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         repaired = data["repaired"]

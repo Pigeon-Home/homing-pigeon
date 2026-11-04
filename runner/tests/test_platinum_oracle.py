@@ -2,7 +2,7 @@
 store.
 
 Targets from the cycle-2 refreshed table
-(`docs/reports/v3.13.27/coverage-gaps.md`):
+(`docs/steady/reports/v3.13.27-coverage-gaps.md`):
 
   except  oracle/senses.py:load_alerts (2) -- a stored line
           that is not an alert object is skipped, never

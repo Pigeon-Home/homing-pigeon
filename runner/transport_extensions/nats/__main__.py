@@ -68,7 +68,7 @@ def url_port(url):
     when it is a whole number 1..65535, and a config error otherwise.
 
     The broker address is the refuse class of
-    docs/design/present-but-invalid-config.md: a port typed as
+    docs/steady/present-but-invalid-config.md: a port typed as
     "2O220" or 99999 must not quietly become 4222, because the
     extension would then talk to a broker the operator never named.
     urlparse's .port raises on both shapes; that ValueError once
@@ -108,7 +108,7 @@ class NatsClient:
         self.log = log or _silent_log
         parsed = urlparse(url or "nats://127.0.0.1:%d" % DEFAULT_PORT)
         self.host = parsed.hostname or "127.0.0.1"
-        # docs/oracle/configuring-oracle.md: default port 4222 when the URL
+        # docs/infrastructure-documents/oracle/configuring-oracle.md: default port 4222 when the URL
         # names none; a port present but not usable is a config
         # error (url_port), so no client ever talks to a substituted
         # broker address.

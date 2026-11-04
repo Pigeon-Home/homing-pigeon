@@ -45,7 +45,7 @@ IETF Internet-Drafts:
 --local-test` runs the whole loop in process: you play the SI in a
 terminal chat, a local model (Ollama on loopback, which the installer
 sets up) answers, and nothing is emailed. See
-[docs/use/local-si-test.md](docs/use/local-si-test.md).
+[docs/steady/use/local-si-test.md](docs/steady/use/local-si-test.md).
 
 ## What this is for
 
@@ -122,7 +122,7 @@ more secure option even though it is not the default. (A
 sensor on the same box also delivers its signed alerts directly,
 by local inbox or loopback socket: alerts, not jobs.) Want another
 pipe? Transports are extensions, and the ones we'd love to see are
-sketched in [docs/project/future.md](docs/project/future.md).
+sketched in [docs/FUTURE.md](docs/FUTURE.md).
 
 **Runbooks, not prompts.** The SI doesn't chat about the task — it ships
 a runbook: deterministic steps, each with a check that proves the step
@@ -209,7 +209,7 @@ the repaired job is judged again before it runs. When a job asks
 for an opinion, the prediction rides its result too. The owner's
 `oracle_opinion_mode` is both the default latitude and the
 ceiling: a job may ask for less, never more. Design:
-`docs/design/oracle-opinion-design.md`.
+`docs/steady/design/oracle-opinion-design.md`.
 
 **Fixes mismatched jobs, never silently.** A job that asks for `bash`
 but only needs `sh` is repaired and runs on a minimal system like
@@ -251,7 +251,7 @@ notch tighter: on non-Pi hardware the installer applies the
 `--profile` names another or `--no-profile` is passed, and a
 Raspberry Pi, or any install from the pi-light archive, gets
 `pi-light`. See
-docs/use/runbook.md Job 7.
+docs/steady/use/use-runbook.md Job 7.
 
 **eyes open** (recommended): same trust, but the Oracle watches on the
 owner's behalf. The runner executes and attaches the policy verdict to
@@ -316,7 +316,7 @@ still run, but briefs and answers are assembled from the box's own
 records (the job index, retained jobs, notable lines, the log tail),
 and the `ask` op stays off. The mode reads live from `config.json`;
 flipping it is the upgrade path when a box gains a model worth
-running. See `docs/oracle/configuring-oracle.md`.
+running. See `docs/infrastructure-documents/oracle/configuring-oracle.md`.
 
 **The Oracle learns from its own calls.** Before a job runs, its
 opinion — *this will probably succeed here; this will faceplant,
@@ -334,17 +334,17 @@ them. A lesson never authorizes anything by itself: a repair still
 requires the repair latitude, the mismatch re-verified on the
 current job, and the repaired job judged again before it runs.
 Set `oracle_learning` to false to turn the loop off. Design:
-`docs/design/oracle-opinion-design.md`. Measured on a real rig in
+`docs/steady/design/oracle-opinion-design.md`. Measured on a real rig in
 deterministic mode: 1,967 of 2,248 reconciled calls right (87.5%), 0 lessons, every
 miss a job that simply ran `exit 3`, which leaves no fact for a
-model-less Oracle to learn ([live examples](docs/use/live-examples.md)).
+model-less Oracle to learn ([live examples](docs/steady/use/live-examples.md)).
 
 Full spec in PROTOCOL.md (sections 9–12). Oracle fields are optional
 members of a `"v": 1` message. They are not a separate message version.
 
 ## Proven platforms
 
-Every push runs one portable proof on a core set of legs, and the nightly run takes the whole corpus: native runners, distributions, other architectures, maker-board userspaces under QEMU, BSD virtual machines and administrator fat-fingers, and a leg fails unless every test ran and passed. The full table and the board notes are in [docs/use/platforms.md](docs/use/platforms.md).
+Every push runs one portable proof on a core set of legs, and the nightly run takes the whole corpus: native runners, distributions, other architectures, maker-board userspaces under QEMU, BSD virtual machines and administrator fat-fingers, and a leg fails unless every test ran and passed. The full table and the board notes are in [docs/steady/use/platforms.md](docs/steady/use/platforms.md).
 
 [![platform-matrix](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml)
 
@@ -381,7 +381,7 @@ advisory or off; `--inspect review` shows the verdicts).
 The example is a lab-results sense: it watches a folder where
 experiment runs drop result files and files signals like
 `experiment_finished` and `metric_threshold_crossed` when a run
-lands. Full walkthrough: [docs/extend/extensions.md](docs/extend/extensions.md).
+lands. Full walkthrough: [docs/steady/extensions.md](docs/steady/extensions.md).
 
 Every extension, sense or transport, also brings its own code for
 the Oracle. On a box where a local model runs the Oracle, the
@@ -397,11 +397,11 @@ has no model to read the material and makes no request for it
 unless its owner turns the fetch on. The Oracle gets what is
 pinned by default, and a written disclosure rule lets the owner
 (or the author) withhold any of it
-([docs/extend/extensions.md](docs/extend/extensions.md), "Sources").
+([docs/steady/extensions.md](docs/steady/extensions.md), "Sources").
 
 ## Layout
 
-`PROTOCOL.md` is the wire protocol, `runner/` the code, `runner/extensions/` the shipped extensions, `docs/` the long shelf and `.github/` the CI. The file-by-file map is in [docs/project/layout.md](docs/project/layout.md).
+`PROTOCOL.md` is the wire protocol, `runner/` the code, `runner/extensions/` the shipped extensions, `docs/` the long shelf and `.github/` the CI. The file-by-file map is in [docs/infrastructure-documents/project/layout.md](docs/infrastructure-documents/project/layout.md).
 
 ## Setup
 
@@ -413,26 +413,26 @@ secret, first job.
 **No spare machine?** One command puts a runner on a small machine
 (about $2 a month on Fly, a few dollars on Hetzner or DigitalOcean)
 in your own account, with the hosted
-profile and nothing listening: [docs/use/own-cloud.md](docs/use/own-cloud.md).
+profile and nothing listening: [docs/steady/use/own-cloud.md](docs/steady/use/own-cloud.md).
 Your account, your bill, your secret.
 
 ## How scripts run
 
-A job carries a `script` and an optional `interpreter`; the default is PowerShell on Windows and `sh` elsewhere, and a `ping` first tells you which one a box has. Details are in [docs/use/scripts.md](docs/use/scripts.md).
+A job carries a `script` and an optional `interpreter`; the default is PowerShell on Windows and `sh` elsewhere, and a `ping` first tells you which one a box has. Details are in [docs/infrastructure-documents/use/scripts.md](docs/infrastructure-documents/use/scripts.md).
 
 ## Sending a job (any SI)
 
-Anything that can email the runner's mailbox and sign the body can drive it: your SI, a cron script, whatever, using `runner/cloud/send_job.py` and the `shared_secret` from your `config.json`. Commands and verification are in [docs/use/sending.md](docs/use/sending.md).
+Anything that can email the runner's mailbox and sign the body can drive it: your SI, a cron script, whatever, using `runner/cloud/send_job.py` and the `shared_secret` from your `config.json`. Commands and verification are in [docs/steady/sending.md](docs/steady/sending.md).
 
 ## Testing
 
-The runner is fully inspectable, so audit what it would do before it does it, and run the suite with `python -m unittest discover -s runner/tests -t .`. The flags and the suite notes are in [docs/project/testing.md](docs/project/testing.md).
+The runner is fully inspectable, so audit what it would do before it does it, and run the suite with `python -m unittest discover -s runner/tests -t .`. The flags and the suite notes are in [docs/infrastructure-documents/project/testing.md](docs/infrastructure-documents/project/testing.md).
 
 ## Security notes
 
-- Threat model: [docs/security/threat-model.md](docs/security/threat-model.md) and its
-  companion [docs/security/security-gaps.md](docs/security/security-gaps.md).
-- Industry map: [docs/project/industry-map.md](docs/project/industry-map.md) — five years
+- Threat model: [docs/infrastructure-documents/security/threat-model.md](docs/infrastructure-documents/security/threat-model.md) and its
+  companion [docs/infrastructure-documents/security/security-gaps.md](docs/infrastructure-documents/security/security-gaps.md).
+- Industry map: [docs/steady/project/industry-map.md](docs/steady/project/industry-map.md) — five years
   of commercial detection (2021–2026) read honestly against this project,
   sorted by local footprint cost.
 - Jobs are also encrypted by default: `send_job.py` wraps the
@@ -455,7 +455,7 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   caps above are also on by default and turned off by 0): see [SECURITY.md](SECURITY.md).
 - The security model — the gate, the key fences, the ceilings a job cannot raise,
   and the configuration rules — and the formal proof testing that checks it,
-  property by property, are described in [docs/security/model-and-proof-testing.md](docs/security/model-and-proof-testing.md).
+  property by property, are described in [docs/infrastructure-documents/security/model-and-proof-testing.md](docs/infrastructure-documents/security/model-and-proof-testing.md).
 
 ## Questions people ask
 
@@ -472,7 +472,7 @@ the rules.
 ## Where it goes next
 
 Plenty of ideas are already sketched in
-[docs/project/future.md](docs/project/future.md), and some are
+[docs/FUTURE.md](docs/FUTURE.md), and some are
 tempting. Imagine the owner approving a job with one tap before it
 runs. Imagine signatures that need no shared secret at all, a
 dashboard that lets you watch the Oracle think, a box that notices
@@ -485,13 +485,13 @@ one, or add your own.
 What ships today is what's described above: the agent, the Oracle
 (opinions, self-learning, remediation), five job transports, and
 the example senses. The current release is in
-[docs/CHANGELOG.md](docs/CHANGELOG.md); the version number lives in
+[docs/infrastructure-documents/changelog.md](docs/infrastructure-documents/changelog.md); the version number lives in
 `pyproject.toml` and `runner/_version.py` (a test keeps them equal), and the message field `"v"` is a different
 number — the protocol's version and the release number move on
 separate tracks.
 
 What a real box writes, and what 19,227 jobs on a test box
-came to, is in [docs/use/live-examples.md](docs/use/live-examples.md).
+came to, is in [docs/steady/use/live-examples.md](docs/steady/use/live-examples.md).
 
 Current-state facts worth knowing: `config.json` hot-reloads poll
 interval, workers, the default job timeout, `max_output_bytes`, max
@@ -502,13 +502,13 @@ result stash's retention and resend backoff, and the live keys
 restart. A Thunderbird-style
 OAuth sign-in is shipped for the mailbox. PowerShell jobs stage
 as `script.ps1`. Release files carry Sigstore build provenance
-(`docs/security/verification.md`).
+(`docs/steady/verification.md`).
 
 ## Contributing
 
 Welcome, and held to a high bar: standard library only, the protocol
 doc changes with anything on the wire, and a security-sensitive change
-says so. [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) has the rest.
+says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.md) has the rest.
 
 ## Mirrors
 
@@ -520,4 +520,4 @@ says so. [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) has the rest.
 - IETF datatracker, Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - IETF datatracker, Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 - IETF draft v3: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
-- CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/RESUME.txt
+- CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt

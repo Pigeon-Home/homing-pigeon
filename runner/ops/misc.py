@@ -133,7 +133,7 @@ def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener
         method="POST",
     )
     open_fn = opener or _runner()._default_inference_open
-    # PROTOCOL.md and docs/oracle/configuring-oracle.md: timeout_sec default
+    # PROTOCOL.md and docs/infrastructure-documents/oracle/configuring-oracle.md: timeout_sec default
     # 180. Anything that is not a positive finite number gets that,
     # not a second fallback of 60 that the docs never named.
     timeout = _runner()._inference_timeout(cfg)

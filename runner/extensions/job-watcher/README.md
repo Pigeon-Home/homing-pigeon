@@ -117,4 +117,4 @@ its baseline) are filed for the next brief, never a wake.
 The full extension walkthrough — manifest fields, the
 versioning contract, sensor binding, and how to turn this
 example into your own package — is in
-[docs/extend/extensions.md](../../../docs/extend/extensions.md).
+[docs/steady/extensions.md](../../../docs/steady/extensions.md).

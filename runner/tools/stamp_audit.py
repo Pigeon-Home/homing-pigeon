@@ -10,7 +10,7 @@
 Every commit an agent chat makes carries its stamp (an `Agent-Stamp:`
 or `Agent-Chat-Stamp:` trailer) and, when the chat runs in Claude
 Code, the session it ran in (`Claude-Session:`). The record of who
-holds which stamp is `docs/archive/RESEARCHER_IDENT.md`. A stamp is
+holds which stamp is `docs/archive/researcher_ident.md`. A stamp is
 there so the conductor can trace a line to the chat that wrote it;
 a stamp signed from two sessions, or one session signing as two
 stamps, breaks that trace without any file looking wrong.
@@ -39,7 +39,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-IDENT = os.path.join(ROOT, "docs", "archive", "RESEARCHER_IDENT.md")
+IDENT = os.path.join(ROOT, "docs", "archive", "researcher_ident.md")
 
 # The rules hold for every commit from this moment (the conductor's
 # word, 2026-10-27); everything earlier is the audit's history.

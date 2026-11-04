@@ -26,7 +26,7 @@ result lands in the outbox as `<job_id>.result.txt` and rides back the
 same way. Vehicle and generator diagnostics, maintenance and logistics
 boxes in disaster zones or remote sites: with `max_result_view` set to
 `attested`, only pass/fail, digests, and signed claims leave the box,
-never the raw logs (`docs/extend/transports.md`, PROTOCOL.md section 9).
+never the raw logs (`docs/infrastructure-documents/extend/transports.md`, PROTOCOL.md section 9).
 
 **A data clean room, lite.** A researcher's script runs against data
 that never leaves the machine, such as a clinic's records or a lab's
@@ -46,7 +46,7 @@ can operate, not just talk.
 
 **Camera traps and field recorders.** A Pi on a trail camera or a
 bioacoustic recorder runs a small classifier as its own sense: an
-extension (`docs/extend/extensions.md`) that declares signals such as
+extension (`docs/steady/extensions.md`) that declares signals such as
 `animal_detected` or `low_confidence_frame` and files them signed
 with the Oracle. Only the labels and a digest leave the box; when a
 frame is a toss-up, your SI sends one more job for just that frame
@@ -66,7 +66,7 @@ seconds at most; `docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-p
 Three days of a real box: 19,227 jobs, every result verified, a few
 milliseconds of work inside a four-second round trip on the file
 transport. The quoted lines, the envelopes, the posture card and
-the full numbers are in [live-examples.md](docs/use/live-examples.md).
+the full numbers are in [live-examples.md](docs/steady/use/live-examples.md).
 
 ## Isn't this just remote code execution by email?
 
@@ -81,8 +81,8 @@ an AES-256-GCM envelope keyed from the same secret, so a mailbox
 reader cannot read the job. Nothing executes before the signature
 verifies. Everything past that is opt-in containment: the
 Oracle's `judge`, a bubblewrap sandbox, and AppArmor and SELinux
-templates in `docs/security/hardening/`. Run it as a locked-down user
-on a box you can wipe (`docs/security/threat-model.md`).
+templates in `docs/steady/security/`. Run it as a locked-down user
+on a box you can wipe (`docs/infrastructure-documents/security/threat-model.md`).
 
 ## Why not SSH, Tailscale, or a self-hosted CI runner?
 
@@ -100,12 +100,12 @@ probably don't need this.
 ## What happens if the shared secret leaks?
 
 Whoever holds it can run jobs, full stop. Treat it like a root
-password. Rotate it with `docs/use/secret-rotation.md`. Two honest
+password. Rotate it with `docs/steady/secret-rotation.md`. Two honest
 limits: there is no forward secrecy at the envelope layer unless the
 transport provides it, so a leaked secret exposes captured traffic
 that used it. And revocation is manual, since there is one shared
 secret rather than per-sender keys. Asymmetric signing would fix
-the second and is sketched in `docs/design/asymmetric-signing-design.md`.
+the second and is sketched in `docs/steady/design/asymmetric-signing-design.md`.
 
 ## Is this safe to run on my main machine?
 
@@ -353,8 +353,8 @@ composing the job is also the one reading the user's intent,
 holding the context of who they are, and quoting this project's
 documentation back to them. The first line of the README says this
 tool hands full administrative control of the machine to whoever
-holds the shared secret. `docs/security/safeguards.md` and
-`docs/security/personal-documents-warning.md` say what that means on a
+holds the shared secret. `docs/infrastructure-documents/security/safeguards.md` and
+`docs/steady/security/personal-documents-warning.md` say what that means on a
 shared or personal computer. Those warnings are written for the
 SI as much as for the human.
 
@@ -370,7 +370,7 @@ building one would mean conceding the claim is false.
 That is what makes this project a clean test of the claim: a
 novice, a shared machine, a README that says what it says. Point
 a model at it and find out. The warnings are placed where an
-assistant will read them -- the README, `docs/security/safeguards.md`,
+assistant will read them -- the README, `docs/infrastructure-documents/security/safeguards.md`,
 `AGENTS.md`, and the personal-documents check that prints at
 install and at startup. The check is a speed bump, not a
 protection. It exists so the assistant and the human both see it.

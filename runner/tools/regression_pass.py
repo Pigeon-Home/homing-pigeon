@@ -16,13 +16,13 @@ step, so the first bad commit is named -- or, when the test did not
 exist before the commit that added it, that commit is named as the
 one the test has been red since. The result is one ledger line for
 the standing orders and, on red, a paragraph ready to paste under a
-Q in docs/seats/questions.md with the reproduce command.
+Q in docs/steady/seats/questions.md with the reproduce command.
 
 The rig's own state lives outside the tree, under --state-dir
 (default ~/.cache/homing-pigeon/regression/): the last green head
 and a JSON record per pass. The proof of the work lives in the
 tree: every pass appends one line to --record (default
-docs/reports/regression/passes.jsonl) -- the head, the test count,
+docs/steady/specimens/passes.jsonl) -- the head, the test count,
 the wall time, the failing ids, the flake split, the culprits and
 the ledger line -- which the campaign commits with the ledger
 line. A pass that cannot run (a dirty tree under --pull, a pull
@@ -45,7 +45,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 REPO = ROOT   # the repository the pass runs in (tests point it elsewhere)
 STAMP = "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"
-RECORD = os.path.join("docs", "reports", "regression", "passes.jsonl")
+RECORD = os.path.join("docs", "steady", "specimens", "passes.jsonl")
 _RAN = re.compile(r"^Ran (\d+) tests? in", re.M)
 _RED = re.compile(r"^(FAIL|ERROR): (\S+) \(([^)]+)\)", re.M)
 # The quotes may arrive escaped, when a test's assertion message

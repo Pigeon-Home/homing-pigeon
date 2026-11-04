@@ -14,7 +14,7 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 KIT = os.path.join(ROOT, "runner", "tools", "remote-upgrade")
-SENDING = os.path.join(ROOT, "docs", "use", "sending.md")
+SENDING = os.path.join(ROOT, "docs", "steady", "sending.md")
 
 
 def _read(path):

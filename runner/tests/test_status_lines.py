@@ -1,8 +1,8 @@
 # Agent-Stamp: 90000998-709f-46f5-b2bc-2c3c5cf8dc6c
 """Project telephone-pole: the status file and the words file hold
-their shape (docs/project/telephone-pole.md).
+their shape (docs/steady/project/telephone-pole.md).
 
-docs/seats/status.txt is one line per seat, replaced, never appended:
+docs/steady/seats/status.txt is one line per seat, replaced, never appended:
 
     SEAT STAMP @COMMIT open:Qn,Qn|- closed:Qn,Qn|- on:WORD
 
@@ -10,7 +10,7 @@ A line that does not parse fails here, so the shorthand cannot drift
 into a second dialect without a red build. The staleness check is the
 point of the file: a question a seat lists as open that says **Done:**
 in its first line fails, and so does a question number that does not
-exist. docs/project/telephone-pole-words.md admits a word only with two
+exist. docs/steady/project/telephone-pole-words.md admits a word only with two
 seats named.
 """
 import os
@@ -19,9 +19,9 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
-STATUS = os.path.join(ROOT, "docs", "seats", "status.txt")
-WORDS = os.path.join(ROOT, "docs", "project", "telephone-pole-words.md")
-QUESTIONS = os.path.join(ROOT, "docs", "seats", "questions.md")
+STATUS = os.path.join(ROOT, "docs", "steady", "seats", "status.txt")
+WORDS = os.path.join(ROOT, "docs", "steady", "project", "telephone-pole-words.md")
+QUESTIONS = os.path.join(ROOT, "docs", "steady", "seats", "questions.md")
 
 _QLIST = r"(?:-|Q\d+(?:,Q\d+)*)"
 LINE = re.compile(

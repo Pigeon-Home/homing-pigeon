@@ -4,19 +4,23 @@
 
     python3 runner/tools/live_capture.py              # the facts, as text
     python3 runner/tools/live_capture.py --markdown   # the facts block
-    python3 runner/tools/live_capture.py --check-doc docs/use/live-examples.md
-    python3 runner/tools/live_capture.py --write-doc docs/use/live-examples.md
+    python3 runner/tools/live_capture.py --check-doc docs/steady/use/live-examples.md
+    python3 runner/tools/live_capture.py --write-doc docs/steady/use/live-examples.md
 
-The capture is docs/reports/live-2026-10-25/: three days of the
-campaign rig, scrubbed (its README says how). Everything a page says
-about that run is either a verbatim quote from these files or a
-number this tool computes from them:
+The capture was docs/reports/live-2026-10-25/: three days of the
+campaign rig, scrubbed (its README says how). The docs
+reorganization shelved its files flat: the text files in
+docs/steady/reports, the data files in docs/steady/specimens, and
+the capture-relative names the docs quote resolve through the map
+below. Everything a page says about that run is either a verbatim
+quote from these files or a number this tool computes from them:
 
 - A page's facts block sits between ``<!-- live-facts:begin -->`` and
   ``<!-- live-facts:end -->`` and is written by --write-doc;
   --check-doc fails when the block no longer matches the data.
 - runner/tests/test_live_capture.py checks every quoted line in
-  docs/use/live-examples.md against the files it says it came from.
+  docs/steady/use/live-examples.md against the files it says it
+  came from.
 
 Stdlib only. The 19,227 campaign records are one gzipped JSON line
 each, in loop order (campaign-results.jsonl.gz), not 19,227 files:
@@ -31,19 +35,36 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
-CAPTURE = os.path.join(ROOT, "docs", "reports", "live-2026-10-25")
+CAPTURE_TEXT = os.path.join(ROOT, "docs", "steady", "reports")
+CAPTURE_DATA = os.path.join(ROOT, "docs", "steady", "specimens")
 BEGIN = "<!-- live-facts:begin -->"
 END = "<!-- live-facts:end -->"
 
 
 _LEVELS = ("[DEBUG]", "[INFO]", "[WARN]", "[ERROR]")
 
+# Capture-relative name -> the drawer its file was shelved in.
+# The envelopes/ prefix and the folder itself are gone; basenames
+# are unchanged except the capture's own README.
+_DATA_SUFFIXES = (".jsonl", ".jsonl.gz", ".log", ".gz")
 
-def path(name, capture=CAPTURE):
-    return os.path.join(capture, *name.split("/"))
+
+def path(name, capture=None):
+    """Resolve a capture-relative name. With an explicit capture
+    directory (a re-capture, a test copy), join under it as before;
+    by default, resolve into the two drawers that hold the
+    2026-10-25 capture now."""
+    if capture is not None:
+        return os.path.join(capture, *name.split("/"))
+    base = name.split("/")[-1]
+    if base == "README.md":
+        return os.path.join(CAPTURE_TEXT, "live-2026-10-25-readme.md")
+    if base.endswith(_DATA_SUFFIXES) or base == "canary-watch.json":
+        return os.path.join(CAPTURE_DATA, base)
+    return os.path.join(CAPTURE_TEXT, base)
 
 
-def read_text(name, capture=CAPTURE):
+def read_text(name, capture=None):
     """A capture file's text; a .gz is read through gzip."""
     p = path(name, capture)
     if p.endswith(".gz"):
@@ -53,7 +74,7 @@ def read_text(name, capture=CAPTURE):
         return fh.read()
 
 
-def jsonl(name, capture=CAPTURE):
+def jsonl(name, capture=None):
     """Every JSON object in a .jsonl or .jsonl.gz capture file."""
     out = []
     for line in read_text(name, capture).splitlines():
@@ -62,7 +83,7 @@ def jsonl(name, capture=CAPTURE):
     return out
 
 
-def records(capture=CAPTURE):
+def records(capture=None):
     """The campaign's per-job records, in loop order."""
     return jsonl("campaign-results.jsonl.gz", capture)
 
@@ -77,7 +98,7 @@ def _pct(values, p):
     return ordered[int(round(p * (len(ordered) - 1)))]
 
 
-def facts(capture=CAPTURE):
+def facts(capture=None):
     """The numbers the docs may quote, all computed here."""
     recs = records(capture)
     results = [r["result"] for r in recs if isinstance(r.get("result"), dict)]

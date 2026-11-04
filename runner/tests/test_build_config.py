@@ -115,7 +115,7 @@ class MutationGateTest(unittest.TestCase):
     the scheduled mutation-seeded.yml), so no publish waits on it.
     It used to ride version tags, which is what made releases ~40
     minutes; the move is finding 4 of
-    docs/reports/v3.12.56/ci-failures.md.
+    docs/steady/reports/ci-failures.md.
     """
 
     def test_mutation_runs_only_on_non_tag_dispatch(self):
@@ -620,7 +620,7 @@ class PipelineLiftsTest(unittest.TestCase):
 
     # Lift 1: the verification chain is documented, with commands.
     def test_verification_doc_carries_the_chain(self):
-        with open(os.path.join(_root(), "docs", "security", "verification.md"),
+        with open(os.path.join(_root(), "docs", "steady", "verification.md"),
                   encoding="utf-8") as fh:
             doc = fh.read()
         for needle in ("gh attestation verify",
@@ -789,18 +789,18 @@ class PipelineLessonsTest(unittest.TestCase):
 
     def test_readme_lists_every_matrix_leg(self):
         # Claims track proof: every leg name in the matrix appears in
-        # docs/use/platforms.md's Proven platforms table, and nothing in that
+        # docs/steady/use/platforms.md's Proven platforms table, and nothing in that
         # table is a leg the matrix does not run.
         legs = _matrix_leg_names("platform-matrix.yml")
         self.assertGreaterEqual(len(legs), 40, legs)
         self.assertEqual(len(legs), len(set(legs)), "duplicate leg names")
-        with open(os.path.join(_root(), "docs", "use", "platforms.md"),
+        with open(os.path.join(_root(), "docs", "steady", "use", "platforms.md"),
                   encoding="utf-8") as fh:
             table = fh.read()
         self.assertIn("# Proven platforms", table)
         for leg in legs:
             self.assertIn("`%s`" % leg, table,
-                          "docs/use/platforms.md lacks leg %s" % leg)
+                          "docs/steady/use/platforms.md lacks leg %s" % leg)
         listed = set(re.findall(r"`([A-Za-z0-9._-]+)`", table))
         extra = {x for x in listed if ("-x86_64" in x or "-arm64" in x
                                         or "-qemu" in x or x.startswith(

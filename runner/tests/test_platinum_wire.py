@@ -1,7 +1,7 @@
 # Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab
 """Project Platinum, wire/: the DTLS record layer from a mutated seed corpus.
 
-Queue P targets (docs/reports/v3.13.8/coverage-gaps.md):
+Queue P targets (docs/steady/reports/v3.13.8-coverage-gaps.md):
 `wire/dtlsproto.py:_RecordSealer.open` (9 missing), `_split_records`
 (6) and `_parse_extensions` (2). test_dtls_fuzz drives these with
 random bytes, and random bytes almost never get past the first
@@ -41,7 +41,7 @@ the tracer does not report; test_transports proves the refusal.
 
 No `max_examples`: HP_PLATINUM_EXAMPLES sets how hard the rig pushes,
 CI keeps the quick default. Written by 40000e00 alongside Muse's
-queue P (docs/seats/.com.chat, 2026-10-26).
+queue P (docs/infrastructure-documents/seats/.com.chat, 2026-10-26).
 """
 import unittest
 

@@ -6,7 +6,7 @@ close-out with fake monitors. What never ran until now is the
 whole path at once: a real job through execute_job whose
 produced artifact trips a tripwire, the monitor's kill, the
 quarantine, and the records -- the design doc's "as built"
-promises (docs/design/remediation-design.md):
+promises (docs/steady/design/remediation-design.md):
 
   - a tripwire kill takes the whole tree, children included;
   - a job that exits before the kill lands is recorded as

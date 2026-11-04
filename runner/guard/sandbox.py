@@ -13,7 +13,7 @@ machine (Ubuntu, usr-merged, overlayfs):
   /proc mount (AppArmor/seccomp); without it --proc mounts fine.
 
 Divergences and the machine's real paths are recorded in
-docs/archive/HARDENING_REPORT.md.
+docs/steady/security/hardening_report.md.
 """
 import os
 import shutil
@@ -62,7 +62,7 @@ def startup_problem(timeout=15):
 
     Run once at startup under confinement: enforce (Decision 1's
     refuse class: a security mode whose mechanism cannot engage
-    changes what the box protects, docs/seats/questions.md Q9). It
+    changes what the box protects, docs/steady/seats/questions.md Q9). It
     checks the platform, finds bwrap on PATH, and starts it once
     with the same namespace flags a job gets, running `true`. The
     first env-axes pair showed why a trial run and not a PATH

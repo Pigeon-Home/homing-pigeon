@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Proof-work constraint pins (testing branch, stage 1).
 
-The formal model in docs/proofs/ is built from values harvested
+The formal model in docs/infrastructure-documents/proofs/ is
+built from values harvested
 from the code, not invented. This test pins those values against
-the code itself and against docs/proofs/constraints.md: if a
+the code itself and against docs/infrastructure-documents/proofs/constraints.md: if a
 declared default, a constant, or the form of a construction
 changes, this test fails, and the inventory -- and with it the
 model's claims -- must be revisited before either can stand.
 
 The values pinned here are the ones at commit 6d6288c5
 (release 3.15.28), recorded as C1 to C16 in
-docs/proofs/constraints.md. Stage 4 added C17 and C18 (the
+docs/infrastructure-documents/proofs/constraints.md. Stage 4 added C17 and C18 (the
 result-policy ceiling and the sandbox shape's sources) and
 their pins, from the same code, and then C19 and C20 (the
 queues edge gates and the per-transport gate postures) with
@@ -640,7 +641,7 @@ class TransportGatePins(unittest.TestCase):
         # site sits in the email branch, so a first-occurrence
         # ordering against the dtls branch no longer states
         # the rule. (Determination recorded in
-        # docs/proofs/dtls-over-email-v3.md: the carriage's
+        # docs/infrastructure-documents/proofs/dtls-over-email-v3.md: the carriage's
         # hand-over is the design's own exception, guarded;
         # the gate behavior is unchanged.)
         wire = _read(os.path.join("runner", "wire", "transports.py"))
@@ -792,7 +793,7 @@ class DocsSyncPins(unittest.TestCase):
     """
 
     def test_constraints_doc_carries_the_values(self):
-        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "constraints.md"))
         for token in ("4194304", "1048576", "5242880", "262144",
                       "aes-256-gcm/hkdf-sha384", "policy_env",
                       "policy_files", "policy_args", "audience",
@@ -801,61 +802,61 @@ class DocsSyncPins(unittest.TestCase):
             self.assertIn(token, doc)
 
     def test_constraints_doc_carries_c17_and_c18(self):
-        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "constraints.md"))
         for token in ("C17", "C18", "VIEW_ORDER", "interpreter_binds"):
             self.assertIn(token, doc)
 
     def test_constraints_doc_carries_c19_and_c20(self):
-        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "constraints.md"))
         for token in ("C19", "C20", "REJECT_INVALID_HMAC",
                       "allow_unauthenticated"):
             self.assertIn(token, doc)
 
     def test_properties_doc_states_p3_in_full(self):
-        doc = _read(os.path.join("docs", "proofs", "properties.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "properties.md"))
         for token in ("TransGate.tla", "stage4-p3.md",
                       "A waived gate is a waived property"):
             self.assertIn(token, doc)
 
     def test_properties_doc_states_p4_in_full(self):
-        doc = _read(os.path.join("docs", "proofs", "properties.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "properties.md"))
         for token in ("KeyPolicy.tla", "stage4-p4.md",
                       "check_key_policy"):
             self.assertIn(token, doc)
 
     def test_constraints_doc_carries_c21_and_c22(self):
-        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "constraints.md"))
         for token in ("C21", "C22", "key_directory_verdict",
                       "max_timeout_sec", "SHA384SUMS"):
             self.assertIn(token, doc)
 
     def test_constraints_doc_carries_c23_to_c25(self):
-        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "constraints.md"))
         for token in ("C23", "C24", "C25", "seen_keep_sec",
                       "_CLAIM_STALE_SEC", "result_stash_retention_sec",
                       "200,000"):
             self.assertIn(token, doc)
 
     def test_properties_doc_states_p5_in_full(self):
-        doc = _read(os.path.join("docs", "proofs", "properties.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "properties.md"))
         for token in ("Replay.tla", "stage4-p5.md",
                       "load_sent_result"):
             self.assertIn(token, doc)
 
     def test_properties_doc_states_p6_in_full(self):
-        doc = _read(os.path.join("docs", "proofs", "properties.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "properties.md"))
         for token in ("Decision.tla", "stage4-p6.md",
                       "is_defaulted", "reload_hot_config"):
             self.assertIn(token, doc)
 
     def test_constraints_doc_carries_c26_and_c27(self):
-        doc = _read(os.path.join("docs", "proofs", "constraints.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "constraints.md"))
         for token in ("C26", "C27", "summary_line", "HOT_KEYS",
                       "_validate_size_caps"):
             self.assertIn(token, doc)
 
     def test_properties_doc_states_p1_and_placeholders(self):
-        doc = _read(os.path.join("docs", "proofs", "properties.md"))
+        doc = _read(os.path.join("docs", "infrastructure-documents", "proofs", "properties.md"))
         for token in ("P1", "P2", "P3", "P4", "P5", "P6",
                       "under 50"):
             self.assertIn(token, doc)

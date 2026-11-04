@@ -2,7 +2,7 @@
 # Agent-Stamp: 200003d4-e5f6-4a7b-9c8d-0e1f2a3b4c5d
 """Read the build pipeline's own run history and write a CI-health report.
 
-docs/reports/v3.12.56/ci-failures.md read six days of runs by hand and
+docs/steady/reports/ci-failures.md read six days of runs by hand and
 answered one question once. The answer rotted the moment the next run
 landed. This does the same reading from the GitHub Actions API and
 writes it as a dated, regenerable report, so "how is the pipeline
@@ -253,7 +253,7 @@ def build_report(repo, runs, done, pushes, by_day, concl, cancelled_pushes,
       "%s. Re-run it to refresh; this file is a snapshot of a live "
       "query, not a hand-written record. It reads the `%s` workflow's "
       "run history from the GitHub Actions API and reports what the "
-      "record shows, the way docs/reports/v3.12.56/ci-failures.md did "
+      "record shows, the way docs/steady/reports/ci-failures.md did "
       "once by hand.\n" % (now, version, WORKFLOW))
     w("Window: %d completed runs, %s. Per-job figures are sampled from "
       "the %d most recent runs.\n" % (len(done), window or "n/a",
@@ -344,7 +344,7 @@ def build_report(repo, runs, done, pushes, by_day, concl, cancelled_pushes,
       "peers.\n" % len(timed))
 
     w("## How to read this against the baseline\n")
-    w("The first read of this pipeline is docs/reports/v3.12.56/"
+    w("The first read of this pipeline is docs/steady/reports/"
       "ci-failures.md: six days, by hand, with the fixes it drove "
       "(mutation off the release path, the scarce-runner timers, the "
       "shard annotations). This report is the same questions asked of "
@@ -383,7 +383,7 @@ def main(argv=None):
     if args.stdout:
         sys.stdout.write(report)
         return 0
-    out = args.out or os.path.join(root, "docs", "reports",
+    out = args.out or os.path.join(root, "docs", "steady", "reports",
                                    "v" + version, "ci-health.md")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8") as fh:

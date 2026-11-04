@@ -14,4 +14,4 @@
 
 ## Docs
 
-- [ ] README / PROTOCOL.md / docs/use/runbook.md updated if behavior or setup changed
+- [ ] README / PROTOCOL.md / docs/steady/use/use-runbook.md updated if behavior or setup changed

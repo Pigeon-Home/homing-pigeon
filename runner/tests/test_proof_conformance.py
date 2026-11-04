@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Stage 5: the real gate, clause by clause (P1).
 
-The models in docs/proofs/ say what must not happen. These tests
+The models in docs/infrastructure-documents/proofs/ say what must
+not happen. These tests
 drive handle_mail and check the outcome, not a stand-in:
 
 - a cleartext job, with cleartext refused, does not execute and

@@ -11,7 +11,8 @@ being stepped on by later edits, so this guard is the sift: any
 live doc that reintroduces the term fails the build.
 
 Dated records are exempt by design and stay exempt: CHANGELOG.md,
-docs/archive/ and docs/reports/ (AGENTS.md rule 6) describe what
+docs/archive/ and docs/steady/reports/ (AGENTS.md rule 6) describe
+what
 was true when they were written, and a report may name this test
 by its file name.
 
@@ -51,7 +52,13 @@ def _live_docs():
             dirnames[:] = []
             continue
         for name in filenames:
-            if name.endswith(".md") and name != "CHANGELOG.md":
+            # The changelog and the dated records the reorganization
+            # moved out of docs/archive/ (the connector round-trip
+            # capture, the docker record) are records, not live
+            # docs: exempt by name, as the changelog always was.
+            if name.endswith(".md") and name not in (
+                    "CHANGELOG.md", "changelog.md",
+                    "connector-roundtrip.md", "docker.md"):
                 found.append(os.path.join(dirpath, name))
     return sorted(found)
 
@@ -71,7 +78,7 @@ class NoProviderNameInLiveDocsTest(unittest.TestCase):
         self.assertGreater(len(docs), 15)
         names = {os.path.basename(p) for p in docs}
         for expected in ("README.md", "INSTALL.md", "AGENTS.md",
-                         "PROTOCOL.md", "RUNBOOK.md"):
+                         "PROTOCOL.md", "idea321-runbook.md"):
             self.assertIn(expected, names)
 
     def test_mutmut_copies_the_root_manuals(self):

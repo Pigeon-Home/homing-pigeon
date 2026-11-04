@@ -178,7 +178,7 @@ MAX_TEXT = 16 * 1024          # bytes of a text entry after mutation
 MAX_PAYLOAD = 16 * 1024       # bytes of a payload entry's JSON
 MAX_DEPTH = 24                # nesting a payload mutator may add to
 SHRINK_BUDGET = 240           # checks a crash's shrink may spend
-# de_dust2 (docs/project/de_dust2.md). P3: the parent choice.
+# de_dust2 (docs/steady/project/de_dust2.md). P3: the parent choice.
 ACCEPT_LOW = 0.20             # below this accepted share, boost accepted parents
 ACCEPT_BOOST = 4.0            # by this much
 # P4: the slow class. A try this many times the corpus replay's
@@ -4270,7 +4270,7 @@ def _query_plant_senses(base, specs):
 
 def _query_senses_rules(declared, answers, planted):
     """A senses answer against the query that asked it, by the
-    checker's own reading of docs/extend/senses.md: never more
+    checker's own reading of docs/steady/oracle/senses.md: never more
     alerts than the limit (20 unasked) or than were stored, each
     from the sensor asked, none below the floor asked (a missing
     severity is info), the list scored highest first, every alert
@@ -5306,8 +5306,9 @@ def _text_bodies():
          + V.sign_payload(_job(job_id="bm-draft-0001", script="date\n"),
                           SECRET)),
     ]
-    # The live capture's shape (docs/reports/live-2026-10-25/),
-    # rebuilt. Invented ids, the corpus secret, a fixed nonce.
+    # The live capture's shape (the 2026-10-25 capture, shelved in
+    # docs/steady/reports and docs/steady/specimens), rebuilt.
+    # Invented ids, the corpus secret, a fixed nonce.
     # Not the capture's own bytes: those were sealed under the
     # rig's secret.
     with _FixedNonces():
@@ -7476,7 +7477,7 @@ def seeds_query():
               q=query(queries=[tail])),
         entry("record_streams_not_text", rec=retained(stdout=["a"], stderr={"b": 1}),
               q=query(queries=[tail, grep, attest])),
-        # The senses store as the runner left it (docs/extend/senses.md):
+        # The senses store as the runner left it (docs/steady/oracle/senses.md):
         # alerts planted through the local ingest, then the senses op
         # with its filters -- the sensor, the severity floor, the
         # window, the limit -- and the answer's own shape.

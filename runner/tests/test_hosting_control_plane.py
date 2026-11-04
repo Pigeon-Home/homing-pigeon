@@ -3,7 +3,7 @@
 """The control plane around the adapters: the inventory and its
 isolation rule, the prepaid ledger and the Stripe webhook, and the
 `homing-pigeon-host` CLI driven end to end against recorded exchanges
-(docs/project/hosting.md, Phases 1 and 4). No live calls.
+(docs/steady/project/hosting.md, Phases 1 and 4). No live calls.
 """
 import hashlib
 import hmac

@@ -47,7 +47,7 @@ concurrency:
 
 jobs:
   scope:
-    # de_dust2 (P8, docs/project/de_dust2.md): what this push changed.
+    # de_dust2 (P8, docs/steady/project/de_dust2.md): what this push changed.
     # A push that touches only the fuzz corpus and the campaign's
     # ledgers (the rigs' banks, several an hour) runs the Linux suite
     # alone: it replays the corpus and carries the crash probes, and
@@ -204,7 +204,7 @@ jobs:
     # cannot block a publish any more.
     # The measurement experiment (2026-10-22, Agent-Stamp 10000c2a)
     # is ended; its findings are acted on here and in
-    # docs/reports/v3.12.56/ci-failures.md. Mutation left the release
+    # docs/steady/reports/ci-failures.md. Mutation left the release
     # path (the if: below) and the two scarce-runner build jobs
     # regained a 30-minute timer. Mutation itself needs none now:
     # off the critical path, a slow mutmut stretches only a manual

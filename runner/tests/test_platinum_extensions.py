@@ -2,7 +2,7 @@
 and helpers, driven through their own seams.
 
 Target from the cycle-2 refreshed table
-(`docs/reports/v3.13.27/coverage-gaps.md`):
+(`docs/steady/reports/v3.13.27-coverage-gaps.md`):
 
   logic  transport_extensions/email/__main__.py:_permanent (2)
          -- a delivery failure is permanent when every

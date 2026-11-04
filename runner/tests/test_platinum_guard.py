@@ -1,7 +1,7 @@
 """Project Platinum, cycle 2: the guard family.
 
 Target from the cycle-1 refreshed table
-(`docs/reports/v3.13.21/coverage-gaps.md`):
+(`docs/steady/reports/v3.13.21-coverage-gaps.md`):
 
   except  guard/extreview.py:_scan_python (3) -- a source
           that does not parse is a "syntax" finding, never an

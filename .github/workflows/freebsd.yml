@@ -12,7 +12,7 @@ name: freebsd
 # root in service), then the roster as root with a real second user
 # (the privilege drop, M8, on a third POSIX kernel). Confinement is
 # bwrap and falls open here by the 2026-10-15 rule; a jail would be
-# FreeBSD's cage (docs/security/security-gaps.md) and is not in
+# FreeBSD's cage (docs/infrastructure-documents/security/security-gaps.md) and is not in
 # scope until the owner says so.
 on:
   schedule:

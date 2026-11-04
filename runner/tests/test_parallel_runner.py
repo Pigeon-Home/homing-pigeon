@@ -308,7 +308,7 @@ class MainContractTest(_OutsideActions):
 class ReadableFromTheRunPageTest(_OutsideActions):
     """A red or slow Windows job must be readable without its log.
 
-    Six days of run history (docs/reports/v3.12.56/ci-failures.md)
+    Six days of run history (docs/steady/reports/ci-failures.md)
     had 257 red Windows suite jobs whose only annotation was
     "Process completed with exit code 1": the failing test's name
     lived in a log nobody opened. These pin the two additions:

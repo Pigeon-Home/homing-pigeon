@@ -1,11 +1,14 @@
 # Agent-Stamp: 80000aeb-9c1f-49ad-aeee-fa0855092587
 """The reader's documentation carries no trace of how the project is
-run. The manuals at the root and the guides under docs/use, extend,
-security, oracle, design and ietf are for someone running or
-extending the runner; how the seats work -- question numbers, seat
-names, stamps' roles, campaign names, standing orders -- lives in
-docs/project, docs/archive, docs/reports and docs/seats (the questions
-file, status.txt and the forum). A reference that drifts into a
+run. The manuals at the root and the guides shelved under
+docs/steady (use, oracle, design, security and the core guides at
+its top), docs/infrastructure-documents (extend, oracle, security,
+design) and docs/ietf are for someone running or extending the
+runner; how the seats work -- question numbers, seat names,
+stamps' roles, campaign names, standing orders -- lives in
+docs/infrastructure-documents/project, docs/archive,
+docs/steady/reports and the seats drawers (the questions file,
+status.txt and the forum). A reference that drifts into a
 reader's page fails here, with the line.
 """
 
@@ -16,11 +19,21 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 READER_FILES = ["README.md", "INSTALL.md", "SECURITY.md", "PROTOCOL.md", "FAQ.md",
-                "ENTERPRISE.md", "docs/CONTRIBUTING.md"]
-READER_DIRS = ["docs/use", "docs/extend", "docs/security", "docs/oracle",
-               "docs/design", "docs/ietf"]
-# The seats' own files under a reader directory.
-NOT_READER = set()   # the seats' files live in docs/seats, outside the reader's folders
+                "ENTERPRISE.md", "docs/steady/project/contributing.md",
+                "docs/steady/extensions.md", "docs/steady/networking.md",
+                "docs/steady/present-but-invalid-config.md",
+                "docs/steady/secret-rotation.md", "docs/steady/sending.md",
+                "docs/steady/verification.md"]
+READER_DIRS = ["docs/steady/use", "docs/steady/oracle", "docs/steady/design",
+               "docs/steady/security", "docs/infrastructure-documents/extend",
+               "docs/infrastructure-documents/oracle",
+               "docs/infrastructure-documents/security",
+               "docs/infrastructure-documents/design", "docs/ietf"]
+# Files under a reader directory that are not reader's pages.
+# The seats' files live in the seats drawers, outside the reader's
+# folders; the hardening report is a dated record the
+# reorganization shelved in the security drawer.
+NOT_READER = {"docs/steady/security/hardening_report.md"}
 
 # What a seat says and a reader should not meet.
 PROCESS = re.compile(
@@ -67,13 +80,16 @@ class ReaderDocsQuietTest(unittest.TestCase):
                         bad.append(f"{rel}:{n}: {m.group(0)!r} in {line.strip()[:80]!r}")
         self.assertEqual([], bad, "process talk in a reader's page:\n  " + "\n  ".join(bad))
 
-    def test_docs_use_holds_only_the_reader_s_pages(self):
+    def test_docs_steady_use_holds_only_the_reader_s_pages(self):
         # The seats' files (the questions file, status.txt, the forum,
-        # a muster hold) live in docs/seats. A job on a rig that still
-        # writes to the old path puts a file here, and this names it.
-        stray = sorted(n for n in os.listdir(os.path.join(ROOT, "docs", "use"))
+        # a muster hold) live in the seats drawers. A job on a rig that
+        # still writes to the old path puts a file here, and this
+        # names it.
+        stray = sorted(n for n in os.listdir(
+            os.path.join(ROOT, "docs", "steady", "use"))
                        if not n.endswith(".md"))
-        self.assertEqual([], stray, "not a reader's page under docs/use")
+        self.assertEqual([], stray,
+                         "not a reader's page under docs/steady/use")
 
 
 if __name__ == "__main__":

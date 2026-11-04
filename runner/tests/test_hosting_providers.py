@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 """The hosting adapters against recorded API exchanges (Phase 1 and
-Phase 3 of docs/project/hosting.md). No live calls: every request is
+Phase 3 of docs/steady/project/hosting.md). No live calls: every request is
 answered by runner/tests/hosting_player.py from the fixtures.
 
 Per provider: create, poll to running, destroy, and the error shapes

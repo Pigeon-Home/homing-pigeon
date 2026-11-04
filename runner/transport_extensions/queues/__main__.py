@@ -12,7 +12,7 @@ How long a pulled job stays leased before the queue may offer it
 again is the Worker's setting (LEASE_MS, default 300 s), not this
 block's.
 
-The contract (docs/extend/transports.md, "Queues"):
+The contract (docs/infrastructure-documents/extend/transports.md, "Queues"):
     GET  {url}/jobs?max=N          -> {"jobs": [{"id", "envelope"}]}
     POST {url}/jobs/{id}/ack       -> 204   (the job is finished)
     POST {url}/results             <- envelope text, 202

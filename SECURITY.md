@@ -151,7 +151,7 @@ or file contents.
 
 A test box ran as root with confinement and every security
 mode off, at `max_result_view: full`
-([live-examples.md](docs/use/live-examples.md)). Three things from
+([live-examples.md](docs/steady/use/live-examples.md)). Three things from
 its 19,227 jobs are worth knowing before loosening a real box:
 
 - At view `full` the SI receives what the script printed. The run's
@@ -197,7 +197,7 @@ machine, or a kernel that blocks the user namespace, such as
 `kernel.apparmor_restrict_unprivileged_userns=1` on Ubuntu 24.04)
 the runner refuses to start and names the cause — a security mode
 whose mechanism cannot engage is a config error, not a silent
-downgrade (`docs/design/present-but-invalid-config.md`). If bwrap
+downgrade (`docs/steady/present-but-invalid-config.md`). If bwrap
 leaves `PATH` after a successful start, or the sandbox command
 cannot be built, a job falls back loudly: the runner warns, audits a
 `fallback` decision, and runs it normally. If bwrap is still present
@@ -264,7 +264,7 @@ empty file. File secrets pass the same entropy gate.
   alike, with the same answers; a 4 MB nest extracts in under a
   second.
 - **Rotation is per key**: add the new ID, hand it out, retire the
-  old one (`docs/use/secret-rotation.md`). An inline secret is read at
+  old one (`docs/steady/secret-rotation.md`). An inline secret is read at
   startup and rotating it takes a restart; a secret given by file is
   read again on every poll cycle.
 - **The key directory names the state of every key** (PROTOCOL.md
@@ -346,7 +346,7 @@ questions a reviewer asks about that, and the answers:
   or `HP_KEYRING`), written whole or not at all; `list` prints names
   and runners, never a secret.
 
-See the hardening report (`docs/archive/HARDENING_REPORT.md`) for per-milestone
-status, and the threat model (`docs/security/threat-model.md`) for the
+See the hardening report (`docs/steady/security/hardening_report.md`) for per-milestone
+status, and the threat model (`docs/infrastructure-documents/security/threat-model.md`) for the
 overall posture: the Oracle reviews while the operating system
 contains.

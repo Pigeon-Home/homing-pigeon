@@ -7,7 +7,7 @@ runner -- sign it, then drop it in the local inbox or push it
 to the local signal socket -- never ran in any of the
 extensions the coverage map names. The copies are one shape by
 design (the Lab Results shape), so this is one parameterized
-test over all twenty-eight, per docs/extend/senses.md:
+test over all twenty-eight, per docs/steady/oracle/senses.md:
 
   - the alert the runner files is the alert the extension
     decided (same sensor, title, signal), and its signature

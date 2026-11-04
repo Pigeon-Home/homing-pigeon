@@ -2,7 +2,7 @@
 """Stage 7: content-independence at the first rung.
 
 The gate model treats a script as a length and a digest. The
-challenge in docs/proofs/thinking.md is to show that on the
+challenge in docs/infrastructure-documents/proofs/thinking.md is to show that on the
 real gate, not only by reading the check order. These tests
 build the scripts a default bash can construct in 49
 characters or fewer, check that bash accepts each as syntax,

@@ -2,7 +2,7 @@
 # Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854
 """Extension sources: each extension brings its own code for the Oracle.
 
-The contract under test (runner/ops/extsources.py, docs/extend/extensions.md
+The contract under test (runner/ops/extsources.py, docs/steady/extensions.md
 "Sources"):
 
 - sources.json is validated like a manifest: unknown fields refused
@@ -2552,7 +2552,7 @@ class DocsTest(unittest.TestCase):
             return fh.read()
 
     def test_the_extensions_doc_states_the_rule(self):
-        doc = " ".join(self.read("docs", "extend", "extensions.md").split())
+        doc = " ".join(self.read("docs", "steady", "extensions.md").split())
         self.assertIn("## Sources", doc)
         for phrase in ("sources.json", "extension_sources",
                        "--fetch-sources", "--inspect sources",
@@ -2567,7 +2567,7 @@ class DocsTest(unittest.TestCase):
     def test_the_example_config_documents_the_key(self):
         cfg = json.loads(self.read("runner", "config.example.json"))
         self.assertEqual(cfg["extension_sources"], "auto")
-        self.assertIn("docs/extend/extensions.md", cfg["_extension_sources"])
+        self.assertIn("docs/steady/extensions.md", cfg["_extension_sources"])
         self.assertIn("unpinned", cfg["_extension_sources"])
 
 

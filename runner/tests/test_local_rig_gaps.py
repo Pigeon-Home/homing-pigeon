@@ -3,7 +3,7 @@
 
 A local rig measurement (runner/tools/stdlib_coverage.py, no
 hypothesis on the box) put these arms on the never-run list, most of
-them also on CI's (docs/reports/v3.13.62/coverage-gaps.md). Each was
+them also on CI's (docs/steady/reports/v3.13.62-coverage-gaps.md). Each was
 reached, if at all, by a random property example or on one platform
 only, so a coverage number could move with a seed. Each test here
 reaches its arm with one fixed input and asserts what the arm is for.

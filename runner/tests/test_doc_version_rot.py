@@ -3,12 +3,13 @@
 A procedure that says "type a title like `Version 3.7.28`" is
 correct only until the next tag lands; then it is quietly wrong
 forever (field catch, 2026-10-18: the release procedure in
-docs/use/runbook.md carried the then-current version as its example).
+docs/steady/use/use-runbook.md carried the then-current version as
+its example).
 Evergreen docs use placeholders (X.Y.Z) and point at
 pyproject.toml for the number. Dated records are exempt by
-design: CHANGELOG.md, docs/archive/, the dated reports under
-docs/reports/, and the IETF draft under docs/ietf/ are supposed
-to carry the versions they describe.
+design: the changelog, docs/archive/, the dated reports under
+docs/steady/reports/, and the IETF draft under docs/ietf/ are
+supposed to carry the versions they describe.
 """
 
 import os
@@ -35,21 +36,23 @@ def _evergreen_docs():
         if ".git" in parts or "__pycache__" in parts:
             dirnames[:] = []
             continue
-        # Dated reports under docs/reports/ are snapshots of a
-        # measured run, like the archive: exempt, not evergreen.
+        # Dated reports under docs/steady/reports/ are snapshots of
+        # a measured run, like the archive: exempt, not evergreen.
         if parts & {"archive", "ietf", "reports"}:
             dirnames[:] = []
             continue
         for name in filenames:
-            if name.endswith(".md") and name != "CHANGELOG.md":
+            if name.endswith(".md") and name not in (
+                    "CHANGELOG.md", "changelog.md"):
                 found.append(os.path.join(dirpath, name))
     # The two logs cite releases by number the way the CHANGELOG
     # does: the questions file records which release applied an
     # answer, the standing orders' ledger which release proved an
     # item. Records, not evergreen prose.
-    logs = {os.path.join(root, "docs", "seats", "questions.md"),
-            os.path.join(root, "docs", "project",
-                         "campaign-standing-orders.md")}
+    logs = {os.path.join(root, "docs", "steady", "seats",
+                         "questions.md"),
+            os.path.join(root, "docs", "infrastructure-documents",
+                         "project", "campaign-standing-orders.md")}
     return [p for p in found if p not in logs]
 
 

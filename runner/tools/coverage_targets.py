@@ -2,7 +2,7 @@
 
 Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854
 
-Project Platinum's compass (docs/project/campaign-standing-orders.md,
+Project Platinum's compass (docs/infrastructure-documents/project/campaign-standing-orders.md,
 queue P). A coverage number says how much ran; this says what did not
 and why, so a fuzzing hour goes to the lines a test can reach.
 

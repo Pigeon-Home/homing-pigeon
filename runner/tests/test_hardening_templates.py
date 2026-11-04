@@ -10,7 +10,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-HARDENING = os.path.join(REPO, "docs", "security", "hardening")
+HARDENING = os.path.join(REPO, "docs", "steady", "security")
 PREFIX = "/tmp/fakeprefix"
 
 # Absolute paths a template may reference outside the rendered
@@ -45,9 +45,9 @@ def _absolute_paths(text):
 
 class TemplateTest(unittest.TestCase):
     TEMPLATES = (
-        "systemd/homing-pigeon.service",
-        "apparmor/homing-pigeon",
-        "selinux/homing_pigeon.te",
+        "homing-pigeon.service",
+        "homing-pigeon",
+        "homing_pigeon.te",
     )
 
     def test_templates_exist(self):
@@ -68,7 +68,7 @@ class TemplateTest(unittest.TestCase):
                 self.assertTrue(ok, "%s: %s escapes the prefix" % (name, p))
 
     def test_systemd_has_hardening_directives(self):
-        rendered = _render("systemd/homing-pigeon.service")
+        rendered = _render("homing-pigeon.service")
         for directive in ("NoNewPrivileges=true",
                           "ProtectSystem=strict",
                           "ProtectHome=true",
@@ -79,14 +79,14 @@ class TemplateTest(unittest.TestCase):
     def test_systemd_mirrors_installer_unit(self):
         # Same shape install.py writes: Description, network-online,
         # ExecStart with --config, Restart=always.
-        rendered = _render("systemd/homing-pigeon.service")
+        rendered = _render("homing-pigeon.service")
         self.assertIn("Description=Homing Pigeon runner agent", rendered)
         self.assertIn("After=network-online.target", rendered)
         self.assertIn("--config %s/config.json" % PREFIX, rendered)
         self.assertIn("Restart=always", rendered)
 
     def test_selinux_module_name(self):
-        with open(os.path.join(HARDENING, "selinux/homing_pigeon.te"),
+        with open(os.path.join(HARDENING, "homing_pigeon.te"),
                   encoding="utf-8") as fh:
             text = fh.read()
         self.assertIn("policy_module(homing_pigeon,", text)
@@ -121,7 +121,7 @@ class TemplateParseTest(unittest.TestCase):
         parser = configparser.ConfigParser(interpolation=None)
         parser.optionxform = str
         parser.read_file(io.StringIO(
-            _render("systemd/homing-pigeon.service")))
+            _render("homing-pigeon.service")))
         self.assertEqual(parser.sections(),
                          ["Unit", "Service", "Install"])
         # The ExecStart is the installer's argv shape:
@@ -141,7 +141,7 @@ class TemplateParseTest(unittest.TestCase):
         self.assertEqual(parser["Service"]["User"], "fakepigeon")
 
     def test_the_apparmor_profile_parses(self):
-        rendered = _render("apparmor/homing-pigeon")
+        rendered = _render("homing-pigeon")
         self.assertEqual(rendered.count("{"), rendered.count("}"))
         body = [ln.strip() for ln in rendered.splitlines() if ln.strip()]
         opener = "%s/python3 flags=(complain) {" % PREFIX
@@ -159,7 +159,7 @@ class TemplateParseTest(unittest.TestCase):
                             "rule not comma-terminated: %s" % ln)
 
     def test_the_selinux_module_parses(self):
-        rendered = _render("selinux/homing_pigeon.te")
+        rendered = _render("homing_pigeon.te")
         self.assertEqual(rendered.count("("), rendered.count(")"))
         declared = set(re.findall(r"^type\s+(\w+);", rendered,
                                   re.M))

@@ -72,7 +72,7 @@ def failures_in(lines):
     it expects), and in log order those used to take the ten slots
     before the real FAIL: lines near the end -- 126 of 137 red
     suite runs over six days named no test in their annotations
-    (docs/reports/v3.12.56/ci-failures.md). A log whose verdict is
+    (docs/steady/reports/ci-failures.md). A log whose verdict is
     OK -- bare, or OK with unittest's parenthetical (skipped=N,
     expected failures=N) -- has no failure to name and gets
     nothing. The verdict is the one unittest prints last, after

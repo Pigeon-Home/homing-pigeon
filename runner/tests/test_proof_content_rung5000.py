@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Content-independence redo at 5,000 characters.
 
-The review in docs/proofs/content-series-review.md asked for
+The review in docs/infrastructure-documents/proofs/content-series-review.md asked for
 this rung first. It was missing from the earlier series. The
 scripts are built from a catalog of constructs, one command
 per line, cycled so the length is real material and not one

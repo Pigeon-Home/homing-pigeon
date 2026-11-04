@@ -1,7 +1,7 @@
 """Project Platinum, cycle 2: the ops family.
 
 Targets from the cycle-1 refreshed table
-(`docs/reports/v3.13.21/coverage-gaps.md`), taken top-down:
+(`docs/steady/reports/v3.13.21-coverage-gaps.md`), taken top-down:
 
   logic  ops/extsources.py:status (5) -- the operator's view of
          every extension's recorded state. Its docstring is the

@@ -6,7 +6,7 @@ set -e
 CONFIG="${CONFIG_PATH:-/data/config.json}"
 
 if [ ! -f "$CONFIG" ] && [ -n "$HP_CONFIG_BLOB" ]; then
-  # A hosted box (docs/project/hosting.md): the provisioner handed
+  # A hosted box (docs/steady/project/hosting.md): the provisioner handed
   # over one blob and a profile name; the installer's own code writes
   # the config, applies the profile and makes sure a secret exists.
   mkdir -p "$(dirname "$CONFIG")"
@@ -16,7 +16,7 @@ fi
 if [ ! -f "$CONFIG" ]; then
   if [ -z "$PIGEON_MAILBOX_USER" ] || [ -z "$PIGEON_MAILBOX_PASSWORD" ]; then
     echo "error: $CONFIG not found and PIGEON_MAILBOX_USER / PIGEON_MAILBOX_PASSWORD not set" >&2
-    echo "Mount a config.json at /data/config.json or set the env vars. See docs/archive/DOCKER.md." >&2
+    echo "Mount a config.json at /data/config.json or set the env vars. See docs/steady/use/docker.md." >&2
     exit 1
   fi
   python3 - "$CONFIG" <<'PYEOF'

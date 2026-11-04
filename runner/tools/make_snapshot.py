@@ -209,9 +209,10 @@ def ci_snapshot(repo, project, test_log=None, env=None, now=None):
         "tests": test_summary(test_log) if test_log else None,
         "requirements_ci": ".github/requirements-ci.txt",
         "coverage_reports": sorted(
-            "docs/reports/%s" % d for d in os.listdir(
-                os.path.join(project, "docs", "reports"))
-        ) if os.path.isdir(os.path.join(project, "docs", "reports")) else [],
+            "docs/steady/reports/%s" % d for d in os.listdir(
+                os.path.join(project, "docs", "steady", "reports"))
+        ) if os.path.isdir(os.path.join(
+            project, "docs", "steady", "reports")) else [],
     }
     return snap
 
@@ -223,7 +224,7 @@ _INDEX = [
     ("Project overview", "README.md"),
     ("Rules for agents working on the project", "AGENTS.md"),
     ("Install", "INSTALL.md"),
-    ("Changelog", "docs/CHANGELOG.md"),
+    ("Changelog", "docs/infrastructure-documents/changelog.md"),
     ("The runner and the Oracle (source)", "runner/"),
     ("The cloud-side helpers (source)", "runner/cloud/"),
     ("The test suite", "runner/tests/"),
@@ -232,10 +233,10 @@ _INDEX = [
     ("The platform matrix", ".github/workflows/platform-matrix.yml"),
     ("CI tool pins", ".github/requirements-ci.txt"),
     ("CI and build tools", "runner/tools/"),
-    ("Coverage and mutation reports", "docs/reports/"),
-    ("Everything not built yet", "docs/project/future.md"),
+    ("Coverage and mutation reports", "docs/steady/reports/"),
+    ("Everything not built yet", "docs/FUTURE.md"),
     ("The shipped extensions", "runner/extensions/"),
-    ("OS hardening templates", "docs/security/hardening/"),
+    ("OS hardening templates", "docs/steady/security/"),
     ("Container images", ".github/docker/"),
 ]
 

@@ -1,7 +1,7 @@
 # Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f
 #
 # Owner: 60000b3a (extension sources and their pins), from
-# 2026-10-26; see docs/archive/RESEARCHER_IDENT.md. The bump commits
+# 2026-10-26; see docs/archive/researcher_ident.md. The bump commits
 # carry that stamp. Edited by 40000e00-1234-4abc-9def-0123456789ab.
 #
 # Nightly: move each feed sense's upstream pin to the current tip of

@@ -1,7 +1,7 @@
 """Project Platinum, cycle 3: the hosting control plane.
 
 Targets from the cycle-2 refreshed table
-(`docs/reports/v3.13.27/coverage-gaps.md`), guards and
+(`docs/steady/reports/v3.13.27-coverage-gaps.md`), guards and
 excepts in the hosting package:
 
   guard  hosting/cli.py:_provider (2) -- fly takes its app
