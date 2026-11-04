@@ -14,9 +14,10 @@ Shard: the not-started documents in INDEX.md at positions 2, 5, 8,
 
 ## Stopped at
 
-Batch 3 done. Next in shard order: position 26
-(docs/infrastructure-documents/extend/transports.md), then position 8
-(docs/steady/extensions.md) and position 2 (PROTOCOL.md).
+Batch 4 done. Next in shard order: position 8
+(docs/steady/extensions.md), then position 2 (PROTOCOL.md) and
+position 5 (docs/infrastructure-documents/changelog.md).
 | docs/steady/sending.md | 103 | 5 |
 | docs/infrastructure-documents/project/campaign-playbook.md | 90 | 4 |
 | docs/infrastructure-documents/design/v3-carriage-review-pass.md | 243 | 22 |
+| docs/infrastructure-documents/extend/transports.md | 333 | 12 |
