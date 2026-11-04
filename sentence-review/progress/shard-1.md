@@ -67,6 +67,7 @@ flagged, as phase 1 did.
 | docs/infrastructure-documents/proofs/goals.md | 247 | 0 | 243 | 4 |
 | docs/infrastructure-documents/proofs/constraints.md | 285 | 1 | 285 | 0 |
 | docs/steady/project/contributing.md | 279 | 2 | 278 | 1 |
+| docs/ietf/draft-slutsky-homing-pigeon-v2/submitted/draft-slutsky-homing-pigeon-v2-01.md | 239 | 4 | 239 | 0 |
 | docs/infrastructure-documents/proofs/shotgun-queue.md | 400 | 0 | 347 | 53 |
 | docs/steady/reports/v3.13.29-coverage.md | 75 | 7 | 75 | 0 |
 | docs/steady/reports/v3.13.8-coverage-gaps.md | 57 | 1 | 57 | 0 |
@@ -135,6 +136,5 @@ docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.m
 
 ## Stopped at
 
-58 documents done, 5,746 units. Only the 3 IETF drafts
-remain: v2 submitted -01 (239 units), v3 source -00 (446),
-v1 submitted -01 (705).
+59 documents done, 5,985 units. Only 2 IETF drafts remain:
+v3 source -00 (446 units) and v1 submitted -01 (705).
