@@ -18,6 +18,11 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/infrastructure-documents/proofs/stage9-500000.md | 31 | 1 |
 | docs/steady/security/personal-documents-warning.md | 40 | 0 |
 | docs/steady/reports/known-failures.md | 36 | 1 |
+| docs/steady/reports/v3.13.29-coverage-gaps.md | 29 | 2 |
+| docs/steady/reports/coverage-local.md | 57 | 2 |
+| docs/steady/reports/san-francisco-rig-2026-10-28.md | 29 | 2 |
+| docs/infrastructure-documents/proofs/stage6-surfaces.md | 37 | 2 |
+| docs/steady/reports/germany-rig-driving-2026-10-27.md | 47 | 1 |
 
 ## State
 
