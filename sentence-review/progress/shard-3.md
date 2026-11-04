@@ -67,6 +67,7 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/ietf/draft-slutsky-homing-pigeon-v2/submitted/draft-slutsky-homing-pigeon-v2-03.md | 260 | 6 |
 | docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-00.md | 713 | 5 |
 | docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-03.md | 753 | 5 |
+| docs/infrastructure-documents/project/campaign-standing-orders.md | 4035 | 2 |
 
 ## State
 
