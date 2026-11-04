@@ -50,6 +50,7 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/infrastructure-documents/design/dtls-platform-in-handshake.md | 35 | 0 |
 | docs/infrastructure-documents/design/v3-dtls-over-email-plan.md | 168 | 0 |
 | docs/infrastructure-documents/extend/worker-agents.md | 48 | 0 |
+| docs/infrastructure-documents/project/testing.md | 66 | 5 |
 
 ## State
 
