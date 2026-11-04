@@ -63,6 +63,7 @@ flagged, as phase 1 did.
 | docs/steady/reports/v3.15.1-coverage.md | 65 | 2 | 65 | 0 |
 | docs/steady/reports/v3.12.20-coverage.md | 373 | 16 | 373 | 0 |
 | docs/steady/use/use-runbook.md | 220 | 8 | 219 | 1 |
+| docs/steady/project/de_dust2.md | 215 | 2 | 162 | 53 |
 | docs/steady/reports/v3.13.29-coverage.md | 75 | 7 | 75 | 0 |
 | docs/steady/reports/v3.13.8-coverage-gaps.md | 57 | 1 | 57 | 0 |
 | docs/steady/reports/v3.13.42-coverage.md | 78 | 7 | 78 | 0 |
@@ -130,6 +131,6 @@ docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.m
 
 ## Stopped at
 
-53 documents done, 4,320 units. Next in line: the big prose
-documents (constraints 285, goals 247, shotgun-queue 400,
-contributing 279, de_dust2 215), then the 3 IETF drafts.
+54 documents done, 4,535 units. Next in line: goals (247
+units), constraints (285), shotgun-queue (400), contributing
+(279), then the 3 IETF drafts.
