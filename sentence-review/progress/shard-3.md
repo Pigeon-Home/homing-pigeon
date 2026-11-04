@@ -61,7 +61,8 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/steady/design/ci-runtime.md | 97 | 3 |
 | docs/steady/design/remediation-design.md | 120 | 0 |
 | docs/steady/oracle/senses.md | 142 | 4 |
-| docs/steady/project/de_dust.md | 91 | 2 |
+| docs/steady/project/de_dust.md | 156 | 2 |
+| docs/steady/project/runner-line-reduction-runbook.md | 77 | 1 |
 
 ## State
 
