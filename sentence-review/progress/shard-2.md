@@ -14,10 +14,9 @@ Shard: the not-started documents in INDEX.md at positions 2, 5, 8,
 
 ## Stopped at
 
-Batch 21 done. Remaining in this shard: position 179 (the v1 -00
-source draft), 182 (the v1 -02 submitted draft), then the 2 held
-documents (PROTOCOL.md at position 2, the changelog at position 5).
-Next: position 179.
+Batch 22 done. Remaining in this shard: the 2 held documents,
+PROTOCOL.md (position 2) and the changelog (position 5).
+Next: PROTOCOL.md.
 | docs/steady/sending.md | 103 | 5 |
 | docs/infrastructure-documents/project/campaign-playbook.md | 90 | 4 |
 | docs/infrastructure-documents/design/v3-carriage-review-pass.md | 243 | 22 |
@@ -71,3 +70,5 @@ Next: position 179.
 | docs/steady/reports/v3.5.2-coverage.md | 87 | 8 |
 | docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-pigeon-v2-00.md | 187 | 1 |
 | docs/ietf/draft-slutsky-homing-pigeon-v2/submitted/draft-slutsky-homing-pigeon-v2-02.md | 273 | 5 |
+| docs/ietf/draft-slutsky-homing-pigeon/source/draft-homing-pigeon-00.md | 677 | 10 |
+| docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-02.md | 763 | 98 |
