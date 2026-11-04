@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.148 - 2026-11-03
+
+- Versions: the 4-component scheme. A release version is now major, minor, the repository's size in tokens in whole millions, and the release counter — this tree measures 17,603,756 tokens, so the standing version is 3.15.17.148, converted from 3.15.148 with the counter 148 carried over unchanged. From the next release the counter restarts at 1 whenever the minor or the token figure increases, the token figure is measured at most once every 24 hours (a release inside the window reuses the last figure), and the major stays 3. The rule and its tests live in runner/ops/version4.py — peach fuzz in hand, the whole tree counted in every version number.
+
 ## 3.15.148 - 2026-11-03
 
 - README: 2 updates.

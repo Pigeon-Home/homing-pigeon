@@ -261,5 +261,25 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 2)
 
 
+class CurrentTreeTest(unittest.TestCase):
+    def test_standing_version_is_the_converted_four_component(self):
+        import re
+
+        import runner
+        root = os.path.dirname(os.path.dirname(
+            os.path.abspath(runner.__file__)))
+        with open(os.path.join(root, "pyproject.toml"),
+                  encoding="utf-8") as fh:
+            text = fh.read()
+        current = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M).group(1)
+        parts = version4.parse(current)
+        # The conversion of 3.15.148: major and minor unchanged, the
+        # counter 148 carried over, the token figure measured.
+        self.assertEqual(parts[0], 3)
+        self.assertEqual(parts[1], 15)
+        self.assertGreaterEqual(parts[2], 1)
+        self.assertEqual(parts[3], 148)
+
+
 if __name__ == "__main__":
     unittest.main()
