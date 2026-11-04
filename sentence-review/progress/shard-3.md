@@ -63,6 +63,10 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/steady/oracle/senses.md | 142 | 4 |
 | docs/steady/project/de_dust.md | 156 | 2 |
 | docs/steady/project/runner-line-reduction-runbook.md | 77 | 1 |
+| docs/ietf/draft-slutsky-homing-pigeon-v2/submitted/draft-slutsky-homing-pigeon-v2-00.md | 261 | 6 |
+| docs/ietf/draft-slutsky-homing-pigeon-v2/submitted/draft-slutsky-homing-pigeon-v2-03.md | 260 | 6 |
+| docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-00.md | 713 | 5 |
+| docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-03.md | 753 | 5 |
 
 ## State
 
