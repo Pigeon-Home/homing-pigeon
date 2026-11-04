@@ -76,7 +76,7 @@ is load-bearing — see `docs/extend/senses.md` ("why this shape").
 ## What the picture still lacks
 
 What ships and what does not, item by item; the unbuilt ones that are
-planned are in docs/future.md.
+planned are in docs/FUTURE.md.
 
 - **NIDS** — Zeek/Suricata as a network-side sense next to the
   host IDS. This ships: the `suricata-feed` and `zeek-feed`

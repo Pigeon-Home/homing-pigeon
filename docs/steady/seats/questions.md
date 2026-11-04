@@ -1783,7 +1783,7 @@ patches the check before the owner ever sends the word. The panic
 word is real protection only where the hash, the flag and the runner
 are out of the job's write reach (`job_user` separation, and the
 read-only install under "Runner integrity" in
-`docs/future.md`). The doctor says which case the box is
+`docs/FUTURE.md`). The doctor says which case the box is
 in, and SECURITY.md promises no more than that.
 
 **Docs and tests it brings.** A PROTOCOL.md paragraph (the subject
