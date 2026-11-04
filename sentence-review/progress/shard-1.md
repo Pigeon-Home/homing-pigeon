@@ -25,6 +25,12 @@ flagged, as phase 1 did.
 | docs/steady/verification.md | 42 | 0 | 42 | 0 |
 | docs/ietf/status.md | 108 | 2 | 101 | 7 |
 | AGENTS.md | 216 | 4 | 215 | 1 |
+| docs/infrastructure-documents/proofs/content-rung-50000.md | 31 | 0 | 31 | 0 |
+| docs/infrastructure-documents/proofs/content-sh-macos.md | 35 | 0 | 35 | 0 |
+| docs/infrastructure-documents/proofs/stage6-transports.md | 20 | 1 | 20 | 0 |
+| docs/infrastructure-documents/proofs/stage6-keys.md | 31 | 1 | 31 | 0 |
+| docs/infrastructure-documents/proofs/stage2.md | 42 | 1 | 42 | 0 |
+| docs/infrastructure-documents/security/threat-model.md | 32 | 0 | 26 | 6 |
 
 ## Remaining in this shard (in shard order)
 
@@ -85,6 +91,6 @@ docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.m
 
 ## Stopped at
 
-8 documents done, 536 units. Next in line: the 2 infrastructure
-design sentence reviews (positions 22 and 25), then
-configuring-oracle and the proofs documents.
+14 documents done, 727 units. Next in line: duplication-audit
+(position 31), then the remaining proofs documents, the steady
+design pair, and the reports.
