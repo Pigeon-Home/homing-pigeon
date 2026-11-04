@@ -31,6 +31,8 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/steady/reports/audit-2026-10-15.md | 100 | 0 |
 | docs/steady/reports/local-rig-2026-10-27-coverage-gaps.md | 109 | 1 |
 | docs/steady/reports/report.md | 55 | 5 |
+| docs/steady/use/docker.md | 45 | 3 |
+| docs/steady/project/hosting.md | 59 | 6 |
 
 ## State
 
