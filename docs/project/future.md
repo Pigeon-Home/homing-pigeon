@@ -6,7 +6,7 @@
 
 - **Audit log integrity.** `security-events.jsonl` is rewritten past
   5,000 lines and `security-audit.jsonl` has no hash chain, no append-only
-  flag and no remote copy, so the watched user can edit history.
+  flag and no remote copy, so the watched user can edit history?
 
 - **A cage off Linux.** Only bwrap stops a job; macOS, FreeBSD and
   Windows detect a bad write after it happens. Needed: `sandbox-exec`, a
@@ -18,12 +18,6 @@
 - **Egress control.** A job can `curl` secrets out unless bwrap is in
   enforce mode on Linux. Per-job egress rules, and anything off Linux, do
   not exist. `docs/use/networking.md`.
-
-- **Supply chain.** The installer verifies `SHA384SUMS` and the Sigstore
-  attestation itself. Today the release carries both and
-  `docs/security/verification.md` gives a person the commands;
-  `install.py` checks nothing it downloads, and fetches Ollama with
-  `curl | sh`.
 
 - **POSIX ACL warning.** `--posture` reads the Windows DACL and warns
   when Everyone, Users or Guests can read a secret file. On POSIX it
