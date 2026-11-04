@@ -262,7 +262,7 @@ class CliTest(unittest.TestCase):
 
 
 class CurrentTreeTest(unittest.TestCase):
-    def test_standing_version_is_the_converted_four_component(self):
+    def test_standing_version_is_four_component(self):
         import re
 
         import runner
@@ -273,12 +273,16 @@ class CurrentTreeTest(unittest.TestCase):
             text = fh.read()
         current = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M).group(1)
         parts = version4.parse(current)
-        # The conversion of 3.15.148: major and minor unchanged, the
-        # counter 148 carried over, the token figure measured.
+        # The standing shape every release keeps: the major stays 3,
+        # the minor is the 15 line, the token figure is measured, and
+        # the counter is a live release counter. The 3.15.148
+        # conversion itself (counter 148 carried over) is pinned by
+        # the convert_legacy tests above with fixed inputs; pinning
+        # the counter here would fail every later release.
         self.assertEqual(parts[0], 3)
         self.assertEqual(parts[1], 15)
         self.assertGreaterEqual(parts[2], 1)
-        self.assertEqual(parts[3], 148)
+        self.assertGreaterEqual(parts[3], 1)
 
 
 if __name__ == "__main__":
