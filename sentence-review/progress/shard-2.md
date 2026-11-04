@@ -14,9 +14,9 @@ Shard: the not-started documents in INDEX.md at positions 2, 5, 8,
 
 ## Stopped at
 
-Batch 17 done (the 2 big early documents, PROTOCOL.md at position 2
+Batch 18 done (the 2 big early documents, PROTOCOL.md at position 2
 and the changelog at position 5, are held for last). Next in shard
-order: position 119 (docs/steady/reports/project-review.md).
+order: position 125 (docs/steady/reports/rig-2026-10-27.md).
 | docs/steady/sending.md | 103 | 5 |
 | docs/infrastructure-documents/project/campaign-playbook.md | 90 | 4 |
 | docs/infrastructure-documents/design/v3-carriage-review-pass.md | 243 | 22 |
@@ -55,3 +55,6 @@ order: position 119 (docs/steady/reports/project-review.md).
 | docs/steady/security/windows.md | 23 | 0 |
 | docs/steady/reports/v3.14.47-release-retrospective.md | 41 | 2 |
 | docs/steady/use/own-cloud.md | 45 | 1 |
+| docs/steady/reports/project-review.md | 78 | 4 |
+| docs/steady/reports/release.md | 94 | 10 |
+| docs/steady/security/hardening_report.md | 79 | 2 |
