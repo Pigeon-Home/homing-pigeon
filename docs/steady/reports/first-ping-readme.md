@@ -4,7 +4,7 @@
 
 How long the README's first prompt takes to come back. Every
 row is one batch from `runner/tools/first_ping.py`, kept in
-[runs.jsonl](runs.jsonl); this table is rebuilt from that file
+[runs.jsonl](../specimens/runs.jsonl); this table is rebuilt from that file
 on every record and is not edited by hand.
 
 `bench` rows are the runner's own leg on the named box: the

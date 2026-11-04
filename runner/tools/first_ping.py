@@ -13,8 +13,9 @@ seconds. That time is the sum of five legs:
     SI inbox -> SI reads it      the SI's own polling
 
 This tool measures the legs it can and keeps every run as data in
-docs/reports/first-ping/runs.jsonl, one line per batch, with the
-table in README.md beside it rebuilt from that file.
+docs/steady/specimens/runs.jsonl, one line per batch, with the
+table in docs/steady/reports/first-ping-readme.md rebuilt from
+that file.
 
     python3 runner/tools/first_ping.py bench [--runs 50]
         The runner's own leg, on this box, through the real email
@@ -54,7 +55,17 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-OUT_DIR = os.path.join(REPO, "docs", "reports", "first-ping")
+# The docs layout (2026-11-04) shelved the runs data and the table
+# apart: data files live flat in docs/steady/specimens, reports flat
+# in docs/steady/reports. OUT_DIR keeps its old meaning for a caller
+# that hands a directory (runs.jsonl and README.md side by side,
+# as the tests do with a temp dir); the committed locations are
+# RUNS_PATH and TABLE_PATH.
+DATA_DIR = os.path.join(REPO, "docs", "steady", "specimens")
+RUNS_PATH = os.path.join(DATA_DIR, "runs.jsonl")
+TABLE_PATH = os.path.join(REPO, "docs", "steady", "reports",
+                          "first-ping-readme.md")
+OUT_DIR = DATA_DIR
 SEND_JOB = os.path.join(REPO, "runner", "cloud", "send_job.py")
 STAMP = "60000b3a-32a6-4847-996f-638cbcb6d854"
 CLOCK_SCRIPT = "date -u"  # the README's "retrieve the system clock"
@@ -84,9 +95,13 @@ def summarize(seconds):
             "p95_s": round(p95, 3), "max_s": round(s[-1], 3)}
 
 
-def record(row, out_dir=OUT_DIR):
-    os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, "runs.jsonl")
+def record(row, out_dir=None):
+    if out_dir is None:
+        path = RUNS_PATH
+        os.makedirs(DATA_DIR, exist_ok=True)
+    else:
+        path = os.path.join(out_dir, "runs.jsonl")
+        os.makedirs(out_dir, exist_ok=True)
     if not os.path.exists(path):
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(json.dumps({"first_ping": 1, "Agent-Stamp": STAMP}) + "\n")
@@ -95,8 +110,8 @@ def record(row, out_dir=OUT_DIR):
     write_table(out_dir)
 
 
-def load(out_dir=OUT_DIR):
-    path = os.path.join(out_dir, "runs.jsonl")
+def load(out_dir=None):
+    path = RUNS_PATH if out_dir is None else os.path.join(out_dir, "runs.jsonl")
     if not os.path.exists(path):
         return []
     with open(path, encoding="utf-8") as fh:
@@ -108,8 +123,10 @@ def _fmt(v):
     return "" if v is None else f"{v:.3f}"
 
 
-def write_table(out_dir=OUT_DIR):
+def write_table(out_dir=None):
     rows = load(out_dir)
+    runs_link = ("[runs.jsonl](runs.jsonl)" if out_dir is not None
+                 else "[runs.jsonl](../specimens/runs.jsonl)")
     lines = [
         "# First ping",
         "",
@@ -117,7 +134,7 @@ def write_table(out_dir=OUT_DIR):
         "",
         "How long the README's first prompt takes to come back. Every",
         "row is one batch from `runner/tools/first_ping.py`, kept in",
-        "[runs.jsonl](runs.jsonl); this table is rebuilt from that file",
+        f"{runs_link}; this table is rebuilt from that file",
         "on every record and is not edited by hand.",
         "",
         "`bench` rows are the runner's own leg on the named box: the",
@@ -160,7 +177,9 @@ def write_table(out_dir=OUT_DIR):
         "```",
         "",
     ]
-    with open(os.path.join(out_dir, "README.md"), "w", encoding="utf-8") as fh:
+    target = (TABLE_PATH if out_dir is None
+              else os.path.join(out_dir, "README.md"))
+    with open(target, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines))
 
 

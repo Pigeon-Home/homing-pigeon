@@ -53,8 +53,8 @@ class SummaryAndTableTest(unittest.TestCase):
 
     def test_the_committed_table_matches_its_runs(self):
         rows = fp.load()
-        self.assertTrue(rows, "docs/reports/first-ping/runs.jsonl has rows")
-        with open(os.path.join(fp.OUT_DIR, "README.md")) as fh:
+        self.assertTrue(rows, "docs/steady/specimens/runs.jsonl has rows")
+        with open(fp.TABLE_PATH) as fh:
             text = fh.read()
         for r in rows:
             self.assertIn(f"| {r['when']} | {r['mode']} |", text)
