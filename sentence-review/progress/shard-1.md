@@ -53,6 +53,14 @@ flagged, as phase 1 did.
 | docs/steady/reports/mutation.md | 59 | 0 | 58 | 1 |
 | docs/steady/reports/release-blocked-windows.md | 87 | 1 | 87 | 0 |
 | docs/steady/reports/v3.14.46-release-retrospective.md | 40 | 1 | 39 | 1 |
+| docs/steady/reports/distill-dry-run.md | 35 | 1 | 34 | 1 |
+| docs/steady/reports/review-2026-10-27.md | 15 | 1 | 15 | 0 |
+| docs/steady/reports/tools-2026-10-27.md | 27 | 3 | 27 | 0 |
+| docs/steady/security/hardening-readme.md | 18 | 0 | 18 | 0 |
+| docs/steady/reports/v3.12.65-coverage.md | 54 | 2 | 54 | 0 |
+| docs/steady/reports/v3.13.27-coverage-gaps.md | 51 | 1 | 51 | 0 |
+| docs/steady/reports/v3.13.38-coverage-gaps.md | 25 | 1 | 24 | 1 |
+| docs/steady/reports/v3.15.1-coverage.md | 65 | 2 | 65 | 0 |
 
 ## Remaining in this shard (in shard order)
 
@@ -113,6 +121,7 @@ docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.m
 
 ## Stopped at
 
-36 documents done, 2,827 units. Next in line: the coverage
-reports, then the big prose documents (constraints, goals,
-shotgun-queue, contributing, de_dust2) and the use trio.
+44 documents done, 3,117 units. Next in line: the remaining
+coverage reports (v3.12.20 at 373 units, v3.13.29, v3.13.42,
+v3.13.8-gaps, v3.7.30), then the big prose documents and the
+use trio.
