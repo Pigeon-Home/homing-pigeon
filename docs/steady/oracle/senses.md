@@ -139,7 +139,7 @@ question "is the boring stuff actually on?"
   Firewall profiles, `ufw`/nftables, macOS `pf`/Application
   Firewall). Reports profile changes, not every dropped packet.
   Full spec below; the cage-verification job in that spec is
-  future work, listed in docs/future.md.
+  future work, listed in docs/FUTURE.md.
 
 ### `firewall` — host firewall state, rule changes, and cage verification
 
@@ -159,9 +159,9 @@ or policy that is off is labeled T1562.004. The line is diffed
 against the previous reading, so a flip says "changed" and is
 filed once. Unreadable stays unreadable and does not overwrite
 the last good reading. The rule-hash diff and the cage check
-below are listed in docs/future.md.
+below are listed in docs/FUTURE.md.
 
-**1b. Rule changes (future).** Listed in docs/future.md.
+**1b. Rule changes (future).** Listed in docs/FUTURE.md.
 This is the ruleset hash, not the posture line above. The collector would snapshot the rule set and
 file an alert on a new allow rule, never on every dropped packet:
 
@@ -181,7 +181,7 @@ on/off), `severity_inbound_allow` (default high),
 names exists in the profile today.
 
 **2. Cage verification: did the job's network cage hold?**
-Future work — listed in docs/future.md; no collector performs this
+Future work — listed in docs/FUTURE.md; no collector performs this
 check today. The runner can already cage a job's network on Linux: bwrap
 runs with `--unshare-net`, so the job gets loopback only —
 but only in enforce mode; by default the job's network
@@ -207,7 +207,7 @@ cannot see: a job that phones home prints nothing, so there
 is no output to scan. This is deliberately not part of the
 sense. Senses never enforce. The design lives in
 `docs/use/networking.md`.
-- `patch_level` — *(future sense, listed in docs/future.md)*
+- `patch_level` — *(future sense, listed in docs/FUTURE.md)*
   pending security updates (Windows Update status,
   unattended-upgrades/dnf-automatic state, macOS
   softwareupdate). Info-level; the Oracle correlates "unpatched
@@ -221,7 +221,7 @@ sense. Senses never enforce. The design lives in
   services, scheduled tasks), Linux systemd units + cron,
   macOS LaunchAgents/LaunchDaemons. A new entry outside a job
   window is the classic backdoor shape.
-- `disk_encryption` — *(future sense, listed in docs/future.md)*
+- `disk_encryption` — *(future sense, listed in docs/FUTURE.md)*
   BitLocker / LUKS / FileVault status. Info-level posture,
   mostly for the "is this box actually hardened" question.
 
