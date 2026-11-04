@@ -14,9 +14,9 @@ Shard: the not-started documents in INDEX.md at positions 2, 5, 8,
 
 ## Stopped at
 
-Batch 13 done (the 2 big early documents, PROTOCOL.md at position 2
+Batch 14 done (the 2 big early documents, PROTOCOL.md at position 2
 and the changelog at position 5, are held for last). Next in shard
-order: position 95 (docs/steady/project/roadmap-spec.md).
+order: position 101 (docs/steady/reports/2026-10-27.md).
 | docs/steady/sending.md | 103 | 5 |
 | docs/infrastructure-documents/project/campaign-playbook.md | 90 | 4 |
 | docs/infrastructure-documents/design/v3-carriage-review-pass.md | 243 | 22 |
@@ -42,3 +42,5 @@ order: position 95 (docs/steady/project/roadmap-spec.md).
 | docs/infrastructure-documents/proofs/content-sh-freebsd-design.md | 41 | 0 |
 | docs/steady/project/de_dust-where.md | 47 | 4 |
 | docs/steady/project/future-finished-2026-10-25.md | 38 | 1 |
+| docs/steady/project/roadmap-spec.md | 86 | 0 |
+| docs/steady/project/telephone-pole.md | 127 | 0 |
