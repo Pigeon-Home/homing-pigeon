@@ -24,10 +24,11 @@ flagged, as phase 1 did.
 | docs/steady/secret-rotation.md | 55 | 1 | 52 | 3 |
 | docs/steady/verification.md | 42 | 0 | 42 | 0 |
 | docs/ietf/status.md | 108 | 2 | 101 | 7 |
+| AGENTS.md | 216 | 4 | 215 | 1 |
 
 ## Remaining in this shard (in shard order)
 
-AGENTS.md; docs/steady/emergency.md;
+docs/steady/emergency.md;
 docs/infrastructure-documents/design/v1-v2-sentence-review.md;
 docs/infrastructure-documents/design/v3-sentence-review.md;
 docs/infrastructure-documents/oracle/configuring-oracle.md;
@@ -84,5 +85,6 @@ docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.m
 
 ## Stopped at
 
-7 documents done, 320 units. Next in line: AGENTS.md (position 1),
-then the infrastructure-documents design pair.
+8 documents done, 536 units. Next in line: the 2 infrastructure
+design sentence reviews (positions 22 and 25), then
+configuring-oracle and the proofs documents.
