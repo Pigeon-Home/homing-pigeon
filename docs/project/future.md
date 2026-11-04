@@ -107,7 +107,7 @@
 
   Built locally and not submitted: the specification is the
   version 3 draft
-  (`docs/ietf/draft-slutsky-homing-pigeon-v3-00.md`). The
+  (`docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md`). The
   carriage is in the suite behind the `dtls_via_email`
   option, off by default. The build plan is
   `docs/design/v3-dtls-over-email-plan.md`; the record of what

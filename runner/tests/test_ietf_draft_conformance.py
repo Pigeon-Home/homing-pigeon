@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Pins for the IETF draft's conformance and security-properties text.
 
-The draft (docs/ietf/draft-homing-pigeon-00.md) states the protocol's
+The draft (docs/ietf/draft-slutsky-homing-pigeon/source/draft-homing-pigeon-00.md) states the protocol's
 conformance rule in Section 5: one version, conformance per binding,
 the email binding mandatory for a runner, object authentication
 REQUIRED on every binding, and confidentiality REQUIRED as a property
@@ -19,7 +19,7 @@ import unittest
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
-DRAFT = os.path.join(REPO, "docs", "ietf", "draft-homing-pigeon-00.md")
+DRAFT = os.path.join(REPO, "docs", "ietf", "draft-slutsky-homing-pigeon", "source", "draft-homing-pigeon-00.md")
 
 
 def _sections(text):

@@ -1,8 +1,8 @@
 # Homing Pigeon Protocol
 
-- The technical protocol description v1: `docs/ietf/draft-homing-pigeon-00.md`
-- The technical protocol description v2: `docs/ietf/draft-homing-pigeon-v2-00.md`
-- The technical protocol description v3 (local, unsubmitted): https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3-00.md — v3 is DTLS via email. A cloud SI may use it with any runner configured to accept it (`dtls_via_email`); it is a local draft because the IETF submission window is currently closed, there is no working-group document for it, and none is needed to use it.
+- The technical protocol description v1: `docs/ietf/draft-slutsky-homing-pigeon/source/draft-homing-pigeon-00.md`
+- The technical protocol description v2: `docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-pigeon-v2-00.md`
+- The technical protocol description v3 (local, unsubmitted): https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md — v3 is DTLS via email. A cloud SI may use it with any runner configured to accept it (`dtls_via_email`); it is a local draft because the IETF submission window is currently closed, there is no working-group document for it, and none is needed to use it.
 - Internet-Draft v1 on the IETF datatracker: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - Internet-Draft v2 on the IETF datatracker: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 - Internet-Draft status (posted, sent, waiting on): `docs/ietf/STATUS.md`
@@ -76,7 +76,7 @@ The reference default is email only: `transports` absent means
     word, not a gap between two, so `[HOMING-PIGEON]\x1f result x`
     names no result. Every reader -- the runner's transports and the
     hosted queue's Worker -- uses this one class (`runner/wire/subject.py`).
-  - Version 2 (`docs/ietf/draft-homing-pigeon-v2-00.md`):
+  - Version 2 (`docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-pigeon-v2-00.md`):
     `determination`, `question` and `answer <msg_id>`
   - `<job_id>` is 1–128 characters from `[A-Za-z0-9._-]`, and it
     must not be `.` or `..`. A UUID is recommended, not required.
@@ -227,7 +227,7 @@ The reference default is email only: `transports` absent means
   `key_ids` (the PSK identity already names the key there) or the
   `disclosure` member; the two describe the box the same way.
   `protocol_versions` is also how a sender discovers that a runner
-  opens version 2 messages (`docs/ietf/draft-homing-pigeon-v2-00.md`)
+  opens version 2 messages (`docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-pigeon-v2-00.md`)
   without a negotiation: ping first, then send what the box opens.
   `key_ids` (every tier that sends a card) lists the key ids the
   runner accepts: the default key by its fingerprint and each

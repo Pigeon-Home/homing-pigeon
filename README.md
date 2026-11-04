@@ -37,7 +37,7 @@ Run a job that retrieves the system clock and then display it here.
 IETF Internet-Drafts:
 - Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
-- Homing Pigeon v3 (Post-quantum cryptography [RFC10024] in DTLS with perfect forward secrecy over email): https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3-00.md
+- Homing Pigeon v3 (Post-quantum cryptography [RFC10024] in DTLS with perfect forward secrecy over email): https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
 
 **No mailbox yet?** `python3 runner/runner.py --config config.json
 --local-test` runs the whole loop in process: you play the SI in a
@@ -517,5 +517,5 @@ says so. [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) has the rest.
 - "I once saw a forklift lift a crate of forks. And it was way to literal for me" - Mitch Hedberg
 - IETF datatracker, Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - IETF datatracker, Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
-- IETF draft v3: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3-00.md
+- IETF draft v3: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/RESUME.txt

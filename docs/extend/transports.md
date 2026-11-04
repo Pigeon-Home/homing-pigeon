@@ -421,7 +421,7 @@ broker, nothing to sign up for.
 
 The DTLS transport extension is not a store-and-forward
 transport: it is the DTLS session binding of protocol
-version 1 from `docs/ietf/draft-homing-pigeon-00.md` — a direct DTLS 1.3
+version 1 from `docs/ietf/draft-slutsky-homing-pigeon/source/draft-homing-pigeon-00.md` — a direct DTLS 1.3
 session between the SI and the runner, specified there and
 implemented as a bounded pure-Python profile
 (`runner/wire/dtlsproto.py`, stdlib only) in the extension at
@@ -515,7 +515,7 @@ implemented as a bounded pure-Python profile
 **DTLS via email (version 3).** The same session binding can ride the
 email transport instead of a UDP socket: no inbound network path,
 no firewall rule. It is defined by the local version 3 draft,
-[draft-slutsky-homing-pigeon-v3-00](https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3-00.md),
+[draft-slutsky-homing-pigeon-v3-00](https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md),
 and enabled on a runner with `dtls_via_email` set to true. A cloud
 SI may use it with any runner configured to accept it. The draft is
 local — the IETF submission window is currently closed and there

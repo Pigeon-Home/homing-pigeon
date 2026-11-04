@@ -59,7 +59,7 @@ And for the box that cannot decide on its own: with protocol version
 2 turned on, a Pi Light runner can send the question it would have
 asked a model up to a laptop or a cloud SI, and the answer rides back
 on the result without ever holding the job past its deadline (30
-seconds at most; `docs/ietf/draft-homing-pigeon-v2-00.md`).
+seconds at most; `docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-pigeon-v2-00.md`).
 
 ## What does a live run look like?
 

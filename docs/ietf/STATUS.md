@@ -6,6 +6,20 @@ Both Homing Pigeon Internet-Drafts are posted and live on the IETF
 datatracker, and the request to publish them as Informational RFCs
 has gone to the Independent Submissions Editor (ISE).
 
+## Where the drafts live
+
+1 folder per draft. Inside each: `source/` holds the living draft,
+`submitted/` holds the frozen posted revisions, and a short
+`STATUS.md` points back here. This file is the cover sheet and the
+full record for all 3.
+
+- `draft-slutsky-homing-pigeon/` — version 1
+- `draft-slutsky-homing-pigeon-v2/` — version 2
+- `draft-slutsky-homing-pigeon-v3/` — version 3, local only, not
+  submitted; its folder has no `submitted/` yet
+- `notes/` — the records that cover more than 1 draft (the deltas
+  and the trim list)
+
 ## Posted
 
 | Draft | Title | Datatracker |
@@ -73,7 +87,7 @@ has gone to the Independent Submissions Editor (ISE).
 
 Version 3 is not posted and will not be submitted for at least several
 weeks. `PROTOCOL.md` links the local source
-`draft-slutsky-homing-pigeon-v3-00.md`. There is no datatracker URL.
+`draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md`. There is no datatracker URL.
 
 The carriage behavior in that draft is the behavior on `main`. Three
 of its rules were taken from Claude's carriage pass on 2 November,
@@ -109,7 +123,7 @@ test shape is not fed to DTLS on a deployment mailbox.
 The rendered `.txt`, `.html`, and `.xml` beside the version 3 source
 were regenerated with the final-pass text (2-Nov-2026) and match the
 source. idnits 3.3.0 has been run on the render; its report stands
-beside the source as `draft-slutsky-homing-pigeon-v3-00.idnits.txt`.
+beside the source as `draft-slutsky-homing-pigeon-v3-00.idnits.txt` beside it in the same folder.
 It reports 3 errors -- the abstract's references to sections and to
 version 1, and RFC 8446 listed as obsolete (succeeded by RFC 9846) --
 all submission-time edits, recorded in the forum. Its other warning
