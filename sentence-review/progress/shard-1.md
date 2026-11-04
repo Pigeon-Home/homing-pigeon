@@ -68,7 +68,8 @@ flagged, as phase 1 did.
 | docs/infrastructure-documents/proofs/constraints.md | 285 | 1 | 285 | 0 |
 | docs/steady/project/contributing.md | 279 | 2 | 278 | 1 |
 | docs/ietf/draft-slutsky-homing-pigeon-v2/submitted/draft-slutsky-homing-pigeon-v2-01.md | 239 | 4 | 239 | 0 |
-| docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md | 446 | 35 | 445 | 1 |
+| docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md | 446 | 36 | 445 | 1 |
+| docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.md | 705 | 42 | 703 | 2 |
 | docs/infrastructure-documents/proofs/shotgun-queue.md | 400 | 0 | 347 | 53 |
 | docs/steady/reports/v3.13.29-coverage.md | 75 | 7 | 75 | 0 |
 | docs/steady/reports/v3.13.8-coverage-gaps.md | 57 | 1 | 57 | 0 |
@@ -133,9 +134,8 @@ docs/steady/use/local-si-test.md;
 docs/steady/use/use-runbook.md;
 docs/ietf/draft-slutsky-homing-pigeon-v2/submitted/draft-slutsky-homing-pigeon-v2-01.md;
 docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md;
-docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.md.
 
 ## Stopped at
 
-60 documents done, 6,431 units. Only 1 document remains:
-the v1 submitted draft -01 (705 units).
+Shard 1 is complete: all 61 documents done, 7,136 units
+in total. Nothing remains in this shard.
