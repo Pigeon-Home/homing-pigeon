@@ -14,9 +14,11 @@ Shard: the not-started documents in INDEX.md at positions 2, 5, 8,
 
 ## Stopped at
 
-Batch 19 done (the 2 big early documents, PROTOCOL.md at position 2
-and the changelog at position 5, are held for last). Next in shard
-order: position 131 (docs/steady/reports/v3.12.61-coverage.md).
+Batch 20 done (the 2 big early documents, PROTOCOL.md at position 2
+and the changelog at position 5, are held for last). Remaining in
+this shard: position 173 (the v2 -00 source draft), 176 (the v2 -02
+submitted draft), 179 (the v1 -00 source draft), 182 (the v1 -02
+submitted draft), then the 2 held documents. Next: position 173.
 | docs/steady/sending.md | 103 | 5 |
 | docs/infrastructure-documents/project/campaign-playbook.md | 90 | 4 |
 | docs/infrastructure-documents/design/v3-carriage-review-pass.md | 243 | 22 |
@@ -60,3 +62,11 @@ order: position 131 (docs/steady/reports/v3.12.61-coverage.md).
 | docs/steady/security/hardening_report.md | 79 | 2 |
 | docs/steady/reports/rig-2026-10-27.md | 112 | 2 |
 | docs/steady/use/idea321-runbook.md | 105 | 0 |
+| docs/steady/reports/v3.12.61-coverage.md | 64 | 4 |
+| docs/steady/reports/v3.13.21-coverage-gaps.md | 63 | 2 |
+| docs/steady/reports/v3.13.27-coverage.md | 85 | 14 |
+| docs/steady/reports/v3.13.30-coverage-gaps.md | 26 | 2 |
+| docs/steady/reports/v3.13.38-coverage.md | 88 | 14 |
+| docs/steady/reports/v3.13.62-coverage-gaps.md | 103 | 4 |
+| docs/steady/reports/v3.13.8-coverage.md | 85 | 14 |
+| docs/steady/reports/v3.5.2-coverage.md | 87 | 8 |
