@@ -39,8 +39,13 @@ flagged, as phase 1 did.
 | docs/infrastructure-documents/proofs/stage8-50000.md | 32 | 1 | 32 | 0 |
 | docs/infrastructure-documents/proofs/stage9.md | 43 | 0 | 42 | 1 |
 | docs/infrastructure-documents/proofs/stage4-p3.md | 74 | 1 | 73 | 1 |
-| docs/steady/design/extension-review-design.md | 38 | 1 | 36 | 1 |
+| docs/steady/design/extension-review-design.md | 38 | 1 | 37 | 1 |
 | docs/steady/design/approval-gate-design.md | 52 | 0 | 7 | 45 |
+| docs/infrastructure-documents/proofs/stage4-p6.md | 101 | 1 | 99 | 2 |
+| docs/steady/oracle/dri-playbook.md | 62 | 0 | 61 | 1 |
+| docs/infrastructure-documents/security/model-and-proof-testing.md | 110 | 0 | 110 | 0 |
+| docs/steady/project/industry-map.md | 72 | 0 | 65 | 7 |
+| docs/steady/proofs/verify-v31.md | 120 | 1 | 120 | 0 |
 
 ## Remaining in this shard (in shard order)
 
@@ -101,7 +106,6 @@ docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-01.m
 
 ## Stopped at
 
-24 documents done, 2,022 units. Next in line: stage4-p6,
-model-and-proof-testing, dri-playbook, then the big prose
-documents (constraints, goals, shotgun-queue, contributing,
-de_dust2) and the reports.
+29 documents done, 2,487 units. Next in line: the big prose
+documents (constraints 285, goals 247, shotgun-queue 400,
+contributing 279, de_dust2 215), then the steady reports.
