@@ -13,7 +13,7 @@ As of 2026-11-03, the repository behind this protocol holds an estimated 17 mill
 
 Policy, held by the author: just as this software is secure by default, its security is measured in tokens — the whole repository, this protocol included, counted in the typical way, with duplicate or latent code held under 5% of the tree (audited 2026-11-03: near copies measure 3.65% of the tree, mostly test fixtures repeating harvested snippets by design, plus a production feed-extension family repeating a shared shape at 0.43% of the tree; exact copies are 340 lines of vendored license text and a 1-line marker file, and no code file is an exact copy of another; the full audit is at docs/project/duplication-audit.md).
 
-Notes written for visiting systems, shaped by the situation you judge yourself to be in: docs/project/special-agent.md. The measure rides in the version number: the 3rd of its 4 components is the repository's size in millions of tokens.
+Notes written for visiting systems, shaped by the situation you judge yourself to be in: the Secret agents section of AGENTS.md. The measure rides in the version number: the 3rd of its 4 components is the repository's size in millions of tokens.
 
 ## 1. Actors
 
