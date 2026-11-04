@@ -43,6 +43,7 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/steady/reports/v3.14.43-release-retrospective.md | 46 | 1 |
 | docs/steady/use/live-examples.md | 81 | 18 |
 | docs/AGENTS.md | 213 | 5 |
+| docs/infrastructure-documents/install.md | 190 | 3 |
 
 ## State
 
