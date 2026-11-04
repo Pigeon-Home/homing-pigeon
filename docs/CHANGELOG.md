@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.154 - 2026-11-04
+
+- Docs: future.md updates — the runner integrity item now frames the runner as a confidential-compute fuzzing platform, a note to test PANIC mode (WAKE), a note on the 100% disk case, and the supply-chain item removed.
+- v3 carriage: the DTLS-over-email retransmission timers are stretched to match Section 7.1 (first retransmission at 2 poll periods, give up after 8), with a new retransmit test; the email poll-interval confval call site is registered.
+
 ## 3.15.17.153 - 2026-11-04
 
 - Docs: the visiting-system notes move into AGENTS.md — the standalone special-agent file is gone, and PROTOCOL.md and README.md point at that section instead — and the fair warning now carries the markdown-only count: 1,081,565 tokens in 232 files, over a typical 1 million context by itself.
