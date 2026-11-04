@@ -47,6 +47,8 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/steady/fuzzing.md | 248 | 0 |
 | docs/steady/present-but-invalid-config.md | 46 | 1 |
 | docs/steady/start-here.md | 190 | 0 |
+| docs/infrastructure-documents/design/dtls-platform-in-handshake.md | 35 | 0 |
+| docs/infrastructure-documents/design/v3-dtls-over-email-plan.md | 168 | 0 |
 
 ## State
 
