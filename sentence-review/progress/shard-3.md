@@ -68,11 +68,12 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-00.md | 713 | 5 |
 | docs/ietf/draft-slutsky-homing-pigeon/submitted/draft-slutsky-homing-pigeon-03.md | 753 | 5 |
 | docs/infrastructure-documents/project/campaign-standing-orders.md | 4035 | 2 |
+| docs/steady/seats/questions.md | 2746 | 1 |
 
 ## State
 
-Working through the shard in position order, smallest first within
-each batch to keep the pipeline honest. The 2 very large log-shaped
+Complete. All 61 of the shard's 61 documents have findings files on
+main (61 rows in the table above). The 2 very large log-shaped
 documents (docs/infrastructure-documents/project/campaign-standing-orders.md
-and docs/steady/seats/questions.md) are deferred to the end of the
-shard and are still not started.
+and docs/steady/seats/questions.md) were done last, in that order.
+Nothing in this shard remains unstarted.
