@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.155 - 2026-11-04
+
+- Docs: BRANCH-PURPOSE.md is deleted, and a working pattern for visiting systems indexes this place locally.
+- Docs: the docs layout lands on main — top files, infrastructure-documents, and steady — and living references follow the reorganization.
+- Sentence review: the sentence-review project is consolidated and completed, and then removed from main.
+
 ## 3.15.17.154 - 2026-11-04
 
 - Docs: future.md updates — the runner integrity item now frames the runner as a confidential-compute fuzzing platform, a note to test PANIC mode (WAKE), a note on the 100% disk case, and the supply-chain item removed.
