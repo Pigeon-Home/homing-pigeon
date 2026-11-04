@@ -58,6 +58,8 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/infrastructure-documents/proofs/stage7.md | 68 | 0 |
 | docs/infrastructure-documents/reports/falkenstein-rig-2026-10-31.md | 183 | 1 |
 | docs/infrastructure-documents/security/security-gaps.md | 65 | 4 |
+| docs/steady/design/ci-runtime.md | 97 | 3 |
+| docs/steady/design/remediation-design.md | 120 | 0 |
 
 ## State
 
