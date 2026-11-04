@@ -31,11 +31,15 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/steady/reports/audit-2026-10-15.md | 100 | 0 |
 | docs/steady/reports/local-rig-2026-10-27-coverage-gaps.md | 109 | 1 |
 | docs/steady/reports/report.md | 55 | 5 |
+| docs/steady/use/docker.md | 45 | 3 |
 | docs/steady/project/hosting.md | 59 | 6 |
 | docs/steady/reports/v3.12.65-coverage-gaps.md | 175 | 2 |
 | docs/steady/reports/v3.13.21-coverage.md | 77 | 8 |
 | docs/steady/reports/v3.13.30-coverage.md | 80 | 8 |
 | docs/steady/reports/v3.11.1-coverage.md | 98 | 9 |
+| docs/steady/reports/v3.13.42-coverage-gaps.md | 27 | 2 |
+| docs/steady/reports/v3.13.62-coverage.md | 44 | 2 |
+| docs/steady/reports/v3.7.22-coverage.md | 76 | 8 |
 
 ## State
 
