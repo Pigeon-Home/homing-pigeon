@@ -56,6 +56,7 @@ Progress is recorded here; INDEX.md is not edited by this shard.
 | docs/infrastructure-documents/proofs/stage4-p2.md | 76 | 1 |
 | docs/infrastructure-documents/proofs/stage4-p5.md | 92 | 1 |
 | docs/infrastructure-documents/proofs/stage7.md | 68 | 0 |
+| docs/infrastructure-documents/reports/falkenstein-rig-2026-10-31.md | 183 | 1 |
 
 ## State
 
