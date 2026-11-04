@@ -1,8 +1,5 @@
 
-- **Runner integrity.** Nothing checks that `runner.py` or the binary
-  is unchanged at startup, so a job running as the runner's user can
-  patch it. Start with a self-digest logged at start and a WARN when it
-  changes; end with a read-only install.
+- **Runner integrity.** Self tempest kernel mod
 
 - **Audit log integrity.** `security-events.jsonl` is rewritten past
   5,000 lines and `security-audit.jsonl` has no hash chain, no append-only
