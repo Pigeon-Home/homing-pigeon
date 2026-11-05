@@ -213,7 +213,7 @@ feature switches are left out):
 [WARN] security modes policy_env is off (recommended: audit or enforce)
 [WARN] security modes policy_files is off (recommended: audit or enforce)
 [WARN] security modes policy_args is off (recommended: audit or enforce)
-[WARN] confinement    bwrap not installed (confinement in enforce mode would refuse to start)
+[WARN] confinement    bwrap not installed (confinement in enforce mode would run unsandboxed)
 [OK  ] secrets        shared_secret: strong
 [OK  ] audit log      no audit entries yet (nothing to protect)
 ```
