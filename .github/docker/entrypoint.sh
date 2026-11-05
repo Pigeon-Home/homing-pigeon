@@ -40,6 +40,13 @@ cfg = {
 with open(sys.argv[1], "w") as fh:
     json.dump(cfg, fh, indent=2)
 print(f"wrote {sys.argv[1]} from environment", flush=True)
+# Like the blob branch above: never leave the config holding an empty
+# shared_secret for the runner to refuse at startup. A provided secret
+# is kept (held to the installer's entropy bar); an absent one is
+# generated and persisted into the config written above.
+from runner.ops import install
+install.ensure_shared_secret(
+    sys.argv[1], os.environ.get("PIGEON_SHARED_SECRET") or None)
 PYEOF
 fi
 
