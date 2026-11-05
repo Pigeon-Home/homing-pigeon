@@ -15,7 +15,8 @@
 > envelopes in, result envelopes out; see "Writing a new
 > transport"). Everything else below — NATS JetStream, MQTT,
 > Redis, Postgres, a real-time Durable Objects pipe — is design
-> notes, not implementation, and is listed in docs/FUTURE.md. (A
+> notes, not implementation, recorded as design notes on this
+page. (A
 > loopback local-signal socket IS also shipped — it carries
 > signed `sensor_alert` envelopes from same-box producers, not
 > jobs.)
