@@ -37,13 +37,13 @@ CLI output:
   574,048, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 54,427 lines,
-48,981 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 54,507 lines,
+49,058 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
 The headline inside those numbers: the runner proper,
-runner/runner.py itself, is 6,578 lines; the core around it
+runner/runner.py itself, is 6,586 lines; the core around it
 is the rest. The as-assembled set's per-part line counts are
 recorded in AS_ASSEMBLED_PART_LINES below; the CLI computes
 and prints the canonical list's per-part counts live, and
@@ -84,26 +84,36 @@ try:
 except ImportError:  # plain script: python3 runner/ops/core.py
     import version4  # noqa: F401  # pyrefly: ignore[missing-import]  # sibling module, on sys.path only as a plain script
 
-# The set as assembled for the 2026-11-04 big-window pass, and
-# the reviewing model's own measure of it. Recorded constants:
-# they describe that pass, not the canonical list below.
+# The set as assembled for the 2026-11-04 big-window pass, as
+# re-measured on 2026-11-05 after the Q-new runner fixes
+# (Q-new-1, Q-new-12, Q-new-25, Q-new-26) grew 4 of its files.
+# Recorded constants: they describe the as-assembled set (the
+# canonical 130 files below plus the 3 suite runners named in
+# the module docstring), not the canonical list itself. The
+# reviewing model's own token measure of the set (Gemini
+# countTokens) is a measure of the 2026-11-04 assembly and is
+# NOT re-recorded here: no re-count of the grown set has been
+# run, so GEMINI_COUNT_TOKENS below still describes that
+# assembly. The zip size and the estimator counts re-measured
+# here come from this module's own deterministic build and
+# counter over the current tree.
 AS_ASSEMBLED_FILES = 133
-AS_ASSEMBLED_ZIP_BYTES = 701403
-AS_ASSEMBLED_LINES = 54427
-AS_ASSEMBLED_NONBLANK_LINES = 48981
+AS_ASSEMBLED_ZIP_BYTES = 690759
+AS_ASSEMBLED_LINES = 54507
+AS_ASSEMBLED_NONBLANK_LINES = 49058
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
     "runner/ops": 16880,
-    "runner/tools": 8650,
-    "runner/wire": 8250,
-    "runner/runner.py": 6578,
+    "runner/tools": 8669,
+    "runner/wire": 8265,
+    "runner/runner.py": 6586,
     "runner/oracle": 4987,
     "runner/transport_extensions": 2771,
-    "runner/guard": 2580,
+    "runner/guard": 2614,
     "runner/cloud": 1998,
-    "runner/hosting": 1700,
+    "runner/hosting": 1704,
     "runner/__init__.py": 23,
     "runner/_version.py": 10,
 }

@@ -75,11 +75,17 @@ class CoreListTest(unittest.TestCase):
     def test_the_recorded_gemini_measure_stays_named(self):
         self.assertEqual(619845, core.GEMINI_COUNT_TOKENS)
         self.assertEqual("2026-11-04", core.GEMINI_COUNT_DATE)
-        self.assertEqual(701403, core.AS_ASSEMBLED_ZIP_BYTES)
+        # The zip size is this module's own deterministic build,
+        # re-recorded at the 2026-11-05 re-measure; the Gemini
+        # token count above still describes the 2026-11-04
+        # assembly.
+        self.assertEqual(690759, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
-        self.assertEqual(54427, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(48981, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # Re-measured 2026-11-05, after the Q-new runner fixes
+        # grew 4 of the set's files.
+        self.assertEqual(54507, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(49058, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
@@ -172,7 +178,7 @@ class CoreLinesTest(unittest.TestCase):
 
 class CorePartsTest(unittest.TestCase):
     def test_the_recorded_breakdown_stays_named(self):
-        self.assertEqual(6578, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
+        self.assertEqual(6586, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
         self.assertEqual(core.AS_ASSEMBLED_LINES,
                          sum(core.AS_ASSEMBLED_PART_LINES.values()))
 
