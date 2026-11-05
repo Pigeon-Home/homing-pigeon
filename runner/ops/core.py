@@ -36,6 +36,12 @@ CLI output:
   same estimator counts the as-assembled 133-file set at
   574,048, not 619,845.
 
+Lines are counted live the same way, never recorded for the
+canonical list: the as-assembled set runs to 54,427 lines,
+48,981 of them non-blank (AS_ASSEMBLED_LINES and
+AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
+canonical list's own line count beside its token counts.
+
 Everything except main is a pure function of the tree at a
 root. The zip build is deterministic — entries in list order,
 a fixed timestamp (1980-01-01, the zip epoch), a fixed
@@ -48,10 +54,10 @@ to surface, not to paper over.
 The CLI:
 
     python3 runner/ops/core.py [--root .]
-        Print the core's file count, its zip size in bytes and
-        its token counts: the estimator's live count of the
-        canonical list, and the recorded Gemini count of the
-        set as assembled.
+        Print the core's file count, its line count, its zip
+        size in bytes and its token counts: the estimator's
+        live count of the canonical list, and the recorded
+        Gemini count of the set as assembled.
 
     python3 runner/ops/core.py build OUT.zip [--root .]
         Write the deterministic zip to OUT.zip, then print the
@@ -62,7 +68,7 @@ import io
 import os
 import sys
 import zipfile
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Tuple
 
 try:
     from . import version4  # package: runner.ops.core
@@ -74,6 +80,8 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # they describe that pass, not the canonical list below.
 AS_ASSEMBLED_FILES = 133
 AS_ASSEMBLED_ZIP_BYTES = 701403
+AS_ASSEMBLED_LINES = 54427
+AS_ASSEMBLED_NONBLANK_LINES = 48981
 GEMINI_COUNT_TOKENS = 619845
 GEMINI_COUNT_DATE = "2026-11-04"
 
@@ -275,11 +283,33 @@ def measure_core_tokens(root: str,
     return total
 
 
+def measure_core_lines(root: str,
+                       files: Sequence[str] = CORE_FILES
+                       ) -> Tuple[int, int]:
+    """(total lines, non-blank lines) of the core under root.
+
+    Counted live over the listed files, so the figure stays
+    honest as the set changes; the recorded as-assembled
+    figures are the constants above. A line is non-blank when
+    it holds more than whitespace.
+    """
+    total = 0
+    nonblank = 0
+    for name in files:
+        data = _read_core_file(root, name)
+        lines = data.decode("utf-8", "replace").splitlines()
+        total += len(lines)
+        nonblank += sum(1 for line in lines if line.strip())
+    return (total, nonblank)
+
+
 def _figures(root: str) -> List[str]:
     """The CLI's report lines for the tree at root."""
     zip_bytes = len(core_zip_bytes(root))
+    total_lines, nonblank_lines = measure_core_lines(root)
     return [
         "core files: %d" % (len(CORE_FILES),),
+        "core lines: %d (%d non-blank)" % (total_lines, nonblank_lines),
         "core zip bytes: %d" % (zip_bytes,),
         "core tokens (project estimator): %d"
         % (measure_core_tokens(root),),

@@ -5,8 +5,10 @@ CORE_FILES is the canonical list of the stripped
 production-runner set — the set "test core" means. The pins:
 every listed file exists, no test file or harness is listed,
 the list is sorted and duplicate-free, the zip build is
-deterministic and carries exactly the listed files, and the
-CLI prints its 4 figure lines in shape.
+deterministic and carries exactly the listed files, the line
+count is computed live and pinned against the recorded
+as-assembled figures, and the CLI prints its 5 figure lines
+in shape.
 """
 import io
 import os
@@ -73,6 +75,12 @@ class CoreListTest(unittest.TestCase):
         self.assertEqual("2026-11-04", core.GEMINI_COUNT_DATE)
         self.assertEqual(701403, core.AS_ASSEMBLED_ZIP_BYTES)
 
+    def test_the_recorded_line_measure_stays_named(self):
+        self.assertEqual(54427, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(48981, core.AS_ASSEMBLED_NONBLANK_LINES)
+        self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
+                        core.AS_ASSEMBLED_LINES)
+
 
 class CoreZipTest(unittest.TestCase):
     def test_zip_build_is_deterministic(self):
@@ -129,6 +137,37 @@ class CoreMeasureTest(unittest.TestCase):
         self.assertLess(total, 17716094)
 
 
+class CoreLinesTest(unittest.TestCase):
+    def test_lines_counted_on_a_known_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "one.py")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("one\n\n   \ntwo\n")
+            # 4 lines; "one" and "two" are non-blank.
+            self.assertEqual(
+                (4, 2), core.measure_core_lines(tmp, files=("one.py",)))
+
+    def test_the_canonical_set_is_smaller_than_the_record(self):
+        total, nonblank = core.measure_core_lines(ROOT)
+        self.assertGreater(total, 0)
+        self.assertGreater(nonblank, 0)
+        self.assertLess(nonblank, total)
+        # The canonical list is a strict subset of the recorded
+        # as-assembled set, so its live count sits below it.
+        self.assertLess(total, core.AS_ASSEMBLED_LINES)
+        self.assertLess(nonblank, core.AS_ASSEMBLED_NONBLANK_LINES)
+
+    def test_lines_match_an_independent_count(self):
+        total = 0
+        nonblank = 0
+        for name in core.CORE_FILES:
+            with open(os.path.join(ROOT, name), "rb") as fh:
+                lines = fh.read().decode("utf-8", "replace").splitlines()
+            total += len(lines)
+            nonblank += sum(1 for line in lines if line.strip())
+        self.assertEqual((total, nonblank), core.measure_core_lines(ROOT))
+
+
 class CoreCliTest(unittest.TestCase):
     def _run(self, argv):
         out, err = io.StringIO(), io.StringIO()
@@ -140,18 +179,21 @@ class CoreCliTest(unittest.TestCase):
         rc, out, _err = self._run(["--root", ROOT])
         self.assertEqual(0, rc)
         lines = out.strip().splitlines()
-        self.assertEqual(4, len(lines))
+        self.assertEqual(5, len(lines))
         self.assertEqual("core files: 130", lines[0])
-        self.assertTrue(lines[1].startswith("core zip bytes: "), lines[1])
-        self.assertGreater(int(lines[1].split(": ")[1]), 0)
+        total, nonblank = core.measure_core_lines(ROOT)
+        self.assertEqual(
+            "core lines: %d (%d non-blank)" % (total, nonblank), lines[1])
+        self.assertTrue(lines[2].startswith("core zip bytes: "), lines[2])
+        self.assertGreater(int(lines[2].split(": ")[1]), 0)
         self.assertTrue(
-            lines[2].startswith("core tokens (project estimator): "),
-            lines[2])
+            lines[3].startswith("core tokens (project estimator): "),
+            lines[3])
         self.assertEqual(core.measure_core_tokens(ROOT),
-                         int(lines[2].split(": ")[1]))
+                         int(lines[3].split(": ")[1]))
         self.assertEqual(
             "core tokens (Gemini countTokens, 2026-11-04): 619845",
-            lines[3])
+            lines[4])
 
     def test_cli_build_writes_the_zip_and_reports(self):
         with tempfile.TemporaryDirectory() as tmp:

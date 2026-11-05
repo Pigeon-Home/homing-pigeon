@@ -16,11 +16,12 @@ zip size and token counts.
 
 The set was first assembled on 2026-11-04 so a single model
 window could hold the whole runner beside the documentation:
-133 files, a 701,403-byte zip, and 619,845 tokens by that
-window's own count (Gemini countTokens). The project's own
-estimator counts the canonical 130-file list at 566,431
-tokens; the 2 counts come from different counters and are not
-interchangeable. 3 of the 133 files were the suite's own
+133 files, 54,427 lines (48,981 of them non-blank), a
+701,403-byte zip, and 619,845 tokens by that window's own
+count (Gemini countTokens). The project's own estimator
+counts the canonical 130-file list at 566,431 tokens across
+53,643 lines (48,293 non-blank); the 2 token counts come from
+different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
 run_tests_shuffled.py and run_tests_windows_sim.py) — tools
 that run the tests, not runner code — so the canonical list

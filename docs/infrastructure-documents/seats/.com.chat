@@ -10,7 +10,8 @@ feature now. Core is the production runner as a set of files,
 and runner/ops/core.py carries the canonical list: 130 files,
 all under runner/, with a deterministic zip build (entries in
 list order, a fixed 1980-01-01 timestamp) and a CLI that
-prints the set's file count, zip size and token counts. The
+prints the set's file count, line count, zip size and token
+counts. The
 definition stands in docs/steady/fuzzing.md, where test work
 is planned.
 
@@ -22,16 +23,24 @@ tests. They are test harnesses, not runner code, and the
 definition of core leaves them out. The recorded measures
 keep their names and their sets straight: 619,845 tokens is
 the Gemini countTokens measure of the 133-file set as
-assembled on 2026-11-04 (zip 701,403 bytes), and the project
-estimator counts the canonical 130-file list at 566,431
-tokens. The 2 counters differ and neither stands in for the
-other.
+assembled on 2026-11-04 (zip 701,403 bytes; 54,427 lines,
+48,981 of them non-blank), and the project estimator counts
+the canonical 130-file list at 566,431 tokens across 53,643
+lines (48,293 non-blank). The 2 token counters differ and
+neither stands in for the other. The CLI prints the line
+count beside the rest, computed live so the figure stays
+honest as the set changes, and the tests pin it the same
+way. A note in the Secret agents section of AGENTS.md now
+tells a visiting system the same fact from its side: the
+whole of what runs is about 600,000 tokens, small enough to
+read entire and answer whole-code questions from all of it.
 
 runner/tests/test_core.py pins the feature: every listed
 file exists, no test file or harness is listed, the list is
 sorted and duplicate-free, 2 zip builds are byte-identical,
-the zip carries exactly the listed files, and the CLI prints
-its 4 figure lines in shape. Test core in project talk now
+the zip carries exactly the listed files, the line count is
+computed live and pinned against the recorded figures, and
+the CLI prints its 5 figure lines in shape. Test core in project talk now
 has exactly 1 referent: those 130 files.
 
 ## 4-Nov-7:42pm-PST/PDT — the token work, whole: an index, 2 keys, and a conformance program
