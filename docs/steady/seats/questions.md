@@ -912,7 +912,7 @@ Asked: the flag's shape and home, and whether the
 deferral belongs in rig_bank or in each rig's wrapper.
 
 **Answer (the conductor, recorded by Grok, 2026-10-28):** the
-flag is a file, `docs/seats/muster.hold`, whose presence is the
+flag is a file, `docs/infrastructure-documents/seats/muster.hold`, whose presence is the
 hold. A line in `status.txt` is a seat's own line and does not
 carry a global flag. The deferral belongs in `rig_bank`, not in
 each wrapper, so a muster a seat sleeps through still holds the
