@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.160 - 2026-11-04
+
+- Fix: the DocDriftGuard registry pin for max_job_bytes follows the README edits — the size-caps line moved from line 452 to line 453, and the stale pin failed test, test-macos and build-windows in the 159 builds. This release carries the 3.15.17.159 changes below; the 159 tag stands unmoved and unpublished.
+
 ## 3.15.17.159 - 2026-11-04
 
 - Docs: README.md — the try-it prompt moves up front, right after the introduction, and the introduction now reads "Install the homing-pigeon runner and try it with the prompt below"; the IETF Internet-Draft links stay with the setup text that follows.
