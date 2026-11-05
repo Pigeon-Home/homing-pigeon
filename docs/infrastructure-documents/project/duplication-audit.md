@@ -254,8 +254,11 @@ trusting nothing it did not compute itself. The code says so, in
 terms an arriving SI should take seriously: "the two implementations
 must stay in step," "Kept in step with runner/wire/verify.py and
 runner/ops/extensions.py (Q48)." Where sharing was safe, it has
-already been done — both sides import the JSON-safety helpers from
-`runner/guard/textutil.py`. And the suite cross-exercises the pair:
+already been done — `runner/wire/verify.py` imports the
+JSON-safety helpers from `runner/guard/textutil.py`, while
+`runner/cloud/send_job.py` carries its own copies of them by
+design, because it is run by path by an outside system that
+does not have the runner installed. And the suite cross-exercises the pair:
 `runner/tests/security_parity.py` signs jobs with send_job.py's
 `sign_payload` and runs them through the runner's `verify_body`, so
 a divergence between the implementations is a test failure, not a
