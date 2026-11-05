@@ -42,6 +42,14 @@ canonical list: the as-assembled set runs to 54,427 lines,
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
+The headline inside those numbers: the runner proper,
+runner/runner.py itself, is 6,578 lines; the core around it
+is the rest. The as-assembled set's per-part line counts are
+recorded in AS_ASSEMBLED_PART_LINES below; the CLI computes
+and prints the canonical list's per-part counts live, and
+the 2 breakdowns differ in exactly 1 part — runner/tools,
+where the 3 excluded suite runners account for 784 lines.
+
 Everything except main is a pure function of the tree at a
 root. The zip build is deterministic — entries in list order,
 a fixed timestamp (1980-01-01, the zip epoch), a fixed
@@ -54,10 +62,11 @@ to surface, not to paper over.
 The CLI:
 
     python3 runner/ops/core.py [--root .]
-        Print the core's file count, its line count, its zip
-        size in bytes and its token counts: the estimator's
-        live count of the canonical list, and the recorded
-        Gemini count of the set as assembled.
+        Print the core's file count, its line count (with the
+        runner proper's own count and the per-part breakdown),
+        its zip size in bytes and its token counts: the
+        estimator's live count of the canonical list, and the
+        recorded Gemini count of the set as assembled.
 
     python3 runner/ops/core.py build OUT.zip [--root .]
         Write the deterministic zip to OUT.zip, then print the
@@ -82,6 +91,22 @@ AS_ASSEMBLED_FILES = 133
 AS_ASSEMBLED_ZIP_BYTES = 701403
 AS_ASSEMBLED_LINES = 54427
 AS_ASSEMBLED_NONBLANK_LINES = 48981
+# The as-assembled set's lines, part by part; the parts sum
+# to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
+# a file standing directly under runner/ as its own part.
+AS_ASSEMBLED_PART_LINES = {
+    "runner/ops": 16880,
+    "runner/tools": 8650,
+    "runner/wire": 8250,
+    "runner/runner.py": 6578,
+    "runner/oracle": 4987,
+    "runner/transport_extensions": 2771,
+    "runner/guard": 2580,
+    "runner/cloud": 1998,
+    "runner/hosting": 1700,
+    "runner/__init__.py": 23,
+    "runner/_version.py": 10,
+}
 GEMINI_COUNT_TOKENS = 619845
 GEMINI_COUNT_DATE = "2026-11-04"
 
@@ -303,19 +328,56 @@ def measure_core_lines(root: str,
     return (total, nonblank)
 
 
+def _part_of(name: str) -> str:
+    """A core file's part: its folder under runner/, or the file
+    itself when it stands directly under runner/."""
+    rest = name[len("runner/"):]
+    if "/" in rest:
+        return "runner/" + rest.split("/")[0]
+    return name
+
+
+def measure_core_lines_by_part(root: str,
+                               files: Sequence[str] = CORE_FILES
+                               ) -> dict:
+    """Line counts of the core under root, part by part.
+
+    Computed live over the listed files, like the other
+    measures; the recorded as-assembled breakdown is
+    AS_ASSEMBLED_PART_LINES above. The parts sum to
+    measure_core_lines' total.
+    """
+    parts = {}
+    for name in files:
+        data = _read_core_file(root, name)
+        count = len(data.decode("utf-8", "replace").splitlines())
+        part = _part_of(name)
+        parts[part] = parts.get(part, 0) + count
+    return parts
+
+
 def _figures(root: str) -> List[str]:
     """The CLI's report lines for the tree at root."""
     zip_bytes = len(core_zip_bytes(root))
     total_lines, nonblank_lines = measure_core_lines(root)
-    return [
+    parts = measure_core_lines_by_part(root)
+    lines = [
         "core files: %d" % (len(CORE_FILES),),
         "core lines: %d (%d non-blank)" % (total_lines, nonblank_lines),
+        "core lines in runner/runner.py: %d"
+        % (parts.get("runner/runner.py", 0),),
+        "core lines by part:",
+    ]
+    for part in sorted(parts, key=lambda p: (-parts[p], p)):
+        lines.append("  %s: %d" % (part, parts[part]))
+    lines += [
         "core zip bytes: %d" % (zip_bytes,),
         "core tokens (project estimator): %d"
         % (measure_core_tokens(root),),
         "core tokens (Gemini countTokens, %s): %d"
         % (GEMINI_COUNT_DATE, GEMINI_COUNT_TOKENS),
     ]
+    return lines
 
 
 def main(argv: Optional[List[str]] = None) -> int:

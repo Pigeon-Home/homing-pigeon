@@ -24,7 +24,9 @@ definition of core leaves them out. The recorded measures
 keep their names and their sets straight: 619,845 tokens is
 the Gemini countTokens measure of the 133-file set as
 assembled on 2026-11-04 (zip 701,403 bytes; 54,427 lines,
-48,981 of them non-blank), and the project estimator counts
+48,981 of them non-blank — the runner proper,
+runner/runner.py, is 6,578 of those lines), and the project
+estimator counts
 the canonical 130-file list at 566,431 tokens across 53,643
 lines (48,293 non-blank). The 2 token counters differ and
 neither stands in for the other. The CLI prints the line

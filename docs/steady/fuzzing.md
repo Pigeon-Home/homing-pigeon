@@ -32,6 +32,26 @@ set. A change aimed at core is aimed at those 130 files and
 no others, and a result reported for core covers exactly
 them.
 
+The runner proper is 6,578 lines; the core around it is
+54,427. The set as assembled, part by part:
+
+- runner/ops: 16,880 lines
+- runner/tools: 8,650
+- runner/wire: 8,250
+- runner/runner.py: 6,578
+- runner/oracle: 4,987
+- runner/transport_extensions: 2,771
+- runner/guard: 2,580
+- runner/cloud: 1,998
+- runner/hosting: 1,700
+- runner/__init__.py: 23
+- runner/_version.py: 10
+
+The canonical list's breakdown is the same except
+runner/tools, where the 3 excluded suite runners account
+for 784 of the lines, leaving 7,866. The tool prints the
+canonical breakdown live, beside the totals.
+
 ## What the first passes found
 
 One shape of crash, over and over: a value used as a dict key

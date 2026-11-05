@@ -7,8 +7,9 @@ every listed file exists, no test file or harness is listed,
 the list is sorted and duplicate-free, the zip build is
 deterministic and carries exactly the listed files, the line
 count is computed live and pinned against the recorded
-as-assembled figures, and the CLI prints its 5 figure lines
-in shape.
+as-assembled figures, the per-part breakdown sums to the
+total and differs from the recorded one in runner/tools
+only, and the CLI prints its figure lines in shape.
 """
 import io
 import os
@@ -168,6 +169,48 @@ class CoreLinesTest(unittest.TestCase):
         self.assertEqual((total, nonblank), core.measure_core_lines(ROOT))
 
 
+class CorePartsTest(unittest.TestCase):
+    def test_the_recorded_breakdown_stays_named(self):
+        self.assertEqual(6578, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
+        self.assertEqual(core.AS_ASSEMBLED_LINES,
+                         sum(core.AS_ASSEMBLED_PART_LINES.values()))
+
+    def test_parts_sum_to_the_total(self):
+        parts = core.measure_core_lines_by_part(ROOT)
+        total, _nonblank = core.measure_core_lines(ROOT)
+        self.assertEqual(total, sum(parts.values()))
+
+    def test_the_runner_proper_is_counted_live(self):
+        parts = core.measure_core_lines_by_part(ROOT)
+        with open(os.path.join(ROOT, "runner/runner.py"), "rb") as fh:
+            own = len(fh.read().decode("utf-8", "replace").splitlines())
+        self.assertEqual(own, parts["runner/runner.py"])
+
+    def test_the_canonical_breakdown_differs_in_tools_only(self):
+        parts = core.measure_core_lines_by_part(ROOT)
+        self.assertEqual(set(core.AS_ASSEMBLED_PART_LINES), set(parts))
+        for part, recorded in core.AS_ASSEMBLED_PART_LINES.items():
+            if part == "runner/tools":
+                # The 3 excluded suite runners: 784 lines.
+                self.assertEqual(recorded - 784, parts[part])
+            else:
+                self.assertEqual(recorded, parts[part], part)
+
+    def test_parts_on_a_known_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "runner", "ops"))
+            with open(os.path.join(tmp, "runner", "ops", "a.py"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("a\nb\n")
+            with open(os.path.join(tmp, "runner", "runner.py"),
+                      "w", encoding="utf-8") as fh:
+                fh.write("x\n")
+            parts = core.measure_core_lines_by_part(
+                tmp, files=("runner/ops/a.py", "runner/runner.py"))
+            self.assertEqual(
+                {"runner/ops": 2, "runner/runner.py": 1}, parts)
+
+
 class CoreCliTest(unittest.TestCase):
     def _run(self, argv):
         out, err = io.StringIO(), io.StringIO()
@@ -179,21 +222,33 @@ class CoreCliTest(unittest.TestCase):
         rc, out, _err = self._run(["--root", ROOT])
         self.assertEqual(0, rc)
         lines = out.strip().splitlines()
-        self.assertEqual(5, len(lines))
+        parts = core.measure_core_lines_by_part(ROOT)
+        # 4 head lines, 1 line per part, then zip + 2 token lines.
+        self.assertEqual(4 + len(parts) + 3, len(lines))
         self.assertEqual("core files: 130", lines[0])
         total, nonblank = core.measure_core_lines(ROOT)
         self.assertEqual(
             "core lines: %d (%d non-blank)" % (total, nonblank), lines[1])
-        self.assertTrue(lines[2].startswith("core zip bytes: "), lines[2])
-        self.assertGreater(int(lines[2].split(": ")[1]), 0)
+        self.assertEqual(
+            "core lines in runner/runner.py: %d" % (parts["runner/runner.py"],),
+            lines[2])
+        self.assertEqual("core lines by part:", lines[3])
+        printed = {}
+        for line in lines[4:4 + len(parts)]:
+            name, _colon, count = line.strip().rpartition(": ")
+            printed[name] = int(count)
+        self.assertEqual(parts, printed)
+        rest = lines[4 + len(parts):]
+        self.assertTrue(rest[0].startswith("core zip bytes: "), rest[0])
+        self.assertGreater(int(rest[0].split(": ")[1]), 0)
         self.assertTrue(
-            lines[3].startswith("core tokens (project estimator): "),
-            lines[3])
+            rest[1].startswith("core tokens (project estimator): "),
+            rest[1])
         self.assertEqual(core.measure_core_tokens(ROOT),
-                         int(lines[3].split(": ")[1]))
+                         int(rest[1].split(": ")[1]))
         self.assertEqual(
             "core tokens (Gemini countTokens, 2026-11-04): 619845",
-            lines[4])
+            rest[2])
 
     def test_cli_build_writes_the_zip_and_reports(self):
         with tempfile.TemporaryDirectory() as tmp:
