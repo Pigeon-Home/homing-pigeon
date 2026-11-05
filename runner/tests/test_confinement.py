@@ -818,5 +818,59 @@ class InterpreterBindsRelativeLegTest(unittest.TestCase):
         self.assertIsInstance(out, list)
 
 
+class InstallPrefixHomeTest(unittest.TestCase):
+    """Q-new-25: _install_prefix must never return a user home
+    directory -- interpreter_binds would turn it into a read-only
+    bind of the whole home into the sandbox, contradicting
+    SECURITY.md's "no access to home". A bin-grandparent that is a
+    home directory falls back to the bin directory itself."""
+
+    def test_home_bin_interpreter_does_not_bind_the_home(self):
+        self.assertNotEqual(
+            SB._install_prefix("/home/pigeon/bin/python3"),
+            "/home/pigeon")
+        self.assertEqual(
+            SB._install_prefix("/home/pigeon/bin/python3"),
+            "/home/pigeon/bin")
+
+    def test_users_and_root_homes_are_not_returned(self):
+        self.assertEqual(
+            SB._install_prefix("/Users/pigeon/bin/python3"),
+            "/Users/pigeon/bin")
+        self.assertNotEqual(
+            SB._install_prefix("/root/bin/python3"), "/root")
+        self.assertEqual(
+            SB._install_prefix("/root/bin/python3"), "/root/bin")
+
+    def test_the_process_users_own_home_is_not_returned(self):
+        with mock.patch.object(SB.os.path, "expanduser",
+                               return_value="/srv/home/custom"):
+            self.assertEqual(
+                SB._install_prefix("/srv/home/custom/bin/python3"),
+                "/srv/home/custom/bin")
+
+    def test_a_home_directory_itself_is_never_the_prefix(self):
+        self.assertIsNone(SB._install_prefix("/home/pigeon/python3"))
+
+    def test_interpreter_binds_never_emits_a_home_directory(self):
+        homes = ("/home/pigeon", "/Users/pigeon", "/root")
+        with mock.patch.object(SB.os.path, "realpath",
+                               side_effect=lambda p: p):
+            for path in ("/home/pigeon/bin/python3",
+                         "/Users/pigeon/bin/python3",
+                         "/root/bin/python3"):
+                binds = SB.interpreter_binds(path)
+                for src, dst in binds:
+                    self.assertNotIn(src, homes)
+                    self.assertNotIn(dst, homes)
+
+    def test_non_home_behaviour_is_preserved(self):
+        self.assertEqual(SB._install_prefix("/opt/x/bin/python3"),
+                         "/opt/x")
+        self.assertIsNone(SB._install_prefix("/bin/sh"))
+        self.assertEqual(SB._install_prefix("/snap/bin/python3"),
+                         "/snap/bin")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

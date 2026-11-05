@@ -171,6 +171,21 @@ def _under(path, roots):
     return False
 
 
+def _is_user_home(path):
+    """True when `path` is a user home directory: the process
+    user's own home, any /home/<name> or /Users/<name>, or /root."""
+    if not isinstance(path, str) or not path:
+        return False
+    own = os.path.expanduser("~")
+    if own.startswith("/") and path == own:
+        return True
+    if path == "/root":
+        return True
+    parts = path.split("/")
+    return (len(parts) == 3 and parts[0] == ""
+            and parts[1] in ("home", "Users") and bool(parts[2]))
+
+
 def _install_prefix(path):
     """The directory to bind so `path` can run: its grandparent when
     the parent is `bin` (…/x64/bin/python3 -> …/x64, bringing lib/
@@ -180,13 +195,19 @@ def _install_prefix(path):
     findings disposition): a prefix shallower than two components
     is not bound at all, and this returns None -- an interpreter
     resolved directly in the root or a top-level directory gets no
-    prefix bind instead of binding the whole root or tree."""
+    prefix bind instead of binding the whole root or tree. Never a
+    user home directory either (Q-new-25): a bin grandparent that
+    is a home directory (/home/<user>/bin/python3) falls back to
+    the bin directory itself, so the whole home is never bound."""
     parent = os.path.dirname(path)
     if os.path.basename(parent) == "bin":
         grand = os.path.dirname(parent)
-        if grand.count("/") >= 2 and grand != "/":
+        if grand.count("/") >= 2 and grand != "/" \
+                and not _is_user_home(grand):
             return grand
     if parent.count("/") >= 2:
+        if _is_user_home(parent):
+            return None
         return parent
     return None
 
