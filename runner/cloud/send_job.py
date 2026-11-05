@@ -930,7 +930,16 @@ def _open_body(text, args, job_id=None):
         inner = jobcrypto.decrypt_body(
             payload, secret, job_id=job_id,
             key_id=payload.get("key_id") or "")
-        payload = verify_body(inner, secret)
+        inner_payload = verify_body(inner, secret)
+        # Section 16.2 step 4: the inner body's key_id MUST match
+        # the envelope's, as the runner enforces it (CHECKLIST-04
+        # G6). Both bodies verified under the one secret here, so
+        # the named keys are what can be compared.
+        if (inner_payload.get("key_id") or "") != (
+                payload.get("key_id") or ""):
+            raise ValueError(
+                "encrypted envelope key_id does not match its body")
+        payload = inner_payload
     return payload
 
 

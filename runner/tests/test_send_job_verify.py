@@ -101,6 +101,29 @@ class VerifyTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("INVALID:", err)
 
+    def test_an_envelope_whose_inner_key_id_differs_is_invalid(self):
+        # Section 16.2 step 4 (CHECKLIST-04 G6): the inner body's
+        # key_id MUST match the envelope's. The runner refuses such
+        # a body; the sender's reader must refuse it too.
+        inner = dict(RESULT, key_id="inner-key")
+        body = jobcrypto.encrypt_body(
+            send_job.sign_payload(inner, SECRET), SECRET,
+            job_id=JOB_ID, key_id="outer-key",
+            sign=send_job.sign_payload)
+        rc, _out, err = _verify(["--job-id", JOB_ID], stdin_text=body)
+        self.assertEqual(rc, 1)
+        self.assertIn("key_id does not match", err)
+
+    def test_an_envelope_whose_inner_key_id_matches_opens(self):
+        inner = dict(RESULT, key_id="ops")
+        body = jobcrypto.encrypt_body(
+            send_job.sign_payload(inner, SECRET), SECRET,
+            job_id=JOB_ID, key_id="ops",
+            sign=send_job.sign_payload)
+        rc, out, err = _verify(["--job-id", JOB_ID], stdin_text=body)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(json.loads(out), inner)
+
     def test_an_envelope_without_a_job_id_is_invalid(self):
         rc, _out, err = _verify([], stdin_text=_envelope(RESULT))
         self.assertEqual(rc, 1)
