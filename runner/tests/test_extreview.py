@@ -239,6 +239,84 @@ class ReviewFolderTest(unittest.TestCase):
         r = self._review(m, {"smoke.py": "x = 1\n"})
         self.assertEqual(_codes(r, "high"), ["entry.outside"])
 
+    def test_an_absolute_path_outside_the_folder_is_high_even_when_missing(self):
+        # D-1-1: the finding must not wait for the file to exist.
+        # A path planted after the review would otherwise run
+        # unreviewed, and the cached clean verdict would not notice.
+        outside = os.path.join(self.tmp, "planted_later.py")
+        self.assertFalse(os.path.exists(outside))
+        m = dict(TRANSPORT, entry=["{python}", outside])
+        r = self._review(m, {"smoke.py": "x = 1\n"})
+        self.assertEqual(_codes(r, "high"), ["entry.outside"])
+        self.assertEqual(X.verdict(r, "enforce"), "refused")
+
+    def test_an_outside_path_in_a_missing_directory_is_high(self):
+        outside = os.path.join(self.tmp, "no_such_dir", "evil.py")
+        m = dict(TRANSPORT, entry=["{python}", outside])
+        r = self._review(m, {"smoke.py": "x = 1\n"})
+        self.assertEqual(_codes(r, "high"), ["entry.outside"])
+
+    def test_a_prefix_sibling_of_the_folder_is_outside(self):
+        # The folder is <tmp>/smoke; <tmp>/smoke2 shares the string
+        # prefix but is not under it.
+        sibling = os.path.join(self.tmp, "smoke2", "evil.py")
+        m = dict(TRANSPORT, entry=["{python}", sibling])
+        r = self._review(m, {"smoke.py": "x = 1\n"})
+        self.assertEqual(_codes(r, "high"), ["entry.outside"])
+
+    def test_an_outside_path_through_a_symlinked_parent_is_high(self):
+        if not hasattr(os, "symlink"):
+            self.skipTest("symlinks unavailable")
+        elsewhere = os.path.join(self.tmp, "elsewhere")
+        os.makedirs(elsewhere)
+        link = os.path.join(self.tmp, "linkdir")
+        try:
+            os.symlink(elsewhere, link)
+        except (OSError, NotImplementedError):
+            self.skipTest("cannot create a symlink here")
+        m = dict(TRANSPORT, entry=["{python}",
+                                   os.path.join(link, "evil.py")])
+        r = self._review(m, {"smoke.py": "x = 1\n"})
+        self.assertEqual(_codes(r, "high"), ["entry.outside"])
+
+    def test_an_outside_path_as_a_later_argument_is_high(self):
+        outside = os.path.join(self.tmp, "late_arg.py")
+        m = dict(TRANSPORT, entry=["{python}", "smoke.py", outside])
+        r = self._review(m, {"smoke.py": "x = 1\n"})
+        self.assertEqual(_codes(r, "high"), ["entry.outside"])
+
+    def test_an_absolute_path_inside_the_folder_is_fine_even_when_missing(self):
+        folder = os.path.join(self.tmp, "smoke")
+        inside = os.path.join(folder, "later.py")
+        m = dict(TRANSPORT, entry=["{python}", inside])
+        r = self._review(m, {"smoke.py": "x = 1\n"})
+        self.assertEqual(_codes(r, "high"), [])
+
+    def test_a_missing_program_outside_the_folder_is_only_a_note(self):
+        m = dict(TRANSPORT,
+                 entry=[os.path.join(self.tmp, "no_such_interp"),
+                        "smoke.py"])
+        r = self._review(m, {"smoke.py": "x = 1\n"})
+        self.assertEqual(_codes(r, "high"), [])
+        self.assertEqual(_codes(r, "note"), ["entry.program"])
+
+    def test_the_verdict_does_not_depend_on_the_outside_file_appearing(self):
+        # The cache keys on the folder's own files only, so a
+        # verdict that depends on the outside path's existence can
+        # go stale the moment the file is planted. The refusal
+        # must hold before and after, from the same cached review.
+        folder = _drop(self.tmp, "smoke", TRANSPORT,
+                       {"smoke.py": "x = 1\n"})
+        outside = os.path.join(self.tmp, "planted.py")
+        m = dict(TRANSPORT, entry=["{python}", outside])
+        result, _fresh = X._cached_review(_clean(m), folder)
+        self.assertEqual(X.verdict(result, "enforce"), "refused")
+        with open(outside, "w") as fh:
+            fh.write("x = 1\n")
+        result, _fresh = X._cached_review(_clean(m), folder)
+        self.assertEqual(X.verdict(result, "enforce"), "refused")
+        self.assertEqual(_codes(result, "high"), ["entry.outside"])
+
     def test_an_interpreter_outside_the_folder_is_only_a_note(self):
         m = dict(TRANSPORT, entry=[sys.executable, "smoke.py"])
         r = self._review(m, {"smoke.py": "x = 1\n"})

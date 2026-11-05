@@ -446,7 +446,12 @@ def _review_entry(manifest, folder, findings, shipped):
                     "entry.program", "note",
                     f"entry's program is outside the extension folder: "
                     f"{part}", MANIFEST_FILE))
-            elif os.path.exists(part):
+            else:
+                # Existence is not the gate: a verdict that waits
+                # for the file to appear can go stale in the cache
+                # (which keys on the folder's own files) the moment
+                # the path is planted, and the entry would then run
+                # unreviewed.
                 findings.append(_finding(
                     "entry.outside", "high",
                     f"entry[{i}] {raw!r} names a path outside the "
