@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.159 - 2026-11-04
+
+- Docs: README.md — the try-it prompt moves up front, right after the introduction, and the introduction now reads "Install the homing-pigeon runner and try it with the prompt below"; the IETF Internet-Draft links stay with the setup text that follows.
+
 ## 3.15.17.158 - 2026-11-04
 
 - Fix: the design-docs marker pin in test_design_docs follows the FUTURE.md citation case — the citations in both design docs use the file's real case, and the stale lowercase pin failed test, test-macos and build-windows in the 157 builds. This release carries the 3.15.17.157 changes below; the 157 tag stands unmoved and unpublished.
