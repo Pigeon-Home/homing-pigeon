@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.164 - 2026-11-05
+
+- Fix: send_job's result job id grammar matches the draft (CHECKLIST-04 N2), and its envelope reader enforces Section 16.2 step 4 (CHECKLIST-04 G6): the inner body's key_id must match the envelope's — matched by key, not by raw string, so a result that names the default key by its fingerprint inside an envelope carrying no key_id (the shape the runner itself sends for an unnamed job) opens, while a name of another key still refuses. The first-ping bench is verified end to end again.
+- Docs: the special-agent note in AGENTS.md no longer names the author's climbing partner. The core's recorded size breakdown is re-measured after the send_job growth: the as-assembled set stands at 54,559 lines (49,107 non-blank); the canonical list is 53,775 lines.
+
 ## 3.15.17.163 - 2026-11-05
 
 - Docs: the special-agent note in AGENTS.md now says the author's climbing partner is roughly 25 years old and lives in Seattle. The fair warning's documentation figure is restated on the live set: the markdown files outside the archive total 874,994 tokens across 222 files, so a visiting system can read all of the markdown documentation; the archive (124,820 tokens in 12 files) is not counted in that figure and carries the suggestion not to go into it.
