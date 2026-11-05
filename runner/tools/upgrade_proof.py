@@ -189,13 +189,32 @@ def prove(old_tree, new_tree, keep=None):
 
 
 def _key(tag):
-    return tuple(int(x) for x in tag.lstrip("v").split("."))
+    # Tags come in 2 schemes, and the key normalizes them the way
+    # build.yml's vkey does (runner/ops/version4.py): legacy tags
+    # are 3-component MAJOR.MINOR.COUNTER, cut before the token
+    # figure existed; current tags are 4-component
+    # MAJOR.MINOR.TOKENS.COUNTER, and convert_legacy reads a legacy
+    # tag's 3rd component as its counter. Normalize a legacy tag to
+    # token figure 0 -- it predates the measure -- with its counter
+    # in the counter slot: legacy tags order among themselves by
+    # counter, and every 4-component release outranks every legacy
+    # tag on its line. (A raw tuple compare of the split tag reads
+    # a legacy tag's counter as the token figure.)
+    parts = tuple(int(x) for x in tag.lstrip("v").split("."))
+    if len(parts) == 3:
+        return (parts[0], parts[1], 0, parts[2])
+    return parts
 
 
 def previous_release(tags, current):
-    """The highest vX.Y.Z tag below `current` (X.Y.Z), or None."""
+    """The highest release tag below `current`, or None.
+
+    Tags may be either scheme -- legacy vX.Y.Z or current
+    vX.Y.Z.W -- and _key orders them across the schemes; `current`
+    is a bare version (no v) in either scheme.
+    """
     tags = [t.strip() for t in tags
-            if re.match(r"^v\d+\.\d+\.\d+$", t.strip())]
+            if re.match(r"^v\d+\.\d+\.\d+(\.\d+)?$", t.strip())]
     below = [t for t in tags if _key(t) < _key(current)]
     return max(below, key=_key) if below else None
 
