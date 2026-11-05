@@ -62,6 +62,18 @@ except ImportError:  # run by path: load the one implementation by file
     _jc_spec.loader.exec_module(jobcrypto)
 
 try:
+    from runner.wire import subject as _subject
+except ImportError:  # run by path: load the one grammar by file
+    import importlib.util
+    _su_path = os.path.join(_RUNNER_DIR, "wire", "subject.py")
+    _su_spec = importlib.util.spec_from_file_location(
+        "hp_wire_subject", _su_path)
+    if _su_spec is None or _su_spec.loader is None:
+        raise ImportError("runner/wire/subject.py not loadable")
+    _subject = importlib.util.module_from_spec(_su_spec)
+    _su_spec.loader.exec_module(_subject)
+
+try:
     from runner.guard import filenames as _filenames
 except ImportError:  # run by path: the same rules the runner applies
     import importlib.util
@@ -1095,13 +1107,14 @@ def _queue_call(url, method, path, token_env=None, opener=None):
 
 
 def _result_job_id(subject):
-    """The job id a result subject names: the word after `result`
-    (or `qresult`), as the Worker reads it. None otherwise."""
-    words = subject.split() if isinstance(subject, str) else []
-    for i, w in enumerate(words[:-1]):
-        if w in ("result", "qresult"):
-            return words[i + 1]
-    return None
+    """The job id a result subject names, read with the one wire
+    subject grammar (runner/wire/subject.py): the posted ECMAScript
+    gap set as separators and the kind matched case-insensitively,
+    as the Worker reads it (CHECKLIST-04 N2). None otherwise."""
+    if not isinstance(subject, str):
+        return None
+    m = _subject.RESULT_ID_RE.search(subject)
+    return m.group(1) if m else None
 
 
 def _queue_plain(cmd):

@@ -770,6 +770,20 @@ class SendJobQueueEdgesTest(unittest.TestCase):
         self.assertIsNone(send_job._result_job_id("[HOMING-PIGEON] job j9"))
         self.assertIsNone(send_job._result_job_id(None))
 
+    def test_a_result_subject_follows_the_wire_grammar(self):
+        # The posted section 6 grammar (CHECKLIST-04 N2): separators
+        # are the ECMAScript gap set and the kind matches
+        # case-insensitively, as the Worker reads it. Python's
+        # str.split() is neither: it misses a U+FEFF separator and
+        # an uppercase kind, and it treats %x1D as a separator
+        # where the grammar makes it part of a word.
+        self.assertEqual(send_job._result_job_id(
+            "[HOMING-PIGEON]\ufeffresult\ufeffabc"), "abc")
+        self.assertEqual(send_job._result_job_id(
+            "[HOMING-PIGEON] RESULT abc"), "abc")
+        self.assertIsNone(send_job._result_job_id(
+            "[HOMING-PIGEON]\x1dresult\x1did1"))
+
     def test_dlq_refusals_are_two(self):
         rc, _, _ = self._quiet(send_job.cmd_dlq, _args(),
                                opener=opener((500, b"no")))
