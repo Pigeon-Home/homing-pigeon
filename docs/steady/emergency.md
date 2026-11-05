@@ -21,7 +21,7 @@ the conductor changes or strikes any line by saying so.
 3. From the call to the stand-down the rigs hold their bank pushes.
    A bank that lands mid-muster costs every other seat a rebase, and
    the rigs' grows keep running; only the push waits. The hold is the
-   file `docs/seats/muster.hold` on main (Q109): the seat that relays
+   file `docs/infrastructure-documents/seats/muster.hold` on main (Q109): the seat that relays
    the call creates it, the seat that relays the stand-down deletes
    it, and while it stands `rig_bank` merges and pushes nothing and
    exits 75, which the rigs' loops read as retry next cycle. That
