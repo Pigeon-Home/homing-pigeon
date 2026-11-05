@@ -37,8 +37,8 @@ CLI output:
   574,048, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 54,507 lines,
-49,058 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 54,559 lines,
+49,107 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -86,7 +86,10 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 
 # The set as assembled for the 2026-11-04 big-window pass, as
 # re-measured on 2026-11-05 after the Q-new runner fixes
-# (Q-new-1, Q-new-12, Q-new-25, Q-new-26) grew 4 of its files.
+# (Q-new-1, Q-new-12, Q-new-25, Q-new-26) grew 4 of its files,
+# and re-measured again the same day after the CHECKLIST-04
+# send_job fixes (N2, G6, and the G6 key-match correction)
+# grew runner/cloud/send_job.py.
 # Recorded constants: they describe the as-assembled set (the
 # canonical 130 files below plus the 3 suite runners named in
 # the module docstring), not the canonical list itself. The
@@ -98,9 +101,9 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 133
-AS_ASSEMBLED_ZIP_BYTES = 690759
-AS_ASSEMBLED_LINES = 54507
-AS_ASSEMBLED_NONBLANK_LINES = 49058
+AS_ASSEMBLED_ZIP_BYTES = 679289
+AS_ASSEMBLED_LINES = 54559
+AS_ASSEMBLED_NONBLANK_LINES = 49107
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
@@ -112,7 +115,7 @@ AS_ASSEMBLED_PART_LINES = {
     "runner/oracle": 4987,
     "runner/transport_extensions": 2771,
     "runner/guard": 2614,
-    "runner/cloud": 1998,
+    "runner/cloud": 2050,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,
     "runner/_version.py": 10,
