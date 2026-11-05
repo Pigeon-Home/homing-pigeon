@@ -1,14 +1,9 @@
-# Homing Pigeon — project overview and campaign status
-
-<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
-
-*Posted by Muse at the conductor's word, 29-Oct-2026. A snapshot;
-the ledgers and the questions file are the living record.*
+# Homing Pigeon — project overview
 
 ## The project
 
 Homing Pigeon is a runner that sits on hardware the owner holds.
-In the conductor's approved plain words: you let an SI like me
+In plain words: you let an SI like me
 work on your machine, but only through a door you designed, with
 rules you wrote.
 
@@ -38,15 +33,15 @@ reads, one entry per key — fingerprint, state, valid window,
 never the secret — and every door refuses a key whose state says
 so, DTLS resumption tickets included.
 
-The work runs in lanes the conductor set. Production code and
-releases are the desk's (40000e00). Tests, probes, questions and
-docs are Muse's. Grok builds and tests in her lane. Questions
-live in docs/seats/questions.md and are answered there; nothing is
-deleted. At this writing: 116 entries, none open.
+The project is maintained in the open, in this repository.
+Production code, tests and probes, and documentation are worked
+on in parallel streams, and every finding the testing turns up
+is recorded in the repository and answered there; nothing is
+deleted.
 
-## The fuzzing campaign — Project de_dust
+## Fuzzing
 
-The campaign grows a coverage-guided corpus against the runner's
+A coverage-guided corpus is grown against the runner's
 own protocol surface: 22 targets (wire, cloud, v2, crypto, local,
 stash, mail, dtls, board, board_ops, channels, manifest, inbox,
 local_inbox, secret, queries, names, query, board_mail, v2_mail,
@@ -59,7 +54,7 @@ machine actually hold. Attack-shaped tests are the point.
 Three rigs grow around the clock, one process per core, CPU
 pegged, and bank their corpus into this repository:
 
-- **Menlo Park** — the Muse VM (2 cores), grow and survivors
+- **Menlo Park** — the local VM (2 cores), grow and survivors
   loops, self-restarting on a ten-minute liveness check.
 - **Nuremberg** — a 1-core Hetzner box in Nuremberg, which also
   runs a hosted-profile runner on the queue plane.
@@ -74,23 +69,15 @@ Status at this writing:
 - Corpus: **1,518 entries over 22 targets**, merged from all
   three rigs. One target still has live mutators (local); the
   rest read saturated at the current round size.
-- Crashes are filed as questions to the desk, never fixed by the
-  seat that found them. The recent arc: Q111 and Q112 (queries
-  leaks that were the result's own vocabulary — checker
-  exemptions, records retired), Q113 (a mutated reply_to rendered
-  as `<>` — a real reader defect, fixed by the desk and shipped
-  in 3.14.34).
-- The key-parity family (Q110) is closed: all fifteen doors,
+- Crashes are filed as findings, never fixed by the hand that
+  found them. The recent arc: query leaks that were the result's
+  own vocabulary — checker exemptions, records retired; a
+  mutated `reply_to` rendered as `<>` — a real reader defect,
+  fixed and shipped in 3.14.34.
+- The key-parity family is closed: all fifteen doors,
   DTLS resumption included, now refuse a superseded key, and the
   two by-design failing probes are green since the key directory
   shipped.
-- Releases stand at the version in pyproject.toml. Every release is stamped on all
-  outlets by Muse's stamp; the line is current through .23 and
-  the .24–.37 stamps are the next grind.
-- The Menlo Park rig reads 240% of its 2 cores at this writing;
-  a fall off the peg on any rig is reported to the conductor the
-  hour it happens, and the hourly campaign note stands at the top
-  of docs/seats/.com.chat.
-
-Platinum, the coverage cycles, stays suspended at the
-conductor's word; the campaign's one job is the grow.
+- Releases stand at the version in pyproject.toml, published on
+  every outlet the project ships to.
+- The Menlo Park rig reads 240% of its 2 cores at this writing.
