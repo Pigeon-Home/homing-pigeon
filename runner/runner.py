@@ -658,12 +658,20 @@ def inference_config(cfg):
         return None
     if max_chars < 0 or timeout < 1:
         return None
-    return {
+    out = {
         "endpoint": endpoint.rstrip("/"),
         "model": model,
         "max_answer_chars": max_chars,
         "timeout_sec": timeout,
     }
+    # Documented inference keys read downstream from this dict
+    # (agent_wall_clock_sec by ask_model_agent, keep_alive by
+    # _apply_keep_alive): pass them through when configured, and
+    # omit them when absent so the readers' defaults still apply.
+    for key in ("agent_wall_clock_sec", "keep_alive"):
+        if key in inf:
+            out[key] = inf[key]
+    return out
 
 def _as_text(value):
     """Stringify extension data. A value whose text form raises is empty."""
