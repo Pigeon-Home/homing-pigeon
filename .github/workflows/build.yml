@@ -899,7 +899,28 @@ jobs:
           # so the mirror never points at a release that was already
           # superseded when it got here.
           def vkey(t):
-              return tuple(int(x) for x in t.lstrip("v").split("."))
+              # Tags come in 2 schemes. Legacy tags are 3-component
+              # MAJOR.MINOR.COUNTER, cut before the token figure
+              # existed; current tags are 4-component
+              # MAJOR.MINOR.TOKENS.COUNTER (runner/ops/version4.py,
+              # whose convert_legacy reads a legacy tag's 3rd
+              # component as its counter). A raw tuple compare of
+              # the split tag reads that counter as the token
+              # figure, so v3.15.148 keyed above every v3.15.17.x
+              # and the default-download marking below never ran
+              # for a current release. Normalize a legacy tag to
+              # token figure 0 -- it predates the measure -- with
+              # its counter in the counter slot: legacy tags order
+              # among themselves by counter, and every 4-component
+              # release outranks every legacy tag on its line. A
+              # tag of any other shape raises ValueError and is
+              # skipped by the caller, like a non-numeric tag.
+              parts = tuple(int(x) for x in t.lstrip("v").split("."))
+              if len(parts) == 3:
+                  return (parts[0], parts[1], 0, parts[2])
+              if len(parts) == 4:
+                  return parts
+              raise ValueError("not a release tag: %r" % (t,))
           tags = subprocess.check_output(
               ["gh", "api", "--paginate",
                f"repos/{os.environ['REPO']}/git/matching-refs/tags/v",
