@@ -827,25 +827,106 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 29001ad3, 66329844, 4635a1db (31-Oct-2026)
 - Existing tests: queues-worker tests
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun28 suite in
+  runner/cloud/queues-worker/test/fuzz.test.mjs): results and
+  dead-letter pages say when they stopped, and subject reads
+  stop at 8 MB — the pager shapes and per-field pins are
+  carried in the suite's header comment in the repo. Landed on
+  main 5-Nov-2026 (spliced from the item's worktree onto the
+  current main); the file runs green under node --test
+  (599 tests across fuzz.test.mjs and fatfinger.test.mjs with
+  items 29, 30 and 31 landed, 599 pass, 0 skipped — the Python
+  skip registry does not apply to these files), no live bug
+  exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target collect
+  --rounds 400 --seed 20261129, run locally against the banked
+  collect corpus (20 entries), and re-run at landing with the
+  same result. Result: 400 rounds, 0 crashes, 0 slow, arcs
+  unchanged at 65, slowest try 75 ms — the silent-stop shape
+  did not recur. The grow's bookkeeping writes were reverted
+  and are not banked (banking is the rigs' hourly job).
 
 ### 29. An ack did not name the hand it was given; a later pull kept its job
 - Fixed: b2795848 (31-Oct-2026)
 - Existing tests: queues-worker fatfinger/fuzz tests, test_hosting_queue_edges.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun29 suites in
+  runner/cloud/queues-worker/test/fatfinger.test.mjs and
+  runner/tests/test_hosting_queue_edges.py): an ack names the
+  hand and attempt it was given, and a later pull keeps its
+  job — the per-field pins are carried in the suites' header
+  comments in the repo. Landed on main 5-Nov-2026 (spliced
+  from the item's worktree onto the current main, beside items
+  30 and 31 after tail conflicts); the files run green
+  (599 tests across fuzz.test.mjs and fatfinger.test.mjs under
+  node --test, 599 pass, 0 skipped; test_hosting_queue_edges.py
+  runs 71 tests, 0 skipped, skip-registry gate green), no live
+  bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suites' header comments in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261130, run locally against the banked
+  channels corpus (11 entries), and re-run at landing with the
+  same result. Result: 400 rounds, 0 crashes, 0 slow, arcs
+  unchanged at 142, slowest try 163 ms — the stale-hand shape
+  did not recur. The grow's bookkeeping writes were reverted
+  and are not banked (banking is the rigs' hourly job).
 
 ### 30. A negative LEASE_MS read as an already-expired job instead of the five-minute default
 - Fixed: 8c5ae5cf (31-Oct-2026)
 - Existing tests: queues-worker fatfinger.test.mjs
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun30 suite in
+  runner/cloud/queues-worker/test/fatfinger.test.mjs): a
+  negative LEASE_MS reads as the five-minute default, never as
+  an already-expired job — the value shapes are carried in the
+  suite's header comment in the repo. Landed on main
+  5-Nov-2026 (spliced from the item's worktree onto the current
+  main, beside items 29 and 31 after tail conflicts); the file
+  runs green under node --test (599 tests across
+  fuzz.test.mjs and fatfinger.test.mjs with items 28, 29 and
+  31 landed, 599 pass, 0 skipped), no live bug exposed, no
+  production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target wire --rounds
+  400 --seed 20261131, run locally against the banked wire
+  corpus (117 entries), and re-run at landing with the same
+  result. Result: 400 rounds, 0 crashes, 0 slow, arcs
+  unchanged at 184 — the already-expired-lease shape did not
+  recur. The grow's bookkeeping writes were reverted and are
+  not banked (banking is the rigs' hourly job).
 
 ### 31. A quota that is not an object was not a 400
 - Fixed: fbc3d845 (31-Oct-2026)
 - Existing tests: queues-worker fatfinger.test.mjs
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun31 suite in
+  runner/cloud/queues-worker/test/fatfinger.test.mjs): a quota
+  that is not an object is a 400 and stores nothing — the
+  shape shapes are carried in the suite's header comment in
+  the repo. Landed on main 5-Nov-2026 (spliced from the item's
+  worktree onto the current main, beside items 29 and 30 after
+  tail conflicts); the file runs green under node --test
+  (599 tests across fuzz.test.mjs and fatfinger.test.mjs with
+  items 28, 29 and 30 landed, 599 pass, 0 skipped), no live
+  bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target stage
+  --rounds 400 --seed 20261132, run locally against the banked
+  stage corpus (35 entries), and re-run at landing with the
+  same result. Result: 400 rounds, 0 crashes, 0 slow, arcs
+  unchanged at 93, slowest try 74 ms — the not-an-object quota
+  shape did not recur. The grow's bookkeeping writes were
+  reverted and are not banked (banking is the rigs' hourly
+  job).
 
 ### 32. A finished id the queue offered again was leased into the dead list
 - Fixed: 344c7df9 (31-Oct-2026)
