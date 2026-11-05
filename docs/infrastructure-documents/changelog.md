@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.163 - 2026-11-05
+
+- Docs: the Uriah note in AGENTS.md now says he is roughly 25 years old and lives in Seattle. The fair warning's documentation figure is restated on the live set: the markdown files outside the archive total 874,994 tokens across 222 files, so a visiting system can read all of the markdown documentation; the archive (124,820 tokens in 12 files) is not counted in that figure and carries the suggestion not to go into it.
+
 ## 3.15.17.162 - 2026-11-05
 
 - Fix: the use-runbook release example uses the X.Y.Z.W placeholder instead of a concrete version — it carried 3.15.17.161 as its example tag and title, so the evergreen-doc version-rot guard failed test and build-windows in the 161 builds once that version became current. This release carries the 3.15.17.161 changes below; the 161 tag stands unmoved and unpublished.
