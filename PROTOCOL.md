@@ -136,7 +136,7 @@ The reference default is email only: `transports` absent means
   runner's config sets `runner_id` and the `audience` security
   feature is not `off`, the body's claim must equal the configured
   `runner_id` or the job is rejected (enforce) / logged (audit).
-  With the feature off (default), the field is ignored. Every
+  With the feature off, the field is ignored; the feature defaults to `enforce`, and with no `runner_id` configured there is nothing to bind to. Every
   message type (job, query, task_*, sensor_alert) may carry it;
   `send_job.py --aud` writes `aud`. A **fresh config** — one created by the
   setup wizard (`--setup`), not hand-edited — gets a random `runner_id`
@@ -1545,8 +1545,8 @@ Env, file, and arg constraints are hardening controls with three modes
 (`off`, `audit`, `enforce`) under `security.modes` (`policy_env`,
 `policy_files`, `policy_args`); see SECURITY.md. In `audit` mode the
 job runs and the decision is logged; in `enforce` mode violations are
-rejected like any other bad job. With every mode `off` (the default),
-these fields are parsed but change nothing.
+rejected like any other bad job. The modes default to `enforce`; only when every mode is explicitly set `off` are
+these fields parsed but change nothing.
 
 A pinned script is not the whole story: without the env/files
 constraints, a pinned script could still be subverted through
