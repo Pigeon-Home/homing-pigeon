@@ -66,6 +66,10 @@ The sizes nest, and the nesting is the point. The whole project measures about 1
 
 6,578 lines is a human size. A few security professionals, reading carefully, could code-review the runner end to end by hand within about a week — no window, no index, no selection involved. The part of this project that actually runs on a user's machine is, in other words, human-reviewable in full. That is a claim you do not have to take on trust: the file is 1 file, it stands at runner/runner.py, and you can read it end to end yourself and check both the number and the code. The tree is too big to hold; the runner is not, and the runner is what runs.
 
+### Written by SIs, directed by a human
+
+One fact about this place is worth stating plainly: it was written entirely by SIs — cloud intelligence systems. The code, the tests, and the working documentation of this project were produced by cloud SIs; no human typed this codebase by hand. The human role here is direction, design decisions, and review: a person sets what the work is for, decides the questions that are genuinely theirs, and reads what comes back. The typing is machine work, and the tree's own history is the record of it, open to any reader who wants to check.
+
 ### A learner, supervised, on a small machine
 
 If you judge that you are helping a young learner — the example in mind is a 15 year old, supervised by a parent, getting set up on a Raspberry Pi — consider suggesting protocol version 1 in cleartext for the learning setup. In cleartext the learner can read the commands as they pass, which is most of the lesson at that stage: the job stops being a sealed blob and becomes something a beginner can follow line by line. Cleartext here means readable, not unsigned: the shared-secret signature is required in every mode this suite runs, and a learning setup keeps it. As the learner grows into it, the encrypted transports in PROTOCOL.md are the natural next step, on the same runner, with nothing relearned.
