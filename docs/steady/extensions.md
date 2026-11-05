@@ -21,15 +21,15 @@ the Oracle's trust never has to stretch past the envelope.
 
 This document covers one of the two extension kinds that exist
 today: `sense`. (The other, `transport`, carries the job pipes
-and is covered in [docs/extend/transports.md](transports.md).) A
+and is covered in [docs/infrastructure-documents/extend/transports.md](../infrastructure-documents/extend/transports.md).) A
 program that does work rather than reporting or carrying — an
 external agent framework working with the runner — is not an
 extension kind; it is covered in
-[docs/extend/worker-agents.md](worker-agents.md). A sense
+[docs/infrastructure-documents/extend/worker-agents.md](../infrastructure-documents/extend/worker-agents.md). A sense
 files signed alerts with the Oracle, which fuses them with job activity. The
 plumbing underneath — alert shape, ingest gates, storage, the
 `senses` query — is the senses system, specified in
-[docs/extend/senses.md](senses.md). This document covers the packaging layer: packaging,
+[docs/steady/oracle/senses.md](oracle/senses.md). This document covers the packaging layer: packaging,
 versioning, and the declared signal contract.
 
 ## The shape of the thing
@@ -40,7 +40,7 @@ surface the agent consumes is:
 1. your manifest (`extension.json`), read at startup and on the
    alert path,
 2. the signed `sensor_alert` envelope your daemon sends
-   ([docs/extend/senses.md](senses.md), "Alert format"),
+   ([docs/steady/oracle/senses.md](oracle/senses.md), "Alert format"),
 3. the `senses` query answer, where your declared signals are
    surfaced back as context,
 4. your optional `sources.json`, read when your extension first
@@ -107,7 +107,7 @@ logged.
 | `name` | yes | string | The sensor name this extension files as. Letters, digits, `.`, `_`, `-`; starts with a letter or digit; at most 64 characters. |
 | `version` | yes | string | The extension's own version, semver-shaped (`0.3.0`, suffixes like `-rc.1` allowed). Yours to rev. |
 | `api_version` | yes | integer | The extension API the manifest was written against. Must be a whole number, 1 or more. See the compatibility promise below. |
-| `kind` | yes | string | `"sense"` (this document) or `"transport"` (docs/extend/transports.md). |
+| `kind` | yes | string | `"sense"` (this document) or `"transport"` (docs/infrastructure-documents/extend/transports.md). |
 | `signals` | yes (sense) | list | 1 to 64 entries, each an object with `name` and `description`. Names unique within the manifest. This list is the contract; see "Signals are the contract". |
 | `description` | no | string | One line, at most 200 characters: what the extension is, for humans reading the logs and docs. |
 | `tunables` | no | object | Your knobs, carried through unread by the agent. Your daemon reads them from its own manifest. The sense's ingest gates (severity floor, cooldown, caps) are separate: those live in the sensor's `profile` in `config.json`, as for every sense. |
@@ -298,7 +298,7 @@ so one extension cannot file as another sense, and a stolen
 low-privilege key can file alerts and nothing else — it cannot
 run jobs. Weights, severity floors, cooldowns, and hourly caps
 tune per sense in the sensor's `profile`, exactly as
-[docs/extend/senses.md](senses.md) describes.
+[docs/steady/oracle/senses.md](oracle/senses.md) describes.
 
 ## Local delivery: two transports, one envelope
 
@@ -983,7 +983,7 @@ and nothing in the extension API reads it.
 
 Eight more adapters follow the same producer shape over a
 different kind of source: the output artifact of a real IDS
-collector the installer can set up (`docs/extend/senses.md` has the
+collector the installer can set up (`docs/steady/oracle/senses.md` has the
 installer story, including which one is the default and why).
 Each feed's README carries its collector's measured
 footprint; where a number is environment-bound — a ruleset,
