@@ -327,6 +327,33 @@ class MainTest(unittest.TestCase):
                 self.assertTrue(fh.read().startswith("# CI health"))
         self.assertEqual(out, "wrote %s (4 runs, 3 sampled for jobs)\n" % path)
 
+    def test_default_out_is_the_flat_reports_path(self):
+        # Q-new-1: the docs flattening removed the per-version
+        # subdirectory; the default output is the flat
+        # docs/steady/reports/ci-health.md, with no v<version>
+        # segment, whatever the current version is.
+        runs, jobs = _history()
+        root = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(CR.__file__))))
+        want = os.path.join(root, "docs", "steady", "reports",
+                            "ci-health.md")
+        out = io.StringIO()
+        with mock.patch.object(CR, "_repo", return_value="o/r"), \
+                mock.patch.object(CR, "_version", return_value="9.9.9"), \
+                mock.patch.object(CR, "fetch_runs", return_value=runs), \
+                mock.patch.object(CR, "fetch_jobs",
+                                  side_effect=lambda repo, i: jobs.get(i, [])), \
+                mock.patch.object(CR.os, "makedirs") as makedirs, \
+                mock.patch("builtins.open", mock.mock_open()) as mo, \
+                contextlib.redirect_stdout(out):
+            rc = CR.main([])
+        self.assertEqual(rc, 0)
+        written = mo.call_args[0][0]
+        self.assertEqual(written, want)
+        self.assertNotIn("v9.9.9", written.split(os.sep))
+        makedirs.assert_called_once_with(os.path.dirname(want),
+                                         exist_ok=True)
+
     def test_no_runs_is_refused_with_the_likely_cause(self):
         with self.assertRaises(SystemExit) as cm:
             self._main([], [], {})

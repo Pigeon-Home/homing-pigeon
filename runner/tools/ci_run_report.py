@@ -384,7 +384,7 @@ def main(argv=None):
         sys.stdout.write(report)
         return 0
     out = args.out or os.path.join(root, "docs", "steady", "reports",
-                                   "v" + version, "ci-health.md")
+                                   "ci-health.md")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8") as fh:
         fh.write(report)
