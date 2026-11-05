@@ -111,8 +111,9 @@ retained store. On Pi Light it pairs naturally with the
 deterministic Oracle: the one signal that wakes it is
 `failure_cluster` (high), and that alert already names how
 many distinct jobs failed inside the window; the medium
-signals (the repeat failures, the flapping, the long run and
-its baseline) are filed for the next brief, never a wake.
+signals (the repeat failures, the long run and its baseline)
+and the info signal (the flapping) are filed for the next
+brief, never a wake.
 
 The full extension walkthrough — manifest fields, the
 versioning contract, sensor binding, and how to turn this
