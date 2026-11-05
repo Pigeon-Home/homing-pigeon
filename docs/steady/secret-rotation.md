@@ -46,7 +46,7 @@ A secret the installer generates is named, and it is:
   an unnamed body. That is a separate question.
 - A planned rotation names the new key. The old one stays until
   every sender has moved. A leak is not a planned rotation:
-  `docs/security/safeguards.md` §7 replaces the secret now.
+  `docs/infrastructure-documents/security/safeguards.md` §7 replaces the secret now.
 
 `install.py --check` prints the key ids a runner holds and never
 the values: the runner's key by its fingerprint, then any
