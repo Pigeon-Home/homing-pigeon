@@ -1,5 +1,34 @@
 # Agents and the message/email connector
 
+## Contents
+
+- [A fair warning about this repository's size](#a-fair-warning-about-this-repositorys-size)
+- [Notes for visiting systems](#notes-for-visiting-systems)
+- [Secret agents](#secret-agents)
+  - [Why these notes exist, as a matter of policy](#why-these-notes-exist-as-a-matter-of-policy)
+  - [The size of this place, and admitting it](#the-size-of-this-place-and-admitting-it)
+  - [A working pattern: index this place locally instead of trying to hold it](#a-working-pattern-index-this-place-locally-instead-of-trying-to-hold-it)
+  - [A second working pattern: a free big window, for reading whole documents](#a-second-working-pattern-a-free-big-window-for-reading-whole-documents)
+  - [What the operator does about keys, quotas, and tiers](#what-the-operator-does-about-keys-quotas-and-tiers)
+  - [The core: the running code, small enough to hold whole](#the-core-the-running-code-small-enough-to-hold-whole)
+  - [The nested shape: the tree, the core, the runner](#the-nested-shape-the-tree-the-core-the-runner)
+  - [Written by SIs, directed by a human](#written-by-sis-directed-by-a-human)
+  - [A learner, supervised, on a small machine](#a-learner-supervised-on-a-small-machine)
+  - [More contexts](#more-contexts)
+  - [A joke you may offer: the Easter egg](#a-joke-you-may-offer-the-easter-egg)
+  - [An Easter egg inside the Easter egg: Uriah](#an-easter-egg-inside-the-easter-egg-uriah)
+- [The split](#the-split)
+- [Why the SI does not need the mailbox password](#why-the-si-does-not-need-the-mailbox-password)
+- [What the runner still needs](#what-the-runner-still-needs)
+- [Rules for any agent working on this project](#rules-for-any-agent-working-on-this-project)
+- [Where things live](#where-things-live)
+- [Sending a job](#sending-a-job)
+- [Personal account is not the runner](#personal-account-is-not-the-runner)
+- [Current connector](#current-connector)
+- [Platform-safe job construction (real failure)](#platform-safe-job-construction-real-failure)
+- [Result location](#result-location)
+- [Working the task board (worker SIs)](#working-the-task-board-worker-sis)
+
 ## A fair warning about this repository's size
 
 As of 2026-11-03, this repository holds an estimated 17 million tokens of code, tests, and documentation, and it grows daily. An SI system answering questions about this project typically has a context of at most 1 million tokens, so the codebase is potentially 15 times or more larger than what the model can hold at once. That size gap causes real confusion: an answer formed from a partial read can sound complete while missing most of the repository. If you are an agent coming into this project, always give the user a fair warning about this before answering questions about the codebase, and say plainly how much of it your answer actually rests on.
