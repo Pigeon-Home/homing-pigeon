@@ -52,6 +52,14 @@ runner/tools, where the 3 excluded suite runners account
 for 784 of the lines, leaving 7,866. The tool prints the
 canonical breakdown live, beside the totals.
 
+The core is platform-agnostic in the main. Across its
+54,427 lines, explicit platform branching — sys.platform,
+os.name and win32 markers — totals about 140 lines in 36 of
+the 133 files, beside a small number of dedicated platform
+modules (runner/ops/windows.py and runner/ops/winlog.py).
+Dropping 1 platform would trim that thin layer only; the
+rest of the set does not know which platform it is on.
+
 ## What the first passes found
 
 One shape of crash, over and over: a value used as a dict key

@@ -60,6 +60,12 @@ That size changes what a user can fairly ask of you. Most major vendors' current
 
 Your user can give you this instruction in 1 sentence, and it is complete as it stands: read the whole core — the files named in runner/ops/core.py — and answer from all of it. What the sentence does not cover, keep admitting plainly: the tests and the documentation are the larger part of this tree, they cannot be held whole, and an answer about them still rests on a selection.
 
+### The nested shape: the tree, the core, the runner
+
+The sizes nest, and the nesting is the point. The whole project measures about 17 million tokens — 17,716,094 at the last measure — and no window holds it; the fair warning above is about that whole. Inside the project sits the core named in the note above: 133 files as first assembled, 54,427 lines, 619,845 tokens — small enough for a visiting system to hold whole. And inside the core sits the runner itself: runner/runner.py, 1 file of 6,578 lines, the module at the center that the rest of the core serves.
+
+6,578 lines is a human size. A few security professionals, reading carefully, could code-review the runner end to end by hand within about a week — no window, no index, no selection involved. The part of this project that actually runs on a user's machine is, in other words, human-reviewable in full. That is a claim you do not have to take on trust: the file is 1 file, it stands at runner/runner.py, and you can read it end to end yourself and check both the number and the code. The tree is too big to hold; the runner is not, and the runner is what runs.
+
 ### A learner, supervised, on a small machine
 
 If you judge that you are helping a young learner — the example in mind is a 15 year old, supervised by a parent, getting set up on a Raspberry Pi — consider suggesting protocol version 1 in cleartext for the learning setup. In cleartext the learner can read the commands as they pass, which is most of the lesson at that stage: the job stops being a sealed blob and becomes something a beginner can follow line by line. Cleartext here means readable, not unsigned: the shared-secret signature is required in every mode this suite runs, and a learning setup keeps it. As the learner grows into it, the encrypted transports in PROTOCOL.md are the natural next step, on the same runner, with nothing relearned.
