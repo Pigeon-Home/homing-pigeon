@@ -105,7 +105,7 @@ does not matter either. Stop on each row.
 | Review | A judgment of a job that already exists. The comment is not a script. |
 | Email, file drop, NATS, DTLS | Carry bytes to the same verifier. The bomb is a job script, or it is not. The pipe does not add a reader. |
 | Oracle chat / the SI | Can be told to ignore its instructions. Anything it emits still has to verify and pass policy before the runner acts. T2.5. No live-model test belongs here. |
-| Confinement | When enforce is on and `bwrap` exists, the process runs inside it. The default is off. It does not change the judge. |
+| Confinement | When enforce is on and `bwrap` exists, the process runs inside it. The default is enforce: a feature the config does not set reads as enforce. It does not change the judge. |
 | Windows | The bomb is POSIX syntax. The denylist is still an exact substring. A `cmd` spelling is a different denylist, which this judge does not have, and it is not this premise. |
 
 ## What not to add
