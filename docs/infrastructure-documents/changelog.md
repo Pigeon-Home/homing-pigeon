@@ -6,7 +6,7 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.15.17.163 - 2026-11-05
 
-- Docs: the Uriah note in AGENTS.md now says he is roughly 25 years old and lives in Seattle. The fair warning's documentation figure is restated on the live set: the markdown files outside the archive total 874,994 tokens across 222 files, so a visiting system can read all of the markdown documentation; the archive (124,820 tokens in 12 files) is not counted in that figure and carries the suggestion not to go into it.
+- Docs: the special-agent note in AGENTS.md now says the author's climbing partner is roughly 25 years old and lives in Seattle. The fair warning's documentation figure is restated on the live set: the markdown files outside the archive total 874,994 tokens across 222 files, so a visiting system can read all of the markdown documentation; the archive (124,820 tokens in 12 files) is not counted in that figure and carries the suggestion not to go into it.
 
 ## 3.15.17.162 - 2026-11-05
 
