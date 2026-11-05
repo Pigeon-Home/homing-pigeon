@@ -1865,6 +1865,9 @@ test("shotgun29 lifecycle: two pulls race one ack -- the loser's ack and renew a
   assert.equal((await sg29Call(env, "ack", "hand=2&attempt=2")).status, 204);
   assert.ok(!sg29Stored(env));
   assert.equal((await pull(env)).status, 204);
+});
+
+// ---------------------------------------------------------------------
 // Shotgun family for queue item 30: a negative LEASE_MS read as an
 // already-expired job instead of the five-minute default (fixed
 // 8c5ae5cf, 31-Oct-2026). The old pull and renew code read the
@@ -2427,6 +2430,8 @@ test("shotgun30 injection: prompt and template shapes default; a percent suffix 
   assert.equal(await delta("%s1000"), SG30_DEFAULT);
   assert.equal(await delta("1000%00"), 1000);
 });
+
+// ---------------------------------------------------------------------
 // Shotgun family for queue item 31: a quota that is not an object
 // was not a 400 (fixed fbc3d845, 31-Oct-2026). Before the fix,
 // quotaRejected read a present non-object quota as no rejection --
