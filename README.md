@@ -9,7 +9,7 @@ Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that c
 Your cloud AI (called the SI throughout this repo) is smart, but it
 can't touch your computer. Homing Pigeon gives it a signed channel to one: ask for a task and it runs on your machine, and
 the results come back so the SI can iterate. Run the tests, read the
-failure, fix, repeat, from your phone or anywhere.
+failure, fix, repeat, from your phone or anywhere. Install this runner anywhere and try it with the prompt below.
 
 Then try this prompt in your cloud SI, it should return in less than 30 seconds.
 
