@@ -19,6 +19,7 @@ on:
       - "runner/tests/test_secret_files_job_user.py"
       - "runner/tests/test_credential_canary.py"
       - "runner/runner.py"
+      - "runner/ops/remediation_ops.py"
       - "runner/guard/security.py"
       - ".github/workflows/job-user.yml"
   workflow_dispatch:
