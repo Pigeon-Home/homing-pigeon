@@ -3,6 +3,82 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 4-Nov-7:42pm-PST/PDT — the token work, whole: an index, 2 keys, and a conformance program
+
+The reach problem has a working answer now, in 3 parts, and this
+entry records all of it in 1 place.
+
+The local index stands first. The tree — 17,716,094 tokens at the
+last measure — is cut into 20,176 chunks across 1,439 files and
+indexed on this machine: small local embeddings plus ordinary
+keyword search, nothing leaving the machine, every query offline.
+A 3-chunk answer costs between 362 and 3,086 tokens. The index
+finds; it does not hold, and it does not pretend to.
+
+The big window stands second, and it now has 2 keys. The first is
+a free Gemini API key, made in Google AI Studio (project
+98454394856). Its models list answers, and gemini-3.6-flash
+generates on the free tier. The free tier's shape is measured,
+not guessed: 20 generate requests per day per project per model,
+and the allowance resets at midnight Pacific — a 429 late in the
+day named the wait to the minute. gemini-4-argon appears in that
+key's models list and answers nothing: its free-tier limit is 0.
+A second key, from a billed project (projects/1026122405349, the
+Default Gemini Key), went on file on 2026-11-04, and with it
+gemini-4-argon generateContent returned a real reply — the model
+version in the response reads gemini-4-argon. A key carries its
+own project's tier and no other; that is the whole lesson of the
+evening's hunt. Both keys live in 0600 files in the operator's
+local token-index workspace, outside this repository; no key
+value stands in this record or anywhere in the tree.
+
+The program stands third. The documentation and the code are
+being checked against each other through the window, claim by
+claim. Phase 1 pairs the documentation with a stripped core —
+the production runner only, no tests, no superfluous code, a
+701,403-byte zip that fits the window with room to spare — and
+asks, segment by segment, whether the words match the code. The
+exchange is conversational: where the window cannot judge a
+claim, it names the code or the document it needs, and exactly
+that is fetched and sent, round by round, until the claim is
+decided or recorded unjudged. Every mismatch claim is verified
+first-hand against the code before it counts as a defect. Phase
+2 takes the IETF material: the v1 and v2 drafts as findings
+only, under the mirror rule, and the v3 draft with verified
+defects fixed in its source. Phase 3 is a final once-over of
+everything. Between phases, in idle capacity, the same window
+reads the code subsystem by subsystem for a security review
+under the project's own values.
+
+Results so far, each one checked first-hand. Lane B, the sending
+document, round 1: 15 claims — 10 hold, 5 unjudged, every
+unjudged 1 waiting on code the packet did not carry (the poll
+loop and its 20-second default, the sandbox prefix binding, the
+100 MiB download cap, the remote-upgrade kit, the 8-output
+ceiling). Lane D, the security review of the guard code, sitting
+1: 1 confirmed defect. In runner/guard/extreview.py, the high
+finding for an absolute path outside the extension folder is
+raised only when that path exists at review time, and the cached
+clean verdict is keyed only on the extension folder's own files
+— so a file created at the outside path after the review escapes
+the cached verdict entirely: a time-of-check/time-of-use shape,
+confirmed in the code. 1 further claim from that sitting — a
+helper that reads a malformed security shape as off — is true of
+the helper and not yet a defect: the startup validation refuses
+those shapes before any job runs, and the claim waits on a
+caller audit before it counts either way. Lane E, the v3 draft:
+the packet counted 64,701 tokens by the API; the window's first
+call met the spent free quota, and a first-hand spot check of 15
+of the draft's claims found 14 hold and 1 holds-with-note, 0
+mismatches. The remaining lanes — the security posture sitting,
+the wire-crypto sitting, the v3 pass itself — stopped on the
+free tier's daily wall and resume on the billed project's key.
+
+Proud of this one. The tree is 17 million tokens, and the answer
+was never a bigger head: it is an index that finds, a window that
+reads, and a program that checks the words against the code and
+writes down what it finds.
+
 ## 4-Nov-4:32pm-PST/PDT — the free big window: a first pass over the documentation
 
 The token work has a second half now, standing next to the local
