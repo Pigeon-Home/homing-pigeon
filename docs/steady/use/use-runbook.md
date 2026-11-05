@@ -104,9 +104,17 @@ you. You start them by making a **release**. All point and click:
 2. On the right side, click **Releases**.
 3. Click the **Draft a new release** button.
 4. Click **Choose a tag**, then type the tag you are cutting, such as
-   `vX.Y.Z`, and click **Create new tag**.
-5. Type a title like `Version X.Y.Z`. The number is the one in
-   `pyproject.toml`, not a guess.
+   `v3.15.17.160`, and click **Create new tag**. The tag carries the
+   live 4-number version: `MAJOR.MINOR.TOKENS.COUNTER`.
+5. Type a title like `Version 3.15.17.160`. The number is the
+   4-component version carried in `pyproject.toml` and
+   `runner/_version.py`, not a guess. The rules for the number live
+   in `runner/ops/version4.py`: the major stays 3, the minor is the
+   release line, the tokens figure is the size of the repository in
+   whole millions of tokens (measured at most once every 24 hours —
+   a release inside that window reuses the last figure), and the
+   counter is the release counter, which restarts when a number to
+   its left increases.
 6. Click the big green **Publish release** button.
 7. Now click the **Actions** tab at the top. You will see the robots
    working. It typically takes about 20 minutes.
@@ -150,11 +158,12 @@ Every release also carries its own proof: a `SHA384SUMS` over all
 the files, a build attestation tying the set to the tag build, an
 SBOM, and a `BUILD-PROVENANCE.json` stamped inside each archive.
 To check a download against all of it, on any outlet, see
-`docs/security/verification.md`.
+`docs/steady/verification.md`.
 
 **Releasing through your SI instead:** say "tag and publish
 everything." That one sentence is the whole instruction set. The SI
-bumps the version in the four places it lives, runs the version
+computes the next 4-number version by the rules in
+`runner/ops/version4.py` and bumps it in the places it lives, runs the version
 test and the doc-drift guard before pushing, waits until the nine
 guard jobs on that commit are green (`test` and the eight
 `build-*` jobs; `test-macos` is not one of them), and tags that
