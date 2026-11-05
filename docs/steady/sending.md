@@ -46,15 +46,16 @@ healthy runner agrees within a second or two, plus the mailbox poll
 interval (the runner polls every 20 seconds by default, so the result
 arrives a little after the send).
 
-Do not name the interpreter by an absolute path. `--interpreter
-'["/bin/sh"]'` looks harmless and is not: the runner's sandbox binds
-the interpreter's install prefix read-only, so an absolute path makes
-it bind `/bin` itself, and on a usr-merged system (Fedora, Ubuntu)
-the job dies at once — exit 1 in a few milliseconds, no output at
-all. Omit `--interpreter` and let the runner use its default, or use
-a bare name (`["bash"]`, `["sh"]`) that resolves under `/usr`. This
-was learned live on 31 Oct 2026: the same clock job failed with
-`/bin/sh` named and ran clean with the field left out.
+Do not name the interpreter by an absolute path. The runner's
+sandbox binds the interpreter's install prefix read-only when that
+prefix is deep enough to bind — an absolute path outside the
+standard tree makes it bind that install prefix, so
+`/opt/x/bin/python3` binds `/opt/x` read-only and pins the job to
+that one install tree. A shallow path binds nothing: `/bin/sh`
+gets no prefix bind at all, and inside the sandbox `/bin` is a
+symlink to `usr/bin`, so it resolves there anyway. Omit
+`--interpreter` and let the runner use its default, or use a bare
+name (`["bash"]`, `["sh"]`) that resolves under `/usr`.
 
 ## The first real job: check out the repository and commit
 
