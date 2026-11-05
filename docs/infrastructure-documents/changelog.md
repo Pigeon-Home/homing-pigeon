@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.157 - 2026-11-04
+
+- Docs: README.md gains a line in its credits, checklist.txt replaces the idea file at the root, and the stale docs/ twins of AGENTS.md and PROTOCOL.md come out — 1 file, 1 home: the root copies are the living front-door documents.
+
 ## 3.15.17.156 - 2026-11-04
 
 - Fix: first_ping follows the docs layout — the committed runs are read from docs/steady/specimens/runs.jsonl and the table is rebuilt at docs/steady/reports/first-ping-readme.md; the docs reorganization had left the tool pointing at the old docs/reports/first-ping folder, and the test, test-macos and build-windows guard jobs failed on it. This release carries the 3.15.17.155 changes below; the 155 tag stands unmoved and unpublished.
