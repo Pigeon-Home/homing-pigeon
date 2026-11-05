@@ -50,7 +50,7 @@ unless asked.
 ## Transports
 
 The harness uses no adapter module; in the runner, transports are
-extensions supervised by `runner/transports.py`. Status:
+extensions supervised by `runner/wire/transports.py`. Status:
 `docs/transports-status.md`.
 
 | Transport | State |
@@ -64,7 +64,7 @@ extensions supervised by `runner/transports.py`. Status:
 
 - Direct "ask the Oracle" button. It skipped the SI and called the
   Oracle path in-process. The button is gone from the page, but the
-  direct path itself still ships: `runner/local_test.py`'s
+  direct path itself still ships: `runner/ops/local_test.py`'s
   `answer_as_oracle()` / `repl()` run asks in-process. Separately,
   the runner's own Oracle window serves its page at `/` with
   `POST /ask`, and a token-gated `GET /status` (200 with the
@@ -86,7 +86,7 @@ Not part of this branch's unique commits, but context:
 
 ## Files
 
-- `runner/local_test.py` — the harness
+- `runner/ops/local_test.py` — the harness
 - `docs/local-si-test.md` — how to run it
 - `docs/transports-status.md` — transport table
 - `docs/handoff-local-si.md` — this file
@@ -99,7 +99,7 @@ Unbuilt work is listed in FUTURE.md. These notes are not a queue.
 
 1. A live Cloudflare try was planned and was not done. Queues are
    still not in the runner.
-2. Open WebUI env var: confirmed — `runner/local_test.py` sets
+2. Open WebUI env var: confirmed — `runner/ops/local_test.py` sets
    `OLLAMA_BASE_URL` when it launches Open WebUI for
    `--local-test --browser`.
 3. The chat confirms the send. It does not wait for the result
