@@ -189,6 +189,37 @@ class AtomicWriteTest(unittest.TestCase):
         atomicio.write_text(dest, "x", mode=0o644)
         self.assertEqual(stat.S_IMODE(os.stat(dest).st_mode), 0o644)
 
+    @unittest.skipUnless(os.name != "nt", "POSIX only")
+    def test_mode_is_exact_even_under_a_restrictive_umask(self):
+        # Q-new-26: the requested mode lands exactly, even when
+        # the umask would mask the temp file's creation mode down.
+        dest = os.path.join(self.tmp, "state.json")
+        old_umask = os.umask(0o077)
+        try:
+            atomicio.write_bytes(dest, b"x", mode=0o644)
+        finally:
+            os.umask(old_umask)
+        self.assertEqual(stat.S_IMODE(os.stat(dest).st_mode), 0o644)
+
+    def test_no_chmod_on_the_destination_path(self):
+        # Q-new-26: chmod by destination path after os.replace is
+        # a symlink-swap race. Mode may be applied to the private
+        # temp path (or the open fd) before the replace, never to
+        # the destination path after it.
+        dest = os.path.join(self.tmp, "state.json")
+        real_chmod = os.chmod
+        calls = []
+
+        def spy(path, mode, *a, **kw):
+            calls.append(path)
+            return real_chmod(path, mode, *a, **kw)
+
+        with mock.patch.object(atomicio.os, "chmod", spy):
+            atomicio.write_bytes(dest, b"x", mode=0o600)
+        self.assertNotIn(dest, calls)
+        with open(dest, "rb") as fh:
+            self.assertEqual(fh.read(), b"x")
+
     def test_text_json_and_bytes_land_as_given(self):
         dest = os.path.join(self.tmp, "state.json")
         atomicio.write_json(dest, {"b": 1, "a": [1, 2]}, indent=2,

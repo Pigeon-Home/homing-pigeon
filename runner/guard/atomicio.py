@@ -20,8 +20,9 @@ The contract, for every writer here:
   os.replace moves the temp over `path`. A reader sees the old
   file or the new one, never a hole; a symlink at `path` is
   replaced, never followed.
-- The mode is applied to the result best effort (0600 unless the
-  caller says otherwise).
+- The mode is applied to the temp file best effort before the
+  replace (0600 unless the caller says otherwise), never by
+  destination path after it.
 - On any failure the temp is unlinked and the exception is
   re-raised. Callers that swallow keep swallowing; nothing here
   decides that for them.
@@ -94,6 +95,17 @@ def write_bytes(path, data, mode=0o600, fsync=False):
         if failed is None:
             failed = e
     if failed is None:
+        # The mode goes on the temp path BEFORE the replace, never
+        # on the destination path after it (Q-new-26): the fd is
+        # already closed here, and a by-path chmod after replace
+        # races a symlink swap at the destination. The temp name
+        # is private (created O_EXCL | O_NOFOLLOW), so chmod by
+        # temp path is race-free, and the file lands with the
+        # exact mode regardless of the umask.
+        try:
+            os.chmod(tmp, mode)
+        except OSError:
+            pass
         try:
             _replace(tmp, path)
         except BaseException as e:
@@ -104,10 +116,6 @@ def write_bytes(path, data, mode=0o600, fsync=False):
         except OSError:
             pass
         raise failed
-    try:
-        os.chmod(path, mode)
-    except OSError:
-        pass
 
 
 def write_text(path, text, mode=0o600, encoding="utf-8", fsync=False):
