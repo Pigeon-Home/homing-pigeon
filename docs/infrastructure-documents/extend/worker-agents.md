@@ -40,10 +40,12 @@ protocol defines:
    --message <text> --json` does the same from the command line.
 4. The bridge files the turn's outcome as a signed
    `task_result`. The board answers `task_ack` — `done`,
-   `pending_review` when the task asked for review, or a refusal
-   naming why the result was not accepted. A task opened with
-   `require_review: true` waits in `pending_review` until an
-   owner's `task_approve` lands.
+   `pending_review` when the runner's review switch is on, or a
+   refusal naming why the result was not accepted. There is no
+   per-task review flag: the gate is the runner-wide
+   `require_review` switch in the runner's own `config.json`.
+   When that switch is on, a completed task waits in
+   `pending_review` until an owner's `task_approve` lands.
 
 Results come back through the board and nowhere else: the bridge
 reports what the agent's turn produced, and the board's states
