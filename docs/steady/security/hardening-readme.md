@@ -11,7 +11,7 @@ Render the `@PLACEHOLDERS@` with your real paths, e.g.:
         -e "s|@CONFIG@|/etc/homing-pigeon/config.json|g" \
         -e "s|@PYTHON@|/usr/bin/python3|g" \
         -e "s|@USER@|pigeon|g" \
-        docs/security/hardening/systemd/homing-pigeon.service \
+        docs/steady/security/homing-pigeon.service \
         > /etc/systemd/system/homing-pigeon.service
 
 The AppArmor path list was derived from an `strace -f -e openat` run
@@ -20,15 +20,15 @@ of one `--once` poll cycle, plus the paths a working run needs
 
 Files:
 
-- `systemd/homing-pigeon.service` — hardened systemd unit. Mirrors
+- `homing-pigeon.service` — hardened systemd unit. Mirrors
   the unit `install.py` writes, plus sandboxing directives
   (NoNewPrivileges, ProtectSystem=strict, ProtectHome, PrivateTmp,
   RestrictAddressFamilies, ...). Tune `ReadWritePaths` to your base
   dir and config path.
-- `apparmor/homing-pigeon` — AppArmor profile for the runner daemon
+- `homing-pigeon` — AppArmor profile for the runner daemon
   itself (not for jobs; jobs get bwrap via the `confinement`
   feature). Load with `apparmor_parser -r`.
-- `selinux/homing_pigeon.te` — SELinux type-enforcement module named
+- `homing_pigeon.te` — SELinux type-enforcement module named
   `homing_pigeon`. It uses reference-policy interfaces
   (`policy_module`, `manage_dirs_pattern`, `corenet_*`), so build it
   with the reference policy's Makefile, `make -f
