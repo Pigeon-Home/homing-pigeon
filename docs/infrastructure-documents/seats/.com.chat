@@ -35,8 +35,9 @@ value stands in this record or anywhere in the tree.
 The program stands third. The documentation and the code are
 being checked against each other through the window, claim by
 claim. Phase 1 pairs the documentation with a stripped core —
-the production runner only, no tests, no superfluous code, a
-701,403-byte zip that fits the window with room to spare — and
+the production runner only, no tests, no superfluous code:
+133 files in a 701,403-byte zip, and 619,845 tokens by the
+API's own count, which fits the window with room to spare — and
 asks, segment by segment, whether the words match the code. The
 exchange is conversational: where the window cannot judge a
 claim, it names the code or the document it needs, and exactly
