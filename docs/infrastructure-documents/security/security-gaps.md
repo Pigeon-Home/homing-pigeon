@@ -9,12 +9,17 @@ bothers you.
 
 ## The one sentence
 
-With default settings, **the job is the runner**: jobs execute as the
-same OS user that owns `config.json`, the code, the state, and the
-audit log. Every file permission on the box is theater against the
-job itself, because the job can read and rewrite all of it. The
-restrictions are deliberately near zero out of the box (the owner's
-explicit posture choice). Everything below follows from that.
+With default settings, jobs execute as the same OS user that owns
+`config.json`, the code, the state, and the audit log — no separate
+job user is named by default, so in that `job_user` sense **the job
+is the runner**. That is not the whole default picture: all six
+`security.modes` features read `enforce` when unset, and
+confinement engages out of the box on a Linux box with `bwrap`, so
+the job is sandboxed away from `config.json`, the state dir and
+the audit log. Where confinement cannot engage, or where it is set
+to `audit` or `off`, every file permission on the box is theater
+against a same-user job itself, because the job can read and
+rewrite all of it. Everything below follows from that.
 
 ## The order
 
@@ -115,11 +120,16 @@ where each one stands. Items marked absent are listed in docs/FUTURE.md.
 
 ## Deliberately not done
 
-The near-zero default posture is the owner's call, not an accident:
+The gaps that remain are the owner's call, not an accident:
 this is a personal runner, and availability beats strictness for one
-user's box. Most of the hardening controls are opt-in for
-that reason. The exceptions: M1 is two always-on defect fixes with
-default-on caps (`max_job_bytes` / `max_script_bytes`), M3 and M4
+user's box. The hardening controls themselves are not opt-in —
+all six `security.modes` features read `enforce` when unset.
+What remains in effect until the owner names one is the identity
+split: `job_user` reads `enforce` when unset, but with no job
+user named there is no other user to drop to, so jobs still run
+as the runner's own OS user. The exceptions: M1 is two always-on
+defect fixes with default-on caps (`max_job_bytes` /
+`max_script_bytes`), M3 and M4
 are read-only report tools (`--audit-report` / `--posture`), not
 controls, and M9/M10 are design documents — not implemented. What *was* an oversight is that the docs never said, in one
 place: here's what the defaults don't protect you from, and here's
