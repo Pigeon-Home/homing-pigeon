@@ -151,9 +151,11 @@ fetched, in either case, and the inline script does not run
 in its place. The next ordinary job still does. A null
 byte in an argument or an environment name is refused, and
 the script does not start. A null byte in the interpreter
-is not a refusal. The path is absent, repair is the
-default, and the platform shell is started. The Python
-script does not run under that shell. The next ordinary
+was not a refusal when this was found: the path was absent,
+repair was the default, and the platform shell was started,
+so the Python script did not run under that shell. The code
+now refuses that shape — an interpreter containing a null
+byte is rejected and the job does not run. The next ordinary
 job still does. A ping that carries a script answers
 `pong` and does not run the script. The next exec job
 still does. A kind the runner does not know (`sh`, an
@@ -173,8 +175,10 @@ as missing, so the job runs. Files that are a string,
 or an entry whose name or url is not a string, do not
 run. Files of `0` are read as missing, so the job runs.
 An interpreter that is a string or a number does not run.
-An empty list is read as missing. The platform shell is
-started, and the Python script does not run under it.
+An empty list was read as missing when this was found: the
+platform shell was started, and the Python script did not
+run under it. The code now refuses that shape too — a
+present-but-empty interpreter list is rejected.
 The next job with an interpreter still does. The same
 query is answered
 once. The second copy, same seen set, gets nothing back.
