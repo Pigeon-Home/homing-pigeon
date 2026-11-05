@@ -26,9 +26,17 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 
 `install.py` accepts the common run flags — `--poll-interval`,
 `--timeout`, `--workers`, `--max-output-bytes`, `--dry-run`,
-`--verbose` — and bakes them into the installed
-service, so the agent on boot runs exactly what you tested:
-`python3 runner/ops/install.py --verbose --poll-interval 30`.
+`--verbose` — and bakes the forwarded ones into the installed
+service: `poll_interval`, `timeout`, `workers` and
+`max_output_bytes` are forwarded, so in
+`python3 runner/ops/install.py --verbose --poll-interval 30`
+the `--poll-interval 30` is baked in. `--verbose` is not:
+it is the installer's own flag and is never baked in —
+`_forwarded_args` appends only `--quiet` when verbose is
+False. The installed service therefore runs at the runner's
+default verbosity 1, while a direct `runner.py --verbose`
+run is level 2, so the installed service does not run at
+exactly the verbosity you tested with `--verbose`.
 
 ```bash
 python3 -m unittest discover -s runner/tests -t .
@@ -77,8 +85,11 @@ workflow fails when a proof disappears.
 
 What the platforms cannot prove is what the runner does not do
 there, by the owner's 2026-10-15 decisions: confinement is bwrap,
-Linux only, and on every other kernel a `confinement: enforce` job
-runs unsandboxed with a WARN line and a `fallback` audit entry;
+Linux only, and on every other kernel the runner refuses to
+start under `confinement: enforce` — the default for a feature
+the config does not set — because the sandbox cannot engage
+there; the WARN line and `fallback` audit entry path is only
+for a sandbox that breaks after a good start on Linux;
 `job_user` is a uid change and works on the three POSIX kernels but
 has no Windows form. The real cages elsewhere are named in
 `docs/security/security-gaps.md` (`sandbox-exec` on macOS, a jail
