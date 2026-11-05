@@ -174,18 +174,21 @@ at their own bounds, until the finding is resolved.
 ### The audience clause, honestly weakened by mode
 
 Clause 4 is the one place where P1's strength depends on
-configuration, and the model MUST NOT hide that. With the
-audience feature `off` — the default in a fresh configuration
-(C11) — any correctly signed job for any audience passes clause
-4, because there is no binding to check against, or none is
-switched on. With the feature in `audit`, a job for the wrong
+configuration, and the model MUST NOT hide that. With the audience
+feature `enforce` — the default in a fresh configuration
+(C11) — the binding is checked whenever a `runner_id` is
+configured. With the feature set `off`, or with no `runner_id`
+configured, any correctly signed job for any audience passes
+clause 4, because there is no binding to check against, or none
+is switched on. With the feature in `audit`, a job for the wrong
 audience executes and leaves a record. Only in `enforce` does
 the short-form sentence "addressed to this runner's audience"
 hold without qualification. The first model therefore states P1
 twice: in its strong form, under audience `enforce` with a
-`runner_id` configured, and in its default form, where clause 4
-is recorded as vacuous. Both forms are worth checking. The
-default form is what a fresh install actually runs.
+`runner_id` configured, and in its default form — the same
+`enforce` form when a `runner_id` is configured, recorded as
+vacuous only when no `runner_id` is configured. The default
+form is what a fresh install actually runs.
 
 ### The check order, as the code performs it
 

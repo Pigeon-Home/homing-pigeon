@@ -278,7 +278,7 @@ refuse-class setting it stops the runner before any job is read.
   identifier generated at setup. It is a deployment value, not a
   protocol constant, so no deployment's actual value is recorded
   here. The default posture in a fresh configuration is the
-  feature `off` until a mode is set (C11).
+  feature `enforce` until a mode is set (C11).
 - **Where:** `runner/wire/verify.py` — `check_audience`, line
   1122, states the comparison; `audience_allows`, line 1149,
   applies the three-mode decision through `sec_decide`. The mail
