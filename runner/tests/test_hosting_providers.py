@@ -262,6 +262,29 @@ class BootstrapTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     bootstrap.pinned_requirement(bad)
 
+    def test_pinned_requirement_takes_a_four_component_release(self):
+        # The current scheme is MAJOR.MINOR.TOKENS.COUNTER (the version
+        # in pyproject.toml, the one the hosting CLI tells users to
+        # pin); the legacy 3-component shape above stays accepted.
+        self.assertEqual(bootstrap.pinned_requirement("3.15.17.160"),
+                         "pigeon-home-runner==3.15.17.160")
+        self.assertEqual(bootstrap.pinned_requirement("v3.15.17.160"),
+                         "pigeon-home-runner==3.15.17.160")
+
+    def test_pinned_requirement_takes_the_pyproject_version(self):
+        from runner.tests._compat import project_version
+        version = project_version()
+        self.assertEqual(bootstrap.pinned_requirement(version),
+                         f"pigeon-home-runner=={version}")
+
+    def test_pinned_requirement_rejects_malformed_versions(self):
+        for bad in ("3.15.17.160.1", "3.15.x.160",
+                    "3.15.17.-1", "3..17.160", "3.15.17.", ".3.15.17",
+                    "3.15.17.160; rm -rf /", "  ", 31517160):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    bootstrap.pinned_requirement(bad)
+
     def test_image_for_pins_the_tag(self):
         self.assertEqual(bootstrap.image_for("3.13.2"),
                          "ghcr.io/pigeon-home/homing-pigeon:v3.13.2")

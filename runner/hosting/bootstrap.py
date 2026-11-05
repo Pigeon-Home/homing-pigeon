@@ -22,7 +22,11 @@ def pinned_requirement(version):
     if not isinstance(version, str) or not version.strip():
         raise ValueError("a release version is required")
     v = version.strip().lstrip("v")
-    if not all(part.isdigit() for part in v.split(".")) or v.count(".") != 2:
+    # A release version is 3 numeric components (the legacy shape) or
+    # 4 (the current MAJOR.MINOR.TOKENS.COUNTER scheme, the version in
+    # pyproject.toml); anything else is not a release version.
+    if not all(part.isdigit() for part in v.split(".")) \
+            or v.count(".") not in (2, 3):
         raise ValueError(f"not a release version: {version!r}")
     return f"{PACKAGE}=={v}"
 
