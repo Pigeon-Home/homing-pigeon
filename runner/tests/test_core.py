@@ -13,6 +13,7 @@ only, and the CLI prints its figure lines in shape.
 """
 import io
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -269,6 +270,34 @@ class CoreCliTest(unittest.TestCase):
             rc, _out, err = self._run(["--root", tmp])
             self.assertEqual(1, rc)
             self.assertIn("core file missing", err)
+
+
+class CoreScriptFallbackTest(unittest.TestCase):
+    """The plain-script fallback import of version4 (used when
+    core.py runs as `python3 runner/ops/core.py`, not as a package
+    module) is invisible to pyrefly: version4 is a sibling on
+    sys.path only in that mode. The line carries the house-style
+    pyrefly suppression for missing-import, so the non-guard
+    typecheck job stays clean, and the fallback itself runs."""
+
+    def test_fallback_import_carries_the_pyrefly_suppression(self):
+        with open(os.path.join(ROOT, "runner", "ops", "core.py"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        fallback = [line for line in src.splitlines()
+                    if line.strip().startswith("import version4")]
+        self.assertEqual(1, len(fallback))
+        self.assertIn("pyrefly: ignore[missing-import]", fallback[0])
+
+    def test_core_runs_as_a_plain_script(self):
+        proc = subprocess.run(
+            [sys.executable,
+             os.path.join(ROOT, "runner", "ops", "core.py"),
+             "--root", ROOT],
+            capture_output=True, text=True, timeout=120)
+        self.assertEqual(0, proc.returncode, proc.stderr)
+        self.assertTrue(
+            proc.stdout.startswith("core files: 130\n"), proc.stdout)
 
 
 if __name__ == "__main__":

@@ -82,7 +82,7 @@ from typing import List, Optional, Sequence, Tuple
 try:
     from . import version4  # package: runner.ops.core
 except ImportError:  # plain script: python3 runner/ops/core.py
-    import version4  # noqa: F401  (sibling module, on sys.path)
+    import version4  # noqa: F401  # pyrefly: ignore[missing-import]  # sibling module, on sys.path only as a plain script
 
 # The set as assembled for the 2026-11-04 big-window pass, and
 # the reviewing model's own measure of it. Recorded constants:
