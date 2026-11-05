@@ -56,7 +56,7 @@ Three slots, deliberately separate:
   (`docs/extend/senses.md`) watches host firewall state, rule diffs,
   and new listeners; the `netmon` sense watches flows and
   DNS. Neither blocks anything. Safe to leave on everywhere.
-- **Cage (opt-in enforcement).** Linux: bwrap with
+- **Cage (on by default: confinement defaults to enforce).** Linux: bwrap with
   `--unshare-net` (loopback-only jobs) in enforce mode.
   Windows: per-user WFP rules tied to the job identity
   (`--run-as`) — **not built; the Windows cage is parked**
