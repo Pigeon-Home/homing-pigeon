@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.162 - 2026-11-05
+
+- Fix: the use-runbook release example uses the X.Y.Z.W placeholder instead of a concrete version — it carried 3.15.17.161 as its example tag and title, so the evergreen-doc version-rot guard failed test and build-windows in the 161 builds once that version became current. This release carries the 3.15.17.161 changes below; the 161 tag stands unmoved and unpublished.
+
 ## 3.15.17.161 - 2026-11-05
 
 - Fixes: the verified fix queue from the big-window audit lands — inference_config passes agent_wall_clock_sec and keep_alive through when present (Q-new-12), _install_prefix never returns a user home directory (Q-new-25), atomicio applies the file mode to the temp path before replace instead of by destination path after (Q-new-26), and ci_run_report writes to the flat docs/steady/reports/ci-health.md by default (Q-new-1).
