@@ -3,6 +3,34 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 5-Nov-12:00am-PST/PDT — runner coverage, measured: 99.09% of runner.py under the unit tests
+
+Coverage of runner/runner.py by the project's unit tests is
+measured now, not estimated. The full suite ran under
+coverage.py in 8 alphabetical chunks, each chunk with its own
+data file, the files combined at the end: 10,156 tests,
+31 failures, 9 errors, 55 skipped. The failures sit in the
+known families — 16 in the doc-default divergences over grep
+max-matches, 11 in the Oracle intake fuzz ring, the rest
+singles and pairs, 1 of them a timing assertion at 2.095
+seconds against a 2.0 second bound — in a run taken under
+coverage tracing with chunks sharing the box. The 55 skips
+match the standing baseline, and a skip is not a pass.
+
+For runner/runner.py the combined report counts 3,974
+statements: 3,938 covered, 36 missed, 99.09%. The 36 missed
+statements are 7 in the file's 3 script-entry dispatches,
+which run only when the file is executed rather than
+imported, 1 import guard for a sibling module a complete
+checkout always has, and 28 failure and guard branches, 3
+narrow paths among them that the suite's scenarios do not
+reach. No Windows-only branch stands in the missed set: the
+Windows pid-liveness block is covered, driven by the tests
+with the platform patched. The full report, the per-chunk
+verdicts, and the missed-line breakdown are kept with the
+run's records, and the measured sentence stands in AGENTS.md
+in the core notes, beside the runner's 6,578 lines.
+
 ## 4-Nov-8:04pm-PST/PDT — core, the feature: the production runner has a name as a set
 
 The stripped set built for the big-window pass is a named
