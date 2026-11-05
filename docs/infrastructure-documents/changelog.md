@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.161 - 2026-11-05
+
+- Fixes: the verified fix queue from the big-window audit lands — inference_config passes agent_wall_clock_sec and keep_alive through when present (Q-new-12), _install_prefix never returns a user home directory (Q-new-25), atomicio applies the file mode to the temp path before replace instead of by destination path after (Q-new-26), and ci_run_report writes to the flat docs/steady/reports/ci-health.md by default (Q-new-1).
+- Docs: the audit's documentation corrections land across the steady docs — security modes read enforce where the default flip made them so, stale paths point at their current homes, the docker quick start works as written, and the core figures are re-measured after the runner fixes (54,507 lines as assembled; runner.py 6,586). AGENTS.md gains a table of contents.
+- Tests: shotgun queue items 28-31 land with their written proofs; the pyrefly missing-import report on core.py's plain-script fallback import is suppressed at the line.
+
 ## 3.15.17.160 - 2026-11-04
 
 - Fix: the DocDriftGuard registry pin for max_job_bytes follows the README edits — the size-caps line moved from line 452 to line 453, and the stale pin failed test, test-macos and build-windows in the 159 builds. This release carries the 3.15.17.159 changes below; the 159 tag stands unmoved and unpublished.
