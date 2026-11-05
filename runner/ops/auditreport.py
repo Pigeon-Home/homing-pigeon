@@ -137,7 +137,7 @@ def build_fragments(per_key):
                 if name and not _looks_like_url(name):
                     file_counts[name] = file_counts.get(name, 0) + 1
             elif r in ("arg_pattern_mismatch", "args_too_many",
-                       "arg_too_long"):
+                       "arg_too_long", "arg_not_a_string"):
                 arg_reasons[r] = arg_reasons.get(r, 0) + 1
         fragment = {}
         if env_counts:

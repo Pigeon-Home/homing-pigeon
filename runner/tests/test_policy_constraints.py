@@ -398,6 +398,138 @@ class PolicyArgsModesTest(unittest.TestCase):
         self.assertEqual(audit[0]["reason"], "arg_too_long")
 
 
+class PolicyArgsNonStringTest(unittest.TestCase):
+    """D-2-2 (Lane D finding, disposition DECIDED: REFUSE): a
+    non-string arg under an args_pattern policy is itself a finding.
+
+    PROTOCOL.md section 14 states args_pattern means every arg must
+    fully match the regex -- a non-string cannot match a regex.
+    Before this fix the policy_args leg skipped non-strings, while
+    the executor coerced them with str(), so the integer 12345,
+    boolean True and list ["evil"] all EXECUTED under an enforce
+    policy that denied the string "12345" (Lane D probe). The other
+    args_pattern enforcer, runner/ops/recipes.py, refuses non-string
+    args outright; this leg now agrees with it. Kind-scoped: kinds
+    whose args never reach a process (ping, sensor_alert) keep the
+    skip -- PolicyArgsSkipLegTest in test_v31_verify.py pins that.
+    """
+
+    NON_STRINGS = [12345, True, 1.5, None, ["evil"], {"a": 1}]
+
+    def _job(self, jid, args):
+        return _payload(jid, kind="exec", script="echo", args=args,
+                        key_id="k2")
+
+    def run_mode(self, mode, args, jid="nonstr-01"):
+        cfg = policy_cfg(
+            args_pattern=r"[a-z]+",
+            sec_modes=modes_for(policy_env="off", policy_files="off",
+                                policy_args=mode))
+        return run_job(cfg, self._job(jid, args), secret=EXTRA)
+
+    # --- the finding itself, at the check level ---
+
+    def test_non_string_shapes_are_findings_for_exec(self):
+        from runner.wire import verify as V
+        pol = {"args_pattern": "[a-z]+"}
+        for bad in self.NON_STRINGS:
+            with self.subTest(bad=repr(bad)):
+                findings = V.check_policy_constraints(
+                    pol, "k2", {}, {"kind": "exec", "args": [bad]})
+                self.assertEqual(len(findings), 1)
+                self.assertEqual(findings[0][0], "policy_args")
+                self.assertEqual(findings[0][1], "arg_not_a_string")
+
+    def test_process_kinds_recipe_and_change_are_findings(self):
+        from runner.wire import verify as V
+        pol = {"args_pattern": "[a-z]+"}
+        for kind in ("recipe", "change"):
+            with self.subTest(kind=kind):
+                findings = V.check_policy_constraints(
+                    pol, "k2", {}, {"kind": kind, "args": [7]})
+                self.assertEqual([f[1] for f in findings],
+                                 ["arg_not_a_string"])
+
+    def test_non_process_kinds_keep_the_skip(self):
+        from runner.wire import verify as V
+        pol = {"args_pattern": "[a-z]+"}
+        for kind in ("ping", "sensor_alert"):
+            with self.subTest(kind=kind):
+                self.assertEqual(
+                    V.check_policy_constraints(
+                        pol, "k2", {}, {"kind": kind, "args": [7]}), [])
+
+    def test_no_pattern_policy_no_finding(self):
+        from runner.wire import verify as V
+        job = {"kind": "exec", "args": [7, True, None]}
+        self.assertEqual(V.check_policy_constraints({}, "k2", {}, job),
+                         [])
+        self.assertEqual(
+            V.check_policy_constraints({"max_args": 5}, "k2", {}, job),
+            [])
+
+    def test_string_args_judged_as_before(self):
+        from runner.wire import verify as V
+        pol = {"args_pattern": "[a-z]+"}
+        self.assertEqual(
+            V.check_policy_constraints(
+                pol, "k2", {}, {"kind": "exec", "args": ["good"]}), [])
+        findings = V.check_policy_constraints(
+            pol, "k2", {}, {"kind": "exec", "args": ["BAD"]})
+        self.assertEqual([f[1] for f in findings],
+                         ["arg_pattern_mismatch"])
+
+    def test_mixed_args_report_each_arg(self):
+        from runner.wire import verify as V
+        findings = V.check_policy_constraints(
+            {"args_pattern": "[a-z]+"}, "k2", {},
+            {"kind": "exec", "args": ["good", 7, "BAD"]})
+        self.assertEqual([f[1] for f in findings],
+                         ["arg_not_a_string", "arg_pattern_mismatch"])
+
+    # --- three modes, end to end through poll_once ---
+
+    def test_enforce_denies_each_non_string_shape(self):
+        for i, bad in enumerate(self.NON_STRINGS):
+            with self.subTest(bad=repr(bad)):
+                executed, audit, _ = self.run_mode(
+                    "enforce", [bad], jid="nonstr-e%d" % i)
+                self.assertFalse(executed)
+                denied = [e for e in audit
+                          if e.get("decision") == "denied"]
+                self.assertEqual(len(denied), 1)
+                self.assertEqual(denied[0]["reason"], "arg_not_a_string")
+
+    def test_enforce_denies_the_coerced_bypass(self):
+        # Lane D's probe: the integer 12345 EXECUTED under enforce
+        # (stdout ARG=<12345>) while the string "12345" was denied.
+        # Neither form may run now.
+        executed, audit, _ = self.run_mode("enforce", [12345])
+        self.assertFalse(executed)
+        self.assertEqual(audit[0]["reason"], "arg_not_a_string")
+        executed, audit, _ = self.run_mode(
+            "enforce", ["12345"], jid="nonstr-str")
+        self.assertFalse(executed)
+        self.assertEqual(audit[0]["reason"], "arg_pattern_mismatch")
+
+    def test_audit_records_and_runs(self):
+        executed, audit, _ = self.run_mode("audit", [12345])
+        self.assertTrue(executed)
+        self.assertEqual(len(audit), 1)
+        self.assertEqual(audit[0]["decision"], "would_deny")
+        self.assertEqual(audit[0]["reason"], "arg_not_a_string")
+
+    def test_off_runs_and_logs_nothing(self):
+        executed, audit, _ = self.run_mode("off", [12345])
+        self.assertTrue(executed)
+        self.assertEqual(audit, [])
+
+    def test_enforce_still_runs_compliant_strings(self):
+        executed, audit, _ = self.run_mode("enforce", ["good"])
+        self.assertTrue(executed)
+        self.assertEqual(audit, [])
+
+
 class PinnedScriptTest(unittest.TestCase):
     """PROTOCOL.md claim: a pinned key cannot be repurposed.
 

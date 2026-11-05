@@ -1150,8 +1150,23 @@ def check_policy_constraints(pol, key_id, cfg, job):
         except (re.error, TypeError, ValueError):
             rx = None  # validated at startup; stay defensive
         if rx is not None:
+            # PROTOCOL 14: args_pattern means every arg must fully
+            # match the regex, and a non-string cannot match one.
+            # For kinds whose args reach a process (execute_job
+            # rewrites recipe and change to exec before it reads
+            # args), a non-string arg is a finding, not a skip: the
+            # executor coerces with str(), so skipping here let the
+            # integer 12345 run under a pattern that denied the
+            # string "12345" (Lane D, D-2-2). Kinds whose args never
+            # reach a process (ping, sensor_alert) keep the skip.
+            reaches_process = kind in ("exec", "recipe", "change")
             for a in args:
                 if not isinstance(a, str):
+                    if reaches_process:
+                        findings.append(
+                            ("policy_args", "arg_not_a_string",
+                             "arg is not a string (%s)"
+                             % type(a).__name__))
                     continue
                 if len(a) > 1024:
                     findings.append(("policy_args", "arg_too_long",
