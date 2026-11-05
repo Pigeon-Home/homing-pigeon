@@ -5,6 +5,32 @@ the transports. A refusal is a string. A crash is a bug. The
 tests that hold that rule are in-memory. They open no socket
 and they load no model.
 
+## Core
+
+Core names the production runner as a set of files: the code
+that runs, without the unit tests, the test harnesses or
+anything superfluous. The canonical list stands in
+runner/ops/core.py (CORE_FILES): 130 files, all under runner/.
+Running `python3 runner/ops/core.py` prints the set's current
+zip size and token counts.
+
+The set was first assembled on 2026-11-04 so a single model
+window could hold the whole runner beside the documentation:
+133 files, a 701,403-byte zip, and 619,845 tokens by that
+window's own count (Gemini countTokens). The project's own
+estimator counts the canonical 130-file list at 566,431
+tokens; the 2 counts come from different counters and are not
+interchangeable. 3 of the 133 files were the suite's own
+runners (runner/tools/run_tests_parallel.py,
+run_tests_shuffled.py and run_tests_windows_sim.py) — tools
+that run the tests, not runner code — so the canonical list
+leaves them out.
+
+When project talk says "test core", it means testing this
+set. A change aimed at core is aimed at those 130 files and
+no others, and a result reported for core covers exactly
+them.
+
 ## What the first passes found
 
 One shape of crash, over and over: a value used as a dict key

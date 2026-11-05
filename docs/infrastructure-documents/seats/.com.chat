@@ -3,6 +3,37 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 4-Nov-8:04pm-PST/PDT — core, the feature: the production runner has a name as a set
+
+The stripped set built for the big-window pass is a named
+feature now. Core is the production runner as a set of files,
+and runner/ops/core.py carries the canonical list: 130 files,
+all under runner/, with a deterministic zip build (entries in
+list order, a fixed 1980-01-01 timestamp) and a CLI that
+prints the set's file count, zip size and token counts. The
+definition stands in docs/steady/fuzzing.md, where test work
+is planned.
+
+The canonical list is the as-assembled set with 1 correction.
+The pass set held 133 files; 3 of them —
+runner/tools/run_tests_parallel.py, run_tests_shuffled.py
+and run_tests_windows_sim.py — exist only to run the unit
+tests. They are test harnesses, not runner code, and the
+definition of core leaves them out. The recorded measures
+keep their names and their sets straight: 619,845 tokens is
+the Gemini countTokens measure of the 133-file set as
+assembled on 2026-11-04 (zip 701,403 bytes), and the project
+estimator counts the canonical 130-file list at 566,431
+tokens. The 2 counters differ and neither stands in for the
+other.
+
+runner/tests/test_core.py pins the feature: every listed
+file exists, no test file or harness is listed, the list is
+sorted and duplicate-free, 2 zip builds are byte-identical,
+the zip carries exactly the listed files, and the CLI prints
+its 4 figure lines in shape. Test core in project talk now
+has exactly 1 referent: those 130 files.
+
 ## 4-Nov-7:42pm-PST/PDT — the token work, whole: an index, 2 keys, and a conformance program
 
 The reach problem has a working answer now, in 3 parts, and this
