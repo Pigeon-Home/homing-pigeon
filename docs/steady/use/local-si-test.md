@@ -1,4 +1,4 @@
-See `docs/archive/handoff-local-si.md` for the full handoff (two instances, email-only testing, transports, what was removed).
+See `docs/steady/use/handoff-local-si.md` for the full handoff (two instances, email-only testing, transports, what was removed).
 
 # Local SI test
 
