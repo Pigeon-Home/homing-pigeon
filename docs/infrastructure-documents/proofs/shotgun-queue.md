@@ -834,9 +834,9 @@ Applied to every item on this queue, item 1 included:
   carried in the suite's header comment in the repo. Landed on
   main 5-Nov-2026 (spliced from the item's worktree onto the
   current main); the file runs green under node --test
-  (599 tests across fuzz.test.mjs and fatfinger.test.mjs with
-  items 29, 30 and 31 landed, 599 pass, 0 skipped — the Python
-  skip registry does not apply to these files), no live bug
+  (178 tests in the file with items 25 and 26 landed,
+  178 pass, 0 skipped — the Python skip registry does not
+  apply to these files), no live bug
   exposed, no production code changed.
 - Proof of work (per the method section): per-field enumeration
   and the bookend / run-length sweeps are carried in the
@@ -861,8 +861,8 @@ Applied to every item on this queue, item 1 included:
   comments in the repo. Landed on main 5-Nov-2026 (spliced
   from the item's worktree onto the current main, beside items
   30 and 31 after tail conflicts); the files run green
-  (599 tests across fuzz.test.mjs and fatfinger.test.mjs under
-  node --test, 599 pass, 0 skipped; test_hosting_queue_edges.py
+  (233 tests in the file with items 30 and 31 landed under
+  node --test, 233 pass, 0 skipped; test_hosting_queue_edges.py
   runs 71 tests, 0 skipped, skip-registry gate green), no live
   bug exposed, no production code changed.
 - Proof of work (per the method section): per-field enumeration
@@ -887,9 +887,8 @@ Applied to every item on this queue, item 1 included:
   suite's header comment in the repo. Landed on main
   5-Nov-2026 (spliced from the item's worktree onto the current
   main, beside items 29 and 31 after tail conflicts); the file
-  runs green under node --test (599 tests across
-  fuzz.test.mjs and fatfinger.test.mjs with items 28, 29 and
-  31 landed, 599 pass, 0 skipped), no live bug exposed, no
+  runs green under node --test (233 tests in the file with items 28, 29 and
+  31 landed, 233 pass, 0 skipped), no live bug exposed, no
   production code changed.
 - Proof of work (per the method section): per-field enumeration
   and the bookend / run-length sweeps are carried in the
@@ -913,8 +912,8 @@ Applied to every item on this queue, item 1 included:
   the repo. Landed on main 5-Nov-2026 (spliced from the item's
   worktree onto the current main, beside items 29 and 30 after
   tail conflicts); the file runs green under node --test
-  (599 tests across fuzz.test.mjs and fatfinger.test.mjs with
-  items 28, 29 and 30 landed, 599 pass, 0 skipped), no live
+  (233 tests in the file with items 28, 29 and 30 landed,
+  233 pass, 0 skipped), no live
   bug exposed, no production code changed.
 - Proof of work (per the method section): per-field enumeration
   and the bookend / run-length sweeps are carried in the
