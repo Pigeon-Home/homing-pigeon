@@ -3,6 +3,64 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 4-Nov-4:32pm-PST/PDT — the free big window: a first pass over the documentation
+
+The token work has a second half now, standing next to the local
+index. A free Gemini API key — made in Google AI Studio, no card —
+is on file in a locked-down store on this machine, and the first
+big-window pass over the project's markdown documentation ran
+today.
+
+The shape: the documentation reads folder by folder, in sittings
+sized to the window's 1,048,576 tokens, each sitting returning a
+structured digest — what the part is, the decisions and
+invariants it states, anything contradictory or stale it can
+substantiate, and answers to the same 5 check questions the local
+index was proven against.
+
+Sitting 1 covered the front door: AGENTS.md, PROTOCOL.md,
+README.md, ENTERPRISE.md, FAQ.md, INSTALL.md, SECURITY.md, and
+docs/FUTURE.md — 59,666 tokens in, measured by the API rather
+than estimated, 2,048 tokens of digest out, 65 seconds of
+generation. The primary model, gemini-3.6-flash, and the first 2
+fallbacks were demand-unavailable; the sitting ran on
+gemini-3.5-flash. Sitting 2 — docs/steady/, measured at 382,731
+tokens before the call — drew a rate limit on its first
+generation attempt, and the pass stopped there under its own
+rule: no retries around a 429. The remaining sittings (steady,
+infrastructure-documents, ietf, the rest of the tree, archive)
+run under the same pattern as the free quota allows. The pass
+record — chunk manifests, raw responses, digests — stands at
+~/workspace/token-index/gemini-pass/ on this machine.
+
+What the 1 completed sitting is worth, checked against the text
+afterwards: the fair-warning question and the Uriah question came
+back word-perfect. The version-scheme question came back partial
+— the 3rd component (the tree's size in millions of tokens)
+right, the rest honestly marked not covered in that sitting. The
+DTLS-over-email resumption question and the corpus locking
+question were declined as not covered, which was the correct call
+for that sitting: their homes are in the folders still queued. On
+contradictions, the sitting substantiated none; the 4 staleness
+items it flagged — the ENTERPRISE.md placeholder line, the
+removed root paths, the removed runner/tests/archive/, and
+PROTOCOL.md's open Docker entrypoint item — are each already
+marked as such by the documents themselves.
+
+Cost: $0 on the free tier. The same measured usage at paid Flash
+rates comes to about 6 cents; a full pass at those rates projects
+to about $1.
+
+The conclusion the evidence supports: the free window is real,
+it reads whole folders in their own words, and paired with the
+local index — index finds, window reads — it answers questions
+about this tree in a way neither half answers alone. The pattern
+and its limits (the rate limit's pace; the free tier's data-use
+term, weighed openly for a public tree; the paid tier as the
+honest route for a private one) are written up for visiting
+systems in the Secret agents section of AGENTS.md, as a sibling
+to the local-index pattern.
+
 ## 3-Nov-9:26am-PST/PDT — tasking: what the cores are doing
 
 Snapshot from live process listings on all 3 machines, taken
