@@ -4,7 +4,8 @@
 
 What a real runner wrote, and what three days of real jobs came to.
 Everything below is either a verbatim line from the scrubbed capture
-in `docs/reports/live-2026-10-25/` (its README says what was
+shelved flat in `docs/steady/reports/` (its README,
+`docs/steady/reports/live-2026-10-25-readme.md`, says what was
 scrubbed and how) or a number computed from it. Each excerpt names
 its file, and `runner/tests/test_live_capture.py` fails if a quoted
 line stops matching that file; the numbers are written by
@@ -212,7 +213,7 @@ feature switches are left out):
 [WARN] security modes policy_env is off (recommended: audit or enforce)
 [WARN] security modes policy_files is off (recommended: audit or enforce)
 [WARN] security modes policy_args is off (recommended: audit or enforce)
-[WARN] confinement    bwrap not installed (confinement in enforce mode would run unsandboxed)
+[WARN] confinement    bwrap not installed (confinement in enforce mode would refuse to start)
 [OK  ] secrets        shared_secret: strong
 [OK  ] audit log      no audit entries yet (nothing to protect)
 ```
