@@ -20,7 +20,7 @@ designing, specification drafting, and prototyping on that branch.
    what the work is, why it is wanted, the tests that ran on the
    branch, and the risk it carries. The seat that merges it re-tests
    it on the live tree before merging.
-4. The questions file (docs/seats/questions.md) stays the shared
+4. The questions file (docs/steady/seats/questions.md) stays the shared
    channel. Filings continue as before. The design side reads filings
    as design input and answers design questions on the branch.
 5. A direct landing on main from the design side is out of policy. It
