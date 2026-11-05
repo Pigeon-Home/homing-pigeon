@@ -907,11 +907,13 @@ def _open_body(text, args, job_id=None):
     payload; raises ValueError naming what failed. With no --secret
     the keyring supplies the secret for the key the body names."""
     secret = args.secret
+    selected = args.key_id
     if not secret:
         kid = args.key_id if args.key_id is not None else _named_key_in(text)
         if kid is None:
             raise ValueError("no --secret given and the body names no "
                              "key_id to look up in the keyring")
+        selected = kid
         saved = args.key_id
         try:
             args.key_id = kid
@@ -933,14 +935,42 @@ def _open_body(text, args, job_id=None):
         inner_payload = verify_body(inner, secret)
         # Section 16.2 step 4: the inner body's key_id MUST match
         # the envelope's, as the runner enforces it (CHECKLIST-04
-        # G6). Both bodies verified under the one secret here, so
-        # the named keys are what can be compared.
-        if (inner_payload.get("key_id") or "") != (
-                payload.get("key_id") or ""):
+        # G6). A key_id matches in Section 10's sense -- it selects
+        # the same secret -- not as a raw string: one key answers
+        # to several names (Q94), the empty name, its fingerprint,
+        # and the name the caller selected it by, and a name is a
+        # label, never a second identity. The runner's own result
+        # for an unnamed job pairs the shapes: the body names the
+        # key by its fingerprint (so an unnamed sender learns the
+        # name) while the envelope carries no key_id member at
+        # all (Section 16.1 puts one there only for a non-default
+        # secret). Both bodies verified under the one secret here;
+        # 2 names of that secret match, a name of any other key
+        # refuses.
+        if not _key_ids_match(inner_payload.get("key_id") or "",
+                              payload.get("key_id") or "",
+                              secret, selected):
             raise ValueError(
                 "encrypted envelope key_id does not match its body")
         payload = inner_payload
     return payload
+
+
+def _key_ids_match(inner_kid, outer_kid, secret, selected=None):
+    """Whether 2 key_id names match for Section 16.2 step 4:
+    equal, or both names of the one secret both bodies verified
+    under -- its empty name, its fingerprint, or the name the
+    caller selected that secret by."""
+    if inner_kid == outer_kid:
+        return True
+    names = {""}
+    try:
+        names.add(key_fingerprint(secret))
+    except Exception:
+        pass
+    if isinstance(selected, str) and selected:
+        names.add(selected)
+    return inner_kid in names and outer_kid in names
 
 
 def cmd_verify(args) -> int:

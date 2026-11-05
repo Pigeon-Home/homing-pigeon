@@ -124,6 +124,49 @@ class VerifyTest(unittest.TestCase):
         self.assertEqual(rc, 0, err)
         self.assertEqual(json.loads(out), inner)
 
+    def test_a_result_naming_the_default_by_fingerprint_opens(self):
+        # The shape the runner itself sends for an unnamed job
+        # (Q94): the result body names the key by its fingerprint
+        # (_key_name, so an unnamed sender learns the name), while
+        # the envelope carries no key_id member -- Section 16.1
+        # puts one on the envelope only for a non-default secret.
+        # Both names select the one secret, so Section 16.2 step
+        # 4's match holds and the result must open.
+        inner = dict(RESULT, key_id=send_job.key_fingerprint(SECRET))
+        body = jobcrypto.encrypt_body(
+            send_job.sign_payload(inner, SECRET), SECRET,
+            job_id=JOB_ID, key_id="",
+            sign=send_job.sign_payload)
+        rc, out, err = _verify(["--job-id", JOB_ID], stdin_text=body)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(json.loads(out), inner)
+
+    def test_an_envelope_naming_the_default_by_fingerprint_opens(self):
+        # The same match from the other side: the envelope names
+        # the default key by its fingerprint and the inner body
+        # names it not at all. One key, several names (Q94).
+        body = jobcrypto.encrypt_body(
+            send_job.sign_payload(RESULT, SECRET), SECRET,
+            job_id=JOB_ID, key_id=send_job.key_fingerprint(SECRET),
+            sign=send_job.sign_payload)
+        rc, out, err = _verify(["--job-id", JOB_ID], stdin_text=body)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(json.loads(out), RESULT)
+
+    def test_an_envelope_naming_another_key_inside_is_invalid(self):
+        # A name that belongs to a DIFFERENT key is a mismatch
+        # Section 16.2 step 4 refuses, fingerprint or not: the
+        # inner body here names the other secret's fingerprint
+        # while both bodies verify under SECRET.
+        inner = dict(RESULT, key_id=send_job.key_fingerprint(OTHER))
+        body = jobcrypto.encrypt_body(
+            send_job.sign_payload(inner, SECRET), SECRET,
+            job_id=JOB_ID, key_id="",
+            sign=send_job.sign_payload)
+        rc, _out, err = _verify(["--job-id", JOB_ID], stdin_text=body)
+        self.assertEqual(rc, 1)
+        self.assertIn("key_id does not match", err)
+
     def test_an_envelope_without_a_job_id_is_invalid(self):
         rc, _out, err = _verify([], stdin_text=_envelope(RESULT))
         self.assertEqual(rc, 1)
