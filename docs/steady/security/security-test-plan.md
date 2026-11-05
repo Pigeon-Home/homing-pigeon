@@ -42,14 +42,14 @@ ask path with no email.
 6. **Roles:** you will play three roles; note which one each step
    needs: (a) operator (reads logs/mailbox), (b) SI prompter (tries to
    steer the SI in chat), (c) attacker (hand-crafts signed emails with
-   `cloud/send_job.py` or a Python snippet using the repo's
+   `runner/cloud/send_job.py` or a Python snippet using the repo's
    `sign_payload`).
 7. **Safety:** several tests submit genuinely malicious jobs. Run the
    runner on a disposable VM/snapshot per SAFEGUARDS §3. Roll back
    between destructive tests.
 
 Result emails land back in the mailbox. Verify signatures on anything
-you assert about with `python3 cloud/send_job.py verify`.
+you assert about with `python3 runner/cloud/send_job.py verify`.
 
 ---
 
