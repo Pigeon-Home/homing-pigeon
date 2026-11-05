@@ -104,9 +104,9 @@ you. You start them by making a **release**. All point and click:
 2. On the right side, click **Releases**.
 3. Click the **Draft a new release** button.
 4. Click **Choose a tag**, then type the tag you are cutting, such as
-   `v3.15.17.161`, and click **Create new tag**. The tag carries the
+   `vX.Y.Z.W`, and click **Create new tag**. The tag carries the
    live 4-number version: `MAJOR.MINOR.TOKENS.COUNTER`.
-5. Type a title like `Version 3.15.17.161`. The number is the
+5. Type a title like `Version X.Y.Z.W`. The number is the
    4-component version carried in `pyproject.toml` and
    `runner/_version.py`, not a guess. The rules for the number live
    in `runner/ops/version4.py`: the major stays 3, the minor is the
