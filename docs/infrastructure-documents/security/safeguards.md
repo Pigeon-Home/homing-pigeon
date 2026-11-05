@@ -69,7 +69,8 @@ Defense in depth, cheapest first:
   `workspace_root` and the Oracle attests that the job stayed inside
   it. That one is a snapshot, not a sandbox. See PROTOCOL.md §9.4.
   On Linux, `security.modes.confinement` set to `enforce` runs the
-  job inside bubblewrap. Off by default. Under `enforce` a sandbox
+  job inside bubblewrap. Enforce is the default: a feature the
+  config does not set reads as `enforce`. Under `enforce` a sandbox
   that cannot engage (no `bwrap`, user namespaces blocked, not
   Linux) refuses to start the runner; a sandbox that breaks after a
   good start falls back loudly and the audit log says `fallback`.
