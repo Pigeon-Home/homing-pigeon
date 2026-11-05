@@ -1,26 +1,51 @@
 # Homing Pigeon in Docker
 
 > **Reference page for the Docker image.** It documents the
-> environment variables `docker/entrypoint.sh` reads, the dry-run
+> environment variables `.github/docker/entrypoint.sh` reads, the dry-run
 > invocation, and updating; those parts are checked against the
 > live Dockerfile (last: 2026-10-21). The install paths that ship
 > today, Docker included, are in [INSTALL.md](../../INSTALL.md),
 > which points here for these three topics.
 
 The fastest way to run the runner. No Python to install, no git clone,
-no service configuration — one `docker run` and your inbox becomes a
-job queue.
+no service configuration — write one config file, mount it, and one
+`docker run` turns your inbox into a job queue.
 
 ## Quick start
 
+Write a `config.json` first, and state the security gates you mean to
+run in it explicitly:
+
+```json
+{
+  "mailbox_user": "your-runner@gmail.com",
+  "mailbox_password": "your-app-password",
+  "shared_secret": "your-256-bit-shared-secret",
+  "base_dir": "/data/work",
+  "security": {"modes": {"confinement": "off",
+                         "job_user": "off"}}
+}
+```
+
+Then mount it into `/data`:
+
 ```bash
 docker run -d --name pigeon --restart unless-stopped \
-  -e PIGEON_MAILBOX_USER="your-runner@gmail.com" \
-  -e PIGEON_MAILBOX_PASSWORD="your-app-password" \
-  -e PIGEON_SHARED_SECRET="your-256-bit-shared-secret" \
+  -v /path/to/config.json:/data/config.json:ro \
   -v pigeon-data:/data \
   ghcr.io/pigeon-home/homing-pigeon:latest
 ```
+
+Why a written config, and why the gates are stated in it: the config
+the entrypoint builds from environment variables alone carries no
+`security` block, and under the default an unstated confinement reads
+`enforce`. A plain `docker run` cannot create the user namespace
+bwrap needs, so a runner started that way refuses to start. The
+written config above states the gates off — that is the route the
+project's own Docker workflow smoke-tests before it publishes the
+image, and it proves the image starts, not the gates. If you mean to
+run a gate, state the mode you mean in the `security` block instead
+of leaving it unstated.
 
 That's the whole install. The container polls your inbox every 20
 seconds and executes signed jobs. State (`seen.json`, job workdirs)
@@ -29,12 +54,13 @@ re-run jobs.
 
 ## Try it before you commit
 
+Use the same written `config.json` from Quick start:
+
 ```bash
 docker run --rm \
-  -e PIGEON_MAILBOX_USER="your-runner@gmail.com" \
-  -e PIGEON_MAILBOX_PASSWORD="your-app-password" \
-  -e PIGEON_SHARED_SECRET="your-256-bit-shared-secret" \
-  ghcr.io/pigeon-home/homing-pigeon:latest --once --dry-run --verbose
+  -v /path/to/config.json:/data/config.json:ro \
+  -v pigeon-data:/data \
+  ghcr.io/pigeon-home/homing-pigeon:latest --config /data/config.json --once --dry-run --verbose
 ```
 
 `--dry-run` polls the inbox and logs what it finds without executing
@@ -46,7 +72,7 @@ From anywhere — your laptop, your phone, your cloud SI:
 
 ```bash
 # On your machine (needs the repo):
-python3 cloud/send_job.py new --kind ping --secret "your-shared-secret"
+python3 runner/cloud/send_job.py new --kind ping --secret "your-shared-secret"
 ```
 
 Copy the subject + body it prints, email it to `your-runner@gmail.com`.
@@ -57,8 +83,11 @@ cloud SI and let it do the whole thing.
 
 ## Configuration
 
-**Environment variables** (recommended). The entrypoint writes
-`/data/config.json` from them on first start:
+**Environment variables.** The entrypoint writes
+`/data/config.json` from them on first start. Note the env-built
+config carries no `security` block, so it is not by itself a
+starting route under a plain `docker run` — see Quick start
+for why, and use a mounted config file with the gates stated.
 
 | Variable | Required | Default |
 |---|---|---|
@@ -114,7 +143,7 @@ Don't want the published image? Build from source:
 ```bash
 git clone https://github.com/Pigeon-Home/homing-pigeon.git
 cd homing-pigeon
-docker build -t homing-pigeon .
+docker build -f .github/docker/Dockerfile -t homing-pigeon .
 ```
 
 Then replace `ghcr.io/pigeon-home/homing-pigeon:latest` with
