@@ -11,7 +11,7 @@ nothing listens. Nobody but you ever holds your cloud token or your
 shared secret.
 
 The pieces are `runner/hosting/` and the `homing-pigeon-host`
-command; the design is `docs/project/hosting.md`.
+command; the design is `docs/steady/project/hosting.md`.
 
 ## Before you start
 
@@ -20,7 +20,7 @@ command; the design is `docs/project/hosting.md`.
   write) or DigitalOcean (API, Personal access token, write scope).
 - The token in an environment variable. It is read from there and
   never written anywhere: `export FLY_API_TOKEN=...`.
-- A transport. With the hosted queue (`docs/extend/transports.md`,
+- A transport. With the hosted queue (`docs/infrastructure-documents/extend/transports.md`,
   "Queues") there is nothing to write: `--queue` below sets it up.
   With a mailbox, a blob file, the runner's configuration in one
   JSON object:
