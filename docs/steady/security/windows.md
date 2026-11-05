@@ -72,7 +72,7 @@ not-applicable on Windows rather than warning about it.
 ## Service hardening
 
 The Scheduled Task itself supports no equivalent of the systemd
-directives in `docs/security/hardening/systemd/` (no `NoNewPrivileges`,
+directives in `docs/steady/security/` (no `NoNewPrivileges`,
 `ProtectSystem`, or `PrivateTmp`). The account boundary is the
 mechanism; keep the task's "run with highest privileges" box
 unchecked (the installer already uses `LIMITED` for named accounts).
