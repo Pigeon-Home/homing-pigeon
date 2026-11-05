@@ -83,7 +83,7 @@ What it does instead:
   JSON object would not change the answer.
 
 PROTOCOL section 10 and T2.3 in
-[docs/archive/security-test-plan.md](../../archive/security-test-plan.md)
+[docs/steady/security/security-test-plan.md](../../security/security-test-plan.md)
 describe the same threat. T2.3 is a manual case. The stub
 above is the automated one. A live model is not required
 and is not called.
