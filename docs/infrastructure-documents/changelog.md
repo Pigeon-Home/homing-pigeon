@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.169 - 2026-11-05
+
+- Fuzz harness: the hybrid harness's genuine-ServerHello scan stops at a fragmented handshake message instead of parsing a partial body — the 1,201-byte hybrid ServerHello can arrive split across datagrams depending on the host's datagram sizing, and the scan's unchecked slice let a `DtlsError` escape and error the bounded-run smoke test on one platform leg while the same run passed on others. A complete message whose body does not parse is likewise skipped rather than raised; only the genuine unfragmented ServerHello is taken.
+
 ## 3.15.17.168 - 2026-11-05
 
 - Fix: the posture startup test scripts the job_user mechanism gate as able beside the sandbox gate (its POSIX-only refusal on Windows is intended and pinned separately), with a simulated-win32 test reproducing the shape on any host; the 2 training-watch registry rows follow the heading sweep's added heading to line 139. The 167 tag stands unmoved at its own commit and will not publish.
