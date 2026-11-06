@@ -13,8 +13,8 @@ not a replacement for it: every
 version 1 message keeps its meaning, the version 1 job
 acceptance gate is unchanged, and version 3 changes exactly one
 thing -- the carriage of the version 1 DTLS session profile. 
-       Version 1 defines a DTLS 1.3 session profile (its Sections 19
-and 20): one cipher suite, a pre-shared key taken from the
+       Version 1 defines a DTLS 1.3 session profile: one cipher suite,
+a pre-shared key taken from the
 protocol's shared secret, ephemeral Diffie-Hellman on every
 handshake, and the platform_info disclosure carried in the
 server's EncryptedExtensions. Version 1 binds that profile to
@@ -31,9 +31,9 @@ object, unchanged, carrying the version value version 1
 defines. The 3 of this document's title numbers this document
 and its carriage; it is not a value of any object's version
 field, and nothing in this document mints a version 3 object.
-HP-DTLS/3, the frame header this document defines, is a carriage
-label whose digit is the carriage generation, not a protocol
-version. 
+HP-DTLS/3, the frame header this document defines, is a
+carriage label whose digit is the carriage generation, not a
+protocol version. 
        This document is a local, unsubmitted draft. It has not been
 posted to the Internet-Drafts directory, and it requests no
 IANA action. 
@@ -1298,8 +1298,8 @@ not a replacement for it: every
 version 1 message keeps its meaning, the version 1 job
 acceptance gate is unchanged, and version 3 changes exactly one
 thing -- the carriage of the version 1 DTLS session profile.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
-<p id="section-abstract-2">Version 1 defines a DTLS 1.3 session profile (its Sections 19
-and 20): one cipher suite, a pre-shared key taken from the
+<p id="section-abstract-2">Version 1 defines a DTLS 1.3 session profile: one cipher suite,
+a pre-shared key taken from the
 protocol's shared secret, ephemeral Diffie-Hellman on every
 handshake, and the platform_info disclosure carried in the
 server's EncryptedExtensions. Version 1 binds that profile to
@@ -1316,9 +1316,9 @@ object, unchanged, carrying the version value version 1
 defines. The 3 of this document's title numbers this document
 and its carriage; it is not a value of any object's version
 field, and nothing in this document mints a version 3 object.
-HP-DTLS/3, the frame header this document defines, is a carriage
-label whose digit is the carriage generation, not a protocol
-version.<a href="#section-abstract-3" class="pilcrow">¶</a></p>
+HP-DTLS/3, the frame header this document defines, is a
+carriage label whose digit is the carriage generation, not a
+protocol version.<a href="#section-abstract-3" class="pilcrow">¶</a></p>
 <p id="section-abstract-4">This document is a local, unsubmitted draft. It has not been
 posted to the Internet-Drafts directory, and it requests no
 IANA action.<a href="#section-abstract-4" class="pilcrow">¶</a></p>
@@ -1542,7 +1542,8 @@ IANA action.<a href="#section-abstract-4" class="pilcrow">¶</a></p>
       <h2 id="name-introduction">
 <a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
       </h2>
-<p id="section-1-1">Version 1's email binding is store-and-forward: a job object is
+<p id="section-1-1">Version 1 <span>[<a href="#I-D.slutsky-homing-pigeon" class="cite xref">I-D.slutsky-homing-pigeon</a>]</span> is the base document.
+Its email binding is store-and-forward: a job object is
 an email, a result object is an email, and either can wait in a
 mailbox for as long as the mailbox keeps it. Version 1's DTLS
 binding is the opposite shape: a live session over datagrams,
@@ -2128,7 +2129,8 @@ duplicate handling separate, and each layer's rule is its own:<a href="#section-
 split by phase. A receiver keeps a digest of each datagram
 it has accepted from flight mail, bounded and in arrival
 order; the reference implementation's cache holds 4096
-digests, evicting the least recently seen (a hit refreshes an entry's place). The cache is an optimization
+digests, evicting the least recently seen (a hit refreshes
+an entry's place). The cache is an optimization
 against a poller or a sender delivering the same mail
 twice; it is not the replay defense (Section 13 names the
 defenses). The connection-id binding check of Section 9.2
@@ -2915,8 +2917,8 @@ from its last; a contradiction destroys the transfer rather
 than arbitrating it (Section 6).<a href="#section-16.4-2.4.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-16.4-2.5">
-            <p id="section-16.4-2.5.1">A digest-cache entry is 1 of 4096, the least recently seen evicted first
-(Section 7.2).<a href="#section-16.4-2.5.1" class="pilcrow">¶</a></p>
+            <p id="section-16.4-2.5.1">A digest-cache entry is 1 of 4096, the least recently seen
+evicted first (Section 7.2).<a href="#section-16.4-2.5.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-16.4-2.6">
             <p id="section-16.4-2.6.1">A saved outbound flight is 1 of 4096, first in first out,

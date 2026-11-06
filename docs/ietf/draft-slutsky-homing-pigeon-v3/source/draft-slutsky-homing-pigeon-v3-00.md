@@ -191,8 +191,8 @@ version 1 message keeps its meaning, the version 1 job
 acceptance gate is unchanged, and version 3 changes exactly one
 thing -- the carriage of the version 1 DTLS session profile.
 
-Version 1 defines a DTLS 1.3 session profile (its Sections 19
-and 20): one cipher suite, a pre-shared key taken from the
+Version 1 defines a DTLS 1.3 session profile: one cipher suite,
+a pre-shared key taken from the
 protocol's shared secret, ephemeral Diffie-Hellman on every
 handshake, and the platform_info disclosure carried in the
 server's EncryptedExtensions. Version 1 binds that profile to
@@ -222,7 +222,8 @@ IANA action.
 
 # Introduction
 
-Version 1's email binding is store-and-forward: a job object is
+Version 1 {{I-D.slutsky-homing-pigeon}} is the base document.
+Its email binding is store-and-forward: a job object is
 an email, a result object is an email, and either can wait in a
 mailbox for as long as the mailbox keeps it. Version 1's DTLS
 binding is the opposite shape: a live session over datagrams,
