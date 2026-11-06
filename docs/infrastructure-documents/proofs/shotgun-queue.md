@@ -1436,7 +1436,26 @@ Applied to every item on this queue, item 1 included:
 - Fixed: c4df30c7 (27-Oct-2026)
 - Existing tests: test_queue_weather.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (QueueWeatherShotgunTest in
+  test_queue_weather.py, the file where the fix's own tests
+  live): every transient exception shape and non-transient
+  lookalike, failures at the call and at the read, the backoff
+  sequence, and each door the sender serves (post, results,
+  dead-letter, ack, new). The file runs green (68 tests in the
+  file, 0 skipped), no live bug exposed, no production code
+  changed.
+- Proof of work (per the method section): per-field enumeration
+  (the request resent byte-for-byte, the status and body, the
+  exception and its URLError reason, the backoff table, each
+  command's exit line) and the failure run lengths (success on
+  the first, second and third try, and no fourth) are carried
+  in the class docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261151, run locally against the banked
+  channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 142, slowest try 953 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 51. Q102: the replay cache kept an entry by its place, not its age; callers saw times instead of keys
 - Fixed: eff6a7ae, 369eafd9, 862669f2 (27-Oct-2026)
