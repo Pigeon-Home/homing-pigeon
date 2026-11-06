@@ -223,9 +223,12 @@ class SecDecideTest(unittest.TestCase):
             raw = open(os.path.join(d, S.AUDIT_FILE)).read()
             self.assertNotIn(SENTINEL, raw)
             entry = json.loads(raw.strip())
+            # seq/chain are the writer's own tamper-evidence fields
+            # (a position and a hash), never caller-supplied ctx.
             self.assertEqual(set(entry),
                              {"ts", "feature", "decision", "reason",
-                              "key_id", "job_id", "detail", "mode"})
+                              "key_id", "job_id", "detail", "mode",
+                              "seq", "chain"})
 
 
 class AuditWriterTest(unittest.TestCase):

@@ -156,6 +156,12 @@ def main() -> int:
         base_dir = R._base_dir_for(cfg, args.config)
         return _auditreport.main(cfg, base_dir, since=args.since,
                                key=args.key, feature=args.feature)
+    if args.audit_verify:
+        # Read-only like --audit-report: verifies the audit log's
+        # hash chain against its checkpoint and exits.
+        _auditreport = R._load_mod("runner.ops.auditreport", "ops.auditreport")
+        base_dir = R._base_dir_for(cfg, args.config)
+        return _auditreport.verify_main(base_dir)
     if args.posture:
         # Read-only posture report; no mailbox needed.
         _posture = R._load_mod("runner.ops.posture", "ops.posture")

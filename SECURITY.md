@@ -147,6 +147,15 @@ directory, created `0600` on POSIX, bounded by `audit_max_lines`
 entries carry identifiers only — never secret values, script text,
 or file contents.
 
+Each audit entry also carries a `seq` number and a `chain` value —
+the SHA-256 of the previous entry's chain value and the entry's
+canonical JSON — forming a tamper-evident hash chain that carries
+across the rollover; the counts file records the chain head, so
+tail truncation is detected too. `--audit-verify` walks the chain
+and reports the first break (exit 1), or states honestly what it
+could not cover: entries written before chaining existed form an
+unchained legacy prefix and are reported as such.
+
 ### What a wide-open box looks like
 
 A test box ran as root with confinement and every security

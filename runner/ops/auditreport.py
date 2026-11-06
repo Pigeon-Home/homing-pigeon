@@ -60,6 +60,181 @@ def _read_entries(base_dir):
     return entries
 
 
+def _read_chain_records(base_dir):
+    """(filename, line number, record-or-None) in chain order.
+
+    The verifier walks the rolled file (.1) first, then the live
+    file: that is the order the records were written in. (The
+    report reader above reads them the other way; its counts do
+    not care about order, the chain does.) A symlink is not an
+    audit source. A line that does not parse, or parses to a
+    non-object, reads as None: an unchained record.
+    """
+    records = []
+    if _security is None:
+        return records
+    for name in (_security.AUDIT_ROLLED_FILE, _security.AUDIT_FILE):
+        path = os.path.join(base_dir, name)
+        if os.path.islink(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as fh:
+                for lineno, line in enumerate(fh, 1):
+                    if not line.strip():
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except ValueError:
+                        rec = None
+                    records.append(
+                        (name, lineno,
+                         rec if isinstance(rec, dict) else None))
+        except OSError:
+            continue
+    return records
+
+
+def _is_chained(rec):
+    return rec is not None and isinstance(rec.get("chain"), str) \
+        and isinstance(rec.get("seq"), int) \
+        and not isinstance(rec.get("seq"), bool)
+
+
+def verify_audit_chain(base_dir):
+    """Verify the audit log's hash chain. Returns (ok, detail).
+
+    Walks the rolled file then the live file, checking seq
+    continuity and every chain link against the canonicalization
+    pinned in runner.guard.security. The first break is reported
+    with its file, line and seq. Two honest limits, both stated in
+    the detail rather than hidden: an unchained legacy prefix
+    (records written before chaining existed) is reported as a
+    prefix, not verified and not a break; and when the retained
+    history begins mid-chain (earlier records rolled away), the
+    first retained record is an anchor whose own link cannot be
+    checked -- every record after it is. Tail truncation is
+    detected against the chain head the writer records in the
+    counts file; without that checkpoint the detail says the
+    chain is intact only to the end of the file.
+    """
+    if _security is None:
+        return False, "audit chain cannot be verified: the security " \
+            "module is unavailable"
+    if not isinstance(base_dir, str) or not base_dir:
+        return False, "audit chain cannot be verified: bad base directory"
+    legacy = 0
+    chained = 0
+    started = False
+    anchored = False
+    first_seq = None
+    prev_chain = None
+    prev_seq = None
+    for name, lineno, rec in _read_chain_records(base_dir):
+        where = "%s line %d" % (name, lineno)
+        if not started:
+            if not _is_chained(rec):
+                legacy += 1
+                continue
+            started = True
+            chained += 1
+            first_seq = rec["seq"]
+            if rec["seq"] < 1:
+                return False, "chain break at %s: seq %d is not a " \
+                    "valid first seq" % (where, rec["seq"])
+            if legacy == 0 and rec["seq"] == 1:
+                expect = _security.audit_chain_next(
+                    _security.AUDIT_CHAIN_GENESIS, rec)
+                if rec["chain"] != expect:
+                    return False, "chain break at %s (seq 1): the " \
+                        "record does not chain from the genesis " \
+                        "value" % where
+            elif legacy > 0:
+                if rec.get("chain_start") != legacy:
+                    return False, "chain break at %s (seq %d): the " \
+                        "first chained record after a legacy prefix " \
+                        "must record chain_start %d, found %r" % (
+                            where, rec["seq"], legacy,
+                            rec.get("chain_start"))
+                if rec["seq"] != legacy + 1:
+                    return False, "chain break at %s: seq %d does " \
+                        "not follow the %d legacy record(s)" % (
+                            where, rec["seq"], legacy)
+                expect = _security.audit_chain_next(
+                    _security.audit_chain_legacy_prev(legacy), rec)
+                if rec["chain"] != expect:
+                    return False, "chain break at %s (seq %d): the " \
+                        "first chained record does not chain from " \
+                        "the legacy start value" % (where, rec["seq"])
+            else:
+                anchored = True
+            prev_chain = rec["chain"]
+            prev_seq = rec["seq"]
+            continue
+        if not _is_chained(rec):
+            return False, "chain break at %s: an unchained record " \
+                "follows seq %d, where the chain had already " \
+                "started" % (where, prev_seq)
+        chained += 1
+        if rec["seq"] != prev_seq + 1:
+            return False, "chain break at %s: seq %d follows seq " \
+                "%d -- a record was deleted or reordered" % (
+                    where, rec["seq"], prev_seq)
+        expect = _security.audit_chain_next(prev_chain, rec)
+        if rec["chain"] != expect:
+            return False, "chain break at %s (seq %d): the " \
+                "record's content does not match its chain value " \
+                "-- the record was altered" % (where, rec["seq"])
+        prev_chain = rec["chain"]
+        prev_seq = rec["seq"]
+    counts = _read_counts(base_dir)
+    head = counts.get(_security.AUDIT_CHAIN_COUNTS_KEY) \
+        if isinstance(counts, dict) else None
+    if not started:
+        if isinstance(head, dict):
+            return False, "chain break: the log holds no chained " \
+                "records, but the checkpoint in %s records a chain " \
+                "head (seq %r)" % (_security.COUNTS_FILE, head.get("seq"))
+        if legacy:
+            return True, "no chained records: %d legacy unchained " \
+                "record(s) only, nothing to verify" % legacy
+        return True, "no audit records to verify"
+    if isinstance(head, dict) and isinstance(head.get("chain"), str):
+        if head.get("chain") != prev_chain or head.get("seq") != prev_seq:
+            return False, "chain break at the tail: the log ends " \
+                "at seq %d, but the checkpoint in %s records seq " \
+                "%r -- tail records were truncated, or records " \
+                "were appended out of band" % (
+                    prev_seq, _security.COUNTS_FILE, head.get("seq"))
+        tail = "the tail matches the checkpoint head in %s" % (
+            _security.COUNTS_FILE,)
+    else:
+        tail = "no checkpoint head in %s: the chain is intact to " \
+            "the end of the file, but tail truncation cannot be " \
+            "detected without the checkpoint" % (_security.COUNTS_FILE,)
+    parts = []
+    if legacy:
+        parts.append("%d legacy unchained record(s) precede the "
+                     "chain and are not covered by it" % legacy)
+    if anchored:
+        parts.append("the retained history starts mid-chain at "
+                     "seq %d (earlier records rolled away); that "
+                     "record is the anchor and every record after "
+                     "it was verified" % first_seq)
+    parts.append("chain intact: %d chained record(s) verified, "
+                 "seq %d to %d" % (chained, first_seq, prev_seq))
+    parts.append(tail)
+    return True, "; ".join(parts)
+
+
+def verify_main(base_dir):
+    """Entry point for --audit-verify. Returns an exit code:
+    0 when the chain verifies, 1 at the first break."""
+    ok, detail = verify_audit_chain(base_dir)
+    sys.stdout.write("audit chain %s: %s\n" % ("ok" if ok else "FAILED",
+                                              detail))
+    return 0 if ok else 1
+
+
 def _entry_ts(entry):
     ts = entry.get("ts")
     if not isinstance(ts, str):

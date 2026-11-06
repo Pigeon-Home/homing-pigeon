@@ -329,6 +329,10 @@ def build_parser():
     g.add_argument("--audit-report", action="store_true",
                    help="print a summary of the security audit "
                         "log and exit; no mailbox needed")
+    g.add_argument("--audit-verify", action="store_true",
+                   help="verify the security audit log's hash "
+                        "chain and exit (0 = intact, 1 = first "
+                        "break reported); no mailbox needed")
     g.add_argument("--remediation-release", default=None,
                    metavar="JOB_ID",
                    help="release a quarantined job's outputs "
