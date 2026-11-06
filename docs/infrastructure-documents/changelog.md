@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.171 - 2026-11-05
+
+- Runner: the outbox stash takes the per-key guard — a result stashed for a key while a delivery of that key was between reading the waiting record and claiming it was carried into sent/ unsent and overwritten there, the next result lost without ever being sent. The stash, the undeliver move-back, and the resend pass's give-up now hold the same guard the delivery claim holds, and the give-up re-reads under it so a fresher stash stays waiting. A deterministic regression test drives the claim window directly.
+- Core: the recorded core measures are re-recorded for the guard change: the as-assembled core stands at 55,336 lines (49,819 non-blank) and the runner proper at 6,635.
+
 ## 3.15.17.170 - 2026-11-05
 
 - Tests: the supervised DTLS round-trip test's sender budget is sized for the retransmission timers it runs under — the sender's `--wait` covers the handshake and the result in one budget, and a single lost datagram costs a full first-retransmission wait (2 poll periods by design), which ate the old 45-second budget on a loaded CI host and timed the test out with the round trip otherwise healthy. The budget is now 120 seconds, with the supervising deadline and final ceiling sized past it; production timings are unchanged.
