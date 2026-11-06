@@ -66,7 +66,12 @@ SHIM_PY = (
 )
 SHIM_SH = (
     "cp -- \"$1\" staged.bin\n"
-    "printf '%s' \"${1##*/}\" > staged-name.txt\n"
+    # The staged path's separators are the host's: a Windows
+    # runner hands over backslashes, and ${1##*/} strips only
+    # forward slashes, so the whole path came home as the name
+    # (build-windows, 3.15.18.2). Normalise first, then strip.
+    "hp_name=$(printf '%s' \"$1\" | tr '\\\\' '/')\n"
+    "printf '%s' \"${hp_name##*/}\" > staged-name.txt\n"
 )
 
 
@@ -294,6 +299,72 @@ class StagingWritesBytesNotTextTest(unittest.TestCase):
                          "text-mode staging translates newlines "
                          "on Windows; stage the encoded bytes")
         self.assertIn('open(script_path, "wb"', source)
+
+
+class ShimStagedNameTest(unittest.TestCase):
+    """The sh stand-in must report the staged file's NAME on
+    every platform. It extracted the name with ${1##*/}, which
+    strips only forward slashes: on Windows the runner hands it
+    a backslash path (C:\\Users\\...\\work\\other-1\\script),
+    so the whole path came home as the "name" and every sh case
+    in this module failed on the Windows leg (build-windows,
+    3.15.18.2, both build runs 42277259773 and 42277260007,
+    shard 1, 19 failures) while the Python stand-in, which uses
+    os.path.basename, passed. The cases below run the real
+    SHIM_SH through sh: POSIX paths, Windows paths, mixed
+    separators, bookended separators, and a bare name."""
+
+    CASES = [
+        ("posix", "work/other-1/script", "script"),
+        ("windows", r"C:\Users\RUNNER~1\AppData\Local\Temp\t\work\other-1\script", "script"),
+        ("mixed", r"work/other-1\script", "script"),
+        ("mixed2", r"work\other-1/script.py", "script.py"),
+        ("bare", "script", "script"),
+        ("bookend-slashes", "//work//script", "script"),
+        ("bookend-backslashes", r"\\work\\script", "script"),
+        ("run-of-separators", "work////////other-1\\\\script", "script"),
+    ]
+
+    def test_shim_reports_the_basename_for_every_separator(self):
+        import subprocess
+        for label, arg, want in self.CASES:
+            with self.subTest(label=label):
+                with tempfile.TemporaryDirectory() as tmp:
+                    # The staged file the shim copies: on POSIX a
+                    # backslash is a filename character, so the
+                    # literal argument names the file; on Windows
+                    # it is a real nested path under tmp.
+                    if os.name == "nt":
+                        staged = os.path.join(
+                            tmp, *[p for p in arg.replace(
+                                "\\", "/").split("/") if p
+                                and ":" not in p])
+                        os.makedirs(os.path.dirname(staged),
+                                    exist_ok=True)
+                        run_arg = staged
+                    else:
+                        staged = os.path.join(tmp, arg)
+                        parent = os.path.dirname(staged)
+                        if parent:
+                            os.makedirs(parent, exist_ok=True)
+                        run_arg = arg
+                    with open(staged, "wb") as fh:
+                        fh.write(b"echo hi\n")
+                    shim = os.path.join(tmp, "shim_observe.sh")
+                    with open(shim, "w", encoding="utf-8",
+                              newline="\n") as fh:
+                        fh.write(SHIM_SH)
+                    proc = subprocess.run(
+                        ["sh", shim, run_arg], cwd=tmp,
+                        capture_output=True, text=True, timeout=60)
+                    self.assertEqual(proc.returncode, 0,
+                                     proc.stderr)
+                    with open(os.path.join(tmp, "staged-name.txt"),
+                              encoding="utf-8") as fh:
+                        self.assertEqual(fh.read(), want)
+                    with open(os.path.join(tmp, "staged.bin"),
+                              "rb") as fh:
+                        self.assertEqual(fh.read(), b"echo hi\n")
 
 
 if __name__ == "__main__":

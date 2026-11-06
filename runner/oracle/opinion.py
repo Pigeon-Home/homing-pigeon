@@ -544,6 +544,29 @@ def diagnosis_member(mode, findings, model_note=None):
         model_note=model_note)
 
 
+def _fit_repair_note(base, middle, closing):
+    """Join a repair note within NOTE_CAP, preserving its end.
+
+    The closing sentence carries the outcome a reader acts on
+    ("The job as received was not run." / "The result below is
+    from the repaired job."). A plain head truncation loses it
+    exactly where the middle is longest: on Windows the platform
+    default is the six-element PowerShell list, named in both
+    the repair description and a re-judgment refusal, which
+    pushed the closing sentence past the cap and cut it off
+    mid-word (build-windows, 3.15.18.2). Trim the findings
+    first, then the middle; the closing sentence is never cut.
+    """
+    full = base + middle + closing
+    if len(full) <= NOTE_CAP:
+        return full
+    if len(middle) + len(closing) <= NOTE_CAP:
+        return base[:NOTE_CAP - len(middle) - len(closing)] \
+            + middle + closing
+    budget = NOTE_CAP - len(closing) - 3
+    return middle[:budget].rstrip() + "..." + closing
+
+
 def repair_member(plan, job, applied, refusal=None):
     """The member for a repair that ran, or one refusal stopped."""
     findings = (plan or {}).get("findings") or []
@@ -551,12 +574,15 @@ def repair_member(plan, job, applied, refusal=None):
     desc = action.get("description") or "the environment fix"
     note = _note_text(findings)
     if applied:
-        note += (f" Repair applied: {desc}. The result below is "
-                 f"from the repaired job.")
+        note = _fit_repair_note(
+            note, f" Repair applied: {desc}.",
+            " The result below is from the repaired job.")
     else:
-        note += (f" Repair attempted ({desc}) but the repaired "
-                 f"job was refused on re-judgment: {refusal}. The "
-                 f"job as received was not run.")
+        note = _fit_repair_note(
+            note,
+            f" Repair attempted ({desc}) but the repaired "
+            f"job was refused on re-judgment: {refusal}.",
+            " The job as received was not run.")
     return form_member("repair", "likely_failure", note,
                        repaired=applied, digest=received_digest(job))
 

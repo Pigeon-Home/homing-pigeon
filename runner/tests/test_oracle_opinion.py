@@ -452,6 +452,90 @@ class MemberTests(unittest.TestCase):
                   "note": "bad"}
         self.assertIs(op.extend_member_outcome(member, []), member)
 
+class RepairNoteCapTest(unittest.TestCase):
+    """The repair member's closing sentence is the part a reader
+    acts on -- "The job as received was not run." for a refusal,
+    "The result below is from the repaired job." for an applied
+    repair -- and it must survive the note cap. On Windows the
+    platform default is the six-element PowerShell list, which
+    appears in both the repair description and the refusal, so
+    the plain head-truncation in form_member cut the closing
+    sentence off mid-word (build-windows, 3.15.18.2, both build
+    runs 42277259773 and 42277260007, shard 3:
+    test_oracle_no_widening)."""
+
+    PS = ("['powershell', '-NoProfile', '-NonInteractive', "
+          "'-ExecutionPolicy', 'Bypass', '-File']")
+
+    def _plan(self, detail, desc):
+        return {"findings": [{"kind": "tool_missing",
+                              "detail": detail, "repair": None}],
+                "repair_action": {"description": desc}}
+
+    def test_windows_refusal_keeps_the_not_run_sentence(self):
+        plan = self._plan(
+            "interpreter ['definitely-missing-binary-zz'] is not "
+            "present on this Windows host; the platform default "
+            "would do",
+            "interpreter ['definitely-missing-binary-zz'] "
+            f"replaced with the platform default {self.PS}")
+        member = op.repair_member(
+            plan, {"job_id": "nw-repair"}, applied=False,
+            refusal=f"interpreter {self.PS} is not allowed for "
+                    "this key")
+        self.assertLessEqual(len(member["note"]), op.NOTE_CAP)
+        self.assertIn("re-judgment", member["note"])
+        self.assertTrue(member["note"].endswith(
+            "The job as received was not run."), member["note"])
+
+    def test_long_refusals_keep_the_not_run_sentence(self):
+        for filler in ("x" * 200, "y" * 600, "z" * 2000):
+            with self.subTest(filler_len=len(filler)):
+                plan = self._plan(f"detail {filler}",
+                                  f"desc {filler}")
+                member = op.repair_member(
+                    plan, {"job_id": "j"}, applied=False,
+                    refusal=f"refusal {filler}")
+                self.assertLessEqual(len(member["note"]),
+                                     op.NOTE_CAP)
+                self.assertTrue(member["note"].endswith(
+                    "The job as received was not run."),
+                    member["note"])
+
+    def test_long_applied_repair_keeps_its_closing_sentence(self):
+        for filler in ("x" * 200, "y" * 2000):
+            with self.subTest(filler_len=len(filler)):
+                plan = self._plan(f"detail {filler}",
+                                  f"desc {filler}")
+                member = op.repair_member(
+                    plan, {"job_id": "j"}, applied=True)
+                self.assertLessEqual(len(member["note"]),
+                                     op.NOTE_CAP)
+                self.assertTrue(member["note"].endswith(
+                    "The result below is from the repaired job."),
+                    member["note"])
+
+    def test_short_refusal_note_is_byte_for_byte_what_it_was(self):
+        plan = self._plan("no frobnicate", "use sh instead")
+        member = op.repair_member(
+            plan, {"job_id": "j"}, applied=False,
+            refusal="interpreter ['sh'] is not allowed")
+        self.assertEqual(
+            member["note"],
+            "no frobnicate Repair attempted (use sh instead) "
+            "but the repaired job was refused on re-judgment: "
+            "interpreter ['sh'] is not allowed. The job as "
+            "received was not run.")
+
+    def test_short_applied_note_is_byte_for_byte_what_it_was(self):
+        plan = self._plan("no frobnicate", "use sh instead")
+        member = op.repair_member(plan, {"job_id": "j"},
+                                  applied=True)
+        self.assertEqual(
+            member["note"],
+            "no frobnicate Repair applied: use sh instead. "
+            "The result below is from the repaired job.")
+
 
 # ------------------------------------------------------------- runner wiring
 #
