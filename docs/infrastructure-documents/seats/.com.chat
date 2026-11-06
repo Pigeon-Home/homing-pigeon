@@ -3,6 +3,328 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 6-Nov-2:31am-PST/PDT — the big-window program: Phase 1 and Phase 2 conclusions, the 2 improvements passes, and the Phase 3 preparation
+
+This entry closes the record for the first full pass of the
+big-window conformance program, posts the improvements pass
+that follows each phase, and prepares Phase 3. The program's
+setup stands in the 4-Nov-7:42pm entry above the coverage
+entry; until now the conclusions and results of the pass
+itself stood only in the operator's local lane records and,
+for a few items, in the changelog. They stand here now,
+whole. Throughout: a mismatch counted only after it was
+verified first-hand against the code or the tree, with file
+and line evidence; everything else is a hold, a false alarm,
+or unjudged, and is recorded as exactly that.
+
+### Phase 1 — conclusions and results (documentation and codebase)
+
+Phase 1 judged the documentation against a stripped core of
+the production runner, area by area, in 10 lanes (A to J).
+The lane tallies, each recounted from the claim lines
+themselves where the model's own summary arithmetic differed:
+
+- Lane A (security posture, present-but-invalid config):
+  33 claims, 33 holds, 0 mismatch, 0 unjudged. The lane's
+  posture findings carried the substance: 4 verified defect
+  groups (the resources and DRI parse errors swallowed in
+  the poll loop, PF-1; the job_user enforce pair, PF-2;
+  PROTOCOL.md's stale default-off passages, PF-3; a stale
+  quoted posture string, PF-4), 2 false alarms, and 1
+  housekeeping note verified accurate.
+- Lane B (sending and verification): the Argon rerun closed
+  at 32 of 32 holds. An earlier flash follow-up resolved 7
+  unjudged claims into 1 verified defect (the sending page's
+  interpreter wording, since fixed). The verification page
+  itself was judged as 1 collapsed claim, not claim by
+  claim; that gap is carried into the Phase 3 checklist
+  below, not papered over.
+- Lane C (overview, networking, extensions): 31 claims,
+  23 holds, 1 mismatch, 7 unjudged. The 1 mismatch was a
+  verified defect (networking.md calling the Cage opt-in
+  after the enforce flip), with 3 further verified posture
+  findings beside it.
+- Lane D (security review of the guard and wire): sitting 1
+  gave 1 confirmed defect (an outside-path existence gate),
+  since fixed, and 1 lead that a caller audit later closed;
+  sitting 2 gave 2 confirmed findings and 3 false alarms;
+  the rerun gave 6 findings — 1 verified defect, 1 confirmed
+  low, 1 posture-only item, 2 false alarms, 1 repeat of an
+  already-covered item.
+- Lane G (the steady shelf, 5 sittings): 360 claims,
+  288 holds, 19 mismatch, 53 unjudged. Its verified defects
+  include the docker page bundle and the stale-path bundles
+  recorded as Q-new-21 to Q-new-23 below.
+- Lane H (the infrastructure shelf): sittings 1 and 2 judged
+  83 claims, 72 holds, 3 mismatch, 8 unjudged; sittings 3
+  to 8 judged 343 claims, 287 holds, 10 mismatch,
+  46 unjudged, and all 10 mismatches verified first-hand as
+  defects, Q-new-11 to Q-new-20.
+- Lane I (root files, CI, extension readmes): 118 claims,
+  109 holds, 6 mismatch, 3 unjudged. Its defects include the
+  version and SourceForge items of sitting 1, the docker
+  entrypoint and pinned-requirement items of sitting 2, and
+  the job-watcher severity word of sitting 3, Q-new-24.
+- Lane J (the archive shelf): 74 claims, 52 holds,
+  0 mismatch, 22 unjudged, the unjudged set being historical
+  or frozen record by design.
+
+The fix queue that came out of Phase 1 landed whole:
+40 commits, main aa5120ce to 300b6ae7, covering the Q-new-1
+to Q-new-27 items in scope, among them the 17 new verified
+defects Q-new-11 to Q-new-27 (mostly documentation, 2 in
+code). 4 items were held out of the queue on purpose and
+stand open as decisions, not as silent drops: Q-new-2 (the
+POSIX job_user enforce fallback), Q-new-27 (the sandbox
+flag posture item), the Lane D key_policies disposition
+(D-2-1), and the world-readable-secret posture call. The
+Lane A PF-1 defect (resources and DRI parse errors never
+reaching the startup gate) was verified and stands unfixed;
+it is named in the Phase 3 checklist below. Phase 1's
+conclusion, stated plainly: the documentation and the code
+agree in the large — across the lanes, holds outnumber
+mismatches by more than 20 to 1 — and where they disagreed,
+the disagreement clustered in 3 places: prose written before
+the enforce-by-default flip that still describes the old
+defaults, stale file paths left behind by the docs
+reorganization, and internal process material standing in
+reader-facing pages.
+
+### Improvements pass after Phase 1 — proposals, not defects
+
+An improvements pass records suggestions: things that would
+make the code or the documentation better but are not
+defects, because nothing they describe is wrong today. Each
+proposal below is labelled a proposal, carries its reason
+and a rough size (S is hours, M is a day or 2, L is the
+better part of a week), and stands separate from every
+verified defect above and from the fix queue. Adopting any
+of them is a fresh decision, not a repair.
+
+- P1-1 (proposal, S). Track the audit line cap in the
+  defaulted-settings table. The audit cap's silent default
+  is correct and unreachable on the startup path, but it is
+  the one default of its family not tracked in
+  runner/guard/defaulted.py; tracking it would make the
+  defaulted set complete and mechanically auditable.
+- P1-2 (proposal, S). Reader-facing housekeeping for 2
+  Phase 1 pages: drop the internal milestone labels from
+  the SECURITY.md features table, and reword the hunt and
+  report references in present-but-invalid-config.md for a
+  reader outside the project. Verified accurate as written;
+  this is polish, not correction.
+- P1-3 (proposal, M). A claim-by-claim packet for the
+  verification page, built from the build and CI files the
+  page describes. Lane B could only judge that page as 1
+  collapsed claim; a proper packet would give it the same
+  per-claim treatment the sending page got.
+- P1-4 (proposal, S). A mechanical recount tool in the
+  audit harness. 2 lanes' model-written summary counts
+  disagreed with their own claim lines; a small tool that
+  recounts claim lines and checks the summary against them
+  removes a whole class of tally error from any future pass.
+- P1-5 (proposal, M). A doc-guard test that resolves every
+  file path named in a living document. The stale-path
+  defect bundles (Q-new-22, Q-new-23 and their cousins) were
+  each found by reading; a guard would catch the next
+  reorganization's leftovers at commit time.
+- P1-6 (proposal, S). A prose guard for pre-flip wording:
+  scan living documents for the shapes "off by default",
+  "opt-in", and "near zero out of the box" near a security
+  feature's name, and flag them for a human look. The flip
+  family was the single largest defect cluster in Phase 1;
+  the guard keeps it from quietly regrowing.
+- P1-7 (proposal, M). Centralize version-string parsing on
+  runner/ops/version4.py. 3 separate places were found
+  assuming the old 3-component version shape (a release
+  script's pattern, an upgrade-proof filter, a workflow
+  label); each was corrected where it stood, and 1 shared
+  parser would keep the assumption from being made a 4th
+  time.
+- P1-8 (proposal, M). A CI coverage check for trigger
+  paths: a test that maps security-relevant modules to the
+  workflow files whose path filters should name them. The
+  job-user workflow's filter omits 1 module it exercises;
+  the mapping is currently held in people's heads.
+- P1-9 (proposal, S). A banner convention for historical
+  reports: 1 standard line at the top of a dated report
+  saying it is a record of its day and that paths and
+  figures in it are as they then stood. Several Phase 1
+  sittings spent claims re-deriving that fact page by page.
+- P1-10 (proposal, M). Generate the layout page's shelf map
+  from the tree instead of maintaining it by hand. The map
+  is accurate today only where it was recently corrected;
+  a generated section cannot drift.
+- P1-11 (proposal, S). Stamp the shipped project snapshot
+  with a build stamp of its own instead of a session stamp
+  recycled from the working tree, so a reader of the
+  snapshot can tell which build made it without asking.
+- P1-12 (proposal, S). Put a tracked-file index in every
+  audit packet's front matter. In 1 lane the model asked
+  for a file at a path that does not exist and corrected
+  itself a round later; an index in the packet saves that
+  round.
+
+That is 12 proposals for Phase 1: 7 small and 5 medium.
+None is a defect; none enters the fix queue by standing
+here.
+
+### Phase 2 — conclusions and results (the IETF material)
+
+Phase 2 judged the IETF material under the mirror rule:
+the living v1 and v2 drafts as findings only, nothing
+edited into them, remedies worded as -04 checklist items;
+the v3 draft free to be corrected in its source.
+
+- Lane F, v1: 38 claims, 33 holds, 5 mismatch, 0 unjudged.
+  The 5 mismatches were already known from the mirror diff
+  and stand in the -04 checklist; the final DTLS packet
+  resolved the last 4 unjudged claims as holds and added
+  no new item.
+- Lane F, v2: 18 claims, 15 holds, 3 mismatch, 0 unjudged,
+  on the same basis.
+- The -04 checklist stands at 27 items: the 15 known mirror
+  differences, the N1 and N2 items, and 10 items the lane
+  found beyond the baseline, each verified first-hand. The
+  2 code-side fixes the checklist called for have since
+  landed; the remaining items are draft words, to be cut
+  into -04 from the posted -03 texts.
+- Lane E, v3: 49 claims, 49 holds, 0 mismatch, 0 unjudged,
+  and idnits at 0 on the stored record. 1 code-side
+  observation was recorded beside the verdicts, not as a
+  draft mismatch: the email-carriage DTLS server does not
+  call the PSK entropy floor. A fresh idnits run has never
+  been taken on this machine (the tool is not installed);
+  that is carried into the Phase 3 checklist.
+
+Phase 2's conclusion: the v3 draft matches its code on
+every claim judged, and the v1 and v2 drafts differ from
+their posted texts only in the ways the mirror diff and
+this lane together enumerate — 27 -04 items, no more.
+
+### Improvements pass after Phase 2 — proposals, not defects
+
+The same rule as Phase 1: these are suggestions, recorded
+separately from the -04 checklist, and nothing here is
+edited into a living draft. Sizes as before.
+
+- P2-1 (proposal, L). A worked-examples appendix for the
+  v3 draft: a complete DTLS-over-email handshake, with the
+  project's own test vectors. The hybrid key agreement's
+  RFC publishes no vectors; the project's would be the
+  first a reader can check an implementation against.
+- P2-2 (proposal, S). A "differences from the previous
+  revision" section in each -04 draft, summarizing what
+  changed from -03 in the draft's own words, so a reviewer
+  of the series does not need the project's checklist to
+  follow the revision.
+- P2-3 (proposal, M). Shared subject-grammar test vectors:
+  1 published set of subjects and verdicts that the v1,
+  v2, and v3 implementations all run, since the grammar is
+  shared and could drift between them silently.
+- P2-4 (proposal, M). A mirror-check script: fetch the
+  posted texts, diff them against the living drafts, and
+  report, runnable on demand instead of by hand. The
+  mirror rule is publication-serious; the check that
+  guards it should be 1 command.
+- P2-5 (proposal, S). Run idnits in CI over the draft
+  sources, so a draft cannot drift out of idnits-clean
+  between hand checks.
+- P2-6 (proposal, M). A terminology table shared by the
+  3 drafts: the door, the shared secret, platform
+  disclosure, and the rest, each defined once and used
+  identically in all 3, checked in the sentence-review
+  manner.
+- P2-7 (proposal, S). State the email carriage's entropy
+  expectation in the v3 draft's security considerations,
+  one way or the other. The code-side observation in
+  Lane E is not a mismatch; writing the expectation down
+  would make it a checkable claim for the next pass.
+
+That is 7 proposals for Phase 2: 3 small, 3 medium,
+1 large. None is a defect, and none belongs to the -04
+checklist.
+
+### Phase 3 — preparatory audit (the checklist for the final once-over)
+
+Phase 3 is a final once-over of everything, done by hand.
+This is its preparation, not the once-over itself: for each
+area, what the first 2 phases already provide as evidence,
+and what remains genuinely unchecked, so the once-over
+spends itself only where the record is actually thin.
+
+Codebase. Evidence in hand: Lanes A, C, D, G, H, and I
+judged the production core area by area; the Phase 1 fix
+queue landed in 40 commits with its tests; the do-now work
+that followed the ChatGPT and Codex review (duplicate keys
+with the nesting pre-scan, the Oracle tool modes with the
+environment scrub, the audit hash chain, the posture
+assertion switch, the support matrix) landed after and is
+not part of Phase 1's tallies. Genuinely unchecked: the
+Lane A PF-1 defect, verified and still unfixed; the 4 held
+decision items (Q-new-2, Q-new-27, D-2-1, and the
+world-readable-secret call), which the once-over must
+either settle or carry as named decisions; the 46 unjudged
+Lane H claims, 53 unjudged Lane G claims, 3 unjudged Lane I
+claims, and 22 unjudged Lane J claims, nearly all resting
+on stripped tests, the corpus machinery, or historical
+records; the send tool's own duplicate-key check, still to
+be aligned with the shared fix; and any code written after
+the fix queue closed, which no lane has judged.
+
+Documentation. Evidence in hand: every living document's
+title was reviewed and its section headings swept in the
+passes that followed Phase 1, with the verified fixes
+landed; the Phase 1 conclusions above name the 3 clusters
+where doc and code disagreed. Genuinely unchecked: the
+verification page claim by claim (proposal P1-3 above);
+the historical and archive shelves beyond Lane J's
+mechanism spot-checks; and documents created or heavily
+edited after the heading sweep, which have had neither a
+title nor a heading pass.
+
+IETF drafts. Evidence in hand: Phase 2 whole — v1 at
+33 of 38 holds, v2 at 15 of 18, v3 at 49 of 49 with the
+-04 checklist at 27 items; both -03 texts verified
+byte-for-byte against the IETF archive copies. Genuinely
+unchecked: a fresh idnits run on the v3 draft; the -04
+drafts themselves, which are not yet cut; and the v3
+behaviours no live test has reached — resumption over a
+live mailbox, a provider other than Gmail, the MIME sender
+on a live mailbox, a restart mid-handshake, and more than
+1 session at live scale. The publication request on the
+-03 drafts also still stands with the editor, unanswered
+in the record.
+
+Tests. Evidence in hand: the fix queue's tests ride with
+their fixes; the coverage measure stands at 99.09% of
+runner/runner.py (3,938 of 3,974 statements) from the run
+recorded above; the doc-guard suites pass apart from 1
+known failure that fails identically on a clean tree.
+Genuinely unchecked: a full-suite run on the final
+once-over tree itself, read whole, with every skip
+accounted for — a subset green does not clear this; the
+skip registry against whatever that run skips; and the
+queued shotgun families 32 to 54, which are background
+work and not Phase 3 evidence either way.
+
+Release state. Evidence in hand: releases are cut hourly
+when main has changed and verified outlet by outlet, with
+3.15.17.173 the latest verified at the writing of this
+entry. Genuinely unchecked: the final state of release
+3.15.17.172, which was tagged and built clean through its
+release step in its hour but was never given a verified
+announcement before 173 shipped over it; and the release
+that will carry whatever Phase 3 itself changes, which
+must be stamp-verified like any other before the program
+is called done.
+
+When the once-over has covered the unchecked items above —
+or carried each one it leaves as a named, owned decision —
+Phase 3 is done, and the program is complete: Phases 1 and
+2 judged, both improvements passes posted here, and the
+final pass done by hand.
+
 ## 5-Nov-12:00am-PST/PDT — runner coverage, measured: 99.09% of runner.py under the unit tests
 
 Coverage of runner/runner.py by the project's unit tests is
