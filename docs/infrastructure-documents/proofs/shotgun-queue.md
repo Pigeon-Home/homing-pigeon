@@ -1154,7 +1154,31 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 220d6324, a71acd3d (31-Oct-2026)
 - Existing tests: queues-worker fuzz.test.mjs
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun40 suite in
+  runner/cloud/queues-worker/test/fuzz.test.mjs): three legs,
+  each enumerated per-field — an envelope the Durable Object
+  cannot store (the gate at exactly the 2,000,000-byte stored
+  limit and 1 byte past it, for jobs in every form they take
+  and for results), an id the route cannot name (safeJobId
+  per character class, length and type, at the gate and on
+  the ack route), and a subject that is not the signed job_id
+  (the signed payload governs, duplicate keys read last, an
+  absent or non-string claim is a mismatch). The pins are
+  carried in the suite's header comment in the repo. The
+  suite runs green under node --test (50 tests, 50 pass,
+  0 skipped — the Python skip registry does not apply to
+  these files), no live bug exposed, no production code
+  changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target edge_subject
+  --rounds 400 --seed 20261141, run locally against the banked
+  edge_subject corpus (20 entries). Result: 400 rounds,
+  0 crashes, 0 slow, arcs unchanged at 0, slowest try 714 ms
+  — the unnamable-id shape did not recur. The grow's
+  bookkeeping writes were reverted and are not banked
+  (banking is the rigs' hourly job).
 
 ### 41. A board subject went unhandled, and one stash could be sent twice
 - Fixed: bc4cb3d8 (31-Oct-2026)

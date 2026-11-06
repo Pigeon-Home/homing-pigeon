@@ -34,7 +34,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA, DO_VALUE_MAX, jobStoredBytes, storagePairBytes, RESPONSE_BUDGET, clampedMax } from "../src/index.js";
+import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA, DO_VALUE_MAX, jobStoredBytes, resultStoredBytes, safeJobId, storagePairBytes, RESPONSE_BUDGET, clampedMax } from "../src/index.js";
 
 const MAX_ATTEMPTS = 5;
 const LONG_OPS = 20_000;
@@ -7027,6 +7027,669 @@ test("shotgun39 lifecycle: pull-and-ack cycles drain 20 jobs of 1 MB each exactl
   assert.equal(new Set(seen).size, ids.length);
   assert.equal(sg39Map(env).size, 0);
   assert.equal((await sg39Pull(env, 100)).status, 204);
+});
+
+});
+
+// ---------------------------------------------------------------------
+// Shotgun 40 (queue item 40): the queue stored an envelope the
+// Durable Object cannot store; an id the route cannot name; a
+// subject that is not the signed job_id (fixed 220d6324 and
+// a71acd3d, 31-Oct-2026).
+//
+// Three legs, each enumerated per-field:
+//   A. Unstorable envelope. The object is SQLite-backed: key and
+//      value together cannot exceed DO_VALUE_MAX (2,000,000).
+//      A job is kept only when every form it will take fits --
+//      the queued record, the dead-letter copy and a later
+//      requeue, as jobStoredBytes measures them -- and a result
+//      only when its record fits, as resultStoredBytes measures
+//      it. Past the limit the answer is 413 and nothing is
+//      written or billed. The exported measuring functions are
+//      pinned directly, then the gate at exactly the limit and
+//      1 byte past it, for jobs and for results.
+//   B. Unroutable id. safeJobId: 1 to 128 of [A-Za-z0-9._-], not
+//      "." or "..". The function is pinned per character class,
+//      per length and per type, then the gate on the job subject
+//      and the result subject, then the ack route, which cannot
+//      name a slash id at all.
+//   C. Subject vs signed job_id. The gate requires the subject's
+//      id to equal the job_id inside the SIGNED payload
+//      (bodyJobId reads the signed payload, not a second parse
+//      of the whole body). A mismatch is a 400 and stores
+//      nothing; an absent, non-string or non-object claim is a
+//      mismatch for a job; the signed payload governs over an
+//      unsigned prefix, and duplicate keys read their last
+//      value -- the same reading the runner gives them.
+// Bookends: every printable ASCII symbol (all 32 punctuation
+// characters) at the front AND the back of the subject id, as
+// singles, matched pairs, mismatched pairs and symbol-only ids
+// -- the safe symbols (., -, _) are accepted with a matching
+// signed body, the rest are a 400 -- plus NUL, tab, CR and LF
+// shapes in the id. Run lengths: runs of the odd character as
+// the whole id and after an ordinary prefix, at lengths 1, 5,
+// 10, 100 and at the 128/129 boundary. Injection-shaped ids and
+// scripts ride the surface and are refused or stored verbatim,
+// never acted on. The fuzzing was executed, not just the tests
+// written: runner/tools/de_dust_corpus.py grow --target
+// edge_subject --rounds 400 --seed 20261141, run locally
+// against the banked edge_subject corpus (20 entries) -- the
+// subject-grammar target, nearest to legs B and C. Result:
+// 400 rounds, 0 crashes, 0 slow, arcs unchanged at 0, slowest
+// try 714 ms -- the unnamable-id shape did not recur. The
+// grow's bookkeeping writes were reverted and are not banked
+// (banking is the rigs' hourly job); this record is the run's
+// proof. For the .mjs file the Python skip registry does not
+// apply, and this family adds no skips.
+
+const SG40_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+const SG40_NOW = 1_700_000_000_000;
+const sg40Bytes = (t) => new TextEncoder().encode(t).length;
+
+async function sg40Env() {
+  const env = makeEnv({
+    clock: () => SG40_NOW,
+    quota: { jobs_per_hour: 600, bytes_per_day: 512 * 1024 * 1024 },
+  });
+  await addTenant(env);
+  env.TENANT_QUEUE.get("alice");
+  return env;
+}
+function sg40Map(env) { return env.objects.get("alice").state.storage.map; }
+async function sg40Post(env, kind, text, token) {
+  const r = await worker.fetch(req(`/t/alice/${kind}`, {
+    method: "POST", token: `Bearer ${token}`, body: text,
+  }), env);
+  const body = await r.json().catch(() => null);
+  return { status: r.status, body };
+}
+const sg40PostJob = (env, text) => sg40Post(env, "jobs", text, SI);
+const sg40PostResult = (env, text) => sg40Post(env, "results", text, RUNNER);
+
+async function sg40SignedRaw(subjectId, payloadText, secret = SECRET) {
+  const sig = await hmacSha384Hex(secret, payloadText);
+  const body = payloadText.slice(0, -1) + `,"sig":"${sig}"}`;
+  return `[HOMING-PIGEON] job ${subjectId}\n\n${body}\n`;
+}
+async function sg40Signed(subjectId, fields, secret = SECRET) {
+  return sg40SignedRaw(subjectId, JSON.stringify(fields), secret);
+}
+function sg40JobFields(jobId, extra = {}) {
+  return { v: 1, type: "job", job_id: jobId, kind: "exec", script: "echo hi", ...extra };
+}
+// A signed job whose stored size is exactly `target` bytes: the
+// script is x-padding, and each x adds exactly 1 envelope byte
+// and exactly 1 stored byte.
+async function sg40JobSized(id, target) {
+  // Iterate to the exact target: the stored record's own size
+  // field gains digits as the envelope grows past 1000, 10000,
+  // and so on, so one linear step can overshoot by a few bytes.
+  const empty = await signedJob(id, SECRET, "");
+  let pad = target - jobStoredBytes(id, empty, SG40_NOW);
+  assert.ok(pad >= 0, `target ${target} below the empty job's stored size`);
+  for (let i = 0; i < 10; i++) {
+    const text = await signedJob(id, SECRET, "x".repeat(pad));
+    const got = jobStoredBytes(id, text, SG40_NOW);
+    if (got === target) return text;
+    pad += target - got;
+    assert.ok(pad >= 0, `target ${target} unreachable`);
+  }
+  throw new Error(`sg40JobSized(${id}, ${target}) did not converge`);
+}
+function sg40ResultSized(id, target) {
+  const empty = `[HOMING-PIGEON] result ${id}\n\n\n`;
+  const base = resultStoredBytes(id, empty, SG40_NOW);
+  const need = target - base;
+  assert.ok(need >= 0, `target ${target} below base ${base}`);
+  const text = `[HOMING-PIGEON] result ${id}\n\n${"x".repeat(need)}\n`;
+  assert.equal(resultStoredBytes(id, text, SG40_NOW), target);
+  return text;
+}
+
+describe("shotgun40: an unstorable envelope, an unroutable id, a subject that is not the signed job_id", () => {
+
+// -- 14 unstorable-envelope tests (leg A) -------------------------------
+
+test("shotgun40 storage unit: storagePairBytes is the key's UTF-8 bytes plus the JSON value's UTF-8 bytes", async () => {
+  assert.equal(storagePairBytes("job:a", { id: "a" }), sg40Bytes("job:a") + sg40Bytes('{"id":"a"}'));
+  assert.equal(storagePairBytes("result:é", { id: "é", envelope: "€" }),
+    sg40Bytes("result:é") + sg40Bytes(JSON.stringify({ id: "é", envelope: "€" })));
+  assert.ok(storagePairBytes("k", { v: "€" }) > storagePairBytes("k", { v: "e" }));
+});
+
+test("shotgun40 storage unit: resultStoredBytes is exactly the pair bytes of the record that will be put", async () => {
+  const text = "[HOMING-PIGEON] result r1\n\n{}\n";
+  assert.equal(resultStoredBytes("r1", text, SG40_NOW),
+    storagePairBytes("result:r1", { id: "r1", envelope: text, at: SG40_NOW }));
+  assert.equal(resultStoredBytes("r1", text + "x", SG40_NOW),
+    resultStoredBytes("r1", text, SG40_NOW) + 1);
+});
+
+test("shotgun40 storage unit: jobStoredBytes grows by exactly 1 per envelope byte and counts the id more than once", async () => {
+  const text = await signedJob("j1");
+  const base = jobStoredBytes("j1", text, SG40_NOW);
+  assert.equal(jobStoredBytes("j1", text + "x", SG40_NOW), base + 1);
+  assert.ok(jobStoredBytes("j".repeat(128), text, SG40_NOW) > base + 127,
+    "a longer id pays for the key and the record fields, not just the key");
+  assert.ok(base > sg40Bytes(text), "the stored form is larger than the envelope");
+});
+
+test("shotgun40 storage unit: jobStoredBytes is the widest of the forms -- wider than a plain queued record", async () => {
+  const text = await signedJob("j1");
+  const plain = storagePairBytes("job:j1", {
+    id: "j1", envelope: text, size: sg40Bytes(text),
+    attempts: 0, leased_until: 0, enqueued_at: SG40_NOW,
+  });
+  assert.ok(jobStoredBytes("j1", text, SG40_NOW) > plain,
+    "the dead copy and the requeue carry more fields than the queued record");
+});
+
+test("shotgun40 storage jobs: a job whose stored form is exactly the limit is kept", async () => {
+  const env = await sg40Env();
+  const text = await sg40JobSized("fit1", DO_VALUE_MAX);
+  assert.ok(sg40Bytes(text) < DO_VALUE_MAX);
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 202);
+  assert.equal(r.body.id, "fit1");
+  assert.equal(sg40Map(env).get("job:fit1").envelope, text);
+});
+
+test("shotgun40 storage jobs: a job whose stored form is 1 byte past the limit is a 413 and stores nothing", async () => {
+  const env = await sg40Env();
+  const text = await sg40JobSized("over1", DO_VALUE_MAX + 1);
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 413);
+  assert.deepEqual(r.body, { error: "envelope over the storage limit" });
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 storage jobs: a job that would fit queued but not as a dead copy is refused at submit", async () => {
+  const env = await sg40Env();
+  const text = await sg40JobSized("dead1", DO_VALUE_MAX + 5);
+  const plain = storagePairBytes("job:dead1", {
+    id: "dead1", envelope: text, size: sg40Bytes(text),
+    attempts: 0, leased_until: 0, enqueued_at: SG40_NOW,
+  });
+  assert.ok(plain <= DO_VALUE_MAX, `plain queued form ${plain} fits`);
+  assert.ok(jobStoredBytes("dead1", text, SG40_NOW) > DO_VALUE_MAX);
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 413);
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 storage jobs: an envelope past the limit in UTF-8 bytes is a 413 unread, whatever its character count", async () => {
+  const env = await sg40Env();
+  const text = await sg40Signed("big1", sg40JobFields("big1", { script: "€".repeat(700_000) }));
+  assert.ok(sg40Bytes(text) > DO_VALUE_MAX && text.length < DO_VALUE_MAX);
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 413);
+  assert.deepEqual(r.body, { error: "envelope over the storage limit" });
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 storage jobs: an envelope of plain characters past the limit is a 413 and stores nothing", async () => {
+  const env = await sg40Env();
+  const text = await signedJob("big2", SECRET, "x".repeat(2_100_000));
+  assert.ok(sg40Bytes(text) > DO_VALUE_MAX);
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 413);
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 storage results: a result whose stored form is exactly the limit is kept", async () => {
+  const env = await sg40Env();
+  const text = sg40ResultSized("fit1", DO_VALUE_MAX);
+  assert.ok(sg40Bytes(text) < DO_VALUE_MAX);
+  const r = await sg40PostResult(env, text);
+  assert.equal(r.status, 202);
+  assert.equal(sg40Map(env).get("result:fit1").envelope, text);
+});
+
+test("shotgun40 storage results: a result whose stored form is 1 byte past the limit is a 413 and stores nothing", async () => {
+  const env = await sg40Env();
+  const text = sg40ResultSized("over1", DO_VALUE_MAX + 1);
+  const r = await sg40PostResult(env, text);
+  assert.equal(r.status, 413);
+  assert.deepEqual(r.body, { error: "envelope over the storage limit" });
+  assert.ok(!sg40Map(env).has("result:over1"));
+});
+
+test("shotgun40 storage results: a result envelope past the limit in plain bytes is a 413 unread", async () => {
+  const env = await sg40Env();
+  const text = `[HOMING-PIGEON] result big1\n\n${"x".repeat(2_100_000)}\n`;
+  const r = await sg40PostResult(env, text);
+  assert.equal(r.status, 413);
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 storage: a 413 bills nothing -- the counters are absent, and a good job after it counts from zero", async () => {
+  const env = await sg40Env();
+  const over = await sg40JobSized("over1", DO_VALUE_MAX + 1);
+  assert.equal((await sg40PostJob(env, over)).status, 413);
+  assert.equal(sg40Map(env).size, 0);
+  const r = await sg40PostJob(env, await signedJob("good1"));
+  assert.equal(r.status, 202);
+  const hourKey = `quota:hour:${Math.floor(SG40_NOW / 3_600_000)}`;
+  assert.equal(sg40Map(env).get(hourKey), 1);
+});
+
+test("shotgun40 storage: the same unstorable envelope refused 3 times stores nothing 3 times, and a fitting one then lands", async () => {
+  const env = await sg40Env();
+  const over = sg40ResultSized("over1", DO_VALUE_MAX + 50);
+  for (let i = 0; i < 3; i++) {
+    assert.equal((await sg40PostResult(env, over)).status, 413, `try ${i}`);
+    assert.equal(sg40Map(env).size, 0, `try ${i}`);
+  }
+  const fit = sg40ResultSized("fit1", DO_VALUE_MAX - 50);
+  assert.equal((await sg40PostResult(env, fit)).status, 202);
+});
+
+// -- 14 unroutable-id tests (leg B) --------------------------------------
+
+test("shotgun40 id unit: safe ids -- single characters and mixes of the allowed set", async () => {
+  for (const id of ["a", "Z", "0", "-", "_", "a.b-c_d", ".a", "a.", "-a", "a-", "_a", "9-._"]) {
+    assert.equal(safeJobId(id), true, id);
+  }
+});
+
+test("shotgun40 id unit: the length boundary -- 1, 127 and 128 are safe, 0 and 129 are not", async () => {
+  assert.equal(safeJobId("a"), true);
+  assert.equal(safeJobId("a".repeat(127)), true);
+  assert.equal(safeJobId("a".repeat(128)), true);
+  assert.equal(safeJobId(""), false);
+  assert.equal(safeJobId("a".repeat(129)), false);
+});
+
+test("shotgun40 id unit: the dot names -- '.' and '..' are not ids, '...' and dotted mixes are", async () => {
+  assert.equal(safeJobId("."), false);
+  assert.equal(safeJobId(".."), false);
+  assert.equal(safeJobId("..."), true);
+  assert.equal(safeJobId("..a"), true);
+  assert.equal(safeJobId("a.."), true);
+  assert.equal(safeJobId(".a."), true);
+});
+
+test("shotgun40 id unit: non-string ids are not safe -- undefined, null, numbers, booleans, objects, arrays", async () => {
+  for (const id of [undefined, null, 42, 0, true, false, {}, [], ["a"]]) {
+    assert.equal(safeJobId(id), false, String(id));
+  }
+});
+
+test("shotgun40 id unit: separators and route punctuation are not safe, each on its own", async () => {
+  for (const id of ["a/b", "a\\b", "/a", "a/", "a:b", "a?b", "a#b", "a%b", "a b", "a\tb",
+                    "a*b", "a+b", "a=b", "a&b", "a@b", "a!b", "a~b", "a,b", "a;b", "a'b",
+                    'a"b', "a<b", "a>b", "a(b", "a)b", "a[b", "a]b", "a{b", "a}b", "a|b",
+                    "a^b", "a`b", "a$b"]) {
+    assert.equal(safeJobId(id), false, id);
+  }
+});
+
+test("shotgun40 id unit: non-ASCII and control characters are not safe", async () => {
+  for (const id of ["é1", "aé", "a\x1fb", "\x1fa", "a\0b", "a😀b", "a\u0085b", "a\ufeffb"]) {
+    assert.equal(safeJobId(id), false, JSON.stringify(id));
+  }
+});
+
+test("shotgun40 id jobs: a slash id in the job subject is a 400 naming the safe-id error, and stores nothing", async () => {
+  const env = await sg40Env();
+  const good = await signedJob("j1");
+  const body = good.replace("[HOMING-PIGEON] job j1", "[HOMING-PIGEON] job a/b");
+  const r = await sg40PostJob(env, body);
+  assert.equal(r.status, 400);
+  assert.deepEqual(r.body, { error: "job id is not a safe id" });
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 id jobs: '.', '..' and a 129-character id in the job subject are each a 400 and store nothing", async () => {
+  const env = await sg40Env();
+  const good = await signedJob("j1");
+  for (const id of [".", "..", "a".repeat(129)]) {
+    const body = good.replace("[HOMING-PIGEON] job j1", `[HOMING-PIGEON] job ${id}`);
+    const r = await sg40PostJob(env, body);
+    assert.equal(r.status, 400, id.slice(0, 20));
+    assert.deepEqual(r.body, { error: "job id is not a safe id" }, id.slice(0, 20));
+    assert.equal(sg40Map(env).size, 0, id.slice(0, 20));
+  }
+});
+
+test("shotgun40 id jobs: colon, question, percent and backslash ids in the job subject are each a 400", async () => {
+  const env = await sg40Env();
+  const good = await signedJob("j1");
+  for (const id of ["a:b", "a?b", "a%b", "a\\b", "a b".replace(" ", "_") + ":", "a#b"]) {
+    const body = good.replace("[HOMING-PIGEON] job j1", `[HOMING-PIGEON] job ${id}`);
+    const r = await sg40PostJob(env, body);
+    assert.equal(r.status, 400, id);
+    assert.deepEqual(r.body, { error: "job id is not a safe id" }, id);
+  }
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 id results: a slash, dot-name or over-long id in the result subject is a 400 and stores nothing", async () => {
+  const env = await sg40Env();
+  for (const id of ["a/b", ".", "..", "a".repeat(129), "a:b"]) {
+    const r = await sg40PostResult(env, `[HOMING-PIGEON] result ${id}\n\n{"exit_code":0}\n`);
+    assert.equal(r.status, 400, id.slice(0, 20));
+    assert.deepEqual(r.body, { error: "job id is not a safe id" }, id.slice(0, 20));
+  }
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 id route: an ack cannot name a slash id -- the route itself is a 404 and the record stays", async () => {
+  const env = await sg40Env();
+  sg40Map(env).set("job:a/b", { id: "a/b", envelope: "e", attempts: 0, leased_until: 0 });
+  const r = await worker.fetch(req("/t/alice/jobs/a/b/ack",
+    { method: "POST", token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 404);
+  assert.deepEqual(await r.json(), { error: "no such route" });
+  assert.ok(sg40Map(env).has("job:a/b"));
+  const r2 = await worker.fetch(req("/t/alice/results/a/b/ack",
+    { method: "POST", token: `Bearer ${SI}` }), env);
+  assert.equal(r2.status, 404);
+});
+
+test("shotgun40 id jobs: safe ids at the gate are kept under their own key -- dotted, dashed, underscored, 128 long", async () => {
+  const env = await sg40Env();
+  for (const id of ["ok.id_1", "...", "-", "_", "a".repeat(128)]) {
+    const r = await sg40PostJob(env, await signedJob(id));
+    assert.equal(r.status, 202, id.slice(0, 20));
+    assert.ok(sg40Map(env).has(`job:${id}`), id.slice(0, 20));
+  }
+});
+
+test("shotgun40 id results: safe ids at the gate are kept under their own key", async () => {
+  const env = await sg40Env();
+  for (const id of ["ok.id_1", "...", "-", "_", "a".repeat(128)]) {
+    const r = await sg40PostResult(env, `[HOMING-PIGEON] result ${id}\n\n{"exit_code":0}\n`);
+    assert.equal(r.status, 202, id.slice(0, 20));
+    assert.ok(sg40Map(env).has(`result:${id}`), id.slice(0, 20));
+  }
+});
+
+test("shotgun40 id precedence: the safe-id gate answers before the signature and the mismatch gates", async () => {
+  const env = await sg40Env();
+  // An unsigned body under an unsafe id: safe-id 400, not no-sig.
+  const r = await sg40PostJob(env, "[HOMING-PIGEON] job a/b\n\n{\"job_id\":\"a/b\"}\n");
+  assert.equal(r.status, 400);
+  assert.deepEqual(r.body, { error: "job id is not a safe id" });
+  assert.equal(sg40Map(env).size, 0);
+});
+
+// -- 14 subject-vs-signed-job_id tests (leg C) ---------------------------
+
+test("shotgun40 subject: a subject naming j2 for a body signed as j1 is a 400 mismatch and stores nothing", async () => {
+  const env = await sg40Env();
+  const r = await sg40PostJob(env, await sg40Signed("j2", sg40JobFields("j1")));
+  assert.equal(r.status, 400);
+  assert.deepEqual(r.body, { error: "job_id mismatch between subject and body" });
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 subject: a subject and signed body naming the same id are kept, envelope byte for byte", async () => {
+  const env = await sg40Env();
+  const text = await sg40Signed("j1", sg40JobFields("j1"));
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 202);
+  assert.equal(sg40Map(env).get("job:j1").envelope, text);
+});
+
+test("shotgun40 subject: the mismatch runs both ways -- a j1 subject for a body signed as j2 is a 400", async () => {
+  const env = await sg40Env();
+  const r = await sg40PostJob(env, await sg40Signed("j1", sg40JobFields("j2")));
+  assert.equal(r.status, 400);
+  assert.deepEqual(r.body, { error: "job_id mismatch between subject and body" });
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 subject field job_id absent: a signed payload with no job_id is a mismatch for a job", async () => {
+  const env = await sg40Env();
+  const fields = sg40JobFields("j1");
+  delete fields.job_id;
+  const r = await sg40PostJob(env, await sg40Signed("j1", fields));
+  assert.equal(r.status, 400);
+  assert.deepEqual(r.body, { error: "job_id mismatch between subject and body" });
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 subject field job_id numeric: 42, 0 and -1 in a signed payload are each a mismatch", async () => {
+  const env = await sg40Env();
+  for (const value of [42, 0, -1]) {
+    const r = await sg40PostJob(env, await sg40Signed("j1", sg40JobFields(value)));
+    assert.equal(r.status, 400, String(value));
+    assert.deepEqual(r.body, { error: "job_id mismatch between subject and body" }, String(value));
+  }
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 subject field job_id wrong type: null, boolean, object and array claims are each a mismatch", async () => {
+  const env = await sg40Env();
+  for (const value of [null, true, { id: "j1" }, ["j1"]]) {
+    const r = await sg40PostJob(env, await sg40Signed("j1", sg40JobFields(value)));
+    assert.equal(r.status, 400, JSON.stringify(value));
+    assert.deepEqual(r.body, { error: "job_id mismatch between subject and body" }, JSON.stringify(value));
+  }
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 subject precedence: an unsigned body is answered by the signature gate, before any mismatch reading", async () => {
+  const env = await sg40Env();
+  const r = await sg40PostJob(env, "[HOMING-PIGEON] job j1\n\n[{\"job_id\":\"j1\"}]\n");
+  assert.equal(r.status, 400);
+  assert.deepEqual(r.body, { error: "body carries no sig member" });
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 subject: a case-only difference between subject and signed job_id is a mismatch, both ways", async () => {
+  const env = await sg40Env();
+  assert.equal((await sg40PostJob(env, await sg40Signed("j1", sg40JobFields("J1")))).status, 400);
+  const env2 = await sg40Env();
+  assert.equal((await sg40PostJob(env2, await sg40Signed("J1", sg40JobFields("j1")))).status, 400);
+  assert.equal(sg40Map(env).size + sg40Map(env2).size, 0);
+});
+
+test("shotgun40 subject: a signed job_id padded with spaces or a tab is not the subject id", async () => {
+  const env = await sg40Env();
+  for (const value of [" j1", "j1 ", "\tj1", "j1\t", " j1 "]) {
+    const r = await sg40PostJob(env, await sg40Signed("j1", sg40JobFields(value)));
+    assert.equal(r.status, 400, JSON.stringify(value));
+    assert.deepEqual(r.body, { error: "job_id mismatch between subject and body" }, JSON.stringify(value));
+  }
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 subject: the signed payload governs -- its different id is refused past an unsigned prefix naming the subject", async () => {
+  const env = await sg40Env();
+  const signed = await sg40Signed("ignored", sg40JobFields("j2"));
+  const signedBody = signed.slice(signed.indexOf("\n\n") + 2).trim();
+  const text = `[HOMING-PIGEON] job j1\n\n{"job_id":"j1"}${signedBody}\n`;
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 400);
+  assert.deepEqual(r.body, { error: "job_id mismatch between subject and body" });
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 subject: the signed payload governs -- its matching id is kept past an unsigned prefix naming another id", async () => {
+  const env = await sg40Env();
+  const signed = await sg40Signed("ignored", sg40JobFields("j1"));
+  const signedBody = signed.slice(signed.indexOf("\n\n") + 2).trim();
+  const text = `[HOMING-PIGEON] job j1\n\n{"job_id":"evil"}${signedBody}\n`;
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 202);
+  assert.equal(sg40Map(env).get("job:j1").envelope, text);
+});
+
+test("shotgun40 subject: duplicate job_id keys in the signed payload read their last value, in both directions", async () => {
+  const payload = (first, last) =>
+    `{"v":1,"type":"job","job_id":"${first}","job_id":"${last}","kind":"exec","script":"echo hi"}`;
+  const env = await sg40Env();
+  const ok = await sg40PostJob(env, await sg40SignedRaw("j1", payload("j2", "j1")));
+  assert.equal(ok.status, 202);
+  assert.ok(sg40Map(env).has("job:j1"));
+  const env2 = await sg40Env();
+  const bad = await sg40PostJob(env2, await sg40SignedRaw("j1", payload("j1", "j2")));
+  assert.equal(bad.status, 400);
+  assert.equal(sg40Map(env2).size, 0);
+});
+
+test("shotgun40 subject: a mismatch bills nothing and blocks nothing -- the correct job for the same subject then lands", async () => {
+  const env = await sg40Env();
+  assert.equal((await sg40PostJob(env, await sg40Signed("j2", sg40JobFields("j1")))).status, 400);
+  assert.equal(sg40Map(env).size, 0);
+  const r = await sg40PostJob(env, await signedJob("j2"));
+  assert.equal(r.status, 202);
+  const hourKey = `quota:hour:${Math.floor(SG40_NOW / 3_600_000)}`;
+  assert.equal(sg40Map(env).get(hourKey), 1);
+});
+
+test("shotgun40 subject grammar: extra words, a Re: prefix and an uppercase JOB do not move the binding", async () => {
+  const env = await sg40Env();
+  const bodyOf = async (id) => {
+    const signed = await signedJob(id);
+    return signed.slice(signed.indexOf("\n\n") + 2);
+  };
+  const a = await sg40PostJob(env, `[HOMING-PIGEON] TEST job j1\n\n${await bodyOf("j1")}`);
+  assert.equal(a.status, 202);
+  const b = await sg40PostJob(env, `Re: [HOMING-PIGEON] job j2\n\n${await bodyOf("j2")}`);
+  assert.equal(b.status, 202);
+  const c = await sg40PostJob(env, `[HOMING-PIGEON] JOB j3\n\n${await bodyOf("j3")}`);
+  assert.equal(c.status, 202);
+  assert.ok(sg40Map(env).has("job:j1") && sg40Map(env).has("job:j2") && sg40Map(env).has("job:j3"));
+});
+
+// -- 8 bookend / run-length / injection sweeps ---------------------------
+
+test("shotgun40 bookends front: every ASCII symbol at the front of the subject id -- safe symbols kept, the rest a 400", async () => {
+  assert.equal(SG40_PUNCT.length, 32);
+  const safe = new Set([".", "-", "_"]);
+  for (const ch of SG40_PUNCT) {
+    const env = await sg40Env();
+    const id = `${ch}j1`;
+    const r = await sg40PostJob(env, await signedJob(id));
+    if (safe.has(ch)) {
+      assert.equal(r.status, 202, id);
+      assert.ok(sg40Map(env).has(`job:${id}`), id);
+    } else {
+      assert.equal(r.status, 400, id);
+      assert.deepEqual(r.body, { error: "job id is not a safe id" }, id);
+      assert.equal(sg40Map(env).size, 0, id);
+    }
+  }
+});
+
+test("shotgun40 bookends back: every ASCII symbol at the back of the subject id -- safe symbols kept, the rest a 400", async () => {
+  const safe = new Set([".", "-", "_"]);
+  for (const ch of SG40_PUNCT) {
+    const env = await sg40Env();
+    const id = `j1${ch}`;
+    const r = await sg40PostJob(env, await signedJob(id));
+    if (safe.has(ch)) {
+      assert.equal(r.status, 202, id);
+      assert.ok(sg40Map(env).has(`job:${id}`), id);
+    } else {
+      assert.equal(r.status, 400, id);
+      assert.deepEqual(r.body, { error: "job id is not a safe id" }, id);
+      assert.equal(sg40Map(env).size, 0, id);
+    }
+  }
+});
+
+test("shotgun40 bookends pairs: matched and mismatched pairs around the id follow the same safe-symbol rule", async () => {
+  const cases = [
+    ["..j1..", 202], ["--j1--", 202], ["__j1__", 202], ["-j1_", 202], ["_j1-", 202],
+    ["!!j1!!", 400], ["!j1~", 400], ["@@j1@@", 400], ["//j1//", 400], ["::j1::", 400],
+  ];
+  for (const [id, want] of cases) {
+    const env = await sg40Env();
+    const r = await sg40PostJob(env, await signedJob(id));
+    assert.equal(r.status, want, id);
+    assert.equal(sg40Map(env).has(`job:${id}`), want === 202, id);
+  }
+});
+
+test("shotgun40 bookends symbol-only: symbol-only ids of safe symbols are kept, of the rest refused", async () => {
+  for (const [id, want] of [["...", 202], ["---", 202], ["___", 202], ["-_-", 202],
+                            ["!!!", 400], ["$$$", 400], ["///", 400], ["@@@", 400], [SG40_PUNCT, 400]]) {
+    const env = await sg40Env();
+    const r = await sg40PostJob(env, await signedJob(id));
+    assert.equal(r.status, want, id);
+    assert.equal(sg40Map(env).has(`job:${id}`), want === 202, id);
+  }
+});
+
+test("shotgun40 controls: NUL and unit-separator ids are a safe-id 400; a tab or CR in the subject id splits it and mismatches", async () => {
+  const env = await sg40Env();
+  for (const id of ["a\0b", "a\x1fb"]) {
+    const r = await sg40PostJob(env, await signedJob(id));
+    assert.equal(r.status, 400, JSON.stringify(id));
+    assert.deepEqual(r.body, { error: "job id is not a safe id" }, JSON.stringify(id));
+  }
+  // A tab is a subject separator: the subject names "a", the signed
+  // body names the whole tabbed string -- a mismatch, not a store.
+  const tabbed = await sg40PostJob(env, await sg40Signed("a\tb", sg40JobFields("a\tb")));
+  assert.equal(tabbed.status, 400);
+  assert.deepEqual(tabbed.body, { error: "job_id mismatch between subject and body" });
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun40 runs: runs of the odd character as the whole id and after an ordinary prefix, lengths 1, 5, 10 and 100", async () => {
+  const env = await sg40Env();
+  const kept = [];
+  for (const n of [1, 5, 10, 100]) {
+    kept.push("-".repeat(n));
+    kept.push("a".repeat(10) + "-".repeat(n));
+    kept.push("-".repeat(n) + "a".repeat(10));
+    kept.push("a".repeat(5) + "-".repeat(n) + "a".repeat(5));
+  }
+  for (const id of kept) {
+    const r = await sg40PostJob(env, await signedJob(id));
+    assert.equal(r.status, 202, id.slice(0, 30));
+    assert.ok(sg40Map(env).has(`job:${id}`), id.slice(0, 30));
+  }
+  // Runs of an unsafe odd character are refused at every length.
+  for (const n of [1, 5, 10]) {
+    const env2 = await sg40Env();
+    const r = await sg40PostJob(env2, await signedJob("!".repeat(n) + "j1"));
+    assert.equal(r.status, 400, `run ${n}`);
+    assert.equal(sg40Map(env2).size, 0);
+  }
+  // The boundary run: 128 ordinary characters kept, 129 refused.
+  const env3 = await sg40Env();
+  assert.equal((await sg40PostJob(env3, await signedJob("a".repeat(128)))).status, 202);
+  const env4 = await sg40Env();
+  assert.equal((await sg40PostJob(env4, await signedJob("a".repeat(129)))).status, 400);
+});
+
+test("shotgun40 injection: injection-shaped ids are refused, __proto__ is an ordinary safe id, and a script payload is inert", async () => {
+  const env = await sg40Env();
+  const good = await signedJob("j1");
+  for (const id of ["a/b/../../etc", "..\\..\\windows", "j1;rm"]) {
+    const body = good.replace("[HOMING-PIGEON] job j1", `[HOMING-PIGEON] job ${id}`);
+    const r = await sg40PostJob(env, body);
+    assert.equal(r.status, 400, id);
+  }
+  assert.equal(sg40Map(env).size, 0);
+  const proto = await sg40PostJob(env, await signedJob("__proto__"));
+  assert.equal(proto.status, 202);
+  assert.ok(sg40Map(env).has("job:__proto__"));
+  assert.equal({}.polluted, undefined);
+  const script = await sg40PostJob(env, await signedJob("inj1", SECRET,
+    "'; DROP TABLE jobs; -- $(rm -rf /) `id`"));
+  assert.equal(script.status, 202);
+  assert.ok(sg40Map(env).get("job:inj1").envelope.includes("DROP TABLE"));
+});
+
+test("shotgun40 repeats: the same mismatched envelope posted 10 times is refused 10 times and stores nothing", async () => {
+  const env = await sg40Env();
+  const bad = await sg40Signed("j2", sg40JobFields("j1"));
+  for (let i = 0; i < 10; i++) {
+    const r = await sg40PostJob(env, bad);
+    assert.equal(r.status, 400, `try ${i}`);
+    assert.equal(sg40Map(env).size, 0, `try ${i}`);
+  }
+  const unsafe = (await signedJob("j1")).replace("[HOMING-PIGEON] job j1", "[HOMING-PIGEON] job a/b");
+  for (let i = 0; i < 3; i++) {
+    assert.equal((await sg40PostJob(env, unsafe)).status, 400, `unsafe try ${i}`);
+  }
+  assert.equal(sg40Map(env).size, 0);
 });
 
 });
