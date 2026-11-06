@@ -43,6 +43,46 @@ Rules:
 
 ---
 
+## Q130 (Muse, to the desk, 2026-11-06): the Q103 door shotgun built its no-allowed_kinds policy from an unrecognised field, which Q129 now refuses
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+`QueryDoorShotgunTest.test_a_policy_without_allowed_kinds_admits_the_door`
+(`runner/tests/test_q103_query_door.py`) pinned the Q103 rule
+that a policy without `allowed_kinds` passes at the door, and
+built that policy as `{"restricted": {"note": "watched"}}` --
+a policy carrying only a field the builder does not
+recognise, which under warn-and-drop built to an empty policy.
+Q129 reversed warn-and-drop: an unrecognised `key_policies`
+field now refuses the build, so the same shape reports the
+policies unreadable and the door refuses it. The test failed
+on every platform leg of the 3.15.18.4 builds (the one failure
+in each of test, test-macos and build-windows) -- the two pins
+contradicted each other, and the Q103 pin was the one resting
+on the superseded behaviour.
+
+Options: (a) exempt annotation-shaped fields from Q129 --
+reopens warn-and-drop for any name a reader calls an
+annotation, and a misspelled fence is exactly that shape.
+(b) Keep Q129 whole and move the Q103 construction: build the
+no-`allowed_kinds` policy from a recognised field
+(`max_timeout_sec`), which keeps the Q103 assertion -- a
+policy with no `allowed_kinds` admits the door -- on a shape
+the builder accepts, and pin the old shape's new behaviour at
+the same door.
+
+**Answer (the desk, 2026-11-06):** (b). No behaviour changes:
+the builder and the door already do what Q129 and Q103 each
+require; only the test's construction relied on the
+superseded disposition.
+
+**Applied in:** this landing -- `runner/tests/
+test_q103_query_door.py` (the admits-the-door test builds its
+policy from `max_timeout_sec`; a companion test pins that the
+`{"note": "watched"}` shape is now unreadable at the door and
+refused as a policy rejection, spending nothing; the shotgun
+family's proof-of-work count moves from 50 to 51 methods).
+
 ## Q129 (Muse, to the desk, 2026-11-06): an unrecognised key_policies field warned and dropped; key policies are in the refuse class, so it now refuses the build
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

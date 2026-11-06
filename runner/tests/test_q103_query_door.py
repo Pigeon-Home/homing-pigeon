@@ -210,8 +210,8 @@ class QueryDoorShotgunTest(_Door):
     shapes at both ends of the window and past both bounds,
     and query ids carried at the bookends of two keys' traffic.
 
-    Proof of work. The unit tests are the 50 methods of this
-    class: 34 hand-written seams plus 16 generated
+    Proof of work. The unit tests are the 51 methods of this
+    class: 35 hand-written seams plus 16 generated
     check_door_policy tests. The fuzzing was executed, not
     just the tests written: runner/tools/de_dust_corpus.py grow
     --target query --rounds 400 --seed 20261153 against the
@@ -363,10 +363,37 @@ class QueryDoorShotgunTest(_Door):
         self.assertEqual(0, self._spent())
 
     def test_a_policy_without_allowed_kinds_admits_the_door(self):
+        # The policy carries a recognised field but no
+        # allowed_kinds, so no door is fenced off. It used to
+        # carry only {"note": "watched"}: an unrecognised field
+        # built to an empty policy under warn-and-drop, but
+        # Q129 (2026-11-06) put key policies in the refuse
+        # class -- an unrecognised field now refuses the build
+        # (see the companion test below) -- so the
+        # no-allowed_kinds shape is built from a field the
+        # builder recognises.
         self._record(key="restricted")
-        self.cfg["key_policies"] = {"restricted": {"note": "watched"}}
+        self.cfg["key_policies"] = {
+            "restricted": {"max_timeout_sec": 300}}
         reply = self._ask(EXTRA_SECRET, "restricted", "sg52-18")
         self.assertNotIn("rejected", reply)
+
+    def test_a_policy_with_an_unrecognised_field_is_unreadable(self):
+        # Q129 at this door: a policy carrying a field the
+        # builder does not recognise does not silently build to
+        # a smaller policy; check_door_policy reports the
+        # policies unreadable and the query is refused as a
+        # policy rejection, spending nothing.
+        self._record(key="restricted")
+        self.cfg["key_policies"] = {"restricted": {"note": "watched"}}
+        why = V2.check_door_policy(
+            self.cfg, self.secrets, "restricted", "query")
+        self.assertIsNotNone(why)
+        self.assertIn("unreadable", why)
+        self.assertIn("note", why)
+        reply = self._ask(EXTRA_SECRET, "restricted", "sg52-18b")
+        self.assertEqual("policy", reply.get("rejected"))
+        self.assertEqual(0, self._spent())
 
     def test_an_allowed_kinds_that_is_not_a_list_is_unreadable(self):
         self._record(key="restricted")
