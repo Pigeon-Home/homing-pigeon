@@ -1693,3 +1693,559 @@ def _make_mode_tests():
 
 
 _make_mode_tests()
+
+
+class ClientRestartFlightShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 44: a client restart
+    did not drop the old client's flight (dtls_session; fixed
+    d27e7e63, 30-Oct-2026). In the corpus reader's session
+    interpreter (runner/tools/de_dust_corpus.py _SessionRun),
+    a second start at an index already held replaced the core
+    but left the old client's datagrams in flight, and the
+    server's session for that address was judged against the
+    new core, so a retransmitted Finished read as "established
+    before Finished" and four records banked as crashes. A
+    restart now drops that index's queued datagrams in both
+    directions and marks the old session as replaced, so its
+    established events are no longer judged against the new
+    core. This family scattershots everything around that
+    failure: restarts at every point of the handshake, the
+    other client's flight and sessions, restarts that are not
+    restarts at all (an invalid key, ticket or index returns
+    before anything is dropped), the exact no-op shapes, and
+    full scripts through the checker. The fix's own commit
+    touched only runner/tools/de_dust_corpus.py, so the family
+    lives here, driving _SessionRun's own seams and the
+    dtls_session checker through B. One regression test was
+    never going to be enough for a bug that took days of CPU
+    to find.
+
+    Per-field enumeration: the restart is one step, and every
+    field that step reads gets its own generated test -- op,
+    c (the client index), key, ticket, and the script and
+    step containers the interpreter reads them from. The
+    remaining step kinds are enumerated where they touch the
+    restart: deliver carries the flights the restart drops,
+    rebind moves the address the session is judged by, and
+    app is the data a restarted client must not inherit.
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: the step's text values
+    -- op, key and ticket -- get bookended variants: all 32
+    printable ASCII symbols (string.punctuation) at the front
+    and at the back, as singles, matched pairs, mismatched
+    pairs and symbol-only strings, plus NUL, tab, CR and LF at
+    both ends (a bookended value is not the value, so none of
+    them restart anything); and run lengths: runs of the odd
+    character, runs of ordinary characters with the odd one
+    at the front, the back and the middle, and a run of ten
+    restarts in a row, each dropping the last.
+
+    Proof of work (6-Nov-2026). The unit tests are the 50
+    methods of this class: 28 hand-written seams, 6 generated
+    per-field tests, 12 bookend sweeps and 4 run-length
+    sweeps. The fuzzing was executed, not just the tests
+    written: runner/tools/de_dust_corpus.py grow --target
+    dtls_session --rounds 400 --seed 20261145, run locally
+    against the banked dtls_session corpus (39 entries).
+    Result: 400 rounds, 0 crashes, 0 slow, arcs unchanged at
+    1235, slowest try 4981 ms; the stale-flight shape did not
+    recur. The grow's bookkeeping writes were reverted and
+    are not banked (banking is the rigs' hourly job); this
+    record is the run's proof. None of this is exotic: it is
+    combinatorics -- systematically trying the combinations
+    a hand-written list would never reach, then pinning each
+    answer as a test."""
+
+    # -- helpers --
+
+    @staticmethod
+    def _d(**kw):
+        return dict(op="deliver", **kw)
+
+    @classmethod
+    def _hs(cls, c=0, **start_kw):
+        step = dict(op="start", c=c, **start_kw)
+        return [step, cls._d(), cls._d(dir="s2c"), cls._d(),
+                cls._d(dir="s2c")]
+
+    @staticmethod
+    def _drive(run, steps):
+        # The interpreter's own dispatch, one step at a time,
+        # so a run can be stopped mid-script and inspected.
+        for step in steps:
+            if not isinstance(step, dict) \
+                    or not isinstance(step.get("op"), str):
+                continue
+            fn = run.OPS.get(step["op"])
+            if fn is not None:
+                fn(run, step)
+
+    @classmethod
+    def _started(cls, c=0, **start_kw):
+        run = B._SessionRun([])
+        cls._drive(run, [dict(op="start", c=c, **start_kw)])
+        return run
+
+    @classmethod
+    def _handshaken(cls, c=0):
+        run = B._SessionRun([])
+        cls._drive(run, cls._hs(c))
+        return run
+
+    @staticmethod
+    def _check(script):
+        entry = B.make_entry("payload", script, "shotgun", "shotgun")
+        return B._with_rig(lambda: B.check("dtls_session", entry))
+
+    def _assert_no_restart(self, run, step):
+        core = run.clients[0]["core"]
+        c2s, s2c = list(run.c2s), list(run.s2c)
+        self._drive(run, [step])
+        self.assertIs(run.clients[0]["core"], core, step)
+        self.assertEqual(run.c2s, c2s, step)
+        self.assertEqual(run.s2c, s2c, step)
+
+    # -- hand-written seams --
+
+    def test_restart_drops_the_old_clients_c2s_flight(self):
+        run = self._started()
+        run.c2s.append((0, b"old-flight-sentinel"))
+        old = list(run.c2s)
+        core = run.clients[0]["core"]
+        self._drive(run, [dict(op="start", c=0)])
+        self.assertIsNot(run.clients[0]["core"], core)
+        self.assertEqual(len(run.c2s), 1)
+        self.assertNotIn((0, b"old-flight-sentinel"), run.c2s)
+        self.assertNotEqual(run.c2s, old)
+
+    def test_restart_drops_the_old_clients_s2c_flight(self):
+        run = self._started()
+        self._drive(run, [self._d()])
+        self.assertEqual(len(run.s2c), 1)
+        run.s2c.append((0, b"old-server-sentinel"))
+        self._drive(run, [dict(op="start", c=0)])
+        self.assertEqual(run.s2c, [])
+        self.assertEqual(len(run.c2s), 1)
+
+    def test_restart_keeps_the_other_clients_flight(self):
+        run = self._started()
+        self._drive(run, [dict(op="start", c=1)])
+        run.c2s.append((1, b"other-c2s"))
+        run.s2c.append((1, b"other-s2c"))
+        self._drive(run, [dict(op="start", c=0)])
+        self.assertIn((1, b"other-c2s"), run.c2s)
+        self.assertIn((1, b"other-s2c"), run.s2c)
+        self.assertEqual([j for j, _dg in run.c2s].count(1), 2)
+        self.assertEqual([j for j, _dg in run.s2c].count(1), 1)
+
+    def test_restart_replaces_the_core_and_resets_its_state(self):
+        run = self._handshaken()
+        old = run.clients[0]["core"]
+        self.assertEqual(old.state, "established")
+        self.assertTrue(old.finished_sent)
+        self._drive(run, [dict(op="start", c=0)])
+        new = run.clients[0]["core"]
+        self.assertIsNot(new, old)
+        self.assertNotEqual(new.state, "established")
+        self.assertFalse(new.finished_sent)
+
+    def test_restart_after_a_partial_flight_drops_the_real_datagram(self):
+        run = self._started()
+        self._drive(run, [self._d(), self._d(dir="s2c")])
+        self.assertEqual([len(dg) for _j, dg in run.c2s], [290])
+        old = list(run.c2s)
+        self._drive(run, [dict(op="start", c=0)])
+        self.assertEqual([len(dg) for _j, dg in run.c2s], [220])
+        self.assertNotEqual(run.c2s, old)
+
+    def test_restart_marks_the_old_server_session_replaced(self):
+        run = self._handshaken()
+        cid = list(run.server.sessions)[0]
+        self._drive(run, [dict(op="start", c=0)])
+        self.assertIn(cid, run.replaced)
+        self.assertEqual(run.begun[cid], (0, None))
+
+    def test_a_replaced_sessions_established_event_is_skipped(self):
+        run = self._handshaken()
+        cid = list(run.server.sessions)[0]
+        self._drive(run, [dict(op="start", c=0)])
+        run.server.events.append(
+            ("established", cid, {"addr": B._SESSION_ADDRS[0]}))
+        run._check_events()     # the old Finished, retransmitted:
+        # judged before the fix, skipped now -- no Crash.
+        self.assertEqual(run.seen_events, len(run.server.events))
+
+    def test_an_unreplaced_established_before_finished_is_a_crash(self):
+        # The control for the skip above: the same shape of
+        # event for a session nobody replaced is the original
+        # contract crash, word for word.
+        run = self._started()
+        run.server.events.append(
+            ("established", b"fake-cid",
+             {"addr": B._SESSION_ADDRS[0]}))
+        with self.assertRaises(B.Crash) as cm:
+            run._check_events()
+        self.assertEqual(cm.exception.kind, "contract")
+        self.assertIn("before the client sent Finished",
+                      cm.exception.detail)
+
+    def test_restart_with_no_server_session_marks_nothing(self):
+        run = self._started()
+        self._drive(run, [dict(op="start", c=0)])
+        self.assertEqual(run.replaced, set())
+        self.assertEqual(run.begun, {})
+
+    def test_restart_of_the_other_index_marks_nothing(self):
+        run = self._handshaken()
+        begun = dict(run.begun)
+        self._drive(run, [dict(op="start", c=1),
+                          dict(op="start", c=1)])
+        self.assertEqual(run.replaced, set())
+        self.assertEqual(run.begun, begun)
+
+    def test_double_restart_marks_the_session_once(self):
+        run = self._handshaken()
+        cid = list(run.server.sessions)[0]
+        self._drive(run, [dict(op="start", c=0),
+                          dict(op="start", c=0)])
+        self.assertEqual(run.replaced, {cid})
+        self.assertEqual(run.begun[cid], (0, None))
+
+    def test_restart_does_not_remove_the_server_session(self):
+        run = self._handshaken()
+        cid, sess = list(run.server.sessions.items())[0]
+        self._drive(run, [dict(op="start", c=0)])
+        self.assertIs(run.server.sessions[cid], sess)
+
+    def test_restart_after_rebind_still_marks_the_session(self):
+        run = self._handshaken()
+        cid = list(run.server.sessions)[0]
+        self._drive(run, [dict(op="rebind", c=0),
+                          dict(op="start", c=0)])
+        self.assertIn(cid, run.replaced)
+
+    def test_restart_then_a_fresh_handshake_is_accepted(self):
+        self.assertEqual(self._check(self._hs() + self._hs()),
+                         "accepted")
+
+    def test_restart_before_any_delivery_then_handshake_accepted(self):
+        script = [dict(op="start", c=0), dict(op="start", c=0),
+                  self._d(), self._d(dir="s2c"), self._d(),
+                  self._d(dir="s2c")]
+        self.assertEqual(self._check(script), "accepted")
+
+    def test_restart_after_the_server_flight_then_handshake_accepted(self):
+        script = [dict(op="start", c=0), self._d(),
+                  dict(op="start", c=0), self._d(),
+                  self._d(dir="s2c"), self._d(), self._d(dir="s2c")]
+        self.assertEqual(self._check(script), "accepted")
+
+    def test_restart_after_the_client_flight_then_handshake_accepted(self):
+        script = [dict(op="start", c=0), self._d(),
+                  self._d(dir="s2c"), dict(op="start", c=0),
+                  self._d(), self._d(dir="s2c"), self._d(),
+                  self._d(dir="s2c")]
+        self.assertEqual(self._check(script), "accepted")
+
+    def test_a_wrong_key_restart_drops_the_good_flight(self):
+        run = self._started()
+        self._drive(run, [dict(op="start", c=0, key="wrong")])
+        self.assertEqual(run.clients[0]["key"], "wrong")
+        script = [dict(op="start", c=0),
+                  dict(op="start", c=0, key="wrong"), self._d(),
+                  self._d(dir="s2c"), self._d(), self._d(dir="s2c")]
+        self.assertEqual(self._check(script), "refused")
+
+    def test_a_good_restart_replaces_a_wrong_key_client(self):
+        run = self._started(key="wrong")
+        self._drive(run, [dict(op="start", c=0)])
+        self.assertEqual(run.clients[0]["key"], "")
+        script = [dict(op="start", c=0, key="wrong")] + self._hs()[0:1] \
+            + self._hs()[1:]
+        self.assertEqual(self._check(script), "accepted")
+
+    def test_an_old_key_client_restarted_to_the_default_key(self):
+        run = self._started(key="old")
+        self._drive(run, [dict(op="start", c=0)])
+        self.assertEqual(run.clients[0]["key"], "")
+        script = [dict(op="start", c=0, key="old")] + self._hs()
+        # The first start is the old-key client; the script's
+        # own start replaces it, and the handshake completes.
+        self.assertEqual(self._check(script), "accepted")
+
+    def test_restart_with_a_live_ticket_after_establishment_accepted(self):
+        script = self._hs() + [dict(op="start", c=0, ticket="live"),
+                               self._d(), self._d(dir="s2c"),
+                               self._d(), self._d(dir="s2c")]
+        self.assertEqual(self._check(script), "accepted")
+
+    def test_an_invalid_key_restart_is_a_no_op(self):
+        run = self._started()
+        self._assert_no_restart(run, dict(op="start", c=0, key="bogus"))
+
+    def test_an_invalid_ticket_restart_is_a_no_op(self):
+        run = self._started()
+        self._assert_no_restart(
+            run, dict(op="start", c=0, ticket="nosuch"))
+
+    def test_a_self_ticket_restart_is_a_no_op(self):
+        run = self._handshaken()
+        core = run.clients[0]["core"]
+        c2s = list(run.c2s)
+        self._drive(run, [dict(op="start", c=0, ticket="own:0")])
+        self.assertIs(run.clients[0]["core"], core)
+        self.assertEqual(run.c2s, c2s)
+
+    def test_a_ticket_naming_no_source_is_a_no_op(self):
+        run = self._started()
+        for ticket in ("own:9", "own:x", "own:", "own:-1"):
+            self._assert_no_restart(
+                run, dict(op="start", c=1, ticket=ticket))
+        self.assertNotIn(1, run.clients)
+
+    def test_restart_indices_out_of_range_are_a_no_op(self):
+        run = self._started()
+        for c in (2, -1, True, False, "0", 0.0, None):
+            core = run.clients[0]["core"]
+            self._drive(run, [dict(op="start", c=c)])
+            self.assertIs(run.clients[0]["core"], core, repr(c))
+            self.assertEqual(list(run.clients), [0], repr(c))
+
+    def test_bookended_app_data_still_flies_after_a_restart(self):
+        run = self._handshaken()
+        self._drive(run, [dict(op="start", c=0)])
+        self._drive(run, self._hs()[1:])
+        # The restarted client established again; its app data
+        # is its own, bookends and all, one datagram per call.
+        self.assertEqual(run.clients[0]["core"].state, "established")
+        for symbol in string.punctuation:
+            before = len(run.c2s)
+            self._drive(run, [dict(op="app", c=0,
+                                   data=symbol + "job" + symbol)])
+            self.assertEqual(len(run.c2s), before + 1, symbol)
+
+    def test_restarts_at_both_indices_each_drop_only_their_own(self):
+        run = self._started()
+        self._drive(run, [dict(op="start", c=1)])
+        run.c2s.append((0, b"zero-flight"))
+        run.c2s.append((1, b"one-flight"))
+        self._drive(run, [dict(op="start", c=1)])
+        self.assertIn((0, b"zero-flight"), run.c2s)
+        self.assertNotIn((1, b"one-flight"), run.c2s)
+        self._drive(run, [dict(op="start", c=0)])
+        self.assertNotIn((0, b"zero-flight"), run.c2s)
+
+    # -- the bookend rule: the whole symbol table, both ends --
+
+    def test_bookend_front_symbols_on_op_do_not_restart(self):
+        run = self._started()
+        for symbol in string.punctuation:
+            self._assert_no_restart(
+                run, dict(op=symbol + "start", c=0))
+
+    def test_bookend_back_symbols_on_op_do_not_restart(self):
+        run = self._started()
+        for symbol in string.punctuation:
+            self._assert_no_restart(
+                run, dict(op="start" + symbol, c=0))
+
+    def test_bookend_matched_pairs_on_op_do_not_restart(self):
+        run = self._started()
+        for symbol in string.punctuation:
+            self._assert_no_restart(
+                run, dict(op=symbol + "start" + symbol, c=0))
+
+    def test_bookend_mismatched_pairs_on_op_do_not_restart(self):
+        run = self._started()
+        symbols = string.punctuation
+        rotated = symbols[1:] + symbols[:1]
+        for front, back in zip(symbols, rotated):
+            self._assert_no_restart(
+                run, dict(op=front + "start" + back, c=0))
+
+    def test_symbol_only_and_nonprinting_ops_do_not_restart(self):
+        run = self._started()
+        for op in list(string.punctuation) + [
+                "\x00start", "start\x00", "\tstart", "start\r\n",
+                "\x00", "\n"]:
+            self._assert_no_restart(run, dict(op=op, c=0))
+
+    def test_bookend_front_symbols_on_key_do_not_restart(self):
+        run = self._started()
+        for symbol in string.punctuation:
+            self._assert_no_restart(
+                run, dict(op="start", c=0, key=symbol + "old"))
+
+    def test_bookend_back_symbols_on_key_do_not_restart(self):
+        run = self._started()
+        for symbol in string.punctuation:
+            self._assert_no_restart(
+                run, dict(op="start", c=0, key="old" + symbol))
+
+    def test_bookend_pairs_on_key_do_not_restart(self):
+        run = self._started()
+        symbols = string.punctuation
+        rotated = symbols[1:] + symbols[:1]
+        for symbol in string.punctuation:
+            self._assert_no_restart(
+                run, dict(op="start", c=0,
+                          key=symbol + "old" + symbol))
+        for front, back in zip(symbols, rotated):
+            self._assert_no_restart(
+                run, dict(op="start", c=0, key=front + "old" + back))
+
+    def test_symbol_only_and_nonprinting_keys_do_not_restart(self):
+        run = self._started()
+        for key in list(string.punctuation) + [
+                "\x00old", "old\x00", "\told", "old\r\n", "\x00"]:
+            self._assert_no_restart(
+                run, dict(op="start", c=0, key=key))
+
+    def test_bookend_front_symbols_on_ticket_do_not_restart(self):
+        run = self._started()
+        for symbol in string.punctuation:
+            self._assert_no_restart(
+                run, dict(op="start", c=0, ticket=symbol + "live"))
+
+    def test_bookend_back_symbols_on_ticket_do_not_restart(self):
+        run = self._started()
+        for symbol in string.punctuation:
+            self._assert_no_restart(
+                run, dict(op="start", c=0, ticket="live" + symbol))
+
+    def test_bookend_pairs_and_nonprinting_on_ticket_do_not_restart(self):
+        run = self._started()
+        symbols = string.punctuation
+        rotated = symbols[1:] + symbols[:1]
+        variants = ([s + "live" + s for s in symbols]
+                    + [f + "live" + b for f, b in zip(symbols, rotated)]
+                    + list(symbols)
+                    + ["\x00live", "live\x00", "\tlive", "live\r\n"])
+        for ticket in variants:
+            self._assert_no_restart(
+                run, dict(op="start", c=0, ticket=ticket))
+
+    # -- run lengths: counts, not just characters --
+
+    def test_runs_in_op_do_not_restart(self):
+        run = self._started()
+        for op in ("start" + "t" * 10, "s" * 10 + "tart",
+                   "sta" + "r" * 10 + "t", ";" * 10,
+                   "s" * 5 + ";" + "tart"):
+            self._assert_no_restart(run, dict(op=op, c=0))
+
+    def test_runs_in_key_do_not_restart(self):
+        run = self._started()
+        for key in ("old" + "d" * 10, "o" * 10 + "ld",
+                    "ol" + "l" * 10 + "d", ";" * 10):
+            self._assert_no_restart(
+                run, dict(op="start", c=0, key=key))
+        # The exact value at the end of the sweep still restarts.
+        core = run.clients[0]["core"]
+        self._drive(run, [dict(op="start", c=0, key="old")])
+        self.assertIsNot(run.clients[0]["core"], core)
+
+    def test_runs_in_ticket_do_not_restart(self):
+        run = self._started()
+        for ticket in ("live" + "e" * 10, "l" * 10 + "ive",
+                       "li" + "v" * 10 + "e", ";" * 10):
+            self._assert_no_restart(
+                run, dict(op="start", c=0, ticket=ticket))
+        core = run.clients[0]["core"]
+        self._drive(run, [dict(op="start", c=0, ticket="live")])
+        self.assertIsNot(run.clients[0]["core"], core)
+
+    def test_a_run_of_ten_restarts_drops_nine_flights(self):
+        run = self._started()
+        cores = [run.clients[0]["core"]]
+        for _ in range(10):
+            self._drive(run, [dict(op="start", c=0)])
+            cores.append(run.clients[0]["core"])
+            self.assertEqual(len(run.c2s), 1)
+        self.assertEqual(len({id(c) for c in cores}), 11)
+        script = [dict(op="start", c=0)] * 10 + self._hs()
+        self.assertEqual(self._check(script), "accepted")
+
+
+def _make_restart_field_tests():
+    """One generated test per field the restart step reads."""
+    cls = ClientRestartFlightShotgunTest
+
+    def field_op(self):
+        run = cls._started()
+        for op in ("start",):
+            core = run.clients[0]["core"]
+            cls._drive(run, [dict(op=op, c=0)])
+            self.assertIsNot(run.clients[0]["core"], core, op)
+        for op in ("Start", " start", "start ", "restart", "",
+                   "rotate", "rebind", 7, None):
+            self._assert_no_restart(run, dict(op=op, c=0))
+
+    def field_c(self):
+        run = B._SessionRun([])
+        cls._drive(run, [dict(op="start", c=0)])
+        cls._drive(run, [dict(op="start", c=1)])
+        self.assertEqual(sorted(run.clients), [0, 1])
+        self.assertEqual(run.clients[0]["addr"], B._SESSION_ADDRS[0])
+        self.assertEqual(run.clients[1]["addr"], B._SESSION_ADDRS[1])
+        for c in (2, -1, True, "0", 0.0, None):
+            cls._drive(run, [dict(op="start", c=c)])
+            self.assertEqual(sorted(run.clients), [0, 1], repr(c))
+        # A missing c defaults to client 0: a restart of it.
+        core = run.clients[0]["core"]
+        cls._drive(run, [dict(op="start")])
+        self.assertIsNot(run.clients[0]["core"], core)
+
+    def field_key(self):
+        for key, want in (("", ""), ("old", "old"),
+                          ("wrong", "wrong")):
+            run = cls._started(key=key)
+            self.assertEqual(run.clients[0]["key"], want, key)
+        for key in ("bogus", "Old", "OLD", 123, None, ["old"]):
+            run = B._SessionRun([])
+            cls._drive(run, [dict(op="start", c=0, key=key)])
+            self.assertEqual(run.clients, {}, repr(key))
+        # An absent key is the default key.
+        run = B._SessionRun([])
+        cls._drive(run, [dict(op="start", c=0)])
+        self.assertEqual(run.clients[0]["key"], "")
+
+    def field_ticket(self):
+        for ticket, ok in (("live", True), ("gone", False),
+                           ("unrecorded", False)):
+            run = cls._started(ticket=ticket)
+            self.assertEqual(run.clients[0]["key"], "ticket", ticket)
+            self.assertEqual(run.clients[0]["ticket_ok"], ok, ticket)
+        # A non-string ticket is no ticket at all: the key path
+        # runs and a plain client starts.
+        for ticket in (7, None, ["live"], {"t": 1}):
+            run = cls._started(ticket=ticket)
+            self.assertEqual(run.clients[0]["key"], "", repr(ticket))
+        # An unknown ticket name starts nothing.
+        run = B._SessionRun([])
+        cls._drive(run, [dict(op="start", c=0, ticket="bogus")])
+        self.assertEqual(run.clients, {})
+
+    def field_script(self):
+        self.assertEqual(self._check(self._hs()), "accepted")
+        for script in ({"op": "start", "c": 0}, "start", None, 7,
+                       tuple(self._hs())):
+            self.assertEqual(self._check(script), "refused",
+                             repr(script)[:40])
+
+    def field_step(self):
+        script = [7, "start", None, {"op": 7}, {"no_op": 1}] \
+            + self._hs()
+        self.assertEqual(self._check(script), "accepted")
+        run = B._SessionRun(script)
+        result = B._with_rig(run.run)
+        self.assertEqual(result, "accepted")
+        self.assertEqual(run.steps, 5)
+
+    for name, fn in list(locals().items()):
+        if name.startswith("field_"):
+            setattr(ClientRestartFlightShotgunTest, "test_" + name, fn)
+
+
+_make_restart_field_tests()

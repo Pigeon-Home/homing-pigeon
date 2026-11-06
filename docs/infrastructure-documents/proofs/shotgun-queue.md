@@ -1279,7 +1279,29 @@ Applied to every item on this queue, item 1 included:
 - Fixed: d27e7e63 (30-Oct-2026)
 - Area: DTLS session handling in the corpus reader
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (ClientRestartFlightShotgunTest
+  in test_de_dust_corpus.py): restarts at every point of the
+  handshake dropping the old flight in both directions, the
+  old server session marked replaced and its established
+  events skipped (with the unreplaced "established before
+  Finished" shape pinned as the control crash), the other
+  client's flight untouched, and the restarts that are not
+  restarts at all — an invalid key, ticket or index returns
+  before anything is dropped; the class runs green (50 tests,
+  0 skipped), no live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  — the restart is one step, and every field it reads (op, c,
+  key, ticket, and the script and step containers) gets its
+  own generated test (6 per-field tests, beside 28
+  hand-written seams, 12 bookend sweeps and 4 run-length
+  sweeps carried in the class docstring in the repo). Fuzz
+  executed: runner/tools/de_dust_corpus.py grow --target
+  dtls_session --rounds 400 --seed 20261145, run locally
+  against the banked dtls_session corpus (39 entries).
+  Result: 400 rounds, 0 crashes, 0 slow, arcs unchanged at
+  1235, slowest try 4981 ms — the stale-flight shape did not
+  recur. The grow's bookkeeping writes were reverted and are
+  not banked (banking is the rigs' hourly job).
 
 ### 45. Q122: the parallel grow did not drain its children; two crash families (race_state, v2_mail) were the grow's own
 - Fixed: 5b068aff (30-Oct-2026)
