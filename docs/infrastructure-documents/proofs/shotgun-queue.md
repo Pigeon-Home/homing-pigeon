@@ -1410,7 +1410,27 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 1fa6d626 (27-Oct-2026)
 - Area: runner/cloud/send_job.py, runner/ops/exec.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (InlineOutputsShotgunTest in
+  test_q101_files_edges.py, the file where the fix's own tests
+  live): the canonical and non-canonical base64 tables, strict
+  padding and alphabet refusals, traversal and device output
+  names, symlink plants at every depth, digest shapes, and the
+  duplicate-name leg. The file runs green (57 tests in the
+  file, 0 skipped), no live bug exposed, no production code
+  changed.
+- Proof of work (per the method section): per-field enumeration
+  (name, content_b64 and sha384 each pinned separately, the
+  size field pinned as inert, the max_output_file_bytes reading
+  table), the bookend sweeps (every printable ASCII symbol and
+  NUL, tab, CR and LF at both ends of a canonical string,
+  symbol-only strings) and the run-length sweeps are carried in
+  the class docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target cloud --rounds
+  400 --seed 20261150, run locally against the banked cloud
+  corpus (113 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 184, slowest try 1515 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 50. Q105: the queue client broke on a dropped connection and a cut-short read
 - Fixed: c4df30c7 (27-Oct-2026)
