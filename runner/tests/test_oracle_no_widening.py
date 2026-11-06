@@ -125,29 +125,31 @@ class NoWideningTest(unittest.TestCase):
         job = _payload("nw-repair", kind="exec",
                        script="echo ran > marker.txt",
                        interpreter=[MISSING], key_id=KEY)
-        executed, _audit, sent, tmpdir = drive(cfg, job, KEY_SECRET)
-        marker = os.path.join(tmpdir, "work", "nw-repair",
-                              "marker.txt")
-        self.assertFalse(os.path.exists(marker),
-                         "the repaired job ran under a policy "
-                         "that does not allow its interpreter")
+        _executed, _audit, sent, _tmpdir = drive(cfg, job,
+                                                 KEY_SECRET)
         bodies = " ".join(body for _subj, body in sent)
         self.assertIn("re-judgment", bodies)
+        # The witness is the result the runner sent, not a file
+        # in the job's workspace: since the temp-reaping work
+        # (2026-11-06) execute_job reaps the workspace on every
+        # path out, so the marker the script would have written
+        # is gone either way and its absence proves nothing. A
+        # job refused on re-judgment reports exit_code -2 and
+        # repaired false in the result it sends, and its
+        # opinion note says the job as received was not run.
+        self.assertIn('"exit_code":-2', bodies)
+        self.assertIn('"repaired":false', bodies)
+        self.assertIn("The job as received was not run", bodies)
         # Control: a policy that also allows the platform
-        # default repairs and runs the very same job. The run
-        # is observed through the sent result, not the job's
-        # workspace: since the temp-reaping work (2026-11-06)
-        # execute_job reaps the workspace on every path out,
-        # so a marker file written there no longer survives
-        # to be read back (the reap is pinned in
-        # runner/tests/test_temp_reap.py).
+        # default repairs and runs the very same job, observed
+        # through the same channel.
         cfg2 = key_cfg(allowed_interpreters=[[MISSING],
                                              platform_interpreter()])
         job2 = _payload("nw-repair-ok", kind="exec",
                         script="echo ran",
                         interpreter=[MISSING], key_id=KEY)
-        executed2, _a2, sent2, tmpdir2 = drive(cfg2, job2,
-                                               KEY_SECRET)
+        executed2, _a2, sent2, _tmpdir2 = drive(cfg2, job2,
+                                                KEY_SECRET)
         self.assertTrue(executed2,
                         "the control job sent no result")
         bodies2 = " ".join(body for _subj, body in sent2)
@@ -155,6 +157,11 @@ class NoWideningTest(unittest.TestCase):
         self.assertIn("ran", bodies2,
                       "the control job's output is not in its "
                       "result: it was not repaired and run")
+        # The same channel, the other direction: the control
+        # job's result reports exit_code 0 and repaired true --
+        # it was repaired AND it ran.
+        self.assertIn('"exit_code":0', bodies2)
+        self.assertIn('"repaired":true', bodies2)
 
     def test_a_model_note_never_changes_an_outcome(self):
         cfg = {"oracle_mode": "llm",

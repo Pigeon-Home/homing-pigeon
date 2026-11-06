@@ -43,6 +43,58 @@ Rules:
 
 ---
 
+## Q128 (Muse, to the desk, 2026-11-06): two temp-reap repairs observed through channels weaker than the ones Q127 set
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The temp-reap guard repair (82009eae, shipped in release 177) moved
+the tests the reap broke onto the surviving channels Q127 names.
+Reviewing that repair against Q127's own standard found two of its
+forms weaker than the standard:
+
+- `test_oracle_no_widening.NoWideningTest.
+  test_a_repair_never_launders_a_policy_denial` — the control half
+  was moved to the sent result (the run read out of its stdout),
+  but the denied half still asserted that no marker file exists
+  in the per-job workspace. Post-reap the workspace is removed on
+  every path out, so the marker cannot exist whether the denial
+  held or not: the assertion is vacuous, and the denial direction
+  of the test proved nothing.
+- `test_powershell_script_encoding` — every test in the module
+  stages a job and reads the staged script back. The repair held
+  the reap open for the staging call by mock.patch-ing the product
+  internal `reap_work_dir` from the test. The byte-exact assertions
+  then observed a workspace the product no longer promises to
+  keep, and the test depended on a product internal's name and
+  shape staying put.
+
+Options: (a) leave both — rejected: one assertion proves nothing,
+and the other pins a product internal from a test. (b) Strengthen
+both onto the Q127 channels. For the Oracle test, assert the sent
+result's verdicts in both directions: the denied job's sent result
+carries exit_code -2, repaired false, and the not-run note; the
+control's carries exit_code 0 and repaired true (the values probed
+live against the current tree before pinning). For the PowerShell
+module, stage through a job-staged stand-in interpreter that
+copies the staged script into declared outputs (`staged.bin`,
+`staged-name.txt`), which are collected before the reap, so the
+byte-exact assertions (BOM, line endings, interpreter shapes)
+observe through the job's declared outputs like the other moved
+tests, with no patch on any product internal.
+
+**Answer (Muse, 2026-11-06):** (b). Both strengthened tests were
+shown to bite before landing: the denied-half pins fail against
+the control body and against a body with the repaired verdict
+flipped, and the control pins fail against the denied body; the
+PowerShell assertions fail against a staged script truncated by
+the stand-in, and the staging helper raises when the staged
+script does not come home as declared outputs. No production code
+changed, and no assertion weakened — the byte-exact set is intact.
+
+**Applied in:** this landing — `runner/tests/
+test_oracle_no_widening.py`, `runner/tests/
+test_powershell_script_encoding.py`.
+
 ## Q127 (Muse, to the desk, 2026-11-06): three tests asserted the per-job workspace survives the job; the temp-reap fix removes it
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

@@ -20,18 +20,17 @@ Other script kinds must NOT gain a BOM: a BOM at the head of an
 sh script is a syntax error waiting on some shells, and Python
 and generic scripts keep their exact bytes.
 """
+import base64
 import codecs
 import os
 import sys
 import tempfile
 import unittest
-from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
 from runner import runner as R  # noqa: E402
-from runner.ops import exec as _exec  # noqa: E402
 
 BOM = codecs.BOM_UTF8
 
@@ -49,37 +48,72 @@ NONASCII_SAMPLES = [
 ]
 
 
+# Stand-in interpreters, staged by the job itself (see _stage).
+# Each copies the staged script it is handed -- the last argv
+# element -- into two declared outputs: its bytes, and the name
+# the runner staged it under.
+SHIM_PY = (
+    "import os\n"
+    "import sys\n"
+    "\n"
+    "src = sys.argv[-1]\n"
+    "with open(src, \"rb\") as fh:\n"
+    "    data = fh.read()\n"
+    "with open(\"staged.bin\", \"wb\") as fh:\n"
+    "    fh.write(data)\n"
+    "with open(\"staged-name.txt\", \"w\", encoding=\"utf-8\") as fh:\n"
+    "    fh.write(os.path.basename(src))\n"
+)
+SHIM_SH = (
+    "cp -- \"$1\" staged.bin\n"
+    "printf '%s' \"${1##*/}\" > staged-name.txt\n"
+)
+
+
 def _stage(tmp, job_id, interpreter, script):
     """Run one exec job through staging and return the staged bytes.
 
-    On a machine without the named interpreter the run stops at
-    "cannot start interpreter" after staging; that is fine here --
-    staging is the unit under test -- so both a result and a
-    JobRejected are accepted, and the staged file is read either way.
-
-    Since the temp-reaping work (2026-11-06) execute_job reaps its
-    workspace on every path out, so the reap is held for the span
-    of this call and the staged file survives to be read. The reap
-    itself is pinned in runner/tests/test_temp_reap.py; staging is
-    the unit under test here, and a rejected job returns no result
-    whose declared outputs could carry the staged bytes instead.
+    Staging is the unit under test, not execution, and the named
+    interpreter may not exist on this machine at all (PowerShell
+    on a POSIX leg, pwsh almost anywhere): a run that stops at
+    "cannot start interpreter" never reaches the result that
+    carries a job's outputs home, and the workspace itself is
+    reaped when the job ends (temp reaping, docs/
+    infrastructure-documents/proofs/temp-reap.md), so the staged
+    file can no longer be read out of it afterwards. The job
+    therefore runs a stand-in the job stages itself -- this
+    host's Python, or sh for the sh shape, so the staged name
+    keeps the shape under test -- with the caller's interpreter
+    name riding as an inert argument where script_filename
+    still reads it. The stand-in copies the staged script into
+    the job's declared outputs, which execute_job collects
+    before the reap: the surviving channel, per Q127's answer.
     """
+    if interpreter == ["sh"]:
+        shim_name, shim_src = "shim_observe.sh", SHIM_SH
+        stand_in = ["sh", shim_name]
+    else:
+        shim_name, shim_src = "shim_observe.py", SHIM_PY
+        stand_in = [sys.executable, shim_name, *interpreter]
     job = {"v": 1, "type": "job", "job_id": job_id,
            "issued_at": "2026-11-01T00:00:00Z", "kind": "exec",
-           "interpreter": interpreter, "script": script}
-    try:
-        with mock.patch.object(_exec, "reap_work_dir",
-                               lambda work: False):
-            R.execute_job({"base_dir": tmp}, job, tmp)
-    except R.JobRejected:
-        pass
-    work = os.path.join(tmp, "work", job_id)
-    names = sorted(os.listdir(work)) if os.path.isdir(work) else []
-    staged = [n for n in names if n.startswith("script")]
-    if len(staged) != 1:
-        raise AssertionError(f"expected one staged script, found {names}")
-    with open(os.path.join(work, staged[0]), "rb") as fh:
-        return staged[0], fh.read()
+           "interpreter": stand_in, "script": script,
+           "files": [{"name": shim_name,
+                      "content_b64": base64.b64encode(
+                          shim_src.encode("utf-8")).decode("ascii")}],
+           "outputs": ["staged-name.txt", "staged.bin"]}
+    result = R.execute_job({"base_dir": tmp}, job, tmp)
+    got = {o["name"]: o for o in result.get("outputs", [])}
+    name_entry = got.get("staged-name.txt", {})
+    data_entry = got.get("staged.bin", {})
+    if "content_b64" not in name_entry or \
+            "content_b64" not in data_entry:
+        raise AssertionError(
+            "the staged script did not come home: "
+            f"{result.get('outputs')}")
+    name = base64.b64decode(
+        name_entry["content_b64"]).decode("utf-8")
+    return name, base64.b64decode(data_entry["content_b64"])
 
 
 class PowerShellBomTest(unittest.TestCase):
