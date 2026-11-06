@@ -165,12 +165,23 @@ def main() -> int:
             R.log(_line, "WARN")
     # A bad key policy or port is a config error. Checked here so the
     # poll loop is not the thing that discovers it, every cycle.
+    # The paging thresholds are the same refuse class (Decision 1:
+    # the resource and DRI thresholds that page a human), and this
+    # gate is the only startup caller of their readers: the poll
+    # loop's check_resources / maybe_page fail closed on a bad
+    # block by contract, so without this check a bad threshold
+    # started cleanly and the monitor and the paging were silently
+    # dead for the whole run (PF-1).
     try:
         R.build_key_policies(cfg)
         if "imap_port" in cfg:
             _runner()._port(cfg, "imap_port", 993)
         if "smtp_port" in cfg:
             _runner()._port(cfg, "smtp_port", 587)
+        if R._resources is not None:
+            R._resources.parse_resources(cfg)
+        if R._dri is not None:
+            R._dri.parse_dri(cfg)
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return 2

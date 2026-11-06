@@ -29,13 +29,16 @@ more the same day after the Oracle tool-mode work and the
 startup posture assertion switch grew runner/ops,
 runner/guard and the runner proper, and again after the
 outbox stash took the per-key guard in the runner proper,
+and again after the send_job verifier took the shared
+strict reader, and again after the startup gate took the
+resources and DRI paging readers,
 the
-as-assembled set stands at 55,335 lines (49,821 non-blank)
-and a 700,988-byte zip, and the project's own estimator
-counts it at 583,596 tokens; the Gemini figure above still
+as-assembled set stands at 55,346 lines (49,832 non-blank)
+and a 701,180-byte zip, and the project's own estimator
+counts it at 583,727 tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical 130-file list at 575,979
-tokens across 54,551 lines (49,133 non-blank); the 2 token
+estimator counts the canonical 130-file list at 576,110
+tokens across 54,562 lines (49,144 non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -49,10 +52,10 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 6,635 lines; the core around it is
-55,335. The set as assembled, part by part (re-measured
+55,346. The set as assembled, part by part (re-measured
 2026-11-06):
 
-- runner/ops: 17,345 lines
+- runner/ops: 17,356 lines
 - runner/tools: 8,669
 - runner/wire: 8,267
 - runner/runner.py: 6,635
@@ -71,7 +74,7 @@ The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-55,335 lines, explicit platform branching — sys.platform,
+55,346 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
 the 133 files, beside a small number of dedicated platform
 modules (runner/ops/windows.py and runner/ops/winlog.py).

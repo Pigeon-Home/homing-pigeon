@@ -34,11 +34,11 @@ CLI output:
   CLI prints its figure live. The estimator is not a BPE
   tokenizer, and the 2 figures are not interchangeable: the
   same estimator counts the as-assembled 133-file set at
-  583,596, not 619,845.
+  583,727, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 55,335 lines,
-49,821 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 55,346 lines,
+49,832 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -112,7 +112,10 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # lines. Re-measured again on 2026-11-06 after the
 # send_job verifier took the shared strict reader
 # (loads_signed) for its signed-body parse, shedding
-# 1 line net in runner/cloud.
+# 1 line net in runner/cloud. Re-measured again
+# the same day after the startup gate took the
+# resources and DRI paging readers (PF-1), growing
+# runner/ops/main.py by 11 lines.
 # Recorded constants: they describe the as-assembled set (the
 # canonical 130 files below plus the 3 suite runners named in
 # the module docstring), not the canonical list itself. The
@@ -124,14 +127,14 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 133
-AS_ASSEMBLED_ZIP_BYTES = 700988
-AS_ASSEMBLED_LINES = 55335
-AS_ASSEMBLED_NONBLANK_LINES = 49821
+AS_ASSEMBLED_ZIP_BYTES = 701180
+AS_ASSEMBLED_LINES = 55346
+AS_ASSEMBLED_NONBLANK_LINES = 49832
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 17345,
+    "runner/ops": 17356,
     "runner/tools": 8669,
     "runner/wire": 8267,
     "runner/runner.py": 6635,
