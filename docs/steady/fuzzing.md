@@ -465,6 +465,25 @@ is allowed to be long because nothing waits on it. Its
 only product is the survivor list, and the survivor list
 is the suite's own defect queue.
 
+The same audit also runs by hand, against the proof
+family — the tests that drive the six properties of
+`docs/infrastructure-documents/proofs/properties.md`
+against the real code. In stage 5 of the proofs, for each
+property one deliberate one-line change was made in a
+scratch copy of the tree, that property's tests were run,
+and the file was restored from the pristine tree: twelve
+shapes in ten runs (two properties share a line, so one
+run covers both), and every run exited 1 — at least one
+test failed, every time, with the catching test named in
+the record (`docs/infrastructure-documents/proofs/stage5.md`).
+In the completion pass on 2026-11-01, five of the recorded
+mutations were re-run first-hand on the final tree in a
+fresh scratch copy, and each was caught by exactly the
+test the record names. The automated walk and the hand
+checks aim at the same failure from two sides: a test that
+would pass in every world is decoration, whichever way the
+break is introduced.
+
 The machinery's own tests stand at
 `runner/tests/test_mutation_floor.py` (the collapsed-signal
 floor) and `runner/tests/test_seeded_mutation_workflow.py`
