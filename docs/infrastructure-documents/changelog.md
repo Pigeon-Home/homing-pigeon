@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.5 - 2026-11-06
+
+- Fix: the Q103 query-door shotgun built its no-allowed_kinds policy from a field the policy builder does not recognise, which the unrecognised-field refusal (below, in 3.15.18.4) now rejects at the build — that one test failed every platform leg of the 3.15.18.4 builds, so that version was never published and its tag stands unmoved. The test now builds the policy from a recognised field, a companion test pins the old shape as unreadable at the door, and Q130 records the reconciliation.
+- Carries everything in 3.15.18.4, unpublished: the core record following the repair-note fix, and an unrecognised key_policies field refusing the policy build instead of being warned past and dropped.
+
 ## 3.15.18.4 - 2026-11-06
 
 - Fix: the core's recorded line figures follow the repair-note fix — runner/oracle stands at 5,013 lines and the as-assembled set at 55,532 — and the script-encoding shim name test stays on relative paths, so the macOS and Windows legs judge the same tree the record describes.
