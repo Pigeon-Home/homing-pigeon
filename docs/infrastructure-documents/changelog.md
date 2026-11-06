@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.168 - 2026-11-05
+
+- Fix: the posture startup test scripts the job_user mechanism gate as able beside the sandbox gate (its POSIX-only refusal on Windows is intended and pinned separately), with a simulated-win32 test reproducing the shape on any host; the 2 training-watch registry rows follow the heading sweep's added heading to line 139. The 167 tag stands unmoved at its own commit and will not publish.
+
 ## 3.15.17.167 - 2026-11-05
 
 - Docs: the one-time section-heading sweep lands — every section heading of every living document judged against the content under it (1,622 sections), 42 verified proposals: the README's notes for a visiting SI and the no-mailbox callout gain their own section above Status, the extension READMEs gain Running and Further-reading structure, and 14 living guides are retitled or split so each heading covers what sits under it; the README gains the how-it-fits-together diagram (small on the page, the full top-down view on click).
