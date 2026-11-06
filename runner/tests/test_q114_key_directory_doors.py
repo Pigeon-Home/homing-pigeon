@@ -267,5 +267,412 @@ class DtlsDoorTest(unittest.TestCase):
         self.assertEqual("established", owner.state)
 
 
+class KeydirContractShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 46: Q115 -- a keydir
+    contract crash in the sender (found f19bc40e, fixed 30119441,
+    29-Oct-2026).
+
+    The keydir target's first grow found a key with entries under
+    two of its names read differently by the name the sender used:
+    the directory carried the default key under "" with a
+    non-object entry and under its fingerprint with an in_use one,
+    and key_directory_verdict answered 'invalid key directory
+    entry' under one name and None under the other. One key, one
+    entry: the verdict now refuses such a key under either name
+    with one sorted reason, and the startup check
+    (validate_key_directory) makes it a config error.
+
+    Per-field enumeration (the method section): the directory
+    entry's fields each get their own tests -- state (every member
+    of KEY_STATES and the shapes outside it), not_before,
+    not_after, fingerprint -- and so do the verdict's other
+    fields: the directory itself (None, empty, non-object entries,
+    loaded inline, loaded from a file, inline-and-file together),
+    the entry's name (the key under each of its names: "", its
+    fingerprint, a second stored name), the key_id asked with
+    (known, unknown, non-string), the secrets map (present, absent,
+    not a dict), and now (both window bounds at, before and after
+    the instant). The judging order is pinned too: fingerprint
+    before state, compromised before the window, not_before
+    before not_after. The fix's own doors are re-pinned where they
+    live: the job door (check_key_policy) speaks the two-ids
+    refusal, and the corpus checker (de_dust's keydir target)
+    accepts a good directory and refuses the original banked
+    record without crashing.
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: key names are text, so
+    every printable ASCII symbol at the front AND the back of a
+    key name, NUL bookends, and run lengths (a run of the odd
+    character, ordinary runs with the odd one at the front, the
+    back and the middle) are pinned as plain unknown names that
+    admit nothing and confuse nothing.
+
+    Proof of work (6-Nov-2026). The unit tests are the 50 methods
+    of this class.
+    The fuzzing was executed, not just the tests written:
+    runner/tools/de_dust_corpus.py grow --target keydir
+    --rounds 400 --seed 20261147, run locally against the banked
+    keydir corpus (38 entries). keydir is the target chosen for
+    this item's fuzz job: it is the sender's key-directory target,
+    the exact surface the crash came from, nearer than the cloud
+    target that carries the sender's jobs. Result: 400 rounds,
+    0 crashes, 0 slow, arcs unchanged at 242, slowest try 157 ms;
+    the two-names contract crash did not recur. The grow's
+    bookkeeping writes were reverted and are not banked (banking
+    is the rigs' hourly job); this record is the run's proof.
+    None of this is exotic: it is combinatorics -- systematically
+    trying the combinations a hand-written list would never reach,
+    then pinning each answer as a test."""
+
+    def setUp(self):
+        self.secrets = R.build_secrets(
+            {"shared_secret": CURRENT,
+             "additional_secrets": {"old": OLD, "alias": CURRENT}})
+        self.fp = key_fingerprint(CURRENT)
+        self.old_fp = key_fingerprint(OLD)
+
+    def _verdict(self, directory, key_id="old", now=NOW, secrets="self"):
+        return verify.key_directory_verdict(
+            directory, self.secrets if secrets == "self" else secrets,
+            key_id, now)
+
+    def _cfg(self, directory):
+        return {"shared_secret": CURRENT,
+                "additional_secrets": {"old": OLD, "alias": CURRENT},
+                "key_directory": directory}
+
+    def _validate(self, directory, secrets=None):
+        return verify.validate_key_directory(
+            self._cfg(directory),
+            self.secrets if secrets is None else secrets)
+
+    # -- the directory field --
+
+    def test_no_directory_admits_every_key(self):
+        for key_id in ("", self.fp, "old", "ghost", 7):
+            self.assertIsNone(self._verdict(None, key_id), repr(key_id))
+
+    def test_an_empty_directory_refuses_every_key(self):
+        for key_id in ("", self.fp, "old", "alias"):
+            self.assertEqual("no key directory entry for this key",
+                             self._verdict({}, key_id), key_id)
+
+    def test_load_key_directory_reads_an_inline_directory(self):
+        directory = {"old": {"state": "in_use"}}
+        self.assertEqual(directory, verify.load_key_directory(
+            {"key_directory": directory}))
+        self.assertIsNone(verify.load_key_directory({}))
+        self.assertIsNone(verify.load_key_directory(
+            {"key_directory": None}))
+
+    def test_load_key_directory_refuses_a_non_object(self):
+        for bad in ([1], "x", 7):
+            with self.assertRaises(RuntimeError) as ctx:
+                verify.load_key_directory({"key_directory": bad})
+            self.assertIn("must be an object", str(ctx.exception), bad)
+
+    def test_load_key_directory_refuses_inline_and_file_together(self):
+        with self.assertRaises(RuntimeError) as ctx:
+            verify.load_key_directory(
+                {"key_directory": {}, "key_directory_file": "/nope.json"})
+        self.assertIn("mutually exclusive", str(ctx.exception))
+
+    def test_a_file_directory_is_loaded_and_a_missing_one_raises(self):
+        td = tempfile.mkdtemp(prefix="hp-q115-")
+        self.addCleanup(shutil.rmtree, td, True)
+        path = os.path.join(td, "keys.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"old": {"state": "in_use"}}, fh)
+        self.assertEqual({"old": {"state": "in_use"}},
+                         verify.load_key_directory(
+                             {"key_directory_file": path}))
+        with self.assertRaises(OSError):
+            verify.load_key_directory(
+                {"key_directory_file": os.path.join(td, "absent.json")})
+
+    # -- the name field: one key, several names --
+
+    def test_a_key_is_read_under_its_empty_name(self):
+        directory = {"": {"state": "in_use"}}
+        self.assertIsNone(self._verdict(directory, self.fp))
+        self.assertIsNone(self._verdict(directory, "alias"))
+
+    def test_a_key_is_read_under_its_fingerprint(self):
+        directory = {self.fp: {"state": "in_use"}}
+        self.assertIsNone(self._verdict(directory, ""))
+        self.assertIsNone(self._verdict(directory, "alias"))
+
+    def test_a_key_is_read_under_a_second_stored_name(self):
+        directory = {"alias": {"state": "in_use"}}
+        self.assertIsNone(self._verdict(directory, ""))
+        self.assertIsNone(self._verdict(directory, self.fp))
+
+    def test_secrets_not_a_dict_reads_the_asked_name_alone(self):
+        self.assertEqual("no key directory entry for this key",
+                         self._verdict({self.fp: {"state": "in_use"}},
+                                       "", secrets=None))
+        self.assertIsNone(self._verdict({"": {"state": "in_use"}},
+                                        "", secrets=None))
+        self.assertIsNone(self._verdict({"old": {"state": "in_use"}},
+                                        "old", secrets=["not", "a", "dict"]))
+
+    # -- Q115 itself: one key under two of its names --
+
+    def test_the_q115_record_is_refused_under_the_empty_name(self):
+        two = {"": "job", self.fp: {"state": "in_use"},
+               "old": {"state": "in_use"}}
+        self.assertIn("under two ids", self._verdict(two, ""))
+
+    def test_the_q115_record_reads_the_same_under_the_fingerprint(self):
+        two = {"": "job", self.fp: {"state": "in_use"},
+               "old": {"state": "in_use"}}
+        self.assertEqual(self._verdict(two, ""), self._verdict(two, self.fp))
+        self.assertEqual(self._verdict(two, ""), self._verdict(two, "alias"))
+
+    def test_two_entries_are_two_ids_even_when_the_entries_are_identical(self):
+        two = {"": {"state": "in_use"}, self.fp: {"state": "in_use"}}
+        self.assertIn("under two ids", self._verdict(two, "alias"))
+
+    def test_the_two_ids_verdict_names_them_sorted_whichever_was_asked(self):
+        two = {"alias": {"state": "in_use"}, self.fp: {"state": "in_use"}}
+        a, b = sorted(["alias", self.fp])
+        want = ("key directory names this key under two ids "
+                "(%r and %r)" % (a, b))
+        self.assertEqual(want, self._verdict(two, ""))
+        self.assertEqual(want, self._verdict(two, self.fp))
+
+    def test_the_startup_check_refuses_the_q115_directory(self):
+        two = {"": "job", self.fp: {"state": "in_use"},
+               "old": {"state": "in_use"}}
+        with self.assertRaises(RuntimeError) as ctx:
+            self._validate(two)
+        self.assertIn("one key under two ids", str(ctx.exception))
+
+    def test_the_startup_check_refuses_an_alias_duplication(self):
+        two = {"": {"state": "in_use"}, "alias": {"state": "superseded"}}
+        with self.assertRaises(RuntimeError) as ctx:
+            self._validate(two)
+        self.assertIn("one key under two ids", str(ctx.exception))
+        self.assertIn("'alias'", str(ctx.exception))
+
+    def test_the_startup_check_without_secrets_cannot_see_a_duplication(self):
+        two = {"": {"state": "in_use"}, "alias": {"state": "in_use"}}
+        self.assertEqual(two, self._validate(two, secrets={}))
+
+    def test_the_job_door_speaks_the_two_ids_refusal(self):
+        two = {"": "job", self.fp: {"state": "in_use"}}
+        got = verify.check_key_policy({}, "", self._cfg(two), JOB,
+                                      secrets=self.secrets)
+        self.assertIn("under two ids", got)
+
+    # -- the entry shape and the state field --
+
+    def test_a_non_object_entry_is_invalid_at_the_door(self):
+        for entry in ("job", 7, ["in_use"], None, True):
+            self.assertEqual("invalid key directory entry",
+                             self._verdict({"old": entry}), repr(entry))
+
+    def test_a_missing_state_is_an_invalid_state(self):
+        self.assertEqual("invalid key directory state",
+                         self._verdict({"old": {}}))
+        self.assertEqual("invalid key directory state",
+                         self._verdict({"old": {"not_before": 1}}))
+
+    def test_a_state_outside_the_set_is_an_invalid_state(self):
+        for state in ("live", "", 7, None, "IN_USE", "in-use"):
+            self.assertEqual("invalid key directory state",
+                             self._verdict({"old": {"state": state}}),
+                             repr(state))
+
+    def test_the_refusing_states_each_say_key_is_that_state(self):
+        for state in ("ordered", "generated", "distributed", "destroyed"):
+            self.assertEqual("key is %s" % state,
+                             self._verdict({"old": {"state": state}}),
+                             state)
+
+    def test_compromised_says_compromised_and_needs_no_window(self):
+        self.assertEqual("key is compromised",
+                         self._verdict({"old": {"state": "compromised"}}))
+
+    def test_the_startup_check_names_the_faulty_entry(self):
+        with self.assertRaises(RuntimeError) as ctx:
+            self._validate({"old": {"state": "live"}})
+        self.assertIn("key_directory['old']", str(ctx.exception))
+        self.assertIn("state must be one of", str(ctx.exception))
+
+    def test_the_startup_check_refuses_a_nonstring_name(self):
+        with self.assertRaises(RuntimeError) as ctx:
+            self._validate({7: {"state": "in_use"}})
+        self.assertIn("not a string", str(ctx.exception))
+
+    # -- the fingerprint field --
+
+    def test_a_fingerprint_must_be_the_keys_own(self):
+        entry = {"state": "in_use", "fingerprint": self.fp}
+        self.assertEqual("key directory fingerprint does not match this key",
+                         self._verdict({"old": entry}))
+
+    def test_a_correct_fingerprint_admits(self):
+        entry = {"state": "in_use", "fingerprint": self.old_fp}
+        self.assertIsNone(self._verdict({"old": entry}))
+        entry = {"state": "in_use", "fingerprint": self.fp}
+        self.assertIsNone(self._verdict({"": entry}, ""))
+
+    def test_a_nonstring_fingerprint_does_not_match(self):
+        for fp in (7, ["k-00000000"], {"fp": 1}):
+            entry = {"state": "in_use", "fingerprint": fp}
+            self.assertEqual(
+                "key directory fingerprint does not match this key",
+                self._verdict({"old": entry}), repr(fp))
+
+    def test_a_none_fingerprint_is_no_fingerprint(self):
+        entry = {"state": "in_use", "fingerprint": None}
+        self.assertIsNone(self._verdict({"old": entry}))
+
+    def test_the_fingerprint_is_judged_before_the_state(self):
+        entry = {"state": "compromised", "fingerprint": self.fp}
+        self.assertEqual("key directory fingerprint does not match this key",
+                         self._verdict({"old": entry}))
+
+    # -- the window fields: not_before and not_after, and now --
+
+    def test_not_before_in_the_future_refuses(self):
+        entry = {"state": "in_use", "not_before": NOW + 1}
+        self.assertEqual("key is not yet valid (not_before)",
+                         self._verdict({"old": entry}))
+
+    def test_not_before_at_now_admits(self):
+        entry = {"state": "in_use", "not_before": NOW}
+        self.assertIsNone(self._verdict({"old": entry}))
+
+    def test_not_before_in_the_past_admits(self):
+        entry = {"state": "in_use", "not_before": NOW - 1}
+        self.assertIsNone(self._verdict({"old": entry}))
+
+    def test_a_nonnumber_not_before_is_invalid_at_the_door(self):
+        for bound in ("soon", {"x": 1}, [1]):
+            entry = {"state": "in_use", "not_before": bound}
+            self.assertEqual("invalid key directory not_before",
+                             self._verdict({"old": entry}), repr(bound))
+
+    def test_a_bool_not_before_reads_as_a_number_at_the_door(self):
+        # float(True) is 1.0, long past at NOW: the door admits,
+        # where the startup check (next test) refuses the shape.
+        entry = {"state": "in_use", "not_before": True}
+        self.assertIsNone(self._verdict({"old": entry}))
+
+    def test_a_bool_bound_is_refused_at_startup(self):
+        with self.assertRaises(RuntimeError) as ctx:
+            self._validate({"old": {"state": "in_use",
+                                    "not_before": True}})
+        self.assertIn("is not a number", str(ctx.exception))
+
+    def test_a_numeric_string_not_before_reads_at_the_door(self):
+        entry = {"state": "in_use", "not_before": "999999"}
+        self.assertIsNone(self._verdict({"old": entry}))
+        entry = {"state": "in_use", "not_before": "1000001"}
+        self.assertEqual("key is not yet valid (not_before)",
+                         self._verdict({"old": entry}))
+
+    def test_not_after_ends_an_in_use_key(self):
+        entry = {"state": "in_use", "not_after": NOW - 1}
+        self.assertEqual("key is past its not_after",
+                         self._verdict({"old": entry}))
+
+    def test_not_after_at_now_admits(self):
+        entry = {"state": "in_use", "not_after": NOW}
+        self.assertIsNone(self._verdict({"old": entry}))
+
+    def test_not_after_ends_a_superseded_key_with_its_own_words(self):
+        entry = {"state": "superseded", "not_after": NOW - 1}
+        self.assertEqual("key is superseded and its window has closed",
+                         self._verdict({"old": entry}))
+
+    def test_a_superseded_key_inside_its_window_admits(self):
+        self.assertIsNone(self._verdict({"old": {"state": "superseded"}}))
+        entry = {"state": "superseded", "not_after": NOW + 1}
+        self.assertIsNone(self._verdict({"old": entry}))
+
+    def test_a_nonnumber_not_after_is_invalid_at_the_door(self):
+        for bound in ("soon", {"x": 1}):
+            entry = {"state": "in_use", "not_after": bound}
+            self.assertEqual("invalid key directory not_after",
+                             self._verdict({"old": entry}), repr(bound))
+
+    def test_compromised_beats_both_window_bounds(self):
+        entry = {"state": "compromised", "not_before": NOW + 99,
+                 "not_after": NOW - 1}
+        self.assertEqual("key is compromised",
+                         self._verdict({"old": entry}))
+
+    def test_not_before_is_judged_before_not_after(self):
+        entry = {"state": "in_use", "not_before": NOW + 99,
+                 "not_after": NOW - 1}
+        self.assertEqual("key is not yet valid (not_before)",
+                         self._verdict({"old": entry}))
+
+    # -- the key_id field --
+
+    def test_a_nonstring_key_id_is_invalid(self):
+        directory = {"old": {"state": "in_use"}}
+        for key_id in (7, None, ["old"], {"id": "old"}):
+            self.assertEqual("invalid key id",
+                             self._verdict(directory, key_id), repr(key_id))
+
+    def test_an_unknown_key_id_has_no_entry(self):
+        directory = {"old": {"state": "in_use"}}
+        self.assertEqual("no key directory entry for this key",
+                         self._verdict(directory, "ghost"))
+
+    def test_bookended_and_run_length_key_names_are_plain_unknown_names(self):
+        import string as _string
+        directory = {"old": {"state": "in_use"}}
+        names = ["\x00old", "old\x00", "\told\n", "old" * 10,
+                 "o" * 10 + "ld", "o" + "l" * 10 + "d"]
+        for symbol in _string.punctuation:
+            names.append(symbol + "old")
+            names.append("old" + symbol)
+            names.append(symbol * 10)
+        for name in names:
+            self.assertEqual("no key directory entry for this key",
+                             self._verdict(directory, name), repr(name))
+        # And a bookended entry name admits nothing under the plain one.
+        self.assertEqual("no key directory entry for this key",
+                         self._verdict({"!old!": {"state": "in_use"}},
+                                       "old"))
+
+    # -- the corpus checker, the target the crash came from --
+
+    def test_the_corpus_checker_accepts_a_good_directory(self):
+        from runner.tools import de_dust_corpus as B
+        entry = B.make_entry(
+            "payload", {"directory": {"old": {"state": "in_use"}},
+                        "key_id": "old"}, "shotgun46", "shotgun46")
+        self.assertEqual("accepted",
+                         B._with_rig(lambda: B.check("keydir", entry)))
+
+    def test_the_corpus_checker_refuses_the_q115_record_without_crashing(self):
+        from runner.tools import de_dust_corpus as B
+        record = {"directory": {"": "job",
+                                "canary-key": {"state": "in_use"},
+                                self.fp: {"state": "in_use"},
+                                "ops": {"state": "in_use"}},
+                  "key_id": ""}
+        entry = B.make_entry("payload", record, "shotgun46", "shotgun46")
+        self.assertEqual("refused",
+                         B._with_rig(lambda: B.check("keydir", entry)))
+
+    def test_the_corpus_checker_refuses_malformed_directories(self):
+        from runner.tools import de_dust_corpus as B
+        for data in ("hello", {"directory": [1, 2], "key_id": "old"},
+                     {}):
+            entry = B.make_entry("payload", data, "shotgun46", "shotgun46")
+            self.assertEqual(
+                "refused",
+                B._with_rig(lambda e=entry: B.check("keydir", e)),
+                repr(data))
+
+
 if __name__ == "__main__":
     unittest.main()

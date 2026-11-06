@@ -1333,7 +1333,26 @@ Applied to every item on this queue, item 1 included:
 - Found: f19bc40e (29-Oct-2026); fixed: 30119441 (29-Oct-2026)
 - Area: runner/cloud/send_job.py keydir handling
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the KeydirContractShotgunTest
+  suite in runner/tests/test_q114_key_directory_doors.py, the
+  file where the fix's own tests live): one key, one entry —
+  a key with entries under two of its names is refused under
+  either name with one sorted reason, at the door and at
+  startup — the per-field pins are carried in the suite's
+  header comment in the repo. The suite runs green (50 tests
+  pass, 0 skipped, skip-registry gate unaffected), no live bug
+  exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target keydir
+  --rounds 400 --seed 20261147, run locally against the banked
+  keydir corpus (38 entries) — keydir chosen as the nearest
+  target: it is the sender's key-directory surface the crash
+  came from. Result: 400 rounds, 0 crashes, 0 slow, arcs
+  unchanged at 242, slowest try 157 ms — the two-names contract
+  crash did not recur. The grow's bookkeeping writes were
+  reverted and are not banked (banking is the rigs' hourly job).
 
 ### 47. Q116–Q118: slow families on cloud, wire and local — operations pathologically slow, a latency defect class
 - Found: f19bc40e (29-Oct-2026); fixed: a1bbaeaf
