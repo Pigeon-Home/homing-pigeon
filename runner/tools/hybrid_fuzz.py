@@ -633,12 +633,30 @@ class Targets:
                     while len(payload) >= 12:
                         mlen = int.from_bytes(
                             payload[1:4], "big")
+                        if len(payload) < 12 + mlen:
+                            # A fragmented handshake message:
+                            # its remaining bytes ride in a
+                            # later datagram, so this walk cannot
+                            # see the whole message yet. Stop
+                            # here rather than parsing a partial
+                            # body; the genuine article is
+                            # unfragmented and is still found.
+                            break
                         msg = payload[:12 + mlen]
-                        if msg[0] == 2 and \
-                                dtlsproto._parse_server_hello(
-                                    msg[12:])["random"] != \
-                                dtlsproto.HRR_RANDOM:
-                            found = msg
+                        if msg[0] == 2:
+                            try:
+                                random = \
+                                    dtlsproto._parse_server_hello(
+                                        msg[12:])["random"]
+                            except dtlsproto.DtlsError:
+                                # A complete message whose body
+                                # does not parse is not the
+                                # genuine ServerHello; keep
+                                # walking the datagram.
+                                random = None
+                            if random is not None and \
+                                    random != dtlsproto.HRR_RANDOM:
+                                found = msg
                         payload = payload[12 + mlen:]
                 out = []
                 for dg in nxt:
