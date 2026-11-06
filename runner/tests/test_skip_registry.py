@@ -166,9 +166,11 @@ REGISTERED = {
         "test_transport_queues' FIFO result leg; Windows has no "
         "mkfifo and no FIFOs; runs in the Linux and macOS jobs",
     "this filesystem folds case, so case-variant names are one file":
-        "test_transport_queues' case-variant long-id leg, probed "
-        "on the test's own filesystem; runs where the filesystem "
-        "is case-sensitive, the Linux job among them",
+        "the case-variant legs in test_transport_queues (long-id "
+        "and reoffered-id) and test_q101_files_edges (case-distinct "
+        "output names), each probed on the test's own filesystem; "
+        "runs where the filesystem is case-sensitive, the Linux "
+        "job among them",
     "job_user audit is POSIX": "run on POSIX",
     "job_user face is POSIX syscalls": "run on POSIX",
     "job_user fallback is POSIX": "run on POSIX",

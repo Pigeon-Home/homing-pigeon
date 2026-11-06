@@ -355,6 +355,23 @@ class InlineOutputsShotgunTest(unittest.TestCase):
             self.assertEqual(fh.read(), b"first")
 
     def test_case_distinct_names_are_two_outputs(self):
+        # Probed on the test's own filesystem: where names
+        # fold case (Windows, a default macOS volume), the
+        # pair below is one file by the platform's own rule,
+        # and there are not two outputs to hold.
+        for probe in (".hp-case-A", ".hp-case-a"):
+            with open(os.path.join(self.dest, probe), "w") as fh:
+                fh.write("x")
+        folds = len([n for n in os.listdir(self.dest)
+                     if n.startswith(".hp-case-")]) < 2
+        for probe in (".hp-case-A", ".hp-case-a"):
+            path = os.path.join(self.dest, probe)
+            if os.path.exists(path):
+                os.unlink(path)
+        if folds:
+            self.skipTest(
+                "this filesystem folds case, so case-variant "
+                "names are one file")
         rc, _err = self._write([_out("A.txt", b"upper"),
                                 _out("a.txt", b"lower")])
         self.assertEqual(rc, 0)

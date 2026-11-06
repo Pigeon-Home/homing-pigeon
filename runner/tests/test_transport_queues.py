@@ -8665,6 +8665,23 @@ class FinishedIdReofferShotgunTest(unittest.TestCase):
             self.assertIn("j1", pipe._pending)
 
     def test_field_id_spelling_case_variant_is_a_different_life(self):
+        # Probed on the test's own filesystem: where names
+        # fold case (Windows, a default macOS volume), the
+        # pair below is one file by the platform's own rule,
+        # and there is nothing distinct to hold.
+        for probe in (".hp-case-A", ".hp-case-a"):
+            with open(os.path.join(self.d["inbox"], probe), "w") as fh:
+                fh.write("x")
+        folds = len([n for n in os.listdir(self.d["inbox"])
+                     if n.startswith(".hp-case-")]) < 2
+        for probe in (".hp-case-A", ".hp-case-a"):
+            path = os.path.join(self.d["inbox"], probe)
+            if os.path.exists(path):
+                os.unlink(path)
+        if folds:
+            self.skipTest(
+                "this filesystem folds case, so case-variant "
+                "names are one file")
         with FakeWorker() as w:
             pipe = self._pipe(w)
             self._first_life(w, pipe, "j1")
