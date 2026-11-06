@@ -79,14 +79,17 @@ class CoreListTest(unittest.TestCase):
         # re-recorded at the 2026-11-05 re-measures; the Gemini
         # token count above still describes the 2026-11-04
         # assembly.
-        self.assertEqual(691500, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(695947, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
         # grew 4 of the set's files, and again after the
-        # CHECKLIST-04 send_job fixes grew runner/cloud.
-        self.assertEqual(54561, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(49109, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # CHECKLIST-04 send_job fixes grew runner/cloud, and
+        # again on 2026-11-06 after the signed-body strictness
+        # fix grew runner/guard and the audit hash-chain fix
+        # grew runner/guard and runner/ops.
+        self.assertEqual(54954, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(49470, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

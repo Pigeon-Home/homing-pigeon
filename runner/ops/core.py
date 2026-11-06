@@ -34,11 +34,11 @@ CLI output:
   CLI prints its figure live. The estimator is not a BPE
   tokenizer, and the 2 figures are not interchangeable: the
   same estimator counts the as-assembled 133-file set at
-  575,607, not 619,845.
+  579,579, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 54,561 lines,
-49,109 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 54,954 lines,
+49,470 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -96,6 +96,12 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # the value recorded on 2026-11-05 was the canonical list's
 # zip size, not the as-assembled set's; the deterministic
 # build over the 133 files gives the figure below.
+# Re-measured again on 2026-11-06 after the signed-body
+# strictness fix (duplicate member names refused and a
+# nesting pre-scan in loads_signed) grew
+# runner/guard/textutil.py by 57 lines, and after the
+# audit hash-chain fix grew runner/guard/security.py and
+# runner/ops/auditreport.py on the same day.
 # Recorded constants: they describe the as-assembled set (the
 # canonical 130 files below plus the 3 suite runners named in
 # the module docstring), not the canonical list itself. The
@@ -107,20 +113,20 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 133
-AS_ASSEMBLED_ZIP_BYTES = 691500
-AS_ASSEMBLED_LINES = 54561
-AS_ASSEMBLED_NONBLANK_LINES = 49109
+AS_ASSEMBLED_ZIP_BYTES = 695947
+AS_ASSEMBLED_LINES = 54954
+AS_ASSEMBLED_NONBLANK_LINES = 49470
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 16880,
+    "runner/ops": 17065,
     "runner/tools": 8669,
     "runner/wire": 8267,
     "runner/runner.py": 6586,
     "runner/oracle": 4987,
     "runner/transport_extensions": 2771,
-    "runner/guard": 2614,
+    "runner/guard": 2822,
     "runner/cloud": 2050,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,

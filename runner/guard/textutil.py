@@ -104,15 +104,72 @@ def _finite_float(text):
     return value
 
 
+def _no_duplicate_names(pairs):
+    """json.loads' object_pairs_hook for a signed body: a member
+    name carried twice in one object is refused, naming the name.
+    Without the hook the parser keeps the last value, so two
+    readers of one body can disagree about what a name carries --
+    a parser differential at a security boundary. The hook sees
+    the decoded name, so an escaped spelling of a name already
+    present is the same duplicate."""
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("signed body carries duplicate member "
+                             f"name {key!r}")
+        out[key] = value
+    return out
+
+
+def _check_nesting_first(text):
+    """Refuse a signed body whose raw bracket depth passes
+    NESTING_LIMIT, before json.loads runs. The bound used to be
+    measured only on the parsed value, after the parser had
+    already recursed as deep as the body asked; counting first
+    means the parser never recurses past the bound. Brackets
+    inside a string are text, not containers, and an escaped
+    quote does not end the string."""
+    if isinstance(text, (bytes, bytearray)):
+        text = bytes(text).decode("utf-8", "replace")
+    depth = 0
+    in_string = False
+    escaped = False
+    for char in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char in "{[":
+            depth += 1
+            if depth > NESTING_LIMIT:
+                raise ValueError(
+                    f"signed body nests deeper than {NESTING_LIMIT} "
+                    "levels")
+        elif char in "}]":
+            depth -= 1
+
+
 def loads_signed(text):
     """json.loads for the text of a signed body: the literals NaN and
     Infinity and a number that overflows a float are refused with a
     ValueError that names them, so a body trusts nothing a JSON
     reader elsewhere would not read the same way (Q89). A body the
-    parser cannot finish is refused as nested past the bound."""
+    parser cannot finish is refused as nested past the bound. A
+    duplicate member name in one object is refused, and the raw
+    bracket depth is scanned before the parse so a body nested
+    past the bound is refused without the parser recursing there
+    first."""
+    _check_nesting_first(text)
     try:
         return json.loads(text, parse_constant=_no_constant,
-                          parse_float=_finite_float)
+                          parse_float=_finite_float,
+                          object_pairs_hook=_no_duplicate_names)
     except RecursionError:
         # The parser gave up before the measure below could run: a
         # body it cannot finish is past the bound by any count.
