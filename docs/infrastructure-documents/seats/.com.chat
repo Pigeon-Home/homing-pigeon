@@ -268,9 +268,11 @@ either settle or carry as named decisions; the 46 unjudged
 Lane H claims, 53 unjudged Lane G claims, 3 unjudged Lane I
 claims, and 22 unjudged Lane J claims, nearly all resting
 on stripped tests, the corpus machinery, or historical
-records; the send tool's own duplicate-key check, still to
-be aligned with the shared fix; and any code written after
-the fix queue closed, which no lane has judged.
+records; and any code written after the fix queue closed,
+which no lane has judged. (The send tool's own
+duplicate-key check, named here as unchecked when this
+entry was first written, was aligned with the shared fix
+in the commit directly beneath this entry's.)
 
 Documentation. Evidence in hand: every living document's
 title was reviewed and its section headings swept in the
