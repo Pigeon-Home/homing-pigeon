@@ -216,5 +216,93 @@ launched; exactly 1 lane runs now (lane pid in
 verified from the process table and the advancing logs,
 `lane.log` and `hybrid-fuzz.log` in the same directory).
 
-Phase A verdict and phase B rounds are appended here as
-they land.
+Phase A verdict (2026-11-06T00:35Z): rounds=227470
+findings=0 mode=real seed=10024 elapsed_s=3600 — the full
+hour against the real cryptography, clean. Phase B began
+automatically (abstract, seed 20002).
+
+The RFC 10024 harvest (2026-11-05, after phase A had
+started; the direction asked for everything the RFC itself
+gives to be in the corpus): RFC 10024 was read in full. It
+publishes no test vectors and no worked examples. What it
+fixes, now harvested into
+`runner/tests/fixtures/rfc10024_groups.json` with its
+provenance in the fixture's source field: all three
+groups' code points (4588, 4587, 4589), component and
+share sizes (client/server 1216/1120, 1249/1153,
+1665/1665), concatenation orders (ML-KEM first for
+X25519MLKEM768 — the RFC's own note that this reverses the
+RFC 9954 convention — ECDHE first for the NIST-curve
+groups), shared-secret sizes (64, 64, 80), the obsoleted
+pre-standard code points (25497, 25498), and the checks of
+sections 4.2 and 4.3. The harness gained a geometry
+target: this group's genuine shares rebuilt at the other
+groups' sizes, and its parts in the RFC 9954 order at
+exactly 1216 octets — all must be refused (behind the
+seam, the order-swapped share is held to the framing
+contract instead, because what refuses it in real mode is
+the section 7.2 content check the seam abstracts; the
+record in "The abstraction seam" above already names that
+difference). The unit tests grew to 29, pinning the
+harvest's arithmetic, the implemented group against the
+code's constants, the other code points' absence from the
+engine, and the geometry refusals; they pass on the build
+machine and on the rig (29 tests, OK, both). A run now
+also refuses to start if the harvested geometry and the
+code's constants disagree.
+
+Machine direction, restated 2026-11-05 after the launch:
+the campaign's primary machine is the Germany rig
+(8 vCPU, Windows); San Francisco is the fallback runner.
+Germany was tried directly (2026-11-06T00:56Z): the SSH
+connection is closed by the egress proxy before any
+banner, the same read the fleet watchdog recorded on every
+pass that day. The deployment for Germany is staged
+locally (harness, corpus and this record are the staging;
+the lane shape ports as-is), San Francisco runs the
+campaign as the named fallback, and the blocker is
+recorded here rather than worked around silently.
+
+Phase B interruption and restart, for the record: at
+2026-11-06T01:00Z the lane was stopped to sync the
+enriched corpus; the abstract pass then running (seed
+20002) had reached round 668250 with findings=0 when it
+was stopped, and those rounds stand as run. The first
+relaunch attempt was refused by the lane's own
+single-instance guard (the relaunch shell's pid was still
+alive in the pidfile — the guard working as designed
+against a racy launch command). Relaunched cleanly, the
+lane now runs abstract passes with the geometry target in
+rotation (first start line: mode=abstract seed=20001
+targets=...,geometry; rounds advancing at about
+450 a second, findings=0, MemAvailable about 1500 MB).
+Phase B rounds continue to be appended here as passes
+complete.
+
+Finding F-1 (2026-11-06): a crafted ServerHello with the
+key_share extension removed, fed as a plaintext epoch-0
+record to a client waiting for a ServerHello, raised an
+uncaught KeyError(51) out of DtlsClientCore.feed, where
+every sibling refusal in _on_server_hello is a DtlsError.
+Found by the Argon plan review (plan section 11), verified
+by hand with a deterministic construction: a genuine
+ServerHello rebuilt without extension 51, its suite,
+supported_versions and pre_shared_key extensions intact,
+fed to a client driven through the genuine
+HelloRetryRequest exchange into its wait-for-ServerHello
+state. The defect was the extension's absence going
+unchecked at the one place it is indexed directly
+(_ServerSession.begin and the HelloRetryRequest branch
+both check presence first). Fixed test-first in the same
+landing: the presence check now raises
+DtlsError("server sent no key_share"); a client_feed
+target joins the harness rotation (structural ServerHello
+variants — each extension removed, foreign groups 4587,
+4589, 25497, 25498 named — plus byte mutations), and
+ClientFeedTargetTest in runner/tests/test_hybrid_fuzz.py
+pins the shape and its family (every extension removed in
+turn; empty, truncated, extended and zeroed key_share
+values). The suite count for the campaign file is now 33
+tests. The plan (docs/steady/project/fy_iceworld.md,
+section 11) carries the review's full disposition,
+including the points verification did not uphold.
