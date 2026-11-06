@@ -13,10 +13,14 @@ count. This module carries that split across machines:
   so a faster rig is handed proportionally more test count.
 - ``worker`` runs ONE module in-process with a recording test result
   and emits that module's JSON object. An import failure is an error
-  entry in the object, never a silent crash. The worker inserts the
-  tree root into sys.path itself, so it runs under an embeddable
-  Python whose ``._pth`` file pins sys.path (the shape plain
-  ``-m unittest`` cannot survive on such an interpreter).
+  entry in the object, never a silent crash; a module that raises
+  SkipTest at import (a platform skip) is a skipped entry, not an
+  error. The worker inserts the tree root into sys.path itself, so
+  it runs under an embeddable Python whose ``._pth`` file pins
+  sys.path (the shape plain ``-m unittest`` cannot survive on such
+  an interpreter). Extra module directories travel as ``--path``
+  arguments, never as PYTHONPATH: an embeddable Python in its
+  isolated layout ignores that variable entirely.
 - ``run-shard`` runs every module a manifest assigns to one rig,
   one worker subprocess per module, and writes the shard-result
   file: schema 1, the pinned head, the rig's name, platform and
@@ -32,6 +36,7 @@ Usage:
     python runner/tools/fleet_shards.py manifest --head SHA
         --rig menlo=1 --rig germany=4 --out manifest.json
     python runner/tools/fleet_shards.py worker MODULE [--out FILE]
+        [--path DIR ...]
     python runner/tools/fleet_shards.py run-shard --manifest M
         --rig NAME --jobs 4 --out result.json
     python runner/tools/fleet_shards.py merge --manifest M
@@ -178,6 +183,18 @@ def run_module(module_name):
     started = time.monotonic()
     try:
         module = importlib.import_module(module_name)
+    except unittest.SkipTest:
+        # A module that skips itself at import (a platform gate)
+        # is one skipped test, the shape discovery reports — not
+        # an error.
+        return {
+            "module": module_name,
+            "ran": 1,
+            "failures": [],
+            "errors": [],
+            "skipped": 1,
+            "seconds": round(time.monotonic() - started, 3),
+        }
     except Exception:
         return {
             "module": module_name,
@@ -229,12 +246,15 @@ def build_shard_result(head, rig, jobs, module_objects,
     }
 
 
-def _worker_command(module_name, out_path):
-    return [sys.executable, os.path.abspath(__file__), "worker",
-            module_name, "--out", out_path]
+def _worker_command(module_name, out_path, extra_paths=()):
+    command = [sys.executable, os.path.abspath(__file__), "worker",
+               module_name, "--out", out_path]
+    for path in extra_paths:
+        command += ["--path", path]
+    return command
 
 
-def _run_one_worker(module_name, work_dir):
+def _run_one_worker(module_name, work_dir, extra_paths=()):
     """One worker subprocess; a hard crash becomes an error entry.
 
     The worker itself turns import failures into error entries, so
@@ -247,7 +267,8 @@ def _run_one_worker(module_name, work_dir):
         + ".json")
     started = time.monotonic()
     try:
-        subprocess.run(_worker_command(module_name, out_path),
+        subprocess.run(_worker_command(module_name, out_path,
+                                       extra_paths),
                        stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL)
     except Exception:
@@ -269,8 +290,13 @@ def _run_one_worker(module_name, work_dir):
         }
 
 
-def run_shard(manifest, rig_name, jobs):
-    """Run one rig's manifest share; return the shard-result dict."""
+def run_shard(manifest, rig_name, jobs, extra_paths=()):
+    """Run one rig's manifest share; return the shard-result dict.
+
+    ``extra_paths`` are directories the worker subprocesses insert
+    into sys.path (forwarded as --path arguments, so they reach an
+    embeddable Python that ignores PYTHONPATH).
+    """
     shares = {entry["rig"]: entry["modules"]
               for entry in manifest["rigs"]}
     if rig_name not in shares:
@@ -288,7 +314,9 @@ def run_shard(manifest, rig_name, jobs):
         with concurrent.futures.ThreadPoolExecutor(
                 max_workers=max(1, jobs)) as pool:
             objects = list(pool.map(
-                lambda name: _run_one_worker(name, work_dir), modules))
+                lambda name: _run_one_worker(name, work_dir,
+                                             extra_paths),
+                modules))
     return build_shard_result(manifest["head"], rig_name, jobs, objects,
                               started_utc, time.monotonic() - started)
 
@@ -401,6 +429,10 @@ def main(argv=None):
     p_worker.add_argument("module")
     p_worker.add_argument("--out", help="write the object here "
                                         "instead of stdout")
+    p_worker.add_argument("--path", action="append", default=[],
+                          metavar="DIR",
+                          help="insert DIR into sys.path before "
+                               "importing the module; repeatable")
 
     p_shard = sub.add_parser(
         "run-shard", help="run one rig's manifest share")
@@ -408,6 +440,10 @@ def main(argv=None):
     p_shard.add_argument("--rig", required=True)
     p_shard.add_argument("--jobs", type=int, default=1)
     p_shard.add_argument("--out", required=True)
+    p_shard.add_argument("--path", action="append", default=[],
+                         metavar="DIR",
+                         help="forward DIR to every worker's "
+                              "sys.path; repeatable")
 
     p_merge = sub.add_parser(
         "merge", help="merge shard results against a manifest")
@@ -432,6 +468,9 @@ def main(argv=None):
         return 0
 
     if args.command == "worker":
+        for path in reversed(args.path):
+            if path not in sys.path:
+                sys.path.insert(0, path)
         obj = run_module(args.module)
         if args.out:
             _write_json(obj, args.out)
@@ -444,7 +483,8 @@ def main(argv=None):
             parser.error("--jobs must be >= 1")
         manifest = _read_json(args.manifest)
         try:
-            result = run_shard(manifest, args.rig, args.jobs)
+            result = run_shard(manifest, args.rig, args.jobs,
+                               extra_paths=args.path)
         except ValueError as exc:
             print("error: %s" % (exc,), file=sys.stderr)
             return 2

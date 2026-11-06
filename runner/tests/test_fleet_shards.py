@@ -12,10 +12,10 @@ the module — on a missing, duplicated, or wrong-head shard.
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
-from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -128,6 +128,10 @@ _FAIL = (
     "        self.assertTrue(False)\n"
 )
 _BROKEN = "raise RuntimeError('import boom')\n"
+_SKIPPED = (
+    "import unittest\n"
+    "raise unittest.SkipTest('another platform')\n"
+)
 
 
 def _write_module(directory, name, body):
@@ -143,7 +147,7 @@ class _FakeTree(unittest.TestCase):
         sys.path.insert(0, self._tmp.name)
         self.addCleanup(sys.path.remove, self._tmp.name)
         for name in ("fleet_fake_pass", "fleet_fake_fail",
-                     "fleet_fake_broken"):
+                     "fleet_fake_broken", "fleet_fake_skipped"):
             sys.modules.pop(name, None)
             self.addCleanup(sys.modules.pop, name, None)
 
@@ -180,6 +184,36 @@ class WorkerTest(_FakeTree):
         obj = fs.run_module("fleet_fake_absent")
         self.assertEqual(obj["errors"], ["fleet_fake_absent"])
         self.assertEqual(obj["ran"], 1)
+
+    def test_a_module_that_skips_itself_is_skipped_not_an_error(self):
+        _write_module(self._tmp.name, "fleet_fake_skipped", _SKIPPED)
+        obj = fs.run_module("fleet_fake_skipped")
+        self.assertEqual(obj["errors"], [])
+        self.assertEqual(obj["failures"], [])
+        self.assertEqual(obj["ran"], 1)
+        self.assertEqual(obj["skipped"], 1)
+
+    def test_the_worker_cli_finds_a_module_by_path_alone(self):
+        # The fake tree is NOT on this process's sys.path for the
+        # child: the child must find the module through --path,
+        # the route an embeddable Python (which ignores
+        # PYTHONPATH) can still take.
+        _write_module(self._tmp.name, "fleet_fake_pass", _PASS)
+        tool = os.path.join(REPO, "runner", "tools", "fleet_shards.py")
+        with tempfile.TemporaryDirectory() as out_dir:
+            out = os.path.join(out_dir, "obj.json")
+            env = {k: v for k, v in os.environ.items()
+                   if k != "PYTHONPATH"}
+            proc = subprocess.run(
+                [sys.executable, tool, "worker", "fleet_fake_pass",
+                 "--path", self._tmp.name, "--out", out],
+                capture_output=True, text=True, env=env, timeout=120)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            with open(out, encoding="utf-8") as fh:
+                obj = json.load(fh)
+        self.assertEqual(obj["module"], "fleet_fake_pass")
+        self.assertEqual(obj["ran"], 3)
+        self.assertEqual(obj["errors"], [])
 
     def test_the_worker_cli_emits_the_object_as_json(self):
         _write_module(self._tmp.name, "fleet_fake_pass", _PASS)
@@ -224,9 +258,12 @@ class RunShardTest(_FakeTree):
             "abc123",
             {"fleet_fake_pass": 3, "fleet_fake_broken": 1},
             [("menlo", 1)])
-        with mock.patch.dict(os.environ,
-                             {"PYTHONPATH": self._tmp.name}):
-            result = fs.run_shard(manifest, "menlo", 2)
+        # The worker subprocesses get the fake tree through
+        # extra_paths (--path), not PYTHONPATH: an embeddable
+        # Python in its isolated layout ignores the variable,
+        # which is exactly the rig this worker exists for.
+        result = fs.run_shard(manifest, "menlo", 2,
+                              extra_paths=[self._tmp.name])
         self.assertEqual(result["head"], "abc123")
         self.assertEqual(result["rig"], "menlo")
         self.assertEqual(result["totals"]["modules"], 2)
