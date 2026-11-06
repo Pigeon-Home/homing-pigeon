@@ -2249,3 +2249,565 @@ def _make_restart_field_tests():
 
 
 _make_restart_field_tests()
+
+
+class _ScriptClock:
+    """A perf_counter that reads a script of values, so a timing
+    pin is the machinery's own arithmetic on known times, never a
+    wall-clock sleep."""
+
+    def __init__(self, values):
+        self._values = iter(values)
+
+    def __call__(self):
+        return next(self._values)
+
+
+class SlowLatencyShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 47: Q116-Q118 -- slow
+    families on cloud, wire and local, operations pathologically
+    slow, a latency defect class (found f19bc40e, fixed a1bbaeaf
+    and 30119441, 29-Oct-2026, records retired as fast).
+
+    The defect under the class: _object_start in
+    runner/wire/verify.py and its copy in runner/cloud/send_job.py
+    walked the brace walk once per brace to the signature marker,
+    quadratic in a nest -- 500 to 1,040 ms on 16 KB bodies nested
+    a few hundred levels, and a 4 MB nest would have held the
+    mail loop before any MAC. The walk is one backward pass now
+    (_root_candidates), the same answers brace for brace. And the
+    classification machinery around it (de_dust2 P4): a try far
+    slower than the corpus replay's median is a `slow` finding,
+    kept apart from the crash file; a grow files its five slowest;
+    promote replays the slow file and retires what now runs under
+    half the floor as fast.
+
+    Per-field / per-target enumeration (the method section): the
+    three targets the families were found on -- cloud, wire,
+    local -- each get the same seven generated tests (the floor,
+    the baseline bound, the slow outcome, the crash that is never
+    slow, the slowest-five filing, promote retiring fast, promote
+    keeping slow), and the machinery's fields get their own
+    handwritten tests: SLOW_FACTOR, SLOW_FLOOR_SEC, SLOW_PER_GROW,
+    slow_floor (a target's own floor, above and below the shared
+    one, and an unknown target), the baseline median (odd, even
+    and empty corpora), the slow bound, the rerun-twice rule and
+    the best time standing, the slowest try remembered, the slow
+    record's fields (crash, detail, median_ms, found, head), an id
+    never filed twice, a record with no seconds stamp sorting as
+    zero, a mixed promote split, a crashing replay still retiring
+    on its time, the retired entry's shape and round trip, and
+    the file names that keep slow apart from crashes. The brace
+    walk itself is pinned by agreement: _root_candidates against
+    the brute-force _in_root_object_at walk, on seeded random
+    texts and on bookended / run-length texts, in both copies;
+    and _extract_signed on nests of depth 0, 2, 25, 100 and 300
+    in both copies -- the Q116 shape at the depth it was found.
+
+    Timing pins use the machinery's own seams, never wall-clock
+    sleeps: the bound set to zero or to 999, SLOW_FLOOR_SEC
+    patched, and a scripted perf_counter (_ScriptClock) feeding
+    known times through Session.run and _promote_slow, so every
+    number asserted was computed by the code from the script.
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: the brace-walk texts are
+    built with every printable ASCII symbol bookending a signed
+    object, runs of braces and of quotes, and symbol-only texts,
+    plus NUL, tab, CR and LF in the alphabet the seeded sweep
+    draws from.
+
+    Proof of work (6-Nov-2026). The unit tests are the 50 methods
+    of this class: 21 generated per-target tests (7 each for
+    cloud, wire and local) and 29 handwritten machinery and
+    brace-walk tests. The fuzzing was executed, not just the
+    tests written: runner/tools/de_dust_corpus.py grow --target
+    wire --rounds 400 --seed 20261148, run locally against the
+    banked wire corpus (117 entries) -- wire is the target the
+    queue names for this item, one of the three the slow
+    families were found on, and the reader whose brace walk was
+    fixed first. Result: 400 rounds, 0 crashes, 0 slow, arcs
+    unchanged at 180, slowest try 4,100 ms; no slow record was
+    filed, so the latency class did not recur. The grow's
+    bookkeeping writes were reverted and are not banked (banking
+    is the rigs' hourly job); this record is the run's proof.
+    None of this is exotic: it is combinatorics -- systematically
+    trying the combinations a hand-written list would never reach,
+    then pinning each answer as a test."""
+
+    SIG = "a" * 96
+
+    def _entry(self, rid="x1", data="a"):
+        return {"id": rid, "kind": "text", "data": data, "from": "",
+                "mutator": "", "arcs": 0}
+
+    def _session(self, target, median=0.001, bound=None):
+        s = B.Session(target, [])
+        s.median = median
+        s.slow_bound = bound
+        return s
+
+    def _slow_session(self, target, count=7, median=0.002):
+        s = self._session(target, median=median)
+        for i in range(count):
+            c = B.Crash("slow", "%d ms" % (i + 1))
+            c.seconds = (i + 1) / 1000.0
+            s.slow.append((self._entry("%s-s%d" % (target, i), str(i)), c))
+        return s
+
+    def _slow_record(self, rid):
+        rec = self._entry(rid)
+        rec.update({"crash": "slow", "detail": "900 ms",
+                    "median_ms": 2.0, "found": "2026-10-30",
+                    "head": "abc"})
+        return rec
+
+    # -- the constants and the floor --
+
+    def test_the_slow_constants_are_the_class_bounds(self):
+        self.assertEqual(50.0, B.SLOW_FACTOR)
+        self.assertEqual(0.5, B.SLOW_FLOOR_SEC)
+        self.assertEqual(5, B.SLOW_PER_GROW)
+
+    def test_slow_floor_takes_a_targets_own_higher_floor(self):
+        # queries runs a sender's pattern under its worker deadline,
+        # six times a try: its floor is six deadlines and a second.
+        self.assertEqual(6 * B.QU._GREP_DEADLINE + 1.0,
+                         B.slow_floor("queries"))
+        self.assertEqual(13.0, B.slow_floor("queries"))
+
+    def test_slow_floor_never_drops_below_the_shared_floor(self):
+        with mock.patch.dict(B.TARGETS,
+                             {"fake": {"slow_floor_sec": 0.1}}):
+            self.assertEqual(B.SLOW_FLOOR_SEC, B.slow_floor("fake"))
+
+    def test_slow_floor_above_the_shared_one_wins_and_unknown_gets_shared(self):
+        with mock.patch.dict(B.TARGETS,
+                             {"fake": {"slow_floor_sec": 2.0}}):
+            self.assertEqual(2.0, B.slow_floor("fake"))
+        self.assertEqual(B.SLOW_FLOOR_SEC, B.slow_floor("no-such-target"))
+
+    # -- the baseline: median and bound --
+
+    def test_the_baseline_median_of_an_even_corpus_is_the_upper_middle(self):
+        s = B.Session("wire", [self._entry("e0"), self._entry("e1")])
+        seq = iter([("accepted", 0, 0.001), ("accepted", 0, 0.004)])
+        with mock.patch.object(s, "run", side_effect=lambda e: next(seq)):
+            s.baseline()
+        self.assertEqual(0.004, s.median)
+        self.assertEqual(B.SLOW_FLOOR_SEC, s.slow_bound)
+
+    def test_the_baseline_bound_uses_the_factor_over_a_slow_corpus(self):
+        s = B.Session("local", [self._entry("e%d" % i) for i in range(3)])
+        seq = iter([("accepted", 0, 0.1)] * 3)
+        with mock.patch.object(s, "run", side_effect=lambda e: next(seq)):
+            s.baseline()
+        self.assertEqual(0.1, s.median)
+        self.assertEqual(B.SLOW_FACTOR * 0.1, s.slow_bound)
+
+    def test_a_baseline_with_no_entries_sets_neither_median_nor_bound(self):
+        s = B.Session("cloud", [])
+        s.baseline()
+        self.assertIsNone(s.median)
+        self.assertIsNone(s.slow_bound)
+
+    # -- Session.run: the classification itself --
+
+    def test_a_try_under_the_bound_keeps_its_outcome(self):
+        s = self._session("cloud", bound=999.0)
+        with mock.patch.object(B, "check", return_value="accepted"):
+            self.assertEqual("accepted",
+                             s.run(self._entry("u1"), trace=False)[0])
+        with mock.patch.object(B, "check", return_value="refused"):
+            self.assertEqual("refused",
+                             s.run(self._entry("u2"), trace=False)[0])
+        self.assertEqual([], s.slow)
+
+    def test_a_session_with_no_bound_never_files_slow(self):
+        s = self._session("local", bound=None)
+        with mock.patch.object(B, "check", return_value="accepted"):
+            outcome, _n, _dt = s.run(self._entry("n1"), trace=False)
+        self.assertEqual("accepted", outcome)
+        self.assertEqual([], s.slow)
+
+    def test_the_slowest_try_is_remembered_by_id(self):
+        s = self._session("wire", bound=None)
+        clock = _ScriptClock([0.0, 0.1, 0.1, 0.45])
+        with mock.patch.object(B, "check", return_value="accepted"), \
+                mock.patch.object(B.time, "perf_counter", clock):
+            s.run(self._entry("e1"), trace=False)
+            s.run(self._entry("e2"), trace=False)
+        self.assertEqual("e2", s.slowest[1])
+        self.assertAlmostEqual(0.35, s.slowest[0])
+
+    def test_a_slow_try_is_rerun_and_the_best_time_stands(self):
+        s = self._session("wire", bound=0.05)
+        calls = []
+        clock = _ScriptClock([0.0, 0.2, 0.2, 0.21, 0.21, 0.21])
+        with mock.patch.object(
+                B, "check",
+                lambda t, e: calls.append(1) or "accepted"), \
+                mock.patch.object(B.time, "perf_counter", clock):
+            outcome, _n, dt = s.run(self._entry("r1"), trace=False)
+        self.assertEqual("accepted", outcome)
+        self.assertEqual(3, len(calls))
+        self.assertEqual(0.0, dt)
+        self.assertEqual([], s.slow)
+
+    def test_a_slow_try_stays_slow_at_its_best_time(self):
+        s = self._session("wire", bound=0.05)
+        clock = _ScriptClock([0.0, 0.2, 0.2, 0.35, 0.35, 0.44])
+        with mock.patch.object(B, "check", return_value="accepted"), \
+                mock.patch.object(B.time, "perf_counter", clock):
+            outcome, _n, _dt = s.run(self._entry("r2"), trace=False)
+        self.assertEqual("slow", outcome)
+        self.assertEqual("90 ms, 90x the corpus median of 1.0 ms",
+                         s.slow[0][1].detail)
+        self.assertAlmostEqual(0.09, s.slow[0][1].seconds)
+
+    # -- _record_slow: the filing --
+
+    def test_record_slow_with_nothing_slow_writes_nothing(self):
+        s = self._session("wire")
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td):
+                self.assertEqual(0, B._record_slow("wire", s,
+                                                   lambda *a: None))
+                self.assertFalse(os.path.exists(
+                    B.corpus_path("wire", slow=True)))
+
+    def test_record_slow_records_carry_the_finding_fields(self):
+        from datetime import datetime, timezone
+        s = self._slow_session("cloud", count=1)
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td), \
+                    mock.patch.object(B, "head_sha",
+                                      return_value="feedfacefeedface"):
+                self.assertEqual(1, B._record_slow("cloud", s,
+                                                   lambda *a: None))
+                recs = B.load(B.corpus_path("cloud", slow=True))
+        self.assertEqual(1, len(recs))
+        rec = recs[0]
+        self.assertEqual("slow", rec["crash"])
+        self.assertEqual("1 ms", rec["detail"])
+        self.assertEqual(2.0, rec["median_ms"])
+        self.assertEqual("feedfacefeed", rec["head"])
+        self.assertEqual(datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                         rec["found"])
+
+    def test_record_slow_never_files_an_id_twice_across_grows(self):
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td):
+                first = self._slow_session("wire", count=1)
+                self.assertEqual(1, B._record_slow("wire", first,
+                                                   lambda *a: None))
+                second = self._slow_session("wire", count=1)
+                self.assertEqual(0, B._record_slow("wire", second,
+                                                   lambda *a: None))
+                self.assertEqual(1, len(B.load(
+                    B.corpus_path("wire", slow=True))))
+
+    def test_record_slow_orders_a_record_with_no_seconds_stamp_as_zero(self):
+        s = self._session("local", median=0.002)
+        unstamped = B.Crash("slow", "no stamp")
+        s.slow.append((self._entry("unstamped"), unstamped))
+        stamped = B.Crash("slow", "stamped")
+        stamped.seconds = 0.5
+        s.slow.append((self._entry("stamped"), stamped))
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td):
+                B._record_slow("local", s, lambda *a: None)
+                ids = [r["id"] for r in B.load(
+                    B.corpus_path("local", slow=True))]
+        self.assertEqual(["stamped", "unstamped"], ids)
+
+    def test_a_grow_files_its_slow_five_by_seconds_not_by_arrival(self):
+        s = self._session("cloud", median=0.002)
+        for i, sec in enumerate((0.001, 0.009, 0.002, 0.008, 0.003,
+                                 0.007, 0.004)):
+            c = B.Crash("slow", "%d ms" % i)
+            c.seconds = sec
+            s.slow.append((self._entry("a%d" % i), c))
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td):
+                self.assertEqual(B.SLOW_PER_GROW,
+                                 B._record_slow("cloud", s,
+                                                lambda *a: None))
+                ids = [r["id"] for r in B.load(
+                    B.corpus_path("cloud", slow=True))]
+        self.assertEqual(["a1", "a3", "a5", "a6", "a4"], ids)
+
+    # -- _promote_slow and the retired sidecar --
+
+    def test_promote_slow_with_no_file_is_a_quiet_false(self):
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td):
+                self.assertFalse(B._promote_slow("wire", lambda *a: None))
+                self.assertEqual({}, B.load_retired("wire"))
+
+    def test_promote_slow_splits_a_mixed_file(self):
+        recs = [self._slow_record("m-fast"), self._slow_record("m-slow")]
+        clock = _ScriptClock([0, 0, 0, 0, 0, 0,
+                              0, 10, 10, 20, 20, 30] + [0] * 12)
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td), \
+                    mock.patch.object(B, "check", return_value="accepted"), \
+                    mock.patch.object(B, "head_sha",
+                                      return_value="feedfacefeedface"), \
+                    mock.patch.object(B.time, "perf_counter", clock):
+                B.save(B.corpus_path("wire", slow=True), "wire", recs)
+                still = B._promote_slow("wire", lambda *a: None)
+                left = [r["id"] for r in B.load(
+                    B.corpus_path("wire", slow=True))]
+                retired = B.load_retired("wire")
+        self.assertTrue(still)
+        self.assertEqual(["m-slow"], left)
+        self.assertEqual("fast", retired["m-fast"]["why"])
+
+    def test_promote_slow_retires_a_record_whose_check_now_crashes(self):
+        # The replay times the check, crash and all: a record that
+        # crashes fast is retired on its time, and the crash itself
+        # is the crash file's business, not the slow file's.
+        def boom(target, entry):
+            raise B.Crash("contract", "still broken")
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td), \
+                    mock.patch.object(B, "check", boom), \
+                    mock.patch.object(B, "head_sha",
+                                      return_value="feedfacefeedface"):
+                B.save(B.corpus_path("cloud", slow=True), "cloud",
+                       [self._slow_record("c1")])
+                still = B._promote_slow("cloud", lambda *a: None)
+                retired = B.load_retired("cloud")
+        self.assertFalse(still)
+        self.assertEqual("fast", retired["c1"]["why"])
+
+    def test_promote_slow_the_retired_entry_shape(self):
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td), \
+                    mock.patch.object(B, "check", return_value="accepted"), \
+                    mock.patch.object(B, "head_sha",
+                                      return_value="feedfacefeedface"):
+                B.save(B.corpus_path("local", slow=True), "local",
+                       [self._slow_record("l1")])
+                B._promote_slow("local", lambda *a: None)
+                retired = B.load_retired("local")
+        entry = retired["l1"]
+        self.assertEqual("fast", entry["why"])
+        self.assertEqual("feedfacefeed", entry["head"])
+        self.assertEqual(10, len(entry["on"]))
+        self.assertIsInstance(entry["ms"], (int, float))
+        self.assertGreaterEqual(entry["ms"], 0)
+
+    def test_retired_records_round_trip_and_a_missing_file_is_empty(self):
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(B, "CORPUS_DIR", td):
+                self.assertEqual({}, B.load_retired("cloud"))
+                saved = {"x": {"on": "2026-10-30", "why": "fast",
+                               "head": "abc", "ms": 1.5}}
+                B.save_retired("cloud", saved)
+                self.assertEqual(saved, B.load_retired("cloud"))
+
+    def test_the_corpus_paths_name_the_slow_file_apart(self):
+        for target in ("cloud", "wire", "local"):
+            self.assertEqual(target + ".jsonl",
+                             os.path.basename(B.corpus_path(target)))
+            self.assertEqual(target + ".slow.jsonl", os.path.basename(
+                B.corpus_path(target, slow=True)))
+            self.assertEqual(target + ".crashes.jsonl", os.path.basename(
+                B.corpus_path(target, crashes=True)))
+            self.assertEqual(target + ".retired.json", os.path.basename(
+                B.retired_path(target)))
+
+    # -- the brace walk: the fix under the class --
+
+    def _candidates_agree(self, text):
+        from runner.cloud import send_job as SJ
+        from runner.wire import verify as V
+        sig_at = len(text)
+        for mod in (V, SJ):
+            cands = list(mod._root_candidates(text, sig_at))
+            brute = [p for p in range(sig_at - 1, -1, -1)
+                     if text[p] == "{"
+                     and mod._in_root_object_at(text, p, sig_at)]
+            self.assertEqual(brute, cands, (mod.__name__, repr(text)))
+
+    def test_the_brace_walk_candidates_match_the_brute_force_walk(self):
+        rng = random.Random(20261148)
+        alphabet = '{}"\\ab:,012 \n\t\x00;<>.'
+        for _ in range(1500):
+            text = "".join(rng.choice(alphabet)
+                           for _ in range(rng.randrange(0, 40)))
+            self._candidates_agree(text)
+
+    def test_the_brace_walk_agrees_on_bookended_and_run_length_texts(self):
+        texts = ['{"a":1}', '{"a":"}"}', '{"a":"\\"}"}', "{}" * 10,
+                 "{" * 10 + '"a"' + "}" * 10, '"' * 10,
+                 "\\" * 10 + '{"a":1}', '{"a":1}' + "\x00" * 10,
+                 "\x00" * 10 + '{"a":1}', "{" * 10, "}" * 10,
+                 '{"x":{"y":{"z":1}}}', 'a{"b":2}c']
+        for symbol in string.punctuation:
+            texts.append(symbol + '{"a":1}' + symbol)
+            texts.append(symbol * 10 + '{"a":1}')
+        for text in texts:
+            self._candidates_agree(text)
+
+    def _signed(self, depth):
+        body = '{"y":1}'
+        for _ in range(depth):
+            body = '{"x":' + body + "}"
+        return body, body[:-1] + ',"sig":"' + self.SIG + '"}'
+
+    def test_extract_signed_finds_the_object_in_a_nest(self):
+        from runner.cloud import send_job as SJ
+        from runner.wire import verify as V
+        for depth in (0, 2, 25, 100):
+            body, signed = self._signed(depth)
+            for mod in (V, SJ):
+                raw, sig = mod._extract_signed(signed)
+                self.assertEqual(body, raw, (mod.__name__, depth))
+                self.assertEqual(self.SIG, sig)
+
+    def test_extract_signed_on_the_q116_nest_in_the_sender_copy(self):
+        from runner.cloud import send_job as SJ
+        body, signed = self._signed(300)
+        raw, sig = SJ._extract_signed(signed)
+        self.assertEqual(body, raw)
+        self.assertEqual(self.SIG, sig)
+
+    def test_extract_signed_hands_back_an_unparseable_candidate(self):
+        from runner.cloud import send_job as SJ
+        from runner.wire import verify as V
+        text = '{"a": broken,"sig":"' + self.SIG + '"}'
+        for mod in (V, SJ):
+            self.assertEqual(0, mod._object_start(
+                text, text.rfind(',"sig":"')), mod.__name__)
+            raw, sig = mod._extract_signed(text)
+            self.assertEqual('{"a": broken}', raw)
+            self.assertEqual(self.SIG, sig)
+
+    def test_extract_signed_without_a_marker_says_so(self):
+        from runner.cloud import send_job as SJ
+        from runner.wire import verify as V
+        for mod in (V, SJ):
+            with self.assertRaises(ValueError) as ctx:
+                mod._extract_signed('{"a":1}')
+            self.assertIn("no signature marker", str(ctx.exception),
+                          mod.__name__)
+            with self.assertRaises(ValueError) as ctx:
+                mod._extract_signed('{"a":1,"sig":"' + "a" * 95 + '"}')
+            self.assertIn("malformed signature tail", str(ctx.exception),
+                          mod.__name__)
+
+
+def _make_slow_target_tests():
+    targets = ("cloud", "wire", "local")
+
+    for target in targets:
+
+        def floor_is_shared(self, target=target):
+            self.assertEqual(B.SLOW_FLOOR_SEC, B.slow_floor(target))
+
+        def baseline_bound(self, target=target):
+            s = B.Session(target,
+                          [self._entry("e%d" % i) for i in range(5)])
+            seq = iter([("accepted", 0, dt) for dt in
+                        (0.005, 0.001, 0.003, 0.002, 0.004)])
+            with mock.patch.object(s, "run",
+                                   side_effect=lambda e: next(seq)):
+                s.baseline()
+            self.assertEqual(0.003, s.median)
+            self.assertEqual(max(B.slow_floor(target),
+                                 B.SLOW_FACTOR * s.median), s.slow_bound)
+
+        def over_bound_is_slow(self, target=target):
+            s = self._session(target, bound=0.0)
+            calls = []
+            with mock.patch.object(
+                    B, "check",
+                    lambda t, e: calls.append(1) or "accepted"):
+                outcome, _n, _dt = s.run(self._entry("x1"), trace=False)
+            self.assertEqual("slow", outcome)
+            self.assertEqual(1, s.outcomes["slow"])
+            self.assertEqual(3, len(calls))
+            self.assertEqual([], s.crashes)
+            self.assertEqual("slow", s.slow[0][1].kind)
+            self.assertIn("corpus median of 1.0 ms", s.slow[0][1].detail)
+
+        def crash_is_never_slow(self, target=target):
+            s = self._session(target, bound=0.0)
+
+            def raiser(t, e):
+                raise B.Crash("contract", "boom")
+            with mock.patch.object(B, "check", raiser):
+                outcome, _n, _dt = s.run(self._entry("c1"), trace=False)
+            self.assertEqual("crash", outcome)
+            self.assertEqual([], s.slow)
+            self.assertEqual(1, len(s.crashes))
+
+        def record_slowest_five(self, target=target):
+            s = self._slow_session(target, count=7)
+            with tempfile.TemporaryDirectory() as td:
+                with mock.patch.object(B, "CORPUS_DIR", td):
+                    self.assertEqual(B.SLOW_PER_GROW, B._record_slow(
+                        target, s, lambda *a: None))
+                    self.assertEqual(0, B._record_slow(
+                        target, s, lambda *a: None))
+                    ids = [r["id"] for r in B.load(
+                        B.corpus_path(target, slow=True))]
+            want = ["%s-s%d" % (target, i) for i in (6, 5, 4, 3, 2)]
+            self.assertEqual(want, ids)
+
+        def promote_retires_fast(self, target=target):
+            with tempfile.TemporaryDirectory() as td:
+                with mock.patch.object(B, "CORPUS_DIR", td), \
+                        mock.patch.object(B, "check",
+                                          return_value="accepted"), \
+                        mock.patch.object(B, "head_sha",
+                                          return_value="feedfacefeedface"):
+                    B.save(B.corpus_path(target, slow=True), target,
+                           [self._slow_record(target + "-f1")])
+                    still = B._promote_slow(target, lambda *a: None)
+                    gone = os.path.exists(
+                        B.corpus_path(target, slow=True))
+                    retired = B.load_retired(target)
+            self.assertFalse(still)
+            self.assertFalse(gone)
+            self.assertEqual("fast", retired[target + "-f1"]["why"])
+
+        def promote_keeps_slow(self, target=target):
+            with tempfile.TemporaryDirectory() as td:
+                with mock.patch.object(B, "CORPUS_DIR", td), \
+                        mock.patch.object(B, "check",
+                                          return_value="accepted"), \
+                        mock.patch.object(B, "head_sha",
+                                          return_value="feedfacefeedface"), \
+                        mock.patch.object(B, "SLOW_FLOOR_SEC", -1.0):
+                    B.save(B.corpus_path(target, slow=True), target,
+                           [self._slow_record(target + "-s1")])
+                    still = B._promote_slow(target, lambda *a: None)
+                    kept = os.path.exists(
+                        B.corpus_path(target, slow=True))
+                    retired = B.load_retired(target)
+            self.assertTrue(still)
+            self.assertTrue(kept)
+            self.assertEqual({}, retired)
+
+        for name, fn in (
+                ("slow_floor_is_the_shared_floor", floor_is_shared),
+                ("baseline_bound_is_the_floor_over_a_fast_corpus",
+                 baseline_bound),
+                ("a_try_over_the_bound_is_a_slow_outcome",
+                 over_bound_is_slow),
+                ("a_crash_is_never_a_slow_outcome", crash_is_never_slow),
+                ("record_slow_files_only_the_slowest_five",
+                 record_slowest_five),
+                ("promote_retires_a_record_that_runs_fast_now",
+                 promote_retires_fast),
+                ("promote_keeps_a_record_that_still_runs_slow",
+                 promote_keeps_slow)):
+            setattr(SlowLatencyShotgunTest,
+                    "test_%s_%s" % (target, name), fn)
+
+
+_make_slow_target_tests()

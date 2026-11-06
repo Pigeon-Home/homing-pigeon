@@ -1358,7 +1358,27 @@ Applied to every item on this queue, item 1 included:
 - Found: f19bc40e (29-Oct-2026); fixed: a1bbaeaf
   (29-Oct-2026), records retired as fast
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the SlowLatencyShotgunTest suite
+  in runner/tests/test_de_dust_corpus.py): the slow
+  classification and retirement machinery pinned per target
+  (cloud, wire and local each enumerated with the same seven
+  generated tests) and the one-pass brace walk pinned by
+  agreement with the brute-force walk in both its copies —
+  the per-field pins are carried in the suite's header comment
+  in the repo. Timing pins use the machinery's own thresholds
+  and a scripted clock, never wall-clock sleeps. The suite
+  runs green (50 tests pass, 0 skipped, skip-registry gate
+  unaffected), no live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target wire --rounds
+  400 --seed 20261148, run locally against the banked wire
+  corpus (117 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 180, slowest try 4,100 ms — no slow record
+  was filed, so the latency class did not recur. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 48. Q113: provenance crash on the cloud target — a result addressed to '<>'
 - Fixed: 4c93d140 (29-Oct-2026)
