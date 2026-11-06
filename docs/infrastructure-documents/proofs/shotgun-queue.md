@@ -1000,7 +1000,35 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 53e3f33a (31-Oct-2026)
 - Existing tests: queues-worker fuzz.test.mjs
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun35 suite in
+  runner/cloud/queues-worker/test/fuzz.test.mjs): the signed
+  payload is the text that is read — NaN, Infinity and
+  -Infinity riding in payload fields the runner's way, the
+  tokens as the job_id value and as string contents, unsigned
+  decoy objects before and after the signed object, duplicate
+  keys last-wins, absent / nested / non-string claims, key
+  spellings (jobId, JOB_ID, job-id, trailing space, a Cyrillic
+  lookalike, and the \u-escaped spelling the parser decodes),
+  the sig member's own shapes (wrong secret, absent, not last,
+  fake inner member, forged inside a string, uppercase hex,
+  a raw control byte past the gate), the gate-off whole-body
+  fallback, bookended and run-length claimed ids, and the
+  storage life around a refusal. Deliberately distinct from
+  item 25's suite, which pins the result route's claim check:
+  this family pins the job route's signed-payload reading
+  itself, where an absent job_id is itself a mismatch. The
+  suite runs green under node --test (50 tests, 50 pass,
+  0 skipped), no live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target wire --rounds
+  400 --seed 20261136, run locally against the banked wire
+  corpus (117 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 180, slowest try 3614 ms — the
+  signed-payload misreading did not recur. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 36. The daily cap counted JavaScript characters, not UTF-8 bytes
 - Fixed: 9716fb5d (31-Oct-2026)

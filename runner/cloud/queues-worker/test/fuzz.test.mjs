@@ -3992,3 +3992,481 @@ test("shotgun34 cross-route: the same max=0 names one on the pull, the results r
   const dlq = await sg34Read(env, "dlq", "0");
   assert.equal(dlq.body.dead.length, 1);
 });
+
+// ---------------------------------------------------------------------
+// Shotgun family for queue item 35: the job id check did not read
+// the signed payload the way the runner does (fixed 53e3f33a,
+// 31-Oct-2026). The job route compares the subject's id against
+// the body's job_id. Before the fix that claim was read with a
+// plain JSON.parse of the whole envelope body: a signed job whose
+// payload carries NaN or Infinity -- tokens the runner's Python
+// parser accepts -- failed that parse, read as no id at all, and
+// was refused with a 400 for a job the runner would have run.
+// The fix reads the id the way the runner trusts it: the payload
+// is extracted from around the sig member (the newest root object
+// the sig closes), and that payload is read with a parser that
+// takes NaN, Infinity and -Infinity outside strings as numbers,
+// exactly as Python's json.loads does. This family pins THAT
+// READING on the job route: which text is read (the signed
+// payload, not an unsigned decoy before it or after it, not the
+// whole body), how it is read (the Python-shaped tokens, key
+// spellings as decoded, duplicate keys last-wins, the field that
+// must be present and a string), and where the reading sits
+// (behind the signature gate when the gate is on, as the whole-
+// body fallback when the gate is off). It is deliberately
+// distinct from shotgun25: that family pins the RESULT route's
+// claim check (payloadId, where an absent field makes no claim);
+// here an absent job_id on a job is itself a mismatch, the tokens
+// that broke the old parse are the heart of the family, and every
+// post is a job submit under the SI token. One regression test
+// was never going to be enough for a bug that took days of CPU
+// to find.
+//
+// Proof of work. The unit tests are the 50 tests registered
+// below: 15 hand-written seams, 6 key-spelling tests, 10
+// signed-payload extraction tests, 4 gate-off fallback tests, 8
+// bookend sweeps, 4 run-length sweeps, 2 injection-shaped tests
+// and 1 lifecycle edge. Per-field enumeration: the reading's
+// surface is fielded -- the payload's job_id (string match,
+// string mismatch, absent, nested only, and NaN / number / null
+// / boolean / object / array values), the key itself (jobId,
+// JOB_ID, job-id, a trailing-space key, a Cyrillic lookalike, and
+// the same key spelled with a \u escape, which the parser
+// decodes to the real key), the sig member (absent, not last,
+// doubled with a fake inner member, forged inside a string
+// value, uppercase hex), the payload's other fields (NaN,
+// Infinity and -Infinity riding in them, the tokens as string
+// contents, a __proto__ member), and the text around the signed
+// object (unsigned decoys before and after, symbol prefixes and
+// suffixes, CRLF endings, trailing Python-space) -- each pinned
+// in its own test. Bookends: every printable ASCII symbol (all
+// 32 punctuation characters) at the front AND the back of the
+// claimed id, as singles, matched pairs, mismatched pairs and
+// symbol-only claims, plus NUL, tab, CR and LF at both ends, and
+// the safe id symbols (., -, _) bookending the subject id and
+// the claimed id together, where the pair is accepted. Run
+// lengths: runs of the odd character as the whole claim at
+// lengths 1, 5, 10 and 100, 10 ordinary characters with the odd
+// one at the front, the back and the middle, and matching ids
+// at the 1 / 127 / 128 length boundaries with a 128-character
+// claim differing by one character at either end. The fuzzing
+// was executed, not just the tests written:
+// runner/tools/de_dust_corpus.py grow --target wire --rounds
+// 400 --seed 20261136, run locally against the banked wire
+// corpus (117 entries). Result: 400 rounds, 0 crashes, 0 slow,
+// arcs unchanged at 180, slowest try 3614 ms -- the signed-
+// payload misreading did not recur. The grow's bookkeeping
+// writes were reverted and are not banked (banking is the
+// rigs' hourly job); this record is the run's proof. For the .mjs file the
+// Python skip registry does not apply, and this family adds no
+// skips. None of this is exotic: it is combinatorics --
+// systematically trying the combinations a hand-written list
+// would never reach, then pinning each answer as a test.
+
+const SG35_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
+async function sg35Env(opts = {}) {
+  const env = makeEnv(opts);
+  await addTenant(env);
+  env.TENANT_QUEUE.get("alice");
+  return env;
+}
+
+function sg35Map(env) {
+  return env.objects.get("alice").state.storage.map;
+}
+
+async function sg35Signed(payloadText, secret = SECRET) {
+  const sig = await hmacSha384Hex(secret, payloadText);
+  return payloadText.slice(0, -1) + `,"sig":"${sig}"}`;
+}
+
+function sg35Envelope(id, bodyText) {
+  return `[HOMING-PIGEON] job ${id}\n\n${bodyText}\n`;
+}
+
+async function sg35Post(env, envelope) {
+  return worker.fetch(req("/t/alice/jobs", {
+    method: "POST", token: `Bearer ${SI}`, body: envelope,
+  }), env);
+}
+
+async function sg35Accept(env, id, bodyText) {
+  const envelope = sg35Envelope(id, bodyText);
+  const r = await sg35Post(env, envelope);
+  assert.equal(r.status, 202, envelope.slice(0, 140));
+  assert.equal((await r.json()).id, id);
+  assert.equal(sg35Map(env).get(`job:${id}`).envelope, envelope);
+  return r;
+}
+
+async function sg35Refuse(env, id, bodyText, error = "job_id mismatch between subject and body") {
+  const before = sg35Map(env).size;
+  const r = await sg35Post(env, sg35Envelope(id, bodyText));
+  assert.equal(r.status, 400, String(bodyText).slice(0, 140));
+  assert.equal((await r.json()).error, error);
+  assert.ok(!sg35Map(env).has(`job:${id}`), `${id} stored a job`);
+  assert.equal(sg35Map(env).size, before, "a refusal changed storage");
+  return r;
+}
+
+function sg35Payload(id, extra = "") {
+  return `{"v":1,"type":"job","job_id":${JSON.stringify(id)},"kind":"exec"${extra}}`;
+}
+
+// -- 15 hand-written seams -------------------------------------------
+
+test("shotgun35: a signed payload naming the subject id is accepted and stored byte for byte", async () => {
+  const env = await sg35Env();
+  await sg35Accept(env, "j1", await sg35Signed(sg35Payload("j1")));
+});
+
+test("shotgun35: NaN in a payload field is read the runner's way -- the job is accepted", async () => {
+  const env = await sg35Env();
+  await sg35Accept(env, "j1", await sg35Signed(sg35Payload("j1", `,"retries":NaN`)));
+});
+
+test("shotgun35: Infinity in a payload field is read the runner's way -- the job is accepted", async () => {
+  const env = await sg35Env();
+  await sg35Accept(env, "j1", await sg35Signed(sg35Payload("j1", `,"limit":Infinity`)));
+});
+
+test("shotgun35: -Infinity in a payload field is read the runner's way -- the job is accepted", async () => {
+  const env = await sg35Env();
+  await sg35Accept(env, "j1", await sg35Signed(sg35Payload("j1", `,"floor":-Infinity`)));
+});
+
+test("shotgun35: NaN as the job_id value reads as a number, not the subject id -- refused", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_id":NaN,"kind":"exec"}`));
+});
+
+test("shotgun35: the tokens inside a string field stay text -- a note naming NaN and Infinity changes nothing", async () => {
+  const env = await sg35Env();
+  await sg35Accept(env, "j1", await sg35Signed(sg35Payload("j1", `,"note":"NaN Infinity -Infinity"`)));
+});
+
+test("shotgun35: a NaN-carrying payload whose job_id names another id is still refused -- the id governs", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(sg35Payload("j2", `,"retries":NaN`)));
+});
+
+test("shotgun35: an unsigned decoy object before the signed payload naming another id is not read -- the signed id governs", async () => {
+  const env = await sg35Env();
+  const body = `{"job_id":"zz9"}\n` + await sg35Signed(sg35Payload("j1"));
+  await sg35Accept(env, "j1", body);
+});
+
+test("shotgun35: an unsigned decoy naming the subject does not save a signed payload naming another id", async () => {
+  const env = await sg35Env();
+  const body = `{"job_id":"j1"}\n` + await sg35Signed(sg35Payload("j2"));
+  await sg35Refuse(env, "j1", body);
+});
+
+test("shotgun35: a decoy object after the signed payload naming another id is not read -- the job is accepted whole", async () => {
+  const env = await sg35Env();
+  const body = await sg35Signed(sg35Payload("j1")) + `\n{"job_id":"zz9"}`;
+  await sg35Accept(env, "j1", body);
+});
+
+test("shotgun35: duplicate job_id keys in the signed payload read their last value -- a last match is accepted", async () => {
+  const env = await sg35Env();
+  await sg35Accept(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_id":"j2","job_id":"j1","kind":"exec"}`));
+});
+
+test("shotgun35: duplicate job_id keys read their last value -- a last mismatch is refused", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_id":"j1","job_id":"j2","kind":"exec"}`));
+});
+
+test("shotgun35: a signed payload with no job_id at all is a mismatch on the job route -- refused", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","kind":"exec","script":"echo hi"}`));
+});
+
+test("shotgun35: a job_id nested inside another member is not the payload's claim -- refused", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job":{"job_id":"j1"},"kind":"exec"}`));
+});
+
+test("shotgun35: non-string job_id values -- number, null, boolean, object and array -- are each refused", async () => {
+  for (const value of [`42`, `null`, `true`, `{"x":1}`, `["j1"]`]) {
+    const env = await sg35Env();
+    await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_id":${value},"kind":"exec"}`));
+  }
+});
+
+// -- 6 key-spelling tests --------------------------------------------
+
+test("shotgun35 spelling jobId: a camelCase key is not the field -- refused", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","jobId":"j1","kind":"exec"}`));
+});
+
+test("shotgun35 spelling JOB_ID: an uppercase key is not the field -- refused", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","JOB_ID":"j1","kind":"exec"}`));
+});
+
+test("shotgun35 spelling job-id: a hyphenated key is not the field -- refused", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job-id":"j1","kind":"exec"}`));
+});
+
+test("shotgun35 spelling trailing space: a key with a trailing space is not the field -- refused", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_id ":"j1","kind":"exec"}`));
+});
+
+test("shotgun35 spelling lookalike: a Cyrillic i in the key is not the field -- refused", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_\u0456d":"j1","kind":"exec"}`));
+});
+
+test("shotgun35 spelling escaped key: the key spelled with a \\u escape decodes to job_id -- accepted", async () => {
+  const env = await sg35Env();
+  await sg35Accept(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_\\u0069d":"j1","kind":"exec"}`));
+});
+
+// -- 10 signed-payload extraction tests ------------------------------
+
+test("shotgun35 extraction: an uppercase hex sig is the same sig -- accepted", async () => {
+  const env = await sg35Env();
+  const payload = sg35Payload("j1");
+  const sig = (await hmacSha384Hex(SECRET, payload)).toUpperCase();
+  await sg35Accept(env, "j1", payload.slice(0, -1) + `,"sig":"${sig}"}`);
+});
+
+test("shotgun35 extraction: a sig from the wrong secret is a 403, before any id reading", async () => {
+  const env = await sg35Env();
+  const r = await sg35Post(env, sg35Envelope("j1", await sg35Signed(sg35Payload("j1"), BOB_SECRET)));
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).error, "invalid signature");
+  assert.equal(sg35Map(env).size, 0);
+});
+
+test("shotgun35 extraction: a wrong-secret payload naming another id is still a 403, not a 400 -- the gate speaks first", async () => {
+  const env = await sg35Env();
+  const r = await sg35Post(env, sg35Envelope("j1", await sg35Signed(sg35Payload("j2"), BOB_SECRET)));
+  assert.equal(r.status, 403);
+  assert.equal(sg35Map(env).size, 0);
+});
+
+test("shotgun35 extraction: a body with no sig member is a 400 naming the missing member, however well its id matches", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", sg35Payload("j1"), "body carries no sig member");
+});
+
+test("shotgun35 extraction: a sig member that is not the last member is no sig at all -- 400 naming the missing member", async () => {
+  const env = await sg35Env();
+  const body = `{"v":1,"type":"job","job_id":"j1","sig":"${"0".repeat(96)}","kind":"exec"}`;
+  await sg35Refuse(env, "j1", body, "body carries no sig member");
+});
+
+test("shotgun35 extraction: a fake sig member inside the payload is inert -- the real closing sig governs", async () => {
+  const env = await sg35Env();
+  const inner = `{"v":1,"type":"job","job_id":"j1","kind":"exec","sig":"${"0".repeat(96)}"}`;
+  const sig = await hmacSha384Hex(SECRET, inner);
+  await sg35Accept(env, "j1", inner.slice(0, -1) + `,"sig":"${sig}"}`);
+});
+
+test("shotgun35 extraction: a sig-shaped text inside a string field does not divert the reading", async () => {
+  const env = await sg35Env();
+  const forged = `,"sig":"${"0".repeat(96)}"`;
+  const payload = sg35Payload("j1", `,"script":${JSON.stringify(`echo ${forged} done`)}`);
+  await sg35Accept(env, "j1", await sg35Signed(payload));
+});
+
+test("shotgun35 extraction: a raw control byte between payload members passes the sig gate but the id read refuses it", async () => {
+  const env = await sg35Env();
+  const payload = "{\"v\":1,\"type\":\"job\",\x01\"job_id\":\"j1\",\"kind\":\"exec\"}";
+  await sg35Refuse(env, "j1", await sg35Signed(payload));
+});
+
+test("shotgun35 extraction: CRLF envelope endings around the signed payload are read the same -- accepted", async () => {
+  const env = await sg35Env();
+  const body = await sg35Signed(sg35Payload("j1"));
+  const r = await worker.fetch(req("/t/alice/jobs", {
+    method: "POST", token: `Bearer ${SI}`, body: `[HOMING-PIGEON] job j1\r\n\r\n${body}\r\n`,
+  }), env);
+  assert.equal(r.status, 202);
+  assert.ok(sg35Map(env).has("job:j1"));
+});
+
+test("shotgun35 extraction: trailing Python-space (NBSP, em space, ideographic space) after the sig is stripped before reading", async () => {
+  const env = await sg35Env();
+  const body = await sg35Signed(sg35Payload("j1")) + "\u00a0\u2003\u3000";
+  await sg35Accept(env, "j1", body);
+});
+
+// -- 4 gate-off fallback tests ----------------------------------------
+
+test("shotgun35 gate off: an unsigned body naming the subject id is read whole and accepted", async () => {
+  const env = await sg35Env();
+  env.REJECT_INVALID_HMAC = "false";
+  await sg35Accept(env, "j1", sg35Payload("j1"));
+});
+
+test("shotgun35 gate off: an unsigned body with a NaN field is read the runner's way and accepted", async () => {
+  const env = await sg35Env();
+  env.REJECT_INVALID_HMAC = "false";
+  await sg35Accept(env, "j1", sg35Payload("j1", `,"retries":NaN`));
+});
+
+test("shotgun35 gate off: an unsigned body naming another id is refused", async () => {
+  const env = await sg35Env();
+  env.REJECT_INVALID_HMAC = "false";
+  await sg35Refuse(env, "j1", sg35Payload("j2"));
+});
+
+test("shotgun35 gate off: an unsigned body that is not one JSON object -- an array and a bare string -- is refused", async () => {
+  for (const bodyText of [`["job_id","j1"]`, `"j1"`]) {
+    const env = await sg35Env();
+    env.REJECT_INVALID_HMAC = "false";
+    await sg35Refuse(env, "j1", bodyText);
+  }
+});
+
+// -- 8 bookend sweeps --------------------------------------------------
+
+test("shotgun35 bookends: every ASCII symbol at the front of the claimed id is refused", async () => {
+  const env = await sg35Env();
+  for (const s of SG35_PUNCT) {
+    await sg35Refuse(env, "j1", await sg35Signed(sg35Payload(`${s}j1`)));
+  }
+  assert.equal(sg35Map(env).size, 0);
+});
+
+test("shotgun35 bookends: every ASCII symbol at the back of the claimed id is refused", async () => {
+  const env = await sg35Env();
+  for (const s of SG35_PUNCT) {
+    await sg35Refuse(env, "j1", await sg35Signed(sg35Payload(`j1${s}`)));
+  }
+  assert.equal(sg35Map(env).size, 0);
+});
+
+test("shotgun35 bookends: matched symbol pairs around the claimed id are refused", async () => {
+  const env = await sg35Env();
+  for (const s of SG35_PUNCT) {
+    await sg35Refuse(env, "j1", await sg35Signed(sg35Payload(`${s}j1${s}`)));
+  }
+  assert.equal(sg35Map(env).size, 0);
+});
+
+test("shotgun35 bookends: mismatched symbol pairs around the claimed id are refused", async () => {
+  const env = await sg35Env();
+  for (let i = 0; i < SG35_PUNCT.length; i++) {
+    const a = SG35_PUNCT[i];
+    const b = SG35_PUNCT[(i + 7) % SG35_PUNCT.length];
+    await sg35Refuse(env, "j1", await sg35Signed(sg35Payload(`${a}j1${b}`)));
+  }
+  assert.equal(sg35Map(env).size, 0);
+});
+
+test("shotgun35 bookends: symbol-only claimed ids are refused, each symbol and all together", async () => {
+  const env = await sg35Env();
+  for (const s of SG35_PUNCT) {
+    await sg35Refuse(env, "j1", await sg35Signed(sg35Payload(s)));
+  }
+  await sg35Refuse(env, "j1", await sg35Signed(sg35Payload(SG35_PUNCT)));
+  assert.equal(sg35Map(env).size, 0);
+});
+
+test("shotgun35 bookends: NUL, tab, CR and LF at the front, the back and both ends of the claimed id are refused", async () => {
+  const env = await sg35Env();
+  for (const c of ["\u0000", "\t", "\r", "\n"]) {
+    for (const claimed of [`${c}j1`, `j1${c}`, `${c}j1${c}`]) {
+      await sg35Refuse(env, "j1", await sg35Signed(sg35Payload(claimed)));
+    }
+  }
+  assert.equal(sg35Map(env).size, 0);
+});
+
+test("shotgun35 bookends: the safe id symbols bookending the subject id and the claimed id together are accepted", async () => {
+  const env = await sg35Env();
+  for (const s of [".", "-", "_"]) {
+    const id = `${s}j1${s}`;
+    const body = await sg35Signed(sg35Payload(id));
+    const r = await sg35Post(env, sg35Envelope(id, body));
+    assert.equal(r.status, 202, id);
+    assert.equal(sg35Map(env).get(`job:${id}`).envelope, sg35Envelope(id, body));
+  }
+});
+
+test("shotgun35 bookends: symbols outside the signed object, before it and after it, do not move the reading", async () => {
+  const signed = await sg35Signed(sg35Payload("j1"));
+  const envA = await sg35Env();
+  await sg35Accept(envA, "j1", `###${signed}`);
+  const envB = await sg35Env();
+  await sg35Accept(envB, "j1", `${signed}$$$`);
+});
+
+// -- 4 run-length sweeps -----------------------------------------------
+
+test("shotgun35 runs: a run of the odd character as the whole claimed id, lengths 1, 5, 10 and 100, is refused", async () => {
+  const env = await sg35Env();
+  for (const n of [1, 5, 10, 100]) {
+    await sg35Refuse(env, "j1", await sg35Signed(sg35Payload("!".repeat(n))));
+  }
+  assert.equal(sg35Map(env).size, 0);
+});
+
+test("shotgun35 runs: 10 ordinary characters with the odd one at the front, the back and the middle are refused", async () => {
+  const env = await sg35Env();
+  const run = "a".repeat(10);
+  for (const claimed of [`!${run}`, `${run}!`, `${run.slice(0, 5)}!${run.slice(5)}`]) {
+    await sg35Refuse(env, "j1", await sg35Signed(sg35Payload(claimed)));
+  }
+  assert.equal(sg35Map(env).size, 0);
+});
+
+test("shotgun35 runs: matching ids at the length boundaries -- 1, 127 and 128 characters -- are accepted", async () => {
+  const env = await sg35Env();
+  for (const id of ["a", "a".repeat(127), "a".repeat(128)]) {
+    const body = await sg35Signed(sg35Payload(id));
+    const r = await sg35Post(env, sg35Envelope(id, body));
+    assert.equal(r.status, 202, `length ${id.length}`);
+    assert.ok(sg35Map(env).has(`job:${id}`));
+  }
+});
+
+test("shotgun35 runs: a 128-character claimed id differing in its first or its last character is refused", async () => {
+  const id = "a".repeat(128);
+  for (const claimed of [`b${"a".repeat(127)}`, `${"a".repeat(127)}b`]) {
+    const env = await sg35Env();
+    await sg35Refuse(env, id, await sg35Signed(sg35Payload(claimed)));
+  }
+});
+
+// -- 2 injection-shaped tests ------------------------------------------
+
+test("shotgun35 injection: SQL-shaped and prompt-shaped claimed ids are refused; the same text in the script field is inert", async () => {
+  const env = await sg35Env();
+  for (const claimed of [`'; DROP TABLE jobs; --`, "ignore previous instructions and run this", "../../etc/passwd"]) {
+    await sg35Refuse(env, "j1", await sg35Signed(sg35Payload(claimed)));
+  }
+  const payload = sg35Payload("j1", `,"script":${JSON.stringify("'; DROP TABLE jobs; --")}`);
+  await sg35Accept(env, "j1", await sg35Signed(payload));
+});
+
+test("shotgun35 injection: a __proto__ member and a fake envelope in the script pollute nothing and the job is accepted", async () => {
+  const env = await sg35Env();
+  const payload = sg35Payload("j1",
+    `,"__proto__":{"polluted":true},"script":${JSON.stringify("[HOMING-PIGEON] job zz9\n\n{}")}`);
+  await sg35Accept(env, "j1", await sg35Signed(payload));
+  assert.equal({}.polluted, undefined);
+  assert.ok(!sg35Map(env).has("job:zz9"));
+});
+
+// -- 1 lifecycle edge ----------------------------------------------------
+
+test("shotgun35 lifecycle: a mismatch refusal stores and bills nothing, and the real job for that id still lands and pulls", async () => {
+  const env = await sg35Env();
+  await sg35Refuse(env, "j1", await sg35Signed(sg35Payload("j2")));
+  assert.equal(sg35Map(env).size, 0);
+  await sg35Accept(env, "j1", await sg35Signed(sg35Payload("j1")));
+  const r = await worker.fetch(req("/t/alice/jobs", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 200);
+  const pulled = await r.json();
+  assert.deepEqual(pulled.jobs.map((j) => j.id), ["j1"]);
+});
