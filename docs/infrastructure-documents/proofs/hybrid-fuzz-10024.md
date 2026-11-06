@@ -363,3 +363,113 @@ before any of the new targets or tests ran:
   envelope and the mailbox datagram ceiling) and far
   above any handshake message this profile sends (the
   hybrid ClientHello, the largest, is about 1.4 KB).
+
+## The three adopted families: what the runs found (2026-11-06)
+
+Procedure, the same for all three families. Each family
+got per-field unit tests enumerated field by field in
+runner/tests/test_hybrid_fuzz.py, built to the bookend
+rule (every ASCII symbol, plus NUL, tab, CR and LF, at
+the front and the back of the input, symbol-only strings,
+and symbol runs at the front, the back and the middle),
+then an actual fuzz job per family through the harness
+(runner/tools/hybrid_fuzz.py, which gained a
+--targets option and one target per family:
+keyshare_entries, mailbox_frames, fragment_buffer),
+in real mode and in abstract mode at the stated seeds
+below. The campaign file's suite grew from 33 tests to
+98: FragmentBufferFamilyTest 15, KeyShareEntriesFamilyTest
+24, MailboxFramingFamilyTest 22, and
+AdoptedTargetContractTest 4 pinning each new target's
+contract directly.
+
+Family 3 (fragment reassembly) — SD3 held, and worse.
+Verified first-hand with probes against the pre-fix
+code, not just by reading it:
+
+- One offer with an empty fragment and the largest
+  24-bit total (16,777,215) returned None but left two
+  stored bytearrays of length 16,777,215 each behind
+  (about 31 MB of resident growth for a single empty
+  fragment) — the claimed allocation is real (D3a).
+- 2,000 offers with distinct (message type, sequence)
+  keys, each an empty fragment claiming a total of
+  1,000,000, left all 2,000 keys pending — there was
+  no cap on pending keys (D3b).
+- A second offer for the same key whose claimed total
+  disagreed with the stored one, at an offset inside
+  the new total but past the stored buffer, raised
+  IndexError out of offer — a foreign exception on a
+  surface whose discipline is never to raise, and
+  neither call site guards it (D3c).
+
+The fragment family's tests were run against the
+pre-fix code first: 3 failures and 2 errors trace to
+D3a–D3c (a third error was the test file's own bug,
+fixed in the test). The fix, landed test-first in the
+commit "wire: cap handshake fragment reassembly totals
+and pending keys": _FragmentBuffer refuses a total
+above MAX_TOTAL_BYTES = 256 * 1024 (256 KB — the suite's
+documented whole-thing ceiling, the local envelope and
+the mailbox datagram bound, and far above the largest
+handshake message this profile sends, the roughly
+1.4 KB hybrid ClientHello) and refuses a new key once
+MAX_PENDING = 64 transfers are pending (the carriage
+reassembler's own transfer bound); a contradicting
+total destroys the pending entry and returns None, the
+buffer's incomplete signal — the carriage's
+contradiction discipline, applied here. All refusals
+are None; offer never raises. Post-fix the 15 family
+tests pass, and the 10 pre-existing fragment pins in
+runner/tests/test_dtls_fuzz.py still pass.
+
+Family 1 (duplicate and competing key_share entries)
+— SD1 held; no defect found. The parser returns every
+entry in wire order; selection keeps the first entry
+per group. A valid first hybrid entry answers despite
+a garbage duplicate; a mis-sized first hybrid entry is
+refused at selection with illegal_parameter and the
+valid duplicate is never consulted; an unknown group
+standing first does not shadow the hybrid; X25519 is
+the fallback when the hybrid is absent. The feed-level
+tests splice rebuilt entry lists into genuine hellos
+of a real exchange: where selection accepts the crafted
+list the refusal that follows is the binder's
+(decrypt_error over the stale binder), which is what
+proves selection answered on the crafted list; nothing
+raises out of feed, and no session is left behind.
+24 tests, all passing.
+
+Family 2 (the version 3 carriage) — SD2 held; no
+defect found. parse_message classifies genuine,
+mutated and bookended mails into its documented kinds
+only and never raises; every frame field is bounded as
+documented (transfer id 16 lower hex, parts at most
+1024, datagram at most 256 KB, digest checked against
+the part's own shape). The reassembler completes a
+datagram in any part order, treats duplicates as
+idempotent, destroys a transfer on a contradicting
+part (chunk or header), returns a datagram only when
+its length and SHA-384 match the declared header,
+completes nothing after the absolute deadline even
+inside the idle timeout, and holds at most 64
+transfers. 22 tests, all passing.
+
+Fuzz jobs executed for these families (the harness's
+own verdict lines; findings are contract violations):
+
+- keyshare_entries: real, 400 rounds, seed 31001,
+  findings=0; abstract, 2,000 rounds, seed 31002,
+  findings=0.
+- mailbox_frames: real, 400 rounds, seed 31003,
+  findings=0; abstract, 2,000 rounds, seed 31004,
+  findings=0.
+- fragment_buffer: real, 400 rounds, seed 31005,
+  findings=0; abstract, 2,000 rounds, seed 31006,
+  findings=0.
+
+7,200 rounds across the three families, no findings —
+against the fixed code, in family 3's case; families 1
+and 2 needed no fix, and their suppositions stand as
+verified behaviour, recorded here so the next reader
+does not have to re-derive them.
