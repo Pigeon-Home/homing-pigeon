@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.1 - 2026-11-06
+
+- Docs: the Phase 3 conclusions entry is posted in the seats forum — the big-window conformance program's final once-over is recorded complete, with the full-suite evidence, the 3 temp-reaping failures traced and closed in 3.15.17.177, and the remaining held, unjudged, and live-unproven items stated plainly.
+- Version: the token figure rolls to 18 on its 24-hour re-measure, so the release counter restarts at 1.
+
 ## 3.15.17.177 - 2026-11-06
 
 - Tests: the 3.15.17.176 guard failures are fixed — the families the temp-reaping work missed now observe jobs the reap-proof way: the PowerShell staging tests hold the reap for the staging call (the reap itself stays pinned in the temp-reap tests), the confinement and campaign workdir tests collect the files a job wrote as declared outputs, the repaired-interpreter control reads its run out of the sent result, the decision-1 family gains its work_retention_sec leg, and the orphan sweep's symlink leg no longer asks Windows to set a link's own times.
