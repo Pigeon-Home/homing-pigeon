@@ -30,7 +30,7 @@ records are pruned by the runner's retention window; the
 watcher's own state file is the long memory, folding every
 record it sees into its per-job histories as it goes.
 
-## How it improves
+## How it improves and how to run it
 
 The watcher's calls are only as good as the history behind
 them, and the history grows by itself. On day one it can

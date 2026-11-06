@@ -37,7 +37,7 @@ connector-carried campaign from 2026-10-22 to 2026-10-24.
   `resources` line with its `resources-top` line from
   `runner/tools/rig_resources.py`.
 
-## What was scrubbed
+## What was scrubbed, and secret rotation
 
 Per the owner's rule for this capture:
 
@@ -91,7 +91,7 @@ this rig, and are absent rather than empty:
 - `daemon.out`, the daemon's shell capture, was not on the
   list and is not included.
 
-## The rest
+## Other captured files
 
 - `transport-*.txt.gz` are file-name listings of the
   transport channel trees (38,538 names in the campaign

@@ -141,7 +141,7 @@ question "is the boring stuff actually on?"
   Full spec below; the cage-verification job in that spec is
   future work, listed in docs/FUTURE.md.
 
-### `firewall` — host firewall state, rule changes, and cage verification
+### `firewall` and the remaining basic hygiene senses
 
 The hygiene list above treats this sense as "is the host firewall
 on." The full spec has three jobs, in increasing order of

@@ -25,7 +25,7 @@ The two high signals cross the local wake gate: a crashed
 run or a cooking GPU wakes the Oracle, which files its
 brief from the alert itself.
 
-## The rules that keep it quiet
+## Rules, footprint, and running
 
 **Checkpoints file when they settle, never while they
 grow.** A checkpoint is identified by name + size +

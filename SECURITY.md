@@ -100,7 +100,7 @@ the `SHA384SUMS` file attached to the release, or build from source
 
 ---
 
-## Optional security controls
+## Security controls and key management
 
 Homing Pigeon ships with optional security controls, on by default.
 With no `security` block in `config.json`, every control runs at

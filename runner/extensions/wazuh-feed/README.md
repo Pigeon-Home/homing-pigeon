@@ -60,7 +60,7 @@ re-arms once `episode_quiet_sec` has passed with no further
 alert for that pair, so a rule that fires again next week
 files again.
 
-## Tunables
+## Tunables, running, and footprint
 
 | Tunable | Default | What it does |
 |---------|---------|--------------|

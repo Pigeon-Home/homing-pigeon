@@ -37,7 +37,7 @@ installer configures (the `log_paths` tunable, default
 | `osquery_added` | A light-pack query reports a row as `added`. Medium severity for users and listening ports — a new account or a new open door matters — and info for processes, which come and go all day. Files once per `(kind, added, identity)` episode: repeats of the same add are quiet until the matching remove arrives |
 | `osquery_removed` | A light-pack query reports a row as `removed`. Info severity. A remove after an add of the same identity is a new episode fact and files — and it re-arms the add, so a thing that leaves and returns files both times |
 
-## Tunables
+## Tunables and running
 
 | Tunable | Default | Means |
 |---------|---------|-------|

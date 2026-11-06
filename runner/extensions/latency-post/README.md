@@ -65,7 +65,7 @@ manifest fields, the versioning contract, sensor binding, and how
 to turn this example into your own package — is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).
 
-### Other tunables
+## Other tunables
 
 `probe_timeout_sec` (default 2) is the per-probe TCP connect timeout; a probe that does not connect inside it counts as a failure.
 

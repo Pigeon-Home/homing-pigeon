@@ -37,7 +37,7 @@ the `allowlist` tunable (exact addresses or CIDR networks).
 | `zeek_new_external_peers` | At least the `new_peer_threshold` tunable (default 10) distinct external responders (`id.resp_h` from `conn.log`) are first seen inside the trailing `window_sec` (default 600). Medium severity. State remembers peers already seen, so a familiar responder never counts again; filing consumes the accumulation, so a refile means a fresh batch of new peers |
 | `zeek_dns_anomaly` | A `dns.log` query is at least `query_length_threshold` characters (default 50), has six or more labels, or uses a TXT, NULL, KEY or ANY qtype. Medium severity. Files once per `(query, responder)` episode |
 
-## Tunables
+## Tunables and running
 
 | Tunable | Default | Means |
 |---------|---------|-------|

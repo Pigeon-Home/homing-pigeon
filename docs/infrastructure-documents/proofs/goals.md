@@ -74,7 +74,7 @@ silently.
   the plain one; if they diverge, the plain one is the record of
   intent and the formal one is wrong until they agree.
 
-## Stage 1 — Foundation (this stage)
+## Stage 1 — Foundation
 
 **Contents.** This directory: `readme.md` (goal, honest scope,
 assumptions, starting bound), `constraints.md` (the harvested
@@ -97,7 +97,7 @@ cleartext and encrypted arrivals, replayed deliveries, scripts
 under 50 characters abstracted to character count, byte length,
 and digest.
 
-### The tool: candidates, and the pick
+### The tool: candidates, the pick, and stage 2 completion
 
 Five candidate tools were weighed for this stage:
 

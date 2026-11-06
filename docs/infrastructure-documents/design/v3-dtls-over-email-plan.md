@@ -337,7 +337,7 @@ it. It now says what happened.)
    exact operational default can be revisited after the round-trip
    tests measure real flight sizes.
 
-## Addendum, 2-Nov-2026
+## Addendum: open questions and D7 wire format (2-Nov-2026)
 
 Open question 1 is answered: `SS` is the Shared Secret. It is
 the DTLS handshake's key in the existing design -- the version

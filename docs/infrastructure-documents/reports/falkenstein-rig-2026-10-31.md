@@ -85,7 +85,7 @@ next fresh machine, in front of a different operator. The
 first repository job below follows the rule: it carries its
 own portable git.
 
-## State at writing (31-Oct-2026 4:35pm-PST/PDT)
+## State and verification log (31-Oct to 1-Nov-2026)
 
 - **Windows installed.** Windows Server 2022 Standard (Server
   Core), computer name WIN-LONG208OI02, installed through the
@@ -545,7 +545,7 @@ refused the envelope once on the locked-file race seen
 before, then picked it up on its own seconds later. With
 this run the twelve-scenario Windows queue is complete.
 
-## What remains
+## Status of remaining items
 
 1. The `job_user` divergence on Windows (see the enforcement
    entry above): implement it or refuse it, with a test.

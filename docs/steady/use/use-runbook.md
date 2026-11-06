@@ -95,7 +95,7 @@ Your computer remembers it after the first time.
 
 ---
 
-## Job 4: Make the robots build the install files
+## Job 4: Cut and publish a release
 
 GitHub has robots that build the Windows/Mac/Linux install files for
 you. You start them by making a **release**. All point and click:
@@ -369,7 +369,7 @@ paged, and no model is called. There is no flag that deletes the Oracle.
 
 ---
 
-## If something goes wrong
+## If something goes wrong and operational notes
 
 - **"command not found"** — you are probably not in the project
   folder. Type `cd homing-pigeon` and try again.

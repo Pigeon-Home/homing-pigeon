@@ -123,7 +123,7 @@ waiting is not testing.
   clocks) unless it guards a promise about time; then it is filed
   as a question with the measurement attached.
 
-## The loop
+## The loop, regression pass, and green-main rules
 
 1. Pull main. If the last rule refresh was more than an hour ago, do
    it now (above).

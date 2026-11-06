@@ -115,7 +115,7 @@ how long it really takes instead of where a guard cut it.
 Nothing was removed from the pipeline. Every job, step and proof
 runs as before.
 
-## Fuzzing the pipeline on paper: the failure modes it has shown
+## Failure modes in the corpus and suite durations
 
 The record above is the seed corpus. These are the mutations of
 "a push to main" that have actually turned a run red or stuck, each

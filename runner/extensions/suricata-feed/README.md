@@ -59,7 +59,7 @@ The alert detail carries the `signature`, `category`,
 both ports, and the protocol, so the Oracle sees the match
 Suricata saw, not a paraphrase of it.
 
-## Tunables
+## Tunables and running
 
 | Tunable | Default | Meaning |
 |---------|---------|---------|

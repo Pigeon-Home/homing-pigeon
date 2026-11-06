@@ -68,7 +68,7 @@ of those pass unremarked on the theory that they might be
 video. They might be; the threshold is a tunable, and an
 operator who wants only the truly large can raise it.
 
-## What is decoded, and what is not
+## What is decoded, fixture mode, and footprint
 
 The decoder is a subset, and its boundary is stated here
 rather than implied. NetFlow **v5 is decoded complete**:

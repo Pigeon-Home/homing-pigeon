@@ -59,7 +59,7 @@ and the rest are future signals, named here as restraint
 rather than dropped silently — they are not this sense's
 contract yet, and no README line claims them.
 
-## Tunables
+## Tunables, running, and footprint
 
 | Tunable | Default | What it does |
 |---------|---------|--------------|

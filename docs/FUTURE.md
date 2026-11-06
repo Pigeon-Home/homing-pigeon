@@ -1,4 +1,4 @@
-# Future work
+# Future work and local v3 transport notes
 - **Runner integrity.** Self tempest kernel mod (conf compute v2 hompo) as a self-hosted confidentially computed fuzzing-As-A-Service platform as a service platform black box dist with no infra
 
 - Test PANIC mode (WAKE) for SI stumbing upon system in "self-defense" repair-mode, what caused the catastrophe, did I?

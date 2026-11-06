@@ -116,7 +116,7 @@ test-first file should):
   (specification, future entry, plan addendum), 99551763
   (this note), 29364dfe (the SS answer folded into the plan).
 
-## Continuation: resumption, provider shapes, a live mailbox
+## Continuation: resumption and provider shapes
 
 Commit 4cc16fe0, tests only -- no carriage code change was
 needed:

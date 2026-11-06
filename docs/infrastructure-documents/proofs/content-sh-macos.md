@@ -17,7 +17,7 @@ is Linux. The test looks for `HP_MACOS_SH` and then
 neither exists, the tests skip and say so. They do not
 treat bash 5 as the Mac shell.
 
-## The scripts
+## The scripts, the parser, and the gate
 
 The catalog is POSIX constructs: simple commands, `&&`
 and `||` and `;` and a pipe, `if`, `for`, a function

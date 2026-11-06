@@ -65,7 +65,7 @@ commit `6d6288c5`.
 
 ## P1. The acceptance gate
 
-### Statement
+### P1 statement
 
 For every message handling in the mail path, if the runner
 executes a job, then every one of the following held, in the
@@ -285,7 +285,7 @@ Execution is reachable only at the end of this order. Every
 earlier step can refuse, and a refusal at any step means no
 execution in that handling.
 
-### What a counterexample would look like
+### What a P1 counterexample would look like
 
 A counterexample to P1 is a single concrete handling — real, in
 the code, or exhibited by the model inside its bound — in which
@@ -343,7 +343,7 @@ in a later stage rather than being assumed equivalent.
 
 ## P2. Result policies cannot widen confinement
 
-### Statement
+### P2 statement
 
 P2 starts where P1 ends: a job has passed the gate and is about
 to execute. The sender of that job may hold a valid key — P1 is
@@ -446,7 +446,7 @@ In short form:
 The short form is a summary. The nine clauses above are the
 property. Where they differ, the clauses win.
 
-### What a counterexample would look like
+### What a P2 counterexample would look like
 
 A counterexample to P2 is a single concrete execution or
 result — real, in the code, or exhibited by the model — in
@@ -476,7 +476,7 @@ recorded in `stage4-p2.md`; the model is `Confine.tla`.
 
 ## P3. A transport's credentials are a required second gate
 
-### Statement
+### P3 statement
 
 P3 stands in front of P1. A message reaches the signature check
 only by crossing its transport, and the five shipped transports
@@ -644,7 +644,7 @@ In short form:
 The short form is a summary. The nine clauses above are the
 property. Where they differ, the clauses win.
 
-### What a counterexample would look like
+### What a P3 counterexample would look like
 
 A counterexample to P3 is a single concrete arrival — real, in
 the code, or exhibited by the model — that is presented to the
@@ -673,7 +673,7 @@ recorded in `stage4-p3.md`; the model is `TransGate.tla`.
 
 ## P4. A named key can do only what its policy allows
 
-### Statement
+### P4 statement
 
 P4 is P1's clause 8 taken on its own, because it is the
 sharpest single-key claim the system makes. One key in
@@ -821,7 +821,7 @@ In short form:
 The short form is a summary. The twelve clauses above are the
 property. Where they differ, the clauses win.
 
-### What a counterexample would look like
+### What a P4 counterexample would look like
 
 A counterexample to P4 is a single concrete handling — real,
 in the code, or exhibited by the model inside its space — in
@@ -853,7 +853,7 @@ recorded in `stage4-p4.md`; the model is `KeyPolicy.tla`.
 
 ## P5. Replay cannot re-execute
 
-### Statement
+### P5 statement
 
 P5 is the property of time and repetition: the same job,
 delivered twice, resent by its sender, or replayed by an
@@ -1047,7 +1047,7 @@ In short form:
 The short form is a summary. The eleven clauses above are
 the property. Where they differ, the clauses win.
 
-### What a counterexample would look like
+### What a P5 counterexample would look like
 
 A counterexample to P5 is a single concrete sequence —
 real, in the code, or exhibited by the model inside its
@@ -1078,7 +1078,7 @@ this model is the full shape.
 
 ## P6. Refuse-class configuration behaves as Decision 1 requires
 
-### Statement
+### P6 statement
 
 Decision 1 (`docs/design/present-but-invalid-config.md`) splits
 a setting that is present but not usable by what a wrong value
@@ -1124,7 +1124,7 @@ documented default; a typo in a port, a policy, a secret, or a
 security mode costs the start, and never a quiet change while
 the process is already up.
 
-### What a counterexample would look like
+### What a P6 counterexample would look like
 
 - The runner starts, and reads a job, while a refuse-class
   setting is present and unusable.

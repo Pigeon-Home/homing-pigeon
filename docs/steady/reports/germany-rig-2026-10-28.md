@@ -1,4 +1,4 @@
-# The Germany rig: the full hardware picture
+# The Germany rig: hardware, services, and administration
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
 

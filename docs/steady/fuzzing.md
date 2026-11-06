@@ -273,7 +273,7 @@ different open task, and the review stays where it is.
 A NaN in a result is stored as null, and the task is
 done. A second result does not replace that null.
 
-## One prompt-injection case
+## One prompt-injection case and the DTLS record opener
 
 The fork bomb in
 [runner/tests/test_flag321_obfuscated.py](../../runner/tests/test_flag321_obfuscated.py)

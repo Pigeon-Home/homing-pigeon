@@ -13,7 +13,7 @@ See `docs/steady/use/handoff-local-si.md` for the full handoff (two instances, e
 - `--diagnose` is the one-shot black-box gauntlet (last section).
   It probes the configured system; it does not fix it.
 
-## The email harness
+## The email harness and the in-process development loop
 
 The mock SI is tested through email. That is Transport #1 and the
 only transport this harness exercises. The harness's own local

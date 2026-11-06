@@ -67,7 +67,7 @@ character bound is the model's scope control, not a product
 limit, and `constraints.md` records both measures wherever
 either is used so the two are never confused.
 
-## The open challenge: content-independence
+## The content-independence challenge
 
 The gate model abstracts a script to three things: its
 character count, its UTF-8 byte length, and its digest. The

@@ -45,7 +45,7 @@ and each alert's detail is the same shape: the class
 `count`, the first 20 `paths`, and the report
 fingerprint. A class with no entries files nothing.
 
-## Tunables
+## Tunables, running, and footprint
 
 | Tunable | Default | What it does |
 |---------|---------|--------------|

@@ -3,7 +3,7 @@
 Three ways, simplest first. Each has two phases: **install** (get the
 files on the box) and **run** (start the runner). Don't mix them.
 
-## 1. Docker
+## 1. Docker (and the Python floor on older distributions)
 
 **Install:** pull the image.
 

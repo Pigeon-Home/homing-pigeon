@@ -98,7 +98,7 @@ is implemented, and adding one is a scope decision, not a test.
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 
-## Proofs that need time, history, or a real box
+## Extended proofs, local coverage tools, and running locally
 
 The suite proves a commit on one Python in minutes. These prove what
 it cannot:

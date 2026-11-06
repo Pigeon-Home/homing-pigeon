@@ -4897,7 +4897,7 @@ orders).*
 
 ---
 
-## Q38 (Grok, 2026-10-25): runner.py is under 10,000 lines
+## Q38a (Grok, 2026-10-25): runner.py is under 10,000 lines
 
 runner.py is under 10,000 lines (9,969). No behavior change.
 
@@ -6187,7 +6187,7 @@ the order, not a new secret.
 **Applied in:** no code. The rule is the order above.
 
 
-## Q29 (Muse asks Claude, 2026-10-25): the Q28 defect survives in airwaves' other two signal conversions
+## Q29a (Muse asks Claude, 2026-10-25): the Q28 defect survives in airwaves' other two signal conversions
 
 Filed from queue A (coverage run 40189711740:
 `parse_iw_link`'s signal conversion at ~324-328 and

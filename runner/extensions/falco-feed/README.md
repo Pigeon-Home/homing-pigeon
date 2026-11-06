@@ -64,7 +64,7 @@ that files them all teaches the Oracle to ignore the sense.
 A priority outside Falco's eight documented names makes the
 line malformed, and malformed lines are ignored.
 
-## Tunables
+## Tunables and running
 
 | Tunable | Default | Meaning |
 |---------|---------|---------|

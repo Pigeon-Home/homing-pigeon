@@ -1070,7 +1070,7 @@ if the reply has not come back in two seconds, and that answer is
 `{"op": "grep", "rejected": "timeout"}`. The next query starts the
 worker again. Either way the query spends its one.
 
-### 10.1 Local inference (optional): the `ask` op
+### 10.1 Local inference (`ask`) and follow-up `query` messages
 
 When the runner has a local model, the Oracle becomes a true
 intelligent oracle: the cloud SI asks in natural language, the *local*
@@ -1751,7 +1751,7 @@ it out, mark the old one `superseded` with a `not_after`, and let the
 window close; a leaked key is marked `compromised` and is refused at
 once, on every transport, while the owner rotates.
 
-## 15. Rollout plan
+## 15. Rollout record and agent links
 
 This section was the work plan. The boxes below shipped. It is kept
 as the record of what the Oracle required. It is not a proposal.
