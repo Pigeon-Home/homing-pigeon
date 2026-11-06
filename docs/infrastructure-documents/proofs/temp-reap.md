@@ -329,3 +329,64 @@ uniform-pattern files; the other 49 are a queue item of
 their own, one `addCleanup` pattern repeated, and the
 `_MEI*` dirs stay with the rig-side daily guard for the
 reasons stated above.
+
+The follow-on sweep, landed 2026-11-06: the scan
+re-derived on current main counts 46 files whose
+`mkdtemp` bases are never removed (the 49 above minus
+the 3 files the landing itself cured outright —
+`test_canary_watch.py`, `test_graceful_failure.py`,
+`test_job_fuzz.py`). 2 of the 46 —
+`test_oracle_no_widening.py` and
+`test_powershell_script_encoding.py` — belong to a
+parallel repair and are left to it. The remaining 44
+files hold 187 `mkdtemp` sites, and every site is now
+reaped:
+
+- 157 sites are a direct assignment inside a test
+  case: `self.addCleanup(shutil.rmtree, <base>,
+  ignore_errors=True)` immediately after the creation
+  line, the pattern the landing above used.
+- 21 sites create the base inline (inside an
+  `os.path.join`, a dict value, a keyword argument, a
+  call argument): the creation is hoisted into a
+  local, the same `addCleanup` is registered on it,
+  and the local is used in place of the inline call.
+- 9 sites are module-level helpers (`run_job`, `_run`,
+  `_run_main`, `_drive`, `drive`) whose callers
+  discard the base or hold it only as a string: the
+  helper reaps the base with `shutil.rmtree(...,
+  ignore_errors=True)` just before returning the
+  values it extracted from it.
+- 2 call sites in `test_version4.py` build the base
+  through another instance's helper
+  (`MeasureTest()._repo()`), where a cleanup
+  registered inside the helper binds to the discarded
+  instance: the cleanup is registered on the running
+  instance at the call site instead.
+
+Proof: 5 of the swept modules (`test_board`,
+`test_instructions`, `test_oracle_extensions_negative`,
+`test_job_files`, `test_version4` — 88 tests), run
+with TMPDIR at a dedicated empty directory, leave 43
+temp directories behind on the tree before the sweep
+and 0 on the tree after it; the 88 tests pass on both
+trees.
+
+Parity: all 44 swept modules run before and after the
+sweep on the same tree (998 tests): 43 modules return
+identical pass/fail/skip counts. The one difference
+is `test_oracle_intake_fuzz` (88 tests): 11 failures
+and 2 errors before, 8 failures and 2 errors after,
+every failure in `RingTwoQueryTest`, the query-budget
+timeout shape. Repeated runs of that module move the
+count on both trees (a solo run before the sweep
+returns 7 failures and 1 error; two solo runs after
+it return 9 failures and 1 error, then 5 failures) —
+the box runs at full fleet load throughout, and the
+sweep changes none of it. `test_followups` carries 1
+error on both trees (the grep tail attest test,
+`KeyError: 'matches'`), identically before and after.
+No assertion changed, no behavior changed, no new
+skip reason was registered; the 17 skips in the
+swept set are the registered platform and environment
+gates they were before.
