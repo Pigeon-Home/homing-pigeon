@@ -526,4 +526,5 @@ says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.
 - IETF datatracker, Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - IETF datatracker, Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 - IETF draft v3: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
+- https://news.ycombinator.com/item?id=50397008
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt
