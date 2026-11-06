@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.175 - 2026-11-06
+
+- Tests: shotgun families for the queue, query and grow paths land — families 32 to 48 and the Q90-Q105 families pin the finished-id new life, the renew attempt naming and bad-quota 400, the max=0 lease, the signed-payload job id reading, the daily cap in UTF-8 bytes, the storage budget lease timestamp, the second-result envelope, the 8 MB envelope read stop and queue paging, the unstorable envelope and subject versus signed job_id, the board subject and single stash send, the mailbox gate on email-less runners, the win32 job_user refusal, the restart flight drop, the parallel grow draining its children, the keydir one-key-one-entry contract, the slow-class retirement, and the result never addressed to '<>', plus the query target crash shapes, grow walker depth, query door ownership and policy, replay cache age rule, queue connection weather, and inline files and outputs.
+- Docs: the -04 working drafts are cut from the posted -03 texts.
+
 ## 3.15.17.174 - 2026-11-06
 
 - Startup: the startup gate validates the resources and DRI paging blocks — `main()`'s config gate now calls `parse_resources` and `parse_dri` beside the key policies and mailbox ports, so a present-but-invalid paging block refuses startup with the key named instead of starting cleanly with the monitor and paging silently dead; the poll-loop readers keep their fail-closed mid-run contract.
