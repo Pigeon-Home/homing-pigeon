@@ -9,7 +9,11 @@ channels into the usual chat apps, skills as folders of
 instructions the agent loads and follows, and model providers
 (cloud or local) swapped by configuration. Where a call is named,
 it is OpenClaw's documented one; another framework fits the same
-pattern wherever it offers the same shapes.
+pattern wherever it offers the same shapes. The worked example
+was last checked against OpenClaw v2026.11.1, released on
+5 November 2026; the gateway surfaces named below — the hooks
+calls, the agent command, and the OpenAI-compatible endpoint on
+the gateway port — all stand in that release as described.
 
 Such a framework is neither extension kind. A sense files alerts
 and never runs work; a transport carries envelopes and never
@@ -21,7 +25,9 @@ below needs a change to the runner or to the framework.
 
 ## As a worker on the task board
 
-The board (PROTOCOL.md section 13) is the meeting point. Its
+The board (PROTOCOL.md section 13, the Oracle as work queue) is
+the meeting point: this is the surface where tasks held out for
+hands outside the runner are picked up and worked. Its
 worker is any holder of the shared secret, or of a key whose
 policy allows the board operations. The loop is the one the
 protocol defines:
@@ -65,16 +71,31 @@ tooling directly: the framework's own shell tool runs
 workers, and read results — over email, the file transport, or
 the hosted queue, the bindings that tool speaks — and
 `send_dtls.py` where the runner has the DTLS session binding
-enabled. From the runner's side the framework is an ordinary
+enabled. On that conduit the push and the pull are one session:
+the bridge sends a signed job in, the result returns on the
+session while it stays open, and a result that lands after its
+session is gone is re-asked for on a fresh session and goes out
+on that one. From the runner's side the framework is an ordinary
 sender; its messages are accepted or refused on their signatures
 and key policies, exactly like any other sender's. This is also
 how the framework asks the runner questions: by submitting work
 and reading its result.
 
-Two limits are plain. Nothing in this pattern wakes the Oracle:
-the Oracle's wake gate is driven by local alerts of high or
-critical severity filed by senses, and an external framework has
-no call that raises one. And the protocol version 2 question
+Waking runs one way in this pattern, and both directions are
+worth stating plainly. The framework itself can be woken from
+outside: its gateway's `POST /hooks/wake` adds an event to its
+main session, `POST /hooks/agent` can ask for an immediate
+heartbeat turn, and its own gateway cron and periodic heartbeat
+turns start work on a schedule — so a bridge or a timer can rouse
+it to pull the board or run the sender tooling, over the DTLS
+conduit or any other binding. The runner's side is different:
+nothing in this pattern wakes the Oracle. The Oracle's wake gate
+is driven by local alerts of high or critical severity filed by
+senses, and an external framework has no call that raises one; a
+job arriving over the DTLS conduit is work for the runner, not a
+wake for the Oracle, and a framework that wants the Oracle's
+attention goes through a sense, like any other signal source.
+And the protocol version 2 question
 exchange runs from the runner to the job's answerer; a framework
 that wants to answer those questions must implement the answer
 side of the exchange itself, and no sender helper ships for that
