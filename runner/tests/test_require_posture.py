@@ -19,7 +19,9 @@ Pinned here:
   other flag, and the flat key beats the config block;
 - unpinned (the default): startup behavior is unchanged, lowered
   modes and all;
-- pinned with every feature at enforce: startup proceeds;
+- pinned with every feature at enforce: startup proceeds,
+  on a simulated win32 host too (the mechanism gates are
+  scripted as able, like the sandbox backend already was);
 - pinned with a feature lowered (off or audit): startup refuses
   through main() with exit 2 and the feature named on stderr;
 - --posture reports the pin's state.
@@ -157,8 +159,15 @@ BASE = {"mailbox_user": "a@b.c", "mailbox_password": "p",
         "shared_secret": STRONG_SECRET}
 
 
-def _run_main(extra, argv_extra=("--posture",), sandbox_ok=True):
-    """One real startup through main(). (rc, stdout, stderr)."""
+def _run_main(extra, argv_extra=("--posture",), sandbox_ok=True,
+              platform=None):
+    """One real startup through main(). (rc, stdout, stderr).
+
+    platform patches sys.platform for the duration (the suite's
+    win32 simulation seam, the same one test_decision1_startup
+    uses), so a Windows-only startup gate can be exercised on
+    any host.
+    """
     tmpdir = tempfile.mkdtemp(prefix="hp-s5-")
     cfg = dict(BASE, base_dir=tmpdir)
     cfg.update(extra)
@@ -168,12 +177,24 @@ def _run_main(extra, argv_extra=("--posture",), sandbox_ok=True):
     out, err = io.StringIO(), io.StringIO()
     argv = ["runner", "--config", cfg_path, *argv_extra]
     with contextlib.ExitStack() as stack:
+        if platform is not None:
+            stack.enter_context(
+                mock.patch.object(sys, "platform", platform))
         if sandbox_ok:
             # The all-enforce config reaches the confinement gate;
             # script the backend as able so the require-posture
             # assertion is the only gate under test.
             stack.enter_context(mock.patch.object(
                 R._sandbox, "startup_problem", lambda: None))
+            # Same for the job_user gate: its mechanism is a
+            # POSIX setuid demote, so on Windows an all-enforce
+            # config is refused at that gate (the refusal itself
+            # is pinned in test_decision1_startup); script it as
+            # able too, or the all-enforce startup test fails on
+            # Windows before the posture assertion is reached.
+            stack.enter_context(mock.patch.object(
+                R, "_job_user_startup_problem",
+                lambda cfg=None, platform=None: None))
         stack.enter_context(mock.patch.object(sys, "argv", argv))
         with contextlib.redirect_stdout(out), \
                 contextlib.redirect_stderr(err):
@@ -202,6 +223,17 @@ class StartupAssertionTest(unittest.TestCase):
     def test_pinned_all_enforce_starts(self):
         rc, out, err = _run_main(
             {"security": {"require_posture": True}})
+        self.assertNotEqual(rc, 2, err)
+        self.assertIn("Security posture", out)
+
+    def test_pinned_all_enforce_starts_on_simulated_win32(self):
+        # The 3.15.17.166 Windows leg failed this startup on the
+        # job_user gate alone: both mechanism gates are scripted
+        # as able in _run_main, so a simulated win32 host must
+        # reach the same posture report as a POSIX host.
+        rc, out, err = _run_main(
+            {"security": {"require_posture": True}},
+            platform="win32")
         self.assertNotEqual(rc, 2, err)
         self.assertIn("Security posture", out)
 
