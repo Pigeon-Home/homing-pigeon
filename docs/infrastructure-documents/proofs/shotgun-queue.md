@@ -1184,7 +1184,28 @@ Applied to every item on this queue, item 1 included:
 - Fixed: bc4cb3d8 (31-Oct-2026)
 - Existing tests: de_dust board_mail corpus; board tests
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (BoardSubjectAndStashShotgunTest
+  in runner/tests/test_de_dust2.py, beside the fix's own
+  combined contract test for both legs in that file): the
+  board subject is handled under the shared grammar (the
+  separator controls are word characters, the byte order mark
+  is a gap), a board key that is not a task id is not loaded
+  or offered, and one stash is sent once across direct
+  delivers, the resend pass and their races. The per-field
+  pins are carried in the class docstring in the repo. The
+  class runs green (50 tests, 0 skipped; the family adds no
+  skip reasons, so nothing new needed registering), no live
+  bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target board_mail
+  --rounds 400 --seed 20261142, run locally against the banked
+  board_mail corpus (100 entries). Result: 400 rounds,
+  0 crashes, 0 slow, arcs unchanged at 617, slowest try
+  13703 ms — the unhandled-subject and double-send shapes did
+  not recur. The grow's bookkeeping writes were reverted and
+  are not banked (banking is the rigs' hourly job).
 
 ### 42. Mailbox setup gate demanded mailbox auth from a runner with no email transport, hanging it at an unseen prompt
 - Found: 31-Oct-2026, live on the Germany rig (file transport only)

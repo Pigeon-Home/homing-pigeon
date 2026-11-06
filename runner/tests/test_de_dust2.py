@@ -18,8 +18,11 @@ import argparse
 import json
 import errno
 import os
+import re
 import shutil
 import random
+import string
+import threading
 import time
 import subprocess
 import sys
@@ -1312,6 +1315,634 @@ class YieldTableTest(unittest.TestCase):
         args = argparse.Namespace(target="all", yield_table=True, hours=48)
         self.assertEqual(0, B.cmd_stats(args, out=out.append))
         self.assertTrue(out and out[0].startswith("de_aztec yield"))
+
+
+class BoardSubjectAndStashShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 41: a board subject went
+    unhandled, and one stash could be sent twice (fixed bc4cb3d8,
+    31-Oct-2026).
+
+    Why this file: the fix's own combined contract test,
+    TechniquesTest.test_the_filed_crashes_meet_the_contract,
+    lives here in test_de_dust2.py and covers both legs together
+    (the board_mail entries and the race_stash entries), so the
+    family lives beside it. The fix's second test, the direct
+    two-caller thread test in test_result_stash.py, is pinned
+    here through the same surface it drives (runner.deliver_stash
+    via B.R) rather than copied.
+
+    The two legs. (1) The board subject: handle_board_mail used
+    to match the subject with a Python-whitespace pattern, so a
+    unit separator inside the id was a gap and the message came
+    back on every poll, unseen. The handler now matches with the
+    shared subject grammar (runner/ops/startup.py's
+    _BOARD_SUBJECT, built from runner/wire/subject.py), where
+    the separator set is ECMAScript's: \\x1c-\\x1f and \\x85 are
+    word characters, \\ufeff is a gap. And a board key that is
+    not a task id ([A-Za-z0-9._-]{1,128}, not "." or "..") is not
+    loaded, so it is never offered under a subject that splits.
+    (2) One stash, sent once: the outbox holds one lock per key
+    (runner._stash_guard) across the send and the move into
+    sent/, shared by deliver_stash, resend_stashed and
+    stash_result itself, so a resend and a direct deliver cannot
+    both send the same record.
+
+    Per-field enumeration: the subject's fields -- the marker,
+    the extra words, the kind, the id -- each get their own
+    tests; the board record's fields are enumerated through
+    load and submit (the key/task_id, state, priority, and the
+    requires / capabilities / compartments lists); the stash
+    record's fields through stash, load and deliver (skey,
+    job_id, subject, body, attempts, last_error).
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: board keys and stash
+    bodies get bookended variants -- all 32 printable ASCII
+    symbols (string.punctuation) at the front and at the back,
+    as singles, matched pairs and symbol-only strings, plus
+    NUL, tab, CR and LF at both ends -- and run lengths: runs
+    of the odd character at lengths 1, 5, 10, 100 and at the
+    128/129 id boundary, and runs of ordinary characters with
+    the odd one at the front, the back and the middle.
+
+    Proof of work. The unit tests are the 50 methods of this
+    class: 12 board-subject grammar tests, 12 board-load tests,
+    6 board-submit tests, 12 stash-sent-once tests, 6 corpus
+    contract tests and 2 bookend / run-length sweeps. The
+    fuzzing was executed, not just the tests written:
+    runner/tools/de_dust_corpus.py grow --target board_mail
+    --rounds 400 --seed 20261142, run locally against the
+    banked board_mail corpus (100 entries). Result: 400 rounds,
+    0 crashes, 0 slow, arcs unchanged at 617, slowest try
+    13703 ms -- the unhandled-subject and double-send shapes
+    did not recur. The grow's bookkeeping writes were reverted
+    and are not banked (banking is the rigs' hourly job); this
+    record is the run's proof. None of this is exotic: it is
+    combinatorics -- systematically trying the combinations a
+    hand-written list would never reach, then pinning each
+    answer as a test."""
+
+    KINDS = ("task_submit", "task_request", "task_result", "task_approve")
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = self._tmp.name
+
+    # -- helpers --
+
+    def _match(self, subject):
+        return B.ST._BOARD_SUBJECT.search(subject)
+
+    def _task(self, tid, **extra):
+        task = {"task_id": tid, "state": "open", "priority": 1,
+                "requires": [], "capabilities": [], "compartments": [],
+                "payload": {"script": "echo task"},
+                "submitted_at": "2026-10-26T12:00:00+00:00"}
+        task.update(extra)
+        return task
+
+    def _board(self, mapping, name="board.json"):
+        path = os.path.join(self.tmp, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(mapping if isinstance(mapping, str)
+                     else json.dumps(mapping))
+        return B.BD.Board(path)
+
+    def _stash(self, key="k1", body="alpha", base=None):
+        return B.R.stash_result(
+            base or self.tmp, key, {"job_id": key, "kind": "exec"},
+            "[HOMING-PIGEON] result " + key, body)
+
+    def _sender(self, sent, delay=0.02):
+        def send(subject, body, to):
+            if delay:
+                time.sleep(delay)
+            sent.append(body)
+        return send
+
+    def _run_threads(self, fns):
+        threads = [threading.Thread(target=f) for f in fns]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=10)
+            self.assertFalse(t.is_alive())
+
+    def _check(self, target, data, rounds=1):
+        entry = {"id": "x", "kind": "payload", "data": data,
+                 "from": "", "mutator": "", "arcs": 0}
+        for _ in range(rounds):
+            self.assertIn(
+                B._with_rig(lambda e=entry: B.check(target, e)),
+                ("accepted", "refused"))
+
+    # -- 12 board-subject grammar tests --
+
+    def test_subject_each_of_the_four_kinds_is_handled_with_a_plain_id(self):
+        for kind in self.KINDS:
+            m = self._match(f"[HOMING-PIGEON] {kind} task-1")
+            self.assertIsNotNone(m, kind)
+            self.assertEqual((m.group(1).lower(), m.group(2)), (kind, "task-1"))
+
+    def test_subject_the_kind_is_case_insensitive_and_the_id_keeps_its_case(self):
+        m = self._match("[HOMING-PIGEON] TASK_SUBMIT Task-ABC_1.x")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(1), "TASK_SUBMIT")
+        self.assertEqual(m.group(2), "Task-ABC_1.x")
+        m = self._match("[hominG-pigeon] Task_Approve t2")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(2), "t2")
+
+    def test_subject_a_unit_separator_inside_the_id_is_a_word_not_a_gap(self):
+        # The filed bug: Python's \s counts \x1f as a gap, so the
+        # old pattern stopped the id there and the handler missed
+        # the message. The shared grammar takes the whole token.
+        m = self._match("[HOMING-PIGEON] task_approve a\x1fb")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(1).lower(), "task_approve")
+        self.assertEqual(m.group(2), "a\x1fb")
+
+    def test_subject_each_information_separator_and_nel_inside_the_id_is_a_word(self):
+        for ch in ("\x1c", "\x1d", "\x1e", "\x1f", "\x85"):
+            m = self._match(f"[HOMING-PIGEON] task_submit a{ch}b")
+            self.assertIsNotNone(m, repr(ch))
+            self.assertEqual(m.group(2), f"a{ch}b", repr(ch))
+
+    def test_subject_a_byte_order_mark_inside_the_id_is_a_gap(self):
+        # \ufeff IS in the grammar's separator set (ECMAScript
+        # counts it), so the id ends before it.
+        m = self._match("[HOMING-PIGEON] task_submit a\ufeffb")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(2), "a")
+
+    def test_subject_the_gap_characters_each_separate_the_kind_from_the_id(self):
+        for gap in (" ", "\t", "\x0b", "\x0c", "\r", "\xa0", "\u3000", "\ufeff"):
+            m = self._match(f"[HOMING-PIGEON] task_submit{gap}t1")
+            self.assertIsNotNone(m, repr(gap))
+            self.assertEqual(m.group(2), "t1", repr(gap))
+
+    def test_subject_extra_words_and_a_reply_prefix_do_not_hide_the_kind(self):
+        m = self._match("[HOMING-PIGEON] TEST task_submit t1")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(2), "t1")
+        m = self._match("Re: [HOMING-PIGEON] task_request worker-1")
+        self.assertIsNotNone(m)
+        self.assertEqual((m.group(1).lower(), m.group(2)),
+                         ("task_request", "worker-1"))
+
+    def test_subject_other_kinds_and_kind_prefixes_are_not_board_mail(self):
+        for subject in ("[HOMING-PIGEON] job t1",
+                        "[HOMING-PIGEON] result t1",
+                        "[HOMING-PIGEON] task_delete t1",
+                        "[HOMING-PIGEON] task_submitx t1",
+                        "[HOMING-PIGEON] task t1",
+                        "[HOMING-PIGEON] submit t1"):
+            self.assertIsNone(self._match(subject), subject)
+
+    def test_subject_a_kind_with_no_id_is_not_handled(self):
+        self.assertIsNone(self._match("[HOMING-PIGEON] task_submit"))
+        self.assertIsNone(self._match("[HOMING-PIGEON] task_submit "))
+        self.assertIsNone(self._match("[HOMING-PIGEON] task_submit \t"))
+
+    def test_subject_no_marker_or_a_broken_marker_is_not_handled(self):
+        for subject in ("task_submit t1",
+                        "[HOMING-PIGEON task_submit t1",
+                        "HOMING-PIGEON] task_submit t1",
+                        "[OTHER] task_submit t1",
+                        "[HOMING-PIGEON] ",
+                        ""):
+            self.assertIsNone(self._match(subject), subject)
+
+    def test_subject_ids_at_the_length_boundary_and_with_the_safe_symbols(self):
+        m = self._match("[HOMING-PIGEON] task_submit " + "a" * 128)
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(2), "a" * 128)
+        m = self._match("[HOMING-PIGEON] task_result a.b-c_d")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(2), "a.b-c_d")
+        m = self._match("[HOMING-PIGEON] task_submit " + "a" * 129)
+        self.assertIsNotNone(m)  # the grammar takes the token; the
+        self.assertEqual(len(m.group(2)), 129)  # id gate refuses it
+
+    def test_subject_the_grammar_and_python_whitespace_disagree_exactly_at_the_bug(self):
+        # Pin the root cause both ways: Python's \S+ splits the
+        # id at the separator controls; the board grammar does not.
+        for ch in ("\x1c", "\x1f", "\x85"):
+            token = f"a{ch}b"
+            self.assertEqual(re.findall(r"\S+", token), ["a", "b"], repr(ch))
+            m = self._match(f"[HOMING-PIGEON] task_submit {token}")
+            self.assertEqual(m.group(2), token, repr(ch))
+
+    # -- 12 board-load tests --
+
+    def test_board_load_a_key_with_a_space_is_skipped_and_a_plain_key_is_kept(self):
+        board = self._board({"a b": self._task("a b"),
+                             "good1": self._task("good1")})
+        self.assertEqual(sorted(board.tasks), ["good1"])
+
+    def test_board_load_a_key_that_is_a_whole_subject_is_skipped(self):
+        key = "{[HOMING-PIGEON] TEST job 1"
+        board = self._board({key: self._task("x"),
+                             "good1": self._task("good1")})
+        self.assertEqual(sorted(board.tasks), ["good1"])
+
+    def test_board_load_slash_and_backslash_keys_are_skipped(self):
+        board = self._board({"a/b": self._task("a/b"),
+                             "a\\b": self._task("a\\b"),
+                             "good1": self._task("good1")})
+        self.assertEqual(sorted(board.tasks), ["good1"])
+
+    def test_board_load_the_dot_names_are_skipped_and_three_dots_are_kept(self):
+        board = self._board({".": self._task("."), "..": self._task(".."),
+                             "...": self._task("...")})
+        self.assertEqual(sorted(board.tasks), ["..."])
+
+    def test_board_load_a_129_character_key_is_skipped_and_a_128_is_kept(self):
+        board = self._board({"a" * 129: self._task("a" * 129),
+                             "a" * 128: self._task("a" * 128)})
+        self.assertEqual(sorted(board.tasks), ["a" * 128])
+
+    def test_board_load_control_and_non_ascii_keys_are_skipped(self):
+        board = self._board({"a\x1fb": self._task("a\x1fb"),
+                             "a\0b": self._task("a\0b"),
+                             "é1": self._task("é1"),
+                             "": self._task(""),
+                             "good1": self._task("good1")})
+        self.assertEqual(sorted(board.tasks), ["good1"])
+
+    def test_board_load_a_record_whose_task_id_disagrees_carries_its_key(self):
+        board = self._board({"good1": self._task("other-id")})
+        self.assertEqual(board.tasks["good1"]["task_id"], "good1")
+
+    def test_board_load_non_dict_task_values_are_skipped(self):
+        board = self._board({"s": "text", "l": [1], "n": 42, "z": None,
+                             "good1": self._task("good1")})
+        self.assertEqual(sorted(board.tasks), ["good1"])
+
+    def test_board_load_unusable_files_read_as_an_empty_board(self):
+        self.assertEqual(self._board("[1, 2]", "a.json").tasks, {})
+        self.assertEqual(self._board('"hello"', "b.json").tasks, {})
+        self.assertEqual(self._board("42", "c.json").tasks, {})
+        self.assertEqual(self._board("{not json", "d.json").tasks, {})
+        missing = B.BD.Board(os.path.join(self.tmp, "missing.json"))
+        self.assertEqual(missing.tasks, {})
+
+    def test_board_load_a_non_finite_priority_record_is_skipped(self):
+        text = ('{"good1": ' + json.dumps(self._task("good1")) +
+                ', "bad1": {"task_id": "bad1", "state": "open",'
+                ' "priority": NaN}}')
+        board = self._board(text)
+        self.assertEqual(sorted(board.tasks), ["good1"])
+
+    def test_board_load_the_saved_file_reads_back_with_only_the_legal_keys(self):
+        board = self._board({"a b": self._task("a b"),
+                             "good1": self._task("good1"),
+                             "good2": self._task("good2")})
+        board.save()
+        again = B.BD.Board(board.path)
+        self.assertEqual(sorted(again.tasks), ["good1", "good2"])
+        self.assertEqual(again.tasks["good1"]["state"], "open")
+
+    def test_board_offer_never_offers_a_task_under_a_key_that_splits(self):
+        board = self._board({"a b": self._task("a b")})
+        self.assertIsNone(board.offer("worker-a", ["shell"]))
+        board2 = self._board({"good1": self._task(
+            "good1", capabilities=["shell"])}, "board2.json")
+        offered = board2.offer("worker-a", ["shell"])
+        self.assertIsNotNone(offered)
+        self.assertEqual(offered["task_id"], "good1")
+        self.assertEqual(board2.tasks["good1"]["state"], "claimed")
+
+    # -- 6 board-submit tests --
+
+    def test_board_submit_a_plain_task_is_open_with_its_fields_and_defaults(self):
+        board = self._board({})
+        ok, why = board.submit({"task_id": "t1"})
+        self.assertEqual((ok, why), (True, "ok"))
+        task = board.tasks["t1"]
+        self.assertEqual(task["state"], "open")
+        self.assertEqual(task["priority"], 0)
+        self.assertEqual(task["requires"], [])
+        self.assertEqual(task["capabilities"], [])
+        self.assertEqual(task["compartments"], [])
+        self.assertIsNone(task["payload"])
+
+    def test_board_submit_the_dot_names_an_empty_and_an_overlong_id_are_refused(self):
+        board = self._board({})
+        for tid in (".", "..", "", "a" * 129):
+            self.assertEqual(board.submit({"task_id": tid}),
+                             (False, "invalid task_id"), tid[:10])
+        self.assertEqual(board.tasks, {})
+
+    def test_board_submit_ids_with_gaps_separators_and_brackets_are_refused(self):
+        board = self._board({})
+        for tid in ("a b", "a/b", "a\\b", "a\tb", "[t1]", "a:b", "a\x1fb", "é1"):
+            self.assertEqual(board.submit({"task_id": tid}),
+                             (False, "invalid task_id"), repr(tid))
+        self.assertEqual(board.tasks, {})
+
+    def test_board_submit_a_non_dict_task_and_non_string_ids_are_refused(self):
+        board = self._board({})
+        self.assertEqual(board.submit("t1"), (False, "invalid task"))
+        self.assertEqual(board.submit(None), (False, "invalid task"))
+        for tid in (42, None, ["t1"], {"id": "t1"}, True):
+            self.assertEqual(board.submit({"task_id": tid}),
+                             (False, "invalid task_id"), repr(tid))
+
+    def test_board_submit_a_duplicate_id_is_refused_and_the_first_record_stays(self):
+        board = self._board({})
+        self.assertEqual(board.submit({"task_id": "t1", "priority": 3}),
+                         (True, "ok"))
+        self.assertEqual(board.submit({"task_id": "t1", "priority": 9}),
+                         (False, "duplicate task_id"))
+        self.assertEqual(board.tasks["t1"]["priority"], 3)
+
+    def test_board_submit_each_list_field_and_the_priority_are_checked_by_name(self):
+        board = self._board({})
+        for field in ("requires", "capabilities", "compartments"):
+            self.assertEqual(
+                board.submit({"task_id": "t1", field: "shell"}),
+                (False, f"{field} must be a list of strings"), field)
+            self.assertEqual(
+                board.submit({"task_id": "t1", field: [1]}),
+                (False, f"{field} must be a list of strings"), field)
+        self.assertEqual(board.submit({"task_id": "t1", "priority": "high"}),
+                         (False, "priority must be numeric"))
+        self.assertEqual(
+            board.submit({"task_id": "t1", "priority": float("nan")}),
+            (False, "priority must be a finite number"))
+        self.assertEqual(
+            board.submit({"task_id": "t1", "priority": float("inf")}),
+            (False, "priority must be a finite number"))
+        self.assertEqual(board.tasks, {})
+
+    # -- 12 stash-sent-once tests --
+
+    def test_stash_two_callers_send_one_stash_once(self):
+        self.assertTrue(self._stash("bm-stash-0001", "alpha"))
+        sent, results = [], []
+        self._run_threads([
+            lambda: results.append(B.R.deliver_stash(
+                self.tmp, "bm-stash-0001", self._sender(sent))),
+            lambda: results.append(B.R.deliver_stash(
+                self.tmp, "bm-stash-0001", self._sender(sent))),
+        ])
+        self.assertEqual(sent, ["alpha"])
+        self.assertEqual(sorted(results), [False, True])
+        self.assertIsNone(B.R.load_stash(self.tmp, "bm-stash-0001"))
+        self.assertTrue(os.path.isfile(
+            B.R._sent_path(self.tmp, "bm-stash-0001")))
+
+    def test_stash_four_callers_send_one_stash_once(self):
+        self.assertTrue(self._stash("k1", "alpha"))
+        sent = []
+        self._run_threads([
+            (lambda: B.R.deliver_stash(self.tmp, "k1", self._sender(sent)))
+            for _ in range(4)])
+        self.assertEqual(sent, ["alpha"])
+
+    def test_stash_a_second_sequential_deliver_finds_the_record_gone(self):
+        self.assertTrue(self._stash("k1", "alpha"))
+        sent = []
+        self.assertTrue(B.R.deliver_stash(self.tmp, "k1",
+                                          self._sender(sent, delay=0)))
+        self.assertFalse(B.R.deliver_stash(self.tmp, "k1",
+                                           self._sender(sent, delay=0)))
+        self.assertEqual(sent, ["alpha"])
+
+    def test_stash_a_resend_and_a_direct_deliver_racing_send_it_once(self):
+        for round_no in range(5):
+            key = f"race-{round_no}"
+            base = os.path.join(self.tmp, f"base-{round_no}")
+            self.assertTrue(self._stash(key, "alpha", base=base))
+            sent = []
+            self._run_threads([
+                lambda base=base, key=key: B.R.resend_stashed(
+                    base, {}, self._sender(sent), now=time.time() + 120),
+                lambda base=base, key=key: B.R.deliver_stash(
+                    base, key, self._sender(sent)),
+            ])
+            self.assertEqual(sent, ["alpha"], f"round {round_no}")
+
+    def test_stash_a_failed_send_keeps_the_record_and_the_next_send_is_the_only_one(self):
+        self.assertTrue(self._stash("k1", "alpha"))
+
+        def boom(subject, body, to):
+            raise OSError("down")
+
+        self.assertFalse(B.R.deliver_stash(self.tmp, "k1", boom))
+        rec = B.R.load_stash(self.tmp, "k1")
+        self.assertIsNotNone(rec)
+        self.assertEqual(rec["attempts"], 1)
+        self.assertEqual(rec["last_error"], "down")
+        self.assertEqual(rec["body"], "alpha")
+        sent = []
+        self.assertTrue(B.R.deliver_stash(self.tmp, "k1",
+                                          self._sender(sent, delay=0)))
+        self.assertEqual(sent, ["alpha"])
+
+    def test_stash_two_keys_racing_each_send_their_own_record_once(self):
+        self.assertTrue(self._stash("k1", "one"))
+        self.assertTrue(self._stash("k2", "two"))
+        sent = []
+        self._run_threads([
+            lambda: B.R.deliver_stash(self.tmp, "k1", self._sender(sent)),
+            lambda: B.R.deliver_stash(self.tmp, "k2", self._sender(sent)),
+            lambda: B.R.deliver_stash(self.tmp, "k1", self._sender(sent)),
+            lambda: B.R.deliver_stash(self.tmp, "k2", self._sender(sent)),
+        ])
+        self.assertEqual(sorted(sent), ["one", "two"])
+
+    def test_stash_a_fresh_stash_after_delivery_is_a_new_record_and_sends(self):
+        self.assertTrue(self._stash("k1", "alpha"))
+        sent = []
+        self.assertTrue(B.R.deliver_stash(self.tmp, "k1",
+                                          self._sender(sent, delay=0)))
+        self.assertTrue(self._stash("k1", "beta"))
+        self.assertTrue(B.R.deliver_stash(self.tmp, "k1",
+                                          self._sender(sent, delay=0)))
+        self.assertEqual(sent, ["alpha", "beta"])
+
+    def test_stash_the_guard_is_one_lock_per_key_and_coerces_the_key_to_text(self):
+        self.assertIs(B.R._stash_guard("k1"), B.R._stash_guard("k1"))
+        self.assertIsNot(B.R._stash_guard("k1"), B.R._stash_guard("k2"))
+        self.assertIs(B.R._stash_guard(123), B.R._stash_guard("123"))
+
+    def test_stash_an_undelivered_record_can_be_sent_again_by_design(self):
+        self.assertTrue(self._stash("k1", "alpha"))
+        sent = []
+        self.assertTrue(B.R.deliver_stash(self.tmp, "k1",
+                                          self._sender(sent, delay=0)))
+        B.R.undeliver_stash(self.tmp, "k1", "channel write failed")
+        self.assertIsNotNone(B.R.load_stash(self.tmp, "k1"))
+        self.assertTrue(B.R.deliver_stash(self.tmp, "k1",
+                                          self._sender(sent, delay=0)))
+        self.assertEqual(sent, ["alpha", "alpha"])
+
+    def test_stash_the_resend_pass_alone_sends_once_and_a_second_pass_sends_nothing(self):
+        self.assertTrue(self._stash("k1", "alpha"))
+        sent = []
+        counts = B.R.resend_stashed(self.tmp, {}, self._sender(sent, delay=0),
+                                    now=time.time() + 120)
+        self.assertEqual(counts["delivered"], 1)
+        self.assertEqual(sent, ["alpha"])
+        counts = B.R.resend_stashed(self.tmp, {}, self._sender(sent, delay=0),
+                                    now=time.time() + 240)
+        self.assertEqual(counts["delivered"], 0)
+        self.assertEqual(counts["attempted"], 0)
+        self.assertEqual(sent, ["alpha"])
+
+    def test_stash_delivering_nothing_and_an_invalid_base_send_nothing(self):
+        sent = []
+        self.assertFalse(B.R.deliver_stash(self.tmp, "missing",
+                                           self._sender(sent, delay=0)))
+        self.assertFalse(B.R.deliver_stash("", "k1",
+                                           self._sender(sent, delay=0)))
+        self.assertFalse(B.R.deliver_stash(None, "k1",
+                                           self._sender(sent, delay=0)))
+        self.assertEqual(sent, [])
+
+    def test_stash_the_record_carries_its_fields_through_a_failed_attempt(self):
+        self.assertTrue(B.R.stash_result(
+            self.tmp, "k1", {"job_id": "job-9", "kind": "exec"},
+            "[HOMING-PIGEON] result job-9", "body-9", to="a@example.com"))
+
+        def boom(subject, body, to):
+            raise ValueError("header")
+
+        self.assertFalse(B.R.deliver_stash(self.tmp, "k1", boom))
+        rec = B.R.load_stash(self.tmp, "k1")
+        self.assertEqual(rec["skey"], "k1")
+        self.assertEqual(rec["job_id"], "job-9")
+        self.assertEqual(rec["subject"], "[HOMING-PIGEON] result job-9")
+        self.assertEqual(rec["body"], "body-9")
+        self.assertEqual(rec["to"], "a@example.com")
+        self.assertEqual(rec["attempts"], 1)
+        self.assertEqual(rec["last_error"], "header")
+
+    # -- 6 corpus contract tests (the fix's own entries, replayed) --
+
+    def test_contract_the_filed_board_entry_with_a_separator_id_meets_the_contract(self):
+        self._check("board_mail",
+                    {"file": None, "ident": "\x1f",
+                     "kind": {"task_id": ".", "type": "task_approve", "v": 1},
+                     "payload": "task_approve"})
+
+    def test_contract_the_filed_board_entry_with_a_splitting_board_key_meets_the_contract(self):
+        self._check("board_mail",
+                    {"file": "{\n  \"bm-task-000[HOMING-PIGEON] TEST job 1\": {\n"
+                     "    \"task_id\": \"bm-task-0001\",\n    \"priority\": \"canary-key\",\n"
+                     "    \"requires\": [],\n    \"capabilities\": [\"shell\"],\n"
+                     "    \"compartments\": [],\n    \"payload\": {\"script\": \"echo task\"},\n"
+                     "    \"state\": \"open\",\n"
+                     "    \"submitted_at\": \"2026-10-26T12:00:00+00:00\"\n  }\n}",
+                     "ident": "worker-a", "kind": "task_request",
+                     "payload": {"capabilities": ["shell"],
+                                 "reply_to": "worker@example.com",
+                                 "type": "task_request", "v": 1,
+                                 "worker_id": "worker-a"}})
+
+    def test_contract_a_seed_board_submit_entry_meets_the_contract(self):
+        seeds = {e["from"]: e for e in B.seeds_board_mail()}
+        entry = seeds["seed:submit"]
+        self.assertIn(B._with_rig(lambda: B.check("board_mail", entry)),
+                      ("accepted", "refused"))
+
+    def test_contract_a_seed_board_request_entry_meets_the_contract(self):
+        seeds = {e["from"]: e for e in B.seeds_board_mail()}
+        named = [e for name, e in seeds.items() if "request" in name]
+        self.assertTrue(named, sorted(seeds))
+        for entry in named[:1]:
+            self.assertIn(B._with_rig(lambda e=entry: B.check("board_mail", e)),
+                          ("accepted", "refused"))
+
+    def test_contract_the_filed_race_stash_entries_meet_the_contract_repeatedly(self):
+        stash = [
+            {"threads": [[{"body": "alpha", "op": "stash", "skey": "bm-stash-0001"},
+                          {"op": "yield"},
+                          {"op": "deliver", "skey": "bm-stash-0001"}],
+                         [{"op": "resend"},
+                          {"SKEY": "bm-stash-0001", "body": "beta", "op": "stash"}]]},
+            {"threads": [[{"body": "alpha", "op": "stash", "skey": "bm-stash-0001"},
+                          [[{"op": "nope"}], "nope"],
+                          {"op": "deliver", "skey": "bm-stash-0001"}],
+                         [{"op": "resend"},
+                          {"Skey": "bm-stash-0001", "body": "beta", "op": "stash"}]]},
+        ]
+        for data in stash:
+            self._check("race_stash", data, rounds=3)
+
+    def test_contract_the_two_bodies_one_key_seed_never_sends_both(self):
+        seeds = {e["from"]: e for e in B.seeds_race_stash()}
+        entry = seeds["seed:two_bodies_one_key"]
+        for _ in range(3):
+            self.assertIn(B._with_rig(lambda: B.check("race_stash", entry)),
+                          ("accepted", "refused"))
+
+    # -- 2 bookend / run-length sweeps --
+
+    def test_bookends_every_ascii_symbol_around_a_board_key_and_a_stash_body(self):
+        self.assertEqual(len(string.punctuation), 32)
+        mapping = {}
+        for ch in string.punctuation:
+            key = f"{ch}task1{ch}"
+            mapping[key] = self._task(key)
+        mapping["@@task@@"] = self._task("@@task@@")     # matched pair
+        mapping["!task~"] = self._task("!task~")          # mismatched pair
+        mapping[string.punctuation] = self._task(string.punctuation)
+        board = self._board(mapping)
+        self.assertEqual(sorted(board.tasks),
+                         ["-task1-", ".task1.", "_task1_"])
+        # Stash bodies bookended the same way are delivered
+        # verbatim, each exactly once.
+        sent = []
+        for i, ch in enumerate(string.punctuation):
+            key = f"b{i:02d}"
+            self.assertTrue(self._stash(key, f"{ch}core{ch}"))
+            self.assertTrue(B.R.deliver_stash(
+                self.tmp, key, self._sender(sent, delay=0)))
+        self.assertEqual(sent, [f"{ch}core{ch}" for ch in string.punctuation])
+        self.assertTrue(self._stash("pair", "@@core@@"))
+        self.assertTrue(B.R.deliver_stash(self.tmp, "pair",
+                                          self._sender(sent, delay=0)))
+        self.assertTrue(self._stash("only", string.punctuation))
+        self.assertTrue(B.R.deliver_stash(self.tmp, "only",
+                                          self._sender(sent, delay=0)))
+        self.assertEqual(sent[-2:], ["@@core@@", string.punctuation])
+
+    def test_runs_and_controls_board_keys_stash_bodies_and_subject_ids(self):
+        # Board keys: runs and controls follow the id grammar.
+        mapping = {}
+        for key in ("-" * 10, "a" * 128, "...",
+                    "a" * 129, "!" * 10, "a\x1fb", "a\0b", "a\tb", "a\nb",
+                    "'; DROP TABLE board; --", "__proto__"):
+            mapping[key] = self._task(key)
+        board = self._board(mapping)
+        self.assertEqual(sorted(board.tasks),
+                         ["-" * 10, "...", "__proto__", "a" * 128])
+        # Stash bodies: runs of the odd character at the front,
+        # the back and the middle are delivered verbatim, once.
+        shapes = []
+        for n in (1, 5, 10):
+            shapes += ["!" * n + "core", "core" + "!" * n,
+                       "co" + "!" * n + "re", "a" * 10 + "!",
+                       "!" + "a" * 10, "a" * 5 + "!" + "a" * 5,
+                       "\0core\0", "\tcore\t", "\rcore\r", "\ncore\n"]
+        sent = []
+        for i, body in enumerate(shapes):
+            key = f"s{i:02d}"
+            self.assertTrue(self._stash(key, body))
+            self.assertTrue(B.R.deliver_stash(
+                self.tmp, key, self._sender(sent, delay=0)))
+        self.assertEqual(sent, shapes)
+        # Subject ids: the same run shapes are taken whole by the
+        # board grammar (its gate, not the grammar, refuses them).
+        for body in ("!" * 10 + "t1", "t1" + "!" * 10,
+                     "t" + "!" * 5 + "1", "a" * 10 + "!"):
+            m = self._match(f"[HOMING-PIGEON] task_submit {body}")
+            self.assertIsNotNone(m, body)
+            self.assertEqual(m.group(2), body, body)
 
 
 if __name__ == "__main__":
