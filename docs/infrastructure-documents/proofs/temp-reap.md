@@ -390,3 +390,58 @@ No assertion changed, no behavior changed, no new
 skip reason was registered; the 17 skips in the
 swept set are the registered platform and environment
 gates they were before.
+
+The strengthening repair of the 2 files left out of
+the sweep (6051a3b7, Q128) broke the 3.15.18.2
+build-windows guard identically on the main and tag
+builds, and that tag stands unpublished. The
+diagnosis — reached independently by 2 passes with
+the same result — and the fix (95ade772):
+
+- `test_powershell_script_encoding.py` — 19 failures,
+  every sh-shape leg. The job-staged sh stand-in
+  named the staged script with `${1##*/}`, which
+  strips only forward slashes; a Windows staged path
+  is backslash-separated, so the whole path came
+  home as the name. The Python stand-in names with
+  `os.path.basename`, which splits on the host's own
+  separators, and its legs passed on the same build.
+  The shim now normalises backslashes to slashes
+  before stripping, and a `ShimStagedNameTest` pin
+  reproduces the shape directly (the windows-surface
+  simulator does not simulate path separators): on
+  POSIX a backslash is an ordinary filename
+  character, and a single file carrying the failed
+  leg's exact path shape fails with the CI assertion
+  against the old shim and passes against the fixed
+  one.
+- `test_oracle_no_widening.py` — 1 failure. The
+  strengthened denial half asserted the opinion
+  note's closing sentence whole. The note is
+  bounded by design at 500 characters
+  (`runner/oracle/opinion.py`) and the sentence
+  stands last in it, after the platform default's
+  interpreter repr twice over; on Windows that repr
+  is the long powershell argv, and the sent note
+  ended mid-sentence at the bound ("...The job as
+  received was "). Reproduced exactly under the
+  simulated Windows surface. The fix is in the
+  product: `repair_member` now fits the note within
+  the bound by trimming the findings and the middle
+  and never the closing sentence
+  (`RepairNoteCapTest`), so the test's assertion
+  stands exactly as written and no asserted fact
+  moved.
+
+CI confirms the fix: on the 3.15.18.3 build-windows
+run, shards 1 to 3 — holding both modules — are
+green. That release died instead on a stale core
+pin (`test_core`, runner/oracle 4987 != 5013),
+because the opinion growth above was not
+re-measured into the pin until 39f05090. One
+leftover, named rather than fixed in this pass:
+the 2 modules' own setup bases — the encoding
+module's `setUp` mkdtemp and the no-widening drive
+helper — still leak as soft leaks under
+`regression_guard.py`. Green, but the same class
+this record exists to close.
