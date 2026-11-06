@@ -764,7 +764,8 @@ class JobUserEnforceShotgunTest(unittest.TestCase):
                 repr(platform))
 
     def test_platform_none_defaults_to_the_host_platform(self):
-        self.assertIsNone(self._problem(dict(self.ENFORCE), None))
+        with mock.patch.object(sys, "platform", "linux"):
+            self.assertIsNone(self._problem(dict(self.ENFORCE), None))
         with mock.patch.object(sys, "platform", "win32"):
             self.assertEqual(self._problem(dict(self.ENFORCE), None),
                              self.PROBLEM)
@@ -1112,11 +1113,21 @@ def _make_job_user_field_tests():
     def field_platform(self):
         for platform, expected in (
                 ("win32", want), ("linux", None), ("darwin", None),
-                ("WIN32", None), ("", None), (None, None)):
+                ("WIN32", None), ("", None)):
             self.assertEqual(
                 problem(dict(JobUserEnforceShotgunTest.ENFORCE),
                         platform),
                 expected, repr(platform))
+        # None reads the host platform (the pinned default), so
+        # its answer is pinned under both host spellings, on any
+        # host: a POSIX host admits enforce, a win32 host refuses.
+        with mock.patch.object(sys, "platform", "linux"):
+            self.assertIsNone(
+                problem(dict(JobUserEnforceShotgunTest.ENFORCE), None))
+        with mock.patch.object(sys, "platform", "win32"):
+            self.assertEqual(
+                problem(dict(JobUserEnforceShotgunTest.ENFORCE), None),
+                want)
 
     def field_job_id(self):
         probe = JobUserEnforceShotgunTest()
