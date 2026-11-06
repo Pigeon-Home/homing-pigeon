@@ -27,13 +27,15 @@ strictness fix grew runner/guard, and after the audit
 hash-chain fix grew runner/guard and runner/ops, and once
 more the same day after the Oracle tool-mode work and the
 startup posture assertion switch grew runner/ops,
-runner/guard and the runner proper, the
-as-assembled set stands at 55,299 lines (49,787 non-blank)
-and a 700,490-byte zip, and the project's own estimator
-counts it at 583,175 tokens; the Gemini figure above still
+runner/guard and the runner proper, and again after the
+outbox stash took the per-key guard in the runner proper,
+the
+as-assembled set stands at 55,336 lines (49,819 non-blank)
+and a 700,912-byte zip, and the project's own estimator
+counts it at 583,536 tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical 130-file list at 575,558
-tokens across 54,515 lines (49,099 non-blank); the 2 token
+estimator counts the canonical 130-file list at 575,919
+tokens across 54,552 lines (49,131 non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -46,14 +48,14 @@ set. A change aimed at core is aimed at those 130 files and
 no others, and a result reported for core covers exactly
 them.
 
-The runner proper is 6,598 lines; the core around it is
-55,299. The set as assembled, part by part (re-measured
+The runner proper is 6,635 lines; the core around it is
+55,336. The set as assembled, part by part (re-measured
 2026-11-06):
 
 - runner/ops: 17,345 lines
 - runner/tools: 8,669
 - runner/wire: 8,267
-- runner/runner.py: 6,598
+- runner/runner.py: 6,635
 - runner/oracle: 4,987
 - runner/transport_extensions: 2,771
 - runner/guard: 2,875
@@ -69,7 +71,7 @@ The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-55,299 lines, explicit platform branching — sys.platform,
+55,336 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
 the 133 files, beside a small number of dedicated platform
 modules (runner/ops/windows.py and runner/ops/winlog.py).

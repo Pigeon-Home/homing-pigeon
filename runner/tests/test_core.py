@@ -79,7 +79,7 @@ class CoreListTest(unittest.TestCase):
         # re-recorded at the 2026-11-05 re-measures; the Gemini
         # token count above still describes the 2026-11-04
         # assembly.
-        self.assertEqual(700490, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(700912, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -90,9 +90,11 @@ class CoreListTest(unittest.TestCase):
         # grew runner/guard and runner/ops, and once more the
         # same day after the Oracle tool-mode work and the
         # startup posture assertion switch grew runner/ops,
-        # runner/guard and the runner proper.
-        self.assertEqual(55299, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(49787, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/guard and the runner proper, and once more
+        # after the outbox stash took the per-key guard in
+        # the runner proper.
+        self.assertEqual(55336, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(49819, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
@@ -185,7 +187,7 @@ class CoreLinesTest(unittest.TestCase):
 
 class CorePartsTest(unittest.TestCase):
     def test_the_recorded_breakdown_stays_named(self):
-        self.assertEqual(6598, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
+        self.assertEqual(6635, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
         self.assertEqual(core.AS_ASSEMBLED_LINES,
                          sum(core.AS_ASSEMBLED_PART_LINES.values()))
 

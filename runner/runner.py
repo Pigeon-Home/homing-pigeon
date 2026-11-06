@@ -1645,9 +1645,28 @@ def stash_result(base_dir, skey, job, subject, body, to=None,
     the outbox before the first send. Returns True when the record is
     down. A failure to record is logged and False is returned: the
     caller then does not commit the job as seen, so a crash here is
-    the one re-execution window, stated in the module comment."""
+    the one re-execution window, stated in the module comment.
+
+    The write takes the key's stash guard, the same lock a
+    delivery claims under: a stash that landed between a
+    delivery's read of the waiting record and its claim move
+    was overwritten by the claim and lost without ever being
+    sent (the two-bodies-one-key race the corpus holds). Under
+    the guard the stash either lands before the claim — and is
+    the record the delivery sends — or after it, as the next
+    result waiting in the outbox."""
     if not _valid_base(base_dir):
         return False
+    with _stash_guard(skey):
+        return _stash_result_held(base_dir, skey, job, subject, body,
+                                  to=to, transport=transport,
+                                  key_id=key_id, encrypted=encrypted,
+                                  meta=meta)
+
+
+def _stash_result_held(base_dir, skey, job, subject, body, to=None,
+                       transport=None, key_id=None, encrypted=False,
+                       meta=None):
     rec = {"skey": _as_str(skey),
            "job_id": _as_str((job or {}).get("job_id")),
            "job_digest": _job_digest(job),
@@ -1823,9 +1842,17 @@ def undeliver_stash(base_dir, skey, reason):
     outbox write that failed after the capture): the record goes back
     from sent/ to the outbox with the failure on it, for the resend
     pass. The job stays seen -- it did execute. Returns True when a
-    record was moved back."""
+    record was moved back. The move back takes the key's stash
+    guard, like the stash and the delivery claim: writing the
+    record back over a fresher stash for the same key would lose
+    that stash the same way."""
     if not _valid_base(base_dir):
         return False
+    with _stash_guard(skey):
+        return _undeliver_stash_held(base_dir, skey, reason)
+
+
+def _undeliver_stash_held(base_dir, skey, reason):
     src = _sent_path(base_dir, skey)
     rec = _read_record(src)
     if rec is None:
@@ -1881,11 +1908,21 @@ def resend_stashed(base_dir, cfg, sender, now=None, limit=RESEND_PASS_CAP):
         created = float(rec.get("created") or now)
         send = _record_sender(base_dir, rec, sender)
         if now - created > retention:
-            _stash_fail(base_dir, skey, rec,
-                        f"not delivered within result_stash_retention_sec "
-                        f"({retention}s) after {rec.get('attempts', 0)} "
-                        f"attempt(s); last error: {rec.get('last_error')}",
-                        cfg)
+            # Give the record up under its guard, and only the
+            # record this pass read: a fresher stash for the
+            # same key is a different result and stays waiting.
+            with _stash_guard(skey):
+                current = load_stash(base_dir, skey)
+                if current is not None and \
+                        current.get("created") == rec.get("created"):
+                    _stash_fail(base_dir, skey, rec,
+                                f"not delivered within "
+                                f"result_stash_retention_sec "
+                                f"({retention}s) after "
+                                f"{rec.get('attempts', 0)} "
+                                f"attempt(s); last error: "
+                                f"{rec.get('last_error')}",
+                                cfg)
             counts["failed"] += 1
             counts["waiting"] -= 1
             continue

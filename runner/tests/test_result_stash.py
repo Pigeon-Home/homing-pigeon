@@ -566,6 +566,63 @@ class TransportPathTest(StashHarness):
         self.assertEqual(len(self._outbox()), 1)
 
 
+class StashClaimRaceTest(unittest.TestCase):
+    """A stash landing while a delivery claims the same key.
+
+    The delivery reads the waiting record, then claims it by
+    moving the outbox file to sent/. A stash for the same key
+    that landed between the read and the move used to be
+    carried into sent/ unsent and overwritten there -- the
+    next result, lost without ever being sent (the corpus's
+    two-bodies-one-key seed, refused on the 3.15.17.170
+    Windows leg). The stash and the claim now take the same
+    per-key guard, so the claim's read and move are atomic
+    against the stash's write. Driven deterministically: the
+    read is wrapped so the stash lands inside the window on
+    every run, no timing involved."""
+
+    def test_a_stash_inside_the_claim_window_is_not_lost(self):
+        tmp = tempfile.mkdtemp(prefix="hp-stash-race-")
+        try:
+            job = {"job_id": "race", "kind": "exec"}
+            self.assertTrue(
+                R.stash_result(tmp, "k", job, "s", "alpha"))
+            real_load = R._read_record
+            fired = []
+            stash_done = threading.Event()
+
+            def read_then_stash(path):
+                rec = real_load(path)
+                if rec is not None and not fired:
+                    fired.append(True)
+                    # The next result for this key is stashed
+                    # from another thread while the delivery is
+                    # between its read and its claim. Under the
+                    # guard the stash waits for the claim and
+                    # lands after it; without the guard it lands
+                    # inside the window and is carried off.
+                    def stash_beta():
+                        R.stash_result(tmp, "k", job, "s", "beta")
+                        stash_done.set()
+
+                    threading.Thread(target=stash_beta,
+                                     daemon=True).start()
+                return rec
+
+            sent = []
+            with mock.patch.object(R, "_read_record", read_then_stash):
+                ok = R.deliver_stash(
+                    tmp, "k", lambda s, b, to: sent.append(b), cfg={})
+            self.assertTrue(stash_done.wait(timeout=10))
+            self.assertTrue(ok)
+            self.assertEqual(["alpha"], sent)
+            waiting = R.load_stash(tmp, "k")
+            self.assertIsNotNone(waiting)
+            self.assertEqual("beta", waiting["body"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 if given is not None:
     _STEP = st.sampled_from(["send ok", "send fail", "poll", "advance"])
 
