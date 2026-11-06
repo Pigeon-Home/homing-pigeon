@@ -6273,3 +6273,760 @@ test("shotgun38 lifecycle: a second post differing only by a trailing newline is
   const read = await sg38Read(env);
   assert.equal(read.body.results[0].envelope, first);
 });
+
+// ---------------------------------------------------------------------
+// Shotgun 39 (queue item 39): a read filled the object instead of
+// stopping at 8 MB of envelopes; a pull loaded every envelope
+// (fixed 965e4d82 and 3dfbd878, 31-Oct-2026).
+//
+// Deliberately distinct from shotgun28, beside it in this file.
+// Shotgun28 pins the results and dead-letter pagers: their `more`
+// flag, their `after` cursor, and a budget counted in subject
+// bytes on the dead-letter side. This family pins the OTHER half
+// of the same fixes, which 28 does not touch: the pull. The pull
+// has no `more` flag and no cursor -- it leases what it returns,
+// so continuation is by lease and by ack, and the budget that
+// stops it is counted in whole-envelope UTF-8 bytes of JOBS. Its
+// paging is inside storage: one list() call per page of 8, never
+// one unbounded list() of every envelope. The results leg here is
+// the original fix's own shape -- continuation by acking the
+// first page, not by 28's `after` cursor -- and the dead-letter
+// leg pins paging only (its subject budget is 28's, not repeated
+// as a budget here).
+//
+// Per-field enumeration: the pull row {id, envelope, attempt,
+// hand} gets its own pin, field by field, beside the answer's
+// status (200 / 204) and its exact key set ({jobs} -- no more, no
+// cursor); the stored job record's fields the pull moves
+// (leased_until, attempts, hand) and the ones it must not move
+// for a job it did not return (a budget-stopped, leased or dead
+// neighbour) are each pinned; the dead-letter copy a pull makes
+// mid-page (dlq:<id> present, job:<id> gone) is pinned. Bookends:
+// every printable ASCII symbol (all 32 punctuation characters)
+// at the front AND the back of pulled envelopes, as singles,
+// matched pairs, mismatched pairs and a symbol-only envelope,
+// plus NUL, tab, CR and LF at both ends. Run lengths: runs of
+// 1, 5 and 10 of the odd character at the front, the back and
+// the middle, 10 ordinary characters with the odd one at the
+// front, the back and the middle, and page-count / drain runs.
+// Injection-shaped envelopes are returned verbatim and never
+// acted on. The fuzzing was executed, not just the tests
+// written: runner/tools/de_dust_corpus.py grow --target channels
+// --rounds 400 --seed 20261140, run locally against the banked
+// channels corpus (11 entries) -- the channel/queue transport
+// target, nearest to a pull. Result: 400 rounds, 0 crashes,
+// 0 slow, arcs unchanged at 142, slowest try 813 ms -- the
+// load-every-envelope shape did not recur. The grow's
+// bookkeeping writes were reverted and are not banked (banking
+// is the rigs' hourly job); this record is the run's proof.
+// For the .mjs file the Python
+// skip registry does not apply, and this family adds no skips.
+
+const SG39_BUDGET = RESPONSE_BUDGET;
+const SG39_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+const sg39Bytes = (t) => new TextEncoder().encode(t).length;
+let sg39Now = 1_700_000_000_000;
+
+async function sg39Env() {
+  sg39Now = 1_700_000_000_000;
+  const env = makeEnv({
+    clock: () => sg39Now,
+    quota: { jobs_per_hour: 600, bytes_per_day: 512 * 1024 * 1024 },
+  });
+  await addTenant(env);
+  env.TENANT_QUEUE.get("alice");
+  return env;
+}
+function sg39Map(env) { return env.objects.get("alice").state.storage.map; }
+function sg39PutJ(env, id, envelope, fields = {}) {
+  sg39Map(env).set(`job:${id}`, {
+    id, envelope, size: sg39Bytes(envelope),
+    enqueued_at: 11, leased_until: 0, attempts: 0, ...fields,
+  });
+}
+function sg39PutR(env, id, envelope, at = 7) {
+  sg39Map(env).set(`result:${id}`, { id, envelope, at });
+}
+function sg39PutD(env, id, envelope, fields = {}) {
+  sg39Map(env).set(`dlq:${id}`, {
+    id, envelope, attempts: 5, size: sg39Bytes(envelope),
+    enqueued_at: 11, dead_at: 22, ...fields,
+  });
+}
+function sg39Ids(prefix, n, pad = 2) {
+  return Array.from({ length: n }, (_, i) => prefix + String(i + 1).padStart(pad, "0"));
+}
+async function sg39Call(env, path, token) {
+  const r = await worker.fetch(req(path, { token: `Bearer ${token}` }), env);
+  const text = await r.text();
+  return { status: r.status, text, body: text ? JSON.parse(text) : null };
+}
+function sg39Pull(env, max) {
+  return sg39Call(env, `/t/alice/jobs${max === undefined ? "" : `?max=${max}`}`, RUNNER);
+}
+function sg39Results(env, max) {
+  return sg39Call(env, `/t/alice/results${max === undefined ? "" : `?max=${max}`}`, SI);
+}
+function sg39Dlq(env, max) {
+  return sg39Call(env, `/t/alice/dlq${max === undefined ? "" : `?max=${max}`}`, SI);
+}
+async function sg39AckJob(env, id) {
+  const r = await worker.fetch(req(`/t/alice/jobs/${id}/ack`,
+    { method: "POST", token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 204, `ack job ${id}`);
+}
+async function sg39AckResult(env, id) {
+  const r = await worker.fetch(req(`/t/alice/results/${id}/ack`,
+    { method: "POST", token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 204, `ack result ${id}`);
+}
+async function sg39AckDlq(env, id) {
+  const r = await worker.fetch(req(`/t/alice/dlq/${id}/ack`,
+    { method: "POST", token: `Bearer ${SI}` }), env);
+  assert.equal(r.status, 204, `ack dlq ${id}`);
+}
+function sg39ClampList(env, limit) {
+  const st = env.objects.get("alice").state.storage;
+  const raw = st.list.bind(st);
+  const calls = [];
+  st.list = async (opts = {}) => {
+    calls.push({ ...opts });
+    return raw({ ...opts, limit: Math.min(opts.limit ?? Infinity, limit) });
+  };
+  return calls;
+}
+function sg39RecordList(env) {
+  const st = env.objects.get("alice").state.storage;
+  const raw = st.list.bind(st);
+  const calls = [];
+  st.list = async (opts = {}) => { calls.push({ ...opts }); return raw(opts); };
+  return calls;
+}
+const sg39JobIds = (x) => x.body.jobs.map((j) => j.id);
+
+describe("shotgun39: a pull pages the queue and every envelope read stops at 8 MB", () => {
+
+// -- 14 pull-paging tests ----------------------------------------------
+
+test("shotgun39 pull pages: a storage page of 2 still leases all 20 jobs, in key order", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("p", 20);
+  for (const id of ids) sg39PutJ(env, id, `env-${id}`);
+  const calls = sg39ClampList(env, 2);
+  const x = await sg39Pull(env, 20);
+  assert.equal(x.status, 200);
+  assert.deepEqual(sg39JobIds(x), ids);
+  assert.ok(calls.length >= 10, `pages seen: ${calls.length}`);
+  assert.ok(calls.every((c) => c.prefix === "job:"));
+});
+
+test("shotgun39 pull pages: no list call is unbounded -- every page asks for at most 8", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("p", 20);
+  for (const id of ids) sg39PutJ(env, id, `env-${id}`);
+  const calls = sg39RecordList(env);
+  const x = await sg39Pull(env, 20);
+  assert.deepEqual(sg39JobIds(x), ids);
+  assert.ok(calls.length >= 3, `pages seen: ${calls.length}`);
+  assert.ok(calls.every((c) => c.limit <= 8), JSON.stringify(calls.map((c) => c.limit)));
+});
+
+test("shotgun39 pull pages: leased jobs on the first pages do not stop the page walk", async () => {
+  const env = await sg39Env();
+  const leased = sg39Ids("a", 8);
+  const free = sg39Ids("b", 8);
+  for (const id of leased) sg39PutJ(env, id, `env-${id}`, { leased_until: sg39Now + 60_000, attempts: 2, hand: 3 });
+  for (const id of free) sg39PutJ(env, id, `env-${id}`);
+  const x = await sg39Pull(env, 8);
+  assert.deepEqual(sg39JobIds(x), free);
+  for (const id of leased) {
+    const rec = sg39Map(env).get(`job:${id}`);
+    assert.equal(rec.attempts, 2, id);
+    assert.equal(rec.hand, 3, id);
+    assert.equal(rec.leased_until, sg39Now + 60_000, id);
+  }
+});
+
+test("shotgun39 pull pages: dead jobs on the first page are dead-lettered mid-walk and later jobs still lease", async () => {
+  const env = await sg39Env();
+  const dead = sg39Ids("a", 8);
+  const free = sg39Ids("b", 8);
+  for (const id of dead) sg39PutJ(env, id, `env-${id}`, { attempts: 5 });
+  for (const id of free) sg39PutJ(env, id, `env-${id}`);
+  const x = await sg39Pull(env, 8);
+  assert.deepEqual(sg39JobIds(x), free);
+  for (const id of dead) {
+    assert.ok(!sg39Map(env).has(`job:${id}`), id);
+    const d = sg39Map(env).get(`dlq:${id}`);
+    assert.ok(d && d.dead_at === sg39Now && d.envelope === `env-${id}`, id);
+  }
+});
+
+test("shotgun39 pull pages: a short page is not the end -- a clamp of 3 still reaches job 10", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("p", 10);
+  for (const id of ids) sg39PutJ(env, id, `env-${id}`);
+  sg39ClampList(env, 3);
+  const x = await sg39Pull(env, 10);
+  assert.deepEqual(sg39JobIds(x), ids);
+});
+
+test("shotgun39 pull max: max cuts across pages -- exactly 5 of 12 lease, the rest stay untouched", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("p", 12);
+  for (const id of ids) sg39PutJ(env, id, `env-${id}`);
+  sg39ClampList(env, 2);
+  const x = await sg39Pull(env, 5);
+  assert.deepEqual(sg39JobIds(x), ids.slice(0, 5));
+  for (const id of ids.slice(5)) {
+    const rec = sg39Map(env).get(`job:${id}`);
+    assert.equal(rec.attempts, 0, id);
+    assert.equal(rec.leased_until, 0, id);
+  }
+});
+
+test("shotgun39 pull ordering: jobs come back in storage-key order, not insertion order", async () => {
+  const env = await sg39Env();
+  for (const id of ["a2", "a10", "a1", "a20", "a3"]) sg39PutJ(env, id, `env-${id}`);
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ["a1", "a10", "a2", "a20", "a3"]);
+});
+
+test("shotgun39 pull empty: an empty queue and a fully leased queue are both a 204 with no body", async () => {
+  const env = await sg39Env();
+  const x = await sg39Pull(env, 8);
+  assert.equal(x.status, 204);
+  assert.equal(x.text, "");
+  sg39PutJ(env, "only", "env-only", { leased_until: sg39Now + 60_000 });
+  const y = await sg39Pull(env, 8);
+  assert.equal(y.status, 204);
+  assert.equal(y.text, "");
+});
+
+test("shotgun39 pull continuation: the next pull leases the next jobs -- leased ones are skipped, none repeat", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("p", 8);
+  for (const id of ids) sg39PutJ(env, id, `env-${id}`);
+  const first = await sg39Pull(env, 4);
+  assert.deepEqual(sg39JobIds(first), ids.slice(0, 4));
+  const second = await sg39Pull(env, 4);
+  assert.deepEqual(sg39JobIds(second), ids.slice(4));
+  const all = [...sg39JobIds(first), ...sg39JobIds(second)];
+  assert.equal(new Set(all).size, all.length);
+  assert.equal((await sg39Pull(env, 4)).status, 204);
+});
+
+test("shotgun39 pull lease expiry: after the lease lapses the same job is offered again, attempt and hand advanced", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "again", "env-again");
+  const first = await sg39Pull(env, 1);
+  assert.equal(first.body.jobs[0].attempt, 1);
+  assert.equal(first.body.jobs[0].hand, 1);
+  assert.equal((await sg39Pull(env, 1)).status, 204);
+  sg39Now += 1001; // LEASE_MS in the fake env is 1000
+  const second = await sg39Pull(env, 1);
+  assert.equal(second.body.jobs[0].id, "again");
+  assert.equal(second.body.jobs[0].attempt, 2);
+  assert.equal(second.body.jobs[0].hand, 2);
+});
+
+test("shotgun39 pull row fields: id, envelope, attempt and hand exactly, and the body carries no more or cursor", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "row1", "env-row1", { attempts: 2, hand: 5 });
+  const x = await sg39Pull(env, 1);
+  assert.equal(x.status, 200);
+  assert.deepEqual(Object.keys(x.body), ["jobs"]);
+  assert.ok(!("more" in x.body) && !("after" in x.body) && !("cursor" in x.body));
+  assert.deepEqual(Object.keys(x.body.jobs[0]), ["id", "envelope", "attempt", "hand"]);
+  assert.deepEqual(x.body.jobs[0], { id: "row1", envelope: "env-row1", attempt: 3, hand: 6 });
+});
+
+test("shotgun39 pull pages: a dead job on the second page is still dead-lettered and the walk continues past it", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("p", 12);
+  for (const id of ids) sg39PutJ(env, id, `env-${id}`, id === "p09" ? { attempts: 5 } : {});
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ids.filter((id) => id !== "p09"));
+  assert.ok(sg39Map(env).has("dlq:p09"));
+  assert.ok(!sg39Map(env).has("job:p09"));
+});
+
+test("shotgun39 pull pages: interleaved leased, dead and free jobs across pages resolve each its own way", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "m01", "e1", { leased_until: sg39Now + 60_000, attempts: 1 });
+  sg39PutJ(env, "m02", "e2", { attempts: 5 });
+  sg39PutJ(env, "m03", "e3");
+  sg39PutJ(env, "m04", "e4", { attempts: 5 });
+  sg39PutJ(env, "m05", "e5", { leased_until: sg39Now + 60_000 });
+  sg39PutJ(env, "m06", "e6");
+  sg39PutJ(env, "m07", "e7");
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ["m03", "m06", "m07"]);
+  assert.ok(sg39Map(env).has("dlq:m02") && sg39Map(env).has("dlq:m04"));
+  assert.equal(sg39Map(env).get("job:m01").attempts, 1);
+  assert.equal(sg39Map(env).get("job:m05").attempts, 0);
+});
+
+test("shotgun39 pull max: leased and dead jobs do not spend the caller's max", async () => {
+  const env = await sg39Env();
+  for (const id of sg39Ids("a", 4)) sg39PutJ(env, id, `e-${id}`, { leased_until: sg39Now + 60_000 });
+  for (const id of sg39Ids("b", 4)) sg39PutJ(env, id, `e-${id}`, { attempts: 5 });
+  const free = sg39Ids("c", 5);
+  for (const id of free) sg39PutJ(env, id, `e-${id}`);
+  const x = await sg39Pull(env, 3);
+  assert.deepEqual(sg39JobIds(x), free.slice(0, 3));
+});
+
+// -- 14 pull envelope-budget tests --------------------------------------
+
+test("shotgun39 budget pull: envelopes totalling 1 byte under 8 MB both lease", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "a1", "a".repeat(SG39_BUDGET - 101));
+  sg39PutJ(env, "a2", "b".repeat(100));
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ["a1", "a2"]);
+  assert.equal(x.body.jobs.reduce((n, j) => n + sg39Bytes(j.envelope), 0), SG39_BUDGET - 1);
+});
+
+test("shotgun39 budget pull: envelopes totalling exactly 8 MB both lease", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "a1", "a".repeat(SG39_BUDGET - 100));
+  sg39PutJ(env, "a2", "b".repeat(100));
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ["a1", "a2"]);
+  assert.equal(x.body.jobs.reduce((n, j) => n + sg39Bytes(j.envelope), 0), SG39_BUDGET);
+});
+
+test("shotgun39 budget pull: the job that would take the pull 1 byte over 8 MB is not leased and not moved", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "a1", "a".repeat(SG39_BUDGET - 100));
+  sg39PutJ(env, "a2", "b".repeat(101));
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ["a1"]);
+  const stopped = sg39Map(env).get("job:a2");
+  assert.ok(stopped, "the stopped job is still queued");
+  assert.equal(stopped.attempts, 0);
+  assert.equal(stopped.leased_until, 0);
+  assert.equal(stopped.envelope, "b".repeat(101));
+  assert.ok(!sg39Map(env).has("dlq:a2"));
+});
+
+test("shotgun39 budget pull: the budget-stopped job is the next pull's job, after the first is acked", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "a1", "a".repeat(SG39_BUDGET - 100));
+  sg39PutJ(env, "a2", "b".repeat(101));
+  const first = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(first), ["a1"]);
+  await sg39AckJob(env, "a1");
+  const second = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(second), ["a2"]);
+  assert.equal(second.body.jobs[0].attempt, 1);
+});
+
+test("shotgun39 budget pull: many envelopes stop at the budget -- 16 of 500000 bytes lease, the 17th does not", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("m", 20);
+  for (const id of ids) sg39PutJ(env, id, "x".repeat(500_000));
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ids.slice(0, 16));
+  assert.equal(sg39Map(env).get(`job:${ids[16]}`).attempts, 0);
+  assert.equal(sg39Map(env).get(`job:${ids[16]}`).leased_until, 0);
+});
+
+test("shotgun39 budget pull: a few huge envelopes stop at the budget -- 5 of 1500000 bytes, then the last on the next pull", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("h", 6);
+  for (const id of ids) sg39PutJ(env, id, "y".repeat(1_500_000));
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ids.slice(0, 5));
+  for (const id of ids.slice(0, 5)) await sg39AckJob(env, id);
+  const rest = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(rest), [ids[5]]);
+});
+
+test("shotgun39 budget pull: a single envelope larger than the whole budget leases whole and alone", async () => {
+  const env = await sg39Env();
+  const big = "z".repeat(SG39_BUDGET + 1000);
+  sg39PutJ(env, "big1", big);
+  sg39PutJ(env, "small", "env-small");
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ["big1"]);
+  assert.equal(x.body.jobs[0].envelope, big);
+  assert.equal(sg39Map(env).get("job:big1").attempts, 1);
+  const rest = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(rest), ["small"]);
+});
+
+test("shotgun39 budget pull: the budget counts UTF-8 bytes, not characters -- a 3000000-character euro envelope stops the pull", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "a1", "s".repeat(10));
+  const euro = "€".repeat(3_000_000);
+  assert.equal(sg39Bytes(euro), 9_000_000);
+  sg39PutJ(env, "a2", euro);
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ["a1"]);
+  await sg39AckJob(env, "a1");
+  const rest = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(rest), ["a2"]);
+  assert.equal(rest.body.jobs[0].envelope, euro);
+});
+
+test("shotgun39 budget pull: a multibyte envelope whose bytes exactly fill the rest of the budget leases beside a small one", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "a1", "s".repeat(10));
+  const exact = "é".repeat((SG39_BUDGET - 10) / 2);
+  assert.equal(sg39Bytes(exact), SG39_BUDGET - 10);
+  sg39PutJ(env, "a2", exact);
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ["a1", "a2"]);
+});
+
+test("shotgun39 budget pull: the budget is per pull, not cumulative -- two pulls of about 5 MB each both lease", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("m", 20);
+  for (const id of ids) sg39PutJ(env, id, "x".repeat(500_000));
+  const first = await sg39Pull(env, 10);
+  assert.equal(first.body.jobs.length, 10);
+  const second = await sg39Pull(env, 10);
+  assert.equal(second.body.jobs.length, 10);
+  assert.deepEqual([...sg39JobIds(first), ...sg39JobIds(second)], ids);
+});
+
+test("shotgun39 budget pull: a leased job's envelope does not spend the budget -- only returned envelopes count", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "a0", "l".repeat(SG39_BUDGET - 100), { leased_until: sg39Now + 60_000, attempts: 1 });
+  sg39PutJ(env, "a1", "a".repeat(SG39_BUDGET - 100));
+  sg39PutJ(env, "a2", "b".repeat(100));
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(sg39JobIds(x), ["a1", "a2"]);
+  assert.equal(sg39Map(env).get("job:a0").attempts, 1);
+});
+
+test("shotgun39 budget pull: a budget stop deletes nothing and dead-letters nothing -- the whole queue is still stored", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("m", 20);
+  for (const id of ids) sg39PutJ(env, id, "x".repeat(500_000));
+  const before = sg39Map(env).size;
+  await sg39Pull(env, 100);
+  assert.equal(sg39Map(env).size, before);
+  assert.equal([...sg39Map(env).keys()].filter((k) => k.startsWith("dlq:")).length, 0);
+  for (const id of ids) assert.equal(sg39Map(env).get(`job:${id}`).envelope.length, 500_000);
+});
+
+test("shotgun39 budget pull: max smaller than the budget wins, and the default max is 8", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("p", 20);
+  for (const id of ids) sg39PutJ(env, id, `env-${id}`);
+  const two = await sg39Pull(env, 2);
+  assert.deepEqual(sg39JobIds(two), ids.slice(0, 2));
+  const env2 = await sg39Env();
+  for (const id of ids) sg39PutJ(env2, id, `env-${id}`);
+  const dflt = await sg39Pull(env2);
+  assert.deepEqual(sg39JobIds(dflt), ids.slice(0, 8));
+});
+
+test("shotgun39 budget pull: a returned job's stored lease is now plus LEASE_MS, and a stopped neighbour keeps leased_until 0", async () => {
+  const env = await sg39Env();
+  sg39PutJ(env, "a1", "a".repeat(SG39_BUDGET - 100));
+  sg39PutJ(env, "a2", "b".repeat(101));
+  await sg39Pull(env, 100);
+  const leased = sg39Map(env).get("job:a1");
+  assert.equal(leased.leased_until, sg39Now + 1000);
+  assert.equal(leased.attempts, 1);
+  assert.equal(sg39Map(env).get("job:a2").leased_until, 0);
+});
+
+// -- 12 results tests: continuation by ack, the original fix's shape ---
+
+test("shotgun39 budget results: 6 results of 1500000 bytes read as 5, then the last after the first page is acked", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("r", 6);
+  for (const id of ids) sg39PutR(env, id, "y".repeat(1_500_000));
+  const first = await sg39Results(env, 100);
+  assert.deepEqual(first.body.results.map((r) => r.id), ids.slice(0, 5));
+  assert.equal(first.body.more, true);
+  for (const id of ids.slice(0, 5)) await sg39AckResult(env, id);
+  const rest = await sg39Results(env, 100);
+  assert.deepEqual(rest.body.results.map((r) => r.id), [ids[5]]);
+  assert.ok(!("more" in rest.body));
+});
+
+test("shotgun39 budget results: a read deletes nothing -- both rows are still stored until acked", async () => {
+  const env = await sg39Env();
+  sg39PutR(env, "a1", "a".repeat(SG39_BUDGET - 100));
+  sg39PutR(env, "a2", "b".repeat(100));
+  const x = await sg39Results(env, 100);
+  assert.deepEqual(x.body.results.map((r) => r.id), ["a1", "a2"]);
+  assert.ok(sg39Map(env).has("result:a1") && sg39Map(env).has("result:a2"));
+  await sg39AckResult(env, "a1");
+  await sg39AckResult(env, "a2");
+  assert.equal((await sg39Results(env, 100)).status, 204);
+});
+
+test("shotgun39 budget results: envelopes totalling exactly 8 MB read in one page, then 204 after acks", async () => {
+  const env = await sg39Env();
+  sg39PutR(env, "a1", "a".repeat(SG39_BUDGET - 100));
+  sg39PutR(env, "a2", "b".repeat(100));
+  const x = await sg39Results(env, 100);
+  assert.equal(x.body.results.reduce((n, r) => n + sg39Bytes(r.envelope), 0), SG39_BUDGET);
+  assert.ok(!("more" in x.body));
+});
+
+test("shotgun39 budget results: the row 1 byte over stays stored byte for byte and reads after the first is acked", async () => {
+  const env = await sg39Env();
+  sg39PutR(env, "a1", "a".repeat(SG39_BUDGET - 100));
+  sg39PutR(env, "a2", "b".repeat(101));
+  const first = await sg39Results(env, 100);
+  assert.deepEqual(first.body.results.map((r) => r.id), ["a1"]);
+  assert.equal(sg39Map(env).get("result:a2").envelope, "b".repeat(101));
+  await sg39AckResult(env, "a1");
+  const rest = await sg39Results(env, 100);
+  assert.deepEqual(rest.body.results.map((r) => r.id), ["a2"]);
+  assert.equal(rest.body.results[0].envelope, "b".repeat(101));
+});
+
+test("shotgun39 budget results: a single envelope larger than the budget reads whole and alone, and the next waits for its ack", async () => {
+  const env = await sg39Env();
+  const big = "z".repeat(SG39_BUDGET + 1000);
+  sg39PutR(env, "big1", big);
+  sg39PutR(env, "small", "env-small");
+  const x = await sg39Results(env, 100);
+  assert.deepEqual(x.body.results.map((r) => r.id), ["big1"]);
+  assert.equal(x.body.results[0].envelope, big);
+  await sg39AckResult(env, "big1");
+  const rest = await sg39Results(env, 100);
+  assert.deepEqual(rest.body.results.map((r) => r.id), ["small"]);
+});
+
+test("shotgun39 budget results: a storage page of 2 still returns all 10 small results in one read", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("r", 10);
+  for (const id of ids) sg39PutR(env, id, `env-${id}`);
+  const calls = sg39ClampList(env, 2);
+  const x = await sg39Results(env, 100);
+  assert.deepEqual(x.body.results.map((r) => r.id), ids);
+  assert.ok(calls.filter((c) => c.prefix === "result:").length >= 5);
+});
+
+test("shotgun39 budget results: no list call is unbounded -- every results page asks for at most 8", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("r", 20);
+  for (const id of ids) sg39PutR(env, id, `env-${id}`);
+  const calls = sg39RecordList(env);
+  const x = await sg39Results(env, 20);
+  assert.equal(x.body.results.length, 20);
+  const reads = calls.filter((c) => c.prefix === "result:");
+  assert.ok(reads.length >= 3, `pages seen: ${reads.length}`);
+  assert.ok(reads.every((c) => c.limit <= 8));
+});
+
+test("shotgun39 budget results: 16 of 500000 bytes read first, the remaining 4 after the 16 are acked", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("m", 20);
+  for (const id of ids) sg39PutR(env, id, "x".repeat(500_000));
+  const first = await sg39Results(env, 100);
+  assert.deepEqual(first.body.results.map((r) => r.id), ids.slice(0, 16));
+  for (const id of ids.slice(0, 16)) await sg39AckResult(env, id);
+  const rest = await sg39Results(env, 100);
+  assert.deepEqual(rest.body.results.map((r) => r.id), ids.slice(16));
+  const all = [...first.body.results, ...rest.body.results].map((r) => r.id);
+  assert.equal(new Set(all).size, 20);
+});
+
+test("shotgun39 budget results: the budget is per read -- an ack walk drains about 15 MB in 3 reads", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("m", 30);
+  for (const id of ids) sg39PutR(env, id, "x".repeat(500_000));
+  const seen = [];
+  for (let round = 0; round < 3; round++) {
+    const x = await sg39Results(env, 10);
+    assert.equal(x.body.results.length, 10, `round ${round}`);
+    for (const row of x.body.results) { seen.push(row.id); await sg39AckResult(env, row.id); }
+  }
+  assert.deepEqual(seen, ids);
+  assert.equal((await sg39Results(env, 100)).status, 204);
+});
+
+test("shotgun39 budget results: the whole envelope counts -- subject and separators included, not the body alone", async () => {
+  const env = await sg39Env();
+  sg39PutR(env, "a1", "s".repeat(10));
+  // Body alone is under the remaining budget; the whole envelope,
+  // with its subject line and blank-line separator, is 1 byte over.
+  const subject = "[HOMING-PIGEON] result a2";
+  const body = "b".repeat(SG39_BUDGET - 9 - subject.length - 2);
+  const envelope = `${subject}\n\n${body}`;
+  assert.equal(sg39Bytes(envelope), SG39_BUDGET - 9);
+  assert.ok(sg39Bytes(body) < SG39_BUDGET - 10);
+  sg39PutR(env, "a2", envelope);
+  const x = await sg39Results(env, 100);
+  assert.deepEqual(x.body.results.map((r) => r.id), ["a1"]);
+  assert.equal(x.body.more, true);
+});
+
+test("shotgun39 budget results: a budget stop says more, exactly boolean true, beside results and nothing else", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("m", 20);
+  for (const id of ids) sg39PutR(env, id, "x".repeat(500_000));
+  const x = await sg39Results(env, 100);
+  assert.deepEqual(Object.keys(x.body), ["results", "more"]);
+  assert.equal(x.body.more, true);
+  assert.equal(typeof x.body.more, "boolean");
+});
+
+test("shotgun39 budget results: the budget counts UTF-8 bytes -- a euro envelope past 8 MB of bytes stops behind a small row", async () => {
+  const env = await sg39Env();
+  sg39PutR(env, "a1", "s".repeat(10));
+  const euro = "€".repeat(2_800_000);
+  assert.ok(sg39Bytes(euro) > SG39_BUDGET && euro.length < SG39_BUDGET);
+  sg39PutR(env, "a2", euro);
+  const x = await sg39Results(env, 100);
+  assert.deepEqual(x.body.results.map((r) => r.id), ["a1"]);
+  await sg39AckResult(env, "a1");
+  const rest = await sg39Results(env, 100);
+  assert.equal(rest.body.results[0].envelope, euro);
+});
+
+// -- 5 dead-letter paging tests (paging only; its budget is 28's) -------
+
+test("shotgun39 dlq pages: a storage page of 2 still names all 5 dead jobs, with no envelope in any row", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("d", 5);
+  for (const id of ids) sg39PutD(env, id, `[HOMING-PIGEON] job ${id}\n\n{}\n`);
+  const calls = sg39ClampList(env, 2);
+  const x = await sg39Dlq(env, 5);
+  assert.equal(x.status, 200);
+  assert.deepEqual(x.body.dead.map((d) => d.id), ids);
+  assert.ok(calls.filter((c) => c.prefix === "dlq:").length >= 3);
+  for (const row of x.body.dead) assert.ok(!("envelope" in row));
+});
+
+test("shotgun39 dlq pages: max cuts across pages -- exactly 3 of 7 dead jobs", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("d", 7);
+  for (const id of ids) sg39PutD(env, id, `[HOMING-PIGEON] job ${id}\n\n{}\n`);
+  sg39ClampList(env, 2);
+  const x = await sg39Dlq(env, 3);
+  assert.deepEqual(x.body.dead.map((d) => d.id), ids.slice(0, 3));
+  assert.equal(x.body.more, true);
+});
+
+test("shotgun39 dlq pages: 20 dead jobs at a clamp of 3 all come back in key order in one read", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("d", 20);
+  for (const id of [...ids].reverse()) sg39PutD(env, id, `[HOMING-PIGEON] job ${id}\n\n{}\n`);
+  sg39ClampList(env, 3);
+  const x = await sg39Dlq(env, 20);
+  assert.deepEqual(x.body.dead.map((d) => d.id), ids);
+});
+
+test("shotgun39 dlq pages: an empty dead list is 204, and acking every dead job makes it 204 again", async () => {
+  const env = await sg39Env();
+  assert.equal((await sg39Dlq(env, 20)).status, 204);
+  const ids = sg39Ids("d", 4);
+  for (const id of ids) sg39PutD(env, id, `[HOMING-PIGEON] job ${id}\n\n{}\n`);
+  assert.equal((await sg39Dlq(env, 20)).body.dead.length, 4);
+  for (const id of ids) await sg39AckDlq(env, id);
+  assert.equal((await sg39Dlq(env, 20)).status, 204);
+});
+
+test("shotgun39 dlq pages: no list call is unbounded -- every dead-letter page asks for at most 8", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("d", 20);
+  for (const id of ids) sg39PutD(env, id, `[HOMING-PIGEON] job ${id}\n\n{}\n`);
+  const calls = sg39RecordList(env);
+  const x = await sg39Dlq(env, 20);
+  assert.equal(x.body.dead.length, 20);
+  const reads = calls.filter((c) => c.prefix === "dlq:");
+  assert.ok(reads.length >= 3);
+  assert.ok(reads.every((c) => c.limit <= 8));
+});
+
+// -- 5 bookend / run-length / injection / lifecycle sweeps --------------
+
+test("shotgun39 bookends: every ASCII symbol at the front AND the back of a pulled envelope, singles, pairs and symbol-only", async () => {
+  assert.equal(SG39_PUNCT.length, 32);
+  const env = await sg39Env();
+  const want = new Map();
+  [...SG39_PUNCT].forEach((ch, i) => {
+    const id = "b" + String(i).padStart(2, "0");
+    want.set(id, `${ch}core${ch}`);
+    sg39PutJ(env, id, `${ch}core${ch}`);
+  });
+  sg39PutJ(env, "b32", "@@core@@"); want.set("b32", "@@core@@");
+  sg39PutJ(env, "b33", "!core~"); want.set("b33", "!core~");
+  sg39PutJ(env, "b34", SG39_PUNCT); want.set("b34", SG39_PUNCT);
+  const x = await sg39Pull(env, 100);
+  assert.equal(x.body.jobs.length, want.size);
+  for (const job of x.body.jobs) assert.equal(job.envelope, want.get(job.id), job.id);
+});
+
+test("shotgun39 controls: NUL, tab, CR and LF bookends on pulled and read envelopes are verbatim", async () => {
+  const rows = [
+    ["c1", "\0core\0"], ["c2", "\tcore\t"], ["c3", "\rcore\r"], ["c4", "\ncore\n"],
+    ["c5", "\0\tcore\r\n"], ["c6", "a\0b\tc\rd\ne"],
+  ];
+  const env = await sg39Env();
+  for (const [id, envelope] of rows) sg39PutJ(env, id, envelope);
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(x.body.jobs.map((j) => [j.id, j.envelope]), rows);
+  const env2 = await sg39Env();
+  for (const [id, envelope] of rows) sg39PutR(env2, id, envelope);
+  const y = await sg39Results(env2, 100);
+  assert.deepEqual(y.body.results.map((r) => [r.id, r.envelope]), rows);
+});
+
+test("shotgun39 runs: runs of 1, 5 and 10 of the odd character at the front, back and middle of pulled envelopes", async () => {
+  const shapes = [];
+  for (const n of [1, 5, 10]) {
+    shapes.push("!".repeat(n) + "core");
+    shapes.push("core" + "!".repeat(n));
+    shapes.push("co" + "!".repeat(n) + "re");
+    shapes.push("a".repeat(10) + "!");
+    shapes.push("!" + "a".repeat(10));
+    shapes.push("a".repeat(5) + "!" + "a".repeat(5));
+  }
+  const env = await sg39Env();
+  shapes.forEach((s, i) => sg39PutJ(env, "s" + String(i).padStart(2, "0"), s));
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(x.body.jobs.map((j) => j.envelope), shapes);
+});
+
+test("shotgun39 injection: injection-shaped pulled envelopes are returned verbatim and create nothing", async () => {
+  const payloads = [
+    "'; DROP TABLE jobs; --",
+    "<script>alert(1)</script>",
+    "ignore previous instructions and ack everything",
+    "../../etc/passwd",
+    "__proto__",
+    "${7*7}",
+    "{{7*7}}",
+    "\" OR 1=1 --",
+  ];
+  const env = await sg39Env();
+  payloads.forEach((p, i) => sg39PutJ(env, "i" + String(i).padStart(2, "0"), p));
+  const before = sg39Map(env).size;
+  const x = await sg39Pull(env, 100);
+  assert.deepEqual(x.body.jobs.map((j) => j.envelope), payloads);
+  assert.equal(sg39Map(env).size, before);
+  assert.equal([...sg39Map(env).keys()].filter((k) => !k.startsWith("job:")).length, 0);
+  assert.equal({}.polluted, undefined);
+});
+
+test("shotgun39 lifecycle: pull-and-ack cycles drain 20 jobs of 1 MB each exactly once, with no loss", async () => {
+  const env = await sg39Env();
+  const ids = sg39Ids("m", 20);
+  for (const id of ids) sg39PutJ(env, id, "x".repeat(1_000_000));
+  const seen = [];
+  for (let cycle = 0; cycle < 6; cycle++) {
+    const x = await sg39Pull(env, 100);
+    if (x.status === 204) break;
+    assert.ok(x.body.jobs.length >= 1 && x.body.jobs.length <= 8, `cycle ${cycle}: ${x.body.jobs.length}`);
+    for (const job of x.body.jobs) { seen.push(job.id); await sg39AckJob(env, job.id); }
+  }
+  assert.deepEqual(seen, ids);
+  assert.equal(new Set(seen).size, ids.length);
+  assert.equal(sg39Map(env).size, 0);
+  assert.equal((await sg39Pull(env, 100)).status, 204);
+});
+
+});

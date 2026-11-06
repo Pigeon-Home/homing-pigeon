@@ -1126,7 +1126,29 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 965e4d82, 3dfbd878 (31-Oct-2026)
 - Existing tests: queues-worker fuzz.test.mjs, worker.test.mjs
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun39 suite in
+  runner/cloud/queues-worker/test/fuzz.test.mjs): a pull pages
+  the queue inside storage and every envelope read stops at
+  8 MB — deliberately distinct from shotgun28, which pins the
+  results/dead-letter `more` flag, `after` cursor and subject
+  budget; this family pins the pull (no `more`, no cursor,
+  continuation by lease and ack, a whole-envelope UTF-8 budget
+  on jobs), results continuation by ack, and dead-letter
+  paging only. The per-field pins are carried in the suite's
+  header comment in the repo. The suite runs green under
+  node --test (50 tests, 50 pass, 0 skipped — the Python skip
+  registry does not apply to these files), no live bug
+  exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261140, run locally against the banked
+  channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 142, slowest try 813 ms — the
+  load-every-envelope shape did not recur. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 40. The queue stored an envelope the Durable Object cannot store; an id the route cannot name; a subject that is not the signed job_id
 - Fixed: 220d6324, a71acd3d (31-Oct-2026)
