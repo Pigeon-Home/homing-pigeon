@@ -445,3 +445,44 @@ module's `setUp` mkdtemp and the no-widening drive
 helper — still leak as soft leaks under
 `regression_guard.py`. Green, but the same class
 this record exists to close.
+
+That leftover is now closed, landed 2026-11-06.
+The scan of the 2 modules counts 4 `mkdtemp`
+sites: the encoding module's 3 `setUp` bases
+(`PowerShellBomTest`,
+`OtherInterpretersKeepExactBytesTest`,
+`OtherInterpretersLineEndingsExactBytesTest`) and
+the no-widening module's `drive` helper. (A 5th
+temp site, the staged-name test's
+`TemporaryDirectory`, already reaps itself and is
+untouched.) Each site is reaped with the cascade's
+own patterns, chosen by who owns the base:
+
+- The 3 `setUp` bases are test-case bases:
+  `self.addCleanup(shutil.rmtree, self._tmp,
+  ignore_errors=True)` immediately after the
+  creation line, the landing's pattern.
+- The `drive` helper's base is a helper base
+  whose 4 callers discard the returned path (held
+  only as `_tmp`/`_tmpdir`): the helper reaps it
+  with `shutil.rmtree(..., ignore_errors=True)`
+  just before returning the values it extracted,
+  the sweep's helper pattern.
+
+Both modules gain `import shutil`; the whole
+change is 6 added lines. No assertion moved —
+the byte-exact staging assertions and the
+strengthened verdict pins (`exit_code`,
+`repaired`) are byte-identical — and no behavior
+changed.
+
+Proof: both modules run natively with TMPDIR at
+a dedicated empty directory. On the tree before
+this landing they leave 14 temp directories
+behind (4 `hp-nw-` bases from `drive`, 1 base
+per encoding `setUp` test — 10); on the tree
+after it they leave 0. Counts are identical on
+both trees: `test_oracle_no_widening` 3 tests,
+OK; `test_powershell_script_encoding` 12 tests,
+OK; no failures, no errors, no skips on either
+side, and no new skip reason was registered.

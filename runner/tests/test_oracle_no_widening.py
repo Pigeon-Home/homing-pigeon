@@ -37,6 +37,7 @@ orders for queue S.
 import json
 import os
 import secrets
+import shutil
 import sys
 import tempfile
 import unittest
@@ -82,6 +83,7 @@ def drive(cfg_extra, payload, secret):
                                      job_id=jid,
                                      extra_secrets=(KEY_SECRET,)))
             for m in smtp.sent]
+    shutil.rmtree(tmpdir, ignore_errors=True)
     return executed, audit, sent, tmpdir
 
 

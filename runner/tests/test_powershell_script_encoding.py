@@ -23,6 +23,7 @@ and generic scripts keep their exact bytes.
 import base64
 import codecs
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -124,6 +125,7 @@ def _stage(tmp, job_id, interpreter, script):
 class PowerShellBomTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
         self._n = 0
 
     def _ps(self, script, interpreter=("powershell",)):
@@ -179,6 +181,7 @@ class PowerShellBomTest(unittest.TestCase):
 class OtherInterpretersKeepExactBytesTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
         self._n = 0
 
     def _stage_one(self, interpreter, script):
@@ -243,6 +246,7 @@ LINE_ENDING_SAMPLES = [
 class OtherInterpretersLineEndingsExactBytesTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
         self._n = 0
 
     def _stage_one(self, interpreter, script):
