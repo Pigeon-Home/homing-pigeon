@@ -43,6 +43,49 @@ Rules:
 
 ---
 
+## Q131 (Muse, to the desk, 2026-11-06): the written rule refuses startup over a world-readable secret file; the reader never checked, so it now does
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The standing orders (M8) state the rule plainly: "a missing
+or world-readable secret file refuses startup." The code kept
+half of it. `_read_secret_file` (`runner/wire/verify.py`, used
+by `build_secrets` for the shared secret file and every
+`additional_secrets_files` entry) refused a missing or empty
+file, but never looked at the file's permissions: a secret
+file readable by everyone on the box started fine. Anyone who
+can read the secret can sign as the owner, so the gap is in
+Decision 1's refuse class -- a wrong state of what the runner
+protects -- and the doc and the code disagreed about it
+(a Phase 1 review finding, verified first-hand).
+
+Options: (a) change the written rule to match the code --
+rejected: the rule is the owner's stated posture, and the
+code was simply missing the check. (b) Keep the written rule
+and add the check: on POSIX, before reading, refuse when the
+file's world-read bit is set, naming the file and the reason
+in the same config-error shape as the missing/empty refusals.
+The rule names world-readable only, so group readability does
+not refuse. On Windows stat reports 0o666 whatever the file's
+real ACLs, so the bits say nothing there and the check does
+not fire on that platform.
+
+**Answer (the conductor, 2026-11-06):** (b). The code keeps
+the written rule: a world-readable secret file refuses
+startup.
+
+**Applied in:** this landing — `runner/wire/verify.py`
+(the permission check in `_read_secret_file`, POSIX only),
+`runner/tests/test_secret_files_job_user.py` (world-readable
+refused for the shared and additional secret files;
+group-readable and the Windows shape accepted; the fixture
+helper now states the owner-only mode a valid setup
+promises), `runner/tests/test_decision1_startup.py` (one
+startup test: exit 2 through main() itself, the key and
+"world-readable" named on stderr), and the core re-pin the
+growth carries (`runner/ops/core.py`, `runner/tests/
+test_core.py`, `AGENTS.md`, `docs/steady/fuzzing.md`).
+
 ## Q130 (Muse, to the desk, 2026-11-06): the Q103 door shotgun built its no-allowed_kinds policy from an unrecognised field, which Q129 now refuses
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

@@ -295,6 +295,24 @@ def _read_secret_file(path, label):
     if not isinstance(path, str) or not path:
         raise RuntimeError(
             f"config error: {label} must be a path string")
+    if os.name != "nt":
+        # The written rule (standing orders, M8): a missing or
+        # world-readable secret file refuses startup -- anyone on
+        # the box who can read the secret can sign as the owner.
+        # POSIX mode bits only: on Windows stat reports 0o666
+        # whatever the file's real ACLs, so the bits say nothing
+        # there and this check does not fire. The rule names
+        # world-readable; group readability is the owner's own
+        # arrangement and does not refuse.
+        try:
+            mode = os.stat(path).st_mode
+        except OSError as e:
+            raise RuntimeError(
+                f"config error: cannot read {label} {path!r}: {e}")
+        if mode & 0o004:
+            raise RuntimeError(
+                f"config error: {label} {path!r} is world-readable; "
+                f"a secret file must not be readable by everyone")
     try:
         with open(path, encoding="utf-8") as fh:
             value = fh.read().strip()

@@ -54,6 +54,12 @@ def _secret_file(d, name, content):
     path = os.path.join(d, name)
     with open(path, "w") as fh:
         fh.write(content)
+    if POSIX:
+        # A properly kept secret file: owner-only. The runner
+        # refuses a world-readable secret file at startup (the
+        # written M8 rule), so a fixture modelling a valid setup
+        # states the mode the setup promises.
+        os.chmod(path, 0o600)
     return path
 
 
@@ -110,6 +116,55 @@ class SecretFilesTest(unittest.TestCase):
 
     def test_inline_still_works(self):
         secrets = build_secrets({"shared_secret": STRONG})
+        self.assertEqual(secrets[""], STRONG)
+
+    @unittest.skipUnless(POSIX, "POSIX only")
+    def test_world_readable_shared_secret_file_rejected(self):
+        # The written M8 rule: a world-readable secret file
+        # refuses startup -- anyone on the box who can read the
+        # secret can sign as the owner.
+        with tempfile.TemporaryDirectory() as d:
+            p = _secret_file(d, "s", STRONG)
+            os.chmod(p, 0o644)
+            with self.assertRaises(RuntimeError) as cm:
+                build_secrets({"shared_secret_file": p})
+        self.assertIn("world-readable", str(cm.exception))
+        self.assertIn(p, str(cm.exception))
+
+    @unittest.skipUnless(POSIX, "POSIX only")
+    def test_world_readable_additional_secret_file_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = _secret_file(d, "k1", STRONG2)
+            os.chmod(p, 0o644)
+            with self.assertRaises(RuntimeError) as cm:
+                build_secrets({
+                    "shared_secret": STRONG,
+                    "additional_secrets_files": {"k1": p},
+                })
+        self.assertIn("world-readable", str(cm.exception))
+        self.assertIn(p, str(cm.exception))
+
+    @unittest.skipUnless(POSIX, "POSIX only")
+    def test_group_readable_secret_file_accepted(self):
+        # The written rule names world-readable only: a file the
+        # owner's group can read is not readable by everyone.
+        with tempfile.TemporaryDirectory() as d:
+            p = _secret_file(d, "s", STRONG)
+            os.chmod(p, 0o640)
+            secrets = build_secrets({"shared_secret_file": p})
+        self.assertEqual(secrets[""], STRONG)
+
+    @unittest.skipUnless(POSIX, "POSIX only")
+    def test_windows_shape_secret_file_accepted(self):
+        # On Windows stat reports 0o666 whatever the file's real
+        # ACLs, so the mode bits say nothing and the check must
+        # not fire: the same bits that refuse on POSIX are
+        # accepted when os.name says nt.
+        with tempfile.TemporaryDirectory() as d:
+            p = _secret_file(d, "s", STRONG)
+            os.chmod(p, 0o644)
+            with mock.patch.object(os, "name", "nt"):
+                secrets = build_secrets({"shared_secret_file": p})
         self.assertEqual(secrets[""], STRONG)
 
 

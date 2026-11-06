@@ -279,6 +279,26 @@ class RefuseStartupGatesTest(unittest.TestCase):
         self.assertEqual(rc, 2, err)
         self.assertIn("job_user", err)
 
+    def test_world_readable_secret_file_refused_at_startup(self):
+        # The written M8 rule (Q131, 2026-11-06): a missing or
+        # world-readable secret file refuses startup. The missing
+        # half already refused; the world-readable half is the
+        # same class -- a wrong value about what the runner
+        # protects -- so it refuses through main() itself, exit
+        # 2, naming the key and the reason on stderr.
+        if os.name == "nt":
+            self.skipTest("POSIX only")
+        tmpdir = tempfile.mkdtemp(prefix="hp-d1-secret-")
+        path = os.path.join(tmpdir, "secret")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(STRONG_SECRET + "\n")
+        os.chmod(path, 0o644)
+        rc, _out, err = run_main(
+            {"shared_secret": "", "shared_secret_file": path})
+        self.assertEqual(rc, 2, err)
+        self.assertIn("shared_secret_file", err)
+        self.assertIn("world-readable", err)
+
 
 class StrictShapeTest(unittest.TestCase):
     """Enforce means enforce on every platform (2026-11-03).
