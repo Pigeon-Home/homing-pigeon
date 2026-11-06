@@ -5,7 +5,9 @@ runner/tools/hybrid_fuzz.py runs at length on the rig:
 
 - the corpus is the standards vectors (NIST ACVP ML-KEM-768,
   RFC 7748 section 6.1, and the hybrid vector constructed
-  from them), through the production code;
+  from them), through the production code, plus the group
+  geometry harvested from RFC 10024 itself into
+  runner/tests/fixtures/rfc10024_groups.json;
 - the bookend corpus carries every ASCII symbol plus NUL,
   tab, CR and LF, front and back;
 - each field of each hybrid share has its own mutation
@@ -23,6 +25,7 @@ docs/infrastructure-documents/proofs/hybrid-fuzz-10024.md.
 """
 
 import os
+import random
 import string
 import sys
 import unittest
@@ -275,6 +278,158 @@ class SeamHandshakeTest(unittest.TestCase):
         with hf.apply_ops(hf.AbstractOps):
             self.assertIsNot(mlkem.encaps_internal, before)
         self.assertIs(mlkem.encaps_internal, before)
+
+
+class Rfc10024HarvestTest(unittest.TestCase):
+    """The corpus material harvested from RFC 10024 itself:
+    the group geometry table in
+    runner/tests/fixtures/rfc10024_groups.json (sections
+    4.1, 4.2, 4.3 and 7 of the RFC) and the geometry target
+    built from it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.geom = hf.rfc10024_groups()
+        cls.by_code = {g["codepoint"]: g
+                       for g in cls.geom["groups"]}
+
+    def test_all_three_groups_and_the_obsoleted_pair(self):
+        self.assertEqual(set(self.by_code), {4588, 4587, 4589})
+        self.assertEqual(self.by_code[4588]["name"],
+                         "X25519MLKEM768")
+        self.assertEqual(self.by_code[4587]["name"],
+                         "SecP256r1MLKEM768")
+        self.assertEqual(self.by_code[4589]["name"],
+                         "SecP384r1MLKEM1024")
+        obsoleted = {o["codepoint"]
+                     for o in self.geom["obsoleted"]}
+        self.assertEqual(obsoleted, {25497, 25498})
+
+    def test_group_arithmetic_is_consistent(self):
+        part = {"kem_ek": "kem_ek_bytes",
+                "kem_ct": "kem_ct_bytes",
+                "kem": "kem_ss_bytes",
+                "ecdhe": None}
+        for g in self.geom["groups"]:
+            share = {"ecdhe": g["ecdhe_share_bytes"]}
+            client = sum(
+                g[part[p]] if part[p] else share[p]
+                for p in g["client_order"])
+            server = sum(
+                g[part[p]] if part[p] else share[p]
+                for p in g["server_order"])
+            secret = sum(
+                g["kem_ss_bytes"] if p == "kem"
+                else g["ecdhe_ss_bytes"]
+                for p in g["secret_order"])
+            self.assertEqual(client, g["client_share_bytes"], g)
+            self.assertEqual(server, g["server_share_bytes"], g)
+            self.assertEqual(secret, g["shared_secret_bytes"], g)
+
+    def test_implemented_group_matches_the_code(self):
+        g = self.by_code[dtlsproto.GROUP_X25519MLKEM768]
+        self.assertEqual(g["codepoint"], 4588)
+        self.assertEqual(g["client_share_bytes"],
+                         dtlsproto.HYBRID_CLIENT_SHARE_BYTES)
+        self.assertEqual(g["server_share_bytes"],
+                         dtlsproto.HYBRID_SERVER_SHARE_BYTES)
+        self.assertEqual(g["shared_secret_bytes"],
+                         dtlsproto.HYBRID_SECRET_BYTES)
+        self.assertEqual(g["kem_ek_bytes"], mlkem.EK_BYTES)
+        self.assertEqual(g["kem_ct_bytes"], mlkem.CT_BYTES)
+        self.assertEqual(g["client_order"], ["kem_ek", "ecdhe"])
+        self.assertEqual(g["secret_order"], ["kem", "ecdhe"])
+
+    def test_other_codepoints_are_not_in_the_engine(self):
+        values = {v for k, v in vars(dtlsproto).items()
+                  if k.startswith("GROUP_")
+                  and isinstance(v, int)}
+        self.assertIn(4588, values)
+        for code in (4587, 4589, 25497, 25498):
+            self.assertNotIn(code, values)
+
+    def test_checks_carry_the_section_42_key_check(self):
+        joined = " ".join(self.geom["checks"])
+        self.assertIn("7.2", joined)
+        self.assertIn("illegal_parameter", joined)
+
+    def test_geometry_seeds_have_the_other_groups_sizes(self):
+        targets = hf.Targets(hf.RealOps, hf.acvp_vectors())
+        self.assertEqual(
+            sorted(len(s) for s in targets.geo_client_sizes),
+            [1249, 1665])
+        self.assertEqual(
+            sorted(len(s) for s in targets.geo_server_sizes),
+            [1153, 1665])
+        swapped = targets.geo_swapped_client
+        self.assertEqual(len(swapped),
+                         dtlsproto.HYBRID_CLIENT_SHARE_BYTES)
+        self.assertNotEqual(swapped, targets.h_client_share)
+        self.assertEqual(swapped[:32],
+                         targets.h_client_share[-32:])
+
+    def test_geometry_target_refuses_every_seed(self):
+        targets = hf.Targets(hf.RealOps, hf.acvp_vectors())
+        rng = random.Random(10024)
+        for _ in range(90):
+            targets.t_geometry(rng)  # a Finding here fails
+
+
+class ClientFeedTargetTest(unittest.TestCase):
+    """Finding F-1 (campaign record): a ServerHello whose
+    key_share extension was removed used to raise an
+    uncaught KeyError(51) out of DtlsClientCore.feed,
+    where every sibling refusal is a DtlsError. Found by
+    the Argon plan review, verified by hand, fixed in
+    dtlsproto._on_server_hello; these tests pin the fix
+    and the family around it."""
+
+    def _targets(self):
+        return hf.Targets(hf.RealOps, hf.acvp_vectors())
+
+    def _feed(self, targets, exts):
+        victim = targets._victim_at_wait_sh()
+        return victim.feed(targets._sh_record(exts), NOW)
+
+    def test_missing_key_share_is_a_dtls_error(self):
+        targets = self._targets()
+        _raw, fields = targets._genuine_server_hello()
+        exts = dict(fields["exts"])
+        del exts[51]
+        with self.assertRaises(dtlsproto.DtlsError):
+            self._feed(targets, exts)
+
+    def test_each_extension_removed_stays_in_discipline(self):
+        targets = self._targets()
+        _raw, fields = targets._genuine_server_hello()
+        for ext_id in sorted(fields["exts"]):
+            exts = dict(fields["exts"])
+            del exts[ext_id]
+            try:
+                out = self._feed(targets, exts)
+            except dtlsproto.DtlsError:
+                continue
+            self.assertIsInstance(out, list, ext_id)
+
+    def test_key_share_value_shapes_stay_in_discipline(self):
+        targets = self._targets()
+        _raw, fields = targets._genuine_server_hello()
+        genuine = fields["exts"][51]
+        for value in (b"", genuine[:2], genuine[:4],
+                      genuine + b"\x00", bytes(len(genuine))):
+            exts = dict(fields["exts"])
+            exts[51] = value
+            try:
+                out = self._feed(targets, exts)
+            except dtlsproto.DtlsError:
+                continue
+            self.assertIsInstance(out, list)
+
+    def test_client_feed_target_holds_its_contract(self):
+        targets = self._targets()
+        rng = random.Random(10024)
+        for _ in range(45):
+            targets.t_client_feed(rng)  # a Finding here fails
 
 
 class FuzzSmokeTest(unittest.TestCase):

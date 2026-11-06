@@ -5,8 +5,14 @@ and the hybrid share handling in runner/wire/dtlsproto.py)
 in memory: no sockets, no mail. The corpus is seeded from
 the public standards throughout — the NIST ACVP ML-KEM-768
 vectors in runner/tests/fixtures/mlkem768_acvp.json, the
-RFC 7748 section 5.2 and 6.1 X25519 vectors, and a hybrid
-vector constructed from those two sources — and every
+RFC 7748 section 5.2 and 6.1 X25519 vectors, a hybrid
+vector constructed from those two sources, and the group
+geometry harvested from RFC 10024 itself into
+runner/tests/fixtures/rfc10024_groups.json (all three
+groups' code points, share sizes, concatenation orders and
+shared-secret sizes, plus the obsoleted pre-standard code
+points; the RFC publishes no vectors of its own) — and
+every
 mutation family includes the bookend rule: each ASCII
 symbol, plus NUL, tab, CR and LF, at the front and the back
 of the input, symbol-only strings, and symbol runs at the
@@ -29,6 +35,13 @@ Targets and their contracts:
   DtlsError only, or a well-shaped share and secret.
 - The server's datagram entry with a mutated ClientHello:
   feed() never raises at all.
+- The client's datagram entry with a crafted ServerHello
+  (structural variants — an extension removed, a foreign
+  group named — plus byte mutations): a list back, or
+  DtlsError only, never a foreign exception.
+- The RFC 10024 geometry: this group's shares rebuilt at
+  the other groups' fixed sizes, and its parts in the
+  RFC 9954 order, must be refused.
 
 Modes. --mode real runs the targets against the production
 cryptography. --mode abstract swaps the ML-KEM operations
@@ -111,6 +124,21 @@ def acvp_vectors():
              for k, v in row.items()}
             for row in raw[group]]
     return out
+
+
+def rfc10024_groups():
+    """The group geometry harvested from RFC 10024 itself
+    (sections 4.1, 4.2, 4.3 and 7): every group's code
+    point, component sizes, concatenation orders and
+    shared-secret size, and the obsoleted pre-standard code
+    points. The RFC publishes no test vectors; this table is
+    what it fixes, and the geometry target fuzzes the
+    implemented group against the other groups' shapes."""
+    path = os.path.join(
+        REPO, "runner", "tests", "fixtures",
+        "rfc10024_groups.json")
+    with open(path, "r", encoding="utf-8") as fh:
+        return json.load(fh)
 
 
 # RFC 7748 section 6.1 (Alice and Bob), transcribed in
@@ -326,6 +354,12 @@ def mutate(data, rng):
 # Targets
 # ------------------------------------------------------------------
 
+def _resize(data, size):
+    if len(data) >= size:
+        return data[:size]
+    return data + bytes(size - len(data))
+
+
 class Targets:
     def __init__(self, ops, acvp):
         self.ops = ops
@@ -335,6 +369,27 @@ class Targets:
         self._client = None
         self._session = None
         self._hello = None
+        self._sh_raw = None
+        self._sh_fields = None
+        # The RFC 10024 geometry seeds: this group's genuine
+        # shares rebuilt at the OTHER groups' fixed sizes,
+        # and this group's genuine parts laid out in the
+        # RFC 9954 order (ECDHE first) instead of the
+        # RFC 10024 order. Every one of them must be refused.
+        geom = rfc10024_groups()
+        self.geo_client_sizes = []
+        self.geo_server_sizes = []
+        for g in geom["groups"]:
+            if g["codepoint"] == \
+                    dtlsproto.GROUP_X25519MLKEM768:
+                continue
+            self.geo_client_sizes.append(_resize(
+                self.h_client_share, g["client_share_bytes"]))
+            self.geo_server_sizes.append(_resize(
+                self.h_server_share, g["server_share_bytes"]))
+        ek = self.h_client_share[:mlkem.EK_BYTES]
+        self.geo_swapped_client = (
+            self.h_client_share[mlkem.EK_BYTES:] + ek)
 
     # -- ML-KEM primitives ------------------------------------
 
@@ -492,6 +547,180 @@ class Targets:
             raise Finding("server hybrid answer returned "
                           "wrong sizes")
 
+    def t_geometry(self, rng):
+        """The RFC 10024 geometry contract: RFC 10024 fixes
+        exactly one size per component per group, so a share
+        carrying another group's size, or this group's parts
+        in the other concatenation order, must be refused
+        with DtlsError — never accepted, never a foreign
+        exception."""
+        kind = rng.randrange(3)
+        if kind == 0:
+            session = self._pumped_session()
+            share = rng.choice(self.geo_client_sizes)
+            try:
+                session._hybrid_answer(share)
+            except dtlsproto.DtlsError:
+                return
+            except Exception as exc:  # noqa: BLE001
+                raise Finding(
+                    "geometry: foreign exception on a "
+                    "%d-octet client share: %s"
+                    % (len(share), repr(exc))) from exc
+            raise Finding(
+                "geometry: server accepted a %d-octet client "
+                "share (another group's size)" % len(share))
+        if kind == 1:
+            client = self._primed_client()
+            share = rng.choice(self.geo_server_sizes)
+            try:
+                client._hybrid_shared(share)
+            except dtlsproto.DtlsError:
+                return
+            except Exception as exc:  # noqa: BLE001
+                raise Finding(
+                    "geometry: foreign exception on a "
+                    "%d-octet server share: %s"
+                    % (len(share), repr(exc))) from exc
+            raise Finding(
+                "geometry: client accepted a %d-octet server "
+                "share (another group's size)" % len(share))
+        session = self._pumped_session()
+        try:
+            share, secret = session._hybrid_answer(
+                self.geo_swapped_client)
+        except dtlsproto.DtlsError:
+            return
+        except Exception as exc:  # noqa: BLE001
+            raise Finding(
+                "geometry: foreign exception on the "
+                "order-swapped client share: " + repr(exc)
+                ) from exc
+        if self.ops.name == "abstract":
+            # What refuses the swapped share in real mode is
+            # the FIPS 203 section 7.2 content check, which
+            # the seam abstracts to the length only (see the
+            # campaign record): behind the seam the swapped
+            # share is held to the framing contract instead —
+            # DtlsError above, or a well-shaped answer here.
+            want = 4 + dtlsproto.HYBRID_SERVER_SHARE_BYTES
+            if len(share) != want or len(secret) != \
+                    dtlsproto.HYBRID_SECRET_BYTES:
+                raise Finding(
+                    "geometry: abstract answer to the swapped "
+                    "share returned wrong sizes")
+            return
+        raise Finding(
+            "geometry: server accepted the client share with "
+            "its parts in the RFC 9954 order")
+
+    def _genuine_server_hello(self):
+        if self._sh_raw is None:
+            client = dtlsproto.DtlsClientCore(SECRET, hybrid=True)
+            server = dtlsproto.DtlsServerCore(
+                secret_lookup=dtlsproto.make_secret_lookup(SECRET),
+                hybrid=True)
+            out = client.start(NOW)
+            found = None
+            for _ in range(60):
+                if not out:
+                    break
+                nxt = []
+                for dg in out:
+                    nxt += server.feed(dg, ADDR, NOW)
+                for dg in nxt:
+                    payload = dg[13:]
+                    while len(payload) >= 12:
+                        mlen = int.from_bytes(
+                            payload[1:4], "big")
+                        msg = payload[:12 + mlen]
+                        if msg[0] == 2 and \
+                                dtlsproto._parse_server_hello(
+                                    msg[12:])["random"] != \
+                                dtlsproto.HRR_RANDOM:
+                            found = msg
+                        payload = payload[12 + mlen:]
+                out = []
+                for dg in nxt:
+                    out += client.feed(dg, NOW)
+            assert found is not None
+            self._sh_raw = found
+            self._sh_fields = dtlsproto._parse_server_hello(
+                found[12:])
+        return self._sh_raw, self._sh_fields
+
+    def _sh_record(self, exts):
+        _raw, fields = self._genuine_server_hello()
+        blob = b"".join(
+            t.to_bytes(2, "big") + len(v).to_bytes(2, "big") + v
+            for t, v in sorted(exts.items()))
+        body = (self._sh_raw[12:14] + fields["random"] + b"\x00"
+                + fields["suite"].to_bytes(2, "big") + b"\x00"
+                + len(blob).to_bytes(2, "big") + blob)
+        msg = (bytes([2]) + len(body).to_bytes(3, "big")
+               + self._sh_raw[4:12] + body)
+        return (bytes([22]) + b"\xfe\xfd"
+                + (0).to_bytes(2, "big") + (0).to_bytes(6, "big")
+                + len(msg).to_bytes(2, "big") + msg)
+
+    def _victim_at_wait_sh(self):
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET),
+            hybrid=True)
+        victim = dtlsproto.DtlsClientCore(SECRET, hybrid=True)
+        out = victim.start(NOW)
+        for _ in range(6):
+            nxt = []
+            for dg in out:
+                nxt += server.feed(dg, ADDR, NOW)
+            out = []
+            for dg in nxt:
+                out += victim.feed(dg, NOW)
+            if victim.state == "wait-sh":
+                return victim
+        raise Finding("harness: victim never reached wait-sh")
+
+    def t_client_feed(self, rng):
+        """A crafted ServerHello against a waiting client:
+        the mirror of server_feed. Structural variants (an
+        extension removed, a foreign group named) plus byte
+        mutations of the genuine article. The contract is
+        feed()'s own discipline elsewhere: a list back, or
+        DtlsError — never a foreign exception. (This target's
+        missing-key_share variant is finding F-1's shape;
+        see the campaign record.)"""
+        _raw, fields = self._genuine_server_hello()
+        kind = rng.randrange(5)
+        if kind == 4:
+            msg = mutate(self._sh_raw, rng)
+            record = (bytes([22]) + b"\xfe\xfd"
+                      + (0).to_bytes(2, "big")
+                      + (0).to_bytes(6, "big")
+                      + len(msg).to_bytes(2, "big") + msg)
+        else:
+            exts = dict(fields["exts"])
+            if kind == 0:
+                exts.pop(51, None)          # no key_share
+            elif kind == 1:
+                exts.pop(41, None)          # no pre_shared_key
+            elif kind == 2:
+                exts.pop(43, None)          # no supported_versions
+            else:                           # a foreign group
+                code = rng.choice((4587, 4589, 25497, 25498))
+                exts[51] = code.to_bytes(2, "big") + exts[51][2:]
+            record = self._sh_record(exts)
+        victim = self._victim_at_wait_sh()
+        try:
+            out = victim.feed(record, NOW)
+        except dtlsproto.DtlsError:
+            return
+        except Exception as exc:  # noqa: BLE001
+            raise Finding(
+                "client feed raised a foreign exception: "
+                + repr(exc)) from exc
+        if not isinstance(out, list):
+            raise Finding("client feed returned a non-list")
+
     def t_server_feed(self, rng):
         if self._hello is None:
             client = dtlsproto.DtlsClientCore(SECRET, hybrid=True)
@@ -513,7 +742,8 @@ class Targets:
 
 
 TARGET_NAMES = ("decaps", "encaps", "key_checks", "keygen",
-                "client_shared", "server_answer", "server_feed")
+                "client_shared", "server_answer", "server_feed",
+                "geometry", "client_feed")
 
 
 # ------------------------------------------------------------------
@@ -566,6 +796,24 @@ def run(mode, duration_s, rounds_cap, seed, emit,
                     "disagrees")
         if dtlsproto._ecdh(ALICE_PRIV, BOB_PUB) != X25519_SHARED:
             raise Finding("control: RFC 7748 handshake disagrees")
+        # The harvested RFC 10024 geometry must match the
+        # code's own constants for the implemented group, or
+        # the corpus is measuring the wrong shapes.
+        own = next(
+            g for g in rfc10024_groups()["groups"]
+            if g["codepoint"] ==
+            dtlsproto.GROUP_X25519MLKEM768)
+        if own["client_share_bytes"] != \
+                dtlsproto.HYBRID_CLIENT_SHARE_BYTES or \
+                own["server_share_bytes"] != \
+                dtlsproto.HYBRID_SERVER_SHARE_BYTES or \
+                own["shared_secret_bytes"] != \
+                dtlsproto.HYBRID_SECRET_BYTES or \
+                own["kem_ek_bytes"] != mlkem.EK_BYTES or \
+                own["kem_ct_bytes"] != mlkem.CT_BYTES:
+            raise Finding(
+                "control: RFC 10024 geometry disagrees with "
+                "the code's constants")
         emit("hybrid-fuzz start mode=%s seed=%d targets=%s"
              % (mode, seed, ",".join(TARGET_NAMES)))
         started = time.time()
