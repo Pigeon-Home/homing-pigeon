@@ -931,7 +931,24 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 344c7df9 (31-Oct-2026)
 - Existing tests: test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (FinishedIdReofferShotgunTest in
+  test_transport_queues.py): a finished id the queue offers
+  again is delivered as a new life, its old done marker
+  cleared before anything can ack, and only its own answer
+  acks it — the per-field pins are carried in the class's
+  header comment in the repo. The file's new class runs
+  green under the Python suite (50 tests, 0 skipped), no
+  live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  class's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target channels
+  --rounds 400 --seed 20261133, run locally against the banked
+  channels corpus (11 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 142, slowest try 793 ms — the
+  leased-into-the-dead-list shape did not recur. The grow's
+  bookkeeping writes were reverted and are not banked
+  (banking is the rigs' hourly job).
 
 ### 33. A renew did not name its attempt; a bad quota was not a 400
 - Fixed: 4cca4cc6 (31-Oct-2026)
