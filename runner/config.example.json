@@ -89,7 +89,8 @@
       "confinement": "enforce",
       "job_user": "enforce"
     },
-    "audit_max_lines": 20000
+    "audit_max_lines": 20000,
+    "require_posture": false
   },
   "dri": {
     "enabled": false,

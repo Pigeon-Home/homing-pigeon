@@ -23,6 +23,7 @@ _CLI_OVERRIDES = (
     ("answer_only", "answer_only"),
     ("remediation_mode", "remediation_mode"),
     ("require_review", "require_review"),
+    ("require_posture", "require_posture"),
     ("local_signals", "local_signals"),
     ("local_signal_port", "local_signal_port"),
     ("wake_cooldown", "local_wake_cooldown_sec"),

@@ -84,6 +84,25 @@ def main() -> int:
         except RuntimeError as e:
             print(e, file=sys.stderr)
             return 2
+        # S5 residue: the pinned posture assertion. When the
+        # operator pins require_posture (config security block or
+        # --require-posture), a mode lowered below enforce is a
+        # startup refusal naming the feature(s), so a later config
+        # edit cannot silently weaken a box deployed strict.
+        # Unpinned, nothing changes. The CLI overrides land in cfg
+        # further down, past the one-shot dispatches, so the gate
+        # reads the flag off args itself: a flag beats the file
+        # here exactly as the override pass makes it do later.
+        _posture_cfg = cfg
+        if getattr(args, "require_posture", None) is not None:
+            _posture_cfg = dict(cfg)
+            _posture_cfg["require_posture"] = args.require_posture
+        _posture_problem = R._security.require_posture_problem(
+            _posture_cfg)
+        if _posture_problem:
+            print("config error: " + _posture_problem,
+                  file=sys.stderr)
+            return 2
         # Hardening M5: audience binding with no runner_id configured
         # has nothing to bind to. Warn instead of silently doing
         # nothing; the setup wizard generates one for fresh configs.

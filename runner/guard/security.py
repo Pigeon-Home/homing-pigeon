@@ -373,6 +373,53 @@ def effective_modes(cfg):
     return {feature: sec_mode(cfg, feature) for feature in FEATURES}
 
 
+def require_posture_enabled(cfg):
+    """True when the operator pinned the startup posture assertion.
+
+    The flat key wins when present -- the CLI override writes it
+    (--require-posture / --no-require-posture), and a flag beats the
+    file -- then security.require_posture in the config block. Only
+    boolean True pins it; validate_security_config refuses any other
+    shape in the block at startup, naming the key.
+    """
+    if not isinstance(cfg, dict):
+        return False
+    if "require_posture" in cfg:
+        return cfg["require_posture"] is True
+    sec = cfg.get("security")
+    if isinstance(sec, dict):
+        return sec.get("require_posture") is True
+    return False
+
+
+def lowered_features(cfg):
+    """The features whose effective mode sits below enforce,
+    in FEATURES order."""
+    return [feature for feature in FEATURES
+            if sec_mode(cfg, feature) != "enforce"]
+
+
+def require_posture_problem(cfg):
+    """Why a require-posture-pinned startup must refuse, or None.
+
+    None when the assertion is unpinned (the default, and startup
+    behavior is exactly as it was) and None when every feature is
+    at enforce. Otherwise one sentence naming each lowered feature
+    and its mode, so the refusal itself says what to raise.
+    """
+    if not require_posture_enabled(cfg):
+        return None
+    lowered = lowered_features(cfg)
+    if not lowered:
+        return None
+    return ("require_posture is pinned but security mode(s) sit "
+            "below enforce: "
+            + ", ".join("%s=%s" % (feature, sec_mode(cfg, feature))
+                        for feature in lowered)
+            + ". Refusing to start; raise the mode(s) to enforce, "
+            "or unset require_posture.")
+
+
 def audit_max_lines(cfg):
     """Bound for the audit log. Default 20000."""
     sec = cfg.get("security") if isinstance(cfg, dict) else None
@@ -414,6 +461,12 @@ def validate_security_config(cfg):
             raise RuntimeError(
                 "config error: security.modes.%s must be one of off, audit, "
                 "enforce (got %r)" % (name, mode))
+    require_posture = sec.get("require_posture")
+    if require_posture is not None \
+            and not isinstance(require_posture, bool):
+        raise RuntimeError(
+            "config error: security.require_posture must be a boolean "
+            "(got %r)" % (require_posture,))
     max_lines = sec.get("audit_max_lines", DEFAULT_AUDIT_MAX_LINES)
     if isinstance(max_lines, bool) or not isinstance(max_lines, int):
         raise RuntimeError(

@@ -5166,6 +5166,7 @@ _CLI_OVERRIDE_COUNTS = frozenset(
                     "oracle_mode", "oracle_opinion", "oracle_tool_mode",
                     "protocol_v2", "answer_only",
                     "remediation_mode", "require_review",
+                    "require_posture",
                     "local_signals", "oracle_log", "transports"))
 
 def _enabled_transports(cfg):

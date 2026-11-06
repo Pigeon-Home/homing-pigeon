@@ -212,6 +212,16 @@ def build_parser():
                         "record, page), deterministic (tripwires "
                         "act), oracle (the model may also order a "
                         "kill) (default: deterministic)")
+    g.add_argument("--require-posture", action="store_true",
+                   default=None,
+                   help="refuse to start if any security mode "
+                        "sits below enforce (pins "
+                        "security.require_posture for this process)")
+    g.add_argument("--no-require-posture", action="store_false",
+                   dest="require_posture",
+                   help="start even if a security mode sits below "
+                        "enforce; overrides --require-posture and "
+                        "the config pin")
     g.add_argument("--require-review", action="store_true",
                    default=None,
                    help="completed board tasks wait in "

@@ -82,6 +82,22 @@ def _check_key_policies(cfg, results):
     if not isinstance(cfg, dict):
         return
     extra = cfg.get("additional_secrets")
+    # S5 residue: the require_posture pin's state, when pinned.
+    # Unpinned adds no line -- the report stays what it was.
+    if _security is not None \
+            and _security.require_posture_enabled(cfg):
+        lowered = _security.lowered_features(cfg)
+        if lowered:
+            eff = _security.effective_modes(cfg)
+            results.append(("FAIL", "security modes",
+                            "require_posture pinned but below "
+                            "enforce: %s" % ", ".join(
+                                "%s=%s" % (f, eff[f]) for f in lowered)))
+        else:
+            results.append(("OK", "security modes",
+                            "require_posture pinned: every feature "
+                            "at enforce"))
+
     # F2: the Oracle run tool's mode, stated outright like the
     # security modes above -- a deployment that tuned it (or one
     # that inherits a config that did) can see it before starting.
