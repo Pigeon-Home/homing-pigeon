@@ -320,7 +320,7 @@ class ShimStagedNameTest(unittest.TestCase):
         ("mixed", r"work/other-1\script", "script"),
         ("mixed2", r"work\other-1/script.py", "script.py"),
         ("bare", "script", "script"),
-        ("bookend-slashes", "//work//script", "script"),
+        ("double-slash-inside", "work//other-1//script", "script"),
         ("bookend-backslashes", r"\\work\\script", "script"),
         ("run-of-separators", "work////////other-1\\\\script", "script"),
     ]

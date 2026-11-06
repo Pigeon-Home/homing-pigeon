@@ -36,12 +36,12 @@ fy_iceworld fragment-buffer caps grew runner/wire, and
 again after the temp-reaping work grew runner/ops,
 runner/tools, runner/guard and the runner proper,
 the
-as-assembled set stands at 55,506 lines (49,977 non-blank)
-and a 703,357-byte zip, and the project's own estimator
-counts it at 585,193 tokens; the Gemini figure above still
+as-assembled set stands at 55,532 lines (50,000 non-blank)
+and a 703,710-byte zip, and the project's own estimator
+counts it at 585,449 tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical 130-file list at 577,576
-tokens across 54,722 lines (49,289 non-blank); the 2 token
+estimator counts the canonical 130-file list at 577,832
+tokens across 54,748 lines (49,312 non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -55,14 +55,14 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 6,637 lines; the core around it is
-55,506. The set as assembled, part by part (re-measured
+55,532. The set as assembled, part by part (re-measured
 2026-11-06):
 
 - runner/ops: 17,474 lines
 - runner/tools: 8,673
 - runner/wire: 8,302
 - runner/runner.py: 6,637
-- runner/oracle: 4,987
+- runner/oracle: 5,013
 - runner/transport_extensions: 2,771
 - runner/guard: 2,876
 - runner/cloud: 2,049
@@ -77,7 +77,7 @@ The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-55,506 lines, explicit platform branching — sys.platform,
+55,532 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
 the 133 files, beside a small number of dedicated platform
 modules (runner/ops/windows.py and runner/ops/winlog.py).

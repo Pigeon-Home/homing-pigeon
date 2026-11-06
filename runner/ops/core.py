@@ -34,11 +34,11 @@ CLI output:
   CLI prints its figure live. The estimator is not a BPE
   tokenizer, and the 2 figures are not interchangeable: the
   same estimator counts the as-assembled 133-file set at
-  585,193, not 619,845.
+  585,449, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 55,506 lines,
-49,977 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 55,532 lines,
+50,000 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -133,9 +133,9 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 133
-AS_ASSEMBLED_ZIP_BYTES = 703357
-AS_ASSEMBLED_LINES = 55506
-AS_ASSEMBLED_NONBLANK_LINES = 49977
+AS_ASSEMBLED_ZIP_BYTES = 703710
+AS_ASSEMBLED_LINES = 55532
+AS_ASSEMBLED_NONBLANK_LINES = 50000
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
@@ -144,7 +144,7 @@ AS_ASSEMBLED_PART_LINES = {
     "runner/tools": 8673,
     "runner/wire": 8302,
     "runner/runner.py": 6637,
-    "runner/oracle": 4987,
+    "runner/oracle": 5013,
     "runner/transport_extensions": 2771,
     "runner/guard": 2876,
     "runner/cloud": 2049,
