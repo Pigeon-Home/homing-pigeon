@@ -95,6 +95,8 @@ the tail every line pays its regexes. There is no setting
 that watches a whole fast-growing log cheaply; there is only
 a smaller tail, checked less often.
 
+## Further reading
+
 Alert payloads are unsigned sense alerts; signing and delivery
 follow the standard senses flow. The full extension walkthrough —
 manifest fields, the versioning contract, sensor binding, and how

@@ -103,6 +103,8 @@ time for both first and last and never report a fabricated
 duration. Malformed or truncated datagrams never raise: an
 incomplete record decodes to nothing.
 
+## Running and footprint
+
 Or try it anywhere against fixtures, with no collector at
 all — a readings file is `{"now": ..., "flows": [...],
 "skipped_records": 0}`:

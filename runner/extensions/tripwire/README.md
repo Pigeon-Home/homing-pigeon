@@ -94,6 +94,8 @@ in-cap total under a few hundred megabytes for a Pi-class
 box at an hourly cadence; a multi-gigabyte tree belongs at
 a daily cadence, watched narrowly, or not on a Pi at all.
 
+## Further reading
+
 Alert payloads are unsigned sense alerts; signing and delivery
 follow the standard senses flow. The full extension walkthrough —
 manifest fields, the versioning contract, sensor binding, and how

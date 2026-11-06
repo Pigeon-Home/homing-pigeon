@@ -52,6 +52,8 @@ fingerprint. A class with no entries files nothing.
 | `report_paths` | `["/var/log/aide/aide.log"]` | The AIDE report file(s) the owner's schedule produces; the first new report per pass is read |
 | `poll_interval_sec` | 3600 | How often the producer checks for a new report; checking is a stat per path, so this is cheap at any cadence — the scan schedule, not this poll, is the real cadence |
 
+## Running
+
 Run one pass:
 
 ```bash

@@ -77,7 +77,7 @@ manifest fields, the versioning contract, sensor binding, and
 how to turn this example into your own package — is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).
 
-## Light mode
+## Light mode and safety boundary
 
 Scan cadence is the cost knob, and it leads the Light mode:
 `poll_interval_sec` is `300` by default and `1800` in Light

@@ -58,7 +58,7 @@ product; standalone NDR as a growth story; chat-only copilots; pre-LLM
 
 ## Read against this project, honestly — sorted by footprint
 
-### Nearly free: take it, the kernel does the work
+### Nearly free: kernel primitives and zero-idle checks
 
 - **ACLs** — the example. Partly in place: the Windows one-home install
   sets a real DACL (`icacls`); POSIX ACLs are not applied yet. Extend

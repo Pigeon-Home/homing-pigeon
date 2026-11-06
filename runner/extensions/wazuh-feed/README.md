@@ -68,6 +68,8 @@ files again.
 | `poll_interval_sec` | 60 | The cost knob: how often a pass runs |
 | `episode_quiet_sec` | 3600 | How long a (rule, agent) pair must stay quiet before its next alert files as a new episode |
 
+## Running
+
 Run one pass:
 
 ```bash

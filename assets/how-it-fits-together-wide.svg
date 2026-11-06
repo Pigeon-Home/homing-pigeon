@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="760" viewBox="0 0 1240 760" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b060d"/>
+      <stop offset="1" stop-color="#17030a"/>
+    </linearGradient>
+    <linearGradient id="box" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#57101e"/>
+      <stop offset="1" stop-color="#3a0a15"/>
+    </linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ff4d6d"/>
+    </marker>
+    <marker id="arrD" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 0 L 5 10 z" fill="#ff4d6d"/>
+    </marker>
+    <marker id="arrL" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 10 0 L 0 5 L 10 10 z" fill="#ff4d6d"/>
+    </marker>
+  </defs>
+  <rect width="1240" height="760" fill="url(#bg)"/>
+
+  <!-- You -->
+  <rect x="40" y="60" width="240" height="170" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="160" y="138" text-anchor="middle" fill="#ffffff" font-size="28" font-weight="bold">You</text>
+  <text x="160" y="170" text-anchor="middle" fill="#ffd7de" font-size="16">(and the SI you bring)</text>
+  <line x1="280" y1="145" x2="322" y2="145" stroke="#ff4d6d" stroke-width="5" marker-end="url(#arr)"/>
+  <text x="301" y="132" text-anchor="middle" fill="#ffd7de" font-size="13">a job</text>
+
+  <!-- Transports -->
+  <rect x="330" y="60" width="280" height="170" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="470" y="132" text-anchor="middle" fill="#ffffff" font-size="28" font-weight="bold">Transports</text>
+  <text x="470" y="164" text-anchor="middle" fill="#ffd7de" font-size="15">(email · DTLS · file — the job travels</text>
+  <text x="470" y="186" text-anchor="middle" fill="#ffd7de" font-size="15">signed and encrypted)</text>
+  <line x1="610" y1="145" x2="652" y2="145" stroke="#ff4d6d" stroke-width="5" marker-end="url(#arr)"/>
+
+  <!-- The Door -->
+  <rect x="660" y="40" width="340" height="230" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="830" y="88" text-anchor="middle" fill="#ffffff" font-size="26" font-weight="bold">The Door</text>
+  <text x="830" y="114" text-anchor="middle" fill="#ffd7de" font-size="14">(the runner's front gate — only signed jobs pass)</text>
+  <rect x="690" y="130" width="280" height="48" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="830" y="161" text-anchor="middle" fill="#ffffff" font-size="19">Signature Check</text>
+  <line x1="830" y1="178" x2="830" y2="194" stroke="#ff4d6d" stroke-width="4" marker-end="url(#arrD)"/>
+  <rect x="690" y="200" width="280" height="48" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="830" y="231" text-anchor="middle" fill="#ffffff" font-size="19">Job Queue</text>
+  <path d="M 830 270 L 830 300 L 478 300 L 478 322" fill="none" stroke="#ff4d6d" stroke-width="5" marker-end="url(#arrD)"/>
+
+  <!-- The Runner -->
+  <rect x="190" y="330" width="576" height="220" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="478" y="372" text-anchor="middle" fill="#ffffff" font-size="26" font-weight="bold">The Runner</text>
+  <rect x="215" y="390" width="168" height="76" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="299" y="422" text-anchor="middle" fill="#ffffff" font-size="16">Shared-Secret</text>
+  <text x="299" y="444" text-anchor="middle" fill="#ffffff" font-size="16">Check</text>
+  <rect x="394" y="390" width="168" height="76" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="478" y="418" text-anchor="middle" fill="#ffffff" font-size="16">The Cage</text>
+  <text x="478" y="440" text-anchor="middle" fill="#ffd7de" font-size="12">(security modes, on by default)</text>
+  <rect x="573" y="390" width="168" height="76" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="657" y="414" text-anchor="middle" fill="#ffffff" font-size="16">The Oracle</text>
+  <text x="657" y="436" text-anchor="middle" fill="#ffd7de" font-size="12">(reads the job, lends</text>
+  <text x="657" y="452" text-anchor="middle" fill="#ffd7de" font-size="12">a hand)</text>
+  <rect x="215" y="478" width="526" height="56" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="478" y="501" text-anchor="middle" fill="#ffffff" font-size="17">Size Guard</text>
+  <text x="478" y="522" text-anchor="middle" fill="#ffd7de" font-size="12">(caps on the job and the result)</text>
+
+  <!-- The SI's Mind -->
+  <rect x="880" y="360" width="220" height="130" rx="14" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="990" y="414" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="bold">The SI's Mind</text>
+  <text x="990" y="442" text-anchor="middle" fill="#ffd7de" font-size="14">(outside the box)</text>
+  <line x1="766" y1="425" x2="872" y2="425" stroke="#ff4d6d" stroke-width="5" marker-end="url(#arr)" marker-start="url(#arrL)"/>
+
+  <!-- runner down to work loop -->
+  <path d="M 620 550 L 620 590 L 830 590" fill="none" stroke="#ff4d6d" stroke-width="5" marker-end="url(#arrD)"/>
+
+  <!-- The Work Loop -->
+  <rect x="660" y="600" width="420" height="120" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="870" y="646" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="bold">The Work Loop</text>
+  <text x="870" y="678" text-anchor="middle" fill="#ffd7de" font-size="15">run the job → capture the output → sign the</text>
+  <text x="870" y="698" text-anchor="middle" fill="#ffd7de" font-size="15">result</text>
+  <line x1="660" y1="660" x2="618" y2="660" stroke="#ff4d6d" stroke-width="5" marker-end="url(#arr)"/>
+
+  <!-- The Way Back -->
+  <rect x="190" y="600" width="420" height="120" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="400" y="640" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="bold">The Way Back</text>
+  <rect x="215" y="656" width="150" height="44" rx="9" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="290" y="684" text-anchor="middle" fill="#ffffff" font-size="15">Reply to Your SI</text>
+  <line x1="435" y1="678" x2="373" y2="678" stroke="#ff4d6d" stroke-width="4" marker-end="url(#arr)"/>
+  <rect x="443" y="656" width="150" height="44" rx="9" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="518" y="684" text-anchor="middle" fill="#ffffff" font-size="15">Signed Result</text>
+
+  <!-- return path to You -->
+  <path d="M 190 660 L 100 660 L 100 238" fill="none" stroke="#ff4d6d" stroke-width="5" marker-end="url(#arrD)"/>
+</svg>

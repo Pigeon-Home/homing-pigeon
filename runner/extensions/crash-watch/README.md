@@ -62,6 +62,8 @@ huge backlog at once — the files past the cap are counted and
 file on later passes, so nothing is lost, it just arrives
 more slowly.
 
+## Further reading
+
 The full extension walkthrough — manifest fields, the
 versioning contract, sensor binding, and how to turn this
 example into your own package — is in

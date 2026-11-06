@@ -68,6 +68,8 @@ artifacts then simply wait — counted as skipped, never as
 arrivals — until the cap rises — and keep the sense on the
 single `watch_dir` that releases actually land in.
 
+## Further reading
+
 The full extension walkthrough — manifest fields, the
 versioning contract, sensor binding, and how to turn this
 example into your own package — is in

@@ -64,6 +64,8 @@ Fleet names are cities as of today; banked ledger lines keep the
 names they were written with. Nuremberg banks under its city
 name already; the other two follow with their next banks.
 
+## Status
+
 Status at this writing:
 
 - Corpus: **1,518 entries over 22 targets**, merged from all

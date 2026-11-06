@@ -22,10 +22,10 @@ eyes (§1.1) + tap-to-approve (§3.1) + the Oracle learning loop (§4.1).
 Together they make it feel alive and make it safer to hand the SI the
 keys.
 
-## 1. More senses (inbound)
+## 1. Senses and actuators
 
-All of these arrive as `sensor_alert` jobs through the existing ingest
-path (`docs/senses.md`). Sensors are dumb; the Oracle fuses.
+The senses (1.1 and 1.2) arrive as `sensor_alert` jobs through the existing ingest
+path (`docs/senses.md`); the hands (1.3) go the other way, out to actuators. Sensors are dumb; the Oracle fuses.
 
 ### 1.1 Eyes and ears — a `snapshot` job kind
 

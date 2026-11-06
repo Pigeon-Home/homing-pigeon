@@ -39,7 +39,7 @@ command; the design is `docs/steady/project/hosting.md`.
   `inference`, `oracle_mode` and `pong_platform`. Security modes
   and the result view are the profile's and are refused in a blob.
 
-## The command
+## Bringing a machine up and sending jobs
 
 With the hosted queue, first mint the tenant on your Worker
 (`runner/cloud/queues-worker/README.md` deploys it):

@@ -76,6 +76,8 @@ nothing — and shorten `window_sec` toward 900 with
 sample list. A Pi that samples five counters every five
 minutes will not notice this sense is there.
 
+## Further reading
+
 The full extension walkthrough — manifest fields, the
 versioning contract, sensor binding, and how to turn this
 example into your own package — is in

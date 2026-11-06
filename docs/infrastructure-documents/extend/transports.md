@@ -85,7 +85,7 @@ through. The core's one door out (`maybe_send`) is the seam, so an
 extension that speaks the channel contract gets the guarantee for
 free.
 
-## Authorization gates
+## Authorization gates and encryption
 
 The HMAC signature on the job body is checked by the runner's
 core on every transport, after the pipe delivers. Where a

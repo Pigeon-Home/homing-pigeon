@@ -127,7 +127,7 @@ The fit is partial, in three named places:
   this: a framework in the plug supplies the model's answers,
   not the Oracle.
 
-## Authority
+## Authority and the bridge
 
 The two programs' credentials stay separate. The framework's
 gateway and hooks tokens admit calls to the framework; the

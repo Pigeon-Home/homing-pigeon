@@ -25,20 +25,6 @@ docker run -d --name pigeon --restart unless-stopped \
 No Python, no git, nothing else. See [DOCKER.md](docs/steady/use/docker.md) for
 dry-run mode, config options, and updating.
 
-### The Python floor on older enterprise distributions
-
-The runner needs Python 3.9 or newer (`requires-python` in
-`pyproject.toml`). openSUSE Leap 15 and RHEL/AlmaLinux/Rocky 8
-ship a system `python3` of 3.6 and carry a supported interpreter as
-a separate package -- `zypper install python311` or `dnf install
-python3.11` -- so run the installer with that interpreter
-(`python3.11 runner/ops/install.py` in a checkout). Rocky/Alma 9, Debian 11+, Ubuntu 22.04+,
-Fedora, Amazon Linux 2023 and Alpine 3 ship 3.9 or newer already.
-The platform matrix runs the proof on openSUSE Leap 15 and
-AlmaLinux 8 (with the separate interpreter), Rocky 9, Debian 12
-and 13, Ubuntu 22.04 and 24.04, Fedora, Amazon Linux 2023 and
-Alpine 3; Alma 9 and Debian 11 are not legs of their own.
-
 ## 2. pip (best for Raspberry Pi)
 
 **Install:**
@@ -87,6 +73,20 @@ systemctl --user stop homing-pigeon
 homing-pigeon --config ~/.homing-pigeon/config.json --once
 systemctl --user start homing-pigeon
 ```
+
+### The Python floor on older enterprise distributions
+
+The runner needs Python 3.9 or newer (`requires-python` in
+`pyproject.toml`). openSUSE Leap 15 and RHEL/AlmaLinux/Rocky 8
+ship a system `python3` of 3.6 and carry a supported interpreter as
+a separate package -- `zypper install python311` or `dnf install
+python3.11` -- so run the installer with that interpreter
+(`python3.11 runner/ops/install.py` in a checkout). Rocky/Alma 9, Debian 11+, Ubuntu 22.04+,
+Fedora, Amazon Linux 2023 and Alpine 3 ship 3.9 or newer already.
+The platform matrix runs the proof on openSUSE Leap 15 and
+AlmaLinux 8 (with the separate interpreter), Rocky 9, Debian 12
+and 13, Ubuntu 22.04 and 24.04, Fedora, Amazon Linux 2023 and
+Alpine 3; Alma 9 and Debian 11 are not legs of their own.
 
 ### Raspberry Pi: Pi Light
 
@@ -437,7 +437,7 @@ VM internet access (NAT is fine) so it can reach the mailbox's IMAP/SMTP
 servers, install the Linux release binary inside the guest, and point your jobs
 at it. The host never needs to know.
 
-### Working scenario
+## Working scenario
 
 Checked against a working simulation (Windows-shaped profile, no live
 mailbox, no live model). The same steps are locked in
@@ -464,6 +464,8 @@ the simulation used.
    is not printed.
 
 ---
+
+## Verify and live config
 
 Whichever path you pick, **verify** with the clock check from
 [docs/steady/use/use-runbook.md](docs/steady/use/use-runbook.md) Job 7. If the runner replies with the time,

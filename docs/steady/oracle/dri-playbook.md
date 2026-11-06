@@ -165,7 +165,7 @@ you, not in this repo. Template for when the time comes:
    keys, take the box offline).
 5. Write down what you changed, so the next page is smarter.
 
-## The dashboard
+## Dashboard and acknowledgement
 
 Listed in docs/project/future.md. `--oracle` is a loopback chat, not
 a page history. There is no ack path at all today: no reply

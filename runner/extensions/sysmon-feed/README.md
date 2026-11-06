@@ -66,6 +66,8 @@ contract yet, and no README line claims them.
 | `log_paths` | `["/var/log/syslog", "/var/log/messages"]` | The Sysmon event text files to tail — the Linux syslog/journal export on Linux; on Windows, point it at the file the owner's export schedule refreshes |
 | `poll_interval_sec` | 60 | The cadence to run the pass on (advisory; the runner never runs sense code); the cost knob (see Light mode) |
 
+## Running
+
 Run one pass:
 
 ```bash

@@ -73,7 +73,7 @@ modules (runner/ops/windows.py and runner/ops/winlog.py).
 Dropping 1 platform would trim that thin layer only; the
 rest of the set does not know which platform it is on.
 
-## What the first passes found
+## What the passes found and pinned
 
 One shape of crash, over and over: a value used as a dict key
 before anyone checked it was a string.

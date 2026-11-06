@@ -45,6 +45,8 @@ installer configures (the `log_paths` tunable, default
 | `poll_interval_sec` | 60 | The cadence to run the pass on (advisory; the runner never runs sense code); there is little point polling faster than the pack's query schedule |
 | `filed_cap` | 10000 | Bound on remembered filed episodes; the oldest entries are evicted first |
 
+## Running
+
 Run one pass:
 
 ```bash

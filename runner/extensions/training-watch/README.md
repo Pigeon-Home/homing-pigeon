@@ -78,6 +78,8 @@ source reports nothing, which never yields a signal and
 is never an error; the log and checkpoint halves of the
 sense work unchanged.
 
+## Running it
+
 Footprint: this is a standard-library text parser plus a
 directory listing, run as a poll — there is no resident
 process, no daemon, and no model anywhere in it. A pass

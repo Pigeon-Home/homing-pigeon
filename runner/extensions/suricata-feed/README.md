@@ -67,6 +67,8 @@ Suricata saw, not a paraphrase of it.
 | `poll_interval_sec` | `60` | The cadence to run the pass on; advisory, the runner never runs sense code |
 | `episode_cooldown_sec` | `3600` | An episode refiles after this long, and clears after this long quiet; also the anomaly dedup window |
 
+## Running
+
 Run one pass:
 
 ```bash

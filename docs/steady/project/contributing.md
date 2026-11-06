@@ -58,7 +58,7 @@ a public issue — see SECURITY.md.
 
 ---
 
-## Maintainer notes: the `--oracle` flag
+## Maintainer notes
 
 ### Tagging: bump `pyproject.toml` first
 

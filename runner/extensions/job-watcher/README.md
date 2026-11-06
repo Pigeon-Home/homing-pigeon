@@ -62,6 +62,8 @@ dependency of this example and is not installed with it;
 the shipped scorer is the stdlib one, and the seam is the
 whole integration story.
 
+## Running
+
 Run one pass (the runner base dir is read from the
 `runner_base_dir` tunable, or `--runner-dir`):
 

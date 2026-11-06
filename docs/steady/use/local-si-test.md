@@ -29,6 +29,8 @@ runner picks it up, runs it, and emails the result back (to the
 mailbox, or to the job's `reply_to` address if one was set).
 
 
+## The in-process loop
+
 A development loop for the Oracle. You play the cloud SI. The harness
 ensures the local model is up, then each thing you type is an `ask`
 sent through the protocol path. The Oracle answers. Nothing is emailed.

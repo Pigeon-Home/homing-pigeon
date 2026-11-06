@@ -81,6 +81,8 @@ in it, and the state file stays a few lines of JSON. Leave
 `disk_mount` on the one mount that matters and run it as
 often as you like.
 
+## Further reading
+
 The full extension walkthrough — manifest fields, the
 versioning contract, sensor binding, and how to turn this
 example into your own package — is in

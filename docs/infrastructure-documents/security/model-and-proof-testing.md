@@ -44,9 +44,6 @@ at all.
   takes the claim proceeds, and execution is reachable only at
   the end of this order.
 
-A result is fitted to `max_result_bytes` before it is delivered
-(default 5 MiB; a configured 0 means unlimited).
-
 ## Keys and their fences
 
 The owner holds the default key. Additional named keys each carry
@@ -119,6 +116,8 @@ the job's.
   owner's `max_query_budget`, each defaulting to 8. The redaction
   patterns that scan a result are the runner's built-in set plus
   the owner's extras.
+- A result is fitted to `max_result_bytes` before it is delivered
+  (default 5 MiB; a configured 0 means unlimited).
 - Job members named `security`, `confinement`, `workspace_root`,
   `protected_paths`, `max_result_view`, or `sandbox` are read
   nowhere in the runner. They are inert text, not requests the

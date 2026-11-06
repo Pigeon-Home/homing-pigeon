@@ -238,6 +238,8 @@ normally and records a `would_run_as` decision (reason
 `would_run_as_user`).
 The user must exist, or startup fails.
 
+## Secrets, keys, and emergency stop
+
 ### Secret files
 
 Secrets don't have to live in `config.json`. `shared_secret_file`
@@ -246,7 +248,7 @@ each secret from a file at startup (whitespace-stripped). A secret
 given both inline and via file is a startup error, as is a missing or
 empty file. File secrets pass the same entropy gate.
 
-### Multiple secrets
+### Multiple secrets and message verification
 
 `additional_secrets` maps key IDs to further shared secrets
 (PROTOCOL.md section 14). Threat notes:

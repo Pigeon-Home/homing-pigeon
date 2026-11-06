@@ -303,6 +303,8 @@ Platform notes:
 - The sums check uses `sha384sum` on Linux, `shasum -a 384` on
   macOS, and `Get-FileHash -Algorithm SHA384` on Windows.
 
+## send_job.py options, job kinds, and verifying results
+
 `--arg` and `--env KEY=value` are repeatable. `--script-url URL` sends
 the script by link instead (https only; the runner downloads it), and
 `--script-sha384 HEX` pins its hash, checked before anything runs.

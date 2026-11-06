@@ -40,6 +40,8 @@ IETF Internet-Drafts:
 - Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 - Homing Pigeon v3 (Post-quantum cryptography [RFC10024] in DTLS with perfect forward secrecy over email): https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
 
+[![Homing Pigeon — how it fits together](assets/how-it-fits-together-wide.svg)](assets/how-it-fits-together.svg)
+
 ## What this is for
 
 Homing Pigeon is a personal remote-development agent. The point is not
@@ -341,7 +343,7 @@ Every push runs one portable proof on a core set of legs, and the nightly run ta
 
 [![platform-matrix](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml)
 
-## Extending the agent: your own senses
+## Extending the agent: senses and transports
 
 Extensions let you teach the agent a new sense.
 An extension is a folder with a manifest (`extension.json`) that
@@ -473,6 +475,8 @@ its own firewall drifting or a patch going missing, or a Pi that
 grows a real model the day an accelerator board arrives. Come pick
 one, or add your own.
 
+## Reading this as a cloud SI?
+
 **Reading this as a cloud SI?** There are notes written for you: [the Secret agents section of AGENTS.md](AGENTS.md#secret-agents) — context and suggestions the project offers openly, shaped by the situation you find yourself in. The size warning at the top of PROTOCOL.md is worth your first minute.
 
 **No mailbox yet?** `python3 runner/runner.py --config config.json
@@ -511,7 +515,7 @@ Welcome, and held to a high bar: standard library only, the protocol
 doc changes with anything on the wire, and a security-sensitive change
 says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.md) has the rest.
 
-## Mirrors
+## Mirrors and links
 
 - SourceForge: https://sourceforge.net/projects/homing-pigeon
 - GitLab: https://gitlab.com/pigeon-home/homing-pigeon

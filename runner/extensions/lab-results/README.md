@@ -48,6 +48,8 @@ lab is done with them. Experiments land on human timescales,
 so run the pass on a slow timer; a result noticed minutes
 late is noticed in plenty of time.
 
+## Further reading
+
 The full extension walkthrough — manifest fields, the
 versioning contract, sensor binding, and how to turn this
 example into your own package — is in

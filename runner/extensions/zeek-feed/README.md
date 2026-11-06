@@ -49,6 +49,8 @@ the `allowlist` tunable (exact addresses or CIDR networks).
 | `allowlist` | `[]` | Addresses or CIDR networks never counted as external peers |
 | `seen_peers_cap` | 10000 | Bound on remembered peers (and filed DNS pairs); the oldest entries are evicted first |
 
+## Running
+
 Run one pass:
 
 ```bash

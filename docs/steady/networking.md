@@ -73,7 +73,7 @@ Enforcement never rides the sense path. Senses file alerts;
 the runner enforces; the Oracle fuses and decides. That split
 is load-bearing — see `docs/extend/senses.md` ("why this shape").
 
-## What the picture still lacks
+## What ships and what the picture still lacks
 
 What ships and what does not, item by item; the unbuilt ones that are
 planned are in docs/FUTURE.md.
