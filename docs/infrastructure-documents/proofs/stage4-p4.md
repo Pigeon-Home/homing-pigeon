@@ -293,6 +293,17 @@ One construction-side observation is recorded, in the open:
   absent, near-miss spellings of the fences are named, and
   an entry using only recognised fields builds exactly as
   before and names nothing.
+  Superseded in part (2026-11-06, Q129): the field is
+  still named, but in a refusal, not a warning. Key
+  policies are in Decision 1's refuse class -- a wrong
+  value changes what the box will execute -- so the
+  builder now raises on an unrecognised field, in the
+  same config-error shape as a malformed known field,
+  and the startup refuses. A warning left the key
+  running with whatever fence the typo had removed.
+  The pins named above were updated to the refusal in
+  the same landing; the 1-Nov-2026 disposition text
+  stands as the record of what it replaced.
 
 ## What this does not say
 

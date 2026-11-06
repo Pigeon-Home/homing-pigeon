@@ -210,6 +210,17 @@ POLICY_BAD = [
     ("max_args", -1),
     ("args_pattern", "("),
 ]
+# An unrecognised key_policies field refuses too (Q129,
+# 2026-11-06): the field is not a malformed value of a known
+# field but a name the builder does not know at all, and
+# warn-and-drop left the key with a smaller policy than the
+# file appeared to set -- possibly none of the fence the
+# operator wrote.
+REFUSE_MAIN.append((
+    "key_policies_unknown_field",
+    {"key_policies": {"k": {"allowed_kind": ["exec"]}}},
+    ["key_policies", "allowed_kind"]))
+
 for _field, _bad in POLICY_BAD:
     REFUSE_MAIN.append((
         "key_policies_%s" % _field,

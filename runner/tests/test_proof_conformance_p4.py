@@ -423,37 +423,38 @@ class MalformedPolicyTest(unittest.TestCase):
     def test_file_urls_as_a_non_boolean(self):
         self._bad({"allow_file_urls": "yes"})
 
-    def test_an_unknown_field_is_named_not_silent(self):
-        # Findings disposition -- stage 4 P4 finding F1 is
-        # FIXED. The builder used to carry only the fields it
-        # knows and say nothing about the rest, so a
-        # misspelled fence was silently absent from the built
-        # policy. The unknown field is still not in the built
-        # policy -- the builder cannot invent its meaning --
-        # but it is now named, in the log and on the builder's
-        # warnings list, every time the policy is built.
-        built = V.build_key_policies(
-            {"key_policies": {"k": {"allowed_kind": ["exec"]}}})
-        self.assertEqual(built["k"], {})
-        notes = V.build_key_policies.last_warnings
-        self.assertTrue(any("allowed_kind" in note
-                            and "'k'" in note for note in notes),
-                        notes)
+    def test_an_unknown_field_refuses_the_build(self):
+        # Findings disposition -- stage 4 P4 finding F1 was
+        # first closed by naming the unknown field (the
+        # 1-Nov-2026 disposition: the field stayed out of the
+        # built policy but was named in the log and on the
+        # builder's warnings list). That disposition was
+        # reversed on 2026-11-06 (Q129): key policies are in
+        # Decision 1's refuse class -- a wrong value changes
+        # what the box will execute -- so an unrecognised
+        # field now refuses the build, naming the key and
+        # the field. A warning left the key running with
+        # whatever fence the typo had removed.
+        with self.assertRaises(RuntimeError) as caught:
+            V.build_key_policies(
+                {"key_policies": {"k": {"allowed_kind": ["exec"]}}})
+        self.assertIn("allowed_kind", str(caught.exception))
+        self.assertIn("'k'", str(caught.exception))
 
-    def test_near_miss_spellings_of_the_fences_are_named(self):
+    def test_near_miss_spellings_of_the_fences_refuse(self):
         # The F1 shape, varied over the fences an owner is
-        # most likely to misspell: each near-miss name must
-        # be named rather than silently dropped.
+        # most likely to misspell: each near-miss name refuses
+        # the build, naming the field, rather than dropping
+        # out of the built policy.
         for field in ("allowed_kind", "allowed_interpreter",
                       "allowed_script_sha", "max_timeout",
                       "allowed_recipe", "allowed_file",
                       "allow_dangerous_environments"):
             with self.subTest(field=field):
-                V.build_key_policies(
-                    {"key_policies": {"k": {field: ["exec"]}}})
-                self.assertTrue(any(
-                    field in note for note in
-                    V.build_key_policies.last_warnings))
+                with self.assertRaises(RuntimeError) as caught:
+                    V.build_key_policies(
+                        {"key_policies": {"k": {field: ["exec"]}}})
+                self.assertIn(field, str(caught.exception))
 
     def test_recognised_fields_build_quietly(self):
         # The naming is over names the builder does not know:

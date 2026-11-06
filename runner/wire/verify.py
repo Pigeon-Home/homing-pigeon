@@ -50,8 +50,8 @@ except ImportError:
     from guard import confval as _confval  # type: ignore
 
 # Fields build_key_policies understands. Anything else in a policy
-# object is a typo: it used to vanish, and the key ran with a
-# smaller policy than the file appeared to set.
+# object is a typo and refuses the build (Q129): a dropped fence
+# leaves the key with less policy than the file appeared to set.
 _POLICY_FIELDS = frozenset({
     "allowed_kinds", "allowed_interpreters", "max_timeout_sec",
     "allowed_recipes", "allowed_script_sha384", "allowed_env",
@@ -640,10 +640,10 @@ def _build_key_policies(cfg) -> dict:
                     "may backtrack catastrophically on hostile input")
             clean["args_pattern"] = pattern
         unknown = [field for field in pol if field not in _POLICY_FIELDS]
-        for field in sorted(unknown):
-            _policy_warn(
-                "config: key_policies[%r] field %r is not a policy "
-                "field and is not in the built policy" % (kid, field))
+        if unknown:
+            raise RuntimeError(
+                f"config error: key_policies[{kid!r}] field "
+                f"{sorted(unknown)[0]!r} is not a policy field")
         policies[kid] = clean
     # One key, one entry (Q94): a key's names -- the default key's
     # empty id and fingerprint, an additional name over the same
@@ -668,12 +668,12 @@ class _KeyPolicyBuilder:
     """The public build_key_policies, as a callable object.
 
     It carries last_warnings, the warnings its most recent call
-    collected: an unrecognised policy field is named in the log and
-    recorded there (the P4 contract), so a caller can read the list
-    back after building. The list lives on an object with the field
-    declared, not on a plain function, so its existence is part of
-    the stated shape; calling the builder runs _build_key_policies,
-    which resets the list at the same point it always has.
+    collected. An unrecognised policy field is not a warning but
+    a refusal (Q129) -- a fence dropped quietly is a fence the
+    key no longer has. The list lives on an object with the field
+    declared, so its existence is part of the stated shape;
+    calling the builder runs _build_key_policies, which resets
+    the list at the same point it always has.
     """
 
     last_warnings: list[str]

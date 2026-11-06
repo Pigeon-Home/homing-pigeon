@@ -43,6 +43,51 @@ Rules:
 
 ---
 
+## Q129 (Muse, to the desk, 2026-11-06): an unrecognised key_policies field warned and dropped; key policies are in the refuse class, so it now refuses the build
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+`_build_key_policies` (`runner/wire/verify.py`) builds each key's
+policy from the fields it recognises. Every known field's
+malformed value raises a RuntimeError -- the startup refusal --
+but a field name the builder does not recognise at all was
+warned about and dropped: the probe
+`build_key_policies({"key_policies": {"k": {"allowed_kind":
+["exec"]}}})` returned `{'k': {}}` with one warning, so a key the
+operator meant to fence to exec-only ran UNRESTRICTED, and the
+only trace was a warning line. That warn-and-drop shape was the
+1-Nov-2026 disposition of stage 4 P4 finding F1 ("fixed" by
+naming-not-refusing), pinned by `runner/tests/
+test_live_findings.py` and `runner/tests/
+test_proof_conformance_p4.py`.
+
+Options: (a) uphold the stage-4 disposition -- naming suffices,
+because the builder cannot invent the field's meaning.
+(b) Refuse: an unrecognised field raises at the build, in the
+same config-error shape as a malformed known field, naming the
+key and the field, so the startup refuses until the config is
+fixed. Decision 1 puts key policies in the refuse class -- a
+wrong value changes what the box will execute -- and a dropped
+fence is exactly that: naming it does not restore the fence,
+and the runner otherwise enforces the smaller built policy
+exactly as if it were the one written.
+
+**Answer (the conductor, 2026-11-06):** (b). The disposition of
+F1 is reversed: an unrecognised `key_policies` field refuses
+startup. The stage4-p4 record carries the reversal as a
+supersession note; its 1-Nov-2026 text stands as the record of
+the disposition it replaced.
+
+**Applied in:** this landing — `runner/wire/verify.py`
+(the unknown-field warning loop is now a raise; the
+`last_warnings` machinery stays for its other callers),
+`runner/tests/test_live_findings.py` and `runner/tests/
+test_proof_conformance_p4.py` (the F1 pins moved from named
+to refused), `runner/tests/test_decision1_startup.py` (one
+generated startup test: exit 2 through main() itself, the
+field named on stderr), `docs/infrastructure-documents/
+proofs/stage4-p4.md` (the supersession note on F1).
+
 ## Q128 (Muse, to the desk, 2026-11-06): two temp-reap repairs observed through channels weaker than the ones Q127 set
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
