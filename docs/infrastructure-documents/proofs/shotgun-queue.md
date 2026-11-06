@@ -1513,7 +1513,42 @@ Applied to every item on this queue, item 1 included:
   replay work (items 51–52). Verify the exact fix commits on pickup
   before writing tests.
 - Target: up to 50 new tests
-- Status: queued (verify first)
+- Status: done — verified first, then 50 new tests
+  (QueryTargetCrashShotgunTest in test_query_streams.py, the
+  file where the fixes' own tests live). Verification mapping,
+  traced in the git record and the questions file: Q90 (grow
+  12) and Q91 (grow 13, the same tail shape) were fixed in
+  f7698710, with 89262c09 scoping the text-or-nothing rule to
+  the query path; Q92 (grow 14) is that same tail shape plus
+  the answer_queries OverflowError on a repetition count the
+  engine cannot hold, also fixed in f7698710; Q93 (grow 15)
+  is three Q90 shapes plus the unpaired-surrogate raise in
+  handle_query_mail, fixed in 721060ab. No Q-number was left
+  ungrounded, so no mapping had to be invented. The family
+  pins the crash shapes themselves — non-text streams under
+  every op, repetition counts at and past the engine's bound,
+  surrogate escapes at every position, and the handler taking
+  each such record without raising — deliberately distinct
+  from items 51 and 52. The family runs green (50 tests,
+  0 skipped), no live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  (the record's stdout and stderr fields, the grep pattern
+  and max_matches fields, the tail lines field, the queries
+  list and budget fields, and the surrogate positions) and
+  the bookend / run-length sweeps are carried in the class
+  docstring in the repo. One harness note, also in the
+  docstring's class: the class widens the grep worker's
+  deadline while it runs (the worker's boot on a busy box
+  reads as a timeout; the family pins grep's answers, not
+  its deadline, whose own pins live in the pattern-bound
+  tests) and restores it afterwards. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target query
+  --rounds 400 --seed 20261154, run locally against the banked
+  query corpus (167 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs 870 -> 903 (3 entries kept by the grow),
+  slowest try 19208 ms. The grow's bookkeeping writes were
+  reverted and are not banked (banking is the rigs' hourly
+  job).
 
 ### 54. Q95: the grow walker died with RecursionError in _paths; depth was mis-measured
 - Fixed: 33547a42 (27-Oct-2026) — harness defect found by
