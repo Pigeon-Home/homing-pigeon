@@ -225,6 +225,12 @@ class KeyedVerificationProperties(unittest.TestCase):
         assume(kid != "")
         p = dict(payload)
         p["key_id"] = kid
+        # The sig slot is the signing layer's own: sign_payload
+        # writes it and verify_body_keyed returns the envelope
+        # signature in it, so a generated payload's own "sig"
+        # entry is not the caller's to round-trip (the same
+        # treatment this file gives key_id, set just above).
+        p.pop("sig", None)
         body = sign_payload(p, secret)
         out, out_kid = verify_body_keyed(
             body, {"": default_secret, kid: secret})
