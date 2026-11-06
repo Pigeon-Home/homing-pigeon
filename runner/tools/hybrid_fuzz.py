@@ -42,6 +42,30 @@ Targets and their contracts:
 - The RFC 10024 geometry: this group's shares rebuilt at
   the other groups' fixed sizes, and its parts in the
   RFC 9954 order, must be refused.
+- Duplicate and competing key_share entries: entry lists
+  built field by field (groups known, unknown and foreign;
+  keys genuine, mis-sized and junk; duplicates in both
+  orders) against the parser and the responder's selection.
+  The parser returns the entries in wire order or raises
+  DtlsError only; selection keeps the first entry per
+  group, so with an honest list the refusal is already
+  determined: a first hybrid entry of the wrong size, an
+  unparsable list, or no selectable group is
+  illegal_parameter, and anything selection accepts is
+  refused later in begin (here, for the missing
+  pre_shared_key extension) — never a raise.
+- The version 3 carriage framing: raw flight mails with
+  mutated frame fields, and FlightParts with mutated
+  fields against the reassembler. parse_message classifies
+  into its documented kinds only and never raises; the
+  reassembler returns a datagram only when its length and
+  SHA-384 match the declared header, and never holds more
+  than max_transfers transfers.
+- Handshake fragment reassembly: fragments with mutated
+  header fields against _FragmentBuffer. offer never
+  raises, returns a whole message of exactly the claimed
+  shape or None, and holds nothing past the buffer's
+  bounds (a 256 KB total, 64 pending keys).
 
 Modes. --mode real runs the targets against the production
 cryptography. --mode abstract swaps the ML-KEM operations
@@ -85,7 +109,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
-from runner.wire import dtlsproto, mlkem  # noqa: E402
+from runner.wire import dtls_mailbox, dtlsproto, mlkem  # noqa: E402
 
 SECRET = "hybrid-fuzz"
 ADDR = ("127.0.0.1", 50001)
@@ -371,6 +395,9 @@ class Targets:
         self._hello = None
         self._sh_raw = None
         self._sh_fields = None
+        self._frag_buf = dtlsproto._FragmentBuffer()
+        self._mail_single = None
+        self._mail_parts = None
         # The RFC 10024 geometry seeds: this group's genuine
         # shares rebuilt at the OTHER groups' fixed sizes,
         # and this group's genuine parts laid out in the
@@ -755,13 +782,309 @@ class Targets:
         if not isinstance(out, list):
             raise Finding("server feed returned a non-list")
 
+    # -- Duplicate and competing key_share entries -------------
+
+    def _ks_serialize(self, entries):
+        body = b"".join(
+            g.to_bytes(2, "big") + len(k).to_bytes(2, "big") + k
+            for g, k in entries)
+        return len(body).to_bytes(2, "big") + body
+
+    def _ks_begin_code(self, value):
+        """The alert code begin() refuses a hello carrying
+        this key_share value with (the pre_shared_key
+        extension deliberately absent, so a hello selection
+        accepts is refused for that instead), or a Finding."""
+        core = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(SECRET),
+            hybrid=True)
+        session = dtlsproto._ServerSession(core, ADDR)
+        exts = {
+            dtlsproto.EXT_PSK_MODES: bytes(
+                [1, dtlsproto.PSK_MODE_DHE_KE]),
+            dtlsproto.EXT_KEY_SHARE: value,
+        }
+        try:
+            out = session.begin(
+                b"x" * 80,
+                {"suites": [dtlsproto.SUITE_AES256], "exts": exts},
+                b"\x11" * dtlsproto.HASH_LEN, b"hrr", NOW)
+        except Exception as exc:  # noqa: BLE001
+            raise Finding(
+                "begin raised on a key_share entry list: "
+                + repr(exc)) from exc
+        if len(out) != 1 or not out[0] \
+                or out[0][0] != dtlsproto.CT_ALERT:
+            raise Finding("begin did not refuse with one alert")
+        return out[0][14]
+
+    def t_keyshare_entries(self, rng):
+        genuine = self._ks_serialize([
+            (dtlsproto.GROUP_X25519MLKEM768, self.h_client_share),
+            (dtlsproto.GROUP_X25519, ALICE_PUB)])
+        kind = rng.randrange(3)
+        if kind in (1, 2):
+            # Byte mutations and bookend wraps of the genuine
+            # value: the discipline is the contract -- the
+            # parser raises DtlsError only, and begin refuses
+            # with one alert and never raises.
+            if kind == 1:
+                value = mutate(genuine, rng)
+            else:
+                value = rng.choice(
+                    [v for _label, v in bookend_variants(genuine)])
+            try:
+                dtlsproto._key_share_entries(value)
+            except dtlsproto.DtlsError:
+                pass
+            except Exception as exc:  # noqa: BLE001
+                raise Finding(
+                    "key_share parse raised a foreign "
+                    "exception: " + repr(exc)) from exc
+            self._ks_begin_code(value)
+            return
+        # Structured entry lists, honestly serialized, so
+        # selection's outcome is determined and checkable.
+        groups = (dtlsproto.GROUP_X25519MLKEM768,
+                  dtlsproto.GROUP_X25519, 4587, 4589,
+                  25497, 25498, 0, 65535)
+        entries = []
+        for _ in range(rng.randrange(0, 5)):
+            group = rng.choice(groups)
+            if group == dtlsproto.GROUP_X25519MLKEM768:
+                key = rng.choice((
+                    self.h_client_share,
+                    self.h_client_share[:-1],
+                    self.h_client_share + b"\x00",
+                    bytes(dtlsproto.HYBRID_CLIENT_SHARE_BYTES),
+                    bytes(rng.randrange(0, 64)), b""))
+            elif group == dtlsproto.GROUP_X25519:
+                key = rng.choice((
+                    ALICE_PUB, ALICE_PUB[:-1], bytes(32), b""))
+            else:
+                key = bytes(rng.randrange(256)
+                            for _ in range(rng.randrange(0, 40)))
+            entries.append((group, key))
+        value = self._ks_serialize(entries)
+        try:
+            parsed = dtlsproto._key_share_entries(value)
+        except dtlsproto.DtlsError:
+            code = self._ks_begin_code(value)
+            if code != dtlsproto.ALERT_ILLEGAL_PARAMETER:
+                raise Finding(
+                    "an unparsable key_share list was refused "
+                    "with %d, not illegal_parameter" % code)
+            return
+        if parsed != entries:
+            raise Finding(
+                "key_share parse did not return the entries "
+                "in wire order")
+        code = self._ks_begin_code(value)
+        first_hybrid = next(
+            (k for g, k in entries
+             if g == dtlsproto.GROUP_X25519MLKEM768), None)
+        if first_hybrid is not None:
+            want = dtlsproto.ALERT_MISSING_EXTENSION \
+                if len(first_hybrid) == \
+                dtlsproto.HYBRID_CLIENT_SHARE_BYTES \
+                else dtlsproto.ALERT_ILLEGAL_PARAMETER
+        elif any(g == dtlsproto.GROUP_X25519 for g, _k in entries):
+            want = dtlsproto.ALERT_MISSING_EXTENSION
+        else:
+            want = dtlsproto.ALERT_ILLEGAL_PARAMETER
+        if code != want:
+            raise Finding(
+                "key_share selection refused with %d, want %d "
+                "for groups %s" % (
+                    code, want, [g for g, _k in entries]))
+
+    # -- The version 3 carriage framing -------------------------
+
+    def _genuine_mail(self):
+        if self._mail_single is None:
+            if self._hello is None:
+                client = dtlsproto.DtlsClientCore(
+                    SECRET, hybrid=True)
+                self._hello = client.start(NOW)[0]
+            sid = "fuzz-session-1"
+            self._mail_single = dtls_mailbox.encode_flight(
+                self._hello, sid)[0]
+            self._mail_parts = dtls_mailbox.encode_flight(
+                self._hello, sid, max_chunk_chars=96)
+        return self._mail_single, self._mail_parts
+
+    def _classify(self, subject, body):
+        try:
+            out = dtls_mailbox.parse_message(_raw_mail(subject,
+                                                       body))
+        except Exception as exc:  # noqa: BLE001
+            raise Finding(
+                "parse_message raised: " + repr(exc)) from exc
+        if out.kind not in MAIL_KINDS:
+            raise Finding(
+                "parse_message returned kind %r" % (out.kind,))
+        return out
+
+    def t_mailbox_frames(self, rng):
+        (_subj, body), parts = self._genuine_mail()
+        kind = rng.randrange(4)
+        if kind == 0:
+            subject, raw_body = rng.choice(parts)
+            text = mutate(raw_body.encode("ascii"), rng)
+            self._classify(subject, text.decode("ascii",
+                                                "replace"))
+            return
+        if kind == 1:
+            subject = mutate(_subj.encode("ascii"), rng)
+            self._classify(subject.decode("ascii", "replace"),
+                           body)
+            return
+        if kind == 2:
+            # One header field of a genuine single-part frame
+            # rebuilt from a pool of edge values.
+            head, _nl, chunk = body.partition("\n")
+            match = dtls_mailbox._HEADER_RE.match(head)
+            transfer, part, count, total, digest = match.groups()
+            field = rng.randrange(5)
+            if field == 0:
+                transfer = rng.choice((
+                    "0" * 16, "g" * 16, "A" * 16, "0" * 15,
+                    "0" * 17, transfer))
+            elif field == 1:
+                part = rng.choice((
+                    "0", "1", "2", "999", "-1", "x", part))
+            elif field == 2:
+                count = rng.choice((
+                    "0", "1", "2", "1024", "1025", "99999",
+                    count))
+            elif field == 3:
+                total = rng.choice((
+                    "0", "1", "100", "262144", "262145",
+                    "999999999", total))
+            else:
+                digest = rng.choice((
+                    "0" * 96, "0" * 95, "z" * 96,
+                    ("1" if digest[0] == "0" else "0")
+                    + digest[1:], digest))
+            head = ("HP-DTLS/3 transfer=%s part=%s parts=%s "
+                    "bytes=%s sha384=%s"
+                    % (transfer, part, count, total, digest))
+            if rng.random() < 0.3:
+                chunk = rng.choice((
+                    "!!!", "====", "", chunk + "-", chunk))
+            self._classify(_subj, head + "\n" + chunk)
+            return
+        # Reassembler: genuine parts, mutated fields, offered
+        # shuffled and sometimes twice. A completion must be
+        # the datagram its declared digest names.
+        datagram = bytes(rng.randrange(256) for _ in range(200))
+        digest = hashlib.sha384(datagram).hexdigest()
+        chunks = (datagram[:80], datagram[80:150], datagram[150:])
+        base = [dtls_mailbox.FlightPart(
+            "fuzz-session-1", "aa" * 8, i, 3, len(datagram),
+            digest, chunk) for i, chunk in enumerate(chunks)]
+        reasm = dtls_mailbox.FlightReassembler()
+        offers = list(base)
+        rng.shuffle(offers)
+        for part in offers:
+            if rng.random() < 0.4:
+                # Mutations stay inside the type discipline
+                # the frame parser produces: integers for the
+                # numeric fields, text for the digest.
+                field = rng.choice((
+                    "index", "count", "total_bytes", "sha384"))
+                if field == "sha384":
+                    value = rng.choice(("0" * 96, digest))
+                else:
+                    value = rng.choice((0, 1, 3, 200, 262145))
+                part = part._replace(**{field: value})
+            try:
+                out = reasm.offer(part, NOW)
+            except Exception as exc:  # noqa: BLE001
+                raise Finding(
+                    "reassembler raised: " + repr(exc)) from exc
+            if out is not None and out != datagram:
+                raise Finding(
+                    "reassembler completed a datagram its "
+                    "digest does not name")
+            if reasm.pending > reasm.max_transfers:
+                raise Finding("reassembler holds too much")
+
+    # -- Handshake fragment reassembly ---------------------------
+
+    def t_fragment_buffer(self, rng):
+        cap = dtlsproto._FragmentBuffer.MAX_TOTAL_BYTES
+        buf = self._frag_buf if rng.random() < 0.5 \
+            else dtlsproto._FragmentBuffer()
+        if rng.randrange(4) == 0:
+            # Positive control: a known body in 3 fragments,
+            # shuffled, completes exactly on a fresh buffer.
+            fresh = dtlsproto._FragmentBuffer()
+            body = bytes(rng.randrange(256) for _ in range(60))
+            frags = [(0, body[:20]), (20, body[20:45]),
+                     (45, body[45:])]
+            rng.shuffle(frags)
+            whole = None
+            for off, frag in frags:
+                whole = fresh.offer(2, 9, off, frag, len(body))
+            if whole != dtlsproto._hs_message(2, body, 9):
+                raise Finding(
+                    "fragment control: reassembly disagrees")
+            return
+        total = rng.choice((
+            0, 1, 16, 100, cap - 1, cap, cap + 1, 1_000_000,
+            16_777_215, rng.randrange(0, 2048)))
+        off = rng.choice((
+            0, total // 2, max(total - 1, 0), total, total + 1,
+            rng.randrange(0, 64)))
+        frag = rng.choice((
+            b"", b"A", bytes(rng.randrange(256)
+                             for _ in range(rng.randrange(0, 48)))))
+        msg_type = rng.choice((0, 1, 2, 4, 20, 255))
+        msg_seq = rng.randrange(0, 4)
+        try:
+            whole = buf.offer(msg_type, msg_seq, off, frag, total)
+        except Exception as exc:  # noqa: BLE001
+            raise Finding(
+                "fragment offer raised: " + repr(exc)) from exc
+        if whole is not None:
+            if whole[0] != msg_type \
+                    or int.from_bytes(whole[1:4], "big") != total \
+                    or int.from_bytes(whole[4:6], "big") != msg_seq \
+                    or len(whole) != 12 + total:
+                raise Finding(
+                    "fragment offer completed a mis-shaped "
+                    "message")
+        if len(buf._pending) > \
+                dtlsproto._FragmentBuffer.MAX_PENDING:
+            raise Finding("fragment buffer holds too many keys")
+        for entry in buf._pending.values():
+            if len(entry[0]) > cap:
+                raise Finding(
+                    "fragment buffer holds an over-cap buffer")
+
     def run(self, name, rng):
         getattr(self, "t_" + name)(rng)
 
 
 TARGET_NAMES = ("decaps", "encaps", "key_checks", "keygen",
                 "client_shared", "server_answer", "server_feed",
-                "geometry", "client_feed")
+                "geometry", "client_feed", "keyshare_entries",
+                "mailbox_frames", "fragment_buffer")
+
+MAIL_KINDS = frozenset((
+    "dtls-init", "dtls", "dtls-part", "dtls-invalid", "job",
+    "other"))
+
+
+def _raw_mail(subject, body):
+    """One raw RFC822 message carrying a flight frame in its
+    text body, built by hand so a mutated subject (line
+    breaks included) lands exactly as written."""
+    head = ("Subject: " + subject + "\nFrom: si@example.com\n"
+            "To: runner@example.com\n"
+            "Content-Type: text/plain; charset=utf-8\n\n")
+    return (head + body).encode("utf-8", "replace")
 
 
 # ------------------------------------------------------------------
@@ -780,11 +1103,12 @@ def _mem_avail_mb():
 
 
 def run(mode, duration_s, rounds_cap, seed, emit,
-        findings_path=None):
+        findings_path=None, targets=None):
     ops = RealOps if mode == "real" else AbstractOps
     acvp = acvp_vectors()
     rng = random.Random(seed)
     findings = []
+    rotation = tuple(targets) if targets else TARGET_NAMES
 
     def record_finding(target, exc):
         findings.append((target, repr(exc)))
@@ -833,7 +1157,7 @@ def run(mode, duration_s, rounds_cap, seed, emit,
                 "control: RFC 10024 geometry disagrees with "
                 "the code's constants")
         emit("hybrid-fuzz start mode=%s seed=%d targets=%s"
-             % (mode, seed, ",".join(TARGET_NAMES)))
+             % (mode, seed, ",".join(rotation)))
         started = time.time()
         rounds = 0
         while True:
@@ -841,7 +1165,7 @@ def run(mode, duration_s, rounds_cap, seed, emit,
                 break
             if duration_s and time.time() - started >= duration_s:
                 break
-            name = rng.choice(TARGET_NAMES)
+            name = rng.choice(rotation)
             try:
                 targets.run(name, rng)
             except Finding as exc:
@@ -875,9 +1199,20 @@ def main(argv=None):
     parser.add_argument("--rounds", type=int, default=0,
                         help="round cap (0 = no cap)")
     parser.add_argument("--seed", type=int, default=10024)
+    parser.add_argument("--targets", default=None,
+                        help="comma-separated subset of the "
+                             "targets to rotate (default: all)")
     parser.add_argument("--log", default=None,
                         help="append verdict lines to this file")
     args = parser.parse_args(argv)
+    targets = None
+    if args.targets:
+        targets = tuple(t.strip() for t in args.targets.split(",")
+                        if t.strip())
+        unknown = [t for t in targets if t not in TARGET_NAMES]
+        if unknown:
+            parser.error("unknown target(s): %s"
+                         % ",".join(unknown))
 
     log_fh = open(args.log, "a", encoding="utf-8") \
         if args.log else None
@@ -892,7 +1227,7 @@ def main(argv=None):
     try:
         code, _rounds, _findings = run(
             args.mode, args.duration, args.rounds, args.seed,
-            emit, findings_path)
+            emit, findings_path, targets)
     finally:
         if log_fh:
             log_fh.close()

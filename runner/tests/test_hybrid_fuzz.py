@@ -653,6 +653,614 @@ def _begin_code(entries, hybrid=True):
     return _begin_code_value(_share_value(entries), hybrid)
 
 
+class KeyShareEntriesFamilyTest(unittest.TestCase):
+    """Family 1: duplicate and competing key_share entries
+    (campaign record, supposition SD1). The parser returns
+    every entry in wire order; begin keeps the FIRST entry
+    per group (setdefault); selection prefers the hybrid
+    group when the profile is on and it was offered, falls
+    back to X25519, and refuses anything else. Each field
+    of the extension value -- the list's total length, each
+    entry's group, each entry's key length, the key bytes --
+    has its own tests below, at the parse level, at the
+    selection level, and through a full server feed with
+    the crafted list spliced into a genuine hello."""
+
+    G = dtlsproto.GROUP_X25519MLKEM768
+    X = dtlsproto.GROUP_X25519
+    ILLEGAL = dtlsproto.ALERT_ILLEGAL_PARAMETER
+    MISSING = dtlsproto.ALERT_MISSING_EXTENSION
+
+    @classmethod
+    def setUpClass(cls):
+        (cls.client_share, _ss, _secret, _dk) = hf.hybrid_vector(
+            hf.acvp_vectors())
+
+    # -- the list total field (parse level) --------------------
+
+    def test_parse_returns_entries_in_wire_order(self):
+        entries = [(self.G, self.client_share),
+                   (self.X, hf.ALICE_PUB),
+                   (self.G, b"\x07" * 32)]
+        self.assertEqual(
+            dtlsproto._key_share_entries(_share_value(entries)),
+            entries)
+
+    def test_parse_total_field_lies(self):
+        good = _share_value([(self.X, hf.ALICE_PUB)])
+        body = good[2:]
+        for value in (
+                (len(body) - 1).to_bytes(2, "big") + body,
+                (len(body) + 1).to_bytes(2, "big") + body,
+                (0).to_bytes(2, "big") + body,
+                (65535).to_bytes(2, "big") + body):
+            with self.assertRaises(dtlsproto.DtlsError):
+                dtlsproto._key_share_entries(value)
+
+    def test_parse_empty_and_short_values(self):
+        for value in (b"", b"\x00", b"\x00\x00"):
+            with self.assertRaises(dtlsproto.DtlsError):
+                dtlsproto._key_share_entries(value)
+
+    def test_parse_trailing_bytes_after_the_last_entry(self):
+        good = _share_value([(self.X, hf.ALICE_PUB)])
+        # One to three trailing bytes cannot start an entry.
+        for extra in (b"\x00", b"\x00\x1d\x00"):
+            value = (len(good) - 2 + len(extra)).to_bytes(
+                2, "big") + good[2:] + extra
+            with self.assertRaises(dtlsproto.DtlsError):
+                dtlsproto._key_share_entries(value)
+        # Four or more are read as another entry.
+        extra = (4587).to_bytes(2, "big") + (3).to_bytes(
+            2, "big") + b"abc"
+        value = (len(good) - 2 + len(extra)).to_bytes(
+            2, "big") + good[2:] + extra
+        parsed = dtlsproto._key_share_entries(value)
+        self.assertEqual(parsed[-1], (4587, b"abc"))
+
+    # -- the group and key-length fields (parse level) ---------
+
+    def test_parse_group_field_values(self):
+        for group in (4588, 29, 4587, 4589, 25497, 25498,
+                      0, 65535):
+            entries = [(group, b"\x01\x02\x03")]
+            self.assertEqual(
+                dtlsproto._key_share_entries(
+                    _share_value(entries)), entries)
+
+    def test_parse_key_length_field(self):
+        # A zero-length key parses; size discipline is
+        # selection's, not the parser's.
+        entries = [(self.G, b"")]
+        self.assertEqual(
+            dtlsproto._key_share_entries(_share_value(entries)),
+            entries)
+        # A key length that overruns the list is refused.
+        body = (self.X).to_bytes(2, "big") + (33).to_bytes(
+            2, "big") + hf.ALICE_PUB
+        value = len(body).to_bytes(2, "big") + body
+        with self.assertRaises(dtlsproto.DtlsError):
+            dtlsproto._key_share_entries(value)
+
+    def test_parse_key_sizes_are_the_parsers_business_not(self):
+        for n in (0, 1, 1215, 1216, 1217):
+            entries = [(self.G, bytes(n))]
+            self.assertEqual(
+                dtlsproto._key_share_entries(
+                    _share_value(entries)), entries)
+
+    def test_parse_bookends_stay_in_discipline(self):
+        good = _share_value([(self.G, self.client_share),
+                             (self.X, hf.ALICE_PUB)])
+        for _label, variant in hf.bookend_variants(good):
+            try:
+                out = dtlsproto._key_share_entries(variant)
+            except dtlsproto.DtlsError:
+                continue
+            self.assertIsInstance(out, list)
+
+    def test_server_form_parse_takes_the_single_entry(self):
+        value = (self.G).to_bytes(2, "big") + (4).to_bytes(
+            2, "big") + b"key!" + b"trailing is not an entry"
+        self.assertEqual(
+            dtlsproto._key_share_entries(value, server_form=True),
+            [(self.G, b"key!")])
+        with self.assertRaises(dtlsproto.DtlsError):
+            dtlsproto._key_share_entries(
+                b"\x00\x1d\x00", server_form=True)
+
+    # -- selection (begin level) --------------------------------
+
+    def test_first_valid_hybrid_wins_over_a_garbage_duplicate(self):
+        code = _begin_code([(self.G, self.client_share),
+                            (self.G, b"\xff" * 32)])
+        self.assertEqual(code, self.MISSING)
+
+    def test_first_missized_hybrid_refuses_despite_a_valid_one(self):
+        code = _begin_code([(self.G, b"\xff" * 32),
+                            (self.G, self.client_share)])
+        self.assertEqual(code, self.ILLEGAL)
+
+    def test_duplicate_valid_hybrid_entries_pass_selection(self):
+        code = _begin_code([(self.G, self.client_share),
+                            (self.G, self.client_share)])
+        self.assertEqual(code, self.MISSING)
+
+    def test_unknown_group_first_does_not_shadow_the_hybrid(self):
+        code = _begin_code([(4587, b"\x00" * 1216),
+                            (self.G, self.client_share)])
+        self.assertEqual(code, self.MISSING)
+
+    def test_only_unknown_groups_refuse(self):
+        for entries in ([(4587, b"\x00" * 40)],
+                        [(4589, b"\x00" * 40), (25497, b"\x00")],
+                        [(0, b""), (65535, b"\x00" * 9)]):
+            self.assertEqual(_begin_code(entries), self.ILLEGAL)
+
+    def test_x25519_fallback_when_the_hybrid_is_absent(self):
+        code = _begin_code([(4587, b"\x00" * 40),
+                            (self.X, hf.ALICE_PUB)])
+        self.assertEqual(code, self.MISSING)
+
+    def test_empty_hybrid_key_refuses_at_selection(self):
+        self.assertEqual(
+            _begin_code([(self.G, b"")]), self.ILLEGAL)
+        self.assertEqual(
+            _begin_code([(self.G, self.client_share[:-1])]),
+            self.ILLEGAL)
+        self.assertEqual(
+            _begin_code([(self.G, self.client_share + b"\x00")]),
+            self.ILLEGAL)
+
+    def test_unparsable_values_refuse_illegal_parameter(self):
+        for value in (b"", b"\x00\x00", b"\xff\xff" + b"\x00" * 8):
+            self.assertEqual(
+                _begin_code_value(value), self.ILLEGAL)
+
+    def test_bookended_values_refuse_with_an_alert(self):
+        good = _share_value([(self.G, self.client_share),
+                             (self.X, hf.ALICE_PUB)])
+        for _label, variant in hf.bookend_variants(good):
+            code = _begin_code_value(variant)
+            self.assertIn(code, (self.ILLEGAL, self.MISSING))
+
+    # -- through a full server feed ------------------------------
+
+    def _crafted_feed(self, build):
+        """A genuine client's hello, with its key_share list
+        rebuilt by build(hybrid_key, x25519_key) at exactly
+        the genuine list's length, spliced into both hellos.
+        Selection's refusal (illegal_parameter) precedes the
+        binder check; anything selection accepts meets the
+        binder computed over the unmodified hello and is
+        refused for that (decrypt_error) -- which is what
+        proves selection answered on the crafted list."""
+        client = dtlsproto.DtlsClientCore(hf.SECRET, hybrid=True)
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(hf.SECRET),
+            hybrid=True)
+
+        def splice(datagram):
+            _raw, exts = _ch_exts(datagram)
+            genuine = exts[dtlsproto.EXT_KEY_SHARE]
+            parsed = dtlsproto._key_share_entries(genuine)
+            hyb = next(k for g, k in parsed if g == self.G)
+            x = next(k for g, k in parsed if g == self.X)
+            value = _share_value(build(hyb, x))
+            assert len(value) == len(genuine)
+            at = datagram.find(genuine, 13)
+            assert at > 0
+            return (datagram[:at] + value
+                    + datagram[at + len(genuine):])
+
+        hello1 = splice(client.start(NOW)[0])
+        hrr = server.feed(hello1, ADDR, NOW)
+        self.assertEqual(len(hrr), 1)
+        hello2 = splice(client.feed(hrr[0], NOW)[0])
+        out = server.feed(hello2, ADDR, NOW)
+        self.assertEqual(server.sessions, {})
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0][0], dtlsproto.CT_ALERT)
+        return out[0][14]
+
+    def test_feed_answers_on_the_first_hybrid_entry(self):
+        code = self._crafted_feed(
+            lambda hyb, x: [(self.G, hyb), (self.G, bytes(32))])
+        self.assertEqual(code, dtlsproto.ALERT_DECRYPT_ERROR)
+
+    def test_feed_refuses_a_missized_first_hybrid_entry(self):
+        code = self._crafted_feed(
+            lambda hyb, x: [(self.G, bytes(32)), (self.G, hyb)])
+        self.assertEqual(code, self.ILLEGAL)
+
+    def test_feed_entry_order_does_not_change_selection(self):
+        code = self._crafted_feed(
+            lambda hyb, x: [(self.X, x), (self.G, hyb)])
+        self.assertEqual(code, dtlsproto.ALERT_DECRYPT_ERROR)
+
+    def test_feed_unknown_group_first_still_selects(self):
+        code = self._crafted_feed(
+            lambda hyb, x: [(4587, bytes(1216)), (self.X, x)])
+        self.assertEqual(code, dtlsproto.ALERT_DECRYPT_ERROR)
+
+    def test_feed_garbage_second_entry_for_a_known_group(self):
+        code = self._crafted_feed(
+            lambda hyb, x: [(self.G, hyb), (self.X, bytes(32))])
+        self.assertEqual(code, dtlsproto.ALERT_DECRYPT_ERROR)
+
+    def test_feed_duplicate_x25519_entries(self):
+        code = self._crafted_feed(
+            lambda hyb, x: [(self.X, x), (self.X, bytes(32)),
+                            (4587, bytes(1180))])
+        self.assertEqual(code, dtlsproto.ALERT_DECRYPT_ERROR)
+
+
+class MailboxFramingFamilyTest(unittest.TestCase):
+    """Family 2: the version 3 carriage itself
+    (dtls_mailbox.parse_message and FlightReassembler),
+    field by field (campaign record, supposition SD2): the
+    subject's session id, the frame header's transfer, part,
+    parts, bytes and sha384 fields, the base64 chunk, and
+    each FlightPart field at the reassembler. parse_message
+    never raises and classifies into its documented kinds
+    only; the reassembler completes a datagram only when
+    its length and SHA-384 match the declared header."""
+
+    SID = "family2-session"
+
+    @classmethod
+    def setUpClass(cls):
+        client = dtlsproto.DtlsClientCore(hf.SECRET, hybrid=True)
+        cls.hello = client.start(NOW)[0]
+        cls.subject, cls.body = encode_flight(cls.hello, cls.SID)[0]
+        cls.parts = encode_flight(
+            cls.hello, cls.SID, max_chunk_chars=96)
+        match = dtls_mailbox._HEADER_RE.match(
+            cls.body.partition("\n")[0])
+        cls.fields = match.groups()  # transfer part parts bytes sha
+        cls.chunk = cls.body.partition("\n")[2]
+
+    def _parse(self, subject, body):
+        return parse_message(_raw_mail(subject, body))
+
+    def _with_fields(self, **kw):
+        transfer, part, count, total, digest = self.fields
+        head = ("HP-DTLS/3 transfer=%s part=%s parts=%s "
+                "bytes=%s sha384=%s" % (
+                    kw.get("transfer", transfer),
+                    kw.get("part", part),
+                    kw.get("count", count),
+                    kw.get("total", total),
+                    kw.get("digest", digest)))
+        return head + "\n" + kw.get("chunk", self.chunk)
+
+    # -- the genuine articles ------------------------------------
+
+    def test_genuine_single_part_is_a_dtls_init(self):
+        out = self._parse(self.subject, self.body)
+        self.assertEqual(out.kind, "dtls-init")
+        self.assertEqual(out.datagram, self.hello)
+
+    def test_genuine_parts_reassemble_through_the_parser(self):
+        reasm = dtls_mailbox.FlightReassembler()
+        got = None
+        for subject, body in reversed(self.parts):
+            out = self._parse(subject, body)
+            self.assertEqual(out.kind, "dtls-part")
+            got = reasm.offer(out.part, NOW) or got
+        self.assertEqual(got, self.hello)
+
+    # -- the transfer field ---------------------------------------
+
+    def test_transfer_field_must_be_16_lower_hex(self):
+        for bad in ("g" * 16, "A" * 16, "0" * 15, "0" * 17, ""):
+            out = self._parse(
+                self.subject, self._with_fields(transfer=bad))
+            self.assertEqual(out.kind, "dtls-invalid", bad)
+
+    # -- the part and parts fields ---------------------------------
+
+    def test_part_field_must_name_a_part_that_exists(self):
+        for bad in ("1", "2", "999"):
+            out = self._parse(
+                self.subject, self._with_fields(part=bad))
+            self.assertEqual(out.kind, "dtls-invalid", bad)
+
+    def test_parts_field_bounds(self):
+        for bad in ("0", "1025", "99999"):
+            out = self._parse(
+                self.subject, self._with_fields(count=bad))
+            self.assertEqual(out.kind, "dtls-invalid", bad)
+        out = self._parse(
+            self.subject, self._with_fields(count="1024"))
+        self.assertEqual(out.kind, "dtls-part")
+        out = self._parse(
+            self.subject, self._with_fields(count="2"))
+        self.assertEqual(out.kind, "dtls-part")
+
+    # -- the bytes field --------------------------------------------
+
+    def test_bytes_field_bounds(self):
+        for bad in ("0", "262145", "999999999"):
+            out = self._parse(
+                self.subject, self._with_fields(total=bad))
+            self.assertEqual(out.kind, "dtls-invalid", bad)
+        # Smaller than the chunk it declares: the chunk
+        # exceeds the declared datagram size.
+        out = self._parse(
+            self.subject, self._with_fields(total="10"))
+        self.assertEqual(out.kind, "dtls-invalid")
+        # Larger than the datagram, under the ceiling: a
+        # single part must be exactly the declared size.
+        out = self._parse(
+            self.subject, self._with_fields(total="9999"))
+        self.assertEqual(out.kind, "dtls-invalid")
+
+    # -- the sha384 field ---------------------------------------------
+
+    def test_digest_field_single_part_vs_part_of_many(self):
+        flipped = ("1" if self.fields[4][0] == "0" else "0") \
+            + self.fields[4][1:]
+        out = self._parse(
+            self.subject, self._with_fields(digest=flipped))
+        self.assertEqual(out.kind, "dtls-invalid")
+        # In a multi-part frame the digest is judged at
+        # completion, not at parse: the part is accepted as
+        # a part.
+        subject, body = self.parts[0]
+        head, _nl, chunk = body.partition("\n")
+        m = dtls_mailbox._HEADER_RE.match(head)
+        t, p, c, b, _d = m.groups()
+        head = ("HP-DTLS/3 transfer=%s part=%s parts=%s "
+                "bytes=%s sha384=%s" % (t, p, c, b, flipped))
+        out = self._parse(subject, head + "\n" + chunk)
+        self.assertEqual(out.kind, "dtls-part")
+        for bad in ("0" * 95, "z" * 96):
+            out = self._parse(
+                self.subject, self._with_fields(digest=bad))
+            self.assertEqual(out.kind, "dtls-invalid", bad)
+
+    # -- the chunk field ------------------------------------------------
+
+    def test_chunk_field_must_be_base64_of_the_datagram(self):
+        for bad in ("!!!", "====", ""):
+            out = self._parse(
+                self.subject, self._with_fields(chunk=bad))
+            self.assertEqual(out.kind, "dtls-invalid", bad)
+        # Whitespace inside the chunk is stripped before
+        # decoding (the frame tolerates mailer wrapping).
+        wrapped = self.chunk[:10] + " \n " + self.chunk[10:]
+        out = self._parse(
+            self.subject, self._with_fields(chunk=wrapped))
+        self.assertEqual(out.kind, "dtls-init")
+        self.assertEqual(out.datagram, self.hello)
+
+    def test_body_bookends_stay_in_discipline(self):
+        for _label, variant in hf.bookend_variants(
+                self.body.encode("ascii")):
+            out = parse_message(_raw_mail(
+                self.subject, variant.decode("ascii", "replace")))
+            self.assertIn(out.kind, hf.MAIL_KINDS)
+
+    # -- the subject's session id -----------------------------------------
+
+    def test_subject_session_id_shapes(self):
+        self.assertEqual(
+            self._parse(self.subject, self.body).kind, "dtls-init")
+        for subject in (
+                flight_subject(self.SID) + " extra",
+                "[HOMING-PIGEON] dtls ..",
+                "[HOMING-PIGEON] dtls .",
+                "[HOMING-PIGEON] dtls a/b",
+                "[HOMING-PIGEON] dtls "):
+            out = self._parse(subject, self.body)
+            self.assertEqual(out.kind, "dtls-invalid", subject)
+        out = self._parse("Re: " + self.subject, self.body)
+        self.assertEqual(out.kind, "dtls-init")
+
+    def test_legacy_subject_shape(self):
+        import base64 as _b64
+        body = _b64.b64encode(self.hello).decode("ascii")
+        out = self._parse(dtls_mailbox.FLIGHT_SUBJECT, body)
+        self.assertEqual(out.kind, "dtls-init")
+        self.assertEqual(out.datagram, self.hello)
+        out = self._parse(dtls_mailbox.FLIGHT_SUBJECT, "!!!")
+        self.assertEqual(out.kind, "dtls-invalid")
+        out = self._parse(
+            dtls_mailbox.FLIGHT_SUBJECT,
+            _b64.b64encode(b"not a record").decode("ascii"))
+        self.assertEqual(out.kind, "dtls-invalid")
+
+    def test_job_and_other_kinds(self):
+        out = self._parse("[HOMING-PIGEON] job abc", "{}")
+        self.assertEqual(out.kind, "job")
+        out = self._parse("an ordinary subject", "hello")
+        self.assertEqual(out.kind, "other")
+
+    def test_mutated_raw_mails_never_raise(self):
+        raw = _raw_mail(self.subject, self.body)
+        rng = random.Random(20220)
+        for _ in range(60):
+            out = parse_message(hf.mutate(raw, rng))
+            self.assertIn(out.kind, hf.MAIL_KINDS)
+        for _label, variant in hf.bookend_variants(raw):
+            out = parse_message(variant)
+            self.assertIn(out.kind, hf.MAIL_KINDS)
+
+    # -- the reassembler, field by field -------------------------------
+
+    DG = bytes(range(200))
+
+    def _part(self, index, data=None, **over):
+        import hashlib as _hl
+        data = self.DG if data is None else data
+        chunks = (data[:80], data[80:150], data[150:])
+        fields = {
+            "session_id": "s1", "transfer_id": "aa" * 8,
+            "index": index, "count": 3,
+            "total_bytes": len(data),
+            "sha384": _hl.sha384(data).hexdigest(),
+            "chunk": chunks[index],
+        }
+        fields.update(over)
+        return FlightPart(**fields)
+
+    def test_reassembler_completes_in_any_order(self):
+        for order in ((0, 1, 2), (2, 0, 1), (1, 2, 0)):
+            reasm = dtls_mailbox.FlightReassembler()
+            got = None
+            for i in order:
+                got = reasm.offer(self._part(i), NOW) or got
+            self.assertEqual(got, self.DG)
+            self.assertEqual(reasm.pending, 0)
+
+    def test_reassembler_field_refusals(self):
+        reasm = dtls_mailbox.FlightReassembler()
+        self.assertIsNone(reasm.offer(self._part(0, count=0), NOW))
+        self.assertIsNone(reasm.offer(self._part(0)._replace(index=3), NOW))
+        self.assertIsNone(
+            reasm.offer(self._part(0, total_bytes=0), NOW))
+        self.assertIsNone(reasm.offer(
+            self._part(0, total_bytes=256 * 1024 + 1), NOW))
+        self.assertIsNone(reasm.offer(
+            self._part(0, chunk=self.DG + b"x"), NOW))
+        self.assertEqual(reasm.pending, 0)
+
+    def test_reassembler_duplicate_part_is_idempotent(self):
+        reasm = dtls_mailbox.FlightReassembler()
+        self.assertIsNone(reasm.offer(self._part(0), NOW))
+        self.assertIsNone(reasm.offer(self._part(0), NOW))
+        self.assertIsNone(reasm.offer(self._part(1), NOW))
+        self.assertEqual(reasm.offer(self._part(2), NOW), self.DG)
+
+    def test_reassembler_contradiction_destroys_the_transfer(self):
+        reasm = dtls_mailbox.FlightReassembler()
+        self.assertIsNone(reasm.offer(self._part(0), NOW))
+        other = self._part(0, chunk=b"\xff" * 80)
+        self.assertIsNone(reasm.offer(other, NOW))
+        self.assertEqual(reasm.pending, 0)
+        self.assertIsNone(reasm.offer(self._part(1), NOW))
+        self.assertIsNone(reasm.offer(self._part(2), NOW))
+        # A header contradiction destroys it the same way.
+        reasm = dtls_mailbox.FlightReassembler()
+        self.assertIsNone(reasm.offer(self._part(0), NOW))
+        self.assertIsNone(reasm.offer(self._part(1, count=4), NOW))
+        self.assertEqual(reasm.pending, 0)
+
+    def test_reassembler_completion_must_match_its_header(self):
+        reasm = dtls_mailbox.FlightReassembler()
+        wrong = "0" * 96
+        for i in (0, 1):
+            self.assertIsNone(
+                reasm.offer(self._part(i, sha384=wrong), NOW))
+        self.assertIsNone(
+            reasm.offer(self._part(2, sha384=wrong), NOW))
+        self.assertEqual(reasm.pending, 0)
+        # The declared total is a length check too.
+        reasm = dtls_mailbox.FlightReassembler()
+        for i in (0, 1, 2):
+            self.assertIsNone(
+                reasm.offer(self._part(i, total_bytes=199), NOW))
+
+    def test_reassembler_expiry_idle_and_deadline(self):
+        reasm = dtls_mailbox.FlightReassembler(ttl_sec=100)
+        self.assertIsNone(reasm.offer(self._part(0), 0.0))
+        self.assertIsNone(reasm.offer(self._part(1), 101.0))
+        self.assertEqual(reasm.pending, 1)  # part 1, fresh
+        self.assertIsNone(reasm.offer(self._part(0), 101.0))
+        self.assertEqual(reasm.offer(self._part(2), 101.0), self.DG)
+        # The absolute deadline binds even when every part
+        # arrives inside the idle timeout.
+        reasm = dtls_mailbox.FlightReassembler(
+            ttl_sec=1000, deadline_sec=50)
+        self.assertIsNone(reasm.offer(self._part(0), 0.0))
+        self.assertIsNone(reasm.offer(self._part(1), 40.0))
+        self.assertIsNone(reasm.offer(self._part(2), 60.0))
+        self.assertEqual(reasm.pending, 1)  # part 2 alone, fresh
+        self.assertIsNone(reasm.offer(self._part(0), 60.0))
+        self.assertEqual(reasm.offer(self._part(1), 60.0), self.DG)
+
+    def test_reassembler_transfer_bound_evicts_the_oldest(self):
+        data = b"xy" * 10
+        import hashlib as _hl
+        sha = _hl.sha384(data).hexdigest()
+
+        def part(tid, index):
+            return FlightPart(
+                "s1", "%016x" % tid, index, 2, len(data), sha,
+                (data[:10], data[10:])[index])
+
+        reasm = dtls_mailbox.FlightReassembler()
+        for tid in range(64):
+            self.assertIsNone(reasm.offer(part(tid, 0), NOW))
+        self.assertEqual(reasm.pending, 64)
+        self.assertIsNone(reasm.offer(part(64, 0), NOW))
+        self.assertEqual(reasm.pending, 64)
+        # Transfer 0 was evicted: its second part starts a
+        # new transfer instead of completing the old one.
+        self.assertIsNone(reasm.offer(part(0, 1), NOW))
+        self.assertEqual(reasm.offer(part(0, 0), NOW), data)
+
+    def test_reassembler_key_includes_the_session(self):
+        reasm = dtls_mailbox.FlightReassembler()
+        self.assertIsNone(reasm.offer(self._part(0), NOW))
+        self.assertIsNone(
+            reasm.offer(self._part(0, session_id="s2"), NOW))
+        self.assertEqual(reasm.pending, 2)
+
+    def test_encode_flight_size_bounds(self):
+        cap = dtls_mailbox.DEFAULT_MAX_DATAGRAM_BYTES
+        with self.assertRaises(ValueError):
+            encode_flight(b"", self.SID)
+        with self.assertRaises(ValueError):
+            encode_flight(bytes(cap + 1), self.SID)
+        mails = encode_flight(bytes(cap), self.SID)
+        reasm = dtls_mailbox.FlightReassembler()
+        got = None
+        for subject, body in mails:
+            out = self._parse(subject, body)
+            self.assertEqual(out.kind, "dtls-part")
+            got = reasm.offer(out.part, NOW) or got
+        self.assertEqual(got, bytes(cap))
+
+
+class AdoptedTargetContractTest(unittest.TestCase):
+    """The 3 adopted families' fuzz targets, run the way
+    the campaign runs them, at the seeds the campaign
+    record names: a Finding here fails the test."""
+
+    def _targets(self):
+        return hf.Targets(hf.RealOps, hf.acvp_vectors())
+
+    def test_keyshare_entries_target_holds_its_contract(self):
+        targets = self._targets()
+        rng = random.Random(4588)
+        for _ in range(60):
+            targets.t_keyshare_entries(rng)
+
+    def test_mailbox_frames_target_holds_its_contract(self):
+        targets = self._targets()
+        rng = random.Random(20220)
+        for _ in range(60):
+            targets.t_mailbox_frames(rng)
+
+    def test_fragment_buffer_target_holds_its_contract(self):
+        targets = self._targets()
+        rng = random.Random(10024)
+        for _ in range(60):
+            targets.t_fragment_buffer(rng)
+
+    def test_adopted_targets_subset_run_is_clean(self):
+        lines = []
+        code, rounds, findings = hf.run(
+            "abstract", 0, 90, 4588, lines.append, None,
+            ("keyshare_entries", "mailbox_frames",
+             "fragment_buffer"))
+        self.assertEqual(code, 0)
+        self.assertEqual(findings, [])
+        self.assertEqual(rounds, 90)
+
+
 class FuzzSmokeTest(unittest.TestCase):
     def test_bounded_real_run_is_clean(self):
         lines = []
