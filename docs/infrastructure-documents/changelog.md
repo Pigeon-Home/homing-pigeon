@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.172 - 2026-11-05
+
+- Docs: the README try-it prompt wording is tightened, and the verified heading fixes from the one-time section-heading sweep land — heading lines only (plus the AGENTS.md contents anchors those headings carry and the missing H1 on ENTERPRISE.md), so each heading covers what sits under it.
+
 ## 3.15.17.171 - 2026-11-05
 
 - Runner: the outbox stash takes the per-key guard — a result stashed for a key while a delivery of that key was between reading the waiting record and claiming it was carried into sent/ unsent and overwritten there, the next result lost without ever being sent. The stash, the undeliver move-back, and the resend pass's give-up now hold the same guard the delivery claim holds, and the give-up re-reads under it so a fresher stash stays waiting. A deterministic regression test drives the claim window directly.
