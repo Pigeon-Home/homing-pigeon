@@ -34,7 +34,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA, DO_VALUE_MAX, jobStoredBytes, storagePairBytes, RESPONSE_BUDGET } from "../src/index.js";
+import worker, { TenantQueue, hmacSha384Hex, sha256Hex, DEFAULT_QUOTA, DO_VALUE_MAX, jobStoredBytes, storagePairBytes, RESPONSE_BUDGET, clampedMax } from "../src/index.js";
 
 const MAX_ATTEMPTS = 5;
 const LONG_OPS = 20_000;
@@ -3506,4 +3506,489 @@ test("shotgun28 injection: injection-shaped subjects and envelopes are returned 
   assert.equal(z2.body.results[0].envelope, payloads[0]);
 });
 
+});
+
+// ---------------------------------------------------------------------
+// Shotgun family for queue item 34: max=0 leased one job, not
+// the default page (fixed ab002020, 31-Oct-2026). The clamp
+// read a missing max and a max of 0 the same way -- the
+// truthiness fallback turned both into the route's default --
+// so ?max=0 and a results or dead-letter read of 0 returned
+// the default page (8 jobs, or 20 rows) when the caller had
+// named a count of zero. The fix is clampedMax: a missing or
+// non-numeric max keeps the route's default, and zero and
+// negative are clamped to 1 -- the caller named a count, and
+// the smallest page is one. This family scattershots exactly
+// that clamp, at the function the Worker exports and on all
+// five routes that use it (the outer pull, results and dlq
+// reads, and the object's own /pull, /results and /dlq,
+// which the outer routes forward to after clamping again):
+// every spelling of zero, the defaults and the cap, signs,
+// fractions, radix and exponent spellings, bookended and
+// run-length max strings, duplicate and injection-shaped
+// parameters, and the storage state a max=0 pull leaves.
+// It deliberately does not re-pin item 28's pager fields
+// (more, after, the 8 MB budget): here only the count the
+// max names is under test.
+//
+// Proof of work. The unit tests are the 50 tests registered
+// below: 17 direct clampedMax value and spelling tests, 6
+// direct bookend sweeps, 2 direct run-length tests, 10 pull
+// route tests, 5 results route tests, 5 dlq route tests, 4
+// route bookend / run / injection sweeps and 1 cross-route
+// test. Per-field enumeration: the surface is one field --
+// the max query parameter -- read by three routes with two
+// defaults (8 for a pull, 20 for results and the dlq), and
+// each route gets its own pins for zero, negative, missing,
+// non-numeric and over-cap values; the clampedMax fallback
+// parameter itself is pinned per route default, and the
+// answer's fields (row count, the more flag beside it, and
+// the leased state in storage) are pinned where they carry
+// the count. Bookends: every printable ASCII symbol (all
+// 32 punctuation characters) at the front AND the back of
+// "5" through clampedMax, as singles, matched pairs,
+// mismatched pairs and symbol-only strings, plus NUL, tab,
+// CR and LF at both ends, and bookended zeros on the pull
+// route. Run lengths: digit runs of 1, 5, 10 and 30, zero
+// runs of 1, 5, 9 and 10, and the odd character at the
+// front, the back and the middle of a digit run. The
+// fuzzing was executed, not just the tests written:
+// runner/tools/de_dust_corpus.py grow --target collect
+// --rounds 400 --seed 20261135, run locally against the
+// banked collect corpus (20 entries). Result: 400 rounds,
+// 0 crashes, 0 slow, arcs unchanged at 65, slowest try
+// 389 ms (fca585c3b6fd87df) -- the max=0 shape did not
+// recur. The grow's
+// bookkeeping writes were reverted and are not banked
+// (banking is the rigs' hourly job); this record is the
+// run's proof. For the .mjs file the Python skip registry
+// does not apply, and this family adds no skips. None of
+// this is exotic: it is combinatorics -- systematically
+// trying the combinations a hand-written list would never
+// reach, then pinning each answer as a test.
+
+const SG34_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+const SG34_QUOTA = { jobs_per_hour: 200, bytes_per_day: 10_000_000 };
+
+async function sg34Env() {
+  const env = makeEnv({ quota: SG34_QUOTA });
+  await addTenant(env);
+  env.TENANT_QUEUE.get("alice");
+  return env;
+}
+
+function sg34Map(env) { return env.objects.get("alice").state.storage.map; }
+
+async function sg34SeedJobs(env, n, prefix = "j") {
+  for (let i = 1; i <= n; i++) {
+    const id = prefix + String(i).padStart(2, "0");
+    const r = await worker.fetch(req("/t/alice/jobs", {
+      method: "POST", token: `Bearer ${SI}`, body: await signedJob(id),
+    }), env);
+    assert.equal(r.status, 202, id);
+  }
+}
+
+async function sg34PullQs(env, qs) {
+  const r = await worker.fetch(req(
+    `/t/alice/jobs${qs ? `?${qs}` : ""}`, { token: `Bearer ${RUNNER}` }), env);
+  if (r.status === 204) return { status: 204, jobs: [] };
+  assert.equal(r.status, 200);
+  return { status: 200, jobs: (await r.json()).jobs };
+}
+
+const sg34Pull = (env, raw) => sg34PullQs(
+  env, raw === undefined ? "" : `max=${encodeURIComponent(raw)}`);
+
+async function sg34PullCount(n, raw) {
+  const env = await sg34Env();
+  await sg34SeedJobs(env, n);
+  return (await sg34Pull(env, raw)).jobs.length;
+}
+
+function sg34PutR(env, id) {
+  sg34Map(env).set(`result:${id}`, {
+    id, envelope: `[HOMING-PIGEON] result ${id}\n\n{}\n`, at: 7,
+  });
+}
+
+function sg34PutD(env, id) {
+  const envelope = `[HOMING-PIGEON] job ${id}\n\n{}\n`;
+  sg34Map(env).set(`dlq:${id}`, {
+    id, envelope, attempts: 5, size: new TextEncoder().encode(envelope).length,
+    enqueued_at: 11, dead_at: 22,
+  });
+}
+
+function sg34Ids(prefix, n) {
+  return Array.from({ length: n }, (_, i) => prefix + String(i + 1).padStart(2, "0"));
+}
+
+async function sg34Read(env, kind, raw) {
+  const qs = raw === undefined ? "" : `?max=${encodeURIComponent(raw)}`;
+  const r = await worker.fetch(req(`/t/alice/${kind}${qs}`,
+    { token: `Bearer ${SI}` }), env);
+  const text = await r.text();
+  return { status: r.status, body: text ? JSON.parse(text) : null };
+}
+
+async function sg34ReadCount(kind, seeded, raw) {
+  const env = await sg34Env();
+  for (const id of sg34Ids(kind === "results" ? "r" : "d", seeded)) {
+    if (kind === "results") sg34PutR(env, id); else sg34PutD(env, id);
+  }
+  const x = await sg34Read(env, kind, raw);
+  if (x.status === 204) return { count: 0, more: undefined, x };
+  const rows = kind === "results" ? x.body.results : x.body.dead;
+  return { count: rows.length, more: x.body.more, x };
+}
+
+// -- 17 direct clampedMax value and spelling tests -----------------------
+
+test("shotgun34 direct zero fallback 8: clampedMax('0', 8) is 1, not the default page", () => {
+  assert.equal(clampedMax("0", 8), 1);
+});
+
+test("shotgun34 direct zero fallback 20: clampedMax('0', 20) is 1, not the default page", () => {
+  assert.equal(clampedMax("0", 20), 1);
+});
+
+test("shotgun34 direct negatives: -1, -3 and -100 clamp to 1 under both fallbacks", () => {
+  for (const raw of ["-1", "-3", "-100"]) {
+    assert.equal(clampedMax(raw, 8), 1, raw);
+    assert.equal(clampedMax(raw, 20), 1, raw);
+  }
+});
+
+test("shotgun34 direct missing: a null or undefined max keeps the route's fallback", () => {
+  assert.equal(clampedMax(null, 8), 8);
+  assert.equal(clampedMax(undefined, 8), 8);
+  assert.equal(clampedMax(null, 20), 20);
+  assert.equal(clampedMax(undefined, 20), 20);
+});
+
+test("shotgun34 direct empty: an empty max keeps the fallback, under both fallbacks", () => {
+  assert.equal(clampedMax("", 8), 8);
+  assert.equal(clampedMax("", 20), 20);
+});
+
+test("shotgun34 direct non-numeric: words for a max keep the fallback", () => {
+  for (const raw of ["abc", "max", "ten", "all", "none"]) {
+    assert.equal(clampedMax(raw, 8), 8, raw);
+    assert.equal(clampedMax(raw, 20), 20, raw);
+  }
+});
+
+test("shotgun34 direct small counts: 1 is 1 and 2 is 2, under both fallbacks", () => {
+  assert.equal(clampedMax("1", 8), 1);
+  assert.equal(clampedMax("2", 8), 2);
+  assert.equal(clampedMax("1", 20), 1);
+  assert.equal(clampedMax("2", 20), 2);
+});
+
+test("shotgun34 direct defaults themselves: 8 and 20 read as themselves, across fallbacks", () => {
+  assert.equal(clampedMax("8", 8), 8);
+  assert.equal(clampedMax("20", 20), 20);
+  assert.equal(clampedMax("8", 20), 8);
+  assert.equal(clampedMax("20", 8), 20);
+});
+
+test("shotgun34 direct cap: 100 is the cap -- 101 and a million clamp to 100", () => {
+  assert.equal(clampedMax("100", 8), 100);
+  assert.equal(clampedMax("101", 8), 100);
+  assert.equal(clampedMax("1000000", 20), 100);
+});
+
+test("shotgun34 direct fractional: the fraction is cut -- 1.9 is 1, 0.9 is 1, 99.9 is 99", () => {
+  assert.equal(clampedMax("1.9", 8), 1);
+  assert.equal(clampedMax("0.9", 8), 1);
+  assert.equal(clampedMax("99.9", 20), 99);
+  assert.equal(clampedMax("100.9", 20), 100);
+});
+
+test("shotgun34 direct leading zeros: 007 is 7, 000 is 1, 010 is 10", () => {
+  assert.equal(clampedMax("007", 8), 7);
+  assert.equal(clampedMax("000", 8), 1);
+  assert.equal(clampedMax("010", 20), 10);
+});
+
+test("shotgun34 direct signs: +5 is 5, and +0 and -0 are zero and clamp to 1", () => {
+  assert.equal(clampedMax("+5", 8), 5);
+  assert.equal(clampedMax("+0", 8), 1);
+  assert.equal(clampedMax("-0", 20), 1);
+});
+
+test("shotgun34 direct whitespace: whitespace around the digits is skipped or ends the number", () => {
+  assert.equal(clampedMax(" 5", 8), 5);
+  assert.equal(clampedMax("5 ", 8), 5);
+  assert.equal(clampedMax("\t5\n", 20), 5);
+  assert.equal(clampedMax("  42  ", 8), 42);
+});
+
+test("shotgun34 direct trailing junk: junk after the digits is ignored -- 5! and 5&max=1 are 5", () => {
+  assert.equal(clampedMax("5!", 8), 5);
+  assert.equal(clampedMax("5&max=1", 8), 5);
+  assert.equal(clampedMax("12jobs", 20), 12);
+});
+
+test("shotgun34 direct radix spellings: 0x10, 0b1 and 0o7 all read as the leading 0 and clamp to 1", () => {
+  assert.equal(clampedMax("0x10", 8), 1);
+  assert.equal(clampedMax("0b1", 8), 1);
+  assert.equal(clampedMax("0o7", 20), 1);
+});
+
+test("shotgun34 direct exponent: the number stops at the e -- 1e3 is 1, 2e1 is 2, 9e9 is 9", () => {
+  assert.equal(clampedMax("1e3", 8), 1);
+  assert.equal(clampedMax("2e1", 8), 2);
+  assert.equal(clampedMax("9e9", 20), 9);
+});
+
+test("shotgun34 direct huge: a 30-digit run clamps to 100, and the word Infinity keeps the fallback", () => {
+  assert.equal(clampedMax("9".repeat(30), 8), 100);
+  assert.equal(clampedMax("1" + "0".repeat(30), 20), 100);
+  assert.equal(clampedMax("Infinity", 8), 8);
+  assert.equal(clampedMax("NaN", 20), 20);
+});
+
+// -- 6 direct bookend sweeps ----------------------------------------------
+
+test("shotgun34 bookends front: every ASCII symbol at the front of 5 -- the plus reads 5, the minus clamps to 1, the rest keep the fallback", () => {
+  for (const s of SG34_PUNCT) {
+    const want = s === "+" ? 5 : s === "-" ? 1 : 8;
+    assert.equal(clampedMax(s + "5", 8), want, JSON.stringify(s));
+  }
+});
+
+test("shotgun34 bookends back: every ASCII symbol at the back of 5 is trailing junk and reads 5", () => {
+  for (const s of SG34_PUNCT) {
+    assert.equal(clampedMax("5" + s, 8), 5, JSON.stringify(s));
+  }
+});
+
+test("shotgun34 bookends matched pairs: matched pairs around 5 decide by their front symbol", () => {
+  for (const s of SG34_PUNCT) {
+    const want = s === "+" ? 5 : s === "-" ? 1 : 8;
+    assert.equal(clampedMax(s + "5" + s, 8), want, JSON.stringify(s));
+  }
+});
+
+test("shotgun34 bookends mismatched pairs: +5. is 5, -5+ is 1, !5+ and .5. keep the fallback", () => {
+  assert.equal(clampedMax("+5.", 8), 5);
+  assert.equal(clampedMax("+5!", 8), 5);
+  assert.equal(clampedMax("-5+", 8), 1);
+  assert.equal(clampedMax("!5+", 8), 8);
+  assert.equal(clampedMax(".5.", 8), 8);
+  assert.equal(clampedMax("?5-", 20), 20);
+});
+
+test("shotgun34 bookends symbol-only: symbol-only max strings keep the fallback, each symbol and all together", () => {
+  for (const raw of [...SG34_PUNCT, SG34_PUNCT]) {
+    assert.equal(clampedMax(raw, 8), 8, JSON.stringify(raw));
+    assert.equal(clampedMax(raw, 20), 20, JSON.stringify(raw));
+  }
+});
+
+test("shotgun34 bookends controls: NUL at the front kills the number, at the back is junk; tab, CR and LF are skipped or trailing", () => {
+  assert.equal(clampedMax("\x005", 8), 8);
+  assert.equal(clampedMax("5\x00", 8), 5);
+  assert.equal(clampedMax("\x005\x00", 8), 8);
+  for (const raw of ["\t5", "5\t", "\r5", "5\r", "\n5", "5\n", "\t5\n"]) {
+    assert.equal(clampedMax(raw, 8), 5, JSON.stringify(raw));
+  }
+});
+
+// -- 2 direct run-length tests ----------------------------------------------
+
+test("shotgun34 runs digits: runs of ones at lengths 1, 5 and 10 read 1, then clamp to 100; zero runs clamp to 1", () => {
+  assert.equal(clampedMax("1", 8), 1);
+  assert.equal(clampedMax("1".repeat(5), 8), 100);
+  assert.equal(clampedMax("1".repeat(10), 8), 100);
+  assert.equal(clampedMax("0".repeat(1), 8), 1);
+  assert.equal(clampedMax("0".repeat(10), 8), 1);
+  assert.equal(clampedMax("0".repeat(9) + "5", 8), 5);
+});
+
+test("shotgun34 runs odd in the middle: 55!55 is 55, 5555! clamps to 100, 5!555 is 5, and !5555 keeps the fallback", () => {
+  assert.equal(clampedMax("55!55", 8), 55);
+  assert.equal(clampedMax("5555!", 8), 100);
+  assert.equal(clampedMax("5!555", 8), 5);
+  assert.equal(clampedMax("!5555", 8), 8);
+});
+
+// -- 10 pull route tests ------------------------------------------------------
+
+test("shotgun34 pull max=0: leases exactly one job of three, not the default page", async () => {
+  const env = await sg34Env();
+  await sg34SeedJobs(env, 3);
+  const { jobs } = await sg34Pull(env, "0");
+  assert.equal(jobs.length, 1);
+  assert.equal(jobs[0].id, "j01");
+});
+
+test("shotgun34 pull negative: max=-3 leases exactly one job", async () => {
+  assert.equal(await sg34PullCount(3, "-3"), 1);
+  assert.equal(await sg34PullCount(3, "-100"), 1);
+});
+
+test("shotgun34 pull missing: no max leases the default 8 of 10", async () => {
+  assert.equal(await sg34PullCount(10, undefined), 8);
+});
+
+test("shotgun34 pull non-numeric: max=abc leases the default 8 of 10", async () => {
+  assert.equal(await sg34PullCount(10, "abc"), 8);
+});
+
+test("shotgun34 pull empty: an empty max leases the default 8 of 10", async () => {
+  assert.equal(await sg34PullCount(10, ""), 8);
+});
+
+test("shotgun34 pull exact counts: max=1 leases 1 and max=2 leases 2", async () => {
+  assert.equal(await sg34PullCount(5, "1"), 1);
+  assert.equal(await sg34PullCount(5, "2"), 2);
+});
+
+test("shotgun34 pull over cap: max=100 and max=101 both lease all 10 queued jobs", async () => {
+  assert.equal(await sg34PullCount(10, "100"), 10);
+  assert.equal(await sg34PullCount(10, "101"), 10);
+});
+
+test("shotgun34 pull max=0 twice: two zero pulls lease two different jobs, one each", async () => {
+  const env = await sg34Env();
+  await sg34SeedJobs(env, 3);
+  const a = await sg34Pull(env, "0");
+  const b = await sg34Pull(env, "0");
+  assert.equal(a.jobs.length, 1);
+  assert.equal(b.jobs.length, 1);
+  assert.notEqual(a.jobs[0].id, b.jobs[0].id);
+});
+
+test("shotgun34 pull max=0 edges: an empty queue answers 204, and a single job is leased whole", async () => {
+  const empty = await sg34Env();
+  assert.equal((await sg34Pull(empty, "0")).status, 204);
+  assert.equal(await sg34PullCount(1, "0"), 1);
+});
+
+test("shotgun34 pull state: a max=0 pull leases exactly one record in storage and leaves the rest unattempted", async () => {
+  const env = await sg34Env();
+  await sg34SeedJobs(env, 3);
+  await sg34Pull(env, "0");
+  const jobs = [...sg34Map(env).values()].filter((v) => v && v.envelope);
+  assert.equal(jobs.filter((j) => j.leased_until > 0).length, 1);
+  assert.deepEqual(jobs.map((j) => j.attempts).sort(), [0, 0, 1]);
+});
+
+// -- 5 results route tests -----------------------------------------------------
+
+test("shotgun34 results max=0: returns exactly one result of three, with more", async () => {
+  const { count, more } = await sg34ReadCount("results", 3, "0");
+  assert.equal(count, 1);
+  assert.equal(more, true);
+});
+
+test("shotgun34 results negative: max=-1 returns exactly one result", async () => {
+  const { count, more } = await sg34ReadCount("results", 3, "-1");
+  assert.equal(count, 1);
+  assert.equal(more, true);
+});
+
+test("shotgun34 results missing: no max returns the default 20 of 25, with more", async () => {
+  const { count, more } = await sg34ReadCount("results", 25, undefined);
+  assert.equal(count, 20);
+  assert.equal(more, true);
+});
+
+test("shotgun34 results non-numeric: max=abc returns the default 20 of 25", async () => {
+  const { count, more } = await sg34ReadCount("results", 25, "abc");
+  assert.equal(count, 20);
+  assert.equal(more, true);
+});
+
+test("shotgun34 results counts: max=2 returns 2 with more; max=100 returns all 25 with no more", async () => {
+  const two = await sg34ReadCount("results", 25, "2");
+  assert.equal(two.count, 2);
+  assert.equal(two.more, true);
+  const all = await sg34ReadCount("results", 25, "100");
+  assert.equal(all.count, 25);
+  assert.equal(all.more, undefined);
+});
+
+// -- 5 dlq route tests -----------------------------------------------------------
+
+test("shotgun34 dlq max=0: returns exactly one dead letter of three, with more", async () => {
+  const { count, more } = await sg34ReadCount("dlq", 3, "0");
+  assert.equal(count, 1);
+  assert.equal(more, true);
+});
+
+test("shotgun34 dlq negative: max=-9 returns exactly one dead letter", async () => {
+  const { count, more } = await sg34ReadCount("dlq", 3, "-9");
+  assert.equal(count, 1);
+  assert.equal(more, true);
+});
+
+test("shotgun34 dlq missing: no max returns the default 20 of 25, with more", async () => {
+  const { count, more } = await sg34ReadCount("dlq", 25, undefined);
+  assert.equal(count, 20);
+  assert.equal(more, true);
+});
+
+test("shotgun34 dlq non-numeric: max=abc returns the default 20 of 25", async () => {
+  const { count, more } = await sg34ReadCount("dlq", 25, "abc");
+  assert.equal(count, 20);
+  assert.equal(more, true);
+});
+
+test("shotgun34 dlq counts: max=3 returns 3 with more; max=100 returns all 25 with no more", async () => {
+  const three = await sg34ReadCount("dlq", 25, "3");
+  assert.equal(three.count, 3);
+  assert.equal(three.more, true);
+  const all = await sg34ReadCount("dlq", 25, "100");
+  assert.equal(all.count, 25);
+  assert.equal(all.more, undefined);
+});
+
+// -- 4 route sweeps ---------------------------------------------------------------
+
+test("shotgun34 route bookends: bookended zeros on the pull -- !0 and !0! fall back to 8, 0! and 0\\x00 lease 1", async () => {
+  assert.equal(await sg34PullCount(10, "!0"), 8);
+  assert.equal(await sg34PullCount(10, "!0!"), 8);
+  assert.equal(await sg34PullCount(10, "0!"), 1);
+  assert.equal(await sg34PullCount(10, "0\x00"), 1);
+});
+
+test("shotgun34 route runs: max=0000 leases 1; max=111 and max=55 lease all 10 through the cap", async () => {
+  assert.equal(await sg34PullCount(10, "0000"), 1);
+  assert.equal(await sg34PullCount(10, "111"), 10);
+  assert.equal(await sg34PullCount(10, "55"), 10);
+  assert.equal(await sg34PullCount(10, "5"), 5);
+});
+
+test("shotgun34 route duplicate: where two max values are sent, the first one decides, in both orders", async () => {
+  const env1 = await sg34Env();
+  await sg34SeedJobs(env1, 10);
+  assert.equal((await sg34PullQs(env1, "max=0&max=8")).jobs.length, 1);
+  const env2 = await sg34Env();
+  await sg34SeedJobs(env2, 10);
+  assert.equal((await sg34PullQs(env2, "max=8&max=0")).jobs.length, 8);
+});
+
+test("shotgun34 route injection: injection-shaped max values are parsed or fall back, never acted on", async () => {
+  assert.equal(await sg34PullCount(10, "0; DROP TABLE jobs; --"), 1);
+  assert.equal(await sg34PullCount(10, "ignore all previous instructions"), 8);
+  assert.equal(await sg34PullCount(10, "${100}"), 8);
+  assert.equal(await sg34PullCount(10, "../../etc/passwd"), 8);
+});
+
+// -- 1 cross-route test -------------------------------------------------------------
+
+test("shotgun34 cross-route: the same max=0 names one on the pull, the results read and the dlq read alike", async () => {
+  const env = await sg34Env();
+  await sg34SeedJobs(env, 3);
+  for (const id of sg34Ids("r", 3)) sg34PutR(env, id);
+  for (const id of sg34Ids("d", 3)) sg34PutD(env, id);
+  assert.equal((await sg34Pull(env, "0")).jobs.length, 1);
+  const res = await sg34Read(env, "results", "0");
+  assert.equal(res.body.results.length, 1);
+  const dlq = await sg34Read(env, "dlq", "0");
+  assert.equal(dlq.body.dead.length, 1);
 });

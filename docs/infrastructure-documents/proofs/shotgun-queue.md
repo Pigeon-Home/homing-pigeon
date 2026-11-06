@@ -977,7 +977,24 @@ Applied to every item on this queue, item 1 included:
 - Fixed: ab002020 (31-Oct-2026)
 - Existing tests: queues-worker fuzz.test.mjs
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun34 suite in
+  runner/cloud/queues-worker/test/fuzz.test.mjs): max=0
+  leases one job, not the default page, on the pull, the
+  results read and the dead-letter read alike — the
+  per-field pins are carried in the suite's header comment
+  in the repo. The file runs green under node --test
+  (50 tests in the suite, 50 pass, 0 skipped), no live bug
+  exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target collect
+  --rounds 400 --seed 20261135, run locally against the banked
+  collect corpus (20 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 65, slowest try 389 ms — the
+  max=0 shape did not recur. The grow's bookkeeping writes
+  were reverted and are not banked (banking is the rigs'
+  hourly job).
 
 ### 35. The job id check did not read the signed payload the way the runner does
 - Fixed: 53e3f33a (31-Oct-2026)
