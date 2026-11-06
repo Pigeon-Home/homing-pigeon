@@ -2,7 +2,11 @@
 
 Steady is the quiet shelf. A document lands here when it has not been touched for a while, and this folder exists for 1 thing: wandering. If you opened steady, you came to explore.
 
-Everything on this shelf arrived between 2026-10-13 and 2026-11-01 — the project's first 3 weeks. Nothing here is deleted, and every file sits in exactly 1 place.
+Everything on this shelf arrived between 2026-10-13 and 2026-11-06 — the project's first 3 weeks, and the days since. Nothing here is deleted, and every file sits in exactly 1 place.
+
+## Which tree
+
+Two trees of documents sit side by side in docs/. This one, steady, is the quiet shelf: guides and records that have settled, kept for wandering and reference. The other, docs/infrastructure-documents, is the working record: the changelog, the project playbook, the proofs, and the design and security references that still change as the work moves. A settled guide lives here; a document the work still writes in lives there.
 
 ## The core of the project
 
@@ -20,17 +24,17 @@ Everything on this shelf arrived between 2026-10-13 and 2026-11-01 — the proje
 
 ## The drawers
 
-The other 117 files are in 9 drawers, named the way the rest of the project's documents are named:
+The other 164 files are in 9 drawers, named the way the rest of the project's documents are named:
 
 - design — 7 files. design documents and decision records — how pieces were shaped before they were built.
 - security — 8 files. the hardening set — host hardening, the confinement profiles, and the security papers.
 - use — 8 files. guides and runbooks — running the system and using it day to day.
-- project — 11 files. the project's own papers — plans, maps, and campaign notes.
+- project — 12 files. the project's own papers — plans, maps, and campaign notes.
 - oracle — 3 files. the Oracle's papers — its playbook, its reviews, its senses.
 - seats — 3 files. papers from the seats era, which closed on 2026-10-31 — who sat where, and what was asked.
 - proofs — 2 files. proof and verification records.
-- specimens — 5 files. raw artifacts — logs and machine output, kept as found.
-- reports — 70 files. the dated record — audits, coverage, reviews, rig reports, and release records; the biggest drawer.
+- specimens — 14 files. raw artifacts — logs and machine output, kept as found.
+- reports — 107 files. the dated record — audits, coverage, reviews, rig reports, and release records; the biggest drawer.
 
 ## First stops: important, and untouched the longest
 
@@ -80,7 +84,7 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 - live-examples.md — untouched since 2026-10-30 · arrived 2026-10-25
 - own-cloud.md — untouched since 2026-10-30 · arrived 2026-10-25
 
-### project — 11 files
+### project — 12 files
 
 - roadmap-spec.md — untouched since 2026-10-21 · arrived 2026-10-15
 - contributing.md — untouched since 2026-10-24 · arrived 2026-10-13
@@ -93,6 +97,7 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 - runner-line-reduction-runbook.md — untouched since 2026-10-30 · arrived 2026-10-25
 - telephone-pole.md — untouched since 2026-10-30 · arrived 2026-10-28
 - hosting.md — untouched since 2026-10-31 · arrived 2026-10-25
+- fy_iceworld.md — untouched since 2026-11-06 · arrived 2026-11-06
 
 ### oracle — 3 files
 
@@ -111,7 +116,7 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 - connector-roundtrip.md — untouched since 2026-10-18 · arrived 2026-10-14
 - verify-v31.md — untouched since 2026-10-19 · arrived 2026-10-15
 
-### specimens — 5 files
+### specimens — 14 files
 
 - oracle-learning.jsonl — untouched since 2026-10-25 · arrived 2026-10-25
 - runner.log — untouched since 2026-10-25 · arrived 2026-10-25
@@ -119,7 +124,9 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 - runs.jsonl — untouched since 2026-10-27 · arrived 2026-10-27
 - passes.jsonl — untouched since 2026-10-30 · arrived 2026-10-26
 
-### reports — 70 files
+The other 9 files in this drawer are data captures — JSON results and compressed logs — counted in the total above but not listed here.
+
+### reports — 107 files
 
 - v3.5.2-coverage.md — untouched since 2026-10-16 · arrived 2026-10-16
 - mutation.md — untouched since 2026-10-18 · arrived 2026-10-18
@@ -191,6 +198,9 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 - v3.14.47-release-retrospective.md — untouched since 2026-10-31 · arrived 2026-10-31
 - v3.15.1-coverage-gaps.md — untouched since 2026-11-01 · arrived 2026-11-01
 - v3.15.1-coverage.md — untouched since 2026-11-01 · arrived 2026-11-01
+- coverage.md — untouched since 2026-11-06 · arrived 2026-11-06
+
+The other 36 files in this drawer are data captures — JSON results and the coverage pictures — counted in the total above but not listed here. The coverage reports themselves are indexed in coverage.md, in this drawer.
 
 ### the top of steady (core) — 9 files
 
