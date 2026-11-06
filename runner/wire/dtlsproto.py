@@ -1245,6 +1245,8 @@ class DtlsClientCore(_Endpoint):
         if EXT_PRE_SHARED_KEY not in exts or int.from_bytes(
                 exts[EXT_PRE_SHARED_KEY], "big") != 0:
             raise DtlsError("server did not accept our PSK")
+        if EXT_KEY_SHARE not in exts:
+            raise DtlsError("server sent no key_share")
         group, peer_pub = _key_share_entry(
             exts[EXT_KEY_SHARE], server_form=True)
         if group == GROUP_X25519:
