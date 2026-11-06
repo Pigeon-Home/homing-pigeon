@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.173 - 2026-11-05
+
+- Docs: ENTERPRISE.md opens directly with its bug bounty question — the Enterprise and bug bounty heading above it is removed.
+
 ## 3.15.17.172 - 2026-11-05
 
 - Docs: the README try-it prompt wording is tightened, and the verified heading fixes from the one-time section-heading sweep land — heading lines only (plus the AGENTS.md contents anchors those headings carry and the missing H1 on ENTERPRISE.md), so each heading covers what sits under it.
