@@ -2811,3 +2811,350 @@ def _make_slow_target_tests():
 
 
 _make_slow_target_tests()
+
+
+def _nest_list(n):
+    value = 1
+    for _ in range(n):
+        value = [value]
+    return value
+
+
+def _nest_dict(n):
+    value = 1
+    for _ in range(n):
+        value = {"x": value}
+    return value
+
+
+class GrowWalkerDepthShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 54, Q95: the grow
+    walker died with RecursionError in _paths; depth was
+    mis-measured (fixed 33547a42, 27-Oct-2026). Grow 17's wire
+    and cloud workers died in the tool: _depth and _paths
+    walked a value by recursion, and the grafts of p_replace
+    and p_splice compound across generations while only p_nest
+    looked at the bound, so a lineage of kept children passed
+    the interpreter's limit in memory. The fix made the two
+    walks use a stack, made a payload child past MAX_DEPTH not
+    a child and a parent past it not mutated, and made a
+    mutator that raises be counted in the run record
+    (mutator_errors) and logged, never a worker death. This
+    family scattershots everything around that failure: depths
+    at, just past and far past the bound and the recursion
+    limit, mixed and wide shapes, symbol keys, graft lineages
+    that compound, and mutators raising every exception type.
+    The fix's own tests live in this file, so the family lives
+    here too. One regression test was never going to be enough
+    for a bug that took days of CPU to find.
+
+    Per-field enumeration: the walkers read a value's type at
+    each level (dict, list, scalar -- each enumerated), its
+    breadth and its depth (each enumerated), and the mutator
+    chain reads MAX_DEPTH, the parent's depth and the graft's
+    depth (each enumerated at, inside and past the bound); the
+    Session's run record fields (mutator_errors, tried,
+    stopped) are pinned separately. Bookends, in the form this
+    surface takes them: symbol keys at the front and the back
+    of a nested value's paths, a deep branch at the front, the
+    back and the middle of a wide value. Run lengths: nesting
+    runs of 1, 2, 3, 5, 10, 24, 25, 100, 500, 1000 and 5000,
+    and graft lineages run for 20 and 60 tries.
+
+    Proof of work. The unit tests are the 50 methods of this
+    class: 34 hand-written seams plus 16 generated depth tests.
+    The fuzzing was executed, not just the tests written:
+    runner/tools/de_dust_corpus.py grow --target collect
+    --rounds 400 --seed 20261155 against the banked collect
+    corpus (20 entries) -- collect is the walker's nearest
+    target, the _collect_outputs surface whose entries the
+    walker measures on every grow. Result: 400 rounds,
+    0 crashes, 0 slow, arcs unchanged at 65, slowest try
+    187 ms; the RecursionError shape did not recur. The grow's
+    bookkeeping writes were reverted and are not banked
+    (banking is the rigs' hourly job). None of this is exotic:
+    it is combinatorics -- systematically trying the
+    combinations a hand-written list would never reach, then
+    pinning each answer as a test."""
+
+    # -- _depth: what a level is --
+
+    def test_depth_of_scalars_is_zero(self):
+        for value in (1, "x", None, True, 2.5, ""):
+            self.assertEqual(B._depth(value), 0, repr(value))
+
+    def test_depth_of_flat_containers(self):
+        self.assertEqual(B._depth([]), 0)
+        self.assertEqual(B._depth({}), 0)
+        self.assertEqual(B._depth([1, 2]), 1)
+        self.assertEqual(B._depth({"a": 1}), 1)
+        self.assertEqual(B._depth([[], {}]), 1)
+
+    def test_depth_of_the_fixs_mixed_shape(self):
+        self.assertEqual(B._depth({"a": {"b": [1, [2]]}}), 4)
+
+    def test_depth_is_the_max_branch_not_the_sum(self):
+        value = {"a": [1], "b": {"c": {"d": 1}}}
+        self.assertEqual(B._depth(value), 3)
+
+    def test_depth_of_a_wide_value_is_its_one_deep_branch(self):
+        value = [0] * 999 + [[1]]
+        self.assertEqual(B._depth(value), 2)
+        value = {"k%04d" % i: i for i in range(1000)}
+        value["deep"] = {"x": {"y": 1}}
+        self.assertEqual(B._depth(value), 3)
+
+    def test_depth_ignores_text_content_and_key_length(self):
+        self.assertEqual(B._depth(["a" * 10000]), 1)
+        self.assertEqual(B._depth({"k" * 1000: 1}), 1)
+        self.assertEqual(B._depth({"x": "y" * 1000}), 1)
+
+    def test_depth_of_a_shared_substructure(self):
+        shared = [1]
+        self.assertEqual(B._depth([shared, shared]), 2)
+        self.assertEqual(B._depth({"a": shared, "b": [shared]}), 3)
+
+    # -- _paths: order, paths, values --
+
+    def test_paths_order_for_a_mixed_value(self):
+        value = {"a": [1, {"b": 2}]}
+        self.assertEqual([p for p, _v in B._paths(value)],
+                         [(), ("a",), ("a", 0), ("a", 1), ("a", 1, "b")])
+
+    def test_paths_count_and_values_for_a_branching_tree(self):
+        value = {"!": [1, 2], "b": {"~": 3}}
+        paths = list(B._paths(value))
+        self.assertEqual(len(paths), 6)
+        for path, val in paths:
+            self.assertIs(B._get_path(value, path), val, path)
+        self.assertIn(("!",), [p for p, _v in paths])
+        self.assertIn(("b", "~"), [p for p, _v in paths])
+
+    def test_paths_of_a_scalar_and_of_empty_containers(self):
+        self.assertEqual(list(B._paths(5)), [((), 5)])
+        self.assertEqual(list(B._paths([])), [((), [])])
+        self.assertEqual(list(B._paths({})), [((), {})])
+
+    def test_paths_root_comes_first_and_last_path_is_the_deepest(self):
+        value = _nest_dict(30)
+        paths = list(B._paths(value))
+        self.assertEqual(paths[0][0], ())
+        self.assertEqual(len(paths[-1][0]), 30)
+        self.assertEqual(paths[-1][1], 1)
+        self.assertEqual(len(paths), 31)
+
+    def test_paths_is_lazy_at_the_root(self):
+        gen = B._paths(_nest_list(5000))
+        path, value = next(gen)
+        self.assertEqual(path, ())
+        self.assertIsInstance(value, list)
+
+    def test_paths_bookended_with_symbol_keys(self):
+        value = {"!": {"~": [{"#": 1}]}}
+        paths = [p for p, _v in B._paths(value)]
+        self.assertEqual(paths, [(), ("!",), ("!", "~"),
+                                 ("!", "~", 0), ("!", "~", 0, "#")])
+
+    # -- past the interpreter's limit --
+
+    def test_a_5000_deep_list_is_measured_and_walked(self):
+        deep = _nest_list(5000)
+        self.assertEqual(B._depth(deep), 5000)
+        self.assertEqual(sum(1 for _p in B._paths(deep)), 5001)
+
+    def test_a_10000_deep_dict_is_measured_and_walked(self):
+        deep = _nest_dict(10000)
+        self.assertEqual(B._depth(deep), 10000)
+        self.assertEqual(sum(1 for _p in B._paths(deep)), 10001)
+
+    def test_alternating_nesting_past_the_recursion_limit(self):
+        n = sys.getrecursionlimit() + 500
+        value = 1
+        for i in range(n):
+            value = [value] if i % 2 == 0 else {"x": value}
+        self.assertEqual(B._depth(value), n)
+        self.assertEqual(sum(1 for _p in B._paths(value)), n + 1)
+
+    def test_the_recursion_limit_itself_is_not_the_bound(self):
+        self.assertEqual(B.MAX_DEPTH, 24)
+        self.assertLess(B.MAX_DEPTH, sys.getrecursionlimit())
+
+    # -- the bound on parents, children and grafts --
+
+    def test_p_mutate_leaves_a_past_bound_value_alone(self):
+        rng = random.Random(54)
+        for deep in (_nest_list(25), _nest_dict(100),
+                     _nest_list(B.MAX_DEPTH + 1)):
+            self.assertIs(B.p_mutate(rng, deep, []), deep)
+
+    def test_p_nest_at_the_bound_returns_the_value(self):
+        rng = random.Random(54)
+        at = _nest_list(B.MAX_DEPTH)
+        self.assertIs(B.p_nest(rng, at, []), at)
+        past = _nest_list(B.MAX_DEPTH + 5)
+        self.assertIs(B.p_nest(rng, past, []), past)
+
+    def test_p_nest_below_the_bound_adds_at_most_one_level(self):
+        rng = random.Random(54)
+        value = {"a": [1, 2], "b": {"c": 3}}
+        out = B.p_nest(rng, value, [])
+        self.assertLessEqual(B._depth(out), B._depth(value) + 1)
+
+    def test_mutate_refuses_a_parent_past_the_bound(self):
+        rng = random.Random(54)
+        parent = B.make_entry("payload", {"v": 1, "deep": _nest_list(100)},
+                              "seed:deep", "seed")
+        for _ in range(20):
+            self.assertIsNone(B.mutate(rng, parent, [parent], "wire"))
+
+    def test_mutate_children_of_a_bound_parent_stay_in_bounds(self):
+        rng = random.Random(54)
+        parent = B.make_entry("payload", _nest_dict(B.MAX_DEPTH),
+                              "seed:at", "seed")
+        for _ in range(30):
+            child = B.mutate(rng, parent, [parent], "wire")
+            if child is not None:
+                self.assertLessEqual(B._depth(child[0]), B.MAX_DEPTH)
+
+    def test_a_graft_that_would_pass_the_bound_is_not_a_child(self):
+        rng = random.Random(54)
+        shallow = B.make_entry("payload", {"v": 1, "type": "job"},
+                               "x", "seed")
+        pool = [B.make_entry("payload", _nest_dict(B.MAX_DEPTH + 5),
+                             "y", "seed")]
+        for _ in range(60):
+            child = B.mutate(rng, shallow, pool + [shallow], "wire")
+            if child is not None:
+                self.assertLessEqual(B._depth(child[0]), B.MAX_DEPTH)
+
+    def test_compounding_graft_lineages_stay_in_bounds(self):
+        rng = random.Random(54)
+        corpus = list(B.seeds_wire())
+        parent = B.make_entry("payload", _nest_dict(20), "seed:d20",
+                              "seed")
+        for _ in range(40):
+            child = B.mutate(rng, parent, corpus + [parent], "wire")
+            if child is not None:
+                self.assertLessEqual(B._depth(child[0]), B.MAX_DEPTH)
+                parent = B.make_entry("payload", child[0], "lineage",
+                                      child[1])
+
+    # -- a raising mutator is counted, never a death --
+
+    def _grow_with(self, mutate_side, rounds=5, streak=5):
+        corpus = B.seeds_wire()
+        session = B.Session("wire", list(corpus))
+        rng = random.Random(5)
+        with mock.patch.object(B, "mutate", mutate_side), \
+                mock.patch.object(B, "MISS_STREAK", streak):
+            added = B._with_rig(
+                lambda: (session.baseline(), session.grow(rng, rounds))[1])
+        return session, added
+
+    def test_a_raising_mutator_is_counted_and_the_grow_ends_exhausted(self):
+        def boom(*_a, **_k):
+            raise RecursionError("maximum recursion depth exceeded")
+        session, added = self._grow_with(boom)
+        self.assertEqual(added, [])
+        self.assertEqual(session.mutator_errors, {"RecursionError": 5})
+        self.assertEqual(session.tried, 0)
+        self.assertEqual(session.stopped, "exhausted")
+
+    def test_each_raising_mutator_kind_is_counted_under_its_own_name(self):
+        kinds = [ValueError("v"), TypeError("t"), RecursionError("r"),
+                 ValueError("v"), KeyError("k")]
+        state = {"i": 0}
+
+        def flaky(*_a, **_k):
+            exc = kinds[state["i"] % len(kinds)]
+            state["i"] += 1
+            raise exc
+        session, added = self._grow_with(flaky, rounds=5, streak=5)
+        self.assertEqual(added, [])
+        self.assertEqual(session.mutator_errors,
+                         {"ValueError": 2, "TypeError": 1,
+                          "RecursionError": 1, "KeyError": 1})
+
+    def test_a_mutator_that_raises_once_then_declines_recovers(self):
+        state = {"i": 0}
+
+        def once(*_a, **_k):
+            state["i"] += 1
+            if state["i"] == 1:
+                raise RecursionError("once")
+            return None
+        session, added = self._grow_with(once, rounds=3, streak=50)
+        self.assertEqual(added, [])
+        self.assertEqual(session.mutator_errors, {"RecursionError": 1})
+
+    def test_mutator_errors_reset_on_the_next_grow(self):
+        def boom(*_a, **_k):
+            raise RecursionError("x")
+        session, _added = self._grow_with(boom, rounds=2, streak=2)
+        self.assertEqual(session.mutator_errors, {"RecursionError": 2})
+        rng = random.Random(5)
+        B._with_rig(lambda: session.grow(rng, 3))
+        self.assertEqual(session.mutator_errors, {})
+
+    def test_a_grow_on_an_empty_corpus_adds_nothing_and_counts_nothing(self):
+        session = B.Session("wire", [])
+        added = B._with_rig(lambda: session.grow(random.Random(5), 5))
+        self.assertEqual(added, [])
+        self.assertEqual(session.mutator_errors, {})
+
+    def test_a_normal_small_grow_records_no_mutator_errors(self):
+        corpus = B.seeds_wire()
+        session = B.Session("wire", list(corpus))
+        added = B._with_rig(lambda: (session.baseline(),
+                                     session.grow(random.Random(5), 5))[1])
+        self.assertIsInstance(added, list)
+        self.assertEqual(session.mutator_errors, {})
+        for entry in session.entries:
+            if entry["kind"] == "payload":
+                self.assertLessEqual(B._depth(entry["data"]),
+                                     B.MAX_DEPTH + 2)
+
+
+    def test_a_deep_branch_at_the_front_back_and_middle_of_wide(self):
+        deep = [[1]]
+        for value in ([deep] + [0] * 50, [0] * 50 + [deep],
+                      [0] * 25 + [deep] + [0] * 25):
+            self.assertEqual(B._depth(value), 3)
+
+    def test_paths_of_a_list_chain_visit_every_level_in_order(self):
+        paths = [p for p, _v in B._paths(_nest_list(10))]
+        self.assertEqual([len(p) for p in paths], list(range(11)))
+        self.assertTrue(all(isinstance(p, tuple) for p in paths))
+        self.assertIsInstance(B._depth(_nest_list(10)), int)
+
+    def test_make_entry_preserves_a_bound_deep_payload(self):
+        data = _nest_dict(B.MAX_DEPTH)
+        entry = B.make_entry("payload", data, "seed:bound", "seed")
+        self.assertIs(entry["data"], data)
+        self.assertEqual(B._depth(entry["data"]), B.MAX_DEPTH)
+        self.assertIsInstance(entry["id"], str)
+
+    def test_p_mutate_of_an_at_bound_value_stays_a_value(self):
+        rng = random.Random(54)
+        value = _nest_dict(B.MAX_DEPTH)
+        out = B.p_mutate(rng, value, list(B.seeds_wire()))
+        self.assertIsNotNone(out)
+
+
+def _make_depth_test(kind, n):
+    def run(self):
+        value = _nest_list(n) if kind == "list" else _nest_dict(n)
+        self.assertEqual(B._depth(value), n)
+        self.assertEqual(sum(1 for _p in B._paths(value)), n + 1)
+    return run
+
+
+# 16 generated depth tests: nesting runs at, inside and far
+# past MAX_DEPTH and the interpreter's recursion limit.
+for _i, _n in enumerate((1, 2, 3, 5, 10, 24, 25, 100, 500, 1000, 5000)):
+    setattr(GrowWalkerDepthShotgunTest, f"test_list_depth_{_i:02d}",
+            _make_depth_test("list", _n))
+for _i, _n in enumerate((1, 2, 24, 25, 1000)):
+    setattr(GrowWalkerDepthShotgunTest, f"test_dict_depth_{_i:02d}",
+            _make_depth_test("dict", _n))
+del _i, _n

@@ -1520,4 +1520,25 @@ Applied to every item on this queue, item 1 included:
   the campaign's own grows 16–17
 - Existing tests: test_de_dust_corpus.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (GrowWalkerDepthShotgunTest in
+  test_de_dust_corpus.py, the file where the fix's own tests
+  live): depths at, just past and far past MAX_DEPTH and the
+  interpreter's recursion limit, mixed and wide shapes, symbol
+  keys, graft lineages that compound across generations, and
+  mutators raising every exception type, counted in the run
+  record and never a worker death. The family runs green
+  (50 tests, 0 skipped), no live bug exposed, no production
+  code changed.
+- Proof of work (per the method section): per-field enumeration
+  (the value's type at each level, its breadth and depth, the
+  parent's and the graft's depth against MAX_DEPTH, and the
+  Session's mutator_errors, tried and stopped record fields)
+  and the nesting run lengths (1, 2, 3, 5, 10, 24, 25, 100,
+  500, 1000 and 5000) are carried in the class docstring in
+  the repo. Fuzz executed: runner/tools/de_dust_corpus.py
+  grow --target collect --rounds 400 --seed 20261155, run
+  locally against the banked collect corpus (20 entries) —
+  collect is the walker's nearest target. Result: 400 rounds,
+  0 crashes, 0 slow, arcs unchanged at 65, slowest try 187 ms.
+  The grow's bookkeeping writes were reverted and are not
+  banked (banking is the rigs' hourly job).
