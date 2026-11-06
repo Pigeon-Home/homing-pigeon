@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.167 - 2026-11-05
+
+- Docs: the one-time section-heading sweep lands — every section heading of every living document judged against the content under it (1,622 sections), 42 verified proposals: the README's notes for a visiting SI and the no-mailbox callout gain their own section above Status, the extension READMEs gain Running and Further-reading structure, and 14 living guides are retitled or split so each heading covers what sits under it; the README gains the how-it-fits-together diagram (small on the page, the full top-down view on click).
+- Core: the recorded core measures are re-recorded after the Oracle tool-mode work and the startup posture assertion switch grew the set past the previous recording: the as-assembled core stands at 55,299 lines (49,787 non-blank), runner/ops at 17,345 lines, runner/guard at 2,875 and the runner proper at 6,598.
+
 ## 3.15.17.166 - 2026-11-05
 
 - Guard: signed bodies refuse duplicate member names — `loads_signed` parses with an `object_pairs_hook` that raises on any repeated name (decoded names, so an escaped spelling of the same name is a duplicate too) — and a string- and escape-aware bracket-depth pre-scan refuses a body nested past 200 levels before `json.loads` runs.
