@@ -473,5 +473,377 @@ class InboxVerifiedResultShapesTest(unittest.TestCase):
         self.assertIn("Thursday", result["stdout"])
 
 
+class ReplyToProvenanceShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 48: Q113 -- provenance
+    crash on the cloud target, a result addressed to '<>' (filed
+    4c93d140, fixed 05dd609c, 29-Oct-2026).
+
+    The record: target cloud, crash class provenance, mutator
+    p_text. The job's reply_to was submitter@.comexample.com -- a
+    mutated address, dot before the domain. _valid_reply_to
+    accepted a domain that starts with a dot, send_mail set it as
+    the result's To, and the email library rendered it as '<>':
+    a real misdirection of a result, not a rendering quirk. The
+    pattern now requires each domain label to start and end with
+    an alphanumeric, so a leading dot and consecutive dots are
+    refused and the result falls back to the runner's own
+    mailbox.
+
+    Per-field enumeration (the method section): the surface is
+    the job dict and its reply_to, read by
+    runner/wire/mailbox.py's _valid_reply_to (the runner's own
+    name for the same function) and spent by send_mail. Each
+    field gets its own tests: the job (a dict, not a dict, the
+    key missing or differently cased), reply_to's type (string
+    and every other type), its stripping, its 254-character
+    length counted after the strip, the local part (empty, dot
+    shapes, underscore, the characters it allows), the '@' (one,
+    none, several), the domain labels (leading dot, trailing
+    dot, consecutive dots, hyphens at a label's edges and inside
+    it, digit labels, underscore, an IP literal, no dot at all),
+    and the top-level domain (two letters at least, letters
+    only, long ones fine). The angle shapes are core material
+    here -- '<>' itself, a good address in angles, a display
+    name with angles, angles inside the address -- every one
+    refused, and the composed path is pinned end to end: for
+    every refused shape the result goes to the runner's mailbox
+    and is never addressed to '<>'. send_mail's own fields are
+    pinned too: the To it sets for a valid target, the mailbox
+    fallback, the From, and the subject folded to one line by
+    the header's own line-break rule.
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: every printable ASCII
+    symbol (string.punctuation) at the front AND the back of a
+    valid address -- at the front only the local part's own
+    characters (._%+-) survive, at the back none do -- plus NUL
+    at the front, the back and the middle (refused) and the
+    strippable controls (tab, CR, LF, VT, FF, NBSP) at both ends
+    (stripped); and run lengths: runs of letters, of dots and of
+    hyphens in the local part and the domain, with the odd
+    character at the front, the back and the middle.
+
+    Proof of work (6-Nov-2026). The unit tests are the 50 methods
+    of this class. The fuzzing was executed, not just the tests
+    written: runner/tools/de_dust_corpus.py grow --target cloud
+    --rounds 400 --seed 20261149, run locally against the banked
+    cloud corpus (113 entries) -- cloud is the target the
+    provenance crash was filed on. Result: 400 rounds, 0 crashes,
+    0 slow, arcs unchanged at 184, slowest try 2,532 ms; no
+    result was addressed to '<>' again. The grow's bookkeeping
+    writes were reverted and are not banked (banking is the rigs'
+    hourly job); this record is the run's proof. None of this is
+    exotic: it is combinatorics -- systematically trying the
+    combinations a hand-written list would never reach, then
+    pinning each answer as a test."""
+
+    GOOD = "submitter@example.com"
+    MAILBOX = "runner@example.com"
+
+    def _valid(self, reply_to):
+        from runner.wire import mailbox as MB
+        return MB._valid_reply_to({"reply_to": reply_to})
+
+    def _send(self, reply_to):
+        """The composed path: the validator's answer for a job
+        carrying reply_to, spent by send_mail; returns the one
+        message a fake SMTP was given."""
+        from runner.wire import mailbox as MB
+
+        class FakeSmtp:
+            def __init__(self):
+                self.sent = []
+
+            def send_message(self, msg):
+                self.sent.append(msg)
+        smtp = FakeSmtp()
+        target = MB._valid_reply_to({"reply_to": reply_to})
+        MB.send_mail(smtp, {"mailbox_user": self.MAILBOX},
+                     "[HOMING-PIGEON] result j1", "{}", target)
+        self.assertEqual(1, len(smtp.sent))
+        return smtp.sent[0]
+
+    # -- Q113 itself, and the composed path --
+
+    def test_the_q113_address_is_refused(self):
+        self.assertIsNone(self._valid("submitter@.comexample.com"))
+
+    def test_the_q113_address_sends_the_result_to_the_runner_mailbox(self):
+        msg = self._send("submitter@.comexample.com")
+        self.assertEqual(self.MAILBOX, str(msg["To"]))
+        self.assertNotEqual("<>", str(msg["To"]))
+
+    def test_no_refused_shape_is_ever_addressed_to_empty_angles(self):
+        for reply_to in ("submitter@.comexample.com",
+                         "submitter@com..example.com", "<>",
+                         "<ok@example.org>", "not-an-email", "",
+                         "a@b..com", "a@.b.com"):
+            msg = self._send(reply_to)
+            self.assertEqual(self.MAILBOX, str(msg["To"]), reply_to)
+            self.assertNotEqual("<>", str(msg["To"]), reply_to)
+
+    def test_send_mail_addresses_a_valid_reply_to(self):
+        msg = self._send("ok@example.org")
+        self.assertEqual("ok@example.org", str(msg["To"]))
+        self.assertEqual(self.MAILBOX, str(msg["From"]))
+
+    def test_send_mail_without_a_reply_to_uses_the_mailbox(self):
+        from runner.wire import mailbox as MB
+
+        class FakeSmtp:
+            def __init__(self):
+                self.sent = []
+
+            def send_message(self, msg):
+                self.sent.append(msg)
+        smtp = FakeSmtp()
+        MB.send_mail(smtp, {"mailbox_user": self.MAILBOX},
+                     "[HOMING-PIGEON] result j1", "{}", None)
+        self.assertEqual(self.MAILBOX, str(smtp.sent[0]["To"]))
+
+    def test_a_bookended_reply_to_falls_back_to_the_mailbox(self):
+        msg = self._send("<ok@example.org>")
+        self.assertEqual(self.MAILBOX, str(msg["To"]))
+
+    def test_send_mail_folds_a_multiline_subject_to_one_line(self):
+        from runner.wire import mailbox as MB
+
+        class FakeSmtp:
+            def __init__(self):
+                self.sent = []
+
+            def send_message(self, msg):
+                self.sent.append(msg)
+        smtp = FakeSmtp()
+        MB.send_mail(smtp, {"mailbox_user": self.MAILBOX},
+                     "line1\nline2\r\nline3", "body", None)
+        self.assertEqual("line1 line2 line3",
+                         str(smtp.sent[0]["Subject"]))
+
+    def test_send_mail_folds_the_headers_own_line_breaks(self):
+        from runner.wire import mailbox as MB
+
+        class FakeSmtp:
+            def __init__(self):
+                self.sent = []
+
+            def send_message(self, msg):
+                self.sent.append(msg)
+        for br in ("\x0b", "\x0c", "\x1c", "\u2028"):
+            smtp = FakeSmtp()
+            MB.send_mail(smtp, {"mailbox_user": self.MAILBOX},
+                         "a" + br + "b", "body", None)
+            self.assertEqual("a b", str(smtp.sent[0]["Subject"]), repr(br))
+
+    def test_the_runner_level_name_is_the_same_verdict(self):
+        from runner.runner import _valid_reply_to
+        self.assertIsNone(_valid_reply_to(
+            {"reply_to": "submitter@.comexample.com"}))
+        self.assertEqual("ok@example.org", _valid_reply_to(
+            {"reply_to": "ok@example.org"}))
+
+    # -- the job and reply_to fields --
+
+    def test_a_non_dict_job_has_no_reply_to(self):
+        from runner.wire import mailbox as MB
+        for job in (None, [], "a@b.com", 7, {"REPLY_TO": "a@b.com"}):
+            self.assertIsNone(MB._valid_reply_to(job), repr(job))
+
+    def test_a_missing_reply_to_is_none(self):
+        from runner.wire import mailbox as MB
+        self.assertIsNone(MB._valid_reply_to({}))
+        self.assertIsNone(MB._valid_reply_to({"reply_to": None}))
+
+    def test_a_nonstring_reply_to_is_refused(self):
+        for bad in (7, 1.5, True, ["a@b.com"], {"x": 1},
+                    b"a@b.com", ("a@b.com",)):
+            self.assertIsNone(self._valid(bad), repr(bad))
+
+    def test_surrounding_whitespace_is_stripped(self):
+        for wrapped in (" a@b.com", "a@b.com ", "\ta@b.com\n",
+                        "a@b.com\r\n", "\x0ba@b.com\x0c",
+                        "\u00a0a@b.com\u00a0"):
+            self.assertEqual("a@b.com", self._valid(wrapped), repr(wrapped))
+
+    def test_length_254_is_accepted(self):
+        addr = "x" * 242 + "@example.com"
+        self.assertEqual(254, len(addr))
+        self.assertEqual(addr, self._valid(addr))
+
+    def test_length_255_is_refused(self):
+        addr = "x" * 243 + "@example.com"
+        self.assertEqual(255, len(addr))
+        self.assertIsNone(self._valid(addr))
+
+    def test_length_is_counted_after_the_strip(self):
+        addr = "  " + "x" * 242 + "@example.com" + "\n"
+        self.assertEqual("x" * 242 + "@example.com", self._valid(addr))
+
+    def test_the_signed_address_is_returned_verbatim_not_normalized(self):
+        self.assertEqual("A.B+Tag@F-G.HI", self._valid("A.B+Tag@F-G.HI"))
+        self.assertEqual("a@B.COM", self._valid("a@B.COM"))
+
+    # -- the local part --
+
+    def test_an_empty_local_part_is_refused(self):
+        self.assertIsNone(self._valid("@b.com"))
+
+    def test_the_local_part_may_start_or_end_with_a_dot(self):
+        self.assertEqual(".a@b.com", self._valid(".a@b.com"))
+        self.assertEqual("a.@b.com", self._valid("a.@b.com"))
+
+    def test_the_local_part_may_carry_dot_runs(self):
+        self.assertEqual("a..b@c.com", self._valid("a..b@c.com"))
+        self.assertEqual("..@c.com", self._valid("..@c.com"))
+
+    def test_an_underscore_in_the_local_part_is_plain(self):
+        self.assertEqual("a_b@c.com", self._valid("a_b@c.com"))
+
+    def test_the_local_parts_own_characters_are_plain(self):
+        self.assertEqual("a+b%c_d-e@f-g.hi",
+                         self._valid("a+b%c_d-e@f-g.hi"))
+
+    def test_spaces_inside_are_refused(self):
+        for bad in ("a b@c.com", "a@b .com", "a@ b.com", "a @b.com"):
+            self.assertIsNone(self._valid(bad), bad)
+
+    def test_non_ascii_is_refused(self):
+        for bad in ("ü@b.com", "a@bü.com", "a@b.cö"):
+            self.assertIsNone(self._valid(bad), bad)
+
+    # -- the '@' field --
+
+    def test_more_than_one_at_sign_is_refused(self):
+        for bad in ("a@@b.com", "a@b@c.com", "@@b.com"):
+            self.assertIsNone(self._valid(bad), bad)
+
+    def test_a_missing_at_sign_is_refused(self):
+        for bad in ("not-an-email", "a.b.com", "a"):
+            self.assertIsNone(self._valid(bad), bad)
+
+    # -- the domain labels --
+
+    def test_consecutive_dots_in_the_domain_are_refused(self):
+        self.assertIsNone(self._valid("submitter@com..example.com"))
+        self.assertIsNone(self._valid("a@b...com"))
+
+    def test_a_domain_label_may_not_start_with_a_dot(self):
+        self.assertIsNone(self._valid("a@.b.com"))
+        self.assertIsNone(self._valid("a@.com"))
+
+    def test_a_trailing_dot_on_the_domain_is_refused(self):
+        self.assertIsNone(self._valid("a@b.com."))
+        self.assertIsNone(self._valid("a@com."))
+
+    def test_a_domain_label_may_not_start_with_a_hyphen(self):
+        self.assertIsNone(self._valid("a@-b.com"))
+
+    def test_a_domain_label_may_not_end_with_a_hyphen(self):
+        self.assertIsNone(self._valid("a@b-.com"))
+        self.assertIsNone(self._valid("a@b.c-.com"))
+
+    def test_hyphens_inside_a_label_are_plain(self):
+        self.assertEqual("a@b-c.com", self._valid("a@b-c.com"))
+        self.assertEqual("a@b--c.com", self._valid("a@b--c.com"))
+        self.assertEqual("a@b.c-d.com", self._valid("a@b.c-d.com"))
+
+    def test_single_character_labels_are_plain(self):
+        self.assertEqual("a@b.co", self._valid("a@b.co"))
+        self.assertEqual("a@1.2.com", self._valid("a@1.2.com"))
+
+    def test_digit_labels_are_plain_before_the_tld(self):
+        self.assertEqual("a@123.456.com", self._valid("a@123.456.com"))
+
+    def test_an_underscore_in_the_domain_is_refused(self):
+        self.assertIsNone(self._valid("a@b_com.com"))
+
+    def test_an_ip_literal_domain_is_refused(self):
+        self.assertIsNone(self._valid("a@[1.2.3.4]"))
+
+    def test_a_domain_with_no_dot_is_refused(self):
+        self.assertIsNone(self._valid("a@b"))
+        self.assertIsNone(self._valid("a@"))
+
+    # -- the top-level domain --
+
+    def test_the_tld_must_be_two_or_more_letters(self):
+        for bad in ("a@b.c", "a@b.com1", "a@b.c-m", "a@b.12", "a@1.22"):
+            self.assertIsNone(self._valid(bad), bad)
+
+    def test_a_long_tld_is_plain(self):
+        self.assertEqual("a@b.cccccccccc", self._valid("a@b.cccccccccc"))
+
+    # -- the angle shapes: the crash's own material --
+
+    def test_angle_brackets_around_a_good_address_are_refused(self):
+        self.assertIsNone(self._valid("<a@b.com>"))
+        self.assertIsNone(self._valid("<a@b.com"))
+        self.assertIsNone(self._valid("a@b.com>"))
+
+    def test_the_empty_angle_address_is_refused(self):
+        self.assertIsNone(self._valid("<>"))
+
+    def test_a_display_name_with_angles_is_refused(self):
+        self.assertIsNone(self._valid("Name <a@b.com>"))
+        self.assertIsNone(self._valid("a@b.com <>"))
+
+    def test_angle_shapes_inside_the_address_are_refused(self):
+        for bad in ("a<>@b.com", "a@<>", "a@<b.com>", "<<a@b.com>>"):
+            self.assertIsNone(self._valid(bad), bad)
+
+    # -- bookends and run lengths --
+
+    def test_bookend_symbols_at_the_front(self):
+        import string as _string
+        local_chars = set("._%+-")
+        for symbol in _string.punctuation:
+            got = self._valid(symbol + self.GOOD)
+            if symbol in local_chars:
+                self.assertEqual(symbol + self.GOOD, got, symbol)
+            else:
+                self.assertIsNone(got, symbol)
+
+    def test_bookend_symbols_at_the_back_are_all_refused(self):
+        import string as _string
+        for symbol in _string.punctuation:
+            self.assertIsNone(self._valid(self.GOOD + symbol), symbol)
+
+    def test_bookend_nul_is_refused_at_the_front_back_and_middle(self):
+        for bad in ("\x00" + self.GOOD, self.GOOD + "\x00",
+                    "a\x00@b.com", "a@b.c\x00om", "a@b.com\x00"):
+            self.assertIsNone(self._valid(bad), repr(bad))
+
+    def test_bookend_controls_that_strip_are_stripped_at_both_ends(self):
+        for ch in ("\t", "\r", "\n", "\x0b", "\x0c", "\u00a0"):
+            self.assertEqual("a@b.com", self._valid(ch + "a@b.com" + ch),
+                             repr(ch))
+
+    def test_run_lengths_in_the_local_part(self):
+        self.assertEqual("a" * 10 + "@b.com",
+                         self._valid("a" * 10 + "@b.com"))
+        self.assertEqual("." * 10 + "@b.com",
+                         self._valid("." * 10 + "@b.com"))
+        self.assertEqual("a" + "." * 5 + "b" + "." * 5 + "@c.com",
+                         self._valid("a" + "." * 5 + "b" + "." * 5
+                                     + "@c.com"))
+
+    def test_run_lengths_in_the_domain(self):
+        self.assertEqual("a@" + "b" * 10 + ".com",
+                         self._valid("a@" + "b" * 10 + ".com"))
+        self.assertEqual("a@b" + "-" * 10 + "c.com",
+                         self._valid("a@b" + "-" * 10 + "c.com"))
+        self.assertIsNone(self._valid("a@" + "." * 10 + "com"))
+        self.assertIsNone(self._valid("a@b" + "." * 3 + "com"))
+
+    def test_an_odd_character_at_the_front_back_and_middle_of_the_local_part(self):
+        for bad in (";" + "a" * 10 + "@b.com", "a" * 10 + ";" + "@b.com",
+                    "a" * 5 + ";" + "a" * 5 + "@b.com"):
+            self.assertIsNone(self._valid(bad), bad)
+        for good in ("." + "a" * 10 + "@b.com",
+                     "a" * 10 + "." + "@b.com",
+                     "a" * 5 + "." + "a" * 5 + "@b.com"):
+            self.assertEqual(good, self._valid(good), good)
+
+
 if __name__ == "__main__":
     unittest.main()

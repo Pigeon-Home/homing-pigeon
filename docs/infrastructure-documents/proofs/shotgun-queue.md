@@ -1384,7 +1384,27 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 4c93d140 (29-Oct-2026)
 - Area: cloud result addressing / provenance
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the ReplyToProvenanceShotgunTest
+  suite in runner/tests/test_blackbox_findings.py, the file
+  where the fix's own tests live): a mutated reply_to whose
+  domain starts with a dot, or carries consecutive dots, is
+  refused and the result falls back to the runner's mailbox,
+  never addressed to '<>' — the per-field pins (the job, the
+  local part, the '@', every domain label, the top-level
+  domain, and the angle shapes themselves) are carried in the
+  suite's header comment in the repo. The suite runs green
+  (50 tests pass, 0 skipped, skip-registry gate unaffected),
+  no live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target cloud
+  --rounds 400 --seed 20261149, run locally against the banked
+  cloud corpus (113 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 184, slowest try 2,532 ms — no
+  result was addressed to '<>' again. The grow's bookkeeping
+  writes were reverted and are not banked (banking is the rigs'
+  hourly job).
 
 ### 49. Q101: inline files and outputs — canonical base64; the sender wrote outputs outside its folder
 - Fixed: 1fa6d626 (27-Oct-2026)
