@@ -1461,7 +1461,26 @@ Applied to every item on this queue, item 1 included:
 - Fixed: eff6a7ae, 369eafd9, 862669f2 (27-Oct-2026)
 - Area: runner/ops/poll.py, mail.py, handlers.py, startup.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (ReplayCacheAgeShotgunTest in
+  test_q102_seen_age.py, the file where the first fix's own
+  tests live): floods at and past the old 2000 count, ages at,
+  inside and past the keep horizon, the stamp-plausibility
+  bound, flag-shaped values, bookended keys, and every
+  caller-visible shape (keys to callers, times on disk). The
+  file runs green (61 tests in the file, 0 skipped), no live
+  bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  (max_job_age_sec read value by value against seen_keep_sec;
+  the key and recorded-at fields; the save call's keep_sec) and
+  the bookend / run-length sweeps are carried in the class
+  docstring in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target mail --rounds
+  400 --seed 20261152, run locally against the banked mail
+  corpus (26 entries) — mail is the nearest de_dust target to
+  the replay surface. Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 131, slowest try 1364 ms. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 52. Q103: the query door — an ownerless record was not the owner's; the owner's policy did not reach every door; policy ran before freshness
 - Fixed: f02356a2, 8d9e9102 (27-Oct-2026)
