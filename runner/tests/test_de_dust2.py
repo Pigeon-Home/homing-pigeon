@@ -15,6 +15,8 @@ one line so the timer measures the reader. P10: `stats --yield`
 prints the per-target table the review was built from.
 """
 import argparse
+import copy
+import io
 import json
 import errno
 import os
@@ -24,6 +26,7 @@ import random
 import string
 import threading
 import time
+import string
 import subprocess
 import sys
 import tempfile
@@ -905,6 +908,605 @@ class ParallelDrainTest(unittest.TestCase):
         status = B.run_parallel([("a", cmd), ("b", cmd)], 2, out=lines.append)
         self.assertEqual(0, status)
         self.assertEqual(2, lines.count("end"))
+
+
+class _GrowFakeProc:
+    """A fake child for run_parallel: poll() reports finished after
+    a set number of polls, stdout is whatever stream shape the test
+    hands in, and communicate() / wait() count their calls."""
+
+    def __init__(self, output=b"", rc=0, polls=0, stream="pipe",
+                 comm=None):
+        self._rc = rc
+        self._polls = polls
+        self.returncode = None
+        self.communicated = 0
+        self.waited = 0
+        if stream == "pipe":
+            self.stdout = io.BytesIO(output)
+        elif stream == "none":
+            self.stdout = None
+        elif stream == "noread":
+            self.stdout = object()
+        self._comm = output if comm is None else comm
+
+    def poll(self):
+        if self._polls > 0:
+            self._polls -= 1
+            return None
+        self.returncode = self._rc
+        return self._rc
+
+    def communicate(self):
+        self.communicated += 1
+        self.returncode = self._rc
+        return self._comm, None
+
+    def wait(self):
+        self.waited += 1
+        self.returncode = self._rc
+        return self._rc
+
+
+class _StepClock:
+    """A monotonic clock that advances a fixed step per call, so a
+    cycled grow's deadline arithmetic is deterministic."""
+
+    def __init__(self, step=10.0):
+        self.t = 0.0
+        self.step = step
+
+    def __call__(self):
+        self.t += self.step
+        return self.t
+
+
+class ParallelGrowOwnShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 45: Q122 -- the parallel
+    grow did not drain its children, and two crash families
+    (race_state, v2_mail) were the grow's own (fixed 5b068aff,
+    30-Oct-2026).
+
+    Three surfaces, each scattered around the failure it came from.
+
+    The drain: run_parallel now starts a reader thread per child at
+    spawn and drains stdout into a buffer while the parent polls.
+    Its fielded surface is enumerated one field per test below:
+    commands, jobs, out, spawn, minutes, clock, nap, requeue and
+    floor_sec -- through fakes at the spawn seam, never a real long
+    parallel grow, so the family is fast and deterministic. The
+    pins: drained output printed whole per child and never through
+    communicate(); a child past the pipe buffer (200,000 bytes
+    here, drained in 64 KB reads) finishing; the communicate()
+    fallback for a child with no pipe, a None pipe, or a pipe with
+    no read; the worst return code winning and a negative one never
+    lowering it; the jobs cap; a busy-polling child; a pipe that
+    breaks (OSError) or turns invalid (ValueError) mid-read; a
+    pipe that dribbles three bytes at a time reassembled whole;
+    out-of-order finishing with each output kept whole; and the
+    cycling arithmetic -- the seed moving on, the deadline stopping
+    new starts, the requeue callback's word going back on the
+    queue, a budget clipped to the cycle's remainder, a budget
+    under the floor not started (and naming its target, symbol
+    bookends and all), a budgetless command never clipped, a
+    budget that fits running unclipped, and the caller's command
+    lists never mutated.
+
+    The grow's own race_state family: the 72 banked records held
+    the seen file to keys carrying a NUL, which the store drops by
+    its own rule (_write_seen_kept). The harness honors the rule
+    now: a NUL key alone is refused (nothing was held), a NUL key
+    beside a good one is accepted, and no shape of NUL -- bookends,
+    runs, front / back / middle -- is a lost-update crash again.
+
+    The grow's own v2_mail family: subject idents were sanitized
+    with Python's isspace, so an ident in the grammar's gap class
+    built a subject with no id. The tool's sanitizers use the
+    grammar's token class (_SUBJECT_TOKEN) now: every gap-class
+    character (the ASCII controls and the Unicode spaces, BOM
+    included) fails the token match and the ident falls back to
+    the default, while a unit separator is a token character for
+    the match and a message carrying one is refused by the reader,
+    never a checker crash.
+
+    The bookend rule and run lengths (standing rules, 1-Nov-2026)
+    are part of the family: the text surfaces -- the target name in
+    the slice messages, the seen keys, the subject idents -- get
+    every printable ASCII symbol (string.punctuation) at the front
+    AND the back, symbol-only strings, and NUL / tab / CR / LF
+    shapes; and run lengths: runs of the odd character, and runs
+    of ordinary characters with the odd one at the front, the back
+    and the middle.
+
+    Proof of work (6-Nov-2026). The unit tests are the 50 methods
+    of this class: 30 on the drain and the cycling arithmetic, 11
+    on the race_state attribution, 9 on the v2_mail attribution.
+    The fuzzing was executed, not just the tests written:
+    runner/tools/de_dust_corpus.py grow --target race_state
+    --rounds 400 --seed 20261146, run locally against the banked
+    race_state corpus (109 entries). race_state is the target
+    chosen for this item's fuzz job: of the grow's two own
+    families, its 72 records were the larger, and the drain fix
+    and the NUL attribution were landed by the same commit.
+    Result: 400 rounds, 0 crashes, 0 slow, arcs 183 -> 186,
+    slowest try 480 ms; neither the stall nor the lost-update
+    attribution recurred. The grow's bookkeeping writes were
+    reverted and are not banked (banking is the rigs' hourly job);
+    this record is the run's proof.
+    None of this is exotic: it is combinatorics -- systematically
+    trying the combinations a hand-written list would never reach,
+    then pinning each answer as a test."""
+
+    # -- helpers --
+
+    def _run(self, cmds, factory, jobs=2, **kw):
+        lines = []
+        kw.setdefault("nap", 0)
+        status = B.run_parallel(cmds, jobs, out=lines.append,
+                                spawn=lambda cmd: factory(cmd), **kw)
+        return status, lines
+
+    def _race(self, spec):
+        entry = B.make_entry("payload", spec, "shotgun45", "shotgun45")
+        return B._with_rig(lambda: B.check("race_state", entry))
+
+    def _v2(self, ident):
+        seeds = {e["from"]: e for e in B.seeds_v2_mail()}
+        entry = copy.deepcopy(seeds["seed:question"])
+        entry["data"]["ident"] = ident
+        return B._with_rig(lambda: B.check("v2_mail", entry))
+
+    # -- the drain: run_parallel through the spawn seam --
+
+    def test_drained_output_is_printed_whole_and_communicate_is_not_used(self):
+        proc = _GrowFakeProc(b"one\ntwo\n", rc=3)
+        status, lines = self._run([("a", ["x"])], lambda cmd: proc, jobs=1)
+        self.assertEqual(3, status)
+        self.assertEqual(["one", "two"], lines)
+        self.assertEqual(0, proc.communicated)
+        self.assertEqual(1, proc.waited)
+
+    def test_a_child_past_the_pipe_buffer_is_drained_in_chunks(self):
+        big = b"x" * 200000 + b"\nend\n"
+        status, lines = self._run([("a", ["x"])],
+                                  lambda cmd: _GrowFakeProc(big), jobs=1)
+        self.assertEqual(0, status)
+        self.assertEqual([200000, 3], [len(line) for line in lines])
+        self.assertEqual("end", lines[1])
+
+    def test_output_is_split_on_lines_and_the_trailing_blank_is_dropped(self):
+        _s, lines = self._run([("a", ["x"])],
+                              lambda cmd: _GrowFakeProc(b"a\n\nb\n\n"),
+                              jobs=1)
+        self.assertEqual(["a", "", "b"], lines)
+        _s, lines = self._run([("a", ["x"])],
+                              lambda cmd: _GrowFakeProc(b"one\ntwo\n"),
+                              jobs=1)
+        self.assertEqual(["one", "two"], lines)
+
+    def test_invalid_utf8_in_the_drained_output_is_replaced_not_raised(self):
+        status, lines = self._run(
+            [("a", ["x"])], lambda cmd: _GrowFakeProc(b"\xff\xfe bad\n"),
+            jobs=1)
+        self.assertEqual(0, status)
+        self.assertEqual(["\ufffd\ufffd bad"], lines)
+
+    def test_a_child_without_a_stdout_attribute_uses_communicate(self):
+        proc = _GrowFakeProc(stream="missing", comm=b"via comm\n")
+        status, lines = self._run([("a", ["x"])], lambda cmd: proc, jobs=1)
+        self.assertEqual(0, status)
+        self.assertEqual(["via comm"], lines)
+        self.assertEqual(1, proc.communicated)
+        self.assertEqual(0, proc.waited)
+
+    def test_a_child_with_stdout_none_uses_communicate(self):
+        proc = _GrowFakeProc(stream="none", comm=b"none pipe\n")
+        _s, lines = self._run([("a", ["x"])], lambda cmd: proc, jobs=1)
+        self.assertEqual(["none pipe"], lines)
+        self.assertEqual(1, proc.communicated)
+
+    def test_a_child_whose_stdout_cannot_be_read_uses_communicate(self):
+        proc = _GrowFakeProc(stream="noread", comm=b"unreadable pipe\n")
+        _s, lines = self._run([("a", ["x"])], lambda cmd: proc, jobs=1)
+        self.assertEqual(["unreadable pipe"], lines)
+        self.assertEqual(1, proc.communicated)
+
+    def test_communicate_text_output_is_printed_as_is(self):
+        proc = _GrowFakeProc(stream="none", comm="text out\n")
+        _s, lines = self._run([("a", ["x"])], lambda cmd: proc, jobs=1)
+        self.assertEqual(["text out"], lines)
+
+    def test_communicate_none_and_empty_outputs_print_nothing(self):
+        procs = {"a": _GrowFakeProc(stream="none", comm=None),
+                 "b": _GrowFakeProc(stream="none", comm=b"")}
+        status, lines = self._run([("a", ["a"]), ("b", ["b"])],
+                                  lambda cmd: procs[cmd[0]], jobs=2)
+        self.assertEqual(0, status)
+        self.assertEqual([], lines)
+
+    def test_the_worst_returncode_is_the_grows_status(self):
+        rcs = {"a": 2, "b": 7, "c": 0}
+        status, _l = self._run(
+            [(t, [t]) for t in "abc"],
+            lambda cmd: _GrowFakeProc(b"", rc=rcs[cmd[0]]), jobs=3)
+        self.assertEqual(7, status)
+
+    def test_a_negative_returncode_never_lowers_the_status(self):
+        rcs = {"a": -9, "b": 3}
+        status, _l = self._run(
+            [(t, [t]) for t in "ab"],
+            lambda cmd: _GrowFakeProc(b"", rc=rcs[cmd[0]]), jobs=2)
+        self.assertEqual(3, status)
+        status, _l = self._run([("a", ["a"])],
+                               lambda cmd: _GrowFakeProc(b"", rc=-9),
+                               jobs=1)
+        self.assertEqual(0, status)
+
+    def test_no_commands_is_a_quiet_zero(self):
+        def forbidden(cmd):
+            raise AssertionError("spawn called with no commands")
+        status, lines = self._run([], forbidden, jobs=2)
+        self.assertEqual(0, status)
+        self.assertEqual([], lines)
+
+    def test_jobs_one_runs_children_in_the_order_given(self):
+        spawned = []
+
+        def factory(cmd):
+            spawned.append(cmd[0])
+            return _GrowFakeProc(b"done-" + cmd[0].encode() + b"\n",
+                                 polls=1)
+        status, lines = self._run([("a", ["a"]), ("b", ["b"]),
+                                   ("c", ["c"])], factory, jobs=1)
+        self.assertEqual(0, status)
+        self.assertEqual(["a", "b", "c"], spawned)
+        self.assertEqual(["done-a", "done-b", "done-c"], lines)
+
+    def test_the_jobs_cap_is_never_exceeded(self):
+        alive = {"now": 0, "max": 0}
+
+        class CapProc(_GrowFakeProc):
+            def poll(self):
+                got = super().poll()
+                if got is not None and not getattr(self, "_counted",
+                                                   False):
+                    self._counted = True
+                    alive["now"] -= 1
+                return got
+
+        def factory(cmd):
+            alive["now"] += 1
+            alive["max"] = max(alive["max"], alive["now"])
+            return CapProc(b"done\n", polls=2)
+        status, lines = self._run(
+            [("t%d" % i, ["c%d" % i]) for i in range(5)], factory, jobs=2)
+        self.assertEqual(0, status)
+        self.assertEqual(2, alive["max"])
+        self.assertEqual(5, len(lines))
+
+    def test_a_child_that_polls_busy_for_a_while_still_finishes_drained(self):
+        proc = _GrowFakeProc(b"late\n", polls=5)
+        status, lines = self._run([("a", ["x"])], lambda cmd: proc, jobs=1)
+        self.assertEqual(0, status)
+        self.assertEqual(["late"], lines)
+        self.assertEqual(0, proc.communicated)
+
+    def test_a_pipe_that_breaks_mid_read_still_lets_the_child_finish(self):
+        class BadStream:
+            def read(self, n=-1):
+                raise OSError("pipe gone")
+        proc = _GrowFakeProc(rc=4)
+        proc.stdout = BadStream()
+        status, lines = self._run([("a", ["x"])], lambda cmd: proc, jobs=1)
+        self.assertEqual(4, status)
+        self.assertEqual([], lines)
+        self.assertEqual(1, proc.waited)
+
+    def test_a_pipe_that_raises_valueerror_is_swallowed_the_same_way(self):
+        class BadStream:
+            def read(self, n=-1):
+                raise ValueError("closed file")
+        proc = _GrowFakeProc(rc=0)
+        proc.stdout = BadStream()
+        status, lines = self._run([("a", ["x"])], lambda cmd: proc, jobs=1)
+        self.assertEqual(0, status)
+        self.assertEqual([], lines)
+        self.assertEqual(1, proc.waited)
+
+    def test_a_dribbling_pipe_is_reassembled_whole(self):
+        class Dribble(io.RawIOBase):
+            def __init__(self, data):
+                self._data = data
+                self._at = 0
+
+            def readable(self):
+                return True
+
+            def read(self, n=-1):
+                if self._at >= len(self._data):
+                    return b""
+                chunk = self._data[self._at:self._at + 3]
+                self._at += len(chunk)
+                return chunk
+        proc = _GrowFakeProc()
+        proc.stdout = Dribble(b"abcdefghij\nend\n")
+        status, lines = self._run([("a", ["x"])], lambda cmd: proc, jobs=1)
+        self.assertEqual(0, status)
+        self.assertEqual(["abcdefghij", "end"], lines)
+        self.assertEqual(0, proc.communicated)
+
+    def test_a_child_may_finish_out_of_order_and_each_output_stays_whole(self):
+        procs = {"a": _GrowFakeProc(b"a-line\n", polls=3),
+                 "b": _GrowFakeProc(b"b-line\n", polls=0)}
+        status, lines = self._run([("a", ["a"]), ("b", ["b"])],
+                                  lambda cmd: procs[cmd[0]], jobs=2)
+        self.assertEqual(0, status)
+        self.assertEqual(["b-line", "a-line"], lines)
+
+    # -- the cycling arithmetic: minutes, clock, requeue, floor_sec --
+
+    def test_cycling_moves_the_seed_on_each_round(self):
+        spawned = []
+
+        def factory(cmd):
+            spawned.append(list(cmd))
+            return _GrowFakeProc(b"tick\n")
+        status, lines = self._run(
+            [("t", ["grow", "--seed", "5"])], factory, jobs=1,
+            minutes=1.0, clock=_StepClock(10.0))
+        self.assertEqual(0, status)
+        self.assertEqual([["grow", "--seed", "5"], ["grow", "--seed", "6"],
+                          ["grow", "--seed", "7"]], spawned)
+        self.assertEqual(["tick"] * 3, lines)
+
+    def test_cycling_starts_nothing_new_once_the_deadline_has_passed(self):
+        class Clock:
+            def __init__(self):
+                self.calls = 0
+
+            def __call__(self):
+                self.calls += 1
+                return 0.0 if self.calls <= 2 else 100.0
+        spawned = []
+
+        def factory(cmd):
+            spawned.append(list(cmd))
+            return _GrowFakeProc(b"ran\n")
+        status, _l = self._run([("t", ["grow", "--seed", "1"])], factory,
+                               jobs=1, minutes=1.0, clock=Clock())
+        self.assertEqual(0, status)
+        self.assertEqual([["grow", "--seed", "1"]], spawned)
+
+    def test_the_requeue_callback_gets_the_moved_seed_and_its_word_goes_back_on(self):
+        class Clock:
+            def __init__(self):
+                self.calls = 0
+
+            def __call__(self):
+                self.calls += 1
+                return 0.0 if self.calls <= 5 else 100.0
+        calls = []
+        spawned = []
+
+        def requeue(target, cmd):
+            calls.append((target, list(cmd)))
+            return cmd + ["--again"]
+
+        def factory(cmd):
+            spawned.append(list(cmd))
+            return _GrowFakeProc(b"r\n")
+        status, _l = self._run([("t", ["grow", "--seed", "1"])], factory,
+                               jobs=1, minutes=1.0, clock=Clock(),
+                               requeue=requeue)
+        self.assertEqual(0, status)
+        self.assertEqual([("t", ["grow", "--seed", "2"]),
+                          ("t", ["grow", "--seed", "3", "--again"])], calls)
+        self.assertEqual([["grow", "--seed", "1"],
+                          ["grow", "--seed", "2", "--again"]], spawned)
+
+    def test_a_budget_over_the_remainder_is_clipped_to_it(self):
+        spawned = []
+
+        def factory(cmd):
+            spawned.append(list(cmd))
+            return _GrowFakeProc(b"ran\n")
+        status, lines = self._run(
+            [("t", ["grow", "--budget-sec", "900"])], factory, jobs=1,
+            minutes=1.0, clock=_StepClock(10.0), floor_sec=30.0)
+        self.assertEqual(0, status)
+        self.assertEqual([["grow", "--budget-sec", "40"]], spawned)
+        self.assertTrue(any("clipped to 40 s" in line for line in lines))
+        self.assertTrue(any("not started, 10 s left" in line
+                            for line in lines))
+
+    def test_a_budget_under_the_floor_is_not_started_and_names_the_target(self):
+        spawned = []
+
+        def factory(cmd):
+            spawned.append(list(cmd))
+            return _GrowFakeProc(b"ran\n")
+        status, lines = self._run(
+            [("tg;t", ["grow", "--budget-sec", "900"])], factory, jobs=1,
+            minutes=1.0, clock=_StepClock(55.0), floor_sec=30.0)
+        self.assertEqual(0, status)
+        self.assertEqual([], spawned)
+        self.assertEqual(1, len(lines))
+        self.assertIn("not started", lines[0])
+        self.assertIn("tg;t", lines[0])
+
+    def test_a_command_with_no_budget_is_never_clipped_nor_floored(self):
+        spawned = []
+
+        def factory(cmd):
+            spawned.append(list(cmd))
+            return _GrowFakeProc(b"ran\n")
+        status, lines = self._run(
+            [("t", ["grow", "--seed", "1"])], factory, jobs=1,
+            minutes=1.0, clock=_StepClock(55.0), floor_sec=9999.0)
+        self.assertEqual(0, status)
+        self.assertEqual([["grow", "--seed", "1"]], spawned)
+        self.assertEqual(["ran"], lines)
+
+    def test_a_budget_that_fits_the_remainder_runs_unclipped(self):
+        class Clock:
+            def __init__(self):
+                self.calls = 0
+
+            def __call__(self):
+                self.calls += 1
+                return 0.0 if self.calls <= 3 else 100.0
+        spawned = []
+
+        def factory(cmd):
+            spawned.append(list(cmd))
+            return _GrowFakeProc(b"ran\n")
+        status, lines = self._run(
+            [("t", ["grow", "--budget-sec", "10"])], factory, jobs=1,
+            minutes=1.0, clock=Clock(), floor_sec=30.0)
+        self.assertEqual(0, status)
+        self.assertEqual([["grow", "--budget-sec", "10"]], spawned)
+        self.assertEqual(["ran"], lines)
+
+    def test_next_seed_moves_only_the_seed(self):
+        cmd = ["g", "--seed", "41"]
+        self.assertEqual(["g", "--seed", "42"], B._next_seed(cmd))
+        self.assertEqual(["g", "--seed", "41"], cmd)
+        self.assertEqual(["g"], B._next_seed(["g"]))
+        self.assertEqual(["--seed", "2", "--seed", "2"],
+                         B._next_seed(["--seed", "1", "--seed", "2"]))
+
+    def test_set_budget_replaces_in_place_and_appends_when_absent(self):
+        cmd = ["g", "--budget-sec", "5"]
+        self.assertEqual(["g", "--budget-sec", "2.5"],
+                         B._set_budget(cmd, 2.5))
+        self.assertEqual(["g", "--budget-sec", "5"], cmd)
+        self.assertEqual(["g", "--budget-sec", "3"], B._set_budget(["g"], 3))
+
+    def test_set_rounds_replaces_in_place_and_appends_when_absent(self):
+        cmd = ["g", "--rounds", "5"]
+        self.assertEqual(["g", "--rounds", "9"], B._set_rounds(cmd, 9))
+        self.assertEqual(["g", "--rounds", "5"], cmd)
+        self.assertEqual(["g", "--rounds", "9"], B._set_rounds(["g"], 9))
+
+    def test_cycling_does_not_mutate_the_callers_commands(self):
+        cmd = ["grow", "--seed", "5"]
+        cmds = [("t", cmd)]
+        self._run(cmds, lambda c: _GrowFakeProc(b"x\n"), jobs=1,
+                  minutes=1.0, clock=_StepClock(10.0))
+        self.assertEqual(["grow", "--seed", "5"], cmd)
+        self.assertEqual([("t", ["grow", "--seed", "5"])], cmds)
+
+    # -- the grow's own race_state family: the NUL seen keys --
+
+    def test_a_nul_key_alone_is_refused_not_a_lost_update_crash(self):
+        got = self._race({"threads": [[{"op": "mark", "key": "bm\x00x"},
+                                       {"op": "load_seen"}]]})
+        self.assertEqual("refused", got)
+
+    def test_a_nul_key_beside_a_good_key_is_accepted(self):
+        got = self._race({"threads": [[{"op": "mark", "key": "bm\x00x"},
+                                       {"op": "mark", "key": "good-1"},
+                                       {"op": "load_seen"}]]})
+        self.assertEqual("accepted", got)
+
+    def test_nul_bookends_and_runs_are_not_held_against_the_file(self):
+        for key in ("\x00" * 10, "\x00k\x00", "k" + "\x00" * 10,
+                    "\x00" * 5 + "k" + "\x00" * 5, "\x00"):
+            got = self._race({"threads": [[{"op": "mark", "key": key},
+                                           {"op": "mark", "key": "good"},
+                                           {"op": "load_seen"}]]})
+            self.assertEqual("accepted", got, repr(key))
+
+    def test_a_tab_key_and_a_space_key_are_plain_keys(self):
+        for key in ("a\tb", "a b", "a\rb", "a\nb"):
+            got = self._race({"threads": [[{"op": "mark", "key": key},
+                                           {"op": "load_seen"}]]})
+            self.assertEqual("accepted", got, repr(key))
+
+    def test_every_symbol_bookended_key_marks_and_reads_back(self):
+        for symbol in string.punctuation:
+            key = symbol + "k" + symbol
+            got = self._race({"threads": [[{"op": "mark", "key": key},
+                                           {"op": "load_seen"}]]})
+            self.assertEqual("accepted", got, symbol)
+
+    def test_run_length_keys_mark_and_read_back(self):
+        for key in ("k" * 10, ";" * 10, "k" * 5 + ";" + "k" * 5,
+                    ";" + "k" * 10, "k" * 10 + ";"):
+            got = self._race({"threads": [[{"op": "mark", "key": key},
+                                           {"op": "load_seen"}]]})
+            self.assertEqual("accepted", got, repr(key))
+
+    def test_an_empty_or_nonstring_key_falls_back_to_a_generated_key(self):
+        for key in ("", 7, None):
+            got = self._race({"threads": [[{"op": "mark", "key": key},
+                                           {"op": "load_seen"}]]})
+            self.assertEqual("accepted", got, repr(key))
+
+    def test_unknown_and_malformed_ops_never_raise(self):
+        got = self._race({"threads": [[{"op": "nope"}, 7, "mark",
+                                       {"op": "mark", "key": "k"}],
+                                      "x"]})
+        self.assertEqual("accepted", got)
+
+    def test_a_switch_of_the_wrong_shape_falls_back_to_the_default(self):
+        for switch in ("fast", True, float("nan"), 5.0, None, 0):
+            got = self._race({"switch": switch,
+                              "threads": [[{"op": "mark", "key": "k1"}]]})
+            self.assertEqual("accepted", got, repr(switch))
+
+    def test_more_threads_than_the_cap_are_bounded(self):
+        spec = {"threads": [[{"op": "mark", "key": "t%d" % i}]
+                            for i in range(6)]}
+        self.assertEqual(B._RACE_MAX_THREADS, len(B._race_ops(spec)))
+        self.assertEqual("accepted", self._race(spec))
+
+    def test_a_save_under_an_unsafe_id_is_not_held_but_a_good_one_is(self):
+        got = self._race({"threads": [[{"op": "save", "id": ".."},
+                                       {"op": "save", "id": "bm-ret-ok"},
+                                       {"op": "load", "id": "bm-ret-ok"}]]})
+        self.assertEqual("accepted", got)
+
+    # -- the grow's own v2_mail family: the token grammar --
+
+    def test_the_subject_token_grammar_uses_the_grammar_gap_class(self):
+        for ch in ("\u00a0", "\u1680", "\u2000", "\u2003", "\u2028",
+                   "\u2029", "\u202f", "\u205f", "\u3000", "\ufeff",
+                   " ", "\t", "\n", "\r", "\x0b", "\x0c"):
+            self.assertIsNone(B._SUBJECT_TOKEN.fullmatch(ch), repr(ch))
+            self.assertIsNone(B._SUBJECT_TOKEN.fullmatch("a" + ch + "b"),
+                              repr(ch))
+
+    def test_the_subject_token_grammar_takes_plain_and_separator_idents(self):
+        for ident in ("q.bm-job-0001", "a\x1fb", "\x1f", "job-1"):
+            self.assertIsNotNone(B._SUBJECT_TOKEN.fullmatch(ident),
+                                 repr(ident))
+
+    def test_a_unicode_space_ident_falls_back_to_the_default(self):
+        self.assertEqual("accepted", self._v2("\u00a0"))
+
+    def test_a_bom_ident_falls_back_to_the_default(self):
+        self.assertEqual("accepted", self._v2("\ufeff"))
+
+    def test_idents_carrying_ascii_gaps_fall_back_to_the_default(self):
+        for ident in ("a b", "a\tb", "a\nb", "a\rb"):
+            self.assertEqual("accepted", self._v2(ident), repr(ident))
+
+    def test_an_empty_or_nonstring_ident_falls_back_to_the_default(self):
+        for ident in ("", 7, None):
+            self.assertEqual("accepted", self._v2(ident), repr(ident))
+
+    def test_a_unit_separator_ident_is_refused_not_a_crash(self):
+        self.assertEqual("refused", self._v2("\x1f"))
+        self.assertEqual("refused", self._v2("a\x1fb"))
+
+    def test_an_overlong_ident_is_refused_not_a_crash(self):
+        self.assertEqual("refused", self._v2("x" * 300))
+
+    def test_every_symbol_bookended_ident_is_refused_not_a_crash(self):
+        for symbol in string.punctuation:
+            got = self._v2(symbol + "q.bm-job-0001" + symbol)
+            self.assertEqual("refused", got, symbol)
 
 
 class FlickeringDiskTest(unittest.TestCase):

@@ -1307,7 +1307,27 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 5b068aff (30-Oct-2026)
 - Existing tests: test_de_dust2.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the ParallelGrowOwnShotgunTest
+  suite in runner/tests/test_de_dust2.py): the parallel grow
+  drains its children through the spawn seam (no real long
+  grows; fakes only), and the grow's own race_state NUL-key and
+  v2_mail token-grammar families stay attributed to the grow —
+  the per-field pins are carried in the suite's header comment
+  in the repo. The file runs green (the suite's 50 tests pass,
+  0 skipped, skip-registry gate unaffected), no live bug
+  exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target race_state
+  --rounds 400 --seed 20261146, run locally against the banked
+  race_state corpus (109 entries) — race_state chosen over
+  v2_mail because its 72 records were the larger of the grow's
+  two own families. Result: 400 rounds, 0 crashes, 0 slow,
+  arcs 183 -> 186, slowest try 480 ms — neither the stall nor
+  the lost-update attribution recurred. The grow's bookkeeping
+  writes were reverted and are not banked (banking is the rigs'
+  hourly job).
 
 ### 46. Q115: a keydir contract crash in the sender
 - Found: f19bc40e (29-Oct-2026); fixed: 30119441 (29-Oct-2026)
