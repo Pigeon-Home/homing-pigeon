@@ -98,6 +98,18 @@ except ImportError:  # run by path: the one writer of a state file
     _io_spec.loader.exec_module(_atomicio)
 
 try:
+    from runner.guard import textutil as _textutil
+except ImportError:  # run by path: the runner's one strict reader
+    import importlib.util
+    _tu_path = os.path.join(_RUNNER_DIR, "guard", "textutil.py")
+    _tu_spec = importlib.util.spec_from_file_location(
+        "hp_textutil", _tu_path)
+    if _tu_spec is None or _tu_spec.loader is None:
+        raise ImportError("runner/guard/textutil.py not loadable")
+    _textutil = importlib.util.module_from_spec(_tu_spec)
+    _tu_spec.loader.exec_module(_textutil)
+
+try:
     from runner._version import __version__
 except ImportError:  # run by path (python runner/cloud/send_job.py) instead of -m
     try:
@@ -325,25 +337,23 @@ def verify_body(body: str, secret: str) -> dict:
                       hashlib.sha384).hexdigest()
     if not hmac.compare_digest(expect, sig.lower()):
         raise ValueError("signature mismatch")
-    # NaN, Infinity and a number that overflows a float are refused
-    # by the parse itself; the runner's verifier does the same (Q89).
-    try:
-        job = json.loads(raw, parse_constant=_no_constant,
-                         parse_float=_finite_float)
-    except RecursionError:
-        raise ValueError(f"signed body nests deeper than {NESTING_LIMIT} "
-                         "levels") from None
+    # The parse is the runner's own strict reader, shared, not a
+    # local copy: NaN, Infinity and a number that overflows a float
+    # are refused, a duplicate member name in one object is refused
+    # by its object_pairs_hook, and the raw bracket depth is
+    # scanned before the parse so a body nested past the bound is
+    # refused without the parser recursing there first (Q89, S1).
+    # This verifier used to parse with only the constant and float
+    # refusals, so a correctly signed body carrying one name twice
+    # verified here, last value wins, while the runner refused the
+    # same body -- two readers of one signed body disagreed.
+    job = _textutil.loads_signed(raw)
     # _extract_signed returns text rooted at the "{" of a root object,
-    # so json.loads here yields a dict or raises. The verifier keeps
+    # so the parse above yields a dict or raises. The verifier keeps
     # its own shape check regardless of the extractor: it is the last
     # word before the body is trusted (Q48).
     if not isinstance(job, dict):
         raise ValueError("signed body is not a JSON object")
-    # A body nested past the walks' bound is refused whole, as the
-    # runner's verifier refuses it (Q89), measured without recursion.
-    if _nests_deeper_than(job, NESTING_LIMIT):
-        raise ValueError(f"signed body nests deeper than {NESTING_LIMIT} "
-                         "levels")
     # A \\ud800 escape reads as a lone surrogate: valid JSON syntax,
     # not UTF-8 text. The runner's verifier refuses it (Q85); this
     # one does the same, in step.
@@ -353,17 +363,6 @@ def verify_body(body: str, secret: str) -> dict:
 
 
 NESTING_LIMIT = 200
-
-
-def _no_constant(name):
-    raise ValueError(f"signed body carries {name}, which is not JSON")
-
-
-def _finite_float(text):
-    value = float(text)
-    if value != value or value in (float("inf"), float("-inf")):
-        raise ValueError("signed body carries a number that is not finite")
-    return value
 
 
 def _nests_deeper_than(value, limit=NESTING_LIMIT) -> bool:

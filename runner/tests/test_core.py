@@ -79,7 +79,7 @@ class CoreListTest(unittest.TestCase):
         # re-recorded at the 2026-11-05 re-measures; the Gemini
         # token count above still describes the 2026-11-04
         # assembly.
-        self.assertEqual(700912, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(700988, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -93,8 +93,8 @@ class CoreListTest(unittest.TestCase):
         # runner/guard and the runner proper, and once more
         # after the outbox stash took the per-key guard in
         # the runner proper.
-        self.assertEqual(55336, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(49819, core.AS_ASSEMBLED_NONBLANK_LINES)
+        self.assertEqual(55335, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(49821, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
