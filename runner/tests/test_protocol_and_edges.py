@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -821,6 +822,9 @@ class AdversarialTests(unittest.TestCase):
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
     def cycle(self, mails, seen=None, opts=None):
         imap, smtp = FakeIMAP(mails), FakeSMTP()
         seen = {} if seen is None else seen
@@ -1007,7 +1011,12 @@ class AdversarialTests(unittest.TestCase):
         imap, smtp, seen = self.cycle([job_email(p)], opts=opts)
         self.assertEqual(len(smtp.sent), 0)   # executed, not emailed
         self.assertIn(jid, seen)              # processed normally
-        self.assertTrue(os.path.isdir(os.path.join(self.tmp, "work", jid)))
+        # The workspace is reaped when the job finishes (temp
+        # reaping, docs/infrastructure-documents/proofs/temp-reap.md);
+        # its absence no longer reads as "did not execute" — the
+        # dry-run test above is the one that proves non-execution
+        # that way, since a dry run creates no workspace at all.
+        self.assertFalse(os.path.isdir(os.path.join(self.tmp, "work", jid)))
 
     def test_concurrent_two_jobs(self):
         import types

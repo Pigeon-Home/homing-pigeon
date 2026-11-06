@@ -6,6 +6,7 @@ processing is a finding we want pinned, not hidden.
 """
 import json
 import os
+import shutil
 import sys
 import tempfile
 import threading
@@ -31,6 +32,7 @@ class ExtensionRaisesTest(unittest.TestCase):
 
     def test_resources_raise_does_not_stop_poll(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {"mailbox_user": "a@b.c", "shared_secret": "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d",
                "oracle_enabled": False}
         seen = {}
@@ -46,6 +48,7 @@ class ExtensionRaisesTest(unittest.TestCase):
 
     def test_dri_raise_does_not_stop_poll(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {"mailbox_user": "a@b.c", "shared_secret": "c4e8b1a97d2f6053e8a1c7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d"}
         seen = {}
         with mock.patch("runner.oracle.dri.maybe_page", side_effect=RuntimeError("page boom")), \
@@ -84,6 +87,7 @@ class ReviewDoesNotBlockTest(unittest.TestCase):
 class ConcurrencyTest(unittest.TestCase):
     def test_concurrent_board_offer_and_complete(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "board.json")
         b = Board(path)
         for i in range(10):
@@ -110,6 +114,7 @@ class ConcurrencyTest(unittest.TestCase):
 
     def test_concurrent_senses_and_resources(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def sense(i):
@@ -136,6 +141,7 @@ class ConcurrencyTest(unittest.TestCase):
 class BadExtensionDataTest(unittest.TestCase):
     def test_senses_query_on_non_object_lines(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = senses._path(tmp)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
@@ -156,6 +162,7 @@ class BadExtensionDataTest(unittest.TestCase):
 
     def test_dri_state_is_a_list(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with open(os.path.join(tmp, "dri.json"), "w", encoding="utf-8") as f:
             json.dump(["not", "an", "object"], f)
         try:
@@ -165,6 +172,7 @@ class BadExtensionDataTest(unittest.TestCase):
 
     def test_resources_state_is_a_number(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with open(os.path.join(tmp, "resources.json"), "w", encoding="utf-8") as f:
             f.write("42")
         try:
@@ -228,6 +236,7 @@ class StoreAlertGracefulTest(unittest.TestCase):
 
     def test_store_non_dict_is_contained(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for record in (None, "string", 42, ["list"]):
             try:
                 senses.store_alert(tmp, record if isinstance(record, dict) else {"sensor": "x"})
@@ -236,6 +245,7 @@ class StoreAlertGracefulTest(unittest.TestCase):
 
     def test_load_alerts_on_empty_dir(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         try:
             recs = senses.load_alerts(tmp)
         except Exception as e:
@@ -285,6 +295,7 @@ class SensorParseGracefulTest(unittest.TestCase):
 class BoardGracefulTest(unittest.TestCase):
     def test_submit_hostile_tasks(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for task in ({}, {"task_id": ""}, {"task_id": "ok", "requires": "nope"},
                      {"task_id": "ok2", "priority": "high"}):
@@ -296,6 +307,7 @@ class BoardGracefulTest(unittest.TestCase):
 
     def test_concurrent_submit_and_offer(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         errors = []
 
@@ -362,6 +374,7 @@ class BudgetAndRateGracefulTest(unittest.TestCase):
     def test_rate_limit_bad_config(self):
         from runner.runner import check_rate_limit
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for cfg in ({}, {"max_queries_per_hour": "nope"}, {"max_queries_per_hour": -1}):
             try:
                 check_rate_limit("k", cfg, path=os.path.join(tmp, "rate.json"))
@@ -371,6 +384,7 @@ class BudgetAndRateGracefulTest(unittest.TestCase):
     def test_prune_bad_days(self):
         from runner.runner import prune_retained
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         os.makedirs(os.path.join(tmp, "retained"))
         for days in (None, "nope", -1, 0):
             try:
@@ -381,6 +395,7 @@ class BudgetAndRateGracefulTest(unittest.TestCase):
     def test_save_retained_odd_job_id(self):
         from runner.runner import save_retained
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for job_id in ("ok", "with space", "..", ""):
             try:
                 save_retained(tmp, job_id or "empty", {"stdout": "x"})
@@ -641,6 +656,7 @@ class SeenAndConfigGracefulTest(unittest.TestCase):
     def test_load_seen_corrupt(self):
         from runner.runner import load_seen
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "seen.json")
         for content in ("not json", "[]", "42", ""):
             with open(path, "w", encoding="utf-8") as f:
@@ -662,6 +678,7 @@ class SeenAndConfigGracefulTest(unittest.TestCase):
     def test_reload_hot_corrupt_keeps_old(self):
         from runner.runner import reload_hot_config
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "config.json")
         with open(path, "w", encoding="utf-8") as f:
             f.write("not json")
@@ -679,6 +696,7 @@ class SeenAndConfigGracefulTest(unittest.TestCase):
     def test_concurrent_save_seen(self):
         from runner.runner import save_seen, load_seen
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "seen.json")
         errors = []
 
@@ -709,6 +727,7 @@ class EventAndCompartmentGracefulTest(unittest.TestCase):
     def test_append_event_odd(self):
         from runner.runner import _append_security_event
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for event in ({}, {"type": None}, {"type": "x", "at": 123}):
             try:
                 _append_security_event(tmp, event)
@@ -717,6 +736,7 @@ class EventAndCompartmentGracefulTest(unittest.TestCase):
 
     def test_compartments_odd_shapes(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t", "kind": "ping", "compartments": ["a"]})
         for cfg in ({}, {"worker_compartments": None},
@@ -730,6 +750,7 @@ class EventAndCompartmentGracefulTest(unittest.TestCase):
     def test_concurrent_append_events(self):
         from runner.runner import _append_security_event
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one(i):
@@ -768,6 +789,7 @@ class InstructionsGracefulTest(unittest.TestCase):
     def test_record_oracle_turn_odd_ans(self):
         from runner.runner import record_oracle_turn
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for ans in ({}, None, "string", {"answer": None}, {"rejected": 12}):
             try:
                 record_oracle_turn(tmp, {}, "q", ans if isinstance(ans, dict) else {})
@@ -828,6 +850,7 @@ class SnapshotGracefulTest(unittest.TestCase):
     def test_concurrent_snapshots(self):
         from runner.runner import snapshot_outside
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one():
@@ -853,6 +876,7 @@ class ExcludeAndTokenGracefulTest(unittest.TestCase):
     def test_snapshot_bad_exclude(self):
         from runner.runner import snapshot_outside
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for exclude in (None, "not-a-list", [1, None, ""], ["/no/such"], 42):
             try:
                 snap = snapshot_outside(tmp, exclude=exclude)
@@ -976,6 +1000,7 @@ class DRIConfigGracefulTest(unittest.TestCase):
 
     def test_evaluate_triggers_odd(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for dcfg in ({}, {"enabled": True, "triggers": None},
                      {"enabled": True, "triggers": "nope"},
                      {"enabled": True, "min_severity": 12}):
@@ -986,6 +1011,7 @@ class DRIConfigGracefulTest(unittest.TestCase):
 
     def test_concurrent_maybe_page(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one():
@@ -1044,6 +1070,7 @@ class AlertSerializationGracefulTest(unittest.TestCase):
 
     def test_store_non_serializable(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         class Weird:
             pass
         for record in (
@@ -1060,6 +1087,7 @@ class AlertSerializationGracefulTest(unittest.TestCase):
 
     def test_load_mixed_lines(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = senses._path(tmp)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         lines = [
@@ -1078,6 +1106,7 @@ class AlertSerializationGracefulTest(unittest.TestCase):
 
     def test_concurrent_store_and_load(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def store(i):
@@ -1115,6 +1144,7 @@ class DiskFractionGracefulTest(unittest.TestCase):
 
     def test_check_resources_odd_disk_path(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for cfg in ({}, {"resources": {"disk_path": None}},
                     {"resources": {"disk_path": "/no/such"}},
                     {"resources": "not-a-dict"}):
@@ -1125,6 +1155,7 @@ class DiskFractionGracefulTest(unittest.TestCase):
 
     def test_concurrent_disk_checks(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one():
@@ -1191,6 +1222,7 @@ class DRIThresholdGracefulTest(unittest.TestCase):
 
     def test_negative_and_missing(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for dcfg in (
             {"enabled": True},
             {"enabled": True, "sensor_fused_score": {"threshold": -1, "window_sec": 60}},
@@ -1203,6 +1235,7 @@ class DRIThresholdGracefulTest(unittest.TestCase):
 
     def test_concurrent_evaluate(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one():
@@ -1311,6 +1344,7 @@ class ReloadGracefulTest(unittest.TestCase):
     def test_load_config_bad_file(self):
         from runner.runner import load_config
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "config.json")
         for content in ("not json", "[]", "null", ""):
             with open(path, "w", encoding="utf-8") as f:
@@ -1325,6 +1359,7 @@ class ReloadGracefulTest(unittest.TestCase):
     def test_reload_bad_keeps_cfg(self):
         from runner.runner import reload_hot_config
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "config.json")
         with open(path, "w", encoding="utf-8") as f:
             f.write("not json")
@@ -1338,6 +1373,7 @@ class ReloadGracefulTest(unittest.TestCase):
     def test_concurrent_reload(self):
         from runner.runner import reload_hot_config
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "config.json")
         with open(path, "w", encoding="utf-8") as f:
             f.write('{"mailbox_user":"a@b.c"}')
@@ -1387,6 +1423,7 @@ class FilesAndTimeoutGracefulTest(unittest.TestCase):
 
     def test_reoffer_bad_timeout(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for timeout in (None, "nope", -1, 0):
             try:
@@ -1577,6 +1614,7 @@ class DRIRecentGracefulTest(unittest.TestCase):
 
     def test_recent_corrupt_file(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "security-events.jsonl")
         with open(path, "w", encoding="utf-8") as f:
             f.write('{"type":"ok"}\n')
@@ -1590,6 +1628,7 @@ class DRIRecentGracefulTest(unittest.TestCase):
 
     def test_concurrent_recent(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one():
@@ -1614,6 +1653,7 @@ class AllowlistGracefulTest(unittest.TestCase):
 
     def test_offer_bad_allowlist(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t", "kind": "ping"})
         for cfg in ({}, {"worker_allowlist": None}, {"worker_allowlist": "w"},
@@ -1628,6 +1668,7 @@ class AllowlistGracefulTest(unittest.TestCase):
 
     def test_offer_bad_capabilities(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t2", "kind": "ping", "requires": ["ping"]})
         for caps in (None, "ping", [None], [1, "ping"], {"ping": True}):
@@ -1638,6 +1679,7 @@ class AllowlistGracefulTest(unittest.TestCase):
 
     def test_concurrent_offer_empty(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         errors = []
 
@@ -1675,6 +1717,7 @@ class DRIWindowGracefulTest(unittest.TestCase):
 
     def test_negative_window_evaluate(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for dcfg in (
             {"enabled": True, "sensor_fused_score": {"threshold": 1, "window_sec": -5}},
             {"enabled": True, "sensor_fused_score": {"threshold": 1, "window_sec": None}},
@@ -1687,6 +1730,7 @@ class DRIWindowGracefulTest(unittest.TestCase):
 
     def test_concurrent_window_evaluate(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one():
@@ -1871,6 +1915,7 @@ class BoardOpsGracefulTest(unittest.TestCase):
 
     def test_complete_missing(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for task_id, result in (("", {}), ("missing", None), ("x", "string"),
                                 ("y", [1, 2])):
@@ -1882,6 +1927,7 @@ class BoardOpsGracefulTest(unittest.TestCase):
 
     def test_approve_missing(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for task_id in ("", "missing", None):
             try:
@@ -1892,6 +1938,7 @@ class BoardOpsGracefulTest(unittest.TestCase):
 
     def test_complete_then_approve(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t", "kind": "ping"})
         b.offer("w", ["ping"])
@@ -1904,6 +1951,7 @@ class BoardOpsGracefulTest(unittest.TestCase):
 
     def test_concurrent_complete_missing(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         errors = []
 
@@ -1929,6 +1977,7 @@ class PriorityGracefulTest(unittest.TestCase):
 
     def test_submit_bad_priority(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for task in (
             {"task_id": "a", "priority": "high"},
@@ -1944,6 +1993,7 @@ class PriorityGracefulTest(unittest.TestCase):
 
     def test_offer_orders_by_priority(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "low", "priority": 1})
         b.submit({"task_id": "high", "priority": 10})
@@ -1956,6 +2006,7 @@ class PriorityGracefulTest(unittest.TestCase):
 
     def test_concurrent_submit_priority(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         errors = []
 
@@ -1981,6 +2032,7 @@ class RequiresGracefulTest(unittest.TestCase):
 
     def test_submit_bad_requires(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for task in (
             {"task_id": "a", "requires": "ping"},
@@ -1996,6 +2048,7 @@ class RequiresGracefulTest(unittest.TestCase):
 
     def test_offer_with_requires(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t", "requires": ["ping"]})
         try:
@@ -2007,6 +2060,7 @@ class RequiresGracefulTest(unittest.TestCase):
 
     def test_concurrent_requires(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         errors = []
 
@@ -2032,6 +2086,7 @@ class CompartmentsGracefulTest(unittest.TestCase):
 
     def test_submit_bad_compartments(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for task in (
             {"task_id": "a", "compartments": "secret"},
@@ -2047,6 +2102,7 @@ class CompartmentsGracefulTest(unittest.TestCase):
 
     def test_offer_compartment_mismatch(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t", "compartments": ["secret"]})
         try:
@@ -2059,6 +2115,7 @@ class CompartmentsGracefulTest(unittest.TestCase):
 
     def test_concurrent_compartments(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         errors = []
 
@@ -2084,6 +2141,7 @@ class PayloadGracefulTest(unittest.TestCase):
 
     def test_submit_odd_payload(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for task in (
             {"task_id": "a", "payload": None},
@@ -2099,6 +2157,7 @@ class PayloadGracefulTest(unittest.TestCase):
 
     def test_offer_returns_payload(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t", "payload": {"cmd": "echo"}})
         try:
@@ -2110,6 +2169,7 @@ class PayloadGracefulTest(unittest.TestCase):
 
     def test_concurrent_payload(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         errors = []
 
@@ -2135,6 +2195,7 @@ class KindGracefulTest(unittest.TestCase):
 
     def test_submit_odd_kind(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for task in (
             {"task_id": "a", "kind": None},
@@ -2150,6 +2211,7 @@ class KindGracefulTest(unittest.TestCase):
 
     def test_offer_odd_kind(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t", "kind": None})
         try:
@@ -2159,6 +2221,7 @@ class KindGracefulTest(unittest.TestCase):
 
     def test_concurrent_kind(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         errors = []
 
@@ -2185,6 +2248,7 @@ class DownloadGracefulTest(unittest.TestCase):
     def test_bad_schemes(self):
         from runner.runner import download, JobRejected
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for url in ("", "ftp://x", "file:///etc/passwd", "not a url",
                     "http://", "https://no-such-host.invalid/x"):
             try:
@@ -2198,6 +2262,7 @@ class DownloadGracefulTest(unittest.TestCase):
     def test_none_url(self):
         from runner.runner import download, JobRejected
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         try:
             download(None if False else "", os.path.join(tmp, "out"))
         except JobRejected:
@@ -2208,6 +2273,7 @@ class DownloadGracefulTest(unittest.TestCase):
     def test_concurrent_bad_urls(self):
         from runner.runner import download, JobRejected
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one(i):
@@ -2233,6 +2299,7 @@ class NaNPriorityGracefulTest(unittest.TestCase):
 
     def test_nan_and_inf_priority(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for i, priority in enumerate((float("nan"), float("inf"), float("-inf"), 0)):
             try:
@@ -2247,6 +2314,7 @@ class NaNPriorityGracefulTest(unittest.TestCase):
 
     def test_offer_after_nan(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "nan", "priority": float("nan")})
         b.submit({"task_id": "ok", "priority": 1})
@@ -2397,6 +2465,7 @@ class TaskIdGracefulTest(unittest.TestCase):
 
     def test_submit_odd_task_id(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for tid in (None, "", 42, {"id": "x"}, ["a"], "ok"):
             try:
@@ -2407,6 +2476,7 @@ class TaskIdGracefulTest(unittest.TestCase):
 
     def test_complete_odd_task_id(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for tid in (None, "", 42, {"id": "x"}, "missing"):
             try:
@@ -2417,6 +2487,7 @@ class TaskIdGracefulTest(unittest.TestCase):
 
     def test_concurrent_odd_ids(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         errors = []
 
@@ -2442,6 +2513,7 @@ class RequiresDictGracefulTest(unittest.TestCase):
 
     def test_submit_dict_in_requires(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for reqs in ([{"a": 1}], ["ok", {"b": 2}], [1, "ok"]):
             try:
@@ -2452,6 +2524,7 @@ class RequiresDictGracefulTest(unittest.TestCase):
 
     def test_offer_dict_requires(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         # Force a task with a dict require past submit if it accepts it.
         b.tasks["t"] = {"task_id": "t", "state": "open", "requires": [{"a": 1}],
@@ -2465,6 +2538,7 @@ class RequiresDictGracefulTest(unittest.TestCase):
 
     def test_concurrent_dict_requires(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         errors = []
 
@@ -2490,6 +2564,7 @@ class WorkerIdGracefulTest(unittest.TestCase):
 
     def test_offer_odd_worker_id(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t", "kind": "ping"})
         for wid in (None, "", 42, {"id": "w"}, ["w"], "w"):
@@ -2500,6 +2575,7 @@ class WorkerIdGracefulTest(unittest.TestCase):
 
     def test_offer_dict_worker_direct(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t2", "kind": "ping"})
         try:
@@ -2511,6 +2587,7 @@ class WorkerIdGracefulTest(unittest.TestCase):
 
     def test_concurrent_odd_workers(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t3", "kind": "ping"})
         errors = []
@@ -2538,6 +2615,7 @@ class KeyIdRateGracefulTest(unittest.TestCase):
     def test_rate_odd_key(self):
         from runner.runner import check_rate_limit
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "rate.json")
         for key in (None, "", 42, {"id": "k"}, ["k"], "k"):
             try:
@@ -2548,6 +2626,7 @@ class KeyIdRateGracefulTest(unittest.TestCase):
     def test_rate_dict_key_direct(self):
         from runner.runner import check_rate_limit
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         try:
             check_rate_limit({"id": "k"}, {}, path=os.path.join(tmp, "rate.json"))
         except TypeError:
@@ -2558,6 +2637,7 @@ class KeyIdRateGracefulTest(unittest.TestCase):
     def test_concurrent_odd_keys(self):
         from runner.runner import check_rate_limit
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "rate.json")
         errors = []
 
@@ -2684,6 +2764,7 @@ class OraclePageGracefulTest(unittest.TestCase):
     def test_context_odd_limit(self):
         from runner.runner import oracle_context
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for limit in (None, "nope", -1, 0, 1000):
             try:
                 oracle_context(tmp, limit=limit if isinstance(limit, int) else 6)
@@ -2705,6 +2786,7 @@ class OraclePageGracefulTest(unittest.TestCase):
     def test_concurrent_context(self):
         from runner.runner import oracle_context
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one():
@@ -2783,6 +2865,7 @@ class FilterEqualityGracefulTest(unittest.TestCase):
 
     def test_filter_equality_raises(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         senses.store_alert(tmp, {"sensor": "door", "severity": "low"})
 
         class Bad:
@@ -2797,6 +2880,7 @@ class FilterEqualityGracefulTest(unittest.TestCase):
 
     def test_filter_odd(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for sensor, floor in ((None, None), ("", ""), (42, 42), (["a"], ["b"])):
             try:
                 senses.load_alerts(tmp, sensor=sensor, severity_floor=floor)
@@ -2805,6 +2889,7 @@ class FilterEqualityGracefulTest(unittest.TestCase):
 
     def test_concurrent_raising_filter(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         class Bad:
@@ -2885,6 +2970,7 @@ class FusedScoreGracefulTest(unittest.TestCase):
 
     def test_list_and_dict_sensor(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         senses.store_alert(tmp, {"sensor": ["a", "b"], "severity": "high"})
         senses.store_alert(tmp, {"sensor": {"name": "door"}, "severity": "high"})
         dcfg = {"enabled": True, "sensor_fused_score": {"threshold": 1, "window_sec": 60}}
@@ -2895,6 +2981,7 @@ class FusedScoreGracefulTest(unittest.TestCase):
 
     def test_odd_sensor_shapes(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for sensor in (None, 42, True, ("tuple",)):
             senses.store_alert(tmp, {"sensor": sensor if isinstance(sensor, str) else "s",
                                      "severity": "low"})
@@ -2905,6 +2992,7 @@ class FusedScoreGracefulTest(unittest.TestCase):
 
     def test_concurrent_fused(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one():

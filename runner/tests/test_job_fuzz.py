@@ -642,6 +642,10 @@ class ReadLiveTest(unittest.TestCase):
         with open(self.fake, "w", encoding="utf-8") as fh:
             fh.write(FAKE_RUNNER)
 
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
     def _retain(self, record, age_sec=3600):
         path = os.path.join(
             self.retained, record["job_id"] + ".json")
@@ -755,6 +759,10 @@ class ReadLiveCampaignLegsTest(unittest.TestCase):
         self.fake = os.path.join(self.tmp, "fake.py")
         with open(self.fake, "w", encoding="utf-8") as fh:
             fh.write(FAKE_RUNNER)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _retain(self, record, age_sec=3600):
         path = os.path.join(
@@ -1269,6 +1277,10 @@ class MainTest(unittest.TestCase):
         self.samples = os.path.join(self.tmp, "samples.json")
         with open(self.samples, "w", encoding="utf-8") as fh:
             json.dump(_readings([_outcome(exit_code=3)]), fh)
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _run(self, argv):
         out, err = io.StringIO(), io.StringIO()

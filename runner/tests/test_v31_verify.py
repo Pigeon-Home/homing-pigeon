@@ -7,6 +7,7 @@ judge_job directly, so a denylisted script field is never executed.
 import io
 import json
 import os
+import shutil
 import stat
 import sys
 import tempfile
@@ -690,6 +691,7 @@ class JudgeOffPathTest(unittest.TestCase):
         self.assertEqual((verdict, reasons), ("pass", []))
 
         tmp = tempfile.mkdtemp(prefix="hp-joff-")
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": "test-gmail-password",

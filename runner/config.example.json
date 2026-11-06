@@ -19,6 +19,8 @@
   "result_stash_retention_sec": 86400,
   "result_resend_backoff_sec": 60,
   "_result_stash": "a result is stashed under <base_dir>/outbox/ and the job committed as seen before the first send; a send that fails is retried on later polls, at least result_resend_backoff_sec apart, and given up after result_stash_retention_sec into outbox/failed/ (--inspect outbox lists both); the job is never run twice",
+  "work_retention_sec": 604800,
+  "_work_retention_sec": "a finished job's workspace under <base_dir>/work/ is removed when the job ends; a workspace left behind (a crash, a kill, a kept refused result) is reaped at startup once it is older than this many seconds, at most 512 per start. 0 turns the startup sweep off. A value that is not a usable non-negative number reads as the default 604800 and is named in the startup warning line",
   "transports": ["email"],
   "_transports": "enabled transport extensions (each is a supervised extension program; the core is transport-blind): email (the default, and the test transport), file (a watched folder), nats (core NATS pub/sub), dtls (a DTLS session listener, off unless enabled); see docs/infrastructure-documents/extend/transports.md",
   "transport_file": {"inbox_dir": "", "outbox_dir": ""},

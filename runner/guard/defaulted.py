@@ -33,6 +33,7 @@ NUMERIC = {
     "poll_interval_sec": (20, 0, None),
     "result_stash_retention_sec": (86400, 1, None),
     "result_resend_backoff_sec": (60, 1, None),
+    "work_retention_sec": (604800, 0, None),
 }
 ENUM = {
     "dtls_greeting": ("family", ("none", "family", "standard", "full")),

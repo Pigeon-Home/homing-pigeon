@@ -4,6 +4,7 @@ no platform patching or subprocess mocking needed."""
 
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -25,6 +26,7 @@ def _read(path):
 class CanaryPlantTest(unittest.TestCase):
     def test_first_run_plants_and_reports(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         out = R._canary_watch(tmp)
         self.assertIn("canaries planted", out)
         for name in R._CANARY_NAMES:
@@ -34,6 +36,7 @@ class CanaryPlantTest(unittest.TestCase):
 
     def test_planted_files_carry_marker_and_unique_tokens(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
         tokens = []
         for name in R._CANARY_NAMES:
@@ -47,6 +50,7 @@ class CanaryPlantTest(unittest.TestCase):
 
     def test_snapshot_records_hash_and_existence(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
         with open(os.path.join(tmp, "canary-watch.json"),
                   encoding="utf-8") as fh:
@@ -60,6 +64,7 @@ class CanaryPlantTest(unittest.TestCase):
 class CanaryQuietTest(unittest.TestCase):
     def test_untouched_is_one_quiet_line(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
         out = R._canary_watch(tmp)
         self.assertNotIn("TRIPPED", out)
@@ -67,6 +72,7 @@ class CanaryQuietTest(unittest.TestCase):
 
     def test_steady_state_stays_quiet(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         for _ in range(3):
             out = R._canary_watch(tmp)
         self.assertNotIn("TRIPPED", out)
@@ -81,6 +87,7 @@ class CanaryTripTest(unittest.TestCase):
         # (build-windows CI failure, 2026-10-16). Line-ending
         # translation alone must stay quiet, on every platform.
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
         for name in R._CANARY_NAMES:
             path = _canary_path(tmp, name)
@@ -102,6 +109,7 @@ class CanaryTripTest(unittest.TestCase):
 
     def test_content_change_with_crlf_still_trips(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
         path = _canary_path(tmp, "passwords.txt")
         with open(path, "rb") as fh:
@@ -114,6 +122,7 @@ class CanaryTripTest(unittest.TestCase):
 
     def test_modify_trips_by_name(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
         path = _canary_path(tmp, "passwords.txt")
         with open(path, "a", encoding="utf-8") as fh:
@@ -127,6 +136,7 @@ class CanaryTripTest(unittest.TestCase):
 
     def test_delete_trips_by_name(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
         os.remove(_canary_path(tmp, "api-keys.txt"))
         out = R._canary_watch(tmp)
@@ -136,8 +146,8 @@ class CanaryTripTest(unittest.TestCase):
 
     def test_deleting_whole_canary_dir_trips_everything(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
-        import shutil
         shutil.rmtree(os.path.join(tmp, "canaries"))
         out = R._canary_watch(tmp)
         for name in R._CANARY_NAMES:
@@ -149,6 +159,7 @@ class CanaryTripTest(unittest.TestCase):
         # canary keeps reporting TRIPPED on the next look, and only
         # restoring the original content clears it.
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
         path = _canary_path(tmp, "backup-codes.txt")
         original = _read(path)
@@ -166,6 +177,7 @@ class CanaryTripTest(unittest.TestCase):
 class CanarySnapshotTest(unittest.TestCase):
     def test_corrupt_snapshot_rebaselines_without_tripping(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
         with open(os.path.join(tmp, "canary-watch.json"), "w",
                   encoding="utf-8") as fh:
@@ -176,6 +188,7 @@ class CanarySnapshotTest(unittest.TestCase):
 
     def test_missing_snapshot_adopts_existing_files(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R._canary_watch(tmp)
         os.remove(os.path.join(tmp, "canary-watch.json"))
         out = R._canary_watch(tmp)
@@ -191,6 +204,7 @@ class CanarySnapshotTest(unittest.TestCase):
         self.assertEqual(R._canary_watch(None), "")
         self.assertEqual(R._canary_watch(123), "")
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         a_file = os.path.join(tmp, "afile")
         with open(a_file, "w", encoding="utf-8") as fh:
             fh.write("x")
@@ -198,6 +212,7 @@ class CanarySnapshotTest(unittest.TestCase):
 
     def test_output_is_bounded(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         out = R._canary_watch(tmp, max_chars=10)
         self.assertLessEqual(len(out), 10)
 
@@ -205,12 +220,14 @@ class CanarySnapshotTest(unittest.TestCase):
 class OracleContextCanaryTest(unittest.TestCase):
     def test_context_includes_canary_section(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         blob = R.oracle_context(tmp)
         self.assertIn("Canary watch", blob)
         self.assertIn("canaries planted", blob)
 
     def test_context_reports_trip(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         R.oracle_context(tmp)
         path = _canary_path(tmp, "passwords.txt")
         with open(path, "a", encoding="utf-8") as fh:
@@ -221,6 +238,7 @@ class OracleContextCanaryTest(unittest.TestCase):
 
     def test_watch_false_excludes_and_does_not_plant(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         blob = R.oracle_context(tmp, watch=False)
         self.assertNotIn("Canary watch", blob)
         self.assertFalse(os.path.exists(os.path.join(tmp, "canaries")))
@@ -229,6 +247,7 @@ class OracleContextCanaryTest(unittest.TestCase):
         # max_chars is a real cap: when the retained job output alone
         # saturates it, the canary section must not push past it.
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         retained = os.path.join(tmp, "retained")
         os.makedirs(retained)
         with open(os.path.join(retained, "big.json"), "w",

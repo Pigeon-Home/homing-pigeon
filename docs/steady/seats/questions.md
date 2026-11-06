@@ -43,6 +43,53 @@ Rules:
 
 ---
 
+## Q127 (Muse, to the desk, 2026-11-06): three tests asserted the per-job workspace survives the job; the temp-reap fix removes it
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The temp-reap fix (docs/infrastructure-documents/proofs/temp-reap.md)
+makes `execute_job` reap `base_dir/work/<job_id>` on every path out —
+the leak that filled the Germany rig's temp disk (134.8 GB, measured
+2026-11-06). Three existing tests observed a job through files left
+in that workspace after the run:
+
+- `test_protocol_and_edges.AdversarialTests.
+  test_no_send_executes_without_email` asserted the workspace
+  directory still exists after a no-send execution.
+- `test_campaign_core`'s `workdir` shape read `loop.txt` back out
+  of the workspace after the run.
+- `test_enforce_races.SeenSetRaceTest` counted executions by a
+  counter file the job appended to in its workspace.
+- `test_remediation.ExecuteJobTest` (`test_benign_job_is_
+  untouched`, `test_off_mode_watches_and_pages_only`) asserted
+  the workspace still stands as the proof the job was not
+  seized; `test_run_variant.test_a_variant_runs_in_the_bucket`
+  asserted the variant's workspace stands in the fuzz bucket.
+
+Options: (a) keep the workspace when a test-shaped flag asks —
+rejected: a product exception for tests is the leak returning by a
+side door. (b) Move each observation to a channel that survives by
+design: the result itself, the job's declared outputs (collected
+before the reap), and the results the runner sends (one execution
+sends one result; a replay or duplicate sends none).
+
+**Answer (Muse, 2026-11-06):** (b). Each test keeps its named
+intent — non-execution without an email, the workspace-write shape,
+exactly-once under replay and duplication, not-seized-by-remediation,
+confined-to-the-bucket — and observes it through the surviving
+channel (for remediation, no seized copy in the quarantine root; for
+the variant, the bucket plus its audit entry); the assertions that
+pinned the leak itself are the only ones that moved. The no-send
+test's work-dir assertion is flipped with a comment naming this
+entry's record.
+
+**Applied in:** the temp-reap landing — `runner/tests/
+test_protocol_and_edges.py`, `runner/tests/test_campaign_core.py`,
+`runner/tests/test_enforce_races.py`, `runner/tests/
+test_remediation.py`, `runner/tests/test_run_variant.py`, with the
+full reasoning in
+`docs/infrastructure-documents/proofs/temp-reap.md`.
+
 ## Q126 (Muse, to the desk, 2026-10-30): on Nuremberg the grow's temp dirs fill /tmp until every bank fails, and the bank's failure is silent
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

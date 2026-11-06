@@ -322,6 +322,24 @@ ROWS = [{'key': 'severity',
   'test': '',
   'notes': 'Review item 1: the least gap between two delivery attempts of one stashed '
            'result. Hot-reloaded.'},
+ {'key': 'work_retention_sec',
+  'scope': 'core',
+  'kind': 'integer',
+  'default': 604800,
+  'doc_file': 'docs/infrastructure-documents/oracle/configuring-oracle.md',
+  'doc_line': 104,
+  'doc_token': '604800',
+  'doc_status': 'verified',
+  'reader': 'runner/ops/exec.py:_work_retention_sec',
+  'reader_sites': ['runner/ops/exec.py:_work_retention_sec'],
+  'policy': 'default',
+  'lo': 0,
+  'hi': None,
+  'probe': 'confval',
+  'test': '',
+  'notes': 'Temp reaping (2026-11-06): how long a leftover job workspace under '
+           '<base_dir>/work/ is kept before the startup orphan sweep reaps it. '
+           '0 disables the sweep. Read once at startup.'},
  {'key': 'max_plan_steps',
   'scope': 'core',
   'kind': 'integer',
@@ -602,8 +620,8 @@ ROWS = [{'key': 'severity',
   'doc_line': 298,
   'doc_token': '100_000',
   'doc_status': 'verified',
-  'reader': 'runner/ops/exec.py:execute_job',
-  'reader_sites': ['runner/ops/exec.py:execute_job'],
+  'reader': 'runner/ops/exec.py:_execute_job_body',
+  'reader_sites': ['runner/ops/exec.py:_execute_job_body'],
   'policy': 'default',
   'lo': 1,
   'hi': None,
@@ -2459,8 +2477,10 @@ class RegistryShapeTests(unittest.TestCase):
         # then the two outbox stash keys (review item 1) and the
         # result body cap (review item 4).
         # then the two --once drain flags (hosting, Phase 0).
-        self.assertEqual(132, len(ROWS))
-        self.assertEqual(81, sum(1 for r in ROWS if r["scope"] == "core"))
+        # then work_retention_sec (the temp-reap sweep's
+        # retention age, core).
+        self.assertEqual(133, len(ROWS))
+        self.assertEqual(82, sum(1 for r in ROWS if r["scope"] == "core"))
         self.assertEqual(51, sum(1 for r in ROWS if r["scope"] == "extension"))
 
 

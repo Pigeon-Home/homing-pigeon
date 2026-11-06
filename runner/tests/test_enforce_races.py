@@ -26,6 +26,7 @@ R4  a config.json write during a job, from a second thread
 import json
 import os
 import secrets
+import shutil
 import sys
 import tempfile
 import threading
@@ -144,7 +145,15 @@ class _IMAP:
 
 
 class _SMTP:
+    def __init__(self):
+        self.sent = []
+
     def sendmail(self, *args, **kwargs):
+        self.sent.append(args[-1] if args else "")
+        return {}
+
+    def send_message(self, msg, *args, **kwargs):
+        self.sent.append(msg)
         return {}
 
 
@@ -175,46 +184,54 @@ class SeenSetRaceTest(unittest.TestCase):
     in-flight set, the on-disk claim). A replayed id is
     rejected however the fresh job is ordered around it,
     and two copies of one fresh job execute it once.
-    Executions are counted by the job's own appends in its
-    workdir (four z's per run, in any shell's encoding).
+    Executions are counted by the results the runner sends:
+    one execution sends one result, and a replayed or
+    duplicate job sends none. (The count used to be read
+    from a counter file the job appended to in its workdir;
+    the workspace is reaped when a job ends -- temp reaping,
+    docs/infrastructure-documents/proofs/temp-reap.md -- so
+    the sent results are the surviving record.)
     """
 
-    def _executions(self, base, jid):
-        path = os.path.join(base, "work", jid, "count.txt")
-        if not os.path.exists(path):
-            return 0
-        with open(path, "rb") as fh:
-            return fh.read().count(b"z") // 4
+    def _executions(self, jid):
+        marker = ("result %s" % jid).encode()
+        return sum(1 for msg in self._smtp.sent
+                   if marker in str(msg).encode())
 
     def _poll(self, base, seen, jids):
         cfg = {"mailbox_user": "pigeon-test@example.com",
                "shared_secret": SECRET, "workers": 2}
         seen_path = os.path.join(base, "seen.json")
+        self._smtp = _SMTP()
+        opts = _Opts()
+        opts.no_send = False
         poll_once(cfg, base, seen, seen_path,
                   imap=_IMAP([_mail(j) for j in jids]),
-                  smtp=_SMTP(), opts=_Opts())
+                  smtp=self._smtp, opts=opts)
 
     def test_a_replay_is_rejected_on_both_orderings(self):
         for jids in (("job-x", "job-x", "job-y"),
                      ("job-y", "job-x", "job-x")):
             base = tempfile.mkdtemp(prefix="hp-r3-")
+            self.addCleanup(shutil.rmtree, base, ignore_errors=True)
             seen = {"job-x": time.time()}
             with open(os.path.join(base, "seen.json"), "w",
                       encoding="utf-8") as fh:
                 json.dump(seen, fh)
             self._poll(base, seen, jids)
-            self.assertEqual(self._executions(base, "job-x"), 0,
+            self.assertEqual(self._executions("job-x"), 0,
                              jids)
-            self.assertEqual(self._executions(base, "job-y"), 1,
+            self.assertEqual(self._executions("job-y"), 1,
                              jids)
             self.assertIn("job-y", seen)
 
     def test_two_copies_of_a_fresh_job_run_it_once(self):
         base = tempfile.mkdtemp(prefix="hp-r3-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         seen = {}
         self._poll(base, seen, ("job-z", "job-z", "job-y"))
-        self.assertEqual(self._executions(base, "job-z"), 1)
-        self.assertEqual(self._executions(base, "job-y"), 1)
+        self.assertEqual(self._executions("job-z"), 1)
+        self.assertEqual(self._executions("job-y"), 1)
 
 
 class ConfigWriteRaceTest(unittest.TestCase):

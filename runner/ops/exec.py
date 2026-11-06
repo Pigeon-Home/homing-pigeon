@@ -359,6 +359,93 @@ def _collect_outputs(work, names, cfg):
     return out
 
 
+WORK_RETENTION_DEFAULT_SEC = 604800  # 7 days
+WORK_SWEEP_CAP = 512
+
+
+def reap_work_dir(work):
+    """Remove one per-job workspace. True when this call
+    removed it. A path that is not there — never created, or
+    moved away (a seized workspace leaves by quarantine's
+    move, and this reap is then a no-op by construction) —
+    is False: nothing was reaped. A symlink is never
+    followed. Never raises."""
+    if not isinstance(work, str) or not work:
+        return False
+    try:
+        if os.path.islink(work) or not os.path.isdir(work):
+            return False
+        shutil.rmtree(work, ignore_errors=True)
+    except OSError:
+        return False
+    return not os.path.exists(work)
+
+
+def _work_retention_sec(cfg):
+    """The work_retention_sec setting, as a number of seconds.
+
+    Default 604800 (7 days): a job runs at most 3600 seconds,
+    so a workspace older than a week is certainly orphaned,
+    and a kept refused result gets a week of operator
+    visibility. 0 disables the startup sweep. A present but
+    unusable value reads as the default; the key is
+    registered in runner/guard/defaulted.py, whose startup
+    line names it (Decision 1: this setting changes neither
+    who can reach the box, nor what it executes, nor what it
+    protects, so it defaults rather than refusing to start)."""
+    if not isinstance(cfg, dict):
+        return WORK_RETENTION_DEFAULT_SEC
+    n = _confval.number(cfg.get("work_retention_sec"), None, lo=0)
+    if n is None:
+        return WORK_RETENTION_DEFAULT_SEC
+    return int(n)
+
+
+def reap_work_orphans(base_dir, cfg=None, now=None):
+    """The startup orphan sweep: reap leftover job workspaces.
+
+    Domain: the direct children of base_dir/work/ only. A
+    child is reaped only when it is a real directory (never a
+    symlink or reparse point), its name matches the runner's
+    own safe job_id shape, and its mtime is older than the
+    retention age. At most WORK_SWEEP_CAP directories go per
+    sweep. Returns how many were reaped. Never raises: a
+    sweep failure must not stop startup, and what it could
+    not reap it leaves for the next start."""
+    retention = _work_retention_sec(cfg)
+    if retention <= 0:
+        return 0
+    if not isinstance(base_dir, str) or not base_dir:
+        return 0
+    root = os.path.join(base_dir, "work")
+    try:
+        names = sorted(os.listdir(root))
+    except OSError:
+        return 0
+    if now is None:
+        now = time.time()
+    R = _runner()
+    reaped = 0
+    for name in names:
+        if reaped >= WORK_SWEEP_CAP:
+            break
+        if name in (".", "..") or not R._SAFE_JOB_ID.match(name):
+            continue
+        path = os.path.join(root, name)
+        try:
+            st = os.lstat(path)
+        except OSError:
+            continue
+        if not stat.S_ISDIR(st.st_mode) or stat.S_ISLNK(st.st_mode) \
+                or R._reparse_point(st):
+            continue
+        if now - st.st_mtime <= retention:
+            continue
+        if reap_work_dir(path):
+            reaped += 1
+    return reaped
+
+
 def execute_job(cfg, job: dict, base_dir: str) -> dict:
     R = _runner()
     if not isinstance(job, dict):
@@ -384,6 +471,28 @@ def execute_job(cfg, job: dict, base_dir: str) -> dict:
     # The canonical root, once per job: every staging check, both
     # sweeps and the sandbox bind answer for this path (review item 5).
     root = _runner()._workspace_root(work)
+    try:
+        return _execute_job_body(cfg, job, base_dir, work, root, job_id)
+    finally:
+        # The workspace is the runner's per-job temp: staged
+        # files, the script, the outputs — already collected
+        # into the result by the time the body returns. It is
+        # reaped on every path out (success, refusal, failure);
+        # left in place it fills the state disk one job at a
+        # time, and on a box whose state dir sits in the system
+        # temp it fills that. A workspace remediation seized
+        # was MOVED into quarantine inside the body, so this
+        # reap finds nothing at the path and the seized copy
+        # keeps its own bounds. A reap that cannot finish (a
+        # file still held open) leaves the directory behind
+        # for the startup orphan sweep, and says so.
+        if not reap_work_dir(work) and os.path.isdir(work):
+            R.log(f"job {job_id}: workspace could not be fully "
+                  f"removed; the startup sweep will retry", "WARN")
+
+
+def _execute_job_body(cfg, job, base_dir, work, root, job_id):
+    R = _runner()
     kind = job.get("kind")
 
     if kind == "ping":

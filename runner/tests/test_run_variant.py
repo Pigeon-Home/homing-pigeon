@@ -81,11 +81,18 @@ class RunVariantTest(unittest.TestCase):
         self.assertGreater(report["stdout_bytes"], 0)
         _rc2, report2 = self._run(path)
         self.assertEqual(report2["digest"], report["digest"])
-        # Work landed in the fuzz scratch tree, not the
-        # runner's live work tree.
+        # Work was confined to the fuzz scratch tree, not the
+        # runner's live work tree: the bucket stands, the run's
+        # audit entry is in the base naming the job, and no live
+        # work tree appeared. (The variant's workspace inside
+        # the bucket is reaped when the job ends -- temp
+        # reaping, docs/infrastructure-documents/proofs/
+        # temp-reap.md.)
         self.assertTrue(os.path.isdir(
-            os.path.join(self.tmp, "fuzz-work", "work",
-                         "fuzz-t1")))
+            os.path.join(self.tmp, "fuzz-work")))
+        with open(os.path.join(self.tmp, "security-audit.jsonl"),
+                  encoding="utf-8") as fh:
+            self.assertIn("fuzz-t1", fh.read())
         self.assertFalse(os.path.exists(
             os.path.join(self.tmp, "work")))
 

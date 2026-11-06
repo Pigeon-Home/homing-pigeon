@@ -43,6 +43,7 @@ import imaplib
 import json
 import os
 import platform
+import shutil
 import smtplib
 import statistics
 import subprocess
@@ -237,33 +238,36 @@ def bench(runs, kinds=("ping", "exec")):
             times, ok = [], 0
             for n in range(runs):
                 tmp = tempfile.mkdtemp(prefix="hp-first-ping-")
-                cfg = {"mailbox_user": addr, "mailbox_password": "unused",
-                       "shared_secret": secret, "imap_host": "memory",
-                       "imap_port": 993, "smtp_host": "memory",
-                       "smtp_port": 587, "max_job_age_sec": 3600,
-                       "max_output_bytes": 100000,
-                       "default_timeout_sec": 60}
-                jid = f"fp-{kind}-{n}-{uuid.uuid4().hex[:8]}"
-                payload = {"v": 1, "type": "job", "job_id": jid,
-                           "issued_at": _now(), "kind": kind}
-                if kind == "exec":
-                    payload["script"] = CLOCK_SCRIPT
-                signed = send_job.sign_payload(payload, secret)
-                wire = jobcrypto.encrypt_body(signed, secret, job_id=jid,
-                                              key_id="",
-                                              sign=send_job.sign_payload)
-                msg = EmailMessage()
-                msg["From"] = msg["To"] = addr
-                msg["Subject"] = f"[HOMING-PIGEON] job {jid}"
-                msg.set_content(wire)
-                out = _Outbox()
-                t0 = time.perf_counter()
-                runner_mod.poll_once(cfg, tmp, {}, os.path.join(tmp, "seen.json"),
-                                     imap=_Inbox(msg.as_bytes()), smtp=out)
-                times.append(time.perf_counter() - t0)
-                if out.sent and _result_ok(out.sent[0].get_content(), secret,
-                                           jid, kind, send_job):
-                    ok += 1
+                try:
+                    cfg = {"mailbox_user": addr, "mailbox_password": "unused",
+                           "shared_secret": secret, "imap_host": "memory",
+                           "imap_port": 993, "smtp_host": "memory",
+                           "smtp_port": 587, "max_job_age_sec": 3600,
+                           "max_output_bytes": 100000,
+                           "default_timeout_sec": 60}
+                    jid = f"fp-{kind}-{n}-{uuid.uuid4().hex[:8]}"
+                    payload = {"v": 1, "type": "job", "job_id": jid,
+                               "issued_at": _now(), "kind": kind}
+                    if kind == "exec":
+                        payload["script"] = CLOCK_SCRIPT
+                    signed = send_job.sign_payload(payload, secret)
+                    wire = jobcrypto.encrypt_body(signed, secret, job_id=jid,
+                                                  key_id="",
+                                                  sign=send_job.sign_payload)
+                    msg = EmailMessage()
+                    msg["From"] = msg["To"] = addr
+                    msg["Subject"] = f"[HOMING-PIGEON] job {jid}"
+                    msg.set_content(wire)
+                    out = _Outbox()
+                    t0 = time.perf_counter()
+                    runner_mod.poll_once(cfg, tmp, {}, os.path.join(tmp, "seen.json"),
+                                         imap=_Inbox(msg.as_bytes()), smtp=out)
+                    times.append(time.perf_counter() - t0)
+                    if out.sent and _result_ok(out.sent[0].get_content(), secret,
+                                               jid, kind, send_job):
+                        ok += 1
+                finally:
+                    shutil.rmtree(tmp, ignore_errors=True)
             row = {"when": _now(), "mode": "bench", "provider": "in-memory",
                    "transport": "email", "kind": kind, "runs": runs, "ok": ok,
                    "poll_interval_sec": POLL_DEFAULT, "version": _version(),

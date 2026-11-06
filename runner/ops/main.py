@@ -350,6 +350,15 @@ def main() -> int:
     R._LOG_FILE = os.path.join(base_dir, "runner.log")
     R._announce_oracle_log()
 
+    # Temp reaping: a finished job's workspace is removed when
+    # the job ends; what that misses (a crash, a kill, a kept
+    # refused result) ages out here, once per start, under
+    # work_retention_sec.
+    _swept = R.reap_work_orphans(base_dir, cfg)
+    if _swept:
+        R.log(f"work sweep: reaped {_swept} orphaned job "
+              f"workspace(s) older than work_retention_sec")
+
     seen_path = os.path.join(base_dir, "seen.json")
     seen = R.load_seen(seen_path)
 

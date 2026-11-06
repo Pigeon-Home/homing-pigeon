@@ -662,8 +662,12 @@ class ExecuteJobTest(unittest.TestCase):
             "script": "echo hello; touch mine.txt; rm mine.txt"})
         self.assertEqual(r["exit_code"], 0)
         self.assertNotIn("remediation", r)
-        self.assertTrue(os.path.isdir(
-            os.path.join(base, "work", "benign-1")))
+        # Untouched by remediation: no seized copy stands in the
+        # quarantine root. (The workspace itself is reaped when
+        # the job ends -- temp reaping, docs/infrastructure-
+        # documents/proofs/temp-reap.md.)
+        self.assertFalse(os.path.exists(os.path.join(
+            rem.quarantine_root(base), "benign-1")))
 
     def test_benign_job_in_every_mode(self):
         for mode in ("off", "deterministic", "oracle"):
@@ -790,8 +794,12 @@ class ExecuteJobTest(unittest.TestCase):
         self.assertGreaterEqual(time.monotonic() - t0, 2.0)
         self.assertEqual(r["exit_code"], 0)
         self.assertNotIn("remediation", r)
-        self.assertTrue(os.path.isdir(
-            os.path.join(base, "work", "leak-off")))
+        # Watched only, not seized: no copy in the quarantine
+        # root. (The workspace itself is reaped when the job
+        # ends -- temp reaping, docs/infrastructure-documents/
+        # proofs/temp-reap.md.)
+        self.assertFalse(os.path.exists(os.path.join(
+            rem.quarantine_root(base), "leak-off")))
         events = rem._read_jsonl_window(
             os.path.join(base, "security-events.jsonl"), 0)
         rem_events = [e for e in events

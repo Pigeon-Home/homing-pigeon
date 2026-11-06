@@ -24,6 +24,7 @@ per-cycle record remains reachable at the campaign-1-record
 tag. If a shape's contract changes, it changes here once,
 not thousands of times.
 """
+import base64
 import os
 import shutil
 import sys
@@ -112,6 +113,12 @@ class CampaignCoreScenarioTests(unittest.TestCase):
         job = {"v": 1, "type": "job", "job_id": job_id,
                "issued_at": "2026-10-23T00:00:00Z", "kind": "exec",
                "interpreter": ["sh"], "script": script, "env": env}
+        if variant == "workdir":
+            # The workspace is reaped when the job ends (temp
+            # reaping, docs/infrastructure-documents/proofs/
+            # temp-reap.md); what the job wrote there comes back
+            # through its declared outputs, collected pre-reap.
+            job["outputs"] = ["loop.txt"]
         # Confinement stated off: these shapes record the
         # executor's own behavior, and unstated the mode reads
         # enforce under the lockdown default, which sandboxes
@@ -139,10 +146,11 @@ class CampaignCoreScenarioTests(unittest.TestCase):
                      if ln.strip()]
             self.assertGreaterEqual(len(lines), 3)
         if variant == "workdir":
-            written = os.path.join(self._tmpdir, "work", job_id,
-                                   "loop.txt")
-            with open(written, encoding="utf-8") as fh:
-                self.assertEqual(fh.read().strip(), f"cycle-{n}")
+            out = result["outputs"][0]
+            self.assertEqual(out["name"], "loop.txt")
+            written = base64.b64decode(
+                out["content_b64"]).decode("utf-8")
+            self.assertEqual(written.strip(), f"cycle-{n}")
         if variant == "flagread":
             for line in FLAG_TEXT.splitlines():
                 self.assertIn(line, result["stdout"])
