@@ -3130,3 +3130,586 @@ test("shotgun31 injection prototype refused shapes: a __proto__ shape as a field
 });
 
 
+
+// ---------------------------------------------------------------------
+// Shotgun family for queue item 33: a renew did not name its
+// attempt; a bad quota was not a 400 (fixed 4cca4cc6,
+// 31-Oct-2026). Two runners share one token. After the lease
+// moved, the first runner's renew extended the new holder's
+// lease, because a renew named nothing but the job. The fix
+// makes a renew name the attempt its pull was given: the
+// Worker refuses a renew whose attempt is not the record's
+// current attempt (404 at the fix; the refusal is 409 since
+// item 29's hand work, because the job is still leased and
+// 404 is only "it is gone"), and the queues client sends
+// the attempt it was given. The same fix makes a quota
+// field that is not a number a 400 with the body
+// {"error":"quota is not a number"} and stores nothing --
+// before, a non-number field silently disabled that cap.
+// A blank or zero field is a number, and still locks the
+// tenant; a numeric string is that number. This family
+// scattershots exactly those two surfaces in the Worker:
+// the attempt a renew names, in every spelling a query
+// string can carry, and the two quota fields on every
+// route that reads them. It deliberately does not re-pin
+// item 29's hand field or item 31's not-an-object quota
+// shapes: here the attempt stands alone where it can, and
+// the quota is always an object whose FIELDS are bad.
+//
+// Proof of work. The unit tests are the 50 tests registered
+// below: 8 canonical two-runner tests, 12 attempt-shape
+// tests, 6 attempt bookend sweeps, 4 attempt run-length
+// tests, 15 quota-field tests, 3 quota-route tests, 1
+// quota bookend sweep and 1 injection-shaped test.
+// Per-field enumeration: the renew surface is fielded --
+// the job id in the path, the attempt in the query, the
+// token, and the lease the renew extends -- and the quota
+// surface is its two fields, jobs_per_hour and
+// bytes_per_day, each pinned on both sides of the number
+// line, on the job route field by field and on the result
+// and requeue routes together; the refusal's own fields
+// (status and the exact error body) and the stored state
+// (job record, leased_until, counters) are pinned
+// unchanged or absent. Bookends: every printable ASCII
+// symbol (all 32 punctuation characters) at the front AND
+// the back of the attempt, as singles, matched pairs,
+// mismatched pairs and symbol-only strings, plus NUL,
+// tab, CR and LF at both ends, and symbol bookends on a
+// quota field string. Run lengths: attempt runs of 1, 5
+// and 10 digits, a 10-zero run before the right digit,
+// and the attempt climbing 1 to 5 across five pulls. The
+// fuzzing was executed, not just the tests written:
+// runner/tools/de_dust_corpus.py grow --target wire
+// --rounds 400 --seed 20261134, run locally against the
+// banked wire corpus (117 entries). Result: 400 rounds,
+// 0 crashes, 0 slow, arcs unchanged at 180, slowest try
+// 4716 ms (04ee4cdc3ed84226) -- the unnamed-renew and
+// bad-quota shapes did not recur. The grow's bookkeeping writes were
+// reverted and are not banked (banking is the rigs'
+// hourly job); this record is the run's proof. For the
+// .mjs file the Python skip registry does not apply, and
+// this family adds no skips. None of this is exotic: it
+// is combinatorics -- systematically trying the
+// combinations a hand-written list would never reach,
+// then pinning each answer as a test.
+
+const SG33_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+const SG33_GOOD = { jobs_per_hour: 10, bytes_per_day: 60_000 };
+
+async function sg33Tenant(env, quota) {
+  env.TENANTS.store.set("alice", JSON.stringify({
+    si_token_sha256: await sha256Hex(SI),
+    runner_token_sha256: await sha256Hex(RUNNER),
+    hmac_secret: SECRET,
+    quota,
+  }));
+}
+
+async function sg33World(quota = SG33_GOOD) {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota });
+  await addTenant(env);
+  return { env, clock };
+}
+
+async function sg33Pulled(quota = SG33_GOOD, id = "j1") {
+  const w = await sg33World(quota);
+  assert.equal((await postJob(w.env, id)).status, 202);
+  const r = await pull(w.env);
+  assert.equal(r.status, 200);
+  const job = (await r.json()).jobs[0];
+  assert.equal(job.attempt, 1);
+  return { ...w, job };
+}
+
+async function sg33Moved(w, id = "j1") {
+  w.clock.t += 1000;
+  const r = await pull(w.env);
+  assert.equal(r.status, 200);
+  const job = (await r.json()).jobs[0];
+  assert.equal(job.id, id);
+  assert.equal(job.attempt, 2);
+  return job;
+}
+
+async function sg33Renew(env, qs, id = "j1", token = RUNNER) {
+  return worker.fetch(req(
+    `/t/alice/jobs/${id}/lease${qs ? `?${qs}` : ""}`,
+    { method: "POST", token }), env);
+}
+
+async function sg33RenewStatus(env, qs, id = "j1") {
+  return (await sg33Renew(env, qs, id)).status;
+}
+
+const sg33Held = (env, id = "j1") => box(env).get(`job:${id}`).leased_until;
+
+async function sg33Submit(quota, id = "j1") {
+  const env = makeEnv({ quota: SG33_GOOD });
+  await sg33Tenant(env, quota);
+  const r = await postJob(env, id);
+  return { env, r };
+}
+
+async function sg33Expect400(quota, id = "j1") {
+  const { env, r } = await sg33Submit(quota, id);
+  assert.equal(r.status, 400, JSON.stringify(quota));
+  assert.deepEqual(await r.json(), { error: "quota is not a number" });
+  assert.ok(!env.objects.has("alice") || box(env).size === 0,
+    "a refused quota stored something");
+  return env;
+}
+
+// -- 8 canonical two-runner tests --------------------------------------
+
+test("shotgun33 canonical: the first runner's renew naming attempt 1 does not extend the new holder", async () => {
+  const w = await sg33Pulled();
+  await sg33Moved(w);
+  const held = sg33Held(w.env);
+  const r = await sg33Renew(w.env, "attempt=1");
+  assert.equal(r.status, 409);
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 canonical: the new holder's renew naming attempt 2 extends by exactly the lease", async () => {
+  const w = await sg33Pulled();
+  await sg33Moved(w);
+  const r = await sg33Renew(w.env, "attempt=2");
+  assert.equal(r.status, 204);
+  assert.equal(sg33Held(w.env), w.clock.t + 1000);
+});
+
+test("shotgun33 canonical: a renew naming the attempt it was given renews before the lease moves", async () => {
+  const w = await sg33Pulled();
+  const r = await sg33Renew(w.env, "attempt=1");
+  assert.equal(r.status, 204);
+  assert.equal(sg33Held(w.env), w.clock.t + 1000);
+});
+
+test("shotgun33 canonical: a bare renew names no attempt and still renews -- the old call", async () => {
+  const w = await sg33Pulled();
+  const r = await sg33Renew(w.env, "");
+  assert.equal(r.status, 204);
+  assert.equal(sg33Held(w.env), w.clock.t + 1000);
+});
+
+test("shotgun33 canonical: a renew naming a future attempt is refused and the lease is unchanged", async () => {
+  const w = await sg33Pulled();
+  const held = sg33Held(w.env);
+  assert.equal(await sg33RenewStatus(w.env, "attempt=2"), 409);
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 canonical: attempt 0 names no pull that happened and is refused", async () => {
+  const w = await sg33Pulled();
+  const held = sg33Held(w.env);
+  assert.equal(await sg33RenewStatus(w.env, "attempt=0"), 409);
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 canonical: a renew for a job nobody has pulled is 404, naming its would-be attempt or not", async () => {
+  const w = await sg33World();
+  assert.equal((await postJob(w.env, "j1")).status, 202);
+  assert.equal(await sg33RenewStatus(w.env, "attempt=1"), 404);
+  assert.equal(await sg33RenewStatus(w.env, ""), 404);
+});
+
+test("shotgun33 canonical: a renew after the job was acked is 404, in every attempt shape", async () => {
+  const w = await sg33Pulled();
+  const ack = await worker.fetch(req("/t/alice/jobs/j1/ack?attempt=1",
+    { method: "POST", token: RUNNER }), w.env);
+  assert.equal(ack.status, 204);
+  assert.equal(await sg33RenewStatus(w.env, "attempt=1"), 404);
+  assert.equal(await sg33RenewStatus(w.env, ""), 404);
+});
+
+// -- 12 attempt-shape tests --------------------------------------------
+
+test("shotgun33 shape empty: an empty attempt reads as omitted and renews", async () => {
+  const w = await sg33Pulled();
+  assert.equal(await sg33RenewStatus(w.env, "attempt="), 204);
+  assert.equal(sg33Held(w.env), w.clock.t + 1000);
+});
+
+test("shotgun33 shape decimal: attempt 1.0 names attempt 1 and renews", async () => {
+  const w = await sg33Pulled();
+  assert.equal(await sg33RenewStatus(w.env, "attempt=1.0"), 204);
+});
+
+test("shotgun33 shape leading zeros: attempt 01 names attempt 1 and renews", async () => {
+  const w = await sg33Pulled();
+  assert.equal(await sg33RenewStatus(w.env, "attempt=01"), 204);
+});
+
+test("shotgun33 shape plus sign: attempt +1 names attempt 1 and renews", async () => {
+  const w = await sg33Pulled();
+  assert.equal(await sg33RenewStatus(
+    w.env, `attempt=${encodeURIComponent("+1")}`), 204);
+});
+
+test("shotgun33 shape exponent: attempt 1e0 names attempt 1 and renews", async () => {
+  const w = await sg33Pulled();
+  assert.equal(await sg33RenewStatus(w.env, "attempt=1e0"), 204);
+});
+
+test("shotgun33 shape hex: attempt 0x1 names attempt 1 and renews", async () => {
+  const w = await sg33Pulled();
+  assert.equal(await sg33RenewStatus(w.env, "attempt=0x1"), 204);
+});
+
+test("shotgun33 shape fractional: attempts 1.5 and 0.5 are not attempts and are refused", async () => {
+  const w = await sg33Pulled();
+  const held = sg33Held(w.env);
+  for (const a of ["1.5", "0.5", "2.5"]) {
+    assert.equal(await sg33RenewStatus(w.env, `attempt=${a}`), 409, a);
+  }
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 shape negative: attempts -1 and -0 name no pull and are refused", async () => {
+  const w = await sg33Pulled();
+  const held = sg33Held(w.env);
+  for (const a of ["-1", "-0", "-2"]) {
+    assert.equal(await sg33RenewStatus(w.env, `attempt=${a}`), 409, a);
+  }
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 shape words: the words one, null, undefined and true are not attempts", async () => {
+  const w = await sg33Pulled();
+  const held = sg33Held(w.env);
+  for (const a of ["one", "null", "undefined", "true", "first"]) {
+    assert.equal(await sg33RenewStatus(w.env, `attempt=${a}`), 409, a);
+  }
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 shape non-finite: NaN and Infinity spellings are not attempts", async () => {
+  const w = await sg33Pulled();
+  const held = sg33Held(w.env);
+  for (const a of ["NaN", "Infinity", "-Infinity"]) {
+    assert.equal(await sg33RenewStatus(w.env, `attempt=${a}`), 409, a);
+  }
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 shape whitespace: spaces around the attempt still name it", async () => {
+  const w = await sg33Pulled();
+  for (const a of [" 1", "1 ", " 1 ", "\t1", "1\n"]) {
+    assert.equal(await sg33RenewStatus(
+      w.env, `attempt=${encodeURIComponent(a)}`), 204, JSON.stringify(a));
+  }
+});
+
+test("shotgun33 shape duplicate: where two attempts are sent, the first one decides, in both orders", async () => {
+  const w = await sg33Pulled();
+  assert.equal(await sg33RenewStatus(w.env, "attempt=1&attempt=2"), 204);
+  const held = sg33Held(w.env);
+  assert.equal(await sg33RenewStatus(w.env, "attempt=2&attempt=1"), 409);
+  assert.equal(sg33Held(w.env), held);
+});
+
+// -- 6 attempt bookend sweeps ------------------------------------------
+
+test("shotgun33 bookends front: every ASCII symbol at the front of the attempt -- only the plus sign still names it", async () => {
+  const w = await sg33Pulled();
+  for (const s of SG33_PUNCT) {
+    const held = sg33Held(w.env);
+    const st = await sg33RenewStatus(
+      w.env, `attempt=${encodeURIComponent(s + "1")}`);
+    assert.equal(st, s === "+" ? 204 : 409, JSON.stringify(s));
+    if (st === 409) assert.equal(sg33Held(w.env), held);
+  }
+});
+
+test("shotgun33 bookends back: every ASCII symbol at the back of the attempt -- only the decimal point still names it", async () => {
+  const w = await sg33Pulled();
+  for (const s of SG33_PUNCT) {
+    const held = sg33Held(w.env);
+    const st = await sg33RenewStatus(
+      w.env, `attempt=${encodeURIComponent("1" + s)}`);
+    assert.equal(st, s === "." ? 204 : 409, JSON.stringify(s));
+    if (st === 409) assert.equal(sg33Held(w.env), held);
+  }
+});
+
+test("shotgun33 bookends matched pairs: matched symbol pairs around the attempt are all refused", async () => {
+  const w = await sg33Pulled();
+  const held = sg33Held(w.env);
+  for (const s of SG33_PUNCT) {
+    assert.equal(await sg33RenewStatus(
+      w.env, `attempt=${encodeURIComponent(s + "1" + s)}`), 409,
+      JSON.stringify(s));
+  }
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 bookends mismatched pairs: a plus front with a point back still names it; the other mixes do not", async () => {
+  const w = await sg33Pulled();
+  assert.equal(await sg33RenewStatus(
+    w.env, `attempt=${encodeURIComponent("+1.")}`), 204);
+  const held = sg33Held(w.env);
+  for (const a of [".1+", "!1?", "+1!", "?1+", " 1!"]) {
+    assert.equal(await sg33RenewStatus(
+      w.env, `attempt=${encodeURIComponent(a)}`), 409, JSON.stringify(a));
+  }
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 bookends symbol-only: symbol-only attempts are refused, each symbol and all together", async () => {
+  const w = await sg33Pulled();
+  const held = sg33Held(w.env);
+  for (const a of [...SG33_PUNCT, SG33_PUNCT]) {
+    assert.equal(await sg33RenewStatus(
+      w.env, `attempt=${encodeURIComponent(a)}`), 409, JSON.stringify(a));
+  }
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 bookends controls: NUL at either end of the attempt is refused; tab, CR and LF are trimmed and renew", async () => {
+  const w = await sg33Pulled();
+  const held = sg33Held(w.env);
+  for (const a of ["\x001", "1\x00", "\x001\x00", "\x00"]) {
+    assert.equal(await sg33RenewStatus(
+      w.env, `attempt=${encodeURIComponent(a)}`), 409, JSON.stringify(a));
+  }
+  assert.equal(sg33Held(w.env), held);
+  for (const a of ["\t1", "1\t", "\r1", "1\r", "\n1", "1\n",
+                   "\t1\n", "\r\n1\r\n"]) {
+    assert.equal(await sg33RenewStatus(
+      w.env, `attempt=${encodeURIComponent(a)}`), 204, JSON.stringify(a));
+  }
+});
+
+// -- 4 attempt run-length tests ----------------------------------------
+
+test("shotgun33 runs digits: runs of the wrong digit are refused; a run of zeros before the right digit names it", async () => {
+  const w = await sg33Pulled();
+  const held = sg33Held(w.env);
+  for (const a of ["11", "11111", "1".repeat(10), "2".repeat(5)]) {
+    assert.equal(await sg33RenewStatus(w.env, `attempt=${a}`), 409, a);
+  }
+  assert.equal(sg33Held(w.env), held);
+  assert.equal(await sg33RenewStatus(w.env, "attempt=0000000001"), 204);
+});
+
+test("shotgun33 runs climb: the attempt climbs 1 to 5 across five pulls; 5 renews and 4 is refused", async () => {
+  const w = await sg33World();
+  assert.equal((await postJob(w.env, "j1")).status, 202);
+  for (let n = 1; n <= 5; n++) {
+    const r = await pull(w.env);
+    assert.equal((await r.json()).jobs[0].attempt, n);
+    if (n < 5) w.clock.t += 1000;
+  }
+  assert.equal(await sg33RenewStatus(w.env, "attempt=5"), 204);
+  const held = sg33Held(w.env);
+  assert.equal(await sg33RenewStatus(w.env, "attempt=4"), 409);
+  assert.equal(sg33Held(w.env), held);
+});
+
+test("shotgun33 runs right digit repeated: at attempt 2, the digit alone renews and its runs are refused", async () => {
+  const w = await sg33Pulled();
+  await sg33Moved(w);
+  assert.equal(await sg33RenewStatus(w.env, "attempt=22"), 409);
+  assert.equal(await sg33RenewStatus(w.env, "attempt=222"), 409);
+  assert.equal(await sg33RenewStatus(w.env, "attempt=2"), 204);
+});
+
+test("shotgun33 runs requeue: a requeue resets the attempt -- the dead life's attempt 5 is refused, 1 renews", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: SG33_GOOD });
+  await addTenant(env);
+  assert.equal((await postJob(env, "j1")).status, 202);
+  await kill(env, clock);
+  assert.ok(box(env).has("dlq:j1"));
+  assert.equal((await worker.fetch(req("/t/alice/dlq/j1/requeue",
+    { method: "POST", token: SI }), env)).status, 202);
+  const r = await pull(env);
+  assert.equal((await r.json()).jobs[0].attempt, 1);
+  const held = box(env).get("job:j1").leased_until;
+  assert.equal(await sg33RenewStatus(env, "attempt=5"), 409);
+  assert.equal(box(env).get("job:j1").leased_until, held);
+  assert.equal(await sg33RenewStatus(env, "attempt=1"), 204);
+});
+
+// -- 15 quota-field tests (job route) ------------------------------------
+
+test("shotgun33 field jobs_per_hour word: a word for the hourly cap is a 400 and stores nothing", async () => {
+  await sg33Expect400({ jobs_per_hour: "ten", bytes_per_day: 60_000 });
+});
+
+test("shotgun33 field bytes_per_day word: a word for the daily cap is a 400 and stores nothing", async () => {
+  await sg33Expect400({ jobs_per_hour: 10, bytes_per_day: "plenty" });
+});
+
+test("shotgun33 field jobs_per_hour wrong types: a boolean, an array or an object is a 400", async () => {
+  for (const v of [true, false, [], [10], {}, { n: 10 }]) {
+    await sg33Expect400({ jobs_per_hour: v, bytes_per_day: 60_000 });
+  }
+});
+
+test("shotgun33 field bytes_per_day wrong types: a boolean, an array or an object is a 400", async () => {
+  for (const v of [true, false, [], [60_000], {}, { n: 60_000 }]) {
+    await sg33Expect400({ jobs_per_hour: 10, bytes_per_day: v });
+  }
+});
+
+test("shotgun33 field both bad: both fields wrong together are still one 400, nothing stored", async () => {
+  await sg33Expect400({ jobs_per_hour: "ten", bytes_per_day: "plenty" });
+  await sg33Expect400({ jobs_per_hour: true, bytes_per_day: [] });
+});
+
+test("shotgun33 field jobs_per_hour blank: a blank field is zero, not a bad number -- it locks the tenant with a 429", async () => {
+  const { env, r } = await sg33Submit({ jobs_per_hour: "", bytes_per_day: 60_000 });
+  assert.equal(r.status, 429);
+  assert.equal((await r.json()).error, "tenant quota exceeded");
+  // A 429 records only its own tally: no job, no billing counter.
+  assert.deepEqual([...box(env).keys()], ["quota:exceeded"]);
+  assert.equal(box(env).get("quota:exceeded"), 1);
+});
+
+test("shotgun33 field jobs_per_hour whitespace-only: a whitespace field trims to blank and locks with a 429", async () => {
+  const { env, r } = await sg33Submit({ jobs_per_hour: "   ", bytes_per_day: 60_000 });
+  assert.equal(r.status, 429);
+  assert.deepEqual([...box(env).keys()], ["quota:exceeded"]);
+});
+
+test("shotgun33 field zero: a zero hourly cap and a zero daily cap each lock with a 429, not a 400", async () => {
+  for (const quota of [{ jobs_per_hour: 0, bytes_per_day: 60_000 },
+                       { jobs_per_hour: 10, bytes_per_day: 0 }]) {
+    const { r } = await sg33Submit(quota);
+    assert.equal(r.status, 429, JSON.stringify(quota));
+  }
+});
+
+test("shotgun33 field negative: a negative cap is a number -- it locks with a 429, not a 400", async () => {
+  for (const quota of [{ jobs_per_hour: -5, bytes_per_day: 60_000 },
+                       { jobs_per_hour: 10, bytes_per_day: -1 }]) {
+    const { r } = await sg33Submit(quota);
+    assert.equal(r.status, 429, JSON.stringify(quota));
+  }
+});
+
+test("shotgun33 field jobs_per_hour numeric string: the string 2 is the cap -- two jobs in, the third is a 429", async () => {
+  const env = makeEnv({ quota: SG33_GOOD });
+  await sg33Tenant(env, { jobs_per_hour: "2", bytes_per_day: 60_000 });
+  assert.equal((await postJob(env, "a")).status, 202);
+  assert.equal((await postJob(env, "b")).status, 202);
+  assert.equal((await postJob(env, "c")).status, 429);
+  assert.ok(box(env).has("job:a") && box(env).has("job:b"));
+  assert.ok(!box(env).has("job:c"));
+});
+
+test("shotgun33 field bytes_per_day numeric string: the string 60 refuses the first job; 60000 accepts it", async () => {
+  const small = await sg33Submit({ jobs_per_hour: 10, bytes_per_day: "60" });
+  assert.equal(small.r.status, 429);
+  const big = await sg33Submit({ jobs_per_hour: 10, bytes_per_day: "60000" });
+  assert.equal(big.r.status, 202);
+  assert.ok(box(big.env).has("job:j1"));
+});
+
+test("shotgun33 field jobs_per_hour fractional: a cap of 1.5 lets one job in and refuses the second", async () => {
+  const env = makeEnv({ quota: SG33_GOOD });
+  await sg33Tenant(env, { jobs_per_hour: 1.5, bytes_per_day: 60_000 });
+  assert.equal((await postJob(env, "a")).status, 202);
+  assert.equal((await postJob(env, "b")).status, 429);
+});
+
+test("shotgun33 field null and missing: a null field and a missing field each read as that field's default", async () => {
+  for (const quota of [{ jobs_per_hour: null, bytes_per_day: 60_000 },
+                       { jobs_per_hour: 10, bytes_per_day: null },
+                       {},
+                       { jobs_per_hour: null, bytes_per_day: null }]) {
+    const { env, r } = await sg33Submit(quota);
+    assert.equal(r.status, 202, JSON.stringify(quota));
+    assert.ok(box(env).has("job:j1"));
+  }
+});
+
+test("shotgun33 field non-finite strings: NaN and Infinity as field strings are not numbers and are a 400", async () => {
+  for (const v of ["NaN", "Infinity", "-Infinity"]) {
+    await sg33Expect400({ jobs_per_hour: v, bytes_per_day: 60_000 });
+  }
+  await sg33Expect400({ jobs_per_hour: 10, bytes_per_day: "NaN" });
+});
+
+test("shotgun33 field exponent and hex strings: 1e3 and 0x10 as field strings are the numbers they name", async () => {
+  for (const quota of [{ jobs_per_hour: "1e3", bytes_per_day: 60_000 },
+                       { jobs_per_hour: "0x10", bytes_per_day: 60_000 },
+                       { jobs_per_hour: 10, bytes_per_day: "1e5" }]) {
+    const { r } = await sg33Submit(quota);
+    assert.equal(r.status, 202, JSON.stringify(quota));
+  }
+});
+
+// -- 3 quota-route tests -------------------------------------------------
+
+test("shotgun33 route result: a bad field is a 400 on the result route too, for either field, and stores no result", async () => {
+  for (const quota of [{ jobs_per_hour: "ten", bytes_per_day: 60_000 },
+                       { jobs_per_hour: 10, bytes_per_day: "plenty" }]) {
+    const env = makeEnv({ quota: SG33_GOOD });
+    await sg33Tenant(env, quota);
+    const r = await worker.fetch(req("/t/alice/results", {
+      method: "POST", token: RUNNER,
+      body: `[HOMING-PIGEON] result r1\n\n${JSON.stringify({ job_id: "r1", exit_code: 0 })}\n`,
+    }), env);
+    assert.equal(r.status, 400, JSON.stringify(quota));
+    assert.deepEqual(await r.json(), { error: "quota is not a number" });
+    assert.ok(!env.objects.has("alice") || box(env).size === 0);
+  }
+});
+
+test("shotgun33 route requeue: a bad field is a 400 on requeue and the dead job stays dead, counters untouched", async () => {
+  const clock = { t: 1_700_000_000_000 };
+  const env = makeEnv({ clock: () => clock.t, lease: 1000, quota: SG33_GOOD });
+  await addTenant(env);
+  assert.equal((await postJob(env, "j1")).status, 202);
+  await kill(env, clock);
+  assert.ok(box(env).has("dlq:j1"));
+  await sg33Tenant(env, { jobs_per_hour: "ten", bytes_per_day: 60_000 });
+  const before = [...box(env).entries()].map(([k, v]) => [k, structuredClone(v)]);
+  const r = await worker.fetch(req("/t/alice/dlq/j1/requeue",
+    { method: "POST", token: SI }), env);
+  assert.equal(r.status, 400);
+  assert.deepEqual(await r.json(), { error: "quota is not a number" });
+  assert.deepEqual([...box(env).entries()], before);
+});
+
+test("shotgun33 route not poisoned: a bad quota does not block a pull, a renew, an ack or a dlq read", async () => {
+  const w = await sg33Pulled();
+  await sg33Tenant(w.env, { jobs_per_hour: "ten", bytes_per_day: "plenty" });
+  assert.equal(await sg33RenewStatus(w.env, "attempt=1"), 204);
+  const ack = await worker.fetch(req("/t/alice/jobs/j1/ack?attempt=1",
+    { method: "POST", token: RUNNER }), w.env);
+  assert.equal(ack.status, 204);
+  assert.equal((await worker.fetch(req("/t/alice/dlq",
+    { token: SI }), w.env)).status, 204); // empty list, not a 400
+  assert.equal((await pull(w.env)).status, 204); // nothing queued, not a 400
+});
+
+// -- 1 quota bookend sweep -----------------------------------------------
+
+test("shotgun33 bookends quota field: symbols around a numeric field string are a 400; trimmed controls are the number; NUL is a 400", async () => {
+  for (const v of ["!10", "10!", "!10!", "!!!", "1 0", "\x0010", "10\x00"]) {
+    await sg33Expect400({ jobs_per_hour: v, bytes_per_day: 60_000 });
+  }
+  const { env, r } = await sg33Submit(
+    { jobs_per_hour: "\t10\n", bytes_per_day: 60_000 });
+  assert.equal(r.status, 202);
+  assert.ok(box(env).has("job:j1"));
+});
+
+// -- 1 injection-shaped test ----------------------------------------------
+
+test("shotgun33 injection: instruction, SQL and template shapes as quota fields are a 400 and pollute nothing", async () => {
+  for (const quota of [
+    { jobs_per_hour: "1; DROP TABLE jobs; --", bytes_per_day: 60_000 },
+    { jobs_per_hour: "ignore all previous instructions", bytes_per_day: 60_000 },
+    { jobs_per_hour: 10, bytes_per_day: "${60000}" },
+    { jobs_per_hour: { "__proto__": { polluted: "sg33" } }, bytes_per_day: 60_000 },
+  ]) {
+    await sg33Expect400(quota);
+  }
+  assert.equal({}.polluted, undefined);
+  assert.equal(Object.prototype.polluted, undefined);
+});

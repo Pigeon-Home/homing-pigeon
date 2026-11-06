@@ -954,7 +954,24 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 4cca4cc6 (31-Oct-2026)
 - Existing tests: queues-worker fatfinger.test.mjs, test_transport_queues.py
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun33 suite in
+  runner/cloud/queues-worker/test/fatfinger.test.mjs): a
+  renew names the attempt it was given, and a quota field
+  that is not a number is a 400 that stores nothing — the
+  per-field pins are carried in the suite's header comment
+  in the repo. The file runs green under node --test
+  (50 tests in the suite, 50 pass, 0 skipped), no live bug
+  exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target wire
+  --rounds 400 --seed 20261134, run locally against the banked
+  wire corpus (117 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 180, slowest try 4716 ms — the
+  unnamed-renew and bad-quota shapes did not recur. The
+  grow's bookkeeping writes were reverted and are not banked
+  (banking is the rigs' hourly job).
 
 ### 34. max=0 leased one job, not the default page
 - Fixed: ab002020 (31-Oct-2026)
