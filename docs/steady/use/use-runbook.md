@@ -1,4 +1,4 @@
-# Homing Pigeon Runbook
+# Homing Pigeon runbook
 
 This book explains every job in tiny steps. You do not need to know
 anything. Just read one step, do it, then read the next step.

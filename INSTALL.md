@@ -1,4 +1,4 @@
-# INSTALL.md — Get the runner going
+# Installing the runner
 
 Three ways, simplest first. Each has two phases: **install** (get the
 files on the box) and **run** (start the runner). Don't mix them.

@@ -1,4 +1,4 @@
-# Security Test Plan — homing-pigeon local SI harness
+# Security test plan — Homing Pigeon local SI harness
 
 > **Archived 2026-10-22.** A draft manual test plan for the local SI
 > harness, kept for the record. Not current guidance.

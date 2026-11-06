@@ -1,4 +1,4 @@
-# Coverage gaps: local rig, after
+# Coverage gaps: local rig, after (2026-10-27)
 
 > Compressed summary. The full text is recoverable from git history at commit 1acc3f8516d986d05bf35d956571e45856735513.
 

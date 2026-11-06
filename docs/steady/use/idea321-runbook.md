@@ -1,4 +1,4 @@
-# idea321
+# Runbook: idea321 (pipe-bomb prompt injection across readers)
 
 The pipe bomb is the fork bomb. The unit test is the pair in
 [runner/tests/test_flag321_obfuscated.py](../../../runner/tests/test_flag321_obfuscated.py):
