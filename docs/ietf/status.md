@@ -67,6 +67,15 @@ full record for all 3.
   the version 1 draft at its -00 revision now cite it without a
   revision number. The datatracker expects -04 as the next
   revision of each draft.
+- The -04 revisions of both drafts were cut locally on
+  2026-11-06, from the posted -03 texts (not from the living
+  drafts, which stand equal to the posted texts) plus the -04
+  checklist's draft-words items. They stand in each draft's
+  `source/` folder with their renders and idnits records:
+  rendered with kramdown-rfc 1.7.43 and xml2rfc 3.35.0, idnits
+  3.3.0 reports 0 errors on each. They are working drafts and
+  have not been submitted. The record of which checklist items
+  each applies is `notes/checklist-04-applied.md`.
 - Sources and renders live beside this file: the kramdown-rfc `.md`,
   the submitted `.xml`, the `.txt` and `.html` renders, and the idnits
   output for each draft.
@@ -124,9 +133,13 @@ The rendered `.txt`, `.html`, and `.xml` beside the version 3 source
 were regenerated with the final-pass text (2-Nov-2026) and match the
 source. idnits 3.3.0 has been run on the render; its report stands
 beside the source as `draft-slutsky-homing-pigeon-v3-00.idnits.txt` beside it in the same folder.
-It reports 3 errors -- the abstract's references to sections and to
-version 1, and RFC 8446 listed as obsolete (succeeded by RFC 9846) --
-all submission-time edits, recorded in the forum. Its other warning
+It reported 3 errors -- the abstract's references to sections and to
+version 1, and RFC 8446 listed as obsolete (succeeded by RFC 9846).
+The source was corrected on 2026-11-06 (the abstract no longer
+names sections, and the Introduction cites the version 1
+reference; the TLS citation was already RFC 9846) and a fresh run
+reports 0 errors on the text and the XML; the current
+`.idnits.txt` beside the source is that run. Its other warning
 is the tool reading the `[HOMING-PIGEON]` subject marker as a
 citation, the same reading the version 1 reports carry.
 

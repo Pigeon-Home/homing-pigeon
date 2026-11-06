@@ -20,17 +20,17 @@ Abstract
    exactly one thing -- the carriage of the version 1 DTLS session
    profile.
 
-   Version 1 defines a DTLS 1.3 session profile (its Sections 19 and
-   20): one cipher suite, a pre-shared key taken from the protocol's
-   shared secret, ephemeral Diffie-Hellman on every handshake, and the
-   platform_info disclosure carried in the server's EncryptedExtensions.
-   Version 1 binds that profile to a live datagram path.  This document
-   binds the same profile to the email binding: handshake flights and
-   protected records are carried as email messages over the store-and-
-   forward mailbox, so a session can be opened by an email, completed
-   over further emails, and then carry jobs and results inside it, with
-   the perfect forward secrecy of the version 1 profile intact on a
-   carrier that has no live path at all.
+   Version 1 defines a DTLS 1.3 session profile: one cipher suite, a
+   pre-shared key taken from the protocol's shared secret, ephemeral
+   Diffie-Hellman on every handshake, and the platform_info disclosure
+   carried in the server's EncryptedExtensions.  Version 1 binds that
+   profile to a live datagram path.  This document binds the same
+   profile to the email binding: handshake flights and protected records
+   are carried as email messages over the store-and-forward mailbox, so
+   a session can be opened by an email, completed over further emails,
+   and then carry jobs and results inside it, with the perfect forward
+   secrecy of the version 1 profile intact on a carrier that has no live
+   path at all.
 
    The objects carried inside the session remain version 1 objects: a
    job or a result inside a session is the version 1 object, unchanged,
@@ -143,9 +143,10 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
 1.  Introduction
 
-   Version 1's email binding is store-and-forward: a job object is an
-   email, a result object is an email, and either can wait in a mailbox
-   for as long as the mailbox keeps it.  Version 1's DTLS binding is the
+   Version 1 [I-D.slutsky-homing-pigeon] is the base document.  Its
+   email binding is store-and-forward: a job object is an email, a
+   result object is an email, and either can wait in a mailbox for as
+   long as the mailbox keeps it.  Version 1's DTLS binding is the
    opposite shape: a live session over datagrams, with handshake flights
    exchanged in seconds and records protected by keys that exist only
    for that session.
@@ -159,7 +160,6 @@ Internet-Draft              Homing Pigeon v3               November 2026
    its session keys are derived from an ephemeral exchange and erased
    with the session, but it needs a live path, and a runner behind a
    mailbox has none.
-
 
 
 
