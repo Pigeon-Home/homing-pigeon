@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.4 - 2026-11-06
+
+- Fix: the core's recorded line figures follow the repair-note fix — runner/oracle stands at 5,013 lines and the as-assembled set at 55,532 — and the script-encoding shim name test stays on relative paths, so the macOS and Windows legs judge the same tree the record describes.
+- Security: an unrecognised key_policies field now refuses the policy build instead of being warned past and dropped.
+
 ## 3.15.18.3 - 2026-11-06
 
 - Fix: the Oracle repair note keeps its closing sentence under the note cap — on Windows the six-element PowerShell platform default, named in both the repair description and a re-judgment refusal, pushed "The job as received was not run." past the cap and truncated it mid-word; the note now trims the findings and the middle first.
