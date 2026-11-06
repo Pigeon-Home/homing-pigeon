@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.176 - 2026-11-06
+
+- Tests: the 3.15.17.175 guard failures are fixed — the slow-class crash-retire test names its corpus target wire so the retired-path guard no longer reads a corpus name as a path, the case-variant name legs skip on filesystems that fold case (registered in the skip registry), the job_user platform-none default is pinned under both host spellings, and the keyed round-trip property leaves the sig slot to the signer.
+- Runner: execute_job reaps its workspace on every path, with a bounded startup orphan sweep.
+- Wire: handshake fragment reassembly totals and pending keys are capped, and the fy_iceworld target families (key_share entries, mailbox framing, the three adopted families) record their suppositions and conclusions.
+
 ## 3.15.17.175 - 2026-11-06
 
 - Tests: shotgun families for the queue, query and grow paths land — families 32 to 48 and the Q90-Q105 families pin the finished-id new life, the renew attempt naming and bad-quota 400, the max=0 lease, the signed-payload job id reading, the daily cap in UTF-8 bytes, the storage budget lease timestamp, the second-result envelope, the 8 MB envelope read stop and queue paging, the unstorable envelope and subject versus signed job_id, the board subject and single stash send, the mailbox gate on email-less runners, the win32 job_user refusal, the restart flight drop, the parallel grow draining its children, the keydir one-key-one-entry contract, the slow-class retirement, and the result never addressed to '<>', plus the query target crash shapes, grow walker depth, query door ownership and policy, replay cache age rule, queue connection weather, and inline files and outputs.
