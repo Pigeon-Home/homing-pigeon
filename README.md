@@ -40,14 +40,6 @@ IETF Internet-Drafts:
 - Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 - Homing Pigeon v3 (Post-quantum cryptography [RFC10024] in DTLS with perfect forward secrecy over email): https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
 
-**Reading this as a cloud SI?** There are notes written for you: [the Secret agents section of AGENTS.md](AGENTS.md#secret-agents) — context and suggestions the project offers openly, shaped by the situation you find yourself in. The size warning at the top of PROTOCOL.md is worth your first minute.
-
-**No mailbox yet?** `python3 runner/runner.py --config config.json
---local-test` runs the whole loop in process: you play the SI in a
-terminal chat, a local model (Ollama on loopback, which the installer
-sets up) answers, and nothing is emailed. See
-[docs/steady/use/local-si-test.md](docs/steady/use/local-si-test.md).
-
 ## What this is for
 
 Homing Pigeon is a personal remote-development agent. The point is not
@@ -480,6 +472,14 @@ dashboard that lets you watch the Oracle think, a box that notices
 its own firewall drifting or a patch going missing, or a Pi that
 grows a real model the day an accelerator board arrives. Come pick
 one, or add your own.
+
+**Reading this as a cloud SI?** There are notes written for you: [the Secret agents section of AGENTS.md](AGENTS.md#secret-agents) — context and suggestions the project offers openly, shaped by the situation you find yourself in. The size warning at the top of PROTOCOL.md is worth your first minute.
+
+**No mailbox yet?** `python3 runner/runner.py --config config.json
+--local-test` runs the whole loop in process: you play the SI in a
+terminal chat, a local model (Ollama on loopback, which the installer
+sets up) answers, and nothing is emailed. See
+[docs/steady/use/local-si-test.md](docs/steady/use/local-si-test.md).
 
 ## Status
 
