@@ -122,6 +122,16 @@ def main() -> int:
                 "no runner_id is configured; the check is skipped. "
                 "Set runner_id (the setup wizard generates one for "
                 "fresh configs).", "WARN")
+    # F2: a present-but-invalid oracle tool mode stops startup here
+    # too. The value decides what the Oracle's run tool may do on
+    # this box, so a bad one is refused naming the key, never
+    # silently read as the full charter mode.
+    if R._oracle_ops is not None:
+        try:
+            R._oracle_ops._validate_oracle_tool_mode(cfg)
+        except RuntimeError as e:
+            print(e, file=sys.stderr)
+            return 2
     # Hardening M1b: the size caps must be non-negative integers.
     # 0 means unlimited.
     _err = R._validate_size_caps(cfg)

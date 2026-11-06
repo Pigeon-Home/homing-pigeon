@@ -24,6 +24,14 @@ except ImportError:  # running from inside runner/ as __main__
     except ImportError:
         _security = None
 
+try:
+    from runner.ops import oracle_ops as _oracle_ops
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        from ops import oracle_ops as _oracle_ops
+    except ImportError:
+        _oracle_ops = None
+
 
 # Features the posture check recommends even for a default install.
 # Advisory only: WARN, never FAIL.
@@ -74,6 +82,21 @@ def _check_key_policies(cfg, results):
     if not isinstance(cfg, dict):
         return
     extra = cfg.get("additional_secrets")
+    # F2: the Oracle run tool's mode, stated outright like the
+    # security modes above -- a deployment that tuned it (or one
+    # that inherits a config that did) can see it before starting.
+    # An invalid value is a FAIL: startup refuses it by name.
+    if _oracle_ops is not None:
+        tool_mode = _oracle_ops._oracle_tool_mode(cfg)
+        if tool_mode in _oracle_ops.ORACLE_TOOL_MODES:
+            results.append(("OK", "oracle",
+                            "tool_mode=%s (run tool)" % tool_mode))
+        else:
+            results.append(("FAIL", "oracle",
+                            "tool_mode=%r is not one of %s"
+                            % (tool_mode,
+                               ", ".join(_oracle_ops.ORACLE_TOOL_MODES))))
+
     policies = cfg.get("key_policies")
     if not isinstance(extra, dict):
         return

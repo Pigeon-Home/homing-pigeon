@@ -5,6 +5,7 @@ Extracted from runner.py.
 from datetime import datetime, timezone, timedelta
 import os
 import subprocess
+import sys
 
 
 try:
@@ -114,7 +115,168 @@ def _oracle_brief(cfg, base_dir, record, opener=None):
     return brief
 
 
-def _run_oracle_tool(name, args, base_dir=None, withheld=None) -> str:
+# ---- the run tool's operator mode (F2) --------------------------------
+#
+# The interactive Oracle's charter (runner/ops/oracle_tools.py, pinned
+# by test_oracle_charter.py) gives the owner's local debugging partner
+# full hands, and that does not change here. What an operator CAN do
+# is tune the run tool per deployment, the way every other control in
+# this codebase is tuned: a config knob with a CLI override.
+#
+# oracle_tool_mode (also spelled oracle.tool_mode, the nested form)
+# takes one of ORACLE_TOOL_MODES; the default is full, the charter
+# behavior. readonly refuses the run tool. confirm asks at the
+# runner's terminal before each command and refuses when there is no
+# terminal to ask at. confined refuses with a not-available error:
+# the job sandbox (runner/guard/sandbox.py) confines staged job
+# scripts -- an interpreter, a script file, a bound workdir -- and
+# that shape cannot be applied to an interactive shell command
+# without pretending, so the mode says so instead of running the
+# command unconfined under a confined label.
+#
+# In every mode that executes, the child gets a scrubbed environment
+# (see _oracle_tool_env): the runner's environment is never inherited
+# whole, because untrusted content the Oracle reads can steer the
+# model, and a child that can print its environment would hand the
+# runner's secrets to whatever steered it.
+ORACLE_TOOL_MODES = ("full", "confirm", "confined", "readonly")
+
+
+def _oracle_tool_mode(cfg) -> str:
+    """The configured run-tool mode: the flat key wins (the CLI
+    override writes it, and a flag beats the file), then the nested
+    oracle.tool_mode, then the charter default, full. A non-string
+    value reads as unset here; _validate_oracle_tool_mode refuses it
+    at startup, naming the key."""
+    if isinstance(cfg, dict):
+        flat = cfg.get("oracle_tool_mode")
+        if isinstance(flat, str) and flat:
+            return flat
+        oracle = cfg.get("oracle")
+        if isinstance(oracle, dict):
+            nested = oracle.get("tool_mode")
+            if isinstance(nested, str) and nested:
+                return nested
+    return "full"
+
+
+def _validate_oracle_tool_mode(cfg):
+    """Raise RuntimeError for a present-but-invalid tool mode.
+
+    Names the key and the bad value. Call at startup, before any
+    model or tool work: a value that is not one of the four modes
+    decides what the run tool may do on this box, so it is refused,
+    never silently read as full.
+    """
+    if not isinstance(cfg, dict):
+        return
+    oracle = cfg.get("oracle")
+    if oracle is not None and not isinstance(oracle, dict):
+        raise RuntimeError(
+            "config error: oracle must be an object, got %s"
+            % type(oracle).__name__)
+    choices = ", ".join(ORACLE_TOOL_MODES)
+    flat = cfg.get("oracle_tool_mode")
+    if flat is not None and flat not in ORACLE_TOOL_MODES:
+        raise RuntimeError(
+            "config error: oracle_tool_mode must be one of %s "
+            "(got %r)" % (choices, flat))
+    if isinstance(oracle, dict) and "tool_mode" in oracle:
+        nested = oracle["tool_mode"]
+        if nested not in ORACLE_TOOL_MODES:
+            raise RuntimeError(
+                "config error: oracle.tool_mode must be one of %s "
+                "(got %r)" % (choices, nested))
+
+
+# The explicit minimal environment a run-tool child may see. Anything
+# not named here does not cross, however benign it looks: an allowlist
+# is the only shape that stays closed when the runner's own
+# environment grows a new variable nobody reviewed.
+_ENV_ALLOWLIST = frozenset({
+    "PATH", "HOME", "LANG", "LANGUAGE", "TERM", "TMPDIR", "TZ",
+    "USER", "LOGNAME",
+})
+_ENV_ALLOWLIST_WIN32 = frozenset({
+    "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "USERPROFILE",
+    "COMSPEC", "PATHEXT", "APPDATA", "LOCALAPPDATA",
+})
+# Name fragments that mark a variable as secret-bearing wherever it
+# appears in the name. Compared uppercase, so the match is
+# case-insensitive on every platform.
+_SECRET_ENV_MARKERS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "AUTH",
+                       "CREDENTIAL")
+
+
+def _env_name_is_secret(name) -> bool:
+    upper = name.upper()
+    if upper.startswith("PIGEON_"):
+        # The runner's own credential prefix (runner.py's
+        # _SENSITIVE_ENV_PREFIXES), named rather than imported so
+        # this module keeps loading without the runner module.
+        return True
+    return any(marker in upper for marker in _SECRET_ENV_MARKERS)
+
+
+def _oracle_tool_env(source=None) -> dict:
+    """The scrubbed environment for a run-tool child.
+
+    Built from `source` (default os.environ): only the allowlisted
+    names cross (plus LC_* locale names, and the Windows shell
+    essentials on win32), and a secret-marked name never crosses
+    even if a future allowlist edit names it.
+    """
+    if source is None:
+        source = os.environ
+    out = {}
+    try:
+        items = source.items()
+    except AttributeError:
+        return out
+    for key, value in items:
+        if not isinstance(key, str) or not isinstance(value, str):
+            continue
+        if _env_name_is_secret(key):
+            continue
+        upper = key.upper()
+        if upper in _ENV_ALLOWLIST or upper.startswith("LC_"):
+            out[key] = value
+        elif os.name == "nt" and upper in _ENV_ALLOWLIST_WIN32:
+            out[key] = value
+    return out
+
+
+def _oracle_run_confirmed(command, confirm_fn=None) -> bool:
+    """The confirm mode's gate: True only on an affirmative answer.
+
+    confirm_fn (a test seam) answers for the operator when given.
+    Otherwise the runner's own terminal is asked, in the setup
+    wizard's yes/no shape; no terminal, a closed stdin, or anything
+    but an explicit yes refuses -- a confirmation that cannot be
+    asked for is a no.
+    """
+    if confirm_fn is not None:
+        try:
+            return bool(confirm_fn(command))
+        except Exception:
+            return False
+    try:
+        if sys.stdin is None or not sys.stdin.isatty():
+            return False
+    except Exception:
+        return False
+    try:
+        answer = input(
+            "oracle run tool (confirm mode): allow this command?\n"
+            f"  {command}\n[y/N] ")
+    except (EOFError, KeyboardInterrupt, OSError):
+        return False
+    return isinstance(answer, str) \
+        and answer.strip().lower() in ("y", "yes")
+
+
+def _run_oracle_tool(name, args, base_dir=None, withheld=None,
+                     cfg=None, tool_mode=None, confirm_fn=None) -> str:
     """Execute one Oracle agent tool call. Never raises.
 
     The model is untrusted input here, same class as job JSON: names
@@ -124,7 +286,10 @@ def _run_oracle_tool(name, args, base_dir=None, withheld=None) -> str:
     withheld: the real paths the extension sources disclosure rule
     keeps from the Oracle (computed per call when None). read_file,
     list_dir, and write_file refuse them, and list_dir leaves them
-    out of a listing. The run tool is a shell and is not filtered.
+    out of a listing. The run tool is a shell and is not path
+    filtered; it is gated by the operator's tool mode instead (see
+    ORACLE_TOOL_MODES above): tool_mode, when given, wins over the
+    mode cfg names, and both default to the charter's full.
     """
     R = _runner()
     if not isinstance(args, dict):
@@ -224,6 +389,25 @@ def _run_oracle_tool(name, args, base_dir=None, withheld=None) -> str:
             return "error: command must be a non-empty string"
         if len(command) > 8000:
             return "error: command too long (8000 char cap)"
+        mode = tool_mode if tool_mode is not None \
+            else _oracle_tool_mode(cfg)
+        if mode not in ORACLE_TOOL_MODES:
+            return (f"error: oracle tool mode {mode!r} is not one of "
+                    + ", ".join(ORACLE_TOOL_MODES)
+                    + "; refusing to run (fix oracle_tool_mode)")
+        if mode == "readonly":
+            return ("error: the run tool is disabled by oracle tool "
+                    "mode 'readonly' (set oracle_tool_mode to full "
+                    "or confirm to allow commands)")
+        if mode == "confined":
+            return ("error: oracle tool mode 'confined' is not "
+                    "available: the job sandbox confines staged job "
+                    "scripts and cannot be applied to the interactive "
+                    "run tool; refusing to run the command unconfined")
+        if mode == "confirm" \
+                and not _oracle_run_confirmed(command, confirm_fn):
+            return ("error: the operator did not confirm this "
+                    "command (oracle tool mode 'confirm'); not run")
         try:
             timeout = int(args.get("timeout_sec", 30))
         except (TypeError, ValueError, OverflowError):
@@ -233,7 +417,8 @@ def _run_oracle_tool(name, args, base_dir=None, withheld=None) -> str:
             proc = subprocess.run(
                 command, shell=True, capture_output=True,
                 stdin=subprocess.DEVNULL,
-                timeout=timeout, cwd=R._tool_base_dir(base_dir) or None)
+                timeout=timeout, cwd=R._tool_base_dir(base_dir) or None,
+                env=_oracle_tool_env())
         except subprocess.TimeoutExpired:
             return f"error: command timed out after {timeout}s"
         except Exception as e:

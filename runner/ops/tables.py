@@ -18,6 +18,7 @@ _CLI_OVERRIDES = (
     ("dag_mode", "dag_mode"),
     ("oracle_mode", "oracle_mode"),
     ("oracle_opinion", "oracle_opinion_mode"),
+    ("oracle_tool_mode", "oracle_tool_mode"),
     ("protocol_v2", "protocol_v2"),
     ("answer_only", "answer_only"),
     ("remediation_mode", "remediation_mode"),

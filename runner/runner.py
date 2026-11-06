@@ -671,6 +671,16 @@ def inference_config(cfg):
     for key in ("agent_wall_clock_sec", "keep_alive"):
         if key in inf:
             out[key] = inf[key]
+    # F2: the Oracle run tool's mode is a top-level config key
+    # (oracle_tool_mode, or oracle.tool_mode nested), but every
+    # caller hands ask_model_agent this dict and nothing else, so
+    # the resolved mode rides it -- passed through only when one is
+    # configured, like the keys above, so the dispatcher's charter
+    # default (full) applies untouched everywhere else.
+    if isinstance(cfg.get("oracle_tool_mode"), str) or (
+            isinstance(cfg.get("oracle"), dict)
+            and isinstance(cfg["oracle"].get("tool_mode"), str)):
+        out["oracle_tool_mode"] = _oracle_ops._oracle_tool_mode(cfg)
     return out
 
 def _as_text(value):
@@ -1084,6 +1094,7 @@ def _tool_withheld(path, base_dir, withheld) -> bool:
 _oracle_ops = _required_load_mod("runner.ops.oracle_ops", "ops.oracle_ops")
 _oracle_brief = _oracle_ops._oracle_brief
 _run_oracle_tool = _oracle_ops._run_oracle_tool
+_oracle_tool_mode = _oracle_ops._oracle_tool_mode
 
 
 def _wire_tool_arguments(fargs) -> str:
@@ -5152,7 +5163,7 @@ _YARA_RULES = _tables._YARA_RULES
 _CLI_OVERRIDE_COUNTS = frozenset(
     dest for dest, _key in _CLI_OVERRIDES
     if dest not in ("max_result_view", "judge", "dag_mode",
-                    "oracle_mode", "oracle_opinion",
+                    "oracle_mode", "oracle_opinion", "oracle_tool_mode",
                     "protocol_v2", "answer_only",
                     "remediation_mode", "require_review",
                     "local_signals", "oracle_log", "transports"))

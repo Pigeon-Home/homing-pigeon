@@ -41,6 +41,10 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     patterns = patterns if patterns is not None else _runner().BUILTIN_REDACT_PATTERNS
     if not isinstance(cfg, dict):
         return {"op": "ask", "rejected": "inference_unconfigured"}
+    # F2: the run tool's mode rides this dict (inference_config
+    # resolves it from the top-level config and passes it through);
+    # absent means the charter default, full.
+    tool_mode = cfg.get("oracle_tool_mode")
     # One read of the disclosure rule per question: the file tools
     # refuse what it withholds for the whole exchange.
     withheld = _runner()._withheld_for_tools(base_dir)
@@ -186,8 +190,9 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
                 preview = "?"
             R.log(f"oracle tool: {name} {preview}")
             _progress(f"Running {name}")
-            result_text = _runner()._run_oracle_tool(name, fargs, base_dir,
-                                           withheld=withheld)
+            result_text = _runner()._run_oracle_tool(
+                name, fargs, base_dir, withheld=withheld,
+                tool_mode=tool_mode)
             scan_text += "\n" + result_text
             executed.append((call_id, name, fargs, result_text))
         if executed and executed[0][0].startswith(R._CONTENT_CALL_ID_PREFIX):

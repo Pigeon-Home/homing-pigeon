@@ -178,6 +178,16 @@ def build_parser():
                    help="Oracle mode: llm, or deterministic -- "
                         "the Pi Light mode, no model is called "
                         "(default: llm)")
+    g.add_argument("--oracle-tool-mode",
+                   choices=["full", "confirm", "confined", "readonly"],
+                   default=None, metavar="MODE",
+                   help="Oracle run tool mode for this process: "
+                        "full (the charter default: commands run), "
+                        "confirm (each command needs a yes at the "
+                        "runner's terminal), confined (not available "
+                        "in this build: the run tool refuses rather "
+                        "than run unconfined), readonly (the run "
+                        "tool refuses) (default: full)")
     g.add_argument("--protocol-v2", action="store_true",
                    default=None,
                    help="before a job runs, send a version 2 "
