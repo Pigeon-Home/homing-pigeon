@@ -2575,10 +2575,10 @@ class SlowLatencyShotgunTest(unittest.TestCase):
                     mock.patch.object(B, "check", boom), \
                     mock.patch.object(B, "head_sha",
                                       return_value="feedfacefeedface"):
-                B.save(B.corpus_path("cloud", slow=True), "cloud",
+                B.save(B.corpus_path("wire", slow=True), "wire",
                        [self._slow_record("c1")])
-                still = B._promote_slow("cloud", lambda *a: None)
-                retired = B.load_retired("cloud")
+                still = B._promote_slow("wire", lambda *a: None)
+                retired = B.load_retired("wire")
         self.assertFalse(still)
         self.assertEqual("fast", retired["c1"]["why"])
 
