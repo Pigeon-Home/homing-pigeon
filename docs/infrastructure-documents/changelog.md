@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.170 - 2026-11-05
+
+- Tests: the supervised DTLS round-trip test's sender budget is sized for the retransmission timers it runs under — the sender's `--wait` covers the handshake and the result in one budget, and a single lost datagram costs a full first-retransmission wait (2 poll periods by design), which ate the old 45-second budget on a loaded CI host and timed the test out with the round trip otherwise healthy. The budget is now 120 seconds, with the supervising deadline and final ceiling sized past it; production timings are unchanged.
+
 ## 3.15.17.169 - 2026-11-05
 
 - Fuzz harness: the hybrid harness's genuine-ServerHello scan stops at a fragmented handshake message instead of parsing a partial body — the 1,201-byte hybrid ServerHello can arrive split across datagrams depending on the host's datagram sizing, and the scan's unchecked slice let a `DtlsError` escape and error the bounded-run smoke test on one platform leg while the same run passed on others. A complete message whose body does not parse is likewise skipped rather than raised; only the genuine unfragmented ServerHello is taken.
