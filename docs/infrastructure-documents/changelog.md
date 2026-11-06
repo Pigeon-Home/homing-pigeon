@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.166 - 2026-11-05
+
+- Guard: signed bodies refuse duplicate member names — `loads_signed` parses with an `object_pairs_hook` that raises on any repeated name (decoded names, so an escaped spelling of the same name is a duplicate too) — and a string- and escape-aware bracket-depth pre-scan refuses a body nested past 200 levels before `json.loads` runs.
+- Oracle: the interactive run tool takes a mode — `oracle.tool_mode` as `full`, `confirm`, `confined` or `readonly`, default `full` so the debugging charter is unchanged — and its child process now runs with a scrubbed environment in every mode instead of inheriting the runner's.
+- Guard: the security audit log is hash-chained — each record carries a sequence number and a chain value over the previous record, the chain head carries across the log rollover, and `--audit-verify` checks a log end to end, naming the first record that does not verify; a legacy unchained prefix is reported as such rather than failing.
+- Guard: a startup posture assertion switch — with `require_posture` pinned, startup refuses when any security mode sits below enforce.
+- Docs: the support matrix lands at `docs/support-matrix.md`, pinned by a test that checks its platform rows and honesty lines against the code; the document titles from the Argon titles review are corrected (26 proposals landed, 2 held with reasons); the steady map's counts are regenerated, the coverage family gains an index page, and a signpost at the top of the map says which of the two documentation trees holds what.
+
 ## 3.15.17.165 - 2026-11-05
 
 - Docs: mutation testing is documented whole in the fuzzing guide (`docs/steady/fuzzing.md`): what it is, why a suite past 10,000 tests is audited by breaking the code on purpose — so no test stands as a latent false positive that passes in every world — the deliberate one-file scope, the seeded hourly walk, the collapse floor, and the dated history from the first CI gate on 2026-10-16 through the un-blinding of 2026-10-25 and the survivor triage (561 killed, 5 provably equivalent), with the stage 5 by-hand mutation checks of the proof family beside it.
