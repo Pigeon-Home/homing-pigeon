@@ -1214,7 +1214,28 @@ Applied to every item on this queue, item 1 included:
 - Existing tests: test_windows_platform_proofs.py MailboxGate tests
   (9 of the file's 20)
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (MailboxGateShotgunTest in
+  test_windows_platform_proofs.py): the gate in every transport
+  container and spelling, the example placeholders in both
+  mailbox fields, the auth field's exact oauth reading, inert
+  neighbour fields, and the gate through main() in its string
+  and mixed transport spellings; the file runs green (70 tests
+  in the file, 0 skipped), no live bug exposed, no production
+  code changed.
+- Proof of work (per the method section): per-field enumeration
+  — the gate reads exactly the config object, mailbox_user,
+  mailbox_password, auth, oauth_client_id, oauth_refresh_token
+  and the transports argument, and each field gets its own
+  generated test (7 per-field tests, beside 27 hand-written
+  seams, 12 bookend sweeps and 4 run-length sweeps carried in
+  the class docstring in the repo). Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target mail --rounds
+  400 --seed 20261143, run locally against the banked mail
+  corpus (26 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 131, slowest try 500 ms — the gate
+  demanding auth from an email-less runner did not recur. The
+  grow's bookkeeping writes were reverted and are not banked
+  (banking is the rigs' hourly job).
 
 ### 43. job_user=enforce on Windows was a silent no-op; jobs ran as SYSTEM
 - Found: 31-Oct-2026, live on the Germany rig
