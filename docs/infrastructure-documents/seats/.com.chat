@@ -3,6 +3,98 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 6-Nov-9:34am-PST/PDT — the big-window program: Phase 3 conclusions, and the reconciliation stands complete
+
+This entry posts the Phase 3 conclusions and closes the
+big-window conformance program's record. Phase 3 is the
+final once-over of everything: the whole suite run fresh
+against main, every failure and every skip accounted, and
+the remains of the earlier phases stated plainly. The
+model mechanics of the program stand paused, so the
+once-over was done by hand, from the lane records the
+phases left behind; the review work underneath it was
+completed by hand, the other way around.
+
+### The suite evidence
+
+The full suite ran against main at b9935cf0: 11,298
+tests, 10,820 passed, 55 skipped. Every 1 of the 55
+skips was read off the logs and accounted against the
+skip registry; no unregistered reason appears anywhere
+in the run. The failures and errors were attributed
+1 by 1 — matched against the pristine base, proven
+environmental, or bisected to the commit that
+introduced them.
+
+Exactly 3 genuinely new failures stood in the run, and
+a closed bisect traces all 3 to a single commit, the
+temp-reaping landing (14b1c416):
+
+1. The Decision-1 startup family table did not carry the
+   new work_retention_sec field, so the family no longer
+   covered the whole table.
+2. The PowerShell script-encoding module staged a job
+   and then read the staged script back out of the
+   per-job workspace; the reap now removes that
+   workspace on every path, so the read found nothing.
+3. The Oracle no-widening repair test observed its
+   repair through the same workspace, and found nothing
+   for the same reason.
+
+All 3, and their sibling casualties in the
+campaign-loop, confinement and install-edges tests, were
+repaired test-first in 82009eae, and the repair shipped
+in release 3.15.17.177: the release's 9 CI guard jobs
+are green on every leg (Linux, Windows, macOS), the
+release is published, and its stamp verifies. On the
+head that shipped, the genuinely new set is closed.
+
+The named new areas stand green in the full run: the
+temp-reap tests (21), the hybrid-fuzz families (98), the
+core re-pin (30), the skip registry itself, the layout
+guard (the release-175 repair), and the keyed-roundtrip
+property (the other release-175 repair).
+
+### What remains, stated plainly
+
+The once-over resolves nothing below; each item stands
+exactly as it stood, recorded here so the program's
+record carries its remains whole:
+
+- 4 held decision items stand for the owner's word: the
+  key_policies disposition, the world-readable-secret
+  posture call, the POSIX job_user enforce fallback, and
+  the posture-only item.
+- The unjudged claim sets stand recorded as unjudged:
+  lane H 46, lane G 53, lane I 3, lane J 22.
+- The live-unproven v3 behaviors stand as recorded:
+  resumption over a live mailbox, providers other than
+  Gmail, the MIME sender on a live mailbox, a restart
+  mid-handshake, and multi-session scale.
+- The Independent Submissions Editor publication request
+  stands unanswered.
+- 2 pre-existing failures, proven identical on the
+  pristine base, remain as documented: the agent-stamps
+  enforced-window test and the pattern-engine repetition
+  test. The TestGrepMaxMatches flake family remains as
+  documented too; its counts flap from run to run.
+
+### The releases of the night
+
+Releases 175 and 176 failed their guards and will never
+publish. Release 177 is released and verified, and it
+carries the whole night's work.
+
+### The program stands complete in the record
+
+With this entry, all 3 phases of the reconciliation
+stand complete in the record. Phase 1 covered the
+documentation and the codebase; Phase 2 covered the
+IETF material, with its remedies standing as the -04
+drafts in each draft's source folder and nothing
+submitted; Phase 3 is this once-over. The manual review
+that follows is the owner's.
+
 ## 6-Nov-2:31am-PST/PDT — the big-window program: Phase 1 and Phase 2 conclusions, the 2 improvements passes, and the Phase 3 preparation
 
 This entry closes the record for the first full pass of the
