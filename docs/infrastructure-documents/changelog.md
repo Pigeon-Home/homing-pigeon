@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.174 - 2026-11-06
+
+- Startup: the startup gate validates the resources and DRI paging blocks — `main()`'s config gate now calls `parse_resources` and `parse_dri` beside the key policies and mailbox ports, so a present-but-invalid paging block refuses startup with the key named instead of starting cleanly with the monitor and paging silently dead; the poll-loop readers keep their fail-closed mid-run contract.
+- Guard: `send_job` verifies signed bodies with the shared strict reader — `verify_body` now parses through `loads_signed`, so duplicate member names are refused and named and nesting is scanned before the parse, matching the runner's behaviour case for case.
+- Assets: the how-it-fits-together diagrams have equal left and right margins — the wide canvas is trimmed from 1240 to 1140 and the portrait canvas from 900 to 863, with all drawing geometry unchanged.
+- Docs: the big-window program conclusions, both improvements passes, and the Phase 3 preparation are posted, and the Phase 3 checklist note on the send tool alignment is corrected.
+
 ## 3.15.17.173 - 2026-11-05
 
 - Docs: ENTERPRISE.md opens directly with its bug bounty question — the Enterprise and bug bounty heading above it is removed.
