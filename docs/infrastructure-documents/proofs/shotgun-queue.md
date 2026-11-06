@@ -1034,7 +1034,34 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 9716fb5d (31-Oct-2026)
 - Existing tests: queues-worker fuzz.test.mjs
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun36 suite in
+  runner/cloud/queues-worker/test/fuzz.test.mjs): the job
+  daily cap, the stored record's size and the job route's
+  2 MB storage edge all count UTF-8 bytes — 2-byte accents,
+  3-byte signs and CJK, 4-byte emoji, combining marks, a ZWJ
+  sequence and a lone surrogate read as U+FFFD; caps at the
+  byte count, 1 under it, and between the character count and
+  the byte count where the old reading accepted; the whole
+  envelope billed as written (subject, payload, sig member,
+  trailing newline, JSON escape text); bytes_per_day missing /
+  null / numeric string / non-number / zero / negative /
+  fractional; the hour counter counting jobs, never bytes;
+  and the day boundary in bytes. Deliberately distinct from
+  item 26's suite, which pins the result counter's own cap:
+  this family pins the job counter, the job record's size
+  field and the job storage edge. The suite runs green under
+  node --test (50 tests, 50 pass, 0 skipped), no live bug
+  exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target cloud --rounds
+  400 --seed 20261137, run locally against the banked cloud
+  corpus (113 entries). Result: 400 rounds, 0 crashes, 0 slow,
+  arcs unchanged at 184, slowest try 3175 ms — the
+  character-count billing did not recur. The grow's
+  bookkeeping writes were reverted and are not banked (banking
+  is the rigs' hourly job).
 
 ### 37. The storage budget counted zero instead of the lease timestamp
 - Fixed: 355ab824 (31-Oct-2026)

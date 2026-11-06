@@ -4470,3 +4470,595 @@ test("shotgun35 lifecycle: a mismatch refusal stores and bills nothing, and the 
   const pulled = await r.json();
   assert.deepEqual(pulled.jobs.map((j) => j.id), ["j1"]);
 });
+
+// ---------------------------------------------------------------------
+// Shotgun family for queue item 36: the daily cap counted
+// JavaScript characters, not UTF-8 bytes (fixed 9716fb5d,
+// 31-Oct-2026). A job body of non-ASCII text was billed to the
+// tenant's daily byte cap (bytes_per_day, counter quota:day:<UTC
+// day>) by its string length, so a character that is 2, 3 or 4
+// bytes on the wire counted as 1: a day could be overspent by up
+// to the cap again in real bytes, and the stored record's size
+// field understated what was stored. The same character count
+// fed the 2 MB envelope edge check, so an envelope over the
+// storage limit in bytes but under it in characters passed the
+// gate. The fix counts UTF-8 bytes everywhere the job surface
+// measures text: the day counter's weight, the stored size, and
+// the edge check (the pull and read budgets moved in the same
+// commit and are pinned by their own families). This family
+// scattershots the job side of that counting: every width of
+// character (2-byte accents, 3-byte signs and CJK, 4-byte emoji
+// in surrogate pairs, combining marks, a lone surrogate read as
+// the replacement character), caps set at the byte count, 1
+// under it, and between the character count and the byte count
+// where the old reading accepted, what is billed (the whole
+// envelope -- subject, payload, sig member and trailing newline
+// -- as the text stands, escapes and all), and the 2 MB edge in
+// bytes. It is deliberately distinct from shotgun26: that
+// family pins the RESULT counter's own byte cap; this one pins
+// the JOB counter, the job record's size field, and the job
+// route's storage edge. One regression test was never going to
+// be enough for a bug that took days of CPU to find.
+//
+// Proof of work. The unit tests are the 50 tests registered
+// below: 12 hand-written seams, 8 per-field quota tests, 8
+// what-counts tests, 6 storage-edge tests, 6 bookend sweeps, 5
+// run-length sweeps and 5 lifecycle edges. Per-field
+// enumeration: the cap's surface is fielded -- bytes_per_day
+// (exact, 1 under, between characters and bytes, missing, null,
+// a numeric string, a non-number string, zero, negative,
+// fractional, and beside a zero jobs_per_hour), jobs_per_hour
+// (counting jobs, never bytes), the stored record's size field,
+// the day counter quota:day:<day>, the hour counter
+// quota:hour:<hour>, the 429 answer's jobs_this_hour and
+// bytes_today fields, and the storage edge at exactly 2 MB of
+// bytes -- each pinned in its own test. Bookends: every
+// printable ASCII symbol (all 32 punctuation characters) at the
+// front AND the back of the script, matched multibyte bookends,
+// a symbol-only script, NUL / tab / CR / LF bookends riding as
+// JSON escapes, and combining-mark bookends. Run lengths: runs
+// of 2-byte and 4-byte characters at lengths 10 and 1000, 10
+// ordinary characters with the multibyte one at the front, the
+// back and the middle, and a run of NUL escapes. Multibyte
+// shapes are the core material: 2 / 3 / 4-byte characters,
+// combining sequences, a ZWJ emoji family, and a lone
+// surrogate, which the encoder reads as U+FFFD, 3 bytes. The
+// fuzzing was executed, not just the tests written:
+// runner/tools/de_dust_corpus.py grow --target cloud
+// --rounds 400 --seed 20261137, run locally against the
+// banked cloud corpus (113 entries). Result: 400 rounds,
+// 0 crashes, 0 slow, arcs unchanged at 184, slowest try
+// 3175 ms -- the character-count billing did not recur. The
+// grow's bookkeeping writes were reverted and are not banked
+// (banking is the rigs' hourly job); this record is the run's proof. For the .mjs file the
+// Python skip registry does not apply, and this family adds no
+// skips. None of this is exotic: it is combinatorics --
+// systematically trying the combinations a hand-written list
+// would never reach, then pinning each answer as a test.
+
+const SG36_T0 = 1_700_000_000_000;
+const SG36_DAY = 86_400_000;
+const SG36_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+const sg36Bytes = (t) => new TextEncoder().encode(t).length;
+
+async function sg36Env(quota, clock) {
+  const env = makeEnv({ quota, clock });
+  await addTenant(env);
+  env.TENANT_QUEUE.get("alice");
+  return env;
+}
+
+function sg36Map(env) {
+  return env.objects.get("alice")?.state.storage.map;
+}
+
+function sg36Day(env, now) {
+  return sg36Map(env)?.get(`quota:day:${Math.floor(now / SG36_DAY)}`);
+}
+
+function sg36Hour(env, now) {
+  return sg36Map(env)?.get(`quota:hour:${Math.floor(now / 3_600_000)}`);
+}
+
+async function sg36Post(env, envelope, token = SI, kind = "jobs") {
+  return worker.fetch(req(`/t/alice/${kind}`, {
+    method: "POST", token: `Bearer ${token}`, body: envelope,
+  }), env);
+}
+
+async function sg36Signed(payloadText, secret = SECRET) {
+  const sig = await hmacSha384Hex(secret, payloadText);
+  return payloadText.slice(0, -1) + `,"sig":"${sig}"}`;
+}
+
+const SG36_BIG = { jobs_per_hour: 600, bytes_per_day: 256 * 1024 * 1024 };
+
+// -- 12 hand-written seams ---------------------------------------------
+
+test("shotgun36: an ASCII job's stored size, day billing and character count all agree", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const r = await sg36Post(env, text);
+  assert.equal(r.status, 202);
+  assert.equal(sg36Bytes(text), text.length);
+  assert.equal(sg36Map(env).get("job:j1").size, text.length);
+  assert.equal(sg36Day(env, SG36_T0), text.length);
+});
+
+test("shotgun36: a 2-byte character bills 2 bytes -- the stored size and the day counter both pass the character count", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "café");
+  const r = await sg36Post(env, text);
+  assert.equal(r.status, 202);
+  assert.equal(sg36Bytes(text), text.length + 1);
+  assert.equal(sg36Map(env).get("job:j1").size, text.length + 1);
+  assert.equal(sg36Day(env, SG36_T0), text.length + 1);
+});
+
+test("shotgun36: a 3-byte character bills 3 bytes for 1 character", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "€");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Map(env).get("job:j1").size, sg36Bytes(text));
+  assert.equal(sg36Bytes(text), text.length + 2);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+});
+
+test("shotgun36: a 4-byte emoji bills 4 bytes for 2 JavaScript characters", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "\u{1F600}");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Bytes(text), text.length + 2);
+  assert.equal(sg36Map(env).get("job:j1").size, sg36Bytes(text));
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+});
+
+test("shotgun36: a combining mark bills its own bytes -- e plus U+0301 is 3 bytes for 2 characters", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "e\u0301");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Bytes(text), text.length + 1);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+});
+
+test("shotgun36: a CJK character bills 3 bytes for 1 character", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "漢");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Bytes(text), text.length + 2);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+});
+
+test("shotgun36: a job whose bytes exactly fill the day cap is accepted and billed exactly", async () => {
+  const text = await signedJob("j1", SECRET, "café € \u{1F600}");
+  const cap = sg36Bytes(text);
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: cap }, () => SG36_T0);
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0), cap);
+});
+
+test("shotgun36: a job 1 byte over the cap is a 429 that stores and bills nothing, though its characters fit", async () => {
+  const text = await signedJob("j1", SECRET, "café");
+  const cap = sg36Bytes(text) - 1;
+  assert.ok(cap >= text.length, "the cap still fits the character count");
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: cap }, () => SG36_T0);
+  const r = await sg36Post(env, text);
+  assert.equal(r.status, 429);
+  const body = await r.json();
+  assert.equal(body.error, "tenant quota exceeded");
+  assert.equal(body.bytes_today, 0);
+  assert.equal(body.jobs_this_hour, 0);
+  assert.ok(!sg36Map(env).has("job:j1"));
+  assert.equal(sg36Day(env, SG36_T0), undefined);
+});
+
+test("shotgun36: a cap set between the character count and the byte count refuses -- the old reading accepted", async () => {
+  const text = await signedJob("j1", SECRET, "€€€€€€€€€€");
+  const cap = text.length + 5;
+  assert.ok(text.length < cap && cap < sg36Bytes(text));
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: cap }, () => SG36_T0);
+  assert.equal((await sg36Post(env, text)).status, 429);
+  assert.ok(!sg36Map(env).has("job:j1"));
+});
+
+test("shotgun36: two multibyte jobs accumulate in bytes -- together 1 over refuses the second, exactly full accepts both", async () => {
+  const t1 = await signedJob("j1", SECRET, "café");
+  const t2 = await signedJob("j2", SECRET, "\u{1F600}\u{1F600}");
+  const total = sg36Bytes(t1) + sg36Bytes(t2);
+  const envA = await sg36Env({ jobs_per_hour: 600, bytes_per_day: total - 1 }, () => SG36_T0);
+  assert.equal((await sg36Post(envA, t1)).status, 202);
+  assert.equal((await sg36Post(envA, t2)).status, 429);
+  assert.equal(sg36Day(envA, SG36_T0), sg36Bytes(t1));
+  const envB = await sg36Env({ jobs_per_hour: 600, bytes_per_day: total }, () => SG36_T0);
+  assert.equal((await sg36Post(envB, t1)).status, 202);
+  assert.equal((await sg36Post(envB, t2)).status, 202);
+  assert.equal(sg36Day(envB, SG36_T0), total);
+});
+
+test("shotgun36: the hour counter counts jobs, not bytes, beside a byte-heavy day counter", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "€".repeat(100));
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Hour(env, SG36_T0), 1);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+  assert.ok(sg36Day(env, SG36_T0) > 3 * sg36Hour(env, SG36_T0));
+});
+
+test("shotgun36: a mixed-width script is stored verbatim and its size is the envelope's byte count", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "aé€\u{1F600}漢é");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  const rec = sg36Map(env).get("job:j1");
+  assert.equal(rec.envelope, text);
+  assert.equal(rec.size, sg36Bytes(text));
+});
+
+// -- 8 per-field quota tests -------------------------------------------
+
+test("shotgun36 field bytes_per_day missing: the default cap applies and the counter still tracks bytes", async () => {
+  const env = await sg36Env({ jobs_per_hour: 600 }, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "café");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+});
+
+test("shotgun36 field bytes_per_day null: the default cap applies", async () => {
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: null }, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "café");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+});
+
+test("shotgun36 field bytes_per_day numeric string: a byte cap written as a string is the cap, at and 1 under", async () => {
+  const text = await signedJob("j1", SECRET, "café");
+  const bytes = sg36Bytes(text);
+  const envA = await sg36Env({ jobs_per_hour: 600, bytes_per_day: String(bytes) }, () => SG36_T0);
+  assert.equal((await sg36Post(envA, text)).status, 202);
+  const envB = await sg36Env({ jobs_per_hour: 600, bytes_per_day: String(bytes - 1) }, () => SG36_T0);
+  assert.equal((await sg36Post(envB, text)).status, 429);
+});
+
+test("shotgun36 field bytes_per_day not a number: a word for the cap is a 400 and stores nothing", async () => {
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: "plenty" }, () => SG36_T0);
+  const r = await sg36Post(env, await signedJob("j1", SECRET, "café"));
+  assert.equal(r.status, 400);
+  assert.equal((await r.json()).error, "quota is not a number");
+  assert.ok(!sg36Map(env)?.has("job:j1"));
+});
+
+test("shotgun36 field bytes_per_day zero: every job is over a zero byte cap, multibyte or not", async () => {
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: 0 }, () => SG36_T0);
+  assert.equal((await sg36Post(env, await signedJob("j1", SECRET, "café"))).status, 429);
+  assert.equal(sg36Day(env, SG36_T0), undefined);
+});
+
+test("shotgun36 field bytes_per_day negative: every job is over a negative cap", async () => {
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: -100 }, () => SG36_T0);
+  assert.equal((await sg36Post(env, await signedJob("j1", SECRET, "café"))).status, 429);
+});
+
+test("shotgun36 field bytes_per_day fractional: a cap half a byte under refuses, half a byte over accepts", async () => {
+  const text = await signedJob("j1", SECRET, "café");
+  const bytes = sg36Bytes(text);
+  const envA = await sg36Env({ jobs_per_hour: 600, bytes_per_day: bytes - 0.5 }, () => SG36_T0);
+  assert.equal((await sg36Post(envA, text)).status, 429);
+  const envB = await sg36Env({ jobs_per_hour: 600, bytes_per_day: bytes + 0.5 }, () => SG36_T0);
+  assert.equal((await sg36Post(envB, text)).status, 202);
+  assert.equal(sg36Day(envB, SG36_T0), bytes);
+});
+
+test("shotgun36 field jobs_per_hour zero: the hour cap refuses on its own axis while the byte cap stands open", async () => {
+  const env = await sg36Env({ jobs_per_hour: 0, bytes_per_day: SG36_BIG.bytes_per_day }, () => SG36_T0);
+  const r = await sg36Post(env, await signedJob("j1", SECRET, "café"));
+  assert.equal(r.status, 429);
+  assert.equal((await r.json()).jobs_this_hour, 0);
+  assert.equal(sg36Day(env, SG36_T0), undefined);
+});
+
+// -- 8 what-counts tests -------------------------------------------------
+
+test("shotgun36 counts: the whole envelope is billed, not the payload alone -- subject, sig and framing included", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "café");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  const payload = text.split("\n\n")[1];
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+  assert.ok(sg36Day(env, SG36_T0) > sg36Bytes(payload));
+});
+
+test("shotgun36 counts: a longer id bills twice its extra length -- once in the subject, once in the payload", async () => {
+  const short = await signedJob("a", SECRET, "echo");
+  const long = await signedJob("a".repeat(50), SECRET, "echo");
+  const envA = await sg36Env(SG36_BIG, () => SG36_T0);
+  assert.equal((await sg36Post(envA, short)).status, 202);
+  const envB = await sg36Env(SG36_BIG, () => SG36_T0);
+  assert.equal((await sg36Post(envB, long)).status, 202);
+  assert.equal(sg36Day(envB, SG36_T0) - sg36Day(envA, SG36_T0), 98);
+});
+
+test("shotgun36 counts: the trailing newline is billed -- the same envelope without it bills 1 less", async () => {
+  const text = await signedJob("j1", SECRET, "café");
+  const envA = await sg36Env(SG36_BIG, () => SG36_T0);
+  assert.equal((await sg36Post(envA, text)).status, 202);
+  const envB = await sg36Env(SG36_BIG, () => SG36_T0);
+  assert.equal((await sg36Post(envB, text.slice(0, -1))).status, 202);
+  assert.equal(sg36Day(envA, SG36_T0) - sg36Day(envB, SG36_T0), 1);
+});
+
+test("shotgun36 counts: an escaped character bills its escape text, not its decoded width", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const payload = `{"v":1,"type":"job","job_id":"j1","kind":"exec","script":"caf\\u00e9"}`;
+  const body = await sg36Signed(payload);
+  const text = `[HOMING-PIGEON] job j1\n\n${body}\n`;
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+  const raw = await signedJob("j1", SECRET, "café");
+  assert.equal(sg36Bytes(text) - sg36Bytes(raw), 4);
+});
+
+test("shotgun36 counts: a lone surrogate in the script is read as the replacement character -- 3 bytes", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const payload = `{"v":1,"type":"job","job_id":"j1","kind":"exec","script":"x\uD800y"}`;
+  const body = await sg36Signed(payload);
+  const text = `[HOMING-PIGEON] job j1\n\n${body}\n`;
+  assert.equal((await sg36Post(env, text)).status, 202);
+  const stored = sg36Map(env).get("job:j1");
+  assert.ok(stored.envelope.includes("�"), "the stored envelope carries U+FFFD");
+  assert.equal(stored.size, sg36Bytes(text));
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+});
+
+test("shotgun36 counts: a NUL in the script bills the 6 bytes of its JSON escape", async () => {
+  const plain = await signedJob("j1", SECRET, "ab");
+  const nulled = await signedJob("j1", SECRET, "a\u0000b");
+  const envA = await sg36Env(SG36_BIG, () => SG36_T0);
+  assert.equal((await sg36Post(envA, plain)).status, 202);
+  const envB = await sg36Env(SG36_BIG, () => SG36_T0);
+  assert.equal((await sg36Post(envB, nulled)).status, 202);
+  assert.equal(sg36Day(envB, SG36_T0) - sg36Day(envA, SG36_T0), 6);
+});
+
+test("shotgun36 counts: a multibyte word in the subject bills its bytes too", async () => {
+  const bodyOf = async () => (await signedJob("j1", SECRET, "echo")).split("\n\n")[1];
+  const accented = `[HOMING-PIGEON] café job j1\n\n${await bodyOf()}`;
+  const plain = `[HOMING-PIGEON] cafe job j1\n\n${await bodyOf()}`;
+  const envA = await sg36Env(SG36_BIG, () => SG36_T0);
+  assert.equal((await sg36Post(envA, accented)).status, 202);
+  const envB = await sg36Env(SG36_BIG, () => SG36_T0);
+  assert.equal((await sg36Post(envB, plain)).status, 202);
+  assert.equal(sg36Day(envA, SG36_T0) - sg36Day(envB, SG36_T0), 1);
+});
+
+test("shotgun36 counts: pulling a job does not refund its bytes", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "café");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  const before = sg36Day(env, SG36_T0);
+  const r = await worker.fetch(req("/t/alice/jobs", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 200);
+  assert.equal(sg36Day(env, SG36_T0), before);
+});
+
+// -- 6 storage-edge tests --------------------------------------------------
+
+test("shotgun36 edge: a body of 2-byte characters over 2 MB in bytes but under in characters is a 413", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const body = "é".repeat(1_000_001);
+  assert.ok(body.length < DO_VALUE_MAX && sg36Bytes(body) > DO_VALUE_MAX);
+  const r = await sg36Post(env, body);
+  assert.equal(r.status, 413);
+  assert.equal((await r.json()).error, "envelope over the storage limit");
+});
+
+test("shotgun36 edge: exactly 2 MB of 2-byte characters passes the edge and fails later as a malformed envelope", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const body = "é".repeat(1_000_000);
+  assert.equal(sg36Bytes(body), DO_VALUE_MAX);
+  const r = await sg36Post(env, body);
+  assert.equal(r.status, 400);
+});
+
+test("shotgun36 edge: an ASCII body 1 character over 2 MB is a 413 -- the control where characters are bytes", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const r = await sg36Post(env, "x".repeat(DO_VALUE_MAX + 1));
+  assert.equal(r.status, 413);
+});
+
+test("shotgun36 edge: an ASCII body of exactly 2 MB passes the edge and fails as malformed", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const r = await sg36Post(env, "x".repeat(DO_VALUE_MAX));
+  assert.equal(r.status, 400);
+});
+
+test("shotgun36 edge: a body of 4-byte emoji over 2 MB in bytes at half the characters is a 413", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const body = "\u{1F600}".repeat(500_001);
+  assert.ok(body.length < DO_VALUE_MAX && sg36Bytes(body) > DO_VALUE_MAX);
+  const r = await sg36Post(env, body);
+  assert.equal(r.status, 413);
+});
+
+test("shotgun36 edge: the result route's storage edge counts bytes the same way", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const r = await sg36Post(env, "é".repeat(1_000_001), RUNNER, "results");
+  assert.equal(r.status, 413);
+  assert.equal((await r.json()).error, "envelope over the storage limit");
+});
+
+// -- 6 bookend sweeps -------------------------------------------------------
+
+test("shotgun36 bookends: every ASCII symbol at the front of the script bills its written bytes", async () => {
+  const control = await signedJob("j1", SECRET, "echo");
+  const base = sg36Bytes(control);
+  for (const s of SG36_PUNCT) {
+    const env = await sg36Env(SG36_BIG, () => SG36_T0);
+    const text = await signedJob("j1", SECRET, `${s}echo`);
+    assert.equal((await sg36Post(env, text)).status, 202, s);
+    // A quote or a backslash rides in the payload as a 2-byte
+    // JSON escape; every other symbol is 1 byte as written.
+    assert.equal(sg36Day(env, SG36_T0), base + (s === '"' || s === "\\" ? 2 : 1), s);
+  }
+});
+
+test("shotgun36 bookends: every ASCII symbol at the back of the script bills its written bytes", async () => {
+  const control = await signedJob("j1", SECRET, "echo");
+  const base = sg36Bytes(control);
+  for (const s of SG36_PUNCT) {
+    const env = await sg36Env(SG36_BIG, () => SG36_T0);
+    const text = await signedJob("j1", SECRET, `echo${s}`);
+    assert.equal((await sg36Post(env, text)).status, 202, s);
+    assert.equal(sg36Day(env, SG36_T0), base + (s === '"' || s === "\\" ? 2 : 1), s);
+  }
+});
+
+test("shotgun36 bookends: matched 2-byte bookends around the script bill 4 extra bytes", async () => {
+  const control = await signedJob("j1", SECRET, "echo");
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "éechoé");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(control) + 4);
+});
+
+test("shotgun36 bookends: a symbol-only script bills its 32 symbols as 34 written bytes", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, SG36_PUNCT);
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+  const control = await signedJob("j1", SECRET, "");
+  // 32 symbols; the quote and the backslash each gain a byte
+  // as JSON escapes, so the script region bills 34 bytes.
+  assert.equal(sg36Day(env, SG36_T0) - sg36Bytes(control), 34);
+});
+
+test("shotgun36 bookends: NUL, tab, CR and LF bookends bill their JSON escape widths", async () => {
+  const control = await signedJob("j1", SECRET, "echo");
+  const base = sg36Bytes(control);
+  const cases = [["\u0000", 12], ["\t", 4], ["\r", 4], ["\n", 4]];
+  for (const [c, delta] of cases) {
+    const env = await sg36Env(SG36_BIG, () => SG36_T0);
+    const text = await signedJob("j1", SECRET, `${c}echo${c}`);
+    assert.equal((await sg36Post(env, text)).status, 202, JSON.stringify(c));
+    assert.equal(sg36Day(env, SG36_T0), base + delta, JSON.stringify(c));
+  }
+});
+
+test("shotgun36 bookends: combining-mark bookends bill 2 bytes a side, and a ZWJ emoji family bills its full sequence", async () => {
+  const control = await signedJob("j1", SECRET, "echo");
+  const base = sg36Bytes(control);
+  const envA = await sg36Env(SG36_BIG, () => SG36_T0);
+  const marked = await signedJob("j1", SECRET, "́echó");
+  assert.equal((await sg36Post(envA, marked)).status, 202);
+  assert.equal(sg36Day(envA, SG36_T0), base + 4);
+  const envB = await sg36Env(SG36_BIG, () => SG36_T0);
+  const family = await signedJob("j1", SECRET, "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}");
+  assert.equal((await sg36Post(envB, family)).status, 202);
+  assert.equal(sg36Day(envB, SG36_T0), sg36Bytes(family));
+  // The sequence is 18 bytes for 8 characters: 3 emoji at 4
+  // bytes each and 2 zero-width joiners at 3 bytes each, in
+  // place of the control's 4 ASCII bytes.
+  assert.equal(sg36Bytes(family) - base, 14);
+});
+
+// -- 5 run-length sweeps ------------------------------------------------------
+
+test("shotgun36 runs: a run of 10 2-byte characters bills 20 bytes", async () => {
+  const control = await signedJob("j1", SECRET, "");
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "é".repeat(10));
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0) - sg36Bytes(control), 20);
+});
+
+test("shotgun36 runs: a run of 10 4-byte emoji bills 40 bytes for 20 characters", async () => {
+  const control = await signedJob("j1", SECRET, "");
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "\u{1F600}".repeat(10));
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0) - sg36Bytes(control), 40);
+});
+
+test("shotgun36 runs: 10 ordinary characters with the 2-byte one at the front, the back and the middle bill the same", async () => {
+  const control = await signedJob("j1", SECRET, "");
+  const run = "a".repeat(10);
+  for (const script of [`é${run}`, `${run}é`, `${run.slice(0, 5)}é${run.slice(5)}`]) {
+    const env = await sg36Env(SG36_BIG, () => SG36_T0);
+    const text = await signedJob("j1", SECRET, script);
+    assert.equal((await sg36Post(env, text)).status, 202, script.slice(0, 4));
+    assert.equal(sg36Day(env, SG36_T0) - sg36Bytes(control), 12);
+  }
+});
+
+test("shotgun36 runs: a run of 10 NULs bills 60 bytes of escape text", async () => {
+  const control = await signedJob("j1", SECRET, "");
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "\u0000".repeat(10));
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0) - sg36Bytes(control), 60);
+});
+
+test("shotgun36 runs: a run of 1000 2-byte characters bills exactly 2000 bytes", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "é".repeat(1000));
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+  const control = await signedJob("j1", SECRET, "");
+  assert.equal(sg36Day(env, SG36_T0) - sg36Bytes(control), 2000);
+});
+
+// -- 5 lifecycle edges ----------------------------------------------------------
+
+test("shotgun36 lifecycle: a byte-cap 429 bills nothing, stores nothing and tallies only the refusal", async () => {
+  const text = await signedJob("j1", SECRET, "café");
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: sg36Bytes(text) - 1 }, () => SG36_T0);
+  assert.equal((await sg36Post(env, text)).status, 429);
+  const map = sg36Map(env);
+  assert.equal(map.get("quota:exceeded"), 1);
+  assert.equal(map.size, 1);
+});
+
+test("shotgun36 lifecycle: the next UTC day opens a fresh byte counter and the old one stays on the record", async () => {
+  let now = SG36_T0;
+  const text = await signedJob("j1", SECRET, "café");
+  const other = await signedJob("j2", SECRET, "café");
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: sg36Bytes(text) }, () => now);
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal((await sg36Post(env, other)).status, 429);
+  now += SG36_DAY;
+  assert.equal((await sg36Post(env, other)).status, 202);
+  assert.equal(sg36Day(env, now), sg36Bytes(other));
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+});
+
+test("shotgun36 lifecycle: an hour rolling over does not reset the day byte counter", async () => {
+  let now = SG36_T0;
+  const text = await signedJob("j1", SECRET, "café");
+  const other = await signedJob("j2", SECRET, "café");
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: sg36Bytes(text) }, () => now);
+  assert.equal((await sg36Post(env, text)).status, 202);
+  now += 3_600_000;
+  assert.equal((await sg36Post(env, other)).status, 429);
+  assert.equal(sg36Day(env, now), sg36Bytes(text));
+});
+
+test("shotgun36 lifecycle: a duplicate submit of the same envelope is not billed twice", async () => {
+  const env = await sg36Env(SG36_BIG, () => SG36_T0);
+  const text = await signedJob("j1", SECRET, "café €");
+  assert.equal((await sg36Post(env, text)).status, 202);
+  const r = await sg36Post(env, text);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).duplicate, true);
+  assert.equal(sg36Day(env, SG36_T0), sg36Bytes(text));
+});
+
+test("shotgun36 lifecycle: a day filled by job bytes still accepts results on their own counter", async () => {
+  const text = await signedJob("j1", SECRET, "café");
+  const cap = sg36Bytes(text);
+  const env = await sg36Env({ jobs_per_hour: 600, bytes_per_day: cap }, () => SG36_T0);
+  assert.equal((await sg36Post(env, text)).status, 202);
+  assert.equal(sg36Day(env, SG36_T0), cap);
+  const result = `[HOMING-PIGEON] result r1\n\n{"job_id":"r1","exit_code":0}\n`;
+  const rr = await sg36Post(env, result, RUNNER, "results");
+  assert.equal(rr.status, 202);
+  assert.equal(sg36Map(env).get(`quota:resday:${Math.floor(SG36_T0 / SG36_DAY)}`), sg36Bytes(result));
+  assert.equal(sg36Day(env, SG36_T0), cap);
+});
