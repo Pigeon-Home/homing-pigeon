@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.3 - 2026-11-06
+
+- Fix: the Oracle repair note keeps its closing sentence under the note cap — on Windows the six-element PowerShell platform default, named in both the repair description and a re-judgment refusal, pushed "The job as received was not run." past the cap and truncated it mid-word; the note now trims the findings and the middle first.
+- Tests: the sh stand-in in the PowerShell script-encoding tests normalises path separators before reading the staged name, so a Windows backslash path no longer comes home whole as the name; the README carries its newest edit.
+
 ## 3.15.18.2 - 2026-11-06
 
 - Tests: the temp-reap follow-on sweep lands — the temp base is reaped at every mkdtemp site in 44 test files, and the two temp-reap repairs observe through the surviving channels.
