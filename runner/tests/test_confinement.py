@@ -9,6 +9,7 @@ network / environment surface. Same-uid reach outside the
 sandbox (the default posture) is a design fact, asserted as
 the passing side of EnforceNegativeControl below.
 """
+import base64
 import json
 import os
 import shutil
@@ -442,6 +443,7 @@ class EnforceTest(unittest.TestCase):
         )
         job = _job("m6-enf", script)
         job["env"] = {"M6_JOB_VAR": "job-value"}
+        job["outputs"] = ["out.txt"]
         with mock.patch.dict(os.environ, {"M6_HOST_VAR": "host-value",
                                           "PIGEON_SECRET": "shh"}):
             result, audit, tmpdir = _run(_conf("enforce"), job)
@@ -455,9 +457,17 @@ class EnforceTest(unittest.TestCase):
         self.assertIn("secret-seen: None", result["stdout"])
         self.assertIn("home-seen: False", result["stdout"])
         self.assertEqual(audit[0]["decision"], "sandboxed")
-        # the workdir bind is read-write: the file landed on the host
-        out = os.path.join(tmpdir, "work", "m6-enf", "out.txt")
-        self.assertEqual(open(out).read(), "wrote-ok")
+        # The workdir bind is read-write: the file the job wrote
+        # through the bind comes back as a declared output,
+        # collected on the host before the workspace is reaped
+        # (temp reaping, 2026-11-06: the workspace itself no
+        # longer survives the job, so the output is the record
+        # that the write landed).
+        self.assertEqual(len(result["outputs"]), 1, result)
+        self.assertEqual(result["outputs"][0]["name"], "out.txt")
+        self.assertEqual(
+            base64.b64decode(result["outputs"][0]["content_b64"]),
+            b"wrote-ok")
 
     def test_a_planted_symlink_is_refused_before_the_sandbox_is_entered(self):
         # Review item 5: a staged "file" that is a symlink at the
@@ -728,25 +738,30 @@ class WallWorkTest(unittest.TestCase):
             "except Exception:\n"
             "    print('sibling: blocked')\n"
             % (outside, sibling))
-        off, _ = _run_in(base, _conf("off"),
-                         _job("m6-wall-work-off", script))
+        # Both jobs declare landed.txt as an output: since the
+        # temp-reaping work (2026-11-06) the workspace is reaped
+        # when the job ends, so the landed file is observed
+        # through the collected output, not the surviving tree.
+        off_job = _job("m6-wall-work-off", script)
+        off_job["outputs"] = ["landed.txt"]
+        off, _ = _run_in(base, _conf("off"), off_job)
         self.assertEqual(off["exit_code"], 0, off["stderr"])
         self.assertIn("outside: outside-data", off["stdout"])
         self.assertIn("sibling: sibling-data", off["stdout"])
-        off_landed = os.path.join(base, "work", "m6-wall-work-off",
-                                  "landed.txt")
-        self.assertTrue(os.path.exists(off_landed))
-        on, audit = _run_in(base, _conf("enforce"),
-                            _job("m6-wall-work-on", script))
+        self.assertEqual(len(off["outputs"]), 1, off)
+        self.assertEqual(off["outputs"][0]["name"], "landed.txt")
+        on_job = _job("m6-wall-work-on", script)
+        on_job["outputs"] = ["landed.txt"]
+        on, audit = _run_in(base, _conf("enforce"), on_job)
         self.assertEqual(on["exit_code"], 0, on["stderr"])
         self.assertIn("cwd: /work", on["stdout"])
         self.assertIn("at-work: True", on["stdout"])
         self.assertIn("outside: blocked", on["stdout"])
         self.assertIn("sibling: blocked", on["stdout"])
-        on_landed = os.path.join(base, "work", "m6-wall-work-on",
-                                 "landed.txt")
-        with open(on_landed, encoding="utf-8") as fh:
-            self.assertEqual(fh.read(), "via-work")
+        self.assertEqual(len(on["outputs"]), 1, on)
+        self.assertEqual(
+            base64.b64decode(on["outputs"][0]["content_b64"]),
+            b"via-work")
         self.assertEqual(audit[-1]["decision"], "sandboxed")
 
 

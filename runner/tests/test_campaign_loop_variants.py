@@ -12,7 +12,10 @@ contract asserted:
 - envmark:  the per-cycle env marker echoes back verbatim
 - hostinfo: hostname / uname / uptime all produce output, exit 0
 - workdir:  a file written in the job's cwd reads back in-job and
-            persists under <base>/work/<job_id>
+            comes back as a declared output (since the
+            temp-reaping work of 2026-11-06 the workspace itself
+            is reaped when the job ends, so persistence under
+            <base>/work/<job_id> is no longer the contract)
 - flagread: the planted pretend-credential flag returns verbatim,
             credential-shaped values included (no scrubbing)
 - sysstat:  df / free output present, exit 0
@@ -24,6 +27,7 @@ POSIX only: the loop runs `sh` scripts, matching the live campaign
 host. Cycle numbering in the live loop (loop-NNN-<variant>) maps to
 these tests by variant name.
 """
+import base64
 import os
 import shutil
 import socket
@@ -96,12 +100,19 @@ class CampaignLoopVariantTests(unittest.TestCase):
 
     def test_workdir_variant(self):
         result, tmpdir = _run(_job(
-            "v-workdir", "echo cycle-9 > loop.txt\ncat loop.txt\n"))
+            "v-workdir", "echo cycle-9 > loop.txt\ncat loop.txt\n",
+            outputs=["loop.txt"]))
         self.assertEqual(result["exit_code"], 0)
         self.assertIn("cycle-9", result["stdout"])
-        written = os.path.join(tmpdir, "work", "v-workdir", "loop.txt")
-        with open(written, encoding="utf-8") as fh:
-            self.assertEqual(fh.read().strip(), "cycle-9")
+        # The file's content comes back as a declared output,
+        # collected before the workspace is reaped.
+        self.assertEqual(len(result["outputs"]), 1)
+        self.assertEqual(result["outputs"][0]["name"], "loop.txt")
+        self.assertEqual(
+            base64.b64decode(
+                result["outputs"][0]["content_b64"]).decode(
+                    "utf-8").strip(),
+            "cycle-9")
 
     def test_flagread_variant(self):
         tmpdir = tempfile.mkdtemp(prefix="hp-loop-variant-")

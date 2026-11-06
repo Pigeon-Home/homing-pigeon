@@ -25,11 +25,13 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
 
 from runner import runner as R  # noqa: E402
+from runner.ops import exec as _exec  # noqa: E402
 
 BOM = codecs.BOM_UTF8
 
@@ -54,12 +56,21 @@ def _stage(tmp, job_id, interpreter, script):
     "cannot start interpreter" after staging; that is fine here --
     staging is the unit under test -- so both a result and a
     JobRejected are accepted, and the staged file is read either way.
+
+    Since the temp-reaping work (2026-11-06) execute_job reaps its
+    workspace on every path out, so the reap is held for the span
+    of this call and the staged file survives to be read. The reap
+    itself is pinned in runner/tests/test_temp_reap.py; staging is
+    the unit under test here, and a rejected job returns no result
+    whose declared outputs could carry the staged bytes instead.
     """
     job = {"v": 1, "type": "job", "job_id": job_id,
            "issued_at": "2026-11-01T00:00:00Z", "kind": "exec",
            "interpreter": interpreter, "script": script}
     try:
-        R.execute_job({"base_dir": tmp}, job, tmp)
+        with mock.patch.object(_exec, "reap_work_dir",
+                               lambda work: False):
+            R.execute_job({"base_dir": tmp}, job, tmp)
     except R.JobRejected:
         pass
     work = os.path.join(tmp, "work", job_id)

@@ -29,7 +29,7 @@ This file enumerates the fields from the validation code itself:
   the DTLS / NATS transport readers the Decision moved from
   default to refuse (Q3, 2026-10-24).
 - Default class, one generated test per field of
-  runner/guard/defaulted.py's table (17 numeric keys and the
+  runner/guard/defaulted.py's table (18 numeric keys and the
   dtls_greeting enum): the invalid value is named by
   defaulted_keys and by the startup warning line, the documented
   default is the value on record, and a real startup through
@@ -546,6 +546,7 @@ DEFAULT_FIELDS = [
     ("poll_interval_sec", True, 20),
     ("result_stash_retention_sec", True, 86400),
     ("result_resend_backoff_sec", True, 60),
+    ("work_retention_sec", True, 604800),
     ("dtls_greeting", "bogus", "family"),
 ]
 

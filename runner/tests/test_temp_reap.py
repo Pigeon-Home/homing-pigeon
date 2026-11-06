@@ -183,7 +183,16 @@ class WorkOrphanSweepTest(_Base):
         except (OSError, NotImplementedError):
             self.skipTest("cannot create a symlink here")
         when = time.time() - 30 * DAY
-        os.utime(link, (when, when), follow_symlinks=False)
+        try:
+            os.utime(link, (when, when), follow_symlinks=False)
+        except NotImplementedError:
+            # Windows cannot set a link's own times. The sweep
+            # decides a link from its lstat/reparse shape before
+            # it ever reads an age, so the decision this test
+            # exercises is the same there; the age is set where
+            # the platform allows it (POSIX) so the age gate
+            # cannot be what keeps the link anywhere.
+            pass
         self.assertEqual(self.sweep(), 0)
         self.assertTrue(os.path.islink(link))
         self.assertTrue(os.path.isdir(target))

@@ -134,20 +134,27 @@ class NoWideningTest(unittest.TestCase):
         bodies = " ".join(body for _subj, body in sent)
         self.assertIn("re-judgment", bodies)
         # Control: a policy that also allows the platform
-        # default repairs and runs the very same job.
+        # default repairs and runs the very same job. The run
+        # is observed through the sent result, not the job's
+        # workspace: since the temp-reaping work (2026-11-06)
+        # execute_job reaps the workspace on every path out,
+        # so a marker file written there no longer survives
+        # to be read back (the reap is pinned in
+        # runner/tests/test_temp_reap.py).
         cfg2 = key_cfg(allowed_interpreters=[[MISSING],
                                              platform_interpreter()])
         job2 = _payload("nw-repair-ok", kind="exec",
-                        script="echo ran > marker.txt",
+                        script="echo ran",
                         interpreter=[MISSING], key_id=KEY)
         executed2, _a2, sent2, tmpdir2 = drive(cfg2, job2,
                                                KEY_SECRET)
-        marker2 = os.path.join(tmpdir2, "work", "nw-repair-ok",
-                               "marker.txt")
-        self.assertTrue(os.path.exists(marker2),
-                        "the control job was not repaired and run")
+        self.assertTrue(executed2,
+                        "the control job sent no result")
         bodies2 = " ".join(body for _subj, body in sent2)
         self.assertIn("repaired", bodies2)
+        self.assertIn("ran", bodies2,
+                      "the control job's output is not in its "
+                      "result: it was not repaired and run")
 
     def test_a_model_note_never_changes_an_outcome(self):
         cfg = {"oracle_mode": "llm",
