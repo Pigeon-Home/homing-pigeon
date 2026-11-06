@@ -34,11 +34,11 @@ CLI output:
   CLI prints its figure live. The estimator is not a BPE
   tokenizer, and the 2 figures are not interchangeable: the
   same estimator counts the as-assembled 133-file set at
-  574,048, not 619,845.
+  575,607, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 54,559 lines,
-49,107 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 54,561 lines,
+49,109 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -89,7 +89,13 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # (Q-new-1, Q-new-12, Q-new-25, Q-new-26) grew 4 of its files,
 # and re-measured again the same day after the CHECKLIST-04
 # send_job fixes (N2, G6, and the G6 key-match correction)
-# grew runner/cloud/send_job.py.
+# grew runner/cloud/send_job.py, and again on 2026-11-06
+# after the fy_iceworld F-1 fix (a key_share presence check
+# in _on_server_hello) grew runner/wire/dtlsproto.py by
+# 2 lines. That re-measure also corrects the zip figure:
+# the value recorded on 2026-11-05 was the canonical list's
+# zip size, not the as-assembled set's; the deterministic
+# build over the 133 files gives the figure below.
 # Recorded constants: they describe the as-assembled set (the
 # canonical 130 files below plus the 3 suite runners named in
 # the module docstring), not the canonical list itself. The
@@ -101,16 +107,16 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 133
-AS_ASSEMBLED_ZIP_BYTES = 679289
-AS_ASSEMBLED_LINES = 54559
-AS_ASSEMBLED_NONBLANK_LINES = 49107
+AS_ASSEMBLED_ZIP_BYTES = 691500
+AS_ASSEMBLED_LINES = 54561
+AS_ASSEMBLED_NONBLANK_LINES = 49109
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
     "runner/ops": 16880,
     "runner/tools": 8669,
-    "runner/wire": 8265,
+    "runner/wire": 8267,
     "runner/runner.py": 6586,
     "runner/oracle": 4987,
     "runner/transport_extensions": 2771,
