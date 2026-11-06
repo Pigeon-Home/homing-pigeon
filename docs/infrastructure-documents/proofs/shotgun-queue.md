@@ -1096,7 +1096,31 @@ Applied to every item on this queue, item 1 included:
 - Fixed: 3f3c16b9 (31-Oct-2026)
 - Existing tests: queues-worker fuzz.test.mjs
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (the shotgun38 suite in
+  runner/cloud/queues-worker/test/fuzz.test.mjs): a repeat
+  post for a stored result id answers 200 with the sha256 of
+  the envelope that stayed and replaces nothing — different
+  bytes, identical bytes, the other kind (result and qresult
+  share one key), repeats 10 deep, alternating bodies,
+  repeats across the day boundary, and the gates that answer
+  before the duplicate handling (bad token, a claim for
+  another id, oversized, malformed) each leaving the first
+  envelope untouched; an ack makes the next post a fresh
+  first again. Deliberately distinct from the Python
+  writer-ordering family: this family pins the hosted
+  queue's stored record and its routes' answers. The suite
+  runs green under node --test (50 tests, 50 pass,
+  0 skipped), no live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  and the bookend / run-length sweeps are carried in the
+  suite's header comment in the repo. Fuzz executed:
+  runner/tools/de_dust_corpus.py grow --target collect
+  --rounds 400 --seed 20261139, run locally against the banked
+  collect corpus (20 entries). Result: 400 rounds, 0 crashes,
+  0 slow, arcs unchanged at 65, slowest try 156 ms — the
+  envelope replacement did not recur. The grow's bookkeeping
+  writes were reverted and are not banked (banking is the
+  rigs' hourly job).
 
 ### 39. A read filled the object instead of stopping at 8 MB of envelopes; a pull loaded every envelope
 - Fixed: 965e4d82, 3dfbd878 (31-Oct-2026)
