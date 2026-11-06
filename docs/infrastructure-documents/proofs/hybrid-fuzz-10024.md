@@ -306,3 +306,60 @@ values). The suite count for the campaign file is now 33
 tests. The plan (docs/steady/project/fy_iceworld.md,
 section 11) carries the review's full disposition,
 including the points verification did not uphold.
+
+## The three adopted families: suppositions before the runs
+
+The plan's section 6 named three further target families,
+each with its code basis verified by hand at adoption
+time. They enter the harness now. Suppositions, written
+before any of the new targets or tests ran:
+
+- SD1 (duplicate and competing key_share entries). The
+  parser `_key_share_entries` returns every entry in wire
+  order and `_ServerSession.begin` keeps the FIRST entry
+  per group (`setdefault`), so: a ClientHello whose first
+  4588 entry is well-shaped and whose second is garbage
+  is answered on the first (the refusal, when it comes,
+  is the binder's, because a rebuilt hello's binder is
+  stale), while a ClientHello whose FIRST 4588 entry is
+  mis-sized is refused at selection with
+  illegal_parameter, the valid second entry never
+  consulted. Duplicate X25519 entries behave the same
+  way. Unknown groups mixed with known are ignored by
+  selection. No arrangement of entries — duplicates,
+  competing, truncated, bookended — raises anything but
+  the refusal path out of `DtlsServerCore.feed`, which
+  itself never raises.
+- SD2 (the version 3 carriage). `parse_message` never
+  raises on any byte string, and classifies into its
+  documented kinds only. `FlightReassembler.offer` never
+  raises on any part, keeps at most `max_transfers`
+  pending transfers, returns a datagram only when its
+  length and SHA-384 match the declared header, treats
+  duplicate parts as idempotent, destroys a transfer on
+  a contradicting part, and completes nothing after the
+  transfer's absolute deadline even when parts keep
+  arriving inside the idle timeout. The carriage's
+  bounds (256 KB datagram ceiling, 64 transfers, 1024
+  parts) hold under bookended mutation of every header
+  field.
+- SD3 (handshake fragment reassembly). The claim under
+  test, verified by reading `_FragmentBuffer.offer`
+  before this was written: a fragment header's total
+  length is trusted into two `bytearray(total)`
+  allocations — up to about 33.5 MB for the largest
+  24-bit total (16,777,215) — and the pending dict has
+  no cap on keys, so distinct (message type, sequence)
+  pairs each force the allocation. Supposition: this is
+  a real defect, not a capped one — nothing upstream
+  bounds `total` (the record layer bounds each
+  fragment's own bytes, never the claimed total). The
+  fix it earns, if the reading holds: cap the total a
+  buffer will assemble and the number of pending keys,
+  refusing (returning None, the buffer's existing
+  incomplete signal) beyond either, with the total cap
+  set at 256 KB — the size this suite already treats as
+  the largest thing that travels whole (the local
+  envelope and the mailbox datagram ceiling) and far
+  above any handshake message this profile sends (the
+  hybrid ClientHello, the largest, is about 1.4 KB).
