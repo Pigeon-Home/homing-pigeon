@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.17.165 - 2026-11-05
+
+- Docs: mutation testing is documented whole in the fuzzing guide (`docs/steady/fuzzing.md`): what it is, why a suite past 10,000 tests is audited by breaking the code on purpose — so no test stands as a latent false positive that passes in every world — the deliberate one-file scope, the seeded hourly walk, the collapse floor, and the dated history from the first CI gate on 2026-10-16 through the un-blinding of 2026-10-25 and the survivor triage (561 killed, 5 provably equivalent), with the stage 5 by-hand mutation checks of the proof family beside it.
+- Docs: the README's notes for a visiting SI move to the tail, just above Status, wording unchanged; the DocDriftGuard pin for `max_job_bytes` follows the move.
+
 ## 3.15.17.164 - 2026-11-05
 
 - Fix: send_job's result job id grammar matches the draft (CHECKLIST-04 N2), and its envelope reader enforces Section 16.2 step 4 (CHECKLIST-04 G6): the inner body's key_id must match the envelope's — matched by key, not by raw string, so a result that names the default key by its fingerprint inside an envelope carrying no key_id (the shape the runner itself sends for an unnamed job) opens, while a name of another key still refuses. The first-ping bench is verified end to end again.
