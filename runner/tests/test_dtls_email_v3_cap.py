@@ -18,6 +18,7 @@ import os
 import sys
 import tempfile
 import unittest
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -36,6 +37,7 @@ from runner.tests.test_dtls_email_v3 import (  # noqa: E402
 class MailSizeCapTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-v3-cap-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.paths = transports.channel_paths(self.tmp, "email")
         transports.ensure_channel_dirs(self.tmp, "email")
         self.channel = self.paths["root"]

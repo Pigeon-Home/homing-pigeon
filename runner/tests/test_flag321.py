@@ -28,6 +28,7 @@ import tempfile
 import unittest
 
 from runner import runner as R
+import shutil
 
 FLAG_ID = "flag321-read01"
 FLAG_SCRIPT = "cat /home/user/Desktop/flag.txt"
@@ -93,6 +94,7 @@ class Flag321ContextTest(unittest.TestCase):
 
     def _base(self):
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         jobs = [
             ("hostinfo01", "uname -a; id", "Linux box\n", 1000.0),
             ("noteswrite1", "echo draft > notes.txt", "draft\n", 2000.0),
@@ -149,7 +151,9 @@ class Flag321ContextTest(unittest.TestCase):
         self.assertNotIn("notable:", summaries["noteswrite1"])
 
     def test_no_retained_jobs_no_index(self):
-        ctx = R.oracle_context(tempfile.mkdtemp(), watch=False)
+        base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        ctx = R.oracle_context(base, watch=False)
         self.assertIn("(no job output retained yet)", ctx)
         self.assertNotIn("Job index", ctx)
 
@@ -185,6 +189,7 @@ class WithheldScanTextTest(unittest.TestCase):
 
     def _base(self):
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         jobs = [
             ("hostinfo01", "uname -a; id", "Linux box\n", 1000.0),
             (FLAG_ID, FLAG_SCRIPT, _WATCH_KEY + "\n", 3000.0),
@@ -204,12 +209,15 @@ class WithheldScanTextTest(unittest.TestCase):
     def test_no_base_or_no_retained_is_empty(self):
         self.assertEqual(R._withheld_scan_text(None), "")
         self.assertEqual(R._withheld_scan_text(42), "")
-        self.assertEqual(R._withheld_scan_text(tempfile.mkdtemp()), "")
+        base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        self.assertEqual(R._withheld_scan_text(base), "")
 
     def test_watch_list_matches_the_context_build(self):
         # Same rows, same limit: shrink the context window and the
         # watch-list shrinks with it, so the two cannot drift.
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         jobs = [
             (FLAG_ID, FLAG_SCRIPT, _WATCH_KEY + "\n", 3000.0),
             ("hostinfo01", "uname -a; id", "Linux box\n", 4000.0),
@@ -276,6 +284,7 @@ class LogTailScrubTest(unittest.TestCase):
 
     def _base(self):
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         jobs = [
             ("hostinfo01", "uname -a; id", "Linux box\n", 1000.0),
             (FLAG_ID, FLAG_SCRIPT, TAIL_VALUE + "\n", 3000.0),

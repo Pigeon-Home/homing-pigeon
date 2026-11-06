@@ -13,6 +13,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
+import shutil
 
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -184,6 +185,7 @@ def _git(root, *args):
 class MeasureTest(unittest.TestCase):
     def _repo(self):
         root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         _git(root, "init", "-q")
         _git(root, "config", "user.email", "test@example.invalid")
         _git(root, "config", "user.name", "test")
@@ -205,19 +207,25 @@ class MeasureTest(unittest.TestCase):
         self.assertEqual(version4.measure_repo_tokens(self._repo()), 6)
 
     def test_measure_rejects_non_repo(self):
+        base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         with self.assertRaises(RuntimeError):
-            version4.measure_repo_tokens(tempfile.mkdtemp())
+            version4.measure_repo_tokens(base)
 
 
 class MeasureCacheTest(unittest.TestCase):
     def test_round_trip(self):
-        path = os.path.join(tempfile.mkdtemp(), "token-measure.txt")
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        path = os.path.join(_tmp, "token-measure.txt")
         self.assertIsNone(version4.read_measure_cache(path))
         version4.write_measure_cache(path, NOW, 6)
         self.assertEqual(version4.read_measure_cache(path), (NOW, 6))
 
     def test_malformed_cache_reads_as_none(self):
-        path = os.path.join(tempfile.mkdtemp(), "token-measure.txt")
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        path = os.path.join(_tmp, "token-measure.txt")
         with open(path, "w", encoding="utf-8") as fh:
             fh.write("not a cache\n")
         self.assertIsNone(version4.read_measure_cache(path))
@@ -232,13 +240,17 @@ class CliTest(unittest.TestCase):
 
     def test_measure_command(self):
         repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
         code, out = self._run_main(["measure", "--root", repo])
         self.assertEqual(code, 0)
         self.assertEqual(out, "6 0")
 
     def test_next_command_measures_then_reuses(self):
         repo = MeasureTest()._repo()
-        cache = os.path.join(tempfile.mkdtemp(), "token-measure.txt")
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        cache = os.path.join(_tmp, "token-measure.txt")
         code, out = self._run_main(
             ["next", "3.15.0.5", "--root", repo, "--cache", cache,
              "--now", str(NOW)])

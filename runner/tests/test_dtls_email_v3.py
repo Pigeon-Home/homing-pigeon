@@ -26,6 +26,7 @@ from argparse import Namespace
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from unittest import mock
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -838,6 +839,7 @@ class LossAndProviderShapeTest(unittest.TestCase):
 class EmailPipeIntegrationTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-v3-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.paths = transports.channel_paths(self.tmp, "email")
         transports.ensure_channel_dirs(self.tmp, "email")
         self.channel = self.paths["root"]

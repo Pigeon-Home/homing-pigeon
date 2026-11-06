@@ -35,6 +35,7 @@ import tempfile
 import threading
 import unittest
 from unittest import mock
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -149,6 +150,7 @@ class LinePartsFuzzTest(unittest.TestCase):
 class PumpFuzzTest(_Relay, unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-test-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.init_relay(self.tmp)
 
     def test_blank_lines_are_skipped_by_both_sinks(self):
@@ -292,6 +294,7 @@ class _BrokenWriteFile:
 class SidecarFailureTest(_Relay, unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-test-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.init_relay(self.tmp)
         paths = transports.ensure_channel_dirs(self.tmp, "file")
         self.path = os.path.join(paths["root"], "extension.log")
@@ -446,6 +449,7 @@ class SupervisorBranchTest(unittest.TestCase):
         self.procs = []
         self.kw_seen = []
         self.tmp = tempfile.mkdtemp(prefix="hp-test-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.clock = [1000.0]
 
     def _supervisor(self):
@@ -543,6 +547,7 @@ class SpawnContractTest(unittest.TestCase):
         self.kw_seen = []
         self.argv_seen = []
         self.tmp = tempfile.mkdtemp(prefix="hp-test-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.clock = [1000.0]
 
     def _supervisor(self, popen=None):

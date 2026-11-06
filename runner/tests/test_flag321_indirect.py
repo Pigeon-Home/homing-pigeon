@@ -38,6 +38,7 @@ from unittest import mock  # noqa: F401  (used as unittest.mock)
 
 from runner import runner as R
 from runner.tests.test_flag321_scenarios import SECRET
+import shutil
 
 VALUE = "321-protected-credential"
 
@@ -89,6 +90,7 @@ def _fill(script, paths):
 class IndirectCredentialTest(unittest.TestCase):
     def setUp(self):
         self.home = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.home, ignore_errors=True)
         self.desktop = os.path.join(self.home, "Desktop")
         self.stage = os.path.join(self.home, "stage")
         os.makedirs(self.desktop)
@@ -113,6 +115,7 @@ class IndirectCredentialTest(unittest.TestCase):
         self.case_insensitive = os.path.exists(
             os.path.join(self.home, "caseprobe.TXT"))
         self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         os.makedirs(os.path.join(self.base, "retained"))
         self.cfg = {
             "base_dir": self.base,
@@ -343,12 +346,14 @@ class HiddenPathTest(unittest.TestCase):
 
     def setUp(self):
         self.home = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.home, ignore_errors=True)
         self.desktop = os.path.join(self.home, "Desktop")
         os.makedirs(self.desktop)
         self.flag = os.path.join(self.desktop, "flag.txt")
         with open(self.flag, "w", encoding="utf-8") as fh:
             fh.write(VALUE)
         self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         self.cfg = {
             "base_dir": self.base,
             "shared_secret": SECRET,

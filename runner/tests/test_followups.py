@@ -15,6 +15,7 @@ import uuid
 from contextlib import redirect_stdout
 from datetime import datetime, timezone
 from email.message import EmailMessage
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -234,6 +235,7 @@ class InferenceTest(unittest.TestCase):
 class QueryFollowupTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-q-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": "test-gmail-password",
@@ -365,6 +367,7 @@ class JudgmentDenylistTest(unittest.TestCase):
 
     def test_enforce_rejects_ping_before_execute(self):
         tmp = tempfile.mkdtemp(prefix="hp-judge-")
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": "test-gmail-password",
@@ -388,6 +391,7 @@ class JudgmentDenylistTest(unittest.TestCase):
 
     def test_advisory_attaches_verdict_and_runs(self):
         tmp = tempfile.mkdtemp(prefix="hp-judge-")
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": "test-gmail-password",
@@ -411,6 +415,7 @@ class JudgmentDenylistTest(unittest.TestCase):
 class AdditionalSecretTest(unittest.TestCase):
     def test_stored_and_not_printed(self):
         tmp = tempfile.mkdtemp(prefix="hp-secret-")
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg_path = os.path.join(tmp, "config.json")
         with open(cfg_path, "w", encoding="utf-8") as fh:
             json.dump({"shared_secret": SECRET, "additional_secrets": {}}, fh)

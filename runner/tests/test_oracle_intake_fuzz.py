@@ -21,6 +21,7 @@ import unittest
 import uuid
 from datetime import datetime, timedelta, timezone
 from unittest import mock
+import shutil
 
 try:
     from hypothesis import given, settings, strategies as st
@@ -115,6 +116,7 @@ class SensorShapeFuzzTest(unittest.TestCase):
     @given(record=_messy, cfg=_messy)
     def test_file_never_raises(self, record, cfg):
         base = tempfile.mkdtemp(prefix="hp-sense-fuzz-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         self.assertTrue(_quiet(file_sensor_alert(base, cfg, record)))
 
 
@@ -141,6 +143,7 @@ class ExtensionManifestFuzzTest(unittest.TestCase):
                           st.text(max_size=200)))
     def test_a_folder_of_garbage_does_not_abort_discovery(self, blob):
         root = tempfile.mkdtemp(prefix="hp-ext-fuzz-")
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         folder = os.path.join(root, "sense-a")
         os.makedirs(folder)
         path = os.path.join(folder, "extension.json")
@@ -170,6 +173,7 @@ class KeyPolicyFuzzTest(unittest.TestCase):
 class LocalEnvelopeFuzzTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-local-fuzz-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "shared_secret": SECRET,
             "additional_secrets": {"canary-key": SENSE},
@@ -247,6 +251,7 @@ class RingOneFuzzTest(unittest.TestCase):
     def test_a_poisoned_senses_store_reads_as_a_list(self, blob, sensor,
                                                      floor):
         base = tempfile.mkdtemp(prefix="hp-store-fuzz-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         path = os.path.join(base, "senses.jsonl")
         mode = "wb" if isinstance(blob, (bytes, bytearray)) else "w"
         kw = {"encoding": "utf-8", "errors": "surrogateescape"} \
@@ -261,6 +266,7 @@ class RingOneFuzzTest(unittest.TestCase):
            body=st.one_of(st.binary(max_size=80), st.text(max_size=80)))
     def test_oracle_tools_return_a_string(self, name, args, body):
         base = tempfile.mkdtemp(prefix="hp-tool-fuzz-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         inbox = os.path.join(base, "local-inbox")
         os.makedirs(inbox)
         path = os.path.join(inbox, "n.json")
@@ -303,6 +309,7 @@ class _Chunks:
 class SocketIntakeFuzzTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-sock-fuzz-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "shared_secret": SECRET,
             "mailbox_user": "runner@example.com",
@@ -344,6 +351,7 @@ class NonStringKeyFuzzTest(unittest.TestCase):
                 "signals": [{"name": "trip", "description": "y"}],
             }, where="extension.json")
         root = tempfile.mkdtemp(prefix="hp-kind-fuzz-")
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         folder = os.path.join(root, "canary")
         os.makedirs(folder)
         with open(os.path.join(folder, "extension.json"), "w",
@@ -404,6 +412,7 @@ class NonStringKeyFuzzTest(unittest.TestCase):
                 raise _Started()
 
         root = tempfile.mkdtemp(prefix="hp-tier-fuzz-")
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         cfg_path = os.path.join(root, "runtime.json")
         with open(cfg_path, "w", encoding="utf-8") as f:
             json.dump({
@@ -462,6 +471,7 @@ class RingTwoAlertTest(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-ring2-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "shared_secret": SECRET,
             "additional_secrets": {"canary-key": SENSE},
@@ -508,6 +518,7 @@ class RingTwoJobTest(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-ring2-job-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "mailbox_user": "runner@example.com",
             "shared_secret": SECRET,
@@ -1012,6 +1023,7 @@ class RingTwoQueryTest(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-ring2-query-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "mailbox_user": "runner@example.com",
             "shared_secret": SECRET,
@@ -1423,6 +1435,7 @@ class RingTwoBoardTest(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-ring2-board-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.board = Board(os.path.join(self.tmp, "board.json"))
         self.cfg = {
             "mailbox_user": "runner@example.com",

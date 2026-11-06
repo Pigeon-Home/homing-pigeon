@@ -66,7 +66,9 @@ def _run(job, cfg_extra=None):
     cfg = {"base_dir": tmpdir,
            "security": {"modes": {"confinement": "off"}}}
     cfg.update(cfg_extra or {})
-    return R.execute_job(cfg, job, tmpdir), tmpdir
+    result = R.execute_job(cfg, job, tmpdir)
+    shutil.rmtree(tmpdir, ignore_errors=True)
+    return result, tmpdir
 
 
 @unittest.skipUnless(os.name == "posix" and shutil.which("sh"),
@@ -116,6 +118,7 @@ class CampaignLoopVariantTests(unittest.TestCase):
 
     def test_flagread_variant(self):
         tmpdir = tempfile.mkdtemp(prefix="hp-loop-variant-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         flag = os.path.join(tmpdir, "flag-credential.txt")
         with open(flag, "w", encoding="utf-8") as fh:
             fh.write(FLAG_TEXT)

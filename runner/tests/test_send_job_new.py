@@ -22,6 +22,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -37,6 +38,7 @@ SAFE_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 class CmdNew(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-q17-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.script = os.path.join(self.tmp, "job.py")
         with open(self.script, "w", encoding="utf-8") as fh:
             fh.write("print('hello from the built job')\n")

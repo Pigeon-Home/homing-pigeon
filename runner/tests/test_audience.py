@@ -13,6 +13,7 @@ import os
 import sys
 import tempfile
 import unittest
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -54,6 +55,7 @@ def run_job(cfg_extra, payload, secret=SECRET):
         seen = json.load(open(seen_path))
     except (OSError, ValueError):
         pass
+    shutil.rmtree(tmpdir, ignore_errors=True)
     return executed, audit, seen, tmpdir
 
 
@@ -168,6 +170,7 @@ class SeenNamespacingTest(unittest.TestCase):
 
     def test_replay_suppressed_with_runner_id(self):
         tmpdir = tempfile.mkdtemp(prefix="hp-m5r-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         cfg = base_config(tmpdir)
         cfg.update(aud_cfg("enforce"))
         payload = _payload("s-03", kind="ping", runner_id=RID)
@@ -211,6 +214,7 @@ class QueryAudienceTest(unittest.TestCase):
 
     def _run_query(self, cfg_extra, raw):
         tmpdir = tempfile.mkdtemp(prefix="hp-m5q-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         cfg = base_config(tmpdir)
         cfg.update(cfg_extra)
         imap = FakeIMAP([raw])
@@ -246,6 +250,7 @@ class QueryAudienceTest(unittest.TestCase):
         msg["Subject"] = "[HOMING-PIGEON] query q-bad"
         msg.set_content(body)
         tmpdir = tempfile.mkdtemp(prefix="hp-m5q-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         cfg = base_config(tmpdir)
         imap = FakeIMAP([msg.as_bytes()])
         smtp = FakeSMTP()
@@ -288,6 +293,7 @@ class BoardAudienceTest(unittest.TestCase):
 
     def _run(self, cfg_extra, raw):
         tmpdir = tempfile.mkdtemp(prefix="hp-m5b-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         cfg = base_config(tmpdir)
         cfg.update(cfg_extra)
         imap = FakeIMAP([raw])
@@ -341,6 +347,7 @@ class ParityWithRunnerIdTest(unittest.TestCase):
 
         # Same as run_variant but with a runner_id in cfg.
         tmpdir = tempfile.mkdtemp(prefix="hp-parity-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         cfg = base_config(tmpdir)
         cfg["runner_id"] = RID
         cfg["security"] = {"modes": {"audience": "off"}}

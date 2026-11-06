@@ -19,6 +19,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from unittest import mock
+import shutil
 
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -90,6 +91,7 @@ class LaunchdLoadTest(unittest.TestCase):
 class InstallMacosTest(unittest.TestCase):
     def test_the_install_completes_with_the_agent_file_in_place(self):
         home = tempfile.mkdtemp(prefix="hp-macos-")
+        self.addCleanup(shutil.rmtree, home, ignore_errors=True)
         out = io.StringIO()
         # expanduser reads HOME on POSIX and USERPROFILE on Windows.
         with mock.patch.dict(os.environ, {"HOME": home, "USERPROFILE": home}), \
@@ -111,6 +113,7 @@ class InstallMacosTest(unittest.TestCase):
 
     def test_a_loaded_agent_reports_loaded(self):
         home = tempfile.mkdtemp(prefix="hp-macos-")
+        self.addCleanup(shutil.rmtree, home, ignore_errors=True)
         out = io.StringIO()
         with mock.patch.dict(os.environ, {"HOME": home, "USERPROFILE": home}), \
                 mock.patch.object(inst, "_posix_uid", return_value=501), \

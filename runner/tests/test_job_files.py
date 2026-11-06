@@ -25,6 +25,7 @@ from runner import runner as R  # noqa: E402
 from runner.cloud import send_job as SJ  # noqa: E402
 from runner.ops import exec as EX  # noqa: E402
 from runner.ops import policy as POL  # noqa: E402
+import shutil
 
 PY = [sys.executable]
 
@@ -43,6 +44,7 @@ def _job(script, **extra):
 class InlineFilesTest(unittest.TestCase):
     def setUp(self):
         self.base = tempfile.mkdtemp(prefix="hp-files-")
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
 
     def run_job(self, job, cfg=None):
         return R.execute_job(cfg or {}, job, self.base)
@@ -93,6 +95,7 @@ class InlineFilesTest(unittest.TestCase):
 class OutputsTest(unittest.TestCase):
     def setUp(self):
         self.base = tempfile.mkdtemp(prefix="hp-outputs-")
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
 
     def run_job(self, script, outputs, cfg=None):
         return R.execute_job(cfg or {}, _job(script, outputs=outputs), self.base)
@@ -171,6 +174,7 @@ class SenderTest(unittest.TestCase):
 
     def test_new_carries_inline_files_and_outputs_in_the_signed_job(self):
         d = tempfile.mkdtemp(prefix="hp-sender-")
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         script = os.path.join(d, "job.sh")
         patch = os.path.join(d, "p.diff")
         with open(script, "w") as fh:
@@ -192,6 +196,7 @@ class SenderTest(unittest.TestCase):
 
     def test_verify_writes_outputs_and_refuses_a_bad_digest(self):
         d = tempfile.mkdtemp(prefix="hp-verify-out-")
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         good = {"name": "r/junit.xml", "content_b64": b64(b"<x/>"),
                 "sha384": hashlib.sha384(b"<x/>").hexdigest(), "size": 4}
         bad = {"name": "b", "content_b64": b64(b"y"), "sha384": "0" * 96}
@@ -206,6 +211,7 @@ class SenderTest(unittest.TestCase):
 
     def test_verify_keeps_names_inside_the_directory(self):
         d = tempfile.mkdtemp(prefix="hp-verify-name-")
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         payload = {"outputs": [{"name": "../escape", "content_b64": b64(b"x"),
                                 "sha384": hashlib.sha384(b"x").hexdigest()}]}
         with redirect_stderr(io.StringIO()):

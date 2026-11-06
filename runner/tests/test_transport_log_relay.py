@@ -23,6 +23,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -113,6 +114,7 @@ class RelayTest(unittest.TestCase):
         self.payloads = []
         self.next_stdout = None
         self.tmp = tempfile.mkdtemp(prefix="hp-test-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.clock = [1000.0]
 
     def _supervisor(self, cfg=None):

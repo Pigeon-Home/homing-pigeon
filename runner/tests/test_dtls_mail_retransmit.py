@@ -26,6 +26,7 @@ import sys
 import tempfile
 import unittest
 from email.message import EmailMessage
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -255,6 +256,7 @@ class EmailTransportWiringTest(unittest.TestCase):
 
     def _pipe(self, cfg_extra):
         tmp = tempfile.mkdtemp(prefix="hp-timers-")
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         paths = transports.channel_paths(tmp, "email")
         transports.ensure_channel_dirs(tmp, "email")
         cfg = {

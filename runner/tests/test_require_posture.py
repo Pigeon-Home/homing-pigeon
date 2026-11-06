@@ -34,6 +34,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -199,6 +200,7 @@ def _run_main(extra, argv_extra=("--posture",), sandbox_ok=True,
         with contextlib.redirect_stdout(out), \
                 contextlib.redirect_stderr(err):
             rc = R.main()
+    shutil.rmtree(tmpdir, ignore_errors=True)
     return rc, out.getvalue(), err.getvalue()
 
 
@@ -253,6 +255,7 @@ class StartupAssertionTest(unittest.TestCase):
 class PostureReportTest(unittest.TestCase):
     def _results(self, cfg):
         d = tempfile.mkdtemp(prefix="hp-s5-posture-")
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         cfg_path = os.path.join(d, "config.json")
         with open(cfg_path, "w", encoding="utf-8") as fh:
             json.dump(cfg, fh)

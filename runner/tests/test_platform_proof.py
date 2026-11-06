@@ -95,8 +95,11 @@ def _run(payload, cfg_over=None, secret=oo.SECRET):
                      imap=oo._FakeIMAP([oo._job_email(payload, secret)]),
                      smtp=smtp)
     if not smtp.sent:
+        shutil.rmtree(tmp, ignore_errors=True)
         return smtp, None
-    return smtp, oo._read_result(smtp.sent[-1])
+    result = oo._read_result(smtp.sent[-1])
+    shutil.rmtree(tmp, ignore_errors=True)
+    return smtp, result
 
 
 @unittest.skipUnless(ENABLED, "set HP_PLATFORM_PROOF=1 to run the portable proof")

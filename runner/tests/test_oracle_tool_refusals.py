@@ -27,6 +27,7 @@ import os
 import sys
 import tempfile
 import unittest
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -49,6 +50,7 @@ def _tool_msg(name, arguments, cid):
 class DirectRefusals(unittest.TestCase):
     def setUp(self):
         self.base = tempfile.mkdtemp(prefix="hp-q15-")
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         self.secret_file = os.path.join(self.base, "source.txt")
         with open(self.secret_file, "w", encoding="utf-8") as fh:
             fh.write("withheld content")
@@ -110,6 +112,7 @@ class DirectRefusals(unittest.TestCase):
 class HostileStubModel(unittest.TestCase):
     def setUp(self):
         self.base = tempfile.mkdtemp(prefix="hp-q15-loop-")
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         if os.path.exists(ESCAPED):
             os.unlink(ESCAPED)
 

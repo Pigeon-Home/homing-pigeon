@@ -20,6 +20,7 @@ import os
 import sys
 import tempfile
 import unittest
+import shutil
 from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -86,6 +87,7 @@ def drive(cfg_extra, payload, secret, model_answer="__unset__",
             result = json.loads(body)
     audit = [json.loads(line)
              for line in read_audit_lines(tmpdir) or []]
+    shutil.rmtree(tmpdir, ignore_errors=True)
     return result, audit, fake
 
 

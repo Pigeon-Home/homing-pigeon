@@ -21,6 +21,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -31,6 +32,7 @@ from runner import runner as R  # noqa: E402
 class RunVariantTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-rv-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {"base_dir": self.tmp,
                     "default_timeout_sec": 30}
 
@@ -185,6 +187,7 @@ class RunVariantFallbacksTest(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-rv-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {"base_dir": self.tmp,
                     "default_timeout_sec": 30}
 

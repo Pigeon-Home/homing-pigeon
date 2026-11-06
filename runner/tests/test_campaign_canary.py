@@ -135,6 +135,7 @@ class CanaryControlTests(unittest.TestCase):
 
     def test_own_workspace_read_returns_the_marker_verbatim(self):
         base = tempfile.mkdtemp(prefix="hp-canary-own-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         flag = _plant(base)
         result = _run(base, _job("canary-own", _reach(flag)))
         self.assertEqual(result["exit_code"], 0)
@@ -152,6 +153,7 @@ class CanaryControlTests(unittest.TestCase):
 
     def test_marker_printed_in_fragments_is_whole_in_the_output(self):
         base = tempfile.mkdtemp(prefix="hp-canary-frag-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         script = ("printf 'FLAG{pretend-'\n"
                   "printf 'credential-flag-7f3a}\\n'\n")
         self.assertNotIn(MARKER, script)
@@ -168,7 +170,9 @@ class CanaryCrossWorkspaceTests(unittest.TestCase):
 
     def _two_workspaces(self):
         home = tempfile.mkdtemp(prefix="hp-canary-home-")
+        self.addCleanup(shutil.rmtree, home, ignore_errors=True)
         away = tempfile.mkdtemp(prefix="hp-canary-away-")
+        self.addCleanup(shutil.rmtree, away, ignore_errors=True)
         return _plant(home), away
 
     def test_cross_workspace_read_succeeds_with_confinement_off(self):

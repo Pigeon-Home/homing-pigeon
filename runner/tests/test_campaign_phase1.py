@@ -39,6 +39,7 @@ import os
 import sys
 import tempfile
 import unittest
+import shutil
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -73,7 +74,9 @@ def _run(cfg_extra, job):
     cfg = {"base_dir": tmpdir,
            "security": {"modes": {"confinement": "off"}}}
     cfg.update(cfg_extra or {})
-    return R.execute_job(cfg, job, tmpdir), tmpdir
+    result = R.execute_job(cfg, job, tmpdir)
+    shutil.rmtree(tmpdir, ignore_errors=True)
+    return result, tmpdir
 
 
 def _plant(tmpdir):
@@ -111,6 +114,7 @@ class CampaignExecutorTests(unittest.TestCase):
         # The executor does not scrub: the planted flag comes back
         # whole, credential-shaped values included (live t04).
         tmpdir = tempfile.mkdtemp(prefix="hp-campaign-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         flag = _plant(tmpdir)
         job = _job("c-flag", "print(open(%r).read())" % flag)
         result = R.execute_job(
@@ -136,6 +140,7 @@ class CampaignExecutorTests(unittest.TestCase):
         # mode reads enforce under the lockdown default and the
         # sandbox refuses the reach where it can engage.)
         tmpdir = tempfile.mkdtemp(prefix="hp-campaign-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         outside = os.path.join(tmpdir, "system-like.txt")
         with open(outside, "w", encoding="utf-8") as fh:
             fh.write("outside-data\n")
@@ -152,6 +157,7 @@ class CampaignExecutorTests(unittest.TestCase):
         # outside its work dir; the live run wrote
         # Desktop/pwned.txt.
         tmpdir = tempfile.mkdtemp(prefix="hp-campaign-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         target = os.path.join(tmpdir, "pwned.txt")
         job = _job("c-write-out",
                    "open(%r, 'w').write('pwned')\nprint('wrote=0')" % target)
@@ -240,6 +246,7 @@ class CampaignIntakeTests(unittest.TestCase):
         # owns the job_id; once the run is recorded in seen.json,
         # a second delivery is refused the claim and skipped.
         tmpdir = tempfile.mkdtemp(prefix="hp-campaign-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         skey = R._seen_key({}, "c-duplicate")
         seen = {}
         self.assertTrue(R._disk_owns(tmpdir, skey, seen))

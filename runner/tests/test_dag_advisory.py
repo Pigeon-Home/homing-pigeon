@@ -15,6 +15,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from email.message import EmailMessage
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -35,6 +36,7 @@ def _task(tid, requires=(), state="open", priority=0, submitted="0"):
 class DagAdvisoryBoardTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.b = Board(os.path.join(self.tmp, "board.json"))
 
     def _board_with(self, tasks):
@@ -207,6 +209,7 @@ class DagAdvisoryE2ETest(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-dag-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": "test-gmail-password",

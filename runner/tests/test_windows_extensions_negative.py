@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -71,6 +72,7 @@ class WindowsResourcesTest(unittest.TestCase):
     def test_no_proc_does_not_crash(self):
         # Windows has no /proc. _read_proc_stat must degrade, not raise.
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with mock.patch("builtins.open", side_effect=FileNotFoundError):
             try:
                 resources.check_resources({"resources": {"cpu_high": 0.9}}, tmp)
@@ -83,6 +85,7 @@ class WindowsResourcesTest(unittest.TestCase):
 
     def test_disk_on_drive_letter(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {"resources": {"disk_path": "C:\\"}}
         try:
             resources.check_resources(cfg, tmp)
@@ -101,6 +104,7 @@ class WindowsSensesTest(unittest.TestCase):
 
     def test_senses_query_crlf_store(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = senses._path(tmp)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="") as f:
@@ -132,6 +136,7 @@ class WindowsDRITest(unittest.TestCase):
 
     def test_maybe_page_no_telegram_on_windows_shape(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {"dri": {"enabled": True, "telegram_bot_token": "", "telegram_chat_id": ""}}
         try:
             dri.maybe_page(cfg, tmp)
@@ -181,6 +186,7 @@ class WindowsBoardShapeTest(unittest.TestCase):
     def test_board_with_windows_task_ids(self):
         from runner.runner import Board
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "board.json")
         b = Board(path)
         try:
@@ -192,6 +198,7 @@ class WindowsBoardShapeTest(unittest.TestCase):
     def test_board_file_is_a_windows_crlf_object(self):
         from runner.runner import Board
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "board.json")
         with open(path, "w", encoding="utf-8", newline="") as f:
             f.write('{\r\n  "tasks": {}\r\n}\r\n')
@@ -205,6 +212,7 @@ class WindowsRetentionNegativeTest(unittest.TestCase):
     def test_prune_with_locked_looking_name(self):
         from runner.runner import prune_retained
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         retained = os.path.join(tmp, "retained")
         os.makedirs(retained)
         # A name Windows would choke on if we were careless.
@@ -265,6 +273,7 @@ class WindowsConcurrencyNegativeTest(unittest.TestCase):
     def test_concurrent_senses_store(self):
         import threading
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         errors = []
 
         def one(i):

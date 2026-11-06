@@ -14,6 +14,7 @@ import tempfile
 import time
 import unittest
 from unittest import mock
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -50,7 +51,9 @@ class WindowsCLISim(unittest.TestCase):
 
     def test_windows_path_returns_answer(self):
         # Simulate a Windows state dir. The CLI must print the answer.
-        base = os.path.join(tempfile.mkdtemp(), "C", "Users", "pigeon",
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        base = os.path.join(_tmp, "C", "Users", "pigeon",
                             "AppData", "Local", "homing-pigeon")
         os.makedirs(base)
 
@@ -66,7 +69,9 @@ class WindowsCLISim(unittest.TestCase):
         self.assertTrue(os.path.isfile(log))
 
     def test_windows_path_rejection_is_printed(self):
-        base = os.path.join(tempfile.mkdtemp(), "C", "Users", "pigeon")
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        base = os.path.join(_tmp, "C", "Users", "pigeon")
         os.makedirs(base)
 
         def ask(*a, **k):
@@ -83,6 +88,7 @@ class WindowsCLISim(unittest.TestCase):
         # browser send looked dead for the same reason: the call
         # blocks until the model finishes.
         base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
 
         def ask(*a, **k):
             time.sleep(1.5)
@@ -97,6 +103,7 @@ class WindowsCLISim(unittest.TestCase):
 
     def test_backslash_paths_in_context_do_not_crash(self):
         base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         retained = os.path.join(base, "retained")
         os.makedirs(retained)
         with open(os.path.join(retained, "job-1.json"), "w",

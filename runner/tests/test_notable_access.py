@@ -18,6 +18,7 @@ import unittest
 import unittest.mock
 
 from runner import runner as R
+import shutil
 
 BASE = os.path.join(tempfile.gettempdir(), "hp-state")
 FLAG = "cat /home/hatch/workspace/hp-vmtest/Desktop/flag.txt"
@@ -380,6 +381,7 @@ class NotableLineTest(unittest.TestCase):
 
     def test_context_carries_the_line(self):
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         R.save_retained(d, "jobflag1", _record(FLAG))
         R.save_retained(d, "jobok001", _record("uname -a"))
         ctx = R.oracle_context(d, watch=False)
@@ -459,6 +461,7 @@ class NotableBindingTest(unittest.TestCase):
 
     def test_context_blocks_bind_the_finding_to_the_flagged_job(self):
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         R.save_retained(d, self.FLAG_ID, _record(FLAG, stdout="321\n"))
         R.save_retained(d, self.BENIGN_ID, _record("uname -a"))
         ctx = R.oracle_context(d, watch=False)
@@ -562,6 +565,7 @@ class ContextGateTest(unittest.TestCase):
 
     def _dir(self):
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         os.makedirs(os.path.join(d, "retained"))
         return d
 
@@ -736,6 +740,7 @@ class WatchRecordTest(unittest.TestCase):
 
     def setUp(self):
         self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         os.makedirs(os.path.join(self.base, "retained"))
         R.save_retained(self.base, "jobflag1", _record(FLAG))
 
@@ -871,6 +876,7 @@ class HandedToTheModelTest(unittest.TestCase):
 
     def test_flag_record_is_the_user_message(self):
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         os.makedirs(os.path.join(d, "retained"))
         R.save_retained(d, "jobflag1", _record(FLAG, stdout="321\n"))
         ctx = R.oracle_context(d, watch=False)
@@ -893,6 +899,7 @@ class HandedToTheModelTest(unittest.TestCase):
         import random
         rng = random.Random(321)
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         os.makedirs(os.path.join(d, "retained"))
         R.save_retained(d, "jobflag1", _record(FLAG, stdout="321\n"))
         ctx = R.oracle_context(d, watch=False)
@@ -915,6 +922,7 @@ class ReplyGateTest(unittest.TestCase):
 
     def setUp(self):
         self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         os.makedirs(os.path.join(self.base, "retained"))
         R.save_retained(self.base, "jobflag1",
                         _record(FLAG, stdout=_KEY + "\n"))
@@ -1079,6 +1087,7 @@ class ToolRoundTest(unittest.TestCase):
 
     def setUp(self):
         self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         os.makedirs(os.path.join(self.base, "retained"))
         R.save_retained(self.base, "jobflag1",
                         _record(FLAG, stdout=_KEY + "\n"))
@@ -1311,6 +1320,7 @@ class ChatLogTest(unittest.TestCase):
 
     def setUp(self):
         self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
 
     def test_a_denial_is_logged_without_the_job_secret(self):
         R.record_oracle_turn(
@@ -1383,6 +1393,7 @@ class ChatLogTest(unittest.TestCase):
             answer = " ".join(rng.choice(words)
                               for _ in range(rng.randint(1, 8)))
             base = tempfile.mkdtemp()
+            self.addCleanup(shutil.rmtree, base, ignore_errors=True)
             R.record_oracle_turn(
                 base, {}, question, {"answer": answer, "model": "m"})
             blob = json.dumps(_chat_lines(base)[0])
@@ -1397,6 +1408,7 @@ class HttpAskTest(unittest.TestCase):
     def setUp(self):
         import threading
         self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         os.makedirs(os.path.join(self.base, "retained"))
         R.save_retained(self.base, "jobflag1",
                         _record(FLAG, stdout=_KEY + "\n"))
@@ -1626,6 +1638,7 @@ class PageTextTest(unittest.TestCase):
 class CliNotableTest(unittest.TestCase):
     def test_the_terminal_is_handed_the_notable_line(self):
         base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         os.makedirs(os.path.join(base, "retained"))
         R.save_retained(base, "jobflag1",
                         _record(FLAG, stdout=_KEY + "\n"))
@@ -1665,6 +1678,7 @@ class CliNotableTest(unittest.TestCase):
         import random
         rng = random.Random(321)
         base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         os.makedirs(os.path.join(base, "retained"))
         R.save_retained(base, "jobflag1", _record(FLAG, stdout=_KEY + "\n"))
         words = ["which", "jobs", "malicious", "none", "jobflag1"]
@@ -1698,6 +1712,7 @@ class CliNotableTest(unittest.TestCase):
 
     def _base(self):
         base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         os.makedirs(os.path.join(base, "retained"))
         R.save_retained(base, "jobflag1",
                         _record(FLAG, stdout=_KEY + "\n"))
@@ -1787,6 +1802,7 @@ class ExchangeLogTest(unittest.TestCase):
             R._ORACLE_LOG_ANNOUNCED, R._LOG_FILE,
             R._LOG_COUNT, R._LOG_DROPPED, R._LOG_MINUTE)
         self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         os.makedirs(os.path.join(self.base, "retained"))
         R.save_retained(self.base, "jobflag1",
                         _record(FLAG, stdout=_KEY + "\n"))
@@ -2027,7 +2043,9 @@ class ResultPolicyTest(unittest.TestCase):
 
     def test_the_job_log_redacts_the_secret(self):
         saved = R._LOG_FILE
-        path = os.path.join(tempfile.mkdtemp(), "runner.log")
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        path = os.path.join(_tmp, "runner.log")
         try:
             R._LOG_FILE = path
             R._log_job_output("jobflag1", "exec", _KEY + "\n", "err", {})
@@ -2111,6 +2129,7 @@ class LaterQueryTest(unittest.TestCase):
 
     def _save(self):
         base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         os.makedirs(os.path.join(base, "retained"))
         R.save_retained(base, "jobflag1",
                         _record(FLAG, stdout=_KEY + "\n"))
@@ -2407,6 +2426,7 @@ class JudgeAndOutsideTest(unittest.TestCase):
 
     def test_a_change_outside_the_workspace_is_visible(self):
         parent = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, parent, ignore_errors=True)
         ws = os.path.join(parent, "ws")
         os.makedirs(ws)
         outside = os.path.join(parent, "flag.txt")
@@ -2433,6 +2453,7 @@ class JudgeAndOutsideTest(unittest.TestCase):
 
     def test_protected_paths_and_a_comparison_that_raises(self):
         parent = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, parent, ignore_errors=True)
         flag = os.path.join(parent, "flag.txt")
         other = os.path.join(parent, "other.txt")
         before = {flag: (3, 1.0), other: (1, 1.0)}
@@ -2462,6 +2483,7 @@ class JudgeAndOutsideTest(unittest.TestCase):
         import random
         rng = random.Random(321)
         parent = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, parent, ignore_errors=True)
         flag = os.path.join(parent, "flag.txt")
         for _ in range(20):
             before = {flag: (rng.randint(0, 5), 1.0)}
@@ -2474,6 +2496,7 @@ class JudgeAndOutsideTest(unittest.TestCase):
 
     def test_a_snapshot_that_cannot_be_read(self):
         parent = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, parent, ignore_errors=True)
         ws = os.path.join(parent, "ws")
         os.makedirs(ws)
         with unittest.mock.patch("runner.runner.os.walk",
@@ -2514,6 +2537,7 @@ class ArtifactNoteTest(unittest.TestCase):
         self.assertEqual(note["script"], FLAG)
         self.assertNotIn(_KEY, json.dumps(note))
         base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         os.makedirs(os.path.join(base, "retained"))
         R.save_retained(base, "jobflag1", note)
         text = R.oracle_context(base, watch=False)
@@ -2554,6 +2578,7 @@ class ArtifactNoteTest(unittest.TestCase):
                 self.stdout = out
 
         work = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, work, ignore_errors=True)
         line = os.path.join(work, "flag.txt") + ": Win.Test.EICAR FOUND"
         with unittest.mock.patch("runner.runner.shutil.which",
                                  return_value="/usr/bin/clamdscan"), \
@@ -2583,6 +2608,7 @@ class ArtifactNoteTest(unittest.TestCase):
 
     def test_only_changed_files_are_scanned(self):
         work = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, work, ignore_errors=True)
         after = {os.path.join(work, "same"): (4, 1),
                  os.path.join(work, "new"): (4, 2),
                  os.path.join(work, "big"): (R._ARTIFACT_MAX_BYTES + 1, 3),
@@ -2615,6 +2641,7 @@ class ArtifactNoteTest(unittest.TestCase):
     def test_yara_rules_hits_and_the_cap(self):
         self.assertEqual(R._yara_rules_text({}), R._YARA_RULES)
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         path = os.path.join(d, "rules.yar")
         with open(path, "w", encoding="utf-8") as fh:
             fh.write("rule Custom { condition: true }\n")
@@ -2637,6 +2664,7 @@ class ArtifactNoteTest(unittest.TestCase):
                 self.stdout = out
 
         work = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, work, ignore_errors=True)
         target = os.path.join(work, "flag.txt")
 
         def which(name):
@@ -2683,6 +2711,7 @@ class ArtifactNoteTest(unittest.TestCase):
 
     def test_a_real_walk_and_the_quiet_edges(self):
         work = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, work, ignore_errors=True)
         path = os.path.join(work, "a.txt")
         with open(path, "w", encoding="utf-8") as fh:
             fh.write("hi")
@@ -2737,10 +2766,13 @@ class OracleToolTest(unittest.TestCase):
 
     def setUp(self):
         self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         os.makedirs(os.path.join(self.base, "retained"))
         R.save_retained(self.base, "jobflag1",
                         _record(FLAG, stdout=_KEY + "\n"))
-        self.outside = os.path.join(tempfile.mkdtemp(), "shadow")
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        self.outside = os.path.join(_tmp, "shadow")
         with open(self.outside, "w", encoding="utf-8") as fh:
             fh.write("secret-outside")
 
@@ -2912,6 +2944,7 @@ class RetentionWindowTest(unittest.TestCase):
 
     def _base(self):
         base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         os.makedirs(os.path.join(base, "retained"))
         R.save_retained(base, "jobflag1",
                         _record(FLAG, stdout=_KEY + "\n"))
@@ -2961,7 +2994,9 @@ class RetentionWindowTest(unittest.TestCase):
         self.assertIn("notable:", R.oracle_context(base, watch=False))
 
     def test_the_query_cap(self):
-        path = os.path.join(tempfile.mkdtemp(), "queries.json")
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        path = os.path.join(_tmp, "queries.json")
         cfg = {"max_queries_per_hour": 2}
         self.assertTrue(R.check_rate_limit("owner", cfg, path))
         self.assertTrue(R.check_rate_limit("owner", cfg, path))
@@ -2980,6 +3015,7 @@ class RetentionWindowTest(unittest.TestCase):
 
     def test_a_symlink_store_is_not_followed(self):
         d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         target = os.path.join(d, "real.json")
         with open(target, "w", encoding="utf-8") as fh:
             fh.write('{"owner": [1]}')
@@ -2996,7 +3032,9 @@ class RetentionWindowTest(unittest.TestCase):
         rng = random.Random(321)
         for _ in range(20):
             limit = rng.choice([0, 1, 2, 5, "nope", True, None])
-            path = os.path.join(tempfile.mkdtemp(), "q.json")
+            _tmp = tempfile.mkdtemp()
+            self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+            path = os.path.join(_tmp, "q.json")
             cfg = {"max_queries_per_hour": limit}
             allowed = 0
             for _ in range(4):
@@ -3012,7 +3050,9 @@ class RetentionWindowTest(unittest.TestCase):
     def test_broken_stores(self):
         self.assertEqual(R._read_query_store(""), {})
         self.assertEqual(R._read_query_store(None), {})
-        bad = os.path.join(tempfile.mkdtemp(), "bad.json")
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        bad = os.path.join(_tmp, "bad.json")
         with open(bad, "w", encoding="utf-8") as fh:
             fh.write("{")
         self.assertEqual(R._read_query_store(bad), {})
@@ -3024,7 +3064,9 @@ class RetentionWindowTest(unittest.TestCase):
         live = R._live_times(["nope", now, 0], now)
         self.assertEqual(len(live), 1)
         R._write_json("", {"a": 1})
-        path = os.path.join(tempfile.mkdtemp(), "q.json")
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        path = os.path.join(_tmp, "q.json")
         with unittest.mock.patch("runner.guard.atomicio.json.dumps",
                                  side_effect=ValueError("no")):
             R._write_json(path, {"a": 1})
@@ -3039,7 +3081,9 @@ class RetentionWindowTest(unittest.TestCase):
                 "k", {"max_queries_per_hour": 3}, None))
         finally:
             R._QUERY_TIMES = saved
-        path = os.path.join(tempfile.mkdtemp(), "chmod.json")
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        path = os.path.join(_tmp, "chmod.json")
         with unittest.mock.patch("runner.runner.os.chmod",
                                  side_effect=OSError("mode")):
             R._write_json(path, {"a": 1})
@@ -3048,11 +3092,15 @@ class RetentionWindowTest(unittest.TestCase):
                                  side_effect=OSError("fd")), \
                 unittest.mock.patch("runner.runner.os.close",
                                     side_effect=OSError("close")):
-            R._write_json(os.path.join(tempfile.mkdtemp(), "no.json"),
+            _tmp = tempfile.mkdtemp()
+            self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+            R._write_json(os.path.join(_tmp, "no.json"),
                           {"a": 1})
         with unittest.mock.patch("runner.runner.os.unlink",
                                  side_effect=OSError("unlink")):
-            R._write_json(os.path.join(tempfile.mkdtemp(), "no2.json"),
+            _tmp = tempfile.mkdtemp()
+            self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+            R._write_json(os.path.join(_tmp, "no2.json"),
                           {"a": 1})
 
 

@@ -27,6 +27,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -78,6 +79,7 @@ def _submit(task_id, issued, secret=SECRET, key_id=None):
 class _DoorCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-q98e-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": "test-gmail-password",

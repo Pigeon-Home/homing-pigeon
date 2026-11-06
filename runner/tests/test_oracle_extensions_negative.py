@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 import unittest
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -37,6 +38,7 @@ class SensesNegativeTest(unittest.TestCase):
 
     def test_store_then_load_corrupt_line(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = senses._path(tmp)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
@@ -98,6 +100,7 @@ class ReviewNegativeTest(unittest.TestCase):
 class ResourcesNegativeTest(unittest.TestCase):
     def test_check_with_empty_cfg(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         try:
             resources.check_resources({}, tmp)
         except Exception as e:
@@ -105,6 +108,7 @@ class ResourcesNegativeTest(unittest.TestCase):
 
     def test_corrupt_state_file(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "resources.json")
         with open(path, "w", encoding="utf-8") as f:
             f.write("not json at all")
@@ -115,6 +119,7 @@ class ResourcesNegativeTest(unittest.TestCase):
 
     def test_negative_thresholds(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {"resources": {"cpu_high": -1, "mem_high": 2.5, "disk_high": "nope"}}
         try:
             resources.check_resources(cfg, tmp)
@@ -125,6 +130,7 @@ class ResourcesNegativeTest(unittest.TestCase):
 class DRINegativeTest(unittest.TestCase):
     def test_maybe_page_with_nothing(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         try:
             dri.maybe_page({}, tmp)
         except Exception as e:
@@ -132,6 +138,7 @@ class DRINegativeTest(unittest.TestCase):
 
     def test_cursor_is_a_word(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         state_path = os.path.join(tmp, "dri.json")
         with open(state_path, "w", encoding="utf-8") as f:
             json.dump({"cursor": "yesterday"}, f)
@@ -165,6 +172,7 @@ class DRINegativeTest(unittest.TestCase):
 class CrossExtensionNegativeTest(unittest.TestCase):
     def test_senses_query_against_poisoned_store(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = senses._path(tmp)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
@@ -184,6 +192,7 @@ class CrossExtensionNegativeTest(unittest.TestCase):
 
     def test_review_then_senses_then_resources_in_one_breath(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         job = {"kind": "exec", "script": "rm -rf /", "files": [{"name": "../x"}]}
         review.review_job({}, job)
         senses.store_alert(tmp, {"sensor": "x", "severity": "low", "detail": None})

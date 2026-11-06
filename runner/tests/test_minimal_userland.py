@@ -49,7 +49,9 @@ def _run(payload, cfg_over=None):
     runner.poll_once(cfg, tmp, {}, os.path.join(tmp, "seen.json"),
                      imap=oo._FakeIMAP([oo._job_email(payload)]),
                      smtp=smtp)
-    return oo._read_result(smtp.sent[-1])
+    result = oo._read_result(smtp.sent[-1])
+    shutil.rmtree(tmp, ignore_errors=True)
+    return result
 
 
 @unittest.skipUnless(ENABLED, "runs in the .github/docker/minimal-userland image")

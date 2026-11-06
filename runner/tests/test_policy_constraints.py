@@ -26,6 +26,7 @@ import sys
 import tempfile
 import time
 import unittest
+import shutil
 from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -82,6 +83,7 @@ def run_job(cfg_extra, payload, secret=SECRET):
         job_id=str(m["Subject"]).rsplit(" ", 1)[-1],
         extra_secrets=(EXTRA,)))
         for m in smtp.sent]
+    shutil.rmtree(tmpdir, ignore_errors=True)
     return executed, audit, sent
 
 

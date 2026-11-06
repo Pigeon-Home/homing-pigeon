@@ -65,6 +65,7 @@ from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -93,10 +94,12 @@ class OracleChatNegativeTest(unittest.TestCase):
     """
 
     def setUp(self):
+        base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         self.cfg = {
             "mailbox_user": "runner@example.com",
             "shared_secret": SECRET,
-            "base_dir": tempfile.mkdtemp(),
+            "base_dir": base,
         }
         self.srv = make_oracle_server(self.cfg, port=0)
         self.port = self.srv.server_address[1]
@@ -185,6 +188,7 @@ class BoardPoisonedDiskTest(unittest.TestCase):
 
     def test_load_drops_non_dict_and_continues(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "board.json")
         # Hostile on-disk shapes that previously crashed tasks.values().
         for shape in (
@@ -204,6 +208,7 @@ class BoardPoisonedDiskTest(unittest.TestCase):
 
     def test_concurrent_ops_on_poisoned_board(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "board.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"bad": "not-a-dict", "also": ["list"]}, f)
@@ -239,6 +244,7 @@ class ExtensionBadReturnTest(unittest.TestCase):
     def test_resources_string_return_does_not_stop_poll(self):
         seen = {}
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {"mailbox_user": "a@b.c", "shared_secret": SECRET}
         with mock.patch("runner.oracle.resources.check_resources", return_value="not a dict"), \
              mock.patch("runner.runner.connect_imap", side_effect=OSError("no")), \
@@ -270,13 +276,15 @@ class ExtensionBadReturnTest(unittest.TestCase):
         """
         with mock.patch("runner.oracle.senses.load_alerts", return_value=None):
             try:
+                base = tempfile.mkdtemp()
+                self.addCleanup(shutil.rmtree, base, ignore_errors=True)
                 answers, spent = answer_queries(
                     [{"op": "senses"}],
                     {"stdout": "", "stderr": "", "exit_code": 0},
                     {},
                     4,
                     cfg={},
-                    base_dir=tempfile.mkdtemp(),
+                    base_dir=base,
                 )
             except Exception as e:
                 self.fail(f"senses None return crashed answer_queries: {e}")
@@ -290,13 +298,15 @@ class ExtensionBadReturnTest(unittest.TestCase):
             return_value=[None, "str", 1, {"sensor": "s", "severity": "high"}],
         ):
             try:
+                base = tempfile.mkdtemp()
+                self.addCleanup(shutil.rmtree, base, ignore_errors=True)
                 answers, spent = answer_queries(
                     [{"op": "senses"}],
                     {"stdout": "", "stderr": "", "exit_code": 0},
                     {},
                     8,
                     cfg={},
-                    base_dir=tempfile.mkdtemp(),
+                    base_dir=base,
                 )
             except AttributeError as e:
                 self.fail(f"mixed alert list crashed answer_queries: {e}")
@@ -385,6 +395,7 @@ class SensesHelperFaultTest(unittest.TestCase):
         """
         from runner.runner import _ingest_sensor_alert
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {
             "mailbox_user": "a@b.c",
             "shared_secret": SECRET,
@@ -412,6 +423,7 @@ class ConcurrentWorkerFaultTest(unittest.TestCase):
 
     def test_one_worker_raise_does_not_stop_others(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {"mailbox_user": "a@b.c", "shared_secret": SECRET}
         seen = {}
         # Fake two mails; the first handle_mail raises, the second does not.
@@ -447,6 +459,7 @@ class BoardNonDictTaskTest(unittest.TestCase):
 
     def test_complete_and_approve_on_non_dict(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.tasks["evil"] = "not-a-dict"
         b.tasks["listy"] = ["a", "b"]
@@ -459,6 +472,7 @@ class BoardNonDictTaskTest(unittest.TestCase):
 
     def test_concurrent_complete_and_offer_with_poison(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         b.submit({"task_id": "t0", "kind": "ping"})
         b.tasks["poison"] = None
@@ -494,6 +508,7 @@ class DriExtensionFaultTest(unittest.TestCase):
 
     def test_load_alerts_none_does_not_crash_dri(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {
             "dri": {
                 "enabled": True,
@@ -513,6 +528,7 @@ class DriExtensionFaultTest(unittest.TestCase):
 
     def test_load_alerts_string_does_not_crash_dri(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {
             "dri": {
                 "enabled": True,
@@ -535,6 +551,7 @@ class DriExtensionFaultTest(unittest.TestCase):
         each item was a dict. Non-dicts are now skipped.
         """
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         cfg = {
             "dri": {
                 "enabled": True,
@@ -563,6 +580,7 @@ class DriExtensionFaultTest(unittest.TestCase):
         and numbers are coerced.
         """
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         senses.file_sensor_alert(
             tmp,
             {"enabled": True, "key_id": "k", "weight": 1.0, "profile": {}},
@@ -585,6 +603,7 @@ class DriExtensionFaultTest(unittest.TestCase):
         Numbers are now coerced; a non-dict is treated as empty.
         """
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with open(os.path.join(tmp, "security-events.jsonl"), "w") as f:
             f.write('{"type":"auth_rejection","at":"2026-01-01T00:00:00Z"}\n')
         for kp in ("not-a-dict", {"window_sec": "nope"}, {"threshold": "x"}, 1, {}):
@@ -625,6 +644,7 @@ class SensesQueryPoisonTest(unittest.TestCase):
 
     def test_truthy_non_dict_sensor_does_not_crash(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with mock.patch("runner.oracle.senses.parse_sensors", return_value={"s": "not-a-dict"}), \
              mock.patch("runner.oracle.senses.load_alerts",
                         return_value=[{"sensor": "s", "severity": "high", "title": "t"}]):
@@ -645,6 +665,7 @@ class SensesQueryPoisonTest(unittest.TestCase):
         is now kept with a neutral score and the query continues.
         """
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with mock.patch("runner.oracle.senses.load_alerts",
                         return_value=[{"sensor": "s", "severity": "high", "title": "t"}]), \
              mock.patch("runner.oracle.senses.alert_score", side_effect=RuntimeError("score boom")):

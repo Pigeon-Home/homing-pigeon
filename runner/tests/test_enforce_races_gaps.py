@@ -37,6 +37,7 @@ import tempfile
 import threading
 import unittest
 from unittest import mock
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -117,6 +118,7 @@ class PoliciesConcurrentRaceTest(unittest.TestCase):
 
     def test_two_pinned_keys_each_denial_names_its_own_key(self):
         base = tempfile.mkdtemp(prefix="hp-r5-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         cfg = base_config(base)
         cfg.update({
             "additional_secrets": {KEY_A: SECRET_A, KEY_B: SECRET_B},
@@ -145,6 +147,7 @@ class PoliciesConcurrentRaceTest(unittest.TestCase):
 
     def test_two_audiences_each_denial_names_its_own_runner(self):
         base = tempfile.mkdtemp(prefix="hp-r5-aud-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         cfg = base_config(base)
         cfg.update({
             "runner_id": RID,
@@ -191,6 +194,7 @@ class DropConcurrentRaceTest(unittest.TestCase):
                          "needs root and the pigeon-test user")
     def test_two_drops_each_child_is_the_job_user(self):
         base = tempfile.mkdtemp(prefix="hp-r6-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         # Confinement stated off, as in TwoJobsRaceTest: inside
         # a sandbox the child's uid reads as the sandbox's
         # mapped 0, not the job user's.
@@ -221,6 +225,7 @@ class NoWideningCageTest(unittest.TestCase):
 
     def _drive(self, cfg_extra, payload, secret, model_answer):
         tmpdir = tempfile.mkdtemp(prefix="hp-cage-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
         cfg = base_config(tmpdir)
         cfg.update(cfg_extra)
         mail = _email(payload, secret)

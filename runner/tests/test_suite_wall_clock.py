@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TOOL = os.path.join(REPO, "runner", "tools", "suite_wall_clock.py")
@@ -58,6 +59,7 @@ def _run(folder, minutes, module, actions=False):
 class _Module(unittest.TestCase):
     def _folder(self, name, body):
         d = tempfile.mkdtemp(prefix="hp-wall-clock-")
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
         with open(os.path.join(d, name + ".py"), "w", encoding="utf-8") as fh:
             fh.write(body)
         return d

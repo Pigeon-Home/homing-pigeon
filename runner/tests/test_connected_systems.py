@@ -12,6 +12,7 @@ import tempfile
 import threading
 import unittest
 from unittest import mock
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -113,6 +114,7 @@ class ConnectedInferenceTest(unittest.TestCase):
 class AsyncInstructionsTest(unittest.TestCase):
     def test_concurrent_instruction_writers_do_not_corrupt(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "config.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"mailbox_user": "a@b.c"}, f)
@@ -181,6 +183,7 @@ class AsyncInstructionsTest(unittest.TestCase):
 class ProfileApplyTest(unittest.TestCase):
     def test_profile_does_not_clobber_secrets(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "config.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"mailbox_user": "a@b.c", "shared_secret": "keep"}, f)
@@ -212,6 +215,7 @@ def _hot_cfg(**over):
 class LiveReloadTest(unittest.TestCase):
     def _reload(self, cfg, fresh):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "config.json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(fresh, fh)

@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 from email.message import EmailMessage
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -101,6 +102,7 @@ class ConnectorCaptureTests(unittest.TestCase):
     def test_happy_ping_executes(self):
         job = verify_body(HAPPY_PING, SECRET)
         base = tempfile.mkdtemp(prefix="hp-cap-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         r = execute_job({"default_timeout_sec": 10}, job, base)
         self.assertEqual(r["exit_code"], 0)
         self.assertEqual(r["stdout"], "pong")
@@ -120,6 +122,7 @@ class ConnectorCaptureTests(unittest.TestCase):
         msg["Subject"] = "[HOMING-PIGEON] job " + job["job_id"]
         msg.set_content(wire)
         base = tempfile.mkdtemp(prefix="hp-cap-")
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         seen = {}
         imap, smtp = FakeIMAP([msg.as_bytes()]), FakeSMTP()
         cfg = {

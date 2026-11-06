@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from email.message import EmailMessage
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -51,6 +52,7 @@ class RunnerLoggerLegsTest(unittest.TestCase):
 class BoardUnitTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.path = os.path.join(self.tmp, "board.json")
         self.b = Board(self.path)
 
@@ -178,6 +180,7 @@ class BoardConcurrencyTest(unittest.TestCase):
         """N concurrent offer() calls must never return the same task."""
         import threading
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         b = Board(os.path.join(tmp, "board.json"))
         for i in range(5):
             b.submit({"task_id": f"t{i}", "priority": 1})
@@ -217,6 +220,7 @@ def _board_mail(subject, payload):
 class BoardE2ETest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-board-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": "test-gmail-password",

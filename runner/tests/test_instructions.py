@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 import unittest
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -132,6 +133,7 @@ class SystemPromptTest(unittest.TestCase):
 class SetInstructionsTest(unittest.TestCase):
     def test_replace_and_append(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "config.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"mailbox_user": "a@b.c"}, f)
@@ -152,6 +154,7 @@ class SetInstructionsTest(unittest.TestCase):
 
     def test_blank_text_does_not_rewrite(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "config.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"owner_instructions": "keep me", "mailbox_user": "a@b.c"}, f)
@@ -165,6 +168,7 @@ class SetInstructionsTest(unittest.TestCase):
 
     def test_add_wins_when_both_flags_are_set(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         path = os.path.join(tmp, "config.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"owner_instructions": "base", "mailbox_user": "a@b.c"}, f)

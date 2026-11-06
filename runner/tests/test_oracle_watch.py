@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+import shutil
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -143,6 +144,7 @@ class RegistryWatchTest(unittest.TestCase):
 
     def test_baseline_then_changes(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         run1 = {"GoodApp": "C:\\good.exe"}
         run2 = {"GoodApp": "C:\\good-evil.exe", "BadApp": "C:\\bad.exe"}
         with _win():
@@ -163,6 +165,7 @@ class RegistryWatchTest(unittest.TestCase):
 
     def test_no_changes_reports_quiet(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         run = {"GoodApp": "C:\\good.exe"}
         with _win():
             with mock.patch.object(R, "_reg_query",
@@ -175,6 +178,7 @@ class RegistryWatchTest(unittest.TestCase):
 
     def test_removed_entry_reported(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with _win():
             with mock.patch.object(
                     R, "_reg_query",
@@ -190,6 +194,7 @@ class RegistryWatchTest(unittest.TestCase):
 class OracleContextWatchTest(unittest.TestCase):
     def test_watch_sections_on_windows(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with mock.patch.object(R.sys, "platform", "win32"), \
              mock.patch.object(R, "_eventlog_tail",
                                return_value="2026-10-16 [Error] x (1)"), \
@@ -201,6 +206,7 @@ class OracleContextWatchTest(unittest.TestCase):
 
     def test_unreadable_says_unreadable_not_clean(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with mock.patch.object(R.sys, "platform", "win32"), \
              mock.patch.object(R, "_eventlog_tail", return_value=None), \
              mock.patch.object(R, "_registry_watch", return_value=None):
@@ -211,6 +217,7 @@ class OracleContextWatchTest(unittest.TestCase):
 
     def test_quiet_log_says_quiet_not_unreadable(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with mock.patch.object(R.sys, "platform", "win32"), \
              mock.patch.object(R, "_eventlog_tail", return_value=""), \
              mock.patch.object(R, "_registry_watch", return_value="x"):
@@ -221,6 +228,7 @@ class OracleContextWatchTest(unittest.TestCase):
 
     def test_watch_false_skips_sections(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with mock.patch.object(R.sys, "platform", "win32"):
             blob = R.oracle_context(tmp, watch=False)
         self.assertNotIn("Windows Event Log", blob)
@@ -228,6 +236,7 @@ class OracleContextWatchTest(unittest.TestCase):
 
     def test_no_sections_off_windows(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         with mock.patch.object(R.sys, "platform", "linux"):
             blob = R.oracle_context(tmp)
         self.assertNotIn("Windows Event Log", blob)
@@ -245,6 +254,7 @@ class OracleContextWatchCapTest(unittest.TestCase):
 
     def _big_job_dir(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         retained = os.path.join(tmp, "retained")
         os.makedirs(retained)
         with open(os.path.join(retained, "big.json"), "w",
@@ -272,12 +282,14 @@ class OracleContextWatchCapTest(unittest.TestCase):
 
     def test_nonpositive_cap_is_empty_even_on_windows(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         win, ev, reg = self._win_watch()
         with win, ev, reg:
             self.assertEqual(R.oracle_context(tmp, max_chars=-5), "")
 
     def test_sections_present_under_the_default_cap(self):
         tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         win, ev, reg = self._win_watch()
         with win, ev, reg:
             blob = R.oracle_context(tmp)

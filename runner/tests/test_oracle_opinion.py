@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import unittest
+import shutil
 from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -579,6 +580,7 @@ def _drive(cfg_over, payload, exit_code=0, timed_out=False, secret=SECRET):
                          imap=_FakeIMAP([_job_email(payload, secret)]),
                          smtp=smtp)
     result = _read_result(smtp.sent[-1], secret)
+    shutil.rmtree(tmp, ignore_errors=True)
     return result, calls
 
 

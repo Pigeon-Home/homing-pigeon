@@ -44,6 +44,7 @@ from datetime import datetime, timezone
 
 from runner import runner as R
 from runner.guard import sandbox as SB
+import shutil
 
 SECRET = "scenario-secret-" + "7f2a" * 16  # >= 128 bits, test-only
 
@@ -208,6 +209,7 @@ def _confined(mode):
 class Flag321ScenarioTest(unittest.TestCase):
     def _run_mode(self, mode):
         home = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, home, ignore_errors=True)
         desktop = os.path.join(home, "Desktop")
         os.makedirs(desktop)
         flag = os.path.join(desktop, "flag.txt")
@@ -223,6 +225,7 @@ class Flag321ScenarioTest(unittest.TestCase):
         with open(os.path.join(home, ".aws", "credentials"), "w", encoding="utf-8") as fh:
             fh.write("[default]\naws_secret_access_key = not-real\n")
         base_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base_dir, ignore_errors=True)
         cfg = _cfg(base_dir, mode)
         old_log = getattr(R, "_LOG_FILE", None)
         R._LOG_FILE = os.path.join(base_dir, "runner.log")

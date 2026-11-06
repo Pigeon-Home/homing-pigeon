@@ -13,6 +13,7 @@ import unittest
 import uuid
 from datetime import datetime, timezone
 from email.message import EmailMessage
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -113,6 +114,7 @@ def result_body(sent_msg):
 class RunnerTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-test-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": "test-gmail-password",
@@ -265,8 +267,10 @@ class SharedSecretTest(unittest.TestCase):
 
     def test_poll_once_rejects_weak_secret(self):
         cfg = {"mailbox_user": SENDER, "shared_secret": "weak"}
+        base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
         with self.assertRaises(RuntimeError):
-            poll_once(cfg, tempfile.mkdtemp(), {}, "/nonexistent/seen.json")
+            poll_once(cfg, base, {}, "/nonexistent/seen.json")
 
 
 if __name__ == "__main__":

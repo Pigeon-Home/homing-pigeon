@@ -31,6 +31,7 @@ import uuid
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from unittest.mock import patch
+import shutil
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -83,6 +84,7 @@ class ProtocolBlocksParseTest(unittest.TestCase):
 class _CycleRig(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hp-d3-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {
             "mailbox_user": SENDER,
             "mailbox_password": SECRET,
