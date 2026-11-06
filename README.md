@@ -11,7 +11,7 @@ can't touch your computer. Homing Pigeon gives it a signed channel to one: ask f
 the results come back so the SI can iterate. Run the tests, read the
 failure, fix, repeat, from your phone or anywhere. Install the homing-pigeon runner and try it with the prompt below.
 
-Then try this prompt in your cloud SI, it should return in less than 30 seconds.
+Try this prompt in your cloud SI, it should return in less than 30 seconds.
 
 ```
 Use the Homing Pigeon protocol (pigeon-home.ai)
