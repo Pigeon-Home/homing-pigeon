@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1960" viewBox="0 0 900 1960" font-family="Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="863" height="1960" viewBox="0 0 863 1960" font-family="Helvetica, Arial, sans-serif">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2b060d"/>
@@ -15,7 +15,7 @@
       <path d="M 10 0 L 0 5 L 10 10 z" fill="#ff4d6d"/>
     </marker>
   </defs>
-  <rect width="900" height="1960" fill="url(#bg)"/>
+  <rect width="863" height="1960" fill="url(#bg)"/>
   <text x="450" y="58" text-anchor="middle" fill="#ffffff" font-size="34" font-weight="bold">Homing Pigeon — How It Fits Together</text>
 
   <!-- You -->
