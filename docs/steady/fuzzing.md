@@ -341,6 +341,135 @@ Hypothesis is a test-only dependency. CI installs it. A run
 without it skips nothing in the example tests and fails these
 on import.
 
+## Mutation testing: the suite, audited
+
+Fuzzing tests the code with hostile input. Mutation testing
+turns the same suspicion on the tests themselves. A tool —
+here, mutmut — takes a file of production code and changes
+it in one small way at a time: a comparison flipped, a
+default swapped, a `+1` made `+2`, a condition dropped.
+Each changed copy is a mutant. The unit suite then runs
+against the mutant. If a test fails, the mutant is killed:
+some test was watching that exact behaviour. If every test
+still passes, the mutant survived, and a survivor is a
+finding about the suite, not about the code — it marks a
+behaviour no test actually pins.
+
+Why a suite this size needs the audit: the suite was
+deliberately grown past 10,000 tests (10,301 ran in the
+2026-11-05 build record), and a suite that large can hide
+a test that is a false positive by construction — a test
+that exercises a path, returns a pass, and asserts nothing
+that could ever fail. Such a test is latent: it shows up
+in the count and in the coverage — the line it runs does
+execute — while pinning nothing. Coverage cannot see it,
+because coverage measures that code ran, not that anything
+checked what the code did. Mutation testing is the check
+that can see it. Change the code slightly, and the honest
+tests notice; the latent one does not. So the standing
+rule: a surviving mutant is a defect in the suite, taken
+as seriously as a crash in the code, and it is closed by
+writing the missing assertion, not by widening a tolerance
+or dropping the mutant from the list.
+
+The scope is deliberately narrow. mutmut mutates one file,
+`runner/guard/security.py` — 392 lines of pure policy and
+audit logic — with the whole suite as the oracle that kills
+or passes each mutant. The configuration stands in
+`pyproject.toml`, and the suite itself, the tools and the
+extensions are never mutation targets. Wider scopes were
+measured before they were wanted: 4 files came to 1,567
+mutants and an extrapolated 45 to 50 minutes a run, and the
+full `runner/` tree would take hours. One file keeps a
+walk at about 7 minutes, and the scope expands
+deliberately or not at all.
+
+The strategy's history, from the record:
+
+- 2026-10-16 — mutmut enters the pipeline as a CI gate,
+  scoped (commit eec3a646, "CI gates: pyrefly typecheck +
+  mutmut mutation (scoped)"). That is the first appearance
+  of mutation testing anywhere in the tree; as of
+  2026-11-05 the strategy has been running for 20 days.
+- 2026-10-19 — `.github/workflows/mutation-seeded.yml` is
+  added: a scheduled, non-gating twin of the release
+  mutation job, first set to a weekly walk (Mondays at
+  06:17 UTC). Each run varies a seed — the run number, or a
+  value supplied on dispatch — carried in `PYTHONHASHSEED`
+  and `HP_MUTATION_SEED`, so different hash seeds and
+  different property-test draws walk parts of the mutant
+  space a fixed configuration never visits. A run
+  reproduces by dispatching the workflow with its printed
+  seed on its printed commit.
+- 2026-10-22 — mutation comes off the release path. The
+  measurement that forced it stands in
+  `docs/steady/reports/ci-failures.md`: over 310 runs the
+  mutation job's median was 6.4 minutes, its p90 22.6 and
+  its maximum 29.7, and 20 tags cut inside 15 minutes each
+  carried a 17-to-24-minute mutation job — the long pole
+  of every release, and a signal that never gated one.
+  From this date the build workflow's mutation job runs
+  only on a manual dispatch against a non-tag ref, marked
+  continue-on-error: loud when it fails, unable to hold a
+  publish.
+- 2026-10-25 — the signal is found blind, and un-blinded.
+  A collection failure inside the copied mutants tree ended
+  mutmut's coverage pass before any test ran: 3 mutants
+  were generated where 443 had been, and the run reported
+  green. The cause was the coverage pass dying on a shared
+  file name among the archived probes. The fix landed in
+  release 3.12.66 the same day: the archive folders are
+  ignored for the test run inside the mutants tree, and
+  `runner/tools/mutation_floor.py` now stands after mutmut
+  in both workflows — it reads the run's own statistics and
+  fails the job when the signal has collapsed, with the
+  tally in the log. A run that measured almost nothing is
+  red from then on, never quietly green.
+- 2026-10-25 — the seeded walk goes hourly, at 17 minutes
+  past each hour: a weekly walk saw 4 seeds a month, and
+  the mutant space wanted more visits than that. One walk
+  runs at a time; a slow hour queues the next run rather
+  than stacking walks or cancelling one half done.
+
+The first whole-signal triage (the D4 pass in the campaign
+record) took the security module's full mutant set: 566
+mutants, 500 killed, 66 survived. Each survivor was read
+as what it is — a missing assertion — and the triage wrote
+tests against them one by one. 5 of the 66 were provably
+equivalent mutants: changes no test could ever catch,
+because both paths give the same answer. One is a default
+whose value the mode guard reads as "off" either way;
+another is an arithmetic change whose products pass the
+slice bound on both paths. Those are recorded as
+equivalent, not chased. The kill verification was a full
+re-run: verdicts on 565 of the 566 mutants, 561 killed and
+4 survived, every one of the 61 targeted mutants dead, and
+the surviving names exactly the recorded equivalents (the
+fifth equivalent's verdict was never written — that run
+was stopped at 563 of 566 — and it stands equivalent on
+the argument). The signal in `security.py` stands at 561
+killed, 5 provably equivalent survivors.
+
+How it runs today: `mutation-seeded.yml` walks hourly on
+the head of main, seeded and reproducible, and uploads its
+log, its statistics and a plain list of survivors for the
+next triage; the build workflow's mutation job is the
+manual-dispatch twin. Neither is a release guard. No
+publish keys off a mutation result, no tag waits for one,
+and a release is verified — guards green, assets stamped —
+while a seeded walk is still walking. That is the run a
+reader sees turning on the Actions page after a release is
+already done: it is long because it re-runs the suite
+against hundreds of mutants one change at a time, and it
+is allowed to be long because nothing waits on it. Its
+only product is the survivor list, and the survivor list
+is the suite's own defect queue.
+
+The machinery's own tests stand at
+`runner/tests/test_mutation_floor.py` (the collapsed-signal
+floor) and `runner/tests/test_seeded_mutation_workflow.py`
+(the seeded workflow's shape).
+
 ## A read on the campaign (Grok, at the conductor's word, 2026-10-26)
 
 The conductor asked this opinion thrown into the hat. It is
