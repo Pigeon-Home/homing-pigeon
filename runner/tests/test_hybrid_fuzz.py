@@ -35,13 +35,18 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
-from runner.wire import dtlsproto, mlkem  # noqa: E402
+from runner.wire import dtls_mailbox, dtlsproto, mlkem  # noqa: E402
+from runner.wire.dtls_mailbox import (  # noqa: E402
+    FlightPart, encode_flight, flight_subject, parse_message)
 from runner.tools import hybrid_fuzz as hf  # noqa: E402
 from runner.tools import hybrid_timing  # noqa: E402
+from runner.tests.test_dtls import _ch_exts  # noqa: E402
+from runner.tests.test_dtls_email_v3 import _raw_mail  # noqa: E402
 from runner.tests.test_dtls_hybrid import (  # noqa: E402
     _only_session, _pair)
 
 NOW = 1000.0
+ADDR = ("127.0.0.1", 50001)
 
 
 def _primed_client():
@@ -430,6 +435,222 @@ class ClientFeedTargetTest(unittest.TestCase):
         rng = random.Random(10024)
         for _ in range(45):
             targets.t_client_feed(rng)  # a Finding here fails
+
+
+class FragmentBufferFamilyTest(unittest.TestCase):
+    """Family 3: handshake fragment reassembly
+    (_FragmentBuffer.offer), field by field. The claim under
+    test (campaign record, supposition SD3, verified by hand
+    before these tests ran): a fragment header's total length
+    was trusted into two bytearray(total) allocations -- up
+    to about 33.5 MB for the largest 24-bit total -- with no
+    cap on the total and no cap on the number of pending
+    (message type, sequence) keys, and a fragment whose total
+    contradicted the total its key started with could write
+    past the stored buffer and raise IndexError out of offer,
+    out of the cores' handshake path. The caps pinned here:
+    a total of at most 256 KB (the size the suite already
+    treats as the largest thing that travels whole -- the
+    local envelope and the mailbox datagram ceiling,
+    dtls_mailbox.DEFAULT_MAX_DATAGRAM_BYTES; the largest
+    handshake message this profile sends, the hybrid
+    ClientHello, is about 1.4 KB) and at most 64 pending
+    keys (the carriage reassembler's own transfer bound).
+    Beyond either cap, and on a contradicting total, offer
+    refuses with its own incomplete signal, None."""
+
+    CAP = dtls_mailbox.DEFAULT_MAX_DATAGRAM_BYTES
+    MAX_PENDING = 64
+
+    def _stored_sizes(self, buf):
+        return [len(entry[0]) for entry in buf._pending.values()]
+
+    # -- the total field --------------------------------------
+
+    def test_total_above_the_cap_allocates_nothing(self):
+        buf = dtlsproto._FragmentBuffer()
+        for total in (self.CAP + 1, 1_000_000, 16_777_215):
+            self.assertIsNone(buf.offer(2, 0, 0, b"", total))
+            self.assertIsNone(buf.offer(2, 0, 0, b"AB", total))
+        self.assertEqual(buf._pending, {})
+
+    def test_total_at_and_below_the_cap_is_held(self):
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(2, 0, 0, b"A", self.CAP))
+        self.assertEqual(self._stored_sizes(buf), [self.CAP])
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(2, 0, 0, b"A", self.CAP - 1))
+        self.assertEqual(self._stored_sizes(buf), [self.CAP - 1])
+
+    def test_zero_total_completes_empty_at_once(self):
+        buf = dtlsproto._FragmentBuffer()
+        whole = buf.offer(9, 3, 0, b"", 0)
+        self.assertEqual(whole, dtlsproto._hs_message(9, b"", 3))
+        self.assertEqual(buf._pending, {})
+
+    def test_no_stored_buffer_ever_exceeds_the_cap(self):
+        buf = dtlsproto._FragmentBuffer()
+        for seq, total in enumerate(
+                (0, 1, 100, self.CAP, self.CAP + 1, 16_777_215)):
+            buf.offer(2, seq, 0, b"A", total)
+        for size in self._stored_sizes(buf):
+            self.assertLessEqual(size, self.CAP)
+
+    # -- the number of pending keys ----------------------------
+
+    def test_pending_keys_are_capped(self):
+        buf = dtlsproto._FragmentBuffer()
+        for seq in range(self.MAX_PENDING):
+            self.assertIsNone(buf.offer(2, seq, 0, b"A", 100))
+        self.assertEqual(len(buf._pending), self.MAX_PENDING)
+        # One more distinct key is refused, allocating nothing.
+        self.assertIsNone(
+            buf.offer(2, self.MAX_PENDING, 0, b"A", 100))
+        self.assertEqual(len(buf._pending), self.MAX_PENDING)
+        # A key already held still completes, and completing
+        # it frees its slot for a new key.
+        whole = buf.offer(2, 0, 1, b"B" * 99, 100)
+        self.assertEqual(
+            whole,
+            dtlsproto._hs_message(2, b"A" + b"B" * 99, 0))
+        self.assertIsNone(
+            buf.offer(2, self.MAX_PENDING, 0, b"A", 100))
+        self.assertEqual(len(buf._pending), self.MAX_PENDING)
+
+    # -- a contradicting total for a held key ------------------
+
+    def test_mismatched_total_never_raises(self):
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(2, 1, 0, b"A" * 10, 20))
+        # The pre-fix shape: a fragment past the stored end
+        # under a larger claimed total raised IndexError.
+        self.assertIsNone(buf.offer(2, 1, 25, b"Z", 30))
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(2, 1, 0, b"A" * 10, 30))
+        self.assertIsNone(buf.offer(2, 1, 5, b"Z", 10))
+
+    def test_mismatched_total_destroys_the_buffer(self):
+        body = bytes(range(20))
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(2, 1, 0, body[:10], 20))
+        self.assertIsNone(buf.offer(2, 1, 25, b"Z", 30))
+        self.assertNotIn((2, 1), buf._pending)
+        # The pre-contradiction half is gone: the tail alone
+        # does not complete, and a fresh full offer does.
+        self.assertIsNone(buf.offer(2, 1, 10, body[10:], 20))
+        whole = buf.offer(2, 1, 0, body[:10], 20)
+        self.assertEqual(whole, dtlsproto._hs_message(2, body, 1))
+
+    # -- the key fields: message type and sequence -------------
+
+    def test_message_type_and_sequence_are_separate_keys(self):
+        body = b"0123456789"
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(1, 7, 0, body[:5], 10))
+        self.assertIsNone(buf.offer(2, 7, 0, body[:5], 10))
+        self.assertIsNone(buf.offer(1, 8, 0, body[:5], 10))
+        self.assertEqual(len(buf._pending), 3)
+        whole = buf.offer(2, 7, 5, body[5:], 10)
+        self.assertEqual(whole, dtlsproto._hs_message(2, body, 7))
+        self.assertEqual(len(buf._pending), 2)
+
+    def test_a_completed_key_starts_fresh_with_a_new_total(self):
+        buf = dtlsproto._FragmentBuffer()
+        whole = buf.offer(1, 1, 0, b"abcd", 4)
+        self.assertEqual(whole, dtlsproto._hs_message(1, b"abcd", 1))
+        self.assertIsNone(buf.offer(1, 1, 0, b"Z", 9))
+        self.assertEqual(self._stored_sizes(buf), [9])
+
+    # -- the offset and fragment fields -------------------------
+
+    def test_offset_at_and_past_the_end_lands_nothing(self):
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(1, 1, 4, b"Z", 4))
+        self.assertIsNone(buf.offer(1, 1, 100, b"Z", 4))
+        whole = buf.offer(1, 1, 0, b"abcd", 4)
+        self.assertEqual(whole, dtlsproto._hs_message(1, b"abcd", 1))
+
+    def test_straddling_fragment_is_clipped_at_the_total(self):
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(1, 1, 2, b"cdef", 4))
+        whole = buf.offer(1, 1, 0, b"ab", 4)
+        self.assertEqual(
+            whole, dtlsproto._hs_message(1, b"abcd", 1))
+
+    def test_overlapping_fragments_last_write_wins(self):
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(1, 1, 0, b"ab", 4))
+        whole = buf.offer(1, 1, 1, b"XYZ", 4)
+        self.assertEqual(
+            whole, dtlsproto._hs_message(1, b"aXYZ", 1))
+
+    def test_duplicate_fragment_is_idempotent(self):
+        body = b"0123456789"
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(1, 1, 0, body[:5], 10))
+        self.assertIsNone(buf.offer(1, 1, 0, body[:5], 10))
+        whole = buf.offer(1, 1, 5, body[5:], 10)
+        self.assertEqual(whole, dtlsproto._hs_message(1, body, 1))
+
+    def test_empty_fragment_lands_nothing(self):
+        buf = dtlsproto._FragmentBuffer()
+        self.assertIsNone(buf.offer(1, 1, 0, b"", 4))
+        whole = buf.offer(1, 1, 0, b"abcd", 4)
+        self.assertEqual(whole, dtlsproto._hs_message(1, b"abcd", 1))
+
+    # -- the feed path above the buffer -------------------------
+
+    def test_feed_with_a_huge_claimed_total_stays_quiet(self):
+        # A handshake header claiming the largest 24-bit
+        # total, carrying no fragment bytes at all, fed to
+        # both cores: a list back, no raise, and (behind the
+        # server) nothing held.
+        header = (bytes([1]) + (16_777_215).to_bytes(3, "big")
+                  + (0).to_bytes(2, "big") + (0).to_bytes(3, "big")
+                  + (0).to_bytes(3, "big"))
+        record = (bytes([22]) + b"\xfe\xfd"
+                  + (0).to_bytes(2, "big") + (0).to_bytes(6, "big")
+                  + len(header).to_bytes(2, "big") + header)
+        server = dtlsproto.DtlsServerCore(
+            secret_lookup=dtlsproto.make_secret_lookup(hf.SECRET),
+            hybrid=True)
+        self.assertIsInstance(server.feed(record, ADDR, NOW), list)
+
+
+def _share_value(entries):
+    body = b"".join(
+        g.to_bytes(2, "big") + len(k).to_bytes(2, "big") + k
+        for g, k in entries)
+    return len(body).to_bytes(2, "big") + body
+
+
+def _begin_code_value(value, hybrid=True):
+    """The alert code _ServerSession.begin refuses a hello
+    carrying this key_share extension value with. The
+    pre_shared_key extension is deliberately absent, so a
+    hello that selection accepts is refused for that
+    (missing_extension) and a hello selection refuses is
+    refused at selection (illegal_parameter): the two codes
+    separate the outcomes exactly."""
+    core = dtlsproto.DtlsServerCore(
+        secret_lookup=dtlsproto.make_secret_lookup(hf.SECRET),
+        hybrid=hybrid)
+    session = dtlsproto._ServerSession(core, ADDR)
+    exts = {
+        dtlsproto.EXT_PSK_MODES: bytes(
+            [1, dtlsproto.PSK_MODE_DHE_KE]),
+        dtlsproto.EXT_KEY_SHARE: value,
+    }
+    out = session.begin(
+        b"x" * 80,
+        {"suites": [dtlsproto.SUITE_AES256], "exts": exts},
+        b"\x11" * dtlsproto.HASH_LEN, b"hrr", NOW)
+    assert len(out) == 1 and out[0][0] == dtlsproto.CT_ALERT
+    return out[0][14]
+
+
+def _begin_code(entries, hybrid=True):
+    return _begin_code_value(_share_value(entries), hybrid)
 
 
 class FuzzSmokeTest(unittest.TestCase):

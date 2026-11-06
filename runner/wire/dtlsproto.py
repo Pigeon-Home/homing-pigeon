@@ -571,21 +571,56 @@ def _parse_handshake(data):
 
 class _FragmentBuffer:
     """Reassembles fragmented handshake messages (this profile
-    never sends fragments; a peer's are tolerated)."""
+    never sends fragments; a peer's are tolerated).
+
+    Bounded, like every other reassembly in the suite: a
+    fragment header's claimed total is not trusted into an
+    allocation past MAX_TOTAL_BYTES, at most MAX_PENDING
+    messages are held at once, and a fragment whose claimed
+    total contradicts the total its message started with
+    destroys that message's buffer (the carriage's
+    contradiction discipline, dtls_mailbox.FlightReassembler).
+    Each refusal is the buffer's own incomplete signal, None.
+    Before these bounds, one empty fragment claiming the
+    largest 24-bit total (16,777,215) forced two allocations
+    of that size per (message type, sequence) key, the keys
+    themselves were uncounted, and a contradicting total
+    could write past the stored buffer and raise IndexError
+    out of the handshake path."""
+
+    # The largest total a buffer will assemble: 256 KB, the
+    # size the suite already treats as the largest thing
+    # that travels whole (the local envelope ceiling and
+    # dtls_mailbox.DEFAULT_MAX_DATAGRAM_BYTES). The largest
+    # handshake message this profile sends, the hybrid
+    # ClientHello, is about 1.4 KB.
+    MAX_TOTAL_BYTES = 256 * 1024
+    # The most messages held at once: the carriage
+    # reassembler's own transfer bound.
+    MAX_PENDING = 64
 
     def __init__(self):
         self._pending = {}
 
     def offer(self, msg_type, msg_seq, frag_off, frag, total):
+        if total < 0 or total > self.MAX_TOTAL_BYTES:
+            return None
         key = (msg_type, msg_seq)
-        buf, have = self._pending.get(
-            key, (bytearray(total), bytearray(total)))
+        entry = self._pending.get(key)
+        if entry is None:
+            if len(self._pending) >= self.MAX_PENDING:
+                return None
+            entry = (bytearray(total), bytearray(total), total)
+            self._pending[key] = entry
+        buf, have, want = entry
+        if total != want:
+            del self._pending[key]
+            return None
         for i, byte in enumerate(frag):
             pos = frag_off + i
             if pos < total:
                 buf[pos] = byte
                 have[pos] = 1
-        self._pending[key] = (buf, have)
         if all(have):
             del self._pending[key]
             return _hs_message(msg_type, bytes(buf), msg_seq)
