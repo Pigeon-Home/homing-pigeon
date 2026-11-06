@@ -5062,3 +5062,617 @@ test("shotgun36 lifecycle: a day filled by job bytes still accepts results on th
   assert.equal(sg36Map(env).get(`quota:resday:${Math.floor(SG36_T0 / SG36_DAY)}`), sg36Bytes(result));
   assert.equal(sg36Day(env, SG36_T0), cap);
 });
+
+// ---------------------------------------------------------------------
+// Shotgun family for queue item 37: the storage budget counted
+// zero instead of the lease timestamp (fixed 355ab824,
+// 31-Oct-2026). Before a job is stored, the queue budgets the
+// widest record that job will ever become -- key plus JSON value
+// -- against the 2 MB the object can store. A pull replaces
+// leased_until 0 with a millisecond timestamp, and the
+// dead-letter copy adds dead_at on top. The budget sized that
+// copy with leased_until still 0, one digit instead of
+// thirteen, so a job that measured as fitting was accepted and
+// the store then threw on the way to the dead list, at the
+// worst moment: a job already pulled five times. The fix
+// budgets with a full-width timestamp (and the widest form now
+// also carries the hand and requeued_at, which later fixes
+// added), so a body the old measure would have stored is a 413
+// at submit time instead. This family scattershots that budget:
+// the exported jobStoredBytes measured directly (its now
+// floor, its digit-width arithmetic on every field, its exact
+// distance from the zero-lease reading), the submit route at
+// the exact ceiling the budget draws (at it, 1 over it, in the
+// gap the old measure would have accepted), and the real
+// records a job becomes -- enqueued, leased, dead, requeued,
+// dead again -- each shown to fit inside the budget quoted
+// when it was accepted. One regression test was never going to
+// be enough for a bug that took days of CPU to find.
+//
+// Proof of work. The unit tests are the 50 tests registered
+// below: 12 direct budget seams, 10 route boundary tests, 8
+// real-record tests, 8 bookend sweeps, 6 run-length sweeps and
+// 6 lifecycle edges. Per-field enumeration: the budgeted
+// record is fielded, and each field's width is pinned -- id
+// (2 bytes per character: the key and the value), envelope
+// (its JSON bytes, escapes included), size (its digit width at
+// 9 / 10, 99 / 100 and the powers of ten), attempts (budgeted
+// at the maximum), leased_until (13 digits against the old 1,
+// the exact 12-byte distance), enqueued_at, requeued_at and
+// dead_at (full-width stamps), and hand (budgeted at the
+// widest integer JSON keeps exact). Bookends: every printable
+// ASCII symbol (all 32 punctuation characters) at the front
+// AND the back of the budgeted text, symbol-only text, NUL /
+// tab / CR / LF and control bytes at their JSON escape widths,
+// multibyte and emoji bookends, and the safe id symbols
+// bookending the id. Run lengths: runs at 1, 5, 10 and 100
+// with the size-digit crossings, a run of 2-byte characters,
+// position blindness, the powers of ten, and id runs at the
+// 128 / 129 boundary. The fuzzing was executed, not just the
+// tests written:
+// runner/tools/de_dust_corpus.py grow --target cloud
+// --rounds 400 --seed 20261138, run locally against the
+// banked cloud corpus (113 entries). Result: 400 rounds,
+// 0 crashes, 0 slow, arcs unchanged at 184, slowest try
+// 2173 ms -- the zero-lease budget did not recur. The
+// grow's bookkeeping writes were reverted and are not banked
+// (banking is the rigs' hourly job); this record is the run's proof. For the .mjs file the
+// Python skip registry does not apply, and this family adds no
+// skips. None of this is exotic: it is combinatorics --
+// systematically trying the combinations a hand-written list
+// would never reach, then pinning each answer as a test.
+
+const SG37_T0 = 1_700_000_000_000;
+const SG37_FAR = 9_999_999_999_999;
+const SG37_PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+const sg37Bytes = (t) => new TextEncoder().encode(t).length;
+const SG37_BIG = { jobs_per_hour: 600, bytes_per_day: 256 * 1024 * 1024 };
+
+async function sg37Env(quota, clock) {
+  const env = makeEnv({ quota, clock });
+  await addTenant(env);
+  env.TENANT_QUEUE.get("alice");
+  return env;
+}
+
+function sg37Map(env) {
+  return env.objects.get("alice")?.state.storage.map;
+}
+
+async function sg37Post(env, text, token = SI, kind = "jobs", tail = "") {
+  return worker.fetch(req(`/t/alice/${kind}${tail}`, {
+    method: "POST", token: `Bearer ${token}`, body: text,
+  }), env);
+}
+
+// The widest record the budget plans for, field for field, at a
+// full-width stamp -- the shape the fixed budget measures.
+function sg37Widest(id, text, over = {}) {
+  return {
+    id, envelope: text, size: sg37Bytes(text),
+    attempts: 5, leased_until: SG37_FAR, enqueued_at: SG37_FAR,
+    hand: Number.MAX_SAFE_INTEGER, requeued_at: SG37_FAR, dead_at: SG37_FAR,
+    ...over,
+  };
+}
+
+// Solve the largest script run whose envelope still fits the
+// budget for this id, by measuring the budget itself.
+async function sg37Solve(id, char, now) {
+  const per = sg37Bytes(char);
+  let n = 0;
+  let text = await signedJob(id, SECRET, "");
+  let b = jobStoredBytes(id, text, now);
+  n = Math.floor((DO_VALUE_MAX - b) / per);
+  text = await signedJob(id, SECRET, char.repeat(n));
+  b = jobStoredBytes(id, text, now);
+  while (b > DO_VALUE_MAX) {
+    n -= Math.ceil((b - DO_VALUE_MAX) / per);
+    text = await signedJob(id, SECRET, char.repeat(n));
+    b = jobStoredBytes(id, text, now);
+  }
+  for (;;) {
+    const t2 = await signedJob(id, SECRET, char.repeat(n + 1));
+    const b2 = jobStoredBytes(id, t2, now);
+    if (b2 > DO_VALUE_MAX) break;
+    n += 1; text = t2; b = b2;
+  }
+  return { n, text, bytes: b };
+}
+
+async function sg37Pull(env) {
+  return worker.fetch(req("/t/alice/jobs", { token: `Bearer ${RUNNER}` }), env);
+}
+
+// Lease a lone job to death: 5 pulls as its lease lapses, then
+// the pull that moves it to the dead list.
+async function sg37Kill(env, tick) {
+  for (let i = 0; i < 5; i++) {
+    const r = await sg37Pull(env);
+    assert.equal(r.status, 200);
+    tick(1001);
+  }
+  const r = await sg37Pull(env);
+  assert.equal(r.status, 204);
+}
+
+// -- 12 direct budget seams ----------------------------------------------
+
+test("shotgun37: the budget passes the zero-lease reading by at least the timestamp's extra digits", async () => {
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const old = {
+    id: "j1", envelope: text, size: text.length,
+    attempts: 5, leased_until: 0, enqueued_at: SG37_T0, dead_at: SG37_T0,
+  };
+  const zero = storagePairBytes(`dlq:j1`, old);
+  assert.ok(jobStoredBytes("j1", text, SG37_T0) > zero + 12,
+    `budget ${jobStoredBytes("j1", text, SG37_T0)} vs zero-lease ${zero}`);
+});
+
+test("shotgun37: the budget does not move with now at or below the full-width stamp", async () => {
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const at = (now) => jobStoredBytes("j1", text, now);
+  const want = at(SG37_FAR);
+  for (const now of [0, 1, SG37_T0, SG37_FAR - 1]) {
+    assert.equal(at(now), want, `now=${now}`);
+  }
+});
+
+test("shotgun37: past the stamp's width the budget grows by one digit per stamp field -- 4 in the dead form", async () => {
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const beyond = jobStoredBytes("j1", text, SG37_FAR + 1);
+  assert.equal(beyond - jobStoredBytes("j1", text, SG37_FAR), 4);
+});
+
+test("shotgun37: junk now values read as zero and stay on the floor -- NaN, undefined, negative, a word, a numeric string", async () => {
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const want = jobStoredBytes("j1", text, 0);
+  for (const now of [NaN, undefined, -5, "abc", "1700000000000"]) {
+    assert.equal(jobStoredBytes("j1", text, now), want, `now=${String(now)}`);
+  }
+});
+
+test("shotgun37 field id: each extra id character costs exactly 2 budget bytes -- the key and the value", async () => {
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const b = (id) => jobStoredBytes(id, text, SG37_T0);
+  assert.equal(b("aa") - b("a"), 2);
+  assert.equal(b("aaa") - b("aa"), 2);
+  assert.equal(b("a".repeat(50)) - b("a"), 98);
+});
+
+test("shotgun37 field size: the size field's own digit width is budgeted at the 9/10 and 99/100 crossings", async () => {
+  const b = (t) => jobStoredBytes("j1", t, SG37_T0);
+  assert.equal(b("x".repeat(9)) - b("x".repeat(8)), 1);
+  assert.equal(b("x".repeat(10)) - b("x".repeat(9)), 2);
+  assert.equal(b("x".repeat(100)) - b("x".repeat(99)), 2);
+});
+
+test("shotgun37 field envelope: multibyte text budgets its UTF-8 bytes, and escape text budgets as written", async () => {
+  const b = (t) => jobStoredBytes("j1", t, SG37_T0);
+  assert.equal(b("é") - b("e"), 1);
+  assert.equal(b("\u{1F600}") - b("ee"), 2);
+  // The 6 escape characters, with the backslash itself escaped
+  // in the stored JSON: 7 written bytes against the accent's 2.
+  assert.equal(b("\\u00e9") - b("é"), 5);
+});
+
+test("shotgun37 field envelope: characters JSON must escape budget their escape width -- quote, backslash, newline, a control byte", async () => {
+  const b = (t) => jobStoredBytes("j1", t, SG37_T0);
+  assert.equal(b(`"`) - b("a"), 1);
+  assert.equal(b("\\") - b("a"), 1);
+  assert.equal(b("\n") - b("a"), 1);
+  assert.equal(b("\u0001") - b("a"), 5);
+});
+
+test("shotgun37: the budget is strictly increasing in the text, length by length from 0 to 50", async () => {
+  let prev = -1;
+  for (let n = 0; n <= 50; n++) {
+    const b = jobStoredBytes("j1", "x".repeat(n), SG37_T0);
+    assert.ok(b > prev, `length ${n}`);
+    prev = b;
+  }
+});
+
+test("shotgun37: the budget is exactly the widest record's pair bytes, and wider than the requeue form", async () => {
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const again = {
+    id: "j1", envelope: text, size: sg37Bytes(text),
+    attempts: 0, leased_until: 0, enqueued_at: SG37_FAR,
+    hand: Number.MAX_SAFE_INTEGER, requeued_at: SG37_FAR,
+  };
+  assert.equal(jobStoredBytes("j1", text, SG37_T0), storagePairBytes(`dlq:j1`, sg37Widest("j1", text)));
+  assert.ok(jobStoredBytes("j1", text, SG37_T0) > storagePairBytes(`job:j1`, again));
+});
+
+test("shotgun37 field leased_until: zeroing the lease in the widest record drops the budget by exactly 12 -- the fix's whole distance", async () => {
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const zeroed = storagePairBytes(`dlq:j1`, sg37Widest("j1", text, { leased_until: 0 }));
+  assert.equal(jobStoredBytes("j1", text, SG37_T0) - zeroed, 12);
+});
+
+test("shotgun37: a result's pair carries no lease width -- the same text budgets far wider as a job", async () => {
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const resultPair = storagePairBytes(`result:j1`, { id: "j1", envelope: text, at: SG37_T0 });
+  assert.ok(jobStoredBytes("j1", text, SG37_T0) > resultPair + 100);
+});
+
+// -- 10 route boundary tests ------------------------------------------------
+
+test("shotgun37 route: a job at the exact budget ceiling is accepted and stored", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const { text, bytes } = await sg37Solve("j1", "x", SG37_T0);
+  assert.ok(bytes <= DO_VALUE_MAX);
+  assert.equal((await sg37Post(env, text)).status, 202);
+  assert.equal(sg37Map(env).get("job:j1").envelope, text);
+});
+
+test("shotgun37 route: 1 character past the ceiling is a 413 naming the storage limit, and nothing is stored or billed", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const { n } = await sg37Solve("j1", "x", SG37_T0);
+  const over = await signedJob("j1", SECRET, "x".repeat(n + 1));
+  const r = await sg37Post(env, over);
+  assert.equal(r.status, 413);
+  assert.equal((await r.json()).error, "envelope over the storage limit");
+  assert.equal(sg37Map(env).size, 0);
+});
+
+test("shotgun37 route: a body the zero-lease measure would have stored is a 413 -- the regression shape itself", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const { n } = await sg37Solve("j1", "x", SG37_T0);
+  const over = await signedJob("j1", SECRET, "x".repeat(n + 1));
+  const zeroed = storagePairBytes(`dlq:j1`, sg37Widest("j1", over, { leased_until: 0 }));
+  assert.ok(zeroed <= DO_VALUE_MAX, "the old measure would have stored it");
+  assert.ok(jobStoredBytes("j1", over, SG37_T0) > DO_VALUE_MAX);
+  assert.equal((await sg37Post(env, over)).status, 413);
+});
+
+test("shotgun37 route: the at-ceiling job's own stored pair fits the limit it was budgeted against", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const { text } = await sg37Solve("j1", "x", SG37_T0);
+  assert.equal((await sg37Post(env, text)).status, 202);
+  const rec = sg37Map(env).get("job:j1");
+  assert.ok(storagePairBytes("job:j1", rec) <= DO_VALUE_MAX);
+});
+
+test("shotgun37 route: the at-ceiling job survives the whole road to the dead list, and its dead pair still fits", async () => {
+  let now = SG37_T0;
+  const env = await sg37Env(SG37_BIG, () => now);
+  const { text } = await sg37Solve("j1", "x", SG37_T0);
+  assert.equal((await sg37Post(env, text)).status, 202);
+  await sg37Kill(env, (ms) => { now += ms; });
+  const dead = sg37Map(env).get("dlq:j1");
+  assert.ok(dead, "the job reached the dead list");
+  assert.ok(storagePairBytes("dlq:j1", dead) <= DO_VALUE_MAX,
+    `dead pair ${storagePairBytes("dlq:j1", dead)} over the limit`);
+});
+
+test("shotgun37 route: a duplicate submit of the at-ceiling job is a 200, not a fresh budget refusal", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const { text } = await sg37Solve("j1", "x", SG37_T0);
+  assert.equal((await sg37Post(env, text)).status, 202);
+  const r = await sg37Post(env, text);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).duplicate, true);
+});
+
+test("shotgun37 route: the budget's 413 answers before the quota's 429 -- an over-budget job at a tiny byte cap is a 413", async () => {
+  const env = await sg37Env({ jobs_per_hour: 600, bytes_per_day: 10 }, () => SG37_T0);
+  const { n } = await sg37Solve("j1", "x", SG37_T0);
+  const over = await signedJob("j1", SECRET, "x".repeat(n + 1));
+  const r = await sg37Post(env, over);
+  assert.equal(r.status, 413);
+  assert.ok(!sg37Map(env).has("quota:exceeded"));
+});
+
+test("shotgun37 route: a budget 413 tallies nothing -- no quota key of any kind is written", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const { n } = await sg37Solve("j1", "x", SG37_T0);
+  const over = await signedJob("j1", SECRET, "x".repeat(n + 1));
+  assert.equal((await sg37Post(env, over)).status, 413);
+  assert.equal(sg37Map(env).size, 0);
+});
+
+test("shotgun37 route: a 128-character id lowers the ceiling, and its own ceiling still lands", async () => {
+  const id = "a".repeat(128);
+  const small = await sg37Solve("a", "x", SG37_T0);
+  const big = await sg37Solve(id, "x", SG37_T0);
+  assert.ok(big.n < small.n, "the longer id leaves less room");
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  assert.equal((await sg37Post(env, big.text)).status, 202);
+  const over = await signedJob(id, SECRET, "x".repeat(big.n + 1));
+  const envB = await sg37Env(SG37_BIG, () => SG37_T0);
+  assert.equal((await sg37Post(envB, over)).status, 413);
+});
+
+test("shotgun37 route: at a far-future clock the ceiling drops by the stamp's extra digit, and the route follows it", async () => {
+  const future = SG37_FAR + 1;
+  const std = await sg37Solve("j1", "x", SG37_T0);
+  const far = await sg37Solve("j1", "x", future);
+  assert.equal(std.bytes - far.bytes <= 4 && far.n < std.n, true);
+  const env = await sg37Env(SG37_BIG, () => future);
+  assert.equal((await sg37Post(env, far.text)).status, 202);
+  const envB = await sg37Env(SG37_BIG, () => future);
+  assert.equal((await sg37Post(envB, std.text)).status, 413);
+});
+
+// -- 8 real-record tests -------------------------------------------------------
+
+test("shotgun37 record: an enqueued job's record is exactly id, envelope, size, enqueued_at, leased_until and attempts", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const text = await signedJob("j1", SECRET, "echo hi");
+  assert.equal((await sg37Post(env, text)).status, 202);
+  const rec = sg37Map(env).get("job:j1");
+  assert.deepEqual(Object.keys(rec).sort(),
+    ["attempts", "enqueued_at", "envelope", "id", "leased_until", "size"]);
+  assert.equal(rec.leased_until, 0);
+  assert.equal(rec.attempts, 0);
+  assert.equal(rec.enqueued_at, SG37_T0);
+  assert.equal(rec.size, sg37Bytes(text));
+});
+
+test("shotgun37 record: a pull stamps a full-width leased_until and the first hand and attempt", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  assert.equal((await sg37Post(env, await signedJob("j1", SECRET, "echo"))).status, 202);
+  assert.equal((await sg37Pull(env)).status, 200);
+  const rec = sg37Map(env).get("job:j1");
+  assert.equal(rec.leased_until, SG37_T0 + 1000);
+  assert.equal(String(rec.leased_until).length, 13);
+  assert.equal(rec.hand, 1);
+  assert.equal(rec.attempts, 1);
+});
+
+test("shotgun37 record: the dead record carries the last full-width lease and gains dead_at, nothing else", async () => {
+  let now = SG37_T0;
+  const env = await sg37Env(SG37_BIG, () => now);
+  assert.equal((await sg37Post(env, await signedJob("j1", SECRET, "echo"))).status, 202);
+  await sg37Kill(env, (ms) => { now += ms; });
+  const dead = sg37Map(env).get("dlq:j1");
+  assert.deepEqual(Object.keys(dead).sort(),
+    ["attempts", "dead_at", "enqueued_at", "envelope", "hand", "id", "leased_until", "size"]);
+  assert.equal(dead.attempts, 5);
+  assert.equal(dead.dead_at, now);
+  assert.equal(String(dead.leased_until).length, 13);
+  assert.ok(dead.leased_until > SG37_T0);
+});
+
+test("shotgun37 record: a requeue resets the lease and attempts, stamps requeued_at and bumps the hand", async () => {
+  let now = SG37_T0;
+  const env = await sg37Env(SG37_BIG, () => now);
+  assert.equal((await sg37Post(env, await signedJob("j1", SECRET, "echo"))).status, 202);
+  await sg37Kill(env, (ms) => { now += ms; });
+  const r = await sg37Post(env, undefined, SI, "dlq", "/j1/requeue");
+  assert.equal(r.status, 202);
+  const rec = sg37Map(env).get("job:j1");
+  assert.equal(rec.attempts, 0);
+  assert.equal(rec.leased_until, 0);
+  assert.equal(rec.requeued_at, now);
+  assert.equal(rec.hand, 6);
+  assert.ok(!("dead_at" in rec));
+  assert.ok(!sg37Map(env).has("dlq:j1"));
+});
+
+test("shotgun37 record: dying a second time after a requeue gives the widest real record -- requeued_at and dead_at together, inside the budget", async () => {
+  let now = SG37_T0;
+  const env = await sg37Env(SG37_BIG, () => now);
+  const text = await signedJob("j1", SECRET, "echo");
+  assert.equal((await sg37Post(env, text)).status, 202);
+  await sg37Kill(env, (ms) => { now += ms; });
+  assert.equal((await sg37Post(env, undefined, SI, "dlq", "/j1/requeue")).status, 202);
+  await sg37Kill(env, (ms) => { now += ms; });
+  const dead = sg37Map(env).get("dlq:j1");
+  assert.ok("requeued_at" in dead && "dead_at" in dead);
+  assert.ok(storagePairBytes("dlq:j1", dead) <= jobStoredBytes("j1", text, SG37_T0),
+    "the widest real record outgrew the budget quoted at submit");
+});
+
+test("shotgun37 record: the stored size of a multibyte envelope is its byte count, and the budget priced the same bytes", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const text = await signedJob("j1", SECRET, "café \u{1F600}");
+  assert.equal((await sg37Post(env, text)).status, 202);
+  const rec = sg37Map(env).get("job:j1");
+  assert.equal(rec.size, sg37Bytes(text));
+  assert.ok(rec.size > text.length);
+});
+
+test("shotgun37 record: a lease stamped at a far-future time still projects inside the budget for that time", async () => {
+  const future = SG37_FAR + 1;
+  const env = await sg37Env(SG37_BIG, () => future);
+  const text = await signedJob("j1", SECRET, "echo");
+  assert.equal((await sg37Post(env, text)).status, 202);
+  assert.equal((await sg37Pull(env)).status, 200);
+  const rec = sg37Map(env).get("job:j1");
+  assert.equal(String(rec.leased_until).length, 14);
+  const projected = { ...rec, attempts: 5, dead_at: future, hand: Number.MAX_SAFE_INTEGER, requeued_at: future };
+  assert.ok(storagePairBytes("dlq:j1", projected) <= jobStoredBytes("j1", text, future));
+});
+
+test("shotgun37 record: the hand grows by one per pull and every real hand stays far inside the budgeted width", async () => {
+  let now = SG37_T0;
+  const env = await sg37Env(SG37_BIG, () => now);
+  const text = await signedJob("j1", SECRET, "echo");
+  assert.equal((await sg37Post(env, text)).status, 202);
+  for (let want = 1; want <= 3; want++) {
+    assert.equal((await sg37Pull(env)).status, 200);
+    const rec = sg37Map(env).get("job:j1");
+    assert.equal(rec.hand, want);
+    assert.ok(storagePairBytes("job:j1", rec) < jobStoredBytes("j1", text, SG37_T0));
+    now += 1001;
+  }
+});
+
+// -- 8 bookend sweeps -------------------------------------------------------------
+
+test("shotgun37 bookends: every ASCII symbol at the front of the text raises the budget by its written width", async () => {
+  const base = jobStoredBytes("j1", "echo", SG37_T0);
+  for (const s of SG37_PUNCT) {
+    const want = s === '"' || s === "\\" ? 2 : 1;
+    assert.equal(jobStoredBytes("j1", `${s}echo`, SG37_T0) - base, want, s);
+  }
+});
+
+test("shotgun37 bookends: every ASCII symbol at the back of the text raises the budget by its written width", async () => {
+  const base = jobStoredBytes("j1", "echo", SG37_T0);
+  for (const s of SG37_PUNCT) {
+    const want = s === '"' || s === "\\" ? 2 : 1;
+    assert.equal(jobStoredBytes("j1", `echo${s}`, SG37_T0) - base, want, s);
+  }
+});
+
+test("shotgun37 bookends: matched symbol pairs around the text raise the budget by both widths", async () => {
+  const base = jobStoredBytes("j1", "echo", SG37_T0);
+  for (const s of SG37_PUNCT) {
+    const w = s === '"' || s === "\\" ? 2 : 1;
+    assert.equal(jobStoredBytes("j1", `${s}echo${s}`, SG37_T0) - base, 2 * w, s);
+  }
+});
+
+test("shotgun37 bookends: a symbol-only text budgets 34 written bytes and the size field's extra digit", async () => {
+  const b = (t) => jobStoredBytes("j1", t, SG37_T0);
+  assert.equal(b(SG37_PUNCT) - b(""), 35);
+});
+
+test("shotgun37 bookends: NUL, tab, CR, LF and a control byte in the text budget their JSON escape widths", async () => {
+  const b = (t) => jobStoredBytes("j1", t, SG37_T0);
+  assert.equal(b("\n") - b(""), 2);
+  assert.equal(b("\t") - b(""), 2);
+  assert.equal(b("\r") - b(""), 2);
+  assert.equal(b("\u0000") - b(""), 6);
+  assert.equal(b("\u0001") - b(""), 6);
+});
+
+test("shotgun37 bookends: 2-byte bookends around the text raise the budget by 2 a side", async () => {
+  const base = jobStoredBytes("j1", "echo", SG37_T0);
+  assert.equal(jobStoredBytes("j1", "éecho", SG37_T0) - base, 2);
+  assert.equal(jobStoredBytes("j1", "echoé", SG37_T0) - base, 2);
+  assert.equal(jobStoredBytes("j1", "éechoé", SG37_T0) - base, 4);
+});
+
+test("shotgun37 bookends: a 4-byte emoji bookend raises the budget by 4", async () => {
+  const base = jobStoredBytes("j1", "echo", SG37_T0);
+  assert.equal(jobStoredBytes("j1", "\u{1F600}echo", SG37_T0) - base, 4);
+  assert.equal(jobStoredBytes("j1", "echo\u{1F600}", SG37_T0) - base, 4);
+});
+
+test("shotgun37 bookends: the safe id symbols bookending the id raise the budget by 2 a character", async () => {
+  const text = "echo";
+  const base = jobStoredBytes("j1", text, SG37_T0);
+  for (const s of [".", "-", "_"]) {
+    assert.equal(jobStoredBytes(`${s}j1${s}`, text, SG37_T0) - base, 4, s);
+  }
+});
+
+// -- 6 run-length sweeps --------------------------------------------------------------
+
+test("shotgun37 runs: runs at 1, 5, 10 and 100 grow by their length plus the size digit at 10 and at 100", async () => {
+  const b = (n) => jobStoredBytes("j1", "x".repeat(n), SG37_T0);
+  assert.equal(b(5) - b(1), 4);
+  assert.equal(b(10) - b(5), 6);
+  assert.equal(b(100) - b(10), 91);
+});
+
+test("shotgun37 runs: a run of 10 2-byte characters raises the budget by 21 -- 20 bytes and the size digit", async () => {
+  const b = (t) => jobStoredBytes("j1", t, SG37_T0);
+  assert.equal(b("é".repeat(10)) - b(""), 21);
+});
+
+test("shotgun37 runs: the budget is position-blind -- the odd character at the front, the back and the middle prices the same", async () => {
+  const run = "a".repeat(10);
+  const front = jobStoredBytes("j1", `é${run}`, SG37_T0);
+  const back = jobStoredBytes("j1", `${run}é`, SG37_T0);
+  const middle = jobStoredBytes("j1", `${run.slice(0, 5)}é${run.slice(5)}`, SG37_T0);
+  assert.equal(front, back);
+  assert.equal(back, middle);
+});
+
+test("shotgun37 runs: the powers of ten grow by 10, 91, 901 and 9001 as the size field widens", async () => {
+  const b = (n) => jobStoredBytes("j1", "x".repeat(n), SG37_T0);
+  assert.equal(b(10) - b(1), 10);
+  assert.equal(b(100) - b(10), 91);
+  assert.equal(b(1000) - b(100), 901);
+  assert.equal(b(10000) - b(1000), 9001);
+});
+
+test("shotgun37 runs: an id run to 129 characters still budgets directly, and the route refuses it as an unsafe id, not a 413", async () => {
+  const text = "echo";
+  assert.equal(jobStoredBytes("a".repeat(129), text, SG37_T0) - jobStoredBytes("a".repeat(128), text, SG37_T0), 2);
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const id = "a".repeat(129);
+  const body = await signedJob(id, SECRET, "echo");
+  const r = await sg37Post(env, body);
+  assert.equal(r.status, 400);
+  assert.equal((await r.json()).error, "job id is not a safe id");
+});
+
+test("shotgun37 runs: the same measurement repeated 10 times, interleaved with other ids, never drifts", async () => {
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const want = jobStoredBytes("j1", text, SG37_T0);
+  for (let i = 0; i < 10; i++) {
+    jobStoredBytes(`other${i}`, text, SG37_T0);
+    assert.equal(jobStoredBytes("j1", text, SG37_T0), want);
+  }
+});
+
+// -- 6 lifecycle edges ------------------------------------------------------------------
+
+test("shotgun37 lifecycle: one tenant's at-ceiling job does not move another tenant's budget", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  await addTenant(env, "bob", { si: BOB_SI, runner: BOB_RUNNER, secret: BOB_SECRET });
+  const { text } = await sg37Solve("j1", "x", SG37_T0);
+  assert.equal((await sg37Post(env, text)).status, 202);
+  const r = await worker.fetch(req("/t/bob/jobs", {
+    method: "POST", token: `Bearer ${BOB_SI}`, body: await signedJob("j1", BOB_SECRET, "echo"),
+  }), env);
+  assert.equal(r.status, 202);
+});
+
+test("shotgun37 lifecycle: a job inside the budget but over the byte quota is a 429 -- the two gates are separate", async () => {
+  const text = await signedJob("j1", SECRET, "echo hi");
+  const env = await sg37Env({ jobs_per_hour: 600, bytes_per_day: 10 }, () => SG37_T0);
+  const r = await sg37Post(env, text);
+  assert.equal(r.status, 429);
+  assert.equal(sg37Map(env).get("quota:exceeded"), 1);
+  assert.ok(!sg37Map(env).has("job:j1"));
+});
+
+test("shotgun37 lifecycle: an at-ceiling dead job requeues whole -- the requeue path trusts the budget already paid", async () => {
+  let now = SG37_T0;
+  const env = await sg37Env(SG37_BIG, () => now);
+  const { text } = await sg37Solve("j1", "x", SG37_T0);
+  assert.equal((await sg37Post(env, text)).status, 202);
+  await sg37Kill(env, (ms) => { now += ms; });
+  const r = await sg37Post(env, undefined, SI, "dlq", "/j1/requeue");
+  assert.equal(r.status, 202);
+  assert.equal(sg37Map(env).get("job:j1").envelope, text);
+});
+
+test("shotgun37 lifecycle: the full cycle at the ceiling -- death, requeue, death again -- keeps every dead pair inside the limit", async () => {
+  let now = SG37_T0;
+  const env = await sg37Env(SG37_BIG, () => now);
+  const { text } = await sg37Solve("j1", "x", SG37_T0);
+  assert.equal((await sg37Post(env, text)).status, 202);
+  await sg37Kill(env, (ms) => { now += ms; });
+  assert.equal((await sg37Post(env, undefined, SI, "dlq", "/j1/requeue")).status, 202);
+  await sg37Kill(env, (ms) => { now += ms; });
+  const dead = sg37Map(env).get("dlq:j1");
+  assert.ok(dead);
+  assert.ok("requeued_at" in dead && "dead_at" in dead);
+  assert.ok(storagePairBytes("dlq:j1", dead) <= DO_VALUE_MAX);
+});
+
+test("shotgun37 lifecycle: a multibyte ceiling -- the largest run of 2-byte characters lands, 1 more character is a 413", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const { n, text } = await sg37Solve("j1", "é", SG37_T0);
+  assert.equal((await sg37Post(env, text)).status, 202);
+  const over = await signedJob("j1", SECRET, "é".repeat(n + 1));
+  const envB = await sg37Env(SG37_BIG, () => SG37_T0);
+  assert.equal((await sg37Post(envB, over)).status, 413);
+});
+
+test("shotgun37 lifecycle: a 413 leaves no tombstone -- the same id resubmitted at the ceiling lands", async () => {
+  const env = await sg37Env(SG37_BIG, () => SG37_T0);
+  const { n, text } = await sg37Solve("j1", "x", SG37_T0);
+  const over = await signedJob("j1", SECRET, "x".repeat(n + 1));
+  assert.equal((await sg37Post(env, over)).status, 413);
+  assert.equal((await sg37Post(env, text)).status, 202);
+  assert.equal(sg37Map(env).get("job:j1").envelope, text);
+});
