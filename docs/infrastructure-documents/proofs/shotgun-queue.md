@@ -1486,7 +1486,27 @@ Applied to every item on this queue, item 1 included:
 - Fixed: f02356a2, 8d9e9102 (27-Oct-2026)
 - Area: runner/ops/queries.py and the doors
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (QueryDoorShotgunTest in
+  test_q103_query_door.py, the file where the first fix's own
+  tests live; the second fix's seen-key leg is pinned there at
+  the same door): owner shapes in the record (missing, empty
+  and every non-text type), policy entries under every name
+  of a key at every door, freshness shapes of every kind, and
+  the seen-key leg end to end. The two Q103 files run green
+  (71 tests across both files, 0 skipped), no live bug
+  exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  (the record's key field, the key_policies entry's name and
+  allowed_kinds, the deny flag, the query's v, issued_at,
+  key_id and query_id fields, and every door in the generated
+  check_door_policy tests) and the repeated-ask run lengths
+  are carried in the class docstring in the repo. Fuzz
+  executed: runner/tools/de_dust_corpus.py grow --target
+  query --rounds 400 --seed 20261153, run locally against the
+  banked query corpus (167 entries). Result: 400 rounds,
+  0 crashes, 0 slow, arcs unchanged at 903, slowest try
+  9214 ms. The grow's bookkeeping writes were reverted and are
+  not banked (banking is the rigs' hourly job).
 
 ### 53. Q90–Q93: query-target crash families filed from grows 12–15
 - Filed: 27-Oct-2026 morning; closed inside the Oct 27 query-door and
