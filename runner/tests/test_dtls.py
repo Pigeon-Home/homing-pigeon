@@ -1304,7 +1304,7 @@ def _supervised_cfg(tmp, port):
 
 
 class SupervisedDtlsRoundTripTest(unittest.TestCase):
-    def _run_cli(self, cfg, tmp, seen_path, script_text, timeout=60):
+    def _run_cli(self, cfg, tmp, seen_path, script_text, timeout=150):
         script = os.path.join(tmp, "job.sh")
         with open(script, "w", encoding="utf-8") as f:
             f.write(script_text)
@@ -1315,7 +1315,16 @@ class SupervisedDtlsRoundTripTest(unittest.TestCase):
              "--port", str(cfg["transport_dtls"]["port"]),
              "--secret", SECRET, "--kind", "exec",
              "--script-file", script, "--cleartext",
-             "--wait", "45"],
+             # The sender's --wait is its whole budget, the
+             # handshake included, and the handshake's first
+             # retransmission waits 2 poll periods by design
+             # (the Section 7.1 timers): on a loaded CI host a
+             # single lost datagram costs most of a short
+             # budget, and the 3.15.17.169 macOS leg timed out
+             # at 45 s with the round trip otherwise healthy.
+             # The budget is sized for that loss, and the
+             # communicate ceiling below stays finite past it.
+             "--wait", "120"],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True)
         deadline = time.monotonic() + timeout
@@ -1324,7 +1333,7 @@ class SupervisedDtlsRoundTripTest(unittest.TestCase):
             if proc.poll() is not None:
                 break
             time.sleep(0.1)
-        out, err = proc.communicate(timeout=10)
+        out, err = proc.communicate(timeout=30)
         return proc.returncode, out, err
 
     def test_exec_job_over_dtls_and_extension_restart(self):
