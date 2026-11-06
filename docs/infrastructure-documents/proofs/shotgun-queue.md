@@ -1244,7 +1244,36 @@ Applied to every item on this queue, item 1 included:
 - Existing tests: test_windows_platform_proofs.py JobUser tests
   (10 of the file's 20)
 - Target: up to 50 new tests
-- Status: queued
+- Status: done — 50 new tests (JobUserEnforceShotgunTest in
+  test_windows_platform_proofs.py): the mode/platform/startup
+  refusal surface itself — the exact refusal string, the
+  sec_mode defaults that make an unset mode an enforce, the
+  Windows preexec record's exact call shape and its real audit
+  log line, and the POSIX would_run_as contrast — pinned
+  through the code's own seams (the platform parameter,
+  os.name, a mocked security module), never by running a job
+  as another user, and distinct from item 2's family, which
+  pins how the parity check reads the record; the file runs
+  green (120 tests in the file with item 42's family landed,
+  0 skipped), no live bug exposed, no production code changed.
+- Proof of work (per the method section): per-field enumeration
+  — the surface reads exactly security, security.modes,
+  security.modes.job_user, security.job_user,
+  security.job_user.user, the platform argument, job_id and
+  base_dir, and each field gets its own generated test (8
+  per-field tests, beside 26 hand-written seams, 12 bookend
+  sweeps and 4 run-length sweeps carried in the class
+  docstring in the repo; a bookended key name is pinned as an
+  unknown key, so the enforce default takes over). Fuzz
+  executed: runner/tools/de_dust_corpus.py grow --target
+  secret --rounds 400 --seed 20261144, run locally against
+  the banked secret corpus (26 entries) — the target that
+  exercises runner/guard/security.py, the module that owns
+  the mode set. Result: 400 rounds, 0 crashes, 0 slow, arcs
+  unchanged at 78, slowest try 89 ms — the silent Windows
+  no-op did not recur. The grow's bookkeeping writes were
+  reverted and are not banked (banking is the rigs' hourly
+  job).
 
 ### 44. A client restart did not drop the old client's flight (dtls_session)
 - Fixed: d27e7e63 (30-Oct-2026)

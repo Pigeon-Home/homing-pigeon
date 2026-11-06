@@ -624,6 +624,525 @@ class MailboxGateShotgunTest(unittest.TestCase):
                          "mailbox_password is not set")
 
 
+class JobUserEnforceShotgunTest(unittest.TestCase):
+    """The shotgun family for queue item 43: job_user=enforce
+    on Windows was a silent no-op and jobs ran as the runner's
+    own account (found live 31-Oct-2026; fixed 8174b51f --
+    job_user_startup_problem refuses enforce at startup on
+    win32, and _job_user_preexec on Windows writes an
+    unsupported_platform audit record instead of returning in
+    silence). The JobUser tests above pin the headline shapes,
+    and queue item 2's AuditEntryShotgunTest pins how the
+    parity check reads that record; this family pins the
+    mode/platform/startup-refusal surface itself, and stays
+    distinct from both: every field the refusal and the
+    Windows preexec read, the exact refusal string, the
+    sec_mode defaults that make an unset mode an enforce, the
+    record's exact call shape, and the POSIX contrast (the
+    same mode on a POSIX name writes would_run_as, never
+    unsupported_platform). No test here runs a job as another
+    user: the platform is passed as a parameter, os.name is
+    patched, and the security module is mocked or driven
+    against a temporary directory, so the family runs on any
+    host. One regression test was never going to be enough for
+    a silent no-op in a security mode.
+
+    Per-field enumeration: the surface reads exactly these
+    fields -- security, security.modes,
+    security.modes.job_user, security.job_user,
+    security.job_user.user, the platform argument, job_id and
+    base_dir. Each gets its own generated test below, sweeping
+    that field alone; user is pinned as read on POSIX and
+    inert on Windows and at startup, and base_dir as passed
+    through verbatim to both audit calls.
+
+    The bookend rule and run lengths (standing rules,
+    1-Nov-2026) are part of the family: the text surfaces --
+    the platform string, the mode string, the config key
+    names, job_id and the job_user user -- get bookended
+    variants: all 32 printable ASCII symbols
+    (string.punctuation) at the front and at the back, as
+    singles, matched pairs, mismatched pairs and symbol-only
+    strings, plus NUL, tab, CR and LF at both ends; and run
+    lengths: runs of the odd character, and runs of ordinary
+    characters with the odd one at the front, the back and
+    the middle. A bookended key name is its own case here:
+    "job_user" with one symbol at either end is an unknown
+    key, so the unset default -- enforce -- takes over.
+
+    Proof of work (6-Nov-2026). The unit tests are the 50
+    methods of this class: 26 hand-written seams (2 of them
+    through main()), 8 generated per-field tests, 12 bookend
+    sweeps and 4 run-length sweeps. The fuzzing was executed,
+    not just the tests written: runner/tools/de_dust_corpus.py
+    grow --target secret --rounds 400 --seed 20261144, run
+    locally against the banked secret corpus (26
+    entries) -- the target that exercises
+    runner/guard/security.py, the module that owns the mode
+    set this surface reads. Result: 400 rounds, 0 crashes,
+    0 slow, arcs unchanged at 78, slowest try 89 ms; the
+    silent Windows no-op did not recur. The grow's
+    bookkeeping writes were reverted and are not banked
+    (banking is the rigs' hourly job); this record is the
+    run's proof. None of this is exotic: it is combinatorics
+    -- systematically trying the combinations a hand-written
+    list would never reach, then pinning each answer as a
+    test."""
+
+    PROBLEM = ("job_user (a POSIX setuid demote) is POSIX-only; "
+               "this machine is win32")
+    ENFORCE = {"security": {"modes": {"job_user": "enforce"}}}
+
+    @staticmethod
+    def _problem(cfg, platform="win32"):
+        return runner._job_user_startup_problem(cfg, platform=platform)
+
+    def _preexec(self, mode, os_name="nt", cfg=None, job_id="job-9",
+                 base="base-x"):
+        sec = mock.Mock()
+        sec.sec_mode.return_value = mode
+        if cfg is None:
+            cfg = {"security": {"modes": {"job_user": mode},
+                                "job_user": {"user": "jobber"}}}
+        with tempfile.TemporaryDirectory() as td:
+            work = os.path.join(td, "work")
+            os.makedirs(work, exist_ok=True)
+            with mock.patch.object(runner, "_security", sec), \
+                    mock.patch.object(os, "name", os_name):
+                out = runner._job_user_preexec(cfg, base, job_id, work)
+        return out, sec
+
+    # -- hand-written seams: the startup refusal --
+
+    def test_enforce_on_win32_problem_is_the_exact_string(self):
+        self.assertEqual(self._problem(dict(self.ENFORCE)), self.PROBLEM)
+
+    def test_unset_security_block_defaults_to_enforce_and_refuses(self):
+        self.assertEqual(self._problem({}), self.PROBLEM)
+
+    def test_none_security_block_defaults_to_enforce_and_refuses(self):
+        self.assertEqual(self._problem({"security": None}), self.PROBLEM)
+
+    def test_modes_absent_defaults_to_enforce_and_refuses(self):
+        self.assertEqual(self._problem({"security": {}}), self.PROBLEM)
+        self.assertEqual(
+            self._problem({"security": {"job_user": {"user": "x"}}}),
+            self.PROBLEM)
+
+    def test_feature_absent_from_modes_defaults_to_enforce(self):
+        cfg = {"security": {"modes": {"confinement": "off",
+                                      "audience": "audit"}}}
+        self.assertEqual(self._problem(cfg), self.PROBLEM)
+
+    def test_audit_and_off_on_win32_are_not_refused(self):
+        for mode in ("audit", "off"):
+            cfg = {"security": {"modes": {"job_user": mode}}}
+            self.assertIsNone(self._problem(cfg), mode)
+
+    def test_invalid_modes_on_win32_read_off_and_are_not_refused(self):
+        for mode in ("bogus", "", None, 7, ["enforce"], {"m": 1}):
+            cfg = {"security": {"modes": {"job_user": mode}}}
+            self.assertIsNone(self._problem(cfg), repr(mode))
+
+    def test_mode_spelling_is_exact_in_case_and_spacing(self):
+        for mode in ("Enforce", "ENFORCE", "enforce ", " enforce",
+                     "enforce\n"):
+            cfg = {"security": {"modes": {"job_user": mode}}}
+            self.assertIsNone(self._problem(cfg), repr(mode))
+
+    def test_enforce_on_non_windows_platforms_is_not_refused(self):
+        for platform in ("linux", "darwin", "freebsd13", "linux2",
+                         "sunos5", ""):
+            self.assertIsNone(
+                self._problem(dict(self.ENFORCE), platform), platform)
+
+    def test_platform_spelling_is_exact_in_case_and_spacing(self):
+        for platform in ("WIN32", "Win32", "win32 ", " win32", "win",
+                         "windows", "win32\x00"):
+            self.assertIsNone(
+                self._problem(dict(self.ENFORCE), platform),
+                repr(platform))
+
+    def test_platform_none_defaults_to_the_host_platform(self):
+        self.assertIsNone(self._problem(dict(self.ENFORCE), None))
+        with mock.patch.object(sys, "platform", "win32"):
+            self.assertEqual(self._problem(dict(self.ENFORCE), None),
+                             self.PROBLEM)
+
+    def test_no_security_module_means_no_refusal(self):
+        with mock.patch.object(runner, "_security", None):
+            self.assertIsNone(self._problem(dict(self.ENFORCE)))
+
+    def test_the_refusal_asks_the_security_module_about_job_user(self):
+        sec = mock.Mock()
+        sec.sec_mode.side_effect = (
+            lambda cfg, feature: "enforce" if feature == "job_user"
+            else "off")
+        with mock.patch.object(runner, "_security", sec):
+            self.assertEqual(self._problem({}), self.PROBLEM)
+        sec.sec_mode.assert_called_with({}, "job_user")
+        sec2 = mock.Mock()
+        sec2.sec_mode.side_effect = (
+            lambda cfg, feature: "off" if feature == "job_user"
+            else "enforce")
+        with mock.patch.object(runner, "_security", sec2):
+            self.assertIsNone(self._problem({}))
+
+    def test_malformed_security_shapes_read_off_and_are_not_refused(self):
+        for cfg in ([], "x", 7, None,
+                    {"security": "x"}, {"security": 7},
+                    {"security": {"modes": "x"}},
+                    {"security": {"modes": ["job_user"]}}):
+            self.assertIsNone(self._problem(cfg), repr(cfg))
+
+    def test_startup_problem_is_deterministic_and_does_not_mutate(self):
+        cfg = {"security": {"modes": {"job_user": "enforce"},
+                            "job_user": {"user": "jobber"}}}
+        before = json.loads(json.dumps(cfg))
+        for _ in range(10):
+            self.assertEqual(self._problem(cfg), self.PROBLEM)
+            self.assertIsNone(self._problem(cfg, "linux"))
+        self.assertEqual(cfg, before)
+
+    def test_main_audit_on_win32_starts(self):
+        cfg = {"transports": ["file"],
+               "security": {"modes": {"job_user": "audit",
+                                      "confinement": "off"},
+                            "job_user": {"user": "root"}}}
+        with mock.patch.object(sys, "platform", "win32"):
+            code, poll, _err = _main_rig(["--once"], cfg)
+        self.assertEqual(code, 0)
+        self.assertTrue(poll.called)
+
+    def test_main_enforce_on_darwin_starts(self):
+        cfg = {"transports": ["file"],
+               "security": {"modes": {"job_user": "enforce",
+                                      "confinement": "off"},
+                            "job_user": {"user": "root"}}}
+        with mock.patch.object(sys, "platform", "darwin"):
+            code, poll, _err = _main_rig(["--once"], cfg)
+        self.assertEqual(code, 0)
+        self.assertTrue(poll.called)
+
+    # -- hand-written seams: the Windows preexec record --
+
+    def test_nt_audit_writes_the_exact_unsupported_record_call(self):
+        out, sec = self._preexec("audit")
+        self.assertIsNone(out)
+        sec.bump_evaluated.assert_called_once_with("base-x", "job_user")
+        sec.write_audit_entry.assert_called_once_with(
+            "base-x", "job_user", "unsupported_platform",
+            "job_user_posix_only", job_id="job-9",
+            cfg={"security": {"modes": {"job_user": "audit"},
+                              "job_user": {"user": "jobber"}}},
+            mode="audit")
+
+    def test_nt_enforce_writes_the_record_with_its_mode(self):
+        out, sec = self._preexec("enforce")
+        self.assertIsNone(out)
+        args = sec.write_audit_entry.call_args
+        self.assertEqual(args[0][2], "unsupported_platform")
+        self.assertEqual(args[1]["mode"], "enforce")
+
+    def test_nt_off_is_silent_with_no_bump_and_no_record(self):
+        out, sec = self._preexec("off")
+        self.assertIsNone(out)
+        sec.bump_evaluated.assert_not_called()
+        sec.write_audit_entry.assert_not_called()
+
+    def test_nt_record_reaches_the_real_audit_log(self):
+        cfg = {"security": {"modes": {"job_user": "audit"},
+                            "job_user": {"user": "jobber"}}}
+        with tempfile.TemporaryDirectory() as base:
+            work = os.path.join(base, "work")
+            os.makedirs(work, exist_ok=True)
+            with mock.patch.object(os, "name", "nt"):
+                out = runner._job_user_preexec(cfg, base, 123, work)
+            self.assertIsNone(out)
+            with open(os.path.join(base, "security-audit.jsonl"),
+                      encoding="utf-8") as fh:
+                record = json.loads(fh.readline())
+        self.assertEqual(record["feature"], "job_user")
+        self.assertEqual(record["decision"], "unsupported_platform")
+        self.assertEqual(record["reason"], "job_user_posix_only")
+        self.assertEqual(record["job_id"], "123")
+        self.assertEqual(record["mode"], "audit")
+        self.assertEqual(len(record["chain"]), 64)
+
+    def test_nt_a_failing_audit_write_is_swallowed(self):
+        out, sec = self._preexec("audit")
+        sec.write_audit_entry.side_effect = RuntimeError("disk")
+        # Re-drive with the failing writer in place.
+        sec2 = mock.Mock()
+        sec2.sec_mode.return_value = "audit"
+        sec2.write_audit_entry.side_effect = RuntimeError("disk")
+        cfg = {"security": {"modes": {"job_user": "audit"}}}
+        with tempfile.TemporaryDirectory() as td:
+            work = os.path.join(td, "work")
+            os.makedirs(work, exist_ok=True)
+            with mock.patch.object(runner, "_security", sec2), \
+                    mock.patch.object(os, "name", "nt"):
+                self.assertIsNone(
+                    runner._job_user_preexec(cfg, td, "job-9", work))
+        sec2.bump_evaluated.assert_called_once()
+
+    def test_preexec_without_a_security_module_returns_none(self):
+        cfg = {"security": {"modes": {"job_user": "enforce"}}}
+        with tempfile.TemporaryDirectory() as td:
+            work = os.path.join(td, "work")
+            os.makedirs(work, exist_ok=True)
+            with mock.patch.object(runner, "_security", None), \
+                    mock.patch.object(os, "name", "nt"):
+                self.assertIsNone(
+                    runner._job_user_preexec(cfg, td, "job-9", work))
+
+    def test_nt_job_id_is_stringified_into_the_record(self):
+        for job_id, want in ((123, "123"), (None, "None"),
+                             (("a", 1), "('a', 1)")):
+            _out, sec = self._preexec("audit", job_id=job_id)
+            self.assertEqual(
+                sec.write_audit_entry.call_args[1]["job_id"], want,
+                repr(job_id))
+
+    def test_the_user_field_is_inert_on_windows(self):
+        for user in (None, "", 7, ["root"], {"name": "root"}):
+            cfg = {"security": {"modes": {"job_user": "audit"},
+                                "job_user": {"user": user}}}
+            if user is not None:
+                cfg["security"]["job_user"] = {"user": user}
+            _out, sec = self._preexec("audit", cfg=cfg)
+            sec.write_audit_entry.assert_called_once()
+            self.assertNotIn(
+                "detail", sec.write_audit_entry.call_args[1])
+        cfg = {"security": {"modes": {"job_user": "audit"}}}
+        _out, sec = self._preexec("audit", cfg=cfg)
+        sec.write_audit_entry.assert_called_once()
+
+    def test_posix_audit_writes_would_run_as_not_unsupported(self):
+        out, sec = self._preexec("audit", os_name="posix")
+        self.assertIsNone(out)
+        args = sec.write_audit_entry.call_args
+        self.assertEqual(args[0][2], "would_run_as")
+        self.assertEqual(args[0][3], "would_run_as_user")
+        self.assertEqual(args[1]["detail"], "jobber")
+
+    # -- the bookend rule: the whole symbol table, both ends --
+
+    def test_bookend_front_symbols_on_the_platform_drop_the_refusal(self):
+        for symbol in string.punctuation:
+            self.assertIsNone(
+                self._problem(dict(self.ENFORCE), symbol + "win32"),
+                symbol)
+
+    def test_bookend_back_symbols_on_the_platform_drop_the_refusal(self):
+        for symbol in string.punctuation:
+            self.assertIsNone(
+                self._problem(dict(self.ENFORCE), "win32" + symbol),
+                symbol)
+
+    def test_bookend_pairs_on_the_platform_drop_the_refusal(self):
+        symbols = string.punctuation
+        rotated = symbols[1:] + symbols[:1]
+        for symbol in string.punctuation:
+            self.assertIsNone(self._problem(
+                dict(self.ENFORCE), symbol + "win32" + symbol), symbol)
+        for front, back in zip(symbols, rotated):
+            self.assertIsNone(self._problem(
+                dict(self.ENFORCE), front + "win32" + back),
+                (front, back))
+
+    def test_symbol_only_and_nonprinting_platforms_drop_the_refusal(self):
+        for platform in list(string.punctuation) + [
+                "\x00win32", "win32\x00", "\twin32", "win32\r\n",
+                "\x00", "\n"]:
+            self.assertIsNone(
+                self._problem(dict(self.ENFORCE), platform),
+                repr(platform))
+
+    def test_bookend_front_symbols_on_the_mode_read_off(self):
+        for symbol in string.punctuation:
+            cfg = {"security": {"modes": {
+                "job_user": symbol + "enforce"}}}
+            self.assertIsNone(self._problem(cfg), symbol)
+
+    def test_bookend_back_symbols_on_the_mode_read_off(self):
+        for symbol in string.punctuation:
+            cfg = {"security": {"modes": {
+                "job_user": "enforce" + symbol}}}
+            self.assertIsNone(self._problem(cfg), symbol)
+
+    def test_bookend_pairs_and_symbol_only_modes_read_off(self):
+        symbols = string.punctuation
+        rotated = symbols[1:] + symbols[:1]
+        variants = ([s + "enforce" + s for s in symbols]
+                    + [f + "enforce" + b
+                       for f, b in zip(symbols, rotated)]
+                    + list(symbols))
+        for mode in variants:
+            cfg = {"security": {"modes": {"job_user": mode}}}
+            self.assertIsNone(self._problem(cfg), repr(mode))
+
+    def test_bookend_nonprinting_on_the_mode_reads_off(self):
+        for char in ("\x00", "\t", "\r", "\n"):
+            for mode in (char + "enforce", "enforce" + char, char):
+                cfg = {"security": {"modes": {"job_user": mode}}}
+                self.assertIsNone(self._problem(cfg), repr(mode))
+
+    def test_bookended_feature_key_falls_back_to_the_enforce_default(self):
+        # An off mode under a bookended key is a mode for an
+        # unknown key: job_user itself is unset, and an unset
+        # job_user reads enforce, so win32 refuses after all.
+        for symbol in string.punctuation:
+            for key in (symbol + "job_user", "job_user" + symbol):
+                cfg = {"security": {"modes": {key: "off"}}}
+                self.assertEqual(self._problem(cfg), self.PROBLEM,
+                                 key)
+
+    def test_bookended_block_keys_fall_back_to_the_enforce_default(self):
+        for symbol in string.punctuation:
+            cfg = {symbol + "security": {"modes": {"job_user": "off"}}}
+            self.assertEqual(self._problem(cfg), self.PROBLEM, symbol)
+            cfg = {"security" + symbol: {"modes": {"job_user": "off"}}}
+            self.assertEqual(self._problem(cfg), self.PROBLEM, symbol)
+            cfg = {"security": {symbol + "modes":
+                                {"job_user": "off"}}}
+            self.assertEqual(self._problem(cfg), self.PROBLEM, symbol)
+            cfg = {"security": {"modes" + symbol:
+                                {"job_user": "off"}}}
+            self.assertEqual(self._problem(cfg), self.PROBLEM, symbol)
+
+    def test_bookended_job_ids_ride_the_record_verbatim(self):
+        for symbol in string.punctuation:
+            for job_id in (symbol + "job-9", "job-9" + symbol,
+                           symbol + "job-9" + symbol, symbol):
+                _out, sec = self._preexec("audit", job_id=job_id)
+                self.assertEqual(
+                    sec.write_audit_entry.call_args[1]["job_id"],
+                    job_id, repr(job_id))
+
+    def test_bookended_users_never_reach_the_windows_record(self):
+        for symbol in string.punctuation:
+            cfg = {"security": {"modes": {"job_user": "audit"},
+                                "job_user": {
+                                    "user": symbol + "jobber" + symbol}}}
+            _out, sec = self._preexec("audit", cfg=cfg)
+            sec.write_audit_entry.assert_called_once()
+            self.assertNotIn("detail",
+                             sec.write_audit_entry.call_args[1])
+
+    # -- run lengths: counts, not just characters --
+
+    def test_runs_in_the_mode_read_off(self):
+        for mode in ("enforce" + "e" * 10, "e" * 10 + "enforce",
+                     "enf" + "o" * 10 + "rce", ";" * 10,
+                     "x" * 5 + ";" + "x" * 5):
+            cfg = {"security": {"modes": {"job_user": mode}}}
+            self.assertIsNone(self._problem(cfg), mode)
+
+    def test_runs_in_the_platform_drop_the_refusal(self):
+        for platform in ("win32" + "2" * 10, "w" * 10 + "in32",
+                         "win" + "3" * 10 + "2", ";" * 10,
+                         "w" * 5 + ";" + "in32"):
+            self.assertIsNone(
+                self._problem(dict(self.ENFORCE), platform), platform)
+
+    def test_runs_in_the_job_id_ride_the_record_verbatim(self):
+        for job_id in ("x" * 10 + ";", ";" * 10, ";" + "x" * 10,
+                       "x" * 5 + ";" + "x" * 5):
+            _out, sec = self._preexec("audit", job_id=job_id)
+            self.assertEqual(
+                sec.write_audit_entry.call_args[1]["job_id"], job_id,
+                job_id)
+
+    def test_runs_in_key_names_fall_back_to_the_enforce_default(self):
+        for key in ("job_user" + "r" * 10, "j" * 10 + "ob_user",
+                    "job_" + "u" * 10 + "ser"):
+            cfg = {"security": {"modes": {key: "off"}}}
+            self.assertEqual(self._problem(cfg), self.PROBLEM, key)
+        cfg = {"security": {"modes": {"job_user": "off"}}}
+        self.assertIsNone(self._problem(cfg))
+
+
+def _make_job_user_field_tests():
+    """One generated test per field this surface reads."""
+    problem = JobUserEnforceShotgunTest._problem
+    want = JobUserEnforceShotgunTest.PROBLEM
+
+    def field_security(self):
+        for sec, expected in (
+                (None, want), ({}, want), ("x", None), (7, None),
+                ({"modes": {"job_user": "off"}}, None)):
+            self.assertEqual(problem({"security": sec}), expected,
+                             repr(sec))
+        self.assertEqual(problem({}), want)
+        self.assertEqual(problem({"securityx": {}}), want)
+
+    def field_modes(self):
+        for modes, expected in (
+                (None, None), ("x", None), ([], None),
+                ({}, want), ({"job_user": "enforce"}, want),
+                ({"job_user": "audit"}, None)):
+            cfg = {"security": {"modes": modes}}
+            self.assertEqual(problem(cfg), expected, repr(modes))
+
+    def field_job_user_mode(self):
+        for mode, expected in (
+                ("enforce", want), ("audit", None), ("off", None),
+                ("bogus", None), (None, None), ("Enforce", None)):
+            cfg = {"security": {"modes": {"job_user": mode}}}
+            self.assertEqual(problem(cfg), expected, repr(mode))
+
+    def field_job_user_block(self):
+        # The block beside modes is startup-inert in every shape.
+        for block in (None, "x", 7, [], {}, {"user": "root"},
+                      {"user": None}):
+            cfg = {"security": {"modes": {"job_user": "enforce"},
+                                "job_user": block}}
+            self.assertEqual(problem(cfg), want, repr(block))
+            cfg["security"]["modes"]["job_user"] = "off"
+            self.assertIsNone(problem(cfg), repr(block))
+
+    def field_user(self):
+        # Read on POSIX, inert at startup and on Windows.
+        for user in ("root", "jobber", "", None, 7, ["root"]):
+            cfg = {"security": {"modes": {"job_user": "enforce"},
+                                "job_user": {"user": user}}}
+            self.assertEqual(problem(cfg), want, repr(user))
+
+    def field_platform(self):
+        for platform, expected in (
+                ("win32", want), ("linux", None), ("darwin", None),
+                ("WIN32", None), ("", None), (None, None)):
+            self.assertEqual(
+                problem(dict(JobUserEnforceShotgunTest.ENFORCE),
+                        platform),
+                expected, repr(platform))
+
+    def field_job_id(self):
+        probe = JobUserEnforceShotgunTest()
+        for job_id, text in (("job-9", "job-9"), (123, "123"),
+                             (None, "None"), (1.5, "1.5")):
+            _out, sec = probe._preexec("audit", job_id=job_id)
+            self.assertEqual(
+                sec.write_audit_entry.call_args[1]["job_id"], text,
+                repr(job_id))
+
+    def field_base_dir(self):
+        probe = JobUserEnforceShotgunTest()
+        for base in ("base-x", "/tmp/deep/base", "relative-base"):
+            _out, sec = probe._preexec("enforce", base=base)
+            sec.bump_evaluated.assert_called_once_with(base, "job_user")
+            self.assertEqual(sec.write_audit_entry.call_args[0][0],
+                             base)
+
+    for name, fn in list(locals().items()):
+        if name.startswith("field_"):
+            setattr(JobUserEnforceShotgunTest, "test_" + name, fn)
+
+
+_make_job_user_field_tests()
+
+
 def _make_mailbox_gate_field_tests():
     """One generated test per field the gate reads."""
     gate = MailboxGateShotgunTest._gate
