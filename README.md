@@ -528,3 +528,4 @@ says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.
 - IETF draft v3: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
 - https://news.ycombinator.com/item?id=50397008
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt
+- "Humor between a system and its user is load-bearing, not decoration." - Me
