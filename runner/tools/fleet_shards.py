@@ -10,7 +10,10 @@ count. This module carries that split across machines:
   census it discovered (module names with their test counts) and,
   per rig, the module list that rig must run. The split is the same
   longest-processing-time greedy pass, weighted by each rig's speed
-  so a faster rig is handed proportionally more test count.
+  so a faster rig is handed proportionally more test count. A
+  module named by a ``--pin`` is placed on its rig before the
+  greedy pass runs, by construction rather than by outcome, and
+  the pins are recorded in the manifest.
 - ``worker`` runs ONE module in-process with a recording test result
   and emits that module's JSON object. An import failure is an error
   entry in the object, never a silent crash; a module that raises
@@ -35,6 +38,7 @@ count. This module carries that split across machines:
 Usage:
     python runner/tools/fleet_shards.py manifest --head SHA
         --rig menlo=1 --rig germany=4 --out manifest.json
+        [--pin MODULE=RIG ...]
     python runner/tools/fleet_shards.py worker MODULE [--out FILE]
         [--path DIR ...]
     python runner/tools/fleet_shards.py run-shard --manifest M
@@ -89,7 +93,7 @@ def _utc_now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
-def split_weighted(counts, rig_weights):
+def split_weighted(counts, rig_weights, pins=None):
     """LPT split of {module: test_count} across weighted rigs.
 
     ``rig_weights`` is a list of (name, weight) pairs in the order
@@ -104,6 +108,15 @@ def split_weighted(counts, rig_weights):
     With equal weights this is exactly the unweighted greedy split
     in run_tests_parallel.shard_modules. A zero-weight rig is
     handed nothing; a run where every weight is zero is refused.
+
+    ``pins`` is an optional {module: rig} map for modules that
+    must land on one named rig by construction — a module that is
+    destructive or meaningless off its home machine, for instance.
+    A pinned module is assigned to its rig before the greedy pass
+    and its count loads that rig like any other assignment, so
+    the remaining modules still balance around it. A pin naming a
+    module outside the census, a rig that was not named, or a
+    zero-weight rig is refused.
     """
     rigs = [(str(name), float(weight)) for name, weight in rig_weights]
     names = [name for name, _w in rigs]
@@ -115,6 +128,18 @@ def split_weighted(counts, rig_weights):
         raise ValueError("no rigs to split the census across")
     if counts and not any(weight > 0 for _n, weight in rigs):
         raise ValueError("at least one rig weight must be > 0")
+    pins = dict(pins or {})
+    for mod, rig in sorted(pins.items()):
+        if mod not in counts:
+            raise ValueError("pin names a module outside the "
+                             "census: %r" % (mod,))
+        if rig not in names:
+            raise ValueError("pin for %r names an unknown rig: %r"
+                             % (mod, rig))
+        if rigs[names.index(rig)][1] <= 0:
+            raise ValueError("pin for %r names rig %r, whose weight "
+                             "is 0 and which is handed nothing"
+                             % (mod, rig))
     total_weight = sum(weight for _n, weight in rigs)
     total_load = sum(counts.values())
     targets = [(total_load * weight / total_weight if total_weight else 0.0)
@@ -127,8 +152,14 @@ def split_weighted(counts, rig_weights):
             return float("inf")
         return loads[i] / targets[i]
 
+    for mod in sorted(pins):
+        idx = names.index(pins[mod])
+        modules[idx].append(mod)
+        loads[idx] += counts[mod]
     for mod, count in sorted(counts.items(),
                              key=lambda kv: (-kv[1], kv[0])):
+        if mod in pins:
+            continue
         idx = min(range(len(rigs)), key=lambda i: (underness(i), i))
         modules[idx].append(mod)
         loads[idx] += count
@@ -136,14 +167,19 @@ def split_weighted(counts, rig_weights):
             for (name, weight), mods in zip(rigs, modules)]
 
 
-def build_manifest(head, counts, rig_weights, created_utc=None):
+def build_manifest(head, counts, rig_weights, pins=None,
+                   created_utc=None):
     """The manifest dict for a pinned head and a census.
 
     The census is carried whole (names sorted, with their test
     counts) so the merger can prove the shards together covered
-    exactly it, and each rig's share is named beside it.
+    exactly it, and each rig's share is named beside it. ``pins``
+    (see split_weighted) is recorded in the manifest so a reader
+    can see which placements were by construction, not by the
+    split's outcome.
     """
-    split = split_weighted(counts, rig_weights)
+    pins = dict(pins or {})
+    split = split_weighted(counts, rig_weights, pins=pins)
     return {
         "schema": SCHEMA,
         "head": head,
@@ -151,6 +187,7 @@ def build_manifest(head, counts, rig_weights, created_utc=None):
         "census": sorted(counts),
         "census_counts": {name: counts[name] for name in sorted(counts)},
         "total_tests": sum(counts.values()),
+        "pins": {name: pins[name] for name in sorted(pins)},
         "rigs": [{"rig": name, "weight": weight, "modules": mods}
                  for name, weight, mods in split],
     }
@@ -410,6 +447,14 @@ def _parse_rig(text):
             "rig weight must be a number, got %r" % (text,))
 
 
+def _parse_pin(text):
+    module, sep, rig = text.partition("=")
+    if not sep or not module or not rig:
+        raise argparse.ArgumentTypeError(
+            "pin must be MODULE=RIG, got %r" % (text,))
+    return (module, rig)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -420,6 +465,11 @@ def main(argv=None):
     p_manifest.add_argument("--rig", action="append", required=True,
                             type=_parse_rig, metavar="NAME=WEIGHT",
                             help="one per rig; repeat for each rig")
+    p_manifest.add_argument("--pin", action="append", default=[],
+                            type=_parse_pin, metavar="MODULE=RIG",
+                            help="place MODULE on RIG by construction, "
+                                 "outside the weighted split; repeat "
+                                 "for each pinned module")
     p_manifest.add_argument("--out", required=True)
     p_manifest.add_argument("--start-dir", default="runner/tests")
     p_manifest.add_argument("--top-level-dir", default=".")
@@ -460,7 +510,19 @@ def main(argv=None):
                   "to write a vacuous manifest" % args.start_dir,
                   file=sys.stderr)
             return 2
-        manifest = build_manifest(args.head, counts, args.rig)
+        pins = {}
+        for module, rig in args.pin:
+            if module in pins:
+                print("error: module %r is pinned twice" % (module,),
+                      file=sys.stderr)
+                return 2
+            pins[module] = rig
+        try:
+            manifest = build_manifest(args.head, counts, args.rig,
+                                      pins=pins)
+        except ValueError as exc:
+            print("error: %s" % (exc,), file=sys.stderr)
+            return 2
         _write_json(manifest, args.out)
         print("manifest: %d module(s), %d test(s), %d rig(s) -> %s"
               % (len(manifest["census"]), manifest["total_tests"],

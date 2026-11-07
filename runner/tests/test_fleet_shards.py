@@ -110,6 +110,75 @@ class ManifestSplitTest(unittest.TestCase):
         self.assertEqual(manifest["rigs"][0]["modules"], [])
 
 
+class PinTest(unittest.TestCase):
+    def _by_rig(self, manifest):
+        return {share["rig"]: share["modules"]
+                for share in manifest["rigs"]}
+
+    def test_a_pin_lands_on_the_named_rig_regardless_of_weights(self):
+        # test_a is the largest module; the weighted split alone
+        # hands it to the heavy rig. The pin overrides the split.
+        manifest = fs.build_manifest(
+            "abc123", dict(COUNTS), [("menlo", 1), ("germany", 4)],
+            pins={"runner.tests.test_a": "menlo"})
+        by_rig = self._by_rig(manifest)
+        self.assertIn("runner.tests.test_a", by_rig["menlo"])
+        self.assertNotIn("runner.tests.test_a", by_rig["germany"])
+        flat = [m for mods in by_rig.values() for m in mods]
+        self.assertEqual(sorted(flat), sorted(COUNTS))
+        self.assertEqual(len(flat), len(set(flat)))
+
+    def test_the_wipe_test_is_pinned_to_the_home_rig(self):
+        # runner.tests.test_install_wipe wipes an install tree; on
+        # a rig that is not a clean machine that is destructive.
+        # The fleet's standing placement pins it to the home rig,
+        # so a Germany share can never contain it — by
+        # construction, not by the split's outcome.
+        wipe = "runner.tests.test_install_wipe"
+        counts = {wipe: 500, "runner.tests.test_a": 100,
+                  "runner.tests.test_b": 90, "runner.tests.test_c": 80}
+        manifest = fs.build_manifest(
+            "abc123", counts, [("menlo", 1), ("germany", 4)],
+            pins={wipe: "menlo"})
+        by_rig = self._by_rig(manifest)
+        self.assertIn(wipe, by_rig["menlo"])
+        self.assertNotIn(wipe, by_rig["germany"])
+        self.assertEqual(manifest["pins"], {wipe: "menlo"})
+
+    def test_a_pinned_manifest_still_merges_green(self):
+        manifest = fs.build_manifest(
+            "abc123", dict(COUNTS), [("menlo", 1), ("germany", 4)],
+            pins={"runner.tests.test_a": "menlo"})
+        ok, lines = fs.merge_results(manifest, _green_results(manifest))
+        self.assertTrue(ok, lines)
+        self.assertEqual(lines[-1], "verdict: OK")
+
+    def test_a_pin_outside_the_census_is_refused(self):
+        with self.assertRaises(ValueError):
+            fs.build_manifest("abc123", dict(COUNTS), [("menlo", 1)],
+                              pins={"runner.tests.test_nope": "menlo"})
+
+    def test_a_pin_to_an_unknown_rig_is_refused(self):
+        with self.assertRaises(ValueError):
+            fs.build_manifest(
+                "abc123", dict(COUNTS), [("menlo", 1)],
+                pins={"runner.tests.test_a": "nowhere"})
+
+    def test_a_pin_to_a_zero_weight_rig_is_refused(self):
+        with self.assertRaises(ValueError):
+            fs.build_manifest(
+                "abc123", dict(COUNTS), [("menlo", 1), ("idle", 0)],
+                pins={"runner.tests.test_a": "idle"})
+
+    def test_the_pin_argument_shape(self):
+        self.assertEqual(fs._parse_pin("runner.tests.test_a=menlo"),
+                         ("runner.tests.test_a", "menlo"))
+        with self.assertRaises(Exception):
+            fs._parse_pin("runner.tests.test_a")
+        with self.assertRaises(Exception):
+            fs._parse_pin("=menlo")
+
+
 _PASS = (
     "import unittest\n\n"
     "class T(unittest.TestCase):\n"
