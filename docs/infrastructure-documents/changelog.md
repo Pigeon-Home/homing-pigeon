@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.9 - 2026-11-07
+
+- CI: the dependabot build-tooling pins land — actions/setup-python 7.1.0, github/codeql-action init and analyze 4.39.3, vmactions/netbsd-vm 1.5.3, and the .github pip pins hypothesis 6.170.14 and coverage 7.17.1. No product or runtime dependencies changed.
+- Record: the content rungs' PowerShell gate legs pass on the Germany rig — 44 checks, 0 failed, at every rung (500 / 5,000 / 50,000 / 500,000 / 1,048,576 characters), with the cap rung admitting 1,048,576 and refusing 1,048,577; the 49-character row still was not run on Windows, as the record states.
+- Docs: the README carries a closing line on humour between a system and its user.
+
 ## 3.15.18.8 - 2026-11-07
 
 - Fix: three job_user roster proofs — the M8 canary, R1 two-jobs and R6 drop-concurrent — had failed on the switch-proofs root legs since the temp-reap release: each observed the per-job workspace after the job ended, and the workspace is now reaped on every path out. The build-leg casualties of that landing were repaired at the time; these tests run only where root and the second user exist, so they sat outside that evidence. Each job now reports its workdir's owner (and the canary/R1 contents) from inside, and the tests assert on stdout, the channel that survives the reap. The temp-reap proof record carries an addendum naming the miss.
