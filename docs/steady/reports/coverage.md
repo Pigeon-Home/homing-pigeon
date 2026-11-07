@@ -12,6 +12,7 @@ beside coverage-local.md and is not a report.
 
 | Report | Headline, as the report states it |
 |---|---|
+| [v3.15.18.7-platinum-cycle2-scoring.md](v3.15.18.7-platinum-cycle2-scoring.md) | Platinum cycle 2 scoring: suite 11,408 run, 11,329 passed, 19 failures, 5 errors, 55 skipped; runner/runner.py statements 99.07% (37 missed of 3,992) before the gap tests, 99.77% (9 missed) after |
 | [v3.15.1-coverage.md](v3.15.1-coverage.md) | statements 99.0% (348 missed of 33,197), branches 96.7% (433 of 13,110), combined 98.3% |
 | [v3.15.1-coverage-gaps.md](v3.15.1-coverage-gaps.md) | statements 33,197, never executed 348; branches 13,110, never taken 433; 98.3% covered overall |
 | [v3.13.62-coverage.md](v3.13.62-coverage.md) | statements 99.5% (143 missed of 30,412), branches 97.4% (311 of 12,026), combined 98.9% |
