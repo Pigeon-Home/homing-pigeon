@@ -357,9 +357,15 @@ class TwoJobsRaceTest(unittest.TestCase):
                             "job_user": {"user": "pigeon-test"}}}
         scripts = {
             "r1-a": "open('token-a.txt', 'w').write('a')\n"
-                    "import os\nprint('uid:', os.getuid())",
+                    "import os\nprint('uid:', os.getuid())\n"
+                    "print('workdir-uid:', os.stat('.').st_uid)\n"
+                    "print('names:', ' '.join(sorted("
+                    "os.listdir('.'))))",
             "r1-b": "open('token-b.txt', 'w').write('b')\n"
-                    "import os\nprint('uid:', os.getuid())",
+                    "import os\nprint('uid:', os.getuid())\n"
+                    "print('workdir-uid:', os.stat('.').st_uid)\n"
+                    "print('names:', ' '.join(sorted("
+                    "os.listdir('.'))))",
         }
         results = self._race_pair(cfg, base, scripts)
         pw = pwd.getpwnam("pigeon-test")
@@ -371,12 +377,20 @@ class TwoJobsRaceTest(unittest.TestCase):
             self.assertEqual(result["exit_code"], 0,
                              result.get("stderr"))
             self.assertIn("uid: %d" % pw.pw_uid, result["stdout"])
-            workdir = os.path.join(base, "work", jid)
-            self.assertEqual(os.stat(workdir).st_uid, pw.pw_uid,
-                             jid)
-            names = os.listdir(workdir)
-            self.assertIn(token, names, jid)
-            self.assertNotIn(other, names, jid)
+            # The workdir itself is observed from inside the
+            # job, through stdout: the per-job workspace is
+            # reaped when the job ends (the temp-reap landing),
+            # so stat/listdir on it after execute_job returns
+            # finds nothing. Stdout is the channel that
+            # survives the reap.
+            self.assertIn("workdir-uid: %d" % pw.pw_uid,
+                          result["stdout"], jid)
+            names_lines = [line for line in
+                           result["stdout"].splitlines()
+                           if line.startswith("names:")]
+            self.assertEqual(len(names_lines), 1, result["stdout"])
+            self.assertIn(token, names_lines[0], jid)
+            self.assertNotIn(other, names_lines[0], jid)
 
     @unittest.skipUnless(ENGAGES,
                          "sandbox cannot engage on this machine "

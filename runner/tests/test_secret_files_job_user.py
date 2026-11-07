@@ -339,6 +339,8 @@ class JobUserTest(unittest.TestCase):
             "with open('mine.txt', 'w') as fh:",
             "    fh.write('job-owned')",
             "print('WRITE-OK')",
+            "print('MINE-UID', os.stat('mine.txt').st_uid)",
+            "print('WORKDIR-UID', os.stat('.').st_uid)",
             "",
         ])
         cfg = {"base_dir": base}
@@ -351,12 +353,15 @@ class JobUserTest(unittest.TestCase):
         self.assertIn("WRITE-OK", out)
         self.assertNotIn(canary, json.dumps(result))
         pw = pwd.getpwnam("pigeon-test")
-        written = None
-        for root, _dirs, files in os.walk(base):
-            if "mine.txt" in files:
-                written = os.path.join(root, "mine.txt")
-        self.assertIsNotNone(written)
-        self.assertEqual(os.stat(written).st_uid, pw.pw_uid)
+        # Ownership is observed from inside the job, through
+        # stdout: the per-job workspace is reaped when the job
+        # ends (the temp-reap landing), so the file and its
+        # workdir no longer exist by the time execute_job
+        # returns, and a post-hoc walk finds nothing. Stdout
+        # is the channel that survives the reap, and the uids
+        # are read at the one moment the workspace exists.
+        self.assertIn("MINE-UID %d" % pw.pw_uid, out)
+        self.assertIn("WORKDIR-UID %d" % pw.pw_uid, out)
 
     @unittest.skipUnless(IS_ROOT and POSIX,
                          "needs root and the pigeon-test user")

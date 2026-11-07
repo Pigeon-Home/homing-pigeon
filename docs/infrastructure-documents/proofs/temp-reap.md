@@ -486,3 +486,31 @@ both trees: `test_oracle_no_widening` 3 tests,
 OK; `test_powershell_script_encoding` 12 tests,
 OK; no failures, no errors, no skips on either
 side, and no new skip reason was registered.
+
+## Addendum, 2026-11-07: the roster casualties the cascade record missed
+
+The Conclusions above closed the cascade on the evidence of the
+build legs. One surface was not in that evidence: the
+switch-proofs workflow's root legs, the only legs where the
+job_user tests run at all (they need root and the second user;
+everywhere else they skip). Three roster proofs had been red
+there since this landing, masked in the workflow's overall
+failure by the casualties that were repaired:
+
+- `test_secret_files_job_user`'s canary test walked the state
+  dir after the job for the file the job wrote, and found
+  nothing — the workspace holding it had been reaped.
+- `test_enforce_races` (R1) and `test_enforce_races_gaps` (R6)
+  stated and listed each job's workdir after the race pair
+  returned, and got ENOENT for the same reason.
+
+The repair follows the pattern this record already established
+for the earlier casualties: the observation moves to the
+channel that survives the reap. Each job now prints, from
+inside, the uid owning its workdir and (for the canary and R1)
+the file it wrote and the names it sees; the tests assert on
+stdout. No assertion weakened — the same ownership and
+isolation facts are pinned, read at the one moment the
+workspace exists. A/B, first-hand: the three tests pass on the
+tree before this landing (5576c074) and failed identically at
+every head from this landing until the repair.

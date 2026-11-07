@@ -203,8 +203,10 @@ class DropConcurrentRaceTest(unittest.TestCase):
                                       "confinement": "off"},
                             "job_user": {"user": "pigeon-test"}}}
         scripts = {
-            "r6-a": "import os\nprint('uid:', os.getuid())",
-            "r6-b": "import os\nprint('uid:', os.getuid())",
+            "r6-a": "import os\nprint('uid:', os.getuid())\n"
+                    "print('workdir-uid:', os.stat('.').st_uid)",
+            "r6-b": "import os\nprint('uid:', os.getuid())\n"
+                    "print('workdir-uid:', os.stat('.').st_uid)",
         }
         results = self._race_pair(cfg, base, scripts)
         pw = pwd.getpwnam("pigeon-test")
@@ -213,8 +215,13 @@ class DropConcurrentRaceTest(unittest.TestCase):
             self.assertEqual(result["exit_code"], 0,
                              result.get("stderr"))
             self.assertIn("uid: %d" % pw.pw_uid, result["stdout"])
-            workdir = os.path.join(base, "work", jid)
-            self.assertEqual(os.stat(workdir).st_uid, pw.pw_uid)
+            # The workdir's owner is observed from inside the
+            # job, through stdout: the per-job workspace is
+            # reaped when the job ends (the temp-reap landing),
+            # so stat on it after execute_job returns finds
+            # nothing. Stdout is the channel that survives.
+            self.assertIn("workdir-uid: %d" % pw.pw_uid,
+                          result["stdout"], jid)
         # The runner itself never dropped.
         self.assertNotEqual(os.geteuid(), pw.pw_uid)
 
