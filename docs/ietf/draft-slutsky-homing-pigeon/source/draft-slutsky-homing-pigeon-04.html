@@ -1680,8 +1680,7 @@ word-char      = %x00-08 / %x0E-1F / %x21-9F / %xA1-167F
                / %x1681-1FFF / %x200B-2027 / %x202A-202E
                / %x2030-205E / %x2060-2FFF / %x3001-FEFE
                / %xFF00-10FFFF
-job-id         = 1*128 job-id-char
-job-id-char    = ALPHA / DIGIT / "." / "_" / "-"
+job-id         = 1*128 word-char
 </pre><a href="#section-6-4" class="pilcrow">¶</a>
 </div>
 <p id="section-6-5">A control character other than those listed in <code>gap-char</code> is part of a word, not a gap between two, so <code>[HOMING-PIGEON]&lt;US&gt;job x</code> names no job. The words between the marker and <code>job</code> are decoration. <code>TEST</code> is a legal decoration.<a href="#section-6-5" class="pilcrow">¶</a></p>

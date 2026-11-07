@@ -96,7 +96,7 @@ Table of Contents
    7.  Body and Signature Marker . . . . . . . . . . . . . . . . . .  12
      7.1.  MAC . . . . . . . . . . . . . . . . . . . . . . . . . . .  13
      7.2.  Constant-time compare . . . . . . . . . . . . . . . . . .  13
-   8.  Unknown Members . . . . . . . . . . . . . . . . . . . . . . .  14
+   8.  Unknown Members . . . . . . . . . . . . . . . . . . . . . . .  13
    9.  Common Members  . . . . . . . . . . . . . . . . . . . . . . .  14
    10. Key Selection . . . . . . . . . . . . . . . . . . . . . . . .  15
      10.1.  Fingerprint names  . . . . . . . . . . . . . . . . . . .  15
@@ -604,12 +604,12 @@ Internet-Draft              Homing Pigeon v1               November 2026
                   / %x1681-1FFF / %x200B-2027 / %x202A-202E
                   / %x2030-205E / %x2060-2FFF / %x3001-FEFE
                   / %xFF00-10FFFF
-   job-id         = 1*128 job-id-char
-   job-id-char    = ALPHA / DIGIT / "." / "_" / "-"
+   job-id         = 1*128 word-char
 
-
-
-
+   A control character other than those listed in gap-char is part of a
+   word, not a gap between two, so [HOMING-PIGEON]<US>job x names no
+   job.  The words between the marker and job are decoration.  TEST is a
+   legal decoration.
 
 
 
@@ -617,11 +617,6 @@ Slutsky                    Expires 10 May 2027                 [Page 11]
 
 Internet-Draft              Homing Pigeon v1               November 2026
 
-
-   A control character other than those listed in gap-char is part of a
-   word, not a gap between two, so [HOMING-PIGEON]<US>job x names no
-   job.  The words between the marker and job are decoration.  TEST is a
-   legal decoration.
 
    The job_id in the subject MUST equal the job_id member.  A mismatch
    MUST be rejected (Section 14).
@@ -666,6 +661,11 @@ Internet-Draft              Homing Pigeon v1               November 2026
 
    3.  If marker is absent, the message is malformed.
 
+   4.  The 96 characters after marker MUST be hexadecimal.  The two
+       characters after those MUST be " and }.
+
+   5.  The signed octets are the bytes from the { that opens this object
+       through the character before marker, plus one }.
 
 
 
@@ -673,12 +673,6 @@ Slutsky                    Expires 10 May 2027                 [Page 12]
 
 Internet-Draft              Homing Pigeon v1               November 2026
 
-
-   4.  The 96 characters after marker MUST be hexadecimal.  The two
-       characters after those MUST be " and }.
-
-   5.  The signed octets are the bytes from the { that opens this object
-       through the character before marker, plus one }.
 
    6.  That { is the start of the object that contains the marker, not a
        { inside a string.  If no such { exists, the message is
@@ -721,15 +715,6 @@ Internet-Draft              Homing Pigeon v1               November 2026
    reject log MAY record that the MAC failed.  It SHOULD NOT record the
    expected digest.
 
-
-
-
-
-Slutsky                    Expires 10 May 2027                 [Page 13]
-
-Internet-Draft              Homing Pigeon v1               November 2026
-
-
 8.  Unknown Members
 
    A receiver MUST ignore object members it does not implement, except:
@@ -737,6 +722,13 @@ Internet-Draft              Homing Pigeon v1               November 2026
    *  v other than 1 MUST be rejected (a receiver that implements the
       version 2 document opens version 2 messages under that document,
       never as jobs)
+
+
+
+Slutsky                    Expires 10 May 2027                 [Page 13]
+
+Internet-Draft              Homing Pigeon v1               November 2026
+
 
    *  type other than job, on a message the receiver is executing as a
       job, MUST be rejected
@@ -778,6 +770,14 @@ Internet-Draft              Homing Pigeon v1               November 2026
      |        |        |          | signed octets.                  |
      +--------+--------+----------+---------------------------------+
 
+                                 Table 1
+
+   key_id is covered by the MAC.  Key identifiers MAY appear in logs.
+   An unknown key_id MUST be rejected before the MAC is computed.  The
+   receiver MUST NOT try another secret.
+
+
+
 
 
 
@@ -785,12 +785,6 @@ Slutsky                    Expires 10 May 2027                 [Page 14]
 
 Internet-Draft              Homing Pigeon v1               November 2026
 
-
-                                 Table 1
-
-   key_id is covered by the MAC.  Key identifiers MAY appear in logs.
-   An unknown key_id MUST be rejected before the MAC is computed.  The
-   receiver MUST NOT try another secret.
 
    If a receiver enforces runner_id, the expected value MUST come from
    the receiver's configuration.  The signed value is what the submitter
@@ -829,19 +823,6 @@ Internet-Draft              Homing Pigeon v1               November 2026
    that same secret.  One key_id still names one secret.  One secret MAY
    have several identifiers.  Two secrets MUST NOT share one.
 
-
-
-
-
-
-
-
-
-Slutsky                    Expires 10 May 2027                 [Page 15]
-
-Internet-Draft              Homing Pigeon v1               November 2026
-
-
    The reference sender includes key_id on every message it signs.  The
    value is the fingerprint, unless the sender was told to use a chosen
    name.  The empty identifier is how a sender asks for the unnamed
@@ -853,6 +834,13 @@ Internet-Draft              Homing Pigeon v1               November 2026
    near-miss: a different length, a different case, or the fingerprint
    of a secret the receiver does not hold.  The receiver MUST NOT select
    the default secret for any of those.
+
+
+
+Slutsky                    Expires 10 May 2027                 [Page 15]
+
+Internet-Draft              Homing Pigeon v1               November 2026
+
 
    The name is a label.  It is 32 bits of a one-way function over a
    secret of at least 128 bits of entropy (Section 17.3).  It is not
@@ -886,6 +874,18 @@ Internet-Draft              Homing Pigeon v1               November 2026
    }
 
    The sig line above is abbreviated.  On the wire it is 96 hex digits.
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,6 +1,9 @@
 # idnits 3.3.0 (CLI run, offline: the RFC status lookups cannot leave this host, so the
-# downref and status lines are noise, as in the -00 runs). 2026-11-06T10:44:11Z
+# downref and status lines are noise, as in the -00 runs). 2026-11-07T18:44:08Z
 # Local -04 working draft, not submitted. Errors counted from the lines below.
+# This run follows the S4 edit to Section 6 (the job-id rule); the nit
+# items are the same as the 2026-11-06 run, with the XML TEXT_DOC_REF
+# line moved from 907 to 906 by the deleted grammar line.
 
 $ idnits --offline --no-progress --no-color -o simple draft-slutsky-homing-pigeon-04.txt
 0 errors -- warnings: 1  comments: 2
@@ -11,5 +14,5 @@ $ idnits --offline --no-progress --no-color -o simple draft-slutsky-homing-pigeo
 $ idnits --offline --no-progress --no-color -o simple draft-slutsky-homing-pigeon-04.xml
 0 errors -- warnings: 1  comments: 2
 [1] Comment | NON_ASCII_CHARACTERS | Document contains non-ASCII characters: (U+00A0, NO-BREAK SPACE) x1, ü (U+00FC, LATIN SMALL LETTER U WITH DIAERESIS) x2. Check that each is needed and displays correctly. Outside of names, describe them using U+ notation and/or their Unicode names.
-[2] Warning | TEXT_DOC_REF | Text occurs that looks like a text-document reference (e.g. [1] or [RFC...]). A reference should instead use an <eref> tag. | Section 20 (Platform Disclosure in the Handshake), artwork (rfc.middle.section[19].artwork) | Ln 907 Col 7
+[2] Warning | TEXT_DOC_REF | Text occurs that looks like a text-document reference (e.g. [1] or [RFC...]). A reference should instead use an <eref> tag. | Section 20 (Platform Disclosure in the Handshake), artwork (rfc.middle.section[19].artwork) | Ln 906 Col 7
 [3] Comment | LINE_PI | Document contains <?line 123?> processing instruction tags.

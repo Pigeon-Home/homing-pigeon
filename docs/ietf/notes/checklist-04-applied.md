@@ -93,6 +93,25 @@ XML: 0 errors, 1 warning (text that looks like a document reference
 in the Section 20 artwork, also in the -02 record), 2 comments. The
 run is recorded in the draft's `source/` folder.
 
+Applied after the cut, on a separate approval (2026-11-07):
+
+- The `job-id` limb of the subject-grammar proposal in
+  `notes/delta-03.txt` -- item S4 of
+  `notes/delta-deferred-items-for-approval.md`, the one change that
+  document proposed, approved on 2026-11-07. Section 6's grammar
+  now reads `job-id = 1*128 word-char`, and the `job-id-char`
+  rule is deleted. Nothing else in Section 6 changes; the prose
+  around the grammar stands, including "`job-id` MUST NOT be `.`
+  or `..`". Item 3 above guarded the posted subject grammar at
+  the cut; this limb was held out of the cut and is applied now
+  on its own approval, against the basis and the contrary record
+  the delta document states. Version 2 has no `job-id` rule of
+  its own and is unchanged. The draft was re-rendered and
+  re-checked after the edit (2026-11-07): text 0 errors, 1
+  warning, 2 comments; XML 0 errors, 1 warning, 2 comments --
+  the same items as the cut's run, recorded in the draft's
+  `source/` folder.
+
 ## Version 2: draft-slutsky-homing-pigeon-v2-04
 
 Applied as wording changes:

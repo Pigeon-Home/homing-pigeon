@@ -375,8 +375,7 @@ word-char      = %x00-08 / %x0E-1F / %x21-9F / %xA1-167F
                / %x1681-1FFF / %x200B-2027 / %x202A-202E
                / %x2030-205E / %x2060-2FFF / %x3001-FEFE
                / %xFF00-10FFFF
-job-id         = 1*128 job-id-char
-job-id-char    = ALPHA / DIGIT / "." / "_" / "-"
+job-id         = 1*128 word-char
 ~~~
 
 A control character other than those listed in `gap-char` is part of a word, not a gap between two, so `[HOMING-PIGEON]<US>job x` names no job. The words between the marker and `job` are decoration. `TEST` is a legal decoration.
