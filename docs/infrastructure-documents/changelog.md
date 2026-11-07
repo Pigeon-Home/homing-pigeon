@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.7 - 2026-11-06
+
+- Fix: a record-layer property test opened a record the opener had already accepted and expected it to open a second time. Under the anti-replay window of 3.15.18.6 a second opening is a replay, and that one test failed every suite leg of the 3.15.18.6 builds, so that version was never published and its tag stands unmoved. The test now takes a record the stride skipped as its late arrival and pins the replay refusal (RFC 9147 Section 4.5.1). Every other test of those legs, 11,401 on the Linux suite, passed.
+- Carries everything in 3.15.18.6, unpublished: application messages that survive reordering and loss, the RFC 9147 record layer, the derived PSK, the vendor-tree media type, and the draft-alignment fixes below.
+
 ## 3.15.18.6 - 2026-11-06
 
 - Fix: application messages over DTLS survive reordering and loss. Each application record now begins with a flag octet (first record, or continuation), a message's records ride consecutive sequence numbers, and both ends reassemble by sequence number, so a reordered message is delivered whole and a message with a record lost is dropped whole instead of misaligning every message after it. On the mail carriage one application message is one datagram, every record in one transfer, so the carriage's own reassembly carries a message whole in any order; the carriage datagram ceiling is now the application message cap plus record overhead (4,390,912 octets) and incomplete reassembly state is bounded as a whole as well as per transfer. Measured before the fix: a 5 KB message was 5 flight mails, and reversed delivery or one lost mail lost it and every later message on the session.

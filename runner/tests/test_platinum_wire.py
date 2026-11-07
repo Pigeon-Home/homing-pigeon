@@ -52,6 +52,7 @@ except ImportError:  # test-only dep: runner/tests/_hypothesis_shim.py
 
 from runner.wire.dtlsproto import (
     DtlsError,
+    DtlsReplay,
     DtlsServerCore,
     _RecordSealer,
     _extensions_bytes,
@@ -191,8 +192,9 @@ class RecordOpenPlatinum(unittest.TestCase):
     def test_records_across_the_16_bit_wrap_keep_their_sequence(
             self, start, count, stride, epoch, body):
         # the wire carries the low 16 bits; across the wrap, with every
-        # stride-th record arriving (the rest lost), then the first one
-        # arriving late, each opens to its full sequence number
+        # stride-th record arriving (the rest delayed), then a delayed
+        # one arriving late, each opens to its full sequence number;
+        # a record already accepted is a replay (RFC 9147 4.5.1)
         sealer = _RecordSealer(SECRET)
         sealer.seq = start
         records = [sealer.seal(epoch, 23, body, None) for _ in range(count)]
@@ -200,7 +202,11 @@ class RecordOpenPlatinum(unittest.TestCase):
         opener._next_expected = start
         for i in range(0, count, stride):
             self.assertEqual(opener.open(epoch, records[i]), (23, body, start + i))
-        self.assertEqual(opener.open(epoch, records[0]), (23, body, start))
+        if stride > 1:
+            self.assertEqual(opener.open(epoch, records[1]),
+                             (23, body, start + 1))
+        with self.assertRaises(DtlsReplay):
+            opener.open(epoch, records[0])
 
     @settings(deadline=None)
     @given(zeros=st.integers(0, 8), epoch=st.integers(0, 3))
