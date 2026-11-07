@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.8 - 2026-11-07
+
+- Fix: three job_user roster proofs — the M8 canary, R1 two-jobs and R6 drop-concurrent — had failed on the switch-proofs root legs since the temp-reap release: each observed the per-job workspace after the job ended, and the workspace is now reaped on every path out. The build-leg casualties of that landing were repaired at the time; these tests run only where root and the second user exist, so they sat outside that evidence. Each job now reports its workdir's owner (and the canary/R1 contents) from inside, and the tests assert on stdout, the channel that survives the reap. The temp-reap proof record carries an addendum naming the miss.
+- Record: the ATT&CK v20 delta audit — 6 techniques mapped against the Oracle's detection evidence, 3 partial and 3 recorded as blind spots, nothing relabelled.
+- Record: Platinum cycle 2 scored against its baseline — a fresh full-suite run and runner coverage measured, with 34 ranked gap tests added, the first of them pinning the channel-refusal sweep.
+- Record: first-hand verification of the content redo, rung by rung (500 / 5,000 / 50,000 / 500,000 / 1,048,576 characters), in bash in full and in PowerShell's parser leg on real Windows; the PowerShell gate leg stays plainly open.
+- Record: the FreeBSD 15.2 shell harness and its bare-machine runbook, with an honest first-run non-result — no real FreeBSD shell has run it yet.
+- Docs: the Pi Light / AI HAT+ 2 readiness audit (recommendation: wait), and the deferred-items delta document standing ready for one approval.
+- Extensions: the nightly upstream pins refresh (softflowd and suricata feeds).
+
 ## 3.15.18.7 - 2026-11-06
 
 - Fix: a record-layer property test opened a record the opener had already accepted and expected it to open a second time. Under the anti-replay window of 3.15.18.6 a second opening is a replay, and that one test failed every suite leg of the 3.15.18.6 builds, so that version was never published and its tag stands unmoved. The test now takes a record the stride skipped as its late arrival and pins the replay refusal (RFC 9147 Section 4.5.1). Every other test of those legs, 11,401 on the Linux suite, passed.
