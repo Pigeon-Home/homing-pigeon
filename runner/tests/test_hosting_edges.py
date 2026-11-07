@@ -6,8 +6,9 @@ Coverage (2026-10-25, the Platinum baseline) left these never
 executed: the webhook's refusals of a payload that is signed but is
 not an event, or an event with no tenant or no positive amount; the
 two state writers' failure arm, which must leave no temp file behind
-and must still raise; and protocol_v2's device-tree read. Each is one
-input or one failing call away.
+and must still raise; and protocol_v2's platform facts, which now
+follow the owner's disclosure tier and read no device-tree file.
+Each is one input or one failing call away.
 """
 import hashlib
 import hmac
@@ -143,23 +144,34 @@ class StateWriterFailureTest(unittest.TestCase):
 
 
 class PlatformFactsTest(unittest.TestCase):
-    def test_the_device_tree_model_is_appended_when_present(self):
-        with mock.patch.object(protocol_v2.os.path, "exists", return_value=True), \
-                mock.patch("builtins.open",
-                           mock.mock_open(read_data=b"Raspberry Pi 4 Model B\0junk")):
-            facts = protocol_v2.platform_facts()
-        self.assertTrue(facts.endswith("Raspberry Pi 4 Model B"), facts)
-        self.assertIn("py%d.%d" % sys.version_info[:2], facts)
+    """The question's platform context is the platform card at the
+    owner's `pong_platform` tier (version 2 draft Section 10, read
+    with version 1's tiers). The device-tree model the facts once
+    appended is no card's business at any tier, so the file is not
+    read at all."""
 
-    def test_an_empty_or_unreadable_model_leaves_the_triple(self):
+    def test_the_device_tree_model_is_not_read_or_disclosed(self):
+        opened = mock.mock_open(read_data=b"Raspberry Pi 4 Model B\0junk")
         with mock.patch.object(protocol_v2.os.path, "exists", return_value=True), \
-                mock.patch("builtins.open", mock.mock_open(read_data=b"\0")):
-            plain = protocol_v2.platform_facts()
-        with mock.patch.object(protocol_v2.os.path, "exists", return_value=True), \
-                mock.patch("builtins.open", side_effect=OSError("denied")):
-            denied = protocol_v2.platform_facts()
-        self.assertEqual(plain, denied)
-        self.assertEqual(len(plain.split()), 3)
+                mock.patch("builtins.open", opened):
+            facts = protocol_v2.platform_facts({"pong_platform": "full"})
+        opened.assert_not_called()
+        self.assertNotIn("Raspberry Pi", facts)
+        card = json.loads(facts)
+        self.assertEqual(card["python_version"].split(".")[:2],
+                         [str(n) for n in sys.version_info[:2]])
+
+    def test_the_card_follows_the_tier_and_no_file_changes_it(self):
+        with mock.patch("builtins.open", side_effect=OSError("denied")):
+            family = json.loads(protocol_v2.platform_facts({}))
+            standard = json.loads(protocol_v2.platform_facts(
+                {"pong_platform": "standard"}))
+        self.assertEqual(set(family), {"os_family", "default_interpreter",
+                                       "protocol_versions"})
+        self.assertEqual(set(standard) - set(family),
+                         {"os_release", "python_version"})
+        self.assertEqual(protocol_v2.platform_facts(
+            {"pong_platform": "none"}), "")
 
 
 if __name__ == "__main__":

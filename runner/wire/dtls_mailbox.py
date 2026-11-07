@@ -21,7 +21,7 @@ and reassembled exactly. The frame --
     <one base64 chunk>
 
 -- travels in its own MIME part (content type
-application/hp-dtls3, base64 transfer encoding), so text a
+application/vnd.homing-pigeon.dtls3, base64 transfer encoding), so text a
 provider adds around it, a footer in the text part above all,
 is not the frame and cannot break it. A message with no typed
 part is read in the original naked shape, the frame as the
@@ -67,18 +67,28 @@ from runner.wire.mailbox import (
 FLIGHT_SUBJECT = "[HOMING-PIGEON] dtls"
 
 # The MIME content type of the part that carries one flight
-# frame. A private type in a local, unsubmitted draft: it
-# requests no registration, and a receiver treats a part of
-# this type as the only frame source in its message.
-FLIGHT_CONTENT_TYPE = "application/hp-dtls3"
+# frame: a vendor-tree name (RFC 6838 Section 3.2), the tree
+# open to a project of its own, registered through IANA's
+# media-type process rather than a standards-track action.
+# A receiver treats a part of this type as the only frame
+# source in its message.
+FLIGHT_CONTENT_TYPE = "application/vnd.homing-pigeon.dtls3"
 
 _FLIGHT_NOTE = (
     "This message carries one DTLS flight in its "
-    "application/hp-dtls3 part. The flight is data for the "
+    + FLIGHT_CONTENT_TYPE + " part. The flight is data for the "
     "Homing Pigeon runner's DTLS-over-mail carriage; this "
     "text part is not the flight.")
 
-DEFAULT_MAX_DATAGRAM_BYTES = 256 * 1024
+# One application message is one datagram on this carriage:
+# every record of a message, and nothing else, in one transfer
+# (the carriage reassembles a transfer's parts in any order, so
+# a message needs no order between datagrams). The limit is
+# therefore the largest application message the session profile
+# carries plus the record overhead of cutting it into records:
+# about 3,600 records of 1,200 octets for a message at the cap,
+# each with a 10-octet header, a flag octet and a 16-octet tag.
+DEFAULT_MAX_DATAGRAM_BYTES = dtlsproto.APP_MESSAGE_MAX + 128 * 1024
 DEFAULT_CHUNK_CHARS = 32768
 _MAX_PARTS = 1024
 _MAX_CHUNK_CHARS = 1024 * 1024
@@ -383,9 +393,17 @@ class FlightReassembler:
 
     def __init__(self, max_transfers=64,
                  max_total_bytes=DEFAULT_MAX_DATAGRAM_BYTES,
-                 ttl_sec=3600, deadline_sec=None):
+                 ttl_sec=3600, deadline_sec=None,
+                 max_pending_bytes=None):
         self.max_transfers = max_transfers
         self.max_total_bytes = max_total_bytes
+        # The most octets held across every incomplete transfer
+        # at once (unauthenticated state, so bounded as a whole
+        # and not only per transfer): two datagrams' worth by
+        # default. Past it the oldest transfers are dropped.
+        self.max_pending_bytes = (2 * max_total_bytes
+                                  if max_pending_bytes is None
+                                  else max_pending_bytes)
         self.ttl_sec = ttl_sec
         # An absolute deadline from a transfer's first part,
         # never longer than the idle timeout: a caller's longer
@@ -399,6 +417,11 @@ class FlightReassembler:
     @property
     def pending(self):
         return len(self._transfers)
+
+    @property
+    def pending_bytes(self):
+        return sum(len(chunk) for entry in self._transfers.values()
+                   for chunk in entry["parts"].values())
 
     def _expire(self, now):
         stale = [key for key, entry in self._transfers.items()
@@ -434,6 +457,11 @@ class FlightReassembler:
         entry["parts"][part.index] = part.chunk
         entry["updated"] = now
         self._transfers.move_to_end(key)
+        while self.pending_bytes > self.max_pending_bytes \
+                and len(self._transfers) > 1:
+            self._transfers.popitem(last=False)
+        if key not in self._transfers:
+            return None
         if len(entry["parts"]) < entry["count"]:
             return None
         data = b"".join(entry["parts"][i]
@@ -699,11 +727,17 @@ class DtlsMailServer:
         return mails
 
     def send_app_mails(self, session_cid, data):
+        """The flight mails of one application message: every
+        record of the message in one datagram, so the carriage
+        reassembles it whole and delivers it whole, whatever
+        order its parts and the other messages' mails arrive
+        in."""
         hint = self._cid_hint.get(session_cid)
-        mails = []
-        for _addr, datagram in self.core.send_app(session_cid, data):
-            mails.extend(_encode_outgoing(datagram, hint))
-        return mails
+        records = [datagram for _addr, datagram
+                   in self.core.send_app(session_cid, data)]
+        if not records:
+            return []
+        return _encode_outgoing(b"".join(records), hint)
 
 
 class DtlsMailClient:
@@ -771,7 +805,12 @@ class DtlsMailClient:
         return self._wrap(self.core.tick(now))
 
     def send_app_mails(self, data):
-        return self._wrap(self.core.send_app(data))
+        """One application message as one datagram's flight
+        mails (see DtlsMailServer.send_app_mails)."""
+        records = self.core.send_app(data)
+        if not records:
+            return []
+        return self._wrap([b"".join(records)])
 
     def receive_raw(self, raw, now):
         return self.receive_classified(parse_message(raw), now)
@@ -886,7 +925,7 @@ class Deposit:
 def build_flight_message(cfg, subject, body):
     """One flight mail as a message object: a short text part
     a human can read, and the frame in its own
-    application/hp-dtls3 part with base64 transfer encoding.
+    FLIGHT_CONTENT_TYPE part with base64 transfer encoding.
     Text a provider adds anywhere else in the message -- a
     footer in the text part above all -- is not the frame and
     cannot break the flight.
@@ -903,8 +942,9 @@ def build_flight_message(cfg, subject, body):
     msg["To"] = str(cfg.get("mailbox_user") or "")
     msg["Subject"] = " ".join(str(subject or "").splitlines())
     msg.set_content(_FLIGHT_NOTE)
+    maintype, _slash, subtype = FLIGHT_CONTENT_TYPE.partition("/")
     msg.add_attachment((body or "").encode("utf-8"),
-                       maintype="application", subtype="hp-dtls3")
+                       maintype=maintype, subtype=subtype)
     return msg
 
 

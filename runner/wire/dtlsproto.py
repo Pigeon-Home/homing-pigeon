@@ -15,10 +15,13 @@ side), and the profile is deliberately narrow:
   envelope module's hkdf() is extract+expand for its own
   construction), so the small expand/label helpers live here,
   next to the schedule they serve.
-- Authentication is PSK-only: the shared secret is the
-  external pre-shared key. Identities: "homing-pigeon" names
-  the default secret, "homing-pigeon:<key_id>" names an
-  additional secret; resumption tickets are opaque.
+- Authentication is PSK-only: the external pre-shared key is
+  derived from the shared secret (psk_from_secret: HKDF over
+  the secret with the PSK_INFO label), so the job-signing
+  secret itself never enters the TLS key schedule. Identities:
+  "homing-pigeon" names the default secret,
+  "homing-pigeon:<key_id>" names an additional secret;
+  resumption tickets are opaque.
 - Key exchange is psk_dhe_ke ONLY (DRU's hard rule): an
   ephemeral X25519 share rides every handshake, full or
   resumed. psk_ke is never offered and never accepted, so a
@@ -50,6 +53,13 @@ side), and the profile is deliberately narrow:
   96-bit big-endian value (epoch << 48) | sequence -- the
   DTLS combined sequence construction, because sequence
   numbers restart per epoch and the epoch is a nonce input.
+- Record numbers are encrypted on the wire (RFC 9147 4.2.3:
+  an AES-ECB mask under the epoch's "sn" key over the first
+  16 ciphertext octets), the ACK message carries uint64
+  epoch and sequence pairs (RFC 9147 7, A.1), and every
+  receiver keeps an anti-replay window (RFC 9147 4.5.1), so
+  the records this code emits and accepts are the records a
+  conforming DTLS 1.3 stack emits and accepts.
 - Platform disclosure: the server's EncryptedExtensions
   carries a configuration-style platform payload in the final
   handshake flight. The pattern is lifted from IKEv2's
@@ -59,9 +69,14 @@ side), and the profile is deliberately narrow:
   application data. Current clients also surface a legacy
   peer's post-handshake greeting application message for
   interoperability.
-- Application framing: one uint32 length prefix per message
-  over the record stream. Jobs are ordinary application
-  messages once the session is established.
+- Application framing: one uint32 length prefix per message,
+  the message cut into records that each begin with a flag
+  octet (first record, or continuation) and ride consecutive
+  record sequence numbers, and reassembly by sequence number
+  on the receiver -- so a message survives reordering, and a
+  message with a record lost is dropped whole rather than
+  misaligning the ones after it. Jobs are ordinary
+  application messages once the session is established.
 
 The cores are transport-agnostic: feed() takes datagrams and
 returns datagrams; the extension and the client own sockets.
@@ -152,12 +167,52 @@ HRR_RANDOM = bytes.fromhex(
 DEFAULT_IDENTITY = "homing-pigeon"
 IDENTITY_PREFIX = "homing-pigeon:"
 
-# Application messages are length-prefixed over the record
-# stream; a single record carries at most this much plaintext
+# Application messages are length-prefixed and may span several
+# records; a single record carries at most this much plaintext
 # (a conservative under-MTU chunk; a large job is many
 # records, which loopback and ordinary paths both absorb).
+# Each application record's plaintext begins with one flag
+# octet: APP_FLAG_FIRST on the first record of a message,
+# APP_FLAG_MORE on every later one. The records of one message
+# carry consecutive record sequence numbers, so a receiver
+# reassembles a message by sequence number whatever order the
+# records arrive in, and a message with a record missing is
+# dropped whole once that record can no longer arrive (it has
+# fallen outside the replay window) -- never delivered in part,
+# and never allowed to misalign a later message. DTLS gives
+# application data no order and no reliability (RFC 9147
+# Section 11); this framing is what makes a message safe on
+# top of it.
 RECORD_PLAINTEXT_MAX = 1200
 APP_MESSAGE_MAX = 4 * 1024 * 1024 + 65536
+APP_FLAG_FIRST = 1
+APP_FLAG_MORE = 0
+# The most application bytes held for messages still missing a
+# record, across all of a session's pending messages and the
+# continuation records whose first record has not arrived yet.
+# Past it the oldest pending message is dropped.
+APP_PENDING_MAX_BYTES = 2 * APP_MESSAGE_MAX
+# RFC 9147 Section 4.5.1: the receiver's anti-replay window, in
+# record sequence numbers below the highest it has accepted. A
+# record that far behind, or one already accepted, is dropped
+# after it authenticates. 64 is the RFC's example; this profile
+# keeps the window as wide as the 16-bit on-the-wire sequence
+# number allows a record to be reconstructed at all (Section
+# 4.2.2: the receiver reads the closest candidate, so a record
+# more than 2^15 behind the newest cannot be opened whatever the
+# window says). That is wide enough for a whole 4 MiB message
+# of 1200-octet records (about 3,600 of them) to arrive after
+# several later messages on a store-and-forward path and still
+# open.
+RECORD_REPLAY_WINDOW = 32768
+
+# The DTLS external PSK is derived from the shared secret, not
+# the secret itself: HKDF (RFC 5869) with HMAC-SHA-384, no salt,
+# this info string, 48 octets. The secret is also the HMAC key
+# of every job and the input keying material of the per-job
+# encryption; a derived, single-purpose PSK keeps the three
+# constructions apart (RFC 9257's guidance for external PSKs).
+PSK_INFO = b"homing-pigeon dtls psk v1"
 
 RETRANSMIT_FIRST = 1.0       # seconds; doubles per retry
 RETRANSMIT_MAX = 16.0
@@ -320,6 +375,19 @@ def _binder(psk_bytes, label, transcript_hash):
     return hmac.new(fin_key, transcript_hash, HASH).digest()
 
 
+def psk_from_secret(secret):
+    """The external PSK for a shared secret: HKDF-SHA-384 over
+    the secret's UTF-8 octets with no salt and the PSK_INFO
+    string, 48 octets. An empty or missing secret gives an
+    empty PSK, which no handshake accepts. Both ends derive it
+    the same way; the secret itself never enters the TLS key
+    schedule."""
+    if not isinstance(secret, str) or not secret:
+        return b""
+    prk = _hkdf_extract(None, secret.encode("utf-8"))
+    return _hkdf_expand(prk, PSK_INFO, HASH_LEN)
+
+
 # ------------------------------------------------------------------
 # Wire helpers
 # ------------------------------------------------------------------
@@ -461,17 +529,56 @@ def _record_cid(record):
     return record[2:2 + n]
 
 
+class DtlsReplay(DtlsError):
+    """A record that authenticated but was already accepted, or
+    has fallen behind the receiver's replay window. Dropped by
+    the record layer; the session is not harmed."""
+
+
 class _RecordSealer:
-    """Per-direction, per-epoch AEAD record state."""
+    """Per-direction, per-epoch AEAD record state.
+
+    The record number is encrypted on the wire as RFC 9147
+    Section 4.2.3 specifies: the sequence-number key of this
+    epoch and direction is HKDF-Expand-Label(secret, "sn", "",
+    32), the mask is AES-ECB under that key over the first 16
+    octets of the record's ciphertext, and the leading mask
+    octets are XORed into the on-the-wire sequence number after
+    the record is sealed (and before the AEAD's additional data
+    is formed on the way back in: the additional data is the
+    header with the plaintext sequence number). The receiver
+    keeps the anti-replay window of Section 4.5.1: a record
+    that authenticates with a sequence number already accepted,
+    or more than RECORD_REPLAY_WINDOW behind the highest
+    accepted, raises DtlsReplay and changes nothing.
+    """
 
     def __init__(self, traffic_secret):
         self.key, self.iv = _traffic_keys(traffic_secret)
+        self.sn_key = _expand_label(traffic_secret, b"sn", b"", 32)
+        self._sn_rk = jobcrypto._aes256_expand(self.sn_key)
         self.seq = 0
+        # The reconstruction anchor: the wire carries the low 16
+        # bits of the sequence number; the high bits are inferred
+        # around this value, which is one past the highest
+        # sequence number accepted.
         self._next_expected = 0
+        # The replay window: bit 0 is the highest accepted
+        # sequence number, bit k the one k below it.
+        self._right = -1
+        self._window = 0
+        self._window_mask = (1 << RECORD_REPLAY_WINDOW) - 1
 
     def _nonce(self, epoch, seq):
         combined = ((epoch << 48) | seq).to_bytes(12, "big")
         return bytes(a ^ b for a, b in zip(self.iv, combined))
+
+    def _mask(self, ciphertext):
+        """The record-number mask for a sealed record body (RFC
+        9147 Section 4.2.3, the AES form): AES-ECB over the
+        first 16 ciphertext octets under the sn key."""
+        return jobcrypto._aes_encrypt_block(ciphertext[:16],
+                                            self._sn_rk)
 
     def seal(self, epoch, content_type, plaintext, cid):
         seq = self.seq
@@ -485,8 +592,18 @@ class _RecordSealer:
         header += (seq & 0xFFFF).to_bytes(2, "big")
         header += (len(plaintext) + 1 + 16).to_bytes(2, "big")
         inner = plaintext + bytes([content_type])
-        return header + jobcrypto.aead_encrypt(
+        body = jobcrypto.aead_encrypt(
             self.key, self._nonce(epoch, seq), inner, header)
+        # The body is at least 17 octets (the content type octet
+        # and the 16-octet tag), so the 16-octet mask input is
+        # always there; RFC 9147's padding rule for short
+        # plaintexts never bites this profile.
+        mask = self._mask(body)
+        seq_at = len(header) - 4
+        masked = bytes([header[seq_at] ^ mask[0],
+                        header[seq_at + 1] ^ mask[1]])
+        return (header[:seq_at] + masked + header[seq_at + 2:]
+                + body)
 
     def open(self, epoch, record):
         """(content_type, content, seq); raises on any defect.
@@ -494,7 +611,9 @@ class _RecordSealer:
         The inner plaintext is content || type || zeros*
         (RFC 8446 5.2): strip the zero padding from the end,
         the last remaining octet is the content type, and the
-        content keeps any trailing zeros of its own.
+        content keeps any trailing zeros of its own. The
+        replay window is consulted only after the record has
+        authenticated, so a forgery cannot move it.
         """
         if not record:
             raise DtlsError("record too short")
@@ -504,15 +623,16 @@ class _RecordSealer:
             if pos >= len(record):
                 raise DtlsError("record too short")
             pos += 1 + record[pos]
+        seq_at = pos
         if first & 0x10:
             if pos + 2 > len(record):
                 raise DtlsError("record too short")
-            seq_low = int.from_bytes(record[pos:pos + 2], "big")
+            seq_width = 2
             pos += 2
         else:
             if pos >= len(record):
                 raise DtlsError("record too short")
-            seq_low = record[pos]
+            seq_width = 1
             pos += 1
         if first & 0x08:
             if pos + 2 > len(record):
@@ -524,22 +644,68 @@ class _RecordSealer:
         body = record[pos:pos + length]
         if len(body) < 17 or pos + length > len(record):
             raise DtlsError("record too short")
+        # Record number decryption: unmask the on-the-wire
+        # sequence number, and form the additional data from the
+        # header as it was before masking.
+        mask = self._mask(body)
+        wire_seq = record[seq_at:seq_at + seq_width]
+        plain_seq = bytes(a ^ b for a, b in zip(wire_seq, mask))
+        seq_low = int.from_bytes(plain_seq, "big")
+        aad = (record[:seq_at] + plain_seq
+               + record[seq_at + seq_width:pos])
         # Sequence reconstruction: within one epoch, sequence
         # numbers grow monotonically; the wire carries the low
-        # 16 bits and the window's high bits are inferred.
-        seq = (self._next_expected & ~0xFFFF) | seq_low
-        if seq + 0x8000 < self._next_expected:
-            seq += 0x10000
-        elif seq > self._next_expected + 0x8000 and seq >= 0x10000:
-            seq -= 0x10000
+        # 8 or 16 bits and the window's high bits are inferred.
+        if seq_width == 2:
+            seq = (self._next_expected & ~0xFFFF) | seq_low
+            if seq + 0x8000 < self._next_expected:
+                seq += 0x10000
+            elif seq > self._next_expected + 0x8000 and seq >= 0x10000:
+                seq -= 0x10000
+        else:
+            seq = (self._next_expected & ~0xFF) | seq_low
+            if seq + 0x80 < self._next_expected:
+                seq += 0x100
+            elif seq > self._next_expected + 0x80 and seq >= 0x100:
+                seq -= 0x100
         plain = jobcrypto.aead_decrypt(
-            self.key, self._nonce(epoch, seq), body, record[:pos])
+            self.key, self._nonce(epoch, seq), body, aad)
         stripped = plain.rstrip(b"\x00")
         if not stripped:
             raise DtlsError("empty inner plaintext")
         content_type = stripped[-1]
-        self._next_expected = max(self._next_expected, seq + 1)
+        self._accept_seq(seq)
         return content_type, stripped[:-1], seq
+
+    def _accept_seq(self, seq):
+        """The anti-replay window of RFC 9147 Section 4.5.1,
+        applied to an authenticated record."""
+        if seq > self._right:
+            shift = seq - self._right
+            if shift >= RECORD_REPLAY_WINDOW:
+                self._window = 1
+            else:
+                self._window = ((self._window << shift) | 1) \
+                    & self._window_mask
+            self._right = seq
+        else:
+            back = self._right - seq
+            if back >= RECORD_REPLAY_WINDOW:
+                raise DtlsReplay("record older than the replay window")
+            bit = 1 << back
+            if self._window & bit:
+                raise DtlsReplay("replayed record")
+            self._window |= bit
+        self._next_expected = max(self._next_expected, seq + 1)
+
+    def seen(self, seq):
+        """True when the window records `seq` as accepted."""
+        if seq > self._right:
+            return False
+        back = self._right - seq
+        if back >= RECORD_REPLAY_WINDOW:
+            return False
+        return bool(self._window & (1 << back))
 
 
 # ------------------------------------------------------------------
@@ -589,11 +755,11 @@ class _FragmentBuffer:
     out of the handshake path."""
 
     # The largest total a buffer will assemble: 256 KB, the
-    # size the suite already treats as the largest thing
-    # that travels whole (the local envelope ceiling and
-    # dtls_mailbox.DEFAULT_MAX_DATAGRAM_BYTES). The largest
-    # handshake message this profile sends, the hybrid
-    # ClientHello, is about 1.4 KB.
+    # local envelope ceiling. The largest handshake message
+    # this profile sends, the hybrid ClientHello, is about
+    # 1.4 KB. (The mail carriage's datagram ceiling is a
+    # different, larger number: it covers a whole application
+    # message, which never passes through this buffer.)
     MAX_TOTAL_BYTES = 256 * 1024
     # The most messages held at once: the carriage
     # reassembler's own transfer bound.
@@ -811,6 +977,38 @@ def ticket_fields(entry):
 # Endpoint plumbing shared by both roles
 # ------------------------------------------------------------------
 
+class _PendingMessage:
+    """One application message being reassembled: the payloads
+    of its records so far, in sequence order, from the record
+    carrying its length prefix."""
+
+    __slots__ = ("start", "total", "next_seq", "parts", "held")
+
+    def __init__(self, start, total):
+        self.start = start
+        self.total = total          # the length prefix's value
+        self.next_seq = start       # the sequence number wanted next
+        self.parts = []
+        self.held = 0               # payload octets held, prefix included
+
+    def append(self, payload):
+        self.parts.append(payload)
+        self.next_seq += 1
+        self.held += len(payload)
+        return len(payload)
+
+    def complete(self):
+        return self.held >= 4 + self.total
+
+    def message(self):
+        """The message, or None when the records held do not add
+        up to the length prefix exactly."""
+        data = b"".join(self.parts)
+        if len(data) != 4 + self.total:
+            return None
+        return data[4:]
+
+
 class _Endpoint:
     def __init__(self, log=None, rng=None):
         self.log = log or (lambda msg, level="INFO": None)
@@ -836,7 +1034,20 @@ class _Endpoint:
         self.retrans_max_retries = None
         self._flight_retries = 0
         self._acks_wanted = []     # (epoch, seq) to acknowledge
-        self._app_buf = bytearray()
+        # Application reassembly by record sequence number:
+        # start seq -> _PendingMessage for messages still
+        # missing a record; next seq wanted -> start seq, so a
+        # continuation record finds its message in one lookup;
+        # continuation records whose first record has not
+        # arrived, by seq; the highest sequence number any
+        # application record has carried; and the bytes held.
+        self._app_pending = {}
+        self._app_wanted = {}
+        self._app_orphans = {}
+        self._app_edge = -1
+        self._app_held_bytes = 0
+        self.app_dropped = 0       # messages dropped incomplete
+        self.replayed_records = 0  # dropped by the replay window
         self.app_messages = []     # whole messages, in order
         self._next_hs_seq = 0
         self._plain_seq = 0
@@ -921,43 +1132,159 @@ class _Endpoint:
         return out
 
     def _send_ack(self):
+        # RFC 9147 Section 7 and Appendix A.1: the ACK body is a
+        # 2-octet-length vector of RecordNumber, each a uint64
+        # epoch followed by a uint64 sequence number.
         epoch = max(self.senders)
         body = b""
         for (ep, seq) in self._acks_wanted:
-            body += (ep.to_bytes(2, "big") + seq.to_bytes(6, "big"))
+            body += (ep.to_bytes(8, "big") + seq.to_bytes(8, "big"))
         self._acks_wanted = []
         record = (len(body).to_bytes(2, "big") + body)
         return [self._emit(epoch, CT_ACK, record)]
 
+    @staticmethod
+    def parse_ack(content):
+        """The [(epoch, seq)] an ACK body carries, or None when
+        the body is not a well-formed ACK: a 2-octet length that
+        covers the rest exactly, in 16-octet RecordNumbers."""
+        if len(content) < 2:
+            return None
+        n = int.from_bytes(content[:2], "big")
+        body = content[2:]
+        if n != len(body) or n % 16:
+            return None
+        return [(int.from_bytes(body[i:i + 8], "big"),
+                 int.from_bytes(body[i + 8:i + 16], "big"))
+                for i in range(0, n, 16)]
+
     def _note_ack(self, content):
-        # Any well-formed ACK for our flight ends retransmission.
-        if len(content) >= 2:
+        # Any well-formed ACK for our flight ends retransmission:
+        # the profile's flights are a few records, and the peer
+        # acknowledges a flight once it holds it whole.
+        if self.parse_ack(content) is not None:
             self._clear_flight()
 
     # -- application data ----------------------------------------------
 
     def _app_send(self, data):
+        """The records of one application message: a flag octet
+        (first, then continuation) ahead of each slice of the
+        length-prefixed message, on consecutive sequence
+        numbers of the newest application epoch."""
         framed = len(data).to_bytes(4, "big") + data
         epoch = max(e for e in self.senders if e >= 3)
         out = []
+        flag = APP_FLAG_FIRST
+        slice_max = RECORD_PLAINTEXT_MAX - 1
         while framed:
-            chunk = framed[:RECORD_PLAINTEXT_MAX]
+            chunk = framed[:slice_max]
             framed = framed[len(chunk):]
-            out.append(self._emit(epoch, CT_APPDATA, chunk))
+            out.append(self._emit(epoch, CT_APPDATA,
+                                  bytes([flag]) + chunk))
+            flag = APP_FLAG_MORE
         return out
 
-    def _app_receive(self, content):
-        self._app_buf.extend(content)
-        while len(self._app_buf) >= 4:
-            n = int.from_bytes(self._app_buf[0:4], "big")
-            if n > APP_MESSAGE_MAX:
-                raise DtlsError("application message too large")
-            if len(self._app_buf) < 4 + n:
-                break
-            msg = bytes(self._app_buf[4:4 + n])
-            del self._app_buf[:4 + n]
-            self.app_messages.append(msg)
-            self._on_app_message(msg)
+    def _app_receive(self, content, seq):
+        """One application record, authenticated, with its record
+        sequence number. Messages are reassembled by sequence
+        number; a whole message is delivered to _on_app_message
+        the moment its last record is held, whatever order the
+        records came in."""
+        if not content:
+            self.log("dtls: empty application record; dropped",
+                     "WARN")
+            return
+        flag, payload = content[0], bytes(content[1:])
+        if flag not in (APP_FLAG_FIRST, APP_FLAG_MORE):
+            self.log("dtls: application record with an unknown "
+                     "flag; dropped", "WARN")
+            return
+        if seq > self._app_edge:
+            self._app_edge = seq
+        self._app_expire()
+        if flag == APP_FLAG_FIRST:
+            if seq in self._app_pending:
+                return                      # a duplicate first record
+            if len(payload) < 4:
+                self.log("dtls: first application record carries "
+                         "no length; dropped", "WARN")
+                return
+            total = int.from_bytes(payload[:4], "big")
+            if total > APP_MESSAGE_MAX:
+                self.log("dtls: application message too large; "
+                         "dropped", "WARN")
+                self.app_dropped += 1
+                return
+            pending = _PendingMessage(seq, total)
+            self._app_pending[seq] = pending
+            self._app_held_bytes += pending.append(payload)
+        else:
+            start = self._app_wanted.pop(seq, None)
+            if start is None:
+                # Its first record has not arrived (or was lost);
+                # hold it for when it does.
+                if seq not in self._app_orphans:
+                    self._app_orphans[seq] = payload
+                    self._app_held_bytes += len(payload)
+                self._app_bound()
+                return
+            pending = self._app_pending[start]
+            self._app_held_bytes += pending.append(payload)
+        # Pull in any continuation records already held for the
+        # sequence numbers this message now wants.
+        while not pending.complete() and pending.next_seq in \
+                self._app_orphans:
+            pending.append(self._app_orphans.pop(pending.next_seq))
+        if pending.complete():
+            del self._app_pending[pending.start]
+            self._app_held_bytes -= pending.held
+            msg = pending.message()
+            if msg is None:
+                self.log("dtls: application message does not "
+                         "match its length prefix; dropped", "WARN")
+                self.app_dropped += 1
+            else:
+                self.app_messages.append(msg)
+                self._on_app_message(msg)
+        else:
+            self._app_wanted[pending.next_seq] = pending.start
+        self._app_bound()
+
+    def _app_expire(self):
+        """Drop what can no longer complete: a pending message
+        whose next wanted record, or an orphan record, has fallen
+        behind the replay window of the newest application
+        record, where the record layer would refuse it."""
+        floor = self._app_edge - RECORD_REPLAY_WINDOW
+        if floor <= 0:
+            return
+        for start in [s for s, p in self._app_pending.items()
+                      if p.next_seq < floor]:
+            self._app_drop_pending(start)
+        for seq in [s for s in self._app_orphans if s < floor]:
+            self._app_held_bytes -= len(self._app_orphans.pop(seq))
+
+    def _app_bound(self):
+        """Keep the held bytes under APP_PENDING_MAX_BYTES by
+        dropping the oldest pending message, then the oldest
+        orphan records."""
+        while self._app_held_bytes > APP_PENDING_MAX_BYTES \
+                and self._app_pending:
+            self._app_drop_pending(min(self._app_pending))
+        while self._app_held_bytes > APP_PENDING_MAX_BYTES \
+                and self._app_orphans:
+            seq = min(self._app_orphans)
+            self._app_held_bytes -= len(self._app_orphans.pop(seq))
+
+    def _app_drop_pending(self, start):
+        pending = self._app_pending.pop(start)
+        self._app_wanted.pop(pending.next_seq, None)
+        self._app_held_bytes -= pending.held
+        self.app_dropped += 1
+        self.log("dtls: application message dropped with a "
+                 f"record missing (started at record {start})",
+                 "WARN")
 
     def _on_app_message(self, msg):
         raise NotImplementedError
@@ -1035,7 +1362,7 @@ class DtlsClientCore(_Endpoint):
         self.negotiated_group = None
         self._eph_hyb = None
         self._mlkem_dk = None
-        self._psk = secret.encode("utf-8") if secret else b""
+        self._psk = psk_from_secret(secret)
         self._key_id = key_id
         self._identity = identity_for(key_id)
         self._binder_label = b"ext binder"
@@ -1178,6 +1505,12 @@ class DtlsClientCore(_Endpoint):
             try:
                 ctype, content, seq = self.receivers[epoch].open(
                     epoch, record)
+            except DtlsReplay:
+                # Authenticated, and already accepted (or behind
+                # the window): dropped at the record layer.
+                self.replayed_records += 1
+                self.log("dtls: replayed record dropped", "WARN")
+                return []
             except Exception:
                 continue
             self.record_log.append(("in", epoch, ctype))
@@ -1204,7 +1537,7 @@ class DtlsClientCore(_Endpoint):
                 raise DtlsError(
                     "application data before our Finished was "
                     "sent")
-            self._app_receive(content)
+            self._app_receive(content, seq)
             return out
         if ctype == CT_HANDSHAKE:
             self._acks_wanted.append((epoch, seq))
@@ -1606,7 +1939,7 @@ class _ServerSession(_Endpoint):
                 return refuse(ALERT_HANDSHAKE_FAILURE,
                               "dtls: unknown PSK identity; "
                               "handshake refused")
-            psk = secret.encode("utf-8")
+            psk = psk_from_secret(secret)
             self.issuer = identity
         binder = binders[0]
         if len(raw_ch) <= len(binder):
@@ -1732,6 +2065,9 @@ class _ServerSession(_Endpoint):
         trust its source address (NAT rebinding)."""
         try:
             epoch, ctype, content, seq = self._open_record(record)
+        except DtlsReplay:
+            self.log("dtls: replayed record dropped", "WARN")
+            return [], False
         except DtlsError:
             self.log("dtls: record carrying a live session's "
                      "CID did not decrypt; dropped", "WARN")
@@ -1747,6 +2083,11 @@ class _ServerSession(_Endpoint):
             try:
                 ctype, content, seq = self.receivers[cand].open(
                     cand, record)
+            except DtlsReplay:
+                # Authenticated, and already accepted (or behind
+                # the window): dropped at the record layer.
+                self.replayed_records += 1
+                raise DtlsReplay("replayed record")
             except Exception:
                 continue
             self.record_log.append(("in", cand, ctype))
@@ -1771,7 +2112,7 @@ class _ServerSession(_Endpoint):
                     "dtls: application data before the session "
                     "was established; dropped", "WARN")
                 return out
-            self._app_receive(content)
+            self._app_receive(content, seq)
             return out
         if ctype == CT_HANDSHAKE:
             self._acks_wanted.append((epoch, seq))

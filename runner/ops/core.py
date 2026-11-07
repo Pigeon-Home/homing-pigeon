@@ -34,16 +34,16 @@ CLI output:
   CLI prints its figure live. The estimator is not a BPE
   tokenizer, and the 2 figures are not interchangeable: the
   same estimator counts the as-assembled 133-file set at
-  585,637, not 619,845.
+  590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 55,550 lines,
-50,018 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 55,970 lines,
+50,416 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
 The headline inside those numbers: the runner proper,
-runner/runner.py itself, is 6,637 lines; the core around it
+runner/runner.py itself, is 6,647 lines; the core around it
 is the rest. The as-assembled set's per-part line counts are
 recorded in AS_ASSEMBLED_PART_LINES below; the CLI computes
 and prints the canonical list's per-part counts live, and
@@ -133,20 +133,20 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 133
-AS_ASSEMBLED_ZIP_BYTES = 703935
-AS_ASSEMBLED_LINES = 55550
-AS_ASSEMBLED_NONBLANK_LINES = 50018
+AS_ASSEMBLED_ZIP_BYTES = 710836
+AS_ASSEMBLED_LINES = 55970
+AS_ASSEMBLED_NONBLANK_LINES = 50416
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 17474,
+    "runner/ops": 17480,
     "runner/tools": 8673,
-    "runner/wire": 8320,
-    "runner/runner.py": 6637,
+    "runner/wire": 8708,
+    "runner/runner.py": 6647,
     "runner/oracle": 5013,
-    "runner/transport_extensions": 2771,
-    "runner/guard": 2876,
+    "runner/transport_extensions": 2775,
+    "runner/guard": 2888,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,

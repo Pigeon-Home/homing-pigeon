@@ -23,7 +23,6 @@ Context text is data. This module never interprets it.
 import hashlib
 import json
 import os
-import platform
 import re
 import sys
 import time
@@ -38,6 +37,11 @@ try:
     from runner.guard import confval as _confval
 except ImportError:
     from guard import confval as _confval  # type: ignore
+
+try:
+    from runner.wire import platformcard as _platformcard
+except ImportError:
+    from wire import platformcard as _platformcard  # type: ignore
 
 V2 = 2
 _ID = re.compile(r"\A[A-Za-z0-9._-]{1,128}\Z")
@@ -131,29 +135,29 @@ def segment(by, kind, text):
     }
 
 
-def platform_facts():
-    """Short host facts for the first question. No secrets.
+def platform_facts(cfg=None):
+    """The host facts a question's first context segment carries:
+    the platform card at the owner's `pong_platform` tier, the
+    one disclosure knob the ping card and the DTLS handshake
+    already share. At `none` there are no facts and the question
+    carries no platform segment; a tier that does not parse
+    discloses nothing either. Text is data.
 
-    The cloud SI sees the constrained runner's actual shape
-    when the question arrives, not only later on the result.
-    Text is data. A Pi is named when the device tree says so;
-    otherwise the platform triple is enough.
+    The cloud SI sees the constrained runner's actual shape when
+    the question arrives, not only later on the result, and it
+    sees exactly what the owner lets a ping see.
     """
-    parts = [
-        platform.system() or "unknown",
-        platform.machine() or "unknown",
-        "py" + ".".join(str(x) for x in sys.version_info[:2]),
-    ]
-    try:
-        if os.path.exists("/proc/device-tree/model"):
-            with open("/proc/device-tree/model", "rb") as fh:
-                model = fh.read().split(b"\0", 1)[0].decode(
-                    "utf-8", "replace").strip()
-            if model:
-                parts.append(model[:80])
-    except OSError:
-        pass
-    return " ".join(parts)[:_TEXT_CAP]
+    tier, problem = _platformcard.tier_of(cfg, "pong_platform")
+    if tier is None or problem:
+        return ""
+    card = _platformcard.build_card(tier, cfg,
+                                    protocol_versions=[1, V2])
+    if not card:
+        return ""
+    card = dict(card)
+    card.pop("disclosure", None)
+    return json.dumps(card, sort_keys=True,
+                      separators=(",", ":"))[:_TEXT_CAP]
 
 
 def clean_pass(plan) -> bool:
@@ -213,7 +217,7 @@ def question_for(cfg, job):
     hint = ""
     if isinstance(script, str) and script.strip():
         hint = " script=" + script.strip().splitlines()[0][:120]
-    return {
+    question = {
         "v": V2,
         "type": "question",
         "job_id": job_id,
@@ -223,8 +227,11 @@ def question_for(cfg, job):
         "question": ("Would this job succeed on this host?"
                      + hint)[:_TEXT_CAP],
         "local_default": "proceed",
-        "context": [segment("runner", "platform", platform_facts())],
     }
+    facts = platform_facts(cfg)
+    if facts:
+        question["context"] = [segment("runner", "platform", facts)]
+    return question
 
 
 def answer_for(question, text):

@@ -573,9 +573,13 @@ Authorization then runs in this order, and all of it must pass:
    for a job the body's `job_id` equals the subject's (a query or a
    task message is routed by its subject, and its body identifier
    is read from the body).
-5. `issued_at` parses, carries a timezone, is no older than
-   `max_job_age_sec` (default 3600) and no more than 300 seconds
-   ahead of the runner's clock (replay / stale protection).
+5. `issued_at` is an RFC 3339 date-time (the full date, `T`, the
+   full time, an optional fraction, then `Z` or a numeric offset
+   with its colon; other ISO 8601 forms, a space separator or a
+   colon-less offset among them, are unparseable on every Python
+   alike), carries a timezone, is no older than `max_job_age_sec`
+   (default 3600) and no more than 300 seconds ahead of the
+   runner's clock (replay / stale protection).
 6. *(Seen-set.)* The `job_id` seen-set lookup is a routing check and
    has already run, before any signature work (see the opening of
    this section). It is listed here only so the replay story reads

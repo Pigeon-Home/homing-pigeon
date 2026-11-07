@@ -420,3 +420,43 @@ What remains unproven is listed in the proof note: resumption
 over a live mailbox, providers other than the one the
 live run used, and live
 scale beyond 1 session carrying 1 job.
+
+## Addendum — one message, one datagram; the record layer per RFC 9147 (2026-11-06)
+
+A review of the drafts against the code found the carriage's
+largest open defect in a place the plan above had taken as
+settled: the application framing. A message was cut into
+1,200-octet records and each record went out as its own flight
+mail, while the receiver concatenated record contents in arrival
+order. A 5,000-octet message was 5 mails; handed over reversed, or
+with one mail lost, it was never delivered and every later message
+on the session was lost with it. The measurement and the fix are
+recorded in `docs/infrastructure-documents/proofs/dtls-record-layer-and-framing.md`.
+
+What this addendum changes in the plan:
+
+- D7, the wire format: one application message is one datagram,
+  every record of the message in one transfer. The carriage
+  datagram limit is no longer 262144 octets but the application
+  message cap plus record overhead, 4,390,912 octets, so a message
+  at the cap is one transfer of 179 parts. Incomplete reassembly
+  state is bounded as a whole (two datagrams' worth) as well as
+  per transfer. The frame part's media type is
+  `application/vnd.homing-pigeon.dtls3`, a vendor-tree name that
+  can be registered; the earlier name sat in a tree closed to this
+  stream.
+- The session profile: application records begin with a flag
+  octet (first record, or continuation) and ride consecutive
+  sequence numbers, and both ends reassemble by sequence number,
+  so the datagram binding gains the same property without a
+  datagram rule it cannot have.
+- The record layer: record number encryption, the RFC's ACK
+  encoding and an anti-replay window of 32,768, so the records on
+  the wire are the records a conforming DTLS 1.3 stack would emit
+  and accept. The replay window's width is the carriage's reorder
+  tolerance.
+- Open question 1 above, revisited: the PSK is no longer the
+  shared secret's own octets but a key derived from it (HKDF with
+  the info string `homing-pigeon dtls psk v1`, 48 octets). The
+  posture is the same, an authenticator only, and the derivation
+  keeps the job-signing key out of the TLS key schedule.

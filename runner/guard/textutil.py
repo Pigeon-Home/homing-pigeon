@@ -64,23 +64,35 @@ def _as_str(value) -> str:
         return ""
 
 
-# fromisoformat before 3.11 takes a fraction of exactly 3 or 6
-# digits and an offset only with its colon; 3.11 and later take any
-# fraction length and "+0000". These two rewrites make the floor
-# Python read issued_at the way the newest one does, so one job is
-# not fresh on one box and unparseable on the next.
-# (Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab)
+# A protocol timestamp (issued_at, completed_at) is an RFC 3339
+# date-time: the full date, "T", the full time, an optional
+# fraction, and "Z" or a numeric offset with its colon. The shape
+# is checked here before Python's own parser sees it, because
+# fromisoformat reads more of ISO 8601 with every Python release
+# (3.11 took basic-format dates and "+0000" offsets that 3.9 did
+# not), and a job must not be fresh on one box and unparseable
+# on the next. A date-time with no offset at all passes the shape
+# check and fails later as "missing timezone", so that refusal
+# keeps its own name. fromisoformat before 3.11 takes a fraction
+# of exactly 3 or 6 digits, so the fraction is padded for it.
+_RFC3339_RE = re.compile(
+    r"\A\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?"
+    r"([Zz]|[+-]\d{2}:\d{2})?\Z")
 _ISO_FRACTION_RE = re.compile(r"(:\d{2})\.(\d+)")
-_ISO_OFFSET_RE = re.compile(r"([+-]\d{2})(\d{2})$")
 
 
 def _fromiso(value):
-    """str(value) with "Z" read as UTC -> datetime; ValueError if not ISO."""
-    text = str(value).replace("Z", "+00:00")
+    """str(value) as an RFC 3339 date-time, "Z" read as UTC ->
+    datetime; ValueError for any other shape."""
+    text = str(value)
+    if _RFC3339_RE.match(text) is None:
+        raise ValueError("not an RFC 3339 date-time")
+    if text[-1] in "Zz":
+        text = text[:-1] + "+00:00"
+    text = text[:10] + "T" + text[11:]
     text = _ISO_FRACTION_RE.sub(
         lambda m: m.group(1) + "." + (m.group(2) + "000000")[:6],
         text, count=1)
-    text = _ISO_OFFSET_RE.sub(r"\1:\2", text)
     return datetime.fromisoformat(text)
 
 

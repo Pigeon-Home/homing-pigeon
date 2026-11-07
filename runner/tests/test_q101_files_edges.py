@@ -454,7 +454,9 @@ class InlineOutputsShotgunTest(unittest.TestCase):
             rc, _err = self._write([out])
             self.assertEqual(rc, 1, name)
         self.assertEqual(os.listdir(self.dest), [])
-        self.assertEqual(os.listdir(self.td.name),
+        # os.listdir gives the filesystem's order, which is not a
+        # sorted one on every box.
+        self.assertEqual(sorted(os.listdir(self.td.name)),
                          ["dest", "elsewhere"])
 
     def test_outputs_not_a_list_and_entries_skipped(self):

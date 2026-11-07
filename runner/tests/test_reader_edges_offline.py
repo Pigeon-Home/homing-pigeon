@@ -34,14 +34,22 @@ SECRET = bytes(range(48))
 def _short_record(sealer, epoch, seq, content_type, payload, *,
                   length_field):
     """A unified record with an 8-bit sequence number, built by hand:
-    the sealer only writes the 16-bit form, and a peer may send either."""
+    the sealer only writes the 16-bit form, and a peer may send either.
+    The sequence octet is masked after sealing, as RFC 9147 Section
+    4.2.3 masks it (the AES-ECB mask over the first 16 ciphertext
+    octets, its leading octet XORed into the 8-bit field); the AEAD's
+    additional data is the header before masking."""
     first = 0x20 | (0x08 if length_field else 0) | (epoch & 0x3)
     header = bytes([first, seq & 0xFF])
     inner = payload + bytes([content_type])
     if length_field:
         header += (len(inner) + 16).to_bytes(2, "big")
-    return header + jobcrypto.aead_encrypt(
+    body = jobcrypto.aead_encrypt(
         sealer.key, sealer._nonce(epoch, seq), inner, header)
+    mask = jobcrypto._aes_encrypt_block(
+        body[:16], jobcrypto._aes256_expand(sealer.sn_key))
+    masked = bytes([header[0], header[1] ^ mask[0]]) + header[2:]
+    return masked + body
 
 
 class DtlsRecordOpenTest(unittest.TestCase):

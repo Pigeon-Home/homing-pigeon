@@ -1711,8 +1711,10 @@ def _mime_flight_raw(subject, frame_text, extra_text=None,
     msg.set_content(extra_text or "This mail carries a flight.")
     if typed:
         part = EmailMessage()
+        maintype, _slash, subtype = \
+            dtls_mailbox.FLIGHT_CONTENT_TYPE.partition("/")
         part.set_content(frame_text.encode("utf-8"),
-                         maintype="application", subtype="hp-dtls3",
+                         maintype=maintype, subtype=subtype,
                          cte=cte)
         msg.add_attachment(part)
     return msg.as_bytes()

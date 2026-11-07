@@ -459,7 +459,11 @@ class FragmentBufferFamilyTest(unittest.TestCase):
     Beyond either cap, and on a contradicting total, offer
     refuses with its own incomplete signal, None."""
 
-    CAP = dtls_mailbox.DEFAULT_MAX_DATAGRAM_BYTES
+    # The handshake fragment buffer's own cap. It was once the
+    # mailbox datagram ceiling too; the carriage ceiling now
+    # covers a whole application message, while a handshake
+    # message stays small, so the two numbers parted.
+    CAP = dtlsproto._FragmentBuffer.MAX_TOTAL_BYTES
     MAX_PENDING = 64
 
     def _stored_sizes(self, buf):
@@ -1121,7 +1125,8 @@ class MailboxFramingFamilyTest(unittest.TestCase):
         self.assertIsNone(
             reasm.offer(self._part(0, total_bytes=0), NOW))
         self.assertIsNone(reasm.offer(
-            self._part(0, total_bytes=256 * 1024 + 1), NOW))
+            self._part(0, total_bytes=(
+                dtls_mailbox.DEFAULT_MAX_DATAGRAM_BYTES + 1)), NOW))
         self.assertIsNone(reasm.offer(
             self._part(0, chunk=self.DG + b"x"), NOW))
         self.assertEqual(reasm.pending, 0)

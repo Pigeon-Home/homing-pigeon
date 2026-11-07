@@ -3325,7 +3325,13 @@ def _admit_object(body_text, secrets, object_id):
     inner_text = _jobcrypto.decrypt_body(
         payload, secret, job_id=object_id, key_id=key_id)
     inner, inner_key = verify_body_keyed(inner_text, secrets)
-    if inner_key != key_id:
+    # The two key ids must name the same secret (the draft's
+    # Section 10 sense, which admits a secret's several names):
+    # the fingerprint on the envelope and the configured name
+    # inside, or either on both, is one key, and send_job's
+    # verifier reads the pair the same way.
+    if canonical_key_id(secrets, inner_key) != \
+            canonical_key_id(secrets, key_id):
         raise ValueError(
             "encrypted envelope key_id does not match its body")
     return inner, key_id, secret, True
@@ -4706,7 +4712,11 @@ def _verify_and_decrypt(msg, secrets, job_id):
         inner_text = _jobcrypto.decrypt_body(
             job, secret, job_id=job_id, key_id=key_id)
         job, inner_key_id = verify_body_keyed(inner_text, secrets)
-        if inner_key_id != key_id:
+        # The same-secret match of _admit_object: a secret's
+        # names are one key (Section 10), so the fingerprint
+        # outside and the configured name inside is one key.
+        if canonical_key_id(secrets, inner_key_id) != \
+                canonical_key_id(secrets, key_id):
             raise ValueError(
                 "encrypted envelope key_id does not match its body")
         secret = secret_named(secrets, key_id)

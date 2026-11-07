@@ -147,13 +147,17 @@ class SecretsMapTest(unittest.TestCase):
         self.assertEqual(same[name], SECRET)
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "k")
+            # A secret file is the owner's alone: world-readable
+            # refuses startup before the name check is reached.
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(OTHER + "\n")
+            os.chmod(path, 0o600)
             with self.assertRaisesRegex(RuntimeError, "default key's own name"):
                 V.build_secrets({"shared_secret": SECRET,
                                  "additional_secrets_files": {name: path}})
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(SECRET + "\n")
+            os.chmod(path, 0o600)
             self.assertEqual(V.build_secrets(
                 {"shared_secret": SECRET,
                  "additional_secrets_files": {name: path}})[name], SECRET)

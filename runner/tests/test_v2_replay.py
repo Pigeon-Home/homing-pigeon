@@ -11,6 +11,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -138,9 +139,21 @@ class V2ReplayTest(unittest.TestCase):
         q = self._question()
         _t, out, marked = self._take(self._cfg(), "question", q,
                                      opts=_DryOpts())
-        self.assertIn("answerer replied", out)
+        self.assertIn("dry-run: would answer", out)
+        self.assertNotIn("answerer replied", out)
         self.assertEqual(self._seen(), {})
         self.assertEqual(marked, [])
+        # And a dry run spends no model call either: with a model
+        # configured, the answerer under --dry-run never asks it.
+        calls = []
+        with mock.patch.object(runner, "inference_config",
+                               lambda cfg: {"endpoint": "http://127.0.0.1:1"}), \
+                mock.patch.object(runner, "ask_model",
+                                  lambda *a, **k: calls.append(a) or {}):
+            _t, out, _m = self._take(self._cfg(oracle_mode="llm"),
+                                     "question", q, opts=_DryOpts())
+        self.assertIn("dry-run: would answer", out)
+        self.assertEqual(calls, [])
         _t, out, _m = self._take(self._cfg(), "question", q)
         self.assertIn("answerer replied", out)
 

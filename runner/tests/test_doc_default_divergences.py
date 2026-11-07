@@ -9226,6 +9226,15 @@ class TestIssuedAtWindowEdgesPerProtocol(unittest.TestCase):
         shape above ever stops behaving as the
         docs state, this test is the failing
         record of that change.
+
+    (e) The shape rule changed on 2026-11-06, and this
+        test changed with it: `issued_at` is an RFC
+        3339 date-time (PROTOCOL.md section 5, step
+        5), so the space-separated and colon-less-
+        offset forms, which Python's own parser took
+        on 3.11 and later and refused on 3.9, are now
+        refused on every Python alike. The window
+        edges above are unchanged.
     """
 
     NOW = None
@@ -9322,13 +9331,19 @@ class TestIssuedAtWindowEdgesPerProtocol(unittest.TestCase):
     def test_shape_forms_parse_or_reject_as_documented(self):
         now = self.NOW
         self.assertTrue(
-            self._ok(now.strftime("%Y-%m-%d %H:%M:%S+00:00")))
+            self._ok(now.strftime("%Y-%m-%dT%H:%M:%S+00:00")))
         self.assertTrue(
+            self._ok(now.strftime("%Y-%m-%dT%H:%M:%SZ")))
+        # Not RFC 3339: refused on every Python the same way.
+        self.assertFalse(
+            self._ok(now.strftime("%Y-%m-%d %H:%M:%S+00:00")))
+        self.assertFalse(
             self._ok(now.strftime("%Y-%m-%dT%H:%M:%S+0000")))
         self.assertFalse(self._ok("2026-10-23"))
         self.assertFalse(self._ok("2026-10-23T12:00:00"))
-        self.assertFalse(
-            self._ok(now.strftime("%Y-%m-%dT%H:%M:%Sz")))
+        # RFC 3339 admits a lowercase z and t.
+        self.assertTrue(
+            self._ok(now.strftime("%Y-%m-%dt%H:%M:%Sz")))
         self.assertFalse(self._ok(None))
         self.assertFalse(self._ok("not-a-date"))
 

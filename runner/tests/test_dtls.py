@@ -136,23 +136,36 @@ def _ext_value_offset(datagram, ext_type):
 
 
 def _open_record_in_test(traffic_secret, epoch, record):
-    """Decrypt one protected record with in-test keys;
-    returns (content_type, content)."""
+    """Decrypt one protected record with in-test keys, written
+    from RFC 9147 rather than from the module under test;
+    returns (content_type, content).
+
+    The on-the-wire sequence number is encrypted (RFC 9147
+    Section 4.2.3): the mask is AES-ECB under the epoch's "sn"
+    key over the first 16 ciphertext octets, XORed into the
+    sequence-number field, and the AEAD's additional data is
+    the header with the plaintext sequence number."""
     key = _label(traffic_secret, b"key", b"", 32)
     iv = _label(traffic_secret, b"iv", b"", 12)
+    sn_key = _label(traffic_secret, b"sn", b"", 32)
     first = record[0]
     pos = 1
     if first & 0x04:
         pos += 1 + record[pos]
-    seq_low = int.from_bytes(record[pos:pos + 2], "big")
+    seq_at = pos
     pos += 2
     length = int.from_bytes(record[pos:pos + 2], "big")
     pos += 2
+    body = record[pos:pos + length]
+    mask = jobcrypto._aes_encrypt_block(
+        body[:16], jobcrypto._aes256_expand(sn_key))
+    plain_seq = bytes(a ^ b for a, b in zip(
+        record[seq_at:seq_at + 2], mask[:2]))
+    seq_low = int.from_bytes(plain_seq, "big")
+    aad = record[:seq_at] + plain_seq + record[seq_at + 2:pos]
     nonce = bytes(a ^ b for a, b in zip(
         iv, ((epoch << 48) | seq_low).to_bytes(12, "big")))
-    plain = jobcrypto.aead_decrypt(key, nonce,
-                                   record[pos:pos + length],
-                                   record[:pos])
+    plain = jobcrypto.aead_decrypt(key, nonce, body, aad)
     plain = plain.rstrip(b"\x00")
     return plain[-1], plain[:-1]
 
@@ -285,9 +298,18 @@ class KeyScheduleFromTheWireTest(unittest.TestCase):
         ch2_raw, _ = _ch_exts(ch2)
         sh_raw, sh_exts = _ch_exts(flight[0])
 
-        # The schedule, from the RFC text only.
+        # The schedule, from the RFC text only. The PSK is not
+        # the shared secret but a single-purpose key derived from
+        # it (HKDF-SHA-384, no salt, the profile's info string,
+        # 48 octets), recomputed here from RFC 5869 alone.
         empty = hashlib.sha384(b"").digest()
-        early = _extract(b"\x00" * 48, SECRET.encode())
+        prk = hmac.new(b"\x00" * 48, SECRET.encode(),
+                       hashlib.sha384).digest()
+        psk = hmac.new(prk, b"homing-pigeon dtls psk v1" + b"\x01",
+                       hashlib.sha384).digest()
+        self.assertEqual(psk, dtlsproto.psk_from_secret(SECRET))
+        self.assertNotEqual(psk, SECRET.encode())
+        early = _extract(b"\x00" * 48, psk)
         derived = _label(early, b"derived", empty)
         share = sh_exts[dtlsproto.EXT_KEY_SHARE]
         server_pub = share[4:4 + 32]
@@ -743,12 +765,16 @@ class PlatformPayloadTest(unittest.TestCase):
         self.assertEqual(obj["platform"]["protocol_versions"], [1])
         self.assertNotEqual(obj["platform"]["default_interpreter"], "sh")
 
-    def test_standard_tier_adds_release_and_python(self):
+    def test_standard_tier_adds_release_python_and_the_release_number(self):
+        # Version 3 draft Section 10.1: the `standard` tier carries the
+        # runner's release number, as a ping's platform card does.
         obj = json.loads(dtls_ext.build_platform_payload("standard"))
         self.assertEqual(
             set(obj["platform"]),
             {"os_family", "default_interpreter", "protocol_versions",
-             "os_release", "python_version"})
+             "os_release", "python_version", "runner_version"})
+        self.assertEqual(obj["platform"]["runner_version"],
+                         dtls_ext.__version__)
 
     def test_full_tier_adds_a_bounded_tools_summary(self):
         obj = json.loads(dtls_ext.build_platform_payload("full"))
@@ -781,13 +807,17 @@ class PlatformExampleVectorsTest(unittest.TestCase):
     # tier. The fake host is Windows Server 2022, whose
     # platform.release() is "2022Server", running Python
     # 3.12.7, with the platform default interpreter.
+    # The `standard` tier names the runner's own release string
+    # as `runner_version`, on this binding as on a ping, so the
+    # vector carries whatever release this tree is.
     EXAMPLE_STANDARD_WINDOWS = (
         '{"disclosure": "standard", "platform": '
         '{"default_interpreter": ["powershell", "-NoProfile", '
         '"-NonInteractive", "-ExecutionPolicy", "Bypass", '
         '"-File"], "os_family": "windows", "os_release": '
         '"2022Server", "protocol_versions": [1], '
-        '"python_version": "3.12.7"}}')
+        '"python_version": "3.12.7", "runner_version": "'
+        + dtls_ext.__version__ + '"}}')
 
     # A Linux runner at the family tier: the OS family, the
     # platform default interpreter, and the protocol versions
@@ -1465,19 +1495,27 @@ class ProfileRefusalTest(unittest.TestCase):
         self.assertEqual(ep.tick(62.0), [])
 
     def test_an_application_message_past_the_cap_is_refused(self):
+        first = bytes([dtlsproto.APP_FLAG_FIRST])
         ep = dtlsproto._Endpoint()
         seen = []
         ep._on_app_message = seen.append
-        ep._app_receive(b"\x00\x00\x00\x05ab")
-        self.assertEqual(ep.app_messages, [])
+        ep._app_receive(first + b"\x00\x00\x00\x05ab", 0)
+        self.assertEqual(ep.app_messages, [])    # 3 octets short
         done = dtlsproto._Endpoint()
         done._on_app_message = seen.append
-        done._app_receive(b"\x00\x00\x00\x02hi")
+        done._app_receive(first + b"\x00\x00\x00\x02hi", 0)
         self.assertEqual(seen, [b"hi"])
-        huge = dtlsproto._Endpoint()
+        lines = []
+        huge = dtlsproto._Endpoint(
+            log=lambda m, level="INFO": lines.append(m))
         n = dtlsproto.APP_MESSAGE_MAX + 1
-        with self.assertRaises(dtlsproto.DtlsError):
-            huge._app_receive(n.to_bytes(4, "big"))
+        # A length past the cap is dropped at the record, with a
+        # log line, and the session is not harmed: no exception
+        # leaves the record layer for a peer's bad length.
+        huge._app_receive(first + n.to_bytes(4, "big"), 0)
+        self.assertEqual(huge.app_messages, [])
+        self.assertEqual(huge.app_dropped, 1)
+        self.assertTrue(any("too large" in m for m in lines))
 
     def test_a_key_update_is_answered_and_a_bad_one_is_dropped(self):
         secret = b"k" * dtlsproto.HASH_LEN
@@ -3801,7 +3839,8 @@ class FeedRecordByAddressTest(unittest.TestCase):
         client, server = _established_pair()
         session = next(iter(server.by_addr.values()))
         epoch = max(e for e in client.senders if e >= 3)
-        framed = (7).to_bytes(4, "big") + b"by-addr"
+        framed = (bytes([dtlsproto.APP_FLAG_FIRST])
+                  + (7).to_bytes(4, "big") + b"by-addr")
         record = client.senders[epoch].seal(
             epoch, dtlsproto.CT_APPDATA, framed, None)
         out = server.feed(record, ADDR, NOW)

@@ -301,6 +301,9 @@ class StartupSecretsTest(unittest.TestCase):
         path = os.path.join(d, "secret")
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(text)
+        # Owner-only, whatever the box's umask: a world-readable
+        # secret file refuses startup, which is its own test.
+        os.chmod(path, 0o600)
         return path
 
     def test_a_file_only_secret_starts(self):

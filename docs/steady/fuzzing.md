@@ -37,14 +37,17 @@ again after the temp-reaping work grew runner/ops,
 runner/tools, runner/guard and the runner proper, and
 again after the repair-note cap fix grew runner/oracle,
 and again after the world-readable secret-file check
-grew runner/wire,
+grew runner/wire, and again after the DTLS record-layer
+and framing work grew runner/wire, runner/guard,
+runner/ops, runner/transport_extensions and the runner
+proper,
 the
-as-assembled set stands at 55,550 lines (50,018 non-blank)
-and a 703,935-byte zip, and the project's own estimator
-counts it at 585,637 tokens; the Gemini figure above still
+as-assembled set stands at 55,970 lines (50,416 non-blank)
+and a 710,836-byte zip, and the project's own estimator
+counts it at 590,053 tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical 130-file list at 578,020
-tokens across 54,766 lines (49,330 non-blank); the 2 token
+estimator counts the canonical 130-file list at 582,436
+tokens across 55,186 lines (49,728 non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -57,17 +60,17 @@ set. A change aimed at core is aimed at those 130 files and
 no others, and a result reported for core covers exactly
 them.
 
-The runner proper is 6,637 lines; the core around it is
-55,550. The set as assembled, part by part (re-measured
+The runner proper is 6,647 lines; the core around it is
+55,970. The set as assembled, part by part (re-measured
 2026-11-06):
 
-- runner/ops: 17,474 lines
+- runner/ops: 17,480 lines
 - runner/tools: 8,673
-- runner/wire: 8,320
-- runner/runner.py: 6,637
+- runner/wire: 8,708
+- runner/runner.py: 6,647
 - runner/oracle: 5,013
-- runner/transport_extensions: 2,771
-- runner/guard: 2,876
+- runner/transport_extensions: 2,775
+- runner/guard: 2,888
 - runner/cloud: 2,049
 - runner/hosting: 1,704
 - runner/__init__.py: 23
@@ -80,7 +83,7 @@ The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-55,550 lines, explicit platform branching — sys.platform,
+55,970 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
 the 133 files, beside a small number of dedicated platform
 modules (runner/ops/windows.py and runner/ops/winlog.py).

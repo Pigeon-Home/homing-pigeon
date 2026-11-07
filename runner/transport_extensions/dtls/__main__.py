@@ -79,6 +79,7 @@ from runner.wire import subject as _subject  # noqa: E402
 from runner.guard import security as _security  # noqa: E402
 from runner.guard import confval as _confval  # noqa: E402
 from runner.transport_extensions import channel as ch  # noqa: E402
+from runner._version import __version__  # noqa: E402
 
 DEFAULT_PORT = 20220
 GREETING_TIERS = _platformcard.TIERS
@@ -93,13 +94,16 @@ def build_platform_payload(tier, cfg=None):
     `platform`. It does not carry the old greeting members
     (`type`, `transport`, `v`) and it has no trailing newline.
     The card is the one a ping's result carries
-    (runner/wire/platformcard.py), so the two bindings
-    describe the box the same way."""
+    (runner/wire/platformcard.py), built with the runner's own
+    release number so the `standard` and `full` tiers carry
+    `runner_version` here as they do on a ping, and the two
+    bindings describe the box the same way."""
     obj = {"disclosure": tier}
     versions = [1]
     if isinstance(cfg, dict) and cfg.get("protocol_v2") is True:
         versions.append(2)
-    card = _platformcard.build_card(tier, cfg, protocol_versions=versions)
+    card = _platformcard.build_card(tier, cfg, protocol_versions=versions,
+                                    runner_version=__version__)
     if card:
         card = dict(card)
         card.pop("disclosure", None)
