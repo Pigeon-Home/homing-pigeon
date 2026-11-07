@@ -83,6 +83,17 @@ REGISTERED = {
         "test_proof_sh_freebsd runs on a machine that provides the "
         "FreeBSD sh binary at HP_FREEBSD_SH or /tmp/freebsd-sh; "
         "substituting dash would prove a different shell",
+    "the FreeBSD release here is not 15.2, so its sh is not the "
+    "15.2 shell this harness targets":
+        "test_proof_sh_freebsd_15_2 runs on a FreeBSD 15.2 machine "
+        "(the bare-machine runbook in content-sh-freebsd-15-2-runbook.md); "
+        "a 15.0 or 14.x shell is a different release's program and "
+        "answers under test_proof_sh_freebsd instead",
+    "this leg pins the non-FreeBSD finder rule and runs on the "
+    "other hosts":
+        "test_proof_sh_freebsd_15_2's finder leg: /bin/sh is only "
+        "ever taken on a FreeBSD host; the leg runs on every "
+        "non-FreeBSD host, which is where the rule can bite",
     "kill_tree's group and extra-pid legs are POSIX-only":
         "test_runner_last_edges; the legs drive POSIX process-group "
         "signalling and run on ubuntu and macOS -- the Windows "

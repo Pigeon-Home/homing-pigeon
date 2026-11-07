@@ -220,6 +220,14 @@ A finding is most useful when it points at the file and the line
   again. `content-sh-freebsd-design.md` is the split:
   emulate the guest, use the real shell, do not
   emulate the gate.
+  `content-sh-freebsd-15-2.md` is the 15.2 harness's
+  record: the same rungs, parser and execution, aimed
+  at FreeBSD 15.2's `/bin/sh` only, with its first run
+  recorded as a non-result -- no real FreeBSD shell
+  ran it. `content-sh-freebsd-15-2-runbook.md` is the
+  bare-machine procedure that produces the real run:
+  nothing assumed installed, every tool installed in
+  the open.
 - `thinking.md` — the reasoning behind the work: why the gate
   comes first, why size is a character count, the open
   content-independence challenge, the standing rules, and the
