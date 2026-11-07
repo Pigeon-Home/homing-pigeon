@@ -30,11 +30,11 @@ the same number.
 
 | Rung | bash (this VM) | Windows PowerShell (Germany rig) |
 |---|---|---|
-| 500 | 500 — first-hand pass | 500 — parser pass, gate leg open |
-| 5,000 | 5,000 — first-hand pass | 5,000 — parser pass, gate leg open |
-| 50,000 | 50,000 — first-hand pass | 50,000 — parser pass, gate leg open |
-| 500,000 | 500,000 — first-hand pass | 500,000 — parser pass, gate leg open |
-| 1,048,576 (cap) | 1,048,576 — first-hand pass | 1,048,576 — parser pass, gate leg open |
+| 500 | 500 — first-hand pass | 500 — parser pass, gate leg pass |
+| 5,000 | 5,000 — first-hand pass | 5,000 — parser pass, gate leg pass |
+| 50,000 | 50,000 — first-hand pass | 50,000 — parser pass, gate leg pass |
+| 500,000 | 500,000 — first-hand pass | 500,000 — parser pass, gate leg pass |
+| 1,048,576 (cap) | 1,048,576 — first-hand pass | 1,048,576 — parser pass, gate leg pass |
 | 49 (extra row) | 49 and under — first-hand pass | 49 and under — not run on Windows, open |
 
 ## bash column — how it was run
@@ -150,6 +150,65 @@ The 49-character PowerShell set (511 survivors) was not
 re-run on Windows at all: its harness generates and parses
 the set in one Linux pwsh process, and no equivalent light
 invocation was attempted on the rig. That row is open.
+
+### The gate legs — run on the rig, later on 7-Nov-2026
+
+The gate legs left open above have since been run, first-hand,
+on the same Germany rig, and they pass at every rung.
+
+What changed first: the rig's runner was upgraded to release
+3.15.18.7 (the release zip verified on the rig against the
+release's SHA384SUMS before the swap; the runner's config was
+byte-identical before and after, and its transports stayed
+["file"]). A scratch copy of current main — commit
+81f21775ed8d215e904fef1dca265bb61db6b9a0 — was placed on the
+rig outside the installed runner, and the legs ran from that
+copy. The installed runner and the rig's scheduled tasks were
+not used as the test harness and were not disturbed by the
+run, beyond the upgrade itself.
+
+How the legs were run: a small driver imported each rung
+module from the scratch copy and used the module's own
+setUpClass builders, so the texts are the suite's own
+PowerShell scripts from `proof_content_build.py`, at the exact
+rung lengths. Each script was parsed with the rig's real
+Windows PowerShell (powershell.exe, Windows PowerShell 5.1,
+the shell the rig has; there is no pwsh on the rig, and the
+harness's pwsh lookup is the reason the legs were driven this
+way rather than by the harness directly) using the harness's
+own ParseInput snippet. Each script was then presented to the
+real `handle_mail` through the harness's own `present()`,
+with the harness's own assertions: admitted at the rung with
+the full length reaching execution, and refused under a
+100-byte cap naming `max_script_bytes`; at the cap rung,
+exactly 1,048,576 admitted and 1,048,577 refused naming
+`max_script_bytes` and the number 1048577.
+
+The results, per rung (a check is one parse, one admission,
+or one refusal, per script — 3 scripts per rung):
+
+- 500: 9 checks, 0 failed
+- 5,000: 9 checks, 0 failed
+- 50,000: 9 checks, 0 failed
+- 500,000: 9 checks, 0 failed
+- 1,048,576 (cap): 8 checks, 0 failed — the 8th and 9th
+  shapes differ here by design: 3 parses and 3 admissions at
+  the cap, 1 parse and 1 refusal past it
+
+44 checks in total, none failed. The run happened under the
+rig's full campaign load: the 500,000 rung took about
+169 seconds wall clock and the cap rung about 229 seconds,
+most of it the Windows PowerShell parser on the long scripts;
+the smaller rungs took seconds. The length of those runs is
+recorded, and it is not a failure.
+
+What remains open after this run: the 49-character row,
+which was still not run on Windows, and one distinction of
+instrument — the parser in both Windows runs here is Windows
+PowerShell 5.1, the rig's real shell, not a pwsh (PowerShell
+7) build. The gate result itself does not rest on that
+distinction: `present()` and `handle_mail` are the suite's
+own code, unmodified, running on the rig's Python.
 
 ## What this does not say
 
