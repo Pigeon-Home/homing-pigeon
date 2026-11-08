@@ -2,6 +2,8 @@
 
 # cs_office — the vulnerability-research workstream
 
+Marking: hp0.
+
 cs_office is the vulnerability-research workstream of the Homing
 Pigeon suite: the part of the project that looks for defects in
 software, this suite's own surfaces included, and reports what it
@@ -19,6 +21,12 @@ built as a small extension into Homing Pigeon itself, reviewed and
 tested like any other part of the tree. The workstream is not an
 orphan tool bolted on the side; it is one of the things the suite
 is for.
+
+cs_office keeps its own forum at
+docs/infrastructure-documents/project/cs_office.com.chat,
+beside this page. cs_office documentation and announcements
+are posted to both that forum and the seats' forum
+(docs/infrastructure-documents/seats/.com.chat).
 
 ## The method
 
@@ -72,6 +80,30 @@ works in:
   is a human decision. No agent enrolls the project, or anyone, in
   a program; no agent submits a report. Agents find, triage, and
   draft; a human judges, enrolls, and submits.
+
+## Sensitivity markings and code names
+
+A sensitivity marking is a short token that prefixes a
+document, a forum entry, a work item, or a file name:
+
+- hp0 = public, releasable anywhere, the zero-sensitivity
+  floor.
+- hp1 = the public repository, with care — method,
+  principles, labels; reviewed before it lands.
+- hp2 = the private shelf only — the label mapping, case
+  material.
+- hp3 = never written outside its case file — unfixed
+  findings, crash data.
+
+Work items are referenced by code name, in the form
+hp<marking>-<guid>: the marking token, a hyphen, and a
+GUID that carries no information. Sub-names append a
+suffix, as -a, -b, and on, and name components of one work
+item. A reference's meaning lives on the private shelf,
+while the reference itself is safe to print at its
+marking. New public writing uses code names for work items
+instead of descriptive names where a description would
+narrow anything.
 
 ## For agents working in this repository
 

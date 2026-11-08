@@ -3,6 +3,38 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 7-Nov-9:18pm-PST/PDT — cs_office: a forum of its own, sensitivity markings, and code names
+
+The cs_office public page stands in the project drawer at
+docs/infrastructure-documents/project/cs_office.md and
+shipped in release 3.15.18.15. cs_office gains a dedicated
+forum beside it, at
+docs/infrastructure-documents/project/cs_office.com.chat.
+
+The hp0-hp3 sensitivity markings stand as the house scheme
+for cs_office material:
+
+- hp0 = public, releasable anywhere, the zero-sensitivity
+  floor.
+- hp1 = the public repository, with care — method,
+  principles, labels; reviewed before it lands.
+- hp2 = the private shelf only — the label mapping, case
+  material.
+- hp3 = never written outside its case file — unfixed
+  findings, crash data.
+
+Work is referenced by code name, hp<marking>-<guid>, with
+sub-names naming components of one work item, minted by
+runner/tools/codename.py. The public document itself is
+hp0-5bd6435a-0b32-4f46-8651-ec691452981f.
+
+cs_office documentation and announcements are posted to
+both forums from now on; an entry written in one is copied
+to the other in the same landing, and this entry is the
+first cross-post.
+
+Marking: hp0
+
 ## 7-Nov-7:51pm-PST/PDT — documentation pass: the stale lines behind the day's landings, brought current
 
 A full pass over the documentation set against the code and the
