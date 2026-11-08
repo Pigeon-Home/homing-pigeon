@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.19.1 - 2026-11-08
+
+- Germany bank 64: 2,400 entries, 52019 crashes, 3324 new runs — 9,008 arcs in the merged corpus, 3,324 run records and 85,737,973 children, banked from the Germany rig.
+- Documentation: the spillage section closes with open safeguard research questions for operators and visiting systems — enumerate the private shelf, code names declared in code, care is not a control, the publication surface beyond the repository, and running the response cold.
+- Documentation: SECURITY.md gains the spillage section — the incident response for private-shelf material reaching the public repository: declare it at once, never hide it, and run the prepared containment (purge, rotate, notify, and a public incident note in general terms). The cs_office two-shelf page cross-references it.
+
 ## 3.15.18.18 - 2026-11-08
 
 - README: the front page is reworked — the title reads HOMING PIGEON, the works-with line moves below the introduction, and the try-this prompt is tightened, with the under-30-seconds note set after the prompt block.
