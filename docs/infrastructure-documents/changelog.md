@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.12 - 2026-11-07
+
+- Fix: two job_user platform proofs ran the real job-user face, so the Q132 startup gate answered for the host instead of the shape — the linux-start proof got the non-root refusal on the Linux and macOS legs (2 != 0), and the shotgun determinism proof raised AttributeError on the Windows leg, whose os has no geteuid. Both proofs script the face now, and a sibling pins the non-root refusal through main() on any host. 3.15.18.11 was never published: its builds failed on exactly these proofs and nothing else (11,468 tests ran on the Linux leg, 1 failure).
+- Carries everything in 3.15.18.11, unpublished: the runs-ledger lock and torn-line load, the job_user POSIX startup refusal (Q132), the confinement extra_flags startup trial (Q133), and the stamp, DTLS and audit records in the section below.
+
 ## 3.15.18.11 - 2026-11-07
 
 - Fix: the runs ledger appends under a cross-process file lock, so a record lands whole or not at all, and loading skips a torn line and counts it instead of failing at startup; a file where nothing parses still raises. The on-disk format is unchanged.
