@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.17 - 2026-11-08
+
+- Extensions: the nightly upstream pins refresh for the softflowd feed — its upstream pin moves to 451e719268f5c5f9b7ebba65894791c137c0e6a8 on master, the pinned files refetched, and the drift tests green against them.
+
 ## 3.15.18.16 - 2026-11-07
 
 - Tool: codename — cs_office work references in the hp<marking>-<guid> form. A small tool at runner/tools/codename.py mints, parses, validates, and classifies a reference: a sensitivity marking hp0-hp3, a GUID that carries no information, and optional sub-names for components of one work item. The reference is safe to print at its marking; what it denotes lives on the private shelf. Tests cover every marking, sub-name shapes, GUID shape failures, and a bookend edge family over the parser surface.
