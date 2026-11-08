@@ -21,7 +21,7 @@ Run a job that retrieves the system clock and then display it here.
 It should return in less than 30 seconds.
 
 It works like a GitHub self-hosted runner. A small program on hardware
-you own picks up signed jobs from a mailbox you control and runs them.
+you own picks up signed jobs from a source in the cloud that you control and runs them.
 By default nothing listens on an external interface: the runner
 only polls outward, so it works behind NAT with no open ports. The
 DTLS binding, off unless enabled, is the one network listener, and a
