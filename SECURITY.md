@@ -184,6 +184,19 @@ place:
    shelf — by the accountable human, if it needs one — never by
    publishing and seeing what happens.
 
+   One of those guards is this project's own. A code name that
+   lives only in conversation cannot be scanned for, so protected
+   terms — code names among them — are declared in code instead:
+   the name guard at `runner/tools/nameguard.py` scans candidate
+   public text against a registry of declared terms, under
+   matching rules stated in the tool itself (normalization against
+   lookalike letters and zero-width characters, word and substring
+   rules, case rules). The registry is private-shelf material and
+   never enters this repository; the format ships with obviously
+   fake example entries (`runner/tools/nameguard-registry.example.json`)
+   so any operator can adopt the mechanism, and declare their own
+   terms, without anything real crossing the boundary.
+
 ### The response
 
 The lifecycle is NIST SP 800-61's — detection and analysis,

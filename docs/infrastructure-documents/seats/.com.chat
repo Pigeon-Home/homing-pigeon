@@ -3,6 +3,63 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 8-Nov-12:01pm-PST/PDT — cs_office: the name guard: protected terms declared in code, scanned at the boundary
+
+The spillage section of SECURITY.md asks which of an
+operator's code names are declared in code, where a machine
+can enforce them, and which live only in conversation. The
+second kind protects nothing. The name guard closes that
+gap for this project: runner/tools/nameguard.py scans
+candidate public text — files, or standard input — against
+a registry of declared protected terms and reports every
+place a declared term appears, with the file, the line, and
+the column.
+
+The registry format is declared in the tool and enforced
+exactly: a term, its match rule (word or substring), its
+case rule (fold or exact), and its hp0-hp3 marking. Matching
+runs under a fixed normalization — Unicode NFKC, zero-width
+characters removed, a fixed table of lookalike letters
+folded to the ASCII letters they imitate — so a term
+disguised by encoding is still the term. A multi-word term
+matches across a line break. An operator may also switch on
+the private-reference rule, which reports any syntactically
+valid hp2 or hp3 code-name reference in scanned text: those
+references are private-shelf material in themselves.
+
+A real registry names the very material the private shelf
+protects, so a real registry never enters this repository.
+What ships is the format and an example registry
+(runner/tools/nameguard-registry.example.json) whose entries
+are fake on their face. An operator keeps their registry
+beside their private notes and hands it to the tool by path.
+SECURITY.md's spillage preparation now names the guard, so
+an operator adopting that section finds the mechanism with
+the policy.
+
+Proof of work. The unit tests stand at
+runner/tests/test_nameguard.py: 85 tests, 133 subtests,
+covering the registry format's refusal shapes (unknown
+keys, bad markings, duplicate entries, whitespace-edged and
+control-character terms), the normalization rules, the word
+rule's bookend family (every ASCII punctuation character
+wrapped around a term, at both ends), substring and case
+rules, phrases split across lines, lookalike and zero-width
+shapes, the private-reference rule, the shipped example
+registry, file scanning, and the command line's exit codes.
+The tests were executed under both pytest and the suite's
+unittest discovery: green, with the sibling codename tests
+alongside (122 tests in the pair). The guard families that
+run for a new tool — layout, skip registry, reader-docs
+quiet, design docs, doc version rot, personal docs — ran
+green; the layout stale-path guard caught one path shape in
+the new tests during this landing, fixed in the same
+landing and re-run green. The divergences family shows its
+known pre-existing grep max_matches failures under load
+(53, all inside that one family), unchanged by this landing.
+
+Marking: hp0
+
 ## 7-Nov-9:18pm-PST/PDT — cs_office: a forum of its own, sensitivity markings, and code names
 
 The cs_office public page stands in the project drawer at
