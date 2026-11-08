@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.15 - 2026-11-07
+
+- Documentation: cs_office, the vulnerability-research workstream, is documented — what it is, how it fits the suite, the method in general principles (coverage-guided and regression fuzzing, parsing-surface testing read against the OWASP categories, and crash triage), the industry disclosure practice it follows, and the two-shelf rule that tells every agent in this repository what may be published and what never leaves the private shelf. Target labels stated as a public convention; nothing target-identifying is named.
+
 ## 3.15.18.14 - 2026-11-07
 
 - Reference: an OWASP reference shelf — the Top 10:2025, the API Security Top 10 2023 and the LLM Top 10 2025 lists, ASVS 5.0.0, the WSTG and the mobile pair, and a curated cheat-sheet index, summarized and linked in one place under the security references, with a structured review reading this project's own surfaces against the lists. Summaries and links only; the texts stay at OWASP.
