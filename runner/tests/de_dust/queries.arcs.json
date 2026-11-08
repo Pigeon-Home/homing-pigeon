@@ -65,6 +65,31 @@
   ],
   [
    "runner/guard/security.py",
+   0,
+   280
+  ],
+  [
+   "runner/guard/security.py",
+   0,
+   291
+  ],
+  [
+   "runner/guard/security.py",
+   0,
+   294
+  ],
+  [
+   "runner/guard/security.py",
+   0,
+   317
+  ],
+  [
+   "runner/guard/security.py",
+   0,
+   327
+  ],
+  [
+   "runner/guard/security.py",
    225,
    227
   ],
@@ -345,6 +370,11 @@
   ],
   [
    "runner/guard/security.py",
+   280,
+   282
+  ],
+  [
+   "runner/guard/security.py",
    281,
    282
   ],
@@ -357,6 +387,171 @@
    "runner/guard/security.py",
    282,
    283
+  ],
+  [
+   "runner/guard/security.py",
+   282,
+   284
+  ],
+  [
+   "runner/guard/security.py",
+   284,
+   286
+  ],
+  [
+   "runner/guard/security.py",
+   286,
+   287
+  ],
+  [
+   "runner/guard/security.py",
+   286,
+   288
+  ],
+  [
+   "runner/guard/security.py",
+   294,
+   295
+  ],
+  [
+   "runner/guard/security.py",
+   294,
+   314
+  ],
+  [
+   "runner/guard/security.py",
+   295,
+   296
+  ],
+  [
+   "runner/guard/security.py",
+   295,
+   302
+  ],
+  [
+   "runner/guard/security.py",
+   296,
+   297
+  ],
+  [
+   "runner/guard/security.py",
+   297,
+   298
+  ],
+  [
+   "runner/guard/security.py",
+   297,
+   299
+  ],
+  [
+   "runner/guard/security.py",
+   299,
+   300
+  ],
+  [
+   "runner/guard/security.py",
+   300,
+   294
+  ],
+  [
+   "runner/guard/security.py",
+   300,
+   301
+  ],
+  [
+   "runner/guard/security.py",
+   302,
+   303
+  ],
+  [
+   "runner/guard/security.py",
+   302,
+   310
+  ],
+  [
+   "runner/guard/security.py",
+   303,
+   304
+  ],
+  [
+   "runner/guard/security.py",
+   303,
+   305
+  ],
+  [
+   "runner/guard/security.py",
+   305,
+   294
+  ],
+  [
+   "runner/guard/security.py",
+   305,
+   306
+  ],
+  [
+   "runner/guard/security.py",
+   306,
+   307
+  ],
+  [
+   "runner/guard/security.py",
+   307,
+   305
+  ],
+  [
+   "runner/guard/security.py",
+   307,
+   308
+  ],
+  [
+   "runner/guard/security.py",
+   310,
+   294
+  ],
+  [
+   "runner/guard/security.py",
+   310,
+   311
+  ],
+  [
+   "runner/guard/security.py",
+   311,
+   312
+  ],
+  [
+   "runner/guard/security.py",
+   312,
+   310
+  ],
+  [
+   "runner/guard/security.py",
+   312,
+   313
+  ],
+  [
+   "runner/guard/security.py",
+   327,
+   329
+  ],
+  [
+   "runner/guard/security.py",
+   329,
+   330
+  ],
+  [
+   "runner/guard/security.py",
+   330,
+   331
+  ],
+  [
+   "runner/guard/security.py",
+   330,
+   333
+  ],
+  [
+   "runner/guard/security.py",
+   331,
+   332
   ],
   [
    "runner/ops/attest.py",
