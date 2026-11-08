@@ -81,6 +81,22 @@ works in:
   a program; no agent submits a report. Agents find, triage, and
   draft; a human judges, enrolls, and submits.
 
+One part of the work is public by declaration: an open-source
+track. The workstream's operator is a security engineer with a
+cryptography background, and the track is the ordinary work of
+finding defects in public open-source code and helping to harden
+it — GnuTLS is one of the projects it covers, and it is named
+here because the track is meant to be visible. The testing
+itself, and everything it produces, stays guarded under the
+constraints this project documents — the two shelves set out on
+this page and the spillage rules in SECURITY.md: findings and
+crash data live on the private shelf, reports run through each
+project's formal channels only, nothing about a finding is
+public before it is patched, and anything examined under a bug
+bounty program is never named, only carried by label. The
+open-source track is the workstream's public face, and it is
+the only one.
+
 ## Sensitivity markings and code names
 
 A sensitivity marking is a short token that prefixes a
