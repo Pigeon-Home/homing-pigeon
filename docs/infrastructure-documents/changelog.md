@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.18 - 2026-11-08
+
+- README: the front page is reworked — the title reads HOMING PIGEON, the works-with line moves below the introduction, and the try-this prompt is tightened, with the under-30-seconds note set after the prompt block.
+
 ## 3.15.18.17 - 2026-11-08
 
 - Extensions: the nightly upstream pins refresh for the softflowd feed — its upstream pin moves to 451e719268f5c5f9b7ebba65894791c137c0e6a8 on master, the pinned files refetched, and the drift tests green against them.
