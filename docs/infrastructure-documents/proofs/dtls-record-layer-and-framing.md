@@ -205,3 +205,9 @@ citation of RFC 9147, which the code now earns.
   messages at the cap, or thousands of ordinary ones.
 - The derived PSK is a wire change for the DTLS binding and the
   carriage. Both ends must run this release or later.
+
+## Ratification (2026-11-07)
+
+Mixed-version DTLS interoperability is not supported across this
+landing. Both ends must run the same side of it. Recorded as
+accepted on 2026-11-07.
