@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.11 - 2026-11-07
+
+- Fix: the runs ledger appends under a cross-process file lock, so a record lands whole or not at all, and loading skips a torn line and counts it instead of failing at startup; a file where nothing parses still raises. The on-disk format is unchanged.
+- Fix: job_user enforce on POSIX refuses startup when the demote cannot be applied — the runner must be root and the configured user must resolve — instead of starting and running every job as the runner's own account (Q132).
+- Fix: the confinement startup trial runs the configured extra_flags in the position a job gives them, and a bwrap rejection refuses startup under enforce, naming the flags (Q133).
+- Record: the stamp audit accepts 7 historical upstream-pins signings by exact commit hash, enforcement unchanged for every other commit; the DTLS mixed-version break is ratified as shipped — both ends must run the same side of it; and the campaign archive audit item is closed as a misdescription.
+
 ## 3.15.18.10 - 2026-11-07
 
 - Record: the 49-character extra row of the content redo verification passes on Windows — 521 candidates generated on the Germany rig, 511 survivors under Windows PowerShell 5.1, and all 511 admitted through the real handle_mail, 0 failed. The content-rung table now has no open row; the instrument distinction stands, as the record states: Windows PowerShell 5.1, the rig's real shell, not a pwsh build.
