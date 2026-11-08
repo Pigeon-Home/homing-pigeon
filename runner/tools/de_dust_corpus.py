@@ -9660,17 +9660,67 @@ def record_run(record):
     _patient(_record_run_once, record)
 
 
+def _lock_exclusive(fd):
+    """Lock fd exclusively across processes, the runner's way (the
+    seen-file lock in runner.py): fcntl where the platform has it,
+    msvcrt where it does not. Returns the kind locked, for the
+    matching release."""
+    try:
+        import fcntl
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        return "fcntl"
+    except ImportError:
+        import msvcrt
+        msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+        return "msvcrt"
+
+
+def _lock_release(fd, kind):
+    try:
+        if kind == "msvcrt":
+            import msvcrt
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        elif kind == "fcntl":
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_UN)
+    except (OSError, ImportError):
+        pass
+
+
 def _record_run_once(record):
     path = runs_path()
     os.makedirs(CORPUS_DIR, exist_ok=True)
-    new = not os.path.exists(path)
-    with open(path, "a", encoding="utf-8", newline="\n") as fh:
-        if new:
-            fh.write(json.dumps({"de_dust": 1, "file": "runs",
-                                 "Agent-Stamp": STAMP},
-                                ensure_ascii=True) + "\n")
-        fh.write(json.dumps(record, ensure_ascii=True, sort_keys=True)
-                 + "\n")
+    # The ledger is appended from many processes at once -- the
+    # rig lanes, the top-up slots, this box's grows -- and an
+    # unlocked append can tear: two writers' bytes interleave and
+    # only a fragment of a record survives (the Germany rig,
+    # 3-Nov, 6-Nov and 7-Nov, each time disabling every grow that
+    # read the file). The whole append, the header decision
+    # included, happens under a cross-process lock on a sidecar
+    # file, so a record lands whole or not at all. The on-disk
+    # format is unchanged.
+    fd = os.open(path + ".lock", os.O_CREAT | os.O_RDWR, 0o600)
+    kind = None
+    try:
+        try:
+            os.lseek(fd, 0, os.SEEK_END)
+            if os.lseek(fd, 0, os.SEEK_CUR) == 0:
+                os.write(fd, b"\0")
+            os.lseek(fd, 0, os.SEEK_SET)
+        except OSError:
+            pass
+        kind = _lock_exclusive(fd)
+        new = not os.path.exists(path)
+        with open(path, "a", encoding="utf-8", newline="\n") as fh:
+            if new:
+                fh.write(json.dumps({"de_dust": 1, "file": "runs",
+                                     "Agent-Stamp": STAMP},
+                                    ensure_ascii=True) + "\n")
+            fh.write(json.dumps(record, ensure_ascii=True,
+                                sort_keys=True) + "\n")
+    finally:
+        _lock_release(fd, kind)
+        os.close(fd)
 
 
 def _environment():
@@ -11072,18 +11122,60 @@ def format_yield(rows, hours):
     return lines
 
 
+_RUNS_LOAD_REPORT = {"lines": 0, "skipped": 0, "bad_lines": []}
+
+
+def runs_load_report():
+    """What the most recent load_runs() saw in the ledger: how many
+    non-blank lines it read, how many it skipped as malformed, and
+    their 1-based line numbers (the first 100). The trace a skipped
+    line leaves, so a tolerance is never a silent swallow."""
+    return {"lines": _RUNS_LOAD_REPORT["lines"],
+            "skipped": _RUNS_LOAD_REPORT["skipped"],
+            "bad_lines": list(_RUNS_LOAD_REPORT["bad_lines"])}
+
+
 def load_runs():
     path = runs_path()
+    report = {"lines": 0, "skipped": 0, "bad_lines": []}
     if not os.path.exists(path):
+        _RUNS_LOAD_REPORT.update(report)
         return []
     out = []
-    with open(path, encoding="utf-8") as fh:
-        for line in fh:
+    parsed = 0
+    # errors="replace": a line torn at the byte level decodes to
+    # replacement characters and fails the parse below, instead of
+    # a decode error killing the whole read.
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for lineno, line in enumerate(fh, 1):
             line = line.strip()
-            if line:
+            if not line:
+                continue
+            report["lines"] += 1
+            try:
                 obj = json.loads(line)
-                if "kind" in obj:
-                    out.append(obj)
+            except ValueError:
+                obj = None
+            if not isinstance(obj, dict):
+                # A torn record: one malformed line is skipped and
+                # counted, never fatal -- a single torn append at
+                # the Germany rig disabled every grow on the box
+                # until a human repaired the file (3-Nov, 6-Nov,
+                # 7-Nov). What a line parses to but is not a record
+                # (a bare number, a bare string) is malformed in
+                # the same way.
+                report["skipped"] += 1
+                if len(report["bad_lines"]) < 100:
+                    report["bad_lines"].append(lineno)
+                continue
+            parsed += 1
+            if "kind" in obj:
+                out.append(obj)
+    _RUNS_LOAD_REPORT.update(report)
+    if report["lines"] and not parsed:
+        raise ValueError(
+            f"{path}: {report['lines']} non-blank lines and none of "
+            "them parse -- the ledger is corrupt, not torn")
     return out
 
 

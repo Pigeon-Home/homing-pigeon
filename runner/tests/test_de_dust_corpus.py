@@ -1030,6 +1030,223 @@ class SteeringTest(unittest.TestCase):
         self.assertGreater(len(session.mutators_tried), 3)
 
 
+class RunsLedgerTest(unittest.TestCase):
+    """The runs ledger under concurrent writers and torn lines.
+
+    The field failure, three times over (3-Nov, 6-Nov, 7-Nov, the
+    Germany rig): record_run appended from many processes with no
+    cross-process lock, a record landed torn, and load_runs treated
+    the one malformed line as fatal -- every grow on the box died
+    at startup on the same line until a human repaired the file.
+    These tests pin both halves shut: appends are locked across
+    processes so a record lands whole or not at all, and a load
+    skips a malformed line, counts it in runs_load_report(), and
+    fails loudly only when nothing in the file parses at all."""
+
+    HEADER = json.dumps({"de_dust": 1, "file": "runs",
+                         "Agent-Stamp": B.STAMP})
+    REC1 = json.dumps({"kind": "grow", "target": "t", "seq": 1},
+                      sort_keys=True)
+    REC2 = json.dumps({"kind": "grow", "target": "t", "seq": 2},
+                      sort_keys=True)
+
+    def _ledger(self, d, rows):
+        """Write rows (str or bytes) as the ledger's lines in d."""
+        path = os.path.join(d, "runs.jsonl")
+        with open(path, "wb") as fh:
+            for row in rows:
+                if isinstance(row, str):
+                    row = row.encode("utf-8")
+                fh.write(row + b"\n")
+        return path
+
+    def _load(self, d):
+        with mock.patch.object(B, "CORPUS_DIR", d):
+            return B.load_runs(), B.runs_load_report()
+
+    def test_record_run_appends_whole_lines_and_one_header(self):
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(B, "CORPUS_DIR", d):
+            B.record_run({"kind": "grow", "target": "t", "seq": 1})
+            B.record_run({"kind": "grow", "target": "t", "seq": 2})
+            with open(os.path.join(d, "runs.jsonl"), "rb") as fh:
+                raw = fh.read()
+            self.assertTrue(raw.endswith(b"\n"))
+            lines = raw.decode("utf-8").splitlines()
+            self.assertEqual(len(lines), 3)
+            header = json.loads(lines[0])
+            self.assertEqual(header["de_dust"], 1)
+            self.assertEqual(header["Agent-Stamp"], B.STAMP)
+            self.assertEqual([json.loads(l)["seq"] for l in lines[1:]],
+                             [1, 2])
+
+    def test_concurrent_processes_append_only_whole_lines(self):
+        import subprocess
+        child = (
+            "import sys\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "from runner.tools import de_dust_corpus as B\n"
+            "for i in range(int(sys.argv[3])):\n"
+            "    B.record_run({'kind': 'grow', 'target': 't',\n"
+            "                  'who': sys.argv[2], 'seq': i})\n")
+        procs, per = 6, 25
+        with tempfile.TemporaryDirectory() as d:
+            env = dict(os.environ, HP_DE_DUST_CORPUS_DIR=d)
+            runs = [subprocess.Popen(
+                        [sys.executable, "-c", child, ROOT, str(k),
+                         str(per)],
+                        env=env, stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE, text=True)
+                    for k in range(procs)]
+            for p in runs:
+                _, err = p.communicate(timeout=600)
+                self.assertEqual(p.returncode, 0, err)
+            with open(os.path.join(d, "runs.jsonl"), "rb") as fh:
+                lines = fh.read().decode("utf-8").splitlines()
+            self.assertEqual(len(lines), 1 + procs * per)
+            header = json.loads(lines[0])
+            self.assertEqual(header.get("de_dust"), 1)
+            seen = set()
+            for line in lines[1:]:
+                obj = json.loads(line)      # every line whole
+                self.assertNotIn("de_dust", obj)   # one header only
+                seen.add((obj["who"], obj["seq"]))
+            self.assertEqual(seen, {(str(k), i) for k in range(procs)
+                                    for i in range(per)})
+            loaded, report = self._load(d)
+            self.assertEqual(len(loaded), procs * per)
+            self.assertEqual(report["skipped"], 0)
+
+    def test_concurrent_threads_append_only_whole_lines(self):
+        import threading
+        per = 25
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(B, "CORPUS_DIR", d):
+            def work(k):
+                for i in range(per):
+                    B.record_run({"kind": "grow", "target": "t",
+                                  "who": str(k), "seq": i})
+            threads = [threading.Thread(target=work, args=(k,))
+                       for k in range(4)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            with open(os.path.join(d, "runs.jsonl"), "rb") as fh:
+                lines = fh.read().decode("utf-8").splitlines()
+            self.assertEqual(len(lines), 1 + 4 * per)
+            self.assertEqual(json.loads(lines[0]).get("de_dust"), 1)
+            seen = {(json.loads(l)["who"], json.loads(l)["seq"])
+                    for l in lines[1:]}
+            self.assertEqual(len(seen), 4 * per)
+
+    def test_load_runs_skips_a_torn_line_in_the_middle(self):
+        torn = '{"kind": "grow", "target": "t", "seq": 9, "when": "2026'
+        with tempfile.TemporaryDirectory() as d:
+            self._ledger(d, [self.HEADER, self.REC1, torn, self.REC2])
+            loaded, report = self._load(d)
+        self.assertEqual([r["seq"] for r in loaded], [1, 2])
+        self.assertEqual(report["lines"], 4)
+        self.assertEqual(report["skipped"], 1)
+        self.assertEqual(report["bad_lines"], [3])
+
+    def test_load_runs_skips_a_torn_tail(self):
+        # The 6-Nov shape: only the tail of a record survived, and
+        # it is the file's last line, with no newline after it.
+        tail = '"technique": "mutation", "tried": 12935, ' \
+               '"when": "2026-11-04T10:25:46Z"}'
+        with tempfile.TemporaryDirectory() as d:
+            path = self._ledger(d, [self.HEADER, self.REC1, self.REC2])
+            with open(path, "ab") as fh:
+                fh.write(tail.encode("utf-8"))
+            loaded, report = self._load(d)
+        self.assertEqual([r["seq"] for r in loaded], [1, 2])
+        self.assertEqual(report["skipped"], 1)
+        self.assertEqual(report["bad_lines"], [4])
+
+    def test_torn_line_shapes_are_skipped_and_counted(self):
+        splice = self.REC1[:25] + self.REC2[-25:]
+        with self.assertRaises(ValueError):
+            json.loads(splice)      # the fixture really is torn
+        shapes = {
+            "truncated": '{"kind": "grow", "target": "t", "seq": 9',
+            "splice_of_two_records": splice,
+            "head_only": '{"kind": "grow", "tar',
+            "not_json": "this line is not json at all",
+            "nul_byte": '{"kind": "grow",\x00 "seq": 9}',
+            "bare_number": "12345",
+            "bare_string": '"kind"',
+            "bare_list": "[1, 2]",
+            "bad_utf8": b'\xff\xfe{"kind": "grow"}',
+        }
+        for name, shape in shapes.items():
+            with self.subTest(shape=name), \
+                    tempfile.TemporaryDirectory() as d:
+                self._ledger(d, [self.HEADER, self.REC1, shape,
+                                 self.REC2])
+                loaded, report = self._load(d)
+                self.assertEqual([r["seq"] for r in loaded], [1, 2])
+                self.assertEqual(report["skipped"], 1)
+                self.assertEqual(report["bad_lines"], [3])
+
+    def test_an_empty_line_is_ignored_not_counted(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._ledger(d, [self.HEADER, self.REC1, "", self.REC2])
+            loaded, report = self._load(d)
+        self.assertEqual([r["seq"] for r in loaded], [1, 2])
+        self.assertEqual(report["lines"], 3)
+        self.assertEqual(report["skipped"], 0)
+        self.assertEqual(report["bad_lines"], [])
+
+    def test_load_runs_missing_and_empty_files_are_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            loaded, report = self._load(d)          # no file at all
+            self.assertEqual(loaded, [])
+            self.assertEqual(report["skipped"], 0)
+            self._ledger(d, [])                     # zero bytes
+            loaded, report = self._load(d)
+            self.assertEqual(loaded, [])
+            self.assertEqual(report["lines"], 0)
+            self._ledger(d, ["", ""])               # blanks only
+            loaded, _ = self._load(d)
+            self.assertEqual(loaded, [])
+
+    def test_load_runs_fully_corrupt_file_fails_loudly(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._ledger(d, ['{"kind": "grow", "tar',
+                             "not json",
+                             '"technique": "mutation", "tried": 1}'])
+            with mock.patch.object(B, "CORPUS_DIR", d):
+                with self.assertRaises(ValueError):
+                    B.load_runs()
+                report = B.runs_load_report()
+            self.assertEqual(report["skipped"], 3)
+        with tempfile.TemporaryDirectory() as d:
+            self._ledger(d, [self.REC1[:25] + self.REC2[-25:]])
+            with mock.patch.object(B, "CORPUS_DIR", d):
+                with self.assertRaises(ValueError):
+                    B.load_runs()
+
+    def test_mutator_history_reads_past_a_torn_line(self):
+        # The exact path that died on the rig: cmd_grow ->
+        # mutator_history -> load_runs.
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(B, "CORPUS_DIR", d):
+            B.record_run({"kind": "grow", "target": "t",
+                          "when": "2026-01-01",
+                          "mutators_tried": {"m1": 10},
+                          "mutators_kept": {"m1": 1}})
+            with open(os.path.join(d, "runs.jsonl"), "ab") as fh:
+                fh.write(b'{"kind": "grow", "target": "t", "when": "2\n')
+            B.record_run({"kind": "grow", "target": "t",
+                          "when": "2026-01-02",
+                          "mutators_tried": {"m1": 5, "m2": 7},
+                          "mutators_kept": {"m2": 2}})
+            self.assertEqual(B.mutator_history("t"),
+                             {"m1": (15, 1), "m2": (7, 2)})
+            self.assertEqual(B.runs_load_report()["skipped"], 1)
+
+
 class ArchiveTest(unittest.TestCase):
     """Every child tried, on a disk outside the tree, named by the
     run record (Muse's hard drive, 2026-10-26)."""
