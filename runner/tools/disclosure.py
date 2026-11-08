@@ -110,6 +110,28 @@ such data; the registry copy that ships in this repository
 (``disclosure-registry.example.json``, beside this file) carries
 the schema and obviously fake example entries only.
 
+The stamp. A record that concerns a project — a log line, a
+run record, a result envelope, a ledger entry — carries the
+project's posture as a single token:
+
+    hp-posture-<version>-<posture id>
+
+as in ``hp-posture-1-named-only``. The stamp carries the
+posture's stable id, never its tag (a tag may be re-lettered;
+an id may not), and the registry format version it was minted
+under, so a reader holding a registry of another version
+fails closed instead of misreading. ``format_stamp`` mints a
+stamp from a loaded registry, refusing an unknown id and a
+retired posture — new records are not stamped with a posture
+that has been replaced. ``parse_stamp`` reads a stamp
+strictly: the whole string, exactly this shape, a canonical
+version (no zero, no leading zeros), and an id inside the id
+grammar. ``validate_stamp`` resolves a stamp against a
+registry and raises on a version mismatch or an unknown id;
+a stamp naming a retired posture still validates, because
+old records stay readable, and the posture's status says
+what it is.
+
     python3 runner/tools/disclosure.py validate --registry R.json
     python3 runner/tools/disclosure.py check --registry R.json T.json
 
@@ -147,6 +169,9 @@ _ASSIGNMENT_KEYS = frozenset({"project", "posture", "note"})
 
 _ID_SHAPE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 
+STAMP_PREFIX = "hp-posture-"
+_STAMP_SHAPE = re.compile(r"hp-posture-([0-9]+)-([a-z0-9]+(?:-[a-z0-9]+)*)")
+
 
 class RegistryError(ValueError):
     """The posture registry is unreadable or outside the format."""
@@ -154,6 +179,10 @@ class RegistryError(ValueError):
 
 class TaggingError(ValueError):
     """The tagging file is unreadable or outside the format."""
+
+
+class StampError(ValueError):
+    """A posture stamp is malformed, or does not resolve."""
 
 
 class Posture(NamedTuple):
@@ -229,6 +258,14 @@ class Resolution(NamedTuple):
     tag: str
     posture: Posture | None
     problem: str | None
+
+
+class Stamp(NamedTuple):
+    """A parsed log stamp: the registry version it was minted
+    under, and the posture id it names."""
+
+    version: int
+    posture_id: str
 
 
 _ZERO_WIDTH = frozenset("\u200b\u200c\u200d\u2060\ufeff")
@@ -513,6 +550,78 @@ def check_tagging(registry, tagging):
                                           assignment.posture,
                                           posture, None))
     return resolutions
+
+
+def format_stamp(registry, posture_id):
+    """The stamp for `posture_id` under `registry`, as a str.
+
+    Refuses an id the registry does not declare, and a retired
+    posture: new records are not stamped with a posture that
+    has been replaced.
+    """
+    if not isinstance(registry, Registry):
+        raise TypeError("registry must be a Registry, not %s"
+                        % type(registry).__name__)
+    posture = (registry.by_id(posture_id)
+               if isinstance(posture_id, str) else None)
+    if posture is None:
+        raise StampError("no posture with id %r in the registry"
+                         % (posture_id,))
+    if posture.status == "retired":
+        raise StampError("posture %r is retired; new records are "
+                         "not stamped with it" % (posture_id,))
+    return "%s%d-%s" % (STAMP_PREFIX, REGISTRY_VERSION, posture.id)
+
+
+def parse_stamp(text):
+    """Parse a stamp strictly: the whole string, exactly the
+    declared shape. Anything else raises StampError."""
+    if not isinstance(text, str):
+        raise StampError("a stamp must be a str, not %s"
+                         % type(text).__name__)
+    match = _STAMP_SHAPE.fullmatch(text)
+    if match is None:
+        raise StampError("%r is not a posture stamp "
+                         "(hp-posture-<version>-<posture id>)" % (text,))
+    digits, pid = match.groups()
+    if len(digits) > 1 and digits.startswith("0"):
+        raise StampError("%r: version %r has a leading zero; "
+                         "versions are canonical" % (text, digits))
+    version = int(digits)
+    if version < 1:
+        raise StampError("%r: version must be at least 1" % (text,))
+    if len(pid) > MAX_ID_LENGTH:
+        raise StampError("%r: 'id' is %d characters; the cap is %d"
+                         % (text, len(pid), MAX_ID_LENGTH))
+    return Stamp(version, pid)
+
+
+def validate_stamp(registry, stamp):
+    """Resolve `stamp` (a Stamp, or a str to parse) against
+    `registry`, returning its Posture.
+
+    Fails closed: a version other than the registry format's
+    own, or an id the registry does not declare, raises
+    StampError. A retired posture resolves — old records stay
+    readable — and its status says what it is.
+    """
+    if not isinstance(registry, Registry):
+        raise TypeError("registry must be a Registry, not %s"
+                        % type(registry).__name__)
+    if isinstance(stamp, str):
+        stamp = parse_stamp(stamp)
+    if not isinstance(stamp, Stamp):
+        raise TypeError("stamp must be a Stamp or a str, not %s"
+                        % type(stamp).__name__)
+    if stamp.version != REGISTRY_VERSION:
+        raise StampError("stamp version %d does not match the "
+                         "registry format version %d"
+                         % (stamp.version, REGISTRY_VERSION))
+    posture = registry.by_id(stamp.posture_id)
+    if posture is None:
+        raise StampError("no posture with id %r in the registry"
+                         % (stamp.posture_id,))
+    return posture
 
 
 def _report(where, registry, resolutions, out):

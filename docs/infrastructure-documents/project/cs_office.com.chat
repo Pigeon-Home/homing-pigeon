@@ -12,6 +12,63 @@ written in one is copied to the other in the same landing.
 Entries carry a marking token, stated at the end of each
 entry. This forum itself is hp0.
 
+## 8-Nov-2:11pm-PST/PDT — posture stamps for records, the exemplar letters, and the Oracle's instruction
+
+Three additions to the disclosure-posture landing, all
+recorded in the design note
+(docs/infrastructure-documents/project/cs_office-postures.md).
+
+The exemplar letters are settled there: A is the hidden
+posture, never exemplified in this repository; B is the open
+posture; C is BOOKEND, the hybrid named-only posture, its
+target Homing Pigeon itself; D is DELTA, a documented
+example only — Meta, whose bug-bounty program terms welcome
+being named — with no work behind the letter. The letters
+name exemplar projects in prose; they are not registry tags.
+
+Posture is now taggable in records project-wide. A record
+that concerns a project carries its posture as one token,
+hp-posture-<version>-<posture id>, minted, parsed, and
+validated by helpers in runner/tools/disclosure.py in the
+code-name tool's discipline: the stamp carries the stable
+id (never the re-letterable tag) and the registry format
+version; minting refuses an unknown id and a retired
+posture; validation fails closed on a version mismatch or
+an unknown id, while a retired posture's stamp still
+validates so old records stay readable. Stated plainly in
+the note: no producer is wired yet — job records, run
+records, and log lines do not stamp; wiring each producer
+is follow-on work with its own tests.
+
+And the Oracle's understanding of a posture has a canonical
+text. The search for its instruction home found none in the
+repository — the Oracle's standing text is each deployment's
+own owner_instructions, its context builder assembles data,
+and its learning ledger treats text as evidence, never
+instruction. The gap is recorded in the note, and the
+instruction text stands there, defining the semantics by
+pointing at the registry as the single source of truth
+rather than restating any posture's declaration: an
+unresolvable stamp or tag, or a retired posture, means the
+project is treated as standing under the most restrictive
+posture declared, and a posture is never loosened by
+inference.
+
+Proof of work. The stamp family stands in
+runner/tests/test_disclosure.py: round-trips for every
+active posture of the shipped example, unknown-id and
+version-mismatch failures at validate, the malformed family
+at parse (missing segments, bookend punctuation, whitespace,
+case-flipped and over-long ids, zero and leading-zero
+versions), and retired-posture behavior at both mint and
+validate. The suite stands at 87 tests and 382 subtests,
+green under pytest and unittest, with the sibling tools'
+suites alongside (229 tests in the four). The design note's
+supposition for the helpers — written and committed before
+they existed — is recorded there with its outcome: it held.
+
+Marking: hp0
+
 ## 8-Nov-1:55pm-PST/PDT — disclosure postures: what may be said about a project, declared in data
 
 The markings classify material; this entry records the

@@ -325,6 +325,18 @@ records, and log lines do not stamp yet. Wiring each
 producer is follow-on work, one producer at a time, each
 with its own tests.
 
+Outcome, measured against the build that lands the helpers:
+the supposition held. The suite's stamp family round-trips
+every active posture of the shipped example registry through
+mint, parse, and validate; a stamp naming an undeclared id,
+and one minted under any other version, fail closed at
+validate; the malformed family — missing segments, bookend
+punctuation, whitespace, a case-flipped or over-long id, a
+zero or leading-zero version — fails at parse, unrepaired.
+The suite stands at 87 tests and 382 subtests, green under
+both pytest and unittest discovery, with the sibling tools'
+suites alongside (229 tests in the four).
+
 ## What the Oracle is to understand by a posture
 
 The Oracle renders opinions inside this suite, so its

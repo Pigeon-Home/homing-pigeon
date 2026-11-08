@@ -469,6 +469,127 @@ class ExtensibilityTest(unittest.TestCase):
         self.assertEqual(reg.successor_of(r.posture).id, "named-only")
 
 
+class StampTest(unittest.TestCase):
+    def test_roundtrip_for_every_active_posture(self):
+        reg = _three_postures()
+        for posture in reg.postures:
+            with self.subTest(posture=posture.id):
+                stamp = P.format_stamp(reg, posture.id)
+                self.assertEqual(
+                    stamp, "hp-posture-1-%s" % posture.id)
+                parsed = P.parse_stamp(stamp)
+                self.assertEqual(parsed, P.Stamp(1, posture.id))
+                self.assertEqual(P.validate_stamp(reg, parsed),
+                                 posture)
+                self.assertEqual(P.validate_stamp(reg, stamp),
+                                 posture)
+
+    def test_roundtrip_against_the_shipped_example(self):
+        reg = P.load_registry(ExampleRegistryTest.EXAMPLE)
+        for posture in reg.postures:
+            if posture.status != "active":
+                continue
+            with self.subTest(posture=posture.id):
+                stamp = P.format_stamp(reg, posture.id)
+                self.assertEqual(P.validate_stamp(reg, stamp),
+                                 posture)
+
+    def test_format_refuses_an_unknown_id(self):
+        with self.assertRaises(P.StampError):
+            P.format_stamp(_three_postures(), "no-such-posture")
+
+    def test_format_refuses_a_retired_posture(self):
+        reg = _registry(
+            _posture("old-id", "A", status="retired",
+                     successor="nothing-said"),
+            _posture("nothing-said", "B"))
+        with self.assertRaises(P.StampError):
+            P.format_stamp(reg, "old-id")
+
+    def test_format_refuses_a_non_str_id(self):
+        for bad in (7, None, ["named-only"]):
+            with self.subTest(bad=bad):
+                with self.assertRaises(P.StampError):
+                    P.format_stamp(_three_postures(), bad)
+
+    def test_parse_refusal_family(self):
+        for bad in ("", "hp-posture-", "hp-posture-1",
+                    "hp-posture-1-", "posture-1-named-only",
+                    "hp-posture-a-named-only",
+                    "hp-posture--named-only",
+                    "hp-posture-1-Named-Only",
+                    "hp-posture-1-named_only",
+                    "hp-posture-1-named--only",
+                    "hp-posture-1-named-only-",
+                    " hp-posture-1-named-only",
+                    "hp-posture-1-named-only ",
+                    "hp-posture-1-named-only\n",
+                    "xhp-posture-1-named-only",
+                    "hp-posture-1-named-onlyx y",
+                    "hp-posture-1-" + "x" * 65):
+            with self.subTest(bad=bad):
+                with self.assertRaises(P.StampError):
+                    P.parse_stamp(bad)
+
+    def test_parse_refuses_non_canonical_versions(self):
+        for bad in ("hp-posture-0-named-only",
+                    "hp-posture-00-named-only",
+                    "hp-posture-01-named-only"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(P.StampError):
+                    P.parse_stamp(bad)
+
+    def test_parse_punctuation_bookends_are_refused(self):
+        stamp = P.format_stamp(_three_postures(), "named-only")
+        for ch in string.punctuation:
+            for bad in (ch + stamp, stamp + ch, ch + stamp + ch):
+                with self.subTest(bad=bad):
+                    with self.assertRaises(P.StampError):
+                        P.parse_stamp(bad)
+
+    def test_parse_refuses_non_str(self):
+        for bad in (None, 7, b"hp-posture-1-named-only", ["x"]):
+            with self.subTest(bad=bad):
+                with self.assertRaises(P.StampError):
+                    P.parse_stamp(bad)
+
+    def test_validate_fails_closed_on_an_unknown_id(self):
+        reg = _three_postures()
+        for stamp in (P.Stamp(1, "no-such-posture"),
+                      "hp-posture-1-no-such-posture"):
+            with self.subTest(stamp=stamp):
+                with self.assertRaises(P.StampError):
+                    P.validate_stamp(reg, stamp)
+
+    def test_validate_fails_closed_on_a_version_mismatch(self):
+        reg = _three_postures()
+        for stamp in (P.Stamp(2, "named-only"),
+                      P.Stamp(99, "named-only"),
+                      "hp-posture-2-named-only"):
+            with self.subTest(stamp=stamp):
+                with self.assertRaises(P.StampError):
+                    P.validate_stamp(reg, stamp)
+
+    def test_a_retired_postures_stamp_still_validates(self):
+        # Old records stay readable; the status says what it is.
+        reg = _registry(
+            _posture("old-id", "A", status="retired",
+                     successor="nothing-said"),
+            _posture("nothing-said", "B"))
+        posture = P.validate_stamp(reg, "hp-posture-1-old-id")
+        self.assertEqual(posture.id, "old-id")
+        self.assertEqual(posture.status, "retired")
+
+    def test_helpers_hold_their_argument_types(self):
+        with self.assertRaises(TypeError):
+            P.format_stamp({"not": "a registry"}, "named-only")
+        with self.assertRaises(TypeError):
+            P.validate_stamp({"not": "a registry"},
+                             "hp-posture-1-named-only")
+        with self.assertRaises(TypeError):
+            P.validate_stamp(_three_postures(), 7)
+
+
 class LoadersTest(unittest.TestCase):
     def _write(self, text):
         fh = tempfile.NamedTemporaryFile(
