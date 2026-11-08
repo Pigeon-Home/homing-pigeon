@@ -187,6 +187,34 @@ class StampAuditRulesTest(unittest.TestCase):
             self.assertEqual("recycled", known[stamp], stamp)
             self.assertIsNotNone(when.tzinfo, stamp)
 
+    def test_the_record_s_accepted_violation_table_parses(self):
+        rows = SA.accepted_commits()
+        self.assertEqual({
+            "c21cb6dce2c5851c097063e7a7c71b9ccb3793f6",
+            "6dc4ee11dbd4602085661b5252101bffccc328d6",
+            "a01b0316bbab319f17d21737c41dedd7e3a5feb8",
+            "3ad2dc3f15e8628d14fdc461761fed488aecbe7e",
+            "afa4a62edf697615a063c95bb269db10fe8a418d",
+            "631c6ac310a2a57214d792fab599a346abe42587",
+            "5b02741ef90fafe86cc97f5843c5b2db84d02807",
+        }, rows)
+
+    def test_an_accepted_historical_commit_is_history_not_a_violation(self):
+        # The allowance is the exact commit hash on the record's
+        # table, nothing wider: the same signing under any other
+        # hash is still a rule 3 violation.
+        accepted_sha = "6dc4ee11dbd4602085661b5252101bffccc328d6"
+        _s, violations, history = SA.audit(
+            [_c(1, [_OLD], "session_x", sha=accepted_sha)], _KNOWN,
+            accepted={accepted_sha})
+        self.assertEqual([], violations)
+        self.assertTrue(any("accepted historical violation" in m
+                            for _r, m in history), history)
+        _s, violations, _h = SA.audit(
+            [_c(1, [_OLD], "session_x", sha="f" * 40)], _KNOWN,
+            accepted={accepted_sha})
+        self.assertEqual(["rule 3"], [r for _c_, r, _m in violations])
+
     def test_an_unknown_stamp_is_named(self):
         rules, _h = self._rules([_c(1, ["deadbeef-0000-4000-8000-000000000000"], None)])
         self.assertEqual(rules, ["rule 4"])
@@ -228,7 +256,8 @@ class StampHistoryTest(unittest.TestCase):
         known = SA.record()
         _s, violations, _h = SA.audit(commits, known,
                                       sessions=SA.sessions_on_record(known=known),
-                                      recycled=SA.recycled_from(known=known))
+                                      recycled=SA.recycled_from(known=known),
+                                      accepted=SA.accepted_commits())
         self.assertEqual([(c.sha[:9], r, m) for c, r, m in violations], [])
 
 

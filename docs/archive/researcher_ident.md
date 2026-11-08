@@ -94,6 +94,23 @@ half of the record.
 
 `runner/tests/test_agent_stamps.py` holds this record to the tree.
 
+## Accepted historical violations (2026-11-07)
+
+The following commits are accepted as historical exceptions, by
+full commit hash. They predate this accept-and-allowlist decision.
+The exception reaches these commits only; enforcement is unchanged
+for HEAD and every other commit.
+
+| Commit | Stamp | Rule |
+|--------|-------|------|
+| `c21cb6dce2c5851c097063e7a7c71b9ccb3793f6` | `60000b3a-32a6-4847-996f-638cbcb6d854` | rule 3 |
+| `6dc4ee11dbd4602085661b5252101bffccc328d6` | `60000b3a-32a6-4847-996f-638cbcb6d854` | rule 3 |
+| `a01b0316bbab319f17d21737c41dedd7e3a5feb8` | `60000b3a-32a6-4847-996f-638cbcb6d854` | rule 3 |
+| `3ad2dc3f15e8628d14fdc461761fed488aecbe7e` | `60000b3a-32a6-4847-996f-638cbcb6d854` | rule 3 |
+| `afa4a62edf697615a063c95bb269db10fe8a418d` | `60000b3a-32a6-4847-996f-638cbcb6d854` | rule 3 |
+| `631c6ac310a2a57214d792fab599a346abe42587` | `60000b3a-32a6-4847-996f-638cbcb6d854` | rule 3 |
+| `5b02741ef90fafe86cc97f5843c5b2db84d02807` | `60000b3a-32a6-4847-996f-638cbcb6d854` | rule 3 |
+
 ## Sessions on the record (2026-10-30)
 
 A stamp runs in one Claude Code session, and `runner/tools/stamp_audit.py`

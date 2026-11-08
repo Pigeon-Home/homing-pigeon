@@ -29,6 +29,11 @@ never failed, since the rules did not exist when it was written):
 A commit with no session line (a seat outside Claude Code) is held
 to rules 3 and 4 only. A shallow clone is audited as far as it
 reaches; the stamp-audit workflow fetches the whole history.
+
+The record may accept individual historical violations by full
+commit hash, in its accepted-violations table. Those commits are
+reported as history, not violations; every other commit is held at
+full strength.
 """
 import argparse
 import collections
@@ -113,6 +118,19 @@ def recycled_from(path=IDENT, known=None):
     return out
 
 
+ACCEPTED_ROW = re.compile(
+    r"^\|\s*`([0-9a-f]{40})`\s*\|\s*`(%s)`\s*\|\s*rule\s*[1-4]\s*\|" % STAMP, re.M)
+
+
+def accepted_commits(path=IDENT):
+    """{full commit hash} from the record's accepted-violations table:
+    individual historical commits accepted by hash. The table is the
+    whole allowance -- a commit with no row is held to the rules."""
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    return {m.group(1) for m in ACCEPTED_ROW.finditer(text)}
+
+
 def resolve(token, known):
     """A trailer's stamp as the record names it: the full stamp, or the
     one stamp it is a prefix of (some trailers carry the first block
@@ -166,14 +184,17 @@ def git_log(root=ROOT):
 
 
 def audit(commits, known, enforced_from=ENFORCED_FROM, sessions=None,
-          recycled=None):
+          recycled=None, accepted=None):
     """(summary, violations, history). summary maps stamp -> facts;
     violations are rule breaks at or after enforced_from; history is
     the same breaks before it. `sessions` is the record's sessions
     table ({stamp: {session, ...}}, sessions_on_record): a stamp that
     signs from several sessions all on its row is one chat under
-    reissued ids, not a rule 1 break."""
+    reissued ids, not a rule 1 break. `accepted` is the record's
+    accepted-violations table ({full commit hash}, accepted_commits):
+    a finding on a listed commit is reported as history, not failed."""
     sessions = sessions or {}
+    accepted = accepted or set()
     by_stamp = collections.defaultdict(lambda: {
         "commits": 0, "sessions": collections.Counter(), "authors": collections.Counter(),
         "first": None, "last": None})
@@ -216,6 +237,9 @@ def audit(commits, known, enforced_from=ENFORCED_FROM, sessions=None,
                     findings.append((live, c, "rule 2",
                                      f"session {c.session} signs as "
                                      f"{', '.join(sorted(x[:8] for x in session_stamps[c.session]))}"))
+    findings = [(False, c, rule, msg + " (accepted historical violation)")
+                if live and c.sha in accepted else (live, c, rule, msg)
+                for live, c, rule, msg in findings]
     # the same rules over the whole history, for the report
     hist_ss = collections.defaultdict(set)
     hist_st = collections.defaultdict(set)
@@ -321,7 +345,8 @@ def main(argv=None):
     known = record()
     summary, violations, history = audit(commits, known,
                                          sessions=sessions_on_record(known=known),
-                                         recycled=recycled_from(known=known))
+                                         recycled=recycled_from(known=known),
+                                         accepted=accepted_commits())
     print(report(summary, violations, history, known, args.markdown,
                  len(commits), unstamped(commits) if args.authors else None))
     if args.check and violations:
