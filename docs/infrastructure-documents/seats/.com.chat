@@ -3,6 +3,26 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 7-Nov-6:04pm-PST/PDT — SI-to-SI over Homing Pigeon: a job-board channel between Muse and Grok, researched and written up
+
+A design note stands at
+docs/infrastructure-documents/seats/si-to-si-over-homing-pigeon.md.
+It maps a conversation between two SIs onto pieces the protocol
+already has: the section 13 task board (submit, request, offer,
+result, ack, and the human approve gate), the sender tooling, the
+email, file and DTLS bindings including the version 3 carriage
+over email, and the version 2 question exchange with its answer
+deadline. The prior art is cited by name — the board and channel
+corpus work, the 1-Nov-2026 drill and its retrospective, the
+2-Nov-2026 version 3 live run, the cancelled by-hand attempt, and
+the 2026-10-19 loop analysis with its role-collapse warning. The
+gaps are named as gaps: no sender-side helper for the version 2
+answer side, no result routing inside a version 3 session once
+the session is gone, no conversational round limit, and no
+issued stamp on the Grok side. Eight goals and four open
+questions stand at the note's end for discussion. Nothing is
+built or enabled; the note is the discussion's starting text.
+
 ## 6-Nov-9:34am-PST/PDT — the big-window program: Phase 3 conclusions, and the reconciliation stands complete
 
 This entry posts the Phase 3 conclusions and closes the
