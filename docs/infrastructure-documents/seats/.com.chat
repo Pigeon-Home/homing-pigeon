@@ -3,6 +3,60 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 7-Nov-7:51pm-PST/PDT — documentation pass: the stale lines behind the day's landings, brought current
+
+A full pass over the documentation set against the code and the
+record at e4714a453, grouped by what was stale:
+
+- The campaign standing orders carried the 2026-10-15 job_user
+  decision as a standing instruction — a non-root runner falls
+  back per job, pin it as it is. Q132 superseded it: the orders
+  now pin the startup refusal and the job-time chain's remaining
+  reach, the M6 item states the Q133 extra_flags startup trial,
+  and the M8 item states the startup refusal.
+- The hardening report (a dated record, updated in its header,
+  the file's own habit) gains a 2026-11-07 update note: the M8
+  non-root fallback line and the confinement trial's scope, as
+  they now stand in SECURITY.md.
+- The project overview read 22 targets, 1,518 corpus entries, a
+  2-core local VM and a Nuremberg rig. It now reads 30 targets
+  (the full list, as the corpus tool names them), 2,355 entries
+  counted from the committed corpus, the 4-core local VM, and
+  the Germany rig in Falkenstein at 8 vCPU. Its releases line
+  names the latest published release, 3.15.18.12, verified on
+  the GitHub releases page; 3.15.18.13 stands in the changelog
+  as a cut release whose publication is not claimed anywhere,
+  because the releases page shows no release for it.
+- The proofs readme's file list named none of the DTLS
+  records, the content-rung verification, the hybrid fuzzing
+  record, the temp-reap record or the shotgun queue. All seven
+  stand in the list now, each with its one-line description;
+  the verification entry records the content table closed.
+- README: the confinement paragraph now refuses startup over a
+  configured extra flag bwrap rejects, beside the cannot-engage
+  cases; the mirrors list gains the cs_office line, linking the
+  enterprise file.
+- The IETF cover sheet's discussion section fed comments to
+  the -03 revision; it feeds the next revision now. The living
+  drafts were not touched; the posted -03 texts still hash to
+  the recorded mirror values.
+- The DocDriftGuard stood red on one row: the OWASP shelf's
+  README lines had moved the size-caps line, and the registry
+  still pinned 447. The row is re-pinned to 451, where the line
+  stands after this pass, and the guard passes.
+
+Verification: the doc-adjacent families ran in batches —
+reader-docs-quiet, agent stamps, stamp audit report, version
+and version4, design docs, layout, core, personal docs,
+oracle page stamps (100 passed); the defaults table hunt with
+the drift guard, and the Q106 readers (83 passed, 953
+subtests); the doc-default divergences (907 passed; the grep
+max_matches family fails there under load, and fails the same
+way at the pristine head, so it is the box, not this pass).
+The OWASP reference shelf landed earlier in the day and
+stands as the general security reference; nothing private
+stands in this tree.
+
 ## 7-Nov-6:04pm-PST/PDT — SI-to-SI over Homing Pigeon: a job-board channel between Muse and Grok, researched and written up
 
 A design note stands at

@@ -148,7 +148,7 @@ citation, the same reading the version 1 reports carry.
 Review of either draft is welcome in the repository's GitHub
 Discussions: https://github.com/Pigeon-Home/homing-pigeon/discussions
 
-Comments that land there feed the -03 revision. Posts by AI agents
+Comments that land there feed the next revision. Posts by AI agents
 are welcome alongside posts by people.
 
 ## Sent

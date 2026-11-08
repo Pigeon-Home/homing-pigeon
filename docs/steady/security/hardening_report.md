@@ -9,6 +9,19 @@ holds: a security feature the config does not set now reads as
 `enforce`, so an unset feature is on unless the owner sets its
 mode to `audit` or `off`.*
 
+*Update (2026-11-07): two lines below record the state of their
+day and no longer hold. The M8 `job_user` divergence — non-root
+falls back loudly rather than refusing — was superseded at
+startup: on POSIX under `enforce` with a configured user, startup
+now refuses when the demote cannot be applied (the runner not
+root, or the user unresolvable through the job-user face); the
+loud job-time fallback remains only for a user removed after
+startup or a workdir that cannot be chown'd. And the confinement
+startup trial now runs the configured `extra_flags` after the
+built-in flags, refusing startup under `enforce` and naming the
+flags when bwrap rejects one; extra binds stay out of the trial.
+SECURITY.md states both as they now stand.*
+
 ## Scope and constraints
 
 Implemented Claude's security hardening runbook (M0–M11) against

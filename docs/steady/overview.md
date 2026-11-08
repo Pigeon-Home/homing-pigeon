@@ -42,44 +42,44 @@ deleted.
 ## Fuzzing
 
 A coverage-guided corpus is grown against the runner's
-own protocol surface: 22 targets (wire, cloud, v2, crypto, local,
+own protocol surface: 30 targets (wire, cloud, v2, crypto, local,
 stash, mail, dtls, board, board_ops, channels, manifest, inbox,
 local_inbox, secret, queries, names, query, board_mail, v2_mail,
-stage, collect), mutating real traffic and replaying whatever
-breaks. The method is a fuzzer's systematic, coverage-driven
-logic aimed at basic test points: the assurance target is that
-the ordinary operating-system and kernel protections around a
-machine actually hold. Attack-shaped tests are the point.
+stage, collect, keydir, address, dtls_session, race_board,
+race_stash, race_state, dtls_hostile, edge_subject), mutating
+real traffic and replaying whatever breaks. The method is a
+fuzzer's systematic, coverage-driven logic aimed at basic test
+points: the assurance target is that the ordinary
+operating-system and kernel protections around a machine
+actually hold. Attack-shaped tests are the point.
 
 Three rigs grow around the clock, one process per core, CPU
 pegged, and bank their corpus into this repository:
 
-- **Menlo Park** — the local VM (2 cores), grow and survivors
+- **Menlo Park** — the local VM (4 cores), grow and survivors
   loops, self-restarting on a ten-minute liveness check.
-- **Nuremberg** — a 1-core Hetzner box in Nuremberg, which also
-  runs a hosted-profile runner on the queue plane.
-- **San Francisco** — a 1-core DigitalOcean droplet, grow only.
+- **The Germany rig** — an 8-vCPU Windows box in Falkenstein,
+  growing on the platform the other rigs do not cover.
+- **San Francisco** — a DigitalOcean droplet, grow only.
 
 Fleet names are cities as of today; banked ledger lines keep the
-names they were written with. Nuremberg banks under its city
-name already; the other two follow with their next banks.
+names they were written with.
 
 ## Status
 
 Status at this writing:
 
-- Corpus: **1,518 entries over 22 targets**, merged from all
-  three rigs. One target still has live mutators (local); the
-  rest read saturated at the current round size.
+- Corpus: **2,355 entries over 30 targets**, counted from the
+  committed corpus at this writing, merged from all three rigs.
 - Crashes are filed as findings, never fixed by the hand that
-  found them. The recent arc: query leaks that were the result's
-  own vocabulary — checker exemptions, records retired; a
-  mutated `reply_to` rendered as `<>` — a real reader defect,
-  fixed and shipped in 3.14.34.
+  found them.
 - The key-parity family is closed: all fifteen doors,
   DTLS resumption included, now refuse a superseded key, and the
   two by-design failing probes are green since the key directory
   shipped.
-- Releases stand at the version in pyproject.toml, published on
-  every outlet the project ships to.
-- The Menlo Park rig reads 240% of its 2 cores at this writing.
+- Releases: the latest published release is 3.15.18.12,
+  verified on the GitHub releases page on 2026-11-08. The
+  version in pyproject.toml moves ahead of publication whenever
+  a ship is in flight, so the changelog is the record of what
+  has shipped and the releases page is the record of what has
+  published.

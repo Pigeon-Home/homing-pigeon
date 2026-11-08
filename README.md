@@ -290,7 +290,8 @@ of thing:
   writable. It runs at `enforce` by default.
   A sandbox that cannot engage (no `bwrap`, user namespaces
   blocked, not Linux) refuses to start the runner at that
-  default; set the key to `audit` or `off` to run without it.
+  default; a configured extra flag that bwrap rejects
+  refuses it too — set the key to `audit` or `off` to run without it.
   One that breaks after a good start falls back loudly and the
   audit log records the fallback. The key is
   `security.modes.confinement`. See SECURITY.md.
@@ -531,4 +532,5 @@ says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.
 - IETF draft v3: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
 - https://news.ycombinator.com/item?id=50397008
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt
+- cs_office — [What is a bug bounty program?](ENTERPRISE.md)
 - "Humor between a system and its user is load-bearing, not decoration." - Me

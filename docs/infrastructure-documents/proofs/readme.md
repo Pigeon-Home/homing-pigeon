@@ -228,6 +228,28 @@ A finding is most useful when it points at the file and the line
   bare-machine procedure that produces the real run:
   nothing assumed installed, every tool installed in
   the open.
+  `content-rung-verify.md` is the separate first-hand
+  verification of the content redo, rung by rung, run
+  after the redo landed; its closing section records
+  the table complete — no row remains open, the last
+  of them the 49-character row on Windows.
+- The DTLS records — `dtls-over-mailbox.md` (the
+  datagrams carried through the mailbox, proven end to
+  end), `dtls-over-email-v3.md` (the version 3 carriage:
+  what was built and tested), and
+  `dtls-record-layer-and-framing.md` (the record layer
+  read against RFC 9147 and the framing work; the
+  mixed-version break is ratified as shipped — both
+  ends must run the same side of it).
+- `hybrid-fuzz-10024.md` — the directed fuzzing record
+  for the X25519MLKEM768 hybrid key agreement
+  (RFC 10024): suppositions, measurements, and the run
+  record.
+- `temp-reap.md` — the temp-reaping record: the per-job
+  workspace leak, measured first-hand, and the fix.
+- `shotgun-queue.md` — the shotgun test queue:
+  fuzz-found bugs, newest first, and the test family
+  each one gets.
 - `thinking.md` — the reasoning behind the work: why the gate
   comes first, why size is a character count, the open
   content-independence challenge, the standing rules, and the

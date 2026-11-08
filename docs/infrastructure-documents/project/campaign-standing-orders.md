@@ -264,12 +264,20 @@ allows the case; `audit` runs it and writes the `would_deny` line;
 the same escape succeeds with the mode off, so a test that passes
 for a reason other than the control is caught.
 
-Two owner decisions (2026-10-15) are part of the promise, and a test
-that "hardens" past them is wrong: with `confinement: enforce`, a
+One decision of 2026-10-15 is part of the promise, and a test
+that "hardens" past it is wrong: with `confinement: enforce`, a
 sandbox that does not work at startup refuses to start (Q9), but a
 sandbox that fails after a good start lets the job run unsandboxed
-with a WARN line and a `fallback` audit entry; `job_user` without
-root does the same (`job_user_needs_root`). Pin those as they are.
+with a WARN line and a `fallback` audit entry. Pin that as it is.
+The second decision of that day — `job_user` without root doing
+the same (`job_user_needs_root`) — no longer stands: since
+2026-11-07 (Q132), on POSIX under `job_user: enforce` with a
+configured user, startup refuses when the demote cannot be
+applied (the runner is not root, or the user cannot be resolved
+through the job-user face), and the job-time `fallback` chain
+remains only for what a job can meet after a good start — a user
+removed after startup, a workdir that cannot be chown'd. Pin the
+refusal, and pin the chain's remaining reach.
 
 1. M1, the size caps: `max_job_bytes`, `max_script_bytes`. Always
    on; over the cap is rejected before anything runs; a non-number
@@ -289,7 +297,11 @@ root does the same (`job_user_needs_root`). Pin those as they are.
    Have: `test_audience.py`.
 5. M6, `confinement`: `enforce` runs the job inside bwrap with no
    network, no home, `/usr` read-only and the workdir only at
-   `/work`; the same escape succeeds with the mode off. Have:
+   `/work`; the same escape succeeds with the mode off. Since
+   2026-11-07 (Q133) the startup trial also runs the configured
+   `extra_flags` in the position a job's argv gives them, and a
+   flag bwrap rejects refuses startup under `enforce`, naming
+   the flags; extra binds stay out of the trial. Have:
    `test_confinement.py` (`EnforceTest` and its negative control,
    Linux CI only). Missing: each wall as its own case and control
    (network, home, `/usr` write, a path outside `/work`), and the
@@ -300,7 +312,8 @@ root does the same (`job_user_needs_root`). Pin those as they are.
    the install layout; file a question if they drift.
 7. M8, `job_user` and the secret files: `enforce` drops uid and
    groups (a failed `initgroups` does not keep the runner's groups,
-   Q18); the workdir is chowned to the job user; a missing or
+   Q18); the workdir is chowned to the job user; startup refuses
+   when the demote cannot be applied (Q132); a missing or
    world-readable secret file refuses startup. Have:
    `test_secret_files_job_user.py` (as root, `.github/workflows/job-user.yml`),
    `test_runner_face.py`, `test_credential_canary.py`.
