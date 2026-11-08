@@ -1,0 +1,35 @@
+{
+  "format": "hp-nameguard-registry",
+  "private_refs": "off",
+  "terms": [
+    {
+      "case": "fold",
+      "marking": 2,
+      "match": "word",
+      "note": "FAKE example entry. Stands in for a conversational code name an operator has declared in code so the guard can scan for it. A real registry never lives in the repository; it is private-shelf material and stays beside the operator's private notes.",
+      "term": "Project Fake Lantern"
+    },
+    {
+      "case": "fold",
+      "marking": 2,
+      "match": "word",
+      "note": "FAKE example entry. Stands in for the name of something under examination, or of a client, that must never reach the public shelf.",
+      "term": "Neverreal Dynamics"
+    },
+    {
+      "case": "fold",
+      "marking": 3,
+      "match": "substring",
+      "note": "FAKE example entry. A fragment-shaped term: a host name that must be caught even inside a longer address, so it matches as a substring.",
+      "term": "fictional-target.invalid"
+    },
+    {
+      "case": "exact",
+      "marking": 1,
+      "match": "word",
+      "note": "FAKE example entry. An exact-case term: only this capitalization is the protected string; other capitalizations are ordinary words.",
+      "term": "Case Sensitive Fakename"
+    }
+  ],
+  "version": 1
+}
