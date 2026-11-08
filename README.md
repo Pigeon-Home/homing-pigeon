@@ -1,4 +1,4 @@
-# Homing Pigeon
+# HOMING PIGEON
 
 Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
 
