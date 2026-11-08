@@ -173,6 +173,67 @@ class StartupProblemScriptsTest(unittest.TestCase):
     def test_a_clean_trial_run_is_no_problem(self):
         self.assertIsNone(self._problem("#!/bin/sh\nexit 0\n"))
 
+    # Q133: the startup trial runs the configured extra_flags too.
+    # The scripted bwrap below starts cleanly unless an argv token
+    # is the bogus flag, so the defaults-only trial passes and the
+    # extra_flags trial is the one that fails -- the refusal must
+    # name the flags, not the bare sandbox.
+    _FLAG_SCRIPT = (
+        "#!/bin/sh\n"
+        "for a in \"$@\"; do\n"
+        "  if [ \"$a\" = \"--hp-bogus\" ]; then\n"
+        "    echo 'unknown option: --hp-bogus' >&2\n"
+        "    exit 4\n"
+        "  fi\n"
+        "done\n"
+        "exit 0\n")
+
+    def _problem_cfg(self, script, cfg):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "bwrap")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(script)
+            os.chmod(path, 0o755)
+            env = {"PATH": d + os.pathsep + os.environ["PATH"]}
+            with mock.patch.dict(os.environ, env), \
+                    mock.patch.object(SB, "_userns_restricted",
+                                      return_value=False):
+                return SB.startup_problem(timeout=10, cfg=cfg)
+
+    def test_extra_flags_that_start_are_no_problem(self):
+        cfg = {"security": {"confinement": {
+            "extra_flags": ["--die-with-parent"]}}}
+        self.assertIsNone(self._problem_cfg(self._FLAG_SCRIPT, cfg))
+
+    def test_extra_flags_bwrap_rejects_are_named(self):
+        cfg = {"security": {"confinement": {
+            "extra_flags": ["--hp-bogus"]}}}
+        got = self._problem_cfg(self._FLAG_SCRIPT, cfg)
+        self.assertEqual(
+            got,
+            "with the configured security.confinement.extra_flags "
+            "--hp-bogus: bwrap cannot start a sandbox "
+            "(exit 4: unknown option: --hp-bogus)")
+
+    def test_extra_flags_default_failure_stays_bare(self):
+        # A bwrap that fails on the defaults alone reports the
+        # bare reason even when flags are configured: the flags
+        # were never reached.
+        cfg = {"security": {"confinement": {
+            "extra_flags": ["--die-with-parent"]}}}
+        got = self._problem_cfg(
+            "#!/bin/sh\necho 'nope' >&2\nexit 1\n", cfg)
+        self.assertEqual(got, "bwrap cannot start a sandbox "
+                              "(exit 1: nope)")
+
+    def test_malformed_extra_flags_are_named(self):
+        cfg = {"security": {"confinement": {
+            "extra_flags": "--die-with-parent"}}}
+        got = self._problem_cfg("#!/bin/sh\nexit 0\n", cfg)
+        self.assertEqual(
+            got, "config error: security.confinement.extra_flags "
+                 "must be a list of strings")
+
 
 class BuildCommandTest(unittest.TestCase):
     def test_structure(self):

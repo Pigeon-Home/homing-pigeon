@@ -43,6 +43,98 @@ Rules:
 
 ---
 
+## Q133 (Muse, to the desk, 2026-11-07): the confinement startup trial ran the built-in flags only; it now trials the configured extra_flags (the held item Q-new-27)
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The Phase 1 audit held this as Q-new-27, the sandbox flag
+posture item. SECURITY.md stated the gap in its own words:
+at startup under confinement enforce, the runner "starts
+bwrap once with the built-in namespace flags (not
+`extra_flags` or extra binds)". A configured flag bwrap
+rejects -- or one that breaks a start the defaults alone
+survive, the shape of the `--unshare-pid` the sandbox module
+deliberately keeps out of its defaults -- passed startup
+untested and met its first job instead, failing there one
+job at a time. The stated direction for this item was
+strict: lock the sandbox down as hard as possible, to
+surface as many problems as possible, as early as possible.
+
+Options: (a) leave the trial on the defaults -- posture by
+inspection, failure per job. (b) Trial the configured flags
+at startup: once the defaults alone have passed, start
+bwrap again with `extra_flags` in the position a job's argv
+gives them, so a failure is attributed to the flags and
+refuses startup under enforce, naming them.
+
+**Answer (the conductor, 2026-11-07):** (b), the strict
+reading. Extra binds stay out of the trial: they name
+operator paths and are applied per job.
+
+**Applied in:** this landing -- `runner/guard/sandbox.py`
+(the trial run factored out; `startup_problem` takes the
+config and trials the flags after the defaults),
+`runner/ops/main.py` (the gate passes the config),
+`runner/tests/test_confinement.py` (a scripted bwrap that
+starts clean unless the bogus flag rides: flags that start
+pass, flags bwrap rejects are named as the flags' failure,
+a defaults failure stays bare, malformed flags are named),
+the scripted `startup_problem` seams in
+`runner/tests/test_cli_options.py`,
+`runner/tests/test_require_posture.py` and
+`runner/tests/test_decision1_startup.py` (their lambdas take
+the call's arguments now), `SECURITY.md` (the confinement
+section states the flags trial), and the core re-pin the
+growth of this landing and Q132's carries
+(`runner/ops/core.py`, `runner/tests/test_core.py`,
+`AGENTS.md`, `docs/steady/fuzzing.md`).
+
+## Q132 (Muse, to the desk, 2026-11-07): job_user on enforce started on a non-root POSIX runner and fell back per job; the startup gate now refuses (the held item Q-new-2)
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The Phase 1 audit held this as Q-new-2, a decision, not a
+defect: on POSIX, `security.modes.job_user: enforce` with a
+configured user started fine on a runner that was not root,
+and every job then audited a `fallback` and ran as the
+runner's own account -- the mode promised a demote the box
+never applied. A configured user that does not exist already
+refused, at config validation (`runner/guard/security.py`);
+what had no gate was the demote's other precondition, root,
+and the startup gate itself (`job_user_startup_problem` in
+`runner/ops/remediation_ops.py`, consulted by
+`runner/ops/main.py`) answered only the Windows case. The
+job-time fallback chain itself is designed and pinned (a
+user removed after startup, a workdir that cannot be
+chown'd): it is reachable only past the startup gates, and
+Q12's answer left it standing for exactly those cases.
+
+Options: (a) keep the fallback for the not-root case -- a box
+can run for weeks at enforce applying nothing, with the
+audit file as the only witness. (b) Refuse at startup,
+Decision 1's class: on POSIX under enforce with a configured
+user, a runner that is not root, or a user the gate cannot
+resolve, refuses to start and names the cause; audit and off
+are unchanged, and the job-time chain keeps the cases only
+a job can meet.
+
+**Answer (the conductor, 2026-11-07):** (b). Enforce that
+cannot be applied does not start.
+
+**Applied in:** this landing -- `runner/ops/remediation_ops.py`
+(the gate's POSIX branches: root, then resolution, through
+the job-user face), `runner/tests/test_security_config.py`
+(the gate's branches pinned at the function with a fake
+face), `runner/tests/test_decision1_startup.py` (the refusal
+through main() on a non-root POSIX host; the new skip reason
+registered in `runner/tests/test_skip_registry.py`),
+`runner/tests/test_windows_platform_proofs.py` (the shotgun
+family's POSIX expectation and the darwin main leg move to
+the new shape), and `SECURITY.md` (the job_user section
+states the startup refusal and the job-time fallback's
+remaining reach). The core re-pin the growth carries lands
+with Q133, directly above.
+
 ## Q131 (Muse, to the desk, 2026-11-06): the written rule refuses startup over a world-readable secret file; the reader never checked, so it now does
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

@@ -79,7 +79,7 @@ class CoreListTest(unittest.TestCase):
         # re-recorded at the 2026-11-05 re-measures; the Gemini
         # token count above still describes the 2026-11-04
         # assembly.
-        self.assertEqual(710836, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(710701, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -101,9 +101,16 @@ class CoreListTest(unittest.TestCase):
         # secret-file check grew runner/wire, and again after
         # the DTLS record-layer and framing work grew
         # runner/wire, runner/guard, runner/ops,
-        # runner/transport_extensions and the runner proper.
-        self.assertEqual(55970, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(50416, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/transport_extensions and the runner proper,
+        # and again on 2026-11-07 after the job_user startup
+        # gate took its POSIX branches (Q132) and the
+        # confinement startup trial took the configured
+        # extra_flags (Q133), growing runner/ops and
+        # runner/guard, and after the stamp audit took its
+        # historical-signings acceptance, growing
+        # runner/tools.
+        self.assertEqual(56054, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(50491, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

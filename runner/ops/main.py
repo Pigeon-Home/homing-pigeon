@@ -112,7 +112,7 @@ def main() -> int:
         # instead of every job finding out one at a time.
         if R._sandbox is not None \
                 and R._security.sec_mode(cfg, "confinement") == "enforce":
-            problem = R._sandbox.startup_problem()
+            problem = R._sandbox.startup_problem(cfg=cfg)
             if problem:
                 print("config error: security.modes.confinement is "
                       "enforce but the sandbox cannot engage: "

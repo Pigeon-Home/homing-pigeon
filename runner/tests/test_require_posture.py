@@ -186,7 +186,7 @@ def _run_main(extra, argv_extra=("--posture",), sandbox_ok=True,
             # script the backend as able so the require-posture
             # assertion is the only gate under test.
             stack.enter_context(mock.patch.object(
-                R._sandbox, "startup_problem", lambda: None))
+                R._sandbox, "startup_problem", lambda *a, **k: None))
             # Same for the job_user gate: its mechanism is a
             # POSIX setuid demote, so on Windows an all-enforce
             # config is refused at that gate (the refusal itself

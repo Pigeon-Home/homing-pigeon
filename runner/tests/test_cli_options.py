@@ -1572,7 +1572,7 @@ class MainDispatchBranchesTest(_VerbosityGuard):
                                     {"confinement": "enforce"}}},
             extra_patches=[(runner._sandbox,
                             "startup_problem",
-                            lambda: "bwrap is not installed")])
+                            lambda *a, **k: "bwrap is not installed")])
         self.assertEqual(code, 2)
         self.assertIn("the sandbox cannot engage", err)
         self.assertFalse(poll.called)

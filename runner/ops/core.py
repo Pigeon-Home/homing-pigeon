@@ -37,8 +37,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 55,970 lines,
-50,416 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 56,054 lines,
+50,491 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -121,7 +121,12 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # temp-reaping work — execute_job reaping its
 # workspace on every path and the bounded startup
 # orphan sweep — grew runner/ops, runner/tools,
-# runner/guard and runner/runner.py.
+# runner/guard and runner/runner.py. Re-measured again
+# on 2026-11-07 after the job_user startup gate took its
+# POSIX branches (Q132) and the confinement startup trial
+# took the configured extra_flags (Q133), growing
+# runner/ops and runner/guard, and the stamp audit took
+# its historical-signings acceptance, growing runner/tools.
 # Recorded constants: they describe the as-assembled set (the
 # canonical 130 files below plus the 3 suite runners named in
 # the module docstring), not the canonical list itself. The
@@ -133,20 +138,20 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 133
-AS_ASSEMBLED_ZIP_BYTES = 710836
-AS_ASSEMBLED_LINES = 55970
-AS_ASSEMBLED_NONBLANK_LINES = 50416
+AS_ASSEMBLED_ZIP_BYTES = 710701
+AS_ASSEMBLED_LINES = 56054
+AS_ASSEMBLED_NONBLANK_LINES = 50491
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 17480,
-    "runner/tools": 8673,
+    "runner/ops": 17504,
+    "runner/tools": 8698,
     "runner/wire": 8708,
     "runner/runner.py": 6647,
     "runner/oracle": 5013,
     "runner/transport_extensions": 2775,
-    "runner/guard": 2888,
+    "runner/guard": 2923,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,
