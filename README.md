@@ -1,7 +1,5 @@
 # HOMING PIGEON
 
-Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
-
 > ⚠️ **USE AT YOUR OWN RISK.** Installing this application hands full administrative
 > control of the system to whoever holds the shared secret. The holder
 > can install software, read files, add users, and pivot to your network.
@@ -11,7 +9,9 @@ can't touch your computer. Homing Pigeon gives it a signed channel to one: ask f
 the results come back so the SI can iterate. Run the tests, read the
 failure, fix, repeat, from your phone or anywhere. Install the homing-pigeon runner and try it with the prompt below.
 
-TRY THIS PROMPT
+Works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
+
+Try this prompt:
 ```
 Use the Homing Pigeon protocol (pigeon-home.ai)
 Send an email to YOUR@RUNNER.EMAIL (reply_to self)
