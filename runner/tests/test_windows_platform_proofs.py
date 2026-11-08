@@ -179,10 +179,35 @@ class JobUserMainRefusalTest(unittest.TestCase):
         self.assertFalse(poll.called)
 
     def test_enforce_on_linux_starts(self):
-        with mock.patch.object(sys, "platform", "linux"):
+        # Q132: the POSIX gate asks the face for root and a
+        # resolvable user; script both as able so the linux start
+        # is the shape under test on any host (a non-root host, or
+        # a Windows host whose os has no geteuid, would otherwise
+        # answer for the host instead of the shape).
+        face = mock.Mock()
+        face.euid.return_value = 0
+        face.getpwnam.return_value = object()
+        with mock.patch.object(sys, "platform", "linux"), \
+                mock.patch.object(runner, "_JobUserFace",
+                                  lambda: face):
             code, poll, _err = _main_rig(["--once"], dict(self.CFG))
         self.assertEqual(code, 0)
         self.assertTrue(poll.called)
+
+    def test_enforce_on_linux_without_root_refuses(self):
+        # Q132 through main(): the same config with a face that
+        # is not root refuses at startup, naming job_user, on
+        # any host.
+        face = mock.Mock()
+        face.euid.return_value = 1000
+        face.getpwnam.return_value = object()
+        with mock.patch.object(sys, "platform", "linux"), \
+                mock.patch.object(runner, "_JobUserFace",
+                                  lambda: face):
+            code, poll, err = _main_rig(["--once"], dict(self.CFG))
+        self.assertEqual(code, 2)
+        self.assertIn("job_user", err)
+        self.assertFalse(poll.called)
 
 
 class JobUserWindowsAuditTest(unittest.TestCase):
@@ -804,12 +829,21 @@ class JobUserEnforceShotgunTest(unittest.TestCase):
         # gate now asks for root and a resolvable user there, and
         # "jobber" resolves nowhere (on a non-root host the root
         # branch answers first; either way the answer is a
-        # problem, and the same problem on every call).
-        posix = self._problem(cfg, "linux")
-        self.assertIsNotNone(posix)
-        for _ in range(10):
-            self.assertEqual(self._problem(cfg), self.PROBLEM)
-            self.assertEqual(self._problem(cfg, "linux"), posix)
+        # problem, and the same problem on every call). The face
+        # is scripted as non-root so the answer is the root
+        # branch on every host -- the real face has no geteuid
+        # on a Windows host and is root on some runners, and
+        # either would answer for the host instead of the shape.
+        face = mock.Mock()
+        face.euid.return_value = 1000
+        face.getpwnam.return_value = object()
+        with mock.patch.object(runner, "_JobUserFace",
+                               lambda: face):
+            posix = self._problem(cfg, "linux")
+            self.assertIsNotNone(posix)
+            for _ in range(10):
+                self.assertEqual(self._problem(cfg), self.PROBLEM)
+                self.assertEqual(self._problem(cfg, "linux"), posix)
         self.assertEqual(cfg, before)
 
     def test_main_audit_on_win32_starts(self):
