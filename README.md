@@ -427,6 +427,9 @@ The runner is fully inspectable, so audit what it would do before it does it, an
 
 - Threat model: [docs/infrastructure-documents/security/threat-model.md](docs/infrastructure-documents/security/threat-model.md) and its
   companion [docs/infrastructure-documents/security/security-gaps.md](docs/infrastructure-documents/security/security-gaps.md).
+- OWASP reference: [docs/infrastructure-documents/security/owasp-reference.md](docs/infrastructure-documents/security/owasp-reference.md) — the
+  OWASP risk lists, verification standard, testing guides and cheat
+  sheets this project consults, gathered in one place.
 - Industry map: [docs/steady/project/industry-map.md](docs/steady/project/industry-map.md) — five years
   of commercial detection (2021–2026) read honestly against this project,
   sorted by local footprint cost.
