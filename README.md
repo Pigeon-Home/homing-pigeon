@@ -11,14 +11,14 @@ can't touch your computer. Homing Pigeon gives it a signed channel to one: ask f
 the results come back so the SI can iterate. Run the tests, read the
 failure, fix, repeat, from your phone or anywhere. Install the homing-pigeon runner and try it with the prompt below.
 
-Try this prompt in your cloud SI, it should return in less than 30 seconds.
-
+Try this prompt
 ```
 Use the Homing Pigeon protocol (pigeon-home.ai)
 Send an email to YOUR@RUNNER.EMAIL (reply_to self)
 Shared Secret: "YOUR_SECRET_STRING"
 Run a job that retrieves the system clock and then display it here.
 ```
+It should return in less than 30 seconds.
 
 It works like a GitHub self-hosted runner. A small program on hardware
 you own picks up signed jobs from a mailbox you control and runs them.
