@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.10 - 2026-11-07
+
+- Record: the 49-character extra row of the content redo verification passes on Windows — 521 candidates generated on the Germany rig, 511 survivors under Windows PowerShell 5.1, and all 511 admitted through the real handle_mail, 0 failed. The content-rung table now has no open row; the instrument distinction stands, as the record states: Windows PowerShell 5.1, the rig's real shell, not a pwsh build.
+
 ## 3.15.18.9 - 2026-11-07
 
 - CI: the dependabot build-tooling pins land — actions/setup-python 7.1.0, github/codeql-action init and analyze 4.39.3, vmactions/netbsd-vm 1.5.3, and the .github pip pins hypothesis 6.170.14 and coverage 7.17.1. No product or runtime dependencies changed.
