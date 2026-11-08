@@ -35,7 +35,7 @@ the same number.
 | 50,000 | 50,000 — first-hand pass | 50,000 — parser pass, gate leg pass |
 | 500,000 | 500,000 — first-hand pass | 500,000 — parser pass, gate leg pass |
 | 1,048,576 (cap) | 1,048,576 — first-hand pass | 1,048,576 — parser pass, gate leg pass |
-| 49 (extra row) | 49 and under — first-hand pass | 49 and under — not run on Windows, open |
+| 49 (extra row) | 49 and under — first-hand pass | 49 and under — parser pass, gate leg pass |
 
 ## bash column — how it was run
 
@@ -209,6 +209,53 @@ PowerShell 5.1, the rig's real shell, not a pwsh (PowerShell
 7) build. The gate result itself does not rest on that
 distinction: `present()` and `handle_mail` are the suite's
 own code, unmodified, running on the rig's Python.
+
+### The 49-character row — run on the rig, later on 7-Nov-2026
+
+The last open row has since been run, first-hand, on the
+same Germany rig, and it passes.
+
+What changed first: the rig's runner was upgraded again,
+to release 3.15.18.9 (the release zip verified on the rig
+against the release's SHA384SUMS before the swap; the
+runner's config was byte-identical before and after, and
+its transports stayed ["file"]). A scratch copy of
+current main — commit
+22b1224cfba48c85ada8692e5d66e64a88b55937 — was placed on
+the rig outside the installed runner, and the row ran
+from that copy. The installed runner and the rig's
+scheduled tasks were not used as the test harness and
+were not disturbed by the run, beyond the upgrade itself.
+
+How the row was run: the candidate set was generated on
+the rig with the harness's own builders — `_pairs` over
+`PS_ATOMS` and `PS_JOINERS` from
+`runner/tests/test_proof_content_rung49.py` — giving 521
+candidates. The set was parsed with the rig's real
+Windows PowerShell (powershell.exe, Windows PowerShell
+5.1) through the harness's own `_ps_survivors` snippet,
+with powershell.exe in the slot the harness's pwsh
+lookup would fill — the same substitution as the gate
+legs above. Every survivor was then presented to the
+real `handle_mail` through the harness's own
+`_present()`, with the harness's own assertion that the
+script reaches execution.
+
+The results: 521 candidates; 511 survivors and 10
+dropped under the 5.1 parser. Those counts are 5.1's
+own, recorded as 5.1 produced them; they agree with the
+counts the stock harness asserts (511 survivors, 10
+dropped, measured there under a PowerShell 7.5.4 build),
+but the agreement is the 5.1 parser's own verdict, not a
+figure carried over. Every survivor is at most 49
+characters. Of the 511 survivors presented, 511 were
+admitted and 0 failed.
+
+What remains open after this run: nothing in the table.
+The one distinction of instrument stands, as it does for
+the gate legs above: the Windows parser in these runs is
+Windows PowerShell 5.1, the rig's real shell, not a pwsh
+(PowerShell 7) build.
 
 ## What this does not say
 
