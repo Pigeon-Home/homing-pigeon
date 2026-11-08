@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.13 - 2026-11-07
+
+- Design note: SI-to-SI over Homing Pigeon — a job-board channel between two SIs, mapped onto pieces the protocol already has: the section 13 task board (submit, request, offer, result, ack, and the human approve gate), the sender tooling, the email, file and DTLS bindings including the version 3 carriage over email, and the version 2 question exchange with its answer deadline. The gaps are named as gaps: no sender-side helper for the version 2 answer side, no result routing inside a version 3 session once the session is gone, no conversational round limit, and no issued stamp on the Grok side. Eight goals and four open questions stand at the note's end. Nothing is built or enabled; the note is the discussion's starting text.
+
 ## 3.15.18.12 - 2026-11-07
 
 - Fix: two job_user platform proofs ran the real job-user face, so the Q132 startup gate answered for the host instead of the shape — the linux-start proof got the non-root refusal on the Linux and macOS legs (2 != 0), and the shotgun determinism proof raised AttributeError on the Windows leg, whose os has no geteuid. Both proofs script the face now, and a sibling pins the non-root refusal through main() on any host. 3.15.18.11 was never published: its builds failed on exactly these proofs and nothing else (11,468 tests ran on the Linux leg, 1 failure).
