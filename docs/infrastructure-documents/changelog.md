@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.2 - 2026-11-08
+
+- Re-cut of 3.15.20.1, which never published: its tag build failed on the doc-drift guard, because the README edits it carried moved the `max_job_bytes` doc line from 451 to 448 while the defaults registry still records 451. This release carries the same content plus the README edit that followed it, which restores that line to 451, so the guard passes again.
+- README: spacing around the IETF Internet-Drafts list and the diagram is adjusted.
+
 ## 3.15.20.1 - 2026-11-08
 
 - Correction: the number of 3.15.19.1 understated the tree it shipped. The measurement on file for its cut reads 20,163,806 tokens — 20 million, not 19 — so this release carries the measured figure with the counter restarted, as the scheme's odometer rule requires. 3.15.19.1 stands as published; nothing in it changes here but the number.
