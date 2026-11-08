@@ -33,6 +33,15 @@ Several of these repetitions are load-bearing.
   0 generated files checked in. The one not-run tree is the airgap
   harness in family 1, outside test discovery on purpose.
 
+**Closure note (2026-11-07).** An audit item describing "a
+40,161-line campaign archive" is closed as a misdescription.
+Nothing in the current tree or in the measured families above
+matches that description; the only "campaign archive" referent
+found is a rig-side drive archive of compressed grow records,
+measured in GB rather than lines and not part of this repository.
+Nothing is deleted by this closure, and the measured families
+above remain as recorded.
+
 How to read the near-duplicate number honestly: it is an upper
 bound. The window method counts boilerplate, and it counts both
 sides of every repeated block, so a block shared by 2 files charges
