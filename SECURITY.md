@@ -201,12 +201,17 @@ and that is logged and recorded in the audit entry. `PATH` inside is
 `/usr/bin:/bin`.
 The job's scrubbed env arrives via
 `--setenv`. At startup under `enforce` the runner starts bwrap once
-with the built-in namespace flags (not `extra_flags` or extra binds); when it cannot (bwrap missing, a non-Linux
-machine, or a kernel that blocks the user namespace, such as
-`kernel.apparmor_restrict_unprivileged_userns=1` on Ubuntu 24.04)
+with the built-in namespace flags, and again with the configured
+`extra_flags` added in the position a job's argv gives them; when
+either start cannot (bwrap missing, a non-Linux
+machine, a kernel that blocks the user namespace, such as
+`kernel.apparmor_restrict_unprivileged_userns=1` on Ubuntu 24.04,
+or a configured flag bwrap rejects)
 the runner refuses to start and names the cause — a security mode
 whose mechanism cannot engage is a config error, not a silent
-downgrade (`docs/steady/present-but-invalid-config.md`). If bwrap
+downgrade (`docs/steady/present-but-invalid-config.md`). Extra
+binds are not part of the trial: they name operator paths and are
+applied per job. If bwrap
 leaves `PATH` after a successful start, or the sandbox command
 cannot be built, a job falls back loudly: the runner warns, audits a
 `fallback` decision, and runs it normally. If bwrap is still present
@@ -231,9 +236,14 @@ With `security.modes.job_user: enforce` and
 that POSIX user (via setuid after fork). The job's workdir is chown'd
 to the user, and the parent chain up to the base dir gets traverse-only
 (`+x`) permission so the job can reach its workdir without listing the
-runner's state. Requires the runner itself to run as root; otherwise
-it warns loudly, audits a `fallback` decision, and runs the job as the
-current user. Each job run that way is audited as `run_as`. `audit` mode runs
+runner's state. The demote needs the runner itself to run as root,
+and the configured user to be resolvable: under `enforce`, startup
+refuses when either fails, rather than starting and running jobs
+as the runner's own account. A user that exists at startup and is
+removed later, or a workdir that cannot be chown'd, is met at job
+time instead: the runner warns loudly, audits a `fallback`
+decision, and runs that job as the current user. Each job run as
+the configured user is audited as `run_as`. `audit` mode runs
 normally and records a `would_run_as` decision (reason
 `would_run_as_user`).
 The user must exist, or startup fails.

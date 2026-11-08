@@ -175,6 +175,50 @@ class DefaultFlipTest(unittest.TestCase):
                 "win32"))
         self.assertIsNone(job_user_startup_problem({}, "linux"))
 
+    def test_posix_job_user_enforce_refuses_at_startup(self):
+        # Q132: on POSIX the demote needs root and a resolvable
+        # configured user. Without either, the old shape started
+        # and fell back per job -- running as the runner's own
+        # account under enforce -- so both are startup problems
+        # now. Audit and off keep their shape, and a config with
+        # no user named has nothing to resolve.
+        from runner.ops.remediation_ops import job_user_startup_problem
+
+        class Face:
+            def __init__(self, euid=0, error=None):
+                self._euid = euid
+                self._error = error
+
+            def euid(self):
+                return self._euid
+
+            def getpwnam(self, user):
+                if self._error is not None:
+                    raise self._error
+                return object()
+
+        cfg = {"security": {"job_user": {"user": "jobber"}}}
+        problem = job_user_startup_problem(
+            cfg, "linux", face=Face(euid=1000))
+        self.assertIsNotNone(problem)
+        self.assertIn("root", problem)
+        problem = job_user_startup_problem(
+            cfg, "linux", face=Face(error=KeyError("jobber")))
+        self.assertIsNotNone(problem)
+        self.assertIn("jobber", problem)
+        self.assertIsNone(job_user_startup_problem(
+            cfg, "linux", face=Face()))
+        self.assertIsNone(job_user_startup_problem(
+            cfg, "darwin", face=Face()))
+        audit = {"security": {
+            "modes": {"job_user": "audit"},
+            "job_user": {"user": "jobber"}}}
+        self.assertIsNone(job_user_startup_problem(
+            audit, "linux", face=Face(euid=1000)))
+        self.assertIsNone(job_user_startup_problem(
+            {"security": {"modes": {"job_user": "enforce"}}},
+            "linux", face=Face(euid=1000)))
+
 
 class SecDecideTest(unittest.TestCase):
     def test_off_allows_without_entry(self):

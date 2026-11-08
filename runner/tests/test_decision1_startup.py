@@ -48,6 +48,10 @@ is complete rather than silent:
   main()'s platform gate, which cannot fire on a POSIX host; the
   gate's own function is tested directly with the platform passed
   explicitly, the shape test_enforce_races_gaps uses for it.
+  The gate's POSIX branches (Q132: not root, or a configured user
+  that cannot be resolved) fire through main() on a non-root
+  POSIX host and are pinned at the function with a fake face in
+  test_security_config.
 
 Strict shape (2026-11-03): enforce means enforce on every
 platform. A mode set to enforce on a platform or in an
@@ -131,7 +135,7 @@ def run_main(extra, argv_extra=(), platform=None, sandbox_problem=None):
         if sandbox_problem is not None:
             stack.enter_context(mock.patch.object(
                 RR._sandbox, "startup_problem",
-                lambda: sandbox_problem))
+                lambda *a, **k: sandbox_problem))
         stack.enter_context(mock.patch.object(sys, "argv", argv))
         with contextlib.redirect_stdout(out), \
                 contextlib.redirect_stderr(err):
@@ -278,6 +282,27 @@ class RefuseStartupGatesTest(unittest.TestCase):
             {"security": {"job_user": {"user": "hp-no-such-user-zz9"}}})
         self.assertEqual(rc, 2, err)
         self.assertIn("job_user", err)
+
+    def test_job_user_enforce_refused_at_startup_when_not_root(self):
+        # Q132: a POSIX runner that is not root cannot apply the
+        # demote at all, so enforce refuses at startup rather than
+        # starting and falling back per job. A root process can
+        # demote, so the refusal cannot fire for one; the gate's
+        # branches are pinned at the function in
+        # test_security_config.
+        if os.name == "nt":
+            self.skipTest("POSIX only")
+        if os.geteuid() == 0:
+            self.skipTest(
+                "the job_user root refusal needs a non-root process")
+        import pwd
+        user = pwd.getpwuid(os.geteuid()).pw_name
+        rc, _out, err = run_main({"security": {
+            "modes": {"confinement": "off", "job_user": "enforce"},
+            "job_user": {"user": user}}})
+        self.assertEqual(rc, 2, err)
+        self.assertIn("job_user", err)
+        self.assertIn("root", err)
 
     def test_world_readable_secret_file_refused_at_startup(self):
         # The written M8 rule (Q131, 2026-11-06): a missing or

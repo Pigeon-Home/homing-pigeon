@@ -111,24 +111,48 @@ def _finish_remediation(cfg, st, monitor, job, job_id, work,
     return member
 
 
-def job_user_startup_problem(cfg, platform=None):
+def job_user_startup_problem(cfg, platform=None, face=None):
     """Why job_user on enforce cannot run here, or None when it can.
 
     The mechanism is a POSIX setuid demote in a preexec hook; on
     Windows there is no such hook, so enforce there changes what
     the box protects while doing nothing (Decision 1's refuse
     class, the same one confinement's startup_problem guards).
-    platform defaults to sys.platform; tests pass it.
+    On POSIX the demote needs root and a resolvable configured
+    user: a runner that is not root, or whose configured user
+    cannot be resolved, would start and then fall back per job --
+    running every job as the runner's own account under a mode
+    that promises otherwise -- so both refuse at startup instead
+    (Q132). A user that exists at startup and is removed later
+    still reaches the job-time fallback in _job_user_preexec.
+    platform defaults to sys.platform; tests pass it, and a fake
+    face when they script the syscalls.
     """
     if platform is None:
         platform = sys.platform
-    if platform != "win32":
-        return None
     sec = _runner()._security
     if sec is None or sec.sec_mode(cfg, "job_user") != "enforce":
         return None
-    return ("job_user (a POSIX setuid demote) is POSIX-only; "
-            "this machine is win32")
+    if platform == "win32":
+        return ("job_user (a POSIX setuid demote) is POSIX-only; "
+                "this machine is win32")
+    secblock = cfg.get("security") if isinstance(cfg, dict) else None
+    secblock = secblock if isinstance(secblock, dict) else {}
+    ju = secblock.get("job_user")
+    user = ju.get("user") if isinstance(ju, dict) else None
+    if not user or not isinstance(user, str):
+        return None
+    face = face or _runner()._JobUserFace()
+    if face.euid() != 0:
+        return ("job_user demotes jobs with setuid, which needs "
+                "root; the runner is not running as root, so the "
+                "demote cannot be applied")
+    try:
+        face.getpwnam(user)
+    except (ImportError, KeyError, ValueError) as e:
+        return ("the configured job_user %r cannot be resolved "
+                "on this machine (%s)" % (user, e))
+    return None
 
 
 def _job_user_preexec(cfg, base_dir, job_id, work, face=None):

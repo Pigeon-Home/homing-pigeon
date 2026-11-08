@@ -39,6 +39,11 @@ REGISTERED = {
     "running as root":
         "test_switch_proofs: the --root refusal cannot be shown when the "
         "process is root; runs in every non-root job",
+    "the job_user root refusal needs a non-root process":
+        "test_decision1_startup: a root process can apply the job_user "
+        "demote, so the startup refusal cannot fire for one; runs in "
+        "every non-root job, and the gate's branches are pinned at "
+        "the function in test_security_config",
     "git is not on PATH":
         "test_regression_guard's temporary-repository tests; git is on "
         "every CI leg's PATH, so they run in every job",

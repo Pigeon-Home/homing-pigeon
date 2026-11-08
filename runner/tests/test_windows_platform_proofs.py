@@ -800,9 +800,16 @@ class JobUserEnforceShotgunTest(unittest.TestCase):
         cfg = {"security": {"modes": {"job_user": "enforce"},
                             "job_user": {"user": "jobber"}}}
         before = json.loads(json.dumps(cfg))
+        # Q132: on POSIX the same config is refused too -- the
+        # gate now asks for root and a resolvable user there, and
+        # "jobber" resolves nowhere (on a non-root host the root
+        # branch answers first; either way the answer is a
+        # problem, and the same problem on every call).
+        posix = self._problem(cfg, "linux")
+        self.assertIsNotNone(posix)
         for _ in range(10):
             self.assertEqual(self._problem(cfg), self.PROBLEM)
-            self.assertIsNone(self._problem(cfg, "linux"))
+            self.assertEqual(self._problem(cfg, "linux"), posix)
         self.assertEqual(cfg, before)
 
     def test_main_audit_on_win32_starts(self):
@@ -820,7 +827,15 @@ class JobUserEnforceShotgunTest(unittest.TestCase):
                "security": {"modes": {"job_user": "enforce",
                                       "confinement": "off"},
                             "job_user": {"user": "root"}}}
-        with mock.patch.object(sys, "platform", "darwin"):
+        # Q132: the POSIX gate asks the face for root and a
+        # resolvable user; script both as able so the darwin
+        # start is the shape under test on any host.
+        face = mock.Mock()
+        face.euid.return_value = 0
+        face.getpwnam.return_value = object()
+        with mock.patch.object(sys, "platform", "darwin"), \
+                mock.patch.object(runner, "_JobUserFace",
+                                  lambda: face):
             code, poll, _err = _main_rig(["--once"], cfg)
         self.assertEqual(code, 0)
         self.assertTrue(poll.called)
