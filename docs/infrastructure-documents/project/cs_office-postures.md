@@ -74,6 +74,33 @@ standing postures, described abstractly:
   material still move only through the formal channels, as the
   cs_office page's industry-practice section states.
 
+## The exemplar letters
+
+The cs_office document letters its exemplar projects, and the
+letters map onto the postures like this:
+
+- **A — the hidden posture** (nothing-said). A is never
+  exemplified in this repository: the posture's own rule is
+  that there is nothing public to point at.
+- **B — the open posture** (named-and-described): named, and
+  the work on it described, as the cs_office document carries
+  it.
+- **C — BOOKEND, the hybrid posture** (named-only). Its
+  target is Homing Pigeon itself — this suite, the
+  repository's own project — named, with nothing about work
+  against it said.
+- **D — DELTA, a documented example.** Meta, a company whose
+  bug-bounty program terms welcome being named, carried as an
+  example of a target that may be named in the open where its
+  own program invites it. The letter is example-only; no work
+  stands behind it.
+
+The letters name exemplar projects in prose. They are not
+registry tags: a registry's tags are the operator's own
+tokens, and the shipped example registry's entries remain
+fake schema demonstrations, lettered independently of this
+mapping.
+
 ## Extensibility rules
 
 The taxonomy lives in the registry, so reworking it is editing
@@ -249,3 +276,91 @@ to be taken up as one deliberate revision rather than piecemeal:
 None of these change the supposition's verdict: each is a
 format revision and data edit when it comes, taken up in the
 open, not a rewrite of how postures are declared.
+
+## The log stamp
+
+A posture governs a project; the records the project leaves —
+log lines, run records, ledger entries — need to carry that
+governance with them, in a form a reader or a tool can parse
+without judgment calls. The tool therefore also declares a
+**stamp**: a single whitespace-free token,
+
+    hp-posture-<version>-<posture id>
+
+as in `hp-posture-1-named-only`. The stamp carries the
+posture's stable id — never its tag, which an operator may
+re-letter — and the registry format version it was minted
+under, so a reader holding a different version fails closed
+instead of misreading. The tool provides the three helpers,
+in the code-name tool's discipline: `format_stamp` mints a
+stamp from a loaded registry (refusing an unknown id, and
+refusing a retired posture — new records are not stamped
+with a posture that has been replaced), `parse_stamp` reads
+a stamp strictly (the whole string, exactly this shape;
+wrapping punctuation, a leading-zero or zero version, or an
+id outside the id grammar are all refused), and
+`validate_stamp` resolves a stamp against a registry,
+raising on a version mismatch or an unknown id. A stamp
+naming a retired posture still validates — old records stay
+readable — and its posture's status says what it is.
+
+Supposition, written before the helpers: a stamp minted from
+the shipped example registry will round-trip through parse
+and validate for every active posture in it; a stamp naming
+an undeclared id, and a stamp minted under any other version,
+will fail closed at validate; and the malformed family —
+missing segments, bookend punctuation, whitespace, a
+case-flipped id — will fail at parse, never be repaired.
+
+Where producers stamp it: on any record that concerns a
+cs_office project, at the moment the record is written — the
+job record, the run record, the result envelope, the ledger
+entry, and a log line that names the project. A consumer
+that cannot parse a stamp, or cannot validate it against
+the registry it holds, treats the record as carrying no
+clearance at all. Wiring, stated plainly: this landing
+provides the format, the helpers, and this guidance, and
+wires **no** producer — the runner's job records, run
+records, and log lines do not stamp yet. Wiring each
+producer is follow-on work, one producer at a time, each
+with its own tests.
+
+## What the Oracle is to understand by a posture
+
+The Oracle renders opinions inside this suite, so its
+understanding of a posture has to live where the Oracle's
+instructions live. There is, today, no single instruction
+home for the Oracle in this repository: its standing
+instruction text is the operator's own `owner_instructions`
+in each deployment's config (documented in the Oracle
+configuration page as text the Oracle includes in its
+system prompt), its context builder assembles data rather
+than meanings, its playbooks describe it for operators, and
+its learning ledger by design treats text as evidence,
+never as instruction. That gap is recorded here rather than
+papered over: the canonical instruction text stands in this
+note, written to be carried into a deployment's
+`owner_instructions` or a future Oracle instruction page
+whole, and it defines the semantics by pointing at the
+registry — the single source of truth — rather than
+restating any posture's declaration, so the text cannot
+drift from the data:
+
+> A disclosure posture is declared in the posture registry,
+> and the registry is the only source of what a posture
+> permits. When a record carries a posture stamp
+> (`hp-posture-<version>-<id>`) or a project is tagged with
+> a posture, the project's disclosure rule is that posture's
+> `say` and `shelf` exactly as the registry declares them:
+> what may be said publicly about the project is what its
+> posture's `say` permits, and its material may leave only
+> for a shelf its posture's `shelf` names. Findings and case
+> material move only through the formal channels under every
+> posture. If a stamp or tag does not resolve against the
+> registry — unknown, malformed, or minted under another
+> registry version — or names a retired posture, treat the
+> project as standing under the most restrictive posture
+> the registry declares until an operator resolves it. A
+> posture is never loosened by inference: re-categorization
+> is an operator's edit to the registry or the tagging,
+> never a conclusion drawn from the material itself.
