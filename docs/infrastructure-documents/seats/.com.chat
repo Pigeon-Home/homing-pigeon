@@ -3,6 +3,41 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 8-Nov-2:38pm-PST/PDT — other uses: a survey of sixteen, in the use drawer
+
+A survey of uses for the suite beyond the ones it was first
+built for stands in the use drawer:
+docs/steady/use/other-uses.md. It comes from a web survey of
+documented practice in adjacent fields, and it keeps the
+survey's whole shape: for each of 16 uses — who runs it, the
+job sent and the result returned, why signed email jobs on
+the operator's own machine fit better than a cloud service or
+a remote-desktop tool, and what the suite would have to grow
+before the use is real, stated as plainly as the fits.
+
+Four uses carry the survey's star: data-stays-put analysis
+between parties who cannot share raw data (14), digital
+estate execution, where the executor runs only what the
+deceased authorised (15), time-locked and dead-man's-switch
+jobs (16), and attested proof-of-care inside the homes use
+(8). The page also keeps what the survey set aside and why,
+the seven cross-cutting gaps, the five uses it judges most
+promising for broadening the audience with its ranking, and
+its own limits: the survey grounded itself in adjacent
+practice and did not inspect the suite, so no use on the page
+claims this suite has been deployed for it.
+
+Verification: the doc families that cover the page ran
+against it. Reader-docs-quiet, layout and version-rot are
+green, and the stamp record's tree scan is green; the stamp
+history test in the same batch is red at the pristine head on
+the release train's upstream-pins commit (8cf38ebc2), which
+signed with a recycled stamp — the train's commit, not this
+landing's. The doc-default divergences ran their 907 with
+only the grep max_matches family red, in counts that varied
+between runs, that family's known behaviour under load at a
+clean head.
+
 ## 8-Nov-2:11pm-PST/PDT — cs_office: posture stamps for records, the exemplar letters, and the Oracle's instruction
 
 Three additions to the disclosure-posture landing, all
