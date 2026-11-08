@@ -174,3 +174,78 @@ this landing (a relative "tools" join in the example-path
 construction), fixed in the same landing and re-run green. The
 forums record this proof as well, in the cs_office forum and
 the seats' forum.
+
+## Industry grounding, and the open refinements
+
+A sourced research pass on classification practice (the
+Traffic Light Protocol, ISO/IEC 29147 and 30111, the CERT
+coordinated-disclosure phases, and the sensitivity-label
+machinery of the large platform vendors) landed alongside
+this build. Its central finding shapes what happens next: no
+single scheme tags projects by sayability. Practice composes
+three different kinds of scheme — a sharing-boundary label for
+information in an exchange, a process-state scheme for where
+a case stands in its disclosure lifecycle, and label
+machinery that carries handling and enforcement. A posture
+registry for projects should therefore grow into three
+orthogonal axes rather than a longer ladder:
+
+- the **posture** itself — what may be said, the axis this
+  note's registry declares;
+- a **disclosure state** per project, in the CERT manner
+  (discovered, reported, validated, remediation, public
+  awareness, deployed, and closure) — expected to change over
+  a project's life, with closure modeled as a state carrying
+  a reason, never as a posture; and
+- **handling flags** that cut across postures and can only
+  tighten handling, never loosen a posture.
+
+Against that yardstick, some of the research's principles are
+already this build's behavior: postures are deprecated, never
+deleted (a retired posture stays declared and resolvable,
+with its successor named); ids are issued once and never
+reused; an unknown tag fails closed; the taxonomy lives in
+data under declared formats, not in prose. The mapping of the
+three standing postures onto the research's recommended set
+is direct: nothing-said is its *sealed*, named-and-described
+is its *published* track, and named-only is its
+*existence-public*. Its remaining two — *internal* and
+*embargoed* — are candidate postures an operator may add by
+registry edit under the rules above, when a project needs
+them.
+
+Recorded as open refinements for the formats' next version,
+to be taken up as one deliberate revision rather than piecemeal:
+
+- A posture declares **what may be said as a matrix**, not
+  prose alone: existence, codename, topic area, target name,
+  partner name, findings summary, technical details, exploit
+  or proof-of-concept, and timeline dates, each sayable or
+  not — alongside an audience, allowed and prohibited
+  locations, a handling declaration (encryption, sharing, the
+  guard action tooling takes), a TLP equivalent for outbound
+  material, a review cadence, and an owner.
+- A posture record gains a display name with **aliases** (an
+  old name kept working after a rename), a **rank** on the
+  ladder (so tooling can tell a loosening from a tightening),
+  the registry version it was introduced in, and **examples
+  and non-examples** — what the posture is not being the field
+  that prevents boundary drift.
+- **Transitions are governed:** loosening a project's posture
+  requires an approver and a justification, and the
+  justification is logged; a forced transition (material
+  public ahead of plan) moves a project to review at once.
+- A project record carries the registry version it was tagged
+  under, its disclosure state and flags from the axes above,
+  and an **appended history** — re-categorization recorded as
+  a dated event, never an overwrite that erases the old
+  categorization.
+- The scheme itself is **versioned in the semantic manner**:
+  a clarification is a patch, an added posture or optional
+  field a minor, a redefinition a major — with deprecation in
+  a minor before any removal in a major, and a migration map
+  when a major lands.
+
+None of these change the supposition's verdict: each is a
+format revision and data edit when it comes, taken up in the
+open, not a rewrite of how postures are declared.
