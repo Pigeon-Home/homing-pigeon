@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.16 - 2026-11-07
+
+- Tool: codename — cs_office work references in the hp<marking>-<guid> form. A small tool at runner/tools/codename.py mints, parses, validates, and classifies a reference: a sensitivity marking hp0-hp3, a GUID that carries no information, and optional sub-names for components of one work item. The reference is safe to print at its marking; what it denotes lives on the private shelf. Tests cover every marking, sub-name shapes, GUID shape failures, and a bookend edge family over the parser surface.
+- Documentation: cs_office gains a dedicated forum beside its public page, populated with the naming settlement, the two shelves, the toolkit's smoke record in label terms, the hp0-hp3 sensitivity markings, and the code-name feature worked as an example. The seats' forum carries the same landing as the first cross-post; the cross-posting rule stands in both forums, and the cs_office page gains the markings section, its own hp0 marking, and the pointer to its forum. Labels and code names only — nothing target-identifying.
+- Fix: codename carries the future-annotations import the Python 3.9 floor requires, so its PEP 604 NamedTuple field no longer breaks import on the floor; the floor guard that flagged it on the previous head passes.
+
 ## 3.15.18.15 - 2026-11-07
 
 - Documentation: cs_office, the vulnerability-research workstream, is documented — what it is, how it fits the suite, the method in general principles (coverage-guided and regression fuzzing, parsing-surface testing read against the OWASP categories, and crash triage), the industry disclosure practice it follows, and the two-shelf rule that tells every agent in this repository what may be published and what never leaves the private shelf. Target labels stated as a public convention; nothing target-identifying is named.
