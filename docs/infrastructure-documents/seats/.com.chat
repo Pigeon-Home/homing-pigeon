@@ -3,6 +3,68 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 8-Nov-1:55pm-PST/PDT — cs_office: disclosure postures: what may be said about a project, declared in data
+
+The markings classify material; this entry records the
+companion scheme for projects. A cs_office project's
+disclosure posture declares what may be said publicly about
+the project itself, and where its material may live. The
+standing postures, described abstractly: nothing-said (the
+project is not named, described, or acknowledged in public
+writing), named-only (the project may be named; nothing
+about the work on it is said), and named-and-described (the
+project may be named and the work on it described in general
+terms, with findings and case material still moving only
+through the formal channels). The design note stands at
+docs/infrastructure-documents/project/cs_office-postures.md.
+
+A posture is declared data, not code. An operator writes the
+postures into a registry — a stable id that is issued once
+and never reused, a short tag, the say and the shelf in the
+operator's own words, a status, and, on a retired posture, a
+successor — and categorizes each project with one tag in a
+tagging file. The checker (runner/tools/disclosure.py,
+stdlib only, beside the code-name and name-guard tools)
+resolves every project's effective posture under the
+registry as declared: an active posture resolves with its
+say and shelf, an undeclared tag is reported unknown and
+never guessed at, and a retired posture is flagged with its
+successor named. Reworking the taxonomy is editing the
+registry under the note's rules — add by appending, retire
+rather than delete, re-categorize by editing the project's
+one entry — and the tool holds no state between runs. Both
+formats are declared in the tool's own text and enforced
+exactly, in the sibling tools' house style. The registry
+copy that ships (runner/tools/disclosure-registry.example.json)
+carries the schema and obviously fake example entries only;
+a real registry and a real tagging name what an operator is
+working on, and neither enters this repository.
+
+Proof of work. The unit tests stand at
+runner/tests/test_disclosure.py: 74 tests, 248 subtests,
+covering both formats per field (unknown keys, duplicate
+ids, duplicate and case-colliding tags, whitespace-,
+control- and zero-width-edged values, the id's punctuation
+bookend family), successor integrity (dangling, self, and
+cyclic pointers refused; chains resolving to their end),
+the resolution rules, the extensibility operations
+(re-categorization, a fourth posture, and retirement, each
+exercised as a data edit), the shipped example registry,
+and the command line's exit codes (0 clean or valid, 1
+findings, 2 malformed). The design note's supposition —
+written and committed before the tool existed — is recorded
+there with its outcome: it held. The tests ran green under
+both pytest and unittest discovery, with the sibling tools'
+suites alongside (codename, nameguard, and the startup
+posture's own tests; 216 tests in the four). The guard
+families that run for a new tool — layout, skip registry,
+reader-docs quiet, design docs, doc version rot, personal
+docs — ran green; the layout stale-path guard caught one
+path shape in the new tests during this landing, fixed in
+the same landing and re-run green.
+
+Marking: hp0
+
 ## 8-Nov-12:01pm-PST/PDT — cs_office: the name guard: protected terms declared in code, scanned at the boundary
 
 The spillage section of SECURITY.md asks which of an

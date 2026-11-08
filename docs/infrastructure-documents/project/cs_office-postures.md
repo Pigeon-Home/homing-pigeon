@@ -13,9 +13,14 @@ terms. Those arrangements are the project's **disclosure
 postures**, and this note records the decision that a posture is
 declared data, not code — written down in a registry an operator
 edits, and read by a small tool
-(`runner/tools/posture.py`, beside the code-name and name-guard
+(`runner/tools/disclosure.py`, beside the code-name and name-guard
 tools) that reports what any project's tagging comes to under the
-registry as declared.
+registry as declared. The tool is named for the judgment it
+checks rather than for the posture itself, because the tree
+already carries a posture module of a different kind —
+`runner/ops/posture.py`, the runner's startup security posture,
+with its own tests — and two tools answering to one name would
+invite exactly the misreading this work exists to prevent.
 
 The split mirrors the two-shelf rule on the cs_office page. The
 shelf rule says what material may live where. A posture is the
@@ -56,8 +61,8 @@ duplicate ids or tags, malformed shapes, and dangling successor
 pointers are refused loudly, by name, rather than guessed at.
 The registry and the tagging file are the operator's data, kept
 where the operator keeps such data; the copies that ship in the
-repository (`runner/tools/posture-registry.example.json`) carry
-the schema and obviously fake example entries only. The three
+repository (`runner/tools/disclosure-registry.example.json`)
+carry the schema and obviously fake example entries only. The three
 standing postures, described abstractly:
 
 - **nothing-said** — the project is not named, described, or
@@ -122,4 +127,50 @@ is what gets reworked.
 
 ## Outcome
 
-Recorded after the build, in the commit that lands the tool.
+The supposition held, measured against the build that lands
+with this note. Re-categorizing a project is one edit to its
+tagging entry, exercised in the tests as a data edit against an
+unchanged registry. A fourth posture (named-with-embargo) is
+appended registry data and resolves on the next check. Retiring
+one of the standing postures keeps old tagging resolving: the
+check exits 1, flags the assignment as retired, and names the
+successor where the registry declares one — through a successor
+chain, the active posture the chain ends at. A tag the registry
+no longer declares is reported UNKNOWN TAG, exit 1, never
+guessed at. No operation needed a code change, and no test
+expects anything of a specific posture; the suite's expectations
+are of the formats and the resolution rules only.
+
+Two strengthenings the build itself forced, both in validation
+rather than in the registry's shape. Declared text refuses the
+zero-width characters the name guard's normalization removes —
+invisible in a declaration, and a confusable wherever one slips
+in. And a tag differing only in case from another tag is
+refused at load: a tag that near another tag will be mistyped
+onto the wrong project, and the registry is the place to catch
+it.
+
+Proof of work. The tool stands at runner/tools/disclosure.py,
+stdlib only, in the sibling tools' shape: both formats declared
+in its own text and enforced exactly, `validate` and `check`
+subcommands, exit codes 0 (clean or valid), 1 (findings), and 2
+(malformed or unreadable input). The unit tests stand at
+runner/tests/test_disclosure.py: 74 tests, 248 subtests,
+covering the registry format per field (unknown keys, duplicate
+ids, duplicate and case-colliding tags, whitespace-, control-
+and zero-width-edged values, the id's punctuation bookend
+family), successor integrity (dangling, self, and cyclic
+pointers refused; chains resolving to their end), the tagging
+format per field, the resolution rules, the extensibility
+operations above, the shipped example registry, and the
+command line's exit codes. The suite ran green under both
+pytest and unittest discovery, with the sibling tools' suites
+alongside — codename, nameguard, and the startup posture's own
+tests, 216 tests in the four. The guard families that run for a
+new tool — layout, skip registry, reader-docs quiet, design
+docs, doc version rot, personal docs — ran green; the layout
+stale-path guard caught one path shape in the new tests during
+this landing (a relative "tools" join in the example-path
+construction), fixed in the same landing and re-run green. The
+forums record this proof as well, in the cs_office forum and
+the seats' forum.
