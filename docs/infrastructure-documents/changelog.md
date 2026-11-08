@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.3 - 2026-11-08
+
+- Tool: disclosure — a checker at runner/tools/disclosure.py resolves cs_office projects against a declared registry of disclosure postures. A posture states what may be said publicly about a project and where its material may live (a stable id issued once and never reused, a short tag, the say and the shelf, a status, and — on a retired posture — a successor); a tagging file categorizes each project, and the check flags an undeclared tag as unknown rather than guessing and flags a retired posture with its successor named. Both formats are enforced exactly; the taxonomy is data, so adding, retiring, and re-categorizing are registry and tagging edits. 74 tests and 248 subtests cover both formats, successor integrity, the resolution rules, and the CLI. The registry that ships is an example with fake entries only.
+- Documentation: the cs_office postures design note (docs/infrastructure-documents/project/cs_office-postures.md) records the supposition committed before the build — its outcome held — and the industry grounding: no single scheme tags projects by sayability, and the registry grows toward three axes (posture, disclosure state, handling flags), with open refinements recorded for the formats' next version. The note also maps the exemplar letters (A hidden, B open, C BOOKEND — the named-only posture, its target Homing Pigeon itself, D DELTA — a documented example only), specifies the hp-posture log stamp with its supposition written before the helpers exist, and records the Oracle instruction gap with the canonical instruction text standing in the note.
+- Documentation: the cs_office page states its open-source track in public — security-engineering work finding defects in public open-source code, with GnuTLS named as one project it covers — under the two shelves and the spillage rules in SECURITY.md.
+- README: the IETF Internet-Drafts list gains a heading.
+
 ## 3.15.20.2 - 2026-11-08
 
 - Re-cut of 3.15.20.1, which never published: its tag build failed on the doc-drift guard, because the README edits it carried moved the `max_job_bytes` doc line from 451 to 448 while the defaults registry still records 451. This release carries the same content plus the README edit that followed it, which restores that line to 451, so the guard passes again.
