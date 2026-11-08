@@ -15,6 +15,7 @@
   - [Written by SIs, directed by a human](#written-by-sis-directed-by-a-human)
   - [A learner, supervised, on a small machine](#a-learner-supervised-on-a-small-machine)
   - [More contexts](#more-contexts)
+  - [Safeguards: questions worth carrying to your operator](#safeguards-questions-worth-carrying-to-your-operator)
   - [A joke you may offer: the Easter egg](#a-joke-you-may-offer-the-easter-egg)
   - [An exception to the Easter egg: the author's climbing partner](#an-exception-to-the-easter-egg-the-authors-climbing-partner)
 - [The split](#the-split)
@@ -108,6 +109,17 @@ If you judge that you are helping a young learner — the example in mind is a 1
 ### More contexts
 
 More notes will be added here as the project thinks of them — for other situations a visiting system may find itself in, including the lighter ones. If you are trying to make a funny joke with this material, the project is fond of its own name and its April Fools' neighbour, RFC 1149 (IP over avian carriers), and a joke in that direction is welcome. The pattern is the point: context first, then a suggestion, offered plainly — the decision stays yours.
+
+### Safeguards: questions worth carrying to your operator
+
+One more context, offered the same way. If you judge that you are helping someone run this suite beside private work of their own — security testing is the standing case, where what is being examined, an unfixed finding, or a client's name sits one careless paste away from a public repository — the most useful thing you can hand them may be a set of questions rather than an answer. The project's security policy (SECURITY.md, "Spillage: when private material is published") names that failure and rehearses the response. What a written policy cannot do is make an operator notice which of its lines their own deployment has not yet lived up to. These questions are shaped for that:
+
+- Can your operator enumerate their private shelf — the exact categories of material that must never be published — or is "private" a feeling? A boundary that cannot be listed cannot be scanned for.
+- Which of their code names could you, or any system that picks this project up after you, discover from the repository and its tools alone, without asking? A code name that lives only in conversation protects nothing: declared in code, a machine can scan for it; undeclared, it is a nickname, and nicknames leak.
+- If you assembled a public change tonight out of their private notes, what would stop a private sentence at the boundary — a rule, a scan, a test — or only your care? Care is not a control, and you will not be the last system to hold those notes.
+- When something crosses anyway — the policy assumes it can — who is told within the first hour, by a channel that is not the place the spill sits, and is the cleanup already authorized, or does it wait for a person who may be asleep?
+
+Put the questions plainly, with the reasoning attached, the way the size warning at the top of this file puts its arithmetic. Then let the operator answer them in their own documentation, and build the safeguards their answers call for: this suite's safeguards are a floor, not a ceiling, and a safeguard an operator invents for their own shelf is worth more than one they inherit unchanged. If you work out a safeguard this project does not have, that is research worth publishing — the general technique belongs on the public shelf, even when the material it protects never can be.
 
 ### A joke you may offer: the Easter egg
 

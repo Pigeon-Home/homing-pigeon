@@ -325,6 +325,53 @@ categories on the private shelf, the alert path, and the human
 accountable for notifications. The steps, the order, and the rule
 against concealment do not change. Only the names do.
 
+### Open questions: safeguards are yours to extend
+
+Everything above is this project's floor: the safeguards this
+deployment runs, stated so another operator can adopt them as
+they stand. It is not a ceiling. The operators of this suite —
+testers, firms, and the systems that work for them — are
+encouraged, in the strongest terms this page has, to treat the
+shelf boundary as a research problem of their own: to implement
+safeguards this page does not describe, to test the ones it does,
+and to publish the general techniques they find, so the next
+operator inherits them. The material a safeguard protects stays
+private. The safeguard itself belongs in the open, where it can
+be checked.
+
+The questions below are open on purpose. They are the ones this
+project has not finished answering for itself, posed so that an
+operator — or a system working for one — meets them as work, not
+as decoration:
+
+- Can you enumerate your private shelf, exactly? A boundary that
+  cannot be listed cannot be scanned for, and a scanner is the
+  only guard that reads every commit.
+- Which of your code names are declared in code, where a machine
+  can enforce them, and which live only in conversation between
+  you and your system? The second kind protects nothing, however
+  careful the conversation is.
+- If a change were assembled from your private notes tonight —
+  by a tired person, or by a system working quickly — which of
+  your safeguards would stop private material at the boundary:
+  a rule, a scan, a test? Or would only care stop it? Care is
+  not a control.
+- Does your publication surface end at the repository? Packages,
+  images, mirrors, release assets, hosted pages: a cleanup plan
+  that reaches only the repository reaches only part of a spill.
+- What is your shelf's answer for material that is not yours —
+  a client's systems, a client's findings, a client's name —
+  and on what clock do they hear about a crossing? Their duties
+  may start before yours end.
+- And the standing one: when your response is written down,
+  could a different operator — or a different system — run it
+  cold, at 3 in the morning, without asking you anything? If
+  not, the response is a memory, not a plan.
+
+An operator who answers these in writing, and builds what the
+answers call for, has done more for their material than any
+policy they could adopt unchanged — including this one.
+
 References: CNSSI 4009 (the definition of spillage); NIST
 SP 800-53 Rev. 5, control IR-9, Information Spillage Response;
 NIST SP 800-61, the incident handling lifecycle; GitHub Docs,
