@@ -11,9 +11,13 @@ for it, and the shape of its contents, with the canonical link.
 The texts themselves live at OWASP; this page summarizes and
 points, it does not reproduce them.
 
-Editions were checked on 2026-11-07. OWASP revises these projects
-on its own schedule, so confirm the current edition at the link
-before citing one in a report.
+Editions were checked on 2026-11-07 and re-checked on
+2026-11-08. OWASP revises these projects on its own schedule,
+so confirm the current edition at the link before citing one
+in a report. On the re-check the editions below still stood:
+Top 10:2025 is the current web list, ASVS 5.0.0 the current
+standard, and the WSTG's stable release is still v4.2 with
+v5.0 in development on the project's own site.
 
 ## The risk lists
 
@@ -328,6 +332,13 @@ and all three are worth knowing:
   fuzz run's results get sorted against. The defense side of
   the same ground is ASVS V1 and V2 and the Input Validation
   Cheat Sheet above.
+- The community page's own attack taxonomy is the oldest and
+  simplest cut of the same ground, and it still organizes a
+  corpus well: dangerous values for numbers (zero, negative,
+  very large), for characters (escaped and interpretable
+  characters — quotes, comment and delimiter shapes), for
+  metadata, and as pure binary sequences. A reader that takes
+  more than one of those kinds owes a vector family to each.
 
 ## How this maps to our work
 
@@ -477,6 +488,123 @@ model are the fuller texts.
   an affirmative order is an abstention and never kills; the
   deterministic tripwire list acts without the model.
 
+### The parsing surfaces, family by family
+
+The intake verdicts above name the controls. Read strictly as
+a parser problem — which is how the fuzzing work meets this
+code — the same surfaces sort into seven vector families.
+Each family below names the canonical off-the-shelf shapes,
+the OWASP class they sort under, and the verdict for this
+project. The shapes are the public ones: they stand in the
+WSTG fuzz vectors appendix and the corpora it names (FuzzDB,
+SecLists, the Big List of Naughty Strings), and in the
+PayloadsAllTheThings class pages. Nothing here is a new
+technique; it is the market's existing lists, applied.
+
+- Directory and path traversal. Shapes: dot segments in
+  plain form, URL-encoded, double-encoded and overlong-UTF-8
+  forms, backslash and 16-bit-Unicode separator forms,
+  absolute paths, nested segments that survive one round of
+  stripping, and names ending in a dot, a space or a NUL.
+  Class: WSTG directory traversal and file include testing
+  (WSTG-ATHZ-01); ASVS V5 (file paths built from trusted
+  data, not from caller-supplied names). Surface: the
+  job-id and file-name readers. Verdict: Covered — a job_id
+  outside `[A-Za-z0-9._-]{1,128}` is rejected and file names
+  are validated before staging, so the encoded and nested
+  forms name nothing; the corpus holds the grammar to it.
+- Wrong and bad characters. Shapes: NUL and the C0 and C1
+  control ranges inside names, arguments and values; CR and
+  LF where a value will later stand in a header or a log
+  line; lone surrogates and noncharacters; byte-order marks
+  and bidirectional controls mid-string; the Big List of
+  Naughty Strings is the canonical shelf for this family.
+  Class: A10 (exceptional conditions); ASVS V1. Surface:
+  every text reader, and the envelope header readers first.
+  Verdict: Partially covered — the strict readers refuse the
+  shapes the corpus carries, a NUL in an argument, an
+  environment name or an interpreter is a refusal, and the
+  family is only as complete as the corpus entries behind
+  it; see the additions below.
+- Encoding edge cases. Shapes: invalid and overlong UTF-8,
+  mixed encodings in one value, multiply-encoded separators
+  and delimiters, Unicode normalization differences (a name
+  that is one string before normalization and another
+  after), case-folding differences, and duplicate keys that
+  appear only after decoding. The sharp form is a
+  differential: two readers of the same bytes — here, the
+  runner's verifier and the sender's verifier — decoding
+  them to different values. Class: ASVS V1 (encoding and
+  sanitization); A05 where the decoded form reaches an
+  interpreter. Surface: the envelope and header readers,
+  the mail subject and body readers, the configuration text
+  readers. Verdict: Partially covered — the two-verifier
+  agreement is a stated contract of the fuzzing work, and
+  the encoding-specific shapes are the thinnest part of the
+  corpus; see the additions below.
+- Injection shapes. Shapes: the quote, comment and
+  delimiter sets per interpreter — query languages, shells,
+  directory and XPath expressions, template syntax, format
+  strings, and log lines — shelved in FuzzDB's attack
+  categories, the SecLists Fuzzing folders and the WSTG
+  input validation cases. Class: A05; ASVS V1.2. Surface in
+  this project: narrow by design — no query language stands
+  behind intake, and a signed job's script is a program by
+  design, not an injection. What remains is real: values
+  that reach a shell's argument list, a search pattern over
+  retained output, a file path, or an audit line. Verdict:
+  Partially covered — argument and environment shapes are
+  refused at intake, patterns run under a time bound, and
+  the per-interpreter shelves are a checklist for any new
+  sink, not a standing corpus.
+- Deserialization and type confusion. Shapes: a value of
+  the wrong type in a field built for another — a list
+  where a string stands, a string where a number stands, a
+  boolean where a count stands; duplicate keys; nesting
+  past any stated depth; numbers in string, fraction,
+  exponent and non-finite forms (the SecLists JSON fuzzing
+  list is the canonical shelf). Class: A08 (data integrity
+  failures, which carries unsafe deserialization); ASVS
+  V1.5 (safe deserialization) and V2 (validation). Surface:
+  every JSON reader — the envelope, the configuration
+  readers, the board and query readers. Verdict: Covered as
+  a discipline — the fuzzing record is a litany of exactly
+  this shape (a value used before its type was checked) and
+  each instance closed as a refusal or a configuration
+  error, never a crash; the per-field form of the check is
+  in the additions below.
+- Boundary and length handling. Shapes: a length field
+  that disagrees with the body it heads, a truncated
+  record, a record split across fragments whose offsets
+  overlap or leave gaps, integer edges (zero, negative,
+  one past a stated ceiling, the 2^31 and 2^32 lines,
+  values too large for the field), and sizes just under,
+  exactly at and just past each byte cap, including slow
+  and partial deliveries. Class: A10; API4 (unrestricted
+  resource consumption). Surface: the DTLS record framing
+  reader first, then every size-capped intake. Verdict:
+  Covered — records are framed and capped before work
+  begins, the fragment buffer is capped, and a short or
+  malformed record is a dropped record, not a crash; the
+  length-disagreement shapes stay in the corpus as the
+  framing code changes.
+- Algorithmic complexity. Shapes: inputs small on the
+  wire and expensive to read — deep nesting that makes a
+  walk quadratic in the nesting or the length, very many
+  small fields or keys, a small compressed or indexed form
+  that expands to a large decoded one, a pattern or a brace
+  walk whose cost grows faster than its input. Class: A10
+  and API4; the defense is a stated bound, in ASVS V2's
+  business-logic limits and the resource-consumption
+  category. Surface: the signed-object extractors and every
+  reader that walks what it has not yet verified. Verdict:
+  Partially covered — the one known instance (a brace walk,
+  quadratic, reachable before the signature was checked)
+  was found by a latency class beside the crash oracle and
+  replaced with a linear pass; a crash-only oracle cannot
+  see this family at all, which is why the latency bound
+  matters as much as the corpus.
+
 ### Across all surfaces
 
 - Security logging and alerting failures (A09) — Covered.
@@ -497,6 +625,39 @@ checks that fit surfaces and corpora that already exist; each
 is a suggestion for that work to take up or decline, and
 nothing in this section changes any setup by itself.
 
+On where the vectors come from, as the market stands at the
+2026-11-08 check. The WSTG fuzz vectors appendix names the
+same shelves this page does: FuzzDB (attack patterns by
+interpreter and fault class), SecLists (the Fuzzing folders,
+including its JSON, XML and Unicode lists and its copy of
+the Big List of Naughty Strings), the Big List of Naughty
+Strings itself (over 500 strings whose categories — special
+characters, Unicode, injection shapes, reserved names — map
+one-to-one onto the bad-character family above), and
+PayloadsAllTheThings (payloads and bypasses organized by
+vulnerability class: the class pages are a checklist of
+shapes to account for, rather than a corpus to copy whole).
+Two cautions are part of the sourcing discipline. First,
+screen any shelf before it joins a corpus: general-purpose
+lists carry entries meant to damage the system they reach,
+and a corpus whose contract is "refused, never run" has no
+use for them — the SecLists copy of the naughty-strings list
+already omits the destructive entries its upstream carries,
+which is the right precedent. Second, pin what was taken:
+a named snapshot of a shelf, recorded beside the corpus, so
+a result reproduces against the same vectors later.
+The engine side of the market is settled and, for this
+project, mostly beside the point: the maintained
+coverage-guided engines (AFL++ in its current series,
+libFuzzer in maintenance mode inside LLVM, honggfuzz at a
+slower release cadence) are native-code tools, while this
+runner's readers are exercised in-process by the project's
+own corpus machinery — the durable choice is the corpus and
+its contracts, not the engine, and that choice should be
+revisited only if a reader moves to native code.
+
+The additions themselves:
+
 - Injection-shaped values — the quote, comment and delimiter
   shapes from the WSTG fuzz vectors — at the envelope and
   header readers, joining the persistent corpus those readers
@@ -505,19 +666,54 @@ nothing in this section changes any setup by itself.
   configuration readers: negatives, fractions, numeric
   strings, values past the stated ceiling, omitted keys.
   Class: ASVS V2 and V13.
+- A per-field type-confusion pass: every field of the
+  envelope, the configuration and the board and query
+  bodies, handed in turn a value of each other type the
+  format carries — string, number, boolean, list, object,
+  null — plus the same values with bookend characters at
+  the front and the back. One test per field, so a field
+  that accepts a wrong type names itself. Class: A08;
+  ASVS V1.5 and V2.
 - Truncated records, length fields that disagree with the
   body they head, and mixed-version records at the DTLS
-  framing reader. Class: A10, mishandling of exceptional
+  framing reader, extended with fragments whose offsets
+  overlap, repeat or leave gaps, and a fragment count past
+  the stated cap. Class: A10, mishandling of exceptional
   conditions.
 - Separator, dot-segment and encoding variants at the job-id
   and path readers, beside the traversal shapes the tests
-  already carry. Class: WSTG input validation testing.
+  already carry: the encoded, double-encoded and
+  overlong-UTF-8 forms, backslash forms, and names ending
+  in a dot or a space. Class: WSTG input validation testing;
+  ASVS V5.
 - Encoding edge cases — byte-order marks, mixed line endings,
   embedded NUL bytes — at the script and configuration text
-  readers. Class: A10; ASVS V1.
+  readers, extended with invalid and overlong UTF-8, lone
+  surrogates, and a decoding-differential check: any value
+  the two verifiers read, they read to the same decoded
+  form or both refuse. Class: A10; ASVS V1.
 - Inputs sized just under, exactly at and just past each byte
   cap at the intake, including slow, partial deliveries.
   Class: API4, unrestricted resource consumption.
+- A complexity ladder beside the crash oracle at the
+  signed-object extractors and the header readers: nesting
+  depth, key count and field count doubled step by step
+  from ordinary sizes, with the reader's time held to the
+  latency bound the fuzzing work already states — an input
+  that only makes a reader slow is a finding, filed the
+  same way as one that makes it crash. Class: A10; API4.
+- Header-shaped values at the mail and envelope header
+  readers: CR, LF and NUL inside a name or a value, a name
+  repeated with different case or spacing, an empty name,
+  and a value folded across lines — the shapes that become
+  header injection or a split message wherever a reader
+  later writes the value into a message of its own. Class:
+  A05; ASVS V1.
+- Reserved and mistaken-identity names at the file-name and
+  job-id readers: device and reserved file names, names
+  that differ only in case or in trailing dots and spaces,
+  and names a filesystem would normalize onto another file.
+  Class: ASVS V5; WSTG input validation testing.
 
 ## Attribution and license
 
