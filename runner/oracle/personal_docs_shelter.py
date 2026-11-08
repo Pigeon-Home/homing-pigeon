@@ -35,9 +35,11 @@ import sys
 try:
     from runner.oracle import personal_docs as _pd
     from runner.guard import security as _security
+    from runner.guard import atomicio as _atomicio
 except ImportError:  # script mode: runner/ is on sys.path
     from oracle import personal_docs as _pd  # noqa: F401
     from guard import security as _security  # noqa: F401
+    from guard import atomicio as _atomicio  # noqa: F401
 
 FEATURE = "personal_docs_shelter"
 
@@ -220,11 +222,8 @@ def load_manifest(home):
 def _save_manifest(root, entries):
     data = {"format": MANIFEST_FORMAT, "version": MANIFEST_VERSION,
             "entries": entries}
-    tmp = _manifest_path(root) + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, indent=2, sort_keys=True)
-        fh.write("\n")
-    os.replace(tmp, _manifest_path(root))
+    _atomicio.write_json(_manifest_path(root), data, indent=2,
+                         sort_keys=True, newline=True)
 
 
 def _ensure_shelter(root):

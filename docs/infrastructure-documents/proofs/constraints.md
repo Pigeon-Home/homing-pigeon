@@ -290,9 +290,9 @@ refuse-class setting it stops the runner before any job is read.
   decision itself in `enforce` mode refuses the job, not the
   runner.
 
-## C11. The six security modes
+## C11. The seven security modes
 
-- **Constraint:** each of the six hardening features carries a
+- **Constraint:** each of the seven hardening features carries a
   mode, and the mode MUST be one of `off`, `audit`, or `enforce`.
   `off` does nothing. `audit` lets the job proceed exactly as
   `off` would and writes what `enforce` would have decided to the
@@ -300,16 +300,20 @@ refuse-class setting it stops the runner before any job is read.
   ordinary reject path. A missing security block leaves every
   feature at the default, `enforce`; a mode a config sets is the
   mode that runs. Changing a mode requires a restart: the
-  configuration is read once at startup.
+  configuration is read once at startup. The seventh feature,
+  `personal_docs_shelter`, gates an operator-invoked tool rather
+  than a job: `off` refuses to plan or apply, `audit` plans only,
+  and `enforce` lets the operator's `--apply` move files.
 - **Value:** features, in the order the code declares them —
   `policy_env`, `policy_files`, `policy_args`, `audience`,
-  `confinement`, `job_user`. Modes — `off`, `audit`, `enforce`.
+  `confinement`, `job_user`, `personal_docs_shelter`. Modes —
+  `off`, `audit`, `enforce`.
   Default for every feature: `enforce`.
 - **Where:** `runner/guard/security.py` — `MODES`, line 39;
-  `FEATURES`, line 44; `sec_mode`, line 287, which reads a missing
+  `FEATURES`, line 44; `sec_mode`, line 342, which reads a missing
   mode as the `enforce` default and a malformed value defensively
-  as `off`; `sec_decide`, line 562, the single decision point;
-  `validate_security_config`, line 338, the startup validator.
+  as `off`; `sec_decide`, line 772, the single decision point;
+  `validate_security_config`, line 440, the startup validator.
 - **Class:** refuse class. Security modes are named in Decision 1
   itself, and `validate_security_config` raises `RuntimeError` for
   a security block that is not an object, a feature name it does

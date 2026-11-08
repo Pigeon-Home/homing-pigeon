@@ -72,6 +72,10 @@ REGISTERED = {
         "the test_linux_* modules; run in the ubuntu test job",
     "POSIX installer path": "run on ubuntu and macOS; Windows has its own",
     "POSIX only": "run on ubuntu and macOS",
+    "POSIX mode bits only":
+        "test_personal_docs_shelter: the shelter folder's 0o700 pin "
+        "reads POSIX stat mode bits, which Windows stat does not "
+        "carry; runs on ubuntu and macOS",
     "pwsh is not installed; the PowerShell half of this rung was not run":
         "the content-rung PowerShell legs; pwsh runs in the Windows "
         "job, and the bash and gate legs in the same modules run in "

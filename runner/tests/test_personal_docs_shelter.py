@@ -37,7 +37,11 @@ def _write(path, text="x"):
 
 class ShelterHome(unittest.TestCase):
     def setUp(self):
-        self.home = tempfile.mkdtemp(prefix="hp-shelter-")
+        # Realpath'd: production hands real paths (the plan's
+        # sources are realpath'd roots), and on macOS a temp dir
+        # sits behind /var -> /private/var, so an un-realpath'd
+        # home would not match the manifest's "from" entries.
+        self.home = os.path.realpath(tempfile.mkdtemp(prefix="hp-shelter-"))
         self.addCleanup(shutil.rmtree, self.home, True)
         for folder in ("Documents", "Desktop", "Downloads"):
             os.makedirs(os.path.join(self.home, folder))

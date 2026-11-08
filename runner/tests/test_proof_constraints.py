@@ -178,11 +178,12 @@ class CleartextAndEncryptionPins(unittest.TestCase):
 
 
 class AudienceAndModePins(unittest.TestCase):
-    def test_c11_the_six_features_and_three_modes(self):
+    def test_c11_the_seven_features_and_three_modes(self):
         self.assertEqual(
             S.FEATURES,
             ("policy_env", "policy_files", "policy_args",
-             "audience", "confinement", "job_user"))
+             "audience", "confinement", "job_user",
+             "personal_docs_shelter"))
         self.assertEqual(S.MODES, ("off", "audit", "enforce"))
 
     def test_c11_modes_default_enforce_and_bad_block_refused(self):
