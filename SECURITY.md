@@ -66,6 +66,271 @@ deployment model matters more than the cryptography: throwaway account,
 disposable machine, secret kept like a password. The crypto keeps
 strangers out. Only your own judgment keeps bad jobs out.
 
+## Spillage: when private material is published
+
+### What spillage is
+
+"Spillage" is the security industry's term for a specific failure:
+information ending up somewhere it is not authorized to be. CNSSI
+4009 defines spillage as a security incident that results in the
+transfer of information onto an information system not authorized
+to store or process it. That definition was written for classified
+information. This project handles no classified information, and
+nothing in this section concerns any government's material — the
+shape of the failure is the same at any sensitivity: material under
+a handling rule appears outside the boundary the rule sets. NIST
+SP 800-53 gives the failure its own control, IR-9 (Information
+Spillage Response), because it recurs everywhere, and because an
+improvised response to it is reliably worse than a prepared one.
+
+For this software, the boundary is concrete. The work around the
+suite keeps two shelves:
+
+- **The public shelf** — this repository (code, documentation,
+  commit messages, issues, pull requests, release notes) and
+  everything published from it: packages, images, mirrors.
+- **The private shelf** — what the public shelf must never carry.
+  Credentials and secret values. The material of security-testing
+  work done with the suite: what is being examined, engagement and
+  case records, unfixed findings in any detail, crash data and
+  crash artifacts. And, for an operator who runs the suite for
+  clients — a penetration-testing firm is the standing example —
+  the clients' information: their systems, their findings, their
+  names.
+
+**Spillage is private-shelf material reaching the public shelf:**
+committed to this repository in any form — a file, a page, a
+commit message, a test fixture, a screenshot, a log excerpt, a
+release asset — or published onward from it. The crossing does not
+require anyone to intend it. An operator assembling a public change
+out of private notes can carry a sentence, a file name, or an
+artifact across the boundary without noticing; an agent doing the
+same can do it faster and at larger scale. Intent is not part of
+the definition. Presence is.
+
+### Why the response matters more than the spill
+
+A spill is an accident. What happens next is a choice, and the
+choice is what this section governs.
+
+The instinct on finding private material in a public place is to
+delete it quietly and move on. That instinct is the one outcome
+this project forbids, for reasons that are practical before they
+are ethical:
+
+- **Deletion is not unpublication.** A public repository is
+  cloned, forked, mirrored, cached, and indexed. GitHub's guide to
+  removing sensitive data from a repository is blunt about it:
+  once a commit has been pushed, the data it contains should be
+  considered compromised, because copies may survive in clones and
+  forks, in cached views reachable by commit hash, and in
+  pull-request references — none of which a history rewrite
+  reaches. Quiet deletion removes the one copy the deleter
+  controls, leaves every other copy live, and manufactures the
+  false impression that the exposure has ended.
+- **Exposure runs on a clock, and silence wastes it.** A spilled
+  credential is dangerous until it is rotated, and rotation can
+  begin the minute the spill is declared — or never begin, because
+  nobody was told. The same holds for a client whose information
+  crossed, and for a vendor whose unfixed finding crossed: each of
+  them can act on early notice, and none of them can act on
+  silence.
+- **Concealment converts an accident into a cover-up.** A spill
+  that surfaces later — found by a reader, a client, a program —
+  with no record behind it reads as a decision to hide it, and it
+  will be judged as one, whatever the intention was. The same
+  spill, declared at once and recorded plainly, reads as what it
+  is: an error, handled. The record is the difference, and the
+  record costs nothing but the willingness to write it.
+
+So the standing rule, which outranks every other step in this
+section: **a spill is declared, contained, and recorded — never
+concealed.** Removing the material is the first step of the
+response. It is never the whole response.
+
+### Preparation: what stands before any spill
+
+Incident response is mostly decided before the incident; NIST
+SP 800-61 puts preparation first for exactly that reason. Whoever
+operates a deployment of this suite — the person, firm, or system
+that runs it and works in its repository — keeps four things in
+place:
+
+1. **The shelf rule is written down**, as it is here and, for this
+   project's own research work, on the cs_office page
+   (`docs/infrastructure-documents/project/cs_office.md`), so that
+   "private" names specific categories rather than a feeling. A new
+   kind of material gets its shelf decision when it appears, not
+   when it leaks.
+2. **The alert path is written down**: who is told, by what
+   channels, in what order. For this repository the path is: the
+   operator on watch alerts the repository's owner immediately,
+   directly and by email — out-of-band from the repository itself,
+   because an alert posted only where the spill sits can be missed,
+   and IR-9 specifies alerting by a method of communication not
+   associated with the spill. A firm adopting this section writes
+   its own path here; theirs normally runs to the engagement lead
+   and, where client material is involved, to the client contact.
+3. **Containment is pre-authorized.** The containment steps below
+   are pre-authorized in full, executed on detection without
+   waiting for anyone's approval. In the first hour of a spill, the owner's
+   role is to be told, not to be asked: minutes matter more than
+   permission, and a response that waits for a meeting is a
+   response that starts after the copies have spread.
+4. **The guards run.** Secret scanning and push protection are
+   enabled on the repository, and the working rule for every change
+   is the shelf rule applied with doubt resolved in one direction:
+   a doubtful item stays private. Doubt is settled on the private
+   shelf — by the accountable human, if it needs one — never by
+   publishing and seeing what happens.
+
+### The response
+
+The lifecycle is NIST SP 800-61's — detection and analysis,
+containment, eradication and recovery, post-incident activity —
+applied to a spill:
+
+**1. Declare.** Whoever detects a spill declares it, on the alert
+path, at once — including, especially, whoever caused it.
+Self-reporting is the design assumption: a response culture that
+punishes the declaration gets silence instead, and silence is the
+failure this section exists to prevent. The declaration names the
+class of material that crossed (never the material itself), where
+it sits (the commit, the file, the issue, the release), and when
+it was published. Detection and declaration are a single step:
+there is no "clean it up first and mention it after."
+
+**2. Contain.** The material comes off the public shelf
+immediately, following GitHub's published procedure for removing
+sensitive data from a repository:
+
+- Rewrite the history to purge the material — `git-filter-repo` in
+  its sensitive-data-removal mode, or the BFG Repo-Cleaner — and
+  force-push the rewritten history.
+- Ask GitHub Support, through the support portal, to remove cached
+  views and pull-request references and to run garbage collection,
+  so the unreachable objects are expunged from GitHub's storage
+  rather than merely unlinked.
+- Sweep the rest of the publication surface: releases and their
+  assets, published packages, container images, and the mirrors the
+  project ships to. Anything that carried the material is withdrawn
+  or rebuilt from the cleaned history.
+- Coordinate the copies that cannot be reached from here. Anyone
+  holding a clone of the old history re-clones or rebases — never
+  merges — because one merge from a tainted clone reintroduces
+  everything the rewrite removed. Forks are their owners' to clean;
+  the owners are asked to remove the material or delete the fork.
+
+**3. Assume exposure.** From the moment of publication, the
+material is treated as copied — permanently, by parties unknown.
+Containment limits further exposure; it does not undo the exposure
+that already happened, and the rest of the response is sized by
+this assumption rather than by the hope that nobody looked. It is
+the same posture this file takes toward a leaked shared secret:
+the question is never "did anyone see it," it is "what must change
+now that anyone could have."
+
+**4. Eradicate, by the class of what crossed.** Containment
+removes the copy; eradication removes the risk the copy created,
+and the work differs by class:
+
+- *A credential or secret value* is revoked or rotated at once —
+  before the history work, or alongside it, never after it.
+  GitHub's guidance is explicit that a revoked secret can no
+  longer be used, which may close the exposure on its own. A
+  spilled shared secret of this suite is handled as a compromised
+  key: marked `compromised` in the key directory, which refuses it
+  at every door at once, and rotated under
+  `docs/steady/secret-rotation.md`.
+- *Security-testing material* — what was being examined, an
+  unfixed finding, crash data — is handled as disclosed. Where it
+  belongs to an engagement, a bounty program, or a vendor's
+  product, the affected client, program, or vendor is notified
+  through its formal channel, by the human accountable for the
+  work, ahead of any public statement: they hear it from the
+  project first. Any plan that depended on the material's secrecy —
+  above all, a fix still in progress — is re-planned on the
+  assumption that the secrecy is gone.
+- *A client's or another person's information* is notified to the
+  client or person it belongs to, promptly and plainly: what
+  class of material crossed, when, and what has been done. Their
+  own duties — to their customers, their regulators — may run from
+  the same clock, which is one more reason the declaration never
+  waits.
+
+**5. Record the incident, publicly.** The response closes with a
+written incident note in this repository: that a spill occurred;
+when the material was published and when the spill was declared;
+the class of material it carried; and what was done — containment,
+rotation, notification — in general terms. The note never
+reproduces the spilled material, quotes it, or describes it beyond
+its class. It is published once the notifications in step 4 have
+been made, and it stays: later readers, clients, and programs are
+entitled to find the incident, and to find it handled in the open.
+Skipping the note is the concealment this section forbids, however
+thorough the cleanup was.
+
+**6. Post-incident: close the mechanism, not just the incident.**
+The follow-up review answers one question: by what mechanism did
+private material reach a public commit — a file assembled from
+private notes, a fixture copied across, a code name resolved in
+the wrong place, a screenshot taken on the wrong machine — and
+what change makes that mechanism fail loudly next time? The change
+lands as engineering, not as intention: a scanning rule, a
+pre-push check, a test that fails when the boundary is crossed, a
+sharper line in the shelf definition. The review is blameless and
+factual, and its conclusions are appended to the incident note. A
+spill whose mechanism stays open is an incident scheduled to
+repeat.
+
+### A worked example
+
+Hypothetical, and deliberately ordinary, because most spills are.
+An operator is writing a public summary of a fuzzing pass and, to
+illustrate a sentence, pastes in a minimized crash input taken
+from a live engagement. The commit lands. A reader of the
+repository now holds a reproducer for an unfixed finding in a
+client's product, and enough context to guess whose product it is.
+
+Under this section: the operator notices on a re-read an hour
+later — or a reader reports it — and declares it on the alert path
+at once, naming the class (crash data, an unfixed finding, client
+engagement) and the commit. Containment runs without waiting: the
+history is rewritten, the rewritten history is force-pushed,
+GitHub Support is asked to clear the cached views, and the release
+assets of the affected version are checked and rebuilt. The
+client is notified the same day, through the engagement's formal
+channel, by the human accountable for the engagement — before the
+public incident note, so the client hears it from the firm first.
+The note then goes into the repository in general terms: a spill
+of crash data occurred, it was public for a stated number of
+hours, it has been purged, and it was formally reported to the
+affected client. The follow-up finds the mechanism — the public
+summary was drafted in the same place as the private case notes —
+and closes it: summaries are drafted from public-shelf material
+only, and a check now fails any commit that adds a file matching
+the case-artifact shapes. The spill was an hour's carelessness.
+The response is the part that was rehearsed.
+
+### Adopting this section
+
+This section is this repository's own policy, and it is written to
+be adopted. This suite will be operated by people and systems
+other than the ones who wrote it — licensed to other testers, run
+inside other firms, picked up by whatever system an operator works
+with next — and a spill response that lives in one operator's
+memory is not a response at all. Adopting it takes three decisions,
+recorded where the deployment's own documentation lives: the
+categories on the private shelf, the alert path, and the human
+accountable for notifications. The steps, the order, and the rule
+against concealment do not change. Only the names do.
+
+References: CNSSI 4009 (the definition of spillage); NIST
+SP 800-53 Rev. 5, control IR-9, Information Spillage Response;
+NIST SP 800-61, the incident handling lifecycle; GitHub Docs,
+"Removing sensitive data from a repository"
+(https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository).
+
 ## Dual-use: yes, this looks like email-C2
 
 Saying it plainly: a program that polls an inbox and executes signed

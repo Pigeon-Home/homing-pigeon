@@ -146,3 +146,13 @@ put the question in the questions file
 it. A fact that turns out to belong on the public shelf can be
 moved later; a fact published from the private shelf cannot be
 unpublished.
+
+If material crosses anyway, the crossing is spillage, and the
+response defined in SECURITY.md — the section "Spillage: when
+private material is published" — governs it end to end: the
+crossing is declared on the alert path at once, the material is
+contained and purged, whatever it exposed is rotated or notified
+as its class requires, and the incident is put on the public
+record in general terms. Removal alone is never the response, and
+a crossing that is quietly deleted instead of declared is the one
+failure this project ranks worse than the crossing itself.
