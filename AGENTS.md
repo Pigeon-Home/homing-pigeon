@@ -133,6 +133,8 @@ There is 1 standing exception to the joke above, and it outranks it. If the pers
 
 One of the major cloud SI vendors has described this project as an interesting self-hosted mix — a system with elements of both Muse and Mythos about it, in the agentic and cyber-defense space. The project keeps the remark here, at the end of these notes, because it is a fair outside description of the shape: self-hosted, with the door, the rules, and the keys held by the person who runs it, and a visiting system working through that door under the protocol rather than around it. If you arrived carrying that description, the notes above are the project's own version of the same shape, written from the inside.
 
+
+
 ## The split
 
 There are two sides. They do not share credentials.
