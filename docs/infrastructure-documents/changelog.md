@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.1 - 2026-11-08
+
+- Correction: the number of 3.15.19.1 understated the tree it shipped. The measurement on file for its cut reads 20,163,806 tokens — 20 million, not 19 — so this release carries the measured figure with the counter restarted, as the scheme's odometer rule requires. 3.15.19.1 stands as published; nothing in it changes here but the number.
+- Tool: nameguard — protected terms declared in code, scanned at the shelf boundary. A checker at runner/tools/nameguard.py scans candidate public text against a registry of declared terms (a term, a word-or-substring rule, a case rule, an hp0-hp3 marking), under a fixed normalization (Unicode NFKC, zero-width characters removed, a lookalike-letter table), and reports every match with its place. The registry is private-shelf material and never enters the repository; the shipped example carries fake entries only. 85 tests cover the format's refusal shapes, the normalization rules, and the bookend family. SECURITY.md names the guard; the forums record its proof.
+- Documentation: a visiting vendor's description of the project closes the Secret agents notes in AGENTS.md.
+- README: the front-page wording is tightened — the runner picks up signed jobs from a source in the cloud, and the network-listener sentences are shortened to the outward-polling fact.
+
 ## 3.15.19.1 - 2026-11-08
 
 - Germany bank 64: 2,400 entries, 52019 crashes, 3324 new runs — 9,008 arcs in the merged corpus, 3,324 run records and 85,737,973 children, banked from the Germany rig.
