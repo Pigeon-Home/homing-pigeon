@@ -23,10 +23,7 @@ It should return in less than 30 seconds.
 It works like a GitHub self-hosted runner. A small program on hardware
 you own picks up signed jobs from a source in the cloud and runs them.
 By default nothing listens on an external interface: the runner
-only polls outward, so it works behind NAT with no open ports. The
-DTLS binding, off unless enabled, is the one network listener, and a
-loopback-only port (127.0.0.1:39271) takes this box's own sensor
-signals.
+only polls outward, so it works behind NAT with no open ports.
 
 Setup walks you through connecting a dedicated mailbox. The
 recommended path is a browser sign-in, so the account password never
