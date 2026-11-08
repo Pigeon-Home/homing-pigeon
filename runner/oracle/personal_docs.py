@@ -64,6 +64,30 @@ _XDG_KEYS = (
 
 _WATCHED = ("documents", "desktop", "downloads")
 
+# The shelter (runner/oracle/personal_docs_shelter.py) gathers
+# personal documents into one folder under the operator's control.
+# A folder counts as the shelter only when it carries the marker
+# file with the exact magic line: the name alone proves nothing,
+# so a folder an operator happened to name the same way is still
+# scanned like any other.
+SHELTER_DIR_NAME = "Sheltered Documents"
+SHELTER_MARKER_NAME = "HOMING-PIGEON-SHELTER.txt"
+SHELTER_MARKER_MAGIC = "homing-pigeon personal-documents shelter, format 1"
+
+
+def is_shelter_dir(path):
+    """True when `path` is the shelter folder: the marker file is
+    present and its first line is the exact magic. Any doubt --
+    missing, unreadable, wrong text -- is False, and the folder is
+    scanned like any other."""
+    try:
+        with open(os.path.join(path, SHELTER_MARKER_NAME),
+                  encoding="utf-8", errors="strict") as fh:
+            first = fh.readline(256)
+    except (OSError, UnicodeDecodeError):
+        return False
+    return first.rstrip("\r\n") == SHELTER_MARKER_MAGIC
+
 
 def _banner():
     """Fixed text. The same words every time, so the banner cannot
@@ -214,6 +238,13 @@ def _walk(root, depth, budget):
                     continue
                 is_dir = ent.is_dir(follow_symlinks=False)
             except OSError:
+                continue
+            if is_dir and ent.name == SHELTER_DIR_NAME \
+                    and is_shelter_dir(ent.path):
+                # Already gathered into the shelter, under the
+                # operator's hand. Out of scope by design; the
+                # design note is docs/steady/security/
+                # personal-documents-shelter.md.
                 continue
             if _sensitive(ent.name):
                 return True

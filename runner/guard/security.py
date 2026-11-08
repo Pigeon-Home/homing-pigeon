@@ -48,6 +48,12 @@ FEATURES = (
     "audience",      # M5: audience binding
     "confinement",   # M6: Linux sandbox
     "job_user",      # M8: run jobs as another user
+    # The personal-documents shelter (runner/oracle/
+    # personal_docs_shelter.py): an operator-invoked tool, never a
+    # startup action. The mode gates what the tool may do when the
+    # operator runs it: off refuses, audit plans only, enforce
+    # allows the operator's --apply to move files.
+    "personal_docs_shelter",
 )
 
 DEFAULT_AUDIT_MAX_LINES = 20000

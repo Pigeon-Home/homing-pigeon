@@ -127,6 +127,10 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # took the configured extra_flags (Q133), growing
 # runner/ops and runner/guard, and the stamp audit took
 # its historical-signings acceptance, growing runner/tools.
+# Re-measured again on 2026-11-08 after the personal-
+# documents shelter marker grew runner/oracle/
+# personal_docs.py and the shelter's security-mode feature
+# grew runner/guard/security.py.
 # Recorded constants: they describe the as-assembled set (the
 # canonical 130 files below plus the 3 suite runners named in
 # the module docstring), not the canonical list itself. The
@@ -138,9 +142,9 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 133
-AS_ASSEMBLED_ZIP_BYTES = 710701
-AS_ASSEMBLED_LINES = 56054
-AS_ASSEMBLED_NONBLANK_LINES = 50491
+AS_ASSEMBLED_ZIP_BYTES = 711338
+AS_ASSEMBLED_LINES = 56091
+AS_ASSEMBLED_NONBLANK_LINES = 50525
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
@@ -149,9 +153,9 @@ AS_ASSEMBLED_PART_LINES = {
     "runner/tools": 8698,
     "runner/wire": 8708,
     "runner/runner.py": 6647,
-    "runner/oracle": 5013,
+    "runner/oracle": 5044,
     "runner/transport_extensions": 2775,
-    "runner/guard": 2923,
+    "runner/guard": 2929,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,
