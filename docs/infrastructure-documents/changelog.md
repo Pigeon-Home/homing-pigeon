@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.18.14 - 2026-11-07
+
+- Reference: an OWASP reference shelf — the Top 10:2025, the API Security Top 10 2023 and the LLM Top 10 2025 lists, ASVS 5.0.0, the WSTG and the mobile pair, and a curated cheat-sheet index, summarized and linked in one place under the security references, with a structured review reading this project's own surfaces against the lists. Summaries and links only; the texts stay at OWASP.
+- Review: the parsing surfaces read against the OWASP lists, family by family — seven vector families (traversal, bad characters, encoding, injection shapes, deserialization and type confusion, boundary and length, algorithmic complexity), each with its canonical off-the-shelf shapes, its OWASP class, the surface it reaches and a verdict. The suggested additions gain the corpus-sourcing discipline and four further checks: a per-field type-confusion pass, a decoding-differential check between the two verifiers, a complexity ladder beside the crash oracle, and header-shaped and reserved-name shapes.
+- Documentation pass behind the day's landings: the standing orders pin the Q132 job_user startup refusal and the Q133 confinement extra_flags startup trial, the hardening report gains a dated update note for the same two changes, the project overview is brought current, the proofs readme's file list gains the seven records it named none of, and README's confinement paragraph and mirrors list are updated. The DocDriftGuard's max_job_bytes row is re-pinned to line 451, where the README size-caps line now stands — the drift that turned the previous head's test legs red on that one test.
+
 ## 3.15.18.13 - 2026-11-07
 
 - Design note: SI-to-SI over Homing Pigeon — a job-board channel between two SIs, mapped onto pieces the protocol already has: the section 13 task board (submit, request, offer, result, ack, and the human approve gate), the sender tooling, the email, file and DTLS bindings including the version 3 carriage over email, and the version 2 question exchange with its answer deadline. The gaps are named as gaps: no sender-side helper for the version 2 answer side, no result routing inside a version 3 session once the session is gone, no conversational round limit, and no issued stamp on the Grok side. Eight goals and four open questions stand at the note's end. Nothing is built or enabled; the note is the discussion's starting text.
