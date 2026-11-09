@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.18 - 2026-11-09
+
+- Documentation: the bookmark. The desk record gains a section naming the bookmark — a place held on purpose in the work's flow, one moment marked to be returned to and built from, rather than reconstructed from memory later and gotten slightly wrong — and the loop a bookmarked idea travels: first the message made sure to be understood, restated in the project's own vocabulary where it will be found again; second, the solution implemented; third, the solution tested, the test standing as the proof; and fourth, back to the systems, the result carried in the same open way the idea arrived. The recursion is named as the point — systems enumerating over systems, the forklift that lifts forklifts, one held place at a time.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,342,954 tokens, 1,332,683 tracked lines, 5,113 commits.
+
 ## 3.15.20.17 - 2026-11-09
 
 - Everything the 3.15.20.16 section below records ships in this release. 3.15.20.16 was cut and tagged but never published — her tag build's Windows leg failed the one test named in the fix below and her release jobs were skipped — so this release carries her contents forward with the fix.
