@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.15 - 2026-11-09
+
+- Everything the 3.15.20.14 section below records ships in this release. 3.15.20.14 was cut but never tagged or published — her builds failed the one guard named in the fix below — so this release carries her contents forward with the fix.
+- Fix: the core record is re-measured. The default-posture work's comment correction in runner/ops/main.py grew runner/ops by 1 line, and the as-assembled record in runner/ops/core.py was not re-measured with it, so the canonical-breakdown test failed on every platform leg of the 3.15.20.14 builds (the live count 17940 against the recorded 17939). The record now stands re-measured — runner/ops at 17940 lines, the set at 56,774 lines, 51,146 of them non-blank — with the test's named figures and the AGENTS.md prose moved to match.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,340,061 tokens, 1,332,548 tracked lines, 5,103 commits.
+
 ## 3.15.20.14 - 2026-11-09
 
 - Documentation: feature tiers — what carries which promise. A new page (docs/steady/feature-tiers.md) sorts the shipped features into the supported core, the advanced tier, and the experimental tier, each placement with the evidence it rests on, taken from the tree's own signals; the README's Status section points at it, and a new test pins the page to the tree.
