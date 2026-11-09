@@ -343,6 +343,30 @@ class CliTest(unittest.TestCase):
         self.assertEqual(version4.read_measure_cache(cache),
                          (NOW + 3600, 0))
 
+    def test_next_command_stale_cache_measures_and_rewrites(self):
+        # The non-fresh form of the measured path the typecheck
+        # guard flagged: a cache older than the 24-hour window is
+        # stale, so the command measures, and the cache is
+        # rewritten with that measure — the write happens exactly
+        # when a fresh figure exists to record.
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        cache = os.path.join(_tmp, "token-measure.txt")
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--cache", cache,
+             "--now", str(NOW)])
+        self.assertEqual((code, out), (0, "3.15.0.6"))
+        self.assertEqual(version4.read_measure_cache(cache), (NOW, 0))
+        self._grow_repo_past_a_million(repo)
+        later = NOW + version4.MEASURE_WINDOW_SEC + 3600
+        code, out = self._run_main(
+            ["next", "3.15.0.6", "--root", repo, "--cache", cache,
+             "--now", str(later)])
+        self.assertEqual((code, out), (0, "3.15.1.1"))
+        self.assertEqual(version4.read_measure_cache(cache), (later, 1))
+
     def test_next_command_fresh_without_cache_measures(self):
         repo = MeasureTest()._repo()
         self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
@@ -350,6 +374,23 @@ class CliTest(unittest.TestCase):
             ["next", "3.15.0.5", "--root", repo, "--fresh",
              "--now", str(NOW)])
         self.assertEqual((code, out), (0, "3.15.0.6"))
+
+    def test_cache_write_is_narrowed_for_the_type_checker(self):
+        # The measured path's cache write passes `fresh`, which is
+        # None until a measure happens. The typecheck guard
+        # (pyrefly, in the build workflow) flagged the call when
+        # the write was guarded only by the `measured` flag: a
+        # boolean cannot narrow Optional[int] to int. The call
+        # must stay under an explicit `fresh is not None` guard so
+        # the checked shape and the runtime shape stay the same.
+        with open(version4.__file__, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+        writes = [i for i, line in enumerate(lines)
+                  if "write_measure_cache(cache, now, fresh)" in line]
+        self.assertEqual(1, len(writes))
+        guards = [line.strip() for line in lines[:writes[0]]
+                  if line.strip().startswith("if ")]
+        self.assertIn("fresh is not None", guards[-1])
 
     def test_usage_errors(self):
         code, _ = self._run_main([])

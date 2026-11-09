@@ -360,7 +360,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             fresh = tokens_millions(measure_repo_tokens(root))
         result = next_version(positional[0], now, last_at, last_millions,
                               fresh_tokens_millions=fresh, new_minor=minor)
-        if measured and cache:
+        if measured and cache and fresh is not None:
             # The cache records the measure just taken — its epoch
             # and the millions that measure produced — whether or
             # not the version carries that figure (the hold rule
