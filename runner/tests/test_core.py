@@ -81,7 +81,7 @@ class CoreListTest(unittest.TestCase):
         # re-recorded at the 2026-11-05 re-measures; the Gemini
         # token count above still describes the 2026-11-04
         # assembly.
-        self.assertEqual(720517, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(720819, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -119,8 +119,8 @@ class CoreListTest(unittest.TestCase):
         # make_briefing.py to the canonical list and its
         # wiring grew runner/ops, runner/tools and the
         # runner proper.
-        self.assertEqual(56748, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(51120, core.AS_ASSEMBLED_NONBLANK_LINES)
+        self.assertEqual(56765, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(51137, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
