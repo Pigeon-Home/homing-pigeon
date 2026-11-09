@@ -170,6 +170,37 @@ non-expert does without any reason to suspect it:
    the incident's shape 4 above, and the shape this project's
    own contributors are in. A rule that only a human reads does
    not bind the hand that is actually committing.
+8. **The declined prompt.** One tool in the survey does offer
+   the right protection -- a first-run question, "shall I keep
+   my files out of git?" -- once, inside a wall of first-run
+   text. The operator who answers no, or who never sees the
+   question in a scripted run, has an unprotected full
+   transcript at the root of the tree, and no second asking.
+9. **The home sweep.** A dotfiles repository, or a "backup my
+   setup" repository, commits the home directory wholesale --
+   an agent's whole home folder in one push: its sign-in file,
+   its key registry, its folder-trust grants, its transcripts.
+   No single file was ever chosen; the folder was.
+10. **The relocated home.** A vendor's own guidance suggests
+    pointing an agent's home directory at a per-project
+    location. Followed with the directory inside the tree, the
+    advice moves the sign-in file and the transcripts inside
+    the commit scope, gift-wrapped as a best practice.
+11. **The pre-filled template.** Starter kits and project
+    templates ship with the workspace configuration already
+    filled in -- in one documented case, with the user's real
+    backend tokens written into it automatically. The first
+    commit, made before the user has changed anything,
+    publishes the token.
+12. **The share-for-help export.** A session is exported and
+    the file dropped into the tree "for the issue report", or a
+    transcript copied in to show a teammate. Helpfulness is the
+    motive; the transcript's contents are the payload.
+13. **The un-ignore trap.** A maintained template ignores a
+    settings folder and then un-ignores the shareable files
+    inside it by name. A hand broadens the un-ignore a little,
+    and the secret-bearing sibling -- the MCP configuration
+    beside the settings -- rides in with the shareable ones.
 
 A protection that depends on the operator noticing the file,
 remembering the rule, or being an expert in source control is
@@ -181,71 +212,222 @@ project the way the failed exclude did not.
 ## 3. Other agents keep the same papers
 
 The incident's file belongs to one product; the category does
-not. Every agent that asks for approvals, loads project rules,
-or keeps a session writes state in the same categories as
-section 2 -- an approval memory under its own name, settings
-split between a shared file and a local one, transcripts under
-its own folder. The names differ; the shelf it belongs on does
-not. Vendors' own documentation says as much, in their own
-words: local settings files are described as not meant to be
-committed, and the remedies vendors publish are the project's
-`.gitignore`, not a machine-local list.
+not. A survey of the other agents a tree here might be worked
+on with -- from each vendor's own documentation, and from
+GitHub's maintained ignore templates, not from any account of
+anyone's mistakes -- finds the same three ingredients in
+nearly every tool:
+
+1. **Approval memory is a file.** "Don't ask again" answers,
+   auto-approve lists, trusted-folder grants and tool
+   allowlists are persisted as JSON, TOML or YAML on disk,
+   under names like `allow`, `autoApprove`, `allowedTools` and
+   `terminalAllowlist` -- and allowlist entries can be the full
+   command strings themselves.
+2. **MCP configuration is the universal secret carrier.**
+   Every tool surveyed configures its tool servers in a
+   JSON-shaped file with `env` and `headers` maps, and every
+   vendor's own examples show keys pasted into those maps. The
+   filename varies; the shape does not.
+3. **The shared/local split is two sibling files.** A settings
+   file meant to be committed stands beside a local sibling
+   that is not -- `settings.json` beside `settings.local.json`
+   in two different vendors' layouts -- and the boundary
+   between "the project's" and "mine" is one word in a
+   filename, which a non-expert cannot be expected to see.
+
+The survey, condensed (state written *inside* a project tree;
+home-directory state is named where it is the notable part):
+
+| Tool | Papers in the tree | Its own documentation's stance |
+|---|---|---|
+| Cursor | `.cursor/mcp.json`; `.cursor/permissions.json` (allowlist entries match full command strings); project rules | The per-repo permissions file is meant to be committed "so teammates inherit the same rules" -- content, not the path, is what needs guarding |
+| GitHub Copilot | `.github/copilot/settings.json` beside `.github/copilot/settings.local.json`; home state in one directory, including `permissions-config.json` ("saved tool and directory permissions per project") and `providers.json` (the user's own keys) | The home directory's contents are enumerated plainly in the vendor's reference; the local sibling is the personal one |
+| OpenAI Codex | Project `.codex/config.toml`, committable by design; home state includes `auth.json` (the sign-in), transcripts, approval policy | The vendor's guidance suggests a per-project agent home -- followed inside the tree, it relocates every home file into the commit scope (section 2, shape 10) |
+| Gemini CLI | `.gemini/settings.json`, the documented team-shared file, its tool-server entries carrying `env` values; home state includes `trustedFolders.json` and local checkpoints | The shared file is committed on purpose; what needs guarding is what is pasted into it |
+| Aider | The full transcript, `.aider.chat.history.md`, at the repository root by default, plus `.aider.env` and caches; the tool commits its own edits | The vendor ships the right default as a first-run offer to add `.aider*` to the project's `.gitignore` -- protection one keystroke from absent (shape 8) |
+| Windsurf / Devin Desktop | Workspace rules and workflows, version-controlled by design | The vendor states its generated memories "are never committed to your repository"; the exposure is only what a user pastes into the shareable rules |
+| Continue | A workspace folder of blocks; model blocks carry an `apiKey` field in plain YAML | The field waits in the documentation's own examples to be filled in -- in the workspace copy |
+| Cline / Roo Code | `.cline/mcp.json`, `.roo/mcp.json` (project tool-server files, team-shareable by design); home state includes a providers file its docs describe as "API keys and model provider configuration" | The project MCP file is supposed to be shared, so a token pasted into it is published by the intended workflow, not against it |
+| Amazon Q Developer | Workspace agent definitions carrying `allowedTools` trust grants and tool-server definitions together | The vendor's own walkthrough configures a database tool server with trusted tools in a workspace agent file |
+| Kiro | `.kiro/settings/mcp.json` with per-server `autoApprove` arrays; the workspace folder is "project-specific, commit to git for team sharing" | Starter material can arrive with the workspace MCP file pre-filled (shape 11) |
+| OpenCode | Project-root config that may carry a provider `apiKey` and a `permission` map; home state keeps credentials in `auth.json`, mode 600 | The safe path exists (`/connect` writes the home file); the mistake is typing the key into the project file instead |
+
+Underneath them all sits the substrate: an editor's workspace
+folder (`.vscode/`, with its own `mcp.json` beside the shareable
+settings) and a project-system folder (`.idea/`, per-user state
+inside a mostly shareable directory) -- the same shared/local
+blur, a decade older than the agents.
+
+**The correction the survey makes to a one-vendor mindset:**
+for several of these tools the vendor *intends* the
+configuration file to be shared. A path ban would fight the
+vendor's own workflow. What protects the user inside the
+intended workflow is a *content* rule: this file is yours to
+share; these values -- a secret-shaped value in an `env` map, a
+full command string in an allowlist -- are not. Section 4's
+guard is specified in those terms.
+
+The vendors also say the core of it as plainly as it can be
+said, and this project's documents aim at the same plainness.
+GitHub's guidance on removing sensitive data, the canonical
+sentence of the whole subject:
+
+> "Once you have pushed a commit to GitHub, you should
+> consider any sensitive data in the commit compromised. If
+> you have committed a password, you should change it. If you
+> have committed a key, generate a new one."
+
+Aider's changelog gives the whole rationale for a shipped
+default in eleven words: "Create a `.gitignore` with `.aider*`
+to prevent users from accidentally adding aider files to git."
+And Cursor's ignore-file documentation hands the non-expert a
+list to copy verbatim -- environment files, credentials files,
+key files -- which is the form a shipped default should take:
+names, not principles.
+
+### The travel test, and the other version-control systems
+
+Not every tree is a git tree, and the question the incident
+turned on is the same in every system. Call it **the travel
+test**: does the protection live in something that travels
+with the project -- a committed file, a versioned property --
+or only on one machine, in one user's configuration, where
+the next machine and the next teammate never see it? The
+incident's exclude failed the test. So do its twins:
+
+- **Subversion** ships both shapes and its own book draws the
+  line in the incident's terms: patterns in a user's runtime
+  config (`global-ignores`) apply to operations "performed on a
+  particular computer, or by a particular user of a computer",
+  while the `svn:ignore` and `svn:global-ignores` *properties*
+  are stored in the repository and bind everyone who checks the
+  tree out. Both share git's hard rule: once an object is under
+  version control, ignore mechanisms no longer apply to it. The
+  system's credential cache (a per-user folder holding, where
+  no OS store exists, passwords the client asked permission to
+  keep unencrypted) is the home sweep's Subversion member.
+- **git-svn** makes a user maintain two ignore systems that do
+  not synchronise. The documented quick route from SVN
+  properties appends them to `.git/info/exclude` -- the
+  machine-local shape again, recommended by the manual. The
+  other route manufactures `.gitignore` files that, once
+  committed and sent back, land in the Subversion repository
+  as files its own users never asked for. And `dcommit` is a
+  publication boundary of exactly the same rank as `push`:
+  whatever the git side committed, the SVN side keeps, as a
+  permanent revision.
+- **Mercurial** gets the default right: its ignore file is an
+  ordinary committed file in the repository root, so the
+  project list travels -- with its own non-expert trip hazard
+  (the default pattern syntax is regexp, not glob). Its
+  per-user ignore mechanism fails the travel test the same way
+  the others' do, and its configuration can hold passwords in
+  plain text in an `[auth]` section -- a content shape, not a
+  filename.
+
+One observation covers all three systems: in each, the
+machine-local mechanism is the one with the friendliest name
+("global"), and the one a setup guide reaches for first. Every
+vendor ships both; every incident of this class comes from the
+local one being mistaken for the travelling one.
+
+So the pattern list is not welded to one system's filename.
+Rendered for a Subversion tree, the shipped list belongs in an
+`svn:global-ignores` property on the repository root (never in
+a user config's `global-ignores` -- that is the local shape
+wearing the same name). Rendered for Mercurial, it belongs in
+a committed `.hgignore` under a `syntax: glob` header. The
+names are the git list's names, without the path prefixes:
+
+```text
+settings.local.json   config.json           seen.json
+board.json            oracle-chat.jsonl     oracle-briefs.jsonl
+.aider.chat.history.md  .aider.input.history  .aider.llm.history
+.aider.env            auth.json             providers.json
+oauth_creds.json      trustedFolders.json   permissions-config.json
+session-store.db      opencode.db           taskHistory.json
+history.jsonl         events.jsonl          api_conversation_history.json
+```
+
+And one mutual rule, cheapest on the whole list: each system's
+admin folder (`.git/`, `.svn/`, `.hg/`) is protected by its own
+tool and by no other, so every system's ignore set names the
+other two -- a folder carried across systems (a zip attached
+to an issue, a parent folder added wholesale, a migration)
+must not publish pristine stores, bridge mappings and
+per-repository config. The shipped git list already carries
+`.svn/` and `.hg/` for exactly this reason.
 
 Two consequences shape what section 4 ships. First, the
 protections are written against *categories and shapes* -- a
-settings file under an agent's folder, an allow array in staged
-JSON, a secret-shaped value sitting inside a saved command --
-not against one vendor's one filename, so a tree worked on by
-a different agent, or by next year's agent, is covered by the
-same rules. Second, a visiting system reading this document
-should expect its own papers to be governed by the deployment
-it is visiting: its approval memory and the deployment's state
-are private-shelf material there, whatever its home defaults
-say, and if the deployment has no rule for them, that absence
-is worth saying to the operator out loud.
+settings file under an agent's folder, an allow array in
+staged JSON, a secret-shaped value sitting inside a saved
+command -- not against one vendor's one filename, so a tree
+worked on by a different agent, or by next year's agent, is
+covered by the same rules. Second, a visiting system reading
+this document should expect its own papers to be governed by
+the deployment it is visiting: its approval memory and the
+deployment's state are private-shelf material there, whatever
+its home defaults say, and if the deployment has no rule for
+them, that absence is worth saying to the operator out loud.
 
 ## 4. What this project ships against the class
 
 Each piece below is in the framework's existing shapes, and
-each is stated as it stands; where a piece is landing in the
-same pass as this document, the sentence says so, and the
-record is corrected when the pass closes.
+each is stated as it stands.
 
 - **Ignore defaults that travel.** The repository's root
   `.gitignore` -- an existing root file, edited, not added --
-  carries the agent-state shapes: `**/.claude/settings.local.json`,
-  `**/config.json`, `seen.json`, `board.json`,
-  `oracle-chat.jsonl`, `oracle-briefs.jsonl`, `outbox/`,
-  `work/`, with a comment recording that the shared
-  `.claude/settings.json` may be committed but must never hold
-  a secret. The protection now clones with the project, which
-  is the property the incident's exclude lacked. A unit test
-  (`runner/tests/test_gitignore_state_files.py`) pins the list
-  and fails if a pattern is dropped. Landing in the same pass
-  as this document.
+  carries the agent-state shapes in two blocks. The first is
+  this suite's own papers and the incident's file:
+  `**/.claude/settings.local.json`, `**/config.json`,
+  `seen.json`, `board.json`, `oracle-chat.jsonl`,
+  `oracle-briefs.jsonl`, `outbox/`, `work/`, with a comment
+  recording that the shared `.claude/settings.json` may be
+  committed but must never hold a secret. The second block is
+  the survey's: the generic local settings sibling, the
+  transcript-keeping agent's root files, the home-state
+  filenames that enter a tree only by a home sweep or a
+  relocated agent home, transcript shapes generally, one
+  editor family's per-user state, and the Subversion and
+  Mercurial admin folders of section 3's mutual rule. The
+  protection clones with the project, which is the property
+  the incident's exclude lacked. A unit test
+  (`runner/tests/test_gitignore_state_files.py`) pins both
+  blocks and fails if a pattern is dropped; before the second
+  block landed, every tracked file in the tree was checked
+  against it and none matched.
 - **A staged-content guard.** `runner/tools/approvalguard.py`
-  (landing in the same pass) is a shelter-shaped tool in the
-  line of `runner/tools/nameguard.py`: standard library only,
-  its forbidden shapes declared in code, invoked and never
-  ambient. It scans what is *staged* -- the content a commit is
-  about to carry -- and fails closed on three rule families:
-  a staged path matching an agent-config or permission shape;
-  permission-grant state in staged JSON (allow arrays, saved
-  command strings); and secret-shaped values inside those
-  command strings specifically, the class the generic scanners
-  missed in the incident. Its report follows the framework's
-  split of existence from value: it names the file and the rule
-  it tripped, and never prints the secret. Two hook lines
-  (pre-commit, pre-push) in this drawer's operator documents
-  are the whole wiring; like the name guard, the tool is not
-  wired into the project's own push path by default -- wiring
-  is a deliberate adoption step, taken by the operator, or by
-  their agent at the operator's word.
+  is a shelter-shaped tool in the line of
+  `runner/tools/nameguard.py`: standard library only, its
+  forbidden shapes declared in code as a registry an operator
+  may extend with a file of their own in the same format,
+  invoked and never ambient. It scans what is *staged* -- the
+  content a commit is about to carry -- and fails closed on
+  three rule families: a staged path matching a declared shape
+  (an agent's local settings file and its shared sibling, a
+  deployment's `config.json`, the runner's state and chat-log
+  filenames, its outbox and work folders); permission-grant
+  state in staged JSON (allow arrays and saved command
+  strings); and secret-shaped values -- inside those command
+  strings specifically (credential assignments, passwords in
+  URLs, password flags), the class the generic scanners missed
+  in the incident, and known key formats anywhere in staged
+  text. Its report follows the framework's split of existence
+  from value: it names the file and the rule it tripped, and
+  never prints the secret. Its rules speak of paths and
+  content, never of one version-control system, so another
+  system's staged area can feed the same scan; the front door
+  shipped here reads the git index. Nothing wires the tool
+  into a hook or into CI: like the name guard, wiring is a
+  deliberate adoption step, taken by the operator, or by their
+  agent at the operator's word.
 - **A feature in the modes family.** The guard's behaviour is
   declared the way `privacy-design.md` section 2 requires: a
   named feature, `agent_state_guard`, under `security.modes`
   in `runner/guard/security.py` and stated in the shipped
-  example config (landing in the same pass). Its semantics are
+  example config. Its semantics are
   the family's semantics for an operator-invoked behaviour:
   `off` refuses -- the guard does not run; `audit` shows what
   would be stopped and stops nothing; `enforce` lets the guard
@@ -257,7 +439,7 @@ record is corrected when the pass closes.
 - **The standing note to visiting systems.** The Oracle's
   instructions (`docs/steady/oracle/instructions.md`) carry a
   standing note, beside the disclosure-posture and doors
-  material (landing in the same pass): handling rules for agent
+  material: handling rules for agent
   permission and configuration files belong in every
   deployment; a visiting system treats its own approval memory
   and the deployment's config and state files as private-shelf
@@ -269,10 +451,23 @@ record is corrected when the pass closes.
   gets published?
 - **The category named in the spillage doctrine.**
   `SECURITY.md`'s spillage section names agent permission
-  files as private-shelf material (landing in the same pass),
-  under the doctrine that already governs the rest of the
-  shelf: declare the spill, start containment at once, rotate
-  first.
+  files as private-shelf material, under the doctrine that
+  already governs the rest of the shelf: declare the spill,
+  start containment at once, rotate first.
+- **The design record, and the plain warning.** The category
+  stands in the framework's own design record
+  (`privacy-design.md`, section 8), with its configuration row
+  among the surveyed models and its disposition against the
+  framework's principles, and the staged guard recorded there
+  as the first concrete form of the tree-wide value-confinement
+  test that design queues. The operator-facing warning stands
+  in the safeguards document
+  (`docs/infrastructure-documents/security/safeguards.md`,
+  section 5a), in plain language for a reader who does not
+  know what an ignore file is: the agent keeps a memory of
+  what you approved; that memory is private; the shipped
+  protections keep it out of commits automatically; if one was
+  ever committed, change the passwords and keys first.
 
 What this does not do, stated plainly. Ignore rules do not
 untrack a file that is already tracked; an operator who finds
@@ -285,6 +480,23 @@ value-confinement test queued in `privacy-design.md` section 6
 is still queued in its general form: the staged guard is its
 first concrete form, at the one boundary where publication
 actually happens, not the whole of it.
+
+The survey also recorded the guard's next extensions, which
+are specified here so the record is complete, and are *not*
+claimed as shipped: tool-server configuration as a category of
+its own (any staged file named for it, and any staged JSON
+carrying its top-level key, gets its `env` and `headers` maps
+scanned wherever the file sits, including files designed to be
+committed); grant state under its other names (`autoApprove`,
+`allowedTools`, the allowlist keys, a `permission` map), with
+allowlist entries scanned as the command strings they can be;
+the same content shapes in TOML and YAML, where two vendors'
+configuration lives; and staged areas beyond git's -- a
+Subversion pre-commit scan, and content rules for a Mercurial
+`[auth]` password line and a Subversion proxy password.
+Section 3's Subversion and Mercurial renderings, likewise, are
+documentation for an operator's own trees, not files shipped
+in this one.
 
 ## 5. Questions worth carrying to your operator
 
@@ -344,6 +556,32 @@ documentation.
 - The product's public tracker, issues from August 2025 onward
   reporting verbatim credential storage in approved commands,
   as catalogued by Apiiro.
+- For the survey in section 3, vendor documentation and
+  official repositories only: Cursor's ignore-file, permissions
+  and MCP references (cursor.com/docs); the Copilot CLI
+  configuration-directory reference and the sensitive-data
+  guidance (docs.github.com); GitHub's maintained ignore
+  templates, including the VisualStudioCode and JetBrains
+  globals (github.com/github/gitignore); OpenAI's Codex
+  CLI/config/auth documentation (developers.openai.com);
+  Gemini CLI configuration and checkpointing (the project's
+  official repository and docs); Aider's configuration and
+  options documentation and its changelog (aider.chat,
+  github.com/Aider-AI/aider); Windsurf's Cascade memories
+  documentation (docs.windsurf.com); Continue's configuration
+  references (docs.continue.dev); Cline's and Roo Code's
+  documentation (docs.cline.bot, docs.roocode.com); Amazon Q
+  Developer's agent format, MCP and project-rules
+  documentation (aws.github.io, docs.aws.amazon.com); Kiro's
+  documentation (kiro.dev) and AWS's configuration
+  walkthrough; OpenCode's config and providers documentation
+  (opencode.ai); Microsoft's VS Code settings documentation
+  (code.visualstudio.com).
+- For the travel test: the Subversion Book, "Ignoring
+  Unversioned Items" and the client credential-caching
+  material (svnbook.red-bean.com); the git-svn manual
+  (git-scm.com/docs/git-svn); Mercurial's configuration help
+  (the `[ui] ignore` and `[auth]` sections).
 - In this project: `privacy-design.md` and
   `privacy-fremont-research.md` (same drawer) for the framework
   this category extends; `personal-documents-warning.md` and
