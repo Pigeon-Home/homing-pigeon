@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.7 - 2026-11-08
+
+- The project's statistics, published: 20 mil security tokens, 5,000 commits, 1,200,000 lines at 96.35% non-latent code. This release exists to publish that line; the record it states as its reason stands in docs/infrastructure-documents/project/statistics.md, with the measured basis beside the display figures: 20,163,806 tokens counted by the project's own estimator; 1,218,733 lines in tracked files at the measured head; the commit figure display-rounded from a working count of 5,029, with a full-history recount from a complete clone at 5,043 (the project's local mirrors are shallow and cannot recount the whole history on their own); and the non-latent share taken from the standing duplication audit, with a fresh dormant-code audit still owed and the record to be corrected when it lands. The display line names them security tokens, since the tree's tokens all serve its security.
+- Documentation: the visitor study and its test cards are recorded in the Oracle briefing design note (docs/steady/design/oracle-briefing-design.md): what a visiting system pulls when handed nothing but the project's address, and the cards for testing both arms — the bare address alone, and the address with a rudimentary question.
+- Documentation: the desk (docs/infrastructure-documents/project/desk.md) — the parallel-work flow written for a successor: the repository as the desk, two hands only, work landed in the repository with the release as the filter, streams joining at gates that are checkpoints rather than guardrails, and continuity standing in the tree.
+- Documentation: the cs_office note states the Fibonacci counting convention of the security proving work — the sequence starts at 0, F(0)=0 — and a test pins the statement in place.
+
 ## 3.15.20.6 - 2026-11-08
 
 - Re-cut of 3.15.20.5, which never published: its build-windows leg failed on the same shelter test, for a Windows-only reason the 3.15.20.5 fixes had not reached — the test built its expected paths from "/" literals, which os.path.join keeps on Windows, while production's collected paths carry the platform separator throughout, so the manifest comparison differed on that one character. The shelter test helper now normpaths the paths it builds, canonicalizing the separators on every platform. Everything in 3.15.20.5 and 3.15.20.4 carries over as recorded in their sections below.
