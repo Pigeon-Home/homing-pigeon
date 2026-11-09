@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.17 - 2026-11-09
+
+- Everything the 3.15.20.16 section below records ships in this release. 3.15.20.16 was cut and tagged but never published — her tag build's Windows leg failed the one test named in the fix below and her release jobs were skipped — so this release carries her contents forward with the fix.
+- Fix: a freshness test stops racing its own gate. test_proof_conformance's future-bound test stamped a job 301 seconds ahead against the runner's 300-second future bound; the stamp is truncated to whole seconds, so the margin was under a second, and slower handling between construction and the gate on a loaded Windows shard moved the stamp inside the window, where the gate legitimately executed the job. The end-to-end test now stamps an hour beyond the bound, and a new test pins the exact bound deterministically — direct gate calls at +301 and +300.5 seconds refused, +299.5 and +299 admitted — beside the fixed-clock pin in test_doc_default_divergences.
+- Documentation: a note for one house in the secret agents notes — a posture-level answer on extensibility by design, the tier split, the measured defaults, the human gate at the release exit, the Oracle briefing architecture, the signature and trust separation, and email as the chosen default transport.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,342,355 tokens, 1,332,648 tracked lines, 5,110 commits.
+
 ## 3.15.20.16 - 2026-11-09
 
 - Everything the 3.15.20.15 section below records ships in this release. 3.15.20.15 was cut but never tagged or published — her Windows build leg failed the one test named in the fix below — so this release carries her contents forward with the fix.
