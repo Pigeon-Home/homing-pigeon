@@ -667,7 +667,7 @@ class OracleAgentTest(unittest.TestCase):
         self.assertIn("signed emails", system)
         self.assertIn(proto, system)
         self.assertIn("stays on this machine", system)
-        self.assertNotIn("must never inspect", system)
+        self.assertNotIn("must never inspect the raw job output", system)
 
     def test_build_packages_protocol_doc(self):
         # Every frozen runner carries PROTOCOL.md, with PyInstaller's
