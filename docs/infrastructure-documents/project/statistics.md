@@ -1,16 +1,16 @@
 # The project's statistics: the 20-million-token measure
 
 Dated 2026-11-08. Measured on main at commit
-d1b8e8a2293bcedc479bd9f8a2dcf41a31df0835, the head from which the
+bcf8a4fe9e73372ac041e138ff47d6c0305156ac, the head from which the
 current release of the 3.15.20 line was cut.
 
 The recorded line, in the display form settled for publication:
 
-20 mil security tokens, 5,000 commits, 1,200,000 lines at 96.35% non-latent code
+20 mil security tokens, 5,000 commits, 1,300,000 lines at 96.35% non-latent code
 
 ## What stands behind each figure
 
-- Tokens: 20,163,806, counted over the whole tree by the project's
+- Tokens: 20,301,779, counted over the whole tree by the project's
   own estimator (runner/ops/version4.py) — the same measure the
   version number's 3rd component carries, which is why the line
   reads 20. Display form: 20 mil security tokens — security
@@ -19,18 +19,16 @@ The recorded line, in the display form settled for publication:
   tokens all serve its security. Verify it on any checkout:
   `python3 runner/ops/version4.py measure` prints the count and
   its whole millions.
-- Lines: 1,218,733 lines in tracked files at the measured head —
-  352,302 of them Python, 82,918 of them markdown. The display
-  figure, 1,200,000, is that count rounded.
-- Commits: the display figure, 5,000, is rounded from a working
-  count of 5,029 taken the same morning at an earlier head. A
-  full-history recount at the measured head, from a complete
-  clone, counts 5,043; the difference is consistent with the
-  commits that landed between the two measures. The project's
-  local mirrors are shallow (810 commits deep) and cannot recount
-  the whole history on their own — the recount above rests on the
-  complete clone, and any future count should be taken the same
-  way.
+- Lines: 1,329,595 lines in tracked files at the measured head —
+  355,481 of them Python, 84,055 of them markdown. The display
+  figure, 1,300,000, is that count rounded.
+- Commits: the display figure, 5,000, is rounded from a
+  full-history recount at the measured head, taken from a
+  complete clone, which counts 5,076. The project's local
+  mirrors are shallow (810 commits deep) and cannot recount
+  the whole history on their own — the recount above rests on
+  the complete clone, and any future count should be taken
+  the same way.
 - Non-latent: 96.35%, from the project's standing audit
   ([duplication-audit.md](duplication-audit.md), 2026-11-03):
   duplicate and latent code held at 3.65% of the
@@ -53,25 +51,25 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-08",
-  "commit": "d1b8e8a2293bcedc479bd9f8a2dcf41a31df0835",
+  "commit": "bcf8a4fe9e73372ac041e138ff47d6c0305156ac",
   "counter": "runner/ops/version4.py",
-  "tokens": 20163806,
-  "lines_tracked": 1218733,
-  "commits": 5043,
+  "tokens": 20301779,
+  "lines_tracked": 1329595,
+  "commits": 5076,
   "display_commits": 5000,
-  "display_lines": 1200000,
+  "display_lines": 1300000,
   "non_latent_percent": 96.35,
   "latent_near_percent": 3.65,
   "latent_exact_percent": 0.03,
   "audit_date": "2026-11-03",
   "core_files": 132,
-  "core_lines": 55981,
-  "core_lines_nonblank": 50449,
-  "core_tokens": 590548,
-  "core_assembled_lines": 56765,
-  "core_assembled_nonblank": 51137,
-  "core_assembled_zip_bytes": 720819,
-  "core_assembled_tokens": 598165
+  "core_lines": 55989,
+  "core_lines_nonblank": 50457,
+  "core_tokens": 590657,
+  "core_assembled_lines": 56773,
+  "core_assembled_nonblank": 51145,
+  "core_assembled_zip_bytes": 720975,
+  "core_assembled_tokens": 598274
 }
 ```
 
