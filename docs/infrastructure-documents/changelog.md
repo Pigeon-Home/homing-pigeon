@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.16 - 2026-11-09
+
+- Everything the 3.15.20.15 section below records ships in this release. 3.15.20.15 was cut but never tagged or published — her Windows build leg failed the one test named in the fix below — so this release carries her contents forward with the fix.
+- Fix: the release gate's git reads decode UTF-8, not the locale. runner/tools/release_gate.py's git front door decoded git's output with the locale encoding, so a commit subject carrying an em dash came back mangled under the Windows codepage (and the read crashes outright under a C locale); the range test errored on the Windows leg. The read now pins UTF-8 with replacement of undecodable bytes — a mangled subject classifies as content, erring toward more review — and one regression test holds the read under a forced non-UTF-8 locale.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,340,774 tokens, 1,332,586 tracked lines, 5,106 commits.
+
 ## 3.15.20.15 - 2026-11-09
 
 - Everything the 3.15.20.14 section below records ships in this release. 3.15.20.14 was cut but never tagged or published — her builds failed the one guard named in the fix below — so this release carries her contents forward with the fix.
