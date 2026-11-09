@@ -38,3 +38,34 @@ oracle-chat.jsonl
 oracle-briefs.jsonl
 outbox/
 work/
+# The same papers, kept by other agents a tree may be worked on
+# with: another vendor's local settings sibling, the home-state
+# filenames that enter a tree only by a home sweep or a relocated
+# agent home, transcript shapes generally, one editor's per-user
+# state, and the other version-control systems' admin folders
+# (each system protects its own; a folder carried across systems
+# is protected by naming the others). The survey these come from
+# is recorded in docs/steady/security/agent-state-files.md.
+**/settings.local.json
+.aider.chat.history.md
+.aider.input.history
+.aider.llm.history
+.aider.tags.cache.v*/
+.aider.env
+**/auth.json
+**/providers.json
+**/oauth_creds.json
+**/trustedFolders.json
+**/permissions-config.json
+**/session-store.db
+**/opencode.db
+**/taskHistory.json
+**/history.jsonl
+**/rollout-*.jsonl
+**/events.jsonl
+**/*.chat.history.md
+**/api_conversation_history.json
+**/.idea/workspace.xml
+**/.idea/shelf/
+**/.svn/
+**/.hg/

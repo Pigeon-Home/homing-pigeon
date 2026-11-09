@@ -15,6 +15,13 @@ These tests pin the list. Dropping a pattern fails here, and so
 does a pattern that reaches a file the tree tracks on purpose --
 the negative controls are the tracked lookalikes
 (runner/config.example.json, the de_dust board.jsonl fixtures).
+
+The list grew by a second block when the cross-tool survey
+(docs/steady/security/agent-state-files.md) catalogued the same
+papers kept by other agents: another vendor's local settings
+sibling, home-state filenames, transcript shapes, one editor's
+per-user state, and the other version-control systems' admin
+folders. Those patterns are pinned here the same way.
 """
 import os
 import shutil
@@ -40,6 +47,32 @@ STATE_PATTERNS = [
     "oracle-briefs.jsonl",
     "outbox/",
     "work/",
+    # The cross-tool block: the same papers under other agents'
+    # names (the survey is docs/steady/security/
+    # agent-state-files.md).
+    "**/settings.local.json",
+    ".aider.chat.history.md",
+    ".aider.input.history",
+    ".aider.llm.history",
+    ".aider.tags.cache.v*/",
+    ".aider.env",
+    "**/auth.json",
+    "**/providers.json",
+    "**/oauth_creds.json",
+    "**/trustedFolders.json",
+    "**/permissions-config.json",
+    "**/session-store.db",
+    "**/opencode.db",
+    "**/taskHistory.json",
+    "**/history.jsonl",
+    "**/rollout-*.jsonl",
+    "**/events.jsonl",
+    "**/*.chat.history.md",
+    "**/api_conversation_history.json",
+    "**/.idea/workspace.xml",
+    "**/.idea/shelf/",
+    "**/.svn/",
+    "**/.hg/",
 ]
 
 # Paths a state file would actually wear, and the tracked
@@ -55,6 +88,29 @@ STATE_PATHS = [
     "oracle-briefs.jsonl",
     "outbox/result.json",
     "work/scratch.txt",
+    ".github/copilot/settings.local.json",
+    ".aider.chat.history.md",
+    ".aider.input.history",
+    ".aider.llm.history",
+    ".aider.tags.cache.v3/tags",
+    ".aider.env",
+    ".codex/auth.json",
+    "sweep/providers.json",
+    "sweep/oauth_creds.json",
+    "sweep/trustedFolders.json",
+    "sweep/permissions-config.json",
+    "sweep/session-store.db",
+    "sweep/opencode.db",
+    "sweep/taskHistory.json",
+    "sessions/history.jsonl",
+    "sessions/rollout-2026-11-08.jsonl",
+    "sessions/events.jsonl",
+    "notes.chat.history.md",
+    "chat/api_conversation_history.json",
+    ".idea/workspace.xml",
+    ".idea/shelf/old.txt",
+    "carried/.svn/entries",
+    "carried/.hg/hgrc",
 ]
 TRACKED_LOOKALIKES = [
     "runner/config.example.json",
