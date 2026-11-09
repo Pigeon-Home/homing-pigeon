@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.19 - 2026-11-09
+
+- Extensions: the nightly upstream pins refresh for the osquery and softflowd feeds — the osquery feed's upstream pin moves to 2169fcd0024b615a2d5c576b0ae9024095efa62a on master and the softflowd feed's upstream pin moves to 44a4b1df15d244961eb4fd6215107f6abdcd70d5 on master, the pinned files refetched, and the drift tests green against them.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,343,151 tokens, 1,332,688 tracked lines, 5,116 commits.
+
 ## 3.15.20.18 - 2026-11-09
 
 - Documentation: the bookmark. The desk record gains a section naming the bookmark — a place held on purpose in the work's flow, one moment marked to be returned to and built from, rather than reconstructed from memory later and gotten slightly wrong — and the loop a bookmarked idea travels: first the message made sure to be understood, restated in the project's own vocabulary where it will be found again; second, the solution implemented; third, the solution tested, the test standing as the proof; and fourth, back to the systems, the result carried in the same open way the idea arrived. The recursion is named as the point — systems enumerating over systems, the forklift that lifts forklifts, one held place at a time.
