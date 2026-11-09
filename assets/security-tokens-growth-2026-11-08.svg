@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="420" viewBox="0 0 720 420" font-family="Helvetica, Arial, sans-serif">
+  <rect width="720" height="420" fill="#ffffff"/>
+  <text x="360" y="24" text-anchor="middle" fill="#1a1a1a" font-size="17" font-weight="bold">Security tokens in the tree — 15 October to 8 November 2026</text>
+
+  <!-- gridlines and y-axis labels (millions of tokens) -->
+  <g stroke="#dddddd" stroke-width="1">
+    <line x1="64" y1="372" x2="696" y2="372"/>
+    <line x1="64" y1="295.6" x2="696" y2="295.6"/>
+    <line x1="64" y1="219.3" x2="696" y2="219.3"/>
+    <line x1="64" y1="142.9" x2="696" y2="142.9"/>
+    <line x1="64" y1="66.5" x2="696" y2="66.5"/>
+  </g>
+  <g fill="#555555" font-size="12" text-anchor="end">
+    <text x="58" y="376">0</text>
+    <text x="58" y="299.6">5M</text>
+    <text x="58" y="223.3">10M</text>
+    <text x="58" y="146.9">15M</text>
+    <text x="58" y="70.5">20M</text>
+  </g>
+  <text x="18" y="210" fill="#555555" font-size="12" text-anchor="middle" transform="rotate(-90 18 210)">security tokens</text>
+
+  <!-- the series: dashed while the points are implied, solid across the measured anchors -->
+  <polyline points="64,362.8 190.4,338.4 316.8,284.9 443.2,204 569.6,112.4" fill="none" stroke="#1f6fd6" stroke-width="2" stroke-dasharray="7 5"/>
+  <polyline points="443.2,204 569.6,112.4 696,64" fill="none" stroke="#1f6fd6" stroke-width="2.5"/>
+
+  <!-- implied points: hollow -->
+  <g fill="#ffffff" stroke="#1f6fd6" stroke-width="2.5">
+    <circle cx="64" cy="362.8" r="6"/>
+    <circle cx="190.4" cy="338.4" r="6"/>
+    <circle cx="316.8" cy="284.9" r="6"/>
+    <circle cx="443.2" cy="204" r="6"/>
+  </g>
+  <!-- measured points: filled -->
+  <g fill="#1f6fd6">
+    <circle cx="569.6" cy="112.4" r="6.5"/>
+    <circle cx="696" cy="64" r="6.5"/>
+  </g>
+
+  <!-- value labels -->
+  <g fill="#1a1a1a" font-size="13" font-weight="bold" text-anchor="middle">
+    <text x="64" y="346">0.6M</text>
+    <text x="190.4" y="322">2.2M</text>
+    <text x="316.8" y="268">5.7M</text>
+    <text x="443.2" y="188">11.0M</text>
+    <text x="569.6" y="96">17M</text>
+    <text x="688" y="48">20.2M</text>
+  </g>
+
+  <!-- x-axis labels -->
+  <g fill="#555555" font-size="12" text-anchor="middle">
+    <text x="64" y="394">Oct 15</text>
+    <text x="190.4" y="394">Oct 20</text>
+    <text x="316.8" y="394">Oct 25</text>
+    <text x="443.2" y="394">Oct 30</text>
+    <text x="569.6" y="394">Nov 4</text>
+    <text x="696" y="394">Nov 8</text>
+  </g>
+
+  <!-- legend -->
+  <g font-size="12" fill="#1a1a1a">
+    <circle cx="180" cy="410" r="5" fill="#ffffff" stroke="#1f6fd6" stroke-width="2"/>
+    <text x="192" y="414">implied from the line count</text>
+    <circle cx="400" cy="410" r="5.5" fill="#1f6fd6"/>
+    <text x="412" y="414">measured</text>
+  </g>
+</svg>

@@ -107,3 +107,38 @@ and carried by the next release cut; a lane outside the repo can
 die unseen. The figures therefore stand here, with their measured
 basis beside the display line, and the release that publishes
 them states this record as its reason.
+
+## The growth of the measure: a snapshot as of 2026-11-08
+
+A dated record, kept for the shape of the growth rather than as
+a current figure: the figures at the top of this record are the
+current ones, with their own date and measured basis. The 6
+points below are evenly spaced across the project's first 24
+days, from its first release to the measure of 2026-11-08.
+
+![Security tokens in the tree, 15 October to 8 November 2026](../../../assets/security-tokens-growth-2026-11-08.svg)
+
+| Date | Release | Lines in the tagged tree | Security tokens | Basis |
+|------|---------|--------------------------|-----------------|-------|
+| 2026-10-15 | v3.7.2 | 41,632 | about 0.6M | implied from lines |
+| 2026-10-20 | v3.11.30 | 144,993 | about 2.2M | implied from lines |
+| 2026-10-25 | v3.12.78 | 378,222 | about 5.7M | implied from lines |
+| 2026-10-30 | v3.14.42 | 727,924 | about 11.0M | implied from lines |
+| 2026-11-04 | v3.15.17.156 | 1,127,754 | 17M | measured — the version's 3rd component |
+| 2026-11-08 | count at commit d1b8e8a229 | 1,218,733 | 20,163,806 | measured — the count recorded that day |
+
+How the points were derived. Each point is taken from that
+day's last release tag, and the lines are the line count of the
+tagged tree. The token measure was not recorded on the early
+tags, so the first 4 points are implied: the tree's lines at
+each tag, multiplied by the ratio the first measured point
+gives — on 2026-11-04 the version's 3rd component measured
+17M tokens against that tree's 1,127,754 lines, about 15.1
+tokens per line. The last 2 points are measured, not implied:
+2026-11-04 by the version component itself, and 2026-11-08 by
+the count of 20,163,806 taken at commit d1b8e8a229. The implied
+points are estimates, shown for the shape of the growth; the
+measured points anchor the series at its later end. Read with
+that caution, the shape is plain: the tree roughly doubled
+every 5 days through October, and the climb steepened into
+November.
