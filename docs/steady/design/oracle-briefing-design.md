@@ -200,7 +200,7 @@ never as instructions: the same evidence/instruction split the
 learning ledger enforces.
 
 What the project's own past research established about this
-surface, with its sources inside the repository:
+surface:
 
 - **The cold test** (the project's forum record, the entries of
   2-Nov, 7:35pm and 10:00pm): a fresh chat — a reader who did not
@@ -224,6 +224,75 @@ surface, with its sources inside the repository:
   "no further coordination is required." The discovery surface
   is, by the project's own spec, a complete briefing for acting
   through the door.
+- **The visitor study** (November 2026; a literature study of
+  the vendors' published documentation and of measured
+  experiments run against server logs and canary pages — no
+  live run of the test itself was performed, so what follows is
+  documented and reported behavior, held at medium confidence).
+  The test is the one this surface invites: a visiting system
+  handed nothing but the project's address — the domain that
+  redirects to this repository — either with a rudimentary
+  question ("what is this?", "give me an overview") or with no
+  question at all. The findings qualify what the tiers above
+  can promise a chat visitor. No hosted chat surface —
+  ChatGPT, Claude, Gemini, Grok, Copilot, Perplexity — is
+  documented to seek `AGENTS.md`, or any instruction file, when
+  handed a link; the systems documented to read `AGENTS.md` on
+  arrival are the coding tools (Codex, Copilot's coding
+  surfaces, Cursor, Claude Code, the Gemini CLI, Jules),
+  reached by connecting a repository, not by pasting an address
+  into a chat — and a chat surface that fetches the file at all
+  reads it as ordinary text. The arm with a question is the
+  documented trigger for every vendor's user-initiated fetcher,
+  and what the fetcher normally returns is the single landing
+  page — here the PROTOCOL document as rendered, its text
+  extracted from the page's HTML, no JavaScript executed.
+  Exploration beyond the landing page is the exception, not the
+  rule: one vendor states the single-page design outright, and
+  the one measured counter-example — the large chat systems
+  reading a documentation file linked from a README — ran on a
+  small repository, from its root, under explicit questions;
+  whether exploration fires from a file page, or through a
+  redirecting domain, is untested in public. The redirect is
+  the surface's cheapest failure point: no vendor publishes
+  whether its chat fetcher follows a cross-host redirect to
+  GitHub at all, and the one fetcher implementation
+  reverse-engineered in public stops at exactly that hop —
+  Perplexity the nearest exception, its fetcher documented to
+  visit a page at a user's request and a pasted address alone
+  reported as its ordinary usage. Depth is capped far below
+  the tree for everyone: the largest documented chat windows
+  hold about a twentieth of it, so the honest ceiling of
+  either arm is the PROTOCOL document, possibly with the README
+  and `AGENTS.md` beside it — presented, in the failure mode,
+  as a summary of the project. No surface discloses the
+  fraction: every one shows which pages it cites, none shows
+  how much of a repository it read, and measured failures
+  include answers given for pages the server's logs show were
+  never requested. The arm with no question at all cannot be
+  established from public sources for any system except
+  Perplexity; no published experiment used a bare address as
+  the whole prompt. One consequence lands on this project's
+  own files: since the PROTOCOL page is the page most likely
+  to arrive, the size warning and the index-don't-hold
+  instruction have to live in PROTOCOL itself, not only in
+  `AGENTS.md`, whose cross-point from PROTOCOL is therefore
+  load-bearing.
+- **The visitor test cards.** Because the decisive behaviors
+  are published nowhere, the study's conclusion is that the
+  only instrument that can measure this surface is a live run —
+  and the live runs that measure the chat surface are the
+  owner's own, on the flat subscriptions: an API key measures
+  the API surface instead, and a coding tool is a different
+  test again. The cards, to be run by hand: both arms — the
+  rudimentary question, and the bare address alone — against
+  the four chat houses (ChatGPT, Claude, Gemini, Grok), with
+  the address and the tree held constant and the prompt the
+  only thing varied; and for each run, record what the system
+  fetched, what it claimed to have read, and whether it
+  admitted that its answer rested on a part. A run that claims
+  the whole tree from the landing page is the failure the fair
+  warning exists for, measured at last instead of inferred.
 
 Two properties of this surface matter for everything below. It
 is **self-describing**: nothing outside the pulled files tells
