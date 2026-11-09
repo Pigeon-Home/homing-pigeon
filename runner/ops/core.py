@@ -144,7 +144,12 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # took a fresh, uncached token measure at every cut —
 # version4's --fresh recount, with the measure cache
 # recording the measure a cut takes — growing
-# runner/ops/version4.py.
+# runner/ops/version4.py. Re-measured again the same
+# day after the typecheck fix narrowed version4's cache
+# write under an explicit `fresh is not None` guard,
+# changing runner/ops/version4.py without growing it:
+# the line figures stand, the estimator counts move by
+# the guard's 5 tokens, and the zip grows by 4 bytes.
 # Recorded constants: they describe the as-assembled set (the
 # canonical 132 files below plus the 3 suite runners named in
 # the module docstring), not the canonical list itself. The
@@ -156,7 +161,7 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 135
-AS_ASSEMBLED_ZIP_BYTES = 720819
+AS_ASSEMBLED_ZIP_BYTES = 720823
 AS_ASSEMBLED_LINES = 56765
 AS_ASSEMBLED_NONBLANK_LINES = 51137
 # The as-assembled set's lines, part by part; the parts sum
