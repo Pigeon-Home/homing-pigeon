@@ -54,6 +54,14 @@ FEATURES = (
     # operator runs it: off refuses, audit plans only, enforce
     # allows the operator's --apply to move files.
     "personal_docs_shelter",
+    # The agent-state guard (runner/tools/approvalguard.py): an
+    # operator-invoked tool, never a startup action and never
+    # wired into a hook by the suite. The mode gates what the
+    # tool may do when the operator runs it: off refuses, audit
+    # reports what would be stopped and stops nothing, enforce
+    # lets the guard stop a commit carrying agent permission or
+    # config state (docs/steady/security/privacy-design.md).
+    "agent_state_guard",
 )
 
 DEFAULT_AUDIT_MAX_LINES = 20000

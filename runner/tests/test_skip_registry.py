@@ -45,7 +45,8 @@ REGISTERED = {
         "every non-root job, and the gate's branches are pinned at "
         "the function in test_security_config",
     "git is not on PATH":
-        "test_regression_guard's temporary-repository tests; git is on "
+        "test_regression_guard's and test_approvalguard's "
+        "temporary-repository tests; git is on "
         "every CI leg's PATH, so they run in every job",
     "sys.monitoring needs Python 3.12 or later":
         "test_linecov: the stdlib line-coverage tool rides on "
