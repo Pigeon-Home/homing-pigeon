@@ -253,6 +253,34 @@ and everything is waiting on the next landing, and if I had to
 say what the desk is for in one breath it is this: nobody here
 has to remember anything, because the desk remembers it all.
 
+## Bookmark
+
+A bookmark is a place held on purpose. Where a brain dump is
+everything on a topic in one flow, a bookmark is one moment in
+the flow marked to be returned to: the exchange, the sentence,
+the shape that landed — held in the record so the work can come
+back to exactly that spot and build from it, instead of
+reconstructing the moment from memory later and getting it
+slightly wrong.
+
+Bookmarks are how an idea that arrives mid-work enters the
+project's loop. Once something is bookmarked, the loop is:
+first, make sure the systems working here understand the
+message — the idea restated in the project's own vocabulary, in
+the documents where it will be found again; second, implement
+the solution the idea calls for; third, test the solution, with
+the test standing as the proof; and fourth, go back to the
+systems — the result carried to the collaborating and visiting
+systems in the same open way the idea arrived, so the next
+reader starts from the tested thing rather than the first
+sketch.
+
+The pattern is recursive, and the recursion is the point:
+systems enumerating over systems, each pass lifting the next.
+An old joke about a forklift that lifts forklifts is the shape
+exactly — the machinery of the project moving the machinery of
+the project, one held place at a time.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
