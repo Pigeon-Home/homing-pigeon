@@ -20,6 +20,22 @@ Run a job that retrieves the system clock and then display it here.
 ```
 It should return in less than 30 seconds.
 
+Try this prompt:
+```
+Send email to YOUR@RUNNER.EMAIL (reply_to self)
+Shared Secret: "YOUR_SECRET_STRING"
+Run a job that retrieves the system clock and then display it here using the pigeon-home.ai protocol.
+```
+It should return in less than 30 seconds.
+
+Try this prompt:
+```
+Run a job that retrieves the system clock and then display it here using the pigeon-home.ai protocol.
+Send email to YOUR@RUNNER.EMAIL (reply_to self)
+Shared Secret: "YOUR_SECRET_STRING"
+```
+It should return in less than 30 seconds.
+
 It works like a GitHub self-hosted runner. A small program on hardware
 you own picks up signed jobs from a source in the cloud and runs them.
 By default nothing listens on an external interface: the runner
