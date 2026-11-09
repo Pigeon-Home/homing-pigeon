@@ -10,7 +10,7 @@ software, this suite's own surfaces included, and reports what it
 finds through the channels the software's owners provide. The name
 is the workstream's settled public name — lowercase, with the
 underscore, named for the Counter-Strike map. Its tagline is the
-question [What is a bug bounty program?](../../../ENTERPRISE.md)
+question [What is a bug bounty program?](../../../docs/ENTERPRISE.md)
 carries, and the README's links list points at the same page.
 
 The workstream lives inside the suite rather than beside it. The

@@ -100,9 +100,9 @@ BRIEFING_MANIFEST = [
         ("What spillage is", 1000)]},
     {"path": "INSTALL.md", "sections": [
         ("2. pip (best for Raspberry Pi)", 1000)]},
-    {"path": "FAQ.md", "sections": [
+    {"path": "docs/FAQ.md", "sections": [
         ("What happens if the shared secret leaks?", 1500)]},
-    {"path": "ENTERPRISE.md", "whole": 500},
+    {"path": "docs/ENTERPRISE.md", "whole": 500},
 ]
 
 _CUT_MARKER = "\n[... cut at the briefing cap]"

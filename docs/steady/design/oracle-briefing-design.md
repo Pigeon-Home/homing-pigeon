@@ -181,9 +181,10 @@ not credential.
   the root make it the next read: the split (who holds what,
   which door is whose), the rules for working here, where things
   live, how to send a job and which shapes fail.
-- The root manuals the front door names — `SECURITY.md`,
-  `INSTALL.md`, `FAQ.md`, `ENTERPRISE.md` — the posture, the
-  install, the answers, the enterprise statement.
+- The manuals the front door names — `SECURITY.md`, `INSTALL.md`
+  at the root, and `docs/FAQ.md`, `docs/ENTERPRISE.md` at the top
+  of `docs/` — the posture, the install, the answers, the
+  enterprise statement.
 - Inside `AGENTS.md`, the Secret agents notes — the briefing
   written for the visiting system itself: the fair warning (the
   repository is many times larger than any context that will

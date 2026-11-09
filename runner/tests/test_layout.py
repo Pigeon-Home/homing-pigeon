@@ -45,6 +45,8 @@ RETIRED = {
     "pyrefly.toml": "[tool.pyrefly] in pyproject.toml",
     "CONTRIBUTING.md": "docs/steady/project/contributing.md",
     "CHANGELOG.md": "docs/infrastructure-documents/changelog.md",
+    "FAQ.md": "docs/FAQ.md",
+    "ENTERPRISE.md": "docs/ENTERPRISE.md",
     "tests": "runner/tests/",
     "tools": "runner/tools/ (the CI scripts), runner/tests/airgap/ (the work area)",
     ".github/tools": "runner/tools/",
@@ -75,8 +77,12 @@ STALE = [
      "docs/steady/security/"),
     (re.compile(_EDGE + r"docker/(entrypoint|minimal-userland)"),
      ".github/docker/"),
-    # the FAQ moved to the root (the owner's own page, 2026-10-26)
-    (re.compile(_EDGE + r"docs/use/faq\.md\b"), "FAQ.md"),
+    # the FAQ's retired homes: docs/use (until 2026-10-26), then
+    # the root (until 2026-11-08); it sits at the top of docs/ now,
+    # and ENTERPRISE.md left the root for the same shelf the same day
+    (re.compile(_EDGE + r"docs/use/faq\.md\b"), "docs/FAQ.md"),
+    (re.compile(_EDGE + r"FAQ\.md\b"), "docs/FAQ.md"),
+    (re.compile(_EDGE + r"ENTERPRISE\.md\b"), "docs/ENTERPRISE.md"),
     # pip's -c/-r and a path string; prose may name the file
     (re.compile(r'(?:-[cr]\s+|(?<!"\.github", )["\'])requirements-ci\.txt'),
      ".github/requirements-ci.txt"),
@@ -171,6 +177,7 @@ class RootLayoutTest(unittest.TestCase):
                     "runner/extensions/.gitattributes",
                     "docs/steady/project/contributing.md",
                     "docs/infrastructure-documents/changelog.md",
+                    "docs/FAQ.md", "docs/ENTERPRISE.md",
                     "runner/tests/__init__.py", "runner/tests/airgap"):
             with self.subTest(path=rel):
                 self.assertTrue(os.path.exists(

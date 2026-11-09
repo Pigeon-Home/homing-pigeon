@@ -457,7 +457,7 @@ The runner is fully inspectable, so audit what it would do before it does it, an
 
 ## Questions people ask
 
-The [FAQ](FAQ.md) is where the odd corners get answered.
+The [FAQ](docs/FAQ.md) is where the odd corners get answered.
 Does the Oracle poll or get woken by a signal? Can a hostile job
 talk its way into a repair? Why email, and why not PGP or public-key
 signatures? Is one shared secret really safe for both signing and
@@ -531,5 +531,5 @@ says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.
 - IETF draft v3: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
 - https://news.ycombinator.com/item?id=50397008
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt
-- cs_office — [What is a bug bounty program?](ENTERPRISE.md)
+- cs_office — [What is a bug bounty program?](docs/ENTERPRISE.md)
 - "Humor between a system and its user is load-bearing, not decoration." - Me

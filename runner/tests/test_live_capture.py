@@ -173,7 +173,7 @@ class LivePageTest(unittest.TestCase):
                       "docs/steady/use/live-examples.md")
 
     def test_the_pointers_lead_to_the_page(self):
-        for doc in ("FAQ.md", "docs/steady/use/use-runbook.md",
+        for doc in ("docs/FAQ.md", "docs/steady/use/use-runbook.md",
                     "SECURITY.md",
                     "docs/infrastructure-documents/oracle/configuring-oracle.md"):
             with open(os.path.join(ROOT, doc), encoding="utf-8") as fh:

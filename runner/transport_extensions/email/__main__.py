@@ -190,7 +190,7 @@ class EmailPipe:
             self._dtls_server = self._build_dtls_server()
 
     def _poll_interval_sec(self):
-        # FAQ.md: poll_interval_sec default 20. A usable number
+        # docs/FAQ.md: poll_interval_sec default 20. A usable number
         # is floored at 1s; a boolean, a huge integer (once a raw
         # OverflowError out of this loop), infinity or NaN is not
         # an interval and polls at the documented default.

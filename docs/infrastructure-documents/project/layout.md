@@ -128,7 +128,8 @@
   `.github/docker/`, and the CI pins in `.github/requirements-ci.txt`.
   The build and CI scripts are in `runner/tools/`.
 - The root otherwise: `README.md`, `INSTALL.md`, `SECURITY.md`,
-  `FAQ.md`, `AGENTS.md` (the agents' rules and the layout map),
-  `ENTERPRISE.md` (a placeholder, kept as is), `LICENSE`,
+  `AGENTS.md` (the agents' rules and the layout map), `LICENSE`,
   `pyproject.toml` (the package, the wheel's exclusions, the mutmut
-  scope) and `assets/` (images).
+  scope) and `assets/` (images). At the top of `docs/` sit
+  `docs/FAQ.md` and `docs/ENTERPRISE.md` (a placeholder, kept as
+  is), one level back from the root.

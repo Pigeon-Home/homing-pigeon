@@ -18,8 +18,8 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-READER_FILES = ["README.md", "INSTALL.md", "SECURITY.md", "PROTOCOL.md", "FAQ.md",
-                "ENTERPRISE.md", "docs/support-matrix.md",
+READER_FILES = ["README.md", "INSTALL.md", "SECURITY.md", "PROTOCOL.md",
+                "docs/FAQ.md", "docs/ENTERPRISE.md", "docs/support-matrix.md",
                 "docs/steady/project/contributing.md",
                 "docs/steady/extensions.md", "docs/steady/networking.md",
                 "docs/steady/present-but-invalid-config.md",
