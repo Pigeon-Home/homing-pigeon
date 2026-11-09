@@ -58,6 +58,12 @@ The method is general practice, stated plainly:
   crash is worth. Counts and statistics are kept across runs, so
   the workstream states what it ran and what it found in numbers.
 
+One counting convention is policy, stated once so every record
+of the proving work reads the same way: where the workstream
+sizes or sequences its proving runs by the Fibonacci numbers,
+the sequence starts at 0 — F(0) = 0, F(1) = 1. Fibonacci
+numbers in the workstream's records always use that indexing.
+
 ## Industry practice
 
 The workstream follows the disclosure practice of the industry it
