@@ -77,7 +77,8 @@ def main() -> int:
             return 2
     # Hardening M0: a malformed security block stops startup here,
     # before any mailbox, model, or job work. A missing block is
-    # fine -- every security feature stays off.
+    # fine -- every security feature reads enforce, the default
+    # the mode reader applies to anything a config leaves unset.
     if R._security is not None:
         try:
             R._security.validate_security_config(cfg)

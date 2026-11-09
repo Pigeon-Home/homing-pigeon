@@ -132,20 +132,22 @@ class CodeDefaultTests(unittest.TestCase):
         # carries the job's output in full.
         result, retain = POLICY.apply_result_policy(
             {}, {"job_id": "posture-1", "kind": "exec"},
-            {"exit_code": 0, "stdout": "hello", "stderr": ""}, {})
+            {"exit_code": 0, "stdout": "hello", "stderr": ""}, {}, True)
         self.assertEqual(result["view"], "full")
         self.assertEqual(result["stdout"], "hello")
         self.assertFalse(retain)
 
     def test_result_view_attested_withholds_output(self):
         # The profile layer's ceiling, for contrast: attested
-        # keeps the digest and drops the body.
+        # keeps the digest and empties the body (the fields ride
+        # along, blank -- measured, not assumed).
         result, retain = POLICY.apply_result_policy(
             {"max_result_view": "attested"},
             {"job_id": "posture-2", "kind": "exec"},
-            {"exit_code": 0, "stdout": "hello", "stderr": ""}, {})
+            {"exit_code": 0, "stdout": "hello", "stderr": ""}, {}, True)
         self.assertEqual(result["view"], "attested")
-        self.assertNotIn("stdout", result)
+        self.assertEqual(result["stdout"], "")
+        self.assertNotIn("hello", json.dumps(result))
         self.assertTrue(retain)
 
 
