@@ -16,3 +16,25 @@ mutants/
 # in the tree on a POSIX host; never the record, and git on Windows
 # cannot check them out.
 \\tmp\\*
+
+# Agent and deployment state -- the agent's papers. An agent's
+# approval memory (the saved record of what its operator approved
+# and need not be asked again), a deployment's config, and the
+# runner's state files are private-shelf material: they stay on
+# the operator's disk, out of every commit. The patterns live
+# here, in the project, so the protection clones with the tree
+# instead of depending on one machine's global excludes -- the
+# arrangement that failed publicly in November 2026, when a
+# coding agent's local approval file reached public repositories
+# in over a thousand secret-bearing copies (the research is
+# summarised in docs/steady/security/privacy-design.md).
+# .claude/settings.json is shareable project settings by design
+# and is deliberately not ignored; it must never hold a secret.
+**/.claude/settings.local.json
+**/config.json
+seen.json
+board.json
+oracle-chat.jsonl
+oracle-briefs.jsonl
+outbox/
+work/
