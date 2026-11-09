@@ -73,7 +73,7 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 6,690 lines; the core around it is
-56,765. The set as assembled, part by part (re-measured
+56,773. The set as assembled, part by part (re-measured
 2026-11-08):
 
 - runner/ops: 17,939 lines
@@ -82,7 +82,7 @@ The runner proper is 6,690 lines; the core around it is
 - runner/runner.py: 6,690
 - runner/oracle: 5,044
 - runner/transport_extensions: 2,775
-- runner/guard: 2,929
+- runner/guard: 2,937
 - runner/cloud: 2,049
 - runner/hosting: 1,704
 - runner/__init__.py: 23
@@ -95,7 +95,7 @@ The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-56,765 lines, explicit platform branching — sys.platform,
+56,773 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
 its files, beside a small number of dedicated platform
 modules (runner/ops/windows.py and runner/ops/winlog.py).
