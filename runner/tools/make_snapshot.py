@@ -260,6 +260,52 @@ def sources_lock_facts(path):
             "generated_at": lock.get("generated_at")}
 
 
+def _briefing_manifest():
+    """The briefing manifest the Oracle's briefing resolves
+    from, loaded from the tree this tool ships in
+    (runner/ops/briefing.py). ([], "") when it cannot be
+    loaded -- the index then carries no briefing section."""
+    try:
+        import importlib.util
+        path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "ops", "briefing.py")
+        spec = importlib.util.spec_from_file_location(
+            "hp_snapshot_briefing", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return (list(getattr(mod, "BRIEFING_MANIFEST", []) or []),
+                getattr(mod, "ORACLE_LAYER_PATH", ""))
+    except Exception:
+        return [], ""
+
+
+def _briefing_section():
+    """The index's briefing section, rendered from the same
+    manifest the runner assembles from, so the snapshot says
+    what the Oracle on the box will be briefed from."""
+    manifest, layer_path = _briefing_manifest()
+    if not manifest:
+        return []
+    out = ["## Briefing", "",
+           "The Oracle on this box is briefed from this "
+           "snapshot: the discovery surface below, resolved "
+           "against this tree, with the Oracle's own standing "
+           "instructions (`%s`) riding on top." % layer_path, "",
+           "| Surface file | Carried as |",
+           "|---|---|"]
+    for entry in manifest:
+        if "whole" in entry:
+            carried = "whole file, cap %d chars" % entry["whole"]
+        else:
+            carried = "sections: " + ", ".join(
+                "%s (cap %d)" % (heading, cap)
+                for heading, cap in entry["sections"])
+        out.append("| `%s` | %s |" % (entry["path"], carried))
+    out.append("")
+    return out
+
+
 def index_markdown(snap, history_note, bundle_present, file_count):
     sha = snap["commit"]
     ver = snap["version"]
@@ -285,6 +331,7 @@ def index_markdown(snap, history_note, bundle_present, file_count):
                    % SOURCES_LOCK)
     out += ["| The release | — | %s/releases/tag/v%s |" % (REPO_URL, ver),
             ""]
+    out += _briefing_section()
     out += ["## History", ""]
     if bundle_present:
         out += ["`%s` holds %s." % (BUNDLE, history_note),

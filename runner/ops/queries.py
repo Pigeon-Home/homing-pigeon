@@ -574,6 +574,7 @@ def answer_queries(queries, exec_result, patterns, budget, cfg=None, view="full"
                     answers.append(_runner().ask_model(
                         inf, q.get("question") or "", text, max_chars, patterns,
                         instructions=(cfg or {}).get("owner_instructions"),
+                        base_dir=base_dir,
                     ))
                     # A non-dict return is bad inference data. Do not let
                     # it become an answer that later .get calls crash on.

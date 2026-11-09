@@ -340,39 +340,18 @@ suites alongside (229 tests in the four).
 ## What the Oracle is to understand by a posture
 
 The Oracle renders opinions inside this suite, so its
-understanding of a posture has to live where the Oracle's
-instructions live. There is, today, no single instruction
-home for the Oracle in this repository: its standing
-instruction text is the operator's own `owner_instructions`
-in each deployment's config (documented in the Oracle
-configuration page as text the Oracle includes in its
-system prompt), its context builder assembles data rather
-than meanings, its playbooks describe it for operators, and
-its learning ledger by design treats text as evidence,
-never as instruction. That gap is recorded here rather than
-papered over: the canonical instruction text stands in this
-note, written to be carried into a deployment's
-`owner_instructions` or a future Oracle instruction page
-whole, and it defines the semantics by pointing at the
+understanding of a posture lives where the Oracle's
+instructions live. The Oracle has a single instruction home
+now: its standing instructions stand at
+`docs/steady/oracle/instructions.md`, and the canonical
+posture text is the first text that file carries, under its
+"Disclosure postures" heading. The runner assembles that
+file into every ask on a box (the briefing design record is
+`docs/steady/design/oracle-briefing-design.md`), so no
+deployment hand-copies the text into its `owner_instructions`
+any more. The text defines the semantics by pointing at the
 registry — the single source of truth — rather than
 restating any posture's declaration, so the text cannot
-drift from the data:
-
-> A disclosure posture is declared in the posture registry,
-> and the registry is the only source of what a posture
-> permits. When a record carries a posture stamp
-> (`hp-posture-<version>-<id>`) or a project is tagged with
-> a posture, the project's disclosure rule is that posture's
-> `say` and `shelf` exactly as the registry declares them:
-> what may be said publicly about the project is what its
-> posture's `say` permits, and its material may leave only
-> for a shelf its posture's `shelf` names. Findings and case
-> material move only through the formal channels under every
-> posture. If a stamp or tag does not resolve against the
-> registry — unknown, malformed, or minted under another
-> registry version — or names a retired posture, treat the
-> project as standing under the most restrictive posture
-> the registry declares until an operator resolves it. A
-> posture is never loosened by inference: re-categorization
-> is an operator's edit to the registry or the tagging,
-> never a conclusion drawn from the material itself.
+drift from the data. It stands there, not here; this note
+keeps the model, the registry format, and the extensibility
+rules.

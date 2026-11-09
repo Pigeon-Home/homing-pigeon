@@ -91,7 +91,7 @@ def oracle_window(cfg, port=11436, open_browser=True, cfg_path=None) -> int:
     return 0
 
 
-def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None):
+def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None, base_dir=None, briefing_scope="ask"):
     """POST a constrained question to a loopback OpenAI-compatible endpoint.
 
     cfg is the dict from _runner().inference_config. The reply is truncated, redacted,
@@ -117,10 +117,22 @@ def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener
             cap = 2000
     if cap < 0:
         cap = 0
+    # The briefing layers ride between the door's charter and the
+    # deployment's own instructions: charter, surface, the
+    # Oracle's own layer, then this box's facts (the design record
+    # is docs/steady/design/oracle-briefing-design.md, shape 4).
+    system = _runner().ASK_SYSTEM
+    briefing = _runner().assemble_oracle_briefing(base_dir,
+                                                  briefing_scope)
+    if briefing:
+        system += "\n\n" + briefing
+    if instructions and _runner()._as_text(instructions).strip():
+        system += ("\n\nOwner instructions for this box:\n"
+                   + _runner()._as_text(instructions).strip())
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": _runner().ASK_SYSTEM + (("\n\nOwner instructions for this box:\n" + _runner()._as_text(instructions).strip()) if instructions and _runner()._as_text(instructions).strip() else "")},
+            {"role": "system", "content": system},
             {"role": "user", "content":
              "Question:\n" + _runner()._as_text(question) + "\n\nOutput:\n" + _runner()._as_text(output_text)},
         ],

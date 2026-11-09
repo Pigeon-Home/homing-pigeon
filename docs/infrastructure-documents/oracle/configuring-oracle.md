@@ -187,6 +187,8 @@ A profile JSON file uses the same keys. Extra redact patterns and worker compart
 
 A plain human-readable string describing this box. It is not a profile. The installer stores it in `config.json` as `owner_instructions`, and the Oracle includes it in the `ask` system prompt so the local model knows what matters here.
 
+It is the last of the briefing's layers, not the whole briefing. Every ask on the box is assembled in this order: the door's charter (the mailbox door's disclosure boundary, or the interactive door's acting charter — both live in the runner's code); the project's discovery surface, resolved from the local checkout the box carries; the Oracle's own standing instructions, the canonical file at `docs/steady/oracle/instructions.md`, carried whole — that file holds the project's standing semantics for the Oracle (the disclosure postures first among them), and it moves with the checkout, so no deployment copies project text into `owner_instructions` by hand or keeps the copy current; and then `owner_instructions` itself, this box's own facts, read live from the config. Keep `owner_instructions` to what is true of this box alone — its hardware, its owner's priorities, what matters here — and let the layers above it carry the project.
+
 Replace the string:
 
 ```

@@ -69,7 +69,15 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     # second).
     wall_clock = _confval.integer(cfg.get("agent_wall_clock_sec"),
                                   R._ORACLE_AGENT_WALL_CLOCK_SEC, lo=1)
-    system = _runner().ASK_AGENT_SYSTEM + (
+    # The briefing layers ride between the door's charter and the
+    # deployment's own instructions, the same order as the ask
+    # seam (the design record is
+    # docs/steady/design/oracle-briefing-design.md, shape 4).
+    system = _runner().ASK_AGENT_SYSTEM
+    briefing = _runner().assemble_oracle_briefing(base_dir, "agent")
+    if briefing:
+        system += "\n\n" + briefing
+    system += (
         ("\n\nOwner instructions for this box:\n" + _runner()._as_text(instructions).strip())
         if instructions and _runner()._as_text(instructions).strip() else "")
     state = _runner()._tool_base_dir(base_dir)

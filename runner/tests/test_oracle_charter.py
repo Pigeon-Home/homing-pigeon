@@ -354,5 +354,54 @@ class ActionDispatchTest(unittest.TestCase):
                       ASK_AGENT_SYSTEM)
 
 
+class BriefingLayerTest(unittest.TestCase):
+    """The same door (shape 4, stage 1): the Oracle's own layer
+    rides every ask, after the door's charter and ahead of the
+    owner's instructions. The posture block is the layer's first
+    carried text; these tests pin its verbatim presence in the
+    assembled prompt at both doors, measured on the payload the
+    seam actually sends."""
+
+    _CFG = {"endpoint": "http://127.0.0.1:11434/v1",
+            "model": "qwen2.5:3b"}
+    _POSTURE = ("A disclosure posture is declared in the "
+                "posture registry")
+    _OWNER = "This box is a test rig."
+
+    def test_ask_door_carries_the_layer(self):
+        from runner.runner import ask_model
+        seen = []
+        script = [{"role": "assistant",
+                   "content": "Two jobs ran; both exited 0."}]
+        ans = ask_model(self._CFG, "What ran?", "output", 2000,
+                        opener=_seen_opener(script, seen),
+                        instructions=self._OWNER)
+        self.assertIn("Two jobs", ans["answer"])
+        system = seen[0]["messages"][0]["content"]
+        self.assertIn(self._POSTURE, system)
+        self.assertLess(system.index("You are the Oracle"),
+                        system.index(self._POSTURE))
+        self.assertLess(system.index(self._POSTURE),
+                        system.index(self._OWNER))
+
+    def test_agent_door_carries_the_layer(self):
+        seen = []
+        script = [{"role": "assistant",
+                   "content": "Two jobs ran; both exited 0."}]
+        with tempfile.TemporaryDirectory() as d:
+            ans = ask_model_agent(
+                self._CFG, "Give me a summary of the jobs on the "
+                "system.", "", 2000,
+                opener=_seen_opener(script, seen),
+                instructions=self._OWNER, base_dir=d)
+        self.assertIn("Two jobs", ans["answer"])
+        system = seen[0]["messages"][0]["content"]
+        self.assertIn(self._POSTURE, system)
+        self.assertLess(system.index("local debugging partner"),
+                        system.index(self._POSTURE))
+        self.assertLess(system.index(self._POSTURE),
+                        system.index(self._OWNER))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

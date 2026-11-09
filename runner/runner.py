@@ -785,7 +785,7 @@ def _default_inference_open(req, timeout=60):
     opener = build_opener(_InferenceRedirectRefused)
     return opener.open(req, timeout=timeout)
 
-def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None):
+def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None, base_dir=None, briefing_scope="ask"):
     """ask_model with the answer-format guard.
 
     A reply that trips the guard (structured-data dump or a
@@ -794,9 +794,16 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     If the re-ask also trips and produced an answer, the caller
     gets the mechanical fallback sentence, sanitized like any
     other reply; a rejection from either attempt passes through.
+
+    base_dir and briefing_scope steer the briefing assembled at
+    the seam (runner/ops/briefing.py): the layers resolve against
+    the deployment's local checkout under base_dir, and the scope
+    says which layers this surface receives.
     """
     result = _ask_model_once(cfg, question, output_text, max_chars,
-                             patterns, opener, instructions)
+                             patterns, opener, instructions,
+                             base_dir=base_dir,
+                             briefing_scope=briefing_scope)
     problem = _answer_format_problem(result.get("answer"))
     if not problem:
         return result
@@ -805,7 +812,9 @@ def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None,
     retry = _ask_model_once(cfg,
                             _as_text(question) + "\n\n" + _FORMAT_REASK,
                             output_text, max_chars, patterns, opener,
-                            instructions)
+                            instructions,
+                            base_dir=base_dir,
+                            briefing_scope=briefing_scope)
     if not _answer_format_problem(retry.get("answer")):
         return retry
     if "answer" not in retry:
@@ -825,6 +834,22 @@ _ask_model_once = _misc._ask_model_once
 _v2_ingest = _misc._v2_ingest
 _disk_owns = _misc._disk_owns
 oracle_window = _misc.oracle_window
+
+# The Oracle's briefing assembler (runner/ops/briefing.py): the
+# layers every model call on the box is briefed with, resolved
+# against the local checkout. Optional the way its siblings are:
+# a box whose module did not load is briefed the old way, from
+# the charters and owner_instructions alone.
+_briefing = _load_mod("runner.ops.briefing", "ops.briefing")
+if _briefing is not None:
+    assemble_oracle_briefing = _briefing.assemble_briefing
+    oracle_briefing_report = _briefing.briefing_report
+else:
+    def assemble_oracle_briefing(base_dir=None, scope="ask"):
+        return ""
+
+    def oracle_briefing_report(base_dir=None):
+        return {"root": "", "commit": "", "layers": {}}
 
 
 def _sanitize_model_reply(reply, cap, scan_text, patterns, model):
@@ -5565,6 +5590,18 @@ def run_inspect(cfg, args) -> int:
         # Results executed but not yet delivered, and the ones given
         # up on: job id, age, attempts, last error (review item 1).
         print(json.dumps(outbox_report(base), indent=2))
+        return 0
+    if args.inspect == "briefing":
+        # The Oracle's briefing as this box assembles it: which
+        # checkout it resolves against, which layers stand, and
+        # the assembled length per door scope. The report carries
+        # no prompt text -- sizes and sources only -- so it is
+        # safe to paste into a bug report.
+        report = oracle_briefing_report(base)
+        report["assembled_chars"] = {
+            scope: len(assemble_oracle_briefing(base, scope))
+            for scope in ("ask", "agent", "oracle")}
+        print(json.dumps(report, indent=2))
         return 0
     if args.inspect == "budget":
         path = os.path.join(base, "query_times.json")

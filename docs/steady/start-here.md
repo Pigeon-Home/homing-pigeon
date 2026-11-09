@@ -30,7 +30,7 @@ The other 164 files are in 9 drawers, named the way the rest of the project's do
 - security — 8 files. the hardening set — host hardening, the confinement profiles, and the security papers.
 - use — 8 files. guides and runbooks — running the system and using it day to day.
 - project — 12 files. the project's own papers — plans, maps, and campaign notes.
-- oracle — 3 files. the Oracle's papers — its playbook, its reviews, its senses.
+- oracle — 4 files. the Oracle's papers — its playbook, its reviews, its senses, its standing instructions.
 - seats — 3 files. papers from the seats era, which closed on 2026-10-31 — who sat where, and what was asked.
 - proofs — 2 files. proof and verification records.
 - specimens — 14 files. raw artifacts — logs and machine output, kept as found.
@@ -99,11 +99,12 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 - hosting.md — untouched since 2026-10-31 · arrived 2026-10-25
 - fy_iceworld.md — untouched since 2026-11-06 · arrived 2026-11-06
 
-### oracle — 3 files
+### oracle — 4 files
 
 - senses.md — untouched since 2026-10-24 · arrived 2026-10-15
 - dri-playbook.md — untouched since 2026-10-26 · arrived 2026-10-15
 - job-review.md — untouched since 2026-10-26 · arrived 2026-10-15
+- instructions.md — untouched since 2026-11-08 · arrived 2026-11-08
 
 ### seats — 3 files
 

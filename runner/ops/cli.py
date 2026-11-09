@@ -326,8 +326,8 @@ def build_parser():
         "Run one thing, print it, exit.\n"
         "None of these poll the mailbox.")
     g.add_argument("--inspect",
-                   choices=["board", "budget", "job", "outbox", "redact",
-                            "review", "sources"],
+                   choices=["board", "briefing", "budget", "job",
+                            "outbox", "redact", "review", "sources"],
                    help="read local Oracle state and exit; "
                         "no mailbox")
     g.add_argument("--job-id", default=None, metavar="ID",

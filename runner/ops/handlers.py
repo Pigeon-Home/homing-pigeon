@@ -289,7 +289,8 @@ def handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
                         "write a script and do not give "
                         "instructions to run.",
                         str(payload.get("question") or ""),
-                        500, R._redact_patterns(cfg))
+                        500, R._redact_patterns(cfg),
+                        base_dir=base_dir)
                     if isinstance(res, dict) and isinstance(
                             res.get("answer"), str) and res["answer"].strip():
                         text = res["answer"].strip()[:500]

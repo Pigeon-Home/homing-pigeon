@@ -2,13 +2,17 @@
 
 # Design: the Oracle's briefing — the same door, its own layer on top
 
-Status: design, not yet built. This note records an inventory of
-where the Oracle's instructions live today, an enumeration of the
-discovery surface a visiting system pulls when it is handed
-nothing but the project's address, five shapes for giving the
-Oracle a single instruction home pointed at its local checkout,
-and a recommendation with a staged plan. Nothing here changes
-the runner yet.
+Status: shape 4 chosen; stages 1 and 2 built (the Oracle layer
+has its home at docs/steady/oracle/instructions.md, assembly is
+wired at the ask seam, the manifest resolves the discovery
+surface locally, and --inspect briefing reports the assembly).
+Stages 3 and 4 of the plan below remain.
+This note records an inventory of where the Oracle's
+instructions live today, an enumeration of the discovery
+surface a visiting system pulls when it is handed nothing but
+the project's address, five shapes for giving the Oracle a
+single instruction home pointed at its local checkout, and a
+recommendation with a staged plan.
 
 ## The position this design starts from
 

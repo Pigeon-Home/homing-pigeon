@@ -3638,7 +3638,11 @@ class TestBooleanAskMaxCharsDefaultsTo2000(unittest.TestCase):
         captured = {}
 
         def fake(inf, question, text, max_chars,
-                 patterns, instructions=None):
+                 patterns, instructions=None, **_seam):
+            # **_seam: ask_model grew optional briefing
+            # parameters (base_dir, briefing_scope) when the
+            # briefing landed (shape 4); the double takes the
+            # call as the seam makes it.
             captured["max_chars"] = max_chars
             return {"op": "ask", "answer": "ok",
                     "model": inf["model"],
@@ -8272,7 +8276,11 @@ class TestAskMaxCharsDefaultsTo2000(unittest.TestCase):
         captured = {}
 
         def fake(inf, question, text, max_chars,
-                 patterns, instructions=None):
+                 patterns, instructions=None, **_seam):
+            # **_seam: ask_model grew optional briefing
+            # parameters (base_dir, briefing_scope) when the
+            # briefing landed (shape 4); the double takes the
+            # call as the seam makes it.
             captured["max_chars"] = max_chars
             return {"op": "ask", "answer": "ok",
                     "model": inf["model"],
