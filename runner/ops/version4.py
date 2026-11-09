@@ -9,9 +9,13 @@ The scheme (owner's words, 3-Nov-2026):
 - TOKENS is the size of this repository in tokens, in whole
   millions: the measured token count of the tracked tree, divided
   by 1,000,000 and rounded down. It can only move when the tree is
-  measured, and measuring happens at most once every 24 hours — a
-  release inside that window reuses the figure the last release
-  used (see next_version and the measure cache below).
+  measured. General callers measure at most once every 24 hours —
+  inside that window the last measured figure is reused (see
+  next_version and the measure cache below). A release cut is the
+  standing exception (the owner's rule, 8-Nov-2026): the ship
+  flow passes --fresh to the CLI below and takes a fresh uncached
+  recount of the tree being shipped at every cut, so a release's
+  figure is never a reused one.
 - COUNTER is the release counter (the 148 position in the old
   3-component shape).
 
@@ -43,11 +47,15 @@ The release machinery's single entry point is the CLI:
         Print "<tokens> <millions>" for the tree at --root.
 
     python3 runner/ops/version4.py next CURRENT [--root .]
-            [--cache PATH] [--minor N] [--now EPOCH]
+            [--cache PATH] [--minor N] [--now EPOCH] [--fresh]
         Print the next version after CURRENT, measuring the tree
         at --root only when the measure cache at --cache is
         missing or older than 24 hours (and rewriting the cache
-        when it measures). The cache file is 2 lines: the epoch
+        when it measures). With --fresh the cache is not consulted
+        for the figure at all: the tree is measured unconditionally
+        and the cache is rewritten with the fresh measure. The
+        ship flow passes --fresh at every release cut (the owner's
+        rule, 8-Nov-2026). The cache file is 2 lines: the epoch
         seconds of the measurement, then the millions figure.
 
 Everything except measure_repo_tokens and the cache file helpers
@@ -301,13 +309,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not args:
         print("usage: version4.py measure [--root .] | "
               "next CURRENT [--root .] [--cache PATH] [--minor N] "
-              "[--now EPOCH]", file=sys.stderr)
+              "[--now EPOCH] [--fresh]", file=sys.stderr)
         return 2
     command, rest = args[0], args[1:]
     root = "."
     cache = None
     minor = None
     now = None
+    force_fresh = False
     positional = []
     i = 0
     while i < len(rest):
@@ -324,6 +333,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         elif arg == "--now" and i + 1 < len(rest):
             now = float(rest[i + 1])
             i += 2
+        elif arg == "--fresh":
+            force_fresh = True
+            i += 1
         else:
             positional.append(arg)
             i += 1
@@ -338,10 +350,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 2
         if now is None:
             now = time.time()
-        cached = read_measure_cache(cache) if cache else None
+        cached = read_measure_cache(cache) if cache and not force_fresh \
+            else None
         last_at, last_millions = cached if cached else (None, None)
         fresh = None
-        measured = last_at is None \
+        measured = force_fresh or last_at is None \
             or now - last_at >= MEASURE_WINDOW_SEC
         if measured:
             fresh = tokens_millions(measure_repo_tokens(root))

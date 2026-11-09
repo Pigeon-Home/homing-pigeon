@@ -3,8 +3,10 @@
 
 MAJOR.MINOR.TOKENS.COUNTER: the major never moves, the third
 component is the repository's size in tokens in whole millions
-(measured at most once every 24 hours), and the counter restarts
-at 1 whenever a number to its left increases.
+(measured at most once every 24 hours for general callers — a
+release cut passes --fresh and takes a fresh recount instead),
+and the counter restarts at 1 whenever a number to its left
+increases.
 """
 import os
 import subprocess
@@ -263,6 +265,65 @@ class CliTest(unittest.TestCase):
              "--now", str(NOW + 3600)])
         self.assertEqual((code, out), (0, "3.15.0.7"))
         self.assertEqual(version4.read_measure_cache(cache), (NOW, 0))
+
+    def _grow_repo_past_a_million(self, repo):
+        with open(os.path.join(repo, "big.txt"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("x " * 1000001)  # 1,000,001 tokens on its own
+        _git(repo, "add", "big.txt")
+
+    def test_next_command_reuse_ignores_tree_change_inside_window(self):
+        # The unchanged reuse path, proven against a tree that grew
+        # past the next million inside the window: without --fresh
+        # the cached figure still rules and the cache is untouched.
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        cache = os.path.join(_tmp, "token-measure.txt")
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--cache", cache,
+             "--now", str(NOW)])
+        self.assertEqual((code, out), (0, "3.15.0.6"))
+        self._grow_repo_past_a_million(repo)
+        code, out = self._run_main(
+            ["next", "3.15.0.6", "--root", repo, "--cache", cache,
+             "--now", str(NOW + 3600)])
+        self.assertEqual((code, out), (0, "3.15.0.7"))
+        self.assertEqual(version4.read_measure_cache(cache), (NOW, 0))
+
+    def test_next_command_fresh_recounts_inside_window(self):
+        # The ship flow's path (the owner's rule, 8-Nov-2026):
+        # --fresh ignores a cache still inside its 24-hour window,
+        # recounts the tree as it stands, and rewrites the cache
+        # with the fresh measure.
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        cache = os.path.join(_tmp, "token-measure.txt")
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--cache", cache,
+             "--now", str(NOW)])
+        self.assertEqual((code, out), (0, "3.15.0.6"))
+        self._grow_repo_past_a_million(repo)
+        # 1 hour after the cached measure — deep inside the window —
+        # --fresh still recounts: the figure moves to 1, the counter
+        # restarts, and the cache carries the fresh measure.
+        code, out = self._run_main(
+            ["next", "3.15.0.6", "--root", repo, "--cache", cache,
+             "--now", str(NOW + 3600), "--fresh"])
+        self.assertEqual((code, out), (0, "3.15.1.1"))
+        self.assertEqual(version4.read_measure_cache(cache),
+                         (NOW + 3600, 1))
+
+    def test_next_command_fresh_without_cache_measures(self):
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--fresh",
+             "--now", str(NOW)])
+        self.assertEqual((code, out), (0, "3.15.0.6"))
 
     def test_usage_errors(self):
         code, _ = self._run_main([])
