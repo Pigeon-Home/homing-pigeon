@@ -399,7 +399,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             elif op_plan is not None and op_plan.get("attach") is not None:
                 op_member = op_plan["attach"]
                 if not op_plan["findings"]:
-                    mnote = _runner()._opinion_model_note(cfg, job)
+                    mnote = _runner()._opinion_model_note(cfg, job, base_dir)
                     if mnote:
                         op_member = _runner()._opinion.with_model_note(
                             op_member, mnote)
@@ -533,7 +533,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                         findings = []
                 mnote = None
                 if not findings:
-                    mnote = _runner()._opinion_model_note(cfg, job)
+                    mnote = _runner()._opinion_model_note(cfg, job, base_dir)
                 result["oracle_opinion"] = _runner()._opinion.diagnosis_member(
                     op_plan["mode"], findings, model_note=mnote)
             # Version 2 context rides the version 1 result.
@@ -693,7 +693,7 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                             job, op_diag_facts)
                         mnote = None
                         if not findings:
-                            mnote = _runner()._opinion_model_note(cfg, job)
+                            mnote = _runner()._opinion_model_note(cfg, job, base_dir)
                         result["oracle_opinion"] = \
                             _runner()._opinion.diagnosis_member(
                                 op_plan["mode"], findings,

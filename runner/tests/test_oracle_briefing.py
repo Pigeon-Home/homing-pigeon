@@ -44,6 +44,39 @@ def _write(path, text):
         fh.write(text)
 
 
+class _FakeResp:
+    """A scripted chat-completion response (the same capture
+    shape as test_oracle_charter's)."""
+
+    def __init__(self, message):
+        self._body = json.dumps(
+            {"choices": [{"message": message}]}).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self, n=-1):
+        return self._body
+
+
+def _seen_opener(script, seen):
+    state = {"i": 0}
+
+    def opener(req, timeout=60):
+        try:
+            seen.append(json.loads(req.data.decode("utf-8")))
+        except Exception:
+            pass
+        msg = script[min(state["i"], len(script) - 1)]
+        state["i"] += 1
+        return _FakeResp(msg)
+
+    return opener
+
+
 def _posture_block():
     """The canonical posture paragraph, read out of the shipped
     layer file the way the fixture test in the design names it:
@@ -447,6 +480,105 @@ class DigestTest(unittest.TestCase):
                                    "PROJECT-SNAPSHOT.md"),
                       encoding="utf-8") as fh:
                 self.assertIn("BRIEFING-DIGEST.md", fh.read())
+
+
+class StageFourSurfacesTest(unittest.TestCase):
+    """Stage 4: the other surfaces. The remediation helper and
+    the opinion note ask at the oracle scope -- the Oracle's
+    own layer rides, the discovery surface does not -- and the
+    deterministic brief names its briefing provenance. The
+    scope is the pin: AssembleTest already proves the oracle
+    scope carries layer 2 only."""
+
+    _INF = {"endpoint": "http://127.0.0.1:11434/v1",
+            "model": "qwen2.5:3b"}
+
+    def _capture_ask_model(self):
+        import runner.runner as runner_mod
+        captured = {}
+
+        def fake(inf, question, text, max_chars, patterns=None,
+                 **kw):
+            captured.update(kw)
+            captured["question"] = question
+            return {"op": "ask", "answer": "It will succeed.",
+                    "model": "qwen2.5:3b", "sanitized": True}
+
+        return runner_mod, captured, fake
+
+    def test_remediation_ask_uses_the_oracle_scope(self):
+        import unittest.mock as mock
+        import runner.runner as runner_mod
+        _mod, captured, fake = self._capture_ask_model()
+        cfg = {"inference": dict(self._INF)}
+        st = {"oracle_timeout_sec": 30, "mode": "oracle"}
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(runner_mod, "ask_model", fake):
+                ask_fn = runner_mod._remediation_ask_fn(cfg, st, d)
+                self.assertIsNotNone(ask_fn)
+                answer = ask_fn("Is this divergence benign?",
+                                "context")
+            self.assertEqual("It will succeed.", answer)
+            self.assertEqual("oracle",
+                             captured.get("briefing_scope"))
+            self.assertEqual(d, captured.get("base_dir"))
+
+    def test_opinion_note_uses_the_oracle_scope(self):
+        import unittest.mock as mock
+        import runner.runner as runner_mod
+        _mod, captured, fake = self._capture_ask_model()
+        cfg = {"inference": dict(self._INF),
+               "oracle_opinion_model": True}
+        job = {"script": "echo hello", "job_id": "j1"}
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(runner_mod, "ask_model", fake):
+                note = runner_mod._opinion_model_note(cfg, job, d)
+            self.assertEqual("It will succeed.", note)
+            self.assertEqual("oracle",
+                             captured.get("briefing_scope"))
+            self.assertEqual(d, captured.get("base_dir"))
+
+    def test_the_oracle_scope_payload_excludes_the_surface(self):
+        # End to end at the seam: an oracle-scope ask's system
+        # prompt carries the posture text and no surface text.
+        from runner.runner import ask_model
+        seen = []
+        script = [{"role": "assistant",
+                   "content": "It will succeed."}]
+        with tempfile.TemporaryDirectory() as d:
+            ans = ask_model(
+                {"endpoint": "http://127.0.0.1:11434/v1",
+                 "model": "qwen2.5:3b"},
+                "Will it succeed?", "ctx", 400,
+                opener=_seen_opener(script, seen), base_dir=d,
+                briefing_scope="oracle")
+        self.assertIn("succeed", ans["answer"])
+        system = seen[0]["messages"][0]["content"]
+        self.assertIn(POSTURE_OPENING, system)
+        # No surface text rides the oracle scope: neither the
+        # surface header nor an extract-only sentence appears.
+        # (The layer's own prose may mention the surface; what
+        # must not ride is the surface itself.)
+        self.assertNotIn("pulled from the local checkout",
+                         system)
+        self.assertNotIn("There are two sides. They do not "
+                         "share credentials.", system)
+
+    def test_deterministic_brief_names_its_provenance(self):
+        import runner.runner as runner_mod
+        cfg = {"oracle_mode": "deterministic",
+               "inference": dict(self._INF)}
+        record = {"sensor": "host_ids", "signal": "canary_down",
+                  "severity": "critical",
+                  "title": "canary file changed"}
+        with tempfile.TemporaryDirectory() as d:
+            brief = runner_mod._oracle_brief(cfg, d, record)
+        self.assertEqual("deterministic", brief["status"])
+        self.assertIn("assembled from the alert itself",
+                      brief["assessment"])
+        self.assertIn("Briefing provenance:", brief["assessment"])
+        self.assertIn("the Oracle layer stands",
+                      brief["assessment"])
 
 
 class SnapshotIndexBriefingTest(unittest.TestCase):

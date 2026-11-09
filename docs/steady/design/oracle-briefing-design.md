@@ -2,12 +2,13 @@
 
 # Design: the Oracle's briefing — the same door, its own layer on top
 
-Status: shape 4 chosen; stages 1 to 3 built (the Oracle layer
-has its home at docs/steady/oracle/instructions.md, assembly is
-wired at the ask seam, the manifest resolves the discovery
-surface locally, --inspect briefing reports the assembly, and
-snapshots carry the prebuilt digest). Stage 4 of the plan
-below remains.
+Status: shape 4 chosen; all four stages built (the Oracle
+layer has its home at docs/steady/oracle/instructions.md,
+assembly is wired at the ask seam, the manifest resolves the
+discovery surface locally, --inspect briefing reports the
+assembly, snapshots carry the prebuilt digest, and the
+remediation helper, the opinion note, and the deterministic
+briefs ride the same briefing).
 This note records an inventory of where the Oracle's
 instructions live today, an enumeration of the discovery
 surface a visiting system pulls when it is handed nothing but

@@ -3048,13 +3048,17 @@ def _remediation_event(base_dir, st, job_id, div, act, authority,
     except Exception:
         pass
 
-def _remediation_ask_fn(cfg, st):
+def _remediation_ask_fn(cfg, st, base_dir=None):
     """The Oracle's judgment call, wired for oracle mode only.
 
     Returns None when inference is not configured (Pi Light
     included): the monitor then records abstentions and only
     the reflexes act. The call is ask_model with the timeout
-    clamped to remediation_oracle_timeout_sec.
+    clamped to remediation_oracle_timeout_sec, briefed at the
+    oracle scope (shape 4, stage 4): the Oracle's own layer
+    rides, the discovery surface does not -- this ask judges a
+    divergence on this box, it does not answer questions about
+    the project.
     """
     inf = inference_config(cfg)
     if inf is None:
@@ -3070,7 +3074,8 @@ def _remediation_ask_fn(cfg, st):
     patterns = _redact_patterns(cfg)
 
     def ask(question, context):
-        res = ask_model(bounded, question, context, 400, patterns)
+        res = ask_model(bounded, question, context, 400, patterns,
+                        base_dir=base_dir, briefing_scope="oracle")
         if not isinstance(res, dict):
             return None
         ans = res.get("answer")
@@ -3126,7 +3131,7 @@ def _start_job_monitor(cfg, st, job_id, proc, work, base_dir,
         declared_credential_paths=declared_cred,
         initial_files=set((before_files or {}).keys()),
         kill_fn=lambda extra: kill_tree(proc, extra),
-        ask_fn=_remediation_ask_fn(cfg, st)
+        ask_fn=_remediation_ask_fn(cfg, st, base_dir)
         if st["mode"] == "oracle" else None,
         findings_fn=lambda text: _script_path_findings(
             text, base_dir, job_id),
@@ -4461,7 +4466,7 @@ def _opinion_env_facts(cfg, job):
         interpreter = platform_interpreter()
     return _opinion.gather_facts(job, interpreter, platform_interpreter())
 
-def _opinion_model_note(cfg, job):
+def _opinion_model_note(cfg, job, base_dir=None):
     """Tier-2 opinion note from the local model, or None.
 
     Only when the owner opted in (oracle_opinion_model) and
@@ -4481,7 +4486,8 @@ def _opinion_model_note(cfg, job):
             "Will this job succeed on this host? Answer in one or "
             "two plain sentences; if it will fail, say the obvious "
             "reason.",
-            _describe_job(job), 400, _redact_patterns(cfg))
+            _describe_job(job), 400, _redact_patterns(cfg),
+            base_dir=base_dir, briefing_scope="oracle")
     except Exception:
         return None
     if not isinstance(res, dict):

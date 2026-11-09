@@ -13,6 +13,35 @@ try:
 except ImportError:  # running from inside runner/ as __main__
     from ops.live import _runner  # type: ignore
 
+def _briefing_provenance(base_dir):
+    """One sentence naming what briefs this box, from the
+    briefing report: the resolved checkout and commit, the
+    surface's carried form, and whether the Oracle layer
+    stands. The deterministic brief appends it so a reader of
+    the senses store can tell which texts the box's Oracle
+    stands under, even though no model read them for this
+    brief (shape 4, stage 4). Never raises."""
+    try:
+        report = _runner().oracle_briefing_report(base_dir)
+    except Exception:
+        return ""
+    try:
+        root = report.get("root") or "(no checkout resolved)"
+        commit = report.get("commit") or ""
+        surface = (report.get("surface") or {}).get("mode") \
+            or "absent"
+        layer = (report.get("layers") or {}).get("oracle") or {}
+        standing = "stands" if layer.get("present") else "is absent"
+        return (" Briefing provenance: this box briefs from "
+                "%s%s; the discovery surface is carried as %s, "
+                "and the Oracle layer %s."
+                % (root,
+                   (" at commit " + commit) if commit else "",
+                   surface, standing))
+    except Exception:
+        return ""
+
+
 def _oracle_brief(cfg, base_dir, record, opener=None):
     """Assess one woken signal and file the brief. Never raises.
 
@@ -59,6 +88,7 @@ def _oracle_brief(cfg, base_dir, record, opener=None):
                 + (f": {title}" if title else "")
                 + ". The alert was filed in the senses store; "
                 "review it there.")
+            brief["assessment"] += _briefing_provenance(base_dir)
         elif _runner().inference_config(cfg) is None:
             brief["assessment"] = (
                 "No local model is configured on this box, so the "
