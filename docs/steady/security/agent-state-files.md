@@ -201,6 +201,19 @@ non-expert does without any reason to suspect it:
     inside it by name. A hand broadens the un-ignore a little,
     and the secret-bearing sibling -- the MCP configuration
     beside the settings -- rides in with the shareable ones.
+14. **The bridge.** An operator working through git-svn keeps
+    two ignore systems that do not synchronise, and each
+    direction of the bridge has its own quiet failure. The
+    manual's own quick route for carrying the Subversion
+    patterns across writes them into the git side's
+    machine-local exclude -- the travelling list converted, by
+    the documented command, into the local shape. A file
+    committed on the git side crosses by `dcommit` into
+    permanent Subversion revisions whatever the Subversion
+    properties would have said. And the bridge's own mappings
+    and configuration do not clone, so a fresh clone silently
+    starts with neither the bridge nor whatever protection was
+    hung on it, and nothing announces the loss.
 
 A protection that depends on the operator noticing the file,
 remembering the rule, or being an expert in source control is
@@ -337,8 +350,13 @@ Rendered for a Subversion tree, the shipped list belongs in an
 `svn:global-ignores` property on the repository root (never in
 a user config's `global-ignores` -- that is the local shape
 wearing the same name). Rendered for Mercurial, it belongs in
-a committed `.hgignore` under a `syntax: glob` header. The
-names are the git list's names, without the path prefixes:
+a committed `.hgignore` under a `syntax: glob` header. Both
+renderings ship as a template file in this drawer,
+`agent-state-ignores.txt`, ready to apply, and a unit test
+(`runner/tests/test_agent_state_ignore_renderings.py`) holds
+the renderings and the git list in agreement, so the three
+cannot drift apart quietly. The names are the git list's
+names, without the path prefixes:
 
 ```text
 settings.local.json   config.json           seen.json
@@ -397,7 +415,10 @@ each is stated as it stands.
   (`runner/tests/test_gitignore_state_files.py`) pins both
   blocks and fails if a pattern is dropped; before the second
   block landed, every tracked file in the tree was checked
-  against it and none matched.
+  against it and none matched. The same list rendered for
+  Subversion and Mercurial ships as a template in this drawer
+  (`agent-state-ignores.txt`, section 3), held in agreement
+  with the git list by its own test.
 - **A staged-content guard.** `runner/tools/approvalguard.py`
   is a shelter-shaped tool in the line of
   `runner/tools/nameguard.py`: standard library only, its
@@ -491,12 +512,19 @@ committed); grant state under its other names (`autoApprove`,
 `allowedTools`, the allowlist keys, a `permission` map), with
 allowlist entries scanned as the command strings they can be;
 the same content shapes in TOML and YAML, where two vendors'
-configuration lives; and staged areas beyond git's -- a
-Subversion pre-commit scan, and content rules for a Mercurial
-`[auth]` password line and a Subversion proxy password.
-Section 3's Subversion and Mercurial renderings, likewise, are
-documentation for an operator's own trees, not files shipped
-in this one.
+configuration lives; and staged areas beyond git's. That last
+extension is specified as **the same guard's second front
+door, not a second tool**: the guard's rules are already
+written in terms of paths and content, never of one
+version-control system, and its shipped front door reads the
+git index; what a Subversion deployment adds is a front door
+of its own -- a working copy's scheduled additions, fed to the
+same scan as the same (path, content) pairs, at the pre-commit
+moment -- plus content rules for a Mercurial `[auth]` password
+line and a Subversion proxy password. What section 3 ships for
+those systems today is the travelling half: the pattern list,
+rendered as the template file in this drawer, for an
+operator's own trees.
 
 ## 5. Questions worth carrying to your operator
 

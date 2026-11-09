@@ -1,0 +1,119 @@
+# Agent state ignores, rendered for Subversion and Mercurial.
+#
+# The canonical list is the one this project ships in its root
+# .gitignore; the design record is agent-state-files.md in this
+# drawer (section 3, the travel test). This file renders the
+# same names for the other two version-control systems, so an
+# operator whose tree lives there gets the travelling form of
+# the protection, not the machine-local one. A unit test
+# (runner/tests/test_agent_state_ignore_renderings.py) holds
+# the renderings and the git list in agreement; if they ever
+# disagree, the test, not memory, is what fails.
+#
+# The rule the renderings obey: project-wide patterns belong in
+# something that travels with the project -- a committed file,
+# a versioned property. The machine-local shapes (a git global
+# excludes file, Subversion's global-ignores in a user config,
+# Mercurial's per-user ignore file) protect one machine and are
+# where this class of accident comes from. Do not put this list
+# in any of those places and call the tree protected.
+#
+# Two honest widenings. Subversion's global ignores match by
+# name, not by path, so a parent-scoped git shape (an agent's
+# settings.local.json under its own folder) renders as the bare
+# name, matched in any directory; the wider match is the safe
+# direction. And each system's list names the other systems'
+# admin folders (.git, .svn, .hg): each tool protects its own,
+# none protects the others', and a folder carried across
+# systems must not publish pristine stores, bridge mappings or
+# per-repository config.
+
+# ----------------------------------------------------------------
+# Subversion: svn:global-ignores, set on the repository root.
+#
+#   svn propset svn:global-ignores -F <this section, one pattern
+#   per line> .
+#
+# The value is whitespace-separated; one pattern per line is
+# the readable form of the same value. svn:global-ignores is
+# the recursive, inheritable property; for a single directory
+# with no inheritance wanted, set the same list as svn:ignore
+# on that directory (it binds that directory's immediate
+# children only). Set on a .idea directory, the list's last two
+# names (workspace.xml, shelf) are the ones that bind there.
+# ----------------------------------------------------------------
+
+settings.local.json
+config.json
+seen.json
+board.json
+oracle-chat.jsonl
+oracle-briefs.jsonl
+outbox
+work
+.aider.chat.history.md
+.aider.input.history
+.aider.llm.history
+.aider.tags.cache.v*
+.aider.env
+auth.json
+providers.json
+oauth_creds.json
+trustedFolders.json
+permissions-config.json
+session-store.db
+opencode.db
+taskHistory.json
+history.jsonl
+rollout-*.jsonl
+events.jsonl
+*.chat.history.md
+api_conversation_history.json
+workspace.xml
+shelf
+.git
+.svn
+.hg
+
+# ----------------------------------------------------------------
+# Mercurial: a committed .hgignore at the repository root.
+#
+# The "syntax: glob" header is load-bearing: Mercurial's
+# default pattern syntax is regexp, and an unheaded glob list
+# silently under-matches. Under the glob header the lines are
+# the git list's own lines.
+# ----------------------------------------------------------------
+
+syntax: glob
+**/.claude/settings.local.json
+**/settings.local.json
+**/config.json
+seen.json
+board.json
+oracle-chat.jsonl
+oracle-briefs.jsonl
+outbox/
+work/
+.aider.chat.history.md
+.aider.input.history
+.aider.llm.history
+.aider.tags.cache.v*/
+.aider.env
+**/auth.json
+**/providers.json
+**/oauth_creds.json
+**/trustedFolders.json
+**/permissions-config.json
+**/session-store.db
+**/opencode.db
+**/taskHistory.json
+**/history.jsonl
+**/rollout-*.jsonl
+**/events.jsonl
+**/*.chat.history.md
+**/api_conversation_history.json
+**/.idea/workspace.xml
+**/.idea/shelf/
+.git/
+**/.svn/
+**/.hg/
