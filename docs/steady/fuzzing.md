@@ -61,7 +61,9 @@ different counters and are not interchangeable. 3 of the 133 files were the suit
 runners (runner/tools/run_tests_parallel.py,
 run_tests_shuffled.py and run_tests_windows_sim.py) — tools
 that run the tests, not runner code — so the canonical list
-leaves them out.
+leaves them out. The list and its counters stand in
+[runner/ops/core.py](../../runner/ops/core.py), the canonical
+home of the core figures above.
 
 When project talk says "test core", it means testing this
 set. A change aimed at core is aimed at those 132 files and

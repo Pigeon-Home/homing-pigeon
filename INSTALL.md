@@ -197,6 +197,35 @@ Expand-Archive pigeon.zip .
 cd "homing-pigeon-windows-x86_64-$ver"
 ```
 
+### Verify a release
+
+Every release carries its own proof, and checking it takes a
+minute, before anything is installed:
+
+1. Download `SHA384SUMS` from the same release page as your
+   archive.
+2. In the folder holding both files, run `sha384sum -c
+   SHA384SUMS` (Linux) or `shasum -a 384 -c SHA384SUMS`
+   (macOS). The archive you downloaded should report OK. On
+   Windows, `Get-FileHash <file> -Algorithm SHA384` prints the
+   sum to compare against the archive's line in `SHA384SUMS`.
+3. For the stronger check — that this repository's own
+   pipeline built the file — run `gh attestation verify
+   <file> --repo Pigeon-Home/homing-pigeon` with the GitHub
+   CLI. It checks the build-provenance attestation the release
+   workflow recorded over the release set.
+4. To see exactly what the release contains, open the project
+   snapshot inside the archive (also shipped on its own as
+   `homing-pigeon-project-<version>.tar.gz`): its
+   `PROJECT-SNAPSHOT.md` indexes every file at the exact
+   commit, and its `CI-SNAPSHOT.json` states the facts of the
+   build that produced it. The release's `SBOM.spdx.json`
+   names every component inside.
+
+A file that fails the sums is not the file the pipeline
+published: download it again from the release page, and do not
+install one that still fails.
+
 **Run:** start the service.
 
 - **Windows:** run `install.exe` from an elevated PowerShell. It creates

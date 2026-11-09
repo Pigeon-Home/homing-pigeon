@@ -115,6 +115,15 @@ you. You start them by making a **release**. All point and click:
    a release inside that window reuses the last figure), and the
    counter is the release counter, which restarts when a number to
    its left increases.
+
+   When the cut takes a fresh token measure — the 24-hour
+   boundary above, rather than reusing the cached figure — the
+   release commit refreshes the figures in
+   `docs/infrastructure-documents/project/statistics.md` in the
+   same cut: the new measure, its date, and the head it was
+   taken at. That record is the canonical home every other
+   mention of the figures points back to, and it must never lag
+   the number the version carries by more than one measure.
 6. Click the big green **Publish release** button.
 7. Now click the **Actions** tab at the top. You will see the robots
    working. It typically takes about 20 minutes.

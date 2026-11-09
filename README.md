@@ -422,7 +422,7 @@ Anything that can email the runner's mailbox and sign the body can drive it: you
 
 ## Testing
 
-The runner is fully inspectable, so audit what it would do before it does it, and run the suite with `python -m unittest discover -s runner/tests -t .`. The flags and the suite notes are in [docs/infrastructure-documents/project/testing.md](docs/infrastructure-documents/project/testing.md).
+The runner is fully inspectable, so audit what it would do before it does it, and run the suite with `python -m unittest discover -s runner/tests -t .`. The flags and the suite notes are in [docs/infrastructure-documents/project/testing.md](docs/infrastructure-documents/project/testing.md). A reader who cannot run the suite can still read it whole: the latest published release (https://github.com/Pigeon-Home/homing-pigeon/releases/latest) carries a project snapshot of the entire tree — tests, CI facts, and test results included — as `homing-pigeon-project-<version>.tar.gz`, checkable against the release's SHA384SUMS.
 
 ## Security notes
 
