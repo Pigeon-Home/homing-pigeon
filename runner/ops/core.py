@@ -152,7 +152,11 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # the guard's 5 tokens, and the zip grows by 4 bytes.
 # Re-measured again the same day after the approval
 # guard's security mode (agent_state_guard) grew
-# runner/guard by 8 lines.
+# runner/guard by 8 lines. Re-measured again on
+# 2026-11-09 after the default-posture measurement
+# corrected a comment in runner/ops/main.py (a missing
+# security block reads enforce, not off), growing
+# runner/ops by 1 line.
 # Recorded constants: they describe the as-assembled set (the
 # canonical 132 files below plus the 3 suite runners named in
 # the module docstring), not the canonical list itself. The
@@ -165,13 +169,13 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 135
 AS_ASSEMBLED_ZIP_BYTES = 720975
-AS_ASSEMBLED_LINES = 56773
-AS_ASSEMBLED_NONBLANK_LINES = 51145
+AS_ASSEMBLED_LINES = 56774
+AS_ASSEMBLED_NONBLANK_LINES = 51146
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 17939,
+    "runner/ops": 17940,
     "runner/tools": 8894,
     "runner/wire": 8708,
     "runner/runner.py": 6690,

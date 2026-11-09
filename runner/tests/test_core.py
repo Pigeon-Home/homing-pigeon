@@ -118,9 +118,11 @@ class CoreListTest(unittest.TestCase):
         # runner/ops/briefing.py and runner/tools/
         # make_briefing.py to the canonical list and its
         # wiring grew runner/ops, runner/tools and the
-        # runner proper.
-        self.assertEqual(56773, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(51145, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner proper, and again on 2026-11-09 after the
+        # default-posture measurement corrected a comment in
+        # runner/ops/main.py, growing runner/ops by 1 line.
+        self.assertEqual(56774, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(51146, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
