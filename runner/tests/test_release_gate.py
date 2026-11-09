@@ -424,6 +424,33 @@ class GitRangeTest(unittest.TestCase):
                          by_subject["docs: statistics refresh — fixture"]
                          ["sha"])
 
+    def test_range_read_survives_a_non_utf8_locale(self):
+        # Regression: the git front door decoded git's UTF-8 output
+        # with the locale encoding, so a non-ASCII subject came back
+        # mangled under a Windows codepage (and the read crashed
+        # under a C locale) — the end-to-end test above errored on
+        # the Windows leg of the 3.15.20.15 builds. The read now
+        # pins UTF-8; this holds it under a forced C locale.
+        repo, base = self._repo()
+        _write(repo, "runner/wire/verify.py", "# verifier v1\n")
+        head = _commit(repo, "docs: statistics refresh — fixture")
+        root = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))))
+        snippet = (
+            "import sys;"
+            "from runner.tools import release_gate as RG;"
+            "commits = RG.range_commits(sys.argv[1], sys.argv[2],"
+            " sys.argv[3]);"
+            "sys.stdout.write(ascii(commits[0][1]))")
+        env = dict(os.environ, LC_ALL="C", PYTHONUTF8="0",
+                   PYTHONCOERCECLOCALE="0", PYTHONPATH=root)
+        out = subprocess.run(
+            [sys.executable, "-c", snippet, repo, base, head],
+            check=True, stdout=subprocess.PIPE,
+            universal_newlines=True, env=env, cwd=root)
+        self.assertEqual("'docs: statistics refresh \\u2014 fixture'",
+                         out.stdout)
+
     def test_tip_beyond_the_candidate_is_deferred(self):
         repo, base = self._repo()
         _write(repo, "runner/wire/verify.py", "# verifier v1\n")

@@ -218,10 +218,15 @@ def slot_only_change(removed_lines, added_lines):
 # ------------------------------------------------------------------
 
 def _git(repo, *args):
+    # Git writes UTF-8; decode it as UTF-8 whatever the locale says
+    # (a locale decode mangles non-ASCII subjects on Windows and
+    # crashes outright under a C locale). Undecodable bytes are
+    # replaced, never fatal: a mangled subject classifies as
+    # content, which errs toward more review, not less.
     proc = subprocess.run(
         ["git", "-C", repo] + list(args),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        universal_newlines=True)
+        universal_newlines=True, encoding="utf-8", errors="replace")
     if proc.returncode != 0:
         raise ValueError("git %s failed: %s" % (args[0], proc.stderr.strip()))
     return proc.stdout
