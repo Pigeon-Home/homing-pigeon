@@ -111,14 +111,14 @@ you. You start them by making a **release**. All point and click:
    `runner/_version.py`, not a guess. The rules for the number live
    in `runner/ops/version4.py`: the major stays 3, the minor is the
    release line, the tokens figure is the size of the repository in
-   whole millions of tokens (measured at most once every 24 hours —
-   a release inside that window reuses the last figure), and the
-   counter is the release counter, which restarts when a number to
-   its left increases.
+   whole millions of tokens, measured fresh at every release
+   cut — an uncached recount of the tree being shipped, never
+   the last cut's figure reused — and the counter is the
+   release counter, which restarts when a number to its left
+   increases.
 
-   When the cut takes a fresh token measure — the 24-hour
-   boundary above, rather than reusing the cached figure — the
-   release commit refreshes the figures in
+   Because every cut takes a fresh token measure, the release
+   commit refreshes the figures in
    `docs/infrastructure-documents/project/statistics.md` in the
    same cut: the new measure, its date, and the head it was
    taken at. That record is the canonical home every other
