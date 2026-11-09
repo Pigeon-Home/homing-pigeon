@@ -16,7 +16,8 @@ The recorded line, in the display form settled for publication:
   reads 20. Display form: 20 mil security tokens — security
   tokens is this record's name for the tree's tokens counted
   by the project's own estimator, so called because the tree's
-  tokens all serve its security. Verify it on any checkout:
+  tokens all serve its security. The short form of the name
+  is sec-tokens. Verify it on any checkout:
   `python3 runner/ops/version4.py measure` prints the count and
   its whole millions.
 - Lines: 1,329,595 lines in tracked files at the measured head —
