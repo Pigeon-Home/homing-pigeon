@@ -789,9 +789,43 @@ class P1FreshnessTest(_GateCase):
         self.refused(out, "issued_at outside allowed window")
 
     def test_future_beyond_the_bound_refused(self):
-        job = _job2("fresh-2", issued_at=_issued(seconds=301))
+        # The stamp sits an hour beyond the 300-second future bound,
+        # not 1 second beyond it. The 301-second form raced the
+        # check it was testing: _issued() truncates to whole
+        # seconds, so the margin was under a second, and any slower
+        # handling between construction and the freshness gate (the
+        # 3.15.20.16 tag build's loaded Windows shard took over a
+        # second) moved the stamp inside the window, where the gate
+        # legitimately executed the job and this test failed on a
+        # green tree. The exact bound is pinned deterministically
+        # below and in test_doc_default_divergences (fixed clock:
+        # +300 admitted, +301 refused); an end-to-end run through
+        # real time cannot hold a 1-second margin, so it carries a
+        # wide one instead.
+        job = _job2("fresh-2", issued_at=_issued(seconds=3600))
         out = _run(job=job)
         self.refused(out, "issued_at outside allowed window")
+
+    def test_the_future_bound_is_exactly_300_seconds(self):
+        # The deterministic substrate of the two end-to-end tests
+        # around this one, judged by direct calls on the gate: the
+        # stamps are computed from one captured instant at full
+        # precision and judged milliseconds later, so the 1-second
+        # margins here cannot be eaten by the handling time that
+        # sank the end-to-end 301-second form.
+        from datetime import timedelta
+        now = datetime.now(timezone.utc)
+
+        def at(seconds):
+            return (now + timedelta(seconds=seconds)).isoformat()
+
+        self.assertEqual(
+            runner._issued_at_ok(at(301), {}),
+            (False, "issued_at outside allowed window"))
+        self.assertEqual(runner._issued_at_ok(at(299), {}), (True, ""))
+        self.assertEqual(runner._issued_at_ok(at(300.5), {}),
+                         (False, "issued_at outside allowed window"))
+        self.assertEqual(runner._issued_at_ok(at(299.5), {}), (True, ""))
 
     def test_future_inside_the_bound_executes(self):
         job = _job2("fresh-3", issued_at=_issued(seconds=299))
