@@ -54,9 +54,9 @@ took a fresh, uncached token measure at every cut —
 version4's --fresh recount — growing runner/ops, the
 as-assembled set stands at <!--hp-fig:core_assembled_lines-->56,773<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->51,145<!--/hp-fig--> non-blank)
 and a <!--hp-fig:core_assembled_zip_bytes-->720,975<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->598,274<!--/hp-fig--> tokens; the Gemini figure above still
+counts it at <!--hp-fig:core_assembled_tokens-->598,280<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->132<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->590,657<!--/hp-fig-->
+estimator counts the canonical <!--hp-fig:core_files-->132<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->590,663<!--/hp-fig-->
 tokens across <!--hp-fig:core_lines-->55,989<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->50,457<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
