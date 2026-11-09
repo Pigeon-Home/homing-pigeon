@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.6 - 2026-11-08
+
+- Re-cut of 3.15.20.5, which never published: its build-windows leg failed on the same shelter test, for a Windows-only reason the 3.15.20.5 fixes had not reached — the test built its expected paths from "/" literals, which os.path.join keeps on Windows, while production's collected paths carry the platform separator throughout, so the manifest comparison differed on that one character. The shelter test helper now normpaths the paths it builds, canonicalizing the separators on every platform. Everything in 3.15.20.5 and 3.15.20.4 carries over as recorded in their sections below.
+- Documentation: the Oracle's briefing — a design note (docs/steady/design/oracle-briefing-design.md, design, not yet built) inventorying where the Oracle's instructions live today, enumerating the discovery surface a visiting system pulls when handed nothing but the project's address, and weighing five shapes for giving the Oracle a single instruction home pointed at its local checkout, with a recommendation and a staged plan. Its supposition is written before any of the shapes is built.
+
 ## 3.15.20.5 - 2026-11-08
 
 - Re-cut of 3.15.20.4, which never published: its main and tag builds failed in the test, test-macos, and build-windows jobs, with the same failures already present on the base commit's build — the red was in the personal-documents shelter batch below, not in the version bump. The fixes that follow are the whole difference, plus a README paragraph rewrap (same line count, wording only) that landed after 3.15.20.4 was cut; everything else in 3.15.20.4 carries over as recorded in its section below.
