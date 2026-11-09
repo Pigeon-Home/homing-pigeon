@@ -125,18 +125,98 @@ def _gitignore_lines():
                 if line.strip() and not line.strip().startswith("#")]
 
 
+def _encode_paths(paths):
+    """The exact bytes handed to git check-ignore --stdin.
+
+    Bytes, never text: in text mode a Windows pipe translates
+    each "\\n" to "\\r\\n" on the way in, and git then reads the
+    "\\r" as part of the pathname -- the 3.15.20.10 release
+    build's Windows leg matched almost nothing, its parsed keys
+    arriving as '"outbox/result.json\\r"'. LF bytes are the wire
+    format on every platform.
+    """
+    return ("\n".join(paths) + "\n").encode("utf-8")
+
+
+def _parse_check_ignore(stdout_text):
+    """git check-ignore -v output -> {pathname: pattern}."""
+    matched = {}
+    # Split on LF only: splitlines() also breaks on a bare CR,
+    # which would cut a quoted pathname's CR adrift from its
+    # closing quote and defeat the unquoting below.
+    for line in stdout_text.split("\n"):
+        # -v output: <source>:<linenum>:<pattern>\t<pathname>
+        head, sep, pathname = line.partition("\t")
+        if not sep:
+            continue
+        pathname = pathname.strip()
+        if len(pathname) >= 2 and pathname.startswith('"') \
+                and pathname.endswith('"'):
+            # git C-quotes a pathname holding a character it
+            # cannot print plainly (the stray CR above is one);
+            # unquote, then drop the character that forced it.
+            pathname = pathname[1:-1].encode("utf-8") \
+                .decode("unicode_escape").rstrip("\r")
+        matched[pathname] = head.rsplit(":", 1)[-1].strip()
+    return matched
+
+
 def _check_ignore(paths):
     """path -> matching pattern (or None), via git check-ignore."""
     proc = subprocess.run(
         ["git", "-C", REPO, "check-ignore", "-v", "--stdin"],
-        input="\n".join(paths) + "\n",
-        capture_output=True, text=True)
-    matched = {}
-    for line in proc.stdout.splitlines():
-        # -v output: <source>:<linenum>:<pattern>\t<pathname>
-        head, _, pathname = line.partition("\t")
-        matched[pathname] = head.rsplit(":", 1)[-1]
-    return matched
+        input=_encode_paths(paths),
+        capture_output=True)
+    return _parse_check_ignore(
+        proc.stdout.decode("utf-8", errors="replace"))
+
+
+class CheckIgnoreWireTest(unittest.TestCase):
+    """The stdin wire format and the -v parser, pinned apart
+    from git itself: the Windows failure above lived in this
+    seam, and it must be reachable from every platform's leg.
+    """
+
+    def test_encode_paths_is_bytes_with_lf_only(self):
+        data = _encode_paths(["a/b.txt", "c.txt"])
+        self.assertIsInstance(data, bytes)
+        self.assertNotIn(b"\r", data)
+        self.assertEqual(data, b"a/b.txt\nc.txt\n")
+
+    def test_encode_paths_round_trips_every_name(self):
+        data = _encode_paths(STATE_PATHS)
+        self.assertEqual(data.decode("utf-8").splitlines(),
+                         STATE_PATHS)
+
+    def test_parse_a_plain_line(self):
+        out = ".gitignore:31:outbox/\toutbox/result.json\n"
+        self.assertEqual(_parse_check_ignore(out),
+                         {"outbox/result.json": "outbox/"})
+
+    def test_parse_a_quoted_cr_pathname(self):
+        # The shape the Windows leg of the 3.15.20.10 build
+        # actually produced: pathname C-quoted around a CR.
+        out = '.gitignore:42:**/.claude/settings.local.json\t' \
+              '".claude/settings.local.json\r"\n'
+        self.assertEqual(
+            _parse_check_ignore(out),
+            {".claude/settings.local.json":
+             "**/.claude/settings.local.json"})
+
+    def test_parse_skips_blank_and_tabless_lines(self):
+        self.assertEqual(_parse_check_ignore("\nnoise\n"), {})
+
+    def test_check_ignore_sends_bytes_not_text(self):
+        import unittest.mock as mock
+        done = subprocess.CompletedProcess(
+            args=[], returncode=1, stdout=b"")
+        with mock.patch.object(subprocess, "run",
+                               return_value=done) as run:
+            self.assertEqual(_check_ignore(["x/y.txt"]), {})
+        kwargs = run.call_args.kwargs
+        self.assertIsInstance(kwargs["input"], bytes)
+        self.assertNotIn(b"\r", kwargs["input"])
+        self.assertFalse(kwargs.get("text"))
 
 
 class GitignoreStatePatternsTest(unittest.TestCase):
