@@ -78,7 +78,8 @@ re-measured.
 
 ## Findings
 
-Measured 2026-11-09 against the tree at release 3.15.20.13. The
+Measured 2026-11-09 against the tree at release commit
+654de37cd8a0dfa152e07fe4a2093d9b1b015c1b. The
 supposition held on every point but one nuance (S6). Verdicts,
 with the evidence:
 

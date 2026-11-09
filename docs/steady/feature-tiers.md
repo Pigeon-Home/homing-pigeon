@@ -39,7 +39,7 @@ record shows what was expected against what was found:
 ## How the inventory was taken
 
 Taken on 2026-11-09, against the tree whose newest release
-is 3.15.20.13:
+commit is 654de37cd8a0dfa152e07fe4a2093d9b1b015c1b:
 
 - The README's claims: its Status paragraph ("the agent,
   the Oracle (opinions, self-learning, remediation), five
