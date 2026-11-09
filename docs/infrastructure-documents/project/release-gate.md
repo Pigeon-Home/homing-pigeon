@@ -73,7 +73,7 @@ output against the hand classification.
 ## Measurement and conclusions (2026-11-09)
 
 **Supposition 1 holds.** The ship record for the latest release
-(3.15.20.13, release commit 654de37cd8a0dfa152e07fe4a2093d9b1b015c1b)
+(release commit 654de37cd8a0dfa152e07fe4a2093d9b1b015c1b)
 states every fact on the supposition's list in one line: the
 release published at a named time, draft=false, 13 assets, the
 main and tag builds green, the stamp check matched three times.
@@ -87,13 +87,13 @@ in the ship record's own wording, so filling the checklist is
 transcription, not investigation.
 
 **Supposition 2 holds, with two corrections the measurement
-forced.** The two most recent ranges (the content of 3.15.20.12
-and 3.15.20.13: 5 content commits, 11 distinct content paths)
-were classified by hand. A naive range diff gets both ranges
-wrong, twice:
+forced.** The two most recent ranges (cf66bef34..654de37cd and
+bfc7fb47..cf66bef34: 5 content commits, 11 distinct content
+paths) were classified by hand. A naive range diff gets both
+ranges wrong, twice:
 
 - *The version carriers ride in the release commit itself.* The
-  3.15.20.13 release commit touches exactly five paths — the
+  latest release commit touches exactly five paths — the
   changelog, `pyproject.toml`, `runner/_version.py`,
   `runner/ops/install.py` and the version-pinning test — so a
   range diff flags key handling (install.py, which mints the
@@ -115,7 +115,8 @@ wrong, twice:
 With both corrections, the two measured ranges flag no class at
 all — true to their content, which was documentation and figures
 only. As a control, a code-bearing range (the 24 paths behind
-3.15.20.11) was classified the same way: the registry flags
+the release commit bfc7fb47) was classified the same way: the
+registry flags
 disclosure controls (`runner/ops/briefing.py`, what the Oracle
 is told) and extension loading
 (`runner/transport_extensions/email/`), and hand classification
