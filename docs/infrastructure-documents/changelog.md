@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.14 - 2026-11-09
+
+- Documentation: feature tiers — what carries which promise. A new page (docs/steady/feature-tiers.md) sorts the shipped features into the supported core, the advanced tier, and the experimental tier, each placement with the evidence it rests on, taken from the tree's own signals; the README's Status section points at it, and a new test pins the page to the tree.
+- Documentation: the default posture, measured. A new record (docs/steady/security/default-posture.md) measures what a first-time install actually does by default, layer by layer — the config-file defaults, the installer profile, and the security-mode defaults — and where an enforce control can step down at job time, with the phase-2 plan the findings support; a measuring test stands behind it, and one wrong comment in runner/ops/main.py is corrected (a missing security block reads enforce, not off).
+- Documentation: the release gate. A new design (docs/infrastructure-documents/project/release-gate.md) stands a human signature at Gate 5: one named human reads one short checklist, assembled mechanically from the facts the release trains already produce, over one finished candidate and signs before the tag is cut; landing itself is unchanged. The measured trees in the new records are named by release commit, not by version.
+- Tool: the release gate's mechanical half. runner/tools/release_gate.py classifies a release range's content commits against the seven review classes in its registry, renders the candidate record with the ten-item checklist and the sign-off block prefilled, and validates a filled record closed; 44 unit tests hold the registry, the rendering and the validator. Advisory and invoked, wired into nothing; the trains run as they did.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,339,516 tokens, 1,332,534 tracked lines, 5,100 commits.
+
 ## 3.15.20.13 - 2026-11-08
 
 - Documentation: Subversion and git-svn are first-class citizens of the agent-state pillar. The agent-state-files record's version-control coverage is completed: its mistake-pattern section gains the git-svn bridge (two ignore systems that do not synchronise, the manual's quick route into the machine-local exclude, dcommit as a one-way crossing, a re-clone silently losing the bridge's own configuration); its survey section points at the shipped renderings; and its guard section specifies the Subversion staged scan as the approval guard's second front door, not a second tool.
