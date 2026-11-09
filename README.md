@@ -498,6 +498,11 @@ the example senses. The current release is in
 number — the protocol's version and the release number move on
 separate tracks.
 
+Those features do not all carry the same promise.
+[Feature tiers](docs/steady/feature-tiers.md) sorts them into
+the supported core, the advanced tier, and the experimental
+tier, each placement with the evidence it rests on.
+
 What a real box writes, and what 19,227 jobs on a test box
 came to, is in [docs/steady/use/live-examples.md](docs/steady/use/live-examples.md).
 
