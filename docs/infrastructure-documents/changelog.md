@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.11 - 2026-11-08
+
+- Everything the 3.15.20.10 section below records ships in this release. 3.15.20.10 was cut but never tagged or published — its builds failed the two guards named in the fixes below — so this release carries its contents forward with the fixes.
+- Fix: the doc-drift guard is green again. The README's reworded try-it prompt shifted the size-caps line up one, and the defaults registry's max_job_bytes row still named the old line; the row now names the line the claim sits on (450). The guard failed on every head carrying the rewording, the 3.15.20.10 head among them.
+- Fix, Windows-only: the gitignore state-files guard now feeds git its paths as bytes. Through a text-mode pipe, Windows translated each newline to CRLF, so git checked pathnames carrying a trailing carriage return and echoed them back C-quoted — the parsed results never matched the paths asked about, and build-windows failed while the Linux and macOS legs passed. The parser also decodes git's C-quoting, and wire tests pin the seam.
+- Documentation: the FAQ and ENTERPRISE pages move out of the root into docs/, beside the front door. Every live reference follows — the README's links, the layout record, the briefing manifest, the reader-docs and live-capture guards, and the registry's FAQ row — and the layout guard retires the root paths and pins the new homes. Historical records keep the paths of their day.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,306,852 tokens, 1,329,927 tracked lines, 5,082 commits.
+
 ## 3.15.20.10 - 2026-11-08
 
 - Privacy: the agent's papers. An agent's own state files — approval memory, permission and session state — are named as a category of private-shelf material and fenced: the project's .gitignore ships the agent-state patterns from the cross-tool survey, pinned by tests; privacy-design.md names the category and maps its handling; safeguards.md states it in plain language; SECURITY.md names it; and the Oracle's standing instructions carry the note. The full survey document stands at docs/steady/security/agent-state-files.md.
