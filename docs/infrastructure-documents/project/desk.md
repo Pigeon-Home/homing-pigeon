@@ -194,6 +194,42 @@ bridge: what the project wants, what is in flight, and what to do
 next to repair whatever happened are all standing here, in the
 tree, where the next hands will find them.
 
+## Outside models: API access held in the vault
+
+As of 2026-11-08, the project holds API access to two outside
+model houses: Anthropic and OpenAI. The credentials live in the
+operator's secure vault, connected through the vault's API-key
+flow; the agent systems doing the work never see the values, and
+no key material stands anywhere in this tree. A third house's
+access — Grok — is personal property, not the project's, and is
+not available to the work here; it is not to be asked for.
+
+The access is connected but not yet callable. The connector
+documents that let the agent's tooling call either API have not
+been authored; authoring them, through the custom-connector
+setup, is the queued step that comes before any call can be
+made. Until those documents stand, neither API can be called
+from here, and the access must not be reported — in a status
+line, a plan, or a promise — as usable.
+
+What the access is for, once it is callable: a second pair of
+eyes running in parallel with the project's own lanes —
+independent reviews of code the lanes wrote, cross-checks of a
+finding before it is trusted, breadth on a research question.
+What it is not for: it does not speed work whose bottleneck is
+elsewhere. Release builds run on the hosting platform's
+builders, and a single coherent build does not split across
+outside models; in both cases the access changes nothing about
+the critical path, and the honest move is to say so before
+reaching for it. Nor is it the instrument for measuring how
+outside systems behave as visitors at the project's public
+door: an API call measures the API surface, and visitor
+behavior is measured by hand, on subscriptions, at the door
+itself.
+
+The standing hold on Gemini use is a separate rule, recorded
+where it lives; this access does not change it.
+
 ## Brain dump
 
 "Brain dump" is ordinary work language on this desk: a request
