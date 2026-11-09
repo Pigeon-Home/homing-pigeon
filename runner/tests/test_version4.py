@@ -317,6 +317,32 @@ class CliTest(unittest.TestCase):
         self.assertEqual(version4.read_measure_cache(cache),
                          (NOW + 3600, 1))
 
+    def test_next_command_fresh_cache_records_the_measure(self):
+        # A cut whose fresh recount lands under the standing
+        # figure: the version holds its figure (the counter
+        # increments), but the cache records the measure that was
+        # actually taken — it is the record of the last measure,
+        # not of the figure the version carries.
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        _tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, _tmp, ignore_errors=True)
+        cache = os.path.join(_tmp, "token-measure.txt")
+        self._grow_repo_past_a_million(repo)
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--cache", cache,
+             "--now", str(NOW), "--fresh"])
+        self.assertEqual((code, out), (0, "3.15.1.1"))
+        self.assertEqual(version4.read_measure_cache(cache), (NOW, 1))
+        _git(repo, "rm", "-q", "--cached", "big.txt")
+        os.remove(os.path.join(repo, "big.txt"))
+        code, out = self._run_main(
+            ["next", "3.15.1.1", "--root", repo, "--cache", cache,
+             "--now", str(NOW + 3600), "--fresh"])
+        self.assertEqual((code, out), (0, "3.15.1.2"))
+        self.assertEqual(version4.read_measure_cache(cache),
+                         (NOW + 3600, 0))
+
     def test_next_command_fresh_without_cache_measures(self):
         repo = MeasureTest()._repo()
         self.addCleanup(shutil.rmtree, repo, ignore_errors=True)

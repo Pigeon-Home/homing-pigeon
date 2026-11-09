@@ -361,7 +361,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         result = next_version(positional[0], now, last_at, last_millions,
                               fresh_tokens_millions=fresh, new_minor=minor)
         if measured and cache:
-            write_measure_cache(cache, now, parse(result)[2])
+            # The cache records the measure just taken — its epoch
+            # and the millions that measure produced — whether or
+            # not the version carries that figure (the hold rule
+            # can keep a higher standing figure in the version).
+            write_measure_cache(cache, now, fresh)
         print(result)
         return 0
     print("version4.py: unknown command %r" % (command,), file=sys.stderr)
