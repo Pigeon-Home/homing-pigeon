@@ -47,7 +47,13 @@ class ShelterHome(unittest.TestCase):
             os.makedirs(os.path.join(self.home, folder))
 
     def put(self, rel, text="x"):
-        path = os.path.join(self.home, rel)
+        # Normpath'd: callers pass rel with "/" separators, and
+        # on Windows os.path.join keeps that "/" inside the
+        # result, while production's collected paths carry the
+        # platform separator throughout — an exact comparison
+        # against a manifest entry would differ on that one
+        # character. Normpath canonicalizes the separators.
+        path = os.path.normpath(os.path.join(self.home, rel))
         _write(path, text)
         return path
 
