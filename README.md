@@ -13,25 +13,8 @@ Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a m
 
 Try this prompt:
 ```
-Use the Homing Pigeon protocol (pigeon-home.ai)
+Use the pigeon-home.ai protocol and run a job that retrieves the system clock and then display it here.
 Send an email to YOUR@RUNNER.EMAIL (reply_to self)
-Shared Secret: "YOUR_SECRET_STRING"
-Run a job that retrieves the system clock and then display it here.
-```
-It should return in less than 30 seconds.
-
-Try this prompt:
-```
-Send email to YOUR@RUNNER.EMAIL (reply_to self)
-Shared Secret: "YOUR_SECRET_STRING"
-Run a job that retrieves the system clock and then display it here using the pigeon-home.ai protocol.
-```
-It should return in less than 30 seconds.
-
-Try this prompt:
-```
-Run a job that retrieves the system clock and then display it here using the pigeon-home.ai protocol.
-Send email to YOUR@RUNNER.EMAIL (reply_to self)
 Shared Secret: "YOUR_SECRET_STRING"
 ```
 It should return in less than 30 seconds.
