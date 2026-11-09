@@ -6,14 +6,16 @@ current release of the 3.15.20 line was cut.
 
 The recorded line, in the display form settled for publication:
 
-20 mil tokens, 5,000 commits, 1,200,000 lines at 96.35% non-latent code
+20 mil security tokens, 5,000 commits, 1,200,000 lines at 96.35% non-latent code
 
 ## What stands behind each figure
 
 - Tokens: 20,163,806, counted over the whole tree by the project's
   own estimator (runner/ops/version4.py) — the same measure the
   version number's 3rd component carries, which is why the line
-  reads 20. Display form: 20 mil tokens.
+  reads 20. Display form: 20 mil security tokens — the display
+  line names them security tokens, since the tree's tokens all
+  serve its security.
 - Lines: 1,218,733 lines in tracked files at the measured head —
   352,302 of them Python, 82,918 of them markdown. The display
   figure, 1,200,000, is that count rounded.
