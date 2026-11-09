@@ -309,6 +309,146 @@ class InspectBriefingTest(unittest.TestCase):
         self.assertGreater(data["assembled_chars"]["oracle"], 0)
 
 
+def _load_tool(name):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        name, os.path.join(REPO, "runner", "tools", name + ".py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class DigestTest(unittest.TestCase):
+    """Stage 3: the bundle. The digest is built ahead of time
+    from the same manifest, deterministically, with every
+    source's hash stamped in its header; the runner prefers it
+    when it stands in the resolved checkout. The five-question
+    family is the design's proof shape: the digest must retain
+    the operative sentences a briefing exists to carry."""
+
+    def setUp(self):
+        self.mb = _load_tool("make_briefing")
+
+    def test_the_digest_is_deterministic(self):
+        text1, combined1 = self.mb.build_digest(REPO)
+        text2, combined2 = self.mb.build_digest(REPO)
+        self.assertEqual(text1, text2)
+        self.assertEqual(combined1, combined2)
+
+    def test_the_stamped_hashes_rederive(self):
+        import hashlib
+        text, combined = self.mb.build_digest(REPO)
+        stamps = []
+        for line in text.splitlines():
+            if line.startswith("- ") and " sha256:" in line:
+                path, hexpart = line[2:].rsplit(" sha256:", 1)
+                with open(os.path.join(REPO, path), "rb") as fh:
+                    actual = hashlib.sha256(fh.read()).hexdigest()
+                self.assertEqual(actual, hexpart, path)
+                stamps.append(path + ":" + hexpart)
+        self.assertEqual(len(briefing.BRIEFING_MANIFEST),
+                         len(stamps))
+        self.assertEqual(
+            combined,
+            hashlib.sha256(
+                "\n".join(stamps).encode("utf-8")).hexdigest())
+
+    def test_the_digest_answers_the_five_questions(self):
+        text, _combined = self.mb.build_digest(REPO)
+        probes = {
+            "the size fair warning":
+                "give the user a fair warning",
+            "an address and the secret suffice":
+                "Anything that can email the runner's mailbox "
+                "and sign the body can drive it",
+            "the two sides of the split":
+                "There are two sides. They do not share "
+                "credentials.",
+            "the risk, stated as power":
+                "its power is the point",
+            "sending goes through send_job":
+                "Use `runner/cloud/send_job.py`. Do not "
+                "hand-roll the signature.",
+        }
+        for question, sentence in probes.items():
+            with self.subTest(question=question):
+                self.assertIn(sentence, text)
+
+    def test_a_snapshot_prefers_its_digest(self):
+        with tempfile.TemporaryDirectory() as d:
+            base = _snapshot_base(d, layer_text="# layer\n")
+            project = os.path.join(d, "project")
+            _write(os.path.join(project, "BRIEFING-DIGEST.md"),
+                   "# Briefing digest\n\n"
+                   "UNIQUE DIGEST MARKER stands here.\n")
+            text, mode = briefing.surface_text(project)
+            self.assertEqual("digest", mode)
+            self.assertIn("UNIQUE DIGEST MARKER", text)
+            assembled = briefing.assemble_briefing(base,
+                                                   scope="ask")
+            self.assertIn("UNIQUE DIGEST MARKER", assembled)
+
+    def test_a_snapshot_carries_the_built_digest(self):
+        # End to end through the snapshot tool, on a fixture
+        # repo carrying the surface files: the snapshot gains
+        # BRIEFING-DIGEST.md, the facts record its hash, and
+        # the briefing report reads the snapshot as digest-
+        # briefed.
+        import subprocess
+
+        def git(cwd, *argv):
+            subprocess.run(["git"] + list(argv), cwd=cwd,
+                           check=True, capture_output=True,
+                           text=True,
+                           env={**os.environ,
+                                "GIT_AUTHOR_NAME": "t",
+                                "GIT_AUTHOR_EMAIL": "t@t",
+                                "GIT_COMMITTER_NAME": "t",
+                                "GIT_COMMITTER_EMAIL": "t@t"})
+
+        snap_mod = _load_tool("make_snapshot")
+        with tempfile.TemporaryDirectory() as d:
+            repo = os.path.join(d, "repo")
+            os.makedirs(repo)
+            git(repo, "init", "-q")
+            for entry in briefing.BRIEFING_MANIFEST:
+                if "whole" in entry:
+                    body = "# stub\n"
+                else:
+                    body = "\n\n".join(
+                        "## %s\n\nbody of %s\n" % (h, h)
+                        for h, _c in entry["sections"]) + "\n"
+                _write(os.path.join(repo, entry["path"]), body)
+            _write(os.path.join(repo, LAYER_REL),
+                   "# Agent-Stamp: fixture\n\n# Layer\n\n"
+                   + POSTURE_OPENING + ".\n")
+            _write(os.path.join(repo, "pyproject.toml"),
+                   "[project]\nname = \"fixture\"\n"
+                   "version = \"9.8.7\"\n")
+            _write(os.path.join(
+                repo, ".github", "workflows", "build.yml"),
+                "name: CI\non: [push]\njobs:\n  test:\n"
+                "    runs-on: ubuntu-latest\n"
+                "    steps:\n      - run: echo hi\n")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "fixture")
+            git(repo, "tag", "v9.8.7")
+            out = os.path.join(d, "out")
+            project, snap = snap_mod.make_snapshot(
+                repo, out, None, env={})
+            digest_path = os.path.join(project,
+                                       "BRIEFING-DIGEST.md")
+            self.assertTrue(os.path.isfile(digest_path))
+            self.assertIn("combined", snap["briefing_digest"])
+            report = briefing.briefing_report(out)
+            self.assertEqual(project, report["root"])
+            self.assertEqual("digest", report["surface"]["mode"])
+            with open(os.path.join(project,
+                                   "PROJECT-SNAPSHOT.md"),
+                      encoding="utf-8") as fh:
+                self.assertIn("BRIEFING-DIGEST.md", fh.read())
+
+
 class SnapshotIndexBriefingTest(unittest.TestCase):
     """The snapshot index renders its briefing section from the
     same manifest the runner assembles from."""

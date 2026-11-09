@@ -280,7 +280,20 @@ def _briefing_manifest():
         return [], ""
 
 
-def _briefing_section():
+def _load_make_briefing():
+    """The digest builder (runner/tools/make_briefing.py in
+    this tree), loaded by path like the manifest above."""
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "make_briefing.py")
+    spec = importlib.util.spec_from_file_location(
+        "hp_snapshot_make_briefing", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _briefing_section(snap=None):
     """The index's briefing section, rendered from the same
     manifest the runner assembles from, so the snapshot says
     what the Oracle on the box will be briefed from."""
@@ -291,9 +304,17 @@ def _briefing_section():
            "The Oracle on this box is briefed from this "
            "snapshot: the discovery surface below, resolved "
            "against this tree, with the Oracle's own standing "
-           "instructions (`%s`) riding on top." % layer_path, "",
-           "| Surface file | Carried as |",
-           "|---|---|"]
+           "instructions (`%s`) riding on top." % layer_path, ""]
+    digest = (snap or {}).get("briefing_digest") or {}
+    if digest.get("combined"):
+        out += ["This snapshot also carries `%s` -- the "
+                "surface pre-digested at snapshot time, "
+                "combined source hash sha256:%s -- which is "
+                "the form the mailbox door's briefing prefers."
+                % (digest.get("file", "BRIEFING-DIGEST.md"),
+                   digest["combined"]), ""]
+    out += ["| Surface file | Carried as |",
+            "|---|---|"]
     for entry in manifest:
         if "whole" in entry:
             carried = "whole file, cap %d chars" % entry["whole"]
@@ -331,7 +352,7 @@ def index_markdown(snap, history_note, bundle_present, file_count):
                    % SOURCES_LOCK)
     out += ["| The release | — | %s/releases/tag/v%s |" % (REPO_URL, ver),
             ""]
-    out += _briefing_section()
+    out += _briefing_section(snap)
     out += ["## History", ""]
     if bundle_present:
         out += ["`%s` holds %s." % (BUNDLE, history_note),
@@ -367,6 +388,19 @@ def make_snapshot(repo, out_dir, test_log=None, env=None, now=None,
     snap = ci_snapshot(repo, project, test_log, env=env, now=now)
     snap["history"] = {"bundle": BUNDLE if bundle else None, "note": note}
     snap["files"] = count
+    # The briefing digest rides in the snapshot (stage 3 of the
+    # briefing design): built from the exported tree, so a box
+    # briefs from it without assembling extracts at ask time.
+    # A failure here fails the snapshot, like a malformed
+    # sources lock -- a snapshot that cannot brief its Oracle
+    # is not quietly shipped thinner.
+    try:
+        _mb = _load_make_briefing()
+        _dpath, _combined = _mb.write_digest(project)
+    except Exception as e:
+        raise SystemExit("briefing digest failed: %s" % e)
+    snap["briefing_digest"] = {"file": _mb.DIGEST_NAME,
+                               "combined": _combined}
     snap["extension_sources_lock"] = None
     if sources_lock:
         snap["extension_sources_lock"] = sources_lock_facts(sources_lock)

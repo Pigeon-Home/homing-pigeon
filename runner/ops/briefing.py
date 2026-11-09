@@ -83,14 +83,14 @@ ORACLE_HEADER = (
 # briefing section from this same list.
 BRIEFING_MANIFEST = [
     {"path": "README.md", "sections": [
-        ("What this is for", 2200),
+        ("What this is for", 2600),
         ("Security notes", 1200),
         ("Sending a job (any SI)", 600)]},
     {"path": "PROTOCOL.md", "sections": [
         ("A fair warning before you answer questions about "
          "this project", 900),
         ("1. Actors", 1600),
-        ("3.1 Job", 4500)]},
+        ("3.1 Job", 4100)]},
     {"path": "AGENTS.md", "sections": [
         ("A fair warning about this repository's size", 1500),
         ("The split", 1200),
