@@ -175,7 +175,13 @@ Recorded, not claimed:
    sweep, in the modes family.
 4. **A tree-wide value-confinement test**: the boundary-test
    technique generalised -- a test that proves named sensitive
-   values appear only in allowlisted files.
+   values appear only in allowlisted files. Its first concrete
+   form is recorded in section 8: a staged-content guard for
+   the agent's papers, which proves at the commit boundary that
+   agent-state files and saved approval grants appear only
+   where a deployment allows. The guard itself is queued there;
+   the shipped `.gitignore` defaults and the test pinning them
+   (`runner/tests/test_gitignore_state_files.py`) stand now.
 5. **An erasure path for operator-held records**: Fremont has
    none and neither does this suite; a deliberate, audited
    forget operation for a machine's own run records is design
@@ -199,3 +205,109 @@ Implemented and measured on 2026-11-08:
   the startup gate, the core measure (re-recorded, section 5),
   the document guards and the reader-pages test over the three
   new documents in this drawer.
+- The agent's papers (section 8), measured the same day:
+  `runner/tests/test_gitignore_state_files.py` -- every shipped
+  pattern present in the root `.gitignore`, every state path
+  ignored by `git check-ignore`, the tracked lookalikes
+  (`runner/config.example.json`, the board fixtures) not
+  ignored, and no tracked file matching a state pattern.
+
+## 8. The agent's papers: agent permission and config state
+
+The framework's working example is the operator's papers. This
+section names the counterpart category: **the agent's papers**
+-- agent permission and configuration state. A coding agent
+that asks its operator's permission keeps a memory of the
+answers: the saved record of what was approved and need not be
+asked again, its local settings, and, on this suite's side, a
+deployment's `config.json` and the runner's state files (the
+board, the seen-file, the Oracle's chat and briefing logs, the
+outbox and work folders). The category is the personal
+documents' mirror image: material that is ordinary to hold,
+private by nature, and damaging only when it crosses a
+publication boundary its holder never noticed.
+
+The research that settled the category, stated briefly and
+defensively. In November 2026, Apiiro's researchers reported
+("Coding Agents Are Leaking Your Secrets to GitHub", 5 November
+2026) that a widely used coding agent saves an approved command
+-- when its operator chooses "yes, and don't ask again" -- as
+an allow rule in a project-local file, `.claude/settings.local.json`,
+in the exact-command case word for word, credential included.
+They counted 104,185 public copies of the file and 1,122 of
+them holding at least one real secret: database passwords, API
+keys, server logins. The product did try to keep the file out
+of version control, but the exclusion lived in each developer's
+*global* git excludes -- one machine only, never the project's
+own `.gitignore` -- so it did not travel with the project, did
+not bind a file once tracked, and did not stop the agent itself,
+which had committed the file in about half the traced cases.
+Deleting such a file does not undo the exposure: earlier
+versions remain in history and in forks, so the reporting's
+advice is rotate first, clean up second. The lesson the design
+takes from it: **persisting approvals is a secrets-handling
+decision, not a user-interface decision**, and a protection
+that lives on one machine is a habit, not a boundary.
+
+This suite is not shaped like that product -- job approval here
+is per-job and cryptographic, and no approved job body is stored
+as a standing permission -- but the failure shape is present in
+two places: a deployment's state lives wherever its base
+directory is, and any agent working in a published tree writes
+its own approval memory into that tree. The category is
+therefore handled the way this design handles every category:
+declared, expressed as configuration, and sheltered.
+
+**The shelter for this category is exclusion from the
+publication scope.** Where personal documents are gathered into
+a marker-verified folder out of a scan's scope, agent-state
+files are kept out of a commit's scope. The shipped form stands
+now: the root `.gitignore` -- an existing file, so the patterns
+clone with the tree -- carries the state shapes
+(`**/.claude/settings.local.json`, `**/config.json`, `seen.json`,
+`board.json`, `oracle-chat.jsonl`, `oracle-briefs.jsonl`,
+`outbox/`, `work/`), pinned by
+`runner/tests/test_gitignore_state_files.py`, which also proves
+no tracked file matches them. `.claude/settings.json` is
+deliberately not ignored: it is shareable project settings by
+design, and the rule for it is the documentation rule -- it must
+never hold a secret.
+
+**The configuration rows.** The ignore defaults are not a mode;
+they are part of the tree and stand under every posture. The
+rest of the category's expression follows the postures, the way
+section 3's rows follow the models:
+
+| Posture | The agent's papers under it |
+|---|---|
+| *just run it* | The shipped ignore defaults are the whole expression: the files stay out of commit scope with no decision asked of the operator, and the run stays carefree. |
+| *eyes open* | The defaults, plus the operator warning read once (the safeguards document's note on approval memory), plus -- queued below -- the staged guard in `audit`: it shows what a commit would carry across and stops nothing. |
+| *lockdown* | The defaults, plus -- queued below -- the staged guard in `enforce`, as a named feature in the modes family (`agent_state_guard`, section 2's semantics for an operator-invoked behaviour): it stops a commit or push that would carry agent-state files or saved approval grants across the boundary. |
+
+**The disposition, against the Fremont principles of section
+4.** *Mask by default*: the files are out of the publication
+scope by default, before any decision. *Split existence from
+value*: the documentation and the guard name files and rules,
+never contents -- a warning for this category follows the
+personal-documents warning's own rules (names only, a fixed
+banner, nothing kept, nothing sent). *Fail-closed preflight*:
+the guard validates at the boundary and stops the crossing on
+any doubt, as the shelter validates its manifest before moving
+anything. *The boundary test*: the guard is section 6 item 4's
+value-confinement test in its first concrete form -- agent-state
+files and grant strings proven, at the moment of committing, to
+appear only where the deployment allows.
+
+**What stands and what is queued.** Standing: the category
+named here; the shipped `.gitignore` defaults and their pinning
+test; the operator warning in the safeguards document; the
+standing note in the Oracle's instructions; the category named
+in SECURITY.md's spillage section. Queued (section 6's list is
+the record; this paragraph is its summary for this category):
+the `agent_state_guard` feature in the modes family and its
+staged-content tool, which scans what a commit or push is about
+to carry -- staged paths matching an agent-state shape,
+permission-grant state in staged JSON, and secret-shaped values
+inside saved command strings, the class generic scanners missed
+in the reported research -- and reports by file and rule, never
+by value.

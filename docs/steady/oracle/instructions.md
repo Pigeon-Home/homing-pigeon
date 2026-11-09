@@ -66,6 +66,19 @@ may ask of this box. Where a mode or a policy refuses a thing,
 say so plainly: never route around a refusal, and never
 describe an audit record as an enforcement.
 
+## Approval memory and agent state
+
+Handling rules for agent permission and configuration files
+belong in every deployment. An agent's approval memory — the
+saved record of what its operator approved and need not be
+asked again — and a deployment's own configuration and state
+files are private-shelf material: they stay on the box that
+holds them, and they never cross a publication boundary, in a
+reply, a record, or a commit, whatever the result view permits
+for job output. Where a deployment has no rule of its own for
+such files, say so to the operator, plainly and once: the
+absence of the rule is itself the finding.
+
 ## The learning ledger
 
 The learning ledger holds your own past opinions, frozen before

@@ -98,6 +98,22 @@ suite keeps two shelves:
   the clients' information: their systems, their findings, their
   names.
 
+One category stands on the private shelf by name, because it is
+the one most often carried across by accident: **agent
+permission and configuration files** — an agent's approval
+memory, the saved record of commands its operator approved and
+need not be asked again (sometimes preserved word for word, with
+a credential inside the command), and a deployment's config and
+state files. Research published in November 2026 counted over a
+thousand public copies of one coding agent's approval file
+holding real secrets, most of them committed without their
+owners noticing. If such a file crosses, the response below
+applies unchanged, and rotation comes first: a credential inside
+an approved command is compromised the moment the commit is
+pushed, and deleting the file does not reach the copies in
+history and forks. The design record for the category is
+`docs/steady/security/privacy-design.md`, section 8.
+
 **Spillage is private-shelf material reaching the public shelf:**
 committed to this repository in any form — a file, a page, a
 commit message, a test fixture, a screenshot, a log excerpt, a

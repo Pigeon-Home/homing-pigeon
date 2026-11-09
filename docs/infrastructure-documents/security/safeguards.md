@@ -134,6 +134,38 @@ mitigation:
   no model runs. Material nothing pins is never fetched unless you set
   `unpinned`; what the Oracle reads is what the build vouched for.
 
+## 5a. Your agent's approval memory is private
+
+If you work with a coding agent -- this suite is built to be
+worked on that way -- the agent keeps a memory of what you
+approved. When you tell it "yes, and don't ask again," it writes
+the approval down, sometimes as the exact command you approved,
+word for word. Commands often carry the very thing that makes
+them work: a database password, an API key, a login. So the
+memory file is private-shelf material, in the same sense as the
+runner's own `config.json` and state files (`seen.json`,
+`board.json`, the Oracle's chat log): ordinary to have on your
+disk, and not something that may ever be published.
+
+You do not need to be a version-control expert to be protected
+from the classic accident -- committing that file without
+noticing. This project's own tree ships the protection in its
+`.gitignore`, so the approval and state files stay out of
+commits automatically, on every machine the project is copied
+to; the design record is `docs/steady/security/privacy-design.md`,
+section 8. Keep the same habit in trees of your own: an agent's
+local settings file (`.claude/settings.local.json` is the
+standing example) belongs in the project's ignore list, not in
+one machine's private settings, because the ignore list is the
+part that travels.
+
+If an approval file was ever committed and pushed, treat the
+passwords and keys inside it as public: **change them first.**
+Deleting the file does not take it back -- the old version stays
+in the repository's history and in any copies others made -- so
+rotation comes first and cleanup second, exactly as SECURITY.md's
+spillage section directs.
+
 ## 6. Don't do this
 
 - Don't point the runner at a mailbox anyone else can access
