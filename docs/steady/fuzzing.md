@@ -10,7 +10,7 @@ and they load no model.
 Core names the production runner as a set of files: the code
 that runs, without the unit tests, the test harnesses or
 anything superfluous. The canonical list stands in
-runner/ops/core.py (CORE_FILES): 132 files, all under runner/.
+runner/ops/core.py (CORE_FILES): <!--hp-fig:core_files-->132<!--/hp-fig--> files, all under runner/.
 Running `python3 runner/ops/core.py` prints the set's current
 zip size and token counts.
 
@@ -52,12 +52,12 @@ its wiring grew runner/ops, runner/tools and the runner
 proper, and again the same day after the release cut
 took a fresh, uncached token measure at every cut —
 version4's --fresh recount — growing runner/ops, the
-as-assembled set stands at 56,765 lines (51,137 non-blank)
-and a 720,819-byte zip, and the project's own estimator
-counts it at 598,165 tokens; the Gemini figure above still
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->56,765<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->51,137<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->720,819<!--/hp-fig-->-byte zip, and the project's own estimator
+counts it at <!--hp-fig:core_assembled_tokens-->598,165<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical 132-file list at 590,548
-tokens across 55,981 lines (50,449 non-blank); the 2 token
+estimator counts the canonical <!--hp-fig:core_files-->132<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->590,548<!--/hp-fig-->
+tokens across <!--hp-fig:core_lines-->55,981<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->50,449<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,

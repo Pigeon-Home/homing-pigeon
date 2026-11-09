@@ -117,13 +117,20 @@ you. You start them by making a **release**. All point and click:
    release counter, which restarts when a number to its left
    increases.
 
-   Because every cut takes a fresh token measure, the release
-   commit refreshes the figures in
-   `docs/infrastructure-documents/project/statistics.md` in the
-   same cut: the new measure, its date, and the head it was
-   taken at. That record is the canonical home every other
-   mention of the figures points back to, and it must never lag
-   the number the version carries by more than one measure.
+   The ship flow takes a fresh token measure at every cut,
+   and the order is frozen: measure first, statistics write
+   last. On the measured tree, run
+   `python3 runner/tools/refresh_figures.py --write` — it
+   rewrites the facts block in
+   `docs/infrastructure-documents/project/statistics.md` and
+   every marked figure slot in the evergreen docs from the
+   fresh measure and the core counters, the record's basis
+   prose reviewed by hand in the same pass. That statistics
+   write is the last content commit before the release
+   commit, and the figures cite the measured commit they were
+   taken at, so the record never lags the number the version
+   carries by more than one measure, and never chases its
+   own tail.
 6. Click the big green **Publish release** button.
 7. Now click the **Actions** tab at the top. You will see the robots
    working. It typically takes about 20 minutes.

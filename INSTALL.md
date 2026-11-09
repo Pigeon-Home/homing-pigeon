@@ -200,7 +200,13 @@ cd "homing-pigeon-windows-x86_64-$ver"
 ### Verify a release
 
 Every release carries its own proof, and checking it takes a
-minute, before anything is installed:
+minute, before anything is installed. If you keep a local
+checkout of the repository, verify there first: run the test
+suite and `python3 runner/ops/version4.py measure` on the
+checkout in front of you — a release attests to the commit it
+was cut from, not to your working tree. The checks below
+audit a downloaded distribution, for when the release itself
+is what you hold:
 
 1. Download `SHA384SUMS` from the same release page as your
    archive.
