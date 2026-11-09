@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.5 - 2026-11-08
+
+- Re-cut of 3.15.20.4, which never published: its main and tag builds failed in the test, test-macos, and build-windows jobs, with the same failures already present on the base commit's build — the red was in the personal-documents shelter batch below, not in the version bump. The fixes that follow are the whole difference, plus a README paragraph rewrap (same line count, wording only) that landed after 3.15.20.4 was cut; everything else in 3.15.20.4 carries over as recorded in its section below.
+- Fix: the shelter's manifest is now written with atomicio.write_json, the suite's one state writer, instead of a hand-rolled temp file and a direct json.dump — the OneWriterPin guard holds again.
+- Fix: the C11 proof inventory and its pin now record seven security features, not six: personal_docs_shelter joined the family in 3.15.20.4, and constraints.md records its operator-tool shape (off refuses, audit plans only, enforce lets the operator's --apply move files) beside the six job features.
+- Fix: the shelter test's "POSIX mode bits only" skip reason is registered in test_skip_registry, with why the skip is legitimate and where the test runs.
+- Fix: the shelter tests now hand the tool a realpath'd home, as production does — on macOS a temp home sits behind /var -> /private/var, and the manifest's realpath'd "from" entries no longer mismatch the test's expected paths on that leg.
+
 ## 3.15.20.4 - 2026-11-08
 
 - Feature: personal-documents shelter, gated by a security mode — a new feature, personal_docs_shelter, joins the security-modes family in runner/guard/security.py (off refuses, audit plans only, enforce lets the operator's --apply move files; the shipped example config states it). runner/oracle/personal_docs_shelter.py is the operator tool: it plans with the warning check's own name scan and watched folders, gathers matching items into a marker-verified folder on the Desktop without deleting or overwriting anything, records a manifest inside the shelter folder (validated fail-closed before anything moves), and restores without overwriting an occupied place. runner/oracle/personal_docs.py learns the shelter marker, so a verified shelter folder is out of the warning scan's scope while a lookalike folder still trips it. Tests cover plan, apply, restore, marker, the manifest fuzz family, and the mode gate.
