@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.13 - 2026-11-08
+
+- Documentation: Subversion and git-svn are first-class citizens of the agent-state pillar. The agent-state-files record's version-control coverage is completed: its mistake-pattern section gains the git-svn bridge (two ignore systems that do not synchronise, the manual's quick route into the machine-local exclude, dcommit as a one-way crossing, a re-clone silently losing the bridge's own configuration); its survey section points at the shipped renderings; and its guard section specifies the Subversion staged scan as the approval guard's second front door, not a second tool.
+- Templates: the shipped renderings stand as a plain template in the security drawer (docs/steady/security/agent-state-ignores.txt): an svn:global-ignores value, with the per-directory svn:ignore form and the .idea pair, and an .hgignore glob block, with the machine-local shapes named as the places the list must not live. A new test holds the renderings and the canonical git list in agreement — Subversion names are the git patterns' basenames, the Mercurial block is the git patterns themselves, and the .git admin folder is the one deliberate addition in both.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,311,655 tokens, 1,330,271 tracked lines, 5,089 commits.
+
 ## 3.15.20.12 - 2026-11-08
 
 - Documentation: the statistics record gains a growth snapshot as of 2026-11-08, with its chart (assets/security-tokens-growth-2026-11-08.svg): 6 evenly spaced points from the project's first release (v3.7.2, 2026-10-15) to the measured count of 2026-11-08, with the implied points marked hollow and dashed and the measured anchors filled and solid.
