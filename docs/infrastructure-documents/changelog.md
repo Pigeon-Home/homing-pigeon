@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.15.20.12 - 2026-11-08
+
+- Documentation: the statistics record gains a growth snapshot as of 2026-11-08, with its chart (assets/security-tokens-growth-2026-11-08.svg): 6 evenly spaced points from the project's first release (v3.7.2, 2026-10-15) to the measured count of 2026-11-08, with the implied points marked hollow and dashed and the measured anchors filled and solid.
+- Documentation: the statistics record names the short form of security tokens — sec-tokens — beside its first-use gloss; the milestone line keeps the full form.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,309,169 tokens, 1,330,037 tracked lines, 5,086 commits.
+
 ## 3.15.20.11 - 2026-11-08
 
 - Everything the 3.15.20.10 section below records ships in this release. 3.15.20.10 was cut but never tagged or published — its builds failed the two guards named in the fixes below — so this release carries its contents forward with the fixes.
