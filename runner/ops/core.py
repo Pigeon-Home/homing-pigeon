@@ -19,7 +19,10 @@ runner/tools/run_tests_parallel.py, run_tests_shuffled.py and
 run_tests_windows_sim.py. Each exists only to run the unit
 tests; none of them is runner code, and the definition of core
 (no test harnesses) leaves them out. CORE_FILES below is
-therefore the canonical list, at 130 files. This module itself
+therefore the canonical list, at 130 files as first recorded;
+the Oracle briefing work of 2026-11-08 added its 2 files
+(runner/ops/briefing.py and runner/tools/make_briefing.py),
+and the list stands at 132. This module itself
 is not in the list either: the list names the set as assembled
 for the 2026-11-04 pass, and this module is the tooling that
 carries the list, written after that pass.
@@ -30,20 +33,21 @@ CLI output:
 - GEMINI_COUNT_TOKENS (619,845) is the Gemini countTokens
   measure of the set as assembled (133 files), 2026-11-04.
 - The project estimator (runner/ops/version4.py's
-  count_text_tokens) counts the canonical 130-file list; the
+  count_text_tokens) counts the canonical list (132 files as
+  it now stands); the
   CLI prints its figure live. The estimator is not a BPE
   tokenizer, and the 2 figures are not interchangeable: the
   same estimator counts the as-assembled 133-file set at
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 56,054 lines,
-50,491 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 56,748 lines,
+51,120 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
 The headline inside those numbers: the runner proper,
-runner/runner.py itself, is 6,647 lines; the core around it
+runner/runner.py itself, is 6,690 lines; the core around it
 is the rest. The as-assembled set's per-part line counts are
 recorded in AS_ASSEMBLED_PART_LINES below; the CLI computes
 and prints the canonical list's per-part counts live, and
@@ -130,9 +134,14 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # Re-measured again on 2026-11-08 after the personal-
 # documents shelter marker grew runner/oracle/
 # personal_docs.py and the shelter's security-mode feature
-# grew runner/guard/security.py.
+# grew runner/guard/security.py. Re-measured again on
+# 2026-11-08 after the Oracle briefing (shape 4) landed:
+# runner/ops/briefing.py and runner/tools/make_briefing.py
+# joined the canonical list (130 to 132 files, the
+# as-assembled set 133 to 135), and the briefing wiring grew
+# runner/ops, runner/tools and the runner proper.
 # Recorded constants: they describe the as-assembled set (the
-# canonical 130 files below plus the 3 suite runners named in
+# canonical 132 files below plus the 3 suite runners named in
 # the module docstring), not the canonical list itself. The
 # reviewing model's own token measure of the set (Gemini
 # countTokens) is a measure of the 2026-11-04 assembly and is
@@ -141,18 +150,18 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # assembly. The zip size and the estimator counts re-measured
 # here come from this module's own deterministic build and
 # counter over the current tree.
-AS_ASSEMBLED_FILES = 133
-AS_ASSEMBLED_ZIP_BYTES = 711338
-AS_ASSEMBLED_LINES = 56091
-AS_ASSEMBLED_NONBLANK_LINES = 50525
+AS_ASSEMBLED_FILES = 135
+AS_ASSEMBLED_ZIP_BYTES = 720517
+AS_ASSEMBLED_LINES = 56748
+AS_ASSEMBLED_NONBLANK_LINES = 51120
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 17504,
-    "runner/tools": 8698,
+    "runner/ops": 17922,
+    "runner/tools": 8894,
     "runner/wire": 8708,
-    "runner/runner.py": 6647,
+    "runner/runner.py": 6690,
     "runner/oracle": 5044,
     "runner/transport_extensions": 2775,
     "runner/guard": 2929,
@@ -198,6 +207,7 @@ CORE_FILES = (
     "runner/ops/attest.py",
     "runner/ops/auditreport.py",
     "runner/ops/av.py",
+    "runner/ops/briefing.py",
     "runner/ops/cancel.py",
     "runner/ops/changes.py",
     "runner/ops/cli.py",
@@ -254,6 +264,7 @@ CORE_FILES = (
     "runner/tools/first_ping.py",
     "runner/tools/linecov.py",
     "runner/tools/live_capture.py",
+    "runner/tools/make_briefing.py",
     "runner/tools/make_sbom.py",
     "runner/tools/make_snapshot.py",
     "runner/tools/mutation_floor.py",

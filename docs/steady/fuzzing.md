@@ -10,7 +10,7 @@ and they load no model.
 Core names the production runner as a set of files: the code
 that runs, without the unit tests, the test harnesses or
 anything superfluous. The canonical list stands in
-runner/ops/core.py (CORE_FILES): 130 files, all under runner/.
+runner/ops/core.py (CORE_FILES): 132 files, all under runner/.
 Running `python3 runner/ops/core.py` prints the set's current
 zip size and token counts.
 
@@ -45,13 +45,17 @@ its POSIX branches and the confinement startup trial
 took the configured extra_flags, growing runner/ops and
 runner/guard, and after the stamp audit took its
 historical-signings acceptance, growing runner/tools,
-the
-as-assembled set stands at 56,054 lines (50,491 non-blank)
-and a 710,701-byte zip, and the project's own estimator
-counts it at 590,973 tokens; the Gemini figure above still
+and again on 2026-11-08 after the Oracle briefing
+(shape 4) added runner/ops/briefing.py and
+runner/tools/make_briefing.py to the canonical list and
+its wiring grew runner/ops, runner/tools and the runner
+proper, the
+as-assembled set stands at 56,748 lines (51,120 non-blank)
+and a 720,517-byte zip, and the project's own estimator
+counts it at 597,972 tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical 130-file list at 583,356
-tokens across 55,270 lines (49,803 non-blank); the 2 token
+estimator counts the canonical 132-file list at 590,355
+tokens across 55,964 lines (50,432 non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -60,21 +64,21 @@ that run the tests, not runner code — so the canonical list
 leaves them out.
 
 When project talk says "test core", it means testing this
-set. A change aimed at core is aimed at those 130 files and
+set. A change aimed at core is aimed at those 132 files and
 no others, and a result reported for core covers exactly
 them.
 
-The runner proper is 6,647 lines; the core around it is
-56,054. The set as assembled, part by part (re-measured
-2026-11-07):
+The runner proper is 6,690 lines; the core around it is
+56,748. The set as assembled, part by part (re-measured
+2026-11-08):
 
-- runner/ops: 17,504 lines
-- runner/tools: 8,698
+- runner/ops: 17,922 lines
+- runner/tools: 8,894
 - runner/wire: 8,708
-- runner/runner.py: 6,647
-- runner/oracle: 5,013
+- runner/runner.py: 6,690
+- runner/oracle: 5,044
 - runner/transport_extensions: 2,775
-- runner/guard: 2,923
+- runner/guard: 2,929
 - runner/cloud: 2,049
 - runner/hosting: 1,704
 - runner/__init__.py: 23
@@ -82,14 +86,14 @@ The runner proper is 6,647 lines; the core around it is
 
 The canonical list's breakdown is the same except
 runner/tools, where the 3 excluded suite runners account
-for 784 of the lines, leaving 7,914 in the canonical list.
+for 784 of the lines, leaving 8,110 in the canonical list.
 The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-56,054 lines, explicit platform branching — sys.platform,
+56,748 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
-the 133 files, beside a small number of dedicated platform
+its files, beside a small number of dedicated platform
 modules (runner/ops/windows.py and runner/ops/winlog.py).
 Dropping 1 platform would trim that thin layer only; the
 rest of the set does not know which platform it is on.
