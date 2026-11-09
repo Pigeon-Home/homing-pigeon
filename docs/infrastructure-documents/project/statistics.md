@@ -1,7 +1,7 @@
 # The project's statistics: the 20-million-token measure
 
 Dated 2026-11-09. Measured on main at commit
-3e308e0881fbd6a3b0f62a24522c8208b086381a, the head from which the
+0fac2ab318e55fb6b6cf94f56b12a704b1c7bb99, the head from which the
 current release of the 3.15.20 line was cut.
 
 The recorded line, in the display form settled for publication:
@@ -52,11 +52,11 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-09",
-  "commit": "3e308e0881fbd6a3b0f62a24522c8208b086381a",
+  "commit": "0fac2ab318e55fb6b6cf94f56b12a704b1c7bb99",
   "counter": "runner/ops/version4.py",
-  "tokens": 20339516,
-  "lines_tracked": 1332534,
-  "commits": 5100,
+  "tokens": 20340061,
+  "lines_tracked": 1332548,
+  "commits": 5103,
   "display_commits": 5000,
   "display_lines": 1300000,
   "non_latent_percent": 96.35,
@@ -67,8 +67,8 @@ stays their source of truth.
   "core_lines": 55990,
   "core_lines_nonblank": 50458,
   "core_tokens": 590677,
-  "core_assembled_lines": 56773,
-  "core_assembled_nonblank": 51145,
+  "core_assembled_lines": 56774,
+  "core_assembled_nonblank": 51146,
   "core_assembled_zip_bytes": 720975,
   "core_assembled_tokens": 598294
 }

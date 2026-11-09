@@ -52,7 +52,7 @@ its wiring grew runner/ops, runner/tools and the runner
 proper, and again the same day after the release cut
 took a fresh, uncached token measure at every cut —
 version4's --fresh recount — growing runner/ops, the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->56,773<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->51,145<!--/hp-fig--> non-blank)
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->56,774<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->51,146<!--/hp-fig--> non-blank)
 and a <!--hp-fig:core_assembled_zip_bytes-->720,975<!--/hp-fig-->-byte zip, and the project's own estimator
 counts it at <!--hp-fig:core_assembled_tokens-->598,294<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
