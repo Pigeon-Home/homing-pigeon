@@ -1,7 +1,7 @@
 # The project's statistics: the 20-million-token measure
 
-Dated 2026-11-09. Measured on main at commit
-4b32dd2b77a2c686583524b5d75a73a419b60dfb, the head this
+Dated 2026-11-10. Measured on main at commit
+9832810df13b8accb2b74f9dfa11993633d28883, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
@@ -10,7 +10,7 @@ The recorded line, in the display form settled for publication:
 
 ## What stands behind each figure
 
-- Tokens: 20,357,072, counted over the whole tree by the project's
+- Tokens: 20,414,150, counted over the whole tree by the project's
   own estimator (runner/ops/version4.py) — the same measure the
   version number's 3rd component carries, which is why the line
   reads 20. Display form: 20 mil security tokens — security
@@ -20,12 +20,11 @@ The recorded line, in the display form settled for publication:
   is sec-tokens. Verify it on any checkout:
   `python3 runner/ops/version4.py measure` prints the count and
   its whole millions.
-- Lines: 1,333,978 lines in tracked files at the measured head —
-  357,856 of them Python, 85,879 of them markdown. The display
+- Lines: 1,339,426 lines in tracked files at the measured head. The display
   figure, 1,300,000, is that count rounded.
 - Commits: the display figure, 5,000, is rounded from a
   full-history recount at the measured head, taken from a
-  complete clone, which counts 5,127. The project's local
+  complete clone, which counts 5,176. The project's local
   mirrors are shallow (810 commits deep) and cannot recount
   the whole history on their own — the recount above rests on
   the complete clone, and any future count should be taken
@@ -52,12 +51,12 @@ stays their source of truth.
 
 ```json
 {
-  "as_of": "2026-11-09",
-  "commit": "4b32dd2b77a2c686583524b5d75a73a419b60dfb",
+  "as_of": "2026-11-10",
+  "commit": "9832810df13b8accb2b74f9dfa11993633d28883",
   "counter": "runner/ops/version4.py",
-  "tokens": 20357072,
-  "lines_tracked": 1333978,
-  "commits": 5127,
+  "tokens": 20414150,
+  "lines_tracked": 1339426,
+  "commits": 5176,
   "display_commits": 5000,
   "display_lines": 1300000,
   "non_latent_percent": 96.83,
