@@ -46,9 +46,12 @@ class CoreListTest(unittest.TestCase):
         # 133 as assembled for the 2026-11-04 pass, minus the 3
         # suite runners the definition of core leaves out, plus
         # the 2 briefing files the Oracle briefing work added
-        # on 2026-11-08: 135 as assembled, 132 canonical.
-        self.assertEqual(135, core.AS_ASSEMBLED_FILES)
-        self.assertEqual(132, len(core.CORE_FILES))
+        # on 2026-11-08: 135 as assembled, 132 canonical; plus
+        # the 2 platform confinement backends (windows_confine,
+        # freebsd_confine) registered on 2026-11-10: 137 as
+        # assembled, 134 canonical.
+        self.assertEqual(137, core.AS_ASSEMBLED_FILES)
+        self.assertEqual(134, len(core.CORE_FILES))
 
     def test_list_is_sorted_and_duplicate_free(self):
         files = list(core.CORE_FILES)
@@ -81,7 +84,7 @@ class CoreListTest(unittest.TestCase):
         # re-recorded at the 2026-11-05 re-measures; the Gemini
         # token count above still describes the 2026-11-04
         # assembly.
-        self.assertEqual(720975, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(729663, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -120,9 +123,15 @@ class CoreListTest(unittest.TestCase):
         # wiring grew runner/ops, runner/tools and the
         # runner proper, and again on 2026-11-09 after the
         # default-posture measurement corrected a comment in
-        # runner/ops/main.py, growing runner/ops by 1 line.
-        self.assertEqual(56774, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(51146, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/ops/main.py, growing runner/ops by 1 line,
+        # and again on 2026-11-10 after the platform
+        # confinement backends (windows_confine,
+        # freebsd_confine) joined the canonical list and
+        # their wiring grew runner/ops and the runner
+        # proper, the whole set re-measured over the
+        # current tree.
+        self.assertEqual(58597, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(52829, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
@@ -215,7 +224,7 @@ class CoreLinesTest(unittest.TestCase):
 
 class CorePartsTest(unittest.TestCase):
     def test_the_recorded_breakdown_stays_named(self):
-        self.assertEqual(6690, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
+        self.assertEqual(6758, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
         self.assertEqual(core.AS_ASSEMBLED_LINES,
                          sum(core.AS_ASSEMBLED_PART_LINES.values()))
 
@@ -269,7 +278,7 @@ class CoreCliTest(unittest.TestCase):
         parts = core.measure_core_lines_by_part(ROOT)
         # 4 head lines, 1 line per part, then zip + 2 token lines.
         self.assertEqual(4 + len(parts) + 3, len(lines))
-        self.assertEqual("core files: 132", lines[0])
+        self.assertEqual("core files: 134", lines[0])
         total, nonblank = core.measure_core_lines(ROOT)
         self.assertEqual(
             "core lines: %d (%d non-blank)" % (total, nonblank), lines[1])
@@ -301,7 +310,7 @@ class CoreCliTest(unittest.TestCase):
             self.assertEqual(0, rc)
             with zipfile.ZipFile(out_zip) as zf:
                 self.assertEqual(list(core.CORE_FILES), zf.namelist())
-            self.assertIn("core files: 132", out)
+            self.assertIn("core files: 134", out)
 
     def test_cli_rejects_an_unknown_command(self):
         rc, _out, err = self._run(["frobnicate"])
@@ -340,7 +349,7 @@ class CoreScriptFallbackTest(unittest.TestCase):
             capture_output=True, text=True, timeout=120)
         self.assertEqual(0, proc.returncode, proc.stderr)
         self.assertTrue(
-            proc.stdout.startswith("core files: 132\n"), proc.stdout)
+            proc.stdout.startswith("core files: 134\n"), proc.stdout)
 
 
 if __name__ == "__main__":

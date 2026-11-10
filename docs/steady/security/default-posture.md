@@ -164,7 +164,7 @@ line 2031):
 | Raspberry Pi | pi-light | The same confinement gate; the Oracle runs deterministically, no model installed. |
 | Windows (one-home installer) | password-only | Starts: the fresh-install seed states `confinement` and `job_user` at `audit` in the file. Stated at `enforce` by hand, both are probed at startup — confinement engages through its Windows backend (Job Object, restricted token, low integrity) and `job_user` through the Job Object ceiling — and a probe that cannot engage refuses, naming the mode. |
 | macOS | password-only | Refuses on the confinement gate until the owner lowers it. |
-| FreeBSD | password-only | Refuses on the confinement gate (the sandbox is Linux-only). |
+| FreeBSD | password-only | Starts: the fresh-install seed states `confinement` at `audit` in the file. Stated at `enforce` by hand, the FreeBSD jail backend is probed at startup — each job inside a jail with no network and a spawn resource-limit ceiling — and a probe that cannot engage refuses, naming the mode. |
 | No profile (`--no-profile`, or a platform the host decision does not know), or a hand-written config | none | The seed's own row: judge `off`, results `full`, modes `enforce` — the posture the README calls "just run it" — with the same startup gates above. |
 
 One more measured detail: at the `attested` view a result

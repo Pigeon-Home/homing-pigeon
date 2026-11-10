@@ -22,7 +22,11 @@ tests; none of them is runner code, and the definition of core
 therefore the canonical list, at 130 files as first recorded;
 the Oracle briefing work of 2026-11-08 added its 2 files
 (runner/ops/briefing.py and runner/tools/make_briefing.py),
-and the list stands at 132. This module itself
+and the list stands at 132; the platform confinement backends
+of 2026-11-09/10 added theirs (runner/guard/windows_confine.py
+and runner/guard/freebsd_confine.py), and the list stands at
+134, with the figures below re-measured live by the CLI as
+always. This module itself
 is not in the list either: the list names the set as assembled
 for the 2026-11-04 pass, and this module is the tooling that
 carries the list, written after that pass.
@@ -33,7 +37,7 @@ CLI output:
 - GEMINI_COUNT_TOKENS (619,845) is the Gemini countTokens
   measure of the set as assembled (133 files), 2026-11-04.
 - The project estimator (runner/ops/version4.py's
-  count_text_tokens) counts the canonical list (132 files as
+  count_text_tokens) counts the canonical list (134 files as
   it now stands); the
   CLI prints its figure live. The estimator is not a BPE
   tokenizer, and the 2 figures are not interchangeable: the
@@ -156,10 +160,20 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # 2026-11-09 after the default-posture measurement
 # corrected a comment in runner/ops/main.py (a missing
 # security block reads enforce, not off), growing
-# runner/ops by 1 line.
+# runner/ops by 1 line. Re-measured again on 2026-11-10
+# after the platform confinement backends joined the
+# canonical list (132 to 134 files): runner/guard/
+# windows_confine.py, registered at the desk's standing
+# follow-up, and runner/guard/freebsd_confine.py grew
+# runner/guard, their wiring grew runner/ops and the
+# runner proper, and the whole set was re-measured over
+# the current tree for this entry, which also takes up
+# the growth earlier landings had left unrecorded in
+# runner/ops.
 # Recorded constants: they describe the as-assembled set (the
-# canonical 132 files below plus the 3 suite runners named in
-# the module docstring), not the canonical list itself. The
+# canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
+# the module docstring; the list itself stands at 134 since
+# the 2026-11-10 entry above), not the canonical list itself. The
 # reviewing model's own token measure of the set (Gemini
 # countTokens) is a measure of the 2026-11-04 assembly and is
 # NOT re-recorded here: no re-count of the grown set has been
@@ -167,21 +181,21 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # assembly. The zip size and the estimator counts re-measured
 # here come from this module's own deterministic build and
 # counter over the current tree.
-AS_ASSEMBLED_FILES = 135
-AS_ASSEMBLED_ZIP_BYTES = 720975
-AS_ASSEMBLED_LINES = 56774
-AS_ASSEMBLED_NONBLANK_LINES = 51146
+AS_ASSEMBLED_FILES = 137
+AS_ASSEMBLED_ZIP_BYTES = 729663
+AS_ASSEMBLED_LINES = 58597
+AS_ASSEMBLED_NONBLANK_LINES = 52829
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 17940,
+    "runner/ops": 18535,
     "runner/tools": 8894,
     "runner/wire": 8708,
-    "runner/runner.py": 6690,
+    "runner/runner.py": 6758,
     "runner/oracle": 5044,
     "runner/transport_extensions": 2775,
-    "runner/guard": 2937,
+    "runner/guard": 4097,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,
@@ -205,10 +219,12 @@ CORE_FILES = (
     "runner/guard/defaulted.py",
     "runner/guard/extreview.py",
     "runner/guard/filenames.py",
+    "runner/guard/freebsd_confine.py",
     "runner/guard/panic.py",
     "runner/guard/sandbox.py",
     "runner/guard/security.py",
     "runner/guard/textutil.py",
+    "runner/guard/windows_confine.py",
     "runner/hosting/__init__.py",
     "runner/hosting/base.py",
     "runner/hosting/billing.py",

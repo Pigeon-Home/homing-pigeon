@@ -163,6 +163,29 @@ invariant predates the phase-2 refusal it now meets; and the
 core breakdown's re-measure waits on the windows_confine
 registration named above.
 
+The node also has its confinement backend now, the FreeBSD
+analogue of the Windows one: `runner/guard/freebsd_confine.py`
+runs each job inside a jail created for it — the host's system
+directories mounted read-only, the job's work directory the
+only writable mount, no network at all — with a 512 MiB
+per-process memory ceiling applied at spawn as resource
+limits; the audit record names exactly "freebsd: jail +
+no_network + spawn_resource_limits". The ceiling is a spawn
+limit and not an `rctl` rule: RACCT/RCTL is present but
+disabled on the node, and the record says so rather than
+naming a control that cannot deny anything. Capsicum is not
+used; it is entered in-process and does not fit the launcher
+shape. Fresh installs still seed `confinement` at `audit`;
+the operator steps it up and the startup gate probes the
+backend. Both platform backends are registered in
+`runner/ops/core.py` with their re-measure — the
+windows_confine registration this desk carried as an open
+follow-up is done in the same landing. What the backend
+honestly is, and is not, stands in
+`docs/steady/security/freebsd.md`, with the supposition
+recorded before its field test and the conclusions after it.
+The support level stays Experimental.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree

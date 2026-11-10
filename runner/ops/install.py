@@ -2369,12 +2369,15 @@ def platform_modes(platform=None):
     Confinement's full form is a Linux sandbox (bwrap), and the
     job_user demote is a POSIX setuid. Windows has backends for
     both (confinement: Job Object + restricted token + low
-    integrity; job_user: the Job Object ceiling), but the
+    integrity; job_user: the Job Object ceiling), and FreeBSD
+    has a confinement backend (jail + no network + spawn
+    resource limits), but the
     installer writes the seed without running the backend probe
     on the target machine, and stating enforce sight-unseen
     risks a first-start refusal on a machine where a control
     cannot engage -- so a fresh Windows install states both at
-    audit, in the file, in the open, and the operator steps a
+    audit, a fresh FreeBSD install states confinement at audit,
+    in the file, in the open, and the operator steps a
     mode up to enforce deliberately, with the startup gate then
     verifying the probe on that machine. On other non-Linux
     platforms confinement has no backend and states audit for

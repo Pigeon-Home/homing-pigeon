@@ -92,17 +92,20 @@ reports every control as proven, unproven, or failed, and the
 workflow fails when a proof disappears.
 
 What the platforms cannot prove is what the runner does not do
-there, by the owner's 2026-10-15 decisions: confinement is bwrap,
-Linux only, and on every other kernel the runner refuses to
-start under `confinement: enforce` — the default for a feature
-the config does not set — because the sandbox cannot engage
-there; the WARN line and `fallback` audit entry path is only
-for a sandbox that breaks after a good start on Linux;
-`job_user` is a uid change and works on the three POSIX kernels but
-has no Windows form. The real cages elsewhere are named in
-`docs/security/security-gaps.md` (`sandbox-exec` on macOS, a jail
-on FreeBSD, a job object and a restricted token on Windows); none
-is implemented, and adding one is a scope decision, not a test.
+there, by the owner's 2026-10-15 decisions: confinement's full
+form is bwrap on Linux; Windows and FreeBSD engage their own
+backends under `confinement: enforce` (a job object and a
+restricted token on Windows; a jail on FreeBSD), each probed at
+startup, and a kernel with no backend — macOS today — refuses
+to start under `confinement: enforce` — the default for a feature
+the config does not set — because nothing can engage there; the
+WARN line and `fallback` audit entry path is for a control that
+breaks after a good start;
+`job_user` is a uid change and works on the three POSIX kernels;
+on Windows its form is the Job Object ceiling. The cage macOS
+still lacks is named in
+`docs/infrastructure-documents/security/security-gaps.md`
+(`sandbox-exec` on macOS); adding it is a scope decision, not a test.
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 

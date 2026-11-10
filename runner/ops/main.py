@@ -121,6 +121,12 @@ def main() -> int:
                 # Object + restricted token + low integrity); its
                 # probe decides here, not bwrap's.
                 problem = R._confinement_startup_problem(cfg)
+            elif sys.platform.startswith("freebsd") and getattr(
+                    R, "_confinement_startup_problem", None) is not None:
+                # FreeBSD has its own confinement backend too
+                # (jail + no network + spawn resource limits);
+                # its probe decides here, not bwrap's.
+                problem = R._confinement_startup_problem(cfg)
             else:
                 problem = R._sandbox.startup_problem(cfg=cfg)
             if problem:

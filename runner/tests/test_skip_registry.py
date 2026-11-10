@@ -224,6 +224,21 @@ REGISTERED = {
         "test_windows_confine's off-Windows postspawn refusal "
         "runs on hosts that are not Windows; on win32 the real "
         "Job Object backend engages, or refuses, live",
+    "the stub exists only off freebsd":
+        "test_freebsd_confine's stub tests are exercised on every "
+        "host that is not FreeBSD, where the jail backend is a "
+        "stub; on FreeBSD the real backend is the subject and "
+        "the stub shape does not exist there",
+    "the simulated FreeBSD refusal is deterministic off FreeBSD":
+        "test_freebsd_confine's simulated-FreeBSD startup refusal "
+        "runs deterministically on hosts that are not FreeBSD; "
+        "on a real FreeBSD host the backend's own probe answers "
+        "instead",
+    "run on FreeBSD as root":
+        "test_freebsd_confine's live backend tests run on a "
+        "FreeBSD host as root (the fleet FreeBSD node), where a "
+        "real jail can engage; everywhere else the stub and the "
+        "injection seams are the subject",
     "peak RSS is read from /proc":
         "test_de_dust2's synthetic-grow memory peak reads "
         "/proc/self/status; runs on Linux, skipped where /proc is absent",
