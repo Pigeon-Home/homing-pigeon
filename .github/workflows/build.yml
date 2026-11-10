@@ -305,20 +305,31 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -c .github/requirements-ci.txt hypothesis
-      # The suite is this job's long pole (~5 of its ~6.5 minutes
-      # serial). It runs sharded across the runner's cores by
-      # module test count; the shard runner discovers the same
-      # suite, runs every test exactly once, and fails if any
-      # shard fails or if discovery comes up empty. --durations
-      # makes each shard list its slowest tests; under Actions the
-      # runner also annotates every failed test by name, so a red
-      # Windows job names its tests on the run page (the six-day
-      # history had 257 of them with nothing but "exit code 1").
+      # The suite is this job's long pole. It runs sharded,
+      # packed by measured duration rather than by test
+      # count: counts hid the suite's shape on this platform
+      # (a few files carry most of the wall time), and on
+      # 2026-11-10 the count split's shard 2 was still
+      # running when the 20-minute hang guard below killed
+      # it, on the attempt and on the rerun, while its
+      # siblings finished in 6 to 12 minutes. The durations
+      # table (runner/tools/windows_durations.json, packed
+      # by runner/tools/windows_durations.py) budgets each
+      # shard at 12 minutes against the standing 20-minute
+      # wall; a file with no measurement enters at the
+      # table's median. The shard runner still discovers
+      # the same suite, runs every test exactly once, and
+      # fails if any shard fails or if discovery comes up
+      # empty. --durations makes each shard list its
+      # slowest tests; under Actions the runner also
+      # annotates every failed test by name, so a red
+      # Windows job names its tests on the run page.
       # --wall-clock 20 runs each shard under runner/tools/suite_wall_clock.py
       # (see the Linux suite step): a shard still running at 20
       # minutes stops and names its test instead of holding the
-      # job to its own limit.
-      - run: python runner/tools/run_tests_parallel.py --jobs 4 --durations 15 --wall-clock 20
+      # job to its own limit. The wall is a hang guard, not
+      # a budget; it is not raised to fit the suite.
+      - run: python runner/tools/run_tests_parallel.py --duration-table runner/tools/windows_durations.json --durations 15 --wall-clock 20
       - run: pip install -c .github/requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs" --hidden-import runner._version --hidden-import runner._build --hidden-import runner.ops.recipes --hidden-import runner.ops.cancel --hidden-import runner.ops.changes --hidden-import runner.ops.av --hidden-import runner.ops.exec --hidden-import runner.ops.mail --hidden-import runner.ops.main --hidden-import runner.ops.misc --hidden-import runner.ops.queries --hidden-import runner.ops.remediation_ops --hidden-import runner.ops.attest --hidden-import runner.ops.context --hidden-import runner.ops.firewall --hidden-import runner.ops.handlers --hidden-import runner.ops.oracle_ops --hidden-import runner.ops.paths --hidden-import runner.ops.poll --hidden-import runner.ops.sensors --hidden-import runner.ops.startup --hidden-import runner.ops.watch --hidden-import runner.ops.windows --hidden-import runner.ops.oracle_server --hidden-import runner.wire.oauth --hidden-import runner.oracle.senses --hidden-import runner.ops.live --hidden-import runner.ops.extensions --hidden-import runner.ops.extsources --hidden-import runner.oracle.review --hidden-import runner.oracle.opinion --hidden-import runner.oracle.learning --hidden-import runner.oracle.remediation --hidden-import runner.oracle.resources --hidden-import runner.oracle.dri --hidden-import runner.oracle.detection --hidden-import runner.ops.setup --hidden-import runner.guard.security --hidden-import runner.guard.sandbox --hidden-import runner.ops.winlog --hidden-import runner.ops.auditreport --hidden-import runner.ops.posture --hidden-import runner.ops.harness --hidden-import runner.ops.local_test --hidden-import runner.wire.transports --hidden-import runner.wire.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.wire.dtlsproto --hidden-import runner.wire.jobcrypto --hidden-import runner.wire.protocol_v2 --hidden-import runner.oracle.personal_docs --hidden-import runner.wire.platformcard --hidden-import runner.wire.board --hidden-import runner.guard.textutil --hidden-import runner.guard.extreview --hidden-import runner.guard.atomicio --hidden-import runner.guard.filenames --hidden-import runner.guard.panic --hidden-import runner.ops.cli --hidden-import runner.ops.oracle_page --hidden-import runner.ops.helpers --hidden-import runner.ops.oracle_tools --hidden-import runner.ops.tables --hidden-import runner.ops.policy --hidden-import runner.guard.confval --hidden-import runner.guard.defaulted --hidden-import runner.wire.verify --hidden-import runner.wire.subject --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --hidden-import runner.transport_extensions.queues.__main__ --hidden-import runner.ops.briefing --add-data "runner/transport_extensions;pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/ops/install.py --hidden-import runner._version --hidden-import runner.oracle.personal_docs --hidden-import runner.guard.atomicio --add-data "runner/guard/atomicio.py;pigeon-guard" --add-data "runner/guard/panic.py;pigeon-guard"

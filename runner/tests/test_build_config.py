@@ -230,7 +230,9 @@ class MutationGateTest(unittest.TestCase):
                       "discover -s runner/tests -t . -v --durations 25", linux)
         self.assertNotIn("python -m unittest discover", linux)
         windows = _uncommented(_job_block(workflow, "build-windows"))
-        self.assertIn("python runner/tools/run_tests_parallel.py --jobs 4 "
+        self.assertIn("python runner/tools/run_tests_parallel.py "
+                      "--duration-table "
+                      "runner/tools/windows_durations.json "
                       "--durations 15 --wall-clock 20", windows)
         self.assertTrue(os.path.exists(
             os.path.join(_root(), "runner", "tools", "suite_wall_clock.py")))

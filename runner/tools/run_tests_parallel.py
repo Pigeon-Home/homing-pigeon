@@ -55,6 +55,7 @@ read from the run page, not only from a downloaded log
 """
 
 import argparse
+import importlib.util
 import os
 import re
 import subprocess
@@ -225,6 +226,40 @@ def _child_env():
 _WALL_CLOCK_TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "suite_wall_clock.py")
 _HARD_STOP_GRACE_SEC = 90.0
+
+
+def load_duration_tool():
+    """Load runner/tools/windows_durations.py, the packing's
+    home, from beside this file. The suite tools are run as
+    scripts, not imported as a package, so the sibling is
+    loaded by path (the same shape refresh_figures uses for
+    the ops modules)."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "windows_durations.py")
+    spec = importlib.util.spec_from_file_location(
+        "hp_windows_durations", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def duration_shards(counts, table_path, budget_seconds=None):
+    """Shard module names by measured duration from a table.
+
+    Returns (shards, loads, budget). A module the table does
+    not name is weighted at the table's median by the
+    packer, so a new file is packed, never dropped. A table
+    that cannot be read or trusted raises -- the caller
+    turns that into a loud exit, never a silent count split.
+    """
+    tool = load_duration_tool()
+    table = tool.load_table_file(table_path)
+    budget = table["budget_seconds"] if budget_seconds is None \
+        else budget_seconds
+    shards = tool.pack_modules(sorted(counts), table["durations"],
+                               budget)
+    loads = tool.shard_loads(shards, table["durations"])
+    return shards, loads, budget
 
 
 def shard_command(extra, shard, wall_clock=0):
@@ -553,6 +588,16 @@ def main(argv=None):
                         help="stop a shard still running after this many "
                              "minutes and name the test it was in "
                              "(0: no clock)")
+    parser.add_argument("--duration-table", metavar="PATH",
+                        help="pack the shards by measured duration "
+                             "from this table (see "
+                             "runner/tools/windows_durations.py) "
+                             "instead of by test count; --jobs "
+                             "does not apply in that mode")
+    parser.add_argument("--budget-seconds", type=float, default=None,
+                        metavar="SECONDS",
+                        help="shard budget for --duration-table "
+                             "(default: the table's own budget)")
     parser.add_argument("modules", nargs="*",
                         help="explicit modules to run instead of "
                              "discovering the whole suite")
@@ -561,6 +606,8 @@ def main(argv=None):
         parser.error("--durations must be >= 0")
     if args.wall_clock < 0:
         parser.error("--wall-clock must be >= 0")
+    if args.budget_seconds is not None and args.budget_seconds <= 0:
+        parser.error("--budget-seconds must be > 0")
 
     if args.modules:
         counts = {mod: 1 for mod in args.modules}
@@ -570,10 +617,26 @@ def main(argv=None):
         print("error: no tests discovered under %s -- refusing to "
               "report a vacuous green" % args.start_dir, file=sys.stderr)
         return 2
-    shards = shard_modules(counts, args.jobs)
     total = sum(counts.values())
-    _emit("running %d test(s) from %d module(s) in %d shard(s)"
-          % (total, len(counts), len(shards)))
+    if args.duration_table:
+        try:
+            shards, loads, budget = duration_shards(
+                counts, args.duration_table, args.budget_seconds)
+        except (OSError, ValueError) as exc:
+            print("error: cannot pack from the durations table "
+                  "%s: %s" % (args.duration_table, exc),
+                  file=sys.stderr)
+            return 2
+        _emit("running %d test(s) from %d module(s) in %d shard(s)"
+              % (total, len(counts), len(shards)))
+        _emit("duration-balanced from %s: budget %.0fs per shard; "
+              "packed loads %s"
+              % (args.duration_table, budget,
+                 ", ".join("%.0fs" % load for load in loads)))
+    else:
+        shards = shard_modules(counts, args.jobs)
+        _emit("running %d test(s) from %d module(s) in %d shard(s)"
+              % (total, len(counts), len(shards)))
     started = time.monotonic()
     rc = run_shards(shards, args.top_level_dir, durations=args.durations,
                     wall_clock=args.wall_clock)
