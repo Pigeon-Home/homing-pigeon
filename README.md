@@ -11,7 +11,7 @@ Try this prompt:
 ```
 Run a pigeon-home.ai job
 Retrieve the system clock and display it
-My mailbox is slutsky5544@gmail.com
+My mailbox is your@email.com
 Shared secret is <make one up for me>
 ```
 
