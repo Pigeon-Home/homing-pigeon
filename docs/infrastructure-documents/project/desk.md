@@ -677,6 +677,39 @@ workflow lane, the producer lane, the briefing-mark lane —
 re-tested by a second seat under the lanes rule before it
 is called done.
 
+## The Windows split learns its own durations (2026-11-10)
+
+The first of the three follow-on lanes landed the same
+day the questions were answered. Q136 had been filed
+because the Windows leg's count-based split was blind to
+the suite's shape on that platform: a few files carry
+most of the wall time, the counts could not see it, and
+the heaviest shard was still running when the 20-minute
+hang guard killed it — on the attempt and on the rerun —
+while its siblings finished in 6 to 12 minutes. That one
+red leg held a release cut, which is what made the
+question release-critical rather than merely untidy.
+
+The split now packs by measured duration. The table is a
+checked-in fact in the figure slots' own pattern — a
+small tool beside it packs, checks and refreshes it, and
+a guard test holds the workflow to the table it packs
+from. The seed was estimated honestly from the only
+Windows logs at hand, the failed build's two attempts:
+exact where a log measures a test, spread by count where
+it does not, and floored where the guard's kill cut the
+evidence off, with the method stated in the tool where
+the next reader will find it. The packing it produces —
+5 shards at about 613 seconds each, against a budget of
+12 minutes and a wall that stays at 20 — is the desk's
+answer standing in the workflow, and the head builds that
+run under it are its re-test, the way the lanes rule asks.
+The drift rule rides with the table: a shard over
+15 minutes on 2 consecutive builds refreshes the table
+from those builds' logs, so the split keeps learning the
+suite's shape from the leg's own runs instead of from
+another season of guesses.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
