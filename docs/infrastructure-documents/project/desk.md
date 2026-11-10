@@ -630,6 +630,32 @@ An old joke about a forklift that lifts forklifts is the shape
 exactly — the machinery of the project moving the machinery of
 the project, one held place at a time.
 
+## The desk moves: three questions, three answers (2026-11-10)
+
+The desk moved in one pass, at the conductor's direction:
+three questions were posted in the questions file and
+answered in place in the same landing (Q136, Q137, Q138).
+One of the three answers — the posture producer's seam —
+took research from a free-tier Gemini call, made at no
+credit cost; the other two were decided from the project's
+own record. The decisions, one line each: Q136 — the
+Windows test split becomes duration-balanced, test files
+packed by their measured Windows durations into shards
+budgeted at 12 minutes against the standing 20-minute
+wall. Q137 — the disclosure posture stamp gets its
+producer in the runner core, at the result-assembly seam,
+derived from runner-side state alone, so no job can skip
+or forge its deployment's stamp. Q138 — the Oracle's
+never-built startup warning for owner instructions that
+contradict the standing layer is retired as designed and
+built differently instead: the contradiction is marked in
+the assembled briefing itself, beside the standing layer
+it tensions against, with an audit row to match. Each
+decision's build is a follow-on lane of its own — the
+workflow lane, the producer lane, the briefing-mark lane —
+re-tested by a second seat under the lanes rule before it
+is called done.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
