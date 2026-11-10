@@ -381,6 +381,27 @@ stage that failed. The second seat's re-test and the
 hosted host's own cause remain CI's word; the trial is
 what names that cause there, at startup.
 
+The re-test came back red, and the trial itself was the
+defect: staged with tempfile.mkdtemp, whose DACL names
+only SYSTEM, Administrators and OWNER RIGHTS, the trial
+tree was unopenable by the confined token under an
+elevated administrator — the identity the battery, and
+the rig's production runner, runs as, and the one
+identity class the unelevated field test had not
+exercised — so the startup gate refused a working host
+at the staged read. The trial now stages with
+os.makedirs at the default mode and grants BUILTIN\Users
+read+execute on the staged tree explicitly through
+SetNamedSecurityInfoW; proven on the rig as administrator
+against the battery's all-enforce config (the probe
+answers None), production untouched. The addendum stands
+with Q134's answer in the questions file. The same
+landing series corrects the core breakdown the Q134
+re-measure recorded: the head build's test leg measured
+runner/ops 11 lines past its record, runner/guard 5 and
+the runner proper 8, and the figures stand re-measured
+over the tree they describe.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree

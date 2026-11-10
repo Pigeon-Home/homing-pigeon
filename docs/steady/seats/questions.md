@@ -513,6 +513,69 @@ trial tests), with the core figures re-measured in
 re-test by a second seat (rule 8) and the hosted leg's own
 verdict remain CI's word.
 
+**Addendum (2026-11-10):** the second seat's re-test came
+back with a defect in the trial itself. The rig preview
+battery — which stages the runner as an elevated
+administrator with every mode at enforce — refused at
+startup: the trial staged its tree with
+tempfile.mkdtemp, whose directory carries a DACL naming
+only SYSTEM, Administrators and OWNER RIGHTS. The
+confined token disables Administrators, is not SYSTEM,
+and OWNER RIGHTS resolves to the disabled owner SID, so
+under an elevated administrator the confined process
+could not open the staged program ("a confined process
+could not read its staged file (exit 2: ... [Errno 13]
+Permission denied)"), and the runner refused a host that
+works, for a reason that was the staging's, not the
+host's. The unelevated field test above passed because a
+standard user's own SID stays enabled in the token; the
+hosted CI runner is unelevated, so no CI leg could see
+it either. The discriminators on the rig, all as
+administrator: the mkdtemp shape failed identically under
+the profile temp and under the battery's test tree; the
+same tree staged with os.makedirs passed (it inherits
+BUILTIN\Users read+execute, which stays enabled in the
+token); labelling the tree Low did not help (the denial
+is the DACL's, not the label's). The rig's production
+runner also runs as administrator at enforce, on a
+pre-trial build; a restart onto a trial build would have
+refused identically.
+
+The fix: the trial stages its tree in a randomly named
+directory created with os.makedirs at the default mode,
+and the backend sets an explicit DACL on the staged
+directory and files through SetNamedSecurityInfoW —
+SYSTEM and Administrators at full control,
+BUILTIN\Users (S-1-5-32-545) at read+execute, the group
+the confined token carries enabled — so the trial no
+longer depends on any host's temp inheritance. A grant
+that fails is the trial's own answer (the gate refuses
+with it), never a crash; the trial's stages, stage
+naming and per-process verdict caching are unchanged.
+POSIX CI cannot execute the real DACL path; the suite
+pins the staging helper's behavior and the grant
+contract through the scripted seams (7 new tests, red
+before, green after), and the SDDL the real grant
+applies stands in the module where any host can read
+it. Field proof after the fix: the fixed module staged
+into the battery's test context on the rig, and
+windows_confinement_problem run as administrator against
+the battery's staged all-enforce config, temp under the
+administrator profile, answers None; the production
+runner was not touched. The same landing series corrects
+the core figures the first landing of this answer
+recorded: its re-measure understated the tree it stood
+on (runner/ops by 11 lines, runner/guard by 5, the
+runner proper by 8), which the head build's test leg
+named as a breakdown mismatch; the figures stand
+re-measured over the current tree in the follow-up
+commit of the series. **Applied in:** the 11:32 AM PST
+landing — `runner/guard/windows_confine.py` (the
+makedirs staging and the Users grant),
+`runner/tests/test_windows_confine.py` (the staging and
+grant pins), with the corrected core re-measure in
+`runner/ops/core.py` and the records that carry it.
+
 ## Q133 (Muse, to the desk, 2026-11-07): the confinement startup trial ran the built-in flags only; it now trials the configured extra_flags (the held item Q-new-27)
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
