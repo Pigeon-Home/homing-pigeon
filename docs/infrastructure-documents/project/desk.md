@@ -114,14 +114,23 @@ project's only FreeBSD was a VM step inside a Linux CI runner,
 and that step has never produced a green run, so the platform
 table's FreeBSD row has always been a proof owed rather than
 a proof given. The node closes that gap in kind: the leg now
-has a real kernel of its own to be proven on. The runner's
-bring-up on the node — the install from the tree, and a first
-proof job through the node's mailbox — is in progress as this
-stands. The node's first green run is recorded where it lands
-when it lands, and the platform claims in
+has a real kernel of its own to be proven on. The runner is
+installed on the node from the tree (Python 3.12.15;
+`homing-pigeon-install` completed cleanly), its config seeded
+by the platform rules — `confinement` at `audit`, every other
+security mode at `enforce` — and a cron `@reboot` entry arms
+it at boot. A first proof job has run on it end to end through
+the installed config: a clock job, exit 0, its stdout the
+system time, the result payload's verdict `pass`, under the
+runner name `freebsd-node`. One step is still owed: the
+installed config's mailbox fields are the installer's
+placeholders, so the node is not polling a mailbox yet — the
+proof above ran locally through the installed config, not
+through the mailbox, and live mail operation waits on the
+mailbox being paired into the config. The platform claims in
 `docs/support-matrix.md` and
-`docs/infrastructure-documents/project/testing.md` do not move
-until it does.
+`docs/infrastructure-documents/project/testing.md` do not
+move on this: the FreeBSD support level stays Experimental.
 
 ## The flow, in one pass
 

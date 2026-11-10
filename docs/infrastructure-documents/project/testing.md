@@ -70,8 +70,12 @@ yet: its VM step has failed on every run so far, so its row is
 the proof it is built to give, not one given. A dedicated node
 running FreeBSD 14.5-RELEASE has since stood up in the
 project's own fleet (2026-11-10) to give the leg a real kernel
-of its own; the runner's bring-up on that node is in progress,
-and the leg's first green run is still owed.
+of its own. The runner is installed on that node, and a first
+local proof job has passed there end to end through the
+installed config — a clock job, verdict `pass` — but the node
+is not polling a mailbox yet (its config's mailbox fields are
+still the installer's placeholders), and the leg's first green
+run — the suite and the roster on that kernel — is still owed.
 
 | Platform | Suite | Switch proofs (the roster) | Built binaries | When |
 |---|---|---|---|---|
