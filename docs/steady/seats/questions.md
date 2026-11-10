@@ -43,6 +43,132 @@ Rules:
 
 ---
 
+## Q139 (Muse, to the desk, 2026-11-10): the determination decision point — a version 2 determination can be formed from the Oracle, from a remote answerer, or from both; the suite consults both and decides from the combined picture
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed at the conductor's direction (2026-11-10),
+as a design filing only — nothing is built by this entry,
+and the build is sequenced after the 3.16.20.2 cut and
+the documentation overview.
+
+Version 2 already carries the pieces. A determination is
+the runner's pre-execution statement of what it expects a
+job to do, and why — an opinion, frozen before the job
+runs, formed from the Oracle's plan, which does not
+refuse the job and is not revised after execution (the
+version 2 draft, Section 6). A question is "what a
+deterministic runner would have asked a local model": the
+reference software sends one only when version 2 is
+enabled, the process is not in answer-only mode, the
+Oracle mode is deterministic, and the job's kind is
+`exec` (Section 7). An answer is data, never an
+authorization — the runner decides what runs, before and
+after the answer, under version 1 rules — and one answer
+decides: the first filed wins, and later answers are
+context that does not vote (Section 8). No answer by the
+deadline, and the local default stands, with a late
+answer riding home as a segment beside it (Section 9).
+Determinations, answers and local defaults travel home
+as context segments on the version 1 result (Section 10).
+
+So the decision point exists today, but it is implicit
+and exclusive. The Oracle in its deterministic mode forms
+the plan alone, and the runner asks the remote answerer;
+where a local model tier is configured, the Oracle's
+opinion is formed locally and no question goes out. The
+input arrives, the posture is what it is, and which mind
+gets asked is decided by the mode switch, not by the
+question in front of the runner. The conductor's
+direction names that fork as a decision point in its own
+right and settles its headline: the suite may consult
+BOTH — the Oracle (its deterministic plan, and its model
+tier where one is configured) and the remote answerer, by
+the question the draft already defines — and form the
+determination from the combined picture. The posted
+drafts describe the wire; the suite is not bounded by
+them, and this behavior lives suite-side, in the runner,
+exactly where the determination is formed. No draft text
+changes for it, and none is proposed here.
+
+The conductor also floated, as a joke to start, calling
+this decision point "version four". The name is recorded
+here as the decision point's nickname and nothing more:
+it is not a version, it revs nothing, it appears in no
+version string and no draft, and it is not the deferred
+release line of that number, which is a separate matter
+this entry does not touch.
+
+What the building seat must settle — the design work this
+question leaves open, to be answered in the build's own
+design note and re-tested under rule 8:
+
+1. The routing signals. When does the runner consult
+   both, and when is one source the whole picture — the
+   Oracle's mode, whether the deterministic plan already
+   settles the job (a clean pass sends nothing, and stays
+   nothing), the job's kind (the draft's reference asks
+   on `exec` only; other deployments may ask wider), and
+   whether a deadline above 0 is configured at all.
+2. Both-consulted semantics. The natural shape is
+   parallel: the question goes out at once, and the local
+   consult runs inside the wait the deadline already
+   bounds. When the two disagree, the draft's rules hold
+   the frame — an answer is not an authorization and does
+   not vote — so the disagreement is recorded, not
+   resolved by tally: the determination's `why` names the
+   split, and the runner decides under version 1 rules,
+   as it does today.
+3. The record. A both-consulted determination has two
+   sources to show its work to: what rides home on the
+   result (the existing segment kinds carry the
+   determination, the answer, the local default and the
+   late answer; whether the local view needs a segment of
+   its own beside the answer segment), and what the audit
+   carries, at the same seam discipline as the posture
+   stamp producer (Q137).
+4. The posture interaction. Whether the deployment's
+   disclosure posture gates which sources may be asked at
+   all — a question is a disclosure; it carries the job's
+   shape off the box — and if it gates, whether the gate
+   is the posture, a security mode of its own, or the
+   answerer list the draft already provides
+   (`v2_answerers`).
+5. Failure behavior. Each source unreachable degrades to
+   the behavior the suite already has for the other: no
+   answer by the deadline is the local default's existing
+   arm, and an Oracle that cannot form a plan is the
+   diagnose-and-talk path the opinion design already
+   describes. Neither failure may stall the worker past
+   the deadline cap, and neither may turn a determination
+   into a refusal it never was.
+
+Recommendation: adopt the conductor's shape whole — both
+sources, in parallel, the runner deciding, disagreement
+recorded rather than voted away — and let the five points
+above be settled by the building seat against this frame,
+not re-litigated.
+
+**Answer (Muse, 2026-11-10):** the feature is adopted
+as suite behavior at the conductor's direction: at the
+determination decision point the runner consults the
+Oracle and the remote answerer both, where both are
+available, and forms the determination from the combined
+picture — suite-side, beyond what the posted drafts
+describe, and without changing them. The nickname stands
+in this record only, as a joke name for the decision
+point; no version is revved by it and no draft is edited
+for it. The build is sequenced after the 3.16.20.2 cut
+and the documentation overview; the five open points are
+the building seat's design work, answered in its own
+design note and re-tested by a second seat under rule 8.
+**Applied in:** the questions landing of 2026-11-10
+(this entry and the desk note that carries the
+direction); the build itself is a follow-on lane of its
+own.
+
+---
+
 ## Q138 (Muse, to the desk, 2026-11-10): the Oracle's designed warning for owner instructions that contradict the standing layer was never built — build it differently: mark the contradiction in the briefing itself, where the layer that wins can name it
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

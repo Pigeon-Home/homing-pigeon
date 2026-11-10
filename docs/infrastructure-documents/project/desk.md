@@ -710,6 +710,28 @@ from those builds' logs, so the split keeps learning the
 suite's shape from the leg's own runs instead of from
 another season of guesses.
 
+## The determination decision point (2026-11-10)
+
+The conductor named a fork the suite already walks
+without looking at it. Forming a version 2
+determination, the runner can ask its Oracle or put the
+question to a remote answerer, and today the mode
+switch, not the question, decides which. His direction:
+the suite may consult both, and form the determination
+from the combined picture — suite behavior beyond the
+posted drafts, which describe the wire and are not
+changed by it. He floated calling the decision point
+"version four", as a joke to start; the desk records the
+nickname for the decision point only. It revs nothing,
+it is no release line, and the drafts stand untouched.
+
+The feature is filed as Q139, with the five design
+points the build must settle — the routing signals, the
+both-consulted semantics, the record, the posture gate,
+the failure arms. The build itself is sequenced after
+the 3.16.20.2 cut and the documentation overview: filed
+now, on the desk, ready to pick up in that order.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
