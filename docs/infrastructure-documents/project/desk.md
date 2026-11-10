@@ -278,6 +278,34 @@ refilled generated slots from their record, the other
 re-pointed a test probe at the text the documents
 actually carry.
 
+And the two production findings the fourth round recorded
+are closed. The fresh-install flow's platform statement no
+longer assumes the seed wrote config.json first: inside
+apply_platform_modes a missing config is seeded from empty,
+so the platform modes are stated into the file the write
+creates — the same statement the setup wizard's seed makes
+from the same platform map — while an existing config is
+read and kept exactly as before, and every other read
+failure (a symlink, unreadable JSON) raises as it always
+has. The first-ping bench, whose config is a fresh config
+built in memory, now states the platform gates through the
+wizard's own seed helper rather than carrying no security
+block, so on a host where confinement cannot engage the
+bench measures the runner instead of dying on the unstated
+enforce default; on Linux the statement is empty and the
+bench is unchanged. The regression family stands beside
+the fixes: the missing-config seed on each stating
+platform, the Linux no-write, stability under a second
+apply, the symlink refusal kept, the partial shapes (no
+security block, a non-object block, a partially stated
+modes map), the fresh-config flow end to end under a
+simulated Darwin, and the bench under a backend-less
+reproduction — red without the production changes (5 errors
+and 1 failure among the new tests) and green with them. No
+shipped default moved: a fresh install's stated modes and
+an existing config's owner's word are exactly what they
+were.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
