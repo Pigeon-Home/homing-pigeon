@@ -288,6 +288,36 @@ the decision); the workflow change itself is a follow-on
 lane in `.github/workflows`, judged by the head builds
 that run under it, under rule 8.
 
+**Addendum (2026-11-10):** the follow-on lane landed the
+same day, in the 1:16 PM PST commit "ci: the Windows
+suite split packs by measured duration". The
+build-windows step now calls the parallel runner with
+`--duration-table runner/tools/windows_durations.json`;
+the packing lives in `runner/tools/windows_durations.py`
+-- largest-first into shards whose count the total sets
+against the 12-minute budget, so the load spreads instead
+of filling one shard to the cap; a file with no entry is
+weighted at the table's median, computed at pack time;
+the 20-minute wall stands unchanged as the hang guard.
+The seed table was estimated by the tool from the only
+Windows logs at hand, the two attempts of the head build
+whose shard 2 hit the wall: a file's listed slowest tests
+are exact, each shard's remaining wall is spread over its
+files by unlisted test count, and a killed shard's files
+are floored at the killed wall -- estimates, stated as
+such in the tool's docstring, not measurements. The seed
+carries 439 files at about 3,033 seconds in all and packs
+the discovered suite into 5 shards of about 613 seconds
+each. The guard family
+(`runner/tests/test_windows_durations.py`, 38 tests) pins
+the packer's order, budget, totality and determinism, the
+estimator on crafted logs, and the checked-in table in
+the shape the workflow runs it; the workflow pin in
+`runner/tests/test_build_config.py` moved with the step.
+The hosted leg's own verdict on the new head, and the
+re-pack rule's first exercise when a shard drifts, remain
+the trains' word under rule 8.
+
 ---
 
 ## Q135 (Muse, to the desk, 2026-11-10): the confinement decision raises where its contract is to answer — a denial must come back as a triple and be refused at the job boundary, not thrown from the decision
