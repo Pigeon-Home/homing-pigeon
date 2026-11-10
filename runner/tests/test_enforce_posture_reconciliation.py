@@ -85,11 +85,47 @@ host while still stating enforce in its mode table. One
 behavioral pin below runs a representative failing test
 from each fixed file with the sandbox reported
 unavailable, as in round three.
+
+A fifth round (head 175c37c2) is the mirror image of the
+third and fourth: tests written while win32 had no
+confinement backend, now meeting a win32 that has one. The
+build workflow's build-windows job failed on 14 tests whose
+shapes assumed the pre-backend world: POSIX-arm tests that
+scripted only the bwrap probe while the runner's argv gate
+branches on the platform first and the Job Object backend
+engages; job_user preexec tests that patched the platform
+spelling but not the backend lookup their own file scripts
+everywhere else, so a live backend's engageable probe
+answered instead of the recorded refusal; a startup-gate
+test whose replacement security block silently un-stated
+the other two modes, and which scripted the bwrap probe
+where main() consults the platform backend's probe on
+win32; a bench test whose simulated Darwin left os.name at
+the host's value, so the nt arm of the job_user preexec --
+not the POSIX arm a real Darwin host takes -- decided; and
+the parity test, whose capability model keyed confinement
+to the bwrap probe alone and so expected refusals on a
+host where the exec jobs run confined. The fixes script
+the platform each test means (and the spawn seam, where
+the simulated host must not engage the real one), state
+every mode beside the one under test, script the backend
+lookup to the file's own cannot-engage stub, and key the
+parity test's Windows arm to the runner's own startup
+gates. No production code changed and no shipped default
+moved. One production behavior the round surfaced -- a
+confined job on the unelevated CI Windows host could not
+read the script staged for it, where the same job
+unconfined read it -- is filed as a question (Q134) for a
+Windows seat to re-test, not answered here. The behavioral
+pin below reproduces the CI host's shape on any host: a
+backend that engages, scripted behind the production
+lookup, with sys.platform "win32" and os.name "nt".
 """
 import io
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -102,6 +138,7 @@ sys.path.insert(0, REPO)
 
 from runner import runner  # noqa: E402
 from runner.guard import security as sec  # noqa: E402
+from runner.ops import remediation_ops as REM  # noqa: E402
 from runner.wire import verify  # noqa: E402
 
 FEATURES = ("confinement", "job_user", "audience")
@@ -715,6 +752,211 @@ class RoundFourBackendLessFixturesTest(unittest.TestCase):
         with mock.patch.object(
                 runner._sandbox, "sandbox_available",
                 return_value=False):
+            result = unittest.TextTestRunner(
+                stream=io.StringIO()).run(suite)
+        self.assertTrue(
+            result.wasSuccessful(),
+            [(str(t), str(e)) for t, e in
+             result.failures + result.errors])
+
+
+def _engageable_windows_backend():
+    """A scripted real backend whose probes engage: the shape
+    a Windows host with the Job Object backend presents to the
+    production gates."""
+    backend = mock.Mock()
+    backend.IS_WINDOWS_BACKEND = True
+    backend.windows_confinement_problem.return_value = None
+    backend.windows_startup_problem.return_value = None
+    backend.apply_windows_containment.return_value = (
+        "windows_job_object", object())
+    backend.close_job_handle.return_value = None
+    return backend
+
+
+def _simulated_confined_spawn(cfg, base_dir, job_id, argv, cwd,
+                              env, backend=None):
+    """The spawn seam's contract, simulated for the behavioral
+    pin below: on a Windows host (os.name "nt") at confinement
+    enforce the job is spawned and the confinement record says
+    "confined", the row the real seam writes; anywhere else
+    the seam does not apply and returns None."""
+    if os.name != "nt":
+        return None
+    secmod = runner._security
+    if secmod is None or secmod.sec_mode(
+            cfg, "confinement") != "enforce":
+        return None
+    try:
+        secmod.write_audit_entry(
+            base_dir, "confinement", "confined",
+            "windows: job_object + restricted_token + low_integrity",
+            job_id=str(job_id), cfg=cfg, mode="enforce")
+    except Exception:
+        pass
+    proc = subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, env=env)
+    return proc, (lambda: None)
+
+
+class RoundFiveWindowsBackendParityTest(unittest.TestCase):
+    """Round five: the tests the pre-backend win32 assumptions
+    shaped now script the backend's presence the way the
+    backend-less rounds scripted its absence."""
+
+    @staticmethod
+    def _src(name):
+        with open(os.path.join(REPO, "runner", "tests", name),
+                  encoding="utf-8") as fh:
+            return fh.read()
+
+    @staticmethod
+    def _body(src, marker):
+        i = src.index(marker)
+        ends = [len(src)]
+        for term in ("\n    def ", "\n    async def ", "\nclass ",
+                     "\ndef "):
+            j = src.find(term, i + len(marker))
+            if j != -1:
+                ends.append(j)
+        return src[i:min(ends)]
+
+    def test_confinement_posix_arms_script_the_platform(self):
+        src = self._src("test_confinement.py")
+        body = self._body(
+            src, "def test_bwrap_missing_refuses_the_job_loudly")
+        self.assertIn(
+            'mock.patch.object(sys, "platform", "linux")', body)
+        body = self._body(
+            src, "def test_enforce_audit_detail_carries_the_bind")
+        self.assertIn(
+            'mock.patch.object(sys, "platform", "linux")', body)
+        self.assertIn('"_confinement_spawn"', body)
+        body = self._body(
+            src,
+            "def test_default_is_enforce_and_refuses_without_a_"
+            "sandbox")
+        self.assertIn('sys.platform == "win32"', body)
+        self.assertIn('"confined"', body)
+
+    def test_p2_chain_scripts_the_posix_platform(self):
+        src = self._src("test_proof_conformance_p2.py")
+        body = self._body(
+            src,
+            "def test_enforce_without_a_sandbox_refuses_on_the_"
+            "record")
+        self.assertIn(
+            'mock.patch.object(sys, "platform", "linux")', body)
+        body = self._body(
+            src, "def test_enforce_with_a_sandbox_wraps_the_job")
+        self.assertIn(
+            'mock.patch.object(sys, "platform", "linux")', body)
+        self.assertIn("build_bwrap_command", body)
+
+    def test_runner_tail_scripts_the_posix_platform(self):
+        src = self._src("test_runner_tail.py")
+        body = self._body(
+            src,
+            "def test_confinement_without_a_security_module_and_"
+            "with_a_built_sandbox")
+        self.assertIn(
+            'mock.patch.object(sys, "platform", "linux")', body)
+
+    def test_startup_gate_states_every_mode_and_scripts_the_probe(
+            self):
+        src = self._src("test_cli_options.py")
+        body = self._body(
+            src,
+            "def test_enforce_without_a_sandbox_refuses_to_start")
+        self.assertIn('"job_user": "off"', body)
+        self.assertIn('"audience": "off"', body)
+        self.assertIn("_confinement_startup_problem", body)
+
+    def test_proofs_script_the_backend_lookup(self):
+        src = self._src("test_windows_platform_proofs.py")
+        for marker in (
+                "def _preexec_on_nt",
+                "def test_enforce_records_too_if_it_ever_gets_here",
+                "def test_nt_enforce_writes_the_record_with_its_"
+                "mode",
+                "def test_nt_record_reaches_the_real_audit_log",
+                "def field_base_dir"):
+            body = self._body(src, marker)
+            self.assertIn('"_windows_confine"', body, marker)
+
+    def test_bench_scripts_the_posix_name(self):
+        src = self._src("test_first_ping.py")
+        body = self._body(
+            src, "def test_bench_runs_on_a_backend_less_platform")
+        self.assertIn(
+            'mock.patch.object(os, "name", "posix")', body)
+
+    def test_parity_windows_arm_keys_to_the_runner_gates(self):
+        src = self._src("test_security_parity.py")
+        i = src.index("class AllEnforceParityTest")
+        j = src.find("\nclass ", i + 1)
+        body = src[i:] if j == -1 else src[i:j]
+        self.assertIn("win_engages", body)
+        self.assertIn("_confinement_startup_problem", body)
+        self.assertIn("_job_user_startup_problem", body)
+        self.assertIn('"confined"', body)
+        self.assertIn('"contained"', body)
+        self.assertIn("would_contain", body)
+
+    def test_simulated_windows_host_still_runs_the_fixed_tests(
+            self):
+        names = [
+            "runner.tests.test_confinement.FallbackTest."
+            "test_bwrap_missing_refuses_the_job_loudly",
+            "runner.tests.test_confinement.FallbackTest."
+            "test_default_is_enforce_and_refuses_without_a_"
+            "sandbox",
+            "runner.tests.test_confinement."
+            "SandboxAuditNoteTest."
+            "test_enforce_audit_detail_carries_the_bind",
+            "runner.tests.test_proof_conformance_p2."
+            "ConfinementChainTest."
+            "test_enforce_without_a_sandbox_refuses_on_the_"
+            "record",
+            "runner.tests.test_proof_conformance_p2."
+            "ConfinementChainTest."
+            "test_enforce_with_a_sandbox_wraps_the_job",
+            "runner.tests.test_runner_tail.ConfinementTailTest."
+            "test_confinement_without_a_security_module_and_"
+            "with_a_built_sandbox",
+            "runner.tests.test_cli_options."
+            "MainDispatchBranchesTest."
+            "test_enforce_without_a_sandbox_refuses_to_start",
+            "runner.tests.test_windows_platform_proofs."
+            "JobUserWindowsAuditTest."
+            "test_audit_records_unsupported_platform",
+            "runner.tests.test_windows_platform_proofs."
+            "JobUserWindowsAuditTest."
+            "test_enforce_records_too_if_it_ever_gets_here",
+            "runner.tests.test_windows_platform_proofs."
+            "JobUserEnforceShotgunTest."
+            "test_nt_enforce_writes_the_record_with_its_mode",
+            "runner.tests.test_windows_platform_proofs."
+            "JobUserEnforceShotgunTest."
+            "test_nt_record_reaches_the_real_audit_log",
+            "runner.tests.test_windows_platform_proofs."
+            "JobUserEnforceShotgunTest.test_field_base_dir",
+            "runner.tests.test_first_ping.BenchTest."
+            "test_bench_runs_on_a_backend_less_platform",
+        ]
+        loader = unittest.TestLoader()
+        suite = unittest.TestSuite()
+        for name in names:
+            suite.addTests(loader.loadTestsFromName(name))
+        fake_backend = _engageable_windows_backend()
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(os, "name", "nt"), \
+                mock.patch.object(
+                    REM, "_windows_confine",
+                    lambda backend=None: fake_backend), \
+                mock.patch.object(
+                    runner, "_confinement_spawn",
+                    _simulated_confined_spawn):
             result = unittest.TextTestRunner(
                 stream=io.StringIO()).run(suite)
         self.assertTrue(
