@@ -334,11 +334,16 @@ _job_encryption_setting = _verify._job_encryption_setting
 _outgoing_result_body = _verify._outgoing_result_body
 
 # Hardening M6: Linux confinement. Returns
-# (argv, use_host_env, sandboxed). In enforce mode the job runs inside
-# bwrap; when bwrap is unavailable (non-Linux, missing binary, build
-# failure) it warns loudly, audits the fallback, and refuses the job
-# (JobRejected) -- under enforce the job never runs unsandboxed.
-# Audit mode runs normally and records what enforce would have done.
+# (argv, use_host_env, sandboxed). The decision is a pure query
+# (Q135): it returns a triple for every config and never raises.
+# In enforce mode the job runs inside bwrap; when confinement
+# cannot engage (non-Linux, missing binary, a build failure, a
+# malformed confinement block, a platform backend that cannot
+# engage) it warns loudly, audits the fallback, and answers a
+# denial -- the empty argv -- and the job-acceptance boundary
+# (ops/exec.py) refuses the job on it: under enforce the job
+# never runs unsandboxed. Audit mode runs normally and records
+# what enforce would have done.
 def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
                       work, args, env, backend=None):
     normal = ([*interpreter, script_path, *args], True, False)
@@ -363,7 +368,13 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
         # enforce would decide. Availability is an enforce-time concern.
         _audit("would_sandbox", "would_run_sandboxed")
         return normal
-    # enforce from here on
+    # enforce from here on. A denial is the empty argv (Q135):
+    # no command exists that this decision would run, and the
+    # job boundary turns the denial into the refusal. The log
+    # line and the fallback audit row are written here, exactly
+    # as the raising shape wrote them, so the record of a
+    # denial is the record the raise used to leave.
+    denial = ([], True, False)
     if sys.platform == "win32":
         # Windows confinement is not bwrap: the job is created
         # under the backend's controls at the spawn seam
@@ -388,10 +399,7 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
         log(f"job {job_id}: confinement unavailable on this machine "
             f"({sys.platform}); refusing the job under enforce", "WARN")
         _audit("fallback", "confinement_unavailable")
-        raise JobRejected(
-            "confinement unavailable on this machine "
-            f"({sys.platform}); job refused under "
-            "security.modes.confinement=enforce")
+        return denial
     if sys.platform.startswith("freebsd"):
         # FreeBSD confinement is not bwrap either: the job is
         # started inside a jail at the spawn seam
@@ -417,31 +425,31 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
         log(f"job {job_id}: confinement unavailable on this machine "
             f"({sys.platform}); refusing the job under enforce", "WARN")
         _audit("fallback", "confinement_unavailable")
-        raise JobRejected(
-            "confinement unavailable on this machine "
-            f"({sys.platform}); job refused under "
-            "security.modes.confinement=enforce")
-    if not _sandbox.sandbox_available():
+        return denial
+    try:
+        available = _sandbox.sandbox_available()
+    except Exception:
+        available = False
+    if not available:
         log(f"job {job_id}: confinement unavailable on this machine "
             f"({sys.platform}); refusing the job under enforce", "WARN")
         _audit("fallback", "confinement_unavailable")
-        raise JobRejected(
-            "confinement unavailable on this machine "
-            f"({sys.platform}); job refused under "
-            "security.modes.confinement=enforce")
+        return denial
     # enforce
     notes = []
     try:
         argv = _sandbox.build_bwrap_command(
             cfg, interpreter, os.path.basename(script_path),
             work, args, env, notes=notes)
-    except RuntimeError as e:
+    except Exception as e:
+        # The builder's own validation raises RuntimeError; the
+        # wider catch is the invariant's, not the builder's --
+        # a build that fails for any reason is a denial, never
+        # an exception out of a query (Q135).
         log(f"job {job_id}: cannot build sandbox ({e}); "
             f"refusing the job under enforce", "WARN")
         _audit("fallback", "confinement_build_failed", str(e))
-        raise JobRejected(
-            f"cannot build sandbox ({e}); job refused under "
-            "security.modes.confinement=enforce")
+        return denial
     for note in notes:
         log(f"job {job_id}: sandbox: {note}", "INFO")
     _audit("sandboxed", "sandboxed", "; ".join(notes))

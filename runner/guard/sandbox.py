@@ -149,9 +149,14 @@ def _absolute_mount(value, label):
 
 
 def _flag_list(flags):
+    # A flag is one argv token: no "..", no path separator, and
+    # no character a token cannot carry -- the control
+    # characters, and whitespace of any kind (Q135: a
+    # whitespace-bearing token is never a bwrap flag).
     if not isinstance(flags, list) or not all(
             isinstance(f, str) and f and ".." not in f
             and not any(ch in f for ch in "\x00\r\n/")
+            and not any(ch.isspace() for ch in f)
             for f in flags):
         raise RuntimeError(
             "config error: security.confinement.extra_flags "

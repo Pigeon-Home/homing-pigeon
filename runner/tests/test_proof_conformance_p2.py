@@ -233,7 +233,8 @@ class ConfinementChainTest(unittest.TestCase):
     enforce would have made; an unavailable sandbox in enforce
     mode refuses the job, loudly, on the record (phase 2: the
     refusal replaced the fallback this class once pinned --
-    the job never runs weaker)."""
+    the job never runs weaker; Q135: the decision returns the
+    denial on the record and the job boundary refuses)."""
 
     def _argv(self, cfg, base_dir, **over):
         call = {"interpreter": ["sh"], "script_path": "/w/job.sh",
@@ -277,8 +278,13 @@ class ConfinementChainTest(unittest.TestCase):
                     mock.patch.object(runner._sandbox,
                                       "sandbox_available",
                                       return_value=False):
-                with self.assertRaises(runner.JobRejected):
-                    self._argv(cfg, td)
+                argv, host_env, sandboxed = self._argv(cfg, td)
+            # Q135: the decision answers the denial (the empty
+            # argv); the refusal itself is the job boundary's,
+            # pinned end-to-end in test_confinement.
+            self.assertEqual(argv, [])
+            self.assertTrue(host_env)
+            self.assertFalse(sandboxed)
             entries = _audit_entries(td)
             self.assertTrue(any(
                 e.get("decision") == "fallback"

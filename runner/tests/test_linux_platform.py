@@ -623,22 +623,25 @@ class ConfinementDecisionTest(unittest.TestCase):
             self.assertEqual(row["decision"], "would_sandbox")
             self.assertEqual(row["mode"], "audit")
 
-    def test_enforce_refuses_when_bwrap_or_the_build_is_missing(self):
+    def test_enforce_denies_when_bwrap_or_the_build_is_missing(self):
         # Phase 2 of the default-posture work: under enforce the
-        # job is refused, never run unsandboxed. The fallback is
+        # job is refused, never run unsandboxed. Q135 settled
+        # where the refusal lives: the decision answers a denial
+        # -- the empty argv -- and the job boundary refuses on
+        # it; the decision itself never raises. The fallback is
         # still recorded -- the audit row keeps the fallback
-        # decision and its reason -- but no argv comes back and
-        # no process starts.
-        from runner.runner import JobRejected
+        # decision and its reason -- and no process starts.
         with tempfile.TemporaryDirectory() as d:
             with mock.patch("runner.runner._sandbox.sandbox_available",
                             return_value=False), \
                  mock.patch("runner.runner.subprocess.Popen") as popen:
-                with self.assertRaises(JobRejected):
-                    _confinement_argv(
-                        _conf("enforce"), d, "j", ["python3"], "/w/s.sh",
-                        "/w", [], {})
+                argv, host, boxed = _confinement_argv(
+                    _conf("enforce"), d, "j", ["python3"], "/w/s.sh",
+                    "/w", [], {})
             popen.assert_not_called()
+            self.assertEqual(argv, [])
+            self.assertTrue(host)
+            self.assertFalse(boxed)
             row = _audit_rows(d)[-1]
             self.assertEqual(row["decision"], "fallback")
             self.assertEqual(row["reason"],
@@ -649,11 +652,13 @@ class ConfinementDecisionTest(unittest.TestCase):
                  mock.patch("runner.runner._sandbox.build_bwrap_command",
                             side_effect=RuntimeError("no interpreter")), \
                  mock.patch("runner.runner.subprocess.Popen") as popen:
-                with self.assertRaises(JobRejected):
-                    _confinement_argv(
-                        _conf("enforce"), d, "j", ["python3"], "/w/s.sh",
-                        "/w", [], {})
+                argv, host, boxed = _confinement_argv(
+                    _conf("enforce"), d, "j", ["python3"], "/w/s.sh",
+                    "/w", [], {})
             popen.assert_not_called()
+            self.assertEqual(argv, [])
+            self.assertTrue(host)
+            self.assertFalse(boxed)
             row = _audit_rows(d)[-1]
             self.assertEqual(row["decision"], "fallback")
             self.assertEqual(row["reason"], "confinement_build_failed")
@@ -674,6 +679,135 @@ class ConfinementDecisionTest(unittest.TestCase):
             self.assertFalse(host)
             self.assertTrue(boxed)
             self.assertEqual(_audit_rows(d)[-1]["decision"], "sandboxed")
+
+
+class ConfinementMalformedFlagsTest(unittest.TestCase):
+    """Q135's shotgun family around malformed extra_flags.
+
+    The decision is a pure query: handed an enforce config
+    whose confinement block the builder cannot accept, it
+    returns the denial triple and the audit record names the
+    problem; it never raises and never starts a process. The
+    builder runs for real here (only the availability probe
+    is scripted), so every denial is the builder's own
+    validation speaking. Valid shapes ride as controls and
+    must come back boxed: the family cannot pass by denying
+    everything.
+    """
+
+    def _decide(self, cfg, d):
+        with mock.patch("runner.runner._sandbox.sandbox_available",
+                        return_value=True), \
+             mock.patch("runner.runner.subprocess.Popen") as popen:
+            got = _confinement_argv(
+                cfg, d, "j", ["python3"], "/w/s.sh", "/w", [], {})
+        popen.assert_not_called()
+        return got
+
+    def _cfg(self, block, mode="enforce"):
+        return {"security": {"modes": {"confinement": mode},
+                             "confinement": block}}
+
+    def _denied(self, block, needle):
+        with tempfile.TemporaryDirectory() as d:
+            got = self._decide(self._cfg(block), d)
+            self.assertEqual(got, ([], True, False))
+            row = _audit_rows(d)[-1]
+            self.assertEqual(row["decision"], "fallback")
+            self.assertEqual(row["reason"], "confinement_build_failed")
+            self.assertIn(needle, row["detail"])
+
+    def test_flags_that_are_not_lists_deny(self):
+        for value in ("--die-with-parent", 42, None,
+                      {"--unshare-pid": True}, ("--unshare-pid",)):
+            with self.subTest(value=repr(value)[:40]):
+                self._denied({"extra_flags": value}, "extra_flags")
+
+    def test_flag_entries_of_the_wrong_type_deny(self):
+        for entry in (None, 0, 1, -1, 3.5, True, False,
+                      ["--unshare-pid"], {"flag": 1},
+                      b"--unshare-pid"):
+            with self.subTest(entry=repr(entry)[:40]):
+                self._denied({"extra_flags": [entry]}, "extra_flags")
+
+    def test_flag_entries_with_forbidden_characters_deny(self):
+        for entry in ("", "\x00", "a\x00b", "a\nb", "a\rb",
+                      "..", "a..b", "--ro-bind=..",
+                      "/", "/abs", "--bind=/work", "a/b"):
+            with self.subTest(entry=repr(entry)[:40]):
+                self._denied({"extra_flags": [entry]}, "extra_flags")
+
+    def test_flag_entries_with_whitespace_deny(self):
+        # A flag is one argv token; whitespace inside a token
+        # is never a bwrap flag, the same argv-safety class as
+        # the NUL and newline bans.
+        for entry in (" ", "\t", "a b", " --unshare-pid",
+                      "--unshare-pid "):
+            with self.subTest(entry=repr(entry)[:40]):
+                self._denied({"extra_flags": [entry]}, "extra_flags")
+
+    def test_bookended_and_very_long_flags_deny(self):
+        for entry in ("\x00--unshare-pid", "--unshare-pid\x00",
+                      "\n--unshare-pid", "--unshare-pid\r",
+                      "-" * 5000 + "..", ".." + "x" * 5000,
+                      "x" * 100000 + "/", "/" + "x" * 100000):
+            with self.subTest(entry=repr(entry)[:40]):
+                self._denied({"extra_flags": [entry]}, "extra_flags")
+
+    def test_a_bad_entry_anywhere_in_the_list_denies(self):
+        for flags in (["", "--unshare-pid"],
+                      ["--unshare-pid", ""],
+                      ["--unshare-pid", None, "--die-with-parent"],
+                      ["--ok", 1]):
+            with self.subTest(flags=repr(flags)[:40]):
+                self._denied({"extra_flags": flags}, "extra_flags")
+
+    def test_sibling_fields_deny_the_same_way(self):
+        for value in ("relative/path", "", None, "/a/../b",
+                      "/a\nb"):
+            with self.subTest(work_mount=repr(value)[:40]):
+                self._denied({"work_mount": value}, "work_mount")
+        for value in ("nope", [["/only-one"]],
+                      [["relative", "/dst"]]):
+            with self.subTest(extra_ro_binds=repr(value)[:40]):
+                self._denied({"extra_ro_binds": value},
+                             "extra_ro_binds")
+        self._denied({"extra_flags": ["--unshare-pid"],
+                      "work_mount": "relative"}, "work_mount")
+
+    def test_valid_flags_still_box(self):
+        for flags in (["--unshare-pid"],
+                      ["--die-with-parent", "--unshare-pid"],
+                      [], ["--"], ["x" * 100000]):
+            with self.subTest(flags=repr(flags)[:40]):
+                with tempfile.TemporaryDirectory() as d:
+                    argv, host, boxed = self._decide(
+                        self._cfg({"extra_flags": flags}), d)
+                    self.assertEqual(argv[0], "bwrap")
+                    self.assertFalse(host)
+                    self.assertTrue(boxed)
+                    for flag in flags:
+                        self.assertIn(flag, argv)
+                    self.assertEqual(
+                        _audit_rows(d)[-1]["decision"], "sandboxed")
+
+    def test_audit_and_off_never_reach_the_builder(self):
+        block = {"extra_flags": [""]}
+        with tempfile.TemporaryDirectory() as d:
+            argv, host, boxed = self._decide(
+                self._cfg(block, mode="audit"), d)
+            self.assertEqual(argv[:2], ["python3", "/w/s.sh"])
+            self.assertTrue(host)
+            self.assertFalse(boxed)
+            self.assertEqual(_audit_rows(d)[-1]["decision"],
+                             "would_sandbox")
+        with tempfile.TemporaryDirectory() as d:
+            argv, host, boxed = self._decide(
+                self._cfg(block, mode="off"), d)
+            self.assertEqual(argv[:2], ["python3", "/w/s.sh"])
+            self.assertTrue(host)
+            self.assertFalse(boxed)
+            self.assertEqual(_audit_rows(d), [])
 
 
 class PollWatchTest(unittest.TestCase):

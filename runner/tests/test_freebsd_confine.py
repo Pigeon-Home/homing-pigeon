@@ -190,16 +190,13 @@ class ConfinementArgvTest(unittest.TestCase):
         out, _sink = self._run("enforce", _backend(None))
         self.assertEqual(out, (["python", "script.py"], True, False))
 
-    def test_unengageable_backend_refuses_the_job(self):
-        sink = []
-        with mock.patch.object(sys, "platform", "freebsd14"), \
-                mock.patch.object(rr, "_security",
-                                  _sec("enforce", sink)):
-            with self.assertRaises(rr.JobRejected):
-                rr._confinement_argv(
-                    _ccfg("enforce"), self.base, "j1", ["python"],
-                    "script.py", self.base, [], {},
-                    backend=_backend("not root"))
+    def test_unengageable_backend_denies_the_job(self):
+        # Q135: the decision answers a denial -- the empty
+        # argv -- and the job boundary refuses on it; the
+        # decision itself never raises. The record is the
+        # fallback row, exactly as the raising shape left it.
+        out, sink = self._run("enforce", _backend("not root"))
+        self.assertEqual(out, ([], True, False))
         self.assertEqual(sink[0]["decision"], "fallback")
         self.assertEqual(sink[0]["reason"], "confinement_unavailable")
 

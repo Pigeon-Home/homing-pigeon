@@ -727,6 +727,17 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
     c_argv, use_host_env, sandboxed = _runner()._confinement_argv(
         cfg, base_dir, job.get("job_id", ""), interpreter, script_path,
         root, args, env)
+    if not c_argv:
+        # Q135: the confinement decision answers a denial as an
+        # empty argv instead of raising; the refusal lives here,
+        # at the job-acceptance boundary, and the job is refused
+        # exactly as it was when the decision raised. The audit
+        # record the decision wrote names the cause (a sandbox
+        # that cannot engage, a build failure, a malformed
+        # confinement block).
+        raise _runner().JobRejected(
+            "confinement cannot engage for this job; job refused "
+            "under security.modes.confinement=enforce")
     # Hardening M8: drop to the job user when configured (POSIX,
     # root only). None when off or unavailable.
     preexec = _runner()._job_user_preexec(cfg, base_dir, job.get("job_id", ""), work)
