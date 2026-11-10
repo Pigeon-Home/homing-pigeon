@@ -397,8 +397,12 @@ class DigestTest(unittest.TestCase):
             "the two sides of the split":
                 "There are two sides. They do not share "
                 "credentials.",
+            # The README sentence this probe first pointed at
+            # ("its power is the point") was edited out of the
+            # README on 2026-11-10; the FAQ's statement of the
+            # same risk rides in the digest in its place.
             "the risk, stated as power":
-                "its power is the point",
+                "Whoever holds it can run jobs, full stop.",
             "sending goes through send_job":
                 "Use `runner/cloud/send_job.py`. Do not "
                 "hand-roll the signature.",
