@@ -90,6 +90,28 @@ sys.path.insert(0, REPO)
 from runner import runner as RR  # noqa: E402
 from runner.guard import defaulted  # noqa: E402
 from runner.guard import sandbox as _sandbox  # noqa: E402
+from runner.ops import remediation_ops as REM  # noqa: E402
+
+
+def _backend_cannot_engage():
+    """A real-marked Windows backend whose probe cannot engage,
+    scripted so the job_user refusal answers identically on any
+    host (a live backend on a real Windows host may engage)."""
+    backend = mock.Mock()
+    backend.IS_WINDOWS_BACKEND = True
+    backend.windows_startup_problem.return_value = (
+        "backend cannot engage (scripted)")
+    return backend
+
+
+def _backend_stub():
+    """The off-Windows stub backend: never consulted by the
+    gates, which answer the long-standing refusal for it."""
+    backend = mock.Mock()
+    backend.IS_WINDOWS_BACKEND = False
+    backend.windows_startup_problem.return_value = (
+        "windows_confine is Windows-only")
+    return backend
 from runner.guard.security import FEATURES  # noqa: E402
 from runner.oracle.dri import parse_dri  # noqa: E402
 from runner.oracle.resources import parse_resources  # noqa: E402
@@ -269,7 +291,10 @@ class RefuseStartupGatesTest(unittest.TestCase):
 
     def test_job_user_enforce_gate_names_job_user_on_windows(self):
         cfg = {"security": {"modes": {"job_user": "enforce"}}}
-        problem = RR._job_user_startup_problem(cfg, platform="win32")
+        with mock.patch.object(
+                REM, "_windows_confine",
+                lambda backend=None: _backend_stub()):
+            problem = RR._job_user_startup_problem(cfg, platform="win32")
         self.assertIsNotNone(problem)
         self.assertIn("job_user", problem)
         # The same config on a POSIX platform has no such problem:
@@ -364,11 +389,14 @@ class StrictShapeTest(unittest.TestCase):
         self.assertNotIn("Security audit report", out)
 
     def test_job_user_enforce_on_win32_refuses_startup(self):
-        rc, out, err = run_main(
-            {"security": {"modes": {"job_user": "enforce",
-                                    "confinement": "off"},
-                          "job_user": {"user": "root"}}},
-            ("--audit-report",), platform="win32")
+        with mock.patch.object(
+                REM, "_windows_confine",
+                lambda backend=None: _backend_cannot_engage()):
+            rc, out, err = run_main(
+                {"security": {"modes": {"job_user": "enforce",
+                                        "confinement": "off"},
+                              "job_user": {"user": "root"}}},
+                ("--audit-report",), platform="win32")
         self.assertEqual(rc, 2, err)
         self.assertIn("security.modes.job_user", err)
         self.assertNotIn("Security audit report", out)

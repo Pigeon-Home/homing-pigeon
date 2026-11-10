@@ -67,6 +67,7 @@ def _backend(problem=None, status="windows_job_object",
     backend.apply_windows_containment = _apply
     backend.closed = []
     backend.close_job_handle = backend.closed.append
+    backend.IS_WINDOWS_BACKEND = True
     return backend
 
 
@@ -158,20 +159,24 @@ class PreexecWin32Test(unittest.TestCase):
 
     def _run(self, mode, backend="unset"):
         sink = []
-        kw = {} if backend == "unset" else {"backend": backend}
+        if backend == "unset":
+            # Scripted as a real backend that cannot engage, so
+            # the legacy record is what every host answers.
+            backend = _backend("cannot engage (scripted)")
+        kw = {"backend": backend}
         with mock.patch.object(rr.os, "name", "nt"), \
                 mock.patch.object(rr, "_security", _sec(mode, sink)):
             fn = REM._job_user_preexec(
                 _cfg(mode), self.base, "j1", self.work, **kw)
         return fn, sink
 
-    def test_audit_without_a_backend_keeps_the_legacy_record(self):
+    def test_audit_when_backend_cannot_engage_keeps_the_legacy_record(self):
         fn, sink = self._run("audit")
         self.assertIsNone(fn)
         self.assertEqual(sink[0]["decision"], "unsupported_platform")
         self.assertEqual(sink[0]["reason"], "job_user_posix_only")
 
-    def test_enforce_without_a_backend_refuses(self):
+    def test_enforce_when_backend_cannot_engage_refuses(self):
         with self.assertRaises(rr.JobRejected):
             self._run("enforce")
 

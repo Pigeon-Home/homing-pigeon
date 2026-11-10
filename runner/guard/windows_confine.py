@@ -42,6 +42,12 @@ if sys.platform != "win32":
     # startup probe answers a problem string (never None), so an
     # enforce gate consulting this stub refuses, and apply raises:
     # off Windows this backend can never claim to have engaged.
+    # IS_WINDOWS_BACKEND is how the gates tell this stub from the
+    # real implementation below: only a real backend's probe is
+    # ever consulted, so a simulated win32 answers the refusal
+    # deterministically on any host.
+    IS_WINDOWS_BACKEND = False
+
     def windows_startup_problem(*args, **kwargs):
         return "windows_confine is Windows-only"
 
@@ -51,6 +57,8 @@ if sys.platform != "win32":
     def close_job_handle(handle):
         return None
 else:
+    IS_WINDOWS_BACKEND = True
+
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
     # Typed bindings: HANDLE results must be declared, or ctypes

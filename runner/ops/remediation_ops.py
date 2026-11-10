@@ -164,15 +164,13 @@ def job_user_startup_problem(cfg, platform=None, face=None,
     if sec is None or sec.sec_mode(cfg, "job_user") != "enforce":
         return None
     if platform == "win32":
-        if backend is None and platform != sys.platform:
-            # A simulated platform (the suite's win32 seam): no
-            # backend can be probed for a machine this is not, so
-            # the gate answers with the refusal it has always
-            # given there, deterministically, on any host.
-            return ("job_user (a POSIX setuid demote) is POSIX-only; "
-                    "this machine is win32")
         backend = _windows_confine(backend)
-        if backend is not None:
+        if backend is not None and getattr(
+                backend, "IS_WINDOWS_BACKEND", False):
+            # Only a real backend's probe is consulted. The stub
+            # (any non-Windows host, including every simulated
+            # win32 the suite constructs) answers below with the
+            # refusal it has always given, deterministically.
             try:
                 problem = backend.windows_startup_problem(cfg)
             except Exception as e:  # a backend that cannot answer
@@ -223,7 +221,9 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None,
         engageable = False
         if backend is not None or sys.platform == "win32":
             mod = _windows_confine(backend)
-            if mod is not None:
+            if mod is not None and (
+                    backend is not None
+                    or getattr(mod, "IS_WINDOWS_BACKEND", False)):
                 try:
                     engageable = (
                         mod.windows_startup_problem(cfg) is None)

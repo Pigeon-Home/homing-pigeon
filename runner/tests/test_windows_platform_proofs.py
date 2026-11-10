@@ -27,7 +27,30 @@ from unittest import mock
 
 from runner import runner
 from runner.guard import sandbox as SANDBOX
+from runner.ops import remediation_ops as REM
 from runner.ops import setup as SETUP
+
+
+def _backend_cannot_engage():
+    """A real-marked Windows backend whose probe cannot engage,
+    scripted so the job_user refusal answers identically on any
+    host (a live backend on a real Windows host may engage, which
+    is the behavior change these refusals predate)."""
+    backend = mock.Mock()
+    backend.IS_WINDOWS_BACKEND = True
+    backend.windows_startup_problem.return_value = (
+        "backend cannot engage (scripted)")
+    return backend
+
+
+def _backend_stub():
+    """The off-Windows stub backend: never consulted by the
+    gates, which answer the long-standing refusal for it."""
+    backend = mock.Mock()
+    backend.IS_WINDOWS_BACKEND = False
+    backend.windows_startup_problem.return_value = (
+        "windows_confine is Windows-only")
+    return backend
 
 SECRET = (
     "9f8e7d6c5b4a3928"
@@ -143,7 +166,10 @@ class JobUserStartupProblemTest(unittest.TestCase):
 
     def _problem(self, mode, platform):
         cfg = {"security": {"modes": {"job_user": mode}}}
-        with mock.patch.object(runner, "_security", self._sec(mode)):
+        with mock.patch.object(runner, "_security", self._sec(mode)), \
+                mock.patch.object(
+                    REM, "_windows_confine",
+                    lambda backend=None: _backend_cannot_engage()):
             return runner._job_user_startup_problem(cfg, platform=platform)
 
     def test_enforce_on_win32_is_a_problem(self):
@@ -177,7 +203,10 @@ class JobUserMainRefusalTest(unittest.TestCase):
                         "job_user": {"user": "root"}}}
 
     def test_enforce_on_win32_refuses_to_start(self):
-        with mock.patch.object(sys, "platform", "win32"):
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(
+                    REM, "_windows_confine",
+                    lambda backend=None: _backend_cannot_engage()):
             code, poll, err = _main_rig(["--once"], dict(self.CFG))
         self.assertEqual(code, 2)
         self.assertIn("job_user", err)
@@ -737,7 +766,15 @@ class JobUserEnforceShotgunTest(unittest.TestCase):
 
     @staticmethod
     def _problem(cfg, platform="win32"):
-        return runner._job_user_startup_problem(cfg, platform=platform)
+        # The backend is scripted as the off-Windows stub, so the
+        # gate's refusal is the deterministic one this family has
+        # always pinned, on any host: a real Windows backend may
+        # engage (that path is pinned in test_windows_confine).
+        with mock.patch.object(
+                REM, "_windows_confine",
+                lambda backend=None: _backend_stub()):
+            return runner._job_user_startup_problem(
+                cfg, platform=platform)
 
     def _preexec(self, mode, os_name="nt", cfg=None, job_id="job-9",
                  base="base-x"):
@@ -750,6 +787,9 @@ class JobUserEnforceShotgunTest(unittest.TestCase):
             work = os.path.join(td, "work")
             os.makedirs(work, exist_ok=True)
             with mock.patch.object(runner, "_security", sec), \
+                    mock.patch.object(
+                        REM, "_windows_confine",
+                        lambda backend=None: _backend_stub()), \
                     mock.patch.object(os, "name", os_name):
                 out = runner._job_user_preexec(cfg, base, job_id, work)
         return out, sec
