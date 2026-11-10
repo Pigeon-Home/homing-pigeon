@@ -385,6 +385,23 @@ class LiveBackendTest(unittest.TestCase):
             self.assertTrue(
                 os.path.exists(os.path.join(work, "rel-note.txt")))
 
+    def test_a_local_binary_runs_inside_the_jail(self):
+        # A binary linked against /usr/local libraries (the
+        # pkg-installed python3) must actually run inside the
+        # jail: the loader's hints ride in the skeleton's
+        # /var/run. A job that cannot start its interpreter is
+        # the failure this pins.
+        with tempfile.TemporaryDirectory() as work:
+            proc = FC.spawn_confined_process(
+                ["/usr/local/bin/python3", "-c",
+                 "print('PY-IN-JAIL')"],
+                cwd=work, env={})
+            out, err = proc.communicate(timeout=30)
+            rc = proc.returncode
+            proc.close()
+            self.assertEqual(rc, 0, err)
+            self.assertIn(b"PY-IN-JAIL", out)
+
     def test_the_memory_ceiling_refuses_a_700mb_job(self):
         with tempfile.TemporaryDirectory() as work:
             proc = FC.spawn_confined_process(
@@ -397,6 +414,9 @@ class LiveBackendTest(unittest.TestCase):
             proc.close()
             self.assertNotEqual(rc, 0)
             self.assertNotIn(b"MEM-DONE", out)
+            # The refusal must be the ceiling's -- an allocation
+            # failure -- not the job failing to start at all.
+            self.assertIn(b"MemoryError", err)
 
 
 if __name__ == "__main__":

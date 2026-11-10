@@ -59,7 +59,7 @@ list and their wiring grew runner/ops, runner/guard and
 the runner proper, and again the same day after the
 FreeBSD backend's field-test fixes and the Windows
 backend's import-safety change grew runner/guard, the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->58,673<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->52,903<!--/hp-fig--> non-blank)
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->58,689<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->52,919<!--/hp-fig--> non-blank)
 and a <!--hp-fig:core_assembled_zip_bytes-->743,026<!--/hp-fig-->-byte zip, and the project's own estimator
 counts it at <!--hp-fig:core_assembled_tokens-->616,096<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
@@ -80,7 +80,7 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 6,758 lines; the core around it is
-58,673. The set as assembled, part by part (re-measured
+58,689. The set as assembled, part by part (re-measured
 2026-11-10):
 
 - runner/ops: 18,535 lines
@@ -89,7 +89,7 @@ The runner proper is 6,758 lines; the core around it is
 - runner/runner.py: 6,758
 - runner/oracle: 5,044
 - runner/transport_extensions: 2,775
-- runner/guard: 4,173
+- runner/guard: 4,189
 - runner/cloud: 2,049
 - runner/hosting: 1,704
 - runner/__init__.py: 23
@@ -102,7 +102,7 @@ The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-58,673 lines, explicit platform branching — sys.platform,
+58,689 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
 its files, beside a small number of dedicated platform
 modules (runner/ops/windows.py, runner/ops/winlog.py,

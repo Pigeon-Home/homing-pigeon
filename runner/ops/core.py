@@ -194,9 +194,9 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 137
-AS_ASSEMBLED_ZIP_BYTES = 743026
-AS_ASSEMBLED_LINES = 58673
-AS_ASSEMBLED_NONBLANK_LINES = 52903
+AS_ASSEMBLED_ZIP_BYTES = 743266
+AS_ASSEMBLED_LINES = 58689
+AS_ASSEMBLED_NONBLANK_LINES = 52919
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
@@ -207,7 +207,7 @@ AS_ASSEMBLED_PART_LINES = {
     "runner/runner.py": 6758,
     "runner/oracle": 5044,
     "runner/transport_extensions": 2775,
-    "runner/guard": 4173,
+    "runner/guard": 4189,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,

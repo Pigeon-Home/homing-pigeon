@@ -205,6 +205,22 @@ else:
                                 os.path.join(root, "etc", name))
             except OSError:
                 pass
+        # The dynamic loader's hints live in /var/run on
+        # FreeBSD; without them, binaries linked against
+        # /usr/local libraries (the pkg-installed python3 is
+        # the standing case) fail inside the jail with
+        # "Shared object ... not found" while /bin tools,
+        # which link only against /lib, run fine -- the field
+        # test's file-write job found exactly that. The
+        # skeleton carries a copy of the hints, nothing else
+        # of /var.
+        os.makedirs(os.path.join(root, "var", "run"))
+        try:
+            shutil.copyfile("/var/run/ld-elf.so.hints",
+                            os.path.join(root, "var", "run",
+                                         "ld-elf.so.hints"))
+        except OSError:
+            pass
         os.chmod(os.path.join(root, "tmp"), 0o1777)
         return root
 
