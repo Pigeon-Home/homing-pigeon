@@ -13,6 +13,30 @@ try:
 except ImportError:  # running from inside runner/ as __main__
     from ops.live import _runner  # type: ignore
 
+
+def _windows_confine(backend=None):
+    """The Windows containment backend module, or None.
+
+    `backend` is the tests' injection point. The real module is
+    runner/guard/windows_confine.py, imported lazily by its
+    role-folder name with the script-mode fallback, the way
+    sibling modules import each other. None when it cannot be
+    imported at all: callers read that as "cannot engage",
+    which keeps every gate in its refuse direction.
+    """
+    if backend is not None:
+        return backend
+    try:
+        from runner.guard import windows_confine
+        return windows_confine
+    except ImportError:
+        pass
+    try:
+        from guard import windows_confine  # type: ignore
+        return windows_confine
+    except ImportError:
+        return None
+
 def _finish_remediation(cfg, st, monitor, job, job_id, work,
                         base_dir, script_path, proc=None):
     """Close out a monitored job: acts, record, member.
@@ -111,14 +135,19 @@ def _finish_remediation(cfg, st, monitor, job, job_id, work,
     return member
 
 
-def job_user_startup_problem(cfg, platform=None, face=None):
+def job_user_startup_problem(cfg, platform=None, face=None,
+                             backend=None):
     """Why job_user on enforce cannot run here, or None when it can.
 
-    The mechanism is a POSIX setuid demote in a preexec hook; on
-    Windows there is no such hook, so enforce there changes what
-    the box protects while doing nothing (Decision 1's refuse
-    class, the same one confinement's startup_problem guards).
-    On POSIX the demote needs root and a resolvable configured
+    The POSIX mechanism is a setuid demote in a preexec hook; on
+    Windows there is no such hook. Windows containment is a Job
+    Object assigned after the process starts (runner/guard/
+    windows_confine.py), so on win32 the gate asks that backend
+    whether it can engage: engageable, enforce may run and the
+    assignment happens per job in _job_user_postspawn; not
+    engageable, enforce changes what the box protects while
+    doing nothing, which is Decision 1's refuse class -- the
+    same one confinement's startup_problem guards. On POSIX the demote needs root and a resolvable configured
     user: a runner that is not root, or whose configured user
     cannot be resolved, would start and then run every job as
     the runner's own account under a mode that promises
@@ -135,6 +164,15 @@ def job_user_startup_problem(cfg, platform=None, face=None):
     if sec is None or sec.sec_mode(cfg, "job_user") != "enforce":
         return None
     if platform == "win32":
+        backend = _windows_confine(backend)
+        if backend is not None:
+            try:
+                problem = backend.windows_startup_problem(cfg)
+            except Exception as e:  # a backend that cannot answer
+                problem = str(e)    # has not shown it can engage
+            if problem is None:
+                return None
+            return "job_user cannot engage on win32: %s" % problem
         return ("job_user (a POSIX setuid demote) is POSIX-only; "
                 "this machine is win32")
     secblock = cfg.get("security") if isinstance(cfg, dict) else None
@@ -156,7 +194,8 @@ def job_user_startup_problem(cfg, platform=None, face=None):
     return None
 
 
-def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
+def _job_user_preexec(cfg, base_dir, job_id, work, face=None,
+                      backend=None):
     R = _runner()
     if _runner()._security is None:
         return None
@@ -164,19 +203,38 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
     if mode == "off":
         return None
     if os.name == "nt":
-        # The demote cannot engage on Windows. Enforce is refused
-        # at startup (job_user_startup_problem); a job that still
-        # reaches this path under enforce is refused here too,
-        # while audit leaves its record and runs, as before.
+        # The demote cannot engage on Windows. What can engage is
+        # the Job Object backend, and only after the process
+        # starts -- so under enforce the refusal lives at startup
+        # (job_user_startup_problem) and the application in
+        # _job_user_postspawn; this hook's win32 job is the record
+        # and, when the backend cannot engage, the job-time
+        # backstop refusal for a config changed under a running
+        # runner. The backend is consulted on a real Windows host
+        # (sys.platform) or when a test injects one; a simulated
+        # os.name alone keeps the long-standing behavior.
+        engageable = False
+        if backend is not None or sys.platform == "win32":
+            mod = _windows_confine(backend)
+            if mod is not None:
+                try:
+                    engageable = (
+                        mod.windows_startup_problem(cfg) is None)
+                except Exception:
+                    engageable = False
         _runner()._security.bump_evaluated(base_dir, "job_user")
         try:
             _runner()._security.write_audit_entry(
-                base_dir, "job_user", "unsupported_platform",
-                "job_user_posix_only", job_id=str(job_id), cfg=cfg,
+                base_dir, "job_user",
+                "would_contain" if engageable
+                else "unsupported_platform",
+                "windows_job_object" if engageable
+                else "job_user_posix_only",
+                job_id=str(job_id), cfg=cfg,
                 mode=mode)
         except Exception:
             pass
-        if mode == "enforce":
+        if mode == "enforce" and not engageable:
             raise _runner().JobRejected(
                 "job_user is POSIX-only; job refused under "
                 "security.modes.job_user=enforce")
@@ -267,6 +325,69 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
             face.setgroups([pw.pw_gid])
         face.setuid(pw.pw_uid)
     return _demote
+
+
+def _job_user_postspawn(cfg, base_dir, job_id, proc, backend=None):
+    """Apply Windows containment to a just-started job process.
+
+    The POSIX demote rides Popen's preexec_fn, which Windows does
+    not have; a Job Object can only be assigned once the process
+    exists, so on win32 the enforce point for job_user is here,
+    called by exec immediately after Popen. Returns a release
+    callable the caller invokes once the process has exited (it
+    closes the job handle, which ends the Job Object), or None
+    when nothing was applied -- every mode but enforce, and every
+    platform but win32, returns None and changes nothing.
+
+    Under enforce a failure is a refusal, in the shape the POSIX
+    path uses: the fallback is recorded, the just-started process
+    is killed, and the job is rejected rather than run
+    uncontained. The success record names only what was applied:
+    decision "contained", reason the backend's own status string
+    ("windows_job_object") -- no record claims a restricted token
+    or any other control this backend does not implement.
+    """
+    if os.name != "nt":
+        return None
+    sec = _runner()._security
+    if sec is None or sec.sec_mode(cfg, "job_user") != "enforce":
+        return None
+    backend = _windows_confine(backend)
+
+    def _audit(decision, reason, detail=""):
+        try:
+            sec.write_audit_entry(
+                base_dir, "job_user", decision, reason,
+                job_id=str(job_id), detail=str(detail), cfg=cfg,
+                mode="enforce")
+        except Exception:
+            pass
+
+    try:
+        if backend is None:
+            raise RuntimeError(
+                "windows confinement backend is unavailable")
+        status, job_handle = backend.apply_windows_containment(
+            getattr(proc, "_handle", None))
+    except Exception as e:
+        _audit("fallback", "windows_containment_failed", e)
+        try:
+            proc.kill()
+        except Exception:
+            pass
+        raise _runner().JobRejected(
+            "job_user containment could not be applied on win32 "
+            "(%s); job refused under "
+            "security.modes.job_user=enforce" % (e,))
+    _audit("contained", status)
+
+    def _release():
+        try:
+            backend.close_job_handle(job_handle)
+        except Exception:
+            pass
+
+    return _release
 
 
 def _learning_model_candidate(cfg, base_dir, job_id, job, outcome,

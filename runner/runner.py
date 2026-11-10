@@ -437,6 +437,7 @@ class _JobUserFace:
 
 _remediation_ops = _required_load_mod("runner.ops.remediation_ops", "ops.remediation_ops")
 _job_user_preexec = _remediation_ops._job_user_preexec
+_job_user_postspawn = _remediation_ops._job_user_postspawn
 _job_user_startup_problem = _remediation_ops.job_user_startup_problem
 _finish_remediation = _remediation_ops._finish_remediation
 _learning_model_candidate = _remediation_ops._learning_model_candidate

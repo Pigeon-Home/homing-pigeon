@@ -756,6 +756,17 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
         # Missing binary, a null in argv, or an unusable interpreter
         # fails the same way every cycle. Poison, not transient.
         raise _runner().JobRejected(f"cannot start interpreter: {e}")
+    # job_user on Windows: the Job Object assignment needs the
+    # started process, so enforce applies here, just after Popen,
+    # not in the preexec hook (which returns None on win32 when
+    # the backend can engage). A refusal there has already killed
+    # the process and rejects the job before it runs a line
+    # uncontained. The release runs in the finally below, once
+    # the process has exited. Off win32 this returns None at once.
+    win_release = None
+    _postspawn = getattr(_runner(), "_job_user_postspawn", None)
+    if _postspawn is not None:
+        win_release = _postspawn(cfg, base_dir, job_id, proc)
     # The panic word (Q100) stops every live job; a box that fired
     # while this one was being staged kills it at once.
     _runner()._panic.register(proc)
@@ -790,6 +801,11 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
     finally:
         _runner()._panic.unregister(proc)
         cancelled = _runner()._cancel.unregister(job_id)
+        if win_release is not None:
+            try:
+                win_release()
+            except Exception:
+                pass
         if monitor is not None:
             try:
                 monitor.stop()
