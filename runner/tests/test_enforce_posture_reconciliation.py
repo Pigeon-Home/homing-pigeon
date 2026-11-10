@@ -63,6 +63,28 @@ reproduces the backend-less host directly: with the sandbox
 reported unavailable, the four roster-named tests and the
 M8 baseline run still pass, because a stated off never
 reaches the enforce branch that consults availability.
+
+A fourth round (head dd11412f) covers the rest of the
+suite, which the switch roster never ran on Darwin: the
+build workflow's test-macos job failed with the same
+refusal family across the fixture population at large --
+execute_job and poll fixtures that state only the keys
+under test and leave the platform gates unstated, so the
+enforce defaults refuse their jobs on a backend-less host
+before the path under test is reached. The fixtures state
+confinement, job_user and audience off beside their
+subjects, through each file's own config builders. Two
+arms where confinement is the subject are pinned in their
+shipped form instead: the campaign canary's cannot-engage
+arm now pins the phase-2 refusal itself (the job is
+refused, never run weaker, with the fallback audit row
+recording it -- it previously pinned the pre-phase-2
+fallback), and the flag-321 scenario matrix records the
+refusal as the enforce arm's outcome on a backend-less
+host while still stating enforce in its mode table. One
+behavioral pin below runs a representative failing test
+from each fixed file with the sandbox reported
+unavailable, as in round three.
 """
 import io
 import json
@@ -530,6 +552,175 @@ class RoundThreeBackendLessFixturesTest(unittest.TestCase):
                          result.failures + result.errors])
         self.assertEqual(baseline["exit_code"], 0)
         self.assertEqual(baseline["stdout"].strip(), "42")
+
+
+class RoundFourBackendLessFixturesTest(unittest.TestCase):
+    """Round four: the fixture population the switch roster
+    never ran on Darwin, found by the build workflow's
+    test-macos job on head dd11412f. The fixtures state the
+    platform gates they are not about; the two
+    confinement-subject arms pin the shipped refusal; and
+    one behavioral test runs a representative failing test
+    from each fixed file with the sandbox reported
+    unavailable, the same reproduction as round three."""
+
+    def assertGatesOff(self, cfg):
+        modes = cfg["security"]["modes"]
+        for feature in FEATURES:
+            self.assertEqual(modes[feature], "off", feature)
+
+    def test_runner_fixture_states_the_platform_gates(self):
+        from runner.tests import test_runner as mod
+        case = mod.RunnerTest("test_exec_sh")
+        case.setUp()
+        try:
+            self.assertGatesOff(case.cfg)
+        finally:
+            case.tearDown()
+
+    def test_transports_fixture_states_the_platform_gates(self):
+        from runner.tests import test_transports as mod
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertGatesOff(mod._cfg(tmp))
+
+    def test_dtls_supervised_fixture_states_the_gates(self):
+        from runner.tests import test_dtls as mod
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertGatesOff(mod._supervised_cfg(tmp, 9))
+
+    def test_v2_mail_fixture_states_the_platform_gates(self):
+        from runner.tests import test_protocol_v2_messages as mod
+        case = mod.MailTest(
+            "test_preseeded_answer_rides_the_result_and_does_not_decide")
+        case.setUp()
+        try:
+            self.assertGatesOff(case.cfg)
+        finally:
+            case.tearDown()
+
+    def test_run_variant_fixtures_state_the_platform_gates(self):
+        from runner.tests import test_run_variant as mod
+        for cls, name in (
+                (mod.RunVariantTest, "test_a_variant_runs_in_the_bucket"),
+                (mod.RunVariantFallbacksTest,
+                 "test_an_unusable_timeout_reads_as_the_cap")):
+            case = cls(name)
+            case.setUp()
+            try:
+                self.assertGatesOff(case.cfg)
+            finally:
+                case.tearDown()
+
+    def test_job_files_gates_constant_states_the_gates(self):
+        from runner.tests import test_job_files as mod
+        self.assertGatesOff(mod._GATES_OFF)
+
+    def test_temp_reap_fixture_states_the_platform_gates(self):
+        from runner.tests import test_temp_reap as mod
+        self.assertGatesOff(mod.ExecuteJobReapTest.CFG)
+
+    def test_oracle_fixture_states_the_platform_gates(self):
+        from runner.tests import test_oracle as mod
+        case = mod.DesktopCredentialTest(
+            "test_process_log_hides_the_desktop_flag")
+        self.assertGatesOff(case._cfg("/tmp/desk"))
+
+    def test_flag321_enforce_arm_still_states_enforce(self):
+        # The scenario matrix's subject is the posture
+        # itself: its enforce row states confinement at
+        # enforce (job_user and audience are off in every
+        # row by the rig's own design -- it has no job user
+        # and names no runner). The round-four change
+        # records the refusal on a backend-less host; it
+        # does not soften the row.
+        from runner.tests import test_flag321_scenarios as mod
+        modes = mod.MODES["enforce"]["security"]["modes"]
+        self.assertEqual(modes["confinement"], "enforce")
+
+    def test_canary_cannot_engage_arm_pins_the_refusal(self):
+        with open(os.path.join(
+                REPO, "runner", "tests",
+                "test_campaign_canary.py"),
+                encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertIn(
+            "test_enforce_refuses_where_the_sandbox_cannot_engage",
+            src)
+        self.assertNotIn("the job runs unsandboxed", src)
+        self.assertNotIn(
+            "enforce falls back to running unsandboxed", src)
+
+    def test_backend_less_host_still_runs_the_fixtures(self):
+        names = [
+            "runner.tests.test_powershell_script_encoding."
+            "OtherInterpretersKeepExactBytesTest."
+            "test_python_script_has_no_bom",
+            "runner.tests.test_doc_default_divergences."
+            "TestNullDefaultTimeoutSecDefaultsTo300."
+            "test_null_default_timeout_defaults_to_300",
+            "runner.tests.test_doc_default_divergences."
+            "TestMaxOutputBytesFifteenShapesAtExecuteJob."
+            "test_long_output_cut_only_by_a_genuine_cap",
+            "runner.tests.test_remediation_e2e."
+            "ExecuteJobFallbacksTest."
+            "test_a_monitor_that_fails_to_start_changes_nothing",
+            "runner.tests.test_protocol_and_edges."
+            "ExecutionEdgeTests.test_inline_script_sha384_match",
+            "runner.tests.test_job_files.InlineFilesTest."
+            "test_inline_bytes_are_staged_exactly",
+            "runner.tests.test_temp_reap.ExecuteJobReapTest."
+            "test_successful_exec_reaps_its_work_dir",
+            "runner.tests.test_tripwire_declaration_harvest."
+            "TripwireHarvestEndToEnd."
+            "test_hash_in_string_does_not_declare",
+            "runner.tests.test_runner_tail.ExecuteEdgesTest."
+            "test_a_scan_that_raises_does_not_fail_the_job",
+            "runner.tests.test_runner.RunnerTest.test_exec_sh",
+            "runner.tests.test_transports."
+            "FileTransportExtensionTest.test_exec_round_trip",
+            "runner.tests.test_protocol_v2_messages.MailTest."
+            "test_preseeded_answer_rides_the_result_and_does_not_decide",
+            "runner.tests.test_run_variant.RunVariantTest."
+            "test_a_variant_runs_in_the_bucket",
+            "runner.tests.test_cli_options."
+            "HandleMailFailureBranchesTest."
+            "test_an_encrypted_exec_job_runs_and_reports",
+            "runner.tests.test_oracle.LogRedactionTest."
+            "test_process_log_redacts_before_printing",
+            "runner.tests.test_oracle.DesktopCredentialTest."
+            "test_process_log_hides_the_desktop_flag",
+            "runner.tests.test_low_profile.ArtifactScanTest."
+            "test_execute_job_keeps_the_exit_code",
+            "runner.tests.test_logging_expansion."
+            "JobOutputLogTest."
+            "test_execute_job_logs_full_output_before_truncation",
+            "runner.tests.test_file_names.EndToEndTest."
+            "test_a_nested_name_stages_into_a_made_directory",
+            "runner.tests.test_campaign_canary."
+            "CanaryCrossWorkspaceTests."
+            "test_enforce_refuses_where_the_sandbox_cannot_engage",
+            "runner.tests.test_flag321_scenarios."
+            "Flag321ScenarioTest.test_scenarios_in_every_mode",
+            "runner.tests.test_platinum_ops."
+            "ExecuteJobShapesTest."
+            "test_a_failed_remediation_finish_keeps_the_result",
+            "runner.tests.test_coverage_learnings."
+            "InfinityFromFileTest."
+            "test_an_infinite_output_cap_does_not_raise",
+        ]
+        loader = unittest.TestLoader()
+        suite = unittest.TestSuite()
+        for name in names:
+            suite.addTests(loader.loadTestsFromName(name))
+        with mock.patch.object(
+                runner._sandbox, "sandbox_available",
+                return_value=False):
+            result = unittest.TextTestRunner(
+                stream=io.StringIO()).run(suite)
+        self.assertTrue(
+            result.wasSuccessful(),
+            [(str(t), str(e)) for t, e in
+             result.failures + result.errors])
 
 
 if __name__ == "__main__":
