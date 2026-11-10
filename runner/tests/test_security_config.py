@@ -163,16 +163,39 @@ class DefaultFlipTest(unittest.TestCase):
     def test_win32_job_user_default_enforce_still_refuses(self):
         # Unit form of the platform refusal: under the flip the
         # default config carries job_user at enforce, and on win32
-        # the mechanism cannot engage, so the startup problem must
-        # still be reported (ops/main turns it into a refusal).
+        # where the backend cannot engage, the startup problem
+        # must still be reported (ops/main turns it into a
+        # refusal). The backend's presence is scripted: win32 has
+        # a Job Object backend now, and on a real Windows host it
+        # can engage, so an unscripted call answers with that
+        # host's probe instead of the refusal under test (found
+        # on the build-windows leg). The cannot-engage stub is
+        # any object that is not the Windows backend; the
+        # engageable stub beside it pins the other arm, the same
+        # table test_windows_confine's StartupGateTableTest runs.
         from runner.ops.remediation_ops import job_user_startup_problem
-        self.assertIsNotNone(job_user_startup_problem({}, "win32"))
+
+        class _CannotEngage:
+            IS_WINDOWS_BACKEND = False
+
+        class _Engageable:
+            IS_WINDOWS_BACKEND = True
+
+            @staticmethod
+            def windows_startup_problem(cfg):
+                return None
+
+        self.assertIsNotNone(job_user_startup_problem(
+            {}, "win32", backend=_CannotEngage()))
         self.assertIsNotNone(
-            job_user_startup_problem({"security": {}}, "win32"))
+            job_user_startup_problem(
+                {"security": {}}, "win32", backend=_CannotEngage()))
+        self.assertIsNone(job_user_startup_problem(
+            {}, "win32", backend=_Engageable()))
         self.assertIsNone(
             job_user_startup_problem(
                 {"security": {"modes": {"job_user": "audit"}}},
-                "win32"))
+                "win32", backend=_CannotEngage()))
         self.assertIsNone(job_user_startup_problem({}, "linux"))
 
     def test_posix_job_user_enforce_refuses_at_startup(self):
