@@ -67,12 +67,10 @@ Concrete uses:
 
 The SI can be an assistant
 that operates, not just advises. Which machine is your choice: your
-workstation, a spare box in the corner, a Raspberry Pi.
-
-A new model claims to be good at something — robotics, automation,
+workstation, a spare box in the corner, a Raspberry Pi. A new model claims to be good at something — robotics, automation,
 data work? Point it at a box and find out.
 
-It belongs to the same family as GitHub self-hosted runners, VS Code
+The runner belongs to the same family as GitHub self-hosted runners, VS Code
 Remote tunnels, and Tailscale. Simple tools for administering your
 own hardware.
 
