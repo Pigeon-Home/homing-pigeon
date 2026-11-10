@@ -208,11 +208,13 @@ never read as claiming more than stands:
   record. The gate becomes a block at the conductor's word,
   as its design states; until then section 1 is a practice
   the record shows, not a refusal the pipeline makes.
-- **The dormant-code figures were stale until this pass.**
+- **The dormant-code figures are fresh as of this pass.**
   The milestone line's non-latent percentage rested on the
-  2026-11-03 audit; the fresh audit that corrects it lands
-  beside this page (dormant-code-audit.md), and section 4's
-  first line is checked from that record onward.
+  2026-11-03 audit until the fresh audit landed beside this
+  page (dormant-code-audit.md, measured 2026-11-09):
+  96.83% non-latent, from 3.17% near-duplicate and 0.03%
+  exact. Section 4's first line is checked from that record
+  onward; the gap reopens only as that audit ages.
 - **Channel polish is verified outlet by outlet, not
   assumed.** Section 5's lines are each read from the
   outlet itself at the cut; the SourceForge status line was
