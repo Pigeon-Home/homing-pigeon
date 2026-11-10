@@ -740,14 +740,31 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
     except _runner().JobRejected:
         shutil.rmtree(work, ignore_errors=True)
         raise
+    # Confinement on Windows: the process must be CREATED under
+    # the restricted, low-integrity token -- a token cannot be
+    # applied to a running process -- so the confined spawn
+    # replaces Popen there. It returns None everywhere else (and
+    # in every mode but enforce), and refuses the job itself when
+    # the backend cannot engage, so no path falls through to an
+    # unconfined process under enforce. Its release runs in the
+    # finally below, beside the job_user release.
+    conf_release = None
+    proc = None
+    _conf_spawn = getattr(_runner(), "_confinement_spawn", None)
+    if _conf_spawn is not None:
+        _spawned = _conf_spawn(cfg, base_dir, job_id, c_argv, run_dir,
+                               env if use_host_env else None)
+        if _spawned is not None:
+            proc, conf_release = _spawned
     try:
-        proc = subprocess.Popen(
-            c_argv,
-            cwd=run_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=env if use_host_env else None,
-            start_new_session=(os.name != "nt"),
-            preexec_fn=preexec,
-        )
+        if proc is None:
+            proc = subprocess.Popen(
+                c_argv,
+                cwd=run_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                env=env if use_host_env else None,
+                start_new_session=(os.name != "nt"),
+                preexec_fn=preexec,
+            )
         R.log(f"job {job['job_id']} process started pid={proc.pid} "
             f"interpreter={interpreter[0]}"
             f"{' sandboxed' if sandboxed else ''}")
@@ -766,7 +783,16 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
     win_release = None
     _postspawn = getattr(_runner(), "_job_user_postspawn", None)
     if _postspawn is not None:
-        win_release = _postspawn(cfg, base_dir, job_id, proc)
+        try:
+            win_release = _postspawn(cfg, base_dir, job_id, proc)
+        except Exception:
+            if conf_release is not None:
+                try:
+                    conf_release()
+                except Exception:
+                    pass
+                conf_release = None
+            raise
     # The panic word (Q100) stops every live job; a box that fired
     # while this one was being staged kills it at once.
     _runner()._panic.register(proc)
@@ -804,6 +830,11 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
         if win_release is not None:
             try:
                 win_release()
+            except Exception:
+                pass
+        if conf_release is not None:
+            try:
+                conf_release()
             except Exception:
                 pass
         if monitor is not None:

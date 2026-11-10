@@ -64,11 +64,33 @@ def _backend(problem=None, status="windows_job_object",
         return status, job_handle
 
     backend.windows_startup_problem = _probe
+    backend.windows_confinement_problem = _probe
     backend.apply_windows_containment = _apply
     backend.closed = []
     backend.close_job_handle = backend.closed.append
     backend.IS_WINDOWS_BACKEND = True
+    backend.STATUS_CONFINEMENT = WC.STATUS_CONFINEMENT \
+        if hasattr(WC, "STATUS_CONFINEMENT") else \
+        "windows: job_object + restricted_token + low_integrity"
+    backend.spawned = []
+
+    def _spawn(argv, cwd=None, env=None):
+        if apply_error is not None:
+            raise apply_error
+        proc = types.SimpleNamespace(
+            pid=31337, _handle=888, returncode=None,
+            confinement_status=backend.STATUS_CONFINEMENT,
+            closed=False)
+        proc.close = lambda: setattr(proc, "closed", True)
+        backend.spawned.append((argv, cwd, proc))
+        return proc
+
+    backend.spawn_confined_process = _spawn
     return backend
+
+
+def _ccfg(mode):
+    return {"security": {"modes": {"confinement": mode}}}
 
 
 class BackendStubTest(unittest.TestCase):
@@ -295,6 +317,171 @@ class PostspawnTest(unittest.TestCase):
                 REM._job_user_postspawn(
                     _cfg("enforce"), self.base, "j1", proc)
         proc.kill.assert_called_once()
+
+
+class ConfinementStubTest(unittest.TestCase):
+    """The confinement half of the stub, on a non-Windows host."""
+
+    def setUp(self):
+        if sys.platform == "win32":
+            self.skipTest("the stub exists only off win32")
+
+    def test_the_confinement_probe_refuses_off_windows(self):
+        self.assertIn("Windows-only", WC.windows_confinement_problem())
+
+    def test_the_confined_spawn_raises_off_windows(self):
+        with self.assertRaises(RuntimeError):
+            WC.spawn_confined_process(["python", "script.py"])
+
+    def test_the_status_names_exactly_the_three_controls(self):
+        self.assertEqual(
+            WC.STATUS_CONFINEMENT,
+            "windows: job_object + restricted_token + low_integrity")
+        self.assertEqual(
+            WC.CONFINEMENT_CONTROLS,
+            ("job_object", "restricted_token", "low_integrity"))
+        self.assertNotIn("sandbox", WC.STATUS_CONFINEMENT)
+
+
+class ConfinementStartupGateTest(unittest.TestCase):
+    """confinement_startup_problem: win32 consults the backend."""
+
+    def test_engageable_backend_lets_enforce_start(self):
+        self.assertIsNone(rr._confinement_startup_problem(
+            _ccfg("enforce"), platform="win32",
+            backend=_backend(None)))
+
+    def test_unengageable_backend_refuses_and_names_why(self):
+        problem = rr._confinement_startup_problem(
+            _ccfg("enforce"), platform="win32",
+            backend=_backend("CreateRestrictedToken failed: 5"))
+        self.assertIsNotNone(problem)
+        self.assertIn("confinement cannot engage on win32", problem)
+        self.assertIn("CreateRestrictedToken failed: 5", problem)
+
+    def test_a_backend_that_raises_still_refuses(self):
+        problem = rr._confinement_startup_problem(
+            _ccfg("enforce"), platform="win32",
+            backend=_backend(RuntimeError("dll gone")))
+        self.assertIsNotNone(problem)
+        self.assertIn("dll gone", problem)
+
+    def test_audit_and_off_are_never_refused_by_the_gate(self):
+        for mode in ("audit", "off"):
+            self.assertIsNone(rr._confinement_startup_problem(
+                _ccfg(mode), platform="win32",
+                backend=_backend("cannot engage")), mode)
+
+    def test_non_win32_is_untouched_by_the_backend(self):
+        self.assertIsNone(rr._confinement_startup_problem(
+            _ccfg("enforce"), platform="linux",
+            backend=_backend("cannot engage")))
+
+    def test_simulated_win32_refusal_is_deterministic(self):
+        if sys.platform == "win32":
+            self.skipTest("the host platform is the real one here")
+        problem = rr._confinement_startup_problem(
+            _ccfg("enforce"), platform="win32")
+        self.assertEqual(
+            problem,
+            "confinement (bwrap) is Linux-only; this machine is win32")
+
+
+class ConfinementArgvTest(unittest.TestCase):
+    """_confinement_argv on a simulated win32: the argv gate."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = self.tmp.name
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _run(self, mode, backend):
+        sink = []
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(rr, "_security", _sec(mode, sink)):
+            out = rr._confinement_argv(
+                _ccfg(mode), self.base, "j1", ["python"], "script.py",
+                self.base, [], {}, backend=backend)
+        return out, sink
+
+    def test_engageable_backend_returns_the_normal_argv(self):
+        out, _sink = self._run("enforce", _backend(None))
+        self.assertEqual(out, (["python", "script.py"], True, False))
+
+    def test_unengageable_backend_refuses_the_job(self):
+        sink = []
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            with self.assertRaises(rr.JobRejected):
+                rr._confinement_argv(
+                    _ccfg("enforce"), self.base, "j1", ["python"],
+                    "script.py", self.base, [], {},
+                    backend=_backend("no token for you"))
+        self.assertEqual(sink[0]["decision"], "fallback")
+        self.assertEqual(sink[0]["reason"], "confinement_unavailable")
+
+
+class ConfinementSpawnTest(unittest.TestCase):
+    """_confinement_spawn: the creation-time application."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = self.tmp.name
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _run(self, mode, backend="unset", nt=True):
+        sink = []
+        kw = {} if backend == "unset" else {"backend": backend}
+        with mock.patch.object(REM.os, "name", "nt" if nt else "posix"), \
+                mock.patch.object(rr, "_security", _sec(mode, sink)):
+            out = REM._confinement_spawn(
+                _ccfg(mode), self.base, "j1", ["python", "s.py"],
+                self.base, {}, **kw)
+        return out, sink
+
+    def test_off_windows_is_a_noop(self):
+        out, sink = self._run("enforce", backend=_backend(None),
+                              nt=False)
+        self.assertIsNone(out)
+        self.assertEqual(sink, [])
+
+    def test_audit_and_off_spawn_nothing(self):
+        for mode in ("audit", "off"):
+            out, _sink = self._run(mode, backend=_backend(None))
+            self.assertIsNone(out, mode)
+
+    def test_enforce_spawns_and_records_exactly_the_controls(self):
+        backend = _backend(None)
+        (proc, release), sink = self._run("enforce", backend=backend)
+        self.assertEqual(proc.pid, 31337)
+        self.assertEqual(len(sink), 1)
+        self.assertEqual(sink[0]["feature"], "confinement")
+        self.assertEqual(sink[0]["decision"], "confined")
+        self.assertEqual(
+            sink[0]["reason"],
+            "windows: job_object + restricted_token + low_integrity")
+        self.assertNotIn("sandbox", sink[0]["reason"])
+        release()
+        self.assertTrue(proc.closed)
+
+    def test_enforce_spawn_failure_refuses_and_records_fallback(self):
+        backend = _backend(None, apply_error=RuntimeError("spawn 5"))
+        sink = []
+        with mock.patch.object(REM.os, "name", "nt"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            with self.assertRaises(rr.JobRejected):
+                REM._confinement_spawn(
+                    _ccfg("enforce"), self.base, "j1",
+                    ["python", "s.py"], self.base, {}, backend=backend)
+        self.assertEqual(sink[0]["decision"], "fallback")
+        self.assertEqual(sink[0]["reason"],
+                         "windows_confinement_failed")
 
 
 class SeedShapeUnchangedTest(unittest.TestCase):

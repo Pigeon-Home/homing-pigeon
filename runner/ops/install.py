@@ -2363,18 +2363,25 @@ def apply_profile(cfg_path: str, profile: str) -> None:
 
 
 def platform_modes(platform=None):
-    """The security modes a first install states outright because
-    their mechanism cannot engage on this platform.
+    """The security modes a first install states outright on this
+    platform.
 
-    Confinement is a Linux sandbox (bwrap): on every other
-    platform it cannot engage. The job_user demote is a POSIX
-    setuid: on Windows it cannot engage. Both read enforce from
-    the seed, so without this statement the first start on those
-    platforms is a refusal the owner must edit their way out of,
-    choosing weaker modes unguided. Stated at audit instead: the
-    mode is in the file, in the open, and the audit trail records
-    what enforce would have done. An empty map on Linux, where
-    both mechanisms can engage and the startup gates decide.
+    Confinement's full form is a Linux sandbox (bwrap), and the
+    job_user demote is a POSIX setuid. Windows has backends for
+    both (confinement: Job Object + restricted token + low
+    integrity; job_user: the Job Object ceiling), but the
+    installer writes the seed without running the backend probe
+    on the target machine, and stating enforce sight-unseen
+    risks a first-start refusal on a machine where a control
+    cannot engage -- so a fresh Windows install states both at
+    audit, in the file, in the open, and the operator steps a
+    mode up to enforce deliberately, with the startup gate then
+    verifying the probe on that machine. On other non-Linux
+    platforms confinement has no backend and states audit for
+    the original reason: without the statement the first start
+    is a refusal the owner must edit their way out of. An empty
+    map on Linux, where both mechanisms can engage and the
+    startup gates decide.
     """
     if platform is None:
         platform = sys.platform
@@ -2419,7 +2426,7 @@ def apply_platform_modes(cfg_path: str, platform=None) -> dict:
     plat = platform if platform is not None else sys.platform
     for feature, mode in applied.items():
         print(f"platform: security.modes.{feature} stated as "
-              f"{mode} in {cfg_path} ({feature} cannot engage on "
+              f"{mode} in {cfg_path} (the platform seed for "
               f"{plat}; the mode is stated in the file rather "
               f"than left to refuse the first start)")
     return applied

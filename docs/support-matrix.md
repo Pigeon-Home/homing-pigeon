@@ -16,17 +16,20 @@ Levels used below:
   enforce defaults) is available.
 - **Supported, reduced confinement** — built and tested, the
   runner runs with its full authentication and policy posture,
-  but kernel confinement is not available on this platform, so
-  `confinement` at enforce refuses to start and the operator must
-  consciously choose a lower mode. The startup posture printout
-  says which.
+  but confinement on this platform is weaker than the Linux
+  namespace sandbox: on macOS there is no confinement backend,
+  so `confinement` at enforce refuses to start and the operator
+  must consciously choose a lower mode; on Windows the backend
+  applies resource limits, a restricted token and a low
+  integrity level, with no namespace isolation. The startup
+  posture printout says which.
 - **Experimental** — a CI leg or a documented target exists, but
   it is not part of the release guarantee.
 - **Not supported** — no build, no tests, no claim.
 
 ## Platform support
 
-| Platform | Level | Confinement (bwrap) | job_user | Oracle | Evidence |
+| Platform | Level | Confinement | job_user | Oracle | Evidence |
 |---|---|---|---|---|---|
 | Linux x86-64 (glibc, Python 3.9+) | **Supported** | Enforce available: user/IPC/network/UTS namespaces probed at startup; a box that cannot enforce refuses to start | Enforce available (POSIX) | Full (interactive + mailbox) | Full suite in CI (10,304 tests, OK, at the last full run recorded before this file landed); switch proofs on the real kernel; platform-matrix and build legs green |
 | Linux ARM64 | **Supported** | Same as x86-64 | Enforce available (POSIX) | Full | ARM64 build legs (ubuntu-22.04-arm) in CI; Pi Light targets this family |
@@ -34,7 +37,7 @@ Levels used below:
 | Linux as root | **Supported** | Same as x86-64 | Enforce available | Full | Linux-root switch-proof legs in CI |
 | Raspberry Pi (Pi Light) | **Supported** | Same as Linux ARM64 | Enforce available (POSIX) | Deterministic only (by design — no local model) | Pi Light build leg; the profile is a config choice, not a separate codebase |
 | macOS (Intel and Apple silicon) | **Supported, reduced confinement** | Not available (bwrap is Linux-only; confinement at enforce refuses to start — fail-closed, never silent) | Enforce available (POSIX) | Full | macOS build legs (macos-15); full suite in 3 shards in CI (3,388 + 3,355 + 3,363 tests at the last full run recorded before this file landed). A Seatbelt (`sandbox-exec`) confinement backend is the known path to full parity; not built yet |
-| Windows x86-64 | **Supported, reduced confinement** | Not available (same fail-closed refusal as macOS) | Enforce available via a Job Objects backend: a per-process memory ceiling assigned as each job starts, and a job that cannot be assigned is refused; the POSIX setuid demote itself does not exist here | Full | Windows build leg (windows-latest); Windows switch-proof legs in CI. The Job Objects backend carries job_user with the memory ceiling only; an AppContainer backend for confinement parity is not built, and not scheduled until a Windows deployment needs confinement rather than a lowered mode |
+| Windows x86-64 | **Supported, reduced confinement** | Enforce available via the Windows backend: a Job Object memory ceiling (512 MiB per process), a restricted token (privileges stripped, Administrators group disabled) and a low integrity level, applied at creation — the audit record names exactly "windows: job_object + restricted_token + low_integrity". No filesystem namespace isolation: a confined job can still read any path its token can read. Startup probes the backend and refuses when it cannot engage | Enforce available via a Job Objects backend: a per-process memory ceiling assigned as each job starts, and a job that cannot be assigned is refused; the POSIX setuid demote itself does not exist here | Full | Windows build leg (windows-latest); Windows switch-proof legs in CI. The Job Objects backend carries job_user with the memory ceiling only; an AppContainer backend for confinement parity is not built yet |
 | Windows ARM64 | **Supported, reduced confinement** | As Windows x86-64 | As Windows x86-64 | Full | windows-11-arm build leg |
 | Docker (GHCR image) | **Supported** | Inherits the host kernel's answer above | Inherits host | Full | docker workflow; image attested by digest; sums verifiable per docs/steady/verification.md |
 | FreeBSD | **Experimental** | Not available | Not claimed | Not claimed | A freebsd CI workflow exists; no release guarantee |
@@ -94,7 +97,10 @@ Not yet true, stated plainly so this file stays honest:
 - No independent third-party security audit has been performed.
 - No second implementation of Protocol v3 exists.
 - Confinement parity across platforms does not exist yet (see
-  the platform table); only Linux confines at enforce today.
+  the platform table): Linux confines with a namespace sandbox;
+  Windows confines with resource limits, a restricted token and
+  a low integrity level, and no namespace isolation; macOS has
+  no confinement backend.
 
 *Maintenance rule for this file: when a platform leg, a workflow,
 or a support level changes, this file changes in the same commit —

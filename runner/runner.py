@@ -108,6 +108,7 @@ def _required_load_mod(package, local, why=""):
     return mod
 
 __version__ = _load_attr("runner._version", "_version", "__version__", "unknown")
+__build__ = _load_attr("runner._build", "_build", "__build__", "unknown")
 
 class _JobCryptoErrorFallback(ValueError):
     """Fallback when jobcrypto.py is unavailable; never raised."""
@@ -339,7 +340,7 @@ _outgoing_result_body = _verify._outgoing_result_body
 # (JobRejected) -- under enforce the job never runs unsandboxed.
 # Audit mode runs normally and records what enforce would have done.
 def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
-                      work, args, env):
+                      work, args, env, backend=None):
     normal = ([*interpreter, script_path, *args], True, False)
     if _security is None or _sandbox is None:
         return normal
@@ -363,6 +364,34 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
         _audit("would_sandbox", "would_run_sandboxed")
         return normal
     # enforce from here on
+    if sys.platform == "win32":
+        # Windows confinement is not bwrap: the job is created
+        # under the backend's controls at the spawn seam
+        # (_confinement_spawn in ops/remediation_ops.py), so the
+        # argv is the normal one. What this gate decides is only
+        # whether the backend can engage; when it cannot, the
+        # refusal is the same shape as the unavailable-sandbox
+        # refusal below. Only a real backend's probe is consulted
+        # (an injected backend counts, for the suite); a simulated
+        # win32 keeps the refusal.
+        mod = _remediation_ops._windows_confine(backend)
+        engageable = False
+        if mod is not None and (backend is not None or getattr(
+                mod, "IS_WINDOWS_BACKEND", False)):
+            probe = getattr(mod, "windows_confinement_problem", None)
+            try:
+                engageable = probe is not None and probe(cfg) is None
+            except Exception:
+                engageable = False
+        if engageable:
+            return normal
+        log(f"job {job_id}: confinement unavailable on this machine "
+            f"({sys.platform}); refusing the job under enforce", "WARN")
+        _audit("fallback", "confinement_unavailable")
+        raise JobRejected(
+            "confinement unavailable on this machine "
+            f"({sys.platform}); job refused under "
+            "security.modes.confinement=enforce")
     if not _sandbox.sandbox_available():
         log(f"job {job_id}: confinement unavailable on this machine "
             f"({sys.platform}); refusing the job under enforce", "WARN")
@@ -439,6 +468,8 @@ _remediation_ops = _required_load_mod("runner.ops.remediation_ops", "ops.remedia
 _job_user_preexec = _remediation_ops._job_user_preexec
 _job_user_postspawn = _remediation_ops._job_user_postspawn
 _job_user_startup_problem = _remediation_ops.job_user_startup_problem
+_confinement_startup_problem = _remediation_ops.confinement_startup_problem
+_confinement_spawn = _remediation_ops._confinement_spawn
 _finish_remediation = _remediation_ops._finish_remediation
 _learning_model_candidate = _remediation_ops._learning_model_candidate
 _retained_job_summary = _remediation_ops._retained_job_summary

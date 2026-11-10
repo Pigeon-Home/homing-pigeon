@@ -115,7 +115,14 @@ def main() -> int:
         # instead of every job finding out one at a time.
         if R._sandbox is not None \
                 and R._security.sec_mode(cfg, "confinement") == "enforce":
-            problem = R._sandbox.startup_problem(cfg=cfg)
+            if sys.platform == "win32" and getattr(
+                    R, "_confinement_startup_problem", None) is not None:
+                # Windows has its own confinement backend (Job
+                # Object + restricted token + low integrity); its
+                # probe decides here, not bwrap's.
+                problem = R._confinement_startup_problem(cfg)
+            else:
+                problem = R._sandbox.startup_problem(cfg=cfg)
             if problem:
                 print("config error: security.modes.confinement is "
                       "enforce but the sandbox cannot engage: "

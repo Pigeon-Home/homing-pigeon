@@ -162,7 +162,7 @@ line 2031):
 | Linux, sandbox able to engage | password-only | Starts. Jobs run sandboxed; judge advisory, results attested. |
 | Linux, sandbox missing or its namespaces blocked | password-only | Refuses to start, naming confinement, until the owner sets that mode to `audit` or `off`. |
 | Raspberry Pi | pi-light | The same confinement gate; the Oracle runs deterministically, no model installed. |
-| Windows (one-home installer) | password-only | Refuses on two gates — confinement is Linux-only and the job-user demote is POSIX-only — until the owner lowers both modes in `config.json`. |
+| Windows (one-home installer) | password-only | Starts: the fresh-install seed states `confinement` and `job_user` at `audit` in the file. Stated at `enforce` by hand, both are probed at startup — confinement engages through its Windows backend (Job Object, restricted token, low integrity) and `job_user` through the Job Object ceiling — and a probe that cannot engage refuses, naming the mode. |
 | macOS | password-only | Refuses on the confinement gate until the owner lowers it. |
 | FreeBSD | password-only | Refuses on the confinement gate (the sandbox is Linux-only). |
 | No profile (`--no-profile`, or a platform the host decision does not know), or a hand-written config | none | The seed's own row: judge `off`, results `full`, modes `enforce` — the posture the README calls "just run it" — with the same startup gates above. |

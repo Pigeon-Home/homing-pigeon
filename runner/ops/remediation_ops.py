@@ -397,6 +397,106 @@ def _job_user_postspawn(cfg, base_dir, job_id, proc, backend=None):
     return _release
 
 
+def confinement_startup_problem(cfg, platform=None, backend=None):
+    """Why confinement on enforce cannot run here, or None.
+
+    The win32 mirror of job_user_startup_problem. On Windows the
+    confinement backend is runner/guard/windows_confine.py (Job
+    Object + restricted token + low integrity -- see that
+    module's docstring for what it does and does not provide), so
+    on win32 the gate asks that backend's confinement probe
+    whether it can engage. Only a REAL backend's probe is
+    consulted: a simulated win32 (this host, the suite) answers
+    the deterministic Linux-only refusal, exactly as job_user's
+    gate does. Off win32 this returns None and changes nothing:
+    the bwrap gate in ops/main.py is the confinement gate there.
+    """
+    if platform is None:
+        platform = sys.platform
+    sec = _runner()._security
+    if sec is None or sec.sec_mode(cfg, "confinement") != "enforce":
+        return None
+    if platform != "win32":
+        return None
+    backend = _windows_confine(backend)
+    if backend is not None and getattr(
+            backend, "IS_WINDOWS_BACKEND", False):
+        probe = getattr(backend, "windows_confinement_problem", None)
+        if probe is None:
+            return ("confinement cannot engage on win32: the "
+                    "backend has no confinement probe")
+        try:
+            problem = probe(cfg)
+        except Exception as e:  # a backend that cannot answer
+            problem = str(e)    # has not shown it can engage
+        if problem is None:
+            return None
+        return "confinement cannot engage on win32: %s" % problem
+    return ("confinement (bwrap) is Linux-only; "
+            "this machine is win32")
+
+
+def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
+                       backend=None):
+    """Spawn a job process under Windows confinement, or None.
+
+    Returns None when the seam does not apply -- every platform
+    but win32, and every confinement mode but enforce -- so the
+    caller uses its ordinary spawn. On win32 at enforce it
+    returns (proc, release): proc is the backend's confined
+    process (the Popen subset exec drives), and release closes
+    its handles once the process has exited. A backend that
+    cannot engage refuses the job here, after the fallback
+    record: under enforce a job never falls through to an
+    unconfined spawn. The success record names exactly the
+    controls applied, in the backend's own status string
+    ("windows: job_object + restricted_token + low_integrity").
+    """
+    if os.name != "nt":
+        return None
+    sec = _runner()._security
+    if sec is None or sec.sec_mode(cfg, "confinement") != "enforce":
+        return None
+    backend = _windows_confine(backend)
+
+    def _audit(decision, reason, detail=""):
+        try:
+            sec.write_audit_entry(
+                base_dir, "confinement", decision, reason,
+                job_id=str(job_id), detail=str(detail), cfg=cfg,
+                mode="enforce")
+        except Exception:
+            pass
+
+    try:
+        if backend is None:
+            raise RuntimeError(
+                "windows confinement backend is unavailable")
+        spawn = getattr(backend, "spawn_confined_process", None)
+        if spawn is None:
+            raise RuntimeError(
+                "windows confinement backend has no confined spawn")
+        proc = spawn(argv, cwd=cwd, env=env)
+    except Exception as e:
+        _audit("fallback", "windows_confinement_failed", e)
+        raise _runner().JobRejected(
+            "confinement could not be applied on win32 "
+            "(%s); job refused under "
+            "security.modes.confinement=enforce" % (e,))
+    status = getattr(proc, "confinement_status", None) \
+        or getattr(backend, "STATUS_CONFINEMENT", None) \
+        or "windows: job_object + restricted_token + low_integrity"
+    _audit("confined", status)
+
+    def _release():
+        try:
+            proc.close()
+        except Exception:
+            pass
+
+    return proc, _release
+
+
 def _learning_model_candidate(cfg, base_dir, job_id, job, outcome,
                               stdout_text, stderr_text):
     """The model channel of the learning loop: distill ONE
