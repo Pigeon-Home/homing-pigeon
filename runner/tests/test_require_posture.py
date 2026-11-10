@@ -202,6 +202,17 @@ def _run_main(extra, argv_extra=("--posture",), sandbox_ok=True,
             stack.enter_context(mock.patch.object(
                 R, "_job_user_startup_problem",
                 lambda cfg=None, platform=None: None))
+            # Same for the Windows confinement gate, which
+            # main() consults in place of the sandbox's answer
+            # on a win32 platform since the Windows confinement
+            # backend landed: unscripted, a simulated win32 host
+            # answers that gate's deterministic refusal (the
+            # refusal itself is pinned in test_decision1_startup)
+            # and the startup stops there instead of reaching
+            # the posture assertion under test here.
+            stack.enter_context(mock.patch.object(
+                R, "_confinement_startup_problem",
+                lambda cfg=None, platform=None, backend=None: None))
         stack.enter_context(mock.patch.object(sys, "argv", argv))
         with contextlib.redirect_stdout(out), \
                 contextlib.redirect_stderr(err):
@@ -236,7 +247,7 @@ class StartupAssertionTest(unittest.TestCase):
 
     def test_pinned_all_enforce_starts_on_simulated_win32(self):
         # The 3.15.17.166 Windows leg failed this startup on the
-        # job_user gate alone: both mechanism gates are scripted
+        # job_user gate alone: the mechanism gates are scripted
         # as able in _run_main, so a simulated win32 host must
         # reach the same posture report as a POSIX host.
         rc, out, err = _run_main(

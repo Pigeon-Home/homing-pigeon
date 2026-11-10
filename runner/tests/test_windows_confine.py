@@ -12,6 +12,8 @@ The honesty pins matter most: no audit record may name a control
 the backend does not apply (there is no restricted token in
 Phase 1), and every failure lands in the refuse direction.
 """
+import ctypes
+import importlib
 import os
 import sys
 import tempfile
@@ -115,6 +117,68 @@ class BackendStubTest(unittest.TestCase):
         self.assertEqual(WC.STATUS_JOB_OBJECT, "windows_job_object")
         self.assertNotIn("token", WC.STATUS_JOB_OBJECT)
         self.assertNotIn("restricted", WC.STATUS_JOB_OBJECT)
+
+
+class SimulatedPlatformImportTest(unittest.TestCase):
+    """The backend branch follows the host's ctypes surface.
+
+    The suite's win32 simulation patches sys.platform (the seam
+    test_decision1_startup and test_require_posture use). A first
+    import of this module inside such a patch must still land
+    on the stub: the platform string is simulated, but the host
+    has no ctypes.WinDLL, and binding it at import raised
+    AttributeError on POSIX hosts -- through main(), in the
+    simulated-win32 startup tests. The branch is taken for real
+    exactly when the platform is win32 AND the Windows ctypes
+    surface is present; on a real Windows host both hold, so
+    nothing there changes.
+    """
+
+    def setUp(self):
+        if sys.platform == "win32":
+            self.skipTest("the simulation is only meaningful off win32")
+
+    def _fresh_import(self):
+        key = "runner.guard.windows_confine"
+        saved = sys.modules.get(key)
+        sys.modules.pop(key, None)
+        try:
+            return importlib.import_module(key)
+        finally:
+            # Leave the module the rest of the suite imported
+            # cached, exactly as it was.
+            if saved is not None:
+                sys.modules[key] = saved
+            else:
+                sys.modules.pop(key, None)
+
+    def test_fresh_import_under_simulated_win32_gets_the_stub(self):
+        with mock.patch.object(sys, "platform", "win32"):
+            mod = self._fresh_import()
+        self.assertFalse(mod.IS_WINDOWS_BACKEND)
+        problem = mod.windows_confinement_problem()
+        self.assertIsInstance(problem, str)
+        self.assertIn("Windows-only", problem)
+
+    def test_the_startup_gate_refuses_deterministically_under_simulation(self):
+        with mock.patch.object(sys, "platform", "win32"):
+            self._fresh_import()
+            problem = REM.confinement_startup_problem(
+                _ccfg("enforce"), platform="win32")
+        self.assertEqual(
+            "confinement (bwrap) is Linux-only; "
+            "this machine is win32", problem)
+
+    def test_a_windows_ctypes_surface_takes_the_real_branch(self):
+        # The other direction of the branch: platform win32 and
+        # the WinDLL surface present (faked here, real on a
+        # Windows host) imports the real backend.
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(
+                    ctypes, "WinDLL",
+                    lambda *a, **k: mock.MagicMock(), create=True):
+            mod = self._fresh_import()
+        self.assertTrue(mod.IS_WINDOWS_BACKEND)
 
 
 class StartupGateTableTest(unittest.TestCase):

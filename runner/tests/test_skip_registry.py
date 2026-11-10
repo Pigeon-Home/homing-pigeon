@@ -220,6 +220,12 @@ REGISTERED = {
         "runs deterministically on hosts that are not Windows; "
         "on a real Windows host the backend's own probe answers "
         "instead",
+    "the simulation is only meaningful off win32":
+        "test_windows_confine's simulated-platform import tests "
+        "run on hosts that are not Windows, patching "
+        "sys.platform to win32 where the branch must still land "
+        "on the stub; on a real Windows host there is nothing "
+        "simulated to import under",
     "the real backend engages or not live":
         "test_windows_confine's off-Windows postspawn refusal "
         "runs on hosts that are not Windows; on win32 the real "

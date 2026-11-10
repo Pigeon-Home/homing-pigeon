@@ -50,6 +50,11 @@ assumption, is what the gate consults.
 
 This module is import-safe on non-Windows; functions that need
 the APIs raise or return a problem string when called off win32.
+The stub/real branch below keys on the host's ctypes surface as
+well as the platform string, so import stays safe under the
+suite's simulated win32 (sys.platform patched on a POSIX host)
+as well: a simulated platform cannot bind Windows APIs the host
+does not have.
 """
 import ctypes
 import subprocess
@@ -70,7 +75,7 @@ STATUS_JOB_OBJECT = "windows_job_object"
 STATUS_CONFINEMENT = "windows: job_object + restricted_token + low_integrity"
 CONFINEMENT_CONTROLS = ("job_object", "restricted_token", "low_integrity")
 
-if sys.platform != "win32":
+if sys.platform != "win32" or not hasattr(ctypes, "WinDLL"):
     # Stub so the rest of the runner can import without error. The
     # startup probes answer a problem string (never None), so an
     # enforce gate consulting this stub refuses, and apply/spawn
@@ -79,6 +84,16 @@ if sys.platform != "win32":
     # from the real implementation below: only a real backend's
     # probe is ever consulted, so a simulated win32 answers the
     # refusal deterministically on any host.
+    #
+    # The branch follows the host's Windows API surface, not the
+    # platform string alone: the suite simulates win32 by patching
+    # sys.platform on POSIX hosts, and a first import under that
+    # patch must still land here -- the host has no ctypes.WinDLL
+    # to bind, and reaching for it raised AttributeError at import
+    # (through main(), in the simulated-win32 startup tests). On
+    # a real Windows host sys.platform is "win32" and ctypes
+    # always carries WinDLL, so the real implementation below is
+    # taken exactly as before.
     IS_WINDOWS_BACKEND = False
 
     def windows_startup_problem(*args, **kwargs):
