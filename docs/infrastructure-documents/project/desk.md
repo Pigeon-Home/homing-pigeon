@@ -35,6 +35,31 @@ which are suggestions for efficiency, not guardrails: no stream
 waits on another's permission, and no gate exists to slow landing
 down.
 
+## Where the work stands: the official release
+
+Dated 2026-11-09. The current push is an official release on
+the 3.15 line: the line as it stands, completed and presented
+as completed. The secure-by-default work is being finished for
+real — the phase-2 behavior changes recorded in
+`docs/steady/security/default-posture.md`, landing test-first —
+the documentation is swept to the same posture, and the
+distribution channels present the release as production, not
+as a step toward it.
+
+The 4.x rev stands deferred to the far future. When it comes,
+it may carry a user interface. It is no part of the current
+push, and no stream waits on it.
+
+The state of the preparation, as it stands on the desk: the
+phase-2 changes and their tests; the documentation sweep; the
+channel polish (the package metadata and the SourceForge
+project both read Production/Stable); and a readiness pass
+with a fresh dormant-code audit, whose measure corrects the
+non-latent figure in the statistics record when it lands.
+Behind the release work, the long goal stands unchanged: the
+tree's growth toward 30 million security tokens, at the pace
+the measure in statistics.md records.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
@@ -204,13 +229,16 @@ no key material stands anywhere in this tree. A third house's
 access — Grok — is personal property, not the project's, and is
 not available to the work here; it is not to be asked for.
 
-The access is connected but not yet callable. The connector
-documents that let the agent's tooling call either API have not
-been authored; authoring them, through the custom-connector
-setup, is the queued step that comes before any call can be
-made. Until those documents stand, neither API can be called
-from here, and the access must not be reported — in a status
-line, a plan, or a promise — as usable.
+Updated 2026-11-09: the connector documents stand, authored
+through the custom-connector setup, and the access is
+callable. OpenAI's API answers end to end from here and has
+been exercised on real work. Anthropic's connection
+authenticates; its data calls are gated on a workspace
+identifier the operator supplies from that house's console,
+and until that identifier is in hand the Anthropic side is
+connected but not callable for data — and must not be
+reported, in a status line, a plan, or a promise, as usable
+for it.
 
 What the access is for, once it is callable: a second pair of
 eyes running in parallel with the project's own lanes —
