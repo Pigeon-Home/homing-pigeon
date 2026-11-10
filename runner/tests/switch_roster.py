@@ -181,13 +181,16 @@ ROSTER = [
         "needs": [],
     },
     {
-        "id": "M8.fallback",
-        "promise": "job_user without root runs the job as the current user "
-                   "with a WARN line and a job_user_needs_root audit entry "
-                   "(owner decision, 2026-10-15); a user gone at job time "
-                   "falls back the same way.",
-        "tests": ["runner.tests.test_secret_files_job_user.JobUserTest.test_non_root_falls_back",
-                  "runner.tests.test_runner_face.JobUserFaceTest.test_not_root_does_not_demote"],
+        "id": "M8.refusal",
+        "promise": "job_user at enforce on a runner that is not root "
+                   "refuses the job outright: the refusal is recorded "
+                   "(a fallback audit entry, reason "
+                   "job_user_needs_root) and the job never runs as "
+                   "the runner's own account (phase 2 of the "
+                   "default-posture work; supersedes the 2026-10-15 "
+                   "fallback decision).",
+        "tests": ["runner.tests.test_secret_files_job_user.JobUserTest.test_non_root_refuses_the_job",
+                  "runner.tests.test_runner_face.JobUserFaceTest.test_not_root_refuses_the_job"],
         "needs": ["posix"],
     },
     {

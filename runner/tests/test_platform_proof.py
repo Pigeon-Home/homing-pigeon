@@ -88,6 +88,14 @@ def _run(payload, cfg_over=None, secret=oo.SECRET):
         "smtp_host": "fake", "smtp_port": 587,
         "max_job_age_sec": 3600,
         "default_timeout_sec": 120,
+        # Stated off: this proof is about portable execution,
+        # not the security controls. Unstated, the modes read
+        # enforce and the confinement refusal (no backend on
+        # most legs: Windows, macOS, the BSDs, minimal
+        # containers) rejects the job before it can run.
+        "security": {"modes": {"confinement": "off",
+                               "job_user": "off",
+                               "audience": "off"}},
     }
     cfg.update(cfg_over or {})
     smtp = oo._FakeSMTP()

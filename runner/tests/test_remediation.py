@@ -651,6 +651,18 @@ class ExecuteJobTest(unittest.TestCase):
     """Real subprocesses through runner.execute_job."""
 
     def _run(self, cfg, job):
+        # Stated off unless the test says otherwise: these tests
+        # are about remediation, and an unstated confinement mode
+        # reads enforce, which refuses the job outright on a host
+        # with no confinement backend before remediation is
+        # reached. A test that wants a mode states it in cfg.
+        cfg = dict(cfg)
+        sec = dict(cfg.get("security") or {})
+        modes = dict(sec.get("modes") or {})
+        modes.setdefault("confinement", "off")
+        modes.setdefault("job_user", "off")
+        sec["modes"] = modes
+        cfg["security"] = sec
         base = tempfile.mkdtemp(prefix="hp-rem-")
         self.addCleanup(lambda: __import__("shutil").rmtree(
             base, ignore_errors=True))
@@ -848,6 +860,10 @@ class ExecuteJobOracleTest(unittest.TestCase):
     def _cfg(self):
         return {"remediation_mode": "oracle",
                 "remediation_sample_sec": 0.1,
+                # Stated off, as in ExecuteJobTest._run: the
+                # Oracle layer is the subject, not confinement.
+                "security": {"modes": {"confinement": "off",
+                                       "job_user": "off"}},
                 "inference": {"endpoint": "http://127.0.0.1:11434/v1",
                               "model": "fake-model",
                               "timeout_sec": 5}}
@@ -1046,10 +1062,13 @@ class ReleaseDoorTest(unittest.TestCase):
                            # Stated off: the lockdown default
                            # would refuse this host at the
                            # confinement gate before the release
-                           # door is reached.
+                           # door is reached; audience too --
+                           # no runner_id is named here, and
+                           # unstated it refuses startup.
                            "security": {"modes": {
                                "confinement": "off",
-                               "job_user": "off"}}}, fh)
+                               "job_user": "off",
+                               "audience": "off"}}}, fh)
             with mock.patch.object(setup, "is_tty",
                                    return_value=False), \
                     mock.patch.object(sys, "argv", [
@@ -1075,10 +1094,13 @@ class ReleaseDoorTest(unittest.TestCase):
                            # Stated off: the lockdown default
                            # would refuse this host at the
                            # confinement gate before the release
-                           # door is reached.
+                           # door is reached; audience too --
+                           # no runner_id is named here, and
+                           # unstated it refuses startup.
                            "security": {"modes": {
                                "confinement": "off",
-                               "job_user": "off"}}}, fh)
+                               "job_user": "off",
+                               "audience": "off"}}}, fh)
             with mock.patch.object(setup, "is_tty",
                                    return_value=False), \
                     mock.patch.object(sys, "argv", [

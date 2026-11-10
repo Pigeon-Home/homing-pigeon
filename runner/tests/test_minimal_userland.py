@@ -43,6 +43,14 @@ def _run(payload, cfg_over=None):
         "smtp_host": "fake", "smtp_port": 587,
         "max_job_age_sec": 3600,
         "default_timeout_sec": 60,
+        # Stated off: this proof is about interpreter repair on
+        # a bare box, not the security controls. Unstated, the
+        # modes read enforce and the confinement refusal (the
+        # minimal image has no confinement backend) rejects
+        # the job before repair can be proven.
+        "security": {"modes": {"confinement": "off",
+                               "job_user": "off",
+                               "audience": "off"}},
     }
     cfg.update(cfg_over or {})
     smtp = oo._FakeSMTP()

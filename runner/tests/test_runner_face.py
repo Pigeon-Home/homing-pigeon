@@ -462,8 +462,11 @@ class FasterFlagTest(unittest.TestCase):
                     # Stated off: the lockdown default would
                     # refuse this host at the confinement gate
                     # before the oracle dispatch under test.
+                    # Audience too: no runner_id is named here,
+                    # and unstated it refuses startup.
                     "security": {"modes": {"confinement": "off",
-                                           "job_user": "off"}},
+                                           "job_user": "off",
+                                           "audience": "off"}},
                 }, fh)
             stack.enter_context(mock.patch.object(
                 sys, "argv", ["runner", "--config", path, "--faster", "--oracle"]))

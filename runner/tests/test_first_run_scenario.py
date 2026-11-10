@@ -153,8 +153,12 @@ class SimulationScenarioTest(unittest.TestCase):
             # Stated off: under the lockdown default these read
             # enforce and refuse startup on a host that cannot
             # enforce them, before the inspect path under test.
+            # Audience joins them: this scenario names no
+            # runner_id, and at the unstated default the audience
+            # startup refusal (nothing to bind to) fires first.
             "security": {"modes": {"confinement": "off",
-                                   "job_user": "off"}},
+                                   "job_user": "off",
+                                   "audience": "off"}},
         }
 
     def test_desktop_flag_redacts_on_the_cli(self):

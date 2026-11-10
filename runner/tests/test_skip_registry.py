@@ -194,8 +194,8 @@ REGISTERED = {
         "job among them",
     "job_user audit is POSIX": "run on POSIX",
     "job_user face is POSIX syscalls": "run on POSIX",
-    "job_user fallback is POSIX": "run on POSIX",
     "job_user is Unix-only": "run on POSIX",
+    "job_user refusal is POSIX": "run on POSIX",
     "launchd tests patch os.getuid, which Windows lacks": "run on POSIX",
     "mode bits are POSIX": "run on POSIX",
     "off-Windows check": "run on POSIX",
@@ -210,6 +210,20 @@ REGISTERED = {
         "test_de_dust2's edge_subject parity check drives the Worker's "
         "JavaScript over a node bridge; off node the Python side still "
         "runs, so only the cross-implementation assertion is skipped",
+    "the stub exists only off win32":
+        "test_windows_confine's stub tests are exercised on every "
+        "host that is not Windows, where the Job Object backend "
+        "is a stub; on win32 the real backend is the subject and "
+        "the stub shape does not exist there",
+    "the host platform is the real one here":
+        "test_windows_confine's simulated-win32 startup refusal "
+        "runs deterministically on hosts that are not Windows; "
+        "on a real Windows host the backend's own probe answers "
+        "instead",
+    "the real backend engages or not live":
+        "test_windows_confine's off-Windows postspawn refusal "
+        "runs on hosts that are not Windows; on win32 the real "
+        "Job Object backend engages, or refuses, live",
     "peak RSS is read from /proc":
         "test_de_dust2's synthetic-grow memory peak reads "
         "/proc/self/status; runs on Linux, skipped where /proc is absent",
