@@ -7,7 +7,7 @@ failure, fix, repeat, from your phone or anywhere. Install the
 homing-pigeon runner and try it with the prompt below. It works with
 Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
 
-Try this prompt:
+Try this prompt with Grok for example:
 ```
 Run a pigeon-home.ai job
 Retrieve the system clock and display it
