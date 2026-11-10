@@ -132,6 +132,37 @@ mailbox being paired into the config. The platform claims in
 `docs/infrastructure-documents/project/testing.md` do not
 move on this: the FreeBSD support level stays Experimental.
 
+Also landed in this pass: the enforce-posture reconciliation,
+second round. The first round stated the proof fixtures; the
+head's remaining red was the same disease one layer wider --
+the suite's own startup and dispatch harnesses driving main()
+with the audience mode unstated, so the phase-2 startup
+refusal (audience at enforce with no runner_id configured)
+refused the harnesses' own startups before the behavior under
+test, and a handful of job-running rigs meeting the
+confinement refusal ahead of the interpreter and verdict
+paths they measure. The pattern is unchanged: the fixtures
+state the gates they are not about -- audience off beside the
+platform gates already stated off, a named runner where the
+posture under test is all-enforce itself -- and the shipped
+defaults and both refusals stand exactly as landed, pinned
+both ways in the reconciliation file (25 tests now). Two stale
+expectations were corrected to the landed behavior in the
+same pass: the p2 confinement chain pins the phase-2 refusal
+(it once pinned the fallback), and the support matrix's
+job_user line follows the Job Objects landing; the defaults
+registry's README line for max_job_bytes follows the README.
+The CI smoke configs state audience off beside the platform
+gates, and the binary build lines carry the build stamp's
+hidden import. No production code changed. Three findings
+stand open for their own lanes, recorded here so they are
+not lost: the simulated-win32 startup tests reach the real
+ctypes surface of the landed Windows backend and error on a
+POSIX host; the confinement decision fuzz's never-raises
+invariant predates the phase-2 refusal it now meets; and the
+core breakdown's re-measure waits on the windows_confine
+registration named above.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
