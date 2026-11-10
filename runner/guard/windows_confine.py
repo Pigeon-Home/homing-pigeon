@@ -74,6 +74,22 @@ honest on hosts whose confined processes cannot work,
 whatever their cause. The CI host's own cause stays open;
 the trial names it there at startup.
 
+The trial's staging has its own condition, found by the
+question's second-seat re-test -- the rig battery, running
+the backend as an elevated administrator, after the
+unelevated field test above had passed: the trial first
+staged its tree with tempfile.mkdtemp, whose directory
+carries a DACL naming only SYSTEM, Administrators and OWNER
+RIGHTS. The confined token disables Administrators, is not
+SYSTEM, and OWNER RIGHTS resolves to the disabled owner
+SID, so on an elevated host the confined process was
+refused at the staged read and the startup gate refused a
+host that works. The trial now stages with os.makedirs at
+the default mode and grants BUILTIN\\Users -- a group the
+confined token carries enabled -- read+execute on the
+staged tree explicitly, so the verdict does not depend on
+any host's temp inheritance.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
@@ -247,6 +263,11 @@ else:
         wintypes.LPVOID, ctypes.POINTER(wintypes.BOOL),
         ctypes.POINTER(wintypes.LPVOID),
         ctypes.POINTER(wintypes.BOOL)]
+    advapi32.GetSecurityDescriptorDacl.restype = wintypes.BOOL
+    advapi32.GetSecurityDescriptorDacl.argtypes = [
+        wintypes.LPVOID, ctypes.POINTER(wintypes.BOOL),
+        ctypes.POINTER(wintypes.LPVOID),
+        ctypes.POINTER(wintypes.BOOL)]
     advapi32.SetNamedSecurityInfoW.restype = wintypes.DWORD
     advapi32.SetNamedSecurityInfoW.argtypes = [
         wintypes.LPWSTR, ctypes.c_int, wintypes.DWORD,
@@ -283,6 +304,7 @@ else:
     OPEN_EXISTING = 3
     SE_FILE_OBJECT = 1
     LABEL_SECURITY_INFORMATION = 0x00000010
+    DACL_SECURITY_INFORMATION = 0x00000004
     SDDL_REVISION_1 = 1
     INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
@@ -479,6 +501,59 @@ else:
         except Exception:
             return False
 
+    def _grant_users_read_execute(paths):
+        """None after the trial grant's DACL stands on every
+        path in `paths`, else the problem. Never raises.
+
+        The confinement trial's grant (the Q134 addendum): the
+        confined token disables Administrators and is not
+        SYSTEM, but it carries BUILTIN\\Users enabled, so the
+        DACL in TRIAL_GRANT_SDDL -- SYSTEM and Administrators
+        at full control, so the runner keeps ownership of its
+        own tree, and Users at read+execute -- is what makes
+        the staged tree openable by the confined process on
+        any host, an elevated administrator's included, where
+        the tree a bare makedirs leaves can name neither group
+        the token holds. The DACL replaces each path's own;
+        the paths are the trial's throwaway tree, so
+        replacement is safe there and only there.
+        """
+        try:
+            sd = wintypes.LPVOID()
+            if not advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                    TRIAL_GRANT_SDDL, SDDL_REVISION_1,
+                    ctypes.byref(sd), None):
+                return ("ConvertStringSecurityDescriptorTo"
+                        "SecurityDescriptorW(%s) failed: %d"
+                        % (TRIAL_GRANT_SDDL,
+                           ctypes.get_last_error()))
+            try:
+                present = wintypes.BOOL()
+                defaulted = wintypes.BOOL()
+                dacl = wintypes.LPVOID()
+                if not advapi32.GetSecurityDescriptorDacl(
+                        sd, ctypes.byref(present),
+                        ctypes.byref(dacl),
+                        ctypes.byref(defaulted)):
+                    return ("GetSecurityDescriptorDacl failed: %d"
+                            % (ctypes.get_last_error(),))
+                if not present or not dacl:
+                    return ("the trial grant's descriptor "
+                            "carries no DACL")
+                for path in paths:
+                    rc = advapi32.SetNamedSecurityInfoW(
+                        ctypes.create_unicode_buffer(path),
+                        SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
+                        None, None, dacl, None)
+                    if rc != 0:
+                        return ("SetNamedSecurityInfoW(%s) "
+                                "failed: %d" % (path, rc))
+                return None
+            finally:
+                kernel32.LocalFree(sd)
+        except Exception as e:
+            return "the trial grant failed: %s" % (e,)
+
     def windows_startup_problem(cfg=None, timeout=15):
         """None if a Job Object with the memory ceiling can be
         created on this host, else why not.
@@ -531,7 +606,9 @@ else:
         with _trial_lock:
             if not _trial_verdict:
                 _trial_verdict.append(
-                    confinement_trial_problem(spawn_confined_process))
+                    confinement_trial_problem(
+                        spawn_confined_process,
+                        grant=_grant_users_read_execute))
             return _trial_verdict[0]
 
     def apply_windows_containment(proc_handle,
@@ -778,6 +855,21 @@ else:
 # the shape of a real job's staged script and outputs.
 _TRIAL_MARKER = "hp-confinement-trial"
 
+# The group the confined token carries enabled on every host
+# shape the backend runs on, and the DACL the trial's grant
+# assures on its staged tree: SYSTEM and Administrators at
+# full control (the runner keeps ownership of its own tree),
+# BUILTIN\Users at generic read+execute, every ACE inheriting
+# to what is staged inside. The confined token disables
+# Administrators and is not SYSTEM, so neither the temp
+# directory's inheritance nor mkdtemp's owner-only DACL can
+# be relied on to name a group the token holds (the Q134
+# addendum); this DACL names one, explicitly.
+TRIAL_USERS_SID = "S-1-5-32-545"
+TRIAL_GRANT_SDDL = (
+    "D:(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
+    "(A;OICI;GRGX;;;%s)" % TRIAL_USERS_SID)
+
 _TRIAL_PROGRAM = (
     "import os, sys\n"
     "data = open(sys.argv[1], encoding='utf-8').read()\n"
@@ -796,7 +888,55 @@ def _trial_tail(text):
     return lines[-1][:200] if lines else "no output"
 
 
-def confinement_trial_problem(spawn, timeout=60):
+def _stage_trial_tree():
+    """(root, staged, program, work) for 1 trial run.
+
+    The tree is created with os.makedirs at the default mode,
+    never tempfile.mkdtemp: mkdtemp's directory is mode 0o700,
+    and on Windows its DACL names only SYSTEM, Administrators
+    and OWNER RIGHTS -- none of which the confined token
+    holds enabled (the Q134 addendum) -- so under an elevated
+    administrator the trial refused its own staging and named
+    the host unable. A default-mode directory inherits the
+    temp directory's DACL instead, and the trial's grant hook
+    then makes the token's access explicit. The name is
+    random for the same reason mkdtemp's was: the tree must
+    not be predictable to anything else on the host. A
+    staging failure removes whatever was created and raises;
+    the trial answers it as its staging problem.
+    """
+    parent = tempfile.gettempdir()
+    root = None
+    for _attempt in range(100):
+        candidate = os.path.join(
+            parent,
+            "hp-confinement-trial-" + os.urandom(8).hex())
+        try:
+            os.makedirs(candidate)
+            root = candidate
+            break
+        except FileExistsError:
+            continue
+    if root is None:
+        raise OSError(
+            "no free name for the confinement trial's staging "
+            "directory under %s" % (parent,))
+    try:
+        staged = os.path.join(root, "trial-staged.txt")
+        with open(staged, "w", encoding="utf-8") as fh:
+            fh.write(_TRIAL_MARKER + "\n")
+        program = os.path.join(root, "trial_program.py")
+        with open(program, "w", encoding="utf-8") as fh:
+            fh.write(_TRIAL_PROGRAM)
+        work = os.path.join(root, "work")
+        os.makedirs(work)
+    except Exception:
+        shutil.rmtree(root, ignore_errors=True)
+        raise
+    return root, staged, program, work
+
+
+def confinement_trial_problem(spawn, timeout=60, grant=None):
     """None when a confined process can work here, else why not.
 
     `spawn` is a confined-spawn callable with the backend's
@@ -810,17 +950,32 @@ def confinement_trial_problem(spawn, timeout=60):
     host whose confined processes cannot read what is staged
     for them answers a problem here, at startup, instead of
     failing every job.
+
+    `grant`, when given, is called with the staged paths
+    (root, data file, program, work directory) once they
+    exist and before the spawn, and returns None when the
+    confined token is assured it can open them, or the
+    problem. The real backend passes its DACL grant
+    (TRIAL_GRANT_SDDL): staging alone cannot promise the
+    token access, because a temp tree's inherited DACL is the
+    host's accident, and on an elevated host it names no
+    group the token holds enabled. A grant that answers a
+    problem -- or raises -- is the trial's answer: the
+    startup gate refuses with it rather than run a trial
+    against staging the confined process cannot open.
     """
-    tmp = tempfile.mkdtemp(prefix="hp-confinement-trial-")
+    tmp = None
     try:
-        staged = os.path.join(tmp, "trial-staged.txt")
-        with open(staged, "w", encoding="utf-8") as fh:
-            fh.write(_TRIAL_MARKER + "\n")
-        program = os.path.join(tmp, "trial_program.py")
-        with open(program, "w", encoding="utf-8") as fh:
-            fh.write(_TRIAL_PROGRAM)
-        work = os.path.join(tmp, "work")
-        os.makedirs(work)
+        tmp, staged, program, work = _stage_trial_tree()
+        if grant is not None:
+            try:
+                problem = grant([tmp, staged, program, work])
+            except Exception as e:
+                problem = "%s" % (e,)
+            if problem is not None:
+                return ("confined trial could not make its "
+                        "staged tree readable by the confined "
+                        "token: %s" % (problem,))
         argv = [sys.executable, program, staged, work]
         try:
             proc = spawn(argv, cwd=work, env=dict(os.environ))
@@ -867,4 +1022,5 @@ def confinement_trial_problem(spawn, timeout=60):
     except Exception as e:
         return "confined trial could not be staged: %s" % (e,)
     finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+        if tmp is not None:
+            shutil.rmtree(tmp, ignore_errors=True)

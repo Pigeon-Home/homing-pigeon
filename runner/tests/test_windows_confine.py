@@ -653,6 +653,146 @@ class ConfinementTrialProblemTest(unittest.TestCase):
         self.assertTrue(holder["proc"].closed)
 
 
+class ConfinementTrialStagingTest(unittest.TestCase):
+    """The trial's staging shape (the Q134 addendum).
+
+    The trial first staged with tempfile.mkdtemp, whose
+    directory carries a DACL naming only SYSTEM,
+    Administrators and OWNER RIGHTS. Under an elevated
+    administrator the confined token holds none of those
+    enabled, and the trial refused the host at the staged
+    read for a reason that was the staging's, not the host's
+    -- found by the rig battery (Q134's second-seat re-test)
+    after the unelevated field verification had passed. These
+    tests pin the replacement shape through the
+    platform-neutral seams: the tree is created with
+    os.makedirs at the default mode, and a grant callable
+    assures the token-carried Users group read+execute on
+    the staged paths before the spawn. The real DACL call
+    cannot execute off Windows, and nothing here pretends it
+    does; what is pinned is the staging helper's behavior,
+    the grant contract, and the SDDL the real grant applies,
+    which stands in the module where any host can read it.
+    """
+
+    def _ok_spawn(self, record):
+        def _spawn(argv, cwd=None, env=None):
+            record["argv"] = argv
+            record["cwd"] = cwd
+            return _FakeTrialProc(
+                out=b"TRIAL-READ-OK\nTRIAL-WRITE-OK\n",
+                work=cwd, write_file=True)
+        return _spawn
+
+    def test_staging_never_calls_mkdtemp(self):
+        record = {}
+        with mock.patch.object(
+                tempfile, "mkdtemp",
+                side_effect=AssertionError("mkdtemp was called")):
+            self.assertIsNone(WC.confinement_trial_problem(
+                self._ok_spawn(record)))
+        root = os.path.dirname(record["argv"][2])
+        self.assertTrue(os.path.basename(root).startswith(
+            "hp-confinement-trial-"))
+        self.assertEqual(
+            os.path.realpath(os.path.dirname(root)),
+            os.path.realpath(tempfile.gettempdir()))
+        # The tree is still the trial's own, removed afterwards.
+        self.assertFalse(os.path.exists(root))
+
+    def test_staging_root_is_created_with_makedirs(self):
+        record = {}
+        made = []
+        real_makedirs = os.makedirs
+
+        def _spy(path, *args, **kwargs):
+            made.append(path)
+            return real_makedirs(path, *args, **kwargs)
+
+        with mock.patch.object(os, "makedirs", _spy):
+            self.assertIsNone(WC.confinement_trial_problem(
+                self._ok_spawn(record)))
+        root = os.path.dirname(record["argv"][2])
+        self.assertIn(root, made)
+        self.assertIn(record["cwd"], made)
+
+    def test_grant_runs_on_the_staged_paths_before_the_spawn(self):
+        events = []
+
+        def _grant(paths):
+            events.append(("grant", list(paths), all(
+                os.path.exists(p) for p in paths)))
+            return None
+
+        def _spawn(argv, cwd=None, env=None):
+            events.append(("spawn", argv))
+            return _FakeTrialProc(
+                out=b"TRIAL-READ-OK\nTRIAL-WRITE-OK\n",
+                work=cwd, write_file=True)
+
+        self.assertIsNone(WC.confinement_trial_problem(
+            _spawn, grant=_grant))
+        self.assertEqual([e[0] for e in events],
+                         ["grant", "spawn"])
+        self.assertTrue(events[0][2])
+        paths = events[0][1]
+        self.assertEqual(len(paths), 4)
+        root, staged, program, work = paths
+        self.assertEqual(os.path.dirname(staged), root)
+        self.assertEqual(os.path.dirname(program), root)
+        self.assertEqual(os.path.dirname(work), root)
+        self.assertEqual(events[1][1][1:],
+                         [program, staged, work])
+
+    def test_grant_problem_is_the_trials_answer(self):
+        spawned = []
+
+        def _grant(paths):
+            return "SetNamedSecurityInfoW failed: 5"
+
+        def _spawn(argv, cwd=None, env=None):
+            spawned.append(argv)
+            raise AssertionError("spawn must not run")
+
+        problem = WC.confinement_trial_problem(
+            _spawn, grant=_grant)
+        self.assertIsNotNone(problem)
+        self.assertIn("staged tree", problem)
+        self.assertIn("SetNamedSecurityInfoW failed: 5", problem)
+        self.assertEqual(spawned, [])
+
+    def test_grant_exception_is_a_problem_not_a_crash(self):
+        def _grant(paths):
+            raise RuntimeError("advapi32 unavailable")
+
+        problem = WC.confinement_trial_problem(
+            self._ok_spawn({}), grant=_grant)
+        self.assertIsNotNone(problem)
+        self.assertIn("advapi32 unavailable", problem)
+
+    def test_the_grant_sddl_names_users_read_execute(self):
+        # The SDDL the real backend's grant applies stands in
+        # the platform-neutral section so any host can pin it:
+        # an inheriting allow ACE for BUILTIN\\Users
+        # (S-1-5-32-545) at generic read+execute, and no write
+        # for the group -- the work-directory write rides the
+        # spawn's own labelling, as the field test showed.
+        self.assertIn("S-1-5-32-545", WC.TRIAL_GRANT_SDDL)
+        self.assertIn("A;OICI;GRGX", WC.TRIAL_GRANT_SDDL)
+        self.assertNotIn("GW", WC.TRIAL_GRANT_SDDL)
+        self.assertEqual(WC.TRIAL_USERS_SID, "S-1-5-32-545")
+
+    def test_the_backend_wires_the_grant_into_the_trial(self):
+        # POSIX cannot execute the real branch, so the wiring
+        # is pinned at the source: windows_confinement_problem
+        # must hand its DACL grant to the trial, or an elevated
+        # host silently loses the fix.
+        with open(WC.__file__, encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertIn("grant=_grant_users_read_execute", src)
+        self.assertIn("TRIAL_GRANT_SDDL", src)
+
+
 class SeedShapeUnchangedTest(unittest.TestCase):
     """This landing does not move the seeded platform gates."""
 
