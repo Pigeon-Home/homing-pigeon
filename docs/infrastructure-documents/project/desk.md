@@ -256,6 +256,28 @@ where a seeded fresh install would state confinement at
 audit on that platform (2 bench tests). macOS itself
 remains CI's word here too.
 
+And a closing note on the same head's Linux leg, whose
+red was not the refusal family at all: two stale figures
+and one stale sentence. The loader-hints landing grew the
+FreeBSD backend and re-measured the core -- the facts
+record, the core list's constants and the assembled-set
+slots all moved with it -- but five of the core slots in
+docs/steady/fuzzing.md (its zip, token and line figures)
+kept the previous measure, so the figure guard failed on
+that one file until the slots were refilled from the
+facts record; the record itself stood verified against
+the tree throughout, and no other evergreen document
+disagreed with it. Separately, the briefing digest's
+five-question proof probed for a README sentence ("its
+power is the point") that the README's own editing had
+since removed; the probe now points at the sentence the
+surface carries for the same risk -- the FAQ's "Whoever
+holds it can run jobs, full stop." -- which the digest
+retains. Neither fix touches production code: one
+refilled generated slots from their record, the other
+re-pointed a test probe at the text the documents
+actually carry.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
