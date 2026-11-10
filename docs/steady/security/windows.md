@@ -79,7 +79,9 @@ startup refuses, because a mode whose mechanism cannot engage
 would otherwise promise what it cannot do. A fresh Windows install
 therefore writes both modes into `config.json` at `audit`, stated
 in the file: jobs run under the account boundary above, and the
-audit log records what the modes would have done. A hand-written
+audit log records what the modes would have done. A config the
+first-run setup wizard seeds states the same two lines the same
+way, and the wizard says so as it writes the file. A hand-written
 config should state the same two lines; leaving them unstated
 leaves the first start at the refusal, with the refusal naming
 exactly these modes.

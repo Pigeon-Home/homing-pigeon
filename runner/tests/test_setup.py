@@ -214,6 +214,143 @@ class WizardOAuthTest(unittest.TestCase):
         self.assertIn("console", str(caught.exception))
 
 
+class WizardSeedPlatformModesTest(unittest.TestCase):
+    """A config the setup wizard seeds states the platform gates.
+
+    The installer's fresh-install path states them (install.py's
+    apply_platform_modes); the wizard is the other fresh-seed path --
+    the runner started with no config file, the wizard creating one
+    from the example. Without the same statement, that seed carried
+    the example's enforce for confinement and job_user onto Windows,
+    where neither mechanism can engage, and the first start was the
+    startup refusal. Only the seed is gated: a config that already
+    exists keeps the owner's stated modes, so an explicit enforce
+    on win32 still meets the startup refusal pinned in
+    test_windows_platform_proofs.
+    """
+
+    _OTHER_MODES = ("policy_env", "policy_files", "policy_args",
+                    "audience", "personal_docs_shelter",
+                    "agent_state_guard")
+
+    def _example_cfg(self):
+        path = os.path.join(REPO, "runner", "config.example.json")
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def test_win32_seed_states_both_modes_at_audit(self):
+        cfg = self._example_cfg()
+        applied = SU.seed_platform_modes(cfg, platform="win32")
+        self.assertEqual(applied, {"confinement": "audit",
+                                   "job_user": "audit"})
+        modes = cfg["security"]["modes"]
+        self.assertEqual(modes["confinement"], "audit")
+        self.assertEqual(modes["job_user"], "audit")
+        for feature in self._OTHER_MODES:
+            self.assertEqual(modes[feature], "enforce", feature)
+
+    def test_linux_seed_is_unchanged(self):
+        cfg = self._example_cfg()
+        before = json.loads(json.dumps(cfg))
+        applied = SU.seed_platform_modes(cfg, platform="linux")
+        self.assertEqual(applied, {})
+        self.assertEqual(cfg, before)
+        for feature in ("confinement", "job_user") + self._OTHER_MODES:
+            self.assertEqual(cfg["security"]["modes"][feature],
+                             "enforce", feature)
+
+    def test_darwin_seed_states_confinement_only(self):
+        cfg = self._example_cfg()
+        applied = SU.seed_platform_modes(cfg, platform="darwin")
+        self.assertEqual(applied, {"confinement": "audit"})
+        modes = cfg["security"]["modes"]
+        self.assertEqual(modes["confinement"], "audit")
+        self.assertEqual(modes["job_user"], "enforce")
+
+    def test_a_mode_already_stated_lower_stays(self):
+        cfg = self._example_cfg()
+        cfg["security"]["modes"]["confinement"] = "off"
+        applied = SU.seed_platform_modes(cfg, platform="win32")
+        self.assertEqual(applied, {"job_user": "audit"})
+        self.assertEqual(cfg["security"]["modes"]["confinement"], "off")
+
+    def test_seed_without_a_security_block_states_the_modes(self):
+        # _load_example's fallback (no example file shipped) carries
+        # no security block at all; the gated modes are still stated
+        # in the seeded file rather than left to read as enforce.
+        cfg = {"auth": "password"}
+        applied = SU.seed_platform_modes(cfg, platform="win32")
+        self.assertEqual(applied, {"confinement": "audit",
+                                   "job_user": "audit"})
+        self.assertEqual(cfg["security"]["modes"]["confinement"],
+                         "audit")
+        self.assertEqual(cfg["security"]["modes"]["job_user"], "audit")
+
+    def _run_fresh_wizard(self, platform):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            out = io.StringIO()
+            with mock.patch.object(SU.sys, "platform", platform), \
+                 mock.patch("builtins.input", side_effect=[
+                     "runner@example.com",  # gmail address
+                     "",                     # choice: oauth (default)
+                     "my-client-id",         # oauth client id
+                     "y",                    # accept secret
+                 ]), \
+                 mock.patch.object(SU, "browser_consent",
+                                   return_value="refresh-123"), \
+                 mock.patch.object(SU, "_mailbox_probe",
+                                   return_value=None), \
+                 redirect_stdout(out):
+                SU.run_setup_wizard(path)
+            with open(path) as fh:
+                written = json.load(fh)
+            return written, out.getvalue()
+
+    def test_wizard_fresh_seed_on_win32_states_and_says_so(self):
+        written, out = self._run_fresh_wizard("win32")
+        modes = written["security"]["modes"]
+        self.assertEqual(modes["confinement"], "audit")
+        self.assertEqual(modes["job_user"], "audit")
+        for feature in self._OTHER_MODES:
+            self.assertEqual(modes[feature], "enforce", feature)
+        # Stated out loud in the wizard, not a silent downgrade.
+        self.assertIn("security.modes.confinement stated as audit", out)
+        self.assertIn("security.modes.job_user stated as audit", out)
+
+    def test_wizard_fresh_seed_on_linux_keeps_enforce(self):
+        written, out = self._run_fresh_wizard("linux")
+        modes = written["security"]["modes"]
+        for feature in ("confinement", "job_user") + self._OTHER_MODES:
+            self.assertEqual(modes[feature], "enforce", feature)
+        self.assertNotIn("stated as audit", out)
+
+    def test_wizard_leaves_an_existing_config_modes_alone(self):
+        # The owner's explicit enforce is not the seed's: completing
+        # an existing config on win32 must not soften its modes --
+        # the startup refusal for that config is the designed path.
+        cfg = _oauth_cfg(
+            shared_secret="s" * 64,
+            security={"modes": {"confinement": "enforce",
+                                 "job_user": "enforce"}})
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w") as fh:
+                json.dump(cfg, fh)
+            with mock.patch.object(SU.sys, "platform", "win32"), \
+                 mock.patch.object(SU, "browser_consent") as bc, \
+                 mock.patch("builtins.input", side_effect=["n", ""]), \
+                 redirect_stdout(io.StringIO()):
+                SU.run_setup_wizard(path, cfg)
+            with open(path) as fh:
+                written = json.load(fh)
+        bc.assert_not_called()
+        self.assertEqual(written["security"]["modes"]["confinement"],
+                         "enforce")
+        self.assertEqual(written["security"]["modes"]["job_user"],
+                         "enforce")
+
+
 class WizardSecretTest(unittest.TestCase):
     def test_accept_secret_loop(self):
         with mock.patch("builtins.input", side_effect=["n", "y"]), \

@@ -41,12 +41,15 @@ except ImportError:  # running from inside runner/ as __main__
 try:
     from runner.ops.install import _looks_like_placeholder as _placeholder
     from runner.ops.install import _looks_patterned as _patterned
+    from runner.ops.install import platform_modes as _platform_modes
 except ImportError:
     try:
         from ops.install import _looks_like_placeholder as _placeholder
         from ops.install import _looks_patterned as _patterned
+        from ops.install import platform_modes as _platform_modes
     except ImportError:
         _placeholder = _patterned = None
+        _platform_modes = None
 
 
 def is_tty() -> bool:
@@ -174,6 +177,42 @@ def _blank_config() -> dict:
     return cfg
 
 
+def seed_platform_modes(cfg: dict, platform=None) -> dict:
+    """State the platform gates in a config the wizard just seeded.
+
+    The installer states them on its fresh-install path (install.py's
+    apply_platform_modes); a config seeded here -- the runner started
+    with no config file, the wizard creating one from the example --
+    takes the same statement, from the same platform map, so a first
+    start on a platform where a mechanism cannot engage is not a
+    refusal the owner must edit their way out of. Only a mode still
+    at enforce moves; that is the seed's value. An existing config
+    the wizard is merely completing is never rewritten by this: the
+    caller applies it only to a config that came from _blank_config.
+    Returns the modes actually stated.
+    """
+    if _platform_modes is None or not isinstance(cfg, dict):
+        return {}
+    modes = _platform_modes(platform)
+    if not modes:
+        return {}
+    sec = cfg.get("security") if isinstance(cfg.get("security"), dict) \
+        else {}
+    cur = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
+    new_modes = dict(cur)
+    applied = {}
+    for feature, mode in modes.items():
+        if cur.get(feature, "enforce") == "enforce":
+            new_modes[feature] = mode
+            applied[feature] = mode
+    if not applied:
+        return {}
+    sec = dict(sec)
+    sec["modes"] = new_modes
+    cfg["security"] = sec
+    return applied
+
+
 def _ensure_mail_hosts(cfg: dict) -> None:
     """Fill Gmail endpoints when a partial config left them out."""
     defaults = {
@@ -259,8 +298,10 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
                 cfg = json.load(fh)
         except (OSError, ValueError):
             cfg = None
+    fresh_seed = False
     if not isinstance(cfg, dict):
         cfg = _blank_config()
+        fresh_seed = True
     _ensure_mail_hosts(cfg)
 
     print("=== Homing Pigeon setup ===")
@@ -329,6 +370,18 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
         # The audience a job must name. Not a key.
         # codeql[py/clear-text-logging-sensitive-data]
         print(f"generated runner_id: {cfg['runner_id']}")
+    if fresh_seed:
+        # A config this wizard seeded states the platform gates the
+        # way the installer's fresh-install path states them: a
+        # mechanism that cannot engage on this platform is written
+        # at audit, in the file and out loud here, rather than left
+        # at the seed's enforce to refuse the first start. A config
+        # that already existed keeps the owner's stated modes.
+        for feature, mode in seed_platform_modes(cfg).items():
+            print(f"platform: security.modes.{feature} stated as "
+                  f"{mode} in {cfg_path} ({feature} cannot engage on "
+                  f"{sys.platform}; the mode is stated in the file "
+                  f"rather than left to refuse the first start)")
     _write_config(cfg_path, cfg)
     print(f"\nwrote {cfg_path} (owner read/write only)")
     print("Give the shared secret above to your cloud SI so it can sign jobs.")
