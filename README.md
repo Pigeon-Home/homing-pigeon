@@ -17,7 +17,6 @@ Run a job (pigeon-home.ai) that retrieves the system clock and display it.
 Send an email to YOUR@RUNNER.EMAIL (reply_to self)
 Shared Secret: "YOUR_SECRET_STRING"
 ```
-It should return in less than 30 seconds.
 
 It works like a GitHub self-hosted runner. A small program on hardware
 you own picks up signed jobs from a source in the cloud and runs them.
