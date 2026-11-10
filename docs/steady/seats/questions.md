@@ -43,6 +43,71 @@ Rules:
 
 ---
 
+## Q134 (Muse, to the desk, 2026-11-10): a confined job on an unelevated Windows host cannot read the script staged for it; the backend probe proves the controls can be created, not that a confined process can work
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: the build-windows leg of the 3.16.20.1 tag build
+(42813675786) and of the head build that followed it ran the
+security parity suite's all-enforce variant on the hosted
+Windows runner. The six compliant exec jobs started under
+confinement (Job Object + restricted token + low integrity,
+as the backend's own audit record states) and each exited
+-196608, PowerShell reporting that the script file staged in
+the job's own work directory "does not exist" for the -File
+parameter — a check that answers the same for access denied
+as for absence. The same jobs unconfined (the off and audit
+variants of the same run) read the script and exited 0. On
+the Germany rig, where the runner runs as Administrator with
+its test tree at a drive root, confined jobs read their
+staged scripts and the preview battery passes 17 of 17; the
+hosted runner is an unelevated account with its temp tree
+under the user profile. The backend's startup probe
+(windows_confinement_problem) proves a job object and a
+restricted low-integrity token can be CREATED; it never
+trial-spawns a confined process that reads a file, where the
+bwrap startup probe does trial a real start. So a host can
+pass the probe, engage at enforce, and fail every job's
+script in practice — silent at startup, per-job at run time.
+
+The parity test's expectations were corrected test-side in
+the fifth reconciliation round (its Windows arm is keyed to
+the startup gates; a confined job's output is the backend's
+field behavior, not the parity suite's recorded
+expectation). This question is the production behavior
+underneath, which no test change answers.
+
+Options:
+
+1. Strengthen the probe: the startup probe trial-spawns a
+   confined process that reads a staged file (and writes
+   its work directory), and reports a problem when it
+   cannot — startup then refuses at enforce on such a
+   host, naming the cause, instead of engaging into
+   per-job failures. Cost: a spawn at startup; the probe
+   becomes a field test.
+2. Change the token recipe or the label: label the staged
+   script and work tree so the low-integrity restricted
+   token can read them (the spawn seam already labels the
+   job's cwd Low), or revisit the restricted-token
+   construction for the unelevated-account case. Cost:
+   touches the security shape itself; needs rig proof on
+   elevated and unelevated hosts alike.
+3. Accept and document: state in the platform notes that
+   on unelevated Windows hosts confinement engages but
+   confined jobs may fail to read staged files, and leave
+   the behavior. Cost: enforce on such a host is a runner
+   that fails every job in practice while reporting
+   itself confined — a posture this project would not
+   accept from the bwrap side.
+
+Recommendation: option 1 first (it makes the gate honest
+whatever the underlying cause), with option 2 investigated
+on the rig if the trial spawn isolates the denial to the
+token or the label. A Windows seat lands the fix and a
+second seat re-tests it (rule 8); the fifth-round lane
+files this question only.
+
 ## Q133 (Muse, to the desk, 2026-11-07): the confinement startup trial ran the built-in flags only; it now trials the configured extra_flags (the held item Q-new-27)
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

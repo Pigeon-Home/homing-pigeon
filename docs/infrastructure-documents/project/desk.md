@@ -306,6 +306,55 @@ shipped default moved: a fresh install's stated modes and
 an existing config's owner's word are exactly what they
 were.
 
+And a fifth round, the mirror image of the third and
+fourth: the build workflow's build-windows job, on a host
+where a confinement backend DOES exist. Fourteen tests
+across seven files had been written for the pre-backend
+world — POSIX-arm tests that scripted only the bwrap
+probe while the argv gate branches on the platform first
+and the Job Object backend engages; job_user preexec
+tests that patched the platform spelling but not the
+backend lookup their own file scripts everywhere else,
+so the live backend's engageable probe answered
+would_contain in place of the recorded refusal; a
+startup-gate test whose replacement security block
+silently un-stated the other two modes, and which
+scripted the bwrap probe where main() consults the
+platform backend's probe on win32; a bench test whose
+simulated Darwin left the OS name at the host's value,
+so the preexec's nt arm — not the POSIX arm a real
+Darwin host takes — decided the job; and the parity
+suite's all-enforce leg, whose capability model keyed
+confinement to the bwrap probe alone and so recorded
+refusals for exec jobs that on that host run confined.
+The fixes script the platform each test means (and the
+spawn seam, where a simulated POSIX host must not engage
+the real Windows spawn under its bwrap argv), state
+every mode beside the one under test, script the backend
+lookup to each file's own cannot-engage stub, complete
+the bench's Darwin simulation, and key the parity leg's
+Windows arm to the runner's own startup gates — its
+byte-equality expectations stay with the POSIX wraps,
+because what a confined process prints on a given
+Windows host is the backend's field behavior. No
+production code changed and no shipped default moved:
+the reconciliation file grows to 51 pins, the new ones
+red on the unfixed tree (all 8; the behavioral one
+reproduces all 13 representative failures under a
+simulated Windows host — an engageable backend scripted
+behind the production lookup, the platform spelled
+win32, the OS named nt) and green after. One production
+behavior the round surfaced is not answered here: on
+the unelevated hosted Windows runner, a confined job
+could not read the script staged for it (the same job
+unconfined read it; on the Germany rig, elevated and at
+a drive root, confined jobs read theirs), and the
+backend's startup probe proves the controls can be
+created, not that a confined process can work — it
+stands as Q134 for a Windows seat to fix and a second
+seat to re-test. The Windows leg itself remains CI's
+word.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
