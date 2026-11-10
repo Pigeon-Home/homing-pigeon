@@ -28,6 +28,30 @@ directory is labelled Low before spawn so the job can write its
 own outputs); it does not hide the filesystem. AppContainer
 remains the future path to confinement parity on Windows.
 
+Supposition for Q134, recorded before the field test that
+settles it (an unelevated standard user on the Germany rig, a
+throwaway account with its temp tree under its own profile --
+the hosted CI runner's shape): the shipped spawn, engaged
+there, reproduces the CI failure -- a confined PowerShell -File
+job exits nonzero reporting the staged script does not exist,
+while the same argv unconfined exits 0 -- even though the
+creation probe above passes on that host. The isolation runs
+spawn variants down the same creation path: the restricted
+token at the caller's own integrity level, the caller's token
+at Low, and the shipped token with the staged file itself
+labelled Low. My lean, stated so the measurement can prove it
+wrong: the denial is the restricted token's side of the pair,
+not the label's -- integrity policy alone allows a Low process
+to read up (only write-up is blocked by the default policy),
+so a full token at Low should still read the staged file,
+while the restricted token should fail at either integrity.
+Whatever the isolation shows, the confinement probe becomes a
+trial: it will spawn a confined process that reads a staged
+file and writes its work directory, and name the failure, so a
+host that cannot work confined refuses at startup instead of
+failing every job. Conclusions from the field test are
+recorded with the answer to Q134.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
