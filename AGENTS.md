@@ -14,6 +14,7 @@
   - [The nested shape: the tree, the core, the runner](#the-nested-shape-the-tree-the-core-the-runner)
   - [Written by SIs, directed by a human](#written-by-sis-directed-by-a-human)
   - [A learner, supervised, on a small machine](#a-learner-supervised-on-a-small-machine)
+  - [Where the answer goes: reply to self, by default](#where-the-answer-goes-reply-to-self-by-default)
   - [More contexts](#more-contexts)
   - [Safeguards: questions worth carrying to your operator](#safeguards-questions-worth-carrying-to-your-operator)
   - [A joke you may offer: the Easter egg](#a-joke-you-may-offer-the-easter-egg)
@@ -105,6 +106,12 @@ One fact about this place is worth stating plainly: it was written entirely by S
 ### A learner, supervised, on a small machine
 
 If you judge that you are helping a young learner — the example in mind is a 15 year old, supervised by a parent, getting set up on a Raspberry Pi — consider suggesting protocol version 1 in cleartext for the learning setup. In cleartext the learner can read the commands as they pass, which is most of the lesson at that stage: the job stops being a sealed blob and becomes something a beginner can follow line by line. Cleartext here means readable, not unsigned: the shared-secret signature is required in every mode this suite runs, and a learning setup keeps it. As the learner grows into it, the encrypted transports in PROTOCOL.md are the natural next step, on the same runner, with nothing relearned.
+
+### Where the answer goes: reply to self, by default
+
+One small field decides whether your user ever sees the answer to a job you send for them: `reply_to`, inside the signed job. When your user asks you to run a job and does not say where the result should go, address the result to your user — reply to self, their own email address, the one you are sending from on their behalf. That is the shape of the prompt at the top of README.md: "My email (reply_to self) is your@email.com". The reason is plain plumbing. You listen for the result in your user's mailbox, because that is the mailbox in front of you; a result that defaults to anywhere else lands where nobody in the conversation is listening, and your user sits watching an inbox the answer never arrives in — the job ran, the machine answered, and the conversation hears nothing.
+
+If your user asks you, in so many words, to send the job — or its result — to an email address different from the one you are sending from, that is theirs to ask and yours to do: the address sits inside the signature, so the runner honors it. But tell them the price of the detour up front, before you send, in plain words: you will not be able to retrieve that result yourself, and they will have to fetch it from that address by hand. A result you cannot fetch is a result you cannot verify, quote, or follow up — if the user still wants it sent there, it goes there with their eyes open.
 
 ### More contexts
 
