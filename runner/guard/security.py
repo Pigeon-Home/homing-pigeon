@@ -387,6 +387,42 @@ def effective_modes(cfg):
     return {feature: sec_mode(cfg, feature) for feature in FEATURES}
 
 
+def job_user_configured_user(cfg):
+    """The user security.job_user names, or None when it names none.
+
+    The one reader for the sub-block's shape: a missing block, a
+    block of the wrong shape, and a user that is absent, empty, or
+    not a string all name no user. (A present-but-malformed block
+    is a startup refusal in validate_security_config; this reader
+    serves the surfaces that report posture, which must not raise.)
+    """
+    if not isinstance(cfg, dict):
+        return None
+    sec = cfg.get("security")
+    if not isinstance(sec, dict):
+        return None
+    ju = sec.get("job_user")
+    if not isinstance(ju, dict):
+        return None
+    user = ju.get("user")
+    if isinstance(user, str) and user:
+        return user
+    return None
+
+
+def job_user_not_engaged(cfg):
+    """True when job_user reads enforce but engages nothing.
+
+    The mode promises a demote and no user is configured to demote
+    to, so every job runs as the runner's own account while the
+    mode reads enforce. Startup and the posture report name this
+    state outright (phase 2 of the default-posture work), so the
+    gap is a stated fact of the deployment, never a silent one.
+    """
+    return (sec_mode(cfg, "job_user") == "enforce"
+            and job_user_configured_user(cfg) is None)
+
+
 def require_posture_enabled(cfg):
     """True when the operator pinned the startup posture assertion.
 

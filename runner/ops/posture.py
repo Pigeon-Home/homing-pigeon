@@ -145,6 +145,21 @@ def _check_recommended_features(cfg, results):
                             % feat))
 
 
+def _check_job_user_engagement(cfg, results):
+    # job_user at enforce with no user named engages nothing:
+    # the mode reads enforce and every job runs as the runner's
+    # own account. Name the state outright (phase 2 of the
+    # default-posture work) so the report never lets enforce
+    # silently mean nothing. Advisory: WARN, never FAIL -- the
+    # deployment runs; it just does not demote.
+    if _security is not None and _security.job_user_not_engaged(cfg):
+        results.append(("WARN", "security modes",
+                        "job_user is enforce but no "
+                        "security.job_user.user is configured: "
+                        "not engaged (jobs run as the runner's "
+                        "own account)"))
+
+
 def _check_confinement_backend(results):
     if sys.platform.startswith("linux"):
         if shutil.which("bwrap"):
@@ -355,6 +370,7 @@ def build_posture(cfg, cfg_path, base_dir):
     _check_workspace_root(cfg, results)
     _check_key_policies(cfg, results)
     _check_recommended_features(cfg, results)
+    _check_job_user_engagement(cfg, results)
     _check_confinement_backend(results)
     _check_service_unit(results)
 

@@ -198,6 +198,29 @@ class PostureTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("policy_env=audit", out)
 
+    def test_job_user_enforce_without_a_user_is_named_not_engaged(self):
+        # Phase 2 of the default-posture work: the posture report
+        # names a job_user mode that reads enforce while engaging
+        # nothing, as a WARN -- enforce never silently means
+        # nothing. A named user, and any lower mode, stay unnamed.
+        with tempfile.TemporaryDirectory() as d:
+            cfg = _full_cfg(d)
+            cfg["security"]["modes"]["job_user"] = "enforce"
+            path = _cfg_file(d, cfg, 0o600)
+            with mock.patch.object(P.shutil, "which", return_value="/usr/bin/bwrap"):
+                rc, out = _run(cfg, path, d)
+        self.assertEqual(rc, 1)  # a WARN is present, no FAIL
+        self.assertIn("job_user is enforce but no", out)
+        self.assertIn("not engaged", out)
+        with tempfile.TemporaryDirectory() as d:
+            cfg = _full_cfg(d)
+            cfg["security"]["modes"]["job_user"] = "enforce"
+            cfg["security"]["job_user"] = {"user": "pigeon-jobs"}
+            path = _cfg_file(d, cfg, 0o600)
+            with mock.patch.object(P.shutil, "which", return_value="/usr/bin/bwrap"):
+                rc, out = _run(cfg, path, d)
+        self.assertNotIn("not engaged", out)
+
 
 class WindowsPermsTest(unittest.TestCase):
     """The Windows ACL check maps True/False/None to OK/WARN/WARN."""

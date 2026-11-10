@@ -100,9 +100,15 @@ STRONG_SECRET = ("9f86d081884c7d659a2feaa0c55ad015"
 # the lockdown default confinement and job_user read enforce and
 # refuse first on a host that cannot enforce them, which would
 # mask the field each test is about. A test whose extra carries
-# its own security block replaces this one wholesale.
+# its own security block replaces this one wholesale. The base
+# config also carries a runner_id, as every config the installer
+# or the setup wizard writes does: since phase 2 of the
+# default-posture work, audience at enforce (its unset reading)
+# with no runner_id refuses startup, which would mask the field
+# each test is about in the same way.
 BASE = {"mailbox_user": "a@b.c", "mailbox_password": "p",
         "shared_secret": STRONG_SECRET,
+        "runner_id": "decision1-test-runner",
         "security": {"modes": {"confinement": "off",
                                "job_user": "off"}}}
 
@@ -644,6 +650,101 @@ class DefaultClassTableTest(unittest.TestCase):
     def test_the_family_covers_the_whole_table(self):
         table = set(defaulted.NUMERIC) | set(defaulted.ENUM)
         self.assertEqual({k for k, _b, _d in DEFAULT_FIELDS}, table)
+
+
+class Phase2StartupTest(unittest.TestCase):
+    """Phase 2 of the default-posture work, at the startup gates.
+
+    Audience at enforce with no runner_id joins the refusal
+    class: the check has nothing to bind to, so startup refuses
+    naming the mode and the missing key, instead of warning once
+    and skipping the check for every job. Audit keeps the
+    warning. And job_user at enforce with no user named is named
+    in the startup record as not engaged -- startup proceeds
+    (a user can be named later), but the state is stated, never
+    silent.
+    """
+
+    def test_audience_enforce_without_runner_id_refuses(self):
+        rc, out, err = run_main(
+            {"runner_id": None,
+             "security": {"modes": {"confinement": "off",
+                                    "job_user": "off",
+                                    "audience": "enforce"}}},
+            ("--audit-report",))
+        self.assertEqual(rc, 2, err)
+        self.assertIn("security.modes.audience", err)
+        self.assertIn("runner_id", err)
+        self.assertNotIn("Security audit report", out)
+
+    def test_audience_unset_without_runner_id_refuses(self):
+        # An unset audience mode reads enforce, so a config that
+        # never mentions audience and names no runner_id refuses
+        # the same way -- the default is the refusal's trigger,
+        # not an escape from it.
+        rc, out, err = run_main(
+            {"runner_id": None,
+             "security": {"modes": {"confinement": "off",
+                                    "job_user": "off"}}},
+            ("--audit-report",))
+        self.assertEqual(rc, 2, err)
+        self.assertIn("security.modes.audience", err)
+
+    def test_audience_enforce_with_runner_id_starts(self):
+        rc, out, err = run_main(
+            {"security": {"modes": {"confinement": "off",
+                                    "job_user": "off",
+                                    "audience": "enforce"}}},
+            ("--audit-report",))
+        self.assertEqual(rc, 0, err)
+        self.assertIn("Security audit report", out)
+
+    def test_audience_audit_without_runner_id_warns_and_starts(self):
+        rc, out, err = run_main(
+            {"runner_id": None,
+             "security": {"modes": {"confinement": "off",
+                                    "job_user": "off",
+                                    "audience": "audit"}}},
+            ("--audit-report",))
+        self.assertEqual(rc, 0, err)
+        self.assertIn("Security audit report", out)
+        self.assertIn("no runner_id is configured", out)
+
+    def test_audience_off_without_runner_id_starts_quietly(self):
+        rc, out, err = run_main(
+            {"runner_id": None,
+             "security": {"modes": {"confinement": "off",
+                                    "job_user": "off",
+                                    "audience": "off"}}},
+            ("--audit-report",))
+        self.assertEqual(rc, 0, err)
+        self.assertIn("Security audit report", out)
+        self.assertNotIn("no runner_id is configured", out)
+
+    def test_job_user_enforce_without_a_user_is_named_not_engaged(self):
+        rc, out, err = run_main(
+            {"security": {"modes": {"confinement": "off",
+                                    "job_user": "enforce"}}},
+            ("--audit-report",))
+        self.assertEqual(rc, 0, err)
+        self.assertIn("Security audit report", out)
+        self.assertIn("job_user is enforce but", out)
+        self.assertIn("not engaged", out)
+
+    def test_job_user_enforce_with_a_user_is_not_named(self):
+        # A named user on this host is a startup matter of its
+        # own (the Q132 gate: root and resolvability); what this
+        # leg pins is only that the not-engaged naming stays off
+        # when a user is named. The platform gate is scripted
+        # away by running the one-shot on a config whose other
+        # gates are off and accepting either startup outcome.
+        rc, out, err = run_main(
+            {"security": {"modes": {"confinement": "off",
+                                    "job_user": "enforce"},
+                          "job_user": {"user": "root"}}},
+            ("--audit-report",))
+        self.assertNotIn("not engaged", out)
+        self.assertNotIn("not engaged", err)
 
 
 if __name__ == "__main__":

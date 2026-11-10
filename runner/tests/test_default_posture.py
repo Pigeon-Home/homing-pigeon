@@ -126,6 +126,48 @@ class ProfileChainTests(unittest.TestCase):
             self.assertEqual(cfg["max_result_view"], "attested", name)
 
 
+class JobUserEngagementTests(unittest.TestCase):
+    """Phase 2, item 3's predicate: job_user at enforce with no
+    user named engages nothing, and the surfaces that report
+    posture name it through this one reader."""
+
+    def test_seed_is_not_engaged(self):
+        # The shipped seed: every mode enforce, no job_user block.
+        self.assertIsNone(SEC.job_user_configured_user(_seed()))
+        self.assertTrue(SEC.job_user_not_engaged(_seed()))
+
+    def test_a_named_user_engages(self):
+        cfg = {"security": {"job_user": {"user": "pigeon-jobs"}}}
+        self.assertEqual(SEC.job_user_configured_user(cfg),
+                         "pigeon-jobs")
+        self.assertFalse(SEC.job_user_not_engaged(cfg))
+
+    def test_lower_modes_are_not_the_gap(self):
+        for mode in ("audit", "off"):
+            cfg = {"security": {"modes": {"job_user": mode}}}
+            self.assertFalse(SEC.job_user_not_engaged(cfg), mode)
+
+    def test_shapes_that_name_no_user(self):
+        for cfg in ({},
+                    {"security": None},
+                    {"security": {}},
+                    {"security": {"job_user": None}},
+                    {"security": {"job_user": "pigeon-jobs"}},
+                    {"security": {"job_user": {}}},
+                    {"security": {"job_user": {"user": ""}}},
+                    {"security": {"job_user": {"user": 123}}},
+                    {"security": {"job_user": {"user": None}}}):
+            self.assertIsNone(SEC.job_user_configured_user(cfg), cfg)
+            self.assertTrue(SEC.job_user_not_engaged(cfg), cfg)
+
+    def test_a_malformed_security_block_reads_off_not_engaged(self):
+        # sec_mode reads a malformed block as off; the predicate
+        # follows the mode reader, so the answer is not-engaged
+        # False (validate_security_config refuses the shape at
+        # startup -- a different, louder naming).
+        self.assertFalse(SEC.job_user_not_engaged({"security": []}))
+
+
 class CodeDefaultTests(unittest.TestCase):
     def test_result_view_default_is_full(self):
         # No ceiling in the config, no view in the job: the result

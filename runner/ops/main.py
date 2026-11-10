@@ -105,8 +105,10 @@ def main() -> int:
                   file=sys.stderr)
             return 2
         # Hardening M5: audience binding with no runner_id configured
-        # has nothing to bind to. Warn instead of silently doing
-        # nothing; the setup wizard generates one for fresh configs.
+        # has nothing to bind to. At enforce that refuses startup
+        # (below, with the job_user naming); at audit it warns
+        # instead of silently doing nothing; the setup wizard
+        # generates one for fresh configs.
         # Q9 (Decision 1's refuse class): confinement on enforce
         # whose mechanism cannot engage changes what the box
         # protects, so the runner refuses to start and says why,
@@ -136,12 +138,44 @@ def main() -> int:
                       "job_user to audit or off.",
                       file=sys.stderr)
                 return 2
-        if R._security.sec_mode(cfg, "audience") != "off" \
-                and not cfg.get("runner_id"):
-            R.log("WARN: security.modes.audience is not off but "
-                "no runner_id is configured; the check is skipped. "
-                "Set runner_id (the setup wizard generates one for "
-                "fresh configs).", "WARN")
+        # A mode that cannot engage says so at startup (phase 2
+        # of the default-posture work): job_user at enforce with
+        # no user named engages nothing -- jobs run as the
+        # runner's own account while the mode reads enforce. That
+        # state is named in the startup record here and in the
+        # posture report, never left silent. Startup proceeds: a
+        # user can be named later, and the naming is the record
+        # that it has not happened yet.
+        if R._security.job_user_not_engaged(cfg):
+            R.log("WARN: security.modes.job_user is enforce but "
+                "no security.job_user.user is configured; the "
+                "control is not engaged and jobs run as the "
+                "runner's own account. Name a user under "
+                "security.job_user to engage it.", "WARN")
+        # Audience at enforce with no runner_id has nothing to
+        # bind to: the check would be skipped for every job while
+        # the mode reads enforce, so it joins the refusal class
+        # (phase 2 of the default-posture work). The installer
+        # and the setup wizard generate a runner_id for every
+        # config they write; a hand-written config names one, or
+        # lowers the mode. Audit keeps the warning: audit's
+        # record is the startup line itself.
+        if not cfg.get("runner_id"):
+            if R._security.sec_mode(cfg, "audience") == "enforce":
+                print("config error: security.modes.audience is "
+                      "enforce but no runner_id is configured; "
+                      "the audience check has nothing to bind to. "
+                      "Refusing to start; set runner_id in "
+                      "config.json (the installer and the setup "
+                      "wizard generate one), or set audience to "
+                      "audit or off.",
+                      file=sys.stderr)
+                return 2
+            if R._security.sec_mode(cfg, "audience") == "audit":
+                R.log("WARN: security.modes.audience is audit but "
+                    "no runner_id is configured; the check is "
+                    "skipped. Set runner_id (the setup wizard "
+                    "generates one for fresh configs).", "WARN")
     # F2: a present-but-invalid oracle tool mode stops startup here
     # too. The value decides what the Oracle's run tool may do on
     # this box, so a bad one is refused naming the key, never
