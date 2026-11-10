@@ -194,14 +194,19 @@ Job 4) and the cut-release workflow's guards, in their order:
 The honest state of the lines above, so the checklist is
 never read as claiming more than stands:
 
-- **The phase-2 changes are not yet landed.** Section 2's
-  six behavior changes stand as a plan in the posture record;
-  until they land test-first, the two job-time step-down
-  chains (confinement, the job user) and the two quieter
-  gaps (the skipped audience check, the unengaged job user)
-  remain as measured. This is the largest single gap
-  between the tree as it stands and this checklist fully
-  checked.
+- **The phase-2 changes are landing, not yet landed
+  whole.** Section 2's six behavior changes stand as a plan
+  in the posture record; items 1 and 2 — confinement and
+  the job user at enforce failing the job instead of
+  stepping down — landed on 2026-11-09 with their tests.
+  Items 3 to 6 remain: the unengaged mode named at startup,
+  the audience check's warn-and-skip path, the installer
+  stating the platform gates, and the single result-view
+  default. Until they land test-first, the two quieter gaps
+  the posture record names (the skipped audience check, the
+  unengaged job user) remain as measured. This is the
+  largest single gap between the tree as it stands and
+  this checklist fully checked.
 - **The release gate is advisory, not enforcing.** The
   candidate-record tooling and the validator stand landed;
   the trains do not yet refuse a tag for want of a signed
