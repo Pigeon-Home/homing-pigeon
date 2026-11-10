@@ -2404,11 +2404,21 @@ def apply_platform_modes(cfg_path: str, platform=None) -> dict:
     the modes actually written. Fresh installs only: the caller
     is _setup_fresh_config, so an upgrade's config is never
     rewritten by this.
+
+    A config that does not exist yet is seeded from empty: the
+    earlier seed steps normally write config.json first, but a
+    fresh install whose seed wrote none still gets its platform
+    statement, in the file the write below creates, instead of
+    dying on the missing file. Any other read failure -- a
+    symlink, unreadable JSON -- raises exactly as before.
     """
     modes = platform_modes(platform)
     if not modes:
         return {}
-    cfg = _read_config(cfg_path)
+    try:
+        cfg = _read_config(cfg_path)
+    except FileNotFoundError:
+        cfg = {}
     if not isinstance(cfg, dict):
         return {}
     sec = cfg.get("security") if isinstance(cfg.get("security"), dict) \

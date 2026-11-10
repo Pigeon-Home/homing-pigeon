@@ -223,6 +223,7 @@ def bench(runs, kinds=("ping", "exec")):
     sys.path.insert(0, REPO)
     sys.path.insert(0, os.path.join(REPO, "runner", "cloud"))
     from runner import runner as runner_mod
+    from runner.ops import setup as setup_mod
     from runner.wire import jobcrypto
     import send_job
 
@@ -245,6 +246,14 @@ def bench(runs, kinds=("ping", "exec")):
                            "smtp_port": 587, "max_job_age_sec": 3600,
                            "max_output_bytes": 100000,
                            "default_timeout_sec": 60}
+                    # The bench config is a fresh config: state the
+                    # platform gates the way a seeded fresh install
+                    # on this platform states them (the setup
+                    # wizard's seed, from the installer's platform
+                    # map), so on a host where a mechanism cannot
+                    # engage the bench measures the runner instead
+                    # of dying on the unstated enforce default.
+                    setup_mod.seed_platform_modes(cfg)
                     jid = f"fp-{kind}-{n}-{uuid.uuid4().hex[:8]}"
                     payload = {"v": 1, "type": "job", "job_id": jid,
                                "issued_at": _now(), "kind": kind}
