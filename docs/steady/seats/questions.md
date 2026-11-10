@@ -43,6 +43,253 @@ Rules:
 
 ---
 
+## Q138 (Muse, to the desk, 2026-11-10): the Oracle's designed warning for owner instructions that contradict the standing layer was never built — build it differently: mark the contradiction in the briefing itself, where the layer that wins can name it
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: the Oracle briefing assembles in layers
+(`runner/ops/briefing.py`, described for operators in
+`docs/infrastructure-documents/oracle/configuring-oracle.md`):
+the door's charter, which lives in the runner's code; then the
+project's standing layer — the discovery surface and the
+Oracle's standing instructions
+(`docs/steady/oracle/instructions.md`), which hold the
+project's standing semantics, the disclosure postures first
+among them; then `owner_instructions`, the deployment's own
+string, appended last. The Shape 4 design of the briefing
+describes one behavior that was never built: a startup
+warning when a deployment's `owner_instructions` contradict
+the standing layer. It has sat unbuilt while the rest of
+Shape 4 landed and runs.
+
+The evidence against building it as designed is this
+project's own record of warn-and-continue. An unrecognized
+`key_policies` field warned and dropped, and the policies
+moved to the refuse class (Q129); a door policy was built
+from an unrecognized field the same way (Q130); phase 2 of
+the default-posture work made the startup gates refuse
+loudly and audited rather than warn — an audience at enforce
+with no runner name refuses, confinement that cannot engage
+refuses. A startup log line is the weakest surface the
+runner has: the operator who wrote the contradicting
+instructions is the reader least likely to meet the line
+that judges them, and a warning nobody acts on is worse
+than none — it teaches that warnings are wallpaper. But
+refusal is the wrong shape here too: whether free-text owner
+instructions contradict the standing layer is a judgment,
+not a parse, and a heuristic detector refusing startup
+would refuse honest deployments on a guess. The risk the
+design was guarding is real, though: the standing layer's
+first content is the disclosure postures, and a deployment
+string that quietly instructs the Oracle against them is
+exactly the seam where this suite's private material leaks.
+
+Options:
+
+1. Build as designed: a startup warning, and the runner
+   continues. The warning lands where warnings go to be
+   ignored; the detector's hits change nothing at the seam
+   that matters.
+2. Build it differently: the detection runs at startup, but
+   the signal is delivered at the point of use — the
+   assembled briefing itself carries a mark, placed with the
+   standing layer, naming the tension for the model that is
+   about to read both layers, and an audit row carries it
+   for the operator. The layer order already gives the
+   standing layer precedence; the mark makes the precedence
+   explicit at the moment it could be tested, instead of
+   logging a hope at startup.
+3. Retire the described behavior from the design docs: the
+   layer order is the whole defense, and the docs stop
+   describing a guard that does not exist. Cheapest, and
+   honest about the code — but it leaves the disclosure
+   seam undescribed and unguarded by anything but position.
+
+Recommendation: option 2.
+
+**Answer (Muse, 2026-11-10):** option 2 — build it
+differently. The startup warning as designed is retired
+before it is born: this suite's warnings have a measured
+habit of being read by no one and acted on by no one, and
+the design docs are to stop describing one. What is built
+instead: a startup check compares the deployment's
+`owner_instructions` against the standing layer; a likely
+contradiction is marked inline in the assembled briefing,
+adjacent to the standing layer it tensions against, so the
+reader who acts on the briefing — the model at the ask
+seam — sees the conflict flagged by the layer that wins,
+and the same finding is written to the audit as its own
+row. Detection stays heuristic and its consequence stays
+proportionate: nothing refuses, nothing is dropped, and the
+signal sits where the risk actually is. If the follow-on
+lane finds the detection too fuzzy to mark honestly, it
+comes back to this desk rather than shipping a noisy
+marker. The design text is updated in the same landing
+that builds the mark, so the docs never describe the
+retired warning again. **Applied in:** the questions
+landing of 2026-11-10 (this entry and the desk note that
+carries the decision); the build itself is a follow-on lane
+of its own, re-tested by a second seat under rule 8.
+
+---
+
+## Q137 (Muse, to the desk, 2026-11-10): the posture helpers classify and refuse, but nothing produces a stamp — the producer lives in the runner, at the result-assembly seam
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: the disclosure posture machinery is landed and
+tested in `runner/tools/disclosure.py`: a validated
+registry declares the postures (an id, a tag, what the tag
+permits to say and on which shelf, active or retired with a
+successor), assignments map deployments to postures,
+`format_stamp` renders a stamp of the shape
+`hp-posture-<version>-<posture id>` and refuses an id the
+registry does not declare and any retired posture, and
+`parse_stamp` validates a stamp strictly. Nothing in the
+run path calls `format_stamp`: no job, no result and no
+audit record carries a posture stamp. The helpers
+classify; nobody produces. So a record's posture today is
+whatever a reader infers later — the classification exists
+as tooling, not as a fact of the run.
+
+Placement is the whole question, because a stamp is only
+worth what its forgery costs. The job is the untrusted
+party in this suite's threat model — confined, and treated
+as adversarial by design — so a stamp the job applies to
+its own outputs attests nothing. A stamp applied by an
+offline tool after the fact attests the tool's reading, not
+the run. And an inbound stamp, carried on the job envelope
+from the sender, would ask the runner to believe a claim
+about posture — where this suite verifies claims (the
+audience binding is checked, never believed) and derives
+its own facts.
+
+Options:
+
+1. Job-side: the job stamps its own outputs. Forgery by
+   construction. Rejected without a lane.
+2. Sender-side: the sender stamps the envelope before
+   sending. Attests the sender's claim about the
+   deployment; the runner would have to trust an inbound
+   field for the one fact the stamp exists to fix.
+3. Runner-side at acceptance: the runner stamps the audit
+   row when it accepts the job, from its own configuration.
+   Sound on trust — the runner is the trusted hand — but
+   it fixes the stamp before the run: a job refused,
+   cancelled or crashed at the gate would carry the posture
+   of a run that never happened, and the result, the
+   artifact that travels and is read later, is stamped at
+   a different seam than the one that makes it, or not at
+   all.
+4. Runner-side at result assembly: the runner resolves the
+   deployment's assignment against the registry at startup,
+   and at the completion seam — where it assembles and
+   signs the result and writes the audit row, after the job
+   process has exited — stamps both from that resolution.
+   Nothing job-controlled reaches the seam; the signing
+   hand and the stamping hand are the same trusted hand.
+
+Recommendation: option 4.
+
+**Answer (Muse, 2026-11-10):** option 4. The producer
+lives in the runner core, at the completion seam: when the
+runner assembles a job's result and writes its audit row,
+it stamps both with `format_stamp` over the deployment's
+assignment, resolved against the registry at startup from
+runner-side state alone. A stamp field arriving on a job
+is never read; a job cannot skip the stamp, because the
+seam is past its exit, and cannot forge one, because the
+stamp is derived and rendered by the runner and rides
+inside what the runner signs. A deployment with no
+assignment gets no stamp — the absence is recorded as
+unstamped, plainly; no default posture is invented,
+because an invented default would forge the very
+classification the stamp exists to fix. An assignment
+naming a retired posture surfaces at startup through
+`format_stamp`'s own refusal, as a configuration problem,
+not at a job's completion. Research input: a free-tier Gemini call
+(gemini-3.5-flash, 2026-11-10) ranked the same seams the
+same way from SLSA and in-toto producer practice — the
+attestation is the control plane's work, applied at
+envelope assembly after the workload has exited.
+**Applied in:** the questions landing of 2026-11-10 (this
+entry and the desk note that carries the decision); the
+producer wiring is a follow-on lane of its own, whose
+tests pin that job content cannot influence the stamp,
+re-tested by a second seat under rule 8.
+
+---
+
+## Q136 (Muse, to the desk, 2026-11-10): build-windows shard 2 dies at the 20-minute wall on time, not on failures — the Windows split becomes duration-balanced, packed by measured file durations under a 12-minute budget
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: the build workflow's Windows leg runs the suite
+in shards under a 20-minute wall-clock per shard. On recent
+head builds the verdict has repeatedly been lost the same
+way: build-windows shard 2 exits 124 — the wall-clock kill,
+a timeout — with no test failures in it, while the Linux
+`test` leg runs the same suite (12,068 tests and growing)
+to a verdict and the macOS and proof legs pass. The split
+that feeds the shards is static: the suite's files are
+divided without reference to how long they take, and one
+shard's share has grown past the wall as the suite grew —
+the suite's own growth, landing unevenly across files, is
+what moved. Windows wall-time per test is also the
+fleet's spikiest: process creation and interpreter startup
+cost more there than on the Linux leg, so a shard sized by
+file count or by Linux durations is not sized by the
+durations that bind. Each loss costs the whole leg its
+verdict, and with it the head build's: a scheduling fact
+reads as a red build.
+
+Options:
+
+1. Raise the wall. The wall exists to catch a hung leg; a
+   larger wall delays every genuine hang's verdict and
+   hides the growth that caused this. The suite will grow
+   into any wall set by hand.
+2. More shards of the same static split. Cheap, and blind
+   the same way: the chunks drift unequal again as files
+   grow at different rates, and shard 2's successor dies at
+   the next growth step. Each re-split by hand is a guess.
+3. Split on a different axis — by test area or family.
+   Better names for the shards; the same blindness about
+   durations within them.
+4. Duration-balanced sharding: pack test files into shards
+   by their measured durations on the Windows leg itself,
+   each shard budgeted well under the wall; the durations
+   table is a committed artifact the workflow refreshes
+   from its own runs, and the packing rule — not a hand
+   edit — is what changes when the suite's shape does.
+
+Recommendation: option 4.
+
+**Answer (Muse, 2026-11-10):** option 4, in this
+concrete shape. The unit of the split is the test file,
+the granularity the suite's discovery already uses. Files
+are packed largest-first into shards of at most 12 minutes
+of measured Windows duration each — the 20-minute wall
+stays where it is, as a hang guard, never as a target —
+using per-file durations recorded from the Windows leg's
+own previous runs, kept in a durations table the workflow
+lane commits and refreshes the way the figure slots are
+refreshed from the standing measure. At the suite's
+current size the packing is expected to land at 4 to 6
+Windows shards; the count is an output of the packing,
+not a number chosen here. The rule for drift: a shard that
+measures over 15 minutes on 2 consecutive main builds is
+re-packed by the same rule in a follow-on commit — the
+wall is never raised to meet a shard. Files with no
+measured duration enter at the median file duration until
+they are measured. **Applied in:** the questions landing
+of 2026-11-10 (this entry and the desk note that carries
+the decision); the workflow change itself is a follow-on
+lane in `.github/workflows`, judged by the head builds
+that run under it, under rule 8.
+
+---
+
 ## Q135 (Muse, to the desk, 2026-11-10): the confinement decision raises where its contract is to answer — a denial must come back as a triple and be refused at the job boundary, not thrown from the decision
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
