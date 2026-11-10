@@ -327,6 +327,32 @@ class FallbackTest(unittest.TestCase):
                         pass
             return rows
 
+        if sys.platform == "win32":
+            # Windows has its own confinement backend (Job
+            # Object + restricted token + low integrity), and
+            # the bwrap probe below is not its measure: ask the
+            # runner's own startup gate whether the backend
+            # engages. Engaged, the default-enforce job runs
+            # confined -- never refused, never run weaker --
+            # and the record says so; what the confined job
+            # itself prints is the backend's field behavior,
+            # not asserted here. Not engaged, the refusal arm
+            # below is the shape, exactly as on a backend-less
+            # POSIX host.
+            from runner import runner as R
+            if R._confinement_startup_problem({}) is None:
+                r1, a1, _ = _run({}, _job("m6-a", "print(40 + 2)"))
+                self.assertIn("exit_code", r1)
+                r2, a2, _ = _run(_conf("off"),
+                                 _job("m6-b", "print(40 + 2)"))
+                self.assertEqual(r2["stdout"].strip(), "42")
+                self.assertEqual(a2, [])
+                conf_rows = [r for r in a1
+                             if r.get("feature") == "confinement"]
+                self.assertEqual(len(conf_rows), 1)
+                self.assertEqual(conf_rows[0]["decision"], "confined")
+                self.assertEqual(conf_rows[0]["mode"], "enforce")
+                return
         if not SB.sandbox_available():
             audit = _refused_audit({}, _job("m6-a", "print(40 + 2)"))
             # Count confinement's rows only: the default leg
@@ -362,10 +388,15 @@ class FallbackTest(unittest.TestCase):
 
     def test_bwrap_missing_refuses_the_job_loudly(self):
         # Under enforce the fallback is recorded and the job is
-        # refused; it never runs unsandboxed.
+        # refused; it never runs unsandboxed. The POSIX platform
+        # is scripted: the argv gate branches on the platform
+        # before it consults the bwrap probe, and on a win32
+        # host the platform backend -- not this probe -- is the
+        # capability that decides.
         from runner.runner import JobRejected
         with mock.patch.object(SB, "sandbox_available",
-                               return_value=False):
+                               return_value=False), \
+                mock.patch.object(sys, "platform", "linux"):
             tmpdir = tempfile.mkdtemp(prefix="hp-m6-")
             cfg = {"base_dir": tmpdir}
             cfg.update(_conf("enforce"))
@@ -515,9 +546,20 @@ class SandboxAuditNoteTest(unittest.TestCase):
                 return hosted
             return real_realpath(path, *a, **k)
 
+        # The POSIX platform and a non-applying spawn seam are
+        # scripted beside the probe: on a win32 host the argv
+        # gate takes the platform branch (the Job Object
+        # backend engages and its own record is written), and
+        # the seam -- keyed on the OS name, not the platform
+        # spelling -- would engage the real Windows spawn with
+        # this test's bwrap argv. The note under test is the
+        # bwrap wrap's, so the host simulated here is POSIX.
         with mock.patch.object(SB, "sandbox_available", return_value=True), \
              mock.patch.object(SB.shutil, "which", return_value=hosted), \
              mock.patch.object(SB.os.path, "realpath", realpath), \
+             mock.patch.object(sys, "platform", "linux"), \
+             mock.patch.object(R, "_confinement_spawn",
+                               return_value=None), \
              mock.patch.object(R.subprocess, "Popen") as popen:
             proc = popen.return_value
             proc.communicate.return_value = (b"hi\n", b"")

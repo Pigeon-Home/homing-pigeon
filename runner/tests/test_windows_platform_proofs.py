@@ -257,8 +257,18 @@ class JobUserWindowsAuditTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as base:
             work = os.path.join(base, "work")
             os.makedirs(work, exist_ok=True)
+            # The backend lookup is scripted to the stub, as
+            # everywhere else in this file: on a real Windows
+            # host the preexec consults the live backend (its
+            # platform is win32 there whether or not the test
+            # says so), and an engageable probe answers
+            # would_contain instead of the recorded refusal
+            # these tests pin.
             with mock.patch.object(runner, "_security", sec), \
-                    mock.patch.object(os, "name", "nt"):
+                    mock.patch.object(os, "name", "nt"), \
+                    mock.patch.object(
+                        REM, "_windows_confine",
+                        lambda backend=None: _backend_stub()):
                 out = runner._job_user_preexec(cfg, base, "job-9", work)
         return out, sec
 
@@ -281,7 +291,10 @@ class JobUserWindowsAuditTest(unittest.TestCase):
             work = os.path.join(base, "work")
             os.makedirs(work, exist_ok=True)
             with mock.patch.object(runner, "_security", sec), \
-                    mock.patch.object(os, "name", "nt"):
+                    mock.patch.object(os, "name", "nt"), \
+                    mock.patch.object(
+                        REM, "_windows_confine",
+                        lambda backend=None: _backend_stub()):
                 with self.assertRaises(runner.JobRejected):
                     runner._job_user_preexec(cfg, base, "job-9", work)
         sec.write_audit_entry.assert_called()
@@ -956,7 +969,10 @@ class JobUserEnforceShotgunTest(unittest.TestCase):
             work = os.path.join(td, "work")
             os.makedirs(work, exist_ok=True)
             with mock.patch.object(runner, "_security", sec), \
-                    mock.patch.object(os, "name", "nt"):
+                    mock.patch.object(os, "name", "nt"), \
+                    mock.patch.object(
+                        REM, "_windows_confine",
+                        lambda backend=None: _backend_stub()):
                 with self.assertRaises(runner.JobRejected):
                     runner._job_user_preexec(cfg, "base-x", "job-9", work)
         args = sec.write_audit_entry.call_args
@@ -975,7 +991,10 @@ class JobUserEnforceShotgunTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as base:
             work = os.path.join(base, "work")
             os.makedirs(work, exist_ok=True)
-            with mock.patch.object(os, "name", "nt"):
+            with mock.patch.object(os, "name", "nt"), \
+                    mock.patch.object(
+                        REM, "_windows_confine",
+                        lambda backend=None: _backend_stub()):
                 out = runner._job_user_preexec(cfg, base, 123, work)
             self.assertIsNone(out)
             with open(os.path.join(base, "security-audit.jsonl"),
@@ -1270,7 +1289,10 @@ def _make_job_user_field_tests():
                 work = os.path.join(td, "work")
                 os.makedirs(work, exist_ok=True)
                 with mock.patch.object(runner, "_security", sec), \
-                        mock.patch.object(os, "name", "nt"):
+                        mock.patch.object(os, "name", "nt"), \
+                        mock.patch.object(
+                            REM, "_windows_confine",
+                            lambda backend=None: _backend_stub()):
                     with self.assertRaises(runner.JobRejected):
                         runner._job_user_preexec(
                             cfg, base, "job-9", work)

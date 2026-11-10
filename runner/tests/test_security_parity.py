@@ -610,6 +610,18 @@ class AllEnforceParityTest(unittest.TestCase):
       the jobs run; where one cannot, the exec jobs are refused
       by the first wrap that cannot engage (confinement is
       consulted before job_user).
+    - On Windows the capability question is the platform
+      backend's, not bwrap's: where the runner's own startup
+      gates say both mechanisms engage, the exec jobs run
+      confined -- a result is delivered for each, and none is
+      the wrap's rejection -- the confinement record says
+      "confined", and job_user's record is its two-step win32
+      shape (the preexec "would_contain" deferral and the
+      postspawn "contained"). What a confined process prints
+      on a given Windows host is the backend's field behavior
+      (the rig battery's ground), not this test's recorded
+      expectation, so the byte-equality leg above stays keyed
+      to the POSIX wraps.
     """
 
     # job_id -> (exit_code, stdout/stderr substring or None)
@@ -684,6 +696,26 @@ class AllEnforceParityTest(unittest.TestCase):
         wraps_run = conf_runs and ju_ok
         exec_refused = conf_refuses or (conf_runs and not ju_ok)
 
+        # Windows since the confinement backend landed: the
+        # capability probes are the runner's own startup gates --
+        # the bwrap probe above is Linux-only and reads
+        # "unavailable" on win32 whether or not the Job Object
+        # backend can engage, so keying the expectations to it
+        # recorded refusals on a host where the exec jobs run
+        # confined. Where both gates engage, the win32 arm below
+        # carries the expectations; where either cannot, the
+        # refusal shapes above are what production does there
+        # too (the argv gate refuses before job_user is reached).
+        win_engages = False
+        if sys.platform == "win32":
+            from runner import runner as _runner_mod
+            enf_cfg = {"security": self._enforce_block()}
+            win_engages = (
+                _runner_mod._confinement_startup_problem(
+                    enf_cfg) is None
+                and _runner_mod._job_user_startup_problem(
+                    enf_cfg) is None)
+
         # Compliant jobs: the same result as with the features off,
         # byte for byte after normalization (the denied jobs sit
         # after every compliant one in the corpus, so no result
@@ -703,7 +735,7 @@ class AllEnforceParityTest(unittest.TestCase):
                 if text is not None:
                     self.assertIn(text, enf_sent[job_id])
                 self.assertIn(job_id, enf_seen)
-        if exec_refused:
+        if exec_refused and not win_engages:
             # The refused exec jobs: a rejection result (exit -2,
             # "job rejected: ..."), still delivered and seen --
             # refused by the wrap, not dropped.
@@ -712,6 +744,18 @@ class AllEnforceParityTest(unittest.TestCase):
                     self.assertIn(job_id, enf_sent)
                     self.assertIn('"exit_code":-2', enf_sent[job_id])
                     self.assertIn("job rejected", enf_sent[job_id])
+                    self.assertIn(job_id, enf_seen)
+        if win_engages:
+            # The exec jobs ran confined: each delivered a result
+            # and was seen, and none of the results is the wrap's
+            # rejection -- the modes engaged instead of refusing.
+            for job_id in self.ENFORCE_EXEC_JOBS:
+                with self.subTest(job_id=job_id):
+                    self.assertIn(job_id, enf_sent)
+                    self.assertNotIn('"exit_code":-2',
+                                     enf_sent[job_id])
+                    self.assertNotIn("job rejected",
+                                     enf_sent[job_id])
                     self.assertIn(job_id, enf_seen)
         # The replayed second copy produced no second result.
         self.assertEqual(
@@ -762,9 +806,18 @@ class AllEnforceParityTest(unittest.TestCase):
             {(e["job_id"], e["feature"]) for e in enf_entries
              if e.get("decision") == "denied"},
             {(j, f) for j, (f, _r) in self.ENFORCE_REFUSED.items()})
-        self.assertFalse([e for e in enf_entries
-                          if str(e.get("decision", "")).startswith(
-                              "would_")])
+        would = [e for e in enf_entries
+                 if str(e.get("decision", "")).startswith("would_")]
+        if win_engages:
+            # job_user's win32 preexec record is a would_ entry
+            # by design: it is the deferral half of an
+            # enforce-mode application whose other half is the
+            # postspawn "contained" record, not an audit-mode
+            # decision leaking into the enforce run.
+            would = [e for e in would
+                     if not (e.get("feature") == "job_user"
+                             and e.get("decision") == "would_contain")]
+        self.assertFalse(would)
 
         # The seen set is the off variant's, minus the refused
         # jobs, under the runner_id namespace.
@@ -781,13 +834,17 @@ class AllEnforceParityTest(unittest.TestCase):
         conf = {e["job_id"]: e["decision"] for e in enf_entries
                 if e.get("feature") == "confinement"}
         self.assertEqual(set(conf), self.ENFORCE_EXEC_JOBS)
-        want_conf = "sandboxed" if conf_avail else "fallback"
-        self.assertEqual(set(conf.values()), {want_conf})
         ju = {e["job_id"]: e["decision"] for e in enf_entries
               if e.get("feature") == "job_user"}
-        if conf_refuses:
+        if win_engages:
+            self.assertEqual(set(conf.values()), {"confined"})
+            self.assertEqual(set(ju), self.ENFORCE_EXEC_JOBS)
+            self.assertEqual(set(ju.values()), {"contained"})
+        elif conf_refuses:
+            self.assertEqual(set(conf.values()), {"fallback"})
             self.assertEqual(ju, {})
         else:
+            self.assertEqual(set(conf.values()), {"sandboxed"})
             self.assertEqual(set(ju), self.ENFORCE_EXEC_JOBS)
             want_ju = "run_as" if ju_ok else "fallback"
             self.assertEqual(set(ju.values()), {want_ju})

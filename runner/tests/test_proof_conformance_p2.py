@@ -269,9 +269,14 @@ class ConfinementChainTest(unittest.TestCase):
     def test_enforce_without_a_sandbox_refuses_on_the_record(self):
         cfg = {"security": {"modes": {"confinement": "enforce"}}}
         with tempfile.TemporaryDirectory() as td:
-            with mock.patch.object(runner._sandbox,
-                                   "sandbox_available",
-                                   return_value=False):
+            # The POSIX platform is scripted beside the probe:
+            # the argv gate branches on the platform first, and
+            # on a win32 host the platform backend engages
+            # before this probe is ever consulted.
+            with mock.patch.object(sys, "platform", "linux"), \
+                    mock.patch.object(runner._sandbox,
+                                      "sandbox_available",
+                                      return_value=False):
                 with self.assertRaises(runner.JobRejected):
                     self._argv(cfg, td)
             entries = _audit_entries(td)
@@ -286,9 +291,17 @@ class ConfinementChainTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             work = os.path.join(td, "work")
             os.mkdir(work)
-            with mock.patch.object(runner._sandbox,
-                                   "sandbox_available",
-                                   return_value=True):
+            # The POSIX platform is scripted as above, and the
+            # wrap itself is canned: whether a bare "sh"
+            # resolves on the host is the builder's field
+            # behavior, not this chain's clause.
+            with mock.patch.object(sys, "platform", "linux"), \
+                    mock.patch.object(runner._sandbox,
+                                      "sandbox_available",
+                                      return_value=True), \
+                    mock.patch.object(
+                        runner._sandbox, "build_bwrap_command",
+                        return_value=["bwrap", "sh", "/w/job.sh"]):
                 argv, host_env, sandboxed = self._argv(
                     cfg, td, work=work)
             self.assertTrue(sandboxed)

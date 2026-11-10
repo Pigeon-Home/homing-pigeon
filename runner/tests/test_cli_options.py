@@ -1582,12 +1582,27 @@ class MainDispatchBranchesTest(_VerbosityGuard):
         self.assertTrue(poll.called)
 
     def test_enforce_without_a_sandbox_refuses_to_start(self):
+        # Every mode is stated: cfg_extra replaces the rig's
+        # whole security block, so a block naming only
+        # confinement would silently un-state job_user and
+        # audience, and their unstated enforce would refuse
+        # first on a host where their gates answer. And the
+        # platform backend's startup probe is scripted beside
+        # bwrap's: on win32 main() consults
+        # _confinement_startup_problem, not the sandbox probe,
+        # so scripting only bwrap's leaves the gate asking a
+        # backend that can engage.
         code, poll, _w, _out, err = self._rig(
             ["--once"],
             cfg_extra={"security": {"modes":
-                                    {"confinement": "enforce"}}},
+                                    {"confinement": "enforce",
+                                     "job_user": "off",
+                                     "audience": "off"}}},
             extra_patches=[(runner._sandbox,
                             "startup_problem",
+                            lambda *a, **k: "bwrap is not installed"),
+                           (runner,
+                            "_confinement_startup_problem",
                             lambda *a, **k: "bwrap is not installed")])
         self.assertEqual(code, 2)
         self.assertIn("the sandbox cannot engage", err)

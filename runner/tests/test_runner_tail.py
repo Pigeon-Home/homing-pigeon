@@ -6,6 +6,7 @@ or a real setuid. The job-user syscalls stay untested.
 """
 import json
 import os
+import sys
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -1237,7 +1238,13 @@ class ConfinementTailTest(unittest.TestCase):
                 self.assertFalse(boxed)
             finally:
                 runner._security = saved
-            with mock.patch.object(runner._security, "sec_mode", return_value="enforce"), \
+            # The POSIX platform is scripted for the built-
+            # sandbox arm: the argv gate branches on the
+            # platform first, and on a win32 host the platform
+            # backend returns the normal argv before the bwrap
+            # builder is reached.
+            with mock.patch.object(sys, "platform", "linux"), \
+                 mock.patch.object(runner._security, "sec_mode", return_value="enforce"), \
                  mock.patch.object(runner._security, "bump_evaluated"), \
                  mock.patch.object(runner._security, "write_audit_entry",
                                    side_effect=RuntimeError("audit")), \

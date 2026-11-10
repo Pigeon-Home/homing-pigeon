@@ -92,8 +92,15 @@ class BenchTest(unittest.TestCase):
         # unstated enforce default refused the exec job outright.
         # The bench config's platform statement (audit, as a
         # seeded fresh install states it) lets both kinds run.
+        # The OS name is scripted with the platform: the
+        # job_user preexec branches on it, and a darwin host's
+        # name is posix -- left at a Windows host's "nt", the
+        # preexec's nt arm, not the POSIX arm a real darwin
+        # host takes, refuses the job on the unstated job_user
+        # enforce (found on the build-windows leg).
         from runner import runner as runner_mod
         with mock.patch.object(sys, "platform", "darwin"), \
+                mock.patch.object(os, "name", "posix"), \
                 mock.patch.object(runner_mod._sandbox,
                                   "sandbox_available",
                                   return_value=False):
