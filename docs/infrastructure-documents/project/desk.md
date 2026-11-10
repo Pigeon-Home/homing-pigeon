@@ -65,10 +65,11 @@ mode — a Job Object with a per-process memory ceiling, assigned
 as each job starts — reviewed and completed from an outside
 branch. `job_user` at `enforce` is now honestly available on
 Windows; fresh installs still seed it (and `confinement`) at
-`audit`. One follow-up stands open:
-registering `runner/guard/windows_confine.py` in the core list
-(`runner/ops/core.py`) with the re-measure that addition has
-always carried, the way the briefing files joined in 2026-11.
+`audit`. The follow-up that landing left open has since
+closed: `runner/guard/windows_confine.py` is registered in
+the core list (`runner/ops/core.py`) with the re-measure
+that addition has always carried, the way the briefing
+files joined in 2026-11.
 
 Also landed in this pass: the enforce-posture reconciliation.
 The phase-2 refusals are the shipped behavior — a mode that
@@ -155,13 +156,17 @@ registry's README line for max_job_bytes follows the README.
 The CI smoke configs state audience off beside the platform
 gates, and the binary build lines carry the build stamp's
 hidden import. No production code changed. Three findings
-stand open for their own lanes, recorded here so they are
-not lost: the simulated-win32 startup tests reach the real
-ctypes surface of the landed Windows backend and error on a
-POSIX host; the confinement decision fuzz's never-raises
-invariant predates the phase-2 refusal it now meets; and the
-core breakdown's re-measure waits on the windows_confine
-registration named above.
+were recorded here for their own lanes; 2 have since closed:
+the simulated-win32 startup tests no longer reach the real
+ctypes surface of the landed Windows backend on a POSIX
+host (the backend's stub/real branch keys on the ctypes
+surface as well as the platform string, and the
+require-posture harness scripts that gate as able beside
+the other mechanism gates), and the core breakdown's
+re-measure landed with the windows_confine registration
+named above. One finding stands open: the confinement
+decision fuzz's never-raises invariant predates the phase-2
+refusal it now meets.
 
 The node also has its confinement backend now, the FreeBSD
 analogue of the Windows one: `runner/guard/freebsd_confine.py`
