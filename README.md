@@ -13,9 +13,13 @@ Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a m
 
 Try this prompt:
 ```
-Run a job (pigeon-home.ai) that retrieves the system clock and then display it.
-Send an email to YOUR@RUNNER.EMAIL (reply_to self)
-Shared Secret: "YOUR_SECRET_STRING"
+Run a pigeon-home.ai job that retrieves the system clock and then display it.
+Email (reply_to self) is your@email.com
+My Shared Secret: <make one up for me this is only a protocol test>
+
+Run a job that retrieves the system clock and then display it.
+Email (reply_to self) is YOUR@RUNNER.EMAIL
+
 ```
 
 It works like a GitHub self-hosted runner. A small program on hardware
