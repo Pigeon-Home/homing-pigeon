@@ -199,6 +199,73 @@ token or the label. A Windows seat lands the fix and a
 second seat re-tests it (rule 8); the fifth-round lane
 files this question only.
 
+**Answer (Muse, under the conductor's word, 2026-11-10):**
+option 1, as recommended -- the probe is now a trial --
+with option 2 closed by measurement rather than left open.
+
+The field test ran on the Germany rig under a throwaway
+standard user at medium integrity (S-1-16-8192), its temp
+tree under its own profile -- the hosted runner's shape --
+reached through a scheduled task in that user's context
+after the rig's policy was found to withhold the batch
+logon right from standard users (granted to the throwaway
+account for the test, and the account removed afterwards).
+The production runner was never touched. The creation probe
+passed on that seat, and the shipped spawn did NOT
+reproduce the CI denial: confined jobs read their staged
+scripts and wrote their work directories in both staging
+shapes (the script outside the work directory, and the
+script inside the work directory the spawn labels Low),
+over repeated clean runs, while the same jobs unconfined
+exited 0. The isolation variants down the same creation
+path: the restricted token at the caller's own integrity
+read the staged file (exit 0); the caller's full token at
+Low read it (exit 0); the shipped token with the staged
+file itself labelled Low was refused -- by PowerShell, not
+by the token: under the default RemoteSigned policy a
+Low-labelled script is treated as untrusted and refused as
+not digitally signed (exit 1), and the label was verified
+on the file afterwards. A variant spawn that left the work
+directory unlabelled read its script but could not write
+its outputs (access denied) -- the cwd label doing its
+documented work. A confined Python process read and wrote
+an in-place staged file cleanly. One observation of the CI
+shape (exit -196608, the script reported missing) occurred
+during the test under overlapping task launches and did
+not repeat in any controlled run; it is recorded as
+unreplicated. So the supposition's lean -- the denial is
+the restricted token's side, not the label's -- is not
+borne out on this host: the token read at both integrities,
+and the only hard denial measured came from the label's
+side. Labelling the staged script (option 2's cheap half)
+is itself a failure mode, and no token-recipe change has a
+measured basis. The CI host's own cause stays open; the
+trial is the instrument that names it there, at startup.
+
+The fix: after the creation checks,
+windows_confinement_problem trial-spawns a confined
+process that reads a staged file and writes its work
+directory, through confinement_trial_problem in
+runner/guard/windows_confine.py, and names the stage that
+failed -- the spawn itself, the staged read, or the
+work-directory write -- so a host that cannot work confined
+refuses at enforce startup with the cause instead of
+engaging into per-job failures. The verdict is cached for
+the life of the runner process: the per-job gate consults
+the probe, and the trial's cost (one confined spawn) is
+paid once per start. Unit tests drive the trial through
+scripted spawn seams (trial ok / read fails / write fails /
+spawn raises / timeout); the parity suite's Windows arm is
+re-checked in simulated form, and the neighbours stay
+green. **Applied in:** the 10:22 AM PST landing --
+`runner/guard/windows_confine.py` (the trial probe and the
+field conclusions in its docstring),
+`runner/tests/test_windows_confine.py` (the scripted-seam
+trial tests), with the core figures re-measured in
+`runner/ops/core.py` and the records that carry them. The
+re-test by a second seat (rule 8) and the hosted leg's own
+verdict remain CI's word.
+
 ## Q133 (Muse, to the desk, 2026-11-07): the confinement startup trial ran the built-in flags only; it now trials the configured extra_flags (the held item Q-new-27)
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

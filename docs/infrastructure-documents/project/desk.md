@@ -368,6 +368,19 @@ stands as Q134 for a Windows seat to fix and a second
 seat to re-test. The Windows leg itself remains CI's
 word.
 
+Q134 is answered in the questions file (2026-11-10): the
+field test on an unelevated seat on the Germany rig did
+not reproduce the CI denial for the shipped spawn, the
+isolation cleared the token recipe (it read at both
+integrities) and condemned script labelling (a Low-labelled
+script is refused by PowerShell under the default policy),
+and the confinement probe is now a trial — it spawns a
+confined process that reads a staged file and writes its
+work directory, and refuses at enforce startup naming the
+stage that failed. The second seat's re-test and the
+hosted host's own cause remain CI's word; the trial is
+what names that cause there, at startup.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
