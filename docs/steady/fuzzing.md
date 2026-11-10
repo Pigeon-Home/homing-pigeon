@@ -10,7 +10,7 @@ and they load no model.
 Core names the production runner as a set of files: the code
 that runs, without the unit tests, the test harnesses or
 anything superfluous. The canonical list stands in
-runner/ops/core.py (CORE_FILES): <!--hp-fig:core_files-->132<!--/hp-fig--> files, all under runner/.
+runner/ops/core.py (CORE_FILES): <!--hp-fig:core_files-->134<!--/hp-fig--> files, all under runner/.
 Running `python3 runner/ops/core.py` prints the set's current
 zip size and token counts.
 
@@ -51,13 +51,20 @@ runner/tools/make_briefing.py to the canonical list and
 its wiring grew runner/ops, runner/tools and the runner
 proper, and again the same day after the release cut
 took a fresh, uncached token measure at every cut —
-version4's --fresh recount — growing runner/ops, the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->56,774<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->51,146<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->720,975<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->598,294<!--/hp-fig--> tokens; the Gemini figure above still
+version4's --fresh recount — growing runner/ops, and
+again on 2026-11-10 after the platform confinement
+backends (runner/guard/windows_confine.py and
+runner/guard/freebsd_confine.py) joined the canonical
+list and their wiring grew runner/ops, runner/guard and
+the runner proper, and again the same day after the
+FreeBSD backend's field-test fixes and the Windows
+backend's import-safety change grew runner/guard, the
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->58,673<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->52,903<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->743,026<!--/hp-fig-->-byte zip, and the project's own estimator
+counts it at <!--hp-fig:core_assembled_tokens-->616,096<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->132<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->590,677<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->55,990<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->50,458<!--/hp-fig--> non-blank); the 2 token
+estimator counts the canonical <!--hp-fig:core_files-->134<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->608,479<!--/hp-fig-->
+tokens across <!--hp-fig:core_lines-->57,889<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->52,215<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -68,21 +75,21 @@ leaves them out. The list and its counters stand in
 home of the core figures above.
 
 When project talk says "test core", it means testing this
-set. A change aimed at core is aimed at those 132 files and
+set. A change aimed at core is aimed at those 134 files and
 no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 6,758 lines; the core around it is
-56,773. The set as assembled, part by part (re-measured
-2026-11-08):
+58,673. The set as assembled, part by part (re-measured
+2026-11-10):
 
-- runner/ops: 17,939 lines
+- runner/ops: 18,535 lines
 - runner/tools: 8,894
 - runner/wire: 8,708
 - runner/runner.py: 6,758
 - runner/oracle: 5,044
 - runner/transport_extensions: 2,775
-- runner/guard: 2,937
+- runner/guard: 4,173
 - runner/cloud: 2,049
 - runner/hosting: 1,704
 - runner/__init__.py: 23
@@ -95,10 +102,12 @@ The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-56,773 lines, explicit platform branching — sys.platform,
+58,673 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
 its files, beside a small number of dedicated platform
-modules (runner/ops/windows.py and runner/ops/winlog.py).
+modules (runner/ops/windows.py, runner/ops/winlog.py,
+runner/guard/windows_confine.py and
+runner/guard/freebsd_confine.py).
 Dropping 1 platform would trim that thin layer only; the
 rest of the set does not know which platform it is on.
 

@@ -45,13 +45,13 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 56,773 lines,
-51,145 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 58,673 lines,
+52,903 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
 The headline inside those numbers: the runner proper,
-runner/runner.py itself, is 6,690 lines; the core around it
+runner/runner.py itself, is 6,758 lines; the core around it
 is the rest. The as-assembled set's per-part line counts are
 recorded in AS_ASSEMBLED_PART_LINES below; the CLI computes
 and prints the canonical list's per-part counts live, and
@@ -177,6 +177,11 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # demote fixes (the jail root traversable by the job
 # user, the spawn's working directory and host-side
 # user resolution), growing runner/guard again.
+# Re-measured again the same day after the Windows
+# backend's import-safety change grew
+# runner/guard/windows_confine.py by 15 lines, with the
+# recorded figures carried into the statistics record
+# and the documents that quote them.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 134 since
@@ -189,9 +194,9 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 137
-AS_ASSEMBLED_ZIP_BYTES = 730508
-AS_ASSEMBLED_LINES = 58658
-AS_ASSEMBLED_NONBLANK_LINES = 52888
+AS_ASSEMBLED_ZIP_BYTES = 743026
+AS_ASSEMBLED_LINES = 58673
+AS_ASSEMBLED_NONBLANK_LINES = 52903
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
@@ -202,7 +207,7 @@ AS_ASSEMBLED_PART_LINES = {
     "runner/runner.py": 6758,
     "runner/oracle": 5044,
     "runner/transport_extensions": 2775,
-    "runner/guard": 4158,
+    "runner/guard": 4173,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,
