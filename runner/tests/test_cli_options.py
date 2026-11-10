@@ -194,15 +194,18 @@ def _main_rig(argv, cfg_extra=None):
     stack.enter_context(mock.patch.object(
         runner, "_start_local_signals"))
     directory = stack.enter_context(tempfile.TemporaryDirectory())
-    # Confinement and job_user are stated off: under the lockdown
-    # default an unstated mode reads enforce and refuses to start
-    # on a host that cannot enforce it (no bwrap here, job_user on
-    # win32), which is not what these dispatch tests are about. A
-    # cfg_extra security block replaces this one wholesale.
+    # Confinement, job_user and audience are stated off: under
+    # the lockdown default an unstated mode reads enforce and
+    # refuses to start on a host that cannot enforce it (no
+    # bwrap here, job_user on win32), and an unstated audience
+    # refuses to start with no runner_id configured -- none of
+    # which is what these dispatch tests are about. A cfg_extra
+    # security block replaces this one wholesale.
     body = {"shared_secret": SECRET, "mailbox_user": "a@b.c",
             "mailbox_password": "pw", "base_dir": directory,
             "security": {"modes": {"confinement": "off",
-                                   "job_user": "off"}}}
+                                   "job_user": "off",
+                                   "audience": "off"}}}
     if cfg_extra:
         body.update(cfg_extra)
     path = os.path.join(directory, "config.json")
@@ -1538,7 +1541,8 @@ class MainDispatchBranchesTest(_VerbosityGuard):
                 # body: the lockdown default would refuse this
                 # host before the branch under test is reached.
                 "security": {"modes": {"confinement": "off",
-                                       "job_user": "off"}}}
+                                       "job_user": "off",
+                                       "audience": "off"}}}
         if cfg_extra:
             body.update(cfg_extra)
         if wizard_cfg is not None:

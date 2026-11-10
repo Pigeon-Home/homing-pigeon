@@ -181,7 +181,7 @@ class InfinityFromFileTest(unittest.TestCase):
                     # refuse this host at the confinement gate
                     # before the poll loop is reached.
                     '"security": {"modes": {"confinement": "off", '
-                    '"job_user": "off"}}, '
+                    '"job_user": "off", "audience": "off"}}, '
                     '"poll_interval_sec": Infinity, "workers": Infinity, '
                     '"max_job_age_sec": Infinity, '
                     '"default_timeout_sec": -Infinity}'
@@ -456,7 +456,8 @@ class OAuthLatchTest(unittest.TestCase):
                     # refuse this host at the confinement gate
                     # before the poll loop is reached.
                     "security": {"modes": {"confinement": "off",
-                                           "job_user": "off"}},
+                                           "job_user": "off",
+                                           "audience": "off"}},
                 }, fh)
             with mock.patch.object(runner, "ensure_inference_ready"), \
                  mock.patch.object(runner, "update_llama_from_config"), \

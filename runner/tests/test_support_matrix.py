@@ -69,7 +69,12 @@ class SupportMatrixTest(unittest.TestCase):
         self.assertIn("bwrap is Linux-only", flat)
         self.assertIn("confinement at enforce refuses to start", flat)
         self.assertIn("fail-closed, never silent", flat)
-        self.assertIn("job_user at enforce refuses on win32", flat)
+        # job_user at enforce no longer refuses on win32: the
+        # Job Objects backend carries it, and the matrix must
+        # keep saying so (this line pinned the refusal until
+        # the backend landed).
+        self.assertIn("Enforce available via a Job Objects backend",
+                      flat)
 
     def test_the_audit_bound_matches_the_code(self):
         from runner.guard import security as S

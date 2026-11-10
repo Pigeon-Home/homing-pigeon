@@ -564,11 +564,13 @@ class Decision1WarningLineProbes(unittest.TestCase):
         td = tempfile.mkdtemp(prefix="hp-q5-")
         path = os.path.join(td, "config.json")
         cfg = dict(cfg_extra, base_dir=td)
-        # The platform gates are stated off: under the lockdown
-        # default they refuse this host before the inspect
-        # dispatch whose startup line is under test.
+        # The platform gates and the audience gate are stated
+        # off: under the lockdown default they refuse this host
+        # before the inspect dispatch whose startup line is
+        # under test.
         cfg.setdefault("security", {"modes": {"confinement": "off",
-                                              "job_user": "off"}})
+                                              "job_user": "off",
+                                              "audience": "off"}})
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(cfg, fh)
         out = io.StringIO()
@@ -761,7 +763,13 @@ class SandboxStartupRefusalProbes(unittest.TestCase):
         from runner import runner as R
         td = tempfile.mkdtemp(prefix="hp-q9-")
         path = os.path.join(td, "config.json")
-        cfg = {"security": {"modes": {"confinement": mode}},
+        # Confinement is the mode under test; the other gates
+        # are stated off so their lockdown defaults cannot
+        # refuse the boot before -- or after -- the sandbox
+        # probe has spoken.
+        cfg = {"security": {"modes": {"confinement": mode,
+                                      "job_user": "off",
+                                      "audience": "off"}},
                "base_dir": td}
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(cfg, fh)

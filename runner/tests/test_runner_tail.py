@@ -700,9 +700,12 @@ class StartupTailTest(unittest.TestCase):
                     "smtp_port": 587,
                     # Stated off: the lockdown default would
                     # refuse this host at the confinement gate
-                    # before the diagnose dispatch under test.
+                    # -- and, with no runner_id configured, at
+                    # the audience gate -- before the diagnose
+                    # dispatch under test.
                     "security": {"modes": {"confinement": "off",
-                                           "job_user": "off"}},
+                                           "job_user": "off",
+                                           "audience": "off"}},
                 }))
             stack.enter_context(mock.patch.object(setup, "needs_setup", return_value=None))
             harness = stack.enter_context(mock.patch("runner.ops.harness.main", return_value=5))

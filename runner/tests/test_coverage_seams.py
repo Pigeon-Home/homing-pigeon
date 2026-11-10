@@ -511,9 +511,12 @@ class RunnerMainTest(unittest.TestCase):
         "mailbox_password": "pw",
         # Stated off: under the lockdown default these read
         # enforce and refuse startup on a host that cannot
-        # enforce them, before the dispatch under test.
+        # enforce them, and an unstated audience refuses
+        # startup with no runner_id configured -- all before
+        # the dispatch under test.
         "security": {"modes": {"confinement": "off",
-                               "job_user": "off"}},
+                               "job_user": "off",
+                               "audience": "off"}},
     }
 
     def _main(self, argv, text=None, present=True):

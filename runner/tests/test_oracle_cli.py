@@ -142,9 +142,12 @@ class OracleCliWiringTest(unittest.TestCase):
                 }, "base_dir": d,
                     # Stated off: the lockdown default would
                     # refuse this host at the confinement gate
-                    # before the oracle dispatch under test.
+                    # -- and, with no runner_id configured, at
+                    # the audience gate -- before the oracle
+                    # dispatch under test.
                     "security": {"modes": {"confinement": "off",
-                                           "job_user": "off"}}}, fh)
+                                           "job_user": "off",
+                                           "audience": "off"}}}, fh)
             with mock.patch("runner.runner.oracle_cli",
                             return_value=0) as cli, \
                     mock.patch("runner.runner.ensure_inference_ready"), \

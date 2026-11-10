@@ -611,6 +611,11 @@ class InfiniteRetryBugs(unittest.TestCase):
             "mailbox_password": SECRET,
             "shared_secret": SECRET,
             "max_job_age_sec": 3600,
+            # The gates are stated off: unstated, they read
+            # enforce, and the confinement refusal would arrive
+            # before the interpreter checks under test.
+            "security": {"modes": {"confinement": "off",
+                                   "job_user": "off"}},
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 

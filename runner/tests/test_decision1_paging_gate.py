@@ -46,8 +46,13 @@ STRONG_SECRET = ("unit-test-only-strong-secret-"
                  "a3bf4f1b2b0b822cd15d6c15b0f00a08")
 BASE = {"mailbox_user": "a@b.c", "mailbox_password": "p",
         "shared_secret": STRONG_SECRET,
+        # The gates this file is not about are stated off: an
+        # unstated audience reads enforce, and with no
+        # runner_id configured the phase-2 startup refusal
+        # would arrive before the paging gates under test.
         "security": {"modes": {"confinement": "off",
-                               "job_user": "off"}}}
+                               "job_user": "off",
+                               "audience": "off"}}}
 
 
 def run_main(extra):

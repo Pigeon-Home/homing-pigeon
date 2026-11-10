@@ -27,12 +27,32 @@ Each behavior change has a pin here:
 - the harness fixtures state their modes: the first-run
   scenario config, the remediation execute-job helpers, and
   the platform-proof / minimal-userland poll configs.
+
+A second round (head 8d43f123) applies the same pattern to
+what the first round missed:
+
+- the audience startup refusal at enforce (no runner_id
+  configured) stays exactly as landed -- pinned through
+  main() itself: unstated refuses with exit 2, stated enforce
+  with a runner named starts, audit warns and starts;
+- the audit-report flag fixture and the protocol-examples
+  rig state their modes, so the startup refusal and the
+  confinement refusal stop arriving before the paths those
+  tests measure (M3.audit_report and ORACLE.latitude in the
+  switch roster);
+- every CI smoke config -- the build workflow's Windows
+  legs, the docker workflow, the shared POSIX smoke script --
+  states audience off beside the platform gates it already
+  stated off, since a smoke config names no runner_id.
 """
+import io
 import json
 import os
+import re
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -202,6 +222,196 @@ class HarnessConfigsStateTheirModesTest(unittest.TestCase):
         modes = cfg["security"]["modes"]
         for feature in FEATURES:
             self.assertEqual(modes[feature], "off", feature)
+
+    def test_audit_report_flag_fixture_states_audience(self):
+        # The audit-report flag test drives main() itself, so the
+        # startup posture gates run before the dispatch. Its
+        # fixture states confinement and job_user off; it must
+        # state audience off as well, or the phase-2 startup
+        # refusal -- correct on a real deployment -- refuses the
+        # test's own startup (2 != 0 at head 8d43f123, identical
+        # on every platform it ran on).
+        import inspect
+        from runner.tests.test_audit_report import FlagIntegrationTest
+        src = inspect.getsource(FlagIntegrationTest.test_flag_via_main)
+        self.assertIn('"audience": "off"', src)
+
+    def test_protocol_examples_rig_states_its_modes(self):
+        # The protocol-examples rig exercises the Oracle's
+        # do-not-emit table: the interpreter check must be what
+        # refuses a missing binary. Unstated modes default to
+        # enforce, so on a machine with no confinement backend
+        # the confinement refusal arrived first and the measured
+        # string never appeared (ORACLE.latitude at 8d43f123).
+        from runner.tests.test_protocol_examples import (
+            DoNotEmitTableTest)
+        case = DoNotEmitTableTest(
+            "test_missing_binary_interpreter_is_rejected_below_repair")
+        case.setUp()
+        try:
+            modes = case.cfg["security"]["modes"]
+            self.assertEqual(modes["confinement"], "off")
+            self.assertEqual(modes["job_user"], "off")
+        finally:
+            case.tearDown()
+
+    def test_ci_smoke_configs_state_audience(self):
+        # Every smoke config in the build and docker workflows
+        # and in the shared POSIX smoke script states confinement
+        # off; each must state audience off as well. The smoke
+        # configs set no runner_id, so an unstated audience reads
+        # enforce and the phase-2 startup refusal legitimately
+        # refuses the smoke run before it starts -- the build
+        # workflow's platform legs failed at exactly this step.
+        cases = [
+            (os.path.join(REPO, ".github", "workflows", "build.yml"),
+             r"'modes':\s*\{([^}]*)\}", "'audience': 'off'", 2),
+            (os.path.join(REPO, ".github", "workflows", "docker.yml"),
+             r'"modes":\s*\{([^}]*)\}', '"audience": "off"', 1),
+            (os.path.join(REPO, "runner", "tools",
+                          "smoke_posix_binaries.sh"),
+             r'"modes":\s*\{([^}]*)\}', '"audience": "off"', 1),
+        ]
+        for path, pattern, needle, minimum in cases:
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            blocks = re.findall(pattern, text)
+            self.assertGreaterEqual(len(blocks), minimum, path)
+            for block in blocks:
+                self.assertIn("off", block, (path, block))
+                self.assertIn(needle, block, (path, block))
+
+
+class RoundTwoHarnessStatedModesTest(unittest.TestCase):
+    """The second round's fixtures, pinned the same way: every
+    harness that drives main() or runs a job states the gates
+    it is not about, so the phase-2 refusals -- startup and
+    job-level alike -- stop arriving before the path under
+    test. Where a harness's subject is the all-enforce posture
+    itself, the fixture names the runner instead of lowering
+    the mode: the audience gate binds to the name."""
+
+    def test_paging_gate_base_states_audience(self):
+        from runner.tests.test_decision1_paging_gate import BASE
+        self.assertEqual(BASE["security"]["modes"]["audience"],
+                         "off")
+
+    def test_coverage_rig_configs_state_audience(self):
+        from runner.tests.test_coverage_resolve import _cfg
+        self.assertEqual(
+            _cfg()["security"]["modes"]["audience"], "off")
+        from runner.tests.test_coverage_seams import RunnerMainTest
+        self.assertEqual(
+            RunnerMainTest._VALID["security"]["modes"]["audience"],
+            "off")
+
+    def test_secdoor_valid_twin_states_audience(self):
+        from runner.tests.test_secdoor_gate_audit import (
+            BAD_MODES, GOOD_MODES)
+        self.assertEqual(GOOD_MODES["modes"]["audience"], "off")
+        # The malformed twin keeps its bogus value: it is the
+        # shape the gate exists to refuse.
+        self.assertEqual(BAD_MODES["modes"]["audience"], "bogus")
+
+    def test_require_posture_base_names_the_runner(self):
+        from runner.tests.test_require_posture import BASE
+        self.assertTrue(BASE["runner_id"])
+
+    def test_main_driving_fixtures_state_audience_off(self):
+        # Source pins, in the build-config style: the stanza
+        # must be present in each harness fixed in this round.
+        files = [
+            "test_cli_options.py", "test_oracle_chat.py",
+            "test_oracle_cli.py", "test_oracle_tool_mode.py",
+            "test_runner_tail.py", "test_coverage_learnings.py",
+            "test_defaults_table_hunt.py",
+            "test_proof_conformance_p6.py",
+        ]
+        for name in files:
+            path = os.path.join(REPO, "runner", "tests", name)
+            with open(path, encoding="utf-8") as fh:
+                self.assertIn('"audience": "off"', fh.read(), name)
+
+    def test_job_running_fixtures_state_their_modes(self):
+        for name in ("test_protocol_and_edges.py",
+                     "test_extension_poison.py"):
+            path = os.path.join(REPO, "runner", "tests", name)
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            self.assertIn('"confinement": "off"', text, name)
+            self.assertIn('"job_user": "off"', text, name)
+
+    def test_conformance_refusal_expectation_matches_phase2(self):
+        # The p2 confinement chain pins the landed behavior:
+        # enforce with no sandbox refuses, on the record --
+        # the fallback wording survives only as the audit
+        # record's decision name for that refusal.
+        path = os.path.join(REPO, "runner", "tests",
+                            "test_proof_conformance_p2.py")
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertIn(
+            "test_enforce_without_a_sandbox_refuses_on_the_record",
+            text)
+        self.assertIn("confinement_unavailable", text)
+
+    def test_support_matrix_and_registry_follow_the_landings(self):
+        # The matrix's job_user line follows the Job Objects
+        # landing, and the defaults registry's doc line for
+        # max_job_bytes follows the README as it stands.
+        path = os.path.join(REPO, "runner", "tests",
+                            "test_support_matrix.py")
+        with open(path, encoding="utf-8") as fh:
+            self.assertIn(
+                "Enforce available via a Job Objects backend",
+                fh.read())
+        from runner.tests.defaults_registry import ROWS
+        row = [r for r in ROWS if r["key"] == "max_job_bytes"][0]
+        self.assertEqual(row["doc_line"], 449)
+
+
+class AudienceStartupRefusalStaysLandedTest(unittest.TestCase):
+    """Startup posture, phase 2 as landed: audience at enforce
+    with no runner_id refuses to start, before any dispatch.
+    The reconciliation moves the harnesses, never this refusal:
+    a stated off passes the gate, audit warns and passes, and
+    enforce with a runner named passes."""
+
+    def _run_main(self, cfg):
+        from runner.runner import main
+        with tempfile.TemporaryDirectory() as d:
+            cfg = dict(cfg, base_dir=d)
+            cfg_path = os.path.join(d, "config.json")
+            with open(cfg_path, "w") as fh:
+                json.dump(cfg, fh)
+            out, err = io.StringIO(), io.StringIO()
+            with mock.patch.object(sys, "argv",
+                                   ["runner", "--config", cfg_path,
+                                    "--audit-report", "--since", "14d"]):
+                with redirect_stdout(out), redirect_stderr(err):
+                    rc = main()
+            return rc, err.getvalue()
+
+    def test_unstated_audience_refuses_startup_without_runner_id(self):
+        rc, err = self._run_main({"security": {"modes": {
+            "confinement": "off", "job_user": "off"}}})
+        self.assertEqual(rc, 2)
+        self.assertIn("security.modes.audience is enforce but no "
+                      "runner_id is configured", err)
+
+    def test_stated_enforce_audience_with_runner_id_starts(self):
+        rc, _ = self._run_main({"runner_id": "pin-runner",
+                                "security": {"modes": {
+                                    "confinement": "off",
+                                    "job_user": "off",
+                                    "audience": "enforce"}}})
+        self.assertEqual(rc, 0)
+
+    def test_audit_audience_without_runner_id_warns_and_starts(self):
+        rc, _ = self._run_main({"security": {"modes": {
+            "confinement": "off", "job_user": "off",
+            "audience": "audit"}}})
+        self.assertEqual(rc, 0)
 
 
 if __name__ == "__main__":

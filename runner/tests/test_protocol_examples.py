@@ -94,6 +94,13 @@ class _CycleRig(unittest.TestCase):
             "max_job_age_sec": 3600,
             "max_output_bytes": 100000,
             "default_timeout_sec": 300,
+            # The gates this rig is not about are stated off:
+            # unstated, they default to enforce, and on a host
+            # with no confinement backend the confinement
+            # refusal would arrive before the interpreter and
+            # verdict paths under test.
+            "security": {"modes": {"confinement": "off",
+                                   "job_user": "off"}},
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 

@@ -756,7 +756,12 @@ class WindowsPathAndCapTest(unittest.TestCase):
             with mock.patch("runner.runner.os.name", "nt"), \
                  mock.patch("runner.runner.subprocess.Popen", return_value=proc) as popen:
                 result = execute_job(
-                    {"max_output_bytes": "1MB", "default_timeout_sec": 5},
+                    {"max_output_bytes": "1MB", "default_timeout_sec": 5,
+                     # The cap is the subject; the gates are
+                     # stated off so the lockdown default cannot
+                     # refuse the job before it runs.
+                     "security": {"modes": {"confinement": "off",
+                                            "job_user": "off"}}},
                     job, d)
             popen.assert_called_once()
             argv = popen.call_args.args[0]

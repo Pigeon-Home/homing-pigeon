@@ -274,12 +274,14 @@ class FlagIntegrationTest(unittest.TestCase):
         from runner.runner import main
         with tempfile.TemporaryDirectory() as d:
             cfg_path = os.path.join(d, "config.json")
-            # The platform gates are stated off: under the
-            # lockdown default they would refuse this host
-            # before the audit-report dispatch is reached.
+            # The platform gates and the audience gate are
+            # stated off: under the lockdown default they
+            # would refuse this host before the audit-report
+            # dispatch is reached.
             json.dump({"base_dir": d,
                        "security": {"modes": {"confinement": "off",
-                                              "job_user": "off"}}},
+                                              "job_user": "off",
+                                              "audience": "off"}}},
                       open(cfg_path, "w"))
             buf = io.StringIO()
             with mock.patch.object(sys, "argv", ["runner", "--config",

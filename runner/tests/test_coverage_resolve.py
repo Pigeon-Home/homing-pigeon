@@ -26,10 +26,13 @@ def _cfg(**extra):
         "mailbox_password": "pw",
         # Stated off: under the lockdown default these read
         # enforce and refuse startup on a host that cannot
-        # enforce them, which is not what these tests drive. An
-        # extra "security" block replaces this one wholesale.
+        # enforce them, and an unstated audience refuses
+        # startup with no runner_id configured -- none of
+        # which is what these tests drive. An extra "security"
+        # block replaces this one wholesale.
         "security": {"modes": {"confinement": "off",
-                               "job_user": "off"}},
+                               "job_user": "off",
+                               "audience": "off"}},
     }
     cfg.update(extra)
     return cfg

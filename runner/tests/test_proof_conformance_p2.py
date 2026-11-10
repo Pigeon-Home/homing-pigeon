@@ -231,7 +231,9 @@ class ConfinementChainTest(unittest.TestCase):
     """Clauses 1 and 4: the confinement chain is computed from
     the owner's configuration; audit records the decision
     enforce would have made; an unavailable sandbox in enforce
-    mode falls back loudly, on the record."""
+    mode refuses the job, loudly, on the record (phase 2: the
+    refusal replaced the fallback this class once pinned --
+    the job never runs weaker)."""
 
     def _argv(self, cfg, base_dir, **over):
         call = {"interpreter": ["sh"], "script_path": "/w/job.sh",
@@ -264,18 +266,19 @@ class ConfinementChainTest(unittest.TestCase):
                 and e.get("decision") == "would_sandbox"
                 for e in entries), entries)
 
-    def test_enforce_without_a_sandbox_falls_back_on_the_record(self):
+    def test_enforce_without_a_sandbox_refuses_on_the_record(self):
         cfg = {"security": {"modes": {"confinement": "enforce"}}}
         with tempfile.TemporaryDirectory() as td:
             with mock.patch.object(runner._sandbox,
                                    "sandbox_available",
                                    return_value=False):
-                argv, _host, sandboxed = self._argv(cfg, td)
-            self.assertEqual(argv, ["sh", "/w/job.sh"])
-            self.assertFalse(sandboxed)
+                with self.assertRaises(runner.JobRejected):
+                    self._argv(cfg, td)
             entries = _audit_entries(td)
             self.assertTrue(any(
-                e.get("decision") == "fallback" for e in entries),
+                e.get("decision") == "fallback"
+                and e.get("reason") == "confinement_unavailable"
+                for e in entries),
                 entries)
 
     def test_enforce_with_a_sandbox_wraps_the_job(self):

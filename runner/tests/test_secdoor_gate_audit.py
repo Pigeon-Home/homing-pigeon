@@ -80,10 +80,14 @@ STRONG_SECRET = "ab" * 32
 # A config whose only malformed element is one mode value --
 # exactly the shape sec_mode reads as "off" when it is reached
 # without the gate. confinement and job_user are off so a valid
-# twin of this config starts cleanly on any platform.
+# twin of this config starts cleanly on any platform, and the
+# twin states audience off as well: unstated, it reads enforce
+# and the phase-2 startup refusal (no runner_id configured)
+# would refuse the twin before the branch under test.
 BAD_MODES = {"modes": {"confinement": "off", "job_user": "off",
                        "audience": "bogus"}}
-GOOD_MODES = {"modes": {"confinement": "off", "job_user": "off"}}
+GOOD_MODES = {"modes": {"confinement": "off", "job_user": "off",
+                         "audience": "off"}}
 
 
 def run_main(security, argv_extra):
@@ -211,7 +215,12 @@ class NonDictConfigTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "config.json")
             with open(path, "w", encoding="utf-8") as fh:
-                json.dump({"security": GOOD_MODES}, fh)
+                # Audience is unstated here on purpose: the
+                # loaded config must still read it as the
+                # enforce default (GOOD_MODES states it off
+                # for the branch twins, so it cannot serve).
+                json.dump({"security": {"modes": {
+                    "confinement": "off", "job_user": "off"}}}, fh)
             cfg = RR.load_config(path)
         self.assertIsInstance(cfg, dict)
         self.assertEqual(S.sec_mode(cfg, "audience"), "enforce")

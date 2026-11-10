@@ -413,8 +413,13 @@ class StartupValidationTest(unittest.TestCase):
         tmpdir = tempfile.mkdtemp(prefix="hp-f2-main-")
         cfg = {"mailbox_user": "a@b.c", "mailbox_password": "p",
                "shared_secret": STRONG_SECRET,
+               # Stated off: unstated, the modes read enforce
+               # and refuse this host -- audience at startup,
+               # with no runner_id configured -- before the
+               # tool-mode validation under test.
                "security": {"modes": {"confinement": "off",
-                                      "job_user": "off"}},
+                                      "job_user": "off",
+                                      "audience": "off"}},
                "base_dir": tmpdir}
         cfg.update(extra)
         cfg_path = os.path.join(tmpdir, "config.json")

@@ -157,7 +157,13 @@ class CliFlagTest(unittest.TestCase):
 
 
 BASE = {"mailbox_user": "a@b.c", "mailbox_password": "p",
-        "shared_secret": STRONG_SECRET}
+        "shared_secret": STRONG_SECRET,
+        # The runner is named: audience stays at its enforce
+        # default in these startups, and the phase-2 audience
+        # gate binds to the name instead of refusing a startup
+        # that has nothing to bind to. The require-posture
+        # assertion is the gate under test here.
+        "runner_id": "posture-probe"}
 
 
 def _run_main(extra, argv_extra=("--posture",), sandbox_ok=True,
