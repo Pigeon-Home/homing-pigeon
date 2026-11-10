@@ -67,7 +67,11 @@ FreeBSD from the sdist. Every platform that ships is tested on a
 real kernel of that platform; the table is what each one proves
 and how often. The FreeBSD leg is the one without a green run
 yet: its VM step has failed on every run so far, so its row is
-the proof it is built to give, not one given.
+the proof it is built to give, not one given. A dedicated node
+running FreeBSD 14.5-RELEASE has since stood up in the
+project's own fleet (2026-11-10) to give the leg a real kernel
+of its own; the runner's bring-up on that node is in progress,
+and the leg's first green run is still owed.
 
 | Platform | Suite | Switch proofs (the roster) | Built binaries | When |
 |---|---|---|---|---|

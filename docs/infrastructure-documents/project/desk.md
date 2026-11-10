@@ -106,6 +106,23 @@ written by `runner/tools/build_stamp.py`): the startup log
 names the source commit beside the version when a build
 carries one, and prints the version alone for a plain checkout.
 
+Also landed in this pass: a real FreeBSD node in the fleet.
+A dedicated host now boots FreeBSD 14.5-RELEASE
+(releng/14.5-n274872-4099b5c82880, GENERIC, amd64) and answers
+SSH with the fleet key (stood up 2026-11-10). Until now the
+project's only FreeBSD was a VM step inside a Linux CI runner,
+and that step has never produced a green run, so the platform
+table's FreeBSD row has always been a proof owed rather than
+a proof given. The node closes that gap in kind: the leg now
+has a real kernel of its own to be proven on. The runner's
+bring-up on the node — the install from the tree, and a first
+proof job through the node's mailbox — is in progress as this
+stands. The node's first green run is recorded where it lands
+when it lands, and the platform claims in
+`docs/support-matrix.md` and
+`docs/infrastructure-documents/project/testing.md` do not move
+until it does.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
