@@ -81,31 +81,47 @@ class JobUserTest(unittest.TestCase):
         with mock.patch.object(rr, "_security", None):
             self.assertIsNone(rr._job_user_preexec(
                 {}, self.base, "j", self.work))
+        # Windows under audit: the unsupported-platform record is
+        # written and the job runs (None). Under enforce the same
+        # record is written and the job is refused -- startup
+        # already refuses enforce there; this is the job-time
+        # backstop for a config changed under a running runner.
         with mock.patch.object(rr.os, "name", "nt"), \
-                mock.patch.object(rr, "_security", self._sec()):
+                mock.patch.object(rr, "_security", self._sec("audit")):
             self.assertIsNone(rr._job_user_preexec(
                 {}, self.base, "j", self.work))
+        with mock.patch.object(rr.os, "name", "nt"), \
+                mock.patch.object(rr, "_security", self._sec()):
+            with self.assertRaises(rr.JobRejected):
+                rr._job_user_preexec(
+                    {}, self.base, "j", self.work)
 
-    def test_a_non_root_caller_and_an_unknown_user_fall_back(self):
+    def test_a_non_root_caller_and_an_unknown_user_refuse(self):
+        # Phase 2 of the default-posture work: under enforce the
+        # fallback is recorded and the job is refused, never run
+        # as the current user.
         cfg = {"security": {"job_user": {"user": "jobber"}}}
         face = self._face()
         face.euid.return_value = 1000
         with mock.patch.object(rr, "_security", self._sec()):
-            self.assertIsNone(rr._job_user_preexec(
-                cfg, self.base, "j", self.work, face=face))
+            with self.assertRaises(rr.JobRejected):
+                rr._job_user_preexec(
+                    cfg, self.base, "j", self.work, face=face)
         face.euid.return_value = 0
         face.getpwnam.side_effect = KeyError("jobber")
         with mock.patch.object(rr, "_security", self._sec()):
-            self.assertIsNone(rr._job_user_preexec(
-                cfg, self.base, "j", self.work, face=face))
+            with self.assertRaises(rr.JobRejected):
+                rr._job_user_preexec(
+                    cfg, self.base, "j", self.work, face=face)
 
-    def test_a_chown_failure_falls_back_and_a_success_demotes(self):
+    def test_a_chown_failure_refuses_and_a_success_demotes(self):
         cfg = {"security": {"job_user": {"user": "jobber"}}}
         face = self._face()
         face.chown.side_effect = OSError("nope")
         with mock.patch.object(rr, "_security", self._sec()):
-            self.assertIsNone(rr._job_user_preexec(
-                cfg, self.base, "j", self.work, face=face))
+            with self.assertRaises(rr.JobRejected):
+                rr._job_user_preexec(
+                    cfg, self.base, "j", self.work, face=face)
         face.chown.side_effect = None
         face.initgroups.side_effect = OSError("groups")
         with mock.patch.object(rr, "_security", self._sec()):

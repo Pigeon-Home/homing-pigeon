@@ -597,14 +597,19 @@ class AllEnforceParityTest(unittest.TestCase):
       before, with no security denial added (ENFORCE_NO_RESULT).
     - The sensor alert is ingested, as before: seen, no result.
     - confinement and job_user at enforce wrap every exec job that
-      reaches execution (ENFORCE_EXEC_JOBS). Neither is a refusal
-      gate on the poll path: confinement's documented fallback
-      chain runs the job unsandboxed and audits "fallback" when
-      the sandbox cannot engage, and job_user likewise falls back
-      when the drop cannot happen (no root, no such user, or a
-      platform with no setuid demote, where the entry is
-      "unsupported_platform"). The expected decision is therefore
-      keyed to the same capability probes the runner itself uses.
+      reaches execution (ENFORCE_EXEC_JOBS). Since phase 2 of the
+      default-posture work they are refusal gates at execution
+      time: when the mechanism cannot engage -- the sandbox
+      unavailable or unbuildable, the demote impossible (no root,
+      no such user, an unchownable workdir, or a platform with no
+      setuid demote, where the entry is "unsupported_platform") --
+      the fallback is recorded and the job is refused (a
+      rejection result, exit -2), never run weaker. The expected
+      outcomes are therefore keyed to the same capability probes
+      the runner itself uses: where both mechanisms can engage,
+      the jobs run; where one cannot, the exec jobs are refused
+      by the first wrap that cannot engage (confinement is
+      consulted before job_user).
     """
 
     # job_id -> (exit_code, stdout/stderr substring or None)
@@ -663,13 +668,33 @@ class AllEnforceParityTest(unittest.TestCase):
         self.assertEqual(enf["flagged"], off["flagged"])
         self.assertEqual(len(enf["flagged"]), len(corpus))
 
+        # Whether the two execution wraps can engage on this
+        # machine, by the runner's own probes. Confinement has
+        # three shapes: unavailable (its refusal ends the job),
+        # available and engaging (the job runs sandboxed), and
+        # the middle shape -- bwrap present but the startup
+        # trial fails -- where the argv is built and audited
+        # "sandboxed" and bwrap then fails at start, so neither
+        # the recorded results nor the refusal leg describes the
+        # exec jobs and only their audit decisions are asserted.
+        conf_avail = _sandbox.sandbox_available()
+        conf_refuses = not conf_avail
+        conf_runs = conf_avail and ENGAGES
+        ju_ok = os.name != "nt" and IS_ROOT and HAS_TEST_USER
+        wraps_run = conf_runs and ju_ok
+        exec_refused = conf_refuses or (conf_runs and not ju_ok)
+
         # Compliant jobs: the same result as with the features off,
         # byte for byte after normalization (the denied jobs sit
         # after every compliant one in the corpus, so no result
         # sequence number shifts), carrying the recorded exit code
-        # and output.
+        # and output. The exec jobs are the exception when a wrap
+        # cannot engage here: the wrap refuses them, and their
+        # expectation is the rejection leg below.
         off_sent = _sent_by_id(off)
         for job_id, (exit_code, text) in self.ENFORCE_RESULTS.items():
+            if job_id in self.ENFORCE_EXEC_JOBS and not wraps_run:
+                continue
             with self.subTest(job_id=job_id):
                 self.assertIn(job_id, enf_sent)
                 self.assertEqual(enf_sent[job_id], off_sent[job_id])
@@ -678,6 +703,16 @@ class AllEnforceParityTest(unittest.TestCase):
                 if text is not None:
                     self.assertIn(text, enf_sent[job_id])
                 self.assertIn(job_id, enf_seen)
+        if exec_refused:
+            # The refused exec jobs: a rejection result (exit -2,
+            # "job rejected: ..."), still delivered and seen --
+            # refused by the wrap, not dropped.
+            for job_id in self.ENFORCE_EXEC_JOBS:
+                with self.subTest(job_id=job_id):
+                    self.assertIn(job_id, enf_sent)
+                    self.assertIn('"exit_code":-2', enf_sent[job_id])
+                    self.assertIn("job rejected", enf_sent[job_id])
+                    self.assertIn(job_id, enf_seen)
         # The replayed second copy produced no second result.
         self.assertEqual(
             len([s for s, _ in enf["sent"] if "parity-09" in s]), 1)
@@ -740,23 +775,22 @@ class AllEnforceParityTest(unittest.TestCase):
 
         # confinement and job_user wrapped every exec job that
         # reached execution, with the decision this machine's
-        # capabilities dictate.
+        # capabilities dictate. Confinement is consulted first:
+        # where it cannot engage, its refusal ends the job before
+        # job_user is reached, so job_user leaves no entries.
         conf = {e["job_id"]: e["decision"] for e in enf_entries
                 if e.get("feature") == "confinement"}
         self.assertEqual(set(conf), self.ENFORCE_EXEC_JOBS)
-        want_conf = ("sandboxed" if _sandbox.sandbox_available()
-                     else "fallback")
+        want_conf = "sandboxed" if conf_avail else "fallback"
         self.assertEqual(set(conf.values()), {want_conf})
         ju = {e["job_id"]: e["decision"] for e in enf_entries
               if e.get("feature") == "job_user"}
-        self.assertEqual(set(ju), self.ENFORCE_EXEC_JOBS)
-        if os.name == "nt":
-            want_ju = "unsupported_platform"
-        elif IS_ROOT and HAS_TEST_USER:
-            want_ju = "run_as"
+        if conf_refuses:
+            self.assertEqual(ju, {})
         else:
-            want_ju = "fallback"
-        self.assertEqual(set(ju.values()), {want_ju})
+            self.assertEqual(set(ju), self.ENFORCE_EXEC_JOBS)
+            want_ju = "run_as" if ju_ok else "fallback"
+            self.assertEqual(set(ju.values()), {want_ju})
 
     @unittest.skipUnless(IS_ROOT and HAS_TEST_USER and os.name != "nt",
                          "needs root and the pigeon-test user")

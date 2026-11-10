@@ -136,17 +136,23 @@ class JobUserFaceTest(unittest.TestCase):
             return _job_user_preexec(
                 cfg or _cfg(), directory, "job-1", work, face=face)
 
-    def test_not_root_does_not_demote(self):
-        fn = self._run(_Face(euid=1000))
-        self.assertIsNone(fn)
+    def test_not_root_refuses_the_job(self):
+        # Under enforce a demote that cannot happen refuses the
+        # job (phase 2 of the default-posture work); it no longer
+        # returns None and lets the job run as the current user.
+        from runner.runner import JobRejected
+        with self.assertRaises(JobRejected):
+            self._run(_Face(euid=1000))
 
-    def test_an_unknown_user_does_not_demote(self):
-        fn = self._run(_Face(pwnam=KeyError("job")))
-        self.assertIsNone(fn)
+    def test_an_unknown_user_refuses_the_job(self):
+        from runner.runner import JobRejected
+        with self.assertRaises(JobRejected):
+            self._run(_Face(pwnam=KeyError("job")))
 
-    def test_a_chown_failure_does_not_demote(self):
-        fn = self._run(_Face(chown_error=OSError("denied")))
-        self.assertIsNone(fn)
+    def test_a_chown_failure_refuses_the_job(self):
+        from runner.runner import JobRejected
+        with self.assertRaises(JobRejected):
+            self._run(_Face(chown_error=OSError("denied")))
 
     def test_enforce_chowns_the_tree_and_returns_a_demote(self):
         face = _Face(mode=0o700)  # no other-execute, so chmod runs

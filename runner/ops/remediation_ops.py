@@ -120,11 +120,12 @@ def job_user_startup_problem(cfg, platform=None, face=None):
     class, the same one confinement's startup_problem guards).
     On POSIX the demote needs root and a resolvable configured
     user: a runner that is not root, or whose configured user
-    cannot be resolved, would start and then fall back per job --
-    running every job as the runner's own account under a mode
-    that promises otherwise -- so both refuse at startup instead
-    (Q132). A user that exists at startup and is removed later
-    still reaches the job-time fallback in _job_user_preexec.
+    cannot be resolved, would start and then run every job as
+    the runner's own account under a mode that promises
+    otherwise -- so both refuse at startup instead (Q132). A
+    user that exists at startup and is removed later reaches
+    the job-time path in _job_user_preexec, which records the
+    fallback and refuses the job under enforce.
     platform defaults to sys.platform; tests pass it, and a fake
     face when they script the syscalls.
     """
@@ -164,8 +165,9 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
         return None
     if os.name == "nt":
         # The demote cannot engage on Windows. Enforce is refused
-        # at startup (job_user_startup_problem); audit still leaves
-        # its record here instead of the old silent return.
+        # at startup (job_user_startup_problem); a job that still
+        # reaches this path under enforce is refused here too,
+        # while audit leaves its record and runs, as before.
         _runner()._security.bump_evaluated(base_dir, "job_user")
         try:
             _runner()._security.write_audit_entry(
@@ -174,6 +176,10 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
                 mode=mode)
         except Exception:
             pass
+        if mode == "enforce":
+            raise _runner().JobRejected(
+                "job_user is POSIX-only; job refused under "
+                "security.modes.job_user=enforce")
         return None
     face = face or _runner()._JobUserFace()
     _runner()._security.bump_evaluated(base_dir, "job_user")
@@ -196,19 +202,26 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
     if mode == "audit":
         _audit("would_run_as", "would_run_as_user", user)
         return None
-    # enforce from here on
+    # enforce from here on: a demote that cannot happen refuses
+    # the job. The fallback is recorded first, in the same shape
+    # it always had, so the audit trail still names the step-down
+    # that was refused.
     if face.euid() != 0:
-        R.log(f"job {job_id}: job_user needs root; running as current "
-            f"user", "WARN")
+        R.log(f"job {job_id}: job_user needs root; refusing the job "
+            f"under enforce", "WARN")
         _audit("fallback", "job_user_needs_root")
-        return None
+        raise _runner().JobRejected(
+            "job_user needs root; job refused under "
+            "security.modes.job_user=enforce")
     try:
         pw = face.getpwnam(user)
     except (ImportError, KeyError) as e:
-        R.log(f"job {job_id}: job_user {user!r} unavailable ({e}); running "
-            f"as current user", "WARN")
+        R.log(f"job {job_id}: job_user {user!r} unavailable ({e}); "
+            f"refusing the job under enforce", "WARN")
         _audit("fallback", "job_user_unavailable", str(e))
-        return None
+        raise _runner().JobRejected(
+            f"job_user {user!r} unavailable ({e}); job refused under "
+            "security.modes.job_user=enforce")
     # The job must own its workdir to read the script and write output.
     try:
         for root, dirs, files in face.walk(work):
@@ -234,9 +247,11 @@ def _job_user_preexec(cfg, base_dir, job_id, work, face=None):
                 break
     except OSError as e:
         R.log(f"job {job_id}: cannot chown workdir to {user} ({e}); "
-            f"running as current user", "WARN")
+            f"refusing the job under enforce", "WARN")
         _audit("fallback", "job_user_chown_failed", str(e))
-        return None
+        raise _runner().JobRejected(
+            f"cannot chown workdir to {user} ({e}); job refused "
+            "under security.modes.job_user=enforce")
     _audit("run_as", "ran_as_user", user)
 
     def _demote():

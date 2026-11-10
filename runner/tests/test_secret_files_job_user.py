@@ -191,6 +191,30 @@ def _run(cfg_extra, job):
     return result, audit
 
 
+def _run_refused(cfg_extra, job):
+    """execute_job, expecting a JobRejected refusal; returns the
+    audit rows the refused run left in its base dir."""
+    from runner.runner import JobRejected
+    tmpdir = tempfile.mkdtemp(prefix="hp-m8-")
+    cfg = {"base_dir": tmpdir}
+    cfg.update(cfg_extra)
+    try:
+        execute_job(cfg, job, tmpdir)
+    except JobRejected:
+        pass
+    else:
+        raise AssertionError("the job was not refused")
+    audit = []
+    path = os.path.join(tmpdir, S.AUDIT_FILE)
+    if os.path.exists(path):
+        for line in open(path, encoding="utf-8"):
+            try:
+                audit.append(json.loads(line))
+            except ValueError:
+                pass
+    return audit
+
+
 def _ju(mode, user="pigeon-test"):
     # Confinement is stated off alongside: these tests are about
     # job_user, and under the lockdown default an unstated
@@ -241,12 +265,14 @@ class JobUserTest(unittest.TestCase):
                 S.validate_security_config(
                     {"security": {"job_user": {"user": "no-such-user-zzz"}}})
 
-    @unittest.skipUnless(POSIX, "job_user fallback is POSIX")
-    def test_non_root_falls_back(self):
+    @unittest.skipUnless(POSIX, "job_user refusal is POSIX")
+    def test_non_root_refuses_the_job(self):
+        # Phase 2 of the default-posture work: under enforce a
+        # runner that is not root refuses the job; the fallback
+        # is recorded, and the job never runs as the current user.
         with mock.patch.object(os, "geteuid", return_value=1000):
-            result, audit = _run(
+            audit = _run_refused(
                 _ju("enforce"), _job("m8-nr", "print('hi')"))
-        self.assertEqual(result["stdout"].strip(), "hi")
         self.assertEqual(audit[0]["decision"], "fallback")
         self.assertEqual(audit[0]["reason"], "job_user_needs_root")
 
@@ -365,17 +391,16 @@ class JobUserTest(unittest.TestCase):
 
     @unittest.skipUnless(IS_ROOT and POSIX,
                          "needs root and the pigeon-test user")
-    def test_enforce_user_gone_at_job_time_falls_back(self):
+    def test_enforce_user_gone_at_job_time_refuses(self):
         # Startup refuses a user that does not exist
         # (test_bad_config_rejected); a user deleted after
         # startup reaches the job-time path instead, which
-        # audits a fallback and runs as the current user --
-        # never silently as the missing user.
-        result, audit = _run(
+        # records the fallback and refuses the job -- it never
+        # runs as the current user under a mode that promises
+        # the demote.
+        audit = _run_refused(
             _ju("enforce", user="pigeon-ghost-zzz"),
             _job("m8-ghost", "import os; print('uid:', os.getuid())"))
-        self.assertEqual(result["exit_code"], 0, result["stderr"])
-        self.assertIn("uid: %d" % os.getuid(), result["stdout"])
         self.assertEqual(audit[0]["decision"], "fallback")
         self.assertEqual(audit[0]["reason"], "job_user_unavailable")
 

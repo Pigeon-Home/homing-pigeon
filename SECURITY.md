@@ -554,8 +554,10 @@ downgrade (`docs/steady/present-but-invalid-config.md`). Extra
 binds are not part of the trial: they name operator paths and are
 applied per job. If bwrap
 leaves `PATH` after a successful start, or the sandbox command
-cannot be built, a job falls back loudly: the runner warns, audits a
-`fallback` decision, and runs it normally. If bwrap is still present
+cannot be built, the fallback is recorded and the job is refused:
+the runner warns, audits a `fallback` decision, and does not run
+the job at all -- under `enforce` a job never runs unsandboxed.
+If bwrap is still present
 but fails to start, the job fails. Each sandboxed job is audited as
 `sandboxed`. `audit` mode runs normally and records a `would_sandbox`
 decision (reason `would_run_sandboxed`), with or without bwrap.
@@ -583,7 +585,8 @@ refuses when either fails, rather than starting and running jobs
 as the runner's own account. A user that exists at startup and is
 removed later, or a workdir that cannot be chown'd, is met at job
 time instead: the runner warns loudly, audits a `fallback`
-decision, and runs that job as the current user. Each job run as
+decision, and refuses that job -- under `enforce` a job never
+runs as the current user in place of the demote. Each job run as
 the configured user is audited as `run_as`. `audit` mode runs
 normally and records a `would_run_as` decision (reason
 `would_run_as_user`).

@@ -332,10 +332,11 @@ verify_body_keyed = _verify.verify_body_keyed
 _job_encryption_setting = _verify._job_encryption_setting
 _outgoing_result_body = _verify._outgoing_result_body
 
-# Hardening M6: Linux confinement fallback chain. Returns
+# Hardening M6: Linux confinement. Returns
 # (argv, use_host_env, sandboxed). In enforce mode the job runs inside
 # bwrap; when bwrap is unavailable (non-Linux, missing binary, build
-# failure) it warns loudly, audits the fallback, and runs normally.
+# failure) it warns loudly, audits the fallback, and refuses the job
+# (JobRejected) -- under enforce the job never runs unsandboxed.
 # Audit mode runs normally and records what enforce would have done.
 def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
                       work, args, env):
@@ -364,9 +365,12 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
     # enforce from here on
     if not _sandbox.sandbox_available():
         log(f"job {job_id}: confinement unavailable on this machine "
-            f"({sys.platform}); running unsandboxed", "WARN")
+            f"({sys.platform}); refusing the job under enforce", "WARN")
         _audit("fallback", "confinement_unavailable")
-        return normal
+        raise JobRejected(
+            "confinement unavailable on this machine "
+            f"({sys.platform}); job refused under "
+            "security.modes.confinement=enforce")
     # enforce
     notes = []
     try:
@@ -375,9 +379,11 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
             work, args, env, notes=notes)
     except RuntimeError as e:
         log(f"job {job_id}: cannot build sandbox ({e}); "
-            f"running unsandboxed", "WARN")
+            f"refusing the job under enforce", "WARN")
         _audit("fallback", "confinement_build_failed", str(e))
-        return normal
+        raise JobRejected(
+            f"cannot build sandbox ({e}); job refused under "
+            "security.modes.confinement=enforce")
     for note in notes:
         log(f"job {job_id}: sandbox: {note}", "INFO")
     _audit("sandboxed", "sandboxed", "; ".join(notes))
@@ -386,8 +392,9 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
 
 # Hardening M8: run jobs as a different POSIX user. Returns a preexec_fn
 # that drops privileges, or None. When a fn is returned the workdir has
-# been chown'd to the job user. Root-only; otherwise warns loudly,
-# audits the fallback, and runs as the current user.
+# been chown'd to the job user. Root-only; under enforce a demote that
+# cannot happen warns loudly, audits the fallback, and refuses the job
+# instead of running it as the current user.
 class _JobUserFace:
     """The syscalls job_user needs. Tests pass a fake; the runner uses this."""
 

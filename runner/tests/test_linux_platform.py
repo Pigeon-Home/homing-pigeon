@@ -623,18 +623,25 @@ class ConfinementDecisionTest(unittest.TestCase):
             self.assertEqual(row["decision"], "would_sandbox")
             self.assertEqual(row["mode"], "audit")
 
-    def test_enforce_falls_back_when_bwrap_or_the_build_is_missing(self):
+    def test_enforce_refuses_when_bwrap_or_the_build_is_missing(self):
+        # Phase 2 of the default-posture work: under enforce the
+        # job is refused, never run unsandboxed. The fallback is
+        # still recorded -- the audit row keeps the fallback
+        # decision and its reason -- but no argv comes back and
+        # no process starts.
+        from runner.runner import JobRejected
         with tempfile.TemporaryDirectory() as d:
             with mock.patch("runner.runner._sandbox.sandbox_available",
                             return_value=False), \
                  mock.patch("runner.runner.subprocess.Popen") as popen:
-                argv, host, boxed = _confinement_argv(
-                    _conf("enforce"), d, "j", ["python3"], "/w/s.sh",
-                    "/w", [], {})
+                with self.assertRaises(JobRejected):
+                    _confinement_argv(
+                        _conf("enforce"), d, "j", ["python3"], "/w/s.sh",
+                        "/w", [], {})
             popen.assert_not_called()
-            self.assertTrue(host)
-            self.assertFalse(boxed)
-            self.assertEqual(_audit_rows(d)[-1]["reason"],
+            row = _audit_rows(d)[-1]
+            self.assertEqual(row["decision"], "fallback")
+            self.assertEqual(row["reason"],
                              "confinement_unavailable")
 
             with mock.patch("runner.runner._sandbox.sandbox_available",
@@ -642,12 +649,13 @@ class ConfinementDecisionTest(unittest.TestCase):
                  mock.patch("runner.runner._sandbox.build_bwrap_command",
                             side_effect=RuntimeError("no interpreter")), \
                  mock.patch("runner.runner.subprocess.Popen") as popen:
-                argv, host, boxed = _confinement_argv(
-                    _conf("enforce"), d, "j", ["python3"], "/w/s.sh",
-                    "/w", [], {})
+                with self.assertRaises(JobRejected):
+                    _confinement_argv(
+                        _conf("enforce"), d, "j", ["python3"], "/w/s.sh",
+                        "/w", [], {})
             popen.assert_not_called()
-            self.assertFalse(boxed)
             row = _audit_rows(d)[-1]
+            self.assertEqual(row["decision"], "fallback")
             self.assertEqual(row["reason"], "confinement_build_failed")
             self.assertIn("no interpreter", row["detail"])
 

@@ -293,34 +293,63 @@ class FallbackTest(unittest.TestCase):
         self.assertEqual(result["stdout"].strip(), "hi")
         self.assertEqual(audit, [])
 
-    def test_default_is_enforce_and_falls_back_loudly(self):
+    def test_default_is_enforce_and_refuses_without_a_sandbox(self):
         if BWRAP_HERE and not ENGAGES:
             # bwrap is installed but cannot start (the env-axes
             # restriction-1 leg): the startup probe refuses this
             # host under enforce (Q9/Q10 above), so no default-
             # posture run exists here to compare -- the attempt
-            # dies inside bwrap, which is neither the fallback
+            # dies inside bwrap, which is neither the refusal
             # below nor a working sandbox.
             self.skipTest("sandbox cannot engage on this machine "
                           "(startup probe)")
         # No security block: confinement reads enforce (the
-        # lockdown default). On a host without a sandbox the job
-        # still runs -- the fallback -- but the audit log carries
-        # the fallback row, where explicit off stays silent.
+        # lockdown default). Phase 2 of the default-posture
+        # work: on a host where the sandbox cannot engage the
+        # job is refused, never run unsandboxed -- and the audit
+        # log carries the fallback row, where explicit off
+        # stays silent.
+        from runner.runner import JobRejected
+
+        def _refused_audit(cfg_extra, job):
+            tmpdir = tempfile.mkdtemp(prefix="hp-m6-")
+            cfg = {"base_dir": tmpdir}
+            cfg.update(cfg_extra)
+            with self.assertRaises(JobRejected):
+                execute_job(cfg, job, tmpdir)
+            rows = []
+            path = os.path.join(tmpdir, S.AUDIT_FILE)
+            if os.path.exists(path):
+                for line in open(path, encoding="utf-8"):
+                    try:
+                        rows.append(json.loads(line))
+                    except ValueError:
+                        pass
+            return rows
+
+        if not SB.sandbox_available():
+            audit = _refused_audit({}, _job("m6-a", "print(40 + 2)"))
+            # Count confinement's rows only: the default leg
+            # leaves the other features unstated too, and their
+            # rows are not this test's subject.
+            conf_rows = [r for r in audit
+                         if r.get("feature") == "confinement"]
+            self.assertEqual(len(conf_rows), 1)
+            self.assertEqual(conf_rows[0]["decision"], "fallback")
+            self.assertEqual(conf_rows[0]["mode"], "enforce")
+            r2, a2, _ = _run(_conf("off"), _job("m6-b", "print(40 + 2)"))
+            self.assertEqual(r2["stdout"].strip(), "42")
+            self.assertEqual(a2, [])
+            return
         r1, a1, _ = _run({}, _job("m6-a", "print(40 + 2)"))
         r2, a2, _ = _run(_conf("off"), _job("m6-b", "print(40 + 2)"))
         self.assertEqual(r1["stdout"], r2["stdout"])
         self.assertEqual(r1["exit_code"], r2["exit_code"])
         self.assertEqual(a2, [])
-        if not SB.sandbox_available():
-            # Count confinement's rows only: the default leg
-            # leaves the other features unstated too, and their
-            # rows are not this test's subject.
-            conf_rows = [r for r in a1
-                         if r.get("feature") == "confinement"]
-            self.assertEqual(len(conf_rows), 1)
-            self.assertEqual(conf_rows[0]["decision"], "fallback")
-            self.assertEqual(conf_rows[0]["mode"], "enforce")
+        conf_rows = [r for r in a1 if r.get("feature") == "confinement"]
+        self.assertEqual(len(conf_rows), 1)
+        self.assertEqual(conf_rows[0]["decision"], "sandboxed")
+        self.assertEqual(conf_rows[0]["mode"], "enforce")
 
     def test_audit_runs_and_logs(self):
         result, audit, _ = _run(
@@ -331,12 +360,25 @@ class FallbackTest(unittest.TestCase):
         self.assertEqual(audit[0]["decision"], "would_sandbox")
         self.assertEqual(audit[0]["reason"], "would_run_sandboxed")
 
-    def test_bwrap_missing_falls_back_loudly(self):
+    def test_bwrap_missing_refuses_the_job_loudly(self):
+        # Under enforce the fallback is recorded and the job is
+        # refused; it never runs unsandboxed.
+        from runner.runner import JobRejected
         with mock.patch.object(SB, "sandbox_available",
                                return_value=False):
-            result, audit, _ = _run(
-                _conf("enforce"), _job("m6-fb", "print('hi')"))
-        self.assertEqual(result["stdout"].strip(), "hi")
+            tmpdir = tempfile.mkdtemp(prefix="hp-m6-")
+            cfg = {"base_dir": tmpdir}
+            cfg.update(_conf("enforce"))
+            with self.assertRaises(JobRejected):
+                execute_job(cfg, _job("m6-fb", "print('hi')"), tmpdir)
+            audit = []
+            path = os.path.join(tmpdir, S.AUDIT_FILE)
+            if os.path.exists(path):
+                for line in open(path, encoding="utf-8"):
+                    try:
+                        audit.append(json.loads(line))
+                    except ValueError:
+                        pass
         self.assertEqual(audit[0]["decision"], "fallback")
         self.assertEqual(audit[0]["reason"], "confinement_unavailable")
 
@@ -355,8 +397,9 @@ class FallbackTest(unittest.TestCase):
         job["interpreter"] = ["nope-not-a-binary-zzz"]
         with mock.patch.object(SB, "sandbox_available",
                                return_value=True):
-            # build fails -> fallback, but Popen then fails the same
-            # way it would unsandboxed (poison, not transient).
+            # build fails -> the fallback is recorded and the job
+            # is refused under enforce (it once fell back and
+            # Popen then failed the same way unsandboxed).
             from runner.runner import JobRejected
             with self.assertRaises(JobRejected):
                 _run(_conf("enforce"), job)
