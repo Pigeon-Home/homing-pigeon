@@ -13,7 +13,7 @@ Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a m
 
 Try this prompt:
 ```
-Run a job (pigeon-home.ai) that retrieves the system clock and display it.
+Run a job (pigeon-home.ai) that retrieves the system clock and then display it.
 Send an email to YOUR@RUNNER.EMAIL (reply_to self)
 Shared Secret: "YOUR_SECRET_STRING"
 ```
