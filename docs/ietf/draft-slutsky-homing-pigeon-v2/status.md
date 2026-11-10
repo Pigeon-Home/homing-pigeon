@@ -10,4 +10,4 @@
   with its renders and idnits record, cut 2026-11-06 from the
   posted -03 text plus the -04 checklist items; not submitted.
 - The full record — postings, the editor conversation, what is
-  waiting — is the cover sheet at `docs/ietf/STATUS.md`.
+  waiting — is the cover sheet at `docs/ietf/status.md`.
