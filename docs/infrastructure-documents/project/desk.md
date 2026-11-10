@@ -216,6 +216,46 @@ branch that consults availability. macOS itself remains
 CI's word: the roster's macOS legs are the judge of this
 round, as they were its evidence.
 
+And a fourth round, for the surface the roster never runs:
+the build workflow's test-macos job, which drives the suite
+at large rather than the switch proofs. On the head the
+third round landed on, that job failed with the same
+refusal family across the wider fixture population -- 93
+tests whose execute_job and poll fixtures state only the
+keys under test and leave the platform gates unstated, so
+the enforce defaults refused their jobs on the
+backend-less host before the paths under test were
+reached. The fixtures now state confinement, job_user and
+audience off beside their subjects, through each file's
+own config builders; the suite's shared runner fixture
+states them once, and the modules that build on it inherit
+the statement. Two arms where confinement is the subject
+are pinned in their shipped form instead: the campaign
+canary's cannot-engage arm now pins the phase-2 refusal
+itself -- the job is refused, never run weaker, with the
+fallback audit row recording it -- where it previously
+pinned the pre-phase-2 fallback, a stale expectation of
+the same kind the first round corrected, its module note
+corrected with it; and the flag-321 scenario matrix
+records the refusal as its enforce arm's outcome on a
+backend-less host while its mode table still states
+enforce. No production code changed, and no new skip
+reason was needed: the reconciliation file grows to 43
+pins, the new ones red on the unfixed fixtures (10 of 11;
+the eleventh guards the scenario row against softening)
+and green after, one of them running a representative
+failing test from each fixed file with the sandbox
+reported unavailable, as in the rounds before. Two
+findings from the same log are recorded here for their
+own lanes, unfixed by this round because both fixes live
+in production code: the fresh-install flow on Darwin
+reaches for a config that does not exist yet inside
+apply_platform_modes (4 install tests), and the
+first-ping bench builds its config with no security block
+where a seeded fresh install would state confinement at
+audit on that platform (2 bench tests). macOS itself
+remains CI's word here too.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
