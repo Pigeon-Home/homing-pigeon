@@ -293,7 +293,13 @@ class JobUserTest(unittest.TestCase):
                          "needs root and the pigeon-test user")
     def test_enforce_result_matches(self):
         script = "print(6 * 7)"
-        r1, _ = _run({}, _job("m8-c1", script))
+        # The baseline states its modes through _ju, like
+        # every other run in this file: with an empty config
+        # the unstated confinement mode reads enforce, and on
+        # a host with no confinement backend (Darwin) the
+        # baseline's own run is refused before the comparison
+        # can start.
+        r1, _ = _run(_ju("off"), _job("m8-c1", script))
         r2, _ = _run(_ju("enforce"), _job("m8-c2", script))
         self.assertEqual(r1["stdout"], r2["stdout"])
         self.assertEqual(r1["exit_code"], r2["exit_code"])

@@ -96,6 +96,14 @@ def model_cfg(mode, **extra):
            "oracle_opinion_mode": mode,
            "oracle_opinion_model": True,
            "oracle_opinion_predict": "always",
+           # Stated off: these fixtures are about the opinion,
+           # not the platform gates. Unstated, the modes read
+           # enforce, and on a host with no confinement backend
+           # (Darwin) the confinement gate refuses every job
+           # before the opinion path under test.
+           "security": {"modes": {"confinement": "off",
+                                  "job_user": "off",
+                                  "audience": "off"}},
            "inference": {"endpoint": "http://127.0.0.1:9/v1",
                          "model": "fake-model"}}
     cfg.update(extra)
@@ -238,7 +246,12 @@ class PolicyAxisTest(unittest.TestCase):
             "additional_secrets": {KEY: KEY_SECRET},
             "key_policies": {KEY: {"allowed_kinds": ["exec"],
                                    "denied_env": ["EVIL_VAR"]}},
-            "security": {"modes": {"policy_env": policy_mode}},
+            # The policy mode is the subject; the platform
+            # gates are stated off beside it, as in model_cfg.
+            "security": {"modes": {"policy_env": policy_mode,
+                                   "confinement": "off",
+                                   "job_user": "off",
+                                   "audience": "off"}},
         }
 
     def test_policy_modes_are_note_proof(self):

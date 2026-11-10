@@ -91,7 +91,16 @@ def key_cfg(**policy):
     base = {"allowed_kinds": ["exec"]}
     base.update(policy)
     return {"additional_secrets": {KEY: KEY_SECRET},
-            "key_policies": {KEY: base}}
+            "key_policies": {KEY: base},
+            # Stated off: these fixtures are about the key
+            # policy, not the platform gates. Unstated, the
+            # modes read enforce, and on a host with no
+            # confinement backend (Darwin) the confinement
+            # gate refuses every job before the policy path
+            # under test.
+            "security": {"modes": {"confinement": "off",
+                                   "job_user": "off",
+                                   "audience": "off"}}}
 
 
 class NoWideningTest(unittest.TestCase):
@@ -99,7 +108,10 @@ class NoWideningTest(unittest.TestCase):
         cfg = key_cfg(denied_env=["EVIL_VAR"])
         cfg["security"] = {"modes": {"policy_env": "enforce",
                                      "policy_files": "off",
-                                     "policy_args": "off"}}
+                                     "policy_args": "off",
+                                     "confinement": "off",
+                                     "job_user": "off",
+                                     "audience": "off"}}
         job = _payload("nw-deny", kind="exec", script="echo hi",
                        env={"EVIL_VAR": "x"}, key_id=KEY)
         approving_model = mock.Mock(
@@ -169,6 +181,11 @@ class NoWideningTest(unittest.TestCase):
         cfg = {"oracle_mode": "llm",
                "oracle_opinion_model": True,
                "oracle_opinion_predict": "always",
+               # Stated off, as in key_cfg: the platform gates
+               # are not this fixture's subject.
+               "security": {"modes": {"confinement": "off",
+                                      "job_user": "off",
+                                      "audience": "off"}},
                "inference": {"endpoint": "http://127.0.0.1:9/v1",
                              "model": "fake-model"}}
         job = _payload("nw-note", kind="exec",

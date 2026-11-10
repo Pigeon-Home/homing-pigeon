@@ -44,6 +44,25 @@ what the first round missed:
   legs, the docker workflow, the shared POSIX smoke script --
   states audience off beside the platform gates it already
   stated off, since a smoke config names no runner_id.
+
+A third round (head 163b15ff) covers what the first two could
+not see: the fixtures that only ever failed where no
+confinement backend exists at all. On Linux the bwrap
+backend engages, and on Windows the Job Objects backend
+does, so an unstated confinement mode -- enforce by default
+-- never fired there; on Darwin neither backend exists, so
+the refusal arrived ahead of the Oracle paths under test
+(ORACLE.alphabet and ORACLE.no_widening in the switch
+roster) and ahead of the job-user baseline comparison
+(M8.drop on the root leg). The fixtures state the platform
+gates they are not about -- confinement, job_user and
+audience off -- beside the policy modes that are their
+subject, and the M8 baseline states its modes through the
+same helper as every other run in its file. One pin below
+reproduces the backend-less host directly: with the sandbox
+reported unavailable, the four roster-named tests and the
+M8 baseline run still pass, because a stated off never
+reaches the enforce branch that consults availability.
 """
 import io
 import json
@@ -412,6 +431,105 @@ class AudienceStartupRefusalStaysLandedTest(unittest.TestCase):
             "confinement": "off", "job_user": "off",
             "audience": "audit"}}})
         self.assertEqual(rc, 0)
+
+
+class RoundThreeBackendLessFixturesTest(unittest.TestCase):
+    """Round three: the Oracle alphabet / no-widening fixtures
+    and the M8 job-user baseline state the platform gates, so
+    a host with no confinement backend (Darwin, in the switch
+    roster) stops refusing their jobs ahead of the paths under
+    test. The policy modes stay exactly as each fixture states
+    them -- they are the subject; the platform gates are not."""
+
+    GATES = ("confinement", "job_user", "audience")
+
+    def test_alphabet_model_fixture_states_the_platform_gates(self):
+        from runner.tests.test_oracle_alphabet import model_cfg
+        modes = model_cfg("advise")["security"]["modes"]
+        for gate in self.GATES:
+            self.assertEqual(modes[gate], "off", gate)
+
+    def test_alphabet_policy_fixture_states_gates_beside_policy(self):
+        from runner.tests.test_oracle_alphabet import PolicyAxisTest
+        case = PolicyAxisTest("test_policy_modes_are_note_proof")
+        modes = case._cfg("enforce", False)["security"]["modes"]
+        self.assertEqual(modes["policy_env"], "enforce")
+        for gate in self.GATES:
+            self.assertEqual(modes[gate], "off", gate)
+
+    def test_no_widening_key_fixture_states_the_platform_gates(self):
+        from runner.tests.test_oracle_no_widening import key_cfg
+        modes = key_cfg()["security"]["modes"]
+        for gate in self.GATES:
+            self.assertEqual(modes[gate], "off", gate)
+
+    def test_no_widening_denial_fixture_states_confinement(self):
+        # The one no-widening test that replaces the security
+        # block wholesale states the gates in its own stanza,
+        # so its denial is the policy's on every host, never
+        # the confinement gate's on a backend-less one.
+        import inspect
+        from runner.tests.test_oracle_no_widening import (
+            NoWideningTest)
+        src = inspect.getsource(
+            NoWideningTest.test_a_policy_denial_never_reaches_the_opinion)
+        for gate in self.GATES:
+            self.assertIn('"%s": "off"' % gate, src, gate)
+
+    def test_no_widening_note_fixture_states_the_platform_gates(self):
+        # The note test builds its config literally, not
+        # through key_cfg; its stanza states the gates too.
+        import inspect
+        from runner.tests.test_oracle_no_widening import (
+            NoWideningTest)
+        src = inspect.getsource(
+            NoWideningTest.test_a_model_note_never_changes_an_outcome)
+        for gate in self.GATES:
+            self.assertIn('"%s": "off"' % gate, src, gate)
+
+    def test_job_user_baseline_states_its_modes(self):
+        # M8.drop's comparison baseline ran with an empty
+        # config: unstated, its own run is refused on a
+        # backend-less host before the comparison can start.
+        # The baseline states its modes through _ju like every
+        # other run in the file.
+        path = os.path.join(REPO, "runner", "tests",
+                            "test_secret_files_job_user.py")
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertIn('_run(_ju("off"), _job("m8-c1"', text)
+        self.assertNotIn("_run({}, ", text)
+
+    def test_backend_less_host_still_runs_the_fixtures(self):
+        # The Darwin condition, reproduced on any host: the
+        # sandbox reports unavailable. The four tests the
+        # switch roster named on the macOS legs, plus the M8
+        # baseline call shape, must still run their jobs --
+        # a stated off never consults availability.
+        from runner.tests import test_secret_files_job_user as ju
+        loader = unittest.TestLoader()
+        suite = unittest.TestSuite()
+        for name in (
+                "runner.tests.test_oracle_alphabet.AlphabetTest."
+                "test_tier1_findings_mean_the_model_is_never_asked",
+                "runner.tests.test_oracle_alphabet.PolicyAxisTest."
+                "test_policy_modes_are_note_proof",
+                "runner.tests.test_oracle_no_widening.NoWideningTest."
+                "test_a_model_note_never_changes_an_outcome",
+                "runner.tests.test_oracle_no_widening.NoWideningTest."
+                "test_a_repair_never_launders_a_policy_denial"):
+            suite.addTests(loader.loadTestsFromName(name))
+        with mock.patch.object(runner._sandbox, "sandbox_available",
+                               return_value=False):
+            result = unittest.TextTestRunner(
+                stream=io.StringIO()).run(suite)
+            baseline, _audit = ju._run(
+                ju._ju("off"), ju._job("m8-c1", "print(6 * 7)"))
+        self.assertTrue(result.wasSuccessful(),
+                        [str(f[0]) for f in
+                         result.failures + result.errors])
+        self.assertEqual(baseline["exit_code"], 0)
+        self.assertEqual(baseline["stdout"].strip(), "42")
 
 
 if __name__ == "__main__":
