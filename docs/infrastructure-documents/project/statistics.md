@@ -1,7 +1,7 @@
 # The project's statistics: the 20-million-token measure
 
 Dated 2026-11-10. Measured on main at commit
-9832810df13b8accb2b74f9dfa11993633d28883, the head this
+50324cd5b82ac458d968be247572a0206b00a851, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
@@ -10,7 +10,7 @@ The recorded line, in the display form settled for publication:
 
 ## What stands behind each figure
 
-- Tokens: 20,414,150, counted over the whole tree by the project's
+- Tokens: 20,435,240, counted over the whole tree by the project's
   own estimator (runner/ops/version4.py) — the same measure the
   version number's 3rd component carries, which is why the line
   reads 20. Display form: 20 mil security tokens — security
@@ -20,11 +20,11 @@ The recorded line, in the display form settled for publication:
   is sec-tokens. Verify it on any checkout:
   `python3 runner/ops/version4.py measure` prints the count and
   its whole millions.
-- Lines: 1,339,426 lines in tracked files at the measured head. The display
+- Lines: 1,341,311 lines in tracked files at the measured head. The display
   figure, 1,300,000, is that count rounded.
 - Commits: the display figure, 5,000, is rounded from a
   full-history recount at the measured head, taken from a
-  complete clone, which counts 5,176. The project's local
+  complete clone, which counts 5,195. The project's local
   mirrors are shallow (810 commits deep) and cannot recount
   the whole history on their own — the recount above rests on
   the complete clone, and any future count should be taken
@@ -52,11 +52,11 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-10",
-  "commit": "9832810df13b8accb2b74f9dfa11993633d28883",
+  "commit": "50324cd5b82ac458d968be247572a0206b00a851",
   "counter": "runner/ops/version4.py",
-  "tokens": 20414150,
-  "lines_tracked": 1339426,
-  "commits": 5176,
+  "tokens": 20435240,
+  "lines_tracked": 1341311,
+  "commits": 5195,
   "display_commits": 5000,
   "display_lines": 1300000,
   "non_latent_percent": 96.83,
@@ -64,13 +64,13 @@ stays their source of truth.
   "latent_exact_percent": 0.03,
   "audit_date": "2026-11-09",
   "core_files": 134,
-  "core_lines": 58095,
-  "core_lines_nonblank": 52408,
-  "core_tokens": 610668,
-  "core_assembled_lines": 58879,
-  "core_assembled_nonblank": 53096,
-  "core_assembled_zip_bytes": 746121,
-  "core_assembled_tokens": 618285
+  "core_lines": 58275,
+  "core_lines_nonblank": 52580,
+  "core_tokens": 612346,
+  "core_assembled_lines": 59059,
+  "core_assembled_nonblank": 53268,
+  "core_assembled_zip_bytes": 748622,
+  "core_assembled_tokens": 619963
 }
 ```
 

@@ -81,10 +81,12 @@ class CoreListTest(unittest.TestCase):
         self.assertEqual(619845, core.GEMINI_COUNT_TOKENS)
         self.assertEqual("2026-11-04", core.GEMINI_COUNT_DATE)
         # The zip size is this module's own deterministic build,
-        # re-recorded at the 2026-11-05 re-measures; the Gemini
-        # token count above still describes the 2026-11-04
-        # assembly.
-        self.assertEqual(746121, core.AS_ASSEMBLED_ZIP_BYTES)
+        # re-recorded at the 2026-11-05 re-measures and again
+        # at the 2026-11-10 re-measure that corrected the Q134
+        # entry's figures and took up the trial staging fix;
+        # the Gemini token count above still describes the
+        # 2026-11-04 assembly.
+        self.assertEqual(748622, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -133,9 +135,17 @@ class CoreListTest(unittest.TestCase):
         # FreeBSD backend's field-test mount fix grew
         # runner/guard, and again the same day after the
         # Windows backend's import-safety change grew
-        # runner/guard/windows_confine.py by 15 lines.
-        self.assertEqual(58879, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(53096, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/guard/windows_confine.py by 15 lines, and
+        # again the same day after the Q134 confinement
+        # trial grew runner/guard -- that entry's figures
+        # recorded the set below the tree it stood on
+        # (runner/ops by 11 lines, runner/guard by 5, the
+        # runner proper by 8) and are corrected at this
+        # re-measure -- and again the same day after the
+        # Q134 trial's staging fix grew
+        # runner/guard/windows_confine.py.
+        self.assertEqual(59059, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(53268, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
@@ -228,7 +238,7 @@ class CoreLinesTest(unittest.TestCase):
 
 class CorePartsTest(unittest.TestCase):
     def test_the_recorded_breakdown_stays_named(self):
-        self.assertEqual(6758, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
+        self.assertEqual(6766, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
         self.assertEqual(core.AS_ASSEMBLED_LINES,
                          sum(core.AS_ASSEMBLED_PART_LINES.values()))
 
