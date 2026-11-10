@@ -43,6 +43,81 @@ Rules:
 
 ---
 
+## Q135 (Muse, to the desk, 2026-11-10): the confinement decision raises where its contract is to answer — a denial must come back as a triple and be refused at the job boundary, not thrown from the decision
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The confinement decision is `_confinement_argv`
+(`runner/runner.py`): handed a config, it answers a triple —
+(argv, use_host_env, sandboxed) — and the suite interrogates
+it as a pure query. The decision fuzz
+(`ConfinementDecisionFuzzTest` in
+`runner/tests/test_linux_platform.py`) pins that contract:
+for every config, however adversarial, the decision returns
+a triple, never raises, and never starts a process. That
+invariant predates phase 2 of the default-posture work.
+Phase 2 made enforce refuse rather than fall back, and put
+the refusal inside the decision as a `JobRejected` raise:
+a sandbox that cannot engage, a build failure, or a
+platform backend that cannot engage all raise out of the
+query. The two contracts have disagreed since, and the
+disagreement is the only red on the head: 1 failure in
+12,068 tests, the fuzz, on the 3.16.20.1 tag build and on
+the head build after it.
+
+The repro is deterministic (the fuzz walks a fixed seed,
+20261017): the first crashing draw is the config
+`{'work_mount': {'extra_flags': ['']}}`, which meets the
+cannot-engage raise. The malformed-flag case meets the same
+raise class directly: an enforce config whose
+`security.confinement.extra_flags` holds a value the builder
+cannot accept — an empty string is the smallest — makes
+`build_bwrap_command`'s validation raise `RuntimeError`,
+and the decision converts that to `JobRejected` instead of
+answering. Decision tests written in the phase-2 pass pin
+the raise (the argv-gate tests on Linux, Windows and
+FreeBSD, and the p2 confinement chain); the fuzz pins
+never-raises. One of the two shapes is the contract; the
+other is the accident.
+
+Options:
+
+(a) Keep the raise and weaken the fuzz: the decision throws
+for cause, and callers handle it. The query stops being a
+query — every present and future caller (the job path, the
+startup gates' kin, the Oracle seam that asks what enforce
+would decide) must treat an interrogation as a possible
+refusal, and the fuzz's reason to exist — adversarial
+configs are safe to ask about — is the thing given up.
+
+(b) The invariant stands and the refusal moves to the
+boundary. The decision returns a denial — the empty argv,
+host env, not sandboxed — for every case that raises today,
+writing the same fallback audit row and the same log line,
+so the record of a denial is the record the raise left.
+The decision's only production caller, the job-acceptance
+boundary in `runner/ops/exec.py`, converts a denial into
+the `JobRejected` refusal: a job whose config denies is
+refused end-to-end exactly as before, and nothing runs
+weaker. Malformed flag values are a denial the decision
+returns — the builder's config-error text, naming the
+invalid flag, rides in the audit detail — not an exception
+it throws. Startup is untouched: config validation and the
+Q133 flags trial still refuse a malformed block before any
+job, and valid flags build the same argv as today.
+
+**Answer (the conductor, 2026-11-10):** (b). The invariant
+stands: the confinement decision is a pure query whose
+contract is to return a decision triple for every config,
+never raise, and never start a process — that is what lets
+callers interrogate it safely with adversarial configs.
+Malformed flag values are a denial the decision returns,
+not an exception it throws; `JobRejected` refusal lives at
+the job-acceptance boundary, which converts a denial into
+the refusal exactly as before. A job carrying such a config
+is still refused end-to-end; only the decision layer's shape
+changes.
+
 ## Q134 (Muse, to the desk, 2026-11-10): a confined job on an unelevated Windows host cannot read the script staged for it; the backend probe proves the controls can be created, not that a confined process can work
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
