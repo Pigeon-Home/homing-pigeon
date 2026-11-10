@@ -375,6 +375,52 @@ class CliTest(unittest.TestCase):
              "--now", str(NOW)])
         self.assertEqual((code, out), (0, "3.15.0.6"))
 
+    def test_next_command_minor_bump_restarts_counter(self):
+        # The rev the scheme holds in reserve, driven through the
+        # CLI the ship flow actually calls: --minor above the
+        # standing line moves the release to the new line and
+        # restarts the counter at 1, carrying the measured figure.
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--fresh",
+             "--now", str(NOW), "--minor", "16"])
+        self.assertEqual((code, out), (0, "3.16.0.1"))
+
+    def test_next_command_minor_bump_takes_the_fresh_figure(self):
+        # The ship flow's shape for a rev cut: --fresh recounts
+        # the tree as it stands, and the new line's first release
+        # carries that fresh figure, not the old line's.
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        self._grow_repo_past_a_million(repo)
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--fresh",
+             "--now", str(NOW), "--minor", "16"])
+        self.assertEqual((code, out), (0, "3.16.1.1"))
+
+    def test_next_command_same_minor_flag_is_not_a_restart(self):
+        # --minor naming the standing line is a no-op: the counter
+        # increments exactly as if the flag were absent, so passing
+        # the flag one cut too late cannot restart a line by
+        # accident.
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--fresh",
+             "--now", str(NOW), "--minor", "15"])
+        self.assertEqual((code, out), (0, "3.15.0.6"))
+
+    def test_next_command_minor_decrease_rejected(self):
+        # A --minor below the standing line is refused at the CLI
+        # seam too: the odometer never runs backwards.
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        with self.assertRaises(ValueError):
+            self._run_main(
+                ["next", "3.15.0.5", "--root", repo, "--fresh",
+                 "--now", str(NOW), "--minor", "14"])
+
     def test_cache_write_is_narrowed_for_the_type_checker(self):
         # The measured path's cache write passes `fresh`, which is
         # None until a measure happens. The typecheck guard
