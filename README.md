@@ -1,9 +1,5 @@
 # HOMING PIGEON
 
-> ⚠️ **USE AT YOUR OWN RISK.** Installing this application hands full administrative
-> control of the system to whoever holds the shared secret. The holder
-> can install software, read files, add users, and pivot to your network.
-
 Your cloud AI (called the SI throughout this repo) is smart, but it
 can't touch your computer. This new Homing Pigeon protocol gives them
 a signed channel to your machine. You may run the tests, read the
@@ -387,6 +383,10 @@ pinned by default, and a written disclosure rule lets the owner
 `PROTOCOL.md` is the wire protocol, `runner/` the code, `runner/extensions/` the shipped extensions, `docs/` the long shelf and `.github/` the CI. The file-by-file map is in [docs/infrastructure-documents/project/layout.md](docs/infrastructure-documents/project/layout.md).
 
 ## Setup
+
+> ⚠️ **USE AT YOUR OWN RISK.** Installing this application hands full administrative
+> control of the system to whoever holds the shared secret. The holder
+> can install software, read files, add users, and pivot to your network.
 
 Setup lives in [INSTALL.md](INSTALL.md): the three install
 paths (Docker, pip, release binary) and the full first-run
