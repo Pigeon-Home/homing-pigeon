@@ -51,9 +51,17 @@ def log_startup(cfg, args, base_dir):
     auth = "oauth" if _runner()._use_oauth(cfg) else "password"
     inf = _runner().inference_config(cfg)
     keys = sorted((cfg.get("additional_secrets") or {}).keys())
-    R.log(f"homing-pigeon {_runner().__version__} invocation: "
+    # The build stamp (runner/_build.py, written by the build
+    # tooling): when a packaged tree carries its source commit,
+    # both lines name it, so a log reader can tell which code is
+    # running. A plain checkout stamps "unknown" and the lines
+    # print the version alone -- no parenthetical, no noise.
+    _build = getattr(_runner(), "__build__", "unknown")
+    _suffix = f" (build {_build})" if isinstance(_build, str) \
+        and _build and _build != "unknown" else ""
+    R.log(f"homing-pigeon {_runner().__version__}{_suffix} invocation: "
         f"{_runner()._invocation_line()}")
-    R.log(f"homing-pigeon {_runner().__version__} starting "
+    R.log(f"homing-pigeon {_runner().__version__}{_suffix} starting "
         f"(base={base_dir}, platform={_runner().sys.platform})")
     R.log(f"auth={auth} mailbox={cfg.get('mailbox_user')} "
         f"poll={cfg.get('poll_interval_sec', 20)}s "

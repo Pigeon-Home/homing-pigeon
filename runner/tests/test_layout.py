@@ -187,7 +187,7 @@ class RootLayoutTest(unittest.TestCase):
 class RunnerRootTest(unittest.TestCase):
     def test_runner_holds_the_entry_script_and_folders(self):
         allowed = {"runner.py", "__init__.py", "_version.py",
-                   "config.example.json"}
+                   "_build.py", "config.example.json"}
         root = os.path.join(REPO, "runner")
         files = {n for n in os.listdir(root)
                  if os.path.isfile(os.path.join(root, n))}

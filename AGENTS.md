@@ -321,8 +321,10 @@ A module imports a sibling by its role folder, `from runner.guard import
 confval`, with the script-mode fallback `from guard import confval`
 (`python3 runner/runner.py` puts `runner/` on `sys.path`; an entry script
 in a role folder puts it there itself). `runner/` holds `runner.py`,
-`__init__.py`, `_version.py`, `config.example.json` and folders, and
-`test_layout` fails on a module at its root.
+`__init__.py`, `_version.py`, `_build.py` (the build stamp the
+tooling writes: the source commit a packaged tree was built from,
+"unknown" in a plain checkout), `config.example.json` and folders,
+and `test_layout` fails on a module at its root.
 
 ## Sending a job
 
