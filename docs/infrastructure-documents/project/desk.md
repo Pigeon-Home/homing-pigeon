@@ -70,6 +70,23 @@ registering `runner/guard/windows_confine.py` in the core list
 (`runner/ops/core.py`) with the re-measure that addition has
 always carried, the way the briefing files joined in 2026-11.
 
+Also landed in this pass: the enforce-posture reconciliation.
+The phase-2 refusals are the shipped behavior — a mode that
+cannot engage refuses the job — and the suite's own harnesses
+now meet that behavior honestly. The proof and scenario
+fixtures state off the modes they do not exercise, in the
+open, under the house "Stated off" convention, instead of
+leaving them unstated to read `enforce` on a host with no
+backend behind them; the switch roster's `job_user` entry
+records the refusal it now proves rather than the fallback it
+superseded; and the skip registry names the refusal with it.
+A dedicated pin file (11 tests) holds the line both ways:
+unstated modes still read `enforce`, and stated-off fixtures
+stay stated. No production code changed. The change set went
+to the conductor first as a preview drop — a zipped runner
+built from the patched tree, ahead of this landing — and the
+tree here carries the same change set he is testing.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
