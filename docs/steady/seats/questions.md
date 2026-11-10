@@ -118,6 +118,20 @@ the refusal exactly as before. A job carrying such a config
 is still refused end-to-end; only the decision layer's shape
 changes.
 
+**Applied in:** `a9ecf31684285fe636339bbc62068ef83904aa20`
+(decision and tests: the denial at every enforce arm, the
+boundary conversion in `runner/ops/exec.py`, the flag
+validator's whitespace clause, the moved decision
+assertions on the three platforms and the p2 chain, and the
+57-case malformed-flags family) and
+`661d226b21e954258a3a6c644fc386cb80e12b7a` (the end-to-end
+boundary refusal pin, and the reconciliation file's sixth
+round, its pins 51 to 56). The pins were red against the
+raising shape — 57 failures across the family, the moved
+assertions and the shape pins, the fuzz among them — and
+green with the fix. The desk's open finding closes in the
+desk commit of the same landing.
+
 ## Q134 (Muse, to the desk, 2026-11-10): a confined job on an unelevated Windows host cannot read the script staged for it; the backend probe proves the controls can be created, not that a confined process can work
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

@@ -164,9 +164,22 @@ surface as well as the platform string, and the
 require-posture harness scripts that gate as able beside
 the other mechanism gates), and the core breakdown's
 re-measure landed with the windows_confine registration
-named above. One finding stands open: the confinement
-decision fuzz's never-raises invariant predates the phase-2
-refusal it now meets.
+named above. The finding that passage left standing open —
+the confinement decision fuzz's never-raises invariant
+predating the phase-2 refusal it met — is closed by Q135:
+the decision is a pure query again, returning a denial (the
+empty argv, the fallback audit row unchanged) where it
+raised, and the job boundary raises the refusal on the
+denial, so a job whose confinement cannot engage is refused
+end to end exactly as before. The fix and its pins landed
+together: the decision tests on the three platforms and the
+p2 chain pin the denial, a 57-case family around malformed
+extra_flags pins the denial with the builder running for
+real (the flag validator's whitespace gap closed in the
+same fix), the boundary refusal is pinned end to end, and
+the reconciliation pins grew 51 to 56. The re-test is the
+head build's full suite, the run that carried this fuzz as
+its one red test in 12,068.
 
 The node also has its confinement backend now, the FreeBSD
 analogue of the Windows one: `runner/guard/freebsd_confine.py`
