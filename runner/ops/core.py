@@ -45,8 +45,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 58,673 lines,
-52,903 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 58,708 lines,
+52,937 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -181,7 +181,13 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # backend's import-safety change grew
 # runner/guard/windows_confine.py by 15 lines, with the
 # recorded figures carried into the statistics record
-# and the documents that quote them.
+# and the documents that quote them. Re-measured again
+# the same day after the fresh-install platform
+# statement took its missing-config seed in
+# runner/ops/install.py and the first-ping bench took
+# the seeded platform statement in
+# runner/tools/first_ping.py, growing runner/ops and
+# runner/tools.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 134 since
@@ -194,15 +200,15 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 137
-AS_ASSEMBLED_ZIP_BYTES = 743266
-AS_ASSEMBLED_LINES = 58689
-AS_ASSEMBLED_NONBLANK_LINES = 52919
+AS_ASSEMBLED_ZIP_BYTES = 743608
+AS_ASSEMBLED_LINES = 58708
+AS_ASSEMBLED_NONBLANK_LINES = 52937
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 18535,
-    "runner/tools": 8894,
+    "runner/ops": 18545,
+    "runner/tools": 8903,
     "runner/wire": 8708,
     "runner/runner.py": 6758,
     "runner/oracle": 5044,
