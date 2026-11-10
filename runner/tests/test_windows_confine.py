@@ -131,9 +131,12 @@ class StartupGateTableTest(unittest.TestCase):
             _cfg("enforce"), platform="linux",
             backend=_backend("cannot engage")))
 
-    def test_the_real_backend_off_windows_keeps_the_refusal(self):
+    def test_simulated_win32_refusal_is_deterministic(self):
+        # No backend injected and the platform simulated: the
+        # gate cannot probe a machine this is not, so the
+        # long-standing refusal stands, on any host.
         if sys.platform == "win32":
-            self.skipTest("the real backend engages or not live")
+            self.skipTest("the host platform is the real one here")
         problem = rr._job_user_startup_problem(
             _cfg("enforce"), platform="win32")
         self.assertIsNotNone(problem)

@@ -164,6 +164,13 @@ def job_user_startup_problem(cfg, platform=None, face=None,
     if sec is None or sec.sec_mode(cfg, "job_user") != "enforce":
         return None
     if platform == "win32":
+        if backend is None and platform != sys.platform:
+            # A simulated platform (the suite's win32 seam): no
+            # backend can be probed for a machine this is not, so
+            # the gate answers with the refusal it has always
+            # given there, deterministically, on any host.
+            return ("job_user (a POSIX setuid demote) is POSIX-only; "
+                    "this machine is win32")
         backend = _windows_confine(backend)
         if backend is not None:
             try:
