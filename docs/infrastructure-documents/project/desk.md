@@ -60,6 +60,16 @@ Behind the release work, the long goal stands unchanged: the
 tree's growth toward 30 million security tokens, at the pace
 the measure in statistics.md records.
 
+Also landed in this pass: a Windows backend for the `job_user`
+mode — a Job Object with a per-process memory ceiling, assigned
+as each job starts — reviewed and completed from an outside
+branch. `job_user` at `enforce` is now honestly available on
+Windows; fresh installs still seed it (and `confinement`, which
+has no Windows backend) at `audit`. One follow-up stands open:
+registering `runner/guard/windows_confine.py` in the core list
+(`runner/ops/core.py`) with the re-measure that addition has
+always carried, the way the briefing files joined in 2026-11.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
