@@ -186,6 +186,31 @@ honestly is, and is not, stands in
 recorded before its field test and the conclusions after it.
 The support level stays Experimental.
 
+And a third round of the same reconciliation, for the one
+surface the first two could not see: fixtures that only fail
+where no confinement backend exists at all. On Linux the
+bwrap backend engages and on Windows the Job Objects backend
+does, so an unstated confinement mode never fired on those
+legs; on Darwin neither backend exists, and the switch
+roster's two macOS legs failed on exactly that -- the Oracle
+alphabet and no-widening fixtures (their configs stated the
+policy modes under test and nothing else, so every job met
+the confinement refusal ahead of the opinion path), and the
+M8 job-user baseline, which ran with an empty config and was
+refused before its comparison could start. The fixtures now
+state the platform gates they are not about -- confinement,
+job_user and audience off -- beside the modes that are their
+subject, and the M8 baseline states its modes through the
+same helper as every other run in its file. No production
+code changed, and neither refusal moved: the reconciliation
+file grows to 32 pins, one of which reproduces the
+backend-less host directly -- with the sandbox reported
+unavailable, the four roster-named tests and the M8 baseline
+still run, because a stated off never reaches the enforce
+branch that consults availability. macOS itself remains
+CI's word: the roster's macOS legs are the judge of this
+round, as they were its evidence.
+
 ## The flow, in one pass
 
 A stream begins as a lane card (Gate 1), works in its own worktree
