@@ -984,6 +984,28 @@ class CleanupTest(unittest.TestCase):
             with mock.patch.object(inst, "ensure_shared_secret"):
                 inst._setup_fresh_config(args, os.path.join(d, "missing"))
 
+    def test_a_fresh_config_that_was_never_written_is_seeded(self):
+        # The macOS shape of the same flow: on a platform whose
+        # gates are stated, a fresh config no seed step wrote
+        # still completes -- the platform statement seeds the
+        # file instead of the flow dying on the missing read.
+        args = mock.Mock(
+            shared_secret=None,
+            profile=None, no_profile=True, inference_model=None,
+            faster=False, no_inference=True, no_collector=True,
+            collector=None, instructions=None,
+            instructions_add=None, wazuh_manager=None,
+            additional_secret=[], config_json=None, key_id=None)
+        with tempfile.TemporaryDirectory() as d:
+            cfg = os.path.join(d, "config.json")
+            with mock.patch.object(inst, "ensure_shared_secret"), \
+                    mock.patch.object(inst.sys, "platform", "darwin"):
+                inst._setup_fresh_config(args, cfg)
+            with open(cfg, encoding="utf-8") as fh:
+                seeded = json.load(fh)
+        self.assertEqual(seeded["security"]["modes"],
+                         {"confinement": "audit"})
+
     def test_a_profile_file_without_a_name_keeps_the_default(self):
         with tempfile.TemporaryDirectory() as d:
             prof = os.path.join(d, "p.json")

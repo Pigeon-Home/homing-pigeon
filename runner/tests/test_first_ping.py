@@ -72,6 +72,36 @@ class BenchTest(unittest.TestCase):
         self.assertFalse(fp._result_ok("nonsense", "s" * 40, "j", "ping",
                                        send_job))
 
+    def test_the_bench_config_states_the_platform_gates(self):
+        # The bench config is a fresh config: it carries the
+        # platform statement a seeded fresh install carries, from
+        # the installer's own platform map -- on the platform
+        # whose only gate is confinement, exactly that gate.
+        from runner.ops import setup as setup_mod
+        cfg = {}
+        setup_mod.seed_platform_modes(cfg, "darwin")
+        self.assertEqual(cfg["security"]["modes"],
+                         {"confinement": "audit"})
+        cfg = {}
+        setup_mod.seed_platform_modes(cfg, "linux")
+        self.assertEqual(cfg, {})
+
+    def test_bench_runs_on_a_backend_less_platform(self):
+        # The macOS build leg's failure: with no confinement
+        # backend and the platform simulated as darwin, the
+        # unstated enforce default refused the exec job outright.
+        # The bench config's platform statement (audit, as a
+        # seeded fresh install states it) lets both kinds run.
+        from runner import runner as runner_mod
+        with mock.patch.object(sys, "platform", "darwin"), \
+                mock.patch.object(runner_mod._sandbox,
+                                  "sandbox_available",
+                                  return_value=False):
+            rows = fp.bench(1)
+        self.assertEqual([r["kind"] for r in rows], ["ping", "exec"])
+        for r in rows:
+            self.assertEqual(r["ok"], 1, r)
+
     def test_main_bench_no_record(self):
         out = io.StringIO()
         with mock.patch.object(fp, "record") as rec, redirect_stdout(out):

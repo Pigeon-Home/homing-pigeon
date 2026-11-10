@@ -991,3 +991,106 @@ class PlatformModesTest(unittest.TestCase):
                 after = fh.read()
         self.assertEqual(applied, {})
         self.assertEqual(before, after)
+
+    # --- a config that does not exist yet ----------------------
+    # The fresh-install flow reaches this function with no
+    # config on disk when the earlier seed steps wrote none --
+    # the shape the macOS build leg caught (InstallMainTest and
+    # CleanupTest dying on FileNotFoundError). The statement is
+    # seeded from empty, into the file the write creates.
+
+    def test_a_missing_config_is_seeded_on_macos(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            applied = inst.apply_platform_modes(path, "darwin")
+            modes = self._modes(path)
+        self.assertEqual(applied, {"confinement": "audit"})
+        self.assertEqual(modes, {"confinement": "audit"})
+
+    def test_a_missing_config_is_seeded_on_windows(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            applied = inst.apply_platform_modes(path, "win32")
+            modes = self._modes(path)
+        self.assertEqual(applied,
+                         {"confinement": "audit", "job_user": "audit"})
+        self.assertEqual(modes, applied)
+
+    def test_a_missing_config_is_seeded_on_freebsd(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            applied = inst.apply_platform_modes(path, "freebsd13")
+            modes = self._modes(path)
+        self.assertEqual(applied, {"confinement": "audit"})
+        self.assertEqual(modes, {"confinement": "audit"})
+
+    def test_a_missing_config_on_linux_stays_missing(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            applied = inst.apply_platform_modes(path, "linux")
+            exists = os.path.exists(path)
+        self.assertEqual(applied, {})
+        self.assertFalse(exists)
+
+    def test_a_seeded_missing_config_is_stable_under_a_second_apply(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            inst.apply_platform_modes(path, "win32")
+            with open(path, encoding="utf-8") as fh:
+                before = fh.read()
+            applied = inst.apply_platform_modes(path, "win32")
+            with open(path, encoding="utf-8") as fh:
+                after = fh.read()
+        self.assertEqual(applied, {})
+        self.assertEqual(before, after)
+
+    @unittest.skipIf(sys.platform == "win32", "POSIX installer path")
+    def test_a_symlink_config_still_refuses_even_when_dangling(self):
+        # Only the missing file is seeded; a symlink is the
+        # reader's refusal, dangling or not, exactly as before.
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            os.symlink(os.path.join(d, "nowhere.json"), path)
+            with self.assertRaises(OSError):
+                inst.apply_platform_modes(path, "darwin")
+
+    # --- partial shapes that do exist ---------------------------
+
+    def test_an_existing_config_without_a_security_block(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"shared_secret": "x" * 64}, fh)
+            applied = inst.apply_platform_modes(path, "darwin")
+            with open(path, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+        self.assertEqual(applied, {"confinement": "audit"})
+        self.assertEqual(cfg["security"]["modes"],
+                         {"confinement": "audit"})
+        self.assertEqual(cfg["shared_secret"], "x" * 64)
+
+    def test_an_existing_config_with_a_non_object_security_block(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"security": "not-an-object",
+                           "runner_id": "r-1"}, fh)
+            applied = inst.apply_platform_modes(path, "win32")
+            with open(path, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+        self.assertEqual(applied,
+                         {"confinement": "audit", "job_user": "audit"})
+        self.assertEqual(cfg["security"]["modes"], applied)
+        self.assertEqual(cfg["runner_id"], "r-1")
+
+    def test_a_partially_stated_modes_map_moves_only_the_unstated(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"security": {"modes": {
+                    "confinement": "off"}}}, fh)
+            applied = inst.apply_platform_modes(path, "win32")
+            modes = self._modes(path)
+        self.assertEqual(applied, {"job_user": "audit"})
+        self.assertEqual(modes, {"confinement": "off",
+                                 "job_user": "audit"})
