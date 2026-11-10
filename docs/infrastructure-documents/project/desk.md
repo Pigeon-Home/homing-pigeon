@@ -64,8 +64,8 @@ Also landed in this pass: a Windows backend for the `job_user`
 mode — a Job Object with a per-process memory ceiling, assigned
 as each job starts — reviewed and completed from an outside
 branch. `job_user` at `enforce` is now honestly available on
-Windows; fresh installs still seed it (and `confinement`, which
-has no Windows backend) at `audit`. One follow-up stands open:
+Windows; fresh installs still seed it (and `confinement`) at
+`audit`. One follow-up stands open:
 registering `runner/guard/windows_confine.py` in the core list
 (`runner/ops/core.py`) with the re-measure that addition has
 always carried, the way the briefing files joined in 2026-11.
@@ -86,6 +86,25 @@ stay stated. No production code changed. The change set went
 to the conductor first as a preview drop — a zipped runner
 built from the patched tree, ahead of this landing — and the
 tree here carries the same change set he is testing.
+
+Also landed in this pass: a Windows backend for the
+`confinement` mode, completing the sentence above — confinement
+no longer has "no Windows backend". A job on Windows at
+`enforce` is created suspended under a restricted token
+(privileges stripped, the Administrators group disabled) at low
+integrity, assigned to the Job Object memory ceiling before it
+resumes; the audit record names exactly what was applied —
+"windows: job_object + restricted_token + low_integrity" — and
+the documents state the limit in the same breath: no filesystem
+namespace isolation, and a confined job can still read any path
+its token can read. Fresh installs still seed both Windows
+modes at `audit`: the seed is written without running the
+backend probe on that machine, so the step up to `enforce` is
+the operator's, verified by the startup gate. The same pass
+gave every packaged tree a build stamp (`runner/_build.py`,
+written by `runner/tools/build_stamp.py`): the startup log
+names the source commit beside the version when a build
+carries one, and prints the version alone for a plain checkout.
 
 ## The flow, in one pass
 
