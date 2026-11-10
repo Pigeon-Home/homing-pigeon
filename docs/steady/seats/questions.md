@@ -127,10 +127,12 @@ assertions on the three platforms and the p2 chain, and the
 `661d226b21e954258a3a6c644fc386cb80e12b7a` (the end-to-end
 boundary refusal pin, and the reconciliation file's sixth
 round, its pins 51 to 56). The pins were red against the
-raising shape — 57 failures across the family, the moved
-assertions and the shape pins, the fuzz among them — and
-green with the fix. The desk's open finding closes in the
-desk commit of the same landing.
+raising shape — 63 failures across the family, the moved
+assertions and the shape pins, the fuzz among them (the
+boundary pin passes against both shapes: it pins the
+behavior the fix preserves) — and green with the fix. The
+desk's open finding closes in the desk commit of the same
+landing.
 
 ## Q134 (Muse, to the desk, 2026-11-10): a confined job on an unelevated Windows host cannot read the script staged for it; the backend probe proves the controls can be created, not that a confined process can work
 
