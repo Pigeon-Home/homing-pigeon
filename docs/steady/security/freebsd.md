@@ -118,5 +118,60 @@ supposition is that, with the backend landed, on the node:
   verification, production install untouched) behaves as it
   did in the baseline run at the seeded posture.
 
-The conclusions from the field test are recorded in the next
-section when the test has run.
+## Conclusions from the field test
+
+The field test ran on the fleet node (FreeBSD 14.5-RELEASE)
+on 2026-11-10: the full 17-step rig battery at every
+security mode `enforce`, superseding the baseline run at
+the seeded posture for the confinement steps. Every step
+passed, 17 of 17:
+
+- the startup probe engaged and the runner started with
+  every security mode at `enforce`;
+- each exec job's audit record named exactly "freebsd: jail
+  + no_network + spawn_resource_limits";
+- the escape write did not land and the escape read did not
+  return the host file's contents — the jail root holds
+  neither path, which is stronger than the Windows backend's
+  outcome, as supposed;
+- the 700 MiB job was refused by the 512 MiB spawn limit
+  (its interpreter's allocation failed; a live unit test
+  asserts the MemoryError, so the refusal is the ceiling's
+  and not a job that never started);
+- the production install stood untouched throughout —
+  config, runner and crontab hashes identical before and
+  after, and no process ran under the installed config.
+
+The supposition's shape held. The field test also found 3
+defects the local tests had not, each fixed and landed
+before the passing run:
+
+- a nullfs mount cycle: `/usr/local` sits on the same
+  filesystem as `/usr` on the node, and mounting both was
+  refused ("Resource deadlock avoided"). A mount whose
+  source lives on the same filesystem as an ancestor
+  already mounted is now skipped — the child tree is
+  visible through the ancestor's mount; a child that is
+  its own filesystem still mounts for real.
+- the demoted spawn: `jexec -U` resolves the user in the
+  jail's user database, which the skeleton cannot serve;
+  the spawn now uses `-u`, resolved in the host's user
+  database — the account the job_user seam named. The
+  jail root is also traversable by the job user (a
+  root-run spawn had masked its 0700 default), and the
+  spawn passes the job's working directory (`-d /work`),
+  the in-jail form of the host spawn's cwd.
+- the loader hints: the dynamic loader's hints live in
+  `/var/run` on FreeBSD, and the skeleton had no `/var`;
+  binaries linked against `/usr/local` libraries (the
+  pkg-installed python3 is the standing case) failed to
+  load inside the jail while `/bin` tools ran. The
+  skeleton carries a copy of the hints file, nothing
+  else of `/var`.
+
+The backend's live unit tests run on the node itself
+(probe, argv translation, in-jail spawn, demote, local
+binary, memory ceiling): 6 of 6. What this backend does
+not do stands as written above: no rctl rule, no Capsicum,
+no per-job CPU or process-count limit, no separate network
+namespace with connectivity.
