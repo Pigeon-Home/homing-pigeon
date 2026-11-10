@@ -362,6 +362,29 @@ class LiveBackendTest(unittest.TestCase):
             # The write landed in the jail's tmpfs, not the host's.
             self.assertFalse(os.path.exists("/tmp/escape-note.txt"))
 
+    def test_a_spawn_as_the_job_user(self):
+        # The runner's contract: the workdir is chowned to the
+        # job user before the spawn (the job_user seam), and
+        # the spawn applies that user at the jail door. The job
+        # must run AS that user, in /work, able to write a
+        # relative path there.
+        import pwd
+        nobody = pwd.getpwnam("nobody")
+        with tempfile.TemporaryDirectory() as work:
+            os.chown(work, nobody.pw_uid, nobody.pw_gid)
+            proc = FC.spawn_confined_process(
+                ["/bin/sh", "-c",
+                 "id; pwd; echo x > rel-note.txt"],
+                cwd=work, env={}, user="nobody")
+            out, _err = proc.communicate(timeout=30)
+            rc = proc.returncode
+            proc.close()
+            self.assertEqual(rc, 0)
+            self.assertIn(b"uid=%d" % nobody.pw_uid, out)
+            self.assertIn(b"/work", out)
+            self.assertTrue(
+                os.path.exists(os.path.join(work, "rel-note.txt")))
+
     def test_the_memory_ceiling_refuses_a_700mb_job(self):
         with tempfile.TemporaryDirectory() as work:
             proc = FC.spawn_confined_process(

@@ -34,7 +34,8 @@ process exits.
 
 When `job_user` is also at `enforce` with a user named, that
 user is handed to the spawn and applied inside the jail
-(`jexec -U`): the POSIX `setuid` demote cannot ride a spawn
+(`jexec -u`, resolved in the host's user database): the
+POSIX `setuid` demote cannot ride a spawn
 that replaces the process creation, so the demote happens at
 the jail door instead, the same shape as the Windows backend's
 creation-time token. On its own (confinement at `audit` or

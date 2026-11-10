@@ -42,7 +42,8 @@ What this is NOT, stated plainly wherever it is recorded:
   filesystem and network boundary instead.
 - The job runs as root inside its jail (uid 0 in the jail's
   own id space) unless the job_user seam hands the spawn a
-  user, which jexec then applies inside the jail (jexec -U).
+  user, which jexec then applies at the jail door (jexec -u,
+  resolved in the host's user database).
   The jail root cannot see the host filesystem outside the
   mounts above, cannot mount, cannot use raw sockets or
   System V IPC (the jail defaults deny all three), and its
@@ -182,11 +183,19 @@ else:
         """A fresh jail root: empty mount points, a minimal /etc.
 
         The /etc carries copies of the host's passwd and group
-        files so a user handed to jexec -U resolves inside the
-        jail exactly as it does on the host. Returns the root
-        path; the caller owns it.
+        files so the jail's own name service sees the host's
+        accounts; the spawn's user is resolved on the host
+        side (jexec -u), not in here.
         """
         root = tempfile.mkdtemp(prefix="hp-jail-")
+        # mkdtemp makes the root 0700; a job demoted to the
+        # job user must be able to traverse its own jail root
+        # to reach the mounts (a root-run jexec masks this --
+        # the field test's demoted spawn could not exec at
+        # 0700). The skeleton holds only mount points and the
+        # /etc copies below, nothing that needs the tighter
+        # mode.
+        os.chmod(root, 0o755)
         for name in ("usr", "bin", "lib", "libexec", "sbin",
                      "etc", "tmp", "dev", "work"):
             os.mkdir(os.path.join(root, name))
@@ -464,8 +473,17 @@ else:
             if problem is not None:
                 raise RuntimeError(problem)
             cmd = [JEXEC_BIN]
+            if cwd:
+                # The host spawn's cwd is the job's run
+                # directory; inside the jail that directory is
+                # /work, and relative-path jobs must land there.
+                cmd += ["-d", "/work"]
             if user:
-                cmd += ["-U", user]
+                # -u resolves the user in the HOST's user
+                # database (the account the job_user seam
+                # named); -U would resolve in the jail's,
+                # which a skeleton /etc cannot serve.
+                cmd += ["-u", user]
             cmd += [name, LIMITS_BIN, "-v", str(int(memory_bytes)),
                     "-d", str(int(memory_bytes))]
             cmd += inner_argv

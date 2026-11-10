@@ -494,7 +494,7 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
     created first and the job started inside it via jexec, and
     release tears the jail down. When the job_user seam is at
     enforce with a user named, that user is handed to the
-    FreeBSD spawn, which applies it inside the jail (jexec -U)
+    FreeBSD spawn, which applies it at the jail door (jexec -u)
     -- the Popen preexec demote cannot ride a spawn that
     replaces Popen, the same reason the Windows creation-time
     token exists. A backend that cannot engage refuses the job
