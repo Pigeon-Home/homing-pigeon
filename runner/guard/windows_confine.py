@@ -52,6 +52,28 @@ host that cannot work confined refuses at startup instead of
 failing every job. Conclusions from the field test are
 recorded with the answer to Q134.
 
+Conclusions, from that field test (2026-11-10, the Germany
+rig, a throwaway standard user at medium integrity with its
+temp tree under its own profile): the shipped spawn did NOT
+reproduce the CI denial there -- confined jobs read their
+staged scripts and wrote their work directories, in both
+staging shapes (the script outside the work directory, and
+the script inside the work directory the spawn labels Low),
+over repeated clean runs. The isolation ran the other way
+from the lean: the restricted token read at the caller's
+integrity and at Low alike, and the only hard denial the
+test produced came from the label's side -- the staged file
+itself labelled Low was refused by PowerShell under the
+default execution policy (a Low-labelled script is treated
+as untrusted: "not digitally signed"), while a spawn variant
+that left the work directory unlabelled read its script but
+could not write its outputs, the label doing its documented
+work. So no token-recipe change and no script labelling:
+the trial probe below is the fix, making the startup gate
+honest on hosts whose confined processes cannot work,
+whatever their cause. The CI host's own cause stays open;
+the trial names it there at startup.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
@@ -81,8 +103,11 @@ as well: a simulated platform cannot bind Windows APIs the host
 does not have.
 """
 import ctypes
+import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 from ctypes import wintypes
 
@@ -472,6 +497,9 @@ else:
         kernel32.CloseHandle(job)
         return None
 
+    _trial_lock = threading.Lock()
+    _trial_verdict = []
+
     def windows_confinement_problem(cfg=None, timeout=15):
         """None when the confinement controls can engage here.
 
@@ -481,6 +509,17 @@ else:
         a throwaway handle and closed here; the per-job spawn
         makes its own. Any failure is named, and the enforce gate
         refuses with it.
+
+        Creation alone does not prove a confined process can
+        work (Q134: a host passed this probe and failed every
+        job's staged script), so the first call on a host whose
+        controls can be created also runs the trial: a confined
+        process that reads a staged file and writes its work
+        directory, through confinement_trial_problem below. The
+        verdict is cached for the life of the process -- the
+        per-job gate consults this probe, and the trial's cost
+        (one confined spawn) is paid once per runner start, not
+        once per job.
         """
         problem = windows_startup_problem(cfg, timeout=timeout)
         if problem is not None:
@@ -489,7 +528,11 @@ else:
         if problem is not None:
             return problem
         kernel32.CloseHandle(token)
-        return None
+        with _trial_lock:
+            if not _trial_verdict:
+                _trial_verdict.append(
+                    confinement_trial_problem(spawn_confined_process))
+            return _trial_verdict[0]
 
     def apply_windows_containment(proc_handle,
                                   memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES):
@@ -721,3 +764,107 @@ else:
             out_read, err_read)
         proc.confinement_status = STATUS_CONFINEMENT
         return proc
+
+
+# The confinement trial (Q134). The orchestration is platform-
+# neutral -- it stages files in a temp tree and drives a spawn
+# callable -- so the suite exercises it through scripted spawn
+# seams on any host; on a real Windows host the backend's
+# windows_confinement_problem wires it to spawn_confined_process
+# and caches the verdict (see there). The trial program is a
+# staged .py file, not a -c string: the confined process reads
+# two staged files (the program, then the data file it is
+# handed) and writes a third into its work directory, which is
+# the shape of a real job's staged script and outputs.
+_TRIAL_MARKER = "hp-confinement-trial"
+
+_TRIAL_PROGRAM = (
+    "import os, sys\n"
+    "data = open(sys.argv[1], encoding='utf-8').read()\n"
+    "assert 'hp-confinement-trial' in data, 'marker missing'\n"
+    "print('TRIAL-READ-OK', flush=True)\n"
+    "out = os.path.join(sys.argv[2], 'trial-out.txt')\n"
+    "with open(out, 'w', encoding='utf-8') as fh:\n"
+    "    fh.write(data)\n"
+    "print('TRIAL-WRITE-OK', flush=True)\n"
+)
+
+
+def _trial_tail(text):
+    """The last non-empty line of a trial process's output."""
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    return lines[-1][:200] if lines else "no output"
+
+
+def confinement_trial_problem(spawn, timeout=60):
+    """None when a confined process can work here, else why not.
+
+    `spawn` is a confined-spawn callable with the backend's
+    signature -- spawn(argv, cwd=..., env=...) returning a
+    process object with communicate(timeout), kill(), close()
+    and returncode. The trial stages a data file and a program
+    in a fresh temp tree, spawns the program confined with the
+    tree's work directory as its cwd, and names the stage that
+    failed: the spawn itself, the staged read, or the work-
+    directory write. The temp tree is removed either way. A
+    host whose confined processes cannot read what is staged
+    for them answers a problem here, at startup, instead of
+    failing every job.
+    """
+    tmp = tempfile.mkdtemp(prefix="hp-confinement-trial-")
+    try:
+        staged = os.path.join(tmp, "trial-staged.txt")
+        with open(staged, "w", encoding="utf-8") as fh:
+            fh.write(_TRIAL_MARKER + "\n")
+        program = os.path.join(tmp, "trial_program.py")
+        with open(program, "w", encoding="utf-8") as fh:
+            fh.write(_TRIAL_PROGRAM)
+        work = os.path.join(tmp, "work")
+        os.makedirs(work)
+        argv = [sys.executable, program, staged, work]
+        try:
+            proc = spawn(argv, cwd=work, env=dict(os.environ))
+        except Exception as e:
+            return "confined trial spawn failed: %s" % (e,)
+        try:
+            try:
+                out, err = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                return ("confined trial timed out after %ss; a "
+                        "confined process could not finish "
+                        "reading its staged file and writing its "
+                        "work directory" % (timeout,))
+            out_text = out.decode("utf-8", "replace") \
+                if isinstance(out, (bytes, bytearray)) else str(out or "")
+            err_text = err.decode("utf-8", "replace") \
+                if isinstance(err, (bytes, bytearray)) else str(err or "")
+            if "TRIAL-READ-OK" not in out_text:
+                return ("a confined process could not read its "
+                        "staged file (exit %s: %s)"
+                        % (proc.returncode,
+                           _trial_tail(err_text or out_text)))
+            if "TRIAL-WRITE-OK" not in out_text or not os.path.exists(
+                    os.path.join(work, "trial-out.txt")):
+                return ("a confined process read its staged file "
+                        "but could not write its work directory "
+                        "(exit %s: %s)"
+                        % (proc.returncode,
+                           _trial_tail(err_text or out_text)))
+            if proc.returncode not in (0, None):
+                return ("the confined trial process exited %s "
+                        "after reading and writing (%s)"
+                        % (proc.returncode, _trial_tail(err_text)))
+            return None
+        finally:
+            try:
+                proc.close()
+            except Exception:
+                pass
+    except Exception as e:
+        return "confined trial could not be staged: %s" % (e,)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)

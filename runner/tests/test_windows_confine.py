@@ -15,6 +15,7 @@ Phase 1), and every failure lands in the refuse direction.
 import ctypes
 import importlib
 import os
+import subprocess
 import sys
 import tempfile
 import types
@@ -544,6 +545,112 @@ class ConfinementSpawnTest(unittest.TestCase):
         self.assertEqual(sink[0]["decision"], "fallback")
         self.assertEqual(sink[0]["reason"],
                          "windows_confinement_failed")
+
+
+class _FakeTrialProc:
+    """The confined-process shape the trial drives, scripted."""
+
+    def __init__(self, out=b"", err=b"", returncode=0, work=None,
+                 write_file=False, timeout=False):
+        self._out = out
+        self._err = err
+        self.returncode = returncode
+        self._work = work
+        self._write_file = write_file
+        self._timeout = timeout
+        self.killed = False
+        self.closed = False
+
+    def communicate(self, timeout=None):
+        if self._timeout:
+            raise subprocess.TimeoutExpired("trial", timeout)
+        if self._write_file and self._work is not None:
+            with open(os.path.join(self._work, "trial-out.txt"),
+                      "w") as fh:
+                fh.write("hp-confinement-trial\n")
+        return self._out, self._err
+
+    def kill(self):
+        self.killed = True
+
+    def close(self):
+        self.closed = True
+
+
+class ConfinementTrialProblemTest(unittest.TestCase):
+    """confinement_trial_problem through scripted spawn seams.
+
+    The trial orchestration is platform-neutral (it stages
+    files and drives a spawn callable), so it is exercised
+    here on any host; the real backend wires it to
+    spawn_confined_process on Windows and caches the verdict.
+    """
+
+    def _spawn(self, proc_factory, record):
+        def _spawn(argv, cwd=None, env=None):
+            record["argv"] = argv
+            record["cwd"] = cwd
+            record["staged_existed"] = all(
+                os.path.exists(p) for p in argv[1:])
+            return proc_factory(cwd)
+        return _spawn
+
+    def test_trial_ok_answers_none_and_cleans_up(self):
+        record = {}
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=b"TRIAL-READ-OK\nTRIAL-WRITE-OK\n",
+                work=work, write_file=True), record)
+        self.assertIsNone(WC.confinement_trial_problem(spawn))
+        self.assertTrue(record["staged_existed"])
+        # The staged tree is the trial's own temp tree, removed
+        # after the run.
+        self.assertFalse(os.path.exists(record["argv"][2]))
+
+    def test_trial_read_failure_names_the_staged_read(self):
+        record = {}
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=b"", err=b"PermissionError: [Errno 13] denied",
+                returncode=1), record)
+        problem = WC.confinement_trial_problem(spawn)
+        self.assertIsNotNone(problem)
+        self.assertIn("could not read its staged file", problem)
+        self.assertIn("exit 1", problem)
+
+    def test_trial_write_failure_names_the_work_write(self):
+        record = {}
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=b"TRIAL-READ-OK\n",
+                err=b"PermissionError: [Errno 13] denied",
+                returncode=1), record)
+        problem = WC.confinement_trial_problem(spawn)
+        self.assertIsNotNone(problem)
+        self.assertIn("could not write its work directory", problem)
+
+    def test_trial_spawn_failure_names_the_spawn(self):
+        def _spawn(argv, cwd=None, env=None):
+            raise RuntimeError("CreateProcessAsUserW failed: 5")
+        problem = WC.confinement_trial_problem(_spawn)
+        self.assertIsNotNone(problem)
+        self.assertIn("confined trial spawn failed", problem)
+        self.assertIn("CreateProcessAsUserW failed: 5", problem)
+
+    def test_trial_timeout_names_the_timeout_and_kills(self):
+        record = {}
+        holder = {}
+
+        def _factory(work):
+            holder["proc"] = _FakeTrialProc(timeout=True)
+            return holder["proc"]
+
+        spawn = self._spawn(_factory, record)
+        problem = WC.confinement_trial_problem(spawn, timeout=3)
+        self.assertIsNotNone(problem)
+        self.assertIn("timed out", problem)
+        self.assertTrue(holder["proc"].killed)
+        self.assertTrue(holder["proc"].closed)
 
 
 class SeedShapeUnchangedTest(unittest.TestCase):
