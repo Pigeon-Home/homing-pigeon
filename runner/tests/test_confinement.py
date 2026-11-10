@@ -435,6 +435,40 @@ class FallbackTest(unittest.TestCase):
             with self.assertRaises(JobRejected):
                 _run(_conf("enforce"), job)
 
+    def test_malformed_extra_flags_refuse_the_job_at_the_boundary(self):
+        # Q135: the decision answers a denial for a malformed
+        # flag and never raises; the refusal lives at the job
+        # boundary. End to end the job is refused exactly as it
+        # was when the decision raised, the fallback row names
+        # the build failure, and its detail names the invalid
+        # flag field. The POSIX platform is scripted as in the
+        # bwrap-missing test above.
+        from runner.runner import JobRejected
+        with mock.patch.object(SB, "sandbox_available",
+                               return_value=True), \
+                mock.patch.object(sys, "platform", "linux"):
+            tmpdir = tempfile.mkdtemp(prefix="hp-m6-")
+            cfg = {"base_dir": tmpdir}
+            cfg.update(_conf("enforce", extra_flags=[""]))
+            with self.assertRaises(JobRejected):
+                execute_job(cfg, _job("m6-badflag", "print('hi')"),
+                            tmpdir)
+            audit = []
+            path = os.path.join(tmpdir, S.AUDIT_FILE)
+            if os.path.exists(path):
+                for line in open(path, encoding="utf-8"):
+                    try:
+                        audit.append(json.loads(line))
+                    except ValueError:
+                        pass
+        conf_rows = [r for r in audit
+                     if r.get("feature") == "confinement"]
+        self.assertEqual(len(conf_rows), 1)
+        self.assertEqual(conf_rows[0]["decision"], "fallback")
+        self.assertEqual(conf_rows[0]["reason"],
+                         "confinement_build_failed")
+        self.assertIn("extra_flags", conf_rows[0]["detail"])
+
 
 class InterpreterPrefixBindTest(unittest.TestCase):
     """An interpreter outside /usr gets its install prefix bound

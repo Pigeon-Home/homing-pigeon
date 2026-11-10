@@ -120,6 +120,18 @@ Windows seat to re-test, not answered here. The behavioral
 pin below reproduces the CI host's shape on any host: a
 backend that engages, scripted behind the production
 lookup, with sys.platform "win32" and os.name "nt".
+
+A sixth round (Q135) is not a fixture round: the contract
+itself moved. The confinement decision -- a pure query the
+suite interrogates with adversarial configs -- had carried
+the phase-2 refusal inside it as a raise, against the
+decision fuzz's never-raises invariant, and the fuzz was
+the head's one red test. The decision now returns a denial
+(the empty argv, the fallback audit row unchanged) and the
+job boundary raises the refusal on it. The pins below hold
+the shape: the decision body carries no raise, the
+boundary converts the empty argv, and the fuzz's own repro
+config comes back as a triple under both probe outcomes.
 """
 import io
 import json
@@ -963,6 +975,90 @@ class RoundFiveWindowsBackendParityTest(unittest.TestCase):
             result.wasSuccessful(),
             [(str(t), str(e)) for t, e in
              result.failures + result.errors])
+
+
+class ConfinementDecisionShapeTest(unittest.TestCase):
+    """Q135: the decision answers; the boundary refuses."""
+
+    @staticmethod
+    def _read(*parts):
+        with open(os.path.join(REPO, *parts),
+                  encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_the_decision_body_carries_no_raise(self):
+        src = self._read("runner", "runner.py")
+        i = src.index("def _confinement_argv")
+        j = src.index("class _JobUserFace", i)
+        body = src[i:j]
+        self.assertNotIn("raise JobRejected", body)
+        self.assertIn("return denial", body)
+
+    def test_the_boundary_converts_the_empty_argv(self):
+        src = self._read("runner", "ops", "exec.py")
+        i = src.index("if not c_argv:")
+        self.assertIn("JobRejected", src[i:i + 700])
+
+    def test_the_flag_validator_rejects_whitespace(self):
+        src = self._read("runner", "guard", "sandbox.py")
+        i = src.index("def _flag_list")
+        j = src.index("def _bind_pairs", i)
+        self.assertIn("isspace", src[i:j])
+
+    def test_the_fuzz_repro_config_returns_a_triple(self):
+        cfg = {"work_mount": {"extra_flags": [""]}}
+        with tempfile.TemporaryDirectory() as d:
+            for avail, build in (
+                    (False, None),
+                    (True, RuntimeError("fuzz"))):
+                patches = [
+                    mock.patch.object(sys, "platform", "linux"),
+                    mock.patch.object(
+                        runner._sandbox, "sandbox_available",
+                        return_value=avail),
+                    mock.patch.object(
+                        runner.subprocess, "Popen",
+                        side_effect=AssertionError("popen")),
+                ]
+                if build is not None:
+                    patches.append(mock.patch.object(
+                        runner._sandbox, "build_bwrap_command",
+                        side_effect=build))
+                for p in patches:
+                    p.start()
+                try:
+                    got = runner._confinement_argv(
+                        cfg, d, "j", ["python3"], "/w/s.sh", "/w",
+                        [], {"OK": "1"})
+                finally:
+                    for p in patches:
+                        p.stop()
+                self.assertEqual(got, ([], True, False))
+
+    def test_a_malformed_flag_config_is_denied_not_raised(self):
+        cfg = {"security": {
+            "modes": {"confinement": "enforce"},
+            "confinement": {"extra_flags": [""]}}}
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(sys, "platform", "linux"), \
+                    mock.patch.object(
+                        runner._sandbox, "sandbox_available",
+                        return_value=True), \
+                    mock.patch.object(
+                        runner.subprocess, "Popen",
+                        side_effect=AssertionError("popen")):
+                got = runner._confinement_argv(
+                    cfg, d, "j", ["python3"], "/w/s.sh", "/w", [],
+                    {})
+            self.assertEqual(got, ([], True, False))
+            path = os.path.join(d, "security-audit.jsonl")
+            with open(path, encoding="utf-8") as fh:
+                rows = [json.loads(line)
+                        for line in fh if line.strip()]
+            self.assertEqual(rows[-1]["decision"], "fallback")
+            self.assertEqual(rows[-1]["reason"],
+                             "confinement_build_failed")
+            self.assertIn("extra_flags", rows[-1]["detail"])
 
 
 if __name__ == "__main__":
