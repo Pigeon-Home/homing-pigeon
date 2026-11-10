@@ -169,7 +169,11 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # runner proper, and the whole set was re-measured over
 # the current tree for this entry, which also takes up
 # the growth earlier landings had left unrecorded in
-# runner/ops.
+# runner/ops. Re-measured again the same day after the
+# FreeBSD backend's first field test fixed its mount
+# pass (a child tree on its parent's filesystem is not
+# mounted twice; nullfs refuses the cycle), growing
+# runner/guard.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 134 since
@@ -182,9 +186,9 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 137
-AS_ASSEMBLED_ZIP_BYTES = 729663
-AS_ASSEMBLED_LINES = 58597
-AS_ASSEMBLED_NONBLANK_LINES = 52829
+AS_ASSEMBLED_ZIP_BYTES = 730215
+AS_ASSEMBLED_LINES = 58640
+AS_ASSEMBLED_NONBLANK_LINES = 52870
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
@@ -195,7 +199,7 @@ AS_ASSEMBLED_PART_LINES = {
     "runner/runner.py": 6758,
     "runner/oracle": 5044,
     "runner/transport_extensions": 2775,
-    "runner/guard": 4097,
+    "runner/guard": 4140,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,

@@ -84,7 +84,7 @@ class CoreListTest(unittest.TestCase):
         # re-recorded at the 2026-11-05 re-measures; the Gemini
         # token count above still describes the 2026-11-04
         # assembly.
-        self.assertEqual(729663, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(730215, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -129,9 +129,11 @@ class CoreListTest(unittest.TestCase):
         # freebsd_confine) joined the canonical list and
         # their wiring grew runner/ops and the runner
         # proper, the whole set re-measured over the
-        # current tree.
-        self.assertEqual(58597, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(52829, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # current tree, and again the same day after the
+        # FreeBSD backend's field-test mount fix grew
+        # runner/guard.
+        self.assertEqual(58640, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(52870, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

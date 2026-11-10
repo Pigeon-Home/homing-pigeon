@@ -106,8 +106,13 @@ UMOUNT_BIN = "/sbin/umount"
 # interpreter, its libraries and the base tools. Nothing else
 # of the host filesystem exists inside the jail.
 #: Host paths mounted read-only (nullfs) into the jail root, in
-#: mount order (/usr/local rides over /usr: it is where the
-#: pkg-installed interpreters live on FreeBSD).
+#: mount order, parents before children: a child tree that
+#: lives on its parent's filesystem (a plain directory under
+#: it, like /usr/local under /usr on a stock FreeBSD) is
+#: already exposed by the parent's mount and is not mounted
+#: again -- nullfs refuses that cycle. /usr/local is listed
+#: because it is where the pkg-installed interpreters live;
+#: on a host where it is its own filesystem it mounts for real.
 RO_MOUNTS = ("/usr", "/usr/local", "/bin", "/lib", "/libexec",
              "/sbin")
 
@@ -210,6 +215,49 @@ else:
                            os.path.join(root, "work")])
         return mounts
 
+    def _apply_mounts(mounts, timeout):
+        """Apply the mount argvs in order; (applied, problem).
+
+        A nullfs entry is skipped when an entry already applied
+        mounts an ancestor of its source AND the source lives on
+        the same host filesystem as that ancestor (same device):
+        the ancestor's mount already exposes the source at
+        exactly that path, and mounting it again is a cycle
+        nullfs refuses ("Resource deadlock avoided"). This is
+        /usr/local on a stock FreeBSD: a plain directory under
+        /usr, not a filesystem of its own. Where the child IS
+        its own filesystem (a different device), it is mounted
+        for real. Only mounts actually applied are returned,
+        for teardown.
+        """
+        applied = []
+        mounted = []  # (source, st_dev) actually mounted
+        for argv in mounts:
+            if argv[1:3] == ["-t", "nullfs"]:
+                src = argv[-2]
+                try:
+                    dev = os.stat(src).st_dev
+                except OSError:
+                    dev = None
+                if dev is not None and any(
+                        dev == adev and (
+                            src == asrc
+                            or src.startswith(asrc + "/"))
+                        for asrc, adev in mounted):
+                    continue
+            rc, _out, err = _run(argv, timeout=timeout)
+            if rc != 0:
+                return applied, "mount %s failed (exit %d): %s" % (
+                    argv[-1], rc, err.strip()[:200])
+            applied.append(argv)
+            if argv[1:3] == ["-t", "nullfs"]:
+                try:
+                    mounted.append(
+                        (argv[-2], os.stat(argv[-2]).st_dev))
+                except OSError:
+                    pass
+        return applied, None
+
     def _teardown(name, root, mounts):
         """Remove the jail, unmount the skeleton, delete it.
 
@@ -268,12 +316,10 @@ else:
         mounts = []
         try:
             root = _make_skeleton()
-            mounts = _mounts_for(root, None)
-            for argv in mounts:
-                rc, _out, err = _run(argv, timeout=timeout)
-                if rc != 0:
-                    return "mount %s failed (exit %d): %s" % (
-                        argv[-1], rc, err.strip()[:200])
+            mounts, problem = _apply_mounts(
+                _mounts_for(root, None), timeout)
+            if problem is not None:
+                return problem
             problem = _create_jail(name, root)
             if problem is not None:
                 return problem
@@ -410,13 +456,10 @@ else:
         mounts = []
         try:
             root = _make_skeleton()
-            mounts = _mounts_for(root, cwd)
-            for mnt in mounts:
-                rc, _out, err = _run(mnt, timeout=30)
-                if rc != 0:
-                    raise RuntimeError(
-                        "mount %s failed (exit %d): %s" % (
-                            mnt[-1], rc, err.strip()[:200]))
+            mounts, problem = _apply_mounts(
+                _mounts_for(root, cwd), 30)
+            if problem is not None:
+                raise RuntimeError(problem)
             problem = _create_jail(name, root)
             if problem is not None:
                 raise RuntimeError(problem)
