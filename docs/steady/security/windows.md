@@ -69,6 +69,21 @@ above plus the M2 key-policy constraints (`allowed_env`,
 platform-independent. `--posture` reports confinement as
 not-applicable on Windows rather than warning about it.
 
+## The two modes a Windows config states
+
+Two security modes name mechanisms that cannot engage on Windows:
+`security.modes.confinement` (the bwrap sandbox is Linux-only) and
+`security.modes.job_user` (the demote is a POSIX `setuid`). Both
+read `enforce` when a config does not state them, and at `enforce`
+startup refuses, because a mode whose mechanism cannot engage
+would otherwise promise what it cannot do. A fresh Windows install
+therefore writes both modes into `config.json` at `audit`, stated
+in the file: jobs run under the account boundary above, and the
+audit log records what the modes would have done. A hand-written
+config should state the same two lines; leaving them unstated
+leaves the first start at the refusal, with the refusal naming
+exactly these modes.
+
 ## Service hardening
 
 The Scheduled Task itself supports no equivalent of the systemd

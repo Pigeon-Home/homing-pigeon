@@ -65,6 +65,11 @@ def _main_rig(argv, body):
     # tests) keeps it untouched.
     body.setdefault("security", {"modes": {"confinement": "off",
                                            "job_user": "off"}})
+    # Every config the installer or the setup wizard writes
+    # carries a runner_id; since phase 2 of the default-posture
+    # work, audience at enforce (its unset reading) with none
+    # refuses startup before the gate under test.
+    body.setdefault("runner_id", "windows-proofs-runner")
     path = os.path.join(directory, "config.json")
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(body, fh)
@@ -236,8 +241,20 @@ class JobUserWindowsAuditTest(unittest.TestCase):
         self.assertEqual(args[2], "unsupported_platform")
 
     def test_enforce_records_too_if_it_ever_gets_here(self):
-        out, sec = self._preexec_on_nt("enforce")
-        self.assertIsNone(out)
+        # The record is written, and then -- since phase 2 of
+        # the default-posture work -- the job is refused: under
+        # enforce the demote's absence is not a step-down.
+        sec = mock.Mock()
+        sec.sec_mode.return_value = "enforce"
+        cfg = {"security": {"modes": {"job_user": "enforce"},
+                            "job_user": {"user": "jobber"}}}
+        with tempfile.TemporaryDirectory() as base:
+            work = os.path.join(base, "work")
+            os.makedirs(work, exist_ok=True)
+            with mock.patch.object(runner, "_security", sec), \
+                    mock.patch.object(os, "name", "nt"):
+                with self.assertRaises(runner.JobRejected):
+                    runner._job_user_preexec(cfg, base, "job-9", work)
         sec.write_audit_entry.assert_called()
 
     def test_off_is_silent(self):
@@ -888,8 +905,20 @@ class JobUserEnforceShotgunTest(unittest.TestCase):
             mode="audit")
 
     def test_nt_enforce_writes_the_record_with_its_mode(self):
-        out, sec = self._preexec("enforce")
-        self.assertIsNone(out)
+        # The record lands with mode enforce, and the job is
+        # then refused (phase 2 of the default-posture work):
+        # the record is the fallback's trace, not a step-down.
+        sec = mock.Mock()
+        sec.sec_mode.return_value = "enforce"
+        cfg = {"security": {"modes": {"job_user": "enforce"},
+                            "job_user": {"user": "jobber"}}}
+        with tempfile.TemporaryDirectory() as td:
+            work = os.path.join(td, "work")
+            os.makedirs(work, exist_ok=True)
+            with mock.patch.object(runner, "_security", sec), \
+                    mock.patch.object(os, "name", "nt"):
+                with self.assertRaises(runner.JobRejected):
+                    runner._job_user_preexec(cfg, "base-x", "job-9", work)
         args = sec.write_audit_entry.call_args
         self.assertEqual(args[0][2], "unsupported_platform")
         self.assertEqual(args[1]["mode"], "enforce")
@@ -1188,9 +1217,23 @@ def _make_job_user_field_tests():
                 repr(job_id))
 
     def field_base_dir(self):
-        probe = JobUserEnforceShotgunTest()
+        # base_dir passes through verbatim to both audit calls.
+        # Driven at enforce, where the record is written and the
+        # job is then refused (phase 2 of the default-posture
+        # work), so the raise is part of the expected shape.
         for base in ("base-x", "/tmp/deep/base", "relative-base"):
-            _out, sec = probe._preexec("enforce", base=base)
+            sec = mock.Mock()
+            sec.sec_mode.return_value = "enforce"
+            cfg = {"security": {"modes": {"job_user": "enforce"},
+                                "job_user": {"user": "jobber"}}}
+            with tempfile.TemporaryDirectory() as td:
+                work = os.path.join(td, "work")
+                os.makedirs(work, exist_ok=True)
+                with mock.patch.object(runner, "_security", sec), \
+                        mock.patch.object(os, "name", "nt"):
+                    with self.assertRaises(runner.JobRejected):
+                        runner._job_user_preexec(
+                            cfg, base, "job-9", work)
             sec.bump_evaluated.assert_called_once_with(base, "job_user")
             self.assertEqual(sec.write_audit_entry.call_args[0][0],
                              base)

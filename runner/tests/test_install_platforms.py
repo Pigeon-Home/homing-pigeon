@@ -898,3 +898,96 @@ class SecretAndOllamaEnvTest(unittest.TestCase):
         with mock.patch.object(inst.sys, "platform", "haiku"):
             self.assertIsNone(inst._bpf_loadable())
 
+
+
+class PlatformModesTest(unittest.TestCase):
+    """Phase 2 of the default-posture work, item 5: a first
+    install states the platform gates in the seeded config.
+
+    A mechanism that cannot engage on the install platform --
+    confinement (bwrap is Linux-only) and, on Windows, the
+    job_user demote (POSIX-only) -- is written into the fresh
+    config at audit, stated in the file, instead of being left
+    at the seed's enforce to refuse the first start. A mode the
+    config already states lower is the owner's word and stays.
+    """
+
+    def _seeded(self, d):
+        src = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "..", "config.example.json")
+        path = os.path.join(d, "config.json")
+        with open(src, encoding="utf-8") as fh:
+            cfg = json.load(fh)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(cfg, fh)
+        return path
+
+    def _modes(self, path):
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)["security"]["modes"]
+
+    def test_the_platform_map(self):
+        self.assertEqual(inst.platform_modes("win32"),
+                         {"confinement": "audit", "job_user": "audit"})
+        self.assertEqual(inst.platform_modes("darwin"),
+                         {"confinement": "audit"})
+        self.assertEqual(inst.platform_modes("freebsd13"),
+                         {"confinement": "audit"})
+        self.assertEqual(inst.platform_modes("linux"), {})
+
+    def test_windows_states_both_modes_and_leaves_the_rest(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._seeded(d)
+            applied = inst.apply_platform_modes(path, "win32")
+            modes = self._modes(path)
+        self.assertEqual(applied,
+                         {"confinement": "audit", "job_user": "audit"})
+        self.assertEqual(modes["confinement"], "audit")
+        self.assertEqual(modes["job_user"], "audit")
+        self.assertEqual(modes["audience"], "enforce")
+        self.assertEqual(modes["policy_env"], "enforce")
+
+    def test_macos_and_freebsd_state_confinement_only(self):
+        for platform in ("darwin", "freebsd13"):
+            with tempfile.TemporaryDirectory() as d:
+                path = self._seeded(d)
+                inst.apply_platform_modes(path, platform)
+                modes = self._modes(path)
+            self.assertEqual(modes["confinement"], "audit", platform)
+            self.assertEqual(modes["job_user"], "enforce", platform)
+
+    def test_linux_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._seeded(d)
+            with open(path, encoding="utf-8") as fh:
+                before = fh.read()
+            applied = inst.apply_platform_modes(path, "linux")
+            with open(path, encoding="utf-8") as fh:
+                after = fh.read()
+        self.assertEqual(applied, {})
+        self.assertEqual(before, after)
+
+    def test_a_mode_stated_lower_stays(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._seeded(d)
+            with open(path, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+            cfg["security"]["modes"]["job_user"] = "off"
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(cfg, fh)
+            applied = inst.apply_platform_modes(path, "win32")
+            modes = self._modes(path)
+        self.assertEqual(modes["job_user"], "off")
+        self.assertEqual(applied, {"confinement": "audit"})
+
+    def test_applying_twice_changes_nothing_the_second_time(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._seeded(d)
+            inst.apply_platform_modes(path, "win32")
+            with open(path, encoding="utf-8") as fh:
+                before = fh.read()
+            applied = inst.apply_platform_modes(path, "win32")
+            with open(path, encoding="utf-8") as fh:
+                after = fh.read()
+        self.assertEqual(applied, {})
+        self.assertEqual(before, after)

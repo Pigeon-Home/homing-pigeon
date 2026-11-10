@@ -1335,6 +1335,11 @@ def _setup_fresh_config(args, cfg_path):
                                                 args.no_inference)
     if profile:
         apply_profile(cfg_path, profile)
+    # State the platform gates in the seeded config (phase 2 of
+    # the default-posture work): a mechanism that cannot engage
+    # on this platform is written at audit, in the file, instead
+    # of being left at the seed's enforce to refuse first start.
+    apply_platform_modes(cfg_path)
     collectors = chosen_collectors(args, profile)
     if collectors:
         install_collectors(collectors, args)
@@ -2355,6 +2360,69 @@ def apply_profile(cfg_path: str, profile: str) -> None:
     cfg["profile"] = name
     _write_json(cfg_path, cfg)
     print(f"profile: applied {name}")
+
+
+def platform_modes(platform=None):
+    """The security modes a first install states outright because
+    their mechanism cannot engage on this platform.
+
+    Confinement is a Linux sandbox (bwrap): on every other
+    platform it cannot engage. The job_user demote is a POSIX
+    setuid: on Windows it cannot engage. Both read enforce from
+    the seed, so without this statement the first start on those
+    platforms is a refusal the owner must edit their way out of,
+    choosing weaker modes unguided. Stated at audit instead: the
+    mode is in the file, in the open, and the audit trail records
+    what enforce would have done. An empty map on Linux, where
+    both mechanisms can engage and the startup gates decide.
+    """
+    if platform is None:
+        platform = sys.platform
+    if platform == "win32":
+        return {"confinement": "audit", "job_user": "audit"}
+    if not platform.startswith("linux"):
+        return {"confinement": "audit"}
+    return {}
+
+
+def apply_platform_modes(cfg_path: str, platform=None) -> dict:
+    """State platform_modes() in a fresh install's config.json.
+
+    Only a mode the config currently states at enforce moves --
+    that is the seed's value (or a profile's); a mode already
+    stated at audit or off is the owner's word and stays. Returns
+    the modes actually written. Fresh installs only: the caller
+    is _setup_fresh_config, so an upgrade's config is never
+    rewritten by this.
+    """
+    modes = platform_modes(platform)
+    if not modes:
+        return {}
+    cfg = _read_config(cfg_path)
+    if not isinstance(cfg, dict):
+        return {}
+    sec = cfg.get("security") if isinstance(cfg.get("security"), dict) \
+        else {}
+    cur = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
+    applied = {}
+    new_modes = dict(cur)
+    for feature, mode in modes.items():
+        if cur.get(feature, "enforce") == "enforce":
+            new_modes[feature] = mode
+            applied[feature] = mode
+    if not applied:
+        return {}
+    sec = dict(sec)
+    sec["modes"] = new_modes
+    cfg["security"] = sec
+    _write_json(cfg_path, cfg)
+    plat = platform if platform is not None else sys.platform
+    for feature, mode in applied.items():
+        print(f"platform: security.modes.{feature} stated as "
+              f"{mode} in {cfg_path} ({feature} cannot engage on "
+              f"{plat}; the mode is stated in the file rather "
+              f"than left to refuse the first start)")
+    return applied
 
 
 # --- sense collectors -------------------------------------------------
