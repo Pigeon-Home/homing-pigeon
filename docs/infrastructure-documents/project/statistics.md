@@ -1,16 +1,16 @@
 # The project's statistics: the 20-million-token measure
 
 Dated 2026-11-09. Measured on main at commit
-4572cb84b993defa17bee2da600ea8e8d3d93e14, the head from which the
-current release of the 3.15.20 line was cut.
+4b32dd2b77a2c686583524b5d75a73a419b60dfb, the head this
+refresh was measured on.
 
 The recorded line, in the display form settled for publication:
 
-20 mil security tokens, 5,000 commits, 1,300,000 lines at 96.35% non-latent code
+20 mil security tokens, 5,000 commits, 1,300,000 lines at 96.83% non-latent code
 
 ## What stands behind each figure
 
-- Tokens: 20,301,779, counted over the whole tree by the project's
+- Tokens: 20,357,072, counted over the whole tree by the project's
   own estimator (runner/ops/version4.py) — the same measure the
   version number's 3rd component carries, which is why the line
   reads 20. Display form: 20 mil security tokens — security
@@ -20,23 +20,24 @@ The recorded line, in the display form settled for publication:
   is sec-tokens. Verify it on any checkout:
   `python3 runner/ops/version4.py measure` prints the count and
   its whole millions.
-- Lines: 1,329,595 lines in tracked files at the measured head —
-  355,481 of them Python, 84,055 of them markdown. The display
+- Lines: 1,333,978 lines in tracked files at the measured head —
+  357,856 of them Python, 85,879 of them markdown. The display
   figure, 1,300,000, is that count rounded.
 - Commits: the display figure, 5,000, is rounded from a
   full-history recount at the measured head, taken from a
-  complete clone, which counts 5,076. The project's local
+  complete clone, which counts 5,127. The project's local
   mirrors are shallow (810 commits deep) and cannot recount
   the whole history on their own — the recount above rests on
   the complete clone, and any future count should be taken
   the same way.
-- Non-latent: 96.35%, from the project's standing audit
-  ([duplication-audit.md](duplication-audit.md), 2026-11-03):
-  duplicate and latent code held at 3.65% of the
-  tree in near copies and 0.03% in exact copies. That audit is
-  the latest word on the latent share. A fresh dormant-code
-  audit is still owed, and this record will be corrected when
-  it lands.
+- Non-latent: 96.83%, from the fresh dormant-code audit
+  ([dormant-code-audit.md](dormant-code-audit.md), 2026-11-09,
+  measured at 4111ac4659145c8a6f4d2829ade2b1a35b9bdc24):
+  duplicate and latent code held at 3.17% of the
+  tree in near copies and 0.03% in exact copies. The audit
+  supersedes the 2026-11-03 audit's figures (96.35%, from
+  3.65% near copies), whose family-by-family analysis stands
+  in [duplication-audit.md](duplication-audit.md).
 
 ## The facts, machine-readable
 
@@ -52,17 +53,17 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-09",
-  "commit": "4572cb84b993defa17bee2da600ea8e8d3d93e14",
+  "commit": "4b32dd2b77a2c686583524b5d75a73a419b60dfb",
   "counter": "runner/ops/version4.py",
-  "tokens": 20343151,
-  "lines_tracked": 1332688,
-  "commits": 5116,
+  "tokens": 20357072,
+  "lines_tracked": 1333978,
+  "commits": 5127,
   "display_commits": 5000,
   "display_lines": 1300000,
-  "non_latent_percent": 96.35,
-  "latent_near_percent": 3.65,
+  "non_latent_percent": 96.83,
+  "latent_near_percent": 3.17,
   "latent_exact_percent": 0.03,
-  "audit_date": "2026-11-03",
+  "audit_date": "2026-11-09",
   "core_files": 132,
   "core_lines": 55990,
   "core_lines_nonblank": 50458,
