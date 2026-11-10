@@ -63,27 +63,18 @@ Concrete uses:
 - **Physical peripherals.** Plug a sensor or servo board into a
   Raspberry Pi, point your SI at it, and let it write the control
   code and debug the hardware into motion. You do the soldering,
-  it does the head-scratching. Let the SI build a robot.
+  it does the head-scratching.
 
-Send a job from your phone, let the big machine run the tests, crunch
-the data, or grind through the refactor, and read the results when they
-land in your inbox.
-
-The SI systems are brilliant, but they are kept fenced off from our
-real machines. Homing Pigeon gives one a signed channel to a machine
-of yours and lets it do tasks from start to finish — an assistant
-that operates, not just advises. Which machine is your choice: the
-workstation on your desk, a spare box in the corner, a Raspberry Pi.
-How much rope it gets there is also your choice — that is what the
-postures in Operating modes (below) are for.
+The SI can be an assistant
+that operates, not just advises. Which machine is your choice: your
+workstation, a spare box in the corner, a Raspberry Pi.
 
 A new model claims to be good at something — robotics, automation,
 data work? Point it at a box and find out.
 
 It belongs to the same family as GitHub self-hosted runners, VS Code
-Remote tunnels, and Tailscale — legitimate tools for administering your
-own hardware remotely. And like all of those, its power is the point,
-not an accident.
+Remote tunnels, and Tailscale. Simple tools for administering your
+own hardware.
 
 ```
   SI (cloud)                        Your machine
