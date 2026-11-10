@@ -108,7 +108,19 @@ def _stage(tmp, job_id, interpreter, script):
                       "content_b64": base64.b64encode(
                           shim_src.encode("utf-8")).decode("ascii")}],
            "outputs": ["staged-name.txt", "staged.bin"]}
-    result = R.execute_job({"base_dir": tmp}, job, tmp)
+    # The platform gates are not the subject here -- staging
+    # is -- so the fixture states them off; unstated, they
+    # default to enforce and a host with no confinement
+    # backend (Darwin) refuses the job before staging is
+    # reached. The gates round of the enforce-posture
+    # reconciliation (round four) states them in every
+    # fixture that executes a job without testing the gates.
+    result = R.execute_job(
+        {"base_dir": tmp,
+         "security": {"modes": {"confinement": "off",
+                                "job_user": "off",
+                                "audience": "off"}}},
+        job, tmp)
     got = {o["name"]: o for o in result.get("outputs", [])}
     name_entry = got.get("staged-name.txt", {})
     data_entry = got.get("staged.bin", {})

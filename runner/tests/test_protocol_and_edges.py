@@ -262,6 +262,14 @@ class ExecutionEdgeTests(unittest.TestCase):
             "shared_secret": SECRET,
             "max_output_bytes": 30,
             "default_timeout_sec": 300,
+            # Platform gates stated off: not this fixture's
+            # subject, and unstated they refuse the jobs on
+            # a host with no confinement backend ahead of
+            # the edges under test (enforce-posture
+            # reconciliation, round four).
+            "security": {"modes": {"confinement": "off",
+                                   "job_user": "off",
+                                   "audience": "off"}},
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 
@@ -824,6 +832,10 @@ class AdversarialTests(unittest.TestCase):
             "mailbox_password": SECRET,
             "shared_secret": SECRET,
             "max_job_age_sec": 3600,
+            # Platform gates stated off: see ExecutionEdgeTests.
+            "security": {"modes": {"confinement": "off",
+                                   "job_user": "off",
+                                   "audience": "off"}},
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 

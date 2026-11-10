@@ -235,8 +235,24 @@ class Flag321ScenarioTest(unittest.TestCase):
                 spec = dict(spec)
                 spec["script"] = spec["script"].format(flag=flag, home=home)
                 job_id = f"scen-{mode}-{i}"
-                results[job_id] = (spec, run_one(
-                    cfg, base_dir, spec, job_id))
+                if mode == "enforce" and not SB.sandbox_available():
+                    # A host with no confinement backend:
+                    # enforce refuses every job at the gate
+                    # (the phase-2 posture), so the refusal
+                    # is the recorded outcome _assert_mode
+                    # pins for this arm (enforce-posture
+                    # reconciliation, round four).
+                    try:
+                        run_one(cfg, base_dir, spec, job_id)
+                    except R.JobRejected:
+                        results[job_id] = (spec, {"refused": True})
+                    else:
+                        raise AssertionError(
+                            "enforce on a backend-less host "
+                            "must refuse, not run: " + job_id)
+                else:
+                    results[job_id] = (spec, run_one(
+                        cfg, base_dir, spec, job_id))
             return base_dir, results
         finally:
             if old_log is not None:
@@ -249,6 +265,13 @@ class Flag321ScenarioTest(unittest.TestCase):
                 self._assert_mode(mode, base_dir, results)
 
     def _assert_mode(self, mode, base_dir, results):
+        if mode == "enforce" and not SB.sandbox_available():
+            # The backend-less arm: every job was refused at
+            # the confinement gate, and nothing else about
+            # the pipeline is reachable on this host.
+            for job_id, (_spec, result) in results.items():
+                self.assertTrue(result.get("refused"), job_id)
+            return
         # Nothing in the pipeline blocks these jobs. The catch is
         # the Oracle's record, not a refusal, and a failed read is
         # still a notable job (T4/T7/T8).

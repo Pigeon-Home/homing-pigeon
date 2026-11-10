@@ -34,7 +34,16 @@ class RunVariantTest(unittest.TestCase):
         self.tmp = tempfile.mkdtemp(prefix="hp-rv-")
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {"base_dir": self.tmp,
-                    "default_timeout_sec": 30}
+                    "default_timeout_sec": 30,
+                    # Platform gates stated off: not this
+                    # fixture's subject, and unstated they
+                    # refuse the variant's jobs on a host
+                    # with no confinement backend
+                    # (enforce-posture reconciliation,
+                    # round four).
+                    "security": {"modes": {"confinement": "off",
+                                           "job_user": "off",
+                                           "audience": "off"}}}
 
     def _variant_file(self, variant, name="variant.json"):
         path = os.path.join(self.tmp, name)
@@ -189,7 +198,16 @@ class RunVariantFallbacksTest(unittest.TestCase):
         self.tmp = tempfile.mkdtemp(prefix="hp-rv-")
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.cfg = {"base_dir": self.tmp,
-                    "default_timeout_sec": 30}
+                    "default_timeout_sec": 30,
+                    # Platform gates stated off: not this
+                    # fixture's subject, and unstated they
+                    # refuse the variant's jobs on a host
+                    # with no confinement backend
+                    # (enforce-posture reconciliation,
+                    # round four).
+                    "security": {"modes": {"confinement": "off",
+                                           "job_user": "off",
+                                           "audience": "off"}}}
 
     def _variant_file(self, variant, name="variant.json"):
         path = os.path.join(self.tmp, name)

@@ -392,6 +392,16 @@ class TestNullDefaultTimeoutSecDefaultsTo300(unittest.TestCase):
         with tempfile.TemporaryDirectory() as base:
             cfg = {"base_dir": base}
             cfg.update(cfg_extra)
+            # The platform gates are not these fixtures'
+            # subject; stated off (here and in every
+            # execute-driving helper in this file) so a
+            # host with no confinement backend does not
+            # refuse the job ahead of the default under
+            # test (enforce-posture reconciliation,
+            # round four).
+            cfg.setdefault("security", {"modes": {
+                "confinement": "off", "job_user": "off",
+                "audience": "off"}})
             job = {"v": 1, "type": "job", "job_id": "docdef-to",
                    "issued_at": "2026-10-23T00:00:00Z",
                    "kind": "exec", "interpreter": ["python3"],
@@ -1499,6 +1509,9 @@ class TestBooleanMaxOutputBytesDefaultsTo100000(unittest.TestCase):
         with tempfile.TemporaryDirectory() as base:
             cfg = {"base_dir": base}
             cfg.update(cfg_extra)
+            cfg.setdefault("security", {"modes": {
+                "confinement": "off", "job_user": "off",
+                "audience": "off"}})
             job = {"v": 1, "type": "job", "job_id": "docdef-maxout",
                    "issued_at": "2026-10-23T00:00:00Z",
                    "kind": "exec", "interpreter": ["python3"],
@@ -2857,6 +2870,9 @@ class TestBooleanDefaultTimeoutDefaultsTo300(unittest.TestCase):
         with tempfile.TemporaryDirectory() as base:
             cfg = {"base_dir": base}
             cfg.update(cfg_extra)
+            cfg.setdefault("security", {"modes": {
+                "confinement": "off", "job_user": "off",
+                "audience": "off"}})
             job = {"v": 1, "type": "job", "job_id": "docdef-bto",
                    "issued_at": "2026-10-23T00:00:00Z",
                    "kind": "exec", "interpreter": ["python3"],
@@ -9121,7 +9137,11 @@ class TestJobIdLengthAndCharsetPerProtocol(unittest.TestCase):
                    "interpreter": ["sh"],
                    "script": "echo job-id-probe\n",
                    "env": {}}
-            return R.execute_job({"base_dir": base}, job, base)
+            return R.execute_job(
+                {"base_dir": base,
+                 "security": {"modes": {
+                     "confinement": "off", "job_user": "off",
+                     "audience": "off"}}}, job, base)
 
     def _rejected(self, job_id):
         from runner import runner as R
@@ -9656,7 +9676,11 @@ class TestFilesNameStaysInsideWorkdir(unittest.TestCase):
                    "files": [{"name": "../escape.txt",
                               "url": "https://x.invalid/f"}]}
             with self.assertRaises(R.JobRejected):
-                R.execute_job({"base_dir": base}, job, base)
+                R.execute_job(
+                    {"base_dir": base,
+                     "security": {"modes": {
+                         "confinement": "off", "job_user": "off",
+                         "audience": "off"}}}, job, base)
             self.assertFalse(
                 os.path.exists(os.path.join(base, "escape.txt")))
 
@@ -9911,6 +9935,9 @@ class TestListKeysWrongElementEmptyAndScalarListShapes(unittest.TestCase):
             full = {"base_dir": base}
             if cfg:
                 full.update(cfg)
+            full.setdefault("security", {"modes": {
+                "confinement": "off", "job_user": "off",
+                "audience": "off"}})
             with self.assertRaises(R.JobRejected):
                 R.execute_job(full, job, base)
 
@@ -9921,6 +9948,9 @@ class TestListKeysWrongElementEmptyAndScalarListShapes(unittest.TestCase):
             full = {"base_dir": base}
             if cfg:
                 full.update(cfg)
+            full.setdefault("security", {"modes": {
+                "confinement": "off", "job_user": "off",
+                "audience": "off"}})
             result = R.execute_job(full, job, base)
             self.assertEqual(result["exit_code"], 0)
             self.assertIn("hi", result["stdout"])
@@ -16672,6 +16702,9 @@ class TestMaxOutputBytesFifteenShapesAtExecuteJob(unittest.TestCase):
         with tempfile.TemporaryDirectory() as base:
             cfg = {"base_dir": base}
             cfg.update(cfg_extra)
+            cfg.setdefault("security", {"modes": {
+                "confinement": "off", "job_user": "off",
+                "audience": "off"}})
             job = {"v": 1, "type": "job",
                    "job_id": "docdef-maxout-fifteen",
                    "issued_at": "2026-10-24T00:00:00Z",
@@ -16821,6 +16854,9 @@ class TestDefaultTimeoutSecFifteenShapesAtReader(unittest.TestCase):
         with tempfile.TemporaryDirectory() as base:
             cfg = {"base_dir": base}
             cfg.update(cfg_extra)
+            cfg.setdefault("security", {"modes": {
+                "confinement": "off", "job_user": "off",
+                "audience": "off"}})
             job = {"v": 1, "type": "job",
                    "job_id": "docdef-deftimeout-fifteen",
                    "issued_at": "2026-10-24T00:00:00Z",

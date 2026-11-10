@@ -41,13 +41,25 @@ def _job(script, **extra):
     return job
 
 
+# The platform gates are not these fixtures' subject;
+# stated off under any caller cfg (a caller's own security
+# block replaces this one wholesale) so a host with no
+# confinement backend does not refuse the jobs ahead of
+# the file paths under test (enforce-posture
+# reconciliation, round four).
+_GATES_OFF = {"security": {"modes": {"confinement": "off",
+                                     "job_user": "off",
+                                     "audience": "off"}}}
+
+
 class InlineFilesTest(unittest.TestCase):
     def setUp(self):
         self.base = tempfile.mkdtemp(prefix="hp-files-")
         self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
 
     def run_job(self, job, cfg=None):
-        return R.execute_job(cfg or {}, job, self.base)
+        return R.execute_job({**_GATES_OFF, **(cfg or {})},
+                             job, self.base)
 
     def test_inline_bytes_are_staged_exactly(self):
         data = b"\x00\xffpatch\r\nbody\n"
@@ -98,7 +110,9 @@ class OutputsTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
 
     def run_job(self, script, outputs, cfg=None):
-        return R.execute_job(cfg or {}, _job(script, outputs=outputs), self.base)
+        return R.execute_job({**_GATES_OFF, **(cfg or {})},
+                             _job(script, outputs=outputs),
+                             self.base)
 
     def test_named_files_come_home_with_their_digest(self):
         out = self.run_job(

@@ -100,7 +100,15 @@ class LogRedactionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with redirect_stdout(buf):
                 execute_job(
-                    {"max_output_bytes": 1000},
+                    {"max_output_bytes": 1000,
+                     # Platform gates stated off: not this
+                     # fixture's subject, and unstated they
+                     # refuse the job on a host with no
+                     # confinement backend (enforce-posture
+                     # reconciliation, round four).
+                     "security": {"modes": {"confinement": "off",
+                                            "job_user": "off",
+                                            "audience": "off"}}},
                     {"job_id": "log-1", "kind": "exec",
                      "script": "echo AKIAIOSFODNN7EXAMPLE\n"},
                     d,
@@ -153,6 +161,11 @@ class DesktopCredentialTest(unittest.TestCase):
             "oracle_enabled": True,
             "max_result_view": "redacted",
             "max_output_bytes": 1000,
+            # Platform gates stated off: see
+            # LogRedactionTest's execute_job cfg.
+            "security": {"modes": {"confinement": "off",
+                                   "job_user": "off",
+                                   "audience": "off"}},
             "protected_paths": [desktop],
             "redact_patterns_extra": {
                 "desktop_flag": r"FLAG-CRED-[0-9a-f]{10}",

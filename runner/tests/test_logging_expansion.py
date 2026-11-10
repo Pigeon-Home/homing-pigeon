@@ -326,7 +326,15 @@ class JobOutputLogTest(_GlobalStateGuard):
             long_line = "x" * 200
             with redirect_stdout(io.StringIO()):
                 result = R.execute_job(
-                    {"max_output_bytes": 64},
+                    {"max_output_bytes": 64,
+                     # Platform gates stated off: not this
+                     # fixture's subject, and unstated they
+                     # refuse the job on a host with no
+                     # confinement backend (enforce-posture
+                     # reconciliation, round four).
+                     "security": {"modes": {"confinement": "off",
+                                            "job_user": "off",
+                                            "audience": "off"}}},
                     {"job_id": "log-full-1", "kind": "exec",
                      "script": f"echo {long_line}"},
                     d,

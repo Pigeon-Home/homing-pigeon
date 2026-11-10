@@ -354,7 +354,16 @@ class ExecuteJobShapesTest(unittest.TestCase):
                     mock.patch.object(
                         R, "_finish_remediation",
                         side_effect=RuntimeError("watch broke")):
-                result = ops_exec.execute_job({}, job, td)
+                result = ops_exec.execute_job(
+                    # Platform gates stated off: not this
+                    # fixture's subject, and unstated they
+                    # refuse the job on a host with no
+                    # confinement backend (enforce-posture
+                    # reconciliation, round four).
+                    {"security": {"modes": {"confinement": "off",
+                                            "job_user": "off",
+                                            "audience": "off"}}},
+                    job, td)
             self.assertEqual(result["exit_code"], 0)
             self.assertIn("remediated", result["stdout"])
             self.assertNotIn("remediation", result)

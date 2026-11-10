@@ -66,8 +66,16 @@ def _write_loot(extra=(), after=""):
 class RemediationEndToEnd(unittest.TestCase):
     def setUp(self):
         self.base = tempfile.mkdtemp(prefix="hp-q13-")
+        # The platform gates are not this fixture's subject;
+        # stated off so a host with no confinement backend
+        # does not refuse the jobs ahead of the remediation
+        # paths under test (enforce-posture reconciliation,
+        # round four).
         self.cfg = {"base_dir": self.base,
-                    "remediation_sample_sec": 0.2}
+                    "remediation_sample_sec": 0.2,
+                    "security": {"modes": {"confinement": "off",
+                                           "job_user": "off",
+                                           "audience": "off"}}}
 
     def _audit(self):
         path = os.path.join(self.base, "security-audit.jsonl")
@@ -300,7 +308,11 @@ class ExecuteJobFallbacksTest(unittest.TestCase):
 
     def setUp(self):
         self.base = tempfile.mkdtemp(prefix="hp-exec-fallback-")
-        self.cfg = {"base_dir": self.base}
+        # Platform gates stated off: see RemediationEndToEnd.
+        self.cfg = {"base_dir": self.base,
+                    "security": {"modes": {"confinement": "off",
+                                           "job_user": "off",
+                                           "audience": "off"}}}
         self.job = _job("exec-fallback", "print('job ran')")
 
     def test_a_non_string_script_is_rejected(self):

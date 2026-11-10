@@ -64,6 +64,15 @@ def _cfg(tmp, **over):
         "max_output_bytes": 100000,
         "base_dir": tmp,
         "default_timeout_sec": 300,
+        # Platform gates stated off: not this fixture's
+        # subject, and unstated they refuse the jobs on a
+        # host with no confinement backend ahead of the
+        # transport paths under test (enforce-posture
+        # reconciliation, round four). A caller's own
+        # security block replaces this one wholesale.
+        "security": {"modes": {"confinement": "off",
+                               "job_user": "off",
+                               "audience": "off"}},
     }
     cfg.update(over)
     return cfg

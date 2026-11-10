@@ -126,6 +126,14 @@ class RunnerTest(unittest.TestCase):
             "max_output_bytes": 100000,
             "base_dir": self.tmp,
             "default_timeout_sec": 300,
+            # The platform gates are not this fixture's
+            # subject; stated off so a host with no
+            # confinement backend does not refuse the jobs
+            # ahead of the paths under test (enforce-posture
+            # reconciliation, round four).
+            "security": {"modes": {"confinement": "off",
+                                   "job_user": "off",
+                                   "audience": "off"}},
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 

@@ -386,6 +386,14 @@ class MailTest(unittest.TestCase):
             "max_job_age_sec": 3600,
             "default_timeout_sec": 30,
             "oracle_opinion_mode": "off",
+            # Platform gates stated off: not this fixture's
+            # subject, and unstated they refuse the jobs on
+            # a host with no confinement backend ahead of
+            # the message paths under test (enforce-posture
+            # reconciliation, round four).
+            "security": {"modes": {"confinement": "off",
+                                   "job_user": "off",
+                                   "audience": "off"}},
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 

@@ -1340,8 +1340,17 @@ class HandleMailFailureBranchesTest(_VerbosityGuard):
         return None
 
     def _run(self, raw, cfg=None, patches=()):
+        # The platform gates are stated off in the default
+        # cfg (and in the one test cfg that replaces it):
+        # they are not this fixture's subject, and unstated
+        # they refuse the jobs on a host with no confinement
+        # backend ahead of the mail branches under test
+        # (enforce-posture reconciliation, round four).
         cfg = cfg or {"mailbox_user": "t@example.com",
-                      "shared_secret": SECRET}
+                      "shared_secret": SECRET,
+                      "security": {"modes": {"confinement": "off",
+                                             "job_user": "off",
+                                             "audience": "off"}}}
         smtp = _RecordingSMTP()
         with tempfile.TemporaryDirectory() as d:
             started = [mock.patch.object(*p) if len(p) == 2
@@ -1381,7 +1390,10 @@ class HandleMailFailureBranchesTest(_VerbosityGuard):
 
     def test_a_v2_exchange_failure_costs_no_result(self):
         cfg = {"mailbox_user": "t@example.com",
-               "shared_secret": SECRET, "protocol_v2": True}
+               "shared_secret": SECRET, "protocol_v2": True,
+               "security": {"modes": {"confinement": "off",
+                                      "job_user": "off",
+                                      "audience": "off"}}}
         smtp, logs = self._run(
             self._exec_mail("v2-fail-1", "print('v1 result')"),
             cfg=cfg,

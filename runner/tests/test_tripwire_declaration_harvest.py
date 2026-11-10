@@ -110,7 +110,15 @@ class TripwireHarvestEndToEnd(unittest.TestCase):
         base = tempfile.mkdtemp(prefix="hp-harvest-")
         self.addCleanup(lambda: __import__("shutil").rmtree(
             base, ignore_errors=True))
-        cfg = {"base_dir": base, "remediation_sample_sec": 0.1}
+        # Platform gates stated off: not this fixture's
+        # subject, and unstated they refuse the job on a
+        # host with no confinement backend before the
+        # harvest paths under test (enforce-posture
+        # reconciliation, round four).
+        cfg = {"base_dir": base, "remediation_sample_sec": 0.1,
+               "security": {"modes": {"confinement": "off",
+                                      "job_user": "off",
+                                      "audience": "off"}}}
         job = {"job_id": job_id, "kind": "exec", "script": script}
         with mock.patch.object(rem, "av_referral",
                                return_value=("clean", "fake scan")):

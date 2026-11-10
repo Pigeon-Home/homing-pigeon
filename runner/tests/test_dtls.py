@@ -1330,6 +1330,14 @@ def _supervised_cfg(tmp, port):
         "default_timeout_sec": 300,
         "transports": ["dtls"],
         "transport_dtls": {"port": port, "bind": "127.0.0.1"},
+        # Platform gates stated off: not this fixture's
+        # subject, and unstated they refuse the jobs on a
+        # host with no confinement backend ahead of the
+        # DTLS paths under test (enforce-posture
+        # reconciliation, round four).
+        "security": {"modes": {"confinement": "off",
+                               "job_user": "off",
+                               "audience": "off"}},
     }
 
 

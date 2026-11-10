@@ -282,7 +282,17 @@ class InfinityFromFileTest(unittest.TestCase):
                             return_value=Proc()):
                 result = execute_job(
                     {"max_output_bytes": float("inf"),
-                     "default_timeout_sec": 5},
+                     "default_timeout_sec": 5,
+                     # Platform gates stated off: not this
+                     # fixture's subject, and unstated they
+                     # refuse the job on a host with no
+                     # confinement backend before the
+                     # (mocked) spawn under test
+                     # (enforce-posture reconciliation,
+                     # round four).
+                     "security": {"modes": {"confinement": "off",
+                                            "job_user": "off",
+                                            "audience": "off"}}},
                     {"job_id": "abc", "kind": "exec", "script": "echo hi",
                      "timeout_sec": 5},
                     directory)

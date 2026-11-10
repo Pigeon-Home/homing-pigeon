@@ -63,10 +63,21 @@ class _Base(unittest.TestCase):
 
 
 class ExecuteJobReapTest(_Base):
+    # The platform gates are not this fixture's subject;
+    # stated off so a host with no confinement backend does
+    # not refuse the exec jobs ahead of the reap paths under
+    # test (enforce-posture reconciliation, round four). The
+    # refusal-shaped tests below still refuse for their own
+    # stated reasons (a bad file digest, an unknown kind).
+    CFG = {"security": {"modes": {"confinement": "off",
+                                  "job_user": "off",
+                                  "audience": "off"}}}
+
     def exec_job(self, job_id, script="print('hi')"):
         return R.execute_job(
-            {}, {"job_id": job_id, "kind": "exec", "script": script,
-                 "interpreter": [sys.executable]}, self.base)
+            self.CFG, {"job_id": job_id, "kind": "exec",
+                       "script": script,
+                       "interpreter": [sys.executable]}, self.base)
 
     def test_successful_exec_reaps_its_work_dir(self):
         r = self.exec_job("reap-ok")
@@ -75,7 +86,7 @@ class ExecuteJobReapTest(_Base):
 
     def test_outputs_are_collected_before_the_reap(self):
         r = R.execute_job(
-            {}, {"job_id": "reap-outputs", "kind": "exec",
+            self.CFG, {"job_id": "reap-outputs", "kind": "exec",
                  "script": "open('out.txt', 'w').write('payload')",
                  "interpreter": [sys.executable],
                  "outputs": ["out.txt"]}, self.base)
@@ -85,7 +96,7 @@ class ExecuteJobReapTest(_Base):
         self.assertFalse(os.path.exists(self.work_dir("reap-outputs")))
 
     def test_ping_reaps_its_work_dir(self):
-        r = R.execute_job({}, {"job_id": "reap-ping", "kind": "ping"},
+        r = R.execute_job(self.CFG, {"job_id": "reap-ping", "kind": "ping"},
                           self.base)
         self.assertEqual(r["stdout"], "pong")
         self.assertFalse(os.path.exists(self.work_dir("reap-ping")))
@@ -97,12 +108,12 @@ class ExecuteJobReapTest(_Base):
                           "content_b64": base64.b64encode(b"x").decode(),
                           "sha384": "0" * 96}]}
         with self.assertRaises(R.JobRejected):
-            R.execute_job({}, job, self.base)
+            R.execute_job(self.CFG, job, self.base)
         self.assertFalse(os.path.exists(self.work_dir("reap-refused")))
 
     def test_unknown_kind_reaps_its_work_dir(self):
         with self.assertRaises(R.JobRejected):
-            R.execute_job({}, {"job_id": "reap-nope", "kind": "nope"},
+            R.execute_job(self.CFG, {"job_id": "reap-nope", "kind": "nope"},
                           self.base)
         self.assertFalse(os.path.exists(self.work_dir("reap-nope")))
 
@@ -114,12 +125,12 @@ class ExecuteJobReapTest(_Base):
         with mock.patch.object(R, "download",
                                side_effect=OSError("boom")):
             with self.assertRaises(RuntimeError):
-                R.execute_job({}, job, self.base)
+                R.execute_job(self.CFG, job, self.base)
         self.assertFalse(os.path.exists(self.work_dir("reap-dl")))
 
     def test_timed_out_job_reaps_its_work_dir(self):
         r = R.execute_job(
-            {}, {"job_id": "reap-timeout", "kind": "exec",
+            self.CFG, {"job_id": "reap-timeout", "kind": "exec",
                  "script": "import time; time.sleep(30)",
                  "interpreter": [sys.executable], "timeout_sec": 1},
             self.base)

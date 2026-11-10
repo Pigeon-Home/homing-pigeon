@@ -40,11 +40,11 @@ What is pinned here, all through the real executor
 - The owner's fence: under security.modes.confinement =
   enforce, where the sandbox can engage, the same reach fails
   and the marker never reaches the output. Where the sandbox
-  cannot engage, enforce falls back to running unsandboxed,
-  logs a warning, and writes a "fallback" audit row -- the
-  degradation is on the record. Both arms are pinned, each
-  gated on the startup probe like test_confinement's enforce
-  classes.
+  cannot engage, enforce refuses the job outright -- never
+  runs it weaker (the phase-2 posture) -- logs a warning,
+  and writes a "fallback" audit row recording the refusal.
+  Both arms are pinned, each gated on the startup probe
+  like test_confinement's enforce classes.
 
 protected_paths is not a read fence and this file does not
 pretend otherwise: the mail layer snapshots the listed paths
@@ -211,17 +211,19 @@ class CanaryCrossWorkspaceTests(unittest.TestCase):
     @unittest.skipIf(ENGAGES,
                      "sandbox engages on this machine "
                      "(startup probe)")
-    def test_enforce_falls_back_loudly_where_the_sandbox_cannot_engage(self):
+    def test_enforce_refuses_where_the_sandbox_cannot_engage(self):
         # Enforce was asked for and cannot be delivered here,
-        # so the job runs unsandboxed -- the reach succeeds --
-        # and the audit log carries a fallback row saying so.
+        # so the job is refused outright -- never run weaker
+        # (the phase-2 posture, reconciled in round four:
+        # this arm previously pinned the pre-phase-2
+        # fallback, under which the job ran unsandboxed) --
+        # and the audit log carries the fallback row
+        # recording the refusal.
         flag, away = self._two_workspaces()
         cfg = {"security": {"modes": {"confinement": "enforce"}}}
-        result = _run(away, _job("canary-fallback", _reach(flag)),
-                      cfg)
-        self.assertEqual(result["exit_code"], 0)
-        self.assertIn("cat-exit=0", result["stdout"])
-        self.assertIn(MARKER, result["stdout"])
+        with self.assertRaises(R.JobRejected):
+            _run(away, _job("canary-fallback", _reach(flag)),
+                 cfg)
         rows = [r for r in _audit(away)
                 if r.get("decision") == "fallback"]
         self.assertTrue(rows, _audit(away))

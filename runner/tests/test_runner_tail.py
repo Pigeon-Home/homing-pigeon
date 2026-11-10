@@ -105,8 +105,15 @@ class ExecuteEdgesTest(unittest.TestCase):
                         "script_sha384": "0" * 96,
                     }, d)
             self.assertIn("SHA384", str(caught.exception))
+            # Platform gates stated off beside the cap under
+            # test: unstated they refuse the job on a host
+            # with no confinement backend (enforce-posture
+            # reconciliation, round four).
             result = execute_job(
-                {"max_output_bytes": 8},
+                {"max_output_bytes": 8,
+                 "security": {"modes": {"confinement": "off",
+                                        "job_user": "off",
+                                        "audience": "off"}}},
                 {"kind": "exec", "job_id": "err",
                  "script": "python3 -c 'import sys; sys.stderr.write(\"e\"*40)'"},
                 d)
@@ -117,7 +124,10 @@ class ExecuteEdgesTest(unittest.TestCase):
         from runner.runner import execute_job
         with tempfile.TemporaryDirectory() as d, \
              mock.patch("runner.runner._artifact_findings", side_effect=RuntimeError("scan")):
-            result = execute_job({}, {
+            result = execute_job(
+                {"security": {"modes": {"confinement": "off",
+                                        "job_user": "off",
+                                        "audience": "off"}}}, {
                 "kind": "exec", "job_id": "scan", "script": "echo ok",
             }, d)
         self.assertEqual(result["exit_code"], 0)

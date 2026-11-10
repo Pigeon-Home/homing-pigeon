@@ -414,7 +414,17 @@ class ArtifactScanTest(unittest.TestCase):
             with mock.patch.object(R.subprocess, "Popen", return_value=proc), \
                  mock.patch.object(R, "_artifact_findings",
                                    return_value=["yara hp_webshell drop.php [T1505.003]"]):
-                result = execute_job({}, job, base)
+                result = execute_job(
+                    # Platform gates stated off: not this
+                    # fixture's subject, and unstated they
+                    # refuse the job on a host with no
+                    # confinement backend before the (mocked)
+                    # spawn under test (enforce-posture
+                    # reconciliation, round four).
+                    {"security": {"modes": {"confinement": "off",
+                                            "job_user": "off",
+                                            "audience": "off"}}},
+                    job, base)
             self.assertEqual(result["exit_code"], 0)
             self.assertEqual(result["artifact_scan"],
                              ["yara hp_webshell drop.php [T1505.003]"])
