@@ -460,13 +460,13 @@ class CurrentTreeTest(unittest.TestCase):
         current = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M).group(1)
         parts = version4.parse(current)
         # The standing shape every release keeps: the major stays 3,
-        # the minor is the 15 line, the token figure is measured, and
+        # the minor is the 16 line, the token figure is measured, and
         # the counter is a live release counter. The 3.15.148
         # conversion itself (counter 148 carried over) is pinned by
         # the convert_legacy tests above with fixed inputs; pinning
         # the counter here would fail every later release.
         self.assertEqual(parts[0], 3)
-        self.assertEqual(parts[1], 15)
+        self.assertEqual(parts[1], 16)
         self.assertGreaterEqual(parts[2], 1)
         self.assertGreaterEqual(parts[3], 1)
 

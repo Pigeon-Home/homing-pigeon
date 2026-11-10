@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.20.1 - 2026-11-10
+
+- The official release on the new 3.16 line. The counter restarts at 1; the token figure is the fresh recount at this cut. Everything recorded under 3.15.20.19 below ships in this release, together with everything that landed after it.
+- Security posture, finished for real: confinement and the separate job user at enforce refuse the job outright rather than run it weaker, and a mode that cannot engage says so by name. The Windows confinement backend engages at enforce — Job Object, restricted token, low integrity — and the Windows job_user gate engages through the same backend. The FreeBSD confinement backend engages at enforce — jail, no network, spawn resource limits — field-proven on the fleet's FreeBSD node. A fresh install seeds a config that states the platform gates; audience at enforce with no runner name refuses loudly and audited.
+- Documentation: the whole doc set reads as the finished, official release — production/stable in the package metadata and on SourceForge, the readiness checklist landed, and the use-at-your-own-risk banner moved from the top of the README to the Setup section, where the install decision is made. The 3.16 rev preparation plan stands in the project documents.
+- Testing: the suite's harnesses are reconciled with the enforce posture across four rounds — fixtures state the gates they are not about, the backend-less-host refusal is pinned behaviorally, and the CI smoke configs state audience off. The figure-slot guard and the Oracle briefing digest pins follow the surfaces they measure.
+- Build: the runner's startup line carries a build stamp naming the source commit her binary was cut from.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,414,150 tokens, 1,339,426 tracked lines, 5,176 commits.
+
 ## 3.15.20.19 - 2026-11-09
 
 - Extensions: the nightly upstream pins refresh for the osquery and softflowd feeds — the osquery feed's upstream pin moves to 2169fcd0024b615a2d5c576b0ae9024095efa62a on master and the softflowd feed's upstream pin moves to 44a4b1df15d244961eb4fd6215107f6abdcd70d5 on master, the pinned files refetched, and the drift tests green against them.
