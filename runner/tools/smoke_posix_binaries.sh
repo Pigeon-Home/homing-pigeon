@@ -70,13 +70,17 @@ json.dump({
     "protected_paths": [desk],
     "redact_patterns_extra": {"flag": "FLAG-CRED-[A-Z0-9-]+"},
     "base_dir": state,
-    # The platform gates are stated off: under the lockdown
-    # default an unstated confinement or job_user reads
-    # enforce and refuses to start on a build host that cannot
-    # enforce it (no bwrap, or not Linux), and this smoke is
-    # proving the binary starts and inspects, not the gates.
+    # The platform gates and the audience gate are stated
+    # off: under the lockdown default an unstated confinement
+    # or job_user reads enforce and refuses to start on a
+    # build host that cannot enforce it (no bwrap, or not
+    # Linux), and an unstated audience reads enforce and
+    # refuses to start with no runner_id configured. This
+    # smoke is proving the binary starts and inspects, not
+    # the gates.
     "security": {"modes": {"confinement": "off",
-                           "job_user": "off"}},
+                           "job_user": "off",
+                           "audience": "off"}},
 }, open(cfg, "w"))
 PY
 

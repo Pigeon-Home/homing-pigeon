@@ -76,7 +76,8 @@ jobs:
             "smtp_host": "127.0.0.1", "smtp_port": 1,
             "base_dir": "/data/work",
             "security": {"modes": {"confinement": "off",
-                                   "job_user": "off"}}
+                                   "job_user": "off",
+                                   "audience": "off"}}
           }
           EOF
           docker run --rm \
