@@ -474,6 +474,64 @@ class CheckedInTableGuardTest(unittest.TestCase):
                 "the two files whose under-pricing killed shard 5 "
                 "of run 42941458640 packed into one shard again")
 
+    def test_the_shard2_heavy_files_keep_their_floors(self):
+        # Build run 42950872171 (2026-11-11): shard 2 (55
+        # modules, 705s packed) hit the 20-minute wall, exit
+        # 124 at 1,200.2s, and the next head's build killed
+        # the same shard the same way an hour later. The
+        # killed shard's own last-lines dump shows about 105
+        # test results printed when the kill landed; its
+        # first three files hold 115 tests between them (4 +
+        # 15 + 96), so the kill landed inside the third file
+        # and the three together burn more than the wall
+        # against 379.6s priced. test_proof_content_cap was
+        # priced 261.7s; the estimator's own max for it over
+        # the 21 Windows logs at hand is 379.9s, a 390s floor
+        # (the same rounding the shard-5 floor took).
+        # test_regression_guard was priced 66.1s; its one
+        # directly measured end-to-end test -- the cheap
+        # module, native run plus gates -- took 43.0s on
+        # macOS and 34.6s on Linux, and the file carries a
+        # second end-to-end run beside its 13 lighter tests,
+        # a 250s floor. test_decision1_startup was priced
+        # 51.8s for 96 tests, each a real in-process runner
+        # startup through main(); with the first file
+        # bounded at about 390s by the estimator and the
+        # second at about 250s by its anchors, the rest of
+        # the killed wall -- over 560s -- falls on it, a
+        # 650s floor. The estimator cannot learn any of
+        # these from the killed logs: a killed shard prints
+        # no durations block, so its wall spreads by test
+        # count (a refresh over the same logs prices the
+        # three at 379.9 / 83.5 / 93.3). These floors keep
+        # the packer from re-creating that shard.
+        table = wd.load_table_file(wd.default_table_path())
+        durations = table["durations"]
+        self.assertGreaterEqual(
+            durations["runner.tests.test_proof_content_cap"],
+            390.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_regression_guard"],
+            250.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_decision1_startup"],
+            650.0)
+
+    def test_the_shard2_heavy_files_do_not_share_a_shard(self):
+        table = wd.load_table_file(wd.default_table_path())
+        shards = wd.pack_modules(sorted(table["durations"]),
+                                 table["durations"],
+                                 table["budget_seconds"])
+        heavy = ("runner.tests.test_proof_content_cap",
+                 "runner.tests.test_regression_guard",
+                 "runner.tests.test_decision1_startup")
+        for shard in shards:
+            self.assertLessEqual(
+                sum(1 for name in heavy if name in shard), 1,
+                "two of the files whose under-pricing killed "
+                "shard 2 of run 42950872171 packed into one "
+                "shard again")
+
     def test_the_real_suite_packs_within_budget(self):
         table = wd.load_table_file(wd.default_table_path())
         counts = rtp.module_test_counts(

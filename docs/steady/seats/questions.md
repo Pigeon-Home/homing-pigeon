@@ -572,6 +572,49 @@ are its re-test under rule 8. **Applied in:** this
 addendum and the desk note that carries it, in the
 landing that refreshes the table.
 
+**Addendum (2026-11-10, the shard-2 re-price):** the
+re-packed table's own successor shard died the same
+way. Under the refreshed table the split packed 8 shards
+at 705 seconds each, and shard 2 (55 modules) exited
+124 at the 1,200.2-second wall on the 5c06 head's build
+(run 42950872171) and again on the next head's build an
+hour later, while its completed siblings measured 608
+to 903 seconds. The killed shard's last-lines dump
+shows about 105 test results printed when the kill
+landed; its first three files hold 115 tests between
+them (4 + 15 + 96), so the kill landed inside the third
+file and the three together burn more than the wall
+against 379.6 seconds priced. The under-pricing sat in
+the same blind spot the first re-pack named: a killed
+shard prints no durations block, so the estimator
+spreads its wall by test count and cannot price the
+files at its head — over the 21 Windows logs at hand it
+prices the second file at 83.5 seconds and the third at
+93.3. The floors are therefore set from the boundary
+evidence, the way the shard-5 floors were:
+test_proof_content_cap rises 261.7 to 390.0 (the
+estimator's own max for it over those logs is 379.9);
+test_regression_guard rises 66.1 to 250.0 (its one
+directly measured end-to-end test — the cheap module,
+native run plus gates — took 43.0 seconds on macOS and
+34.6 on Linux, and the file carries a second end-to-end
+run beside 13 lighter tests); test_decision1_startup
+rises 51.8 to 650.0 (96 tests, each a real in-process
+runner startup through main(); with the first two files
+bounded as above, over 560 seconds of the killed wall
+falls on it). The table now carries 440 files at
+6,476.2 seconds in all and packs the discovered suite
+into 10 shards of about 656 seconds each, each of the
+three files alone on its own shard; the 12-minute
+budget and the 20-minute wall stand unchanged. The
+guard family pins the three floors and that the three
+files never share a shard. What the logs still cannot
+prove stands as before: these are floors from boundary
+evidence, not measurements, and the head builds that
+run under the new table are their re-test under rule 8.
+**Applied in:** this addendum, the refreshed table, and
+the guard tests that pin the floors, in one landing.
+
 ---
 
 ## Q135 (Muse, to the desk, 2026-11-10): the confinement decision raises where its contract is to answer — a denial must come back as a triple and be refused at the job boundary, not thrown from the decision
