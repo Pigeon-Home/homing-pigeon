@@ -277,6 +277,15 @@ def _fold(text):
 # modifies the form's own subject and closes before
 # its infinitive, and the ledger guard opens a new
 # segment at a dash beside its standing separators.
+# Q147 widened the guard once more at the same
+# detector: the subject-clause crossing reads "that"
+# beside "who", "whom" and "which"; a relative clause
+# is judged by whether it carries an infinitive of
+# its own (its verb taking an object ahead of the
+# infinitive's " to ") rather than by a list of
+# introducing verbs; and the ledger guard opens a new
+# segment at a run of hyphens beside its standing
+# separators and dash forms.
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -381,25 +390,48 @@ def _prohibitive_occurrences(low):
     return spans
 
 
-# Verbs that, standing inside a relative clause, make
-# that clause introduce its own infinitive rather than
-# merely modify a subject: "who tells you to publish"
-# opens a new government, it does not describe the
-# operator the prohibitive form already governs.
-_RELATIVE_INTRO_VERBS = frozenset({
-    "tell", "tells", "told", "telling", "ask", "asks",
-    "asked", "asking", "order", "orders", "ordered",
-    "instruct", "instructs", "instructed", "encourage",
-    "encourages", "encouraged", "urge", "urges", "urged",
-    "direct", "directs", "directed", "command",
-    "commands", "commanded", "advise", "advises",
-    "advised", "persuade", "persuades", "persuaded",
-    "invite", "invites", "invited", "expect", "expects",
-    "expected", "want", "wants", "wanted", "require",
-    "requires", "required", "force", "forces", "forced",
-    "say", "says", "said", "request", "requests",
-    "requested"})
-_RELATIVE_PRONOUNS = (" who ", " whom ", " which ")
+# The shapes by which a relative clause is known to
+# carry an infinitive of its own (Q147): a clause whose
+# verb takes an object ahead of the infinitive's
+# " to " ("who prompts you to publish", "who instructs
+# the operator to publish") carries that infinitive as
+# its own verb phrase's complement, whatever verb
+# carries it, so the clause introduces the matched
+# verb rather than merely modifying a subject. Q146
+# judged this by a list of introducing verbs; an
+# unlisted verb in the same shape ("prompts", "bids",
+# "pays", "gets", "hires", "tasks") was read as a
+# subject clause and the contradiction was missed.
+_CLAUSE_OBJECT_WORDS = frozenset({
+    "you", "him", "her", "them", "us", "me", "it",
+    "anyone", "someone", "everyone", "anybody",
+    "somebody", "everybody"})
+_CLAUSE_DETERMINERS = frozenset({"the", "a", "an",
+                                 "this", "any"})
+_BE_WORDS = frozenset({"is", "are", "was", "were",
+                       "be", "been", "being"})
+_RELATIVE_PRONOUNS = (" who ", " whom ", " which ",
+                      " that ")
+
+
+def _clause_carries_infinitive(clause_words):
+    """True when a relative clause's own verb phrase
+    takes the infinitive that follows it: the clause's
+    verb takes an object ahead of that infinitive's
+    " to " -- an object word standing last in the
+    clause ("prompts you to ...", "tells you to ..."),
+    or a determiner-led object phrase a non-copula verb
+    governs ("instructs the operator to ..."). A
+    clause that merely modifies a subject ("is on duty
+    to ...", "are on duty at any point to ...") carries
+    no infinitive of its own."""
+    if not clause_words:
+        return False
+    if clause_words[-1] in _CLAUSE_OBJECT_WORDS:
+        return True
+    return len(clause_words) >= 3 \
+        and clause_words[-2] in _CLAUSE_DETERMINERS \
+        and clause_words[0] not in _BE_WORDS
 
 
 def _drop_subject_relative_clause(between):
@@ -409,15 +441,20 @@ def _drop_subject_relative_clause(between):
     subject -- it stands between the form's subject
     phrase (no infinitive, no directive verb before it)
     and the form's infinitive "to", and it closes at
-    that infinitive, carrying no infinitive and no verb
-    that introduces one of its own ("for any operator
-    who is on duty to <the match>" reads as "for any
-    operator to <the match>"). A clause that itself
-    introduces the matched verb ("... who tells you to
-    <the match>"), or one standing past a verb phrase
-    the form already introduced ("to follow anyone who
-    ..."), does not qualify, and the span stands as
-    written, barrier and all."""
+    that infinitive, carrying no infinitive of its own
+    ("for any operator who is on duty to <the match>"
+    reads as "for any operator to <the match>"). A
+    clause that itself carries an infinitive of its own
+    (Q147: its verb takes an object ahead of that
+    infinitive's " to " -- "... who prompts you to
+    <the match>", whatever verb carries it, not only
+    the verbs on Q146's introducing list), or one
+    standing past a verb phrase the form already
+    introduced ("to follow anyone who ..."), does not
+    qualify, and the span stands as written, barrier
+    and all. The crossing reads the clauses opened by
+    "that" beside those opened by "who", "whom" and
+    "which" (Q147)."""
     text = between
     while True:
         at = -1
@@ -447,8 +484,8 @@ def _drop_subject_relative_clause(between):
                 or any(mark in clause
                        for mark in _CLAUSE_BREAKS) \
                 or any(word in _GOVERNMENT_VERBS
-                       or word in _RELATIVE_INTRO_VERBS
-                       for word in clause_words):
+                       for word in clause_words) \
+                or _clause_carries_infinitive(clause_words):
             return text
         text = before + after[to:]
 
@@ -657,7 +694,10 @@ def _ledger_complement_is_evidence(owner, match):
     semicolon, " but " and " yet " -- and by Q146, where
     a dash opens one too: the em dash spaced and
     unspaced, the en dash spaced and unspaced, and the
-    spaced hyphen): an evidence word in
+    spaced hyphen -- and by Q147, a run of hyphens
+    opens one too: the double hyphen and longer, spaced
+    or unspaced, the dash a keyboard actually types):
+    an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
@@ -673,6 +713,8 @@ def _ledger_complement_is_evidence(owner, match):
             at = low.rfind(mark)
             if at >= 0:
                 seg = max(seg, at + len(mark))
+        for run in re.finditer(r"-{2,}", low):
+            seg = max(seg, run.end())
         segment = _words(low[seg:])
         seg_triggers = [i for i, word in enumerate(segment)
                         if word in _LEDGER_TRIGGERS]
