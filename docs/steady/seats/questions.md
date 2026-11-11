@@ -281,6 +281,93 @@ lands, Q151's re-test stands as: the filed scope
 passes whole; the guard's residual polarity shapes
 are this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now judges a governed noun
+phrase whole by what it is to its verb in the shapes
+the Q151 judgement still refused — a possessive
+standing in the phrase's determiner place judged by
+that place ("carries her responsibility to ..."
+crossed, "prompts her team to ..." still the
+clause's own), a verb-form word standing as the
+phrase's adjective judged as its adjective ("holds
+an assigned duty to ...", "holds standing clearance
+to ..."), and a governed phrase whose head is a
+noun of the complement's standing judged by that
+standing rather than by a closed head set ("holds a
+credential to ...") — while a true object phrase
+ahead of the infinitive is still the clause's own,
+judged by its head ("prompts a credential team to
+...", "holds two operators to ..."); and reads
+every whitespace shape the fold erases as a
+boundary before the fold can erase it (the whole
+remaining Unicode space block and the zero-width
+space beside the six shapes Q151 named), and opens
+a new ledger segment at the remaining punctuation
+separators (the quotation marks, the arrow, the
+guillemet, the fullwidth comma and full stop, the
+ideographic full stop, the Arabic comma and the
+dagger), beside the standing separators and dash
+forms, so an evidence word in an earlier clause no
+longer swallows a later instruction complement
+under those separators either — while ordinary
+quoted shapes and ordinary two-sentence briefings
+stay silent, pinned both ways. The guard stays per
+match, the mark's placement, the audit shape, the
+7 rules' subjects, and the no-refusal /
+no-warning behaviour are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(6:43 AM PST, 2026-11-11), the fix commit of
+6:58 AM PST ("Q152: the briefing guard judges a
+governed phrase by its place and standing and
+reads every fold-erased space and the last
+punctuation separators (option 1)") —
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py` (the
+Q152PolarityGuardTest family: item 1's complement
+prohibitions silent on both layers plain and
+bookended with its true object phrases firing and
+its sister-possessive, numeral-led, adjective-stack,
+plural and passive controls silent, item 2's
+remaining-space and remaining-separator shapes
+firing on both layers plain and bookended with
+its evidence-only twins silent and the ordinary
+quoted and two-sentence shapes silent, beside the
+filed Q143, Q144, Q145, Q146, Q147, Q148, Q149,
+Q150 and Q151 corpora, the standing contradiction
+family, and the unrelated-negation and
+negated-then-contradicting pins) — and the figures
+commit of 7:05 AM PST re-measuring the core over
+`briefing.py`'s 150-line growth. Red-before: item
+1's shapes marked on the current head, item 2's
+shapes read nothing on the current head, measured
+first-hand by this lane on the fixture layer and
+the shipped layer (item 1's 19 sentences marking
+whole on the current head and on both earlier
+trees, each family's representative in 73 of 75
+bookended variants, item 2's 21 shapes firing on
+the pre-Q143-fix detector only, the controls
+holding on the current head), and the new family
+reads 3037 subtest failures against the unpatched
+detector, every one of them in the new family.
+Green after: the guard family stands at 144 tests,
+the neighbour batteries (`test_oracle_briefing`,
+`test_posture_stamp`, `test_protocol_v2*`,
+`test_v2_consult`, `test_v2_replay`,
+`test_security_config`) read 305 green beside it,
+and item 1's representative sentences assembled
+into briefings carry no mark and write no startup
+audit row while item 2's representative sentences
+(the non-breaking-space shape and the double-quote
+shape) each carry the mark and write exactly their
+one audit row. The filing seat's re-test is still
+owed under rule 8: Q152 is not closed by this lane,
+and neither are Q151, Q150, Q149, Q148, Q147,
+Q146, Q145, Q144 and Q143 — all close only after
+that re-test passes whole.
+
 ---
 
 

@@ -10215,3 +10215,98 @@ packing arithmetic, but the next completed
 tag-or-main build-windows verdict on a head
 carrying this re-pack, under rule 8, with the
 version-rot family judged separately.
+
+## Q152: conclusions of the fix lane (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded in the desk
+before the fix (the Q152 section above), each measured
+on the current head and on the landing tree. The lane
+started from the remote main carrying the Q151
+re-test and the Q152 filing.
+
+- **Q152-S1 confirmed** — the filed defect reproduced
+  whole before the fix, on this lane's own probe over
+  the fixture layer and the shipped layer and over
+  both earlier trees (the pre-Q151-fix tree at the
+  Q151 fix commit's parent, the pre-Q143-fix tree at
+  the Q143 fix commit's parent): item 1's 19 sentences
+  marking whole on all three trees (each family's
+  representative in 73 of 75 bookended variants, its
+  mark and 1 audit row end to end), item 2's 21 shapes
+  silent on the current head and on the pre-Q151-fix
+  detector and firing whole on the pre-Q143-fix
+  detector (0 of their bookended variants on the
+  current head for both representatives), the
+  controls and both-ways pins holding among the
+  checks.
+- **Q152-S2 confirmed** — a governed noun phrase is
+  judged whole by what it is to its verb in these
+  shapes: a possessive standing in the phrase's
+  determiner place is judged by that place, a
+  verb-form word standing as the phrase's adjective
+  is judged as its adjective, and a governed phrase
+  whose head is a noun of the complement's standing
+  is judged by that standing rather than by a closed
+  head set: item 1's 19 sentences and the raw-output
+  twin are silent on both layers, plain and
+  bookended, its sister-possessive, numeral-led,
+  adjective-stack, plural and passive controls stay
+  silent (20 of 20), its true object phrases keep
+  firing ("holds two operators", "prompts a full
+  team", "prompts his team", "prompts her team",
+  "instructs the senior operator", "prompts a
+  credential team"), judged by their heads, and the
+  object-phrase pins and subject clauses of the
+  Q143 to Q151 families read as they did.
+- **Q152-S3 confirmed** — every whitespace shape
+  the fold erases is read as a boundary before the
+  fold (the whole remaining Unicode space block and
+  the zero-width space beside the six shapes Q151
+  named), and a new ledger segment opens at the
+  remaining punctuation separators (the quotation
+  marks, the arrow, the guillemet, the fullwidth
+  comma and full stop, the ideographic full stop,
+  the Arabic comma and the dagger): the mixed
+  sentence fires under every one of the 21 shapes on
+  both layers, plain and bookended, the
+  evidence-only twins under the new separators stay
+  silent, and the ordinary quoted shapes, the
+  apostrophe-carrying honest shape and the ordinary
+  two-sentence shapes stay silent, pinned both ways.
+- **Q152-S4 confirmed** — end to end, item 1's
+  representative sentences (one of each family)
+  assembled into briefings carry no tension mark,
+  `briefing_report` names no tensions for them, and
+  the startup pass writes no audit row, and item 2's
+  representative sentences (the non-breaking-space
+  shape and the double-quote shape) each carry the
+  mark and write exactly one audit row (feature
+  `briefing`, decision `marked`, the rule id as the
+  detail), all pinned in the family's end-to-end
+  test.
+- **Q152-S5 confirmed** — nothing else moved: the
+  guard family stands at 144 tests (the
+  Q152PolarityGuardTest family's 13 beside the filed
+  Q143, Q144, Q145, Q146, Q147, Q148, Q149, Q150 and
+  Q151 families, the standing 7-rule family, the
+  unrelated-negation pins and the
+  negated-then-contradicting shapes), red-before at
+  3037 subtest failures against the unpatched
+  detector, every one of them in the new family; the
+  neighbour batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2*`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read 305 green beside it;
+  and the core was re-measured over `briefing.py`'s
+  150-line growth in the figures commit of
+  7:05 AM PST (as-assembled 62,339 lines, 56,310
+  non-blank, zip 787,081 bytes; canonical 61,492
+  lines over 135 files).
+
+Q152 is answered under option 1 in the questions
+file in this landing. It is NOT closed: the filing
+seat's rule-8 re-test is still owed, and Q151, Q150,
+Q149, Q148, Q147, Q146, Q145, Q144 and Q143 close
+only if that re-test passes whole.
