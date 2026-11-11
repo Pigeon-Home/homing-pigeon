@@ -3199,3 +3199,49 @@ written before the check ran:
   and red on a stale line; the dated records and the
   seats' and project drawers, which quote the retired
   paths as history, stand outside it.
+
+Conclusions, against the numbers (same landing):
+
+- **LE-S1 confirmed** — every clickable link naming the
+  live-examples page resolves from its own file on
+  current main (the FAQ's `steady/use/live-examples.md`,
+  the runbook's same-folder link, the configuration
+  page's `../../steady/use/live-examples.md` under its
+  recorded heading, the README's and SECURITY.md's
+  root-written paths), the guard reads green, and the
+  FAQ as GitHub serves it on main carries the link to
+  the live-examples page's blob, which serves.
+- **LE-S2 confirmed, and it is the answer to the
+  disagreement** — the FAQ as GitHub serves it at the
+  current release tag carries the pre-repair target;
+  followed, it resolves to
+  `docs/docs/steady/use/live-examples.md` and answers
+  404, reproduced in this check. The configuration
+  page at the same tag carries its own pre-repair
+  target (`../use/…`, likewise a 404). The repair
+  stands on main only: no released tree carries it,
+  and a reader who arrives through the release — or
+  whose page was rendered before the repair landed —
+  meets the broken link today. It clears when the
+  next cut ships the repaired pages; until then the
+  release tag's FAQ link is broken, and saying the
+  link "is fixed" without naming the tree is how the
+  disagreement happened.
+- **LE-S3 confirmed** — the design page now names
+  `docs/steady/use/live-examples.md`, the runtime page
+  `docs/steady/use/platforms.md`, the senses page
+  `docs/steady/networking.md`: the Packet 4 and
+  Packet 9 sweeps corrected all three before this
+  check ran, and no live plain-text reference to the
+  pre-move home remains. Left standing, deliberately:
+  the filed capture readme in the reports drawer and
+  this desk's own packet suppositions, which quote
+  the retired paths as the dated records they are.
+- **LE-S4 confirmed and built** — the guard now
+  carries the plain-text check beside the link check
+  (`runner/tests/test_doc_link_resolution.py`, the
+  reader-scope retired-path scan and its synthetic
+  shapes): 15 tests green on the landing tree, the
+  reader-quiet and live-capture neighbours green
+  beside it. A stale backtick path in a reader's page
+  now fails a test instead of waiting for a reader.
