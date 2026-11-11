@@ -9609,3 +9609,199 @@ those sentences themselves beside the committed
 guard family the fix lane lands, which pins both
 ways. No new behaviour is claimed beyond what
 those calls and that family show.
+
+## The agent-state guard extensions and the general tree-wide test: suppositions recorded before the build (2026-11-11)
+
+This lane takes up the queued remainder named in
+Packet 4's conclusions (P4-S3, settled 2026-11-10):
+the agent-state guard shipped -- the staged-content
+tool `runner/tools/approvalguard.py`, its mode in
+`runner/guard/security.py`, and its row in the shipped
+example config -- with, in the privacy design's words
+(`privacy-design.md` sections 6 and 8), "its
+extensions and the general tree-wide test alone
+remaining queued". The extensions are specified in
+`agent-state-files.md` section 4's closing survey
+paragraph, which records them as specified and *not*
+claimed as shipped. This section records this lane's
+suppositions, written before any production change,
+so the record shows what was expected against what
+the build finds. The conclusions stand at the end of
+this section when the lane lands.
+
+The exact scope derived from those records:
+
+- **Extension 1 -- tool-server configuration as a
+  category of its own.** A staged file named for
+  tool-server configuration (basename `mcp.json`, at
+  any depth -- the survey's `.cursor/mcp.json`,
+  `.cline/mcp.json`, `.roo/mcp.json`,
+  `.kiro/settings/mcp.json` and `.vscode/mcp.json`
+  are all that basename), and any staged JSON
+  carrying the tool-server top-level key
+  (`mcpServers`), gets its `env` and `headers` maps
+  scanned wherever the file sits, including files
+  designed to be committed. The filename and the key
+  are triggers for the deeper scan, not findings in
+  themselves: the file is shareable by design, and
+  the content is what needs guarding (the survey's
+  correction). A value inside an `env` or `headers`
+  map fires a new rule, `tool-server-secret`, when it
+  is secret-shaped (a known key format or a
+  command-secret shape), or when the map entry's own
+  key names a secret (password, token, api-key,
+  auth, secret) and its value is a plain non-empty
+  value that is not an environment reference
+  (`${...}`) or another declared placeholder form.
+  A plain value under a plain key (a server URL, a
+  mode name) stays silent.
+- **Extension 2 -- grant state under its other
+  names.** Beside the shipped `allow` array, staged
+  JSON grant state is also a non-empty value under
+  `autoApprove`, `allowedTools`, `terminalAllowlist`
+  or `allowlist` (a list of strings, or a list
+  generally for `autoApprove`), and a `permission`
+  map holding a non-empty list, map or string. Each
+  fires the standing `permission-grant-state` rule,
+  and every string entry under any of those keys is
+  scanned as the command string it can be, so a
+  secret inside one fires `secret-in-command` the
+  way a secret inside an `allow` entry already does.
+  An empty list, an empty map and an absent key stay
+  silent.
+- **Extension 3 -- the same content shapes in TOML
+  and YAML.** Two vendors' configuration lives in
+  TOML (`.codex/config.toml` is the survey's member)
+  and in YAML (Continue's workspace blocks are the
+  survey's member). The grant keys of extension 2,
+  the tool-server key and `env`/`headers` maps of
+  extension 1, and the command-secret and secret-value
+  shapes are checked in staged `.toml`, `.yaml` and
+  `.yml` content: TOML parsed with the standard
+  library's `tomllib` where the interpreter carries
+  it, YAML read by a bounded subset reader in the
+  tool (nested maps and scalar lists by indentation;
+  a document outside that subset falls back to the
+  standing line scan, never to silence about the
+  shapes the line scan can see). A TOML or YAML file
+  carrying none of those shapes stays silent.
+- **Extension 4 -- staged areas beyond git's, as
+  the same guard's second front door, not a second
+  tool.** A Subversion front door feeds a working
+  copy's scheduled additions (status code `A`) to
+  the same scan as the same (path, content) pairs,
+  at the pre-commit moment: a pure function reads
+  `svn status` output and a content reader, so the
+  door is pinned without a Subversion binary, and a
+  thin wrapper runs `svn` where one exists. Two
+  content rules join it, for the other systems'
+  credential shapes the survey names: a Mercurial
+  `[auth]` section's password line (a `*.password`
+  key or a `password` key under an `[auth]` header,
+  with a non-empty value that is not a placeholder)
+  and a Subversion proxy password (an
+  `http-proxy-password` assignment with a non-empty
+  value), each firing a new rule, `vcs-credential`.
+  Neither rule fires on the key named with no value,
+  on a placeholder, or (for Mercurial) on a password
+  line outside an `[auth]` section.
+- **The general tree-wide test.** `privacy-design.md`
+  section 6 item 4 queues the boundary-test technique
+  generalised: a test that proves named sensitive
+  values appear only in allowlisted files, of which
+  the staged guard is the first concrete form. The
+  general form built here is a new test family,
+  `runner/tests/test_agent_state_tree_wide.py`,
+  which enumerates the tracked tree (`git ls-files`),
+  reads every tracked file, and runs the guard's
+  scan over each (path, content) pair. A finding is
+  a failure unless the file stands on the test's
+  explicit allowlist with the rule named and the
+  reason recorded in the test -- the expected members
+  are the guard itself and its test families, which
+  must name the shapes to pin them, and any fixture
+  whose fake secret-shaped strings are its subject.
+  The test also pins itself both ways on fixture
+  trees: a planted agent-state file, a planted grant
+  with a secret inside its command, a planted
+  tool-server secret and a planted VCS credential in
+  a fixture tree each fire; the same tree without
+  them is silent. Bookended shapes (every ASCII
+  symbol, plus NUL, tab, CR and LF, at the front and
+  the back of the planted strings and paths the
+  surface takes as text) are in the family, per the
+  project's bookend convention.
+
+Suppositions, stated before the build:
+
+- **ASG-S1.** Extension 1 as scoped above catches a
+  secret pasted into an `env` or `headers` map in an
+  `mcp.json` file and in an arbitrarily named JSON
+  file carrying `mcpServers`, fires nothing on the
+  same files with placeholder or plain values, and
+  adds no finding for any file the shipped guard
+  already read clean on that ground.
+- **ASG-S2.** Extension 2 catches grant state under
+  each of its other names, plain and with a secret
+  inside an entry (both rules firing on the second),
+  and stays silent on empty and absent forms.
+- **ASG-S3.** Extension 3 catches the extension 1
+  and 2 shapes in TOML and in YAML fixtures shaped
+  like the survey's members, and stays silent on
+  TOML and YAML carrying none of them -- including
+  this tree's own tracked TOML and YAML, whose
+  shapes the tree-wide test of ASG-S5 reads whole.
+- **ASG-S4.** Extension 4's status reader feeds
+  exactly the scheduled additions (not modified,
+  missing or unversioned entries), the same scan
+  answers for them as for git-staged pairs, and the
+  `vcs-credential` rule fires on the Mercurial
+  `[auth]` password line and the Subversion proxy
+  password, plain and bookended, and on nothing
+  else in its control set.
+- **ASG-S5.** On the current tree, the tree-wide
+  scan finds no real agent-state material: every
+  finding it reports stands on a file whose naming
+  of the shapes is its purpose (the guard, its
+  tests, the design records that name shapes without
+  values, or a fixture whose fake values are its
+  subject), and the allowlist the test lands names
+  each such file and rule with its reason. If the
+  scan instead finds material whose presence is not
+  explained that way, this lane stops and reports
+  the finding's category and location only -- it
+  does not publish, fix or bury it here (the
+  spillage doctrine, SECURITY.md).
+- **ASG-S6.** Nothing else moves: the shipped
+  guard's families (registry format, path rules,
+  grant and secret content rules, the git front door,
+  the mode gate) read as they did, and the neighbour
+  batteries (the gitignore state files, the ignore
+  renderings, the security config, the posture and
+  parity families) stay green beside the new family.
+  `runner/tools/approvalguard.py` is not in the
+  canonical core list (`runner/ops/core.py` names no
+  approvalguard entry, checked first-hand before
+  this note), so its growth moves no core figure and
+  no figures commit is expected; if that check proves
+  wrong on the landing tree, the figures are
+  re-measured in a figures commit in the standing
+  pattern.
+- **ASG-S7.** The report discipline holds through
+  every extension: a finding names the file and the
+  rule, and never the value -- including for
+  `tool-server-secret` and `vcs-credential`, whose
+  fixtures' fake values provably never appear in
+  any report the family captures.
+
+What cannot be recorded as a unit test, stated
+plainly in advance: a live Subversion pre-commit run
+needs a Subversion binary and a working copy, neither
+of which this cell carries; the deterministic
+substrate -- the status reader, the pair feeding and
+the content rules -- is what the committed family
+pins. The same holds for a Mercurial or Subversion
+client reading its own credential file: the rule is
+pinned on the file shapes, not on a client run.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
