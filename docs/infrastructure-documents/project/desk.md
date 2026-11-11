@@ -3342,3 +3342,80 @@ Conclusions, against the numbers (same landing):
   reader-quiet and live-capture neighbours green
   beside it. A stale backtick path in a reader's page
   now fails a test instead of waiting for a reader.
+
+## Q140: the remediation monitor's confinement-strain text — the second seat's suppositions, recorded before the re-test (2026-11-10)
+
+Q140 (filed by the Packet 4 lane) names 2 places where the
+remediation monitor still describes a `fallback` confinement
+record as a job running uncaged — the
+`confinement_events_in_window` docstring in
+`runner/oracle/remediation.py` and the `confinement_strain`
+divergence's own sentence in the monitor's window check —
+though the Q135 settlement writes that record only beside a
+refusal. Rule 8: the filing seat does not land a code fix
+without a second seat's re-test. This section is that second
+seat's suppositions, written from the code read alone,
+before any test or probe in this lane is run; the re-test's
+conclusions stand at the end of this section when the lane
+lands.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q140-S1.** A running job's own attempt cannot carry the
+  `fallback` its monitor would read. Every confinement
+  `fallback` writer under `enforce` — the
+  `_confinement_argv` denial (Linux, Windows and FreeBSD
+  arms) and the `_confinement_spawn` refusal (Windows and
+  FreeBSD) — writes the record before any process starts,
+  and the job-acceptance boundary converts the denial into
+  a `JobRejected` refusal: no process, and no monitor, is
+  ever created for that attempt. The re-test will show a
+  denied job refused end-to-end with no remediation
+  monitor and no result member.
+- **Q140-S2.** A different job's `fallback` cannot fire the
+  strain either: `confinement_events_in_window` filters the
+  audit tail to the running job's exact job id, so a
+  same-window refusal of another job stays out, whatever
+  its timestamp.
+- **Q140-S3.** A `fallback` can still appear in a running
+  job's window — from the same job id, inside the window's
+  lookback. The monitor reads the window with a 5-second
+  lookback before its own start (audit timestamps are
+  second-resolution), because the running job's own
+  `sandboxed` / `confined` record is itself written just
+  before the monitor exists. A `fallback` written for the
+  same job id by a just-preceding refused attempt — a
+  retry, a redelivery, a resubmission that then runs,
+  landing inside that lookback — will be carried into the
+  window and will fire the strain. By the same timestamp
+  filter, a pre-settlement record is NOT a live source
+  beyond that seconds-wide lookback: an older `fallback`
+  is excluded by its timestamp, so the design record's
+  "from before that settlement" mechanism is not the
+  operative one.
+- **Q140-S4.** The evidence will therefore support Q140's
+  option 2, not option 1: the handling is not dead — it
+  fires on a record that names a refusal, not on a job
+  shown to be running uncaged. The honest change keeps the
+  handling, rewords the 2 named places (and the design
+  record's as-built passage, where it still describes the
+  old mechanism) to say exactly that, and pins with tests
+  which records a running job's window can actually
+  carry: a same-id `fallback` inside the lookback fires
+  strain under the new wording; a different job's
+  `fallback` and an out-of-window `fallback` do not;
+  `sandboxed`, `confined` and `would_sandbox` records do
+  not; a `denied` record still fires the escape tripwire.
+- **Q140-S5.** The strain stays what it has always been in
+  the authority layer: a non-tripwire divergence. In
+  `deterministic` mode it will act on nothing by itself;
+  the reword changes no act, no authority and no mode.
+
+What cannot be unit-tested, stated plainly in advance: the
+production race in Q140-S3 — a real redelivery or retry
+arriving inside the 5-second lookback on a live box — is
+timing, not logic. The deterministic substrate (the window
+arithmetic, the job-id filter, the decision arms, the
+boundary's refusal before any monitor exists) is what the
+re-test pins; the live race itself is named here as the
+unproven remainder, not claimed as measured.
