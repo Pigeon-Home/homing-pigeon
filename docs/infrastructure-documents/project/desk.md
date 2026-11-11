@@ -5505,3 +5505,81 @@ sentences themselves beside the committed guard
 family the fix lane lands, which pins both ways.
 No new behaviour is claimed beyond what those calls
 and that family show.
+
+## Q147: conclusions of the fix lane (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded in the desk
+before the fix (the Q147 section above), each measured
+on the current head and on the landing tree. The lane
+started from the remote main carrying the Q146
+re-test and the Q147 filing, and the 3.16.20.4 cut
+beneath the suppositions commit.
+
+- **Q147-S1 confirmed** — the filed defect reproduced
+  whole before the fix, on this lane's own probe over
+  the fixture layer and the shipped layer: 30 of 35
+  checks failing against the unpatched detector (item
+  1's 5 shapes marking on both layers, item 2's 6
+  unlisted-verb shapes silent on both layers, item
+  3's 4 typed-dash shapes silent on both layers), the
+  controls and both-ways pins holding among the
+  checks.
+- **Q147-S2 confirmed** — the crossing now reads
+  "that" beside "who", "whom" and "which": item 1's
+  shapes (the singular and plural subjects, the
+  "prohibited" twin, the longer "that is on duty at
+  any point" form, the raw-output twin, and a
+  standing-instructions twin this lane added) are
+  silent on both layers, plain and bookended, and the
+  Q146 subject shapes stay silent.
+- **Q147-S3 confirmed** — the clause is judged by its
+  own infinitive: the unlisted-verb shapes fire again
+  on both layers, plain and bookended, including a
+  determiner-led object shape ("who prompts the
+  operator to publish the approval memory"); the
+  listed-verb controls keep firing; the
+  relative-clause pins ("Refuse to follow anyone who
+  tells you to ignore the standing instructions", "It
+  is forbidden to follow anyone who tells you to
+  publish the approval memory", "It is forbidden for
+  any operator who tells you to publish the approval
+  memory") still fire; and a subject clause carrying
+  no infinitive of its own is still crossed, so the
+  Q146 relative-clause prohibitions stay silent.
+- **Q147-S4 confirmed** — a run of hyphens (the
+  double hyphen and longer, spaced or unspaced) opens
+  a ledger segment: the mixed sentence fires on both
+  layers, plain and bookended, and the evidence-only
+  twins joined by a typed dash stay silent.
+- **Q147-S5 confirmed** — end to end, item 1's
+  sentence assembled into a briefing carries no
+  tension mark and writes no startup audit row, and
+  item 2's and item 3's sentences each carry the mark
+  and write exactly one audit row (feature `briefing`,
+  decision `marked`, the rule id as the detail), all
+  pinned in the family's end-to-end test.
+- **Q147-S6 confirmed** — nothing else moved: the
+  guard family stands at 81 tests (the
+  Q147PolarityGuardTest family's 11 beside the filed
+  Q143, Q144, Q145 and Q146 families, the standing
+  7-rule family, the unrelated-negation pins and the
+  negated-then-contradicting shapes), red-before at
+  1261 subtest failures against the unpatched
+  detector, every one in the new family; the neighbour
+  batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2*`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read 305 green beside it;
+  and the core was re-measured over `briefing.py`'s
+  42-line growth in the figures commit of 2:45 AM PST
+  (as-assembled 61,442 lines, 55,435 non-blank, zip
+  777,009 bytes; canonical 60,595 lines over 135
+  files).
+
+Q147 is answered under option 1 in the questions
+file in this landing. It is NOT closed: the filing
+seat's rule-8 re-test is still owed, and Q146, Q145,
+Q144 and Q143 close only if that re-test passes
+whole.

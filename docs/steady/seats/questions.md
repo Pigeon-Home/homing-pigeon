@@ -173,6 +173,77 @@ re-tests. Until it lands, Q146's re-test stands as:
 the filed scope passes whole; the guard's residual
 polarity shapes are this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now reads a prohibitive
+form's government across a subject relative clause
+opened by "that" the same way it reads the clauses
+opened by "who", "whom" and "which"; judges a
+relative clause by whether it carries an infinitive
+of its own — a clause standing between a prohibitive
+form's subject and its infinitive whose verb takes
+an object ahead of that infinitive's " to " ("who
+prompts you to <the match>", "who prompts the
+operator to <the match>") carries that infinitive as
+its own verb phrase's complement, whatever verb
+carries it, and still ends the government — rather
+than by Q146's list of introducing verbs, so the
+unlisted-verb shapes ("prompts", "bids", "pays",
+"gets", "hires", "tasks") fire again while a subject
+clause carrying no infinitive of its own is still
+crossed and the listed-verb controls and the
+relative-clause pins keep firing; and opens a new
+ledger segment at a run of hyphens — the double
+hyphen and longer, spaced or unspaced — beside the
+standing separators and dash forms, so an evidence
+word in an earlier clause no longer swallows a later
+instruction complement under the typed dash either.
+The guard stays per match, the mark's placement, the
+audit shape, the 7 rules' subjects, and the
+no-refusal / no-warning behaviour are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(2:25 AM PST, 2026-11-11), the fix commit of
+2:39 AM PST ("Q147: the briefing guard reads the
+subject clause opened by "that", judges a relative
+clause by its own infinitive, and opens a ledger
+segment at a run of hyphens (option 1)") —
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py` (the
+Q147PolarityGuardTest family: item 1's "that"
+prohibitions silent on both layers, item 2's
+unlisted-verb pins and listed-verb controls firing
+on both layers, item 3's typed-dash shapes firing on
+both layers and its evidence-only typed-dash twins
+silent, in plain and bookended shapes, beside the
+filed Q143, Q144, Q145 and Q146 corpora, the standing
+contradiction family, and the unrelated-negation and
+negated-then-contradicting pins) — and the figures
+commit of 2:45 AM PST re-measuring the core over
+`briefing.py`'s 42-line growth. Red-before: item 1's
+shapes marked on the current head, item 2's
+unlisted-verb shapes and item 3's typed-dash shapes
+read nothing on the current head, measured first-hand
+by this lane on the fixture layer and the shipped
+layer (30 of the lane's 35 probe checks failing
+against the unpatched detector, the controls and
+pins among the checks holding), and the new family
+reads 1261 subtest failures against the unpatched
+detector. Green after: the guard family stands at
+81 tests, the neighbour batteries
+(`test_oracle_briefing`, `test_posture_stamp`,
+`test_protocol_v2*`, `test_v2_consult`,
+`test_v2_replay`, `test_security_config`) read 305
+green beside it, and item 1's sentence assembled
+into a briefing carries no mark and writes no
+startup audit row while item 2's and item 3's
+sentences carry the mark and write exactly their
+one audit row each. The filing seat's re-test is
+still owed under rule 8: Q147 is not closed by this
+lane, and neither are Q146, Q145, Q144 and Q143 —
+all close only after that re-test passes whole.
+
 ---
 
 ## Q146 (Muse, to the desk, 2026-11-11): the Q145 guard's residual polarity shapes — a governed infinitive with a long adverbial lead-in is still marked, a prohibitive form cut off from its infinitive by a relative clause is still marked, and the ledger's mixed sentence under a dash is still missed
