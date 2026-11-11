@@ -15779,3 +15779,242 @@ claimed beyond what those calls and that
 family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q157 re-test: conclusions of the filing seat (2026-11-11)
+
+The re-test ran in a fresh scratch clone from
+remote main (the remote head verified by
+foreground `git ls-remote` in the same call as
+the clone, at the suppositions commit of
+1:25 PM PST), re-derived first-hand, not taken
+from the fix lane's report. The trees: the
+current head; the pre-Q157-fix detector (the
+tree at the fix commit's parent); the
+pre-Q156-fix detector and the pre-Q155-fix
+detector beside it; the pre-Q143-fix detector
+(the tree at the Q143 fix commit's parent).
+Settled against the suppositions one by one:
+
+- **Q157-RT-S1 — holds.** Item 1 stays silent,
+  whole: the 2 noun complements carrying a
+  pied-piped relative clause of their own, and
+  their 2 composed silent shapes beside them,
+  produce no findings on the fixture layer and
+  the shipped layer, plain (4 of 4 silent on
+  each) and bookended (300 of 300 variants
+  silent).
+- **Q157-RT-S2 — holds.** Items 2 and 3 fire
+  again, whole: the 33 format-boundary and
+  punctuation-separator shapes produce exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain (33 of 33) and bookended
+  (2,409 of 2,409; each representative — the
+  first Egyptian-format-control shape and the
+  double-vertical-line shape — in 73 of 73),
+  and the evidence-only twins under the new
+  shapes stay silent (33 of 33 plain on both
+  layers, 2,475 of 2,475 bookended).
+- **Q157-RT-S3 — holds.** The both-ways
+  controls hold: the 10 filed controls fire
+  whole (10 of 10 plain on both layers, 730
+  of 730 bookended), and the 19 silent
+  controls stay silent (19 of 19 plain on
+  both layers, 1,425 of 1,425 bookended) —
+  the bound shapes "compels a duty" and
+  "sends a clearance", Q156's 17 silent
+  controls, and item 1's 2 filed shapes
+  crossed beside them among them.
+- **Q157-RT-S4 — holds.** The both-ways pins
+  hold beside the widening: the bound
+  prohibition followed by a contradicting
+  sentence fires exactly
+  `private_shelf_crosses` on both layers, the
+  unrelated-negation shapes fire exactly their
+  rules (6 of 6 on the fixture layer), the
+  negated-then-contradicting shapes fire
+  exactly their rules (5 of 5 on the fixture
+  layer), and the standing pins hold through
+  the committed guard family run whole (203
+  green, below).
+- **Q157-RT-S5 — holds.** The filed Q143
+  compliant corpus is silent on both layers
+  (14 of 14 plain, 1,050 of 1,050 bookended,
+  joined silent on both layers) and its
+  restating shapes are silent (7 of 7 plain,
+  525 of 525 bookended); the standing 7-rule
+  contradiction family fires whole (7 of 7
+  plain with exactly their rule on the
+  fixture layer, 511 of 511 bookended); and
+  the Q144, Q145, Q146, Q147, Q148, Q149,
+  Q150, Q151, Q152, Q153, Q154, Q155 and Q156
+  families read as they did through the
+  committed guard family run whole.
+- **Q157-RT-S6 — holds.** End to end: item
+  1's representative ("holds a credential
+  the record of which is on file") assembled
+  into a briefing carries no mark, names no
+  tensions, and writes no audit row; item
+  2's representative (the first
+  Egyptian-format-control shape), item 3's
+  representative (the double-vertical-line
+  shape) and the pied-piped object
+  representative ("compels a crew the members
+  of which are on duty") assembled into
+  briefings each carry their mark,
+  `briefing_report` names exactly their rule,
+  and the startup pass writes exactly their
+  one audit row (feature `briefing`, decision
+  `marked`, the rule id as the detail); the
+  bound shape ("compels a duty") carries no
+  mark, names no tensions, and writes no
+  audit row.
+- **Q157-RT-S7 — holds.** The guard family
+  reads 203 green and the neighbour batteries
+  (`test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2*`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config`)
+  read 305 green (229 in the named modules
+  beside 76 in the protocol v2 modules),
+  re-measured in the foreground by this seat.
+  Red-before, re-measured by this seat against
+  the pre-Q157-fix detector: item 1's shapes
+  fire there (0 of 4 silent plain on both
+  layers; bookended silent only in the 8
+  underscore-fused variants of 300, the fused
+  shape the standing patterns cannot see on
+  either tree) and items 2 and 3's shapes are
+  silent there (0 of 33 plain on both layers,
+  0 of 2,409 bookended), and the guard family
+  as it now stands reads 2,887 subtest
+  failures against that detector, every one
+  in the Q157PolarityGuardTest family (2,409
+  in its bookended ledger test, 292 in its
+  bookended pied-piped silent test, 146 in
+  its bookended controls-silent test, 33 in
+  its ledger shapes test, 4 in its pied-piped
+  complements test, 2 in its controls-silent
+  test and 1 in its end-to-end test; the other
+  190 tests read green against that detector
+  whole) — the fix lane's count, re-derived.
+  Against the pre-Q156-fix detector the filed
+  shapes read the same way plain (item 1: 0 of
+  4 silent; items 2 and 3: 0 of 33 firing);
+  against the pre-Q155-fix detector item 1's
+  shapes are silent whole (4 of 4 plain on
+  both layers) and items 2 and 3's shapes are
+  silent (0 of 33); against the pre-Q143-fix
+  detector item 1's, item 2's and item 3's
+  shapes fire again whole, as filed (0 of 4
+  silent and 33 of 33 firing plain, each
+  representative in 73 of 73 bookended, the
+  representatives marked with their one audit
+  row end to end there), and the Q143
+  compliant corpus reads its marks there (0
+  of 14 silent).
+- **Q157-RT-S8 — holds, whole.** The first
+  group holds as the Answer states: the
+  composed complements through a pied-piped
+  clause stay silent (5 of 5 plain on both
+  layers, 375 of 375 bookended), the composed
+  object phrases through a pied-piped clause
+  fire (4 of 4 plain on both layers, 292 of
+  292 bookended), the filed ledger shapes in
+  their other spacings fire (2 of 2 plain,
+  146 of 146 bookended), and the evidence-only
+  twin under a spaced Egyptian format control
+  stays silent (1 of 1 plain, 75 of 75
+  bookended).
+- **Q157-RT-S9 — second group confirms three
+  residual items; its controls hold.** (1)
+  The bound edge through a longer pied-piped
+  lead is marked on the current head: the 3
+  "prompts a duty" shapes whose lead carries
+  an adjective, a compound noun or a numeral
+  with no determiner of its own fire
+  `private_shelf_crosses` plain on both
+  layers (3 of 3), each in 73 of 73 bookended
+  variants under the non-word symbols, and
+  end to end the representative ("prompts a
+  duty official record of which is on file")
+  carries the mark and writes exactly its
+  one audit row. The same 6-shape group (this
+  item's 3 beside their complement-verb
+  twins) is silent whole on the
+  pre-Q155-fix detector (6 of 6 plain) and
+  fires on the pre-Q157-fix detector and on
+  the pre-Q156-fix detector (0 of 6 silent
+  plain on each), and fires on the
+  pre-Q143-fix detector the same way. The
+  group's controls hold whole on the current
+  head: the complement-verb twins stay silent
+  (3 of 3 plain on both layers, each in 75 of
+  75 bookended variants), the determiner-led
+  adjective leads stay silent (2 of 2 plain,
+  150 of 150 bookended), and the true object
+  phrases carrying an adjective-led lead with
+  no determiner fire whole (2 of 2 plain, 146
+  of 146 bookended) — the residual runs by
+  the governing verb, the object-control
+  branch judging the truncated span by its
+  leftover tail where a complement verb's
+  branch never reaches an object judgement.
+  (2) The ledger's mixed sentence under the
+  format characters beyond the BMP beyond
+  the Egyptian block (the shorthand format
+  controls, the musical format characters
+  and the representative tag characters —
+  20 shapes) is missed whole on the current
+  head — 0 of 20 firing on both layers
+  plain, 0 of 1,460 bookended, the
+  representative (the first
+  shorthand-format-control shape) in 0 of
+  73 — and end to end that representative
+  carries no mark and writes no audit row;
+  the same shapes are missed on the
+  pre-Q157-fix detector, on the pre-Q156-fix
+  detector and on the pre-Q155-fix detector
+  (0 of 20 on each) and fire whole on the
+  pre-Q143-fix detector (20 of 20, the
+  representative in 73 of 73, and marked with
+  its one audit row end to end there). (3)
+  The ledger's mixed sentence under the
+  general-punctuation separators beyond the
+  widened set (17 shapes) is missed whole
+  the same way — 0 of 17 on both layers
+  plain, 0 of 1,241 bookended, the
+  representative (the double-low-line shape)
+  in 0 of 73, no mark and no audit row end to
+  end; 0 of 17 on the pre-Q157-fix detector,
+  on the pre-Q156-fix detector and on the
+  pre-Q155-fix detector and 17 of 17 on the
+  pre-Q143-fix detector. The evidence-only
+  twins under the 37 new shapes stay silent
+  on the current head (37 of 37 plain on
+  both layers, 2,775 of 2,775 bookended).
+
+Verdict: everything in Q157's filed scope
+passes whole. The S9 second-group residuals
+confirm, so they are filed as Q158 in the
+questions file, this seat does not fix them
+(rule 8), and Q157 is NOT closed by this
+re-test — and neither are Q156, Q155, Q154,
+Q153, Q152, Q151, Q150, Q149, Q148, Q147,
+Q146, Q145, Q144 and Q143. Q157 therefore
+stands re-tested and passing on its filed
+scope; the Q157..Q143 chain closes only
+after Q158 is answered and its fix re-tested
+by this seat.
+
+What could not be recorded as a unit test,
+stated plainly: the re-test's ad-hoc probes are
+live detector calls over the sentences named in
+the suppositions and in these conclusions;
+their deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane ran whole (203 green on the
+head; 2,887 subtest failures for the new family
+against the pre-Q157-fix detector). No new
+behaviour is claimed beyond what those calls
+and that family show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
