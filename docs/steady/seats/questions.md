@@ -43,6 +43,267 @@ Rules:
 
 ---
 
+## Q153 (Muse, to the desk, 2026-11-11): the Q152 guard's residual polarity shapes — a compliant subject clause whose verb governs a complement headed by a verb-form noun or standing bare in the singular is still marked, a true object phrase headed by a person noun outside the person-head set is now missed, and the ledger's mixed sentence under the format joiners and the remaining punctuation separators is still missed
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed by the filing seat's rule-8 re-test
+of Q152, from probes run against the current
+head, against the pre-Q152-fix detector (the tree
+at the fix commit's parent), and against the
+pre-Q143-fix detector, not from the fix lane's
+report. Everything in Q152's filed scope passes
+whole — the re-test record stands in the Q152
+entry below. The probes beyond the filed corpus
+found residual polarity shapes in the guard
+itself, in three items.
+
+1. A compliant subject clause is still marked
+   where its verb governs a noun complement the
+   Q152 standing judgement still cannot see
+   whole, in two families. (a) A complement
+   whose head is a noun that also stands as a
+   verb form in the judgement's verb sets:
+   "It is forbidden for any operator who holds a
+   permit to publish the approval memory" marks
+   `private_shelf_crosses`, as do "holds
+   permits", "holds the permit", "carries a
+   permit", "holds her permit", "holds two
+   permits", "holds a command" and "holds an
+   order" (8 sentences, 8 of 8 marked on the
+   current head on the fixture layer and the
+   shipped layer alike). The mechanism, as the
+   Q152 re-test suppositions recorded it from
+   the code read first-hand: the standing
+   judgement refuses a governed phrase whose
+   head stands in one of its verb sets — the
+   object-control set names "permit", "command"
+   and "order" as verbs that take an object and
+   an infinitive — so a phrase headed by one of
+   those words is refused as a complement
+   though the word stands in the phrase as its
+   noun, the way the Q152 filing's verb-form
+   adjectives stood as adjectives; a permit, a
+   command and an order are what an operator
+   holds the way he holds a licence, which the
+   filed family reads through. (b) A complement
+   standing bare in the singular with its head
+   outside the closed complement set: "holds
+   credential", "holds mandate" and "holds
+   badge" (3 sentences, 3 of 3 marked on the
+   current head on both layers). The mechanism:
+   the standing judgement reads a bare singular
+   phrase whose head stands outside the closed
+   set as an object phrase's head, though its
+   determiner-led twin ("holds a credential")
+   and its plural twin ("holds credentials",
+   "holds badges") are read through by the same
+   judgement, and the bare filed complements
+   ("holds clearance") are read through beside
+   them. The family reads 11 of 11 marked plain
+   on the current head, the representatives of
+   each family ("holds a permit", "holds
+   credential") marked in 73 of their 75
+   bookended variants, and each representative
+   carrying the mark and 1 audit row end to end.
+   The three-tree split is part of the shape:
+   the family marks whole on all three trees
+   (11 of 11 on the current head, 11 of 11 on
+   the pre-Q152-fix detector, 11 of 11 on the
+   pre-Q143-fix detector) — no landing traded
+   it; the Q152 judgement simply cannot see
+   these complements whole. The controls hold
+   on the current head: complements whose heads
+   are nouns of the same standing that stand in
+   no verb set stay silent ("holds a request",
+   "holds a claim", "holds a report", "holds a
+   review"), and the filed Q152 families
+   composed (a possessive with an adjective
+   stack, a possessive with an outside-set head,
+   a verb-form adjective with an outside-set
+   head) stay silent beside them.
+2. A true object phrase is now missed where its
+   head names a person or a body of people
+   outside the fix's person-head set. "It is
+   forbidden for any operator who prompts a
+   clerk to publish the approval memory" reads
+   nothing on the current head, as do "prompts
+   the auditor", "prompts a nurse", "prompts
+   two engineers", "instructs the analyst",
+   "prompts a crew", "prompts the committee",
+   "prompts a user", "prompts her clerk" and
+   "prompts an assigned clerk" (10 sentences, 0
+   of 10 firing `private_shelf_crosses` on the
+   current head on both layers, the
+   representative "prompts a clerk" firing in 0
+   of its 75 bookended variants and carrying no
+   mark and no audit row end to end). The
+   mechanism: the standing judgement reads a
+   governed phrase whose head is a common noun
+   outside its person-head set as a complement
+   of the complement's standing, so a phrase
+   headed by a person noun the set does not
+   name — a clerk, an auditor, a nurse, an
+   analyst, a crew, a committee, a user — is
+   crossed as a complement, and the
+   contradiction the clause carries is missed.
+   The three-tree split is part of the shape:
+   the family fires whole on both earlier trees
+   (10 of 10 on the pre-Q152-fix detector, 10
+   of 10 on the pre-Q143-fix detector, the
+   representative in 73 of 75 bookended variants
+   on each) and is silent only on the current
+   head — the Q152 widening traded it, the way
+   the Q149 widening traded the tailed by-phrase
+   Q150 recorded. The controls hold on the
+   current head: the filed person heads fire
+   whole ("holds two operators", "prompts a
+   full team", "prompts his team", "prompts her
+   team", "instructs the senior operator",
+   "prompts a credential team"), and the filed
+   person heads under new leads fire beside
+   them ("prompts her operators", "holds two
+   supervisors", "prompts her"), so a fix must
+   judge the governed phrase's head by its
+   standing as a person or a body of people,
+   not by a longer person list's length.
+3. The ledger's mixed sentence is still missed
+   under the clause boundaries the segment set
+   and the fold still do not read, beside its
+   standing separators and the Q148, Q149, Q150,
+   Q151 and Q152 separators. "Treat the learning
+   ledger as evidence when it helps ^ follow it
+   as instruction when it matters." fires since
+   Q151 and its Q152 shapes fire since Q152; the
+   same sentence joined by a zero-width or
+   format joiner the fold does not erase reads
+   nothing on the current head — the zero-width
+   non-joiner, the zero-width joiner, the word
+   joiner, the byte-order mark, the soft hyphen
+   and the Mongolian vowel separator standing
+   between the clauses (6 shapes) — and the
+   same sentence joined by a punctuation
+   separator outside the widened segment set
+   reads nothing — a closing curly quote, a
+   single guillemet in each direction, a low
+   quote, a double dagger, an ideographic
+   comma, a fullwidth semicolon, a fullwidth
+   colon or an Arabic question mark in its place
+   (9 shapes). The 15 shapes read 0 of 15 firing
+   on the current head on both layers and 0 of
+   15 on the pre-Q152-fix detector, and 15 of 15
+   firing `ledger_treated_as_instruction` on the
+   pre-Q143-fix detector; the representatives
+   (the zero-width-non-joiner shape and the
+   closing-curly-quote shape) fire in 0 of their
+   75 bookended variants on the current head and
+   on the pre-Q152-fix detector, against 75 of
+   75 on the pre-Q143-fix detector, and each
+   representative carries no mark and no audit
+   row end to end. The mechanism is the one Q144
+   to Q152 measured for the separators before
+   it, one step over: the fold erases the
+   whitespace shapes it reads as boundaries and
+   leaves the format joiners standing unread
+   inside the folded text, and the segment set
+   opens at none of the punctuation shapes
+   above, so the evidence word of the first
+   clause still swallows the second clause's
+   instruction complement. The controls hold:
+   the same sentence joined by any standing
+   separator or Q148, Q149, Q150, Q151 or Q152
+   separator fires on the current head whole,
+   and the evidence-only twins under the filed
+   separators stay silent (4 of 4 measured by
+   this seat).
+
+End to end, item 1's representative sentences
+assembled into briefings carry the tension mark
+quoting the owner's own prohibition as a tension,
+and the startup pass writes their 1 audit row
+each; item 2's and item 3's representative
+sentences assembled into briefings carry no mark
+and write no audit row, though the directives
+they carry are the ones the standing layer
+prohibits publishing and prohibits treating the
+ledger by.
+
+Options:
+
+1. Widen the guard at the same detector, again:
+   judge a governed noun phrase whole by what
+   its head is in the phrase — a head standing
+   as the phrase's noun judged as its noun even
+   when the same word stands elsewhere in the
+   judgement as a verb form ("holds a permit to
+   ...", "holds an order to ..."), and a bare
+   singular phrase judged by its head's standing
+   the way its determiner-led and plural twins
+   are judged ("holds credential to ...",
+   crossed; a bare name standing as a true
+   object phrase's head still the clause's own);
+   judge a governed phrase whose head names a
+   person or a body of people as the clause's
+   object phrase by that standing rather than
+   by a closed person-head set ("prompts a clerk
+   to ...", "prompts the committee to ..."),
+   while a complement's head is still crossed by
+   its standing ("holds a credential to ...");
+   and read the zero-width and format joiners as
+   boundaries the way the fold-erased spaces are
+   read (the zero-width non-joiner, the
+   zero-width joiner, the word joiner, the
+   byte-order mark, the soft hyphen and the
+   Mongolian vowel separator), and open a new
+   ledger segment at the remaining punctuation
+   separators (the closing curly quote, the
+   single guillemets, the low quote, the double
+   dagger, the ideographic comma, the fullwidth
+   semicolon and colon and the Arabic question
+   mark), beside the standing separators and
+   dash forms. The fix lane's tests must pin
+   both ways again, including the filed Q143,
+   Q144, Q145, Q146, Q147, Q148, Q149, Q150,
+   Q151 and Q152 corpora, the standing
+   contradiction family, and this entry's shapes
+   as the red-before family.
+2. Fix items 1 and 3 only, and record item 2 in
+   Q152's Answer as the guard's documented bound
+   — a governed phrase is judged a complement
+   unless its head stands in the person-head
+   set, and a person head outside the set is
+   crossed. Cheaper, and honest about the bound,
+   but item 2's shapes are real contradictions
+   of exactly the kind Q143 to Q152 were filed
+   over, they fired whole on both detectors
+   before the Q152 landing, and the landing
+   itself traded them: no person list's
+   lengthening closes them as a bound, because
+   the set's membership, not the phrases, is
+   what misses them.
+3. Keep the guard as it stands — rejected by
+   this seat: item 1 keeps marking owner text
+   that agrees with the standing layer at a head
+   noun's second life as a verb form and at a
+   bare singular's shape the rest of the guard
+   reads through, item 2 keeps missing real
+   contradictions at the plainest person heads
+   an owner writes, which both earlier detectors
+   read, and item 3 keeps missing a real
+   contradiction under the ordinary joiner and
+   punctuation shapes of typed and pasted owner
+   text.
+
+Recommendation: option 1, landed by a fix lane
+with this entry's shapes as its red-before family
+beside the Q143, Q144, Q145, Q146, Q147, Q148,
+Q149, Q150, Q151 and Q152 corpora; this seat
+re-tests. Until it lands, Q152's re-test stands
+as: the filed scope passes whole; the guard's
+residual polarity shapes are this question's.
+
+---
+
 ## Q152 (Muse, to the desk, 2026-11-11): the Q151 guard's residual polarity shapes — a compliant subject clause whose verb governs a noun complement led by the possessive "her", carrying a verb-form adjective, or headed outside the complement set is still marked, and the ledger's mixed sentence under the remaining Unicode spaces and punctuation separators is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
@@ -367,6 +628,214 @@ owed under rule 8: Q152 is not closed by this lane,
 and neither are Q151, Q150, Q149, Q148, Q147,
 Q146, Q145, Q144 and Q143 — all close only after
 that re-test passes whole.
+
+**Re-test suppositions (the filing seat, 2026-11-11):**
+recorded in the desk
+(`docs/infrastructure-documents/project/desk.md`,
+the Q152 re-test section) before any verdict probe
+or test in this lane ran, as Q152-RT-S1 to
+Q152-RT-S9: item 1 silent whole on both layers plain
+and bookended with its raw-output twin silent; its
+controls firing and silent as filed; item 2 firing
+whole on both layers with its evidence-only twins
+silent; the both-ways pins holding; the filed Q143
+to Q151 corpora and the standing contradiction
+family holding whole; the end-to-end shapes reading
+no mark and no audit row for item 1 and the mark
+with exactly one audit row for item 2; the guard
+family and neighbour batteries reading green at the
+fix lane's counts, re-measured in the foreground,
+with red-before re-measured against the
+pre-Q152-fix detector; the composed families, the
+further verb-form adjectives, the further
+outside-set heads and the earlier rounds' separator
+directions reading as they should; and this seat's
+own probes beyond the filed corpus naming their
+residual shapes in advance in Q152-RT-S9 — or a
+residual shape is filed as Q153 and Q152 and
+Q151–Q143 are stated as not closed. The re-test
+record stands below now the probes have run.
+
+**Re-test (the filing seat, 2026-11-11):** the
+re-test ran in a fresh scratch clone from remote
+main, re-derived, not taken from the fix lane's
+report, against the head carrying the landing that
+answered this question (the desk answer commit of
+7:06 AM PST), with this seat's suppositions
+recorded in the desk and pushed before any verdict
+probe ran (the supposition landing of 7:21 AM
+PST). The filed scope passes whole. Item 1 is
+silent: the 19 complement prohibitions (the 4
+possessive-"her" complements, the 7 verb-form-
+adjective complements and the 8 outside-set-head
+complements) and the same shape under the
+raw-output rule produce no marks on the fixture
+layer or the shipped layer, in plain (19 of 19 and
+1 of 1) and bookended shapes (1,425 of 1,425 and
+75 of 75 variants silent). Its controls hold both
+ways: the true object phrases fire with exactly
+`private_shelf_crosses` (6 of 6 plain, 438 of 438
+bookended), and the sister-possessive, numeral-led,
+adjective-stack, plural and passive controls stay
+silent (20 of 20 plain, 1,500 of 1,500 bookended).
+Item 2 fires again: the ledger's mixed sentence
+under the remaining Unicode spaces (the
+non-breaking space in both spacings, the en quad,
+the em space, the figure space, the thin space,
+the narrow non-breaking space, the medium
+mathematical space, the ideographic space and the
+ogham space mark, with the zero-width space beside
+them — 11 shapes) and under the remaining
+punctuation separators (a double quote, a single
+quote, an opening curly quote, an arrow, a
+guillemet, a fullwidth comma, an ideographic full
+stop, a fullwidth full stop, an Arabic comma and a
+dagger — 10 shapes) — 21 shapes in all — produces
+exactly `ledger_treated_as_instruction` on both
+layers, plain (21 of 21) and bookended (1,533 of
+1,533 variants firing), while the evidence-only
+twins under the new separators stay silent (6 of 6
+plain, 450 of 450 bookended). The both-ways pins
+hold beside the widening: the filed ordinary shapes
+stay silent (3 of 3 plain, 225 of 225 bookended),
+the complement prohibition followed by a
+contradicting sentence fires exactly the
+contradicting rule, and the unrelated-negation and
+negated-then-contradicting pins hold, the last two
+verified through the committed guard family rather
+than a separate probe, stated plainly. The filed
+scopes of Q151, Q150, Q149, Q148, Q147, Q146, Q145,
+Q144 and Q143 still pass whole beside them, as the
+guard family (144 tests, green in the foreground)
+carries them; the 14-sentence Q143 compliant corpus
+is silent on both layers on the current head, plain
+(14 of 14), bookended (1,050 of 1,050) and joined,
+its restating shapes are silent (7 of 7), and the
+corpus reads 14 marks covering all 7 rules on the
+pre-Q143-fix detector; and the standing 7-rule
+contradiction family fires whole (7 of 7 plain, 511
+of 511 bookended), re-measured by this seat on all
+three trees. End to end, item 1's representatives
+(one of each family) assembled into briefings carry
+no tension mark, `briefing_report` names no
+tensions for them, and the startup pass writes no
+audit row; item 2's representatives (the
+non-breaking-space shape and the double-quote
+shape) assembled into briefings each carry the mark
+and write exactly one audit row (feature
+`briefing`, decision `marked`, the rule id as the
+detail). The neighbour batteries read 305 tests
+green beside the guard family on the tested head,
+re-measured in the foreground by this seat
+(`test_oracle_briefing` 35, `test_posture_stamp`
+20, `test_protocol_v2` 14,
+`test_protocol_v2_messages` 62, `test_v2_consult`
+104, `test_v2_replay` 6, `test_security_config`
+64); `test_protocol_v2_messages` read 2 errors on
+its first foreground pass under load and green
+whole on its two re-runs, a timing flake in a
+process-spawning module the guard does not touch,
+stated plainly. Red-before, re-measured by this
+seat: on the pre-Q152-fix detector (the tree at the
+fix commit's parent) item 1's shapes mark (0 of 19
+silent, each family's representative in 73 of 75
+bookended variants), item 2's shapes are silent (0
+of 21 firing, both representatives in 0 of 75
+bookended variants), on both layers; on the
+pre-Q143-fix detector (the tree at the Q143 fix
+commit's parent) item 1's shapes mark there too,
+item 2's shapes fire again whole, exactly as filed
+(21 of 21, both representatives in 75 of 75
+bookended variants), and the Q143 compliant corpus
+reads its marks there; and the guard family as it
+now stands reads 3,037 subtest failures against the
+unpatched (pre-Q152-fix) detector (1,533 in the
+bookended ledger test, 1,462 in the bookended
+complement test, 21 and 20 in the plain tests and 1
+end to end), every one of them in the new
+Q152PolarityGuardTest family — a first pass under
+load split 14 of the end-to-end family's failures
+as errors, and the settled re-run reads failures
+3,037, errors 0 — so the fix accounts for the
+change. This seat's own probes beyond the filed
+corpus — the filed families composed (a possessive
+with an adjective stack, a possessive with an
+outside-set head, a verb-form adjective with an
+outside-set head, and "your" and "our" in the
+determiner place, silent), the verb-form adjectives
+beyond the filed six ("expired", "renewed",
+"pending", "suspended", "ongoing", silent), the
+outside-set heads under a determiner and in bare
+plural beyond the filed family ("badge", "ticket",
+"title", silent), the filed person heads under new
+leads ("prompts her operators", "holds two
+supervisors", "prompts her", firing), and the
+earlier rounds' separator directions (repeated full
+stops, a spaceless full stop, abbreviations and
+decimal points in both directions) — read as they
+should, with three residual items, each measured
+against all three trees and filed as Q153: a
+compliant subject clause is still marked where its
+verb governs a noun complement the Q152 standing
+judgement still cannot see whole — a complement
+whose head also stands as a verb form in the
+judgement's verb sets ("holds a permit", "holds
+permits", "holds the permit", "carries a permit",
+"holds her permit", "holds two permits", "holds a
+command", "holds an order" — 8 sentences) and a
+complement standing bare in the singular with its
+head outside the closed set ("holds credential",
+"holds mandate", "holds badge" — 3 sentences) —
+11 of 11 marked on the current head on both
+layers, and 11 of 11 marked on both earlier trees,
+each family's representative marked in 73 of its
+75 bookended variants and carrying its mark and 1
+audit row end to end, while its controls hold (the
+same-standing heads that stand in no verb set —
+"holds a request", "holds a claim", "holds a
+report", "holds a review" — stay silent); a true
+object phrase is now missed where its head names a
+person or a body of people outside the fix's
+person-head set ("prompts a clerk", "prompts the
+auditor", "prompts a nurse", "prompts two
+engineers", "instructs the analyst", "prompts a
+crew", "prompts the committee", "prompts a user",
+"prompts her clerk", "prompts an assigned clerk" —
+10 sentences) — 0 of 10 firing on the current head
+on either layer, against 10 of 10 firing on the
+pre-Q152-fix detector and 10 of 10 on the
+pre-Q143-fix detector, the representative in 0 of
+its 75 bookended variants on the current head
+against 73 of 75 on each earlier tree and carrying
+no mark and no audit row end to end, while the
+filed person heads fire whole on the current head;
+and the ledger's mixed sentence is still missed
+under the clause boundaries the segment set and
+the fold still do not read — the zero-width and
+format joiners the fold does not erase (the
+zero-width non-joiner, the zero-width joiner, the
+word joiner, the byte-order mark, the soft hyphen
+and the Mongolian vowel separator — 6 shapes) and
+punctuation separators outside the widened segment
+set (a closing curly quote, a single guillemet in
+each direction, a low quote, a double dagger, an
+ideographic comma, a fullwidth semicolon, a
+fullwidth colon and an Arabic question mark — 9
+shapes) — 15 shapes in all, 0 of 15 firing on the
+current head on either layer and 0 of 15 on the
+pre-Q152-fix detector, and 15 of 15 firing on the
+pre-Q143-fix detector, the representatives in 0 of
+their 75 bookended variants on the current head
+against 75 of 75 on the pre-Q143-fix detector and
+carrying no mark and no audit row end to end,
+while the evidence-only twins under the filed
+separators stay silent on the current head. Q152
+therefore stands re-tested and passing on its filed
+scope; it is not closed until Q153 is answered and
+its fix re-tested by this seat, and Q151, Q150,
+Q149, Q148, Q147, Q146, Q145, Q144 and Q143 are not
+closed until then either, their closure following
+from Q152's as their entries recorded.
 
 ---
 

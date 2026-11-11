@@ -10803,3 +10803,233 @@ themselves beside the committed guard family,
 which this lane runs whole. No new behaviour is
 claimed beyond what those calls and that family
 show.
+
+## Q152 re-test: conclusions of the filing seat (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded in the
+desk before the re-test (the Q152 re-test section
+above), each measured first-hand by this seat in
+the scratch clone from remote main at a head
+carrying the Q152 landing, on the fixture layer
+and the shipped layer, against the three trees
+(the current head; the pre-Q152-fix detector, the
+tree at the fix commit's parent; and the
+pre-Q143-fix detector, the tree at the Q143 fix
+commit's parent). The filed scope of Q152 passes
+whole. The residuals of Q152-RT-S9 confirm, and
+are filed as Q153.
+
+- **Q152-RT-S1 holds.** Item 1 is silent, whole:
+  the 19 complement prohibitions and the
+  raw-output twin produce no marks on either
+  layer — 19 of 19 and 1 of 1 plain, and 1,425
+  of 1,425 and 75 of 75 bookended variants
+  silent. Red-before split: on the pre-Q152-fix
+  detector 0 of 19 are silent (each family's
+  representative in 73 of 75 bookended
+  variants); they mark there and on the
+  pre-Q143-fix detector too.
+- **Q152-RT-S2 holds.** Item 1's both-ways
+  controls hold: the true object phrases
+  ("holds two operators", "prompts a full
+  team", "prompts his team", "prompts her
+  team", "instructs the senior operator",
+  "prompts a credential team") fire with exactly
+  `private_shelf_crosses` 6 of 6 plain and 438
+  of 438 bookended; the 20 filed silent controls
+  stay silent 20 of 20 plain and 1,500 of 1,500
+  bookended, on both layers.
+- **Q152-RT-S3 holds.** Item 2 fires again,
+  whole: the ledger's mixed sentence under the
+  11 remaining-space shapes and the 10 remaining
+  punctuation separators (21 shapes) produces
+  exactly `ledger_treated_as_instruction` on
+  both layers — 21 of 21 plain and 1,533 of
+  1,533 bookended variants firing — while the
+  evidence-only twins stay silent (6 of 6 plain,
+  450 of 450 bookended). On the pre-Q152-fix
+  detector 0 of 21 fire; on the pre-Q143-fix
+  detector 21 of 21 fire.
+- **Q152-RT-S4 holds.** The both-ways pins hold
+  beside the widening: the filed ordinary shapes
+  stay silent (3 of 3 plain, 225 of 225
+  bookended). The complement prohibition
+  followed by a contradicting sentence, the
+  unrelated-negation pins and the
+  negated-then-contradicting shapes hold through
+  the committed guard family, which reads green
+  whole below; this seat ran no separate pin
+  probe beyond the family and the filed-scope
+  probes, and no pin count beyond the family's
+  is claimed.
+- **Q152-RT-S5 holds.** All nine earlier
+  families hold whole beside the widening. The
+  guard family (144 tests, green in the
+  foreground, below) carries the filed Q143 to
+  Q151 corpora; the 14-sentence Q143 compliant
+  corpus is silent on both layers on the current
+  head (14 of 14 plain, 1,050 of 1,050
+  bookended, and joined) with its restating
+  shapes silent (7 of 7), and reads 14 marks
+  covering all 7 rules on the pre-Q143-fix
+  detector; and the standing 7-rule
+  contradiction family fires whole (7 of 7
+  plain, 511 of 511 bookended), re-measured by
+  this seat on all three trees.
+- **Q152-RT-S6 holds.** End to end: item 1's
+  representatives ("carries her responsibility",
+  "holds an assigned duty", "holds a
+  credential") assembled into briefings carry no
+  tension mark, `briefing_report` names no
+  tensions for them, and the startup pass writes
+  no audit row; item 2's representatives (the
+  non-breaking-space shape and the double-quote
+  shape) assembled into briefings each carry
+  their mark and write exactly one audit row
+  (feature `briefing`, decision `marked`, the
+  rule id as the detail), measured by this
+  seat's own end-to-end probes.
+- **Q152-RT-S7 holds.** The guard family reads
+  144 tests green on the tested head, re-measured
+  in the foreground by this seat, and the
+  neighbour batteries read 305 green beside it
+  (`test_oracle_briefing` 35, `test_posture_stamp`
+  20, `test_protocol_v2` 14,
+  `test_protocol_v2_messages` 62, `test_v2_consult`
+  104, `test_v2_replay` 6, `test_security_config`
+  64), also re-measured in the foreground;
+  `test_protocol_v2_messages` read 2 errors on
+  its first pass under load and green whole on
+  two re-runs — a timing flake in a
+  process-spawning module the guard does not
+  touch. Red-before, re-measured by this seat:
+  the guard family as it now stands reads 3,037
+  subtest failures against the unpatched
+  (pre-Q152-fix) detector, every one of them in
+  the Q152PolarityGuardTest family (1,533 in the
+  bookended ledger test, 1,462 in the bookended
+  complement test, 21 and 20 in the plain tests
+  and 1 end to end; a first pass under load split
+  14 as errors, the settled re-run reads failures
+  3,037, errors 0) — so the fix accounts for the
+  change; and the three-tree splits of S1 and S3
+  above stand as the supposition stated them.
+- **Q152-RT-S8 holds.** This seat's own probes in
+  the directions that are shapes of the filed
+  judgement read as they should: the filed
+  families composed ("carries her own
+  responsibility", "holds her full clearance",
+  "holds her assigned duties", "holds her
+  credentials", "bears her serving clearance",
+  "holds your duty", "holds our clearance",
+  "holds their assigned duties", "holds an
+  assigned credential", "holds assigned
+  credentials") stay silent; the verb-form
+  adjectives beyond the filed six ("holds an
+  expired clearance", "holds a renewed duty",
+  "holds pending clearance", "holds a suspended
+  clearance", "holds ongoing clearance") stay
+  silent; the outside-set heads beyond the filed
+  family ("holds a badge", "holds a ticket",
+  "bears a title", "holds badges", "takes oaths")
+  stay silent; the filed person heads under new
+  leads fire ("prompts her operators", "holds
+  two supervisors", "prompts her"); and the
+  separator directions of the earlier rounds
+  read as they should in both directions
+  (repeated full stops and a spaceless full stop
+  fire, an abbreviation-carried contradiction
+  and a decimal-carrying contradiction fire, and
+  the decimal-carrying and abbreviation-carrying
+  evidence restatements and the "never
+  instruction" restatement stay silent).
+- **Q152-RT-S9 confirms, in all three residual
+  items.** (1) The complements the standing
+  judgement still cannot see whole are still
+  marked on the current head: the verb-form-head
+  complements ("holds a permit", "holds
+  permits", "holds the permit", "carries a
+  permit", "holds her permit", "holds two
+  permits", "holds a command", "holds an order"
+  — 8 sentences), whose heads stand in the
+  judgement's verb sets, and the bare singular
+  outside-set complements ("holds credential",
+  "holds mandate", "holds badge" — 3 sentences)
+  — 11 of 11 marked plain on both layers, each
+  family's representative ("holds a permit",
+  "holds credential") marked in 73 of its 75
+  bookended variants and carrying its mark and 1
+  audit row end to end. The three-tree
+  measurement confirms the preliminary probes:
+  the family marks 11 of 11 on the pre-Q152-fix
+  detector and 11 of 11 on the pre-Q143-fix
+  detector as well. The controls hold on the
+  current head ("holds a request", "holds a
+  claim", "holds a report" and "holds a review"
+  stay silent, beside the S8 shapes). (2) A true
+  object phrase is now missed where its head
+  names a person or a body of people outside the
+  person-head set ("prompts a clerk", "prompts
+  the auditor", "prompts a nurse", "prompts two
+  engineers", "instructs the analyst", "prompts
+  a crew", "prompts the committee", "prompts a
+  user", "prompts her clerk", "prompts an
+  assigned clerk" — 10 sentences) — 0 of 10
+  firing on the current head on either layer,
+  against 10 of 10 firing on the pre-Q152-fix
+  detector and 10 of 10 on the pre-Q143-fix
+  detector; the representative ("prompts a
+  clerk") fires in 0 of its 75 bookended variants
+  on the current head against 73 of 75 on each
+  earlier tree, and carries no mark and no audit
+  row end to end. The Q152 widening traded these
+  shapes. (3) The ledger's mixed sentence is
+  still missed under the boundaries the segment
+  set and the fold still do not read — the
+  zero-width and format joiners the fold does
+  not erase (the zero-width non-joiner, the
+  zero-width joiner, the word joiner, the
+  byte-order mark, the soft hyphen and the
+  Mongolian vowel separator — 6 shapes) and the
+  punctuation separators outside the widened
+  segment set (a closing curly quote, a single
+  guillemet in each direction, a low quote, a
+  double dagger, an ideographic comma, a
+  fullwidth semicolon, a fullwidth colon and an
+  Arabic question mark — 9 shapes) — 15 shapes
+  in all, 0 of 15 firing on the current head on
+  either layer and 0 of 15 on the pre-Q152-fix
+  detector, and 15 of 15 firing on the
+  pre-Q143-fix detector; the representatives
+  (the zero-width-non-joiner shape and the
+  closing-curly-quote shape) fire in 0 of their
+  75 bookended variants on the current head
+  against 75 of 75 on the pre-Q143-fix detector,
+  and each carries no mark and no audit row end
+  to end, while the evidence-only twins under
+  the filed separators stay silent on the current
+  head (4 of 4). The residuals are filed as Q153
+  in the questions file (complete entry: context,
+  options, recommendation). This seat does not
+  fix them (rule 8).
+
+Guard evidence stands in the Q152 entry's re-test
+record in the questions file, with Q153 filed above
+it. Q152 is not closed by this re-test, and neither
+are Q151, Q150, Q149, Q148, Q147, Q146, Q145, Q144
+and Q143: all ten close only when Q153 is answered
+and its fix is re-tested by this seat. The hosted
+CI verdict on the new head is the trains' to judge
+— this lane claims neither it nor anything about
+the in-flight ship, whose lane, clones and state
+file this lane never touched. What could not be
+recorded as a unit test, as the suppositions stated
+in advance: this lane's ad-hoc probes are live
+detector calls over the sentences named in this
+record; their deterministic substrate is those
+sentences beside the committed guard family, which
+this lane ran whole (144 tests) — no new test file
+is landed by a re-test seat, and no behaviour is
+claimed beyond those calls and that family.
