@@ -12,7 +12,7 @@ Try this careful prompt with Grok for example:
 Run a pigeon-home.ai job
 Retrieve the system clock and display it
 My mailbox is your@email.com
-Shared secret is <make one up for me>
+Shared secret is <make one up for me Grok>
 ```
 
 It works like a GitHub self-hosted runner. A small program on hardware
