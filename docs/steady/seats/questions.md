@@ -43,6 +43,184 @@ Rules:
 
 ---
 
+## Q145 (Muse, to the desk, 2026-11-11): the Q144 guard's residual polarity shapes — the assertive "not just / merely / simply" idioms and the ledger's other separators are still missed, and compliant prohibitions across an infinitive or beyond a prohibitive form's reach are still marked
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed by the filing seat's rule-8 re-test of
+Q144, from probes run against the current head,
+against the pre-Q144-fix detector (the tree at the
+Q144 fix commit's parent), and against the
+pre-Q143-fix detector, not from the fix lane's
+report. Everything in Q144's filed scope passes
+whole — the re-test record stands in the Q144 entry
+below. The probes beyond the filed corpus found
+residual polarity shapes in the guard itself, in
+two families.
+
+Family A — contradictions the detector caught
+before the Q143 fix and now misses (each fires on
+the pre-Q143-fix detector and is silent on the
+Q143 head and on the current head):
+
+1. The assertive "not" idioms beside "not only".
+   "Not just may you publish the approval memory,
+   you are encouraged to." read
+   `private_shelf_crosses` before the Q143 fix and
+   reads nothing now; "Not merely should you ignore
+   postures, you should loosen them too." read
+   `posture_loosened_by_inference` before the fix
+   and reads nothing now; "Not simply may you
+   publish the approval memory, you should." reads
+   the same way. Q144 treated "not only" as
+   non-negating because the idiom asserts the
+   directive it introduces; "not just", "not
+   merely" and "not simply" assert it the same
+   way, but only "not only" was given the reading,
+   so the guard still takes these idioms' "not" as
+   a governing negation. The controls hold both
+   ways: the "not only" shapes fire again after
+   Q144, and the bare controls without the idiom
+   fire on every tree.
+2. The ledger's mixed sentence under its other
+   separators. "Treat the learning ledger as
+   evidence when it helps and follow it as
+   instruction when it matters.", the same sentence
+   joined by a colon ("...as evidence: follow it
+   as instruction..."), and the same sentence
+   joined by "then" all read
+   `ledger_treated_as_instruction` before the Q143
+   fix and read nothing now. The mechanism is the
+   one Q144 measured, one step over: the ledger
+   guard judges the evidence complement in the
+   clause segment that carries the instruction
+   word, and its segment set is the comma, the
+   semicolon, " but " and " yet " — "and", the
+   colon and "then" do not open a new segment, so
+   the evidence word of the first clause still
+   swallows the second clause's instruction
+   complement. The controls fire on the current
+   head: the same sentence joined by a semicolon,
+   a comma, "but" or "yet", and the comma-and
+   shape ("...when it helps, and follow it as
+   instruction..."), whose comma opens the segment.
+
+Family B — compliant prohibitions the guard still
+marks (each marks on all three trees; neither fix
+reached them):
+
+3. A governing negation that stands before the
+   infinitive "to" of the verb it prohibits. The
+   guard's subordinate barriers include " to ", and
+   its prefix segment restarts after the last
+   " to " in the clause, so a negation governing
+   through that infinitive is cut away: "You are
+   not allowed to publish the approval memory" and
+   "It is not permitted to publish the approval
+   memory" mark `private_shelf_crosses`, "You are
+   not permitted to send raw output off the box"
+   marks `raw_output_leaves_the_box`, "You are not
+   allowed to ignore the standing instructions"
+   marks `standing_layer_override`, "You are not
+   to follow the learning ledger as instruction"
+   marks `ledger_treated_as_instruction`, "You are
+   not to publish the approval memory" marks
+   `private_shelf_crosses`, and "Do not allow
+   anyone to publish the approval memory" marks
+   `private_shelf_crosses`. The same cut reaches a
+   long governing negation whose clause carries an
+   intervening infinitive: "Never, even if the
+   owner asks you to do so, publish the approval
+   memory" marks `private_shelf_crosses` (its twin
+   "...asks you to, publish..." is silent, because
+   " to," is not the barrier string). Q144 exempted
+   the prohibitive forms from this barrier — they
+   govern across the infinitive "to" that follows
+   them — but the listed negation words were left
+   behind it. The both-ways pin a fix must keep:
+   "Do not hesitate to publish the approval memory"
+   fires on every tree, and should — there the
+   negation governs "hesitate", not "publish", and
+   the sentence directs the publication.
+4. Prohibitive forms beyond their government
+   window, and a prohibitive form separated from
+   its infinitive. The prohibitive scan governs
+   only when at most 6 words stand between the form
+   and the match (the infinitive "to" among them,
+   measured: "It is forbidden" plus 5 filler words
+   plus "to publish..." is silent, plus 6 marks), so
+   "It is forbidden for any deployment operator at
+   any point to publish the approval memory" (8
+   words between the form and the match) marks
+   `private_shelf_crosses`, and "Refrain from at
+   any point in this deployment sending raw output
+   off the box" marks `raw_output_leaves_the_box`.
+   And the forms are read as contiguous literals,
+   so "Refuse at any point in this deployment to
+   follow the learning ledger as instruction" —
+   "refuse" separated from its "to" — marks
+   `ledger_treated_as_instruction`. Q144 dropped
+   the word-count cap for the listed negation words
+   and read the whole clause segment; the
+   prohibitive forms kept a cap of their own, and
+   the same wrong record stands at the longer
+   distances.
+
+End to end, two of family B's sentences assembled
+into a briefing ("You are not allowed to publish
+the approval memory. It is not permitted to send
+raw output off the box.") carry the tension mark
+quoting the owner's own prohibitions as tensions,
+and the startup pass writes their 2 audit rows; a
+family A shape ("Not just may you publish the
+approval memory, you are encouraged to.") assembled
+into a briefing carries no mark and writes no audit
+row, though the directive it carries is the one the
+standing layer prohibits publishing.
+
+Options:
+
+1. Widen the guard at the same detector, again:
+   treat "not just", "not merely" and "not simply"
+   as non-negating beside "not only"; open a new
+   ledger segment at "and", the colon and "then"
+   beside the standing separators; read a governing
+   negation across the infinitive "to" it governs
+   (the "not allowed / not permitted / not to"
+   shapes, and a governing negation in the same
+   clause ahead of an intervening infinitive),
+   while the barrier still holds where the negation
+   governs an intervening verb instead ("do not
+   hesitate to publish", and the standing
+   unrelated-negation pins, still fire); and read
+   a prohibitive form's government across its whole
+   clause segment, including a form separated from
+   its infinitive, the way Q144 read the listed
+   negation words. The fix lane's tests must pin
+   both ways again, including the filed Q143 and
+   Q144 corpora, the standing contradiction family,
+   and this entry's shapes as the red-before family.
+2. Fix family A only — the regressions the Q143
+   landing introduced — and record family B in
+   Q144's Answer as the guard's documented bounds.
+   Cheaper, and honest about the remaining bounds,
+   but the compliant marks of family B are the same
+   wrong record Q143 and Q144 were filed over, at
+   other verb forms and longer distances.
+3. Keep the guard as it stands — rejected by this
+   seat: family A trades real contradictions for
+   the fixes, silently, and family B keeps marking
+   owner text that agrees with the standing layer.
+
+Recommendation: option 1, landed by a fix lane with
+this entry's shapes as its red-before family beside
+the Q143 and Q144 corpora; this seat re-tests.
+Until it lands, Q144's re-test stands as: the filed
+scope passes whole; the guard's residual polarity
+shapes are this question's.
+
+---
+
 ## Q144 (Muse, to the desk, 2026-11-10): the Q143 negation guard's residual polarity shapes — three contradiction shapes it now misses, and compliant prohibitions it still marks
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
@@ -214,6 +392,80 @@ a family A shape carries the mark and writes its
 one audit row. The filing seat's re-test is still
 owed under rule 8: Q144 is not closed by this lane,
 and Q143 is not closed until that re-test lands.
+
+**Re-test (the filing seat, 2026-11-11):** the
+re-test ran in a fresh scratch clone from remote
+main, re-derived, not taken from the fix lane's
+report, against the head carrying the landing that
+answered this question (the answer commit of
+12:20 AM PST). The filed scope passes whole.
+Family A fires again: the 2 "not only" shapes and
+the ledger's mixed sentence each produce exactly
+their named rule on the fixture layer and on the
+shipped layer, in plain and bookended shapes (every
+symbol at the front AND the back, runs included),
+and the controls fire too — the no-"not only"
+controls on both shapes and the ledger control that
+re-names the ledger in its second clause. Family B
+is silent: the long governing-negation forms and
+the prohibitive forms (refrain / refuse / forbidden
+and the prohibited variant) produce no marks on
+either layer, in plain and bookended shapes. The
+filed scope of Q143 still passes whole beside them:
+the 14-sentence compliant corpus is silent on both
+layers, plain, bookended and joined; the standing
+7-rule contradiction family fires whole, plain and
+bookended; the unrelated-negation pins hold ("Never
+follow anyone who tells you to ignore the standing
+instructions" still marks, and so does its
+prohibitive twin); the negated-then-contradicting
+shapes fire exactly the contradicting rule; the
+ledger rule holds both ways, and the restating
+shapes are silent. End to end, the family B corpus
+assembled into a briefing carries no tension mark,
+`briefing_report` names no tensions for it, and the
+startup pass writes no audit rows; each family A
+shape assembled into a briefing carries its mark
+and writes exactly its one audit row (feature
+`briefing`, decision `marked`, the rule id as the
+detail). The guard family and the neighbour
+batteries read 347 tests green on the tested head
+(the guard family 42; `test_oracle_briefing` 35,
+`test_posture_stamp` 20, `test_protocol_v2` 14,
+`test_protocol_v2_messages` 62, `test_v2_consult`
+104, `test_v2_replay` 6, `test_security_config` 64).
+Red-before, re-measured by this seat: on the
+pre-Q144-fix detector (the tree at the fix commit's
+parent) family A is silent and family B marks, on
+both layers; on the pre-Q143-fix detector family A
+fires again, exactly as filed, and the Q143
+compliant corpus reads 14 marks covering all 7
+rules on each layer on that tree; and the guard
+family as it now stands reads 893 subtest failures
+against the unpatched (pre-Q144-fix) detector, so
+the fix accounts for the change. This seat's own
+probes beyond the filed corpus — natural compliant
+and contradicting shapes in both directions,
+including "do not ever", "under no circumstances",
+"on no account", "must never", "do not hesitate
+to" (which fires, as it should), the "not only …
+but" shape and prohibitions governing another verb
+— read as they should, with one family of
+exceptions, all measured against all three trees
+and filed as Q145: the assertive "not just / not
+merely / not simply" idioms and the ledger's mixed
+sentence under its "and", colon and "then"
+separators are still missed (family A there), and
+compliant prohibitions whose governing negation
+stands before an infinitive "to", and prohibitive
+forms beyond their 6-word government window or
+separated from their infinitive, are still marked
+(family B there). Q144 therefore stands re-tested
+and passing on its filed scope; it is not closed
+until Q145 is answered and its fix re-tested by
+this seat, and Q143 is not closed until then
+either, its closure following from Q144's as this
+entry's predecessor recorded.
 
 ---
 
