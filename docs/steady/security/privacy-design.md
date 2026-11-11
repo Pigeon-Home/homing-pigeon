@@ -29,8 +29,9 @@ configuration shape that expresses it.
   name matches legal, tax or medical vocabulary. It never opens
   a file, never keeps a name, never sends anything.
 - **The config security modes** (`runner/guard/security.py`).
-  Six guard features -- `policy_env`, `policy_files`,
-  `policy_args`, `audience`, `confinement`, `job_user` -- each
+  Eight guard features -- `policy_env`, `policy_files`,
+  `policy_args`, `audience`, `confinement`, `job_user`,
+  `personal_docs_shelter`, `agent_state_guard` -- each
   set to `off`, `audit` or `enforce` under `security.modes` in
   the config, each defaulting to `enforce`, with audit records
   written to a tamper-evident log. An unknown feature name in
@@ -43,7 +44,7 @@ configuration shape that expresses it.
   postures it is treated as a major concern. That split is a
   property of the postures, and the privacy features below are
   engaged or quiet exactly as the posture's configuration says.
-- **The disclosure postures** (`runner/tools/posture.py`): what
+- **The disclosure postures** (`runner/tools/disclosure.py`): what
   may be said about a piece of work is itself declared in code
   and carried in logs -- the same declared-configuration shape,
   applied to disclosure rather than to data handling.
@@ -176,12 +177,13 @@ Recorded, not claimed:
 4. **A tree-wide value-confinement test**: the boundary-test
    technique generalised -- a test that proves named sensitive
    values appear only in allowlisted files. Its first concrete
-   form is recorded in section 8: a staged-content guard for
-   the agent's papers, which proves at the commit boundary that
-   agent-state files and saved approval grants appear only
-   where a deployment allows. The guard itself is queued there;
-   the shipped `.gitignore` defaults and the test pinning them
-   (`runner/tests/test_gitignore_state_files.py`) stand now.
+   form stands shipped, recorded in section 8: the
+   staged-content guard for the agent's papers
+   (`runner/tools/approvalguard.py`, under the
+   `agent_state_guard` mode), which proves at the commit
+   boundary that agent-state files and saved approval grants
+   appear only where a deployment allows. The general form
+   beyond that first boundary remains queued here.
 5. **An erasure path for operator-held records**: Fremont has
    none and neither does this suite; a deliberate, audited
    forget operation for a machine's own run records is design
@@ -281,8 +283,8 @@ section 3's rows follow the models:
 | Posture | The agent's papers under it |
 |---|---|
 | *just run it* | The shipped ignore defaults are the whole expression: the files stay out of commit scope with no decision asked of the operator, and the run stays carefree. |
-| *eyes open* | The defaults, plus the operator warning read once (the safeguards document's note on approval memory), plus -- queued below -- the staged guard in `audit`: it shows what a commit would carry across and stops nothing. |
-| *lockdown* | The defaults, plus -- queued below -- the staged guard in `enforce`, as a named feature in the modes family (`agent_state_guard`, section 2's semantics for an operator-invoked behaviour): it stops a commit or push that would carry agent-state files or saved approval grants across the boundary. |
+| *eyes open* | The defaults, plus the operator warning read once (the safeguards document's note on approval memory), plus the staged guard in `audit`: it shows what a commit would carry across and stops nothing. |
+| *lockdown* | The defaults, plus the staged guard in `enforce`, as a named feature in the modes family (`agent_state_guard`, section 2's semantics for an operator-invoked behaviour): it stops a commit or push that would carry agent-state files or saved approval grants across the boundary. |
 
 **The disposition, against the Fremont principles of section
 4.** *Mask by default*: the files are out of the publication
@@ -302,12 +304,15 @@ appear only where the deployment allows.
 named here; the shipped `.gitignore` defaults and their pinning
 test; the operator warning in the safeguards document; the
 standing note in the Oracle's instructions; the category named
-in SECURITY.md's spillage section. Queued (section 6's list is
-the record; this paragraph is its summary for this category):
-the `agent_state_guard` feature in the modes family and its
-staged-content tool, which scans what a commit or push is about
-to carry -- staged paths matching an agent-state shape,
-permission-grant state in staged JSON, and secret-shaped values
-inside saved command strings, the class generic scanners missed
-in the reported research -- and reports by file and rule, never
-by value.
+in SECURITY.md's spillage section; and the `agent_state_guard`
+feature in the modes family with its staged-content tool
+(`runner/tools/approvalguard.py`), which scans what a commit
+or push is about to carry -- staged paths matching an
+agent-state shape, permission-grant state in staged JSON, and
+secret-shaped values inside saved command strings, the class
+generic scanners missed in the reported research -- and
+reports by file and rule, never by value. Queued (section 6's
+list is the record; this paragraph is its summary for this
+category): only the guard's specified extensions and the
+general tree-wide value-confinement test, as
+`agent-state-files.md` section 4 records them.

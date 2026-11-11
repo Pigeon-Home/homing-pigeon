@@ -8,7 +8,7 @@ prediction and
 repair behavior under `oracle_opinion_predict` /
 `oracle_opinion_repair` / `oracle_opinion_model`). DRU's
 proposal (2026-10-15), elaborated 2026-10-18; built, and recorded
-as finished in docs/archive/future-finished-2026-10-25.md (A4). This
+as finished in docs/steady/project/future-finished-2026-10-25.md (A4). This
 document remains the
 design record the build started from.
 
@@ -104,7 +104,7 @@ changes the meaning of any existing result field.
 A bash-only script is not a repair. An array assignment, process
 substitution, or a substring expansion does not fit `sh`, so an
 absent `bash` is left absent and the job is rejected. The
-specimens in `docs/specimens/repair-results.json` are the two
+specimens in `docs/steady/specimens/repair-results.json` are the two
 results a sender should expect: the POSIX job that was repaired
 (`pigeon-42`) and the array that was not. `send_job.py verify`
 prints one line to stderr when the member carries `repaired` —
@@ -131,7 +131,7 @@ Two tiers, in order:
 The result is signed with the secret that verified the job, so in
 the current protocol the opinion inherits that signature — it is
 part of the runner's statement. Under a future confidentiality-on
-or asymmetric mode (docs/design/asymmetric-signing-design.md), the
+or asymmetric mode (docs/steady/design/asymmetric-signing-design.md), the
 opinion MUST be signable as the Oracle's own statement, detachable
 from the result and verifiable on its own: the Oracle speaks as an
 authenticated party adding its opinion, never as a man-in-the-
@@ -155,7 +155,7 @@ middle editing someone else's message.
 success rate), and the ledger selected 0 lessons. Every miss was a
 plain `exit 3`, which carries none of the features a verified fact
 is derived from, and the model-candidate channel was off. The
-numbers and the ledger are in `docs/use/live-examples.md`. The gap
+numbers and the ledger are in `docs/steady/use/live-examples.md`. The gap
 this shows, a repeating failure with no environmental cause, is
 exactly the candidate channel's job, and stays unmeasured until a
 rig with a model runs the same loop.*

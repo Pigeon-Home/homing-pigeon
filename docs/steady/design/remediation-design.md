@@ -13,7 +13,7 @@ open.
 
 The project can already refuse a job before it runs (the
 judge), predict how it will go (the Oracle's opinion,
-`docs/design/oracle-opinion-design.md`), and report what it did
+`docs/steady/design/oracle-opinion-design.md`), and report what it did
 afterwards (the retained record, the audit log). What it
 cannot do is act *while* a job runs. If the agent determines
 that something from a job is going bad — not failed, not
@@ -303,12 +303,17 @@ The open items above, as the build closed them:
   escape tripwire at result time (quarantine, referral, page
   — the job has finished; there is nothing left to kill).
   The cage's only live report today is its startup audit
-  entry; a `fallback` decision (enforce requested, job
-  running uncaged) files as the `confinement_strain`
-  divergence, and the monitor consumes any confinement
+  entry; a `fallback` decision (enforce requested, the
+  confinement could not engage) files as the
+  `confinement_strain` divergence, and the monitor consumes any confinement
   decision a future cage files for the running job — a
   `denied` decision is wired as the escape tripwire the day
-  a producer exists.
+  a producer exists. (The runner's confinement gate has
+  since settled the fallback's other half: under `enforce`
+  a `fallback` record now accompanies the job's refusal —
+  the job does not run uncaged — so a strain divergence
+  can only fire on a record a running job's window still
+  carries from before that settlement.)
 - **Saturation tells are named constants.** Tree CPU at 95%
   of one core across 3 consecutive samples
   (`tree_saturation`), tree resident memory at 50% of the

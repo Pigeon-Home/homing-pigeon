@@ -10,7 +10,7 @@
 
 ## What it is
 
-The Oracle's senses (host IDS, network monitor — see `docs/extend/senses.md`)
+The Oracle's senses (host IDS, network monitor — see `docs/steady/oracle/senses.md`)
 bring signals in. The DRI playbook is the matching outbound
 extension: when fused signals cross a threshold, the Oracle reaches
 out to the owner directly, the way a good on-call engineer would
@@ -21,7 +21,7 @@ it matters.
 The page itself is advisory: a page never kills a job, revokes
 a key, or touches the box -- the human decides what a page
 means. Remediation is a separate, runner-side mechanism
-(docs/design/remediation-design.md): on a closed list of tripwires
+(docs/steady/design/remediation-design.md): on a closed list of tripwires
 the runner's reflexes kill and quarantine without asking
 anyone, and in oracle mode the Oracle may order a kill for a
 divergence off the list. Every remediation act is recorded
@@ -34,7 +34,7 @@ A page fires when any trigger trips. Every threshold below is config,
 not code, and every trigger can be disabled.
 
 - **Fused sensor score.** The weighted scores from the `senses` query
-  op (`score = weight x severity`, per `docs/extend/senses.md`), summed per
+  op (`score = weight x severity`, per `docs/steady/oracle/senses.md`), summed per
   sensor over a sliding window. Pages when the sum crosses
   `triggers.sensor_fused_score.threshold` within
   `triggers.sensor_fused_score.window_sec`. This is where the sense
@@ -104,7 +104,7 @@ event that acted, in which case it reads instead: "remediation
 acted as recorded above; the full record is in the audit log and
 the job's result." The second line names where to read: the page
 itself, `security-audit.jsonl` and `runner.log`. The dashboard listed
-in docs/project/future.md is not built, and the line does not point
+in docs/FUTURE.md is not built, and the line does not point
 at it.
 
 The rendered text has no timestamp line and no separate
@@ -167,7 +167,7 @@ you, not in this repo. Template for when the time comes:
 
 ## Dashboard and acknowledgement
 
-Listed in docs/project/future.md. `--oracle` is a loopback chat, not
+Listed in docs/FUTURE.md. `--oracle` is a loopback chat, not
 a page history. There is no ack path at all today: no reply
 keyword is read, and the page's "ack by investigating" line
 means exactly that — the acknowledgement is the investigation

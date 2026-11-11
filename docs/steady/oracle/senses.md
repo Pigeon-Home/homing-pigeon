@@ -11,9 +11,9 @@ Ingest is advisory: filing an alert executes nothing, pages
 no one, and blocks nothing by itself. What consumes the
 filed alerts can act on them — the DRI evaluation pages the
 owner when its triggers trip on the fused score
-(`docs/oracle/dri-playbook.md`), and remediation counts some
+(`docs/steady/oracle/dri-playbook.md`), and remediation counts some
 alerts among the divergences it watches a running job
-against (`docs/design/remediation-design.md`).
+against (`docs/steady/design/remediation-design.md`).
 
 ## Why this shape
 
@@ -145,8 +145,9 @@ question "is the boring stuff actually on?"
 
 The hygiene list above treats this sense as "is the host firewall
 on." The full spec has three jobs, in increasing order of
-ambition. The first two are sensing; the third is enforcement and
-stays opt-in, like every hardening knob.
+ambition. The first two are sensing; the third is enforcement —
+the cage itself, which the confinement security mode governs,
+standing at `enforce` by default like every security mode.
 
 **1. Posture: is the firewall on, and did that change?**
 
@@ -182,21 +183,26 @@ names exists in the profile today.
 
 **2. Cage verification: did the job's network cage hold?**
 Future work — listed in docs/FUTURE.md; no collector performs this
-check today. The runner can already cage a job's network on Linux: bwrap
-runs with `--unshare-net`, so the job gets loopback only —
-but only in enforce mode; by default the job's network
-edge is unrestricted. The firewall sense is how the Oracle
+check today. The runner already cages a job's network where
+the platform backend has a network control: on Linux bwrap
+runs with `--unshare-net`, so the job gets loopback only,
+and on FreeBSD the per-job jail has no network at all. The
+confinement mode stands at `enforce` by default, so a job's
+network edge is caged unless the operator has set the mode
+otherwise; a backend that cannot engage refuses the job
+rather than running it weaker. The Windows backend has no
+network control — per-job WFP egress rules are not built —
+so there is no Windows network cage for a collector to
+verify. The firewall sense is how the Oracle
 *would check* the cage claim instead of trusting it: the
 collector would watch for what a caged job must never do — an
 outbound connection from a job UID, a new listener inside a
 job window — and file it with `job_id_hint` set, so the
-Oracle correlates directly instead of by timestamp. On
-Windows the cage is per-user WFP rules tied to the job
-identity (`--run-as`); the collector would read the
-effective rules for that user the same way.
+Oracle correlates directly instead of by timestamp.
 
 This keeps the architecture's split clean: the *cage* is
-enforcement (runner, opt-in), the *verification* is sensing
+enforcement (the runner's, under the confinement mode at
+`enforce` by default), the *verification* is sensing
 (this sense — always safe to leave on).
 
 **3. Egress policy (opt-in enforcement, not a sense).**
@@ -206,7 +212,7 @@ are the answer to the exfiltration shape the secret-scanner
 cannot see: a job that phones home prints nothing, so there
 is no output to scan. This is deliberately not part of the
 sense. Senses never enforce. The design lives in
-`docs/use/networking.md`.
+`docs/steady/networking.md`.
 - `patch_level` — *(future sense, listed in docs/FUTURE.md)*
   pending security updates (Windows Update status,
   unattended-upgrades/dnf-automatic state, macOS

@@ -150,5 +150,5 @@ Put it in `.github/platform-legs.json`.
   failure (`--no-skips --require-ok`). Do not add the whole
   suite to the leg.
 - The leg's name has to appear in the Proven platforms table
-  in `docs/use/platforms.md`. `runner/tests/test_build_config.py` pins that,
+  in `docs/steady/use/platforms.md`. `runner/tests/test_build_config.py` pins that,
   the tier size, and the push filter.

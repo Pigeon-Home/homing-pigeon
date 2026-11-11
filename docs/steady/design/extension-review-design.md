@@ -1,7 +1,7 @@
 # Extension review — design
 
 *Built. `runner/guard/extreview.py`; the owner's guide is
-docs/extend/extensions.md, "The review: code held to the manifest".
+docs/steady/extensions.md, "The review: code held to the manifest".
 This note records why it has the shape it has.*
 
 Agent-Chat-Stamp: 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f

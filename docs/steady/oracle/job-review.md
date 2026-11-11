@@ -34,7 +34,7 @@ Two tiers, split by whether the check needs the script text:
 The notes ride in the already-HMAC-signed result message, bound to
 the `job_id`. The Oracle is an authenticated party with an opinion;
 it does not need its own key for this. A dedicated Oracle signing
-key is listed in docs/project/future.md, for when the opinion may need to travel
+key is listed in docs/FUTURE.md, for when the opinion may need to travel
 outside the result envelope (e.g., to the DRI playbook channel).
 
 ## Built-in checks
@@ -53,12 +53,12 @@ outside the result envelope (e.g., to the DRI playbook channel).
 | review_config_error | metadata | warn | an operator pattern in `review_patterns_extra` did not compile |
 
 Operator patterns go in `review_patterns_extra` (see
-`docs/archive/known-failures.md` for the format and the filing process).
+`docs/steady/reports/known-failures.md` for the format and the filing process).
 
 ## The learning loop
 
 Every diagnosed recurring failure gets its pattern written into
-`review_patterns_extra` in `config.json` (`docs/archive/known-failures.md`
+`review_patterns_extra` in `config.json` (`docs/steady/reports/known-failures.md`
 is the archived record of the first batch and shows the format). Filing alone
 changes no matching: the reviewer matches new jobs only against
 patterns supplied via `review_patterns_extra` in config — an

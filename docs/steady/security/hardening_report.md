@@ -60,11 +60,11 @@ checks) land on `main` after the tag.
 | M3 | `hardening/m3-audit-report` | `--audit-report [--since 14d\|48h]`: read-only audit summary (table, per-key suggestions, "refused to suggest"). Dangerous env names and URL file sources are never suggested. Works without mailbox credentials; never writes `config.json` (mtime+hash tested). |
 | M4 | `hardening/m4-posture` | `--posture`: exit 0/1/2 report (config file, secrets, audit log, base dir, modes, policies). `validate_shared_secret` moved to `security.py` (re-exported, not copied). 0600 checks on Linux; best-effort Windows DACL check (True→OK, False→WARN, unknown→WARN, never FAIL). |
 | M5 | `hardening/m5-audience` | `audience` feature (off/audit/enforce). Config `runner_id` (wizard generates one for fresh configs); the expected value always comes from the loaded config, never the body. Enforced for jobs, queries (covers the `ask` op), board messages, sensor alerts. Replay-cache keys namespaced by `runner_id` when set. |
-| M6 | `hardening/m6-confinement` | `confinement` feature: `exec` jobs run inside bwrap (`/usr` ro, no net, no home, workdir rw at `/work`, env via `--setenv`). Proven on this machine (see below). Fallback chain: at `enforce` — the default for a feature the config does not set — a sandbox that cannot engage at startup refuses the start; the loud WARN + audit + run normally chain is the `audit`-mode behaviour and, at runtime, what happens when a sandbox breaks after a good start; audit → run + `would_run_sandboxed`. |
+| M6 | `hardening/m6-confinement` | `confinement` feature: `exec` jobs run inside bwrap (`/usr` ro, no net, no home, workdir rw at `/work`, env via `--setenv`). Proven on this machine (see below). Fallback chain: at `enforce` — the default for a feature the config does not set — a sandbox that cannot engage at startup refuses the start; the loud WARN + audit + run normally chain is the `audit`-mode behaviour and, at runtime, what happens when a sandbox breaks after a good start; audit → run + `would_run_sandboxed`. (Runtime clause as built then: the current behaviour stands in SECURITY.md — under `enforce` a job-time fallback refuses the job, which never runs unsandboxed.) |
 | M7 | `hardening/m7-templates` | `hardening/`: systemd unit, AppArmor profile (paths from `strace -f -e openat`), SELinux module `homing_pigeon`. Opt-in only; `install.py --help` doesn't mention them. |
 | M8 | `hardening/m8-secrets` | `shared_secret_file` / `additional_secrets_files` (mutually exclusive with inline; fail closed). `job_user` feature: jobs run as another POSIX user via setuid (root only; workdir chown'd, parents traverse-only). |
-| M9 | `hardening/m9-m10-design-docs` | `docs/asymmetric-signing-design.md`: Ed25519 migration design (public keys per key_id, migration path, dependency question). Not implemented. |
-| M10 | `hardening/m9-m10-design-docs` | `docs/approval-gate-design.md`: human approval before execution (per-key modes, pending queue, channel ranking). Not implemented. |
+| M9 | `hardening/m9-m10-design-docs` | `docs/steady/design/asymmetric-signing-design.md`: Ed25519 migration design (public keys per key_id, migration path, dependency question). Not implemented. |
+| M10 | `hardening/m9-m10-design-docs` | `docs/steady/design/approval-gate-design.md`: human approval before execution (per-key modes, pending queue, channel ranking). Not implemented. |
 | M11 | `hardening/m11-windows-run-as` | `install.py --run-as USER`: scheduled task runs as USER (default SYSTEM). Named accounts get `/RL LIMITED`. Docs in INSTALL.md. Verified via schtasks argv inspection. |
 
 Final suite at ship: **1093 tests green** (945 at v3.5.2 baseline).
@@ -85,7 +85,11 @@ following are my designs, recorded here per runbook rule 15:
   breaks after a good start; every such fallback is audited and
   loud. Owner decision 2026-10-15: keep fail-open (option C) for
   those scoped cases as a deliberate, documented deviation from
-  the plan's "denied, never run unconfined."
+  the plan's "denied, never run unconfined." (That runtime
+  fail-open was later retired: under `enforce` a job-time
+  fallback now refuses the job — SECURITY.md states the
+  current chain; this bullet stands as the 2026-10-15
+  record.)
 - **`--unshare-pid` omitted** from the bwrap flags: on this VM it
   breaks the `/proc` mount (AppArmor/seccomp). Without it `--proc`
   mounts fine.

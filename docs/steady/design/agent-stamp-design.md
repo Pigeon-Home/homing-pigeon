@@ -2,14 +2,14 @@
 # Agent-Stamp: tracing work back to the agent chat that did it
 
 Status: the record is enforced by `runner/tests/test_agent_stamps.py`
-(every stamp in the tree is on `docs/archive/RESEARCHER_IDENT.md`,
+(every stamp in the tree is on `docs/archive/researcher_ident.md`,
 every recycled stamp names an active carrier); the spelling lint is
 not built. The rest is the design as captured.
 
 ## Problem
 
 Several agent chats work on this repo. Each one has its own stamp, a
-UUID-shaped tag listed in `docs/archive/RESEARCHER_IDENT.md`. The stamp
+UUID-shaped tag listed in `docs/archive/researcher_ident.md`. The stamp
 works like a software watermark. It is not a credential and grants nothing.
 Its only job is to make "which agent did this?" answerable with `grep`.
 
@@ -44,7 +44,8 @@ The canonical spelling is `Agent-Stamp`. Variants seen so far:
   bundles (the upstream is declared once, in the manifest)
 - an `Agent-Chat-Stamp:` trailer and file header, the spelling the
   questions desk used under its recycled stamp (`50000c8e`) on its
-  commits and files; the active desk (`40000e00`) signs `Agent-Stamp`; the
+  commits and files; the active desk — the Muse seat, whose stamp
+  `40000e00` also stands recycled — signs `Agent-Stamp`; the
   record check below reads both spellings
 
 Proposal: rewrite the two file headers to `Agent-Stamp`. Leave history
@@ -58,7 +59,7 @@ which agent *drove the runner*. Possible runtime surfaces:
 1. **Protocol header**: an optional `X-Agent-Stamp` field on requests the SI
    sends, which the runner logs verbatim and never acts on.
 2. **Structured log field**: `agent_stamp` on every job record, so job
-   review (`docs/oracle/job-review.md`) can filter by agent.
+   review (`docs/steady/oracle/job-review.md`) can filter by agent.
 3. **Snapshot manifest**: release snapshots list the stamps present in the
    tree, so the Oracle can map unfamiliar code back to an agent.
 
@@ -75,7 +76,7 @@ Questions to settle before any of this goes into `PROTOCOL.md`:
 
 `runner/tests/test_agent_stamps.py` (2026-10-26) lists every stamp
 written after a stamp label anywhere in the tree and fails when one
-is missing from `docs/archive/RESEARCHER_IDENT.md`, when a listed stamp has no
+is missing from `docs/archive/researcher_ident.md`, when a listed stamp has no
 status row, or when a recycled stamp names no active carrier. It
 runs with the suite, so a stamp the record does not know fails the
 build; the original idea of a report-only `stamp_check.py` was
@@ -97,7 +98,7 @@ failed. The suite runs the check on whatever history its clone
 holds (`test_agent_stamps`, `StampHistoryTest`). The `stamp-audit`
 workflow used to run it over the full history on every push. It is
 off as of 2026-11-01: dispatch only, and the workflow is disabled.
-The baseline is `docs/reports/stamp-audit/2026-10-27.md`.
+The baseline is `docs/steady/reports/2026-10-27.md`.
 
 ## Recycled stamps (2026-10-26)
 
@@ -106,7 +107,7 @@ its stamp is **recycled**: it stays in history and in the headers of
 the files it wrote, new work never carries it, and its roles pass to
 an active stamp. Researchers one to three (`10000c2a`, `200003d4`,
 `30000f1a`) were the first; the status table in
-`docs/archive/RESEARCHER_IDENT.md` names who carries each role, and
+`docs/archive/researcher_ident.md` names who carries each role, and
 `runner/tests/test_agent_stamps.py` checks that every stamp in the
 tree is on it and every recycled role has an active carrier.
 

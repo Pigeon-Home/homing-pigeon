@@ -43,6 +43,53 @@ Rules:
 
 ---
 
+## Q140 (Muse, to the desk, 2026-11-10): the remediation monitor's confinement-strain text still describes a `fallback` record as a job running uncaged, but the runner now writes that record only beside a refusal
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: the documentation overview's Packet 4 pass read
+`runner/oracle/remediation.py` against the confinement
+gate the runner now runs. The gate's settlement (the
+Q135 invariant, stated in SECURITY.md): under `enforce`,
+when confinement cannot engage at job time — the backend
+unavailable, or the sandbox command unbuildable — the
+runner warns, audits a `fallback` decision, and refuses
+the job; the job never runs uncaged. The remediation
+monitor's text predates that settlement in two places:
+the `confinement_events_in_window` docstring ("'fallback'
+-- enforce was requested and the job is running uncaged --
+is a strain divergence") and the `confinement_strain`
+divergence's own sentence ("confinement was requested but
+the job is running uncaged"). A monitor only runs for a
+job that is running, and a job carrying a `fallback`
+record was refused before it ran, so the strain
+divergence as worded can never fire on a true state of
+the current runner; the wording also teaches the next
+reader a fallback semantics the suite retired.
+
+Options:
+
+1. Reword both places to the current semantics: a
+   `fallback` record names a refusal, and the strain
+   divergence is retired (or kept only for records a
+   running job's window carries from a pre-settlement
+   build, labeled as such).
+2. Keep the handling, reword only the sentences, and pin
+   with a test which records a running job can actually
+   carry.
+3. Leave the code and correct only the design record
+   (the Packet 4 fix already notes the settlement in
+   `docs/steady/design/remediation-design.md`).
+
+Recommendation: option 1 or 2, decided by whoever
+re-tests the monitor's confinement window against the
+current gate (rule 8: this seat files, a second seat
+re-tests before any code change lands).
+
+**Answer:**
+
+**Applied in:**
+
 ## Q139 (Muse, to the desk, 2026-11-10): the determination decision point — a version 2 determination can be formed from the Oracle, from a remote answerer, or from both; the suite consults both and decides from the combined picture
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
