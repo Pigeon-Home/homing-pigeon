@@ -428,6 +428,52 @@ class CheckedInTableGuardTest(unittest.TestCase):
             os.path.join(REPO, "runner", "tools",
                          "windows_durations.json")))
 
+    def test_the_killed_shards_heavy_files_keep_their_floors(self):
+        # Build run 42941458640 (2026-11-11): shard 5 hit the
+        # 20-minute wall (exit 124) while its siblings finished
+        # in 702-868s against the same 646s packed load. Its
+        # first two files carry the overrun, and their prices
+        # said otherwise. test_proof_content_rung500000 was
+        # priced 144.1s; the module boundary in that build's
+        # log -- shard start 01:48:11Z to the next file's first
+        # log line 01:56:00Z, less that file's pre-log tests
+        # (its hostile-pattern test alone measured 51.7s in
+        # run 42933646758) -- puts the file at about 390s.
+        # test_policy_constraints was priced 76.5s; its logged
+        # job-running tests alone span 162s of that build
+        # (01:56:00Z-01:58:42Z), before the timing tests and
+        # the classes after the logged ones are counted, a
+        # 230s floor. The estimator cannot learn either number
+        # from that log: a killed shard prints no durations
+        # block, so its wall spreads by test count, and a
+        # 4-test file takes a 4-test share. These floors keep
+        # the packer from re-creating that shard.
+        table = wd.load_table_file(wd.default_table_path())
+        durations = table["durations"]
+        self.assertGreaterEqual(
+            durations["runner.tests.test_proof_content_rung500000"],
+            390.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_policy_constraints"],
+            230.0)
+
+    def test_the_two_heavy_files_do_not_share_a_shard(self):
+        # Packed from the table's own names, the packing
+        # check_table guards: a discovery here would only
+        # repeat test_the_real_suite_packs_within_budget's
+        # pass (and its known sys.path growth, which the
+        # regression guard already counts once).
+        table = wd.load_table_file(wd.default_table_path())
+        shards = wd.pack_modules(sorted(table["durations"]),
+                                 table["durations"],
+                                 table["budget_seconds"])
+        for shard in shards:
+            self.assertFalse(
+                "runner.tests.test_proof_content_rung500000" in shard
+                and "runner.tests.test_policy_constraints" in shard,
+                "the two files whose under-pricing killed shard 5 "
+                "of run 42941458640 packed into one shard again")
+
     def test_the_real_suite_packs_within_budget(self):
         table = wd.load_table_file(wd.default_table_path())
         counts = rtp.module_test_counts(
