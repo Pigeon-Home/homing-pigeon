@@ -1265,6 +1265,190 @@ Each supposition is settled against the code in the
 commits that follow this note; the conclusions stand
 at the end of this section when the packet lands.
 
+Conclusions (2026-11-10, the same evening): **P6-S1
+confirmed** — layout.md's docs account now states the
+two-shelf layout (the steady shelf and the
+infrastructure shelf, with the ietf drawer and the
+archive beside them), and every path it cites —
+transports, safeguards, the extensions walkthrough,
+hosting, the queues Worker, the use runbook, the
+changelog, contributing, the specimens and the
+hardening files in `docs/steady/security/` itself —
+names the file's current home. **P6-S2 confirmed** —
+the playbook's present-tense pointers now name
+`docs/infrastructure-documents/project/campaign-standing-orders.md`,
+`docs/steady/project/de_dust.md`,
+`docs/steady/project/de_dust2.md` and
+`docs/infrastructure-documents/oracle/configuring-oracle.md`.
+**P6-S3 confirmed, and wider than supposed** — beyond
+the head's routings, the operative body of the
+standing orders (everything above the ledger) carried
+the retired paths in its queue items — the questions
+file, the seats' forum, the regression passes file
+(now `docs/steady/specimens/passes.jsonl`), the
+coverage-gaps refresh, the de_dust plans, the testing
+page and the threat model — and every one now names
+the current home; the ledger below stands as the dated
+record it is. **P6-S4 confirmed** — testing.md's
+citations now name the contributing page, the Oracle
+configuration page, the sending page and the
+live-examples page at their current homes, and the
+live-capture and coverage sentences state where those
+records actually stand (shelved flat in
+`docs/steady/reports/` and `docs/steady/specimens/`).
+**P6-S5 confirmed in part, corrected in detail** —
+the Windows fixed count was wrong: the job shards by
+the duration table, and the table row now says so.
+The macOS job is not table-sharded; it runs the suite
+3 ways in parallel (`--jobs 3`), and the row now
+states that mechanism instead of a core count.
+**P6-S6 refuted** — the nine guard jobs are the
+release job's nine named needs in the build workflow
+(`test`, `build-python`, `build-windows`,
+`build-windows-arm64`, `build-linux`,
+`build-linux-arm64`, `build-macos`,
+`build-macos-x86_64`, `build-pi-light`); 17 is the
+workflow's total job count, a different number, and
+release-readiness.md stands unchanged. **P6-S7
+confirmed, and wider** — constraints.md's confinement
+entry no longer calls the sandbox Linux-only (the
+parenthetical now records that no backend engages on
+macOS), the Decision 1 citations in constraints.md
+and properties.md name
+`docs/steady/present-but-invalid-config.md`, the
+upgrade-key entry cites `docs/steady/sending.md`, and
+the C16 entry Argon found cites the transports page
+at its infrastructure home. **P6-S8 confirmed** —
+goals.md and thinking.md now gather their findings at
+`docs/infrastructure-documents/security/model-and-proof-testing.md`,
+and dtls-over-email-v3.md cites the v3 plan under
+`docs/infrastructure-documents/design/` and the
+version 3 draft in its `source/` home. The stage
+records stand as written; their retired paths are
+flagged here, not corrected in place: the
+`docs/proofs/` run directories in stage4-p2 through
+stage4-p5, the model-document path in stage4-p2, and
+the Decision 1 path in stage4-p6. **P6-S9
+confirmed** — statistics.md's figures match the
+figure slots and the core record
+(`refresh_figures.py --check` is green on the landing
+tree), and the two audits agree with it at their own
+dated measures. **P6-S10 confirmed** — cs_office.md
+and cs_office-postures.md check out against the
+disclosure tool and the Oracle's instruction home;
+the rev plan and the release gate stand as dated
+2026-11-09 records; the gate's confinement registry
+omits the Windows and FreeBSD confinement modules in
+the tool exactly as in the prose, so the gap is the
+tool registry's, flagged here for a code lane rather
+than corrected in prose that would diverge from it;
+and testing.md's FreeBSD rows stand — the hosted VM
+leg with no green run yet and the fleet node's first
+local proof are different claims, and both are stated
+as what they are.
+
+The outside read (Argon, gemini-4-argon, on the
+billed key the conductor authorized for this
+overview): all 57 files were sent in full, headed by
+their paths, against a verified-facts block, in one
+sitting — 429,028 prompt tokens by the API's own
+count. Argon's findings stand under Argon's stamp;
+Muse's decisions on each stand under Muse's.
+
+Agent-Stamp: 00000000-argon-26a0-ff29-7825440c1fb9 —
+Argon independently confirmed S1, S2, S3, S4, S7 and
+S8, and raised, past the suppositions: the standing
+orders' Queue S paragraph pinning a job-time
+confinement fallback that runs the job unsandboxed;
+its M6 item describing confinement as bwrap alone;
+its parked-cages item (Queue C2) still parking the
+Windows and FreeBSD cages; constraints.md's C16
+transports path and its summary table's "Six security
+modes" against its own seven-mode text;
+content-rung-cap.md's closing bullet stating the
+FreeBSD shell was not run; dtls-over-email-v3.md's
+draft path missing its `source/` folder; layout.md's
+top-of-docs list omitting FUTURE.md, the support
+matrix and the checklist; the playbook's
+red-by-design recording method against the
+expectedFailure practice; properties.md's P2 fallback
+statements; the duplication audit's Direction
+sentence calling 3.65% the current measure;
+thinking.md's fleet snapshot and its silent-field-drop
+disposition; release-readiness.md's nine guard jobs
+as an error against the workflow's 17; constraints.md
+C17's result-view default and C18's sandbox sentence
+as stale; and testing.md's Windows roster row and
+macOS sharding as stale.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 —
+Muse's decisions, each verified against the code
+before acting. Fixed, on Argon's pointing: the Queue
+S paragraph (the code's decision, `runner/runner.py`'s
+confinement query as Q135 settled it, denies the job
+when confinement cannot engage at job time under
+enforce — the WARN line and the fallback audit entry
+record the denial and the job does not run; the
+paragraph now records that the 2026-10-15 decision's
+confinement half no longer stands, in the same shape
+the file already uses for its job_user half); the M6
+item (the Windows and FreeBSD forms now named beside
+the Linux one); the parked-cages item (the Windows
+and FreeBSD cages landed and were field-proven on
+2026-11-10; the macOS cage alone stays parked); the
+C16 path; the summary table's "Seven security modes"
+(`runner/guard/security.py`'s FEATURES names 7); the
+cap bullet (the 15.0 record's parser phase ran in the
+guest and passed on 2026-11-02; the record still not
+run is the 15.2 one); the v3 draft's `source/` path;
+and the top-of-docs list (completed inside the S1
+fix). Flagged, not fixed: the playbook's recording
+method (the document is the campaigns 1–2 record
+under its own supersession banner, and main was red
+by design under it then); properties.md's P2
+statements (they are the checked model's statements
+at the harvest commit; rewriting them would falsify
+the proof record — the conformance family, not the
+statement, is what tracks the current code); the
+duplication audit's Direction sentence (a closed
+dated audit whose figures the dormant audit expressly
+supersedes); thinking.md's fleet snapshot and field
+disposition (a reasoning record; stage4-p4's Q129
+update is the fresher record of the disposition); and
+the stage-record paths under S8. Refuted on
+verification: the nine guard jobs (see S6);
+constraints C17 (the code fallback in
+`runner/ops/policy.py` still reads `full` when the
+key is absent — the seed reads attested, and the
+single-story item stands in release-readiness as the
+gap it still is; the inventory states the code as it
+is); constraints C18 (the sentence states that
+enforce plus a working mechanism sandboxes, which is
+true; it states no job-time fallback); the Windows
+roster row (`runner/tests/switch_roster.py` carries
+no windows-needs entries — the Windows leg judges the
+platform-neutral controls, as testing.md says); and
+the macOS duration table (the build runs `--jobs 3`).
+
+Guard evidence on the landing tree: the doc guard
+batch (layout, reader-docs quiet, figure slots, proof
+constraints, cs_office, version rot, design docs)
+reads 90 passed and 2 failed, and the same 2 fail
+identically on the pristine base in the same pass —
+the layout stale-path test (its 7 offenders stand in
+AGENTS.md's layout table and in this file's Packet 2
+section, both outside this packet) and the version-rot
+test (this file's earlier sections name the current
+version, likewise pre-existing). The packet's fixes
+added no offender: a direct scan of the layout test's
+own patterns over the landing tree finds no Packet 6
+file among them. Files checked with no findings: the
+proofs readme, hybrid-fuzz-10024.md, temp-reap.md,
+shotgun-queue.md, the content-rung and content-sh
+records, stage2, stage3, the stage5–stage10 records,
+dtls-over-mailbox.md and
+dtls-record-layer-and-framing.md.
+
 Conclusions (2026-11-10, the same evening): **P3-S1
 confirmed** — the networking page's job ran as the
 runner's admin account with an unrestricted edge and
