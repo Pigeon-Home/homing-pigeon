@@ -19,6 +19,7 @@ import random
 import string
 import sys
 import tempfile
+import types
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
@@ -669,6 +670,104 @@ class ConsultSeamTest(_Guard):
         self.assertEqual(segs, [])
         self.assertFalse(send.asked())
         self.assertEqual(_audit_rows(self.tmp), [])
+
+    def test_v2_off_with_both_emits_no_record(self):
+        # Q141: version 2 off routes to v2_off -- "consults
+        # nothing" -- so the seam must not record a consult
+        # that never happened: no segments, nothing sent, no
+        # audit row, whatever the chosen consult mode says.
+        cfg = _cfg(protocol_v2=False, v2_consult="both")
+        send = _Send()
+        segs = _run_seam(cfg, JOB, PLAN_FAIL, self.tmp, send)
+        self.assertEqual(segs, [])
+        self.assertEqual(send.subjects, [])
+        self.assertEqual(_audit_rows(self.tmp), [])
+
+    def test_v2_off_with_local_emits_no_record(self):
+        cfg = _cfg(protocol_v2=False, v2_consult="local")
+        send = _Send()
+        segs = _run_seam(cfg, JOB, PLAN_FAIL, self.tmp, send)
+        self.assertEqual(segs, [])
+        self.assertEqual(send.subjects, [])
+        self.assertEqual(_audit_rows(self.tmp), [])
+
+    def test_answer_only_with_both_emits_no_record(self):
+        # An answer-only process routes to v2_off too: it
+        # answers questions, it does not consult on jobs it
+        # will never execute.
+        cfg = _both(answer_only=True)
+        send = _Send()
+        segs = _run_seam(cfg, JOB, PLAN_FAIL, self.tmp, send)
+        self.assertEqual(segs, [])
+        self.assertEqual(send.subjects, [])
+        self.assertEqual(_audit_rows(self.tmp), [])
+
+    def test_v2_off_sweep_emits_no_record_in_any_combination(self):
+        # The shotgun sweep over the same combinations the
+        # routing family sweeps: every mode, every shape of
+        # "protocol not exactly on", answer-only or not -- and
+        # answer-only with the protocol on -- routes to
+        # v2_off, and the seam records nothing for any of
+        # them.
+        for mode in ("remote", "both", "local"):
+            for off in (False, None, 1, "yes", "absent"):
+                for answer_only in (False, True):
+                    with self.subTest(mode=mode, protocol_v2=off,
+                                      answer_only=answer_only):
+                        cfg = {"oracle_mode": "deterministic",
+                               "v2_answer_deadline_sec": 0,
+                               "v2_consult": mode,
+                               "answer_only": answer_only}
+                        if off != "absent":
+                            cfg["protocol_v2"] = off
+                        base = tempfile.mkdtemp(dir=self.tmp)
+                        send = _Send()
+                        segs = _run_seam(cfg, JOB, PLAN_FAIL, base,
+                                         send)
+                        self.assertEqual(segs, [])
+                        self.assertEqual(send.subjects, [])
+                        self.assertEqual(_audit_rows(base), [])
+            with self.subTest(mode=mode, protocol_v2=True,
+                              answer_only=True):
+                base = tempfile.mkdtemp(dir=self.tmp)
+                send = _Send()
+                segs = _run_seam(
+                    _cfg(v2_consult=mode, answer_only=True),
+                    JOB, PLAN_FAIL, base, send)
+                self.assertEqual(segs, [])
+                self.assertEqual(send.subjects, [])
+                self.assertEqual(_audit_rows(base), [])
+
+    def test_protocol_module_without_consult_surface_is_legacy(self):
+        # Q142: the dispatch head must answer for whatever
+        # protocol module it is handed. A stand-in carrying
+        # only the legacy surface (outbound_for + segment),
+        # or a consult_mode_of that is not callable, reads as
+        # the legacy remote path it always was -- it must not
+        # raise AttributeError out of the seam.
+        outbound = lambda cfg, job, plan: [  # noqa: E731
+            ("subj", {"type": "determination",
+                      "why": "because", "msg_id": "m1"})]
+        segment = lambda *a: ("segment", a)  # noqa: E731
+        shapes = (
+            types.SimpleNamespace(outbound_for=outbound,
+                                  segment=segment),
+            types.SimpleNamespace(consult_mode_of="both",
+                                  outbound_for=outbound,
+                                  segment=segment),
+        )
+        for fake in shapes:
+            with self.subTest(fake=sorted(vars(fake))):
+                with mock.patch.object(runner, "_protocol_v2",
+                                       fake), \
+                        mock.patch.object(runner, "_seal_reply",
+                                          lambda *a: "sealed"):
+                    segs = runner._v2_before_execute(
+                        {}, JOB, PLAN_FAIL, SECRET, "", False,
+                        self.tmp, _Send())
+                self.assertEqual(
+                    segs, [("segment", ("runner", "determination",
+                                        "because"))])
 
     def test_both_no_plan_remote_alone(self):
         cfg = _both()

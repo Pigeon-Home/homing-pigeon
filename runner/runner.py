@@ -4964,7 +4964,15 @@ def _v2_before_execute(cfg, job, op_plan, secret, key_id, encrypted,
     """
     if _protocol_v2 is None:
         return []
-    if _protocol_v2.consult_mode_of(cfg) != "remote":
+    # A protocol module without the consult surface (a
+    # stand-in carrying only the legacy functions, or an
+    # embedding that wraps the module) reads as the legacy
+    # remote mode it always was: the seam answers for
+    # whatever module it is handed, absent surface included
+    # (Q142).
+    _mode_of = getattr(_protocol_v2, "consult_mode_of", None)
+    _mode = _mode_of(cfg) if callable(_mode_of) else "remote"
+    if _mode != "remote":
         return _v2_consult_before_execute(
             cfg, job, op_plan, secret, key_id, encrypted,
             base_dir, send, pump=pump)
@@ -5026,6 +5034,13 @@ def _v2_consult_before_execute(cfg, job, op_plan, secret, key_id,
         cfg, job, op_plan, posture_id=_posture_id(),
         posture_declared=_POSTURE_DECLARED,
         model_available=model_available)
+    if cplan["reason"] == "v2_off":
+        # The routing consults nothing when version 2 is off
+        # or the process is answer-only, so the seam records
+        # nothing here: no consult segment on the result and
+        # no audit row for a consult that never happened
+        # (Q141).
+        return []
     if cplan["reason"] == "clean_pass_settled":
         return []
     sources = cplan["sources"]
