@@ -3604,3 +3604,59 @@ inside the lookback on a live box — remains unproven by
 design: timing, not logic, and no claim is made for it.
 Q140 is answered in the questions file in the landing
 that carries these conclusions.
+
+## Release-gate confinement registry: supposition recorded before the check (2026-11-10)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Packet 6's P6-S10 (above) flagged a gap and left it
+for a code lane: the release gate's class registry in
+`runner/tools/release_gate.py` (`EXACT_RULES`) gives
+`runner/guard/sandbox.py` the confinement class but
+names neither platform backend — a change to
+`runner/guard/windows_confine.py` or to
+`runner/guard/freebsd_confine.py` would take no
+confinement class at the gate, so a release range
+touching only a platform confinement backend would
+ask for no confinement review. This lane takes that
+flag. Suppositions, written before the classification
+check and the new tests ran:
+
+- **RG-S1.** On the current head, `classify_path`
+  returns no class at all for both backend paths,
+  while `runner/guard/sandbox.py` returns the
+  confinement class alone — the gap is in the
+  registry's exact rules, not in the classifier.
+- **RG-S2.** An audit of the whole registry against
+  the confinement surface — every production file
+  the confinement decision and the confinement gate
+  load or are built from — finds no other file
+  whose whole purpose is a confinement backend
+  standing unclassified. The remaining
+  confinement-touching production files either
+  already carry a class (`runner/runner.py` as
+  execution, `runner/guard/security.py` as
+  disclosure controls, `runner/ops/posture.py` as
+  confinement) or are mixed dispatch shared with
+  other classes, and the tests are unclassified by
+  the gate's stated design (a test rides with its
+  subject). The fix is therefore exactly 2 registry
+  entries, no wider.
+- **RG-S3.** `release-gate.md` reproduces the
+  registry in its class table, and its confinement
+  row omits the 2 backends the same way the code
+  does, so the prose must move with the code or the
+  two diverge.
+- **RG-S4.** Pins added to
+  `runner/tests/test_release_gate.py` for the 2
+  backend paths fail on the pre-fix tree and pass
+  once the 2 exact rules land; the rest of that
+  file passes unchanged on both trees.
+- **RG-S5.** The fix is minimal and exact-rule
+  only: no prefix rule, no classifier change, and
+  no other class moves — a backend path in no other
+  family takes the confinement class alone.
+
+Each supposition is settled against the tree in the
+commits that follow this note; the conclusions stand
+at the end of this section when the lane lands.
