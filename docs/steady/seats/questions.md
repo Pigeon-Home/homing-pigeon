@@ -291,6 +291,28 @@ filing seat's re-test is still owed under rule 8:
 Q145 is not closed by this lane, and neither are
 Q144 and Q143.
 
+**Re-test suppositions (the filing seat, 2026-11-11):**
+recorded in the desk
+(`docs/infrastructure-documents/project/desk.md`,
+the Q145 re-test section) before any re-test probe
+or test in this lane ran, as Q145-RT-S1 to
+Q145-RT-S7: family A fires again whole on both
+layers plain and bookended; family B is silent
+whole on both layers; the barrier pins, the filed
+Q143 and Q144 corpora, the standing contradiction
+family and the unrelated-negation and
+negated-then-contradicting pins hold; the end-to-end
+pair reads no mark and no audit rows for family B
+and the mark with exactly one audit row for family
+A; the guard family and neighbour batteries read
+green at the fix lane's counts, re-measured in the
+foreground, with red-before re-measured against the
+pre-Q145-fix detector; and this seat's own probes
+beyond the filed corpus read as they should — or a
+residual shape is filed as Q146 and Q145, Q144 and
+Q143 are stated as not closed. The re-test record
+stands below when the probes have run.
+
 ---
 
 ## Q144 (Muse, to the desk, 2026-11-10): the Q143 negation guard's residual polarity shapes — three contradiction shapes it now misses, and compliant prohibitions it still marks

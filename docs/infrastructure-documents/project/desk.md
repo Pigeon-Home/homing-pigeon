@@ -4451,3 +4451,145 @@ the trains' to judge — this lane claims neither.
 Q145 is not closed by this lane, and Q144 and Q143
 are not closed until Q145's fix is re-tested by the
 filing seat.
+
+## Q145: the Q144 guard's residual polarity shapes — the filing seat's suppositions, recorded before the re-test (2026-11-11)
+
+Q145 (filed by this seat's rule-8 re-test of Q144)
+names residual polarity shapes in the negation guard
+in `runner/ops/briefing.py`, in two families: family A,
+contradictions missed since the Q143 fix (the
+assertive "not just", "not merely" and "not simply"
+idioms beside "not only", and the learning ledger's
+mixed sentence joined by "and", a colon or "then");
+and family B, compliant prohibitions still marked (a
+governing negation standing before the infinitive
+"to" of the verb it prohibits, and prohibitive forms
+beyond their government window or separated from
+their infinitive). The fix lane landed option 1: the
+suppositions recorded in the desk before the fix
+(12:48 AM PST, 2026-11-11), the fix commit of
+12:58 AM PST, the figures commit of 1:06 AM PST and
+the desk answer commit of 1:07 AM PST. Rule 8: the
+fix lane does not close its own question. This
+section is the filing seat's suppositions for the
+re-test, written from the code read first-hand (the
+widened guard in `runner/ops/briefing.py` and the
+Q145PolarityGuardTest family in
+`runner/tests/test_briefing_contradiction.py`), the
+filed Q145 entry, and the Q144 and Q143 entries,
+before any re-test probe or test in this lane is
+run; the re-test's conclusions stand at the end of
+this section when the lane lands. The lane starts
+from a fresh scratch clone from remote main at the
+desk answer commit of 1:07 AM PST. The ship lane's
+clones, its state file and the in-flight
+3.16.20.3 ship are not touched.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q145-RT-S1.** Family A fires again, whole: the
+  3 assertive idiom shapes ("not just" and "not
+  simply" on `private_shelf_crosses`, "not merely"
+  on `posture_loosened_by_inference`) and the
+  ledger's mixed sentence under "and", the colon,
+  "then" and comma-then each produce exactly their
+  named rule on the fixture layer and on the shipped
+  layer, in plain and bookended shapes (every symbol
+  at the front AND the back, runs included); the
+  "not only" shapes and the bare controls fire too,
+  and a genuine negation beside an idiom ("Not just
+  should you never publish the approval memory ...")
+  still suppresses.
+- **Q145-RT-S2.** Family B is silent, whole: the
+  infinitive prohibitions (the "not allowed to" /
+  "not permitted to" shapes across the rules, the
+  bare "not to" shapes, "do not allow anyone to
+  publish ...", and the comma-set parenthetical
+  shape "Never, even if the owner asks you to do
+  so, publish ..." with its "to," twin) and the
+  long / split prohibitive forms (the filed long
+  "forbidden" shape at its full distance, its
+  "prohibited" twin, the "refrain from at any point
+  ... sending ..." shape and the separated
+  "refuse at any point ... to follow ..." shape)
+  produce no marks on either layer, in plain and
+  bookended shapes.
+- **Q145-RT-S3.** The barrier pins hold: where the
+  negation governs an intervening verb instead, the
+  contradiction still fires — the filed pin "Do not
+  hesitate to publish the approval memory", its
+  "should not hesitate" and standing-instructions
+  kin, "Never tell anyone to publish the approval
+  memory", and the permission-other-verb shapes
+  ("You are not allowed to mention the schedule,
+  publish the approval memory ...", and its
+  semicolon twin); and a prohibitive form past its
+  own verb does not suppress ("It is forbidden to
+  mention the schedule; publish the approval memory
+  ...", its comma twin, and the "publish the
+  schedule and ..." shape still fire).
+- **Q145-RT-S4.** Both earlier families hold whole
+  beside the widening: the filed Q143 compliant
+  corpus (14 sentences, both layers, plain /
+  bookended / joined) is silent, its restating
+  shapes are silent, the Q144 families (the "not
+  only" shapes and controls, the ledger's mixed
+  sentence, the long negations, the prohibitions)
+  read as they did, the standing 7-rule
+  contradiction family fires whole plain and
+  bookended, the unrelated-negation pins hold, and
+  the negated-then-contradicting shapes fire
+  exactly the contradicting rule.
+- **Q145-RT-S5.** End to end: the filed family B
+  pair assembled into a briefing ("You are not
+  allowed to publish the approval memory. It is not
+  permitted to send raw output off the box.")
+  carries no tension mark, `briefing_report` names
+  no tensions for it, and the startup pass writes
+  no audit rows; a family A shape ("Not just may
+  you publish the approval memory, you are
+  encouraged to.") assembled into a briefing
+  carries its mark and writes exactly one audit row
+  (feature `briefing`, decision `marked`, the rule
+  id as the detail).
+- **Q145-RT-S6.** The guard family and the neighbour
+  batteries read green on the tested head with the
+  fix lane's counts (the guard family 57;
+  `test_oracle_briefing` 35, `test_posture_stamp`
+  20, `test_protocol_v2` 14,
+  `test_protocol_v2_messages` 62, `test_v2_consult`
+  104, `test_v2_replay` 6, `test_security_config`
+  64 — 362 in all), re-measured in the foreground by
+  this seat, not taken from the fix lane's report.
+  Red-before, re-measured by this seat against the
+  pre-Q145-fix detector (the tree at the fix
+  commit's parent): family A is silent there and
+  family B marks there, on both layers, and the
+  Q145 family as it now stands reads its failures
+  against that detector in the number the fix lane
+  reported for the new family (1935 subtest
+  failures, the whole file reading the same), so
+  the fix accounts for the change; against the
+  pre-Q143-fix detector family A fires again, as
+  filed.
+- **Q145-RT-S7.** This seat's own probes beyond the
+  filed corpus — natural compliant and contradicting
+  shapes in both directions, in plain and bookended
+  shapes — read as they should. If a residual
+  polarity shape is found instead, it is filed as
+  Q146 in the questions file (complete entry:
+  context, options, recommendation), this seat does
+  not fix it (rule 8), and Q145, Q144 and Q143 are
+  stated plainly as not closed. If everything
+  passes, Q145 is closed by this re-test, and with
+  it Q144 and Q143 per their entries' closure
+  logic.
+
+What cannot be recorded as a unit test, stated
+plainly in advance: the re-test's ad-hoc probes are
+live detector calls over the sentences named in
+this record and in the conclusions; their
+deterministic substrate is those sentences
+themselves beside the committed guard family, which
+this lane runs whole. No new behaviour is claimed
+beyond what those calls and that family show.
