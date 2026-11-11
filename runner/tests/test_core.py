@@ -274,8 +274,8 @@ class CorePartsTest(unittest.TestCase):
         self.assertEqual(set(core.AS_ASSEMBLED_PART_LINES), set(parts))
         for part, recorded in core.AS_ASSEMBLED_PART_LINES.items():
             if part == "runner/tools":
-                # The 3 excluded suite runners: 784 lines.
-                self.assertEqual(recorded - 784, parts[part])
+                # The 3 excluded suite runners: 847 lines.
+                self.assertEqual(recorded - 847, parts[part])
             else:
                 self.assertEqual(recorded, parts[part], part)
 

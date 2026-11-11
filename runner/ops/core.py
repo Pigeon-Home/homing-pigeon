@@ -60,7 +60,7 @@ is the rest. The as-assembled set's per-part line counts are
 recorded in AS_ASSEMBLED_PART_LINES below; the CLI computes
 and prints the canonical list's per-part counts live, and
 the 2 breakdowns differ in exactly 1 part — runner/tools,
-where the 3 excluded suite runners account for 784 lines.
+where the 3 excluded suite runners account for 847 lines.
 
 Everything except main is a pure function of the tree at a
 root. The zip build is deterministic — entries in list order,
