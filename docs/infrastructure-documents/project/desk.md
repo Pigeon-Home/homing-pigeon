@@ -1495,6 +1495,121 @@ the end of this section when the packet lands, stating
 that the sweep is empty-by-construction and re-verified
 against a fresh `ls-files` at the packet's close.
 
+## The documentation overview, Packet 6: suppositions recorded before the check (2026-11-10)
+
+Packet 6 of the overview takes the infrastructure
+project record and the proofs prose: the 13 files under
+`docs/infrastructure-documents/project/` and the 44
+under `docs/infrastructure-documents/proofs/` — 57
+files, checked sentence by sentence against the code
+and the current facts (the 3.16 line; the 3 confinement
+backends as field-proven on Linux, Windows and FreeBSD;
+the secure-by-default enforce posture; the two-shelf
+documentation layout the reorganization settled, steady
+and infrastructure-documents; and statistics.md as the
+canonical size record every figure is checked against).
+The packet runs as 6A (the project record) and 6B (the
+proofs) in one lane, in that order. Suppositions,
+written before the sentence check ran:
+
+- **P6-S1.** `layout.md` describes the retired layout
+  throughout: its docs account names `docs/extend/`,
+  `docs/security/`, `docs/use/`, `docs/oracle/`,
+  `docs/project/`, `docs/design/` and `docs/reports/`
+  as the tree's drawers, and cites
+  `docs/CHANGELOG.md`, `docs/CONTRIBUTING.md`,
+  `docs/specimens/`, `docs/security/hardening/`,
+  `docs/use/runbook.md` and `docs/project/hosting.md`
+  at paths where none of them lives — the files stand
+  under `docs/steady/` and
+  `docs/infrastructure-documents/` in the current
+  two-shelf layout.
+- **P6-S2.** `campaign-playbook.md`'s present-tense
+  pointers use the retired layout: the campaign "runs
+  today" from `docs/project/campaign-standing-orders.md`,
+  the desk fixes crashes under `docs/project/de_dust.md`,
+  the de_dust2 passage cites `docs/project/de_dust2.md`,
+  and the Decision 1 sentence names
+  `docs/oracle/configuring-oracle.md` — none of those
+  paths exists.
+- **P6-S3.** `campaign-standing-orders.md`'s operative
+  head — the routings a running campaign follows today,
+  not its dated ledger — uses the same retired paths
+  for the strategy, the playbook and the questions
+  file (`docs/project/de_dust2.md`,
+  `docs/project/campaign-playbook.md`,
+  `docs/seats/questions.md`, `docs/seats/.com.chat`).
+  The ledger entries below the head are dated records
+  and are not expected to move.
+- **P6-S4.** `testing.md` cites the retired layout in
+  its current guidance: `docs/CONTRIBUTING.md` for the
+  `--oracle` flag, `docs/oracle/configuring-oracle.md`
+  for the flag map, `docs/use/sending.md` and
+  `docs/use/live-examples.md` for the end-to-end and
+  live-capture accounts, and `docs/reports/` for the
+  live-capture corpus and the coverage reports.
+- **P6-S5.** `testing.md`'s platform table states the
+  Windows suite as "sharded over 4 cores" and the
+  macOS suite as "sharded over 3 cores" — fixed counts
+  the build no longer uses: both jobs now shard by the
+  duration table (`runner/tools/windows_durations.py`
+  and its macOS counterpart), so the shard count is
+  the table's, not a fixed core count.
+- **P6-S6.** `release-readiness.md` section 7 states
+  the build job's guard as "the nine guard jobs
+  green"; the build workflow defines 17 jobs — the
+  same fact Packet 3 corrected on the contributing
+  page.
+- **P6-S7.** `constraints.md`'s confinement entry says
+  the sandbox "is Linux-only" — a survivor of the
+  inventory's harvest commit, before the Windows and
+  FreeBSD backends landed; confinement now has a
+  backend per platform family and refuses where none
+  can engage. The Decision 1 citations in
+  `constraints.md` and `properties.md` name
+  `docs/design/present-but-invalid-config.md`, which
+  lives at `docs/steady/present-but-invalid-config.md`,
+  and `constraints.md`'s upgrade-key entry cites
+  `docs/use/sending.md` for `docs/steady/sending.md`.
+- **P6-S8.** The proofs' living summaries cite the
+  retired layout for current reading: `goals.md` and
+  `thinking.md` gather findings in
+  `docs/security/model-and-proof-testing.md` (now
+  `docs/infrastructure-documents/security/model-and-proof-testing.md`),
+  and `dtls-over-email-v3.md`'s built list cites
+  `docs/design/v3-dtls-over-email-plan.md` (now under
+  `docs/infrastructure-documents/design/`). The stage
+  and content-rung records are dated run records and
+  are expected to stand as written, retired paths in
+  their run procedures included.
+- **P6-S9.** `statistics.md`'s figures check out
+  against the figure slots and the core record they
+  are generated from — it is the canonical record and
+  needs no correction in this packet; the dormant-code
+  and duplication audits' figures agree with it at
+  their own dated measures.
+- **P6-S10.** `cs_office.md`, `cs_office-postures.md`,
+  `dormant-code-audit.md`, `duplication-audit.md`,
+  `official-release-rev-plan.md` and `release-gate.md`
+  need no correction: the first two were checked
+  against the disclosure tool and the Oracle's
+  instruction home, the audits are dated measures, and
+  the rev plan and gate are dated 2026-11-09 records
+  whose state-at-writing lines are true as dated. The
+  release gate's confinement class registry omits the
+  Windows and FreeBSD confinement modules — but it
+  reproduces the tool's registry exactly, so the gap
+  is the tool's, flagged here rather than corrected in
+  prose that would then diverge from the code. The
+  FreeBSD row in `testing.md` — the hosted VM leg with
+  no green run yet, beside the fleet node's first
+  local proof — is likewise expected to stand: the leg
+  and the node's backend proof are different claims.
+
+Each supposition is settled against the code in the
+commits that follow this note; the conclusions stand
+at the end of this section when the packet lands.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
