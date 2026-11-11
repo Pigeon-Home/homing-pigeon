@@ -2030,6 +2030,179 @@ below under Argon's stamp
 decisions on each stand beside them under Muse's own
 stamp (00000000-muse-7e57-d0c5-58316a922026).
 
+### The sittings, and what Argon found (2026-11-10)
+
+The sweep ran as 10 sittings of gemini-4-argon over the
+313 files (1,531,429 prompt tokens counted by the API),
+each file fed whole with its path and the confinement
+facts from the security policy as ground truth. Every
+file drew at least one verdict line: 271 clean, 60
+finding lines (several files drew more than one).
+`docs/checklist.txt` came back clean; it was read and
+never modified, and there are no findings about it to
+report.
+
+The suppositions against the result: R-S1 held (the
+Packet 1 files drew 3 findings, all minor, none a
+confinement misdescription — the support matrix's
+FreeBSD cell among them). R-S2 held (Packets 2 and 3
+drew real errors in single digits per packet: stale
+audit figures, a stale revocation claim, a stale panic
+word account). R-S3 held in shape and beat its estimate
+the other way: the long tail drew the most findings,
+and the confirmed-error share is over half, because
+several packet lanes were still mid-flight when the
+sittings ran and their files had not yet been corrected.
+R-S4 held (the mirror-lock flags arrived as expected
+and are dismissed below). R-S5 held (2 findings were
+false as stated, rejected below with their reasons).
+R-S6 held (no root file, no v1/v2 text, no checklist
+edit).
+
+<!-- Agent-Stamp: 00000000-argon-26a0-ff29-7825440c1fb9 -->
+Argon flagged, in its own words' substance: PROTOCOL's
+2026-11-03 audit parenthetical (3.65% / 0.43%) against
+the 2026-11-09 audit (3.17% / 0.38%); the security
+policy's panic-word passage naming only `job_user` on
+POSIX; the FAQ's "one shared secret rather than
+per-sender keys" revocation sentence; the support
+matrix's FreeBSD cell ("the only writable mount"); the
+README's Oracle diagram ("cage opt-in"); the index
+page's two untouched-since dates overtaken by Packet
+3's landing that same evening, and its reports-drawer
+arithmetic (71 listed + 36 = 107 against a 108 heading);
+the transports page's "the shared secret itself is the
+session's pre-shared key" and its one-exception
+secret-handover claim; the Oracle configuration page's
+`resources` startup account, its `transport_dtls` PSK
+and alone-among-the-pipes claims, and its
+`dtls_greeting` tier descriptions; the senses page's
+"by default the job's network edge is unrestricted";
+the privacy design's "six guard features" and its
+queued-guard passages; the hardening report's
+enforce-fallback chain; the default-posture page's
+first-start preamble against its own corrected platform
+rows; the overview page's latest-release line
+(3.15.18.12, verified 2026-11-08); the branch
+contradiction between the telephone-pole page ("one
+branch") and the Bravo page (a maintained `bravo`
+branch); a label-only sentence in the cs_office page
+against that project's own postures page; the campaign
+playbook's retired paths and its workdir-persistence
+contract; the standing orders' cages queue item; the
+layout, testing, readiness, constraints, properties,
+goals and thinking pages' retired paths, stale counts
+and stale mode counts (several of them the very defects
+Packet 6's suppositions above already name); the
+key-policy builder described in two places as naming
+an unrecognised field in a warning; two links
+(known-failures, transports-status); a captured posture
+report's WARN line; the IETF status pages' expiry and
+living-draft statements and a delta note's disclosure
+contradiction; and, in the draft sources, the v1 -04
+frontmatter's `, Ed.` names rendering as surnames in
+the rendered text, the v1 -04 Section 6 `job-id`
+alphabet admitting NUL against Section 16.1's
+NUL-joined AAD, the v2 -04 abstract's context-segment
+carriage phrasing, two v2 -00 statements its own -04
+already corrected, and in v3 a literal BCP 14 paragraph
+where the tagged boilerplate belongs (63
+MISSING_BCP14_TAGS in its idnits) and a `1*gap` where
+`gap` already means one-or-more.
+
+Muse's decisions on those findings, under Muse's own
+stamp (00000000-muse-7e57-d0c5-58316a922026):
+
+- **Confirmed and fixed in this lane's landing** (the
+  commit at 8:34 PM PST): PROTOCOL's audit parenthetical
+  now carries the 2026-11-09 figures; the panic-word
+  passage names confinement at `enforce` on Linux and
+  FreeBSD beside `job_user`; the FAQ's revocation
+  passage states per-sender keys and per-key revocation
+  as they stand, with the primary secret's rotation as
+  the manual part; the support matrix's FreeBSD cell
+  names the fresh tmpfs at /tmp; the index page's two
+  dates read 2026-11-10 with their characterisations
+  corrected, and its reports arithmetic reads 37; the
+  v3 source takes the tagged BCP 14 boilerplate (which
+  renders the identical text) and `gap` for `1*gap`,
+  mirrored in its rendered text. The FAQ edit moved one
+  defaults-registry pin (the poll interval's doc line
+  follows the doc, the standing pin-follows-doc move).
+  Guard evidence: the reader-quiet and support-matrix
+  tests pass; the security-claims, figure-slot and
+  drift-guard batch passes after the pin follow
+  (33 tests, 953 subtests).
+- **Confirmed, and already landed by the packet lanes
+  while this sweep ran** (verified against main at
+  8:34 PM, not re-fixed here): the transports page's
+  derived-PSK account and two-handover shape, and the
+  Oracle configuration page's three items (Packet 5);
+  the layout, testing, readiness, constraints,
+  properties, goals, thinking and model pages, retired
+  paths and mode counts among them, and the
+  key-policy builder's refusal stated as a refusal
+  (Packets 5 and 6, whose conclusions stand above, with
+  their own Argon read beside them); the campaign
+  playbook's retired paths and the standing orders'
+  cages item, which now carries its own update
+  (Packet 6A); the two reported links (Packet 8's
+  banner fixes, landed minutes before the sittings
+  ran).
+- **Confirmed, owned by lanes still in flight, left to
+  them**: the senses page's network-default sentence
+  (Packet 4's own supposition P4-S1 names the same
+  line), the privacy design's feature count and queued
+  passages and the hardening report's fallback chain
+  (Packet 4's set), the branch contradiction — the
+  remote carries main only, so the telephone-pole
+  page states the present fact and the Bravo page is
+  the stale side (Packet 4's set), and the overview
+  page's release line (Packet 9's supposition P9-S1
+  names it).
+- **Confirmed and referred, not rewritten by this
+  lane**: the campaign playbook's workdir-persistence
+  row. The runner now reaps a job's workspace when the
+  job finishes, so a loop cycle asserting persistence
+  would fail today; the row is the playbook's asserted
+  contract, and changing what a campaign asserts is
+  the campaign owner's call, taken up from this note.
+- **Dismissed under the conductor's direction**: every
+  flag on IETF material outside the draft sources —
+  the status pages' expiry and living-draft statements
+  and the delta note — is the mirror lock and the
+  drafts' own record, not a finding. The two v2 -00
+  items are dismissed as superseded: its own -04
+  already carries the corrections Argon names.
+- **Recorded for the conductor's email route, texts
+  untouched** (the v1/v2 mirror rule): the v1 -04
+  frontmatter `, Ed.` rendering (the rendered text does
+  show the names as Argon says), the v1 -04 Section 6
+  `job-id` / NUL-AAD question — a genuine technical
+  candidate: `word-char` admits %x00, and a `job_id`
+  carrying it would collide with the AAD's NUL join —
+  and the v2 -04 abstract's context-segment phrasing.
+- **Declined, with reasons**: the README diagram —
+  the cage cell already reads "caged by default"; the
+  opt-in phrase belongs to the judge cell, a different
+  feature, and Argon's quotation joined the two. The
+  sending page's upgrade table omits FreeBSD because
+  no FreeBSD applier ships in the remote-upgrade kit;
+  the table's platform set is the kit's, and the
+  omission is accurate. The default-posture page
+  stands as the dated 2026-11-09 record Packet 1
+  already declined to rewrite; its platform rows were
+  corrected on 2026-11-10 and the tension Argon flags
+  is the record's own before-and-after. The captured
+  posture report is a verbatim capture on the audit
+  ignore list and is not edited. The cs_office flag is
+  declined: the postures page states the project's
+  disclosure doctrine by design, the label-only
+  sentence governs public writing about the private
+  shelf, and the two pages are not in contradiction
+  once each is read in its own scope — no text changed,
+  and nothing from the private shelf is repeated here.
+
 ## The determination decision point, built (2026-11-10)
 
 Q139's build, taken up by the building seat. The design
