@@ -2406,6 +2406,48 @@ below under Argon's stamp
 (00000000-argon-26a0-ff29-7825440c1fb9); Muse's
 decisions on each stand beside them under Muse's own
 stamp (00000000-muse-7e57-d0c5-58316a922026).
+## The road to 3.16.20.2: three stale figures, named and re-measured (2026-11-10)
+
+The head the .2 cut was first attempted on failed
+its build in 3 places, each a figure or a harness
+that had not followed a landing it described:
+
+- The posture stamp producer's PROTOCOL.md passage
+  (13 lines) moved 9 pinned statements below it; the
+  defaults registry's doc-line pins now carry the
+  lines as they stand, each verified against the
+  statement it names.
+- The posture startup-gate test asserted an
+  announcement that rides runner.log(), whose INFO
+  lines share 1 per-minute budget across the whole
+  test process; a full-suite run could spend the
+  budget before the gate test ran. The harness now
+  starts from a fresh budget window and restores it
+  after — the shape the build-stamp tests already
+  used — and the suppression was reproduced and
+  cured locally before the landing.
+- The job_user postspawn fix grew
+  runner/ops/remediation_ops.py by 36 lines and the
+  Windows duration-table mode grew the excluded
+  suite runner by 63, and neither landing re-measured
+  the core. The recorded breakdown stood at 18,870
+  for runner/ops against a measured 18,906. The set
+  stands re-measured over the current tree: the
+  as-assembled set is 60,329 lines, 54,400 of them
+  non-blank, a 763,753-byte zip; the canonical list
+  is 59,482 lines over 135 files.
+
+The same build's Windows leg killed shard 2 at the
+wall: it carried the proof-content files, whose
+prices from the first re-pack still understated
+their slowest-pool cost. The table is refreshed
+again from the build logs, the estimator's
+largest-across-logs rule pricing every file at the
+slowest pool observed: 442 files, 7,983.1 seconds
+in total, packing to 12 shards at 672 seconds
+against the 720-second budget. The wall is not
+raised; the prices were wrong, and now they are
+measured.
 
 ### The sittings, and what Argon found (2026-11-10)
 
