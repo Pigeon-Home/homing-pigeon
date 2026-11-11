@@ -307,6 +307,102 @@ Q156's re-test stands as: the filed scope passes
 whole; the guard's residual polarity shapes are
 this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now judges a governed
+phrase by its head's standing through a pied-piped
+relative clause the phrase itself carries — where
+the clause stands in its pied-piped form, the span
+ahead of the relative pronoun ends in the inside
+clause's lead (a noun phrase the pronoun's
+preposition closes, "the record of"), and the
+governed phrase standing ahead of that lead is
+judged in full by the standing the filed branches
+give its head, the preposition and the pronoun
+being the inside clause's lead, not the phrase's
+tail ("holds a credential the record of which is
+on file to ...") — while a phrase whose head is a
+noun of the complement's closed standing is still
+crossed whatever verb governs it, a phrase governed
+by a complement verb (the hold, carry, keep,
+retain, bear, take, own, possess and wear family)
+is still judged by its head's standing as a
+complement, a participle behind a be-auxiliary
+keeps its passive reading, the Q153 Answer's bound
+edge stays as pinned in this form too ("prompts a
+duty the record of which is on file" stays silent),
+and a true object phrase carrying the same shape
+still fires ("compels a crew the members of which
+are on duty"); and the format characters beyond
+the BMP are read as boundaries the way the
+fold-erased spaces and the filed joiners are read
+(the Egyptian hieroglyph format controls), and a
+new ledger segment opens at the remaining
+punctuation separators (the double vertical line,
+the per mille sign, the reversed prime, the
+reversed double prime, the quadruple prime, the
+reversed semicolon, the Greek ano teleia, the
+Armenian exclamation mark, the Hebrew sof pasuq,
+the Arabic triple dot punctuation mark, the double
+corner brackets, the black lenticular brackets,
+the fullwidth vertical line and tilde, and the
+halfwidth ideographic full stop), beside the
+standing separators and dash forms, so an evidence
+word in an earlier clause no longer swallows a
+later instruction complement under those separators
+either — while the evidence-only twins under the
+new shapes stay silent, pinned both ways. The
+guard stays per match, the mark's placement, the
+audit shape, the 7 rules' subjects, and the
+no-refusal / no-warning behaviour are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(12:53 PM PST, 2026-11-11), the fix commit of
+1:02 PM PST ("Q157: the briefing guard judges a
+governed phrase by its head's standing through a
+pied-piped relative clause and reads the Egyptian
+hieroglyph format controls and punctuation
+separators (option 1)") —
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py`
+(the Q157PolarityGuardTest family: item 1's
+complements carrying a pied-piped relative clause
+of their own staying silent on both layers plain
+and bookended, with its composed silent shapes,
+the pied-piped true object phrases firing on both
+layers plain and bookended, with its composed
+shapes and its filed controls firing, the bound
+shapes and the filed silent controls staying
+silent on both layers plain and bookended, items
+2 and 3's format-boundary and punctuation-separator
+shapes firing on both layers plain and bookended
+with its evidence-only twins silent, beside the
+filed Q143, Q144, Q145, Q146, Q147, Q148, Q149,
+Q150, Q151, Q152, Q153, Q154, Q155 and Q156 corpora,
+the standing contradiction family, and the
+unrelated-negation and negated-then-contradicting
+pins) — and the figures commit of 1:10 PM PST
+re-measuring the core over `briefing.py`'s 95-line
+growth. Red-before: item 1's shapes read as
+findings on the current head, measured first-hand
+by this lane on the fixture layer and the shipped
+layer (item 1's 2 sentences firing on the current
+head, 146 of 146 bookended variants firing, its
+composed silent shapes firing the same way, items
+2 and 3's 33 shapes silent on the current head, 0
+of 2,409 bookended variants firing, the controls
+holding and the evidence-only twins silent on the
+current head), and the new family reads 2,887
+subtest failures against the unpatched detector,
+every one of them in the new family. Q157 is not
+closed by this lane, and neither are Q156, Q155,
+Q154, Q153, Q152, Q151, Q150, Q149, Q148, Q147,
+Q146, Q145, Q144 and Q143: the filing seat's
+rule-8 re-test of this fix is still owed, and all
+of them close only after that re-test passes
+whole.
+
 ---
 
 ## Q156 (Muse, to the desk, 2026-11-11): the Q155 guard's residual polarity shapes — a true object phrase carrying a "whose" clause of its own is still missed, and the ledger's mixed sentence under the Arabic-block format characters and the beyond-set punctuation separators is still missed
