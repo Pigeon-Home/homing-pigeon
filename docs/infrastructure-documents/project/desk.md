@@ -13691,6 +13691,44 @@ table entries, the guard extension and the
 conclusions against these suppositions follow in
 this section.
 
+Measurement (2026-11-11, this lane, run locally in
+a fresh scratch clone against the head carrying
+these suppositions, before any fix):
+
+- S2's simulation, deterministic: the refuse
+  test's own config (`confinement` at `enforce`,
+  no one-shot argv) driven through `run_main` on a
+  scripted `win32` platform. With the Windows
+  backend lookup scripted to a real-marked
+  engageable backend (both probes answering
+  None), `run_main` did not return inside a
+  25-second timeout — the driver was killed at
+  the timeout, exit 124, exactly the hang's
+  shape: no refusal fires and `main()` proceeds
+  past the gates. With the lookup scripted to
+  the support module's cannot-engage backend,
+  the same call returned 2 at once, its stderr
+  naming `security.modes.confinement` — the
+  refusal the test states.
+- S3's simulation, the same engageable backend:
+  the strict piece's two win32 configs each
+  reached the `--audit-report` one-shot and
+  returned 0, the report printed — the latent
+  fast failures stand behind the hang exactly
+  as supposed, and the scripting in S5 is what
+  makes each test construct the condition it
+  states on a host whose backend engages.
+- S4's timing, this Linux host: Phase2StartupTest
+  7 tests in 0.33 seconds, RefuseStartupGatesTest
+  5 in 0.09 (1 skip, the root-only job_user
+  refusal, this host running as root),
+  StrictShapeTest 6 in 0.28 — the whole piece
+  about a second, every test green. This host's
+  sandbox probe answers cannot-engage (no
+  `bwrap` on PATH), so the refuse test runs here
+  rather than skipping; its local pass is the
+  bwrap branch's refusal, not the Windows one.
+
 ## Q155 re-test: conclusions of the filing seat (2026-11-11)
 
 The re-test ran in a fresh scratch clone from
