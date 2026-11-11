@@ -21,6 +21,24 @@ and the infrastructure changelog keep the links of their time.
 Fenced code blocks and inline code are not links and are stripped
 before the scan, so an example command that merely looks like a
 link definition cannot fail the test.
+
+The second gap, found when the conductor re-tested the repair
+live. A reader who follows a page's prose meets paths that are
+not links at all: a backtick path in the text, naming where a
+page lives. The design page sent its readers to
+`docs/use/live-examples.md` -- the live-examples page's home
+before the layout move -- long after the clickable links were
+repaired, and no link check can see a path that is not a link.
+The reader's pages (the scope test_reader_docs_quiet draws:
+the root manuals and the steady and infrastructure shelves'
+reader families) must not name a retired-layout path in
+backticks: `docs/use/`, `docs/security/`, `docs/oracle/`,
+`docs/design/`, `docs/extend/`, `docs/proofs/`,
+`docs/project/`, `docs/reports/` and `docs/seats/` are the
+drawers the two-shelf layout retired. Dated records and the
+seats' and project drawers quote those paths as history and
+stand outside this scope, exactly as they stand outside the
+reader's.
 """
 
 import os
@@ -232,6 +250,103 @@ class ResolverShapeTests(unittest.TestCase):
         self._write("docs/FAQ.md",
                     "[web](https://example.invalid/x.md) [here](#faq)\n")
         self.assertEqual([], self._broken())
+
+
+READER_FILES = ["README.md", "INSTALL.md", "SECURITY.md", "PROTOCOL.md",
+                "docs/FAQ.md", "docs/ENTERPRISE.md", "docs/support-matrix.md",
+                "docs/steady/project/contributing.md",
+                "docs/steady/extensions.md", "docs/steady/networking.md",
+                "docs/steady/present-but-invalid-config.md",
+                "docs/steady/secret-rotation.md", "docs/steady/sending.md",
+                "docs/steady/verification.md"]
+READER_DIRS = ["docs/steady/use", "docs/steady/oracle", "docs/steady/design",
+               "docs/steady/security", "docs/infrastructure-documents/extend",
+               "docs/infrastructure-documents/oracle",
+               "docs/infrastructure-documents/security",
+               "docs/infrastructure-documents/design", "docs/ietf"]
+NOT_READER = {"docs/steady/security/hardening_report.md"}
+RETIRED_PATH = re.compile(
+    r"`(docs/(?:use|security|oracle|design|extend|proofs|project|"
+    r"reports|seats)/[^`\s]*)`")
+
+
+def reader_files(root):
+    """The reader's pages under root, in the scope
+    test_reader_docs_quiet draws."""
+    found = [os.path.join(root, rel) for rel in READER_FILES]
+    for rel_dir in READER_DIRS:
+        for dirpath, _dirnames, filenames in os.walk(os.path.join(root, rel_dir)):
+            for name in sorted(filenames):
+                if name.endswith(".md"):
+                    found.append(os.path.join(dirpath, name))
+    return [path for path in found
+            if os.path.exists(path)
+            and os.path.relpath(path, root).replace(os.sep, "/")
+            not in NOT_READER]
+
+
+def retired_paths(root):
+    failures = []
+    for path in reader_files(root):
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            text = handle.read()
+        rel = os.path.relpath(path, root)
+        for match in RETIRED_PATH.finditer(text):
+            line = text.count("\n", 0, match.start()) + 1
+            failures.append("%s:%d -> %s" % (rel, line, match.group(1)))
+    return failures
+
+
+class PlainTextPathTests(unittest.TestCase):
+
+    def test_no_retired_layout_path_in_a_reader_page(self):
+        self.assertEqual([], retired_paths(ROOT))
+
+
+class PlainTextShapeTests(unittest.TestCase):
+    """The plain-text family shapes, pinned on a synthetic tree."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = self.tmp.name
+
+    def _write(self, rel, text):
+        path = os.path.join(self.root, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        return path
+
+    def test_a_retired_live_examples_path_in_a_reader_page_fails(self):
+        # The design page's shape: a present-tense pointer in
+        # backticks, naming the page's pre-move home.
+        self._write("docs/steady/design/oracle-opinion-design.md",
+                    "The numbers are in `docs/use/live-examples.md`.\n")
+        failures = retired_paths(self.root)
+        self.assertEqual(1, len(failures))
+        self.assertIn("docs/use/live-examples.md", failures[0])
+
+    def test_the_current_home_in_a_reader_page_passes(self):
+        self._write("docs/steady/design/oracle-opinion-design.md",
+                    "The numbers are in "
+                    "`docs/steady/use/live-examples.md`.\n")
+        self.assertEqual([], retired_paths(self.root))
+
+    def test_a_retired_path_in_a_dated_record_is_out_of_scope(self):
+        # Reports are records of their day; the reader scope does
+        # not reach them and their paths stand as written.
+        self._write("docs/steady/reports/live-2026-10-25-readme.md",
+                    "`docs/use/live-examples.md` quotes them.\n")
+        self.assertEqual([], retired_paths(self.root))
+
+    def test_every_retired_drawer_is_named(self):
+        for drawer in ("use", "security", "oracle", "design", "extend",
+                       "proofs", "project", "reports", "seats"):
+            self._write("docs/steady/use/page.md",
+                        "See `docs/%s/page.md`.\n" % drawer)
+            self.assertEqual(1, len(retired_paths(self.root)),
+                             "drawer %s not caught" % drawer)
 
 
 if __name__ == "__main__":
