@@ -254,12 +254,24 @@ def _fold(text, breaks=False):
     and joiner (just past the space block's end),
     the word joiner, the byte-order mark, the soft
     hyphen and the Mongolian vowel separator are
-    clause boundaries too, read before the fold."""
+    clause boundaries too, read before the fold;
+    Q154 reads the remaining format, bidi and
+    invisible characters the same way -- the
+    left-to-right and right-to-left marks, the bidi
+    embedding, override and pop controls and the
+    bidi isolate controls, the invisible operators
+    (function application, invisible times,
+    invisible separator and invisible plus), the
+    combining grapheme joiner and the Arabic letter
+    mark are clause boundaries too, read before
+    the fold."""
     if breaks:
         text = re.sub(r"\r\n|[\r\n\t\x0b\x0c\x85\u2028\u2029"
                       r"\u00a0\u1680\u2000-\u200d\u202f"
                       r"\u205f\u3000\u2060\ufeff\u00ad"
-                      r"\u180e]",
+                      r"\u180e\u200e\u200f\u202a-\u202e"
+                      r"\u2061-\u2064\u2066-\u2069\u034f"
+                      r"\u061c]",
                       " \u00b6 ", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -446,6 +458,25 @@ def _fold(text, breaks=False):
 # quote, the double dagger, the ideographic
 # comma, the fullwidth semicolon and colon and
 # the Arabic question mark).
+# Q154 widened the guard once more at the same
+# detector: a governed phrase that carries the
+# clause's infinitive complement is judged by the
+# phrase's own shape -- a common-noun phrase standing
+# between the clause's verb and its infinitive is the
+# clause's object phrase by that standing, whatever
+# verb governs it, while a phrase whose head is a
+# noun of the complement's closed standing is still
+# crossed whatever verb governs it and a phrase
+# governed by a complement verb is still judged by
+# its head's standing as a complement; the remaining
+# format, bidi and invisible characters are read as
+# boundaries the way the fold-erased spaces and the
+# filed joiners are read; and the ledger guard opens
+# a new segment at the remaining punctuation
+# separators (the single low-9 quote, the prime, the
+# fraction slash, the corner brackets, the fullwidth
+# exclamation and question marks, the Arabic
+# semicolon and the Devanagari danda).
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -646,6 +677,13 @@ def _prohibitive_occurrences(low):
 # standing of the verb that governs it (an active
 # object-control verb's phrase is the clause's
 # object phrase, whatever common noun heads it).
+# Q154 judges a governed phrase by its own shape
+# beside its verb: a common-noun phrase standing
+# between the clause's verb and its infinitive is
+# the clause's object phrase whatever verb governs
+# it, while a complement verb's phrase and a head
+# of the complement's closed standing are still
+# crossed.
 _CLAUSE_OBJECT_WORDS = frozenset({
     "you", "him", "her", "them", "us", "me", "it",
     "anyone", "someone", "everyone", "anybody",
@@ -699,6 +737,30 @@ _OBJECT_CONTROL_VERBS = frozenset({
     "assign", "assigns", "assigned", "assigning",
     "command", "commands", "commanded",
     "commanding"})
+# Verbs that take a noun phrase as their own
+# complement, with the infinitive that follows
+# belonging to the clause's subject, not to the
+# phrase (Q154): "holds a credential to ..." -- the
+# credential is what the operator holds, and the
+# publishing is the operator's, so a phrase these
+# verbs govern is judged by its head's standing as
+# a complement, the way it was before Q154. A verb
+# outside this set and outside the object-control
+# set that stands ahead of a noun phrase and the
+# infinitive takes that phrase as its object (the
+# clause's object phrase, Q154), the way the
+# object-control verbs do.
+_COMPLEMENT_VERBS = frozenset({
+    "hold", "holds", "held", "holding",
+    "carry", "carries", "carried", "carrying",
+    "keep", "keeps", "kept", "keeping",
+    "retain", "retains", "retained", "retaining",
+    "bear", "bears", "bore", "borne", "bearing",
+    "take", "takes", "took", "taken", "taking",
+    "own", "owns", "owned", "owning",
+    "possess", "possesses", "possessed",
+    "possessing",
+    "wear", "wears", "wore", "worn", "wearing"})
 # Verbs that take the infinitive as their own
 # complement with no object at all (subject control),
 # in their common forms: "wants to publish" assigns
@@ -790,7 +852,47 @@ _PERSON_HEADS = frozenset({
     "colleagues", "friend", "friends", "leader",
     "leaders", "manager", "managers", "driver",
     "drivers", "reader", "readers", "author",
-    "authors", "group", "groups"})
+    "authors", "group", "groups",
+    # The person and body-of-people heads Q153's
+    # item 2 named and their ordinary kin (Q154):
+    # a phrase headed by one of these names a
+    # person or a body of people wherever the
+    # judgement meets the phrase.
+    "clerk", "clerks", "auditor", "auditors",
+    "nurse", "nurses", "engineer", "engineers",
+    "analyst", "analysts", "crew", "crews",
+    "committee", "committees", "user", "users",
+    "staff", "council", "councils", "panel",
+    "panels", "jury", "juries", "assembly",
+    "assemblies", "audience", "audiences",
+    "crowd", "crowds", "squad", "squads", "unit",
+    "units", "teacher", "teachers", "student",
+    "students", "doctor", "doctors", "lawyer",
+    "lawyers", "judge", "judges", "soldier",
+    "soldiers", "writer", "writers", "singer",
+    "singers", "actor", "actors", "artist",
+    "artists", "farmer", "farmers", "baker",
+    "bakers", "cook", "cooks", "pilot", "pilots",
+    "sailor", "sailors", "priest", "priests",
+    "bishop", "bishops", "chief", "chiefs",
+    "deputy", "deputies", "assistant", "assistants",
+    "secretary", "secretaries", "director",
+    "directors", "editor", "editors", "inspector",
+    "inspectors", "investigator", "investigators",
+    "specialist", "specialists", "consultant",
+    "consultants", "technician", "technicians",
+    "mechanic", "mechanics", "electrician",
+    "electricians", "plumber", "plumbers",
+    "carpenter", "carpenters", "painter",
+    "painters", "waiter", "waiters", "visitor",
+    "visitors", "guest", "guests", "customer",
+    "customers", "patient", "patients", "client",
+    "clients", "candidate", "candidates",
+    "volunteer", "volunteers", "employee",
+    "employees", "employer", "employers", "boy",
+    "boys", "girl", "girls", "child", "children",
+    "adult", "adults", "lady", "ladies",
+    "gentleman", "gentlemen"})
 
 
 def _is_noun_complement_phrase(phrase):
@@ -1175,6 +1277,31 @@ def _clause_carries_infinitive(clause_words):
             # such a verb, and a participle of such a
             # verb behind a be-auxiliary in its passive
             # shape ("is assigned a duty to ..."), are
+            # judged by the complement check below
+            # instead.
+            return True
+        if not _noun_complement_head(obj[-1]) \
+                and word not in _COMPLEMENT_VERBS \
+                and not (any(head in _BE_WORDS
+                             for head in clause_words[:verb_at])
+                         and _participle_like(word)):
+            # A phrase standing between the clause's
+            # verb and its infinitive is that verb's
+            # object phrase by the phrase's own shape
+            # (Q154): the verb takes the phrase ahead
+            # of the infinitive the way an
+            # object-control verb does, so the phrase
+            # is the clause's own whatever verb
+            # governs it ("compels a clerk to ...",
+            # "deploys a clerk to ..."), not a
+            # complement the closed object-control set
+            # failed to name. A head of the
+            # complement's closed standing under any
+            # verb ("prompts a duty to ...", the Q153
+            # Answer's bound), a phrase governed by a
+            # complement verb ("holds a credential to
+            # ..."), and a participle behind a
+            # be-auxiliary in its passive shape are
             # judged by the complement check below
             # instead.
             return True
@@ -1636,7 +1763,9 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "”", "→", "«", "»", "，",
                     "。", "．", "،", "†", "’",
                     "‹", "›", "„", "‡", "、",
-                    "；", "：", "؟")
+                    "；", "：", "؟", "‚",
+                    "′", "⁄", "「", "」",
+                    "！", "？", "؛", "।")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -1698,7 +1827,16 @@ def _ledger_complement_is_evidence(owner, match):
     (the closing curly quote, the single guillemets,
     the low quote, the double dagger, the ideographic
     comma, the fullwidth semicolon and colon and the
-    Arabic question mark)): an evidence word in
+    Arabic question mark) -- and by Q154, where the
+    remaining format, bidi and invisible characters
+    are read as boundaries before the fold beside the
+    joiners it already reads (they stand in the folded
+    text as the pilcrow), and the remaining
+    punctuation separators open a segment too (the
+    single low-9 quote, the prime, the fraction slash,
+    the corner brackets, the fullwidth exclamation
+    and question marks, the Arabic semicolon and the
+    Devanagari danda)): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
