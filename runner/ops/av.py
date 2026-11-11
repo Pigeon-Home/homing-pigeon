@@ -13,21 +13,65 @@ except ImportError:  # running from inside runner/ as __main__
     from ops.live import _runner  # type: ignore
 
 
+# The grace a killed probe gets to hand its output back
+# before _run_text walks away from its pipes. Bounded, like
+# the probe timeout itself: a probe whose child leaves a
+# pipe held open (a grandchild that inherited stdout) must
+# not turn the walk-away into a second, unbounded wait --
+# that shape hung the Windows test leg at the 20-minute
+# wall (Q136 shard-5 follow-on, 2026-11-11: subprocess.run
+# on Windows follows a timeout kill with a communicate()
+# that carries no timeout, so the wait below is done by
+# hand, with every wait bounded).
+_KILL_GRACE_SECONDS = 2.0
+
+
 def _run_text(argv, timeout=5):
-    """stdout of a short read-only command, or None. Never raises."""
+    """stdout of a short read-only command, or None. Never raises.
+
+    Returns within timeout + _KILL_GRACE_SECONDS (plus the
+    kill itself) on every platform, even when the command
+    times out and a process it spawned keeps the output
+    pipe open after the command itself is killed.
+    """
     try:
         flags = {}
         if _runner().sys.platform == "win32":
             cnw = getattr(subprocess, "CREATE_NO_WINDOW", 0)
             if cnw:
                 flags["creationflags"] = cnw
-        proc = subprocess.run(
-            argv, capture_output=True, text=True, timeout=timeout, **flags)
+        proc = subprocess.Popen(
+            argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, **flags)
     except Exception:
         return None
-    if proc.returncode != 0 or not isinstance(proc.stdout, str):
+    try:
+        out, _err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+        try:
+            proc.communicate(timeout=_KILL_GRACE_SECONDS)
+        except Exception:
+            # The pipe is still held open past the grace --
+            # by a grandchild, most likely. Abandon it: the
+            # probe's answer is None either way, and an
+            # unbounded wait here is the failure this
+            # function exists to never repeat.
+            for stream in (proc.stdout, proc.stderr):
+                try:
+                    if stream is not None:
+                        stream.close()
+                except Exception:
+                    pass
         return None
-    return proc.stdout
+    except Exception:
+        return None
+    if proc.returncode != 0 or not isinstance(out, str):
+        return None
+    return out
 
 
 def _av_posture():

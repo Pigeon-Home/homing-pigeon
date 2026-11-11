@@ -834,6 +834,56 @@ class CheckedInTableGuardTest(unittest.TestCase):
         self.assertEqual(total, 99)
 
 
+    def test_the_de_dust_corpus_file_keeps_its_budget_floor(self):
+        # The Q136 shard-5 follow-on (2026-11-11). Build
+        # run 43101076872 killed shard 5 at the 1,201.7s
+        # wall, exit 124, with no completed individual
+        # test failure: the shard's dominant module,
+        # test_de_dust_corpus (293 tests, the campaign
+        # corpus family), was priced 539.5s of the shard's
+        # 701s packed, and the kill landed in the shard's
+        # fourth module, inside test_oracle_cli_ctrl_c --
+        # so the first three modules plus the hang below
+        # together burned the whole wall against 625.7s
+        # priced for the four. The hang is fixed at its
+        # seam (runner/ops/av.py's _run_text now bounds
+        # every wait after a probe timeout; its family is
+        # pinned in test_low_profile.RunTextBoundTest).
+        # What the logs bound for the corpus file itself
+        # is honestly weaker than the supposition filed
+        # for it (Q136-S5-S1 expected 900s or past): its
+        # listed slowest tests sum to 286.5s in its one
+        # completed appearance at hand (the 1404 head's
+        # shard 5, which ran 391.5s in all), so the file
+        # is NOT convicted at 900s. The floor at the full
+        # 720s budget stands anyway, on the fifth
+        # re-pack's own shape for a file whose cost the
+        # logs bound only loosely: it is the suite's
+        # largest single corpus file, its price came from
+        # the estimator's spread over killed and shared
+        # shards, and packing it alone means no companion
+        # can ever again share a shard with it when its
+        # cost runs long under load. This is a floor from
+        # boundary evidence, not a measurement; the desk's
+        # Q136 shard-5 conclusions say so in those words.
+        table = wd.load_table_file(wd.default_table_path())
+        self.assertGreaterEqual(
+            table["durations"]["runner.tests.test_de_dust_corpus"],
+            720.0)
+
+    def test_de_dust_corpus_packs_alone(self):
+        table = wd.load_table_file(wd.default_table_path())
+        shards = wd.pack_modules(sorted(table["durations"]),
+                                 table["durations"],
+                                 table["budget_seconds"])
+        for shard in shards:
+            if "runner.tests.test_de_dust_corpus" in shard:
+                self.assertEqual(
+                    shard, ["runner.tests.test_de_dust_corpus"],
+                    "test_de_dust_corpus packed with companions "
+                    "again, re-creating shard 5 of run "
+                    "43101076872")
+
     def test_the_real_suite_packs_within_budget(self):
         table = wd.load_table_file(wd.default_table_path())
         counts = rtp.module_test_counts(

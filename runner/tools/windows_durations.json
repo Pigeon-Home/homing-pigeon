@@ -70,7 +70,7 @@
   "runner.tests.test_cs_office_doc": 1.4,
   "runner.tests.test_dag_advisory": 7.0,
   "runner.tests.test_de_dust2": 35.9,
-  "runner.tests.test_de_dust_corpus": 539.5,
+  "runner.tests.test_de_dust_corpus": 720.0,
   "runner.tests.test_de_dust_oracles_bite": 4.6,
   "runner.tests.test_de_dust_order": 3.8,
   "runner.tests.test_de_dust_survivors": 49.8,

@@ -14110,6 +14110,23 @@ is cleared. Only the next completed
 build-windows CI verdict on a head carrying
 this fix proves that, under rule 8.
 
+Addendum at the fix landing: the re-seamed
+pre-existing tests are three, not two -- the
+creation-flags test in
+runner/tests/test_runner_last_edges.py also
+drove _run_text through subprocess.run and now
+covers both seams (run for the wevtutil and
+registry queries, which this lane did not
+change, and Popen for _run_text). One guard
+failure rides this head from the parallel
+Q159 landing, not from this fix: the decision1
+split-family count pin in
+runner/tests/test_windows_durations.py still
+expects 6 gates_strict tests where the Q159
+landing made it 8 -- verified failing on the
+pristine head before this lane's changes, and
+left to that lane's reconciliation.
+
 ## Q155 re-test: conclusions of the filing seat (2026-11-11)
 
 The re-test ran in a fresh scratch clone from

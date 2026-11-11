@@ -166,11 +166,103 @@ class FirewallParseTest(unittest.TestCase):
         self.assertNotIn("T1562", on)
 
     def test_command_failure_is_none_not_off(self):
-        with mock.patch.object(R.subprocess, "run", side_effect=OSError("no")):
+        with mock.patch.object(R.subprocess, "Popen",
+                               side_effect=OSError("no")):
             self.assertIsNone(R._run_text(["netsh"]))
-        proc = mock.Mock(returncode=1, stdout="Status: inactive")
-        with mock.patch.object(R.subprocess, "run", return_value=proc):
+        proc = mock.Mock(returncode=1)
+        proc.communicate.return_value = ("Status: inactive", "")
+        with mock.patch.object(R.subprocess, "Popen", return_value=proc):
             self.assertIsNone(R._run_text(["ufw", "status"]))
+
+
+class RunTextBoundTest(unittest.TestCase):
+    """_run_text must return within a bounded time on every
+    platform (Q136 shard-5 follow-on, 2026-11-11).
+
+    The failure these pin: on Windows, subprocess.run
+    follows a timeout kill with a communicate() carrying
+    no timeout, so a probe child that leaves its output
+    pipe held open (a grandchild that inherited stdout)
+    hangs the caller for as long as the pipe stays open --
+    in build run 43101076872 that was the rest of the
+    20-minute wall, inside test_oracle_cli_ctrl_c's
+    deterministic answer. _run_text now drives Popen by
+    hand and bounds every wait. The mock tests pin that
+    substrate deterministically on any platform; the real
+    child tests pin the shapes end to end where the
+    platform's own run() shape allows them to bite.
+    """
+
+    def _timed_out_proc(self, second):
+        proc = mock.Mock()
+        proc.communicate.side_effect = [
+            R.subprocess.TimeoutExpired(cmd="probe", timeout=1),
+            second]
+        return proc
+
+    def test_a_second_wait_after_the_kill_is_bounded(self):
+        # The deterministic core: after a timeout and a
+        # kill, whatever wait follows carries a finite
+        # timeout -- never the unbounded communicate() of
+        # the old Windows shape.
+        proc = self._timed_out_proc(("late output", ""))
+        with mock.patch.object(R.subprocess, "Popen",
+                               return_value=proc):
+            self.assertIsNone(R._run_text(["netsh"], timeout=1))
+        proc.kill.assert_called_once_with()
+        waits = [call.kwargs.get("timeout")
+                 for call in proc.communicate.call_args_list]
+        self.assertEqual(len(waits), 2)
+        self.assertTrue(all(
+            isinstance(wait, (int, float)) and wait > 0
+            for wait in waits), waits)
+
+    def test_a_pipe_held_past_the_grace_still_returns_none(self):
+        # The second wait times out too (the pipe is still
+        # held): the answer is None, not a third wait.
+        proc = self._timed_out_proc(
+            R.subprocess.TimeoutExpired(cmd="probe", timeout=2))
+        with mock.patch.object(R.subprocess, "Popen",
+                               return_value=proc):
+            self.assertIsNone(R._run_text(["netsh"], timeout=1))
+        self.assertEqual(proc.communicate.call_count, 2)
+
+    def test_a_kill_that_raises_still_returns_none(self):
+        proc = self._timed_out_proc(("late output", ""))
+        proc.kill.side_effect = OSError("already gone")
+        with mock.patch.object(R.subprocess, "Popen",
+                               return_value=proc):
+            self.assertIsNone(R._run_text(["netsh"], timeout=1))
+
+    def test_an_ordinary_child_returns_its_stdout(self):
+        out = R._run_text(
+            [sys.executable, "-c", "print('posture-line')"],
+            timeout=10)
+        self.assertEqual(out, "posture-line\n")
+
+    def test_a_timed_out_child_returns_none_promptly(self):
+        start = time.time()
+        out = R._run_text(
+            [sys.executable, "-c", "import time; time.sleep(30)"],
+            timeout=1)
+        self.assertIsNone(out)
+        self.assertLess(time.time() - start, 10)
+
+    def test_a_grandchild_holding_the_pipe_cannot_hold_the_caller(self):
+        # End to end: the child spawns a grandchild that
+        # inherits stdout and outlives it, then sleeps past
+        # the probe timeout itself. Bounded return is the
+        # assertion; on the old Windows shape this call
+        # waited for the grandchild.
+        child = (
+            "import subprocess, sys, time\n"
+            "subprocess.Popen([sys.executable, '-c',"
+            " 'import time; time.sleep(30)'])\n"
+            "time.sleep(30)\n")
+        start = time.time()
+        out = R._run_text([sys.executable, "-c", child], timeout=1)
+        self.assertIsNone(out)
+        self.assertLess(time.time() - start, 15)
 
 
 class HostLogTest(unittest.TestCase):

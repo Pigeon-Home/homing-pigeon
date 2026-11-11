@@ -211,17 +211,24 @@ class IoEdgeTest(_Binary, unittest.TestCase):
 
     def test_windows_creation_flags_are_passed_when_present(self):
         proc = mock.Mock(returncode=0, stdout="")
+        proc.communicate.return_value = ("", "")
         with mock.patch.object(rr.sys, "platform", "win32"), \
                 mock.patch.object(rr.subprocess, "CREATE_NO_WINDOW",
                                   1, create=True), \
                 mock.patch.object(rr.subprocess, "run",
-                                  return_value=proc) as run:
+                                  return_value=proc) as run, \
+                mock.patch.object(rr.subprocess, "Popen",
+                                  return_value=proc) as popen:
             self.assertEqual(rr._wevtutil_query("System", "*", 1), "")
             values, subkeys = rr._reg_query(r"HKLM\Run")
             self.assertEqual(values, {})
             self.assertEqual(subkeys, [])
             self.assertEqual(rr._run_text(["netsh"]), "")
-        for call in run.call_args_list:
+        # _wevtutil_query and _reg_query still drive
+        # subprocess.run; _run_text drives Popen by hand
+        # since the Q136 shard-5 fix (2026-11-11). The
+        # flags assertion covers both seams.
+        for call in run.call_args_list + popen.call_args_list:
             self.assertEqual(call.kwargs.get("creationflags"), 1)
 
     def test_registry_and_posture_writes_that_fail_are_kept(self):

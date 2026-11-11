@@ -2263,21 +2263,32 @@ class PosixKillTest(unittest.TestCase):
         self.assertEqual(script_filename(["sh", None]), "script")
 
     def test_run_text_does_not_execute_and_drops_a_failure(self):
-        def fake_run(argv, **kwargs):
+        # _run_text drives subprocess.Popen by hand since
+        # the Q136 shard-5 fix (2026-11-11): subprocess.run's
+        # Windows timeout path waits unboundedly after the
+        # kill. The seam pinned here is the Popen factory.
+        def fake_proc(returncode=0, out="Status: active\n"):
+            proc = mock.Mock()
+            proc.returncode = returncode
+            proc.communicate.return_value = (out, "")
+            return proc
+
+        def fake_popen(argv, **kwargs):
             self.assertNotIn("creationflags", kwargs)
             self.assertEqual(argv, ["ufw", "status"])
-            return mock.Mock(returncode=0, stdout="Status: active\n")
+            return fake_proc()
 
         with mock.patch("runner.runner.sys.platform", "linux"), \
-             mock.patch("runner.runner.subprocess.run", side_effect=fake_run):
+             mock.patch("runner.runner.subprocess.Popen",
+                        side_effect=fake_popen):
             self.assertEqual(_run_text(["ufw", "status"]), "Status: active\n")
-        with mock.patch("runner.runner.subprocess.run",
-                        return_value=mock.Mock(returncode=1, stdout="no")):
+        with mock.patch("runner.runner.subprocess.Popen",
+                        return_value=fake_proc(returncode=1, out="no")):
             self.assertIsNone(_run_text(["ufw", "status"]))
-        with mock.patch("runner.runner.subprocess.run",
-                        return_value=mock.Mock(returncode=0, stdout=None)):
+        with mock.patch("runner.runner.subprocess.Popen",
+                        return_value=fake_proc(returncode=0, out=None)):
             self.assertIsNone(_run_text(["ufw", "status"]))
-        with mock.patch("runner.runner.subprocess.run",
+        with mock.patch("runner.runner.subprocess.Popen",
                         side_effect=OSError("missing")):
             self.assertIsNone(_run_text(["no-such-binary"]))
 
