@@ -2310,6 +2310,276 @@ record says why — a determination is not a refusal.
 Conclusions stand at the end of this section when the
 landing is measured.
 
+Conclusions (2026-11-10, the same evening): **P7-S1
+refuted as stated** -- the living drafts are not
+byte-identical to any submitted revision: both are
+plain-markdown working texts of the -00 generation
+(the version 1 living file's own header reads
+Expires: 3 May 2027, the -00 expiry), and `cmp`
+against all 4 submitted revisions of each draft
+differs throughout, format first. On a normalized
+word stream the living version 1 text stands closer
+to the posted -00 render than to -03, and its
+catalogued markers verify in place: the subject
+grammar in its pre--02 single-SP form, the 6 em
+dashes, `PROTOCOL.md` named once in the
+`sensor_alert` bullet. The mirror rule's operative
+content holds: the living texts were not edited by
+the -04 cut (their last change is the 2026-11-04
+folder reorganization), the -04 drafts were cut
+from the posted -03 texts, and the differences are
+the checklist's 15 catalogued mirror differences.
+The one sentence that misstated this -- the cover
+sheet's "stand equal to the posted texts" -- is
+corrected there. **P7-S2 confirmed in part** -- the
+current revision (-03) and the submission numbers
+(171771, 171786) agree in the cover sheet and both
+per-draft status files, but the expiry did not:
+both frozen -03 renders state "Expires: 6 May 2027"
+in their page-1 headers, so the cover sheet's
+1 May 2027 for version 1 was a plain factual error
+and now reads 6 May 2027. The version 1 per-draft
+status file carries the same 1 May date; that file
+belongs to Packet 9 and is flagged here for it.
+**P7-S3 confirmed** -- the Next, Known nits and
+subject-gap sections are the pre--02 plan text and
+stand as that dated record; the cover sheet now
+carries a dated outcome note at the end of Known
+nits (the -02 revisions applied the nits: both -02
+sources set the author organization to
+"Independent" and hold no em dashes), and the Next
+section's due date is corrected from 3 May 2027 --
+the -00 expiry -- to 6 May 2027. **P7-S4
+confirmed** -- the deferred-items note still
+presents item S4 as the one proposed change, while
+the version 1 -04 source reads `job-id = 1*128
+word-char` with no `job-id-char` rule, exactly as
+the checklist-applied note records for the
+2026-11-07 approval; the cover sheet now records
+that application beside the -04 cut. The delta note
+itself is the pre-approval proposal record and is
+not rewritten (the Packet 1 rule for dated records).
+**P7-S5 confirmed exactly** -- living 6 and 4 em
+dashes; -04 drafts and posted -02/-03 sources 0
+each. **P7-S6 confirmed in part** -- the garbled
+duplication stood in the version 3 paragraph and is
+tidied; the renders do match the corrected source,
+because the source, its renders and its idnits
+record were all regenerated in the same 2026-11-06
+commit, and the current idnits record (0 errors;
+3 warnings on the text, 2 warnings and 64 comments
+on the XML) matches the applied note's account.
+**P7-S7 confirmed** -- the idnits records beside
+the -04 sources match the applied note exactly
+(version 1: 0 errors, 1 warning, 2 comments on text
+and XML; version 2: 0 errors, 2 warnings, 1 comment
+on the text, 0 errors, 1 warning, 2 comments on the
+XML). **P7-S8 confirmed** -- the trim list's quoted
+phrases stand in the submitted -02 sources (the
+introduction sentence, the NATS subjects line, the
+UDP 20220 lines, the `family` reference-default
+line; version 2's device-tree example and its
+`--protocol-v2` / `protocol_v2` lines), and neither
+-02 source names `PROTOCOL.md`, a repository path
+or a GitHub URL. **P7-S9 confirmed** -- the
+2026-11-06 cut commit stands in the history and did
+not touch the living files; the -04 sources' own
+headers state the cut from the posted -03 texts and
+their unsubmitted state. **P7-S10 confirmed** with
+the exceptions above -- the -01 removal of
+`PROTOCOL.md` verifies (1 mention in each -00
+source, 0 in each -01); version 1 -02 states the
+gap ABNF and keeps `word-char` in the prose form,
+-03 closes it as ranges; the version 2 -02 to -03
+diff is the docname and date plus exactly the 4
+companion-citation unpinnings; `0xFFA0` stands
+named in version 1 -03; `PROTOCOL.md` links the
+version 3 source as the cover sheet says; and the
+-01/-02 submission numbers (171592/171593,
+171736/171737) stand on the cover sheet's record
+alone -- no second in-tree record carries them and
+none contradicts them.
+
+An outside read of this packet was run through
+Argon (gemini-4-argon) in 2 sittings: the cover
+sheet and the notes in full against this lane's
+measured facts, and the version 1 -04, version 2
+-04 and version 3 sources in full for technical and
+grammar findings. Its findings stand under its own
+stamp:
+
+<!-- Agent-Stamp: 00000000-argon-26a0-ff29-7825440c1fb9 -->
+Sitting 1 (the records): Argon flagged the cover
+sheet's version 1 -03 expiry against the frozen
+renders; the "stand equal to the posted texts"
+sentence; "Sources and renders live beside this
+file"; the folder bullets' silence about the -04
+working drafts in `source/` and the checklist
+record in `notes/`; the Next section's 3 May 2027
+due date; the -04 paragraph's omission of the
+2026-11-07 `job-id` application; the Known nits
+list and the subject-gap section standing as
+pre--02 text; the delta note's S4 framing; a
+claimed contradiction over whether the version 3
+TLS citation "was already RFC 9846"; and the dated
+narration inside the -02 bullet ("The datatracker
+now expects -03") and the IETF 127 plan paragraph.
+Sitting 2 (the drafts; every quote below verified
+against the -04 and version 3 sources by Muse
+before recording): VERSION 1 -- (1) Section 14
+step 2's seen-set check against Section 15's
+replay rules: the check runs on the subject's
+`job_id` before verification, and Section 15's
+marking steps (3 through 13 and 16) do not name
+step 2, so a duplicate dropped there has no stated
+marking. (2) Section 16.2 re-enters Section 14 at
+step 5, and the AAD's `job_id` (Section 16.1) can
+only come from the subject before decryption;
+neither passage says so. (3) Section 6's
+`word-char` ranges (%x3001-FEFE) span the surrogate
+range %xD800-DFFF, and the grammar does not say
+which `gap "job" gap job-id` occurrence wins when a
+decoration word is "job". (4) Step 4's
+well-formedness sentence on unpaired surrogates
+overlaps step 7's lone-surrogate LOCAL check (the
+G5 pair). (5) Section 7's control-character
+fallback strips LF as well as the transport's
+insertions; which signed forms survive it is
+unstated (the G1 passage). (6) Step 9's
+parenthetical sends an illegal `job_id` to step
+13's shape failure, but step 1's grammar match and
+step 9's own equality rule leave that path hard to
+reach. (7) Section 19.2 lets an implementation
+ignore a `KeyUpdate` with `update_requested` set,
+where RFC 9147 and RFC 9846 require an answer.
+(8) Section 11's table makes `kind` `exec` or
+`ping` while Section 8 exempts `sensor_alert` on a
+base receiver and step 13 answers any other kind
+with -2. (9) Section 11.3 says a non-positive
+`timeout_sec` is invalid and the reference clamps
+"a negative value" to 1; 0 is not named. (10)
+Section 19.3's 4-octet length prefix carries no
+stated cap where Section 5 caps the RFC822 message
+at 4194304 octets. (11) Grammar: Section 17.7, "Two
+secrets", is a single noun-phrase fragment -- "The
+transport credentials and the HMAC secret, which
+authorizes jobs." VERSION 2 -- (12) Sections 6, 7,
+8 and 12 name `msg_id` "the encryption's object
+identifier", a term version 1 Section 16.1 does not
+use (its AAD is defined by components; version 1's
+only "object identifier" is the unrelated IANA
+sentence), so the substitution rule for the AAD's
+first field rests on an undefined term. (13)
+Sections 6-8 give the subjects as literal strings;
+whether decoration words are legal in a version 2
+subject is unstated. (14) The `msg_id` shortening
+is stated as the reference's derivation while
+receivers are left to infer whether `msg_id` is
+opaque, and version 2's `[A-Za-z0-9._-]` charset for
+`job_id` is narrower than version 1's `word-char`.
+(15) Section 9 states the deadline twice over (a
+filed-at rule with 1 second of grace, and the
+wall-clock-step sentence) in reference-pipeline
+terms. (16) Section 6's determination account uses
+`plan`, `findings` and `repair`, none defined in
+either draft. (17) Grammar and clarity: Section
+10's "after the result's own policy has rebuilt
+that object, so the rebuild cannot drop it", and
+Section 11's "answer_only is the laptop that thinks
+for a Pi." VERSION 3 -- (18) Section 4.4 states a
+delta against the version 1 profile (the hybrid
+share X25519MLKEM768 offered beside X25519) while
+the abstract and Section 1 say version 3 changes
+"exactly one thing -- the carriage" and carries the
+profile "unchanged". (19) Section 5.1's flight
+subject is anchored ("only when the remainder is
+exactly a flight subject") under a grammar version 1
+defines as a search, and the permitted `Re:`/`Fwd:`
+prefix has no ABNF of its own. (20) Section 8.1's
+dispatch enumerates flight mail and version 1 job
+subjects and does not mention version 2 subjects;
+Section 10.1 says the session's objects "are
+version 1 objects". (21) Section 5.2 defines the
+frame part as a leaf, "not the content of a
+message/rfc822 part", then says "the wrapped shape
+is read where it is met". (22) Section 5.3's chunk
+arithmetic (32768 base64 characters, 24576 octets)
+implies intermediate chunks carry no `=` padding,
+but no MUST states it, and the `HP-DTLS/3` header
+line has no ABNF. (23) Section 9.2 binds the mail
+session-id to "the session's connection ID" from
+establishment; which epoch the binding first covers
+is unstated. (24) Section 10.3 keys a hold by
+connection ID, job ident and PSK identity, then
+drops a job whose ident is held for another
+identity -- the cross-submitter consequence of a
+chosen ident. (25) Terminology: "priced replay
+windows" (Sections 7.2 and 13) appears nowhere in
+version 1. (26) Grammar: Section 13's "an
+application-data replay is dropped before it" has
+no clear referent for "it".
+
+Muse's decisions on those findings, under Muse's
+own stamp (00000000-muse-7e57-d0c5-58316a922026):
+accepted and landed in the cover sheet -- the
+expiry correction, the "stand equal" correction,
+the renders' home, the folder bullets, the due
+date, the -04 paragraph's 2026-11-07 application
+record, the Known nits outcome note, and the
+version 3 garble tidy. Declined, with the reasons
+recorded -- the TLS-citation contradiction: both
+in-tree records (the cover sheet and the applied
+note) agree the citation was already RFC 9846, and
+the flag rested on the fact sheet's phrasing, not
+on the tree. The "expects -03" sentence and the
+IETF 127 paragraph: dated narration inside their
+own dated sections, settled by the Posted record
+that follows them. The delta note's S4 framing and
+its mirror-rule sentence: the note is the
+pre-approval proposal record and the sentence
+states the governing rule, not a measurement; the
+current state stands in the applied note, the
+cover sheet and these conclusions. The draft
+findings (sitting 2) are recorded, not landed: no
+draft text is edited in this repository, and each
+finding travels to the conductor by the drafts'
+own route for the -05 pass. Two of Argon's sitting
+2 claims did not survive verification and are
+declined outright: the RFC 9846 / RFC 10024
+"nonexistent number" claims -- the move from
+RFC 8446 to RFC 9846 is CHECKLIST-04 item 8, a
+settled decision the whole family carries with its
+2026 dates -- and the missing-BCP14-references
+claim for version 2: the -04 render's reference
+list carries RFC 2119 and RFC 8174, as the
+kramdown-rfc boilerplate inserts them, and idnits
+reports 0 errors. Also declined: the numeral-style
+point (digits are this project's house style across
+its documents; RFC Editor style is a submission
+pass concern) and the version 3 citation of
+version 1 -03 (the -04 drafts are unsubmitted
+working drafts; citing the posted revision is the
+defensible form until a -04 is posted). Noted as
+already-decided where the checklist had taken the
+point deliberately: the Section 10 segment
+validation (G8's draft-side option), the
+`timeout_sec` clamp itself (G4), the
+control-character fallback (G1) and the
+`sensor_alert` scoping (items 4 and 19) -- Argon's
+readings of their edges stand above as the -05
+items they are.
+
+Guard evidence on the landing tree: the IETF draft
+conformance, reader-quiet, version-rot and
+design-docs sets read 16 passed; the divergences
+and figure sets read 909 passed and 47 failed, all
+47 inside the one pre-existing grep max-matches
+family (4 tests and their subtests), which reads
+27 failed and 4 passed on the pristine base in the
+same pass against 26 failed and 4 passed on this
+packet's tree -- the packet's fixes added none, and
+no failure names this packet's files.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:

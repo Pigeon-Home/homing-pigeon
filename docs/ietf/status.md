@@ -8,17 +8,18 @@ has gone to the Independent Submissions Editor (ISE).
 
 ## Where the drafts live
 
-1 folder per draft. Inside each: `source/` holds the living draft,
-`submitted/` holds the frozen posted revisions, and a short
-`STATUS.md` points back here. This file is the cover sheet and the
-full record for all 3.
+1 folder per draft. Inside each: `source/` holds the living draft
+(and, since 2026-11-06, the local -04 working draft with its
+renders and idnits record), `submitted/` holds the frozen posted
+revisions, and a short `STATUS.md` points back here. This file is
+the cover sheet and the full record for all 3.
 
 - `draft-slutsky-homing-pigeon/` — version 1
 - `draft-slutsky-homing-pigeon-v2/` — version 2
 - `draft-slutsky-homing-pigeon-v3/` — version 3, local only, not
   submitted; its folder has no `submitted/` yet
-- `notes/` — the records that cover more than 1 draft (the deltas
-  and the trim list)
+- `notes/` — the records that cover more than 1 draft (the deltas,
+  the trim list and the -04 checklist's applied record)
 
 ## Posted
 
@@ -36,7 +37,7 @@ full record for all 3.
 - Stream: Independent Submission, category Informational.
 - Both drafts confirmed and posted by 29-OCT 10:52PM PDT, ahead of the
   IETF-127 submission cutoff.
-- The current revision of version 1 (-03) expires 1 May 2027 and
+- The current revision of version 1 (-03) expires 6 May 2027 and
   the current revision of version 2 (-03) expires 6 May 2027,
   unless a new revision is posted first.
 - The -01 revisions of both drafts were posted on 1 November
@@ -69,14 +70,22 @@ full record for all 3.
   revision of each draft.
 - The -04 revisions of both drafts were cut locally on
   2026-11-06, from the posted -03 texts (not from the living
-  drafts, which stand equal to the posted texts) plus the -04
+  drafts, which stand at the -00 generation; the differences
+  between them and the posted -03 texts are the known mirror
+  differences the -04 checklist catalogues) plus the -04
   checklist's draft-words items. They stand in each draft's
   `source/` folder with their renders and idnits records:
   rendered with kramdown-rfc 1.7.43 and xml2rfc 3.35.0, idnits
   3.3.0 reports 0 errors on each. They are working drafts and
   have not been submitted. The record of which checklist items
-  each applies is `notes/checklist-04-applied.md`.
-- Sources and renders live beside this file: the kramdown-rfc `.md`,
+  each applies is `notes/checklist-04-applied.md`. One further
+  change was approved and applied to the version 1 -04 working
+  draft on 2026-11-07, after the cut: Section 6's `job-id` rule
+  now reads `job-id = 1*128 word-char` and the `job-id-char`
+  rule is deleted, and the draft was re-rendered and re-checked
+  (0 errors) after the edit; the applied record stands in the
+  same note.
+- Sources and renders live in each draft's folder: the kramdown-rfc `.md`,
   the submitted `.xml`, the `.txt` and `.html` renders, and the idnits
   output for each draft.
 - The -01 renders, and the idnits runs for -01 and -02, were produced
@@ -132,7 +141,8 @@ test shape is not fed to DTLS on a deployment mailbox.
 The rendered `.txt`, `.html`, and `.xml` beside the version 3 source
 were regenerated with the final-pass text (2-Nov-2026) and match the
 source. idnits 3.3.0 has been run on the render; its report stands
-beside the source as `draft-slutsky-homing-pigeon-v3-00.idnits.txt` beside it in the same folder.
+beside the source in the same folder, as
+`draft-slutsky-homing-pigeon-v3-00.idnits.txt`.
 It reported 3 errors -- the abstract's references to sections and to
 version 1, and RFC 8446 listed as obsolete (succeeded by RFC 9846).
 The source was corrected on 2026-11-06 (the abstract no longer
@@ -188,7 +198,7 @@ work in Next.
   silently diverge from them. -01 is a new revision beside them,
   uploaded by the author. Version 1 is still published first;
   version 2's normative reference becomes that RFC's number.
-- A new revision is also due before 3 May 2027, or the drafts expire.
+- A new revision is also due before 6 May 2027, or the drafts expire.
 - Update this file when any item above moves.
 
 ## Known nits, for that revision
@@ -211,7 +221,11 @@ aside:
 - Each XML render carries one no-break space, from the tool.
 
 These are the edits for -02. The subject token is not one of them,
-and neither is publishing version 2 ahead of version 1.
+and neither is publishing version 2 ahead of version 1. (Recorded
+2026-11-10, at the documentation overview: the -02 revisions
+applied them -- both -02 sources set the author organization to
+"Independent" and hold no em dashes; the subject token and the
+publication order stand as this list leaves them.)
 
 ## The subject gap, for that revision (30-OCT)
 
