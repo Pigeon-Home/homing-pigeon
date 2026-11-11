@@ -157,25 +157,59 @@ What is proven, and what is not, as this section stands:
   The stub half stands as supposed: off darwin the probe
   always answers a problem string, and a simulated darwin
   refuses deterministically.
-- The live half is not yet proven. The live tests — the
-  probe engaging on a real macOS host, a confined spawn,
-  the escape write and the escape read refused, a network
-  attempt refused, the spawn limits carried by the job —
-  run only on the CI macOS legs, and they were skipped on
-  the Linux host the contract tests ran on, exactly as
-  their skip reasons are registered. On the landed tree's
-  build, the two macOS build jobs (macos-15 and
-  macos-15-intel) completed successfully and the other
-  workflows on the same tree completed successfully, but
-  the test-macos job that runs the live tests was still
-  in progress when this section was written. Until that
-  job completes green, the live supposition points above
-  stand unproven: they are CI's word to give, and no
-  field proof on project hardware is claimed — there is
-  no Mac in the project's own fleet.
-- The support level therefore stands exactly as the
-  support matrix states it — Supported, reduced
-  confinement — on the basis stated there, and it moves
-  only when the CI proof lands. When the test-macos job
-  completes, this section is completed with its verdict,
-  whichever way it reads.
+- The live half has now had CI's word, and the word is
+  failure. The live tests run only on the CI macOS legs,
+  and they were skipped on the Linux host the contract
+  tests ran on, exactly as their skip reasons are
+  registered. On the landed tree's build (build run
+  43089173541), the test-macos job (job 130770346469)
+  completed with a failure verdict at 12:07 PM PST on
+  2026-11-11 — minutes after an earlier form of this
+  section, written while that job was still in progress,
+  had correctly recorded it as still in progress. All
+  6 tests in the live class (`LiveBackendTest`) failed.
+  The confined spawn aborted with exit -6 and could not
+  read its staged file, and that one shape is the root
+  of the live failures as they stand.
+- What that verdict proves, and what it does not, stated
+  exactly. Refuted as landed: the probe-engages point
+  (`test_the_probe_engages`) and the point that a spawn
+  runs inside the profile
+  (`test_a_spawn_runs_inside_the_profile`) — the probe
+  did not engage cleanly, and a confined spawn did not
+  run inside the profile and read its staged file.
+  Unproven, not refuted: the escape write
+  (`test_an_escape_write_does_not_land`), the escape
+  read (`test_an_escape_read_does_not_return_contents`),
+  the network refusal
+  (`test_a_network_attempt_is_refused`) and the spawn
+  limits (`test_the_spawn_limits_are_carried_by_the_job`)
+  produced no evidence either way, because the confined
+  spawn aborted before any of them could be exercised.
+  Seatbelt was never shown to allow an escape: no escape
+  landed, and no refusal was shown either — those points
+  simply have no verdict yet.
+- The same job carried a separate failure family on the
+  darwin host: 4 failures in `test_windows_confine` — a
+  fallback name recorded as `macos_confinement_failed`
+  where `windows_confinement_failed` was expected, and
+  3 failures of the form `TypeError: _spawn() got an
+  unexpected keyword argument 'user'`. That is a
+  darwin-host seam regression, recorded separately from
+  the live verdict above; it is not evidence about the
+  Seatbelt profile itself.
+- No later head has a completed test-macos verdict as
+  this completion stands: the builds after the landed
+  tree's build were cancelled (with no test-macos job
+  completed) or were still pending, so this failure is
+  the only completed live verdict on record.
+- The support level therefore does not move up. It
+  stands exactly as the support matrix states it —
+  Supported, reduced confinement — on the basis stated
+  there. The live proof remains open: it closes only
+  when a fix has landed and a test-macos job on a head
+  carrying that fix completes green. Until then the
+  live supposition points stand as this verdict leaves
+  them — 2 refuted as landed, 4 unproven — and no field
+  proof on project hardware is claimed — there is no
+  Mac in the project's own fleet.

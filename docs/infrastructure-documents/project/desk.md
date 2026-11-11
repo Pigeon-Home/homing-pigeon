@@ -255,6 +255,34 @@ no field proof on project hardware is claimed, and the
 conclusions stand in `docs/steady/security/macos.md`,
 to be completed with the test-macos verdict when it lands.
 
+That verdict has since landed, and it is failure. The
+test-macos job on the landed tree's build (build run
+43089173541, job 130770346469) completed failure at
+12:07 PM PST on 2026-11-11 — minutes after the
+conclusions landing had correctly recorded it as still
+in progress. All 6 `LiveBackendTest` live tests failed:
+the confined spawn aborted with exit -6 and could not
+read its staged file. The probe-engages and
+spawn-runs-inside-profile points are refuted as landed;
+the escape write, the escape read, the network refusal
+and the spawn limits produced no evidence because the
+spawn aborted first — unproven, not refuted, and
+Seatbelt was never shown to allow an escape. The same
+job carried 4 `test_windows_confine` failures on the
+darwin host as a separate seam regression (a fallback
+name recorded as `macos_confinement_failed` where
+`windows_confinement_failed` was expected, and 3
+`TypeError: _spawn() got an unexpected keyword argument
+'user'` failures). No later head has a completed
+test-macos verdict — the later builds were cancelled
+with no completed test-macos job or were still pending.
+The support level does not move up from Supported,
+reduced confinement. A separate fix lane is running in
+parallel, and the live proof remains open pending that
+fix and a green test-macos on a head carrying it; the
+full verdict stands completed in
+`docs/steady/security/macos.md`.
+
 And a third round of the same reconciliation, for the one
 surface the first two could not see: fixtures that only fail
 where no confinement backend exists at all. On Linux the
