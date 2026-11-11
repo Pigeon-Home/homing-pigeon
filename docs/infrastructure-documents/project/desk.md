@@ -7308,3 +7308,216 @@ deterministic substrate is those sentences
 themselves beside the committed guard family, which
 this lane runs whole. No new behaviour is claimed
 beyond what those calls and that family show.
+
+## Q149: conclusions of the filing seat's re-test (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded above
+(the Q149 re-test section), each measured first-hand
+by this seat in its scratch clone on the current
+head (the desk answer commit of 4:16 AM PST,
+2026-11-11, with this lane's suppositions landed at
+4:27 AM PST before any verdict probe in this
+completion run), against the pre-Q149-fix detector
+(the tree at the fix commit's parent) and against
+the pre-Q143-fix detector (the tree at the Q143 fix
+commit's parent), on the fixture layer and the
+shipped layer. An earlier attempt at this re-test
+timed out incomplete after reporting the filed
+scope passing and the residuals present on the
+current head; this run re-derived every number
+first-hand and completes the three-tree record.
+
+- **Q149-RT-S1 confirmed** — item 1 is silent,
+  whole: the clause-head prohibitions (the "who",
+  "that" and "which" twins and the raw-output twin)
+  produce no marks on either layer, plain (4 of 4)
+  and bookended (300 of 300 variants silent).
+- **Q149-RT-S2 confirmed** — item 2 fires again,
+  whole: the 31 verb-phrase sentences produce
+  exactly `private_shelf_crosses` on both layers,
+  plain (31 of 31) and bookended (2,263 of 2,263
+  variants firing).
+- **Q149-RT-S3 confirmed** — the both-ways controls
+  of item 2 hold: the determiner-closed and
+  promptly-prompts object controls fire (5 of 5
+  plain, 365 of 365 bookended), and the
+  noun-complement subject clauses stay silent (4
+  of 4 plain, 300 of 300 bookended), on both
+  layers.
+- **Q149-RT-S4 confirmed** — item 3 fires again,
+  whole: the ledger's mixed sentence under the
+  ampersand, the backslash, square brackets, a run
+  of two dots, the bullet, the tilde, the fullwidth
+  slash, the two-em dash and a run of asterisks
+  produces exactly `ledger_treated_as_instruction`
+  on both layers, plain (9 of 9) and bookended
+  (657 of 657 variants firing), and the
+  evidence-only twins under those separators stay
+  silent (9 of 9).
+- **Q149-RT-S5 confirmed** — the both-ways pins
+  hold beside the widening, as the guard family
+  that carries them reads green whole (below): the
+  relative-clause pins fire, the clause-head
+  prohibition followed by a contradicting sentence
+  fires exactly the contradicting rule, and the
+  unrelated-negation and negated-then-contradicting
+  pins hold.
+- **Q149-RT-S6 confirmed** — all six earlier
+  families hold whole beside the widening: the
+  guard family (105 tests) reads green in the
+  foreground on the tested head, carrying the
+  filed Q143 compliant corpus (silent on both
+  layers; 14 marks covering all 7 rules re-measured
+  by this seat on the pre-Q143-fix detector), its
+  restating shapes, the Q144, Q145, Q146, Q147 and
+  Q148 families, and the standing 7-rule
+  contradiction family firing whole (7 of 7 rules
+  re-measured by this seat on all three trees).
+- **Q149-RT-S7 confirmed** — end to end, item 1's
+  sentence assembled into a briefing carries no
+  tension mark, `briefing_report` names no tensions
+  for it, and the startup pass writes no audit
+  rows; item 2's and item 3's representative
+  sentences each carry their mark and write exactly
+  one audit row (feature `briefing`, decision
+  `marked`, the rule id as the detail), as the
+  family's end-to-end test pins and this seat's own
+  assembly checks re-measured.
+- **Q149-RT-S8 confirmed** — the guard family and
+  the neighbour batteries read green on the tested
+  head, re-measured in the foreground by this seat
+  (the guard family 105; `test_oracle_briefing`
+  35, `test_posture_stamp` 20, `test_protocol_v2`
+  14, `test_protocol_v2_messages` 62,
+  `test_v2_consult` 104, `test_v2_replay` 6,
+  `test_security_config` 64 — 305 neighbours).
+  Red-before, re-measured by this seat: on the
+  pre-Q149-fix detector item 1's shapes mark (0 of
+  4 silent), item 2's sentences and item 3's shapes
+  are silent (0 of 31 and 0 of 9 firing), on both
+  layers; the guard family as it now stands reads
+  3259 subtest failures against that detector,
+  every one of them in the Q149PolarityGuardTest
+  family — the number the fix lane reported, so
+  the fix accounts for the change. On the
+  pre-Q143-fix detector item 2's sentences and
+  item 3's shapes fire again whole (31 of 31 and
+  9 of 9, bookended 2,263 of 2,263 and 657 of
+  657), item 1's shapes mark there too, and the
+  Q143 compliant corpus reads its 14 marks
+  covering all 7 rules.
+- **Q149-RT-S9 settled the other way, as the
+  supposition provided for** — most of this seat's
+  own probes beyond the filed corpus read as they
+  should (the filed controls whole, above), but
+  the three residual items the preliminary probes
+  showed are confirmed by the full three-tree
+  measurement, with two refinements the full
+  measurement adds: (1) compliant subject clauses
+  are still marked in two shapes — a clause-head
+  parenthetical doubled at the head ("who, at any
+  point, in any week, is on duty to publish the
+  approval memory", its "that" twin, the
+  raw-output twin, and the dropped-comma form
+  "who, at any point is on duty to ..."), marked
+  on all three trees (4 of 4 on each, both layers;
+  the representative marks in 73 of its 75
+  bookended variants on the current head), its
+  sentence carrying the mark and 1 audit row end
+  to end; and a subject clause whose verb governs
+  a noun-complement object phrase ("holds
+  clearance", "holds authority", "carries
+  responsibility", "takes charge", "is assigned
+  responsibility", "is assigned a duty", "is given
+  responsibility" — 7 sentences), marked on the
+  current head (7 of 7, both layers; the
+  representative marks in 73 of 75 bookended
+  variants) and on the pre-Q143-fix detector (7 of
+  7), but on the pre-Q149-fix detector only in its
+  2 passive shapes ("is assigned responsibility",
+  "is assigned a duty") — the other 5 are marked
+  only since the Q149 landing's general
+  object-phrase branch, which reads any governed
+  noun phrase as the infinitive's object phrase;
+  the controls hold ("has clearance", "has
+  responsibility", "is assigned to duty", "is on
+  duty" silent); (2) a relative clause carrying an
+  infinitive of its own is still missed in three
+  verb-phrase shapes — a raising predicate carried
+  by an adjective ("is likely", "is certain", "is
+  sure", "is ready", "is eager", "is due", "is
+  free", "is able", "is apt", "is prone", "is very
+  likely", and the raw-output twin — 12 sentences,
+  0 firing on the current head and on the
+  pre-Q149-fix detector, 12 of 12 firing on the
+  pre-Q143-fix detector; the representative fires
+  in 0 of its 73 bookended variants on the current
+  head; the controls "is bound", "is set", "is
+  going" fire on the current head); a passive whose
+  by-phrase carries a prepositional tail ("is told
+  by the supervisor on duty", "is told by Jordan
+  on duty", "was ordered by the supervisor on
+  duty", "is told by the supervisor at any point"
+  — 4 sentences, 0 firing on the current head, the
+  representative in 0 of 73 bookended variants),
+  which fired whole on BOTH earlier trees (4 of 4
+  on the pre-Q149-fix detector, the representative
+  in 73 of 73 bookended variants there) — this one
+  shape the Q149 landing itself traded away, its
+  by-phrase branch refusing any tail word that is
+  a preposition; the plain by-phrase control ("is
+  told by the supervisor") fires on all three
+  trees; and a verb standing in its base form —
+  behind a modal ("would compel operators", "can
+  compel operators", "must compel operators",
+  "would vow"), inside an inverted clause behind a
+  modal ("whom the supervisor can compel"), and in
+  the inverted and zero-relative clauses whose
+  inside subject is plural ("whom the supervisors
+  compel", "...operator the supervisors compel" —
+  7 sentences, 0 firing on the current head and on
+  the pre-Q149-fix detector, 7 of 7 firing on the
+  pre-Q143-fix detector; the controls "compels
+  operators", "vows", "the supervisor compels" and
+  "the supervisors prompt" fire on the current
+  head); and (3) the ledger's mixed sentence is
+  still missed under a pair of curly braces, the
+  middle dot, the horizontal bar, the Unicode
+  hyphen and the figure dash (5 shapes), with the
+  same mechanism shown by the equals sign, the
+  plus sign, the hash, the at sign, the underscore,
+  the section sign, the pilcrow, the bullet
+  operator, a pair of angle brackets, and a line
+  break between the clauses (10 more) — every one
+  silent on the current head and on the
+  pre-Q149-fix detector and firing
+  `ledger_treated_as_instruction` on the
+  pre-Q143-fix detector, the representative firing
+  in 0 of its 73 bookended variants on the current
+  head and carrying no mark and no audit row end to
+  end, while the evidence-only twins under the
+  main new separators stay silent. The residuals
+  are filed as Q150 in the questions file (complete
+  entry: context, options, recommendation). This
+  seat does not fix them (rule 8).
+
+Guard evidence stands in the Q149 entry's re-test
+record in the questions file, with Q150 filed above
+it. Q149 is not closed by this re-test, and neither
+are Q148, Q147, Q146, Q145, Q144 and Q143: all seven
+close only when Q150 is answered and its fix is
+re-tested by this seat. The hosted CI verdict on
+the new head is the trains' to judge — this lane
+claims neither it nor anything about the in-flight
+ship, whose lane, clones and state file this lane
+never touched. What could not be recorded as a unit
+test, as the suppositions stated in advance: this
+lane's ad-hoc probes are live detector calls over
+the sentences named in this record; their
+deterministic substrate is those sentences beside
+the committed guard family, which this lane ran
+whole (105 tests) — no new test file is landed by a
+re-test seat, and no behaviour is claimed beyond
+those calls and that family.
