@@ -9927,3 +9927,99 @@ supposition and findings text itself, which stands as
 that day's record; any historical or dated record
 named in DP-S1; any code; and no release is cut by
 this lane.
+
+## Default-posture S5 refresh: conclusions settled against the suppositions (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+The refresh has landed. The suppositions of the
+preceding section, settled one by one:
+
+- **DP-S1 confirmed.** The whole-set search -- over
+  `docs/steady/`, SECURITY.md, the README,
+  `docs/support-matrix.md` and the infrastructure
+  project and proofs drawers, for the retired
+  fallback's own shapes (running a job weaker, running
+  unsandboxed, the job-time step-down stated as current
+  behaviour, run-normally and fail-open phrasings) --
+  found `default-posture.md` the only living reader
+  page stating the retired fallback as current
+  behaviour with no current-behaviour note beside it,
+  and it is the only page this lane edited. The other
+  hits stand as supposed: SECURITY.md and the README
+  already state the refusal (a job never runs
+  unsandboxed; a job whose confinement cannot engage at
+  `enforce` is refused, never run weaker); the
+  remediation design already carries the settlement
+  beside its `fallback` passage (a `fallback` record
+  now accompanies the job's refusal), and the senses
+  page already states refusal rather than running a job
+  weaker; the hardening report is a dated record whose
+  M6 row and confinement-fallback bullet already carry
+  the current chain beside the stale text, and the
+  campaign standing orders carry the same shape beside
+  the 2026-10-15 decision it supersedes; the stage-4
+  proof is a record against a named older tree; the
+  live-examples page is a dated capture, verbatim; the
+  changelog, the archive and the reports shelf were
+  not edited, and the questions file's dated entries
+  stand unrewritten.
+- **DP-S2 confirmed.** The refresh landed in the
+  supposed shape: a dated refresh paragraph beside the
+  S5 finding, a dated refresh sentence in Conclusions
+  point 2, and a short status line in the phase-2 plan
+  naming items 1 and 2 as landed. The 2026-11-09
+  supposition and findings text stands unrewritten as
+  that day's record. The page carries no process: no
+  question number, seat name or pointer to the
+  questions file or this desk appears in it -- the
+  settlement is named in the desk and the questions
+  file, and the page states the facts only.
+- **DP-S3 confirmed.** The refresh paragraph states
+  the settled shape exactly, as read in the code
+  before the edit: the confinement decision
+  (`_confinement_argv` in `runner/runner.py`) is a pure
+  query returning a triple for every config and never
+  raising; a confinement that cannot engage -- sandbox
+  unavailable, command not buildable, a malformed
+  confinement block, or a platform backend that cannot
+  engage -- returns a denial (the empty argv), writing
+  the same warning and the same `fallback` audit entry;
+  the job-acceptance boundary in `runner/ops/exec.py`
+  converts the denial into the refusal, so the job is
+  refused end to end and never runs unsandboxed, on
+  any backend; `audit` and `off` are unchanged. The
+  job-user sentence states its three reasons (not
+  root, user unresolvable, workdir not chown-able)
+  recording the `fallback` first and then refusing the
+  job under `enforce`, as `_job_user_preexec` in
+  `runner/ops/remediation_ops.py` and SECURITY.md's
+  job-user section both stand.
+- **DP-S4 confirmed.** Both softer degradations had
+  moved, and the refresh records each in one sentence:
+  audience at `enforce` with no runner id refuses
+  startup in `runner/ops/main.py` (at `audit` it warns)
+  instead of warning once and skipping the check; and
+  the job user at `enforce` with no user named is
+  named at startup (`runner/ops/main.py`) and in the
+  posture report (`runner/ops/posture.py`) as not
+  engaged, instead of engaging nothing silently. The
+  plan's status line names items 3 and 4 as landed
+  beside items 1 and 2 on the same evidence. Nothing
+  in S1-S4, S6 or S7 was touched.
+- **DP-S5 confirmed.** The guard tests ran green in
+  the foreground on the landing tree:
+  `test_reader_docs_quiet.py`,
+  `test_default_posture.py` and
+  `test_doc_figure_slots.py` -- 23 tests, OK -- and
+  the two suites the S5 finding cites for the job-time
+  half, `test_confinement.py` and
+  `test_security_parity.py`, ran green beside them:
+  118 tests, OK, 10 skipped. No other living page
+  needed an edit in this lane, and no code changed.
+
+Packet 4's cross-packet flag is therefore closed: the
+default-posture page's S5 measurement record now
+states, beside the 2026-11-09 record it preserves,
+that a job whose confinement cannot engage is refused
+end to end -- never run weaker.
