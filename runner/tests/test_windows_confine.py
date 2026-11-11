@@ -384,6 +384,145 @@ class PostspawnTest(unittest.TestCase):
         proc.kill.assert_called_once()
 
 
+class PostspawnAlreadyContainedTest(unittest.TestCase):
+    """_job_user_postspawn meets a process the confinement spawn
+    already assigned to a Job Object.
+
+    Found on the build-windows leg (run 42941458640, shard 7,
+    the only error in 2022 tests): under the default posture
+    both features read enforce, the confinement spawn creates
+    the process inside its Job Object, and the job_user
+    postspawn then tried to assign the same process to a
+    second, unrelated Job Object -- AssignProcessToJobObject
+    failed: 5 -- and the default job was refused. A process
+    can sit in only one job hierarchy, so the composition is
+    the FreeBSD shape (job_user's ask applied at the confined
+    spawn, not by a second mechanism): the confinement Job
+    Object carries the same memory ceiling job_user's own
+    assignment would have set, so the control IS applied, and
+    the postspawn records it instead of assigning again. Only
+    the spawn seam's own mark counts -- a look-alike attribute
+    a process happens to carry changes nothing.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = self.tmp.name
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _marked_proc(self, **kw):
+        kw.setdefault("_handle", 777)
+        proc = types.SimpleNamespace(kill=mock.Mock(), **kw)
+        proc.job_object_applied = REM.JOB_OBJECT_APPLIED
+        return proc
+
+    def _run(self, mode, proc, backend="unset"):
+        sink = []
+        kw = {} if backend == "unset" else {"backend": backend}
+        with mock.patch.object(REM.os, "name", "nt"), \
+                mock.patch.object(rr, "_security", _sec(mode, sink)):
+            out = REM._job_user_postspawn(
+                _cfg(mode), self.base, "j1", proc, **kw)
+        return out, sink
+
+    def test_marked_proc_is_not_assigned_again(self):
+        backend = _backend(None)
+        backend.apply_windows_containment = mock.Mock(
+            side_effect=AssertionError("must not assign twice"))
+        proc = self._marked_proc()
+        out, sink = self._run("enforce", proc, backend=backend)
+        self.assertIsNone(out)
+        proc.kill.assert_not_called()
+        self.assertEqual(len(sink), 1)
+        self.assertEqual(sink[0]["feature"], "job_user")
+        self.assertEqual(sink[0]["decision"], "contained")
+        self.assertEqual(sink[0]["reason"], "windows_job_object")
+
+    def test_marked_proc_survives_the_assign_5_backend(self):
+        # The hosted failure itself, scripted: the backend's
+        # assignment answers error 5, and a marked process is
+        # still not refused, because no assignment is attempted.
+        backend = _backend(None, apply_error=RuntimeError(
+            "AssignProcessToJobObject failed: 5"))
+        proc = self._marked_proc()
+        out, _sink = self._run("enforce", proc, backend=backend)
+        self.assertIsNone(out)
+        proc.kill.assert_not_called()
+
+    def test_marked_proc_needs_no_backend_at_all(self):
+        if sys.platform == "win32":
+            self.skipTest("the real backend engages or not live")
+        proc = self._marked_proc()
+        out, sink = self._run("enforce", proc)
+        self.assertIsNone(out)
+        self.assertEqual(sink[0]["decision"], "contained")
+
+    def test_marked_proc_without_a_handle_is_still_contained(self):
+        # The mark, not the handle, is the evidence: the
+        # confined spawn assigned the process at creation, so
+        # the missing-handle refusal has nothing to refuse.
+        backend = _backend(None)
+        proc = self._marked_proc(_handle=None)
+        out, _sink = self._run("enforce", proc, backend=backend)
+        self.assertIsNone(out)
+        proc.kill.assert_not_called()
+
+    def test_a_lookalike_mark_does_not_count(self):
+        for fake in (True, "windows_job_object", 4242, object()):
+            backend = _backend(None)
+            proc = types.SimpleNamespace(
+                _handle=777, kill=mock.Mock())
+            proc.job_object_applied = fake
+            out, _sink = self._run("enforce", proc, backend=backend)
+            self.assertTrue(callable(out), repr(fake))
+            out()
+            self.assertEqual(backend.closed, [4242], repr(fake))
+
+    def test_an_unmarked_proc_is_assigned_as_before(self):
+        backend = _backend(None)
+        proc = types.SimpleNamespace(_handle=777, kill=mock.Mock())
+        out, sink = self._run("enforce", proc, backend=backend)
+        self.assertTrue(callable(out))
+        self.assertEqual(sink[0]["decision"], "contained")
+        out()
+        self.assertEqual(backend.closed, [4242])
+
+    def test_marked_proc_under_audit_and_off_records_nothing(self):
+        for mode in ("audit", "off"):
+            proc = self._marked_proc()
+            out, sink = self._run(mode, proc, backend=_backend(None))
+            self.assertIsNone(out, mode)
+            self.assertEqual(sink, [], mode)
+
+    def test_the_confined_spawn_composes_with_the_postspawn(self):
+        # End to end through both seams, scripted: the spawn
+        # returns its process, the postspawn meets that same
+        # process under job_user enforce with a backend whose
+        # assignment would fail, and the job is not refused;
+        # the confinement release still owns the job handle.
+        spawn_backend = _backend(None)
+        sink = []
+        with mock.patch.object(REM.os, "name", "nt"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            proc, release = REM._confinement_spawn(
+                {"security": {"modes": {"confinement": "enforce",
+                                        "job_user": "enforce"}}},
+                self.base, "j1", ["python", "s.py"], self.base, {},
+                backend=spawn_backend)
+            self.assertIs(proc.job_object_applied,
+                          REM.JOB_OBJECT_APPLIED)
+            out = REM._job_user_postspawn(
+                _cfg("enforce"), self.base, "j1", proc,
+                backend=_backend(None, apply_error=RuntimeError(
+                    "AssignProcessToJobObject failed: 5")))
+        self.assertIsNone(out)
+        release()
+        self.assertTrue(proc.closed)
+
+
 class ConfinementStubTest(unittest.TestCase):
     """The confinement half of the stub, on a non-Windows host."""
 

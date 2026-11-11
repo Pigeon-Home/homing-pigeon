@@ -37,6 +37,20 @@ def _windows_confine(backend=None):
     except ImportError:
         return None
 
+# The mark _confinement_spawn leaves on a Windows confined
+# process: this process already sits in a Job Object. The
+# confinement spawn assigns the process to its Job Object at
+# creation (suspended, before it runs a line), and a process
+# can sit in only one job hierarchy -- assigning it to a
+# second, unrelated Job Object fails (AssignProcessToJobObject,
+# error 5). job_user's Windows control is that same Job Object
+# with the same memory ceiling, so _job_user_postspawn reads
+# this mark as "the control is already applied" instead of
+# assigning again. Identity is the test: only the spawn seam's
+# own mark counts, never a look-alike value.
+JOB_OBJECT_APPLIED = object()
+
+
 def _freebsd_confine(backend=None):
     """The FreeBSD containment backend module, or None.
 
@@ -392,6 +406,20 @@ def _job_user_postspawn(cfg, base_dir, job_id, proc, backend=None):
         except Exception:
             pass
 
+    if getattr(proc, "job_object_applied", None) is \
+            JOB_OBJECT_APPLIED:
+        # The confinement spawn already assigned this process
+        # to a Job Object at creation -- the same control, with
+        # the same memory ceiling, this postspawn would apply.
+        # A second assignment cannot succeed (a process sits in
+        # one job hierarchy; the hosted leg answered error 5 and
+        # every default-posture job was refused), and none is
+        # needed: the record names the control that IS applied,
+        # and the confinement release owns the handle's close.
+        _audit("contained",
+               getattr(backend, "STATUS_JOB_OBJECT", None)
+               or "windows_job_object")
+        return None
     try:
         if backend is None:
             raise RuntimeError(
@@ -586,6 +614,14 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
             "confinement could not be applied on win32 "
             "(%s); job refused under "
             "security.modes.confinement=enforce" % (e,))
+    try:
+        # The spawn assigned the process to its Job Object at
+        # creation; mark it so the job_user postspawn records
+        # that control instead of assigning a second one (see
+        # JOB_OBJECT_APPLIED above).
+        proc.job_object_applied = JOB_OBJECT_APPLIED
+    except Exception:
+        pass
     status = getattr(proc, "confinement_status", None) \
         or getattr(backend, "STATUS_CONFINEMENT", None) \
         or "windows: job_object + restricted_token + low_integrity"
