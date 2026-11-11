@@ -25,6 +25,45 @@ _BOARD_SUBJECT = re.compile(_subject.pattern_kind(
     "task_submit|task_request|task_result|task_approve"), re.I)
 import email
 
+def audit_owner_instruction_tensions(cfg, base_dir):
+    """The startup pass of the briefing's contradiction check.
+
+    The deployment's owner_instructions are compared against
+    the Oracle's standing layer once per start; each likely
+    contradiction is written to the audit as its own row --
+    feature "briefing", the rule's id as the detail, never the
+    owner's text -- for the operator. The signal itself is
+    delivered in the assembled briefing, beside the standing
+    layer; this pass deliberately logs no warning and refuses
+    nothing, because a startup line is read by nobody and a
+    heuristic must never refuse an honest deployment on a
+    guess. Returns the finding count. Never raises.
+    """
+    R = _runner()
+    try:
+        owner = cfg.get("owner_instructions") \
+            if isinstance(cfg, dict) else None
+        if not isinstance(owner, str) or not owner.strip():
+            return 0
+        check = getattr(R, "oracle_briefing_tension_check", None)
+        if check is None:
+            return 0
+        findings = check(base_dir, owner)
+        if not findings:
+            return 0
+        sec = getattr(R, "_security", None)
+        if sec is not None:
+            for finding in findings:
+                sec.write_audit_entry(
+                    base_dir, "briefing", "marked",
+                    "owner_instructions_tension",
+                    detail="rule=" + str(finding.get("rule", "")),
+                    cfg=cfg)
+        return len(findings)
+    except Exception:
+        return 0
+
+
 def log_startup(cfg, args, base_dir):
     """One block: what is configured, what is running, what it expects.
 

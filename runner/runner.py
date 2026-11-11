@@ -920,12 +920,18 @@ _briefing = _load_mod("runner.ops.briefing", "ops.briefing")
 if _briefing is not None:
     assemble_oracle_briefing = _briefing.assemble_briefing
     oracle_briefing_report = _briefing.briefing_report
+    oracle_briefing_tension_check = _briefing.tension_check
 else:
-    def assemble_oracle_briefing(base_dir=None, scope="ask"):
+    def assemble_oracle_briefing(base_dir=None, scope="ask",
+                                 owner_instructions=None):
         return ""
 
-    def oracle_briefing_report(base_dir=None):
+    def oracle_briefing_report(base_dir=None,
+                               owner_instructions=None):
         return {"root": "", "commit": "", "layers": {}}
+
+    def oracle_briefing_tension_check(base_dir, owner_text):
+        return []
 
 
 def _sanitize_model_reply(reply, cap, scan_text, patterns, model):
@@ -3721,6 +3727,8 @@ def _mark(imap, seq, opts):
 
 _startup = _required_load_mod("runner.ops.startup", "ops.startup")
 log_startup = _startup.log_startup
+audit_owner_instruction_tensions = \
+    _startup.audit_owner_instruction_tensions
 handle_board_mail = _startup.handle_board_mail
 
 
@@ -5679,9 +5687,14 @@ def run_inspect(cfg, args) -> int:
         # the assembled length per door scope. The report carries
         # no prompt text -- sizes and sources only -- so it is
         # safe to paste into a bug report.
-        report = oracle_briefing_report(base)
+        report = oracle_briefing_report(
+            base, owner_instructions=cfg.get("owner_instructions")
+            if isinstance(cfg, dict) else None)
         report["assembled_chars"] = {
-            scope: len(assemble_oracle_briefing(base, scope))
+            scope: len(assemble_oracle_briefing(
+                base, scope,
+                owner_instructions=cfg.get("owner_instructions")
+                if isinstance(cfg, dict) else None))
             for scope in ("ask", "agent", "oracle")}
         print(json.dumps(report, indent=2))
         return 0

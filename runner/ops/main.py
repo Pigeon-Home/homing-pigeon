@@ -411,6 +411,12 @@ def main() -> int:
     seen = R.load_seen(seen_path)
 
     _runner().log_startup(cfg, args, base_dir)
+    # The briefing's contradiction check, startup pass: likely
+    # tensions between owner_instructions and the standing
+    # layer go to the audit as their own rows. No warning is
+    # logged and nothing refuses; the mark in the assembled
+    # briefing is the delivery.
+    _runner().audit_owner_instruction_tensions(cfg, base_dir)
     R._report_extensions(cfg, base_dir)
     R._report_oracle_mode(cfg)
     # Local signal front-ends (inbox watcher + loopback listener).

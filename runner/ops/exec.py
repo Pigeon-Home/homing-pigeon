@@ -74,7 +74,8 @@ def ask_model_agent(cfg, question, output_text, max_chars, patterns=None,
     # seam (the design record is
     # docs/steady/design/oracle-briefing-design.md, shape 4).
     system = _runner().ASK_AGENT_SYSTEM
-    briefing = _runner().assemble_oracle_briefing(base_dir, "agent")
+    briefing = _runner().assemble_oracle_briefing(
+        base_dir, "agent", owner_instructions=instructions)
     if briefing:
         system += "\n\n" + briefing
     system += (

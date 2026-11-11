@@ -122,8 +122,8 @@ def _ask_model_once(cfg, question, output_text, max_chars, patterns=None, opener
     # Oracle's own layer, then this box's facts (the design record
     # is docs/steady/design/oracle-briefing-design.md, shape 4).
     system = _runner().ASK_SYSTEM
-    briefing = _runner().assemble_oracle_briefing(base_dir,
-                                                  briefing_scope)
+    briefing = _runner().assemble_oracle_briefing(
+        base_dir, briefing_scope, owner_instructions=instructions)
     if briefing:
         system += "\n\n" + briefing
     if instructions and _runner()._as_text(instructions).strip():
