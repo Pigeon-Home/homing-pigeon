@@ -22,6 +22,7 @@ import json
 import os
 import sys
 import tempfile
+import types
 import unittest
 from unittest import mock
 
@@ -54,6 +55,72 @@ def _backend_stub():
     backend.windows_startup_problem.return_value = (
         "windows_confine is Windows-only")
     return backend
+
+
+def _confinement_backend(kind, problem):
+    """A real-marked confinement backend for one platform,
+    in the platform test files' established shape: a plain
+    namespace (never a Mock, which would invent any probe a
+    gate goes looking for) whose startup and confinement
+    probes both answer `problem` -- a string for a backend
+    that cannot engage, None for one that can."""
+    backend = types.SimpleNamespace()
+
+    def _probe(cfg=None, timeout=15):
+        return problem
+
+    if kind == "windows":
+        backend.IS_WINDOWS_BACKEND = True
+        backend.windows_startup_problem = _probe
+        backend.windows_confinement_problem = _probe
+    elif kind == "darwin":
+        backend.IS_MACOS_BACKEND = True
+        backend.macos_startup_problem = _probe
+        backend.macos_confinement_problem = _probe
+    elif kind == "freebsd":
+        backend.IS_FREEBSD_BACKEND = True
+        backend.freebsd_startup_problem = _probe
+        backend.freebsd_confinement_problem = _probe
+    else:
+        raise ValueError("unknown confinement backend kind %r"
+                         % (kind,))
+    return backend
+
+
+@contextlib.contextmanager
+def scripted_confinement(problem):
+    """Every confinement seam answers `problem` at once.
+
+    The startup gate in ops/main.py routes by the host's
+    platform -- the Windows, FreeBSD and macOS branches ask
+    their platform backend's probe, and only the Linux
+    branch asks the bwrap seam -- so a dead backend scripted
+    on one seam alone is never consulted on the other
+    platforms' hosts and the startup it was meant to refuse
+    proceeds (Q159: the gates_strict dead-backend test
+    scripted only the bwrap seam and started cleanly, exit
+    0, on real Windows and macOS). Scripting every seam
+    makes the construction hold on any host: whichever
+    branch the host's platform takes, the backend it asks
+    is the scripted one. `problem` is the probe answer: a
+    string scripts a dead backend, None a live one.
+    """
+    with mock.patch.object(
+            REM, "_windows_confine",
+            lambda backend=None: _confinement_backend(
+                "windows", problem)), \
+            mock.patch.object(
+                REM, "_macos_confine",
+                lambda backend=None: _confinement_backend(
+                    "darwin", problem)), \
+            mock.patch.object(
+                REM, "_freebsd_confine",
+                lambda backend=None: _confinement_backend(
+                    "freebsd", problem)), \
+            mock.patch.object(
+                RR._sandbox, "startup_problem",
+                lambda *a, **k: problem):
+        yield
 from runner.guard.security import FEATURES  # noqa: E402
 from runner.oracle.dri import parse_dri  # noqa: E402
 from runner.oracle.resources import parse_resources  # noqa: E402

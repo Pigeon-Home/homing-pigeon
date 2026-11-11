@@ -24,7 +24,7 @@ from runner import runner as RR  # noqa: E402
 from runner.guard.security import FEATURES  # noqa: E402
 from runner.ops import remediation_ops as REM  # noqa: E402
 from runner.tests.decision1_startup_support import (  # noqa: E402
-    _backend_cannot_engage, run_main)
+    _backend_cannot_engage, run_main, scripted_confinement)
 
 
 class StrictShapeTest(unittest.TestCase):
@@ -75,21 +75,81 @@ class StrictShapeTest(unittest.TestCase):
         self.assertIn("security.modes.job_user", err)
         self.assertNotIn("Security audit report", out)
 
+    # The dead-backend construction (Q159). The startup gate
+    # routes by the host's platform -- win32, FreeBSD and
+    # darwin ask their platform backend's probe, only the
+    # Linux branch asks the bwrap seam -- so this test's first
+    # shape, which scripted the bwrap seam alone, was never
+    # consulted on a Windows or macOS host: the live platform
+    # backend engaged, the startup proceeded, and the test
+    # failed 0 != 2 on real Windows (and, where the macOS
+    # backend's own trial failed, refused with the darwin
+    # wording the bwrap assertion could not match). The
+    # product refuses correctly on every platform when the
+    # backend is dead on the seam that platform consults;
+    # the construction now scripts every seam at once through
+    # scripted_confinement, with one scripted problem text, so
+    # the refusal and the text it carries are the same on any
+    # host -- and the assertion on the scripted text is the
+    # pass-through pin: a seam the scripting missed answers in
+    # its own words (or engages), and the test fails either
+    # way instead of silently passing.
+    DEAD_BACKEND = "backend cannot engage (scripted dead backend)"
+
     def test_confinement_enforce_with_a_dead_backend_refuses_startup(self):
-        # The Linux-side analogue of the win32 pair, constructed
-        # through the scripted startup_problem so it constructs on
-        # hosts whose sandbox works too: the backend answer is the
-        # environment, and an environment that cannot enforce is a
-        # refusal on any platform.
-        rc, out, err = run_main(
-            {"security": {"modes": {"confinement": "enforce",
-                                    "job_user": "off"}}},
-            ("--audit-report",),
-            sandbox_problem="bwrap is not installed (not found on PATH)")
+        # The analogue of the win32 pair on the host's own
+        # platform, constructed through the scripted seams so
+        # it constructs on hosts whose sandbox works too: the
+        # backend answer is the environment, and an environment
+        # that cannot enforce is a refusal on any platform.
+        with scripted_confinement(self.DEAD_BACKEND):
+            rc, out, err = run_main(
+                {"security": {"modes": {"confinement": "enforce",
+                                        "job_user": "off"}}},
+                ("--audit-report",),
+                sandbox_problem=self.DEAD_BACKEND)
         self.assertEqual(rc, 2, err)
         self.assertIn("security.modes.confinement", err)
-        self.assertIn("bwrap is not installed", err)
+        self.assertIn(self.DEAD_BACKEND, err)
         self.assertNotIn("Security audit report", out)
+
+    def test_confinement_enforce_dead_backend_refuses_on_each_platform(self):
+        # The same construction through each simulated
+        # platform shape in turn, so the per-platform routing
+        # itself is pinned on any host: whichever branch the
+        # platform selects, a dead backend on that branch's
+        # seam refuses, naming the mode and carrying the
+        # scripted problem through.
+        for platform in ("linux", "win32", "darwin", "freebsd14"):
+            with self.subTest(platform=platform):
+                with scripted_confinement(self.DEAD_BACKEND):
+                    rc, out, err = run_main(
+                        {"security": {"modes":
+                                      {"confinement": "enforce",
+                                       "job_user": "off"}}},
+                        ("--audit-report",), platform=platform,
+                        sandbox_problem=self.DEAD_BACKEND)
+                self.assertEqual(rc, 2, err)
+                self.assertIn("security.modes.confinement", err)
+                self.assertIn(self.DEAD_BACKEND, err)
+                self.assertNotIn("Security audit report", out)
+
+    def test_confinement_enforce_live_backend_starts_on_each_platform(self):
+        # The control for the pair above, per platform: a
+        # backend that can engage on the seam the platform
+        # consults lets the same enforce startup proceed to
+        # the audit report, so the refusal pins cannot pass
+        # by refusing everything.
+        for platform in ("linux", "win32", "darwin", "freebsd14"):
+            with self.subTest(platform=platform):
+                with scripted_confinement(None):
+                    rc, out, err = run_main(
+                        {"security": {"modes":
+                                      {"confinement": "enforce",
+                                       "job_user": "off"}}},
+                        ("--audit-report",), platform=platform)
+                self.assertEqual(rc, 0, err)
+                self.assertIn("Security audit report", out)
 
     def test_all_enforce_on_win32_refuses_and_names_a_mode(self):
         # The locked-down posture as a whole on an incapable
