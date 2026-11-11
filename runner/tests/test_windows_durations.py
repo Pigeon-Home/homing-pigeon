@@ -516,9 +516,10 @@ class CheckedInTableGuardTest(unittest.TestCase):
         # test_decision1_startup's 650s floor, recorded in
         # the comment above, is retired by the Q136 file
         # split (2026-11-11): the module no longer exists,
-        # and its five pieces carry their own floors,
-        # pinned in
-        # test_the_decision1_split_pieces_keep_their_prices.
+        # and its pieces carry their own floors, pinned in
+        # test_the_decision1_split_pieces_keep_their_prices
+        # and, for the gates piece's further split,
+        # test_the_decision1_gates_pieces_keep_their_prices.
         self.assertNotIn("runner.tests.test_decision1_startup",
                          durations)
 
@@ -580,10 +581,21 @@ class CheckedInTableGuardTest(unittest.TestCase):
         # held it. The readers piece carries no startup
         # (its S3 price is import and reader cost), so it
         # is not part of this pin and may pack beside
-        # test_v2_consult under the budget.
+        # test_v2_consult under the budget. The gates
+        # piece's further split (Q136-GATES2-S5) carries
+        # the shape forward at its own prices: gates_strict
+        # at 180 and gates_phase2 at 150 keep the
+        # arithmetic over budget beside the 600s floor
+        # (600 + 180 > 720, 600 + 150 > 720), so both
+        # stand in this pin; gates_refuse at 100 does not
+        # -- its 4 startups are priced with headroom in
+        # their own floor pin, and at that price it may
+        # pack beside test_v2_consult under the budget
+        # the way the readers piece may.
         pieces = ("runner.tests.test_decision1_startup_refuse_main",
                   "runner.tests.test_decision1_startup_refuse_policies",
-                  "runner.tests.test_decision1_startup_gates",
+                  "runner.tests.test_decision1_startup_gates_strict",
+                  "runner.tests.test_decision1_startup_gates_phase2",
                   "runner.tests.test_decision1_startup_defaults")
         table = wd.load_table_file(wd.default_table_path())
         shards = wd.pack_modules(sorted(table["durations"]),
@@ -664,13 +676,17 @@ class CheckedInTableGuardTest(unittest.TestCase):
         # floor packing alone, and the named-companion
         # pin from run 43026648905) cannot hold a split
         # family: pieces are priced to pack WITH
-        # companions under the budget, by design.
+        # companions under the budget, by design. The
+        # gates piece's own 270s floor is retired by its
+        # further split (Q136-GATES2-S5/S6): its three
+        # pieces carry their own floors in
+        # test_the_decision1_gates_pieces_keep_their_prices,
+        # and the four pieces pinned here total 1,070s.
         table = wd.load_table_file(wd.default_table_path())
         durations = table["durations"]
         floors = {
             "runner.tests.test_decision1_startup_refuse_main": 340.0,
             "runner.tests.test_decision1_startup_refuse_policies": 330.0,
-            "runner.tests.test_decision1_startup_gates": 270.0,
             "runner.tests.test_decision1_startup_readers": 100.0,
             "runner.tests.test_decision1_startup_defaults": 300.0,
         }
@@ -686,7 +702,54 @@ class CheckedInTableGuardTest(unittest.TestCase):
             self.assertGreaterEqual(durations[name], floor, name)
             self.assertLessEqual(durations[name], 400.0, name)
             total += durations[name]
-        self.assertGreaterEqual(total, 1200.0)
+        self.assertGreaterEqual(total, 1070.0)
+
+    def test_the_decision1_gates_pieces_keep_their_prices(self):
+        # The Q136 gates piece divides further
+        # (Q136-GATES2-S5/S6, 2026-11-11). Two completed
+        # build-windows runs each killed shard 21 at the
+        # 1,201s wall with exactly 7 dots inside the
+        # gates piece, priced 270s: Phase2StartupTest's
+        # 7 tests complete, and the hang in the first
+        # RefuseStartupGatesTest test, whose
+        # cannot-engage condition the Windows backend's
+        # probe -- not bwrap's -- decides on that host
+        # (the measurement stands in the desk's Q136
+        # follow-on section). The piece divides along
+        # its class seams, priced with headroom over the
+        # per-startup rate and under the standing 400s
+        # ceiling: gates_refuse 100 (4 startups, 3 of
+        # its 5 tests POSIX-only skips on Windows),
+        # gates_strict 180 (4 startups plus the
+        # decision-point family, the largest local share
+        # of the old piece) and gates_phase2 150 (7
+        # startups) -- 430s in all, above the old piece's
+        # 270, no piece above 180, so each packs with
+        # companions under the 720s budget. The old
+        # gates module is retired the way the original
+        # module was: absent from the table and from
+        # the tree.
+        table = wd.load_table_file(wd.default_table_path())
+        durations = table["durations"]
+        floors = {
+            "runner.tests.test_decision1_startup_gates_refuse": 100.0,
+            "runner.tests.test_decision1_startup_gates_strict": 180.0,
+            "runner.tests.test_decision1_startup_gates_phase2": 150.0,
+        }
+        self.assertNotIn(
+            "runner.tests.test_decision1_startup_gates", durations)
+        self.assertFalse(os.path.isfile(os.path.join(
+            REPO, "runner", "tests",
+            "test_decision1_startup_gates.py")))
+        total = 0.0
+        for name, floor in floors.items():
+            self.assertTrue(os.path.isfile(os.path.join(
+                REPO, "runner", "tests",
+                name.rsplit(".", 1)[1] + ".py")), name)
+            self.assertGreaterEqual(durations[name], floor, name)
+            self.assertLessEqual(durations[name], 400.0, name)
+            total += durations[name]
+        self.assertGreaterEqual(total, 430.0)
 
 
     def test_the_fifth_repack_listed_files_keep_their_floors(self):
@@ -738,20 +801,24 @@ class CheckedInTableGuardTest(unittest.TestCase):
             durations["runner.tests.test_oracle_chat"], 55.0)
 
     def test_the_decision1_split_family_still_carries_97_tests(self):
-        # The split is a move, not a rewrite: the five
+        # The split is a move, not a rewrite: the eight
         # pieces between them carry exactly the original
         # file's 97 tests, at the original per-class
         # counts (RefuseMain 43 across its two pieces,
-        # the gates classes 18, RefuseReader 16, the
-        # default class and its table pin 20). A test
-        # lost, duplicated or silently dropped in a
-        # future edit of a piece fails here.
+        # the gates classes 18 carried as gates_refuse
+        # 5, gates_strict 6 and gates_phase2 7 after the
+        # further split, RefuseReader 16, the default
+        # class and its table pin 20). A test lost,
+        # duplicated or silently dropped in a future
+        # edit of a piece fails here.
         import importlib
         import unittest as _unittest
         expected = {
             "runner.tests.test_decision1_startup_refuse_main": 22,
             "runner.tests.test_decision1_startup_refuse_policies": 21,
-            "runner.tests.test_decision1_startup_gates": 18,
+            "runner.tests.test_decision1_startup_gates_refuse": 5,
+            "runner.tests.test_decision1_startup_gates_strict": 6,
+            "runner.tests.test_decision1_startup_gates_phase2": 7,
             "runner.tests.test_decision1_startup_readers": 16,
             "runner.tests.test_decision1_startup_defaults": 20,
         }
